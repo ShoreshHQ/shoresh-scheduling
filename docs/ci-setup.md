@@ -13,16 +13,18 @@ once by hand. Until then the "Scratch org deploy and Apex tests" check fails wit
 ## Steps
 
 1. Open the Terminal app (or a terminal tab in the Claude app).
-2. Paste this single command and press Return. It reads the Dev Hub login from the Salesforce
+2. Paste this single line and press Return. It reads the Dev Hub login from the Salesforce
    CLI and hands it straight to GitHub as an encrypted secret. Nothing is shown on screen or
    saved to a file.
 
    ```bash
-   sf org display --target-org shoresh-devhub --verbose --json | jq -r .result.sfdxAuthUrl | gh secret set SFDX_AUTH_URL_DEVHUB --repo ShoreshHQ/shoresh-scheduling
+   URL=$(sf org display --target-org shoresh-devhub --verbose --json | jq -er '.result.sfdxAuthUrl | select(startswith("force://"))') && gh secret set SFDX_AUTH_URL_DEVHUB --repo ShoreshHQ/shoresh-scheduling <<< "$URL"; unset URL
    ```
 
    You should see one line like: `✓ Set Actions secret SFDX_AUTH_URL_DEVHUB for ShoreshHQ/shoresh-scheduling`.
    If you see `command not found: jq`, run `brew install jq` and try again.
+   If you see anything else (an error, or no ✓ line), stop and tell Claude what it says: the
+   secret may not have been set correctly.
 3. Check it is there:
 
    ```bash

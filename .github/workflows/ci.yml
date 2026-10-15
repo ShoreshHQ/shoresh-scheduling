@@ -31,10 +31,10 @@ jobs:
         run: npm run test:unit
       - name: Install Salesforce CLI and Code Analyzer
         run: |
-          npm install --global @salesforce/cli
+          npm install --global @salesforce/cli@2.154.4
           sf plugins install code-analyzer@5.16.0
       - name: Salesforce Code Analyzer
-        # Fails on moderate (3) or worse: the same engines AppExchange security review uses.
+        # Recommended rules; fails on moderate (3) or worse.
         run: sf code-analyzer run --workspace force-app --severity-threshold 3 --output-file code-analyzer.html
       - uses: actions/upload-artifact@v4
         if: always()
@@ -57,16 +57,18 @@ jobs:
             echo "::error::The SFDX_AUTH_URL_DEVHUB secret is not set. See docs/ci-setup.md."
             exit 1
           fi
+          case "$SFDX_AUTH_URL_DEVHUB" in
+            force://*) ;;
+            *) echo "::error::The SFDX_AUTH_URL_DEVHUB secret is not a Salesforce login. Set it again: docs/ci-setup.md."; exit 1 ;;
+          esac
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install Salesforce CLI
-        run: npm install --global @salesforce/cli
+        run: npm install --global @salesforce/cli@2.154.4
       - name: Log in to the Dev Hub
         run: |
-          echo "$SFDX_AUTH_URL_DEVHUB" > devhub.auth
-          sf org login sfdx-url --sfdx-url-file devhub.auth --alias devhub --set-default-dev-hub
-          rm devhub.auth
+          echo "$SFDX_AUTH_URL_DEVHUB" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
       - name: Create a scratch org for this pull request
         run: |
           sf org create scratch --definition-file config/project-scratch-def.json \
@@ -80,7 +82,7 @@ jobs:
           fi
       - name: Apex tests
         run: |
-          if ! grep -rqli '@istest' force-app --include=*.cls; then
+          if ! grep -rqli '@istest' force-app --include='*.cls'; then
             echo "::notice::No Apex test classes yet."
           else
             sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 30
