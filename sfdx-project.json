@@ -1,0 +1,16 @@
+{
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true,
+      "package": "Shoresh Scheduling",
+      "versionName": "Step 1",
+      "versionNumber": "0.1.0.NEXT",
+      "versionDescription": "Shoresh day-camp scheduling"
+    }
+  ],
+  "name": "shoresh-scheduling",
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "67.0"
+}
