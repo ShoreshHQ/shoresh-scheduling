@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+  <sharingCriteriaRules>
+    <fullName>CampA_by_text</fullName><accessLevel>Edit</accessLevel><label>Camp A by text</label>
+    <sharedTo><group>CampA_Schedulers</group></sharedTo>
+    <criteriaItems><field>CampName__c</field><operation>equals</operation><value>Camp A</value></criteriaItems>
+    <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+  </sharingCriteriaRules>
+  <sharingCriteriaRules>
+    <fullName>CampB_by_lookup</fullName><accessLevel>Edit</accessLevel><label>Camp B by lookup</label>
+    <sharedTo><group>CampB_Schedulers</group></sharedTo>
+    <criteriaItems><field>Camp__c</field><operation>equals</operation><value>CAMP_B_RECORD_ID</value></criteriaItems>
+    <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+  </sharingCriteriaRules>
+</SharingRules>

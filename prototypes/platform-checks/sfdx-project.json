@@ -1,0 +1,7 @@
+{
+  "packageDirectories": [{ "path": "src", "default": true }],
+  "name": "platform-checks",
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "67.0"
+}
