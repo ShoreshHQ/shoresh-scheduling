@@ -1,0 +1,8 @@
+{
+  "orgName": "Shoresh Platform Checks",
+  "edition": "Developer",
+  "settings": {
+    "languageSettings": { "enableTranslationWorkbench": true },
+    "lightningExperienceSettings": { "enableS1DesktopEnabled": true }
+  }
+}
