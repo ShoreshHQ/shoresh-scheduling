@@ -68,7 +68,7 @@ jobs:
         run: npm install --global @salesforce/cli@2.154.4
       - name: Log in to the Dev Hub
         run: |
-          echo "$SFDX_AUTH_URL_DEVHUB" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
+          echo "$SFDX_AUTH_URL_DEVHUB" | sf org login sfdx-url --sfdx-url-stdin - --alias devhub --set-default-dev-hub
       - name: Create a scratch org for this pull request
         run: |
           sf org create scratch --definition-file config/project-scratch-def.json \
