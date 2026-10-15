@@ -21,7 +21,7 @@ once by hand. Until then the "Scratch org deploy and Apex tests" check fails wit
    URL=$(sf org auth show-sfdx-auth-url --target-org shoresh-devhub --json | jq -er '.result.sfdxAuthUrl | select(startswith("force://"))') && gh secret set SFDX_AUTH_URL_DEVHUB --repo ShoreshHQ/shoresh-scheduling <<< "$URL" || echo "NOT SET: could not read the Dev Hub login. Tell Claude."; unset URL
    ```
 
-   You should see one line like: `✓ Set Actions secret SFDX_AUTH_URL_DEVHUB for ShoreshHQ/shoresh-scheduling`.
+   Usually nothing is printed; step 3 confirms it worked.
    If you see `command not found: jq`, run `brew install jq` and try again.
    If you see `NOT SET` or anything else, stop and tell Claude what it says.
 3. Check it is there:
