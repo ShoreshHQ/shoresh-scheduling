@@ -150,4 +150,39 @@ describe("c-shoresh-program", () => {
       name: "Main"
     });
   });
+
+  it("keeps a typed but unsaved name when something else is saved", async () => {
+    const element = await render();
+    const name = element.shadowRoot.querySelector(
+      'lightning-input[data-id="name"]'
+    );
+    name.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Typed" } })
+    );
+    element.entry = { ...ENTRY, timeBlocks: [] };
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
+    ).toBe("Typed");
+  });
+
+  it("after its own save, shows the saved name", async () => {
+    const element = await render();
+    const name = element.shadowRoot.querySelector(
+      'lightning-input[data-id="name"]'
+    );
+    name.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Typed" } })
+    );
+    name.reportValidity = () => true;
+    await flush();
+    [...element.shadowRoot.querySelectorAll("lightning-button")]
+      .find((b) => b.label === "Save")
+      .click();
+    element.entry = { ...ENTRY, program: { ...ENTRY.program, Name: "Saved" } };
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
+    ).toBe("Saved");
+  });
 });

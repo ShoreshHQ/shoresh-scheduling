@@ -10,6 +10,16 @@
         blank to use the standard word. Salesforce's own reports and record
         pages keep the standard words.
       </p>
+      <template lwc:if={readOnly}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small"
+          role="status"
+          data-id="read-only"
+        >
+          Only the person who set up this camp, or a Salesforce admin, can
+          change these words.
+        </div>
+      </template>
       <template lwc:if={error}>
         <div
           class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
@@ -42,6 +52,7 @@
                   data-term={row.term}
                   data-field="singular"
                   onchange={handleChange}
+                  disabled={readOnly}
                 ></lightning-input>
               </td>
               <td>
@@ -53,6 +64,7 @@
                   data-term={row.term}
                   data-field="plural"
                   onchange={handleChange}
+                  disabled={readOnly}
                 ></lightning-input>
               </td>
             </tr>
@@ -70,7 +82,7 @@
         variant="brand"
         label="Save words"
         onclick={handleSave}
-        disabled={busy}
+        disabled={saveDisabled}
       ></lightning-button>
     </footer>
   </article>

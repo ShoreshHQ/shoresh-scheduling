@@ -217,7 +217,7 @@ describe("c-shoresh-camp-setup", () => {
     );
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
     expect(weeks.addLabel).toBe("Add Week");
-    expect(weeks.newRowDefaults).toEqual({ Season__c: "s1", Name: "Week 2" });
+    expect(weeks.newRowDefaults).toEqual({ Season__c: "s1", Name: "Week {n}" });
     expect(button(element, "Copy this season")).toBeDefined();
   });
 
@@ -380,5 +380,21 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="error"]').textContent).toContain(
       "You do not have access"
     );
+  });
+
+  it("tells the table its save failed, so its typing is not lost", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(setupWith());
+    saveRecords.mockRejectedValueOnce({ body: { message: "No." } });
+    const element = await render();
+    const onFailure = jest.fn();
+    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+      new CustomEvent("save", {
+        detail: { records: [{ Name: "x" }], onFailure }
+      })
+    );
+    await flush();
+    expect(onFailure).toHaveBeenCalled();
   });
 });

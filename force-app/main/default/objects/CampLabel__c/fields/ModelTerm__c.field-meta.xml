@@ -181,6 +181,11 @@
                 <label>Seats</label>
             </value>
             <value>
+                <fullName>MinimumToRun</fullName>
+                <default>false</default>
+                <label>Minimum to run</label>
+            </value>
+            <value>
                 <fullName>Conflict</fullName>
                 <default>false</default>
                 <label>Conflict</label>

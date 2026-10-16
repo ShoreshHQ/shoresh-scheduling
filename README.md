@@ -8,7 +8,8 @@ Design, glossary, and decisions live in the Shoresh wiki (`projects/shoresh-sche
 ## Try it
 
 `scripts/try-in-scratch-org.sh` makes a fresh test org with this branch in it and opens
-**Camp Setup** (needs the Dev Hub login, alias `shoresh-devhub`). Build choices are in
+**Camp Setup** (needs the Dev Hub login, alias `shoresh-devhub`). A click-by-click walkthrough
+is in [docs/try-camp-setup.md](docs/try-camp-setup.md). Build choices are in
 [docs/adr](docs/adr).
 
 ## Checks on every pull request

@@ -165,4 +165,31 @@ describe("c-shoresh-copy-season", () => {
     button(element, "Cancel").click();
     expect(cancel).toHaveBeenCalled();
   });
+
+  it("shows the preview for the date chosen last, even if an earlier answer is slow", async () => {
+    let answerFirst;
+    previewCopy.mockResolvedValueOnce(SAME_DAYS);
+    const element = await render();
+    previewCopy
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            answerFirst = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ ...SAME_DAYS, newWeekday: "Monday" });
+    const date = element.shadowRoot.querySelectorAll("lightning-input")[1];
+    date.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "2027-06-29" } })
+    );
+    date.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "2027-07-05" } })
+    );
+    await flush();
+    answerFirst({ ...SAME_DAYS, newWeekday: "Tuesday", weekdaysChange: true });
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-id="weekday-warning"]')
+    ).toBeNull();
+  });
 });

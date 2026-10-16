@@ -84,16 +84,23 @@ export default class ShoreshCopySeason extends LightningElement {
   async loadPreview() {
     this.preview = null;
     this.error = null;
-    if (!this.newStart) {
+    const asked = this.newStart;
+    if (!asked) {
       return;
     }
     try {
-      this.preview = await previewCopy({
+      const preview = await previewCopy({
         seasonId: this.season.Id,
-        newStartDate: this.newStart
+        newStartDate: asked
       });
+      // A slower answer for an earlier date must not replace the current one.
+      if (asked === this.newStart) {
+        this.preview = preview;
+      }
     } catch (e) {
-      this.error = errorMessage(e);
+      if (asked === this.newStart) {
+        this.error = errorMessage(e);
+      }
     }
   }
 

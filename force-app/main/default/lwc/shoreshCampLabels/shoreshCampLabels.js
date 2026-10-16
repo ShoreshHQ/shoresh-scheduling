@@ -1,6 +1,7 @@
 import { LightningElement, api } from "lwc";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
+import canEditCampWords from "@salesforce/apex/SeasonSetupController.canEditCampWords";
 import { errorMessage } from "c/shoreshErrors";
 
 /**
@@ -14,6 +15,8 @@ export default class ShoreshCampLabels extends LightningElement {
   rows = [];
   error;
   busy = false;
+  canEdit = false;
+  loaded = false;
 
   connectedCallback() {
     this.load();
@@ -21,7 +24,12 @@ export default class ShoreshCampLabels extends LightningElement {
 
   async load() {
     try {
-      const labels = await getLabels({ campId: this.campId });
+      const [labels, canEdit] = await Promise.all([
+        getLabels({ campId: this.campId }),
+        canEditCampWords({ campId: this.campId })
+      ]);
+      this.canEdit = canEdit;
+      this.loaded = true;
       this.rows = labels.map((row) => ({
         ...row,
         singular: row.isCustom ? row.singular : "",
@@ -34,6 +42,14 @@ export default class ShoreshCampLabels extends LightningElement {
 
   get title() {
     return `Words ${this.campName || "your camp"} uses`;
+  }
+
+  get readOnly() {
+    return this.loaded && !this.canEdit;
+  }
+
+  get saveDisabled() {
+    return this.busy || !this.canEdit;
   }
 
   handleChange(event) {

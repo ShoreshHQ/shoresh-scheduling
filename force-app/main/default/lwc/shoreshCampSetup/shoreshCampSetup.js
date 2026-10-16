@@ -39,6 +39,7 @@ export default class ShoreshCampSetup extends LightningElement {
   newSeason = {};
   seasonForm = {};
   seasonChanged = false;
+  seasonSubmitted = false;
 
   connectedCallback() {
     this.loadCamps();
@@ -84,11 +85,23 @@ export default class ShoreshCampSetup extends LightningElement {
       this.setup = null;
       return;
     }
+    if (this.setup && this.setup.season.Id !== this.seasonId) {
+      // Another season: start its tables fresh rather than carrying unsaved rows across.
+      this.setup = null;
+    }
     const setup = await getSeasonSetup({ seasonId: this.seasonId });
+    // Keep typed but unsaved season details when something else was saved.
+    const keepForm =
+      this.seasonChanged &&
+      !this.seasonSubmitted &&
+      this.seasonForm.Id === setup.season.Id;
     this.setup = setup;
     this.termLabels = setup.labels;
-    this.seasonForm = { ...setup.season };
-    this.seasonChanged = false;
+    if (!keepForm) {
+      this.seasonForm = { ...setup.season };
+      this.seasonChanged = false;
+      this.seasonSubmitted = false;
+    }
   }
 
   // ---------- what the template shows ----------
@@ -174,11 +187,8 @@ export default class ShoreshCampSetup extends LightningElement {
     ];
   }
   get weekDefaults() {
-    const weeks = (this.setup && this.setup.weeks) || [];
-    return {
-      Season__c: this.seasonId,
-      Name: `${this.terms.s("Week")} ${weeks.length + 1}`
-    };
+    // The table puts each new row's position in place of {n}.
+    return { Season__c: this.seasonId, Name: `${this.terms.s("Week")} {n}` };
   }
   get programs() {
     return ((this.setup && this.setup.programs) || []).map((entry) => ({
@@ -280,16 +290,22 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     const f = this.seasonForm;
-    await this.saveAndReload([
-      {
-        sobjectType: "Season__c",
-        Id: f.Id,
-        Name: f.Name,
-        StartDate__c: f.StartDate__c,
-        EndDate__c: f.EndDate__c,
-        Status__c: f.Status__c
+    this.seasonSubmitted = true;
+    await this.saveAndReload(
+      [
+        {
+          sobjectType: "Season__c",
+          Id: f.Id,
+          Name: f.Name,
+          StartDate__c: f.StartDate__c,
+          EndDate__c: f.EndDate__c,
+          Status__c: f.Status__c
+        }
+      ],
+      () => {
+        this.seasonSubmitted = false;
       }
-    ]);
+    );
   }
 
   async handleDeleteSeason() {
@@ -388,7 +404,7 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   async handleSaveRecords(event) {
-    await this.saveAndReload(event.detail.records);
+    await this.saveAndReload(event.detail.records, event.detail.onFailure);
   }
 
   async handleDeleteRecord(event) {
@@ -411,16 +427,21 @@ export default class ShoreshCampSetup extends LightningElement {
 
   // ---------- helpers ----------
 
-  async saveAndReload(records) {
+  async saveAndReload(records, onFailure) {
     if (!records || records.length === 0) {
       return;
     }
+    let saved = false;
     await this.run(async () => {
       await saveRecords({ records });
+      saved = true;
       this.toast("Saved.");
       await this.loadSeason();
       this.seasons = await getSeasons({ campId: this.campId });
     });
+    if (!saved && onFailure) {
+      onFailure();
+    }
   }
 
   async run(work) {

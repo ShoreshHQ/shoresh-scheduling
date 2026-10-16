@@ -8,6 +8,7 @@ public with sharing class CampLabels {
     'Availability',
     'Groups at once',
     'Groups that fit',
+    'Minimum to run',
     'Seats',
     'Times per week'
   };

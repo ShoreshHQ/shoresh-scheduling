@@ -98,7 +98,7 @@ describe("setupProblems", () => {
     };
     expect(setupProblems(setup, terms)).toEqual([
       '"Late" falls outside the dates of this season.',
-      '"Session 1" and "Session 2" overlap.'
+      '"Session 1" and "Session 2" share dates.'
     ]);
   });
 });

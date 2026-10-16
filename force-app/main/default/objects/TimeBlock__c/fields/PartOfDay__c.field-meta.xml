@@ -19,11 +19,6 @@
                 <default>false</default>
                 <label>Afternoon</label>
             </value>
-            <value>
-                <fullName>Evening</fullName>
-                <default>false</default>
-                <label>Evening</label>
-            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

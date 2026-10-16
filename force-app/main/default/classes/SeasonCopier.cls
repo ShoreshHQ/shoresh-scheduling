@@ -13,12 +13,15 @@ public with sharing class SeasonCopier {
   private final CampLabels labels;
 
   public SeasonCopier(Id sourceSeasonId, Date newStartDate) {
-    List<Season__c> found = [
-      SELECT Id, Name, Camp__c, StartDate__c, EndDate__c
-      FROM Season__c
-      WHERE Id = :sourceSeasonId
-      WITH USER_MODE
-    ];
+    List<Season__c> found = new List<Season__c>();
+    if (Schema.sObjectType.Season__c.isAccessible()) {
+      found = [
+        SELECT Id, Name, Camp__c, StartDate__c, EndDate__c
+        FROM Season__c
+        WHERE Id = :sourceSeasonId
+        WITH USER_MODE
+      ];
+    }
     if (found.isEmpty()) {
       throw new CopyException(
         'That ' +

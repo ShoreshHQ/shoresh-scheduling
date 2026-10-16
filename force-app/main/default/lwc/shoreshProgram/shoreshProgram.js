@@ -13,6 +13,8 @@ export default class ShoreshProgram extends LightningElement {
   name;
   days = {};
   changed = false;
+  // True from this form's Save until the screen reloads (or reports the save failed).
+  submitted = false;
   _entry;
 
   /** { program, timeBlocks, divisions: [{ division, groups }] } from SeasonSetupController. */
@@ -22,8 +24,10 @@ export default class ShoreshProgram extends LightningElement {
   }
   set entry(value) {
     this._entry = value;
-    // Fresh data from the server replaces anything typed.
-    this.resetForm();
+    // Keep a typed but unsaved name or days when something else on the screen was saved.
+    if (!this.changed || this.submitted) {
+      this.resetForm();
+    }
   }
 
   resetForm() {
@@ -34,6 +38,7 @@ export default class ShoreshProgram extends LightningElement {
       this.days[day] = !!program[`${day}__c`];
     });
     this.changed = false;
+    this.submitted = false;
   }
 
   get programId() {
@@ -65,8 +70,7 @@ export default class ShoreshProgram extends LightningElement {
         required: true,
         options: [
           { label: "Morning", value: "Morning" },
-          { label: "Afternoon", value: "Afternoon" },
-          { label: "Evening", value: "Evening" }
+          { label: "Afternoon", value: "Afternoon" }
         ]
       },
       { fieldName: "EventsOnly__c", label: "Events only", type: "checkbox" }
@@ -164,8 +168,12 @@ export default class ShoreshProgram extends LightningElement {
     DAYS.forEach((day) => {
       record[`${day}__c`] = this.days[day];
     });
+    this.submitted = true;
+    const onFailure = () => {
+      this.submitted = false;
+    };
     this.dispatchEvent(
-      new CustomEvent("save", { detail: { records: [record] } })
+      new CustomEvent("save", { detail: { records: [record], onFailure } })
     );
   }
 

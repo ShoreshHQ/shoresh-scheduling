@@ -24,7 +24,9 @@ export function setupProblems(setup, terms) {
   });
   for (let i = 1; i < weeks.length; i++) {
     if (weeks[i].StartDate__c <= weeks[i - 1].EndDate__c) {
-      problems.push(`"${weeks[i - 1].Name}" and "${weeks[i].Name}" overlap.`);
+      problems.push(
+        `"${weeks[i - 1].Name}" and "${weeks[i].Name}" share dates.`
+      );
     }
   }
   if (weeks.length === 0) {

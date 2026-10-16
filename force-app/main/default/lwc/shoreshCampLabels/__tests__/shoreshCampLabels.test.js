@@ -2,9 +2,15 @@ import { createElement } from "lwc";
 import ShoreshCampLabels from "c/shoreshCampLabels";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
+import canEditCampWords from "@salesforce/apex/SeasonSetupController.canEditCampWords";
 
 jest.mock(
   "@salesforce/apex/SeasonSetupController.getLabels",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.canEditCampWords",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -42,8 +48,9 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render() {
+async function render(canEdit = true) {
   getLabels.mockResolvedValue(LABELS);
+  canEditCampWords.mockResolvedValue(canEdit);
   const element = createElement("c-shoresh-camp-labels", {
     is: ShoreshCampLabels
   });
@@ -129,5 +136,17 @@ describe("c-shoresh-camp-labels", () => {
       "both a singular and a plural word"
     );
     expect(saved).not.toHaveBeenCalled();
+  });
+
+  it("explains, and blocks saving, when this person cannot change the camp words", async () => {
+    const element = await render(false);
+    expect(
+      element.shadowRoot.querySelector('[data-id="read-only"]').textContent
+    ).toContain("Only the person who set up this camp");
+    expect(input(element, "Group", "singular").disabled).toBe(true);
+    const save = [
+      ...element.shadowRoot.querySelectorAll("lightning-button")
+    ].find((b) => b.label === "Save words");
+    expect(save.disabled).toBe(true);
   });
 });

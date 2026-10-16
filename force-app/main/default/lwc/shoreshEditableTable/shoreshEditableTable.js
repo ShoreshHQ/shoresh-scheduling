@@ -5,8 +5,12 @@ import { LightningElement, api } from "lwc";
  * presses Save; nothing is saved behind their back.
  *
  * columns: [{ fieldName, label, type: 'text'|'date'|'time'|'checkbox'|'picklist', options, required }]
+ * When the screen reloads after something else was saved, anything typed here and not yet
+ * saved stays on screen. Only this table's own successful save clears it.
+ *
  * Fires:
- *   save   { records } - new rows with all values, existing rows with Id and changed fields only
+ *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
+ *          fields only; call onFailure() if the save did not go through
  *   delete { recordId, name }
  */
 export default class ShoreshEditableTable extends LightningElement {
@@ -14,12 +18,17 @@ export default class ShoreshEditableTable extends LightningElement {
   @api objectApiName;
   @api addLabel = "Add";
   @api emptyMessage = "Nothing here yet.";
-  /** Values every new row starts with, such as the parent record and a default name. */
+  /**
+   * Values every new row starts with, such as the parent record and a default name.
+   * "{n}" in a text value becomes the new row's position, so new rows get distinct names.
+   */
   @api newRowDefaults = {};
   @api busy = false;
 
   drafts = [];
   nextKey = 0;
+  // True from this table's Save until the screen reloads (or reports the save failed).
+  submitted = false;
   _rows = [];
   _columns = [];
 
@@ -29,8 +38,8 @@ export default class ShoreshEditableTable extends LightningElement {
   }
   set columns(value) {
     this._columns = value || [];
-    // Column types decide how values are shown (times), so rebuild the rows.
-    this.drafts = this._rows.map((record) => this.draftFor(record, false));
+    // The screen may hand over the columns again whenever it redraws; keep what was typed.
+    this.drafts = this.keepTyping(this._rows);
   }
 
   @api
@@ -39,8 +48,33 @@ export default class ShoreshEditableTable extends LightningElement {
   }
   set rows(value) {
     this._rows = value || [];
-    // Fresh data from the server replaces anything typed, saved or not.
-    this.drafts = this._rows.map((record) => this.draftFor(record, false));
+    if (this.submitted) {
+      // This table's own save went through: show exactly what was saved.
+      this.submitted = false;
+      this.drafts = this._rows.map((record) => this.draftFor(record, false));
+      return;
+    }
+    // Something else was saved: keep what was typed here and not yet saved.
+    this.drafts = this.keepTyping(this._rows);
+  }
+
+  /** Rows for these records, carrying over any unsaved changes and unsaved new rows. */
+  keepTyping(records) {
+    const previous = this.drafts;
+    const kept = records.map((record) => {
+      const draft = this.draftFor(record, false);
+      const old = previous.find((d) => !d.isNew && d.original.Id === record.Id);
+      if (old) {
+        old.changed.forEach((field) => {
+          if (!sameValue(old.values[field], draft.original[field])) {
+            draft.values[field] = old.values[field];
+            draft.changed.add(field);
+          }
+        });
+      }
+      return draft;
+    });
+    return [...kept, ...previous.filter((d) => d.isNew)];
   }
 
   draftFor(record, isNew) {
@@ -124,7 +158,13 @@ export default class ShoreshEditableTable extends LightningElement {
   handleAdd() {
     const defaults =
       typeof this.newRowDefaults === "object" ? this.newRowDefaults : {};
-    const record = { ...defaults, SortOrder__c: this.drafts.length + 1 };
+    const position = this.drafts.length + 1;
+    const record = { SortOrder__c: position };
+    Object.keys(defaults).forEach((field) => {
+      const value = defaults[field];
+      record[field] =
+        typeof value === "string" ? value.replace("{n}", position) : value;
+    });
     this.drafts = [...this.drafts, this.draftFor(record, true)];
   }
 
@@ -157,19 +197,28 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!allValid) {
       return;
     }
+    const timeFields = new Set(
+      this.columns.filter((c) => c.type === "time").map((c) => c.fieldName)
+    );
     const records = [];
     this.drafts.forEach((draft) => {
       if (draft.isNew) {
-        records.push(toRecord(this.objectApiName, draft.values));
+        records.push(toRecord(this.objectApiName, draft.values, timeFields));
       } else if (draft.changed.size > 0) {
         const changes = { Id: draft.original.Id };
         draft.changed.forEach((field) => {
           changes[field] = draft.values[field];
         });
-        records.push(toRecord(this.objectApiName, changes));
+        records.push(toRecord(this.objectApiName, changes, timeFields));
       }
     });
-    this.dispatchEvent(new CustomEvent("save", { detail: { records } }));
+    this.submitted = true;
+    const onFailure = () => {
+      this.submitted = false;
+    };
+    this.dispatchEvent(
+      new CustomEvent("save", { detail: { records, onFailure } })
+    );
   }
 }
 
@@ -191,20 +240,21 @@ function sameValue(a, b) {
 }
 
 /** Shapes a row for Apex: names the object, and gives times the zone marker Apex expects. */
-function toRecord(objectApiName, values) {
+function toRecord(objectApiName, values, timeFields) {
   const record = { sobjectType: objectApiName };
   Object.keys(values).forEach((field) => {
     let value = values[field];
-    if (
-      typeof value === "string" &&
-      /^\d{2}:\d{2}(:\d{2}(\.\d{3})?)?$/.test(value)
-    ) {
-      value = `${value.length === 5 ? `${value}:00.000` : value.length === 8 ? `${value}.000` : value}Z`;
+    if (timeFields.has(field) && typeof value === "string" && value !== "") {
+      value = apexTime(value);
     }
-    if (value === "") {
-      value = null;
-    }
-    record[field] = value;
+    record[field] = value === "" ? null : value;
   });
   return record;
+}
+
+/** "09:00" or "09:00:00.000" -> "09:00:00.000Z". */
+function apexTime(value) {
+  const [hours, minutes, rest] = value.replace("Z", "").split(":");
+  const [seconds, millis] = (rest || "00").split(".");
+  return `${hours}:${minutes}:${seconds}.${(millis || "000").padEnd(3, "0")}Z`;
 }

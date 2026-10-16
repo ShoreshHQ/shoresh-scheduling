@@ -40,6 +40,15 @@ public with sharing class SeasonWeeks {
         )
       );
     }
+    if (weeks.isEmpty()) {
+      throw new WeeksException(
+        'The dates of this ' +
+          labels.singularInSentence('Season') +
+          ' have no weekdays, so there are no ' +
+          labels.pluralInSentence('Week') +
+          ' to fill in. Check its first and last days.'
+      );
+    }
     Database.insert(weeks, AccessLevel.USER_MODE);
   }
 

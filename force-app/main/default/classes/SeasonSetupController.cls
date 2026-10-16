@@ -23,6 +23,11 @@ public with sharing class SeasonSetupController {
     TimeBlock__c.SObjectType
   };
 
+  private static final Set<StatusCode> NO_ACCESS = new Set<StatusCode>{
+    StatusCode.INSUFFICIENT_ACCESS_OR_READONLY,
+    StatusCode.INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
+  };
+
   @AuraEnabled
   public static List<Camp__c> getCamps() {
     return [
@@ -49,6 +54,23 @@ public with sharing class SeasonSetupController {
   @AuraEnabled
   public static List<CampLabels.TermLabel> getLabels(Id campId) {
     return CampLabels.forCamp(campId).all();
+  }
+
+  /**
+   * Whether this person may change the camp's own words. Camps are read-only to everyone but
+   * their owner and admins (data model), and camp labels follow their camp.
+   */
+  @AuraEnabled
+  public static Boolean canEditCampWords(Id campId) {
+    List<UserRecordAccess> access = [
+      SELECT RecordId, HasEditAccess
+      FROM UserRecordAccess
+      WHERE UserId = :UserInfo.getUserId() AND RecordId = :campId
+      WITH SYSTEM_MODE
+    ];
+    return !access.isEmpty() &&
+      access[0].HasEditAccess &&
+      Schema.sObjectType.CampLabel__c.isCreateable();
   }
 
   @AuraEnabled
@@ -144,18 +166,22 @@ public with sharing class SeasonSetupController {
 
   /** The message the scheduler sees for anything that went wrong. */
   private static AuraHandledException handled(Exception e) {
-    if (e instanceof DmlException) {
-      DmlException dml = (DmlException) e;
-      if (dml.getDmlType(0) == StatusCode.DELETE_FAILED) {
-        return handled(
-          'This can\'t be deleted while other records still use it. Change those first. (' +
-            dml.getDmlMessage(0) +
-            ')'
-        );
-      }
-      return handled(dml.getDmlMessage(0));
+    return handled(
+      e instanceof DmlException ? dmlMessage((DmlException) e) : e.getMessage()
+    );
+  }
+
+  private static String dmlMessage(DmlException e) {
+    StatusCode code = e.getDmlType(0);
+    if (code == StatusCode.DELETE_FAILED) {
+      return 'This can\'t be deleted while other records still use it. Change those first. (' +
+        e.getDmlMessage(0) +
+        ')';
     }
-    return handled(e.getMessage());
+    if (NO_ACCESS.contains(code)) {
+      return 'You don\'t have permission to change this. Ask the person who set it up, or a Salesforce admin.';
+    }
+    return e.getDmlMessage(0);
   }
 
   private static AuraHandledException handled(String message) {

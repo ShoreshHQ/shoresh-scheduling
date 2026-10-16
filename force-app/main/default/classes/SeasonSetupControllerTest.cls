@@ -396,4 +396,79 @@ private class SeasonSetupControllerTest {
       }
     }
   }
+
+  @IsTest
+  static void onlyTheCampOwnerCanChangeCampWords() {
+    User owner = ShoreshTestData.scheduler();
+    User other = ShoreshTestData.scheduler();
+    Camp__c camp;
+    System.runAs(owner) {
+      camp = ShoreshTestData.camp('Camp Willow');
+      Assert.isTrue(SeasonSetupController.canEditCampWords(camp.Id));
+    }
+    System.runAs(other) {
+      Assert.isFalse(SeasonSetupController.canEditCampWords(camp.Id));
+      List<CampLabels.TermLabel> labels = SeasonSetupController.getLabels(
+        camp.Id
+      );
+      setWords(labels, 'Group', 'Bunk/Bunks');
+      try {
+        SeasonSetupController.saveCampLabels(camp.Id, labels);
+        Assert.fail('Someone else\'s camp words are refused');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(
+          'You don\'t have permission to change this. Ask the person who set it up, or a Salesforce admin.',
+          errorOf(e)
+        );
+      }
+    }
+    Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c WITH SYSTEM_MODE]);
+  }
+
+  @IsTest
+  static void editAccessToASeasonDoesNotAllowDeletingIt() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    User scheduler = ShoreshTestData.scheduler();
+    Database.insert(
+      new Season__Share(
+        ParentId = season.Id,
+        UserOrGroupId = scheduler.Id,
+        AccessLevel = 'Edit'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    System.runAs(scheduler) {
+      try {
+        SeasonSetupController.deleteRecord(season.Id);
+        Assert.fail('Edit access is not delete access');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(
+          'You don\'t have permission to change this. Ask the person who set it up, or a Salesforce admin.',
+          errorOf(e)
+        );
+      }
+    }
+    Assert.areEqual(1, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
+  }
+
+  @IsTest
+  static void aSeasonWithNoWeekdaysSaysSoInsteadOfDoingNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = new Season__c(
+        Name = 'A weekend',
+        Camp__c = camp.Id,
+        StartDate__c = Date.newInstance(2026, 7, 4),
+        EndDate__c = Date.newInstance(2026, 7, 5)
+      );
+      Database.insert(season, AccessLevel.SYSTEM_MODE);
+      try {
+        SeasonSetupController.addWeeksFromSeasonDates(season.Id);
+        Assert.fail('Nothing to fill in is reported');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(errorOf(e).contains('have no weekdays'), errorOf(e));
+      }
+    }
+  }
 }

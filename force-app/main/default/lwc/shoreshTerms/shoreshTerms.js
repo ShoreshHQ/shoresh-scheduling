@@ -11,8 +11,10 @@ export function buildTerms(labels) {
   const word = (term, plural) => {
     const row = byTerm.get(term);
     if (!row) {
-      // Unknown until labels load: show the term itself rather than nothing.
-      return plural ? `${term}s` : term;
+      // Unknown until labels load: "TimeBlock" shows as "Time block" rather than nothing.
+      const words = term.replace(/([a-z])([A-Z])/g, "$1 $2");
+      const readable = words.charAt(0) + words.slice(1).toLowerCase();
+      return plural ? `${readable}s` : readable;
     }
     return plural ? row.plural : row.singular;
   };

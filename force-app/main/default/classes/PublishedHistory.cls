@@ -3,6 +3,8 @@
  * (data model, "Protecting history"). Schedules do not exist yet, so the finder that looks for
  * them is a stand-in that finds none. When Schedule__c is built, replace NoSchedulesYet with a
  * query for schedules that were ever published (PublishedAt__c set) under the given records.
+ * Deleting a season removes its programs and weeks without running their own delete checks,
+ * so the season check must look at schedules under the season's programs and weeks too.
  */
 public with sharing class PublishedHistory {
   public interface Finder {

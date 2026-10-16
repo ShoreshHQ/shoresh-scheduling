@@ -30,5 +30,6 @@ describe("buildTerms", () => {
     expect(t.s("Week")).toBe("Week");
     expect(t.p("Week")).toBe("Weeks");
     expect(t.sIn("Week")).toBe("week");
+    expect(t.p("TimeBlock")).toBe("Time blocks");
   });
 });

@@ -361,10 +361,46 @@ private class SeasonCopierTest {
         new SeasonCopier(original.Id, Date.newInstance(2027, 6, 28))
           .copy('Summer 2027');
         Assert.fail('Copy without access is refused');
-      } catch (Exception e) {
-        Assert.isNotNull(e.getMessage());
+      } catch (SeasonCopier.CopyException e) {
+        Assert.areEqual(
+          'That season was not found, or you do not have access to it.',
+          e.getMessage()
+        );
       }
     }
     Assert.areEqual(1, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
+  }
+
+  @IsTest
+  static void aSchedulerCanCopyASeasonSharedWithThem() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c original = ShoreshTestData.fullSeason(camp.Id);
+    User scheduler = ShoreshTestData.scheduler();
+    Database.insert(
+      new Season__Share(
+        ParentId = original.Id,
+        UserOrGroupId = scheduler.Id,
+        AccessLevel = 'Read'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    System.runAs(scheduler) {
+      Id copyId = new SeasonCopier(original.Id, NEW_START).copy('Summer 2027');
+      Assert.areEqual(
+        scheduler.Id,
+        [SELECT OwnerId FROM Season__c WHERE Id = :copyId WITH USER_MODE]
+        .OwnerId,
+        'The copy belongs to the scheduler who made it'
+      );
+      Assert.areEqual(
+        2,
+        [
+          SELECT COUNT()
+          FROM Group__c
+          WHERE Division__r.Program__r.Season__c = :copyId
+          WITH USER_MODE
+        ]
+      );
+    }
   }
 }
