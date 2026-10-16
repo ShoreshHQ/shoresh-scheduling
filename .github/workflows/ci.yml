@@ -79,7 +79,9 @@ jobs:
           if [ -z "$(find force-app -type f ! -name .gitkeep)" ]; then
             echo "::notice::No metadata in force-app yet; nothing to deploy."
           else
-            sf project deploy start --source-dir force-app --wait 30
+            # The shared org is also deployed to by hand, so its change tracking reports
+            # conflicts; the repository is always what should end up in the org.
+            sf project deploy start --source-dir force-app --ignore-conflicts --wait 30
           fi
       - name: Apex tests
         run: |
