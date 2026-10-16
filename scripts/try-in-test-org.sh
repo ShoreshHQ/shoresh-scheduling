@@ -11,6 +11,13 @@ if ! sf org display --target-org "$ALIAS" >/dev/null 2>&1; then
 fi
 echo "Putting Shoresh into the test org..."
 sf project deploy start --source-dir force-app --target-org "$ALIAS" --ignore-conflicts --wait 30 > /dev/null
-sf org assign permset --name Shoresh_Scheduler --target-org "$ALIAS" > /dev/null 2>&1 || true
+# Giving yourself the Shoresh permission set fails harmlessly if you already have it.
+if ! out=$(sf org assign permset --name Shoresh_Scheduler --target-org "$ALIAS" --json 2>&1); then
+  if ! grep -q "Duplicate PermissionSetAssignment" <<< "$out"; then
+    echo "Could not give you the Shoresh permission set:"
+    echo "$out"
+    exit 1
+  fi
+fi
 echo "Opening Camp Setup in your browser."
 sf org open --target-org "$ALIAS" --path /lightning/n/Shoresh_Camp_Setup
