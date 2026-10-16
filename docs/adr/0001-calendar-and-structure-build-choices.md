@@ -29,10 +29,10 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
    of objects; reads are `WITH USER_MODE`. Trigger checks read in system mode on purpose
    (duplicate keys must be found even in records the user cannot see).
-7. **Who may change camp words follows the camp record.** The data model makes Camp read-only
-   to everyone, so only the camp's owner (whoever created it) and admins can change its camp
-   labels. Other schedulers see the words read-only with a plain explanation. Open question
-   for Greg: should every scheduler be able to change them?
+7. **Anyone with Shoresh access can change camp words** (Greg, 2026-10-15). Camp records are
+   readable and editable by everyone with access (org-wide Read/Write), and camp labels follow
+   their camp. This replaces the data model's "read-only for everyone". An admin who narrows
+   access to camp records makes the words read-only for those people, and the screen says so.
 8. **Choices that are hard to undo after release:** `Camp__c.TimeZone__c` is text (a standard
    time-zone name such as America/New_York) rather than a picklist, so any zone fits; nothing
    uses it yet. `TimeBlock__c.PartOfDay__c` is Morning or Afternoon only (day camps;

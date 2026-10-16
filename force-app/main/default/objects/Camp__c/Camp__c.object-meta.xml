@@ -2,7 +2,7 @@
 <CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
     <deploymentStatus>Deployed</deploymentStatus>
     <description
-  >A camp. Most orgs have one; a community organization may run several. Readable by everyone so every scheduler sees their camp labels and time zone.</description>
+  >A camp. Most orgs have one; a community organization may run several. Readable and editable by everyone with access, so every scheduler sees, and can change, their camp's labels and time zone.</description>
     <enableActivities>false</enableActivities>
     <enableBulkApi>true</enableBulkApi>
     <enableHistory>false</enableHistory>
@@ -17,6 +17,6 @@
         <type>Text</type>
     </nameField>
     <pluralLabel>Camps</pluralLabel>
-    <sharingModel>Read</sharingModel>
+    <sharingModel>ReadWrite</sharingModel>
     <visibility>Public</visibility>
 </CustomObject>

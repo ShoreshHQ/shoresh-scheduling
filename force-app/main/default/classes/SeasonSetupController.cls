@@ -52,8 +52,8 @@ public with sharing class SeasonSetupController {
   }
 
   /**
-   * Whether this person may change the camp's own words. Camps are read-only to everyone but
-   * their owner and admins (data model), and camp labels follow their camp.
+   * Whether this person may change the camp's own words: anyone with Shoresh access can
+   * (Greg, 2026-10-15), unless an admin has narrowed access to camp records.
    */
   @AuraEnabled
   public static Boolean canEditCampWords(Id campId) {

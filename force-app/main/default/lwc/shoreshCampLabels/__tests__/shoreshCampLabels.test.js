@@ -142,7 +142,7 @@ describe("c-shoresh-camp-labels", () => {
     const element = await render(false);
     expect(
       element.shadowRoot.querySelector('[data-id="read-only"]').textContent
-    ).toContain("Only the person who set up this camp");
+    ).toContain("You don't have access to change these words.");
     expect(input(element, "Group", "singular").disabled).toBe(true);
     const save = [
       ...element.shadowRoot.querySelectorAll("lightning-button")
