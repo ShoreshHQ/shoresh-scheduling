@@ -36,7 +36,7 @@ private class WeekExceptionsTest {
         LIMIT 1
       ];
 
-      WeekExceptionsController.saveWeekExceptions(
+      ShoreshTestData.saveWeekExceptions(
         new List<WeekException__c>{
           new WeekException__c(
             Week__c = weekId(season.Id, 1),
@@ -77,7 +77,7 @@ private class WeekExceptionsTest {
         LIMIT 1
       ];
       try {
-        WeekExceptionsController.saveWeekExceptions(
+        ShoreshTestData.saveWeekExceptions(
           new List<WeekException__c>{
             new WeekException__c(
               Week__c = otherWeek.Id,
@@ -107,10 +107,7 @@ private class WeekExceptionsTest {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       try {
-        WeekExceptionsController.saveWeekExceptions(
-          null,
-          new List<Id>{ season.Id }
-        );
+        ShoreshTestData.saveWeekExceptions(null, new List<Id>{ season.Id });
         Assert.fail('A season is not a week exception');
       } catch (AuraHandledException e) {
         Assert.areEqual(
@@ -130,9 +127,9 @@ private class WeekExceptionsTest {
         new List<CampLabel__c>{
           new CampLabel__c(
             Camp__c = camp.Id,
-            ModelTerm__c = 'WeekException',
-            Singular__c = 'Week off',
-            Plural__c = 'Weeks off'
+            ModelTerm__c = 'Week',
+            Singular__c = 'session',
+            Plural__c = 'sessions'
           )
         },
         AccessLevel.SYSTEM_MODE
@@ -144,7 +141,7 @@ private class WeekExceptionsTest {
         WHERE Name = 'Group A'
         WITH SYSTEM_MODE
       ];
-      String expected = 'This can\'t be deleted yet: some of its groups are marked as not running ("Group A" in "Week 3"). Clear that under Weeks off first, then delete it.';
+      String expected = 'This can\'t be deleted yet: some of its groups have sessions unticked under Runs in ("Group A" in "Week 3"). Tick that session again on the Groups screen first, then delete it.';
       Assert.areEqual(expected, WeekExceptions.blockingDelete(grp.Division__c));
       Assert.areEqual(
         expected,
@@ -191,7 +188,7 @@ private class WeekExceptionsTest {
       );
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Id groupA = groupIds(season.Id).get('Group A');
-      WeekExceptionsController.saveWeekExceptions(
+      ShoreshTestData.saveWeekExceptions(
         new List<WeekException__c>{
           new WeekException__c(
             Week__c = weekId(season.Id, 1),
@@ -201,7 +198,7 @@ private class WeekExceptionsTest {
         null
       );
       Assert.areEqual(
-        'This can\'t be deleted yet: it is marked as not running ("Group A" in "Week 1", "Group A" in "Week 3"). Clear those under Week exceptions first, then delete it.',
+        'This can\'t be deleted yet: it has weeks unticked under Runs in ("Group A" in "Week 1", "Group A" in "Week 3"). Tick those weeks again on the Bunks screen first, then delete it.',
         WeekExceptions.blockingDelete(groupA)
       );
       Group__c grp = [
@@ -212,7 +209,7 @@ private class WeekExceptionsTest {
       ];
       Assert.isTrue(
         WeekExceptions.blockingDelete(grp.Division__c)
-          .contains('some of its Bunks are marked')
+          .contains('some of its Bunks have weeks unticked')
       );
     }
   }
@@ -225,7 +222,7 @@ private class WeekExceptionsTest {
       Id groupA = groupIds(season.Id).get('Group A');
       Id week3 = weekId(season.Id, 3);
       // Group A is already marked for Week 3; mark it again, twice in one save.
-      WeekExceptionsController.saveWeekExceptions(
+      ShoreshTestData.saveWeekExceptions(
         new List<WeekException__c>{
           new WeekException__c(Week__c = week3, Group__c = groupA),
           new WeekException__c(Week__c = week3, Group__c = groupA)
@@ -251,7 +248,7 @@ private class WeekExceptionsTest {
         LIMIT 1
       ];
       Database.delete(existing, AccessLevel.SYSTEM_MODE);
-      WeekExceptionsController.saveWeekExceptions(
+      ShoreshTestData.saveWeekExceptions(
         null,
         new List<Id>{ existing.Id, null }
       );
@@ -270,7 +267,7 @@ private class WeekExceptionsTest {
     Id week1 = weekId(season.Id, 1);
     System.runAs(ShoreshTestData.outsider()) {
       try {
-        WeekExceptionsController.saveWeekExceptions(
+        ShoreshTestData.saveWeekExceptions(
           new List<WeekException__c>{
             new WeekException__c(Week__c = week1, Group__c = groupB)
           },

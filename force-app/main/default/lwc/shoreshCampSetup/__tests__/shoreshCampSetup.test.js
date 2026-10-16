@@ -8,7 +8,7 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
-import saveWeekExceptions from "@salesforce/apex/WeekExceptionsController.saveWeekExceptions";
+import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
@@ -37,7 +37,7 @@ jest.mock(
   { virtual: true }
 );
 jest.mock(
-  "@salesforce/apex/WeekExceptionsController.saveWeekExceptions",
+  "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks",
   () => apex(),
   { virtual: true }
 );
@@ -55,6 +55,12 @@ jest.mock(
 
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
+  {
+    term: "Activity",
+    singular: "Activity",
+    plural: "Activities",
+    isCustom: false
+  },
   { term: "Week", singular: "Week", plural: "Weeks", isCustom: false },
   { term: "Season", singular: "Season", plural: "Seasons", isCustom: false },
   { term: "Program", singular: "Program", plural: "Programs", isCustom: false },
@@ -126,6 +132,18 @@ const button = (element, label) =>
   [...element.shadowRoot.querySelectorAll("lightning-button")].find(
     (b) => b.label === label
   );
+/** Opens a screen from the left-hand menu, as a director would. */
+async function openScreen(element, screen) {
+  q(element, "c-shoresh-menu")
+    .shadowRoot.querySelector(`a[data-screen="${screen}"]`)
+    .click();
+  await flush();
+}
+/** The screen shown: every screen stays on the page, all but one hidden. */
+const shownScreens = (element) =>
+  [...element.shadowRoot.querySelectorAll("[data-screen]")]
+    .filter((screen) => !screen.className.includes("slds-hide"))
+    .map((screen) => screen.dataset.screen);
 const validAll = (element) =>
   element.shadowRoot
     .querySelectorAll("lightning-input, lightning-combobox")
@@ -208,7 +226,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="fill-weeks"]')).not.toBeNull();
   });
 
-  it("shows the season in the camp words, with its problems", async () => {
+  it("shows the season in the camp words, with its problems on the screen that fixes them", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);
     getSeasonSetup.mockResolvedValue(setupWith());
@@ -218,9 +236,19 @@ describe("c-shoresh-camp-setup", () => {
       "Camp Willow"
     );
     expect(q(element, "c-shoresh-program").terms.p("Group")).toBe("Bunks");
+    // Roots lists everything; each screen shows only its own.
+    const roots = q(element, "c-shoresh-roots");
+    expect(roots.problems.map((p) => [p.screen, p.name])).toContainEqual([
+      "groups",
+      "Juniors"
+    ]);
+    expect(q(element, '[data-id="problems"]')).toBeNull();
+    await openScreen(element, "groups");
     expect(q(element, '[data-id="problems"]').textContent).toContain(
-      '"Juniors" has no Bunks yet.'
+      "Juniors: No Bunks yet."
     );
+    await openScreen(element, "weeks");
+    expect(q(element, '[data-id="problems"]')).toBeNull();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
     expect(weeks.addLabel).toBe("Add Week");
     expect(weeks.newRowDefaults).toEqual({ Season__c: "s1", Name: "Week {n}" });
@@ -342,7 +370,7 @@ describe("c-shoresh-camp-setup", () => {
     });
   });
 
-  it("opens the copy panel and the camp words panel", async () => {
+  it("opens the copy panel, and camp words from the menu", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);
     getSeasonSetup.mockResolvedValue(setupWith());
@@ -350,13 +378,15 @@ describe("c-shoresh-camp-setup", () => {
     button(element, "Copy this season").click();
     await flush();
     expect(q(element, "c-shoresh-copy-season")).not.toBeNull();
+    expect(shownScreens(element)).toEqual([]);
 
     q(element, "c-shoresh-copy-season").dispatchEvent(
       new CustomEvent("cancel")
     );
     await flush();
-    button(element, "Camp words").click();
-    await flush();
+    expect(shownScreens(element)).toEqual(["roots"]);
+    await openScreen(element, "campWords");
+    expect(shownScreens(element)).toEqual(["campWords"]);
     expect(q(element, "c-shoresh-camp-labels").campId).toBe("c1");
   });
 
@@ -404,41 +434,168 @@ describe("c-shoresh-camp-setup", () => {
     expect(onFailure).toHaveBeenCalled();
   });
 
-  it("saves week exceptions from the grid and reloads", async () => {
+  it("saves a table's rows with its Runs in weeks, and reloads", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
-    saveWeekExceptions.mockResolvedValue();
+    getSeasonSetup.mockResolvedValue(
+      setupWith({
+        weekExceptions: [{ Id: "x1", Week__c: "w1", Location__c: "l1" }]
+      })
+    );
+    saveRowsAndWeeks.mockResolvedValue([]);
     const element = await render();
-    const grid = q(element, "c-shoresh-week-exceptions");
-    expect(grid.setup.season.Id).toBe("s1");
-    grid.dispatchEvent(
+    const locations = q(
+      element,
+      'c-shoresh-editable-table[data-id="locations"]'
+    );
+    expect(locations.weeksHeading).toBe("Open in");
+    expect(locations.weeks.map((w) => w.Id)).toEqual(["w1"]);
+    expect(locations.weekExceptions.length).toBe(1);
+    expect(
+      q(element, 'c-shoresh-editable-table[data-id="activities"]').weeksHeading
+    ).toBe("Runs in");
+    locations.dispatchEvent(
       new CustomEvent("save", {
-        detail: { toAdd: [{ Group__c: "g1", Week__c: "w1" }], toRemove: ["x1"] }
+        detail: {
+          records: [{ sobjectType: "Location__c", Name: "Pool" }],
+          weeksOff: [{ row: 0, week: "w1" }],
+          weeksBackOn: ["x1"]
+        }
       })
     );
     await flush();
-    expect(saveWeekExceptions).toHaveBeenCalledWith({
-      toAdd: [{ Group__c: "g1", Week__c: "w1" }],
-      toRemove: ["x1"]
+    expect(saveRowsAndWeeks).toHaveBeenCalledWith({
+      records: [{ sobjectType: "Location__c", Name: "Pool" }],
+      weeksOff: [{ row: 0, week: "w1" }],
+      weeksBackOn: ["x1"]
     });
+    expect(saveRecords).not.toHaveBeenCalled();
     expect(getSeasonSetup).toHaveBeenCalledTimes(2);
   });
 
-  it("tells the grid when its save failed", async () => {
+  it("tells a table with weeks when its save failed", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);
     getSeasonSetup.mockResolvedValue(setupWith());
-    saveWeekExceptions.mockRejectedValue({ body: { message: "No." } });
+    saveRowsAndWeeks.mockRejectedValue({ body: { message: "No." } });
     const element = await render();
     const onFailure = jest.fn();
-    q(element, "c-shoresh-week-exceptions").dispatchEvent(
+    q(element, 'c-shoresh-editable-table[data-id="activities"]').dispatchEvent(
       new CustomEvent("save", {
-        detail: { toAdd: [], toRemove: [], onFailure }
+        detail: { records: [], weeksOff: [], weeksBackOn: ["x1"], onFailure }
       })
     );
     await flush();
     expect(onFailure).toHaveBeenCalled();
     expect(q(element, '[data-id="error"]').textContent).toContain("No.");
+  });
+
+  describe("the menu", () => {
+    it("lands on Roots and shows one screen at a time", async () => {
+      getCamps.mockResolvedValue([CAMP]);
+      getSeasons.mockResolvedValue([SEASON]);
+      getSeasonSetup.mockResolvedValue(setupWith());
+      const element = await render();
+      expect(shownScreens(element)).toEqual(["roots"]);
+      const screens = [
+        "weeks",
+        "programs",
+        "divisions",
+        "groups",
+        "timeBlocks",
+        "locations",
+        "campWords",
+        "activities",
+        "roots"
+      ];
+      // One after another, as a director clicks down the menu.
+      await screens.reduce(
+        (done, screen) =>
+          done.then(async () => {
+            await openScreen(element, screen);
+            expect(shownScreens(element)).toEqual([screen]);
+            expect(q(element, "c-shoresh-menu").current).toBe(screen);
+          }),
+        Promise.resolve()
+      );
+    });
+
+    it("uses the camp's words and lists what is coming", async () => {
+      getCamps.mockResolvedValue([CAMP]);
+      getSeasons.mockResolvedValue([SEASON]);
+      getSeasonSetup.mockResolvedValue(setupWith());
+      const element = await render();
+      const items = q(element, "c-shoresh-menu").sections.flatMap((section) =>
+        section.items.map((item) => [item.label, item.coming])
+      );
+      expect(items).toContainEqual(["Bunks", false]);
+      expect(items).toContainEqual(["Fixed activities", true]);
+      expect(items).toContainEqual(["Schedules", true]);
+    });
+
+    it("opens the screen a Roots card or attention item points to", async () => {
+      getCamps.mockResolvedValue([CAMP]);
+      getSeasons.mockResolvedValue([SEASON]);
+      getSeasonSetup.mockResolvedValue(setupWith());
+      const element = await render();
+      q(element, "c-shoresh-roots").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "groups" } })
+      );
+      await flush();
+      expect(shownScreens(element)).toEqual(["groups"]);
+      // A screen not built yet does not open.
+      q(element, "c-shoresh-roots").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "fixedActivities" } })
+      );
+      await flush();
+      expect(shownScreens(element)).toEqual(["groups"]);
+    });
+
+    it("keeps unsaved typing when the director goes to another screen and back", async () => {
+      getCamps.mockResolvedValue([CAMP]);
+      getSeasons.mockResolvedValue([SEASON]);
+      getSeasonSetup.mockResolvedValue(setupWith());
+      const element = await render();
+      await openScreen(element, "weeks");
+      const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+      const name = weeks.shadowRoot.querySelector(
+        'lightning-input[data-field="Name"]'
+      );
+      name.value = "First week";
+      name.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "First week" } })
+      );
+      await flush();
+      await openScreen(element, "groups");
+      await openScreen(element, "weeks");
+      expect(
+        q(
+          element,
+          'c-shoresh-editable-table[data-id="weeks"]'
+        ).shadowRoot.querySelector('lightning-input[data-field="Name"]').value
+      ).toBe("First week");
+      expect(button(weeks, "Save changes").disabled).toBe(false);
+    });
+
+    it("before the first season, only camp words opens", async () => {
+      getCamps.mockResolvedValue([CAMP]);
+      getSeasons.mockResolvedValue([]);
+      const element = await render();
+      expect(element.shadowRoot.textContent).toContain("Start a new season");
+      const menu = q(element, "c-shoresh-menu");
+      const open = menu.sections
+        .flatMap((section) => section.items)
+        .filter((item) => !item.disabled)
+        .map((item) => item.key);
+      expect(open).toEqual(["campWords"]);
+      await openScreen(element, "campWords");
+      expect(shownScreens(element)).toEqual(["campWords"]);
+      expect(element.shadowRoot.textContent).not.toContain(
+        "Start a new season"
+      );
+      button(element, "New season").click();
+      await flush();
+      expect(element.shadowRoot.textContent).toContain("Start a new season");
+    });
   });
 });

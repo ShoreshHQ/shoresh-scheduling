@@ -1,97 +1,120 @@
 <template>
-  <article class="slds-card slds-card_boundary slds-m-bottom_medium">
-    <div class="slds-card__body slds-card__body_inner slds-p-top_small">
-      <div
-        class="slds-grid slds-wrap slds-gutters_small slds-grid_vertical-align-end"
-      >
-        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-          <lightning-input
-            data-id="name"
-            label={labels.name}
-            value={name}
-            required
-            onchange={handleName}
-          ></lightning-input>
+  <template lwc:if={isProgram}>
+    <article class="slds-card slds-card_boundary slds-m-bottom_medium">
+      <div class="slds-card__body slds-card__body_inner slds-p-top_small">
+        <div
+          class="slds-grid slds-wrap slds-gutters_small slds-grid_vertical-align-end"
+        >
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+            <lightning-input
+              data-id="name"
+              label={labels.name}
+              value={name}
+              required
+              onchange={handleName}
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+            <fieldset class="slds-form-element">
+              <legend
+                class="slds-form-element__legend slds-form-element__label"
+              >
+                {labels.days}
+              </legend>
+              <div class="slds-grid slds-wrap">
+                <template for:each={dayOptions} for:item="option">
+                  <lightning-input
+                    key={option.day}
+                    class="slds-m-right_small"
+                    type="checkbox"
+                    label={option.label}
+                    checked={option.checked}
+                    data-day={option.day}
+                    onchange={handleDay}
+                  ></lightning-input>
+                </template>
+              </div>
+            </fieldset>
+          </div>
         </div>
-        <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
-          <fieldset class="slds-form-element">
-            <legend class="slds-form-element__legend slds-form-element__label">
-              {labels.days}
-            </legend>
-            <div class="slds-grid slds-wrap">
-              <template for:each={dayOptions} for:item="option">
-                <lightning-input
-                  key={option.day}
-                  class="slds-m-right_small"
-                  type="checkbox"
-                  label={option.label}
-                  checked={option.checked}
-                  data-day={option.day}
-                  onchange={handleDay}
-                ></lightning-input>
-              </template>
-            </div>
-          </fieldset>
+        <div class="slds-m-top_x-small">
+          <lightning-button
+            label="Save"
+            variant="brand"
+            onclick={handleSaveProgram}
+            disabled={formUnchanged}
+          ></lightning-button>
+          <lightning-button
+            class="slds-m-left_x-small"
+            label={labels.deleteProgram}
+            variant="destructive-text"
+            onclick={handleDeleteProgram}
+            disabled={busy}
+          ></lightning-button>
         </div>
       </div>
-      <div class="slds-m-top_x-small slds-m-bottom_medium">
-        <lightning-button
-          label="Save"
-          variant="brand"
-          onclick={handleSaveProgram}
-          disabled={formUnchanged}
-        ></lightning-button>
-        <lightning-button
-          class="slds-m-left_x-small"
-          label={labels.deleteProgram}
-          variant="destructive-text"
-          onclick={handleDeleteProgram}
-          disabled={busy}
-        ></lightning-button>
-      </div>
+    </article>
+  </template>
 
-      <c-shoresh-editable-table
-        title={labels.timeBlocks}
-        object-api-name="TimeBlock__c"
-        columns={blockColumns}
-        rows={entry.timeBlocks}
-        add-label={labels.addTimeBlock}
-        empty-message={labels.noTimeBlocks}
-        new-row-defaults={blockDefaults}
-        busy={busy}
-        onsave={handleChildSave}
-        ondelete={handleChildDelete}
-      ></c-shoresh-editable-table>
+  <template lwc:if={isTimeBlocks}>
+    <c-shoresh-editable-table
+      data-id="time-blocks"
+      title={labels.timeBlocks}
+      object-api-name="TimeBlock__c"
+      columns={blockColumns}
+      rows={entry.timeBlocks}
+      add-label={labels.addTimeBlock}
+      empty-message={labels.noTimeBlocks}
+      new-row-defaults={blockDefaults}
+      busy={busy}
+      onsave={handleChildSave}
+      ondelete={handleChildDelete}
+    ></c-shoresh-editable-table>
+  </template>
 
-      <c-shoresh-editable-table
-        title={labels.divisions}
-        object-api-name="Division__c"
-        columns={divisionColumns}
-        rows={divisionRecords}
-        add-label={labels.addDivision}
-        empty-message={labels.noDivisions}
-        new-row-defaults={divisionDefaults}
-        busy={busy}
-        onsave={handleChildSave}
-        ondelete={handleChildDelete}
-      ></c-shoresh-editable-table>
+  <template lwc:if={isDivisions}>
+    <c-shoresh-editable-table
+      data-id="divisions"
+      title={labels.divisions}
+      object-api-name="Division__c"
+      columns={divisionColumns}
+      rows={divisionRecords}
+      add-label={labels.addDivision}
+      empty-message={labels.noDivisions}
+      new-row-defaults={divisionDefaults}
+      busy={busy}
+      onsave={handleChildSave}
+      ondelete={handleChildDelete}
+    ></c-shoresh-editable-table>
+  </template>
 
+  <template lwc:if={isGroups}>
+    <template lwc:if={hasDivisions}>
       <template for:each={divisions} for:item="division">
-        <div key={division.id} class="slds-p-left_medium">
-          <c-shoresh-editable-table
-            title={division.title}
-            object-api-name="Group__c"
-            columns={groupColumns}
-            rows={division.groups}
-            add-label={labels.addGroup}
-            empty-message={labels.noGroups}
-            new-row-defaults={division.defaults}
-            busy={busy}
-            onsave={handleChildSave}
-            ondelete={handleChildDelete}
-          ></c-shoresh-editable-table>
-        </div>
+        <c-shoresh-editable-table
+          key={division.id}
+          data-id="groups"
+          title={division.title}
+          object-api-name="Group__c"
+          columns={groupColumns}
+          rows={division.groups}
+          add-label={labels.addGroup}
+          empty-message={labels.noGroups}
+          new-row-defaults={division.defaults}
+          weeks={weeks}
+          week-exceptions={weekExceptions}
+          weeks-heading="Runs in"
+          week-phrase="runs in"
+          busy={busy}
+          onsave={handleChildSave}
+          ondelete={handleChildDelete}
+        ></c-shoresh-editable-table>
       </template>
-    </div>
-  </article>
+    </template>
+    <template lwc:else>
+      <p class="slds-text-color_weak slds-m-bottom_medium">
+        {labels.groupsNeedDivisions}
+      </p>
+    </template>
+  </template>
 </template>

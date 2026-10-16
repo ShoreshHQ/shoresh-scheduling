@@ -282,7 +282,7 @@ private class ActivitiesAndLocationsTest {
       LIMIT 1
     ];
     try {
-      WeekExceptionsController.saveWeekExceptions(
+      ShoreshTestData.saveWeekExceptions(
         new List<WeekException__c>{
           new WeekException__c(
             Week__c = otherWeek.Id,
@@ -371,7 +371,7 @@ private class ActivitiesAndLocationsTest {
       WHERE Season__c = :season.Id
       LIMIT 1
     ];
-    WeekExceptionsController.saveWeekExceptions(
+    ShoreshTestData.saveWeekExceptions(
       new List<WeekException__c>{
         new WeekException__c(Week__c = week.Id, Location__c = ids.get('Gym')),
         new WeekException__c(Week__c = week.Id, Activity__c = ids.get('Soccer'))
@@ -379,11 +379,18 @@ private class ActivitiesAndLocationsTest {
       new List<Id>()
     );
     Assert.isTrue(
-      InUse.reason(ids.get('Gym')).contains('marked as closed in "Week 1"')
+      InUse.reason(ids.get('Gym')).contains('it is not open in "Week 1"')
+    );
+    Assert.isTrue(
+      InUse.reason(ids.get('Gym'))
+        .contains('tick that week again under Open in')
+    );
+    Assert.isTrue(
+      InUse.reason(ids.get('Soccer')).contains('it does not run in "Week 1"')
     );
     Assert.isTrue(
       InUse.reason(ids.get('Soccer'))
-        .contains('marked as not running in "Week 1"')
+        .contains('tick that week again under Runs in')
     );
     try {
       SeasonSetupController.deleteRecord(ids.get('Pool'));
@@ -439,8 +446,8 @@ private class ActivitiesAndLocationsTest {
       new WeekException__c(Week__c = week.Id, Location__c = ids.get('Pool')),
       new WeekException__c(Week__c = week.Id, Activity__c = ids.get('Swim'))
     };
-    WeekExceptionsController.saveWeekExceptions(marks, new List<Id>());
-    WeekExceptionsController.saveWeekExceptions(marks, new List<Id>());
+    ShoreshTestData.saveWeekExceptions(marks, new List<Id>());
+    ShoreshTestData.saveWeekExceptions(marks, new List<Id>());
     Assert.areEqual(
       2,
       [
@@ -453,7 +460,7 @@ private class ActivitiesAndLocationsTest {
       ]
     );
     try {
-      WeekExceptionsController.saveWeekExceptions(
+      ShoreshTestData.saveWeekExceptions(
         new List<WeekException__c>{
           new WeekException__c(
             Week__c = week.Id,

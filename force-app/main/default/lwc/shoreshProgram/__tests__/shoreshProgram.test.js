@@ -49,10 +49,13 @@ const ENTRY = {
 
 const flush = () => Promise.resolve();
 
-async function render() {
+async function render(show = "program", entry = ENTRY) {
   const element = createElement("c-shoresh-program", { is: ShoreshProgram });
-  element.entry = ENTRY;
+  element.entry = entry;
   element.terms = terms;
+  element.show = show;
+  element.weeks = [{ Id: "w1", Name: "Week 1" }];
+  element.weekExceptions = [{ Id: "x1", Week__c: "w1", Group__c: "g1" }];
   document.body.appendChild(element);
   await flush();
   return element;
@@ -65,21 +68,57 @@ describe("c-shoresh-program", () => {
     }
   });
 
-  it("labels every section in the camp words", async () => {
-    const element = await render();
-    const titles = [
-      ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
-    ].map((t) => t.title);
-    expect(titles).toEqual(["Time blocks", "Units", "Bunks in Juniors"]);
-    const groups = element.shadowRoot.querySelectorAll(
-      "c-shoresh-editable-table"
-    )[2];
+  it("shows only the part its screen asks for, in the camp words", async () => {
+    const titlesFor = async (show) => {
+      const element = await render(show);
+      const titles = [
+        ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+      ].map((t) => t.title);
+      const hasForm = !!element.shadowRoot.querySelector(
+        'lightning-input[data-id="name"]'
+      );
+      document.body.removeChild(element);
+      return { titles, hasForm };
+    };
+    expect(await titlesFor("program")).toEqual({ titles: [], hasForm: true });
+    expect(await titlesFor("timeBlocks")).toEqual({
+      titles: ["Time blocks in Main"],
+      hasForm: false
+    });
+    expect(await titlesFor("divisions")).toEqual({
+      titles: ["Units in Main"],
+      hasForm: false
+    });
+    expect(await titlesFor("groups")).toEqual({
+      titles: ["Bunks in Juniors"],
+      hasForm: false
+    });
+  });
+
+  it("gives each division's groups their Runs in weeks", async () => {
+    const element = await render("groups");
+    const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
     expect(groups.addLabel).toBe("Add Bunk");
     expect(groups.newRowDefaults).toEqual({
       Division__c: "d1",
       Availability__c: "AllDay"
     });
     expect(groups.rows).toEqual(ENTRY.divisions[0].groups);
+    expect(groups.weeksHeading).toBe("Runs in");
+    expect(groups.weeks).toEqual([{ Id: "w1", Name: "Week 1" }]);
+    expect(groups.weekExceptions).toEqual([
+      { Id: "x1", Week__c: "w1", Group__c: "g1" }
+    ]);
+  });
+
+  it("asks for divisions before groups", async () => {
+    const element = await render("groups", { ...ENTRY, divisions: [] });
+    expect(element.shadowRoot.querySelector("c-shoresh-editable-table")).toBe(
+      null
+    );
+    expect(element.shadowRoot.querySelector("p").textContent).toBe(
+      "Main has no Units yet. Add them under Units first."
+    );
   });
 
   it("shows the operating days and saves a change to them", async () => {
@@ -117,7 +156,7 @@ describe("c-shoresh-program", () => {
   });
 
   it("passes saves and deletes from its tables up to the screen", async () => {
-    const element = await render();
+    const element = await render("timeBlocks");
     const saves = jest.fn();
     const deletes = jest.fn();
     element.addEventListener("save", saves);
@@ -184,5 +223,40 @@ describe("c-shoresh-program", () => {
     expect(
       element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
     ).toBe("Saved");
+  });
+  it("keeps a new division typed on its screen while saving, and after a failed save", async () => {
+    const element = await render("divisions");
+    const table = element.shadowRoot.querySelector("c-shoresh-editable-table");
+    const tableButton = (label) =>
+      [...table.shadowRoot.querySelectorAll("lightning-button")].find(
+        (b) => b.label === label
+      );
+    tableButton("Add Unit").click();
+    await flush();
+    const names = () => [
+      ...table.shadowRoot.querySelectorAll('lightning-input[data-field="Name"]')
+    ];
+    const typed = names()[1];
+    typed.value = "Seniors";
+    typed.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Seniors" } })
+    );
+    await flush();
+    const saves = jest.fn();
+    element.addEventListener("save", saves);
+    table.shadowRoot
+      .querySelectorAll("lightning-input, lightning-combobox")
+      .forEach((input) => {
+        input.reportValidity = () => true;
+      });
+    tableButton("Save changes").click();
+    // The screen marks itself busy while saving, which redraws this program.
+    element.busy = true;
+    await flush();
+    expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
+    saves.mock.calls[0][0].detail.onFailure();
+    element.busy = false;
+    await flush();
+    expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
   });
 });

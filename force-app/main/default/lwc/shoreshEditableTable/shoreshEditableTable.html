@@ -21,6 +21,24 @@
             aria-label={title}
           >
             <thead>
+              <template lwc:if={hasWeeks}>
+                <tr class="slds-line-height_reset">
+                  <th scope="colgroup" colspan={columnCount}>
+                    <span class="slds-assistive-text">{title}</span>
+                  </th>
+                  <th
+                    scope="colgroup"
+                    colspan={weekCount}
+                    class="slds-text-align_center"
+                    data-id="weeks-heading"
+                  >
+                    {weeksHeading}
+                  </th>
+                  <th scope="col">
+                    <span class="slds-assistive-text">Actions</span>
+                  </th>
+                </tr>
+              </template>
               <tr class="slds-line-height_reset">
                 <template for:each={columns} for:item="col">
                   <th key={col.fieldName} scope="col">
@@ -28,6 +46,19 @@
                       {col.label}
                     </div>
                   </th>
+                </template>
+                <template lwc:if={hasWeeks}>
+                  <template for:each={weeks} for:item="week">
+                    <th
+                      key={week.Id}
+                      scope="col"
+                      class="slds-text-align_center"
+                    >
+                      <div class="slds-truncate" title={week.Name}>
+                        {week.Name}
+                      </div>
+                    </th>
+                  </template>
                 </template>
                 <th scope="col">
                   <span class="slds-assistive-text">Actions</span>
@@ -112,6 +143,19 @@
                           onchange={handleChange}
                         ></lightning-combobox>
                       </template>
+                    </td>
+                  </template>
+                  <template for:each={row.weekCells} for:item="cell">
+                    <td key={cell.key} class="slds-text-align_center">
+                      <lightning-input
+                        type="checkbox"
+                        label={cell.label}
+                        variant="label-hidden"
+                        checked={cell.checked}
+                        data-row-key={row.key}
+                        data-week={cell.weekId}
+                        onchange={handleTick}
+                      ></lightning-input>
                     </td>
                   </template>
                   <td>

@@ -459,4 +459,156 @@ describe("c-shoresh-editable-table", () => {
       ).not.toBeNull();
     });
   });
+  describe("Runs in weeks", () => {
+    const GROUP_COLUMNS = [
+      { fieldName: "Name", label: "Name", type: "text", required: true }
+    ];
+    const GROUPS = [
+      { Id: "g1", Name: "Bunk 1" },
+      { Id: "g2", Name: "Bunk 2" }
+    ];
+    const WEEKS = [
+      { Id: "w1", Name: "Week 1" },
+      { Id: "w2", Name: "Week 2" },
+      { Id: "w3", Name: "Week 3" }
+    ];
+    // Bunk 2 does not run in Week 3; an activity's week exception is not this table's.
+    const EXCEPTIONS = [
+      { Id: "x1", Week__c: "w3", Group__c: "g2" },
+      { Id: "x2", Week__c: "w1", Activity__c: "a9" }
+    ];
+
+    function renderGroups(props = {}) {
+      return render({
+        title: "Bunks in Juniors",
+        objectApiName: "Group__c",
+        addLabel: "Add Bunk",
+        columns: GROUP_COLUMNS,
+        rows: GROUPS,
+        weeks: WEEKS,
+        weekExceptions: EXCEPTIONS,
+        weeksHeading: "Runs in",
+        newRowDefaults: { Division__c: "d1", Name: "Bunk {n}" },
+        ...props
+      });
+    }
+
+    function rowTicks(element, rowIndex) {
+      const row = element.shadowRoot.querySelectorAll("tbody tr")[rowIndex];
+      return [...row.querySelectorAll("lightning-input[data-week]")];
+    }
+    const ticks = (element, rowIndex) =>
+      rowTicks(element, rowIndex).map((box) => box.checked);
+    const tick = (element, rowIndex, weekIndex) =>
+      rowTicks(element, rowIndex)[weekIndex];
+
+    function save(element) {
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      allValid(element);
+      button(element, "Save changes").click();
+      return handler.mock.calls[0][0].detail;
+    }
+
+    it("ticks every week a row runs in, under the heading", async () => {
+      const element = renderGroups();
+      await flush();
+      expect(
+        element.shadowRoot.querySelector('[data-id="weeks-heading"]')
+          .textContent
+      ).toContain("Runs in");
+      expect(ticks(element, 0)).toEqual([true, true, true]);
+      expect(ticks(element, 1)).toEqual([true, true, false]);
+      expect(tick(element, 1, 2).label).toBe("Bunk 2 runs in Week 3");
+      expect(button(element, "Save changes").disabled).toBe(true);
+    });
+
+    it("has no week ticks without a heading", async () => {
+      const element = renderGroups({ weeksHeading: undefined });
+      await flush();
+      expect(
+        element.shadowRoot.querySelectorAll("lightning-input[data-week]").length
+      ).toBe(0);
+    });
+
+    it("unticking stores a week exception; ticking again removes it", async () => {
+      const element = renderGroups();
+      await flush();
+      change(tick(element, 0, 1), false);
+      change(tick(element, 1, 2), true);
+      await flush();
+      const { records, weeksOff, weeksBackOn } = save(element);
+      expect(records).toEqual([]);
+      expect(weeksOff).toEqual([{ target: "g1", week: "w2" }]);
+      expect(weeksBackOn).toEqual(["x1"]);
+    });
+
+    it("a new row runs in every week until a week is unticked", async () => {
+      const element = renderGroups();
+      await flush();
+      change(field(element, 0, "Name"), "Bunk One");
+      button(element, "Add Bunk").click();
+      await flush();
+      expect(ticks(element, 2)).toEqual([true, true, true]);
+      change(tick(element, 2, 0), false);
+      await flush();
+      const { records, weeksOff } = save(element);
+      expect(records.map((r) => r.Name)).toEqual(["Bunk One", "Bunk 3"]);
+      // The new bunk is the second record sent.
+      expect(weeksOff).toEqual([{ row: 1, week: "w1" }]);
+    });
+
+    it("unticking and ticking again is no change", async () => {
+      const element = renderGroups();
+      await flush();
+      change(tick(element, 0, 0), false);
+      change(tick(element, 0, 0), true);
+      await flush();
+      expect(button(element, "Save changes").disabled).toBe(true);
+    });
+
+    it("keeps unsaved ticks when something else is saved, and clears them after its own save", async () => {
+      const element = renderGroups();
+      await flush();
+      change(tick(element, 0, 0), false);
+      element.rows = [...GROUPS];
+      element.weekExceptions = [...EXCEPTIONS];
+      await flush();
+      expect(ticks(element, 0)).toEqual([false, true, true]);
+
+      save(element);
+      element.rows = [...GROUPS];
+      element.weekExceptions = [
+        ...EXCEPTIONS,
+        { Id: "x3", Week__c: "w1", Group__c: "g1" }
+      ];
+      await flush();
+      expect(ticks(element, 0)).toEqual([false, true, true]);
+      expect(button(element, "Save changes").disabled).toBe(true);
+    });
+
+    it("cancel puts the saved ticks back", async () => {
+      const element = renderGroups();
+      await flush();
+      change(tick(element, 1, 2), true);
+      await flush();
+      button(element, "Cancel changes").click();
+      await flush();
+      expect(ticks(element, 1)).toEqual([true, true, false]);
+    });
+
+    it("sends rows and week ticks together", async () => {
+      const element = renderGroups();
+      await flush();
+      change(field(element, 1, "Name"), "Bunk Two");
+      change(tick(element, 1, 0), false);
+      await flush();
+      const { records, weeksOff, weeksBackOn } = save(element);
+      expect(records).toEqual([
+        { sobjectType: "Group__c", Id: "g2", Name: "Bunk Two" }
+      ]);
+      expect(weeksOff).toEqual([{ target: "g2", week: "w1" }]);
+      expect(weeksBackOn).toEqual([]);
+    });
+  });
 });

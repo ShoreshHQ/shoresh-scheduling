@@ -112,8 +112,12 @@ public with sharing class InUse {
     }
     List<String> weeks = closedWeeks(locationId);
     if (!weeks.isEmpty()) {
-      parts.add('it is marked as closed in ' + quoted(weeks));
-      fixes.add('clear the marks under ' + labels.plural('WeekException'));
+      parts.add('it is not open in ' + quoted(weeks));
+      fixes.add(
+        'tick ' +
+          thatOrThose(labels, 'Week', weeks.size()) +
+          ' again under Open in'
+      );
     }
     return parts.isEmpty() ? null : refusal(parts, fixes);
   }
@@ -201,8 +205,12 @@ public with sharing class InUse {
       for (WeekException__c mark : marks) {
         weeks.add(mark.Week__r.Name);
       }
-      parts.add('it is marked as not running in ' + quoted(weeks));
-      fixes.add('clear the marks under ' + labels.plural('WeekException'));
+      parts.add('it does not run in ' + quoted(weeks));
+      fixes.add(
+        'tick ' +
+          thatOrThose(labels, 'Week', weeks.size()) +
+          ' again under Runs in'
+      );
     }
     if (parts.isEmpty()) {
       return null;

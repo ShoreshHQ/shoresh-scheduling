@@ -1,0 +1,41 @@
+<template>
+  <nav class="slds-nav-vertical slds-nav-vertical_compact" aria-label="Shoresh">
+    <template for:each={view} for:item="section">
+      <div key={section.key} class="slds-nav-vertical__section">
+        <template lwc:if={section.title}>
+          <h2 class="slds-nav-vertical__title">{section.title}</h2>
+        </template>
+        <ul>
+          <template for:each={section.items} for:item="item">
+            <li key={item.key} class={item.className}>
+              <template lwc:if={item.disabled}>
+                <span
+                  class="slds-nav-vertical__action slds-text-color_weak"
+                  aria-disabled="true"
+                  data-coming={item.coming}
+                  data-item={item.key}
+                >
+                  {item.label}
+                  <template lwc:if={item.coming}>
+                    <span class="slds-badge slds-col_bump-left">Coming</span>
+                  </template>
+                </span>
+              </template>
+              <template lwc:else>
+                <a
+                  href="#"
+                  class="slds-nav-vertical__action"
+                  aria-current={item.ariaCurrent}
+                  data-screen={item.key}
+                  data-item={item.key}
+                  onclick={handleClick}
+                  >{item.label}</a
+                >
+              </template>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
+  </nav>
+</template>

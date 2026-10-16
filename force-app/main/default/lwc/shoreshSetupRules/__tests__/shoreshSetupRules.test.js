@@ -23,6 +23,12 @@ const terms = buildTerms([
   },
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
   {
+    term: "Activity",
+    singular: "Activity",
+    plural: "Activities",
+    isCustom: false
+  },
+  {
     term: "RainPlan",
     singular: "Wet-weather plan",
     plural: "Wet-weather plans",
@@ -46,12 +52,19 @@ const fullProgram = {
   divisions: [{ division: { Name: "Juniors" }, groups: [{ Name: "Bunk 1" }] }]
 };
 
+// [screen, name, why] for each problem, which is what the director sees and where it leads.
+const found = (setup) =>
+  setupProblems(setup, terms).map((p) => [p.screen, p.name, p.why]);
+
+const swim = { Id: "a1", Name: "Swim", Eligibilities__r: [] };
+
 describe("setupProblems", () => {
   it("finds nothing wrong with a complete season", () => {
     const setup = {
       season,
       weeks: [week("Session 1", "2026-06-29", "2026-07-03")],
-      programs: [fullProgram]
+      programs: [fullProgram],
+      activities: [swim]
     };
     expect(setupProblems(setup, terms)).toEqual([]);
   });
@@ -60,7 +73,7 @@ describe("setupProblems", () => {
     expect(setupProblems(null, terms)).toEqual([]);
   });
 
-  it("says what is missing, in the camp words", () => {
+  it("says what is missing, in the camp words, and which screen fixes it", () => {
     const setup = {
       season,
       weeks: [],
@@ -72,24 +85,32 @@ describe("setupProblems", () => {
         }
       ]
     };
-    expect(setupProblems(setup, terms)).toEqual([
-      "This season has no Sessions yet.",
-      '"Main" has no time blocks yet.',
-      '"Juniors" has no Bunks yet.'
+    expect(found(setup)).toEqual([
+      ["weeks", "Summer 2026", "No Sessions yet."],
+      ["timeBlocks", "Main", "No time blocks yet."],
+      ["groups", "Juniors", "No Bunks yet."],
+      ["activities", "Summer 2026", "No activities yet."]
     ]);
-    expect(setupProblems({ season, weeks: [], programs: [] }, terms)).toContain(
-      "This season has no programs yet. Every season needs at least one."
-    );
+    expect(found({ season, weeks: [], programs: [] })).toContainEqual([
+      "programs",
+      "Summer 2026",
+      "No programs yet. Every season needs at least one."
+    ]);
     expect(
-      setupProblems(
-        {
-          season,
-          weeks: [week("S", "2026-06-29", "2026-07-03")],
-          programs: [{ ...fullProgram, divisions: [] }]
-        },
-        terms
-      )
-    ).toEqual(['"Main" has no divisions yet.']);
+      found({
+        season,
+        weeks: [week("S", "2026-06-29", "2026-07-03")],
+        programs: [{ ...fullProgram, divisions: [] }],
+        activities: [swim]
+      })
+    ).toEqual([["divisions", "Main", "No divisions yet."]]);
+  });
+
+  it("gives each problem a key of its own", () => {
+    const keys = setupProblems({ season, weeks: [], programs: [] }, terms).map(
+      (p) => p.key
+    );
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   it("shows weeks outside the season and weeks that overlap, without changing them", () => {
@@ -100,11 +121,12 @@ describe("setupProblems", () => {
         week("Session 1", "2026-06-29", "2026-07-03"),
         week("Late", "2026-08-10", "2026-08-14")
       ],
-      programs: [fullProgram]
+      programs: [fullProgram],
+      activities: [swim]
     };
-    expect(setupProblems(setup, terms)).toEqual([
-      '"Late" falls outside the dates of this season.',
-      '"Session 1" and "Session 2" share dates.'
+    expect(found(setup)).toEqual([
+      ["weeks", "Late", "Falls outside the dates of this season."],
+      ["weeks", "Session 1 and Session 2", "Share dates."]
     ]);
   });
 });
@@ -126,8 +148,8 @@ describe("activity nudges", () => {
         { Name: "Art", Outdoor__c: false, RainPlan__c: null }
       ]
     };
-    expect(setupProblems(setup, terms)).toEqual([
-      '"Soccer" is outdoors and has no Wet-weather plan.'
+    expect(found(setup)).toEqual([
+      ["activities", "Soccer", "Outdoors and has no Wet-weather plan."]
     ]);
   });
 
@@ -145,9 +167,53 @@ describe("activity nudges", () => {
         }
       ]
     };
-    expect(setupProblems(setup, terms)).toEqual([
-      '"Art" allows 3 Bunks at once, but "Art room" fits 2. Scheduling uses 2; change whichever number is wrong.'
+    expect(found(setup)).toEqual([
+      [
+        "activities",
+        "Art",
+        'Allows 3 Bunks at once, but "Art room" fits 2. Scheduling uses 2; change whichever number is wrong.'
+      ]
     ]);
+  });
+
+  it("a group that no activity is open to needs attention", () => {
+    const programs = [
+      {
+        program: { Name: "Main" },
+        timeBlocks: [{ Name: "Period 1" }],
+        divisions: [
+          {
+            division: { Id: "d1", Name: "Juniors" },
+            groups: [
+              { Id: "g1", Name: "Bunk 1" },
+              { Id: "g2", Name: "Bunk 2" }
+            ]
+          },
+          {
+            division: { Id: "d2", Name: "Seniors" },
+            groups: [{ Id: "g3", Name: "Bunk 3" }]
+          }
+        ]
+      }
+    ];
+    const onlyFor = (...ids) =>
+      ids.map((id) => {
+        return id.startsWith("d") ? { Division__c: id } : { Group__c: id };
+      });
+    const setup = {
+      ...base,
+      programs,
+      activities: [
+        { Name: "Swim", Eligibilities__r: onlyFor("g1") },
+        { Name: "Hike", Eligibilities__r: onlyFor("d2") }
+      ]
+    };
+    expect(found(setup)).toEqual([
+      ["activities", "Bunk 2", "No activities are open to this Bunk."]
+    ]);
+    // An activity open to everyone (nobody chosen) is open to every group.
+    setup.activities.push({ Name: "Art" });
+    expect(found(setup)).toEqual([]);
   });
 });
 

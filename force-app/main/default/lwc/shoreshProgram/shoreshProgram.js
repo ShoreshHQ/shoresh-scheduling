@@ -3,16 +3,22 @@ import { LightningElement, api } from "lwc";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 /**
- * One program: its name and operating days, its time blocks, its divisions, and each
- * division's groups. Saves and deletes go up to the setup screen as events.
+ * One part of one program, for the screen showing it (show): "program" (its name and operating
+ * days), "timeBlocks", "divisions", or "groups" (each division's groups, with the weeks each runs
+ * in). Saves and deletes go up to the setup screen as events.
  */
 export default class ShoreshProgram extends LightningElement {
   @api terms;
   @api busy = false;
+  @api show = "program";
+  /** The season's weeks and week exceptions, for the groups' "Runs in" ticks. */
+  @api weeks = [];
+  @api weekExceptions = [];
 
   name;
   days = {};
   changed = false;
+  divisionRecords = [];
   // True from this form's Save until the screen reloads (or reports the save failed).
   submitted = false;
   _entry;
@@ -24,6 +30,9 @@ export default class ShoreshProgram extends LightningElement {
   }
   set entry(value) {
     this._entry = value;
+    // One list per entry: a new list on every redraw would look like fresh rows to the table,
+    // and wipe what was typed there while a save is under way.
+    this.divisionRecords = (value.divisions || []).map((d) => d.division);
     // Keep a typed but unsaved name or days when something else on the screen was saved.
     if (!this.changed || this.submitted) {
       this.resetForm();
@@ -39,6 +48,22 @@ export default class ShoreshProgram extends LightningElement {
     });
     this.changed = false;
     this.submitted = false;
+  }
+
+  get isProgram() {
+    return this.show === "program";
+  }
+  get isTimeBlocks() {
+    return this.show === "timeBlocks";
+  }
+  get isDivisions() {
+    return this.show === "divisions";
+  }
+  get isGroups() {
+    return this.show === "groups";
+  }
+  get hasDivisions() {
+    return (this.entry.divisions || []).length > 0;
   }
 
   get programId() {
@@ -110,10 +135,6 @@ export default class ShoreshProgram extends LightningElement {
     return { Program__c: this.programId };
   }
 
-  get divisionRecords() {
-    return (this.entry.divisions || []).map((d) => d.division);
-  }
-
   get divisions() {
     return (this.entry.divisions || []).map((d) => ({
       id: d.division.Id,
@@ -125,15 +146,17 @@ export default class ShoreshProgram extends LightningElement {
 
   get labels() {
     const t = this.terms;
+    const program = this.entry.program.Name;
     return {
-      timeBlocks: t.p("TimeBlock"),
+      timeBlocks: `${t.p("TimeBlock")} in ${program}`,
       addTimeBlock: `Add ${t.s("TimeBlock")}`,
       noTimeBlocks: `No ${t.pIn("TimeBlock")} yet.`,
-      divisions: t.p("Division"),
+      divisions: `${t.p("Division")} in ${program}`,
       addDivision: `Add ${t.s("Division")}`,
       noDivisions: `No ${t.pIn("Division")} yet.`,
       addGroup: `Add ${t.s("Group")}`,
       noGroups: `No ${t.pIn("Group")} yet.`,
+      groupsNeedDivisions: `${program} has no ${t.pIn("Division")} yet. Add them under ${t.p("Division")} first.`,
       name: `${t.s("Program")} name`,
       days: "Runs on",
       deleteProgram: `Delete this ${t.sIn("Program")}`

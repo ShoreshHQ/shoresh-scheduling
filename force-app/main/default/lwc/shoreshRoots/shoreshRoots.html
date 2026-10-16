@@ -1,0 +1,104 @@
+<template>
+  <div class="roots" data-id="roots">
+    <h2 class="roots-title">Roots</h2>
+
+    <div class="roots-door" data-id="schedule-door">
+      <span>Build or generate the schedule</span>
+      <span class="slds-badge">Coming</span>
+    </div>
+
+    <div class="roots-layout">
+      <div class="roots-main">
+        <section class="slds-m-top_large">
+          <div class="roots-section-label">What has taken root</div>
+          <div class="roots-bento">
+            <template for:each={cards} for:item="card">
+              <template lwc:if={card.coming}>
+                <div key={card.key} class={card.className} data-card={card.key}>
+                  <div class="roots-card-header">
+                    <span>{card.label}</span>
+                    <span class="slds-badge">Coming</span>
+                  </div>
+                </div>
+              </template>
+              <template lwc:else>
+                <button
+                  key={card.key}
+                  type="button"
+                  class={card.className}
+                  data-card={card.key}
+                  data-screen={card.key}
+                  onclick={handleOpen}
+                >
+                  <span class="roots-card-header">
+                    <span>{card.label}</span>
+                    <span class={card.countClass} data-count={card.key}
+                      >{card.count}</span
+                    >
+                  </span>
+                  <template lwc:if={card.hasChips}>
+                    <span class="roots-chips">
+                      <template for:each={card.chips} for:item="chip">
+                        <span key={chip.key} class="roots-chip"
+                          >{chip.name}</span
+                        >
+                      </template>
+                      <template lwc:if={card.more}>
+                        <span class="roots-chip roots-chip_more"
+                          >{card.more}</span
+                        >
+                      </template>
+                    </span>
+                  </template>
+                </button>
+              </template>
+            </template>
+          </div>
+        </section>
+
+        <div class="roots-bottom">
+          <lightning-button
+            data-id="import"
+            label="Import last year"
+            disabled
+          ></lightning-button>
+          <span class="slds-badge slds-m-left_x-small">Coming</span>
+        </div>
+      </div>
+
+      <aside class="roots-rail" aria-label="Needs your attention">
+        <div class="roots-section-label slds-m-top_large">
+          Needs your attention
+        </div>
+        <template lwc:if={hasAttention}>
+          <template for:each={attention} for:item="row">
+            <button
+              key={row.key}
+              type="button"
+              class="roots-attention-row"
+              data-screen={row.screen}
+              data-attention={row.key}
+              aria-label={row.ariaLabel}
+              onclick={handleOpen}
+            >
+              <span class="roots-attention-name">{row.name}</span>
+              <span class="roots-tag">{row.tag}</span>
+              <span class="roots-attention-why">{row.why}</span>
+            </button>
+          </template>
+        </template>
+        <template lwc:else>
+          <div class="roots-all-clear" data-id="all-clear">
+            <lightning-icon
+              icon-name="utility:success"
+              size="small"
+              variant="success"
+              alternative-text=""
+            ></lightning-icon>
+            <div class="slds-m-top_x-small">All clear</div>
+          </div>
+        </template>
+      </aside>
+    </div>
+  </div>
+</template>
