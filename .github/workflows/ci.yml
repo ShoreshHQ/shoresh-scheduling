@@ -84,9 +84,7 @@ jobs:
             sf project deploy start --source-dir force-app --ignore-conflicts --wait 30
           fi
       - name: Apex tests
-        run: |
-          if ! grep -rqli '@istest' force-app --include='*.cls'; then
-            echo "::notice::No Apex test classes yet."
-          else
-            sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 30
-          fi
+        # One class at a time, run directly: queued runs (RunLocalTests) count against the test
+        # org's daily allowance of 500 queued test classes, which CI and sessions share, and a
+        # busy day used it up (2026-10-16). See docs/ci-setup.md.
+        run: node scripts/run-apex-tests.mjs
