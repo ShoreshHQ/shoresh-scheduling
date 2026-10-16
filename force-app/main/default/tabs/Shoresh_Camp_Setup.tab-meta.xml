@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description
-  >Set up seasons, weeks, programs, divisions, groups, and time blocks.</description>
-    <label>Camp Setup</label>
+    <description>Shoresh: Roots, camp setup, and activities.</description>
+    <label>Shoresh</label>
     <lwcComponent>shoreshCampSetup</lwcComponent>
     <motif>Custom20: Airplane</motif>
 </CustomTab>

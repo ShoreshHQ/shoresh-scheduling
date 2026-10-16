@@ -43,7 +43,7 @@ const SETUP = {
     StartDate__c: "2026-06-29",
     EndDate__c: "2026-08-07"
   },
-  weeks: [],
+  weeks: [{ Name: "Week 1" }, { Name: "Week 2" }],
   programs: [
     {
       program: { Name: "Main" },
@@ -97,6 +97,7 @@ describe("c-shoresh-roots", () => {
       ["divisions", "Units"],
       ["locations", "Locations"],
       ["timeBlocks", "Time blocks"],
+      ["weeks", "Weeks"],
       ["fixedActivities", "Fixed activities"]
     ]);
     expect(card(element, "activities").className).toContain("roots-card_large");
@@ -115,6 +116,8 @@ describe("c-shoresh-roots", () => {
     expect(count("divisions").textContent).toBe("2");
     expect(count("locations").textContent).toBe("1");
     expect(count("timeBlocks").textContent).toBe("2");
+    expect(count("weeks").textContent).toBe("2");
+    expect(card(element, "weeks").className).toContain("roots-card_small");
     expect(count("groups").className).toContain("roots-count_rooted");
 
     const empty = await render({ ...SETUP, locations: [] });
@@ -152,14 +155,16 @@ describe("c-shoresh-roots", () => {
     element.addEventListener("navigate", handler);
     card(element, "groups").click();
     card(element, "timeBlocks").click();
+    card(element, "weeks").click();
     expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
       "groups",
-      "timeBlocks"
+      "timeBlocks",
+      "weeks"
     ]);
   });
 
   it("lists what needs attention alphabetically, each opening the screen that fixes it", async () => {
-    const element = await render();
+    const element = await render({ ...SETUP, weeks: [] });
     const rows = [...element.shadowRoot.querySelectorAll("[data-attention]")];
     expect(
       rows.map((r) => [

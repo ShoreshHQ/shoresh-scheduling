@@ -247,10 +247,12 @@ private class SeasonSetupControllerTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      // Swim is open only to Group A.
+      ShoreshTestData.placesAndActivities(season.Id);
       Group__c used = [
         SELECT Id
         FROM Group__c
-        WHERE Id IN (SELECT Group__c FROM WeekException__c)
+        WHERE Name = 'Group A'
         WITH SYSTEM_MODE
       ];
       try {
@@ -258,14 +260,14 @@ private class SeasonSetupControllerTest {
         Assert.fail('A group in use is kept');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'This can\'t be deleted yet: it has weeks unticked under Runs in ("Group A" in "Week 3"). Tick that week again on the Groups screen first, then delete it.',
+          'This can\'t be deleted yet: it is in "Who can do it" for "Swim". Change who can do that activity first, then delete it.',
           errorOf(e)
         );
       }
       Group__c unused = [
         SELECT Id
         FROM Group__c
-        WHERE Id NOT IN (SELECT Group__c FROM WeekException__c)
+        WHERE Name = 'Group B'
         WITH SYSTEM_MODE
       ];
       SeasonSetupController.deleteRecord(unused.Id);

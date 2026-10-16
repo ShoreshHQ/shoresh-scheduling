@@ -94,7 +94,7 @@ public with sharing class SeasonSetupController {
       throw ScreenErrors.of(inUse);
     }
     try {
-      Database.delete(recordId, true, AccessLevel.USER_MODE);
+      WeekExceptions.deleteWithWeeks(recordId);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

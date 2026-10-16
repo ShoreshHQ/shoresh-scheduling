@@ -111,6 +111,10 @@ button.roots-card:focus {
   grid-column: 3;
   grid-row: 3;
 }
+.roots-card_weeks {
+  grid-column: 3;
+  grid-row: 4;
+}
 .roots-card_fixedActivities {
   grid-column: 1 / span 3;
   grid-row: 5;

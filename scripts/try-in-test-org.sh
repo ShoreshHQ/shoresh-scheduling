@@ -1,5 +1,5 @@
 #!/bin/bash
-# Puts this branch's Shoresh into the one test org and opens Camp Setup.
+# Puts this branch's Shoresh into the one test org and opens the Shoresh tab.
 # Uses the existing test org (alias shoresh-test); never creates another one.
 # Usage: scripts/try-in-test-org.sh
 set -euo pipefail
@@ -19,5 +19,5 @@ if ! out=$(sf org assign permset --name Shoresh_Scheduler --target-org "$ALIAS" 
     exit 1
   fi
 fi
-echo "Opening Camp Setup in your browser."
+echo "Opening the Shoresh tab in your browser."
 sf org open --target-org "$ALIAS" --path /lightning/n/Shoresh_Camp_Setup
