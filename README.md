@@ -5,6 +5,12 @@ Day-camp scheduling for Salesforce: step 1 of Shoresh, a free AppExchange app.
 Design, glossary, and decisions live in the Shoresh wiki (`projects/shoresh-scheduling-sf`,
 `projects/shoresh-scheduling-data-model`, `decisions/`).
 
+## Try it
+
+`scripts/try-in-scratch-org.sh` makes a fresh test org with this branch in it and opens
+**Camp Setup** (needs the Dev Hub login, alias `shoresh-devhub`). Build choices are in
+[docs/adr](docs/adr).
+
 ## Checks on every pull request
 
 - LWC Jest unit tests and Salesforce Code Analyzer.

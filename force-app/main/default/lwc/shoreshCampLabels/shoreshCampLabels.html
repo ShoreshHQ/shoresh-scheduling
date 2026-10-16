@@ -1,0 +1,77 @@
+<template>
+  <article class="slds-card slds-card_boundary">
+    <div class="slds-card__header">
+      <h2 class="slds-text-heading_medium">{title}</h2>
+    </div>
+    <div class="slds-card__body slds-card__body_inner">
+      <p class="slds-m-bottom_small">
+        Type your camp's own word wherever it differs, for example "Bunk" and
+        "Bunks" for Group. Shoresh screens will use it everywhere. Leave both
+        blank to use the standard word. Salesforce's own reports and record
+        pages keep the standard words.
+      </p>
+      <template lwc:if={error}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+          role="alert"
+        >
+          {error}
+        </div>
+      </template>
+      <table
+        class="slds-table slds-table_cell-buffer slds-table_bordered"
+        aria-label={title}
+      >
+        <thead>
+          <tr>
+            <th scope="col">Standard word</th>
+            <th scope="col">Your word (one)</th>
+            <th scope="col">Your word (more than one)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template for:each={rows} for:item="row">
+            <tr key={row.term}>
+              <td>{row.modelSingular} / {row.modelPlural}</td>
+              <td>
+                <lightning-input
+                  label={row.modelSingular}
+                  variant="label-hidden"
+                  value={row.singular}
+                  max-length="80"
+                  data-term={row.term}
+                  data-field="singular"
+                  onchange={handleChange}
+                ></lightning-input>
+              </td>
+              <td>
+                <lightning-input
+                  label={row.modelPlural}
+                  variant="label-hidden"
+                  value={row.plural}
+                  max-length="80"
+                  data-term={row.term}
+                  data-field="plural"
+                  onchange={handleChange}
+                ></lightning-input>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+    <footer class="slds-card__footer">
+      <lightning-button
+        label="Cancel"
+        onclick={handleCancel}
+      ></lightning-button>
+      <lightning-button
+        class="slds-m-left_x-small"
+        variant="brand"
+        label="Save words"
+        onclick={handleSave}
+        disabled={busy}
+      ></lightning-button>
+    </footer>
+  </article>
+</template>

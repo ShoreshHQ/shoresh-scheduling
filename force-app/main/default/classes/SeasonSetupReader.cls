@@ -1,0 +1,133 @@
+/**
+ * Reads everything set up in one season, shaped the way the setup screen shows it:
+ * the season, its weeks, and each program with its time blocks, divisions, and groups.
+ * Runs in user mode, so the scheduler sees only what they are allowed to see.
+ */
+public with sharing class SeasonSetupReader {
+  public static SeasonSetup read(Id seasonId) {
+    List<Season__c> seasons = [
+      SELECT
+        Id,
+        Name,
+        Camp__c,
+        StartDate__c,
+        EndDate__c,
+        Status__c,
+        CopiedFrom__c,
+        CopiedFrom__r.Name
+      FROM Season__c
+      WHERE Id = :seasonId
+      WITH USER_MODE
+    ];
+    if (seasons.isEmpty()) {
+      return null;
+    }
+    SeasonSetup result = new SeasonSetup();
+    result.season = seasons[0];
+    result.weeks = [
+      SELECT Id, Name, StartDate__c, EndDate__c, SortOrder__c
+      FROM Week__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY StartDate__c, SortOrder__c
+    ];
+    result.programs = readPrograms(seasonId);
+    result.labels = CampLabels.forCamp(result.season.Camp__c).all();
+    return result;
+  }
+
+  private static List<ProgramSetup> readPrograms(Id seasonId) {
+    Map<Id, ProgramSetup> programs = new Map<Id, ProgramSetup>();
+    for (Program__c program : [
+      SELECT
+        Id,
+        Name,
+        Monday__c,
+        Tuesday__c,
+        Wednesday__c,
+        Thursday__c,
+        Friday__c,
+        SortOrder__c
+      FROM Program__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ]) {
+      programs.put(program.Id, new ProgramSetup(program));
+    }
+    for (TimeBlock__c block : [
+      SELECT
+        Id,
+        Name,
+        Program__c,
+        StartTime__c,
+        EndTime__c,
+        PartOfDay__c,
+        EventsOnly__c,
+        SortOrder__c
+      FROM TimeBlock__c
+      WHERE Program__c IN :programs.keySet()
+      WITH USER_MODE
+      ORDER BY StartTime__c, SortOrder__c
+    ]) {
+      programs.get(block.Program__c).timeBlocks.add(block);
+    }
+    Map<Id, DivisionSetup> divisions = new Map<Id, DivisionSetup>();
+    for (Division__c division : [
+      SELECT Id, Name, Program__c, SortOrder__c
+      FROM Division__c
+      WHERE Program__c IN :programs.keySet()
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ]) {
+      DivisionSetup setup = new DivisionSetup(division);
+      divisions.put(division.Id, setup);
+      programs.get(division.Program__c).divisions.add(setup);
+    }
+    for (Group__c grp : [
+      SELECT Id, Name, Division__c, Availability__c, SortOrder__c
+      FROM Group__c
+      WHERE Division__c IN :divisions.keySet()
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ]) {
+      divisions.get(grp.Division__c).groups.add(grp);
+    }
+    return programs.values();
+  }
+
+  public class SeasonSetup {
+    @AuraEnabled
+    public Season__c season;
+    @AuraEnabled
+    public List<Week__c> weeks;
+    @AuraEnabled
+    public List<ProgramSetup> programs;
+    @AuraEnabled
+    public List<CampLabels.TermLabel> labels;
+  }
+
+  public class ProgramSetup {
+    @AuraEnabled
+    public Program__c program;
+    @AuraEnabled
+    public List<TimeBlock__c> timeBlocks = new List<TimeBlock__c>();
+    @AuraEnabled
+    public List<DivisionSetup> divisions = new List<DivisionSetup>();
+
+    public ProgramSetup(Program__c program) {
+      this.program = program;
+    }
+  }
+
+  public class DivisionSetup {
+    @AuraEnabled
+    public Division__c division;
+    @AuraEnabled
+    public List<Group__c> groups = new List<Group__c>();
+
+    public DivisionSetup(Division__c division) {
+      this.division = division;
+    }
+  }
+}

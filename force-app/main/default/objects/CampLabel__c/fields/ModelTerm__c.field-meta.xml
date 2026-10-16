@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ModelTerm__c</fullName>
+    <description>The glossary term this label replaces.</description>
+    <label>Model Term</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Scheduler</fullName>
+                <default>false</default>
+                <label>Scheduler</label>
+            </value>
+            <value>
+                <fullName>Camper</fullName>
+                <default>false</default>
+                <label>Camper</label>
+            </value>
+            <value>
+                <fullName>Season</fullName>
+                <default>false</default>
+                <label>Season</label>
+            </value>
+            <value>
+                <fullName>Week</fullName>
+                <default>false</default>
+                <label>Week</label>
+            </value>
+            <value>
+                <fullName>WeekException</fullName>
+                <default>false</default>
+                <label>Week exception</label>
+            </value>
+            <value>
+                <fullName>RainyDay</fullName>
+                <default>false</default>
+                <label>Rainy day</label>
+            </value>
+            <value>
+                <fullName>RainPlan</fullName>
+                <default>false</default>
+                <label>Rain plan</label>
+            </value>
+            <value>
+                <fullName>Program</fullName>
+                <default>false</default>
+                <label>Program</label>
+            </value>
+            <value>
+                <fullName>Division</fullName>
+                <default>false</default>
+                <label>Division</label>
+            </value>
+            <value>
+                <fullName>Group</fullName>
+                <default>false</default>
+                <label>Group</label>
+            </value>
+            <value>
+                <fullName>Availability</fullName>
+                <default>false</default>
+                <label>Availability</label>
+            </value>
+            <value>
+                <fullName>TimeBlock</fullName>
+                <default>false</default>
+                <label>Time block</label>
+            </value>
+            <value>
+                <fullName>DraftSchedule</fullName>
+                <default>false</default>
+                <label>Draft schedule</label>
+            </value>
+            <value>
+                <fullName>Version</fullName>
+                <default>false</default>
+                <label>Version</label>
+            </value>
+            <value>
+                <fullName>PublishedSchedule</fullName>
+                <default>false</default>
+                <label>Published schedule</label>
+            </value>
+            <value>
+                <fullName>Activity</fullName>
+                <default>false</default>
+                <label>Activity</label>
+            </value>
+            <value>
+                <fullName>Location</fullName>
+                <default>false</default>
+                <label>Location</label>
+            </value>
+            <value>
+                <fullName>Placement</fullName>
+                <default>false</default>
+                <label>Placement</label>
+            </value>
+            <value>
+                <fullName>Length</fullName>
+                <default>false</default>
+                <label>Length</label>
+            </value>
+            <value>
+                <fullName>TimesPerWeek</fullName>
+                <default>false</default>
+                <label>Times per week</label>
+            </value>
+            <value>
+                <fullName>Lock</fullName>
+                <default>false</default>
+                <label>Lock</label>
+            </value>
+            <value>
+                <fullName>ElectiveSet</fullName>
+                <default>false</default>
+                <label>Elective set</label>
+            </value>
+            <value>
+                <fullName>Offering</fullName>
+                <default>false</default>
+                <label>Offering</label>
+            </value>
+            <value>
+                <fullName>Preference</fullName>
+                <default>false</default>
+                <label>Preference</label>
+            </value>
+            <value>
+                <fullName>LinkedChoice</fullName>
+                <default>false</default>
+                <label>Linked choice</label>
+            </value>
+            <value>
+                <fullName>Assignment</fullName>
+                <default>false</default>
+                <label>Assignment</label>
+            </value>
+            <value>
+                <fullName>FixedEvent</fullName>
+                <default>false</default>
+                <label>Fixed event</label>
+            </value>
+            <value>
+                <fullName>RecurringEvent</fullName>
+                <default>false</default>
+                <label>Recurring event</label>
+            </value>
+            <value>
+                <fullName>SpecialEvent</fullName>
+                <default>false</default>
+                <label>Special event</label>
+            </value>
+            <value>
+                <fullName>Team</fullName>
+                <default>false</default>
+                <label>Team</label>
+            </value>
+            <value>
+                <fullName>SpecialDay</fullName>
+                <default>false</default>
+                <label>Special day</label>
+            </value>
+            <value>
+                <fullName>GroupsThatFit</fullName>
+                <default>false</default>
+                <label>Groups that fit</label>
+            </value>
+            <value>
+                <fullName>GroupsAtOnce</fullName>
+                <default>false</default>
+                <label>Groups at once</label>
+            </value>
+            <value>
+                <fullName>Seats</fullName>
+                <default>false</default>
+                <label>Seats</label>
+            </value>
+            <value>
+                <fullName>Conflict</fullName>
+                <default>false</default>
+                <label>Conflict</label>
+            </value>
+            <value>
+                <fullName>Gap</fullName>
+                <default>false</default>
+                <label>Gap</label>
+            </value>
+            <value>
+                <fullName>Shortfall</fullName>
+                <default>false</default>
+                <label>Shortfall</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
