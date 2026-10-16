@@ -11,7 +11,10 @@ public with sharing class WeekTriggerHandler {
   ) {
     if (operation == System.TriggerOperation.BEFORE_DELETE) {
       beforeDelete(oldWeeks);
-    } else if (operation == System.TriggerOperation.AFTER_INSERT) {
+    } else if (
+      operation == System.TriggerOperation.AFTER_INSERT ||
+      operation == System.TriggerOperation.AFTER_UNDELETE
+    ) {
       SetTimeTriggers.weeksAdded(weeks);
     } else {
       beforeSave(weeks);

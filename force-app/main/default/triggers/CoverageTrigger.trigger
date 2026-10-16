@@ -3,7 +3,8 @@ trigger CoverageTrigger on Coverage__c(
   before update,
   after insert,
   after update,
-  after delete
+  after delete,
+  after undelete
 ) {
   CoverageTriggerHandler.handle(
     Trigger.operationType,

@@ -3,8 +3,7 @@
     <fullName>TimeBlockRequired</fullName>
     <active>true</active>
     <description>It happens in a time block.</description>
-    <errorConditionFormula
-  >ISBLANK(TimeBlock__c)</errorConditionFormula>
+    <errorConditionFormula>ISBLANK(TimeBlock__c)</errorConditionFormula>
     <errorDisplayField>TimeBlock__c</errorDisplayField>
-    <errorMessage>Choose a time block.</errorMessage>
+    <errorMessage>Choose when it starts.</errorMessage>
 </ValidationRule>

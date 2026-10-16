@@ -8,7 +8,7 @@ public with sharing class WeekExceptionTriggerHandler {
     WeekException__c.RecurringActivity__c => 'RecurringActivity'
   };
 
-  /** Before save: the season check. After delete: weeks ticked again (SetTimeTriggers). */
+  /** Before save: the season check. After delete or edit: weeks ticked again (SetTimeTriggers). */
   public static void handle(
     System.TriggerOperation operation,
     List<WeekException__c> rows,
@@ -16,6 +16,9 @@ public with sharing class WeekExceptionTriggerHandler {
   ) {
     if (operation == System.TriggerOperation.AFTER_DELETE) {
       SetTimeTriggers.weekExceptionsRemoved(oldRows);
+    } else if (operation == System.TriggerOperation.AFTER_UPDATE) {
+      // A row moved to another target ticks its old target back on.
+      SetTimeTriggers.weekExceptionsMoved(rows);
     } else {
       beforeSave(rows);
     }

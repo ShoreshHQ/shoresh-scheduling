@@ -127,11 +127,15 @@ public with sharing class SetTimeMessages {
         return 'Untick ' + clash.day + '.';
       }
       when SAME_GROUP {
+        // Fixed activities have no days or who to change.
+        Boolean bothFixed =
+          clash.item.term == 'FixedActivity' &&
+          clash.other.term == 'FixedActivity';
         return 'Change the ' +
           t.singularInSentence('TimeBlock') +
           ', ' +
           t.singularInSentence('Length') +
-          ', days, who it covers, or ' +
+          (bothFixed ? ', or ' : ', days, who it covers, or ') +
           t.pluralInSentence('Week') +
           ' of one of them.';
       }

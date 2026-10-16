@@ -8,6 +8,8 @@ public with sharing class ProgramTriggerHandler {
   ) {
     if (operation == System.TriggerOperation.BEFORE_DELETE) {
       beforeDelete(before);
+    } else if (operation == System.TriggerOperation.AFTER_UNDELETE) {
+      SetTimeTriggers.programsRestored(programs);
     } else {
       SetTimeTriggers.programsSaved(programs, before);
     }

@@ -70,8 +70,12 @@ public with sharing class SetTimeLocationClashes {
     return result;
   }
 
-  /** The busiest moment is when some visit starts: count everyone there then. */
+  /**
+   * The busiest moment is when some visit starts: count everyone there then, and report the
+   * busiest, so "keep it at N or more" names enough.
+   */
   private SetTimeClash crowded(Location__c location, List<Visit> visits) {
+    SetTimeClash busiest;
     for (Visit visit : visits) {
       Integer count = 0;
       List<String> names = new List<String>();
@@ -83,7 +87,11 @@ public with sharing class SetTimeLocationClashes {
           }
         }
       }
-      if (count > location.GroupsThatFit__c) {
+      if (
+        count > location.GroupsThatFit__c &&
+        (busiest == null ||
+        count > busiest.count)
+      ) {
         SetTimeClash clash = new SetTimeClash(
           SetTimeClash.Kind.OVER_LOCATION,
           visit.item
@@ -94,10 +102,10 @@ public with sharing class SetTimeLocationClashes {
         clash.blockName = visit.block.Name;
         clash.day = day;
         clash.weekName = plan.weekNames.get(week);
-        return clash;
+        busiest = clash;
       }
     }
-    return null;
+    return busiest;
   }
 
   private class Visit {

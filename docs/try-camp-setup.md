@@ -148,7 +148,7 @@ activities and from each other. Clashes are refused, never just shown.
    come back.
 4. **Try a clash.** Add _Carpool_ in Period 1 and save. Shoresh refuses:
    _"Flagpole" and "Carpool" would both have Bunk 1 in Period 1 on Monday in Week 1. Change the
-   time block, length, days, who it covers, or weeks of one of them._ Nothing is saved, and
+   time block, length, or weeks of one of them._ Nothing is saved, and
    your row is still there to fix. Remove it with its trash can.
 5. **Too many bunks at a location.** Set Flagpole's **Location** to the Pool and save:
    refused, _"Pool" fits 1 Bunk at once, but "Flagpole" would have 2 there …_. Choose the Gym
@@ -172,8 +172,8 @@ activities and from each other. Clashes are refused, never just shown.
     at the top says _Bunk 1 swim: "Pool" is not open in Week 2, but this runs then._ Untick
     **Week 2** on Bunk 1 swim and save; it goes away.
 11. Try deleting **Period 2** on **Time blocks**: refused, Bunk 1 swim and Bunk 2 art start in
-    it. Try deleting **Bunk 1**: refused, it is in who Bunk 1 swim covers (and in Swim's who
-    can do it).
+    it. Try deleting **Bunk 1**: refused, and the message names both things in the way: Swim's
+    **Who can do it** and who Bunk 1 swim covers.
 
 Does this work the way you think in practice? Note anything that feels awkward.
 

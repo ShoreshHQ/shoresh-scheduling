@@ -36,6 +36,24 @@ public with sharing class SetTimeTriggers {
     SetTimeGuard.changed(weekIds, onItems, SetTimeMessages.Side.ITEM);
   }
 
+  /** A week exception edited: whatever it named before runs that week again. */
+  public static void weekExceptionsMoved(List<WeekException__c> rows) {
+    Set<Id> weekIds = new Set<Id>();
+    for (WeekException__c row : rows) {
+      weekIds.add(row.Week__c);
+    }
+    SetTimeGuard.changed(weekIds, rows, SetTimeMessages.Side.ITEM);
+  }
+
+  /** A program restored from the Recycle Bin, with its fixed and recurring activities. */
+  public static void programsRestored(List<Program__c> programs) {
+    Set<Id> seasonIds = new Set<Id>();
+    for (Program__c program : programs) {
+      seasonIds.add(program.Season__c);
+    }
+    SetTimeGuard.changed(seasonIds, programs, SetTimeMessages.Side.OTHER);
+  }
+
   /** A new week: every fixed and recurring activity runs in it unless unticked. */
   public static void weeksAdded(List<Week__c> weeks) {
     Set<Id> seasonIds = new Set<Id>();

@@ -37,10 +37,12 @@ wins.
    - more groups at a location at once than fit there (programs keep their own time blocks,
      so "at once" means overlapping clock times on the same day and week).
 
-   Sides checked: the items themselves, who they cover, their week ticks, a location's groups
-   that fit going down, time blocks added, moved, changed, or deleted, groups added or their
-   availability changed, a program's days changed, and new weeks. Triggers on those objects
-   report the change (`SetTimeTriggers` → `SetTimeGuard`).
+   Sides checked: the items themselves, who they cover, their week ticks (removed or moved to
+   another target), a location's groups that fit going down, time blocks added, moved,
+   changed, or deleted, groups added or their availability changed, a program's days changed,
+   new weeks, and anything restored from the Recycle Bin. Triggers on those objects report the
+   change (`SetTimeTriggers` → `SetTimeGuard`).
+
 5. **A screen save is checked once, at the end.** A table save writes rows, then week ticks,
    then who, so the check is deferred to the end of the whole save and a clash undoes all of it
    (`ScreenSaves`, `deleteRecord`, copy season). A change made in Salesforce directly is checked
@@ -80,6 +82,12 @@ wins.
 12. **Cost of the check.** Each check reads the season's items, programs, blocks, groups,
     weeks, and locations (about seven queries). Seasons with no fixed or recurring activities
     are remembered for the rest of the transaction, so ordinary saves elsewhere cost little.
+
+13. **Open for Greg:** adding or deleting a time block in the middle of a multi-block item
+    changes which blocks it covers (Rest = Period 1 for 2 blocks covers Period 2; delete Period
+    2 and it covers Lunch). It is refused only if that causes a clash or runs past the end of
+    the day; otherwise it happens without a word. Options: refuse it, or show it in Needs
+    attention.
 
 ## Choices that are hard to undo after release
 

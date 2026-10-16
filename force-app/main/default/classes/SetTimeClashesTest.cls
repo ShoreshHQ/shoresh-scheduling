@@ -24,7 +24,7 @@ private class SetTimeClashesTest {
       );
       Assert.areEqual(
         '"Carpool" and "Flagpole" would both have Group A in Period 1 on Monday in Week 1. ' +
-        'Change the time block, length, days, who it covers, or weeks of one of them.',
+        'Change the time block, length, or weeks of one of them.',
         message
       );
       Assert.areEqual(1, count('FixedActivity__c'), 'Nothing more saved');
@@ -490,6 +490,78 @@ private class SetTimeClashesTest {
         )
       );
       Assert.isTrue(message.contains('"Assembly"'), message);
+    }
+  }
+
+  @IsTest
+  static void movingAWeekTickIntoAClashIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      List<Id> flag = SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Flag', 'Period 2') },
+        SetTimeTestData.extras(
+          new List<RunsIn.WeekOff>{
+            SetTimeTestData.weekOff(0, null, ids.get('Week 1'))
+          },
+          null,
+          null
+        )
+      );
+      // Carpool runs only in Week 1, when Flag does not.
+      List<RunsIn.WeekOff> off = new List<RunsIn.WeekOff>();
+      for (Integer week = 2; week <= 6; week++) {
+        off.add(SetTimeTestData.weekOff(0, null, ids.get('Week ' + week)));
+      }
+      SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Carpool', 'Period 2') },
+        SetTimeTestData.extras(off, null, null)
+      );
+      // Moving Flag's Week 1 tick to Group A puts Flag back in Week 1.
+      WeekException__c mark = [
+        SELECT Id
+        FROM WeekException__c
+        WHERE FixedActivity__c = :flag[0]
+        WITH SYSTEM_MODE
+      ];
+      String message = SetTimeTestData.dmlRefusal(
+        Database.update(
+          new WeekException__c(
+            Id = mark.Id,
+            FixedActivity__c = null,
+            Group__c = ids.get('Group A')
+          ),
+          false,
+          AccessLevel.USER_MODE
+        )
+      );
+      Assert.isTrue(message.contains('"Carpool" and "Flag"'), message);
+    }
+  }
+
+  @IsTest
+  static void restoringAnItemIntoAClashIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      // A fixed activity deleted, then brought back from the Recycle Bin into a taken block.
+      List<Id> rest = SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Rest', 'Lunch') }
+      );
+      SeasonSetupController.deleteRecord(rest[0]);
+      SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Nap', 'Lunch') }
+      );
+      Database.UndeleteResult back = Database.undelete(
+        rest[0],
+        false,
+        AccessLevel.USER_MODE
+      );
+      Assert.isFalse(back.isSuccess());
+      Assert.isTrue(
+        back.getErrors()[0].getMessage().contains('"Nap" and "Rest"'),
+        back.getErrors()[0].getMessage()
+      );
     }
   }
 }

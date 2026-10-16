@@ -8,9 +8,8 @@ public with sharing class InUse {
   private static final Integer MAX_NAMES = 20;
 
   public static String reason(Id recordId) {
-    String found = activityUseReason(recordId);
-    // Then fixed and recurring activities (SetTimeInUse; locations are covered below).
-    return found != null ? found : SetTimeInUse.reason(recordId);
+    // Fixed and recurring activities too (locations are covered below), in one refusal.
+    return SetTimeInUse.alongside(activityUseReason(recordId), recordId);
   }
 
   private static String activityUseReason(Id recordId) {

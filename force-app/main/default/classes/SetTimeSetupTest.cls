@@ -130,7 +130,7 @@ private class SetTimeSetupTest {
       FixedActivity__c noBlock = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
       noBlock.TimeBlock__c = null;
       Assert.areEqual(
-        '"Rest": Choose a time block.',
+        '"Rest": Choose when it starts.',
         SetTimeTestData.refusal(new List<SObject>{ noBlock })
       );
       FixedActivity__c noLength = SetTimeTestData.fixed(
@@ -327,6 +327,13 @@ private class SetTimeSetupTest {
         'This can\'t be deleted yet: it (or one of its groups) is in who "Swim" covers. ' +
         'Change who it covers on the Recurring activities screen first, then delete it.',
         SetTimeTestData.deleteRefusal(ids.get('Seniors'))
+      );
+      // Activities' who can do it and the fixed and recurring activities, in one refusal.
+      String both = SetTimeTestData.deleteRefusal(ids.get('Main'));
+      Assert.isTrue(both.contains('"Who can do it"'), both);
+      Assert.isTrue(
+        both.contains(' Also, "Flagpole", "Swim" are set in it.'),
+        both
       );
       // Remove who can do activities so only the set-time items stand in the way.
       Database.delete(

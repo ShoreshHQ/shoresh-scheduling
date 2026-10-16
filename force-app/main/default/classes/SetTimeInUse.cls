@@ -19,6 +19,17 @@ public with sharing class SetTimeInUse {
     return null;
   }
 
+  /** An activity refusal (or null) with this one added, so one refusal names everything. */
+  public static String alongside(String activityReason, Id recordId) {
+    String setTime = reason(recordId);
+    if (activityReason == null || setTime == null) {
+      return activityReason != null ? activityReason : setTime;
+    }
+    return activityReason +
+      ' Also, ' +
+      setTime.removeStart('This can\'t be deleted yet: ');
+  }
+
   /**
    * For a location's refusal: what happens there ('"Flagpole" happens here') and its fix, or an
    * empty list when no fixed or recurring activity uses it.
@@ -30,12 +41,12 @@ public with sharing class SetTimeInUse {
     }
     return new List<String>{
       InUse.quoted(names) +
-      (names.size() == 1 ? ' happens' : ' happen') +
+      oneOrMany(names, ' happens', ' happen') +
       ' here',
       'choose another ' +
       labels.singularInSentence('Location') +
       ' for ' +
-      (names.size() == 1 ? 'it' : 'them') +
+      oneOrMany(names, 'it', 'them') +
       ' on the ' +
       labels.plural('FixedActivity') +
       ' or ' +
@@ -99,11 +110,11 @@ public with sharing class SetTimeInUse {
     CampLabels labels = found.labels();
     return 'This can\'t be deleted yet: ' +
       InUse.quoted(names) +
-      (names.size() == 1 ? ' starts' : ' start') +
+      oneOrMany(names, ' starts', ' start') +
       ' in it. First choose another ' +
       labels.singularInSentence('TimeBlock') +
       ' for ' +
-      (names.size() == 1 ? 'it' : 'them') +
+      oneOrMany(names, 'it', 'them') +
       ', then delete it.';
   }
 
@@ -136,9 +147,9 @@ public with sharing class SetTimeInUse {
     CampLabels labels = found.labels();
     return 'This can\'t be deleted yet: ' +
       InUse.quoted(names) +
-      (names.size() == 1 ? ' is' : ' are') +
+      oneOrMany(names, ' is', ' are') +
       ' set in it. Delete ' +
-      (names.size() == 1 ? 'it' : 'them') +
+      oneOrMany(names, 'it', 'them') +
       ' on the ' +
       labels.plural('FixedActivity') +
       ' or ' +
@@ -177,12 +188,17 @@ public with sharing class SetTimeInUse {
         : 'it is') +
       ' in who ' +
       InUse.quoted(names) +
-      (names.size() == 1 ? ' covers' : ' cover') +
+      oneOrMany(names, ' covers', ' cover') +
       '. Change who ' +
-      (names.size() == 1 ? 'it covers' : 'they cover') +
+      oneOrMany(names, 'it covers', 'they cover') +
       ' on the ' +
       labels.plural('RecurringActivity') +
       ' screen first, then delete it.';
+  }
+
+  /** The first words for one name, the second for several. */
+  private static String oneOrMany(List<String> names, String one, String many) {
+    return names.size() == 1 ? one : many;
   }
 
   /** Names of the items found, and their camp (for its words). */

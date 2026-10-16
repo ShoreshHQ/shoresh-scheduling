@@ -32,6 +32,10 @@ public with sharing class SetTimeGuard {
 
   /** Throws the refusal if what was saved since defer() clashes. */
   public static void checkPending() {
+    if (depth > 1) {
+      // Inside another deferred save: that save checks everything once it is done.
+      return;
+    }
     Set<Id> owners = pendingOwners;
     SetTimeMessages.Side side = pendingSide;
     pendingOwners = new Set<Id>();
