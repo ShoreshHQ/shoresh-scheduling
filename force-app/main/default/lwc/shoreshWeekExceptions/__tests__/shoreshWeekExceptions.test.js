@@ -148,4 +148,55 @@ describe("c-shoresh-week-exceptions", () => {
     expect(box(element, "g1|w2").checked).toBe(true);
     expect(button(element, "Save changes").disabled).toBe(true);
   });
+
+  it("drops unsaved ticks for a group that has since been deleted", async () => {
+    const element = await render();
+    tick(box(element, "g1|w2"), true);
+    const withoutBunk1 = {
+      ...SETUP,
+      programs: [
+        {
+          ...SETUP.programs[0],
+          divisions: [
+            {
+              ...SETUP.programs[0].divisions[0],
+              groups: [{ Id: "g2", Name: "Bunk 2" }]
+            }
+          ]
+        }
+      ]
+    };
+    element.setup = withoutBunk1;
+    await flush();
+    expect(button(element, "Save changes").disabled).toBe(true);
+  });
+
+  it("keeps ticks when its save failed", async () => {
+    const element = await render();
+    tick(box(element, "g1|w2"), true);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    await flush();
+    button(element, "Save changes").click();
+    handler.mock.calls[0][0].detail.onFailure();
+    element.setup = { ...SETUP };
+    await flush();
+    expect(box(element, "g1|w2").checked).toBe(true);
+  });
+
+  it("clears every saved record behind a tick", async () => {
+    const element = await render({
+      ...SETUP,
+      weekExceptions: [
+        { Id: "x1", Group__c: "g2", Week__c: "w1" },
+        { Id: "x9", Group__c: "g2", Week__c: "w1" }
+      ]
+    });
+    tick(box(element, "g2|w1"), false);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    await flush();
+    button(element, "Save changes").click();
+    expect(handler.mock.calls[0][0].detail.toRemove).toEqual(["x1", "x9"]);
+  });
 });

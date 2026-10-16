@@ -144,7 +144,7 @@ private class WeekExceptionsTest {
         WHERE Name = 'Group A'
         WITH SYSTEM_MODE
       ];
-      String expected = 'This can\'t be deleted yet: it is marked as not running ("Group A" in "Week 3"). Clear that under Weeks off first, then delete it.';
+      String expected = 'This can\'t be deleted yet: some of its groups are marked as not running ("Group A" in "Week 3"). Clear that under Weeks off first, then delete it.';
       Assert.areEqual(expected, WeekExceptions.blockingDelete(grp.Division__c));
       Assert.areEqual(
         expected,
@@ -174,5 +174,113 @@ private class WeekExceptionsTest {
         setup.weekExceptions[0].Group__c
       );
     }
+  }
+
+  @IsTest
+  static void aGroupMarkedInSeveralWeeksIsNamedInTheCampsWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = camp.Id,
+          ModelTerm__c = 'Group',
+          Singular__c = 'Bunk',
+          Plural__c = 'Bunks'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Id groupA = groupIds(season.Id).get('Group A');
+      WeekExceptionsController.saveWeekExceptions(
+        new List<WeekException__c>{
+          new WeekException__c(
+            Week__c = weekId(season.Id, 1),
+            Group__c = groupA
+          )
+        },
+        null
+      );
+      Assert.areEqual(
+        'This can\'t be deleted yet: it is marked as not running ("Group A" in "Week 1", "Group A" in "Week 3"). Clear those under Week exceptions first, then delete it.',
+        WeekExceptions.blockingDelete(groupA)
+      );
+      Group__c grp = [
+        SELECT Division__c
+        FROM Group__c
+        WHERE Id = :groupA
+        WITH SYSTEM_MODE
+      ];
+      Assert.isTrue(
+        WeekExceptions.blockingDelete(grp.Division__c)
+          .contains('some of its Bunks are marked')
+      );
+    }
+  }
+
+  @IsTest
+  static void markingTheSameGroupAndWeekTwiceKeepsOneMark() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Id groupA = groupIds(season.Id).get('Group A');
+      Id week3 = weekId(season.Id, 3);
+      // Group A is already marked for Week 3; mark it again, twice in one save.
+      WeekExceptionsController.saveWeekExceptions(
+        new List<WeekException__c>{
+          new WeekException__c(Week__c = week3, Group__c = groupA),
+          new WeekException__c(Week__c = week3, Group__c = groupA)
+        },
+        null
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE]
+      );
+    }
+  }
+
+  @IsTest
+  static void clearingAMarkAlreadyClearedElsewhereIsFine() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      ShoreshTestData.fullSeason(camp.Id);
+      WeekException__c existing = [
+        SELECT Id
+        FROM WeekException__c
+        WITH SYSTEM_MODE
+        LIMIT 1
+      ];
+      Database.delete(existing, AccessLevel.SYSTEM_MODE);
+      WeekExceptionsController.saveWeekExceptions(
+        null,
+        new List<Id>{ existing.Id, null }
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE]
+      );
+    }
+  }
+
+  @IsTest
+  static void someoneWithoutShoreshAccessCannotMarkWeeks() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Id groupB = groupIds(season.Id).get('Group B');
+    Id week1 = weekId(season.Id, 1);
+    System.runAs(ShoreshTestData.outsider()) {
+      try {
+        WeekExceptionsController.saveWeekExceptions(
+          new List<WeekException__c>{
+            new WeekException__c(Week__c = week1, Group__c = groupB)
+          },
+          null
+        );
+        Assert.fail('No access, no marks');
+      } catch (AuraHandledException e) {
+        Assert.isNotNull(e.getMessage());
+      }
+    }
+    Assert.areEqual(1, [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE]);
   }
 }

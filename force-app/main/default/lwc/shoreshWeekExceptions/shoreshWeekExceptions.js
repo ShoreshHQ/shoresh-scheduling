@@ -12,7 +12,7 @@ export default class ShoreshWeekExceptions extends LightningElement {
   @api terms;
   @api busy = false;
 
-  // What is saved: grid key -> week exception Id.
+  // What is saved: grid key -> week exception Ids (normally one).
   saved = new Map();
   // Unsaved ticks: grid key -> true (tick) or false (untick).
   pending = new Map();
@@ -26,22 +26,27 @@ export default class ShoreshWeekExceptions extends LightningElement {
   }
   set setup(value) {
     this._setup = value;
-    this.saved = new Map(
-      ((value && value.weekExceptions) || []).map((row) => [
-        keyOf(row.Group__c, row.Week__c),
-        row.Id
-      ])
-    );
+    const saved = new Map();
+    ((value && value.weekExceptions) || []).forEach((row) => {
+      const key = keyOf(row.Group__c, row.Week__c);
+      saved.set(key, [...(saved.get(key) || []), row.Id]);
+    });
+    this.saved = saved;
     if (this.submitted) {
       // This grid's own save went through.
       this.submitted = false;
       this.pending = new Map();
       return;
     }
-    // Something else was saved: keep unsaved ticks that still differ from what is saved.
+    // Something else was saved: keep unsaved ticks that still differ from what is saved,
+    // for groups and weeks that are still there.
+    const onScreen = new Set();
+    this.rows.forEach((row) =>
+      row.cells.forEach((cell) => onScreen.add(cell.key))
+    );
     const kept = new Map();
     this.pending.forEach((ticked, key) => {
-      if (ticked !== this.saved.has(key)) {
+      if (onScreen.has(key) && ticked !== this.saved.has(key)) {
         kept.set(key, ticked);
       }
     });
@@ -136,7 +141,7 @@ export default class ShoreshWeekExceptions extends LightningElement {
           Week__c: weekId
         });
       } else {
-        toRemove.push(this.saved.get(key));
+        toRemove.push(...this.saved.get(key));
       }
     });
     this.submitted = true;
