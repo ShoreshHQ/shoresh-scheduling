@@ -14,7 +14,13 @@ export function buildTerms(labels) {
       // Unknown until labels load: "TimeBlock" shows as "Time block" rather than nothing.
       const words = term.replace(/([a-z])([A-Z])/g, "$1 $2");
       const readable = words.charAt(0) + words.slice(1).toLowerCase();
-      return plural ? `${readable}s` : readable;
+      if (!plural) {
+        return readable;
+      }
+      // As the server makes plurals: "Activity" -> "Activities", "Day" -> "Days".
+      return /[^a]y$/.test(readable)
+        ? `${readable.slice(0, -1)}ies`
+        : `${readable}s`;
     }
     return plural ? row.plural : row.singular;
   };

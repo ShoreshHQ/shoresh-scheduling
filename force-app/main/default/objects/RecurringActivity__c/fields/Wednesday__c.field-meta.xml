@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wednesday__c</fullName>
+    <description
+  >It happens on Wednesdays (only days its program runs).</description>
+    <defaultValue>false</defaultValue>
+    <label>Wednesday</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

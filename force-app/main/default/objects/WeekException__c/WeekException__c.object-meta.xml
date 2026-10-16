@@ -2,7 +2,7 @@
 <CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
     <deploymentStatus>Deployed</deploymentStatus>
     <description
-  >A note that something does not run in a particular week. Exactly one target. Only the group target exists so far; activity and location targets come with those objects.</description>
+  >A note that something does not run in a particular week. Exactly one target: a group, activity, location, fixed activity, or recurring activity.</description>
     <enableActivities>false</enableActivities>
     <enableBulkApi>true</enableBulkApi>
     <enableHistory>false</enableHistory>

@@ -117,4 +117,64 @@
       </p>
     </template>
   </template>
+
+  <template lwc:if={isFixed}>
+    <template lwc:if={hasTimeBlocks}>
+      <c-shoresh-editable-table
+        data-id="fixed-activities"
+        title={labels.fixed}
+        object-api-name="FixedActivity__c"
+        columns={fixedColumns}
+        rows={entry.fixedActivities}
+        add-label={labels.addFixed}
+        empty-message={labels.noFixed}
+        new-row-defaults={fixedDefaults}
+        weeks={weeks}
+        week-exceptions={weekExceptions}
+        weeks-heading="Runs in"
+        week-phrase="runs in"
+        notes-heading={labels.leftOut}
+        row-notes={fixedNotes}
+        row-actions={fixedActions}
+        busy={busy}
+        onsave={handleChildSave}
+        ondelete={handleChildDelete}
+      ></c-shoresh-editable-table>
+    </template>
+    <template lwc:else>
+      <p class="slds-text-color_weak slds-m-bottom_medium">
+        {labels.needsBlocks}
+      </p>
+    </template>
+  </template>
+
+  <template lwc:if={isRecurring}>
+    <template lwc:if={hasTimeBlocks}>
+      <c-shoresh-editable-table
+        data-id="recurring-activities"
+        title={labels.recurring}
+        object-api-name="RecurringActivity__c"
+        columns={recurringColumns}
+        rows={entry.recurringActivities}
+        add-label={labels.addRecurring}
+        empty-message={labels.noRecurring}
+        new-row-defaults={recurringDefaults}
+        weeks={weeks}
+        week-exceptions={weekExceptions}
+        weeks-heading="Runs in"
+        week-phrase="runs in"
+        notes-heading={labels.leftOut}
+        row-notes={recurringNotes}
+        row-actions={recurringActions}
+        busy={busy}
+        onsave={handleChildSave}
+        ondelete={handleChildDelete}
+      ></c-shoresh-editable-table>
+    </template>
+    <template lwc:else>
+      <p class="slds-text-color_weak slds-m-bottom_medium">
+        {labels.needsBlocks}
+      </p>
+    </template>
+  </template>
 </template>

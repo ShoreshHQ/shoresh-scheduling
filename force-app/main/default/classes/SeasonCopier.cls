@@ -1,6 +1,7 @@
 /**
  * "Copy last season": makes a new season with new dates and new records for everything set up
- * in it (structure, locations, activities, who can do them, week exceptions), each linked to its original by CopiedFrom__c (decision: setup belongs to a season).
+ * in it (structure, locations, activities, who can do them, fixed and recurring activities and
+ * who they cover, week exceptions), each linked to its original by CopiedFrom__c (decision: setup belongs to a season).
  * The original season and everything in it is only read, never written.
  *
  * Dates move by the number of days between the old and new start dates, so each week keeps its
@@ -68,6 +69,8 @@ public with sharing class SeasonCopier {
         'Give the new ' + labels.singularInSentence('Season') + ' a name.'
       );
     }
+    // Copied a piece at a time; fixed and recurring activities are checked once all is in.
+    SetTimeGuard.defer();
     Savepoint beforeCopy = Database.setSavepoint();
     try {
       Season__c season = new Season__c(
@@ -82,18 +85,25 @@ public with sharing class SeasonCopier {
 
       Map<Id, Week__c> weekCopies = copyWeeks(season.Id);
       Map<Id, Program__c> programCopies = copyPrograms(season.Id);
-      copyTimeBlocks(programCopies);
+      Map<Id, TimeBlock__c> blockCopies = copyTimeBlocks(programCopies);
       Map<Id, Division__c> divisionCopies = copyDivisions(programCopies);
       Map<Id, Group__c> groupCopies = copyGroups(divisionCopies);
       // Ids are unique across objects, so one map holds every original => copy.
       Map<Id, Id> copies = copyIds(groupCopies);
       copies.putAll(copyIds(divisionCopies));
+      copies.putAll(copyIds(programCopies));
+      copies.putAll(copyIds(blockCopies));
       copies.putAll(new SetupCopier(source.Id, season.Id).copy(copies));
+      copies.putAll(new SetTimeCopier(source.Id, season.Id, copies).copy());
       copyWeekExceptions(weekCopies, copies);
+      // A copy of a season without clashes has none, but check before keeping it.
+      SetTimeGuard.checkPending();
       return season.Id;
     } catch (Exception e) {
       Database.rollback(beforeCopy);
       throw e;
+    } finally {
+      SetTimeGuard.resume();
     }
   }
 
@@ -150,8 +160,10 @@ public with sharing class SeasonCopier {
     return copies;
   }
 
-  private void copyTimeBlocks(Map<Id, Program__c> programCopies) {
-    List<TimeBlock__c> copies = new List<TimeBlock__c>();
+  private Map<Id, TimeBlock__c> copyTimeBlocks(
+    Map<Id, Program__c> programCopies
+  ) {
+    Map<Id, TimeBlock__c> copies = new Map<Id, TimeBlock__c>();
     for (TimeBlock__c block : [
       SELECT
         Id,
@@ -160,7 +172,6 @@ public with sharing class SeasonCopier {
         StartTime__c,
         EndTime__c,
         PartOfDay__c,
-        EventsOnly__c,
         SortOrder__c
       FROM TimeBlock__c
       WHERE Program__c IN :programCopies.keySet()
@@ -169,9 +180,10 @@ public with sharing class SeasonCopier {
       TimeBlock__c copy = block.clone(false, true, false, false);
       copy.Program__c = programCopies.get(block.Program__c).Id;
       copy.CopiedFrom__c = block.Id;
-      copies.add(copy);
+      copies.put(block.Id, copy);
     }
-    Database.insert(copies, AccessLevel.USER_MODE);
+    Database.insert(copies.values(), AccessLevel.USER_MODE);
+    return copies;
   }
 
   private Map<Id, Division__c> copyDivisions(
@@ -217,7 +229,14 @@ public with sharing class SeasonCopier {
   ) {
     List<WeekException__c> copies = new List<WeekException__c>();
     for (WeekException__c row : [
-      SELECT Id, Week__c, Group__c, Activity__c, Location__c
+      SELECT
+        Id,
+        Week__c,
+        Group__c,
+        Activity__c,
+        Location__c,
+        FixedActivity__c,
+        RecurringActivity__c
       FROM WeekException__c
       WHERE Week__c IN :weekCopies.keySet()
       WITH USER_MODE
@@ -227,7 +246,9 @@ public with sharing class SeasonCopier {
           Week__c = weekCopies.get(row.Week__c).Id,
           Group__c = copyOf(targetCopies, row.Group__c),
           Activity__c = copyOf(targetCopies, row.Activity__c),
-          Location__c = copyOf(targetCopies, row.Location__c)
+          Location__c = copyOf(targetCopies, row.Location__c),
+          FixedActivity__c = copyOf(targetCopies, row.FixedActivity__c),
+          RecurringActivity__c = copyOf(targetCopies, row.RecurringActivity__c)
         )
       );
     }

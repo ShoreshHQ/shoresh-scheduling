@@ -8,6 +8,11 @@ public with sharing class InUse {
   private static final Integer MAX_NAMES = 20;
 
   public static String reason(Id recordId) {
+    // Fixed and recurring activities too (locations are covered below), in one refusal.
+    return SetTimeInUse.alongside(activityUseReason(recordId), recordId);
+  }
+
+  private static String activityUseReason(Id recordId) {
     Schema.SObjectType kind = recordId.getSObjectType();
     if (
       kind == Group__c.SObjectType ||
@@ -110,6 +115,11 @@ public with sharing class InUse {
           thatOrThose(labels, 'Activity', activities.size())
       );
     }
+    List<String> setTime = SetTimeInUse.atLocation(locationId, labels);
+    if (!setTime.isEmpty()) {
+      parts.add(setTime[0]);
+      fixes.add(setTime[1]);
+    }
     return parts.isEmpty() ? null : refusal(parts, fixes);
   }
 
@@ -179,7 +189,7 @@ public with sharing class InUse {
   }
 
   /** "Archery", "Swim" … up to 20 names, then "and more". */
-  private static String quoted(List<String> names) {
+  public static String quoted(List<String> names) {
     List<String> shown = new List<String>();
     for (Integer i = 0; i < Math.min(names.size(), MAX_NAMES); i++) {
       shown.add('"' + names[i] + '"');

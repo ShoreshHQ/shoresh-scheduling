@@ -259,4 +259,139 @@ describe("c-shoresh-program", () => {
     await flush();
     expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
   });
+
+  describe("fixed and recurring activities", () => {
+    const SET_TIME = {
+      ...ENTRY,
+      fixedActivities: [
+        {
+          Id: "f1",
+          Name: "Flagpole",
+          TimeBlock__c: "t1",
+          Length__c: 1,
+          LastTimeBlock__c: "t1"
+        }
+      ],
+      recurringActivities: [
+        {
+          Id: "r1",
+          Name: "Swim",
+          TimeBlock__c: "t1",
+          Length__c: 1,
+          LastTimeBlock__c: "t1",
+          Monday__c: true,
+          Coverages__r: [{ Group__c: "g1" }]
+        }
+      ],
+      divisions: [
+        {
+          division: { Id: "d1", Name: "Juniors" },
+          groups: [
+            { Id: "g1", Name: "Bunk 1", Availability__c: "AllDay" },
+            { Id: "g2", Name: "Bunk 2", Availability__c: "AfternoonOnly" }
+          ]
+        }
+      ]
+    };
+    const table = (element) =>
+      element.shadowRoot.querySelector("c-shoresh-editable-table");
+
+    it("lists fixed activities with their time block, length, location, weeks, and who is left out", async () => {
+      const element = await render("fixedActivities", SET_TIME);
+      element.locations = [{ Id: "l1", Name: "Pool" }];
+      await flush();
+      const fixed = table(element);
+      expect(fixed.dataset.id).toBe("fixed-activities");
+      expect(fixed.columns.map((c) => c.fieldName)).toEqual([
+        "Name",
+        "TimeBlock__c",
+        "Length__c",
+        "Location__c"
+      ]);
+      expect(fixed.columns[1].options).toEqual([
+        { label: "Period 1", value: "t1" }
+      ]);
+      expect(fixed.columns[3].options).toEqual([
+        { label: "None", value: "" },
+        { label: "Pool", value: "l1" }
+      ]);
+      expect(fixed.weeksHeading).toBe("Runs in");
+      expect(fixed.newRowDefaults).toEqual({
+        Program__c: "p1",
+        Name: "Fixed activity {n}",
+        Length__c: 1
+      });
+      expect(fixed.rowNotes).toEqual({
+        f1: "Bunk 2 is afternoon only and is left out."
+      });
+      expect(fixed.rowActions).toEqual({});
+      // Saved as ending in a block since deleted: noted, with the fixes on the row.
+      element.entry = {
+        ...SET_TIME,
+        fixedActivities: [
+          {
+            ...SET_TIME.fixedActivities[0],
+            Length__c: 2,
+            LastTimeBlock__c: null
+          }
+        ],
+        timeBlocks: [
+          ...SET_TIME.timeBlocks,
+          { Id: "t2", Name: "Period 2", PartOfDay__c: "Morning" }
+        ]
+      };
+      await flush();
+      expect(
+        table(element).rowActions.f1.map((action) => action.label)
+      ).toEqual(["Keep the shorter Period 1", "Extend to Period 2"]);
+      expect(table(element).rowNotes.f1).toContain(
+        "changed since it was saved"
+      );
+    });
+
+    it("gives recurring activities a tick for each day the program runs and who they cover", async () => {
+      const element = await render("recurringActivities", SET_TIME);
+      const recurring = table(element);
+      expect(recurring.columns.map((c) => c.fieldName)).toEqual([
+        "Name",
+        "TimeBlock__c",
+        "Length__c",
+        "Location__c",
+        "Monday__c",
+        "Tuesday__c",
+        "Wednesday__c",
+        "Thursday__c",
+        "Coverages__r"
+      ]);
+      const who = recurring.columns[8];
+      expect(who.type).toBe("who");
+      expect(who.everyone).toBe("Everyone in Main");
+      expect(who.options).toEqual([
+        { label: "Unit: Juniors", value: "d1" },
+        { label: "Bunk 1 (Juniors)", value: "g1" },
+        { label: "Bunk 2 (Juniors)", value: "g2" }
+      ]);
+      expect(recurring.newRowDefaults).toEqual({
+        Program__c: "p1",
+        Name: "Recurring activity {n}",
+        Length__c: 1,
+        Monday__c: false,
+        Tuesday__c: false,
+        Wednesday__c: false,
+        Thursday__c: false,
+        Friday__c: false
+      });
+    });
+
+    it("asks for time blocks first", async () => {
+      const element = await render("fixedActivities", {
+        ...SET_TIME,
+        timeBlocks: []
+      });
+      expect(table(element)).toBeNull();
+      expect(element.shadowRoot.textContent).toContain(
+        "Main has no time blocks yet."
+      );
+    });
+  });
 });

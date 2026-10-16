@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>EventsOnly__c</fullName>
+    <fullName>Thursday__c</fullName>
     <description
-  >Only set-time items go in this block; the generator never places an activity in it.</description>
+  >It happens on Thursdays (only days its program runs).</description>
     <defaultValue>false</defaultValue>
-    <label>Events Only</label>
+    <label>Thursday</label>
     <trackTrending>false</trackTrending>
     <type>Checkbox</type>
 </CustomField>

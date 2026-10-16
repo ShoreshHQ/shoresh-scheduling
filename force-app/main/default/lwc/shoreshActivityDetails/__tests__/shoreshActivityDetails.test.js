@@ -45,7 +45,6 @@ const SETUP = {
       Id: "a1",
       Name: "Archery",
       SameDivisionOnly__c: false,
-      EventOnly__c: false,
       Eligibilities__r: [{ Id: "e1", Group__c: "g2" }]
     },
     {
@@ -154,7 +153,6 @@ describe("c-shoresh-activity-details", () => {
       SameDivisionOnly__c: true,
       EarlyWeekCount__c: 2,
       EarlyWeekByDay__c: "Wednesday",
-      EventOnly__c: false,
       Notes__c: null
     });
     expect(typeof onFailure).toBe("function");

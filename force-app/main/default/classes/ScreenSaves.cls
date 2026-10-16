@@ -1,6 +1,8 @@
 /**
  * Saving from the setup screens: only the kinds of record these screens edit, in user mode, all
- * or none, with "Runs in" week ticks saved together with their rows.
+ * or none, with "Runs in" week ticks (and, for recurring activities, who each covers) saved
+ * together with their rows. Clashes between fixed and recurring activities are checked once
+ * everything is written, and refuse the whole save.
  */
 public with sharing class ScreenSaves {
   // The only records these screens may save.
@@ -14,8 +16,20 @@ public with sharing class ScreenSaves {
     TimeBlock__c.SObjectType,
     LocationType__c.SObjectType,
     Location__c.SObjectType,
-    Activity__c.SObjectType
+    Activity__c.SObjectType,
+    FixedActivity__c.SObjectType,
+    RecurringActivity__c.SObjectType
   };
+
+  /** What a table sends with its rows: week ticks, and who each recurring activity covers. */
+  public class Extras {
+    @AuraEnabled
+    public List<RunsIn.WeekOff> weeksOff { get; set; }
+    @AuraEnabled
+    public List<Id> weeksBackOn { get; set; }
+    @AuraEnabled
+    public List<SetTimeWho.Who> who { get; set; }
+  }
 
   /** Creates new records and updates existing ones, with their week ticks. Returns the Ids in order. */
   public static List<Id> save(
@@ -23,12 +37,28 @@ public with sharing class ScreenSaves {
     List<RunsIn.WeekOff> weeksOff,
     List<Id> weeksBackOn
   ) {
+    Extras extras = new Extras();
+    extras.weeksOff = weeksOff;
+    extras.weeksBackOn = weeksBackOn;
+    return save(records, extras);
+  }
+
+  /** The same, with who each recurring activity covers. */
+  public static List<Id> save(List<SObject> records, Extras extras) {
     List<SObject> rows = records == null ? new List<SObject>() : records;
+    Extras given = extras == null ? new Extras() : extras;
     refuseWhatCannotBeSaved(rows);
+    SetTimeGuard.defer();
+    Savepoint beforeSave = Database.setSavepoint();
     try {
-      RunsIn.save(rows, weeksOff, weeksBackOn);
+      RunsIn.save(rows, given.weeksOff, given.weeksBackOn);
+      SetTimeWho.save(rows, given.who);
+      SetTimeGuard.checkPending();
     } catch (Exception e) {
+      Database.rollback(beforeSave);
       throw ScreenErrors.of(e);
+    } finally {
+      SetTimeGuard.resume();
     }
     List<Id> ids = new List<Id>();
     for (SObject record : rows) {

@@ -1,5 +1,18 @@
 /** Locations: the location type must belong to the same season as the location. */
 public with sharing class LocationTriggerHandler {
+  /** Before save: the season check. After update: fewer groups fitting (SetTimeTriggers). */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<Location__c> locations,
+    Map<Id, Location__c> before
+  ) {
+    if (operation == System.TriggerOperation.AFTER_UPDATE) {
+      SetTimeTriggers.locationsSaved(locations, before);
+    } else {
+      beforeSave(locations);
+    }
+  }
+
   public static void beforeSave(List<Location__c> locations) {
     Set<Id> typeIds = new Set<Id>();
     Set<Id> seasonIds = new Set<Id>();

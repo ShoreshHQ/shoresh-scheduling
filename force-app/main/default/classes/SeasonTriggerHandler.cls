@@ -1,7 +1,8 @@
 /**
  * Deleting a season. Refuses a season with published history. Otherwise clears the rows inside
  * the season that point at the season's own records through restrict-delete lookups (week
- * exceptions, activities and who can do them), which
+ * exceptions, who recurring activities cover, fixed and recurring activities, activities and
+ * who can do them), which
  * would otherwise block the whole delete (platform check (a)). Salesforce checks those lookups
  * after before-delete triggers run, so clearing them here lets the season go.
  */
@@ -28,25 +29,61 @@ public with sharing class SeasonTriggerHandler {
     }
     // System mode on purpose: these rows go with the season anyway (master-detail), and a
     // scheduler allowed to delete the season must not be stopped by a row they cannot see.
-    List<WeekException__c> exceptions = [
-      SELECT Id
-      FROM WeekException__c
-      WHERE Week__r.Season__c IN :deletable
-      WITH SYSTEM_MODE
-    ];
-    if (!exceptions.isEmpty()) {
-      Database.delete(exceptions, true, AccessLevel.SYSTEM_MODE);
+    // Nothing left behind can clash, so the fixed and recurring activity check is held off.
+    SetTimeGuard.defer();
+    try {
+      clear(
+        [
+          SELECT Id
+          FROM WeekException__c
+          WHERE Week__r.Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      // Who recurring activities cover points at the season's groups and divisions; fixed and
+      // recurring activities point at its time blocks and locations; activities at its
+      // locations, groups, and divisions (who can do them goes with them). All through
+      // restrict-delete lookups.
+      clear(
+        [
+          SELECT Id
+          FROM Coverage__c
+          WHERE Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      clear(
+        [
+          SELECT Id
+          FROM FixedActivity__c
+          WHERE Program__r.Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      clear(
+        [
+          SELECT Id
+          FROM RecurringActivity__c
+          WHERE Program__r.Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      clear(
+        [
+          SELECT Id
+          FROM Activity__c
+          WHERE Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+    } finally {
+      SetTimeGuard.resume();
     }
-    // Activities point at the season's locations, groups, and divisions through restrict-delete
-    // lookups. Deleting them first takes their who-can-do-it rows with them.
-    List<Activity__c> activities = [
-      SELECT Id
-      FROM Activity__c
-      WHERE Season__c IN :deletable
-      WITH SYSTEM_MODE
-    ];
-    if (!activities.isEmpty()) {
-      Database.delete(activities, true, AccessLevel.SYSTEM_MODE);
+  }
+
+  private static void clear(List<SObject> rows) {
+    if (!rows.isEmpty()) {
+      Database.delete(rows, true, AccessLevel.SYSTEM_MODE);
     }
   }
 }

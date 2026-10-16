@@ -15,9 +15,28 @@ deploys to the existing test org instead of creating one.
 ## How the checks use it
 
 The "Scratch org deploy and Apex tests" check logs in to the test org with the encrypted secret
-`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests. One run at a time, so two
-pull requests never deploy over each other. Because the test org is also used by hand, the
+`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests. One check at a time, so two
+pull requests never deploy over each other. Tests run one class at a time (see below). Because
+the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
+
+## Running Apex tests: one class at a time
+
+Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the
+test org is not your default org). It runs each test class on its own, directly
+(synchronously), and prints one line per class, a summary, and the coverage of this
+repository's classes and triggers (the check fails below 75%). CI uses the same script.
+
+Why: a queued run (`sf apex run test --test-level RunLocalTests`) counts every test class
+against the test org's **daily allowance of 500 queued test classes** (a rolling 24 hours).
+CI and every working session share the one test org, so on 2026-10-16 a busy day used it up,
+and every queued run then failed at once with "UNKNOWN_EXCEPTION" before any test started.
+Direct single-class runs do not count against that allowance. **Never queue a full
+`RunLocalTests` run in the test org.** To see what is left:
+`sf org list limits --target-org shoresh-test` (`DailyAsyncApexTests`).
+
+Coverage is read from the org's running totals for this repository's classes and triggers,
+so it is close to, but not exactly, what a single full run would report.
 
 ## When the test org expires (every 30 days)
 

@@ -92,7 +92,6 @@ public with sharing class SetupCopier {
         SameDivisionOnly__c,
         EarlyWeekCount__c,
         EarlyWeekByDay__c,
-        EventOnly__c,
         Notes__c,
         SortOrder__c
       FROM Activity__c

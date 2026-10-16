@@ -9,6 +9,7 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
+import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
@@ -38,6 +39,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho",
   () => apex(),
   { virtual: true }
 );
@@ -473,6 +479,87 @@ describe("c-shoresh-camp-setup", () => {
     expect(getSeasonSetup).toHaveBeenCalledTimes(2);
   });
 
+  it("saves recurring activities with their weeks and who each covers, and shows a refusal", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(setupWith());
+    saveRowsWeeksAndWho.mockResolvedValue([]);
+    const element = await render();
+    const recurring = q(
+      element,
+      'c-shoresh-program[data-id="recurring-activities"]'
+    );
+    expect(recurring.show).toBe("recurringActivities");
+    const detail = {
+      records: [{ sobjectType: "RecurringActivity__c", Name: "Swim" }],
+      weeksOff: [],
+      weeksBackOn: [],
+      who: [{ row: 0, targets: ["d1"] }]
+    };
+    recurring.dispatchEvent(new CustomEvent("save", { detail }));
+    await flush();
+    expect(saveRowsWeeksAndWho).toHaveBeenCalledWith({
+      records: detail.records,
+      extras: { weeksOff: [], weeksBackOn: [], who: detail.who }
+    });
+    expect(saveRowsAndWeeks).not.toHaveBeenCalled();
+
+    const refusal =
+      '"Flagpole" and "Swim" would both have Bunk 1 in Period 1 on Monday in Week 1.';
+    saveRowsWeeksAndWho.mockRejectedValue({ body: { message: refusal } });
+    const onFailure = jest.fn();
+    recurring.dispatchEvent(
+      new CustomEvent("save", { detail: { ...detail, onFailure } })
+    );
+    await flush();
+    expect(onFailure).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(refusal);
+  });
+
+  it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(
+      setupWith({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main", Monday__c: true },
+            timeBlocks: [
+              { Id: "t1", Name: "Period 1" },
+              { Id: "t9", Name: "Snack" },
+              { Id: "t2", Name: "Period 2" }
+            ],
+            divisions: [],
+            fixedActivities: [
+              {
+                Id: "f1",
+                Name: "Rest",
+                TimeBlock__c: "t1",
+                Length__c: 2,
+                LastTimeBlock__c: "t2"
+              }
+            ]
+          }
+        ]
+      })
+    );
+    saveRecords.mockResolvedValue(["f1"]);
+    const element = await render();
+    await openScreen(element, "fixedActivities");
+    const buttons = [
+      ...element.shadowRoot.querySelectorAll('[data-id="problem-action"]')
+    ];
+    expect(buttons.map((b) => b.label)).toEqual([
+      "Keep Period 1 – Snack",
+      "Stretch to Period 1 – Period 2"
+    ]);
+    buttons[1].click();
+    await flush();
+    expect(saveRecords).toHaveBeenCalledWith({
+      records: [{ sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }]
+    });
+  });
+
   it("tells a table with weeks when its save failed", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);
@@ -506,6 +593,8 @@ describe("c-shoresh-camp-setup", () => {
         "locations",
         "campWords",
         "activities",
+        "fixedActivities",
+        "recurringActivities",
         "roots"
       ];
       // One after another, as a director clicks down the menu.
@@ -529,7 +618,9 @@ describe("c-shoresh-camp-setup", () => {
         section.items.map((item) => [item.label, item.coming])
       );
       expect(items).toContainEqual(["Bunks", false]);
-      expect(items).toContainEqual(["Fixed activities", true]);
+      expect(items).toContainEqual(["Fixed activities", false]);
+      expect(items).toContainEqual(["Recurring activities", false]);
+      expect(items).toContainEqual(["Special events", true]);
       expect(items).toContainEqual(["Schedules", true]);
     });
 
@@ -545,7 +636,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(shownScreens(element)).toEqual(["groups"]);
       // A screen not built yet does not open.
       q(element, "c-shoresh-roots").dispatchEvent(
-        new CustomEvent("navigate", { detail: { screen: "fixedActivities" } })
+        new CustomEvent("navigate", { detail: { screen: "specialEvents" } })
       );
       await flush();
       expect(shownScreens(element)).toEqual(["groups"]);
