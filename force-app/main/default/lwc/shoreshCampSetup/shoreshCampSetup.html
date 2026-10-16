@@ -326,6 +326,63 @@
         </template>
       </section>
 
+      <section class="slds-m-top_large" data-id="locations-section">
+        <h2 class="slds-text-heading_medium slds-m-bottom_small">
+          {labels.locations}
+        </h2>
+        <c-shoresh-editable-table
+          data-id="location-types"
+          title={labels.locationTypes}
+          object-api-name="LocationType__c"
+          columns={locationTypeColumns}
+          rows={setup.locationTypes}
+          add-label={labels.addLocationType}
+          empty-message={labels.noLocationTypes}
+          new-row-defaults={locationTypeDefaults}
+          busy={busy}
+          onsave={handleSaveRecords}
+          ondelete={handleDeleteRecord}
+        ></c-shoresh-editable-table>
+        <c-shoresh-editable-table
+          data-id="locations"
+          title={labels.locations}
+          object-api-name="Location__c"
+          columns={locationColumns}
+          rows={setup.locations}
+          add-label={labels.addLocation}
+          empty-message={labels.noLocations}
+          new-row-defaults={locationDefaults}
+          busy={busy}
+          onsave={handleSaveRecords}
+          ondelete={handleDeleteRecord}
+        ></c-shoresh-editable-table>
+      </section>
+
+      <section class="slds-m-top_large" data-id="activities-section">
+        <h2 class="slds-text-heading_medium slds-m-bottom_small">
+          {labels.activities}
+        </h2>
+        <c-shoresh-editable-table
+          data-id="activities"
+          title={labels.catalogue}
+          object-api-name="Activity__c"
+          columns={activityColumns}
+          rows={setup.activities}
+          add-label={labels.addActivity}
+          empty-message={labels.noActivities}
+          new-row-defaults={activityDefaults}
+          busy={busy}
+          onsave={handleSaveRecords}
+          ondelete={handleDeleteRecord}
+        ></c-shoresh-editable-table>
+        <c-shoresh-activity-details
+          setup={setup}
+          terms={terms}
+          busy={busy}
+          onsave={handleSaveActivityDetails}
+        ></c-shoresh-activity-details>
+      </section>
+
       <c-shoresh-week-exceptions
         setup={setup}
         terms={terms}

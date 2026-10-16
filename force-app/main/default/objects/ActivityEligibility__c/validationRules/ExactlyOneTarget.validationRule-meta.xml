@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ExactlyOneTarget</fullName>
+    <active>true</active>
+    <description>Exactly one of division or group.</description>
+    <errorConditionFormula
+  >ISBLANK(Division__c) = ISBLANK(Group__c)</errorConditionFormula>
+    <errorMessage
+  >Choose exactly one: a whole division or one group.</errorMessage>
+</ValidationRule>

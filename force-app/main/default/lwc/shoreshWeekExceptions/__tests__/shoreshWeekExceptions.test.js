@@ -74,11 +74,13 @@ describe("c-shoresh-week-exceptions", () => {
 
   it("shows a row per group and a column per week, in the camp words", async () => {
     const element = await render();
-    expect(element.shadowRoot.querySelectorAll("tbody tr").length).toBe(2);
+    expect(
+      element.shadowRoot.querySelectorAll('tbody th[scope="row"]').length
+    ).toBe(2);
     expect(element.shadowRoot.textContent).toContain("Session 2");
     expect(element.shadowRoot.textContent).toContain("Main · Juniors");
     expect(element.shadowRoot.textContent).toContain(
-      "Tick each Session a Bunk does not run"
+      "Tick each Session a Bunk or activity does not run"
     );
     expect(box(element, "g2|w1").checked).toBe(true);
     expect(box(element, "g1|w1").checked).toBe(false);
@@ -198,5 +200,49 @@ describe("c-shoresh-week-exceptions", () => {
     await flush();
     button(element, "Save changes").click();
     expect(handler.mock.calls[0][0].detail.toRemove).toEqual(["x1", "x9"]);
+  });
+
+  it("adds activity and location rows, saving each mark on the right field", async () => {
+    const element = await render({
+      ...SETUP,
+      activities: [{ Id: "a1", Name: "Archery" }],
+      locations: [{ Id: "l1", Name: "Pool" }],
+      weekExceptions: [
+        ...SETUP.weekExceptions,
+        { Id: "x2", Location__c: "l1", Week__c: "w2" }
+      ]
+    });
+    expect(
+      element.shadowRoot.querySelectorAll('tbody th[scope="row"]').length
+    ).toBe(4);
+    expect(box(element, "l1|w2").checked).toBe(true);
+    expect(box(element, "l1|w1").label).toBe("Pool is closed in Session 1");
+    expect(box(element, "a1|w1").label).toBe(
+      "Archery does not run in Session 1"
+    );
+
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    tick(box(element, "a1|w1"), true);
+    tick(box(element, "l1|w2"), false);
+    await flush();
+    button(element, "Save changes").click();
+    const { toAdd, toRemove } = handler.mock.calls[0][0].detail;
+    expect(toAdd).toEqual([
+      { sobjectType: "WeekException__c", Activity__c: "a1", Week__c: "w1" }
+    ]);
+    expect(toRemove).toEqual(["x2"]);
+  });
+
+  it("shows activities and locations even before any groups exist", async () => {
+    const element = await render({
+      weeks: SETUP.weeks,
+      programs: [],
+      activities: [{ Id: "a1", Name: "Archery" }],
+      locations: [],
+      weekExceptions: []
+    });
+    expect(box(element, "a1|w2")).not.toBeNull();
+    expect(element.shadowRoot.textContent).not.toContain("first.");
   });
 });

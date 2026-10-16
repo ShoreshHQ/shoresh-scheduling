@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RainPlan__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The indoor activity that takes this one's place on a rainy day. Shoresh screens refuse to delete an activity that is another's rain plan; deleting it elsewhere clears this.</description>
+    <label>Rain Plan</label>
+    <referenceTo>Activity__c</referenceTo>
+    <relationshipLabel>Rain Plan For</relationshipLabel>
+    <relationshipName>RainPlanFor</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

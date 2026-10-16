@@ -21,7 +21,13 @@ const terms = buildTerms([
     plural: "Divisions",
     isCustom: false
   },
-  { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
+  { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
+  {
+    term: "RainPlan",
+    singular: "Wet-weather plan",
+    plural: "Wet-weather plans",
+    isCustom: true
+  }
 ]);
 
 const season = {
@@ -99,6 +105,48 @@ describe("setupProblems", () => {
     expect(setupProblems(setup, terms)).toEqual([
       '"Late" falls outside the dates of this season.',
       '"Session 1" and "Session 2" share dates.'
+    ]);
+  });
+});
+
+describe("activity nudges", () => {
+  const base = {
+    season,
+    weeks: [week("Session 1", "2026-06-29", "2026-07-03")],
+    programs: [fullProgram],
+    locations: [{ Id: "l1", Name: "Art room", GroupsThatFit__c: 2 }]
+  };
+
+  it("an outdoor activity without a rain plan needs attention", () => {
+    const setup = {
+      ...base,
+      activities: [
+        { Name: "Soccer", Outdoor__c: true, RainPlan__c: null },
+        { Name: "Kickball", Outdoor__c: true, RainPlan__c: "a9" },
+        { Name: "Art", Outdoor__c: false, RainPlan__c: null }
+      ]
+    };
+    expect(setupProblems(setup, terms)).toEqual([
+      '"Soccer" is outdoors and has no Wet-weather plan.'
+    ]);
+  });
+
+  it("an activity allowing more groups than its location fits needs attention", () => {
+    const setup = {
+      ...base,
+      activities: [
+        { Name: "Art", Location__c: "l1", GroupsAtOnce__c: 3 },
+        { Name: "Clay", Location__c: "l1", GroupsAtOnce__c: 2 },
+        {
+          Name: "Open studio",
+          Location__c: "l1",
+          GroupsAtOnce__c: 1,
+          NoGroupLimit__c: true
+        }
+      ]
+    };
+    expect(setupProblems(setup, terms)).toEqual([
+      '"Art" allows 3 Bunks at once, but "Art room" fits 2. Scheduling uses 2; change whichever number is wrong.'
     ]);
   });
 });

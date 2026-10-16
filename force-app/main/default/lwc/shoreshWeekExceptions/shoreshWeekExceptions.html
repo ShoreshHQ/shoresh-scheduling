@@ -12,7 +12,9 @@
         >
           <thead>
             <tr class="slds-line-height_reset">
-              <th scope="col">{labels.group}</th>
+              <th scope="col">
+                <span class="slds-assistive-text">{labels.title}</span>
+              </th>
               <template for:each={weeks} for:item="week">
                 <th key={week.id} scope="col" class="slds-text-align_center">
                   {week.name}
@@ -20,30 +22,39 @@
               </template>
             </tr>
           </thead>
-          <tbody>
-            <template for:each={rows} for:item="row">
-              <tr key={row.id}>
-                <th scope="row">
-                  <div>{row.name}</div>
-                  <div class="slds-text-color_weak slds-text-body_small">
-                    {row.place}
-                  </div>
+          <template for:each={sections} for:item="section">
+            <tbody key={section.key}>
+              <tr class="slds-theme_shade">
+                <th scope="colgroup" colspan={columnCount}>
+                  <span class="slds-text-title_caps">{section.heading}</span>
                 </th>
-                <template for:each={row.cells} for:item="cell">
-                  <td key={cell.key} class="slds-text-align_center">
-                    <lightning-input
-                      type="checkbox"
-                      variant="label-hidden"
-                      label={cell.label}
-                      checked={cell.checked}
-                      data-key={cell.key}
-                      onchange={handleTick}
-                    ></lightning-input>
-                  </td>
-                </template>
               </tr>
-            </template>
-          </tbody>
+              <template for:each={section.rows} for:item="row">
+                <tr key={row.id}>
+                  <th scope="row">
+                    <div>{row.name}</div>
+                    <template lwc:if={row.place}>
+                      <div class="slds-text-color_weak slds-text-body_small">
+                        {row.place}
+                      </div>
+                    </template>
+                  </th>
+                  <template for:each={row.cells} for:item="cell">
+                    <td key={cell.key} class="slds-text-align_center">
+                      <lightning-input
+                        type="checkbox"
+                        variant="label-hidden"
+                        label={cell.label}
+                        checked={cell.checked}
+                        data-key={cell.key}
+                        onchange={handleTick}
+                      ></lightning-input>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+            </tbody>
+          </template>
         </table>
       </div>
       <div class="slds-m-top_x-small">

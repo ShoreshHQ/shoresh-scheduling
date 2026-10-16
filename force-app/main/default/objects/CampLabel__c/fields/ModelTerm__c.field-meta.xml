@@ -96,6 +96,11 @@
                 <label>Location</label>
             </value>
             <value>
+                <fullName>LocationType</fullName>
+                <default>false</default>
+                <label>Location type</label>
+            </value>
+            <value>
                 <fullName>Placement</fullName>
                 <default>false</default>
                 <label>Placement</label>

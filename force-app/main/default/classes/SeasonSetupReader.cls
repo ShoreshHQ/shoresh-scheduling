@@ -1,6 +1,7 @@
 /**
  * Reads everything set up in one season, shaped the way the setup screen shows it:
- * the season, its weeks, and each program with its time blocks, divisions, and groups.
+ * the season, its weeks, each program with its time blocks, divisions, and groups, and the
+ * season's location types, locations, and activities (with who can do each).
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
@@ -32,8 +33,48 @@ public with sharing class SeasonSetupReader {
       ORDER BY StartDate__c, SortOrder__c
     ];
     result.programs = readPrograms(seasonId);
+    result.locationTypes = [
+      SELECT Id, Name, SortOrder__c
+      FROM LocationType__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ];
+    result.locations = [
+      SELECT Id, Name, GroupsThatFit__c, LocationType__c, Notes__c, SortOrder__c
+      FROM Location__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ];
+    result.activities = [
+      SELECT
+        Id,
+        Name,
+        Location__c,
+        Length__c,
+        TimesPerWeekMin__c,
+        TimesPerWeekMax__c,
+        NoWeeklyMax__c,
+        Priority__c,
+        Outdoor__c,
+        RainPlan__c,
+        GroupsAtOnce__c,
+        NoGroupLimit__c,
+        SameDivisionOnly__c,
+        EarlyWeekCount__c,
+        EarlyWeekByDay__c,
+        EventOnly__c,
+        Notes__c,
+        SortOrder__c,
+        (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
+      FROM Activity__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ];
     result.weekExceptions = [
-      SELECT Id, Week__c, Group__c
+      SELECT Id, Week__c, Group__c, Activity__c, Location__c
       FROM WeekException__c
       WHERE Week__r.Season__c = :seasonId
       WITH USER_MODE
@@ -111,6 +152,12 @@ public with sharing class SeasonSetupReader {
     public List<WeekException__c> weekExceptions;
     @AuraEnabled
     public List<ProgramSetup> programs;
+    @AuraEnabled
+    public List<LocationType__c> locationTypes;
+    @AuraEnabled
+    public List<Location__c> locations;
+    @AuraEnabled
+    public List<Activity__c> activities;
     @AuraEnabled
     public List<CampLabels.TermLabel> labels;
   }

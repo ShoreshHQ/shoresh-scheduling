@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EarlyWeekComplete</fullName>
+    <active>true</active>
+    <description
+  >The early-week rule needs both a count and a day, or neither.</description>
+    <errorConditionFormula
+  >OR(AND(ISBLANK(EarlyWeekCount__c), NOT(ISPICKVAL(EarlyWeekByDay__c, ""))), AND(NOT(ISBLANK(EarlyWeekCount__c)), ISPICKVAL(EarlyWeekByDay__c, "")))</errorConditionFormula>
+    <errorDisplayField>EarlyWeekCount__c</errorDisplayField>
+    <errorMessage
+  >Give both how many times and by which day, or leave both empty.</errorMessage>
+</ValidationRule>

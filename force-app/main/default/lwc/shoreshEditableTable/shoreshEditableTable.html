@@ -48,6 +48,20 @@
                         onchange={handleChange}
                       ></lightning-input>
                     </template>
+                    <template lwc:elseif={cell.isNumber}>
+                      <lightning-input
+                        type="number"
+                        label={cell.label}
+                        variant="label-hidden"
+                        value={cell.value}
+                        required={cell.required}
+                        min={cell.min}
+                        step="1"
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
+                      ></lightning-input>
+                    </template>
                     <template lwc:elseif={cell.isDate}>
                       <lightning-input
                         type="date"

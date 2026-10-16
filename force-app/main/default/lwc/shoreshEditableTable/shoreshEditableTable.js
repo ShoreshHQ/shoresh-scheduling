@@ -4,7 +4,9 @@ import { LightningElement, api } from "lwc";
  * A small table of records edited in place. Changes stay on screen until the scheduler
  * presses Save; nothing is saved behind their back.
  *
- * columns: [{ fieldName, label, type: 'text'|'date'|'time'|'checkbox'|'picklist', options, required }]
+ * columns: [{ fieldName, label, type: 'text'|'number'|'date'|'time'|'checkbox'|'picklist', options,
+ *   required, min, excludeSelf }]  (min: smallest number allowed, for number columns;
+ *   excludeSelf: a picklist of records leaves out the row's own record)
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen. Only this table's own successful save clears it.
  *
@@ -124,8 +126,14 @@ export default class ShoreshEditableTable extends LightningElement {
           fieldName: col.fieldName,
           label: col.label,
           required: !!col.required,
-          options: col.options,
+          options: col.excludeSelf
+            ? (col.options || []).filter(
+                (option) => !option.value || option.value !== draft.original.Id
+              )
+            : col.options,
           isText: col.type === "text" || !col.type,
+          isNumber: col.type === "number",
+          min: col.min,
           isDate: col.type === "date",
           isTime: col.type === "time",
           isCheckbox: col.type === "checkbox",
@@ -140,10 +148,15 @@ export default class ShoreshEditableTable extends LightningElement {
   handleChange(event) {
     const { rowKey, field } = event.target.dataset;
     const draft = this.drafts.find((d) => d.key === rowKey);
-    const value =
+    const column = this.columns.find((col) => col.fieldName === field);
+    let value =
       event.target.type === "checkbox" || event.target.type === "toggle"
         ? event.target.checked
         : event.detail.value;
+    if (column && column.type === "number") {
+      // The number input hands back text; Salesforce wants a number (or nothing).
+      value = value === "" || value === null ? null : Number(value);
+    }
     draft.values = { ...draft.values, [field]: value };
     if (!draft.isNew) {
       if (sameValue(value, draft.original[field])) {

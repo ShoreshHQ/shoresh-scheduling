@@ -311,4 +311,65 @@ describe("c-shoresh-editable-table", () => {
     expect(field(element, 0, "Name").value).toBe("Typed");
     expect(element.shadowRoot.querySelectorAll("tbody tr").length).toBe(3);
   });
+
+  it("number columns send numbers, and an emptied number as nothing", async () => {
+    const element = render({
+      objectApiName: "Location__c",
+      columns: [
+        { fieldName: "Name", label: "Name", type: "text", required: true },
+        {
+          fieldName: "GroupsThatFit__c",
+          label: "Groups that fit",
+          type: "number",
+          min: 1
+        }
+      ],
+      rows: [
+        { Id: "l1", Name: "Pool", GroupsThatFit__c: 2 },
+        { Id: "l2", Name: "Field", GroupsThatFit__c: 4 }
+      ]
+    });
+    await flush();
+    expect(field(element, 0, "GroupsThatFit__c").min).toBe(1);
+    change(field(element, 0, "GroupsThatFit__c"), "3");
+    change(field(element, 1, "GroupsThatFit__c"), "");
+    await flush();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    allValid(element);
+    button(element, "Save changes").click();
+    expect(handler.mock.calls[0][0].detail.records).toEqual([
+      { sobjectType: "Location__c", Id: "l1", GroupsThatFit__c: 3 },
+      { sobjectType: "Location__c", Id: "l2", GroupsThatFit__c: null }
+    ]);
+  });
+
+  it("a picklist of records can leave out the row's own record", async () => {
+    const element = render({
+      objectApiName: "Activity__c",
+      columns: [
+        { fieldName: "Name", label: "Name", type: "text" },
+        {
+          fieldName: "RainPlan__c",
+          label: "Rain plan",
+          type: "picklist",
+          excludeSelf: true,
+          options: [
+            { label: "None", value: "" },
+            { label: "Soccer", value: "a1" },
+            { label: "Gym games", value: "a2" }
+          ]
+        }
+      ],
+      rows: [
+        { Id: "a1", Name: "Soccer" },
+        { Id: "a2", Name: "Gym games" }
+      ]
+    });
+    await flush();
+    const labels = (i) =>
+      field(element, i, "RainPlan__c").options.map((o) => o.label);
+    expect(labels(0)).toEqual(["None", "Gym games"]);
+    expect(labels(1)).toEqual(["None", "Soccer"]);
+  });
 });

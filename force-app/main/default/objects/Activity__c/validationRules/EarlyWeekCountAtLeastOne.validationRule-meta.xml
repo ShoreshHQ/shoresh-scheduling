@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EarlyWeekCountAtLeastOne</fullName>
+    <active>true</active>
+    <description>An early-week count is 1 or more.</description>
+    <errorConditionFormula
+  >AND(NOT(ISBLANK(EarlyWeekCount__c)), EarlyWeekCount__c &lt; 1)</errorConditionFormula>
+    <errorDisplayField>EarlyWeekCount__c</errorDisplayField>
+    <errorMessage>Must be 1 or more.</errorMessage>
+</ValidationRule>

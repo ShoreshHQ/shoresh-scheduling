@@ -53,6 +53,37 @@ export function setupProblems(setup, terms) {
       }
     });
   });
+  problems.push(...activityProblems(setup, terms));
+  return problems;
+}
+
+/**
+ * Activity nudges (Greg, 2026-10-16). Neither blocks anything: an outdoor activity with no rain
+ * plan, and an activity allowing more groups at once than its location fits (the smaller number
+ * is what scheduling uses).
+ */
+function activityProblems(setup, terms) {
+  const problems = [];
+  const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
+  (setup.activities || []).forEach((activity) => {
+    if (activity.Outdoor__c && !activity.RainPlan__c) {
+      problems.push(
+        `"${activity.Name}" is outdoors and has no ${terms.sIn("RainPlan")}.`
+      );
+    }
+    const location = locations.get(activity.Location__c);
+    if (
+      location &&
+      !activity.NoGroupLimit__c &&
+      activity.GroupsAtOnce__c > location.GroupsThatFit__c
+    ) {
+      problems.push(
+        `"${activity.Name}" allows ${activity.GroupsAtOnce__c} ${terms.pIn("Group")} at once, ` +
+          `but "${location.Name}" fits ${location.GroupsThatFit__c}. Scheduling uses ` +
+          `${location.GroupsThatFit__c}; change whichever number is wrong.`
+      );
+    }
+  });
   return problems;
 }
 

@@ -1,5 +1,6 @@
 /**
- * Week exceptions for groups: "this group does not run this week". Saving marks and explaining,
+ * Week exceptions: "this group (or activity, or location) does not run this week". Saving marks
+ * and explaining,
  * in the camp's own words, why a group (or the division or program above it) cannot be deleted
  * while it is marked.
  */
@@ -35,39 +36,45 @@ public with sharing class WeekExceptions {
     }
   }
 
-  /** The marks to add, skipping any group and week already marked (one mark per pair). */
+  /** The marks to add, skipping any target and week already marked (one mark per pair). */
   private static List<WeekException__c> newMarks(List<WeekException__c> toAdd) {
+    List<WeekException__c> given = toAdd == null
+      ? new List<WeekException__c>()
+      : toAdd;
     Set<Id> weekIds = new Set<Id>();
-    for (
-      WeekException__c row : toAdd == null
-        ? new List<WeekException__c>()
-        : toAdd
-    ) {
+    for (WeekException__c row : given) {
       weekIds.add(row.Week__c);
     }
     Set<String> taken = new Set<String>();
     for (WeekException__c existing : [
-      SELECT Week__c, Group__c
+      SELECT Week__c, Group__c, Activity__c, Location__c
       FROM WeekException__c
       WHERE Week__c IN :weekIds
       WITH USER_MODE
     ]) {
-      taken.add(existing.Week__c + '|' + existing.Group__c);
+      taken.add(existing.Week__c + '|' + targetOf(existing));
     }
     List<WeekException__c> adds = new List<WeekException__c>();
-    for (
-      WeekException__c row : toAdd == null
-        ? new List<WeekException__c>()
-        : toAdd
-    ) {
-      // Only the week and group come from the screen.
-      if (taken.add(row.Week__c + '|' + row.Group__c)) {
+    for (WeekException__c row : given) {
+      // Only the week and its one target come from the screen.
+      if (taken.add(row.Week__c + '|' + targetOf(row))) {
         adds.add(
-          new WeekException__c(Week__c = row.Week__c, Group__c = row.Group__c)
+          new WeekException__c(
+            Week__c = row.Week__c,
+            Group__c = row.Group__c,
+            Activity__c = row.Activity__c,
+            Location__c = row.Location__c
+          )
         );
       }
     }
     return adds;
+  }
+
+  private static Id targetOf(WeekException__c row) {
+    return row.Group__c != null
+      ? row.Group__c
+      : row.Activity__c != null ? row.Activity__c : row.Location__c;
   }
 
   /**

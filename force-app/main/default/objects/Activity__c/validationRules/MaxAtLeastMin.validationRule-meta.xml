@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>MaxAtLeastMin</fullName>
+    <active>true</active>
+    <description
+  >The weekly maximum is at least the minimum, unless there is no maximum.</description>
+    <errorConditionFormula
+  >AND(NOT(NoWeeklyMax__c), OR(ISBLANK(TimesPerWeekMax__c), TimesPerWeekMax__c &lt; TimesPerWeekMin__c))</errorConditionFormula>
+    <errorDisplayField>TimesPerWeekMax__c</errorDisplayField>
+    <errorMessage
+  >Must be at least the minimum, or tick "no weekly maximum".</errorMessage>
+</ValidationRule>

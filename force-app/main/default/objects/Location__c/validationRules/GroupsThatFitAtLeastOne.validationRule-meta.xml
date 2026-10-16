@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GroupsThatFitAtLeastOne</fullName>
+    <active>true</active>
+    <description>At least one group fits.</description>
+    <errorConditionFormula
+  >OR(ISBLANK(GroupsThatFit__c), GroupsThatFit__c &lt; 1)</errorConditionFormula>
+    <errorDisplayField>GroupsThatFit__c</errorDisplayField>
+    <errorMessage>Must be 1 or more.</errorMessage>
+</ValidationRule>
