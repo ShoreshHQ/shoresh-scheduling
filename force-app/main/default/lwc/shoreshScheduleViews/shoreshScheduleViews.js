@@ -42,7 +42,7 @@ export function kindLabel(kind, t) {
     E: t.s("ElectiveSet"),
     D: t.s("SpecialDay"),
     S: t.s("SpecialEvent"),
-    T: "Trip"
+    T: t.s("Trip")
   }[kind];
 }
 

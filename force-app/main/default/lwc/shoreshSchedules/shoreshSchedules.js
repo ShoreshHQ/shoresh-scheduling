@@ -22,8 +22,8 @@ const ORIGINS = {
 };
 
 /**
- * The schedule page (desktop: the schedule screen): pick a program and a week, open one of its
- * versions from Versions, and look at it in Daily View (all groups for one day), Group View (one
+ * The schedule page (desktop: the schedule screen): pick a program and a week; its newest version
+ * opens by itself, Versions switches to another, and the director looks at it in Daily View (all groups for one day), Group View (one
  * group's week), or Activity View (where one activity runs across the week). Read-only: placing
  * and moving things comes with Manual Build.
  *
@@ -133,32 +133,21 @@ export default class ShoreshSchedules extends LightningElement {
     if (!loaded && key === this.loadedFor) {
       // Choosing the same week again tries again.
       this.loadedFor = null;
+    } else if (loaded && key === this.loadedFor && this.versions.length) {
+      // The newest version opens by itself (Greg, 2026-10-16); Versions switches to another.
+      await this.open(this.versions[0].id);
     }
   }
 
   // ---------- versions ----------
 
-  get newest() {
-    return this.versions.length ? this.versions[0] : null;
-  }
-  get openNewestLabel() {
-    return this.newest ? `Open ${this.newest.name}` : "";
-  }
   get openId() {
     return this.opened ? this.opened.schedule.id : null;
   }
 
-  handleOpenNewest() {
-    this.open(this.newest.id);
-  }
   handleOpenVersion(event) {
     this.open(event.detail.id);
   }
-  handleClose() {
-    this.openTicket += 1;
-    this.opened = null;
-  }
-
   async open(scheduleId) {
     this.openTicket += 1;
     const ticket = this.openTicket;
@@ -344,7 +333,7 @@ export default class ShoreshSchedules extends LightningElement {
       },
       {
         key: "not-set-up",
-        label: `Not set up yet (${[kindLabel("E", this.t), kindLabel("D", this.t), kindLabel("S", this.t), "Trip"].join(", ")})`,
+        label: `Not set up yet (${[kindLabel("E", this.t), kindLabel("D", this.t), kindLabel("S", this.t), kindLabel("T", this.t)].join(", ")})`,
         className: "swatch swatch_not-set-up"
       },
       {
@@ -368,7 +357,7 @@ export default class ShoreshSchedules extends LightningElement {
     if (this.versions.length === 0) {
       return `Nothing saved for ${this.weekName} yet. Manual Build and Generated Schedule are coming; bringing in last year's schedule (also coming) saves it here as a ${t.sIn("Version")}.`;
     }
-    return `Nothing is open. Open a ${t.sIn("Version")} to look at it. Manual Build and Generated Schedule are coming.`;
+    return `Nothing is open. Choose a ${t.sIn("Version")} from ${t.p("Version")}.`;
   }
 
   // ---------- helpers ----------

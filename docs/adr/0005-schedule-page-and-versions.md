@@ -14,7 +14,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
 1. **One Schedules screen** replaces the menu's "Coming" entry. Its toolbar follows the
    desktop's: the week (and the program, only when there is more than one), the **Daily View /
    Group View / Activity View** toggle (shown once a version is open, as the desktop shows it
-   once a schedule exists), then, after a divider, **Versions**. Manual Build and Generated
+   once a schedule exists), then, after a divider, **Versions**. The week's newest version
+   opens by itself when the page loads and when the week or program changes (Greg,
+   2026-10-16); a week with none says so. Manual Build and Generated
    Schedule are not on the page yet; Roots' "Build or generate the schedule" door stays Coming.
 2. **The three views are the desktop's**, read-only:
    - Daily View: day pills, a grid with time blocks down the side (name and a two-line time
@@ -29,7 +31,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    140px block column, equal columns, rows at least 48px). Nothing placed shows **Open**, as
    the desktop's empty cell does. Fixed and recurring activities have the desktop's anchor
    look (a bar down the left); things not set up yet (elective, special day, special event,
-   trip) a dashed box marked "not set up yet". A legend under Daily and Group View explains
+   trip) a dashed box marked "not set up yet". **Trip** is a new camp word (`ModelTerm__c`
+   value `Trip`) and glossary term (Greg, 2026-10-16), so a camp can use its own name. A legend under Daily and Group View explains
    the looks (the desktop shows one on Manual Build).
 3. **Versions** is the desktop's dropdown, shared by Manual Build and Generated Schedule (it
    lists every version of the program's week). Each row: name, how it was made (Imported,
@@ -38,8 +41,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    **Open** shows the version instead of **Restore** copying it into a working schedule;
    there is no **delete** and no "Name current version … Save version" footer. Any version can
    be renamed (the desktop renames only unnamed auto-saves); names are 1 to 80 characters. A
-   blue strip says which version is on screen, that it is read-only, and has **Close**.
-   With nothing open, the page offers **Open** + the newest version's name.
+   blue strip says which version is on screen and that it is read-only. **Open** in Versions
+   switches to another version.
 4. **A version shows what was saved, not today's setup.** Each day stores the names of its
    time blocks, groups, and items as they were (as the data model has published rows copy
    names). Anything it points at that has been deleted since still shows under its saved name,
@@ -141,14 +144,12 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
 - Picklist values: Status (Draft, Published, Version), Origin (Manual, Generated, Copied,
   Imported), VersionReason (Imported, SavedByHand). Values can be added later; removing or
   renaming them is the hard part.
+- Camp word `Trip` (a new `CampLabel__c.ModelTerm__c` value).
 - Grid format version 1 as above: once versions exist in camps' orgs, Shoresh must read it
   forever.
 
-## Proposed, not built
+## Settled with Greg (2026-10-16)
 
-- **Opening the newest version by itself.** The page opens on "Nothing is open" with a button
-  for the newest version, because the brief has "open a version" as the director's action.
-  If Greg prefers, the page could open the newest version straight away.
-- **Wording**: "not set up yet", "deleted since", "Open" for an empty cell (desktop), "Trip"
-  (not a glossary term; the glossary treats a trip day as a special day). Questions for Greg
-  are listed in the PR.
+- Words kept: **Open** (an empty cell, the desktop's word), **not set up yet**, **deleted
+  since**, **Trip** (added to the glossary and the camp words).
+- The newest version opens by itself; the first draft waited for an **Open** button.

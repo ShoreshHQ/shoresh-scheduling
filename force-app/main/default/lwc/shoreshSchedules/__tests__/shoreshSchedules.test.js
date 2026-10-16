@@ -71,18 +71,18 @@ describe("c-shoresh-schedules", () => {
     jest.clearAllMocks();
   });
 
-  it("lists the first week's versions and offers to open the newest", async () => {
+  it("lists the first week's versions and opens the newest by itself", async () => {
     getVersions.mockResolvedValue(VERSIONS);
+    openSchedule.mockResolvedValue(opened());
     const element = await render();
     expect(getVersions).toHaveBeenCalledWith({ programId: "p1", weekId: "w1" });
     expect(q(element, "c-shoresh-versions").versions).toEqual(VERSIONS);
     expect(q(element, '[data-id="program"]')).toBeNull(); // one program: no picker
-    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
-      "Nothing is open"
+    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s1" });
+    expect(q(element, '[data-id="viewing"]').textContent).toContain(
+      "Imported from sample-week.xlsx"
     );
-    expect(q(element, '[data-id="open-newest"]').label).toBe(
-      "Open Imported from sample-week.xlsx"
-    );
+    expect(q(element, '[data-id="nothing-open"]')).toBeNull();
   });
 
   it("says when a week has nothing saved yet", async () => {
@@ -91,7 +91,7 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
       "Nothing saved for Week 1 yet"
     );
-    expect(q(element, '[data-id="open-newest"]')).toBeNull();
+    expect(openSchedule).not.toHaveBeenCalled();
   });
 
   it("asks for weeks first when there are none", async () => {
@@ -160,18 +160,11 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="activity-cards"]')).not.toBeNull();
   });
 
-  it("closes the version, and another week starts with nothing open", async () => {
-    getVersions.mockResolvedValue(VERSIONS);
+  it("another week opens its own newest version, or says it has none", async () => {
+    getVersions.mockResolvedValueOnce(VERSIONS);
     openSchedule.mockResolvedValue(opened());
     const element = await render();
-    q(element, '[data-id="open-newest"]').click();
-    await flush();
-    q(element, '[data-id="close"]').click();
-    await flush();
-    expect(q(element, '[data-id="viewing"]')).toBeNull();
-
-    q(element, '[data-id="open-newest"]').click();
-    await flush();
+    getVersions.mockResolvedValueOnce([]);
     q(element, '[data-id="week"]').dispatchEvent(
       new CustomEvent("change", { detail: { value: "w2" } })
     );
@@ -181,14 +174,22 @@ describe("c-shoresh-schedules", () => {
       weekId: "w2"
     });
     expect(q(element, '[data-id="viewing"]')).toBeNull();
+    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
+      "Nothing saved for Week 2 yet"
+    );
+    getVersions.mockResolvedValueOnce(VERSIONS);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w1" } })
+    );
+    await flush();
+    expect(openSchedule).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="viewing"]')).not.toBeNull();
   });
 
   it("does not reload when the page hands the same setup again", async () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockResolvedValue(opened());
     const element = await render();
-    q(element, '[data-id="open-newest"]').click();
-    await flush();
     element.setup = { ...SETUP };
     await flush();
     expect(getVersions).toHaveBeenCalledTimes(1);
@@ -207,7 +208,7 @@ describe("c-shoresh-schedules", () => {
       "Lost access."
     );
     expect(q(element, "c-shoresh-versions").versions).toEqual([]);
-    expect(q(element, '[data-id="open-newest"]')).toBeNull();
+    expect(q(element, '[data-id="viewing"]')).toBeNull();
     getVersions.mockResolvedValueOnce([]);
     q(element, '[data-id="week"]').dispatchEvent(
       new CustomEvent("change", { detail: { value: "w2" } })
@@ -225,8 +226,8 @@ describe("c-shoresh-schedules", () => {
       })
     );
     const element = await render();
-    q(element, '[data-id="open-newest"]').click();
-    await flush();
+    // The newest version is still loading when another week is chosen.
+    getVersions.mockResolvedValue([]);
     q(element, '[data-id="week"]').dispatchEvent(
       new CustomEvent("change", { detail: { value: "w2" } })
     );
@@ -241,8 +242,6 @@ describe("c-shoresh-schedules", () => {
     openSchedule.mockResolvedValue(opened());
     renameSchedule.mockResolvedValue();
     const element = await render();
-    q(element, '[data-id="open-newest"]').click();
-    await flush();
     const onDone = jest.fn();
     q(element, "c-shoresh-versions").dispatchEvent(
       new CustomEvent("rename", {

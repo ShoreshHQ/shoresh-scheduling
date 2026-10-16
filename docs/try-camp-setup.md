@@ -244,14 +244,16 @@ save one), so first add a made-up one.
    Week 1 back if it was deleted).
 2. Reload the Shoresh tab. A **Camp** picker appears at the top: choose _Sample Camp (made
    up)_. Click **Schedules** in the menu.
-3. The toolbar shows **Week** (_Week 1_) and, on the right after a divider, **Versions**. The
-   middle says _Nothing is open. Open a version to look at it._ with a button **Open Imported
-   from sample-week.xlsx (made up)**.
-4. Click **Versions**. The list (titled **Versions**) shows that version, _Imported_ and when
-   it was saved, with **rename** and **Open**. Click **Open**.
-5. A blue strip says _Looking at a version: Imported from sample-week.xlsx (made up) ·
-   Imported · (date) · read-only_, with **Close**. The **Daily View / Group View / Activity
-   View** toggle appears, as on the desktop.
+3. The newest version opens by itself. The toolbar shows **Week** (_Week 1_), the **Daily View
+   / Group View / Activity View** toggle (as on the desktop), and, on the right after a
+   divider, **Versions**. A blue strip says _Looking at a version: Imported from
+   sample-week.xlsx (made up) · Imported · (date) · read-only_.
+4. Click **Versions**. The list (titled **Versions**) shows each version, newest first, with
+   _Imported_ and when it was saved, **rename** and **Open**; the one showing says _on screen
+   now_. **Open** on another version switches to it. (If you ran the script twice, there are
+   two with the same name.)
+5. Changing **Week** opens that week's newest version, or says _Nothing saved for … yet_ if it
+   has none.
 6. **Daily View** (all bunks for one day): day pills Monday to Friday. Monday shows a column
    per bunk and a row per time block, each with its times. Boating runs two blocks and fills
    both rows. Morning meeting (Monday Period 1) and Lunch have a grey bar down the left: they
@@ -270,7 +272,7 @@ save one), so first add a made-up one.
    **Save**). The list and the blue strip both say _Last summer_. A blank name is refused:
    _Give the version a name._
 10. **Cells cannot be changed here**, on purpose: placing and moving things comes with Manual
-    Build. **Close** puts the page back to _Nothing is open_.
+    Build.
 11. **Something deleted since the version was saved** still shows under its saved name, marked
     _deleted since_. Try it: on **Activities**, delete _Art_, then open the version again.
 12. **Deleting the week takes its versions.** On **Weeks**, delete _Week 1_: the confirmation

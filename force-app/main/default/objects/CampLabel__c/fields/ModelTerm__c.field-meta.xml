@@ -171,6 +171,11 @@
                 <label>Special day</label>
             </value>
             <value>
+                <fullName>Trip</fullName>
+                <default>false</default>
+                <label>Trip</label>
+            </value>
+            <value>
                 <fullName>GroupsThatFit</fullName>
                 <default>false</default>
                 <label>Groups that fit</label>

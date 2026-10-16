@@ -84,14 +84,6 @@
           ></lightning-formatted-date-time>
           · read-only
         </span>
-        <button
-          type="button"
-          class="link"
-          onclick={handleClose}
-          data-id="close"
-        >
-          Close
-        </button>
       </div>
 
       <template lwc:if={hasNoDays}>
@@ -217,15 +209,6 @@
     <template lwc:elseif={canChoose}>
       <div class="empty-state" data-id="nothing-open">
         <p>{emptyMessage}</p>
-        <template lwc:if={newest}>
-          <lightning-button
-            class="slds-m-top_small"
-            variant="brand"
-            label={openNewestLabel}
-            onclick={handleOpenNewest}
-            data-id="open-newest"
-          ></lightning-button>
-        </template>
       </div>
     </template>
     <template lwc:else>

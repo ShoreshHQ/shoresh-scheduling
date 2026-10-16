@@ -79,17 +79,6 @@
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
 
-.link {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
 /* Day and group pills, centred above the grid. */
 .pills {
   display: flex;
