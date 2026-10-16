@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CoverageSavedAt__c</fullName>
+    <description
+  >When Shoresh last recorded which time blocks it covers (with Last Time Block). If its first time block is changed after this, a changed-blocks note offers only keeping what it covers now.</description>
+    <label>Coverage Saved At</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

@@ -98,8 +98,11 @@ wins.
     Keep saves the last block it now covers; Stretch and Keep the shorter save a new length,
     which goes through every clash check, and a refusal leaves the note in place. Only these,
     or changing the item's time block or length, clear the note: renaming it or changing its
-    location does not. Where only one fix makes sense (its old end is now before its start),
-    only that one is offered, with the reason. Labels use the camp's words and block names.
+    location does not. Where only keeping it makes sense, only that is offered, with the reason:
+    its first block was changed (moved) after the coverage was saved (`CoverageSavedAt__c`
+    against that block's last change); it now runs to the end of the day with its old end gone;
+    or its old end is now before its start. No fix ever saves a length below 1. (An item cannot
+    be left running past the end of the day: that delete or move is refused first.) Labels use the camp's words and block names.
     Clicking the Needs attention item on Roots opens the item's screen, where both fixes are on
     its attention item and its row.
 
@@ -115,7 +118,7 @@ wins.
 - Both items are details of the program (not the season), and `Coverage__c` a detail of the
   season.
 - `Length__c` counts time blocks, starting at `TimeBlock__c`; `LastTimeBlock__c` (clear on
-  delete) remembers where it ended when saved.
+  delete) remembers where it ended when saved, and `CoverageSavedAt__c` when.
 - Recurring days are five checkboxes, Monday to Friday (day camps only, decision 0001).
 - No coverage rows means everyone in the program (no `AllGroups__c`).
 - The restrict-delete lookups: time block, location, coverage targets, and week exceptions'

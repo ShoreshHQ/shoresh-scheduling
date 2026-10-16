@@ -200,12 +200,22 @@ function range(first, last) {
   return first.Id === last.Id ? first.Name : `${first.Name} – ${last.Name}`;
 }
 
+/** Whether the item's first block was changed (say, moved) after its coverage was saved. */
+function startMoved(first, item) {
+  return (
+    !!item.CoverageSavedAt__c &&
+    !!first.LastModifiedDate &&
+    new Date(first.LastModifiedDate) > new Date(item.CoverageSavedAt__c)
+  );
+}
+
 /**
  * When time blocks were added, moved, or deleted after a fixed or recurring activity was saved, so
  * it now covers different blocks (Greg, 2026-10-16: show it, with real fixes, each saying exactly
  * what it will cover). Returns null when it covers what it did, or
  * { why, actions: [{ key, label, changes }] } where changes are the fields a fix saves: the last
  * block it covers now (keep the new coverage), or a new length (back to where it used to end).
+ * Only fixes that make sense are offered; when only keeping it does, the note says why.
  */
 export function spanChange(entry, item, terms) {
   const blocks = entry.timeBlocks || [];
@@ -222,60 +232,77 @@ export function spanChange(entry, item, terms) {
   }
   const was = blocks.findIndex((block) => block.Id === item.LastTimeBlock__c);
   const first = blocks[start];
-  const keepNow = { LastTimeBlock__c: blocks[now].Id };
+  const covers = (end) => range(first, blocks[end]);
   const changed = `${terms.p("TimeBlock")} changed since it was saved:`;
+  const keep = {
+    key: "keep",
+    label: `Keep ${covers(now)}`,
+    changes: { LastTimeBlock__c: blocks[now].Id }
+  };
+  const keepOnly = (reason) => ({
+    why: `${changed} it now covers ${covers(now)}. ${reason}`,
+    actions: [keep]
+  });
+  if (startMoved(first, item)) {
+    return keepOnly(
+      `${first.Name}, where it starts, was changed, so it can only be kept as it is ` +
+        `(or change its ${terms.sIn("Length")} yourself).`
+    );
+  }
   if (was > now) {
     // A block added inside it: it now stops short of where it used to end.
     return {
-      why: `${changed} it covered ${range(first, blocks[was])} and now covers ${range(first, blocks[now])}.`,
+      why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
       actions: [
-        {
-          key: "keep",
-          label: `Keep ${range(first, blocks[now])}`,
-          changes: keepNow
-        },
+        keep,
         {
           key: "stretch",
-          label: `Stretch to ${range(first, blocks[was])}`,
+          label: `Stretch to ${covers(was)}`,
           changes: { Length__c: was - start + 1 }
         }
       ]
     };
   }
-  if (was >= start || (was < 0 && length > 1)) {
+  if (was >= start) {
     // A block inside it removed (or moved away): it now runs on past where it used to end.
-    const end = was >= start ? was : now - 1;
     return {
-      why:
-        was >= start
-          ? `${changed} it covered ${range(first, blocks[was])} and now covers ${range(first, blocks[now])}.`
-          : `${changed} the ${terms.sIn("TimeBlock")} it ended in was deleted, and it now covers ${range(first, blocks[now])}.`,
-      actions: [
-        {
-          key: "shorter",
-          label: `Keep the shorter ${range(first, blocks[end])}`,
-          changes: { Length__c: end - start + 1 }
-        },
-        {
-          key: "extend",
-          label: `Extend to ${blocks[now].Name}`,
-          changes: keepNow
-        }
-      ]
+      why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
+      actions: [shorter(covers, start, was), extend(keep, blocks[now])]
     };
   }
-  // Where it used to end is now before where it starts: only the new coverage makes sense.
+  if (was < 0 && start + length <= blocks.length && length > 1) {
+    // The block it ended in was deleted: it now runs one block further.
+    return {
+      why: `${changed} the ${terms.sIn("TimeBlock")} it ended in was deleted, and it now covers ${covers(now)}.`,
+      actions: [shorter(covers, start, now - 1), extend(keep, blocks[now])]
+    };
+  }
+  if (was < 0 && start + length > blocks.length) {
+    return keepOnly(
+      "It now runs to the end of the day, so it can only be kept as it is."
+    );
+  }
+  if (was >= 0) {
+    return keepOnly(
+      "Where it used to end is now earlier than where it starts, so it can only be kept as it is."
+    );
+  }
+  return keepOnly("It can only be kept as it is.");
+}
+
+function shorter(covers, start, end) {
   return {
-    why:
-      `${changed} it now covers ${range(first, blocks[now])}. ` +
-      `Where it used to end is now earlier than where it starts, so it can only be kept as it is.`,
-    actions: [
-      {
-        key: "keep",
-        label: `Keep ${range(first, blocks[now])}`,
-        changes: keepNow
-      }
-    ]
+    key: "shorter",
+    label: `Keep the shorter ${covers(end)}`,
+    changes: { Length__c: end - start + 1 }
+  };
+}
+
+function extend(keep, last) {
+  return {
+    key: "extend",
+    label: `Extend to ${last.Name}`,
+    changes: keep.changes
   };
 }
 

@@ -457,6 +457,65 @@ private class SetTimeSetupTest {
   }
 
   @IsTest
+  static void onlyATimeBlockOrLengthChangeOrAFixRecordsCoverageAgain() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      Id restId = saveRest(ids);
+      Datetime savedAt = coverageSavedAt(restId);
+      Assert.isNotNull(savedAt);
+      Database.insert(
+        new TimeBlock__c(
+          Program__c = ids.get('Main'),
+          Name = 'Snack',
+          StartTime__c = Time.newInstance(9, 50, 0, 0),
+          EndTime__c = Time.newInstance(9, 55, 0, 0),
+          PartOfDay__c = 'Morning'
+        ),
+        AccessLevel.USER_MODE
+      );
+      // A new location (and a new name) leave the note and when it was recorded alone.
+      SetTimeTestData.save(
+        new List<SObject>{
+          new FixedActivity__c(
+            Id = restId,
+            Name = 'Quiet time',
+            Location__c = ids.get('Gym')
+          )
+        }
+      );
+      Assert.areEqual(ids.get('Period 2'), lastBlock(restId), 'Note stays');
+      Assert.areEqual(savedAt, coverageSavedAt(restId));
+      // Its first block changed later: the screens see that block's change time is newer.
+      Database.update(
+        new TimeBlock__c(
+          Id = ids.get('Period 1'),
+          StartTime__c = Time.newInstance(8, 0, 0, 0),
+          EndTime__c = Time.newInstance(8, 45, 0, 0)
+        ),
+        AccessLevel.USER_MODE
+      );
+      TimeBlock__c first = [
+        SELECT LastModifiedDate
+        FROM TimeBlock__c
+        WHERE Id = :ids.get('Period 1')
+        WITH SYSTEM_MODE
+      ];
+      Assert.isTrue(first.LastModifiedDate >= savedAt);
+    }
+  }
+
+  private static Datetime coverageSavedAt(Id itemId) {
+    return [
+      SELECT CoverageSavedAt__c
+      FROM FixedActivity__c
+      WHERE Id = :itemId
+      WITH SYSTEM_MODE
+    ]
+    .CoverageSavedAt__c;
+  }
+
+  @IsTest
   static void aBlockAddedInsideAnItemCanBeStretchedOver() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();

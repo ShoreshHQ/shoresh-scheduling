@@ -424,6 +424,87 @@ describe("fixed and recurring activities", () => {
       expect(shorter.actions[0].changes).toEqual({ Length__c: 2 });
     });
 
+    it("at the end of the day, with its last block gone, only keeping makes sense", () => {
+      // Rest: Period 3, length 2 (Period 3 – Period 4); Period 4 deleted.
+      const atEnd = spanChange(
+        withBlocks([P1, P2, P3]),
+        { TimeBlock__c: "b3", Length__c: 2, LastTimeBlock__c: null },
+        terms
+      );
+      expect(atEnd.why).toBe(
+        "Time blocks changed since it was saved: it now covers Period 3. " +
+          "It now runs to the end of the day, so it can only be kept as it is."
+      );
+      expect(atEnd.actions.map((a) => [a.label, a.changes])).toEqual([
+        ["Keep Period 3", { LastTimeBlock__c: "b3" }]
+      ]);
+      // Rest: Period 2, length 3 (Period 2 – Period 4); Period 4 deleted.
+      const shorterDay = spanChange(
+        withBlocks([P1, P2, P3]),
+        { TimeBlock__c: "b2", Length__c: 3, LastTimeBlock__c: null },
+        terms
+      );
+      expect(shorterDay.actions.map((a) => a.label)).toEqual([
+        "Keep Period 2 – Period 3"
+      ]);
+      // Never a length below 1 anywhere.
+      [atEnd, shorterDay].forEach((moved) =>
+        moved.actions.forEach((a) =>
+          expect(
+            a.changes.Length__c === undefined || a.changes.Length__c >= 1
+          ).toBe(true)
+        )
+      );
+    });
+
+    it("when the block it starts in was moved, only keeping makes sense", () => {
+      // Rest: Period 3, length 2 (Period 3 – Period 4); Period 3 then moved before Period 1.
+      const P4 = { Id: "b4", Name: "Period 4", PartOfDay__c: "Morning" };
+      const movedP3 = { ...P3, LastModifiedDate: "2026-10-16T15:00:00.000Z" };
+      const item = {
+        TimeBlock__c: "b3",
+        Length__c: 2,
+        LastTimeBlock__c: "b4",
+        CoverageSavedAt__c: "2026-10-16T14:00:00.000Z"
+      };
+      const moved = spanChange(withBlocks([movedP3, P1, P2, P4]), item, terms);
+      expect(moved.why).toBe(
+        "Time blocks changed since it was saved: it now covers Period 3 – Period 1. " +
+          "Period 3, where it starts, was changed, so it can only be kept as it is " +
+          "(or change its length yourself)."
+      );
+      expect(moved.actions.map((a) => a.label)).toEqual([
+        "Keep Period 3 – Period 1"
+      ]);
+      // A block added inside, with the first block untouched, still offers the stretch.
+      const added = spanChange(
+        withBlocks([
+          P1,
+          P2,
+          { ...P3, LastModifiedDate: "2026-10-16T13:00:00.000Z" },
+          SNACK,
+          P4
+        ]),
+        item,
+        terms
+      );
+      expect(added.actions.map((a) => a.label)).toEqual([
+        "Keep Period 3 – Snack",
+        "Stretch to Period 3 – Period 4"
+      ]);
+    });
+
+    it("with no saved end and nothing else to offer, says so plainly", () => {
+      const plain = spanChange(
+        withBlocks([P1, P2]),
+        { TimeBlock__c: "b1", Length__c: 1, LastTimeBlock__c: null },
+        terms
+      );
+      expect(plain.why).toBe(
+        "Time blocks changed since it was saved: it now covers Period 1. It can only be kept as it is."
+      );
+    });
+
     it("offers only what makes sense, and says why", () => {
       // Its old end moved before its start.
       const moved = spanChange(
