@@ -2,7 +2,7 @@ import { createElement } from "lwc";
 import ShoreshCampLabels from "c/shoreshCampLabels";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
-import canEditCampWords from "@salesforce/apex/SeasonSetupController.canEditCampWords";
+import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
 
 jest.mock(
   "@salesforce/apex/SeasonSetupController.getLabels",
@@ -10,7 +10,7 @@ jest.mock(
   { virtual: true }
 );
 jest.mock(
-  "@salesforce/apex/SeasonSetupController.canEditCampWords",
+  "@salesforce/apex/SeasonSetupController.campWordsBlockedReason",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -48,9 +48,9 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render(canEdit = true) {
+async function render(blockedReason = null) {
   getLabels.mockResolvedValue(LABELS);
-  canEditCampWords.mockResolvedValue(canEdit);
+  campWordsBlockedReason.mockResolvedValue(blockedReason);
   const element = createElement("c-shoresh-camp-labels", {
     is: ShoreshCampLabels
   });
@@ -139,10 +139,12 @@ describe("c-shoresh-camp-labels", () => {
   });
 
   it("explains, and blocks saving, when this person cannot change the camp words", async () => {
-    const element = await render(false);
+    const element = await render(
+      "Your Salesforce admin has limited who can change this camp."
+    );
     expect(
       element.shadowRoot.querySelector('[data-id="read-only"]').textContent
-    ).toContain("Only the person who set up this camp");
+    ).toContain("Your Salesforce admin has limited who can change this camp.");
     expect(input(element, "Group", "singular").disabled).toBe(true);
     const save = [
       ...element.shadowRoot.querySelectorAll("lightning-button")

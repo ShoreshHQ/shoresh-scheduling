@@ -107,6 +107,32 @@ public with sharing class CampLabels {
   }
 
   /**
+   * Why this person cannot change a camp's labels, or null when they can. Anyone with the
+   * Shoresh Scheduler permission set can (Greg, 2026-10-15), unless an admin has narrowed
+   * access to camp records.
+   */
+  public static String whyCannotEdit(Id campId) {
+    Schema.DescribeSObjectResult labels = Schema.sObjectType.CampLabel__c;
+    if (
+      !labels.isCreateable() ||
+      !labels.isUpdateable() ||
+      !labels.isDeletable()
+    ) {
+      return 'You don\'t have access to change camp words. A Salesforce admin can give you the Shoresh Scheduler permission set.';
+    }
+    List<UserRecordAccess> access = [
+      SELECT RecordId, HasEditAccess
+      FROM UserRecordAccess
+      WHERE UserId = :UserInfo.getUserId() AND RecordId = :campId
+      WITH SYSTEM_MODE
+    ];
+    if (access.isEmpty() || !access[0].HasEditAccess) {
+      return 'Your Salesforce admin has limited who can change this camp, so you can\'t change its words. Ask them for edit access to the camp.';
+    }
+    return null;
+  }
+
+  /**
    * Saves a camp's words from the label editor, all or none. A term with both words blank,
    * or with exactly the model term's words, goes back to the model term.
    */

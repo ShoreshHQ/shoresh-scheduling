@@ -395,28 +395,40 @@ private class SeasonSetupControllerTest {
   }
 
   @IsTest
-  static void onlyTheCampOwnerCanChangeCampWords() {
-    User owner = ShoreshTestData.scheduler();
+  static void anySchedulerCanChangeCampWords() {
+    User creator = ShoreshTestData.scheduler();
     User other = ShoreshTestData.scheduler();
     Camp__c camp;
-    System.runAs(owner) {
+    System.runAs(creator) {
       camp = ShoreshTestData.camp('Camp Willow');
-      Assert.isTrue(SeasonSetupController.canEditCampWords(camp.Id));
     }
     System.runAs(other) {
-      Assert.isFalse(SeasonSetupController.canEditCampWords(camp.Id));
+      Assert.isNull(SeasonSetupController.campWordsBlockedReason(camp.Id));
       List<CampLabels.TermLabel> labels = SeasonSetupController.getLabels(
         camp.Id
       );
       setWords(labels, 'Group', 'Bunk/Bunks');
+      SeasonSetupController.saveCampLabels(camp.Id, labels);
+      Assert.areEqual('Bunk', CampLabels.forCamp(camp.Id).singular('Group'));
+    }
+  }
+
+  @IsTest
+  static void someoneWithoutShoreshAccessCannotChangeCampWords() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    List<CampLabels.TermLabel> labels = CampLabels.forCamp(camp.Id).all();
+    setWords(labels, 'Group', 'Bunk/Bunks');
+    System.runAs(ShoreshTestData.outsider()) {
+      String expected = 'You don\'t have access to change camp words. A Salesforce admin can give you the Shoresh Scheduler permission set.';
+      Assert.areEqual(
+        expected,
+        SeasonSetupController.campWordsBlockedReason(camp.Id)
+      );
       try {
         SeasonSetupController.saveCampLabels(camp.Id, labels);
-        Assert.fail('Someone else\'s camp words are refused');
+        Assert.fail('No Shoresh access, no changes');
       } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'You don\'t have permission to change this. Ask the person who set it up, or a Salesforce admin.',
-          errorOf(e)
-        );
+        Assert.areEqual(expected, errorOf(e));
       }
     }
     Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c WITH SYSTEM_MODE]);
