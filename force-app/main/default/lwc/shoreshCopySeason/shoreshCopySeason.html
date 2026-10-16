@@ -1,0 +1,136 @@
+<template>
+  <article class="slds-card slds-card_boundary">
+    <div class="slds-card__header">
+      <h2 class="slds-text-heading_medium">{labels.title}</h2>
+    </div>
+    <div class="slds-card__body slds-card__body_inner">
+      <p class="slds-m-bottom_small">{labels.intro}</p>
+      <div class="slds-grid slds-wrap slds-gutters_small">
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+          <lightning-input
+            label={labels.name}
+            value={newName}
+            required
+            onchange={handleName}
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+          <lightning-input
+            type="date"
+            label={labels.start}
+            value={newStart}
+            required
+            onchange={handleStart}
+          ></lightning-input>
+        </div>
+      </div>
+      <template lwc:if={error}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error slds-m-top_small"
+          role="alert"
+        >
+          {error}
+        </div>
+      </template>
+      <template lwc:if={weekdayWarning}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_warning slds-m-top_small"
+          role="alert"
+          data-id="weekday-warning"
+        >
+          {weekdayWarning}
+        </div>
+      </template>
+      <template lwc:if={preview}>
+        <h3
+          class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small"
+        >
+          {labels.weeks}
+        </h3>
+        <p class="slds-m-bottom_x-small" data-id="new-dates">
+          <lightning-formatted-date-time
+            value={preview.startDate}
+            weekday="long"
+            year="numeric"
+            month="long"
+            day="numeric"
+            time-zone="UTC"
+          ></lightning-formatted-date-time>
+          to
+          <lightning-formatted-date-time
+            value={preview.endDate}
+            weekday="long"
+            year="numeric"
+            month="long"
+            day="numeric"
+            time-zone="UTC"
+          ></lightning-formatted-date-time>
+        </p>
+        <template lwc:if={hasPreviewWeeks}>
+          <table
+            class="slds-table slds-table_cell-buffer slds-table_bordered"
+            aria-label={labels.weeks}
+          >
+            <thead>
+              <tr>
+                <th scope="col">{labels.week}</th>
+                <th scope="col">Was</th>
+                <th scope="col">Will be</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template for:each={previewWeeks} for:item="week">
+                <tr key={week.key}>
+                  <td>{week.name}</td>
+                  <td>
+                    <lightning-formatted-date-time
+                      value={week.oldStartDate}
+                      time-zone="UTC"
+                    ></lightning-formatted-date-time>
+                    –
+                    <lightning-formatted-date-time
+                      value={week.oldEndDate}
+                      time-zone="UTC"
+                    ></lightning-formatted-date-time>
+                  </td>
+                  <td>
+                    <lightning-formatted-date-time
+                      value={week.startDate}
+                      weekday="short"
+                      year="numeric"
+                      month="short"
+                      day="numeric"
+                      time-zone="UTC"
+                    ></lightning-formatted-date-time>
+                    –
+                    <lightning-formatted-date-time
+                      value={week.endDate}
+                      weekday="short"
+                      year="numeric"
+                      month="short"
+                      day="numeric"
+                      time-zone="UTC"
+                    ></lightning-formatted-date-time>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+      </template>
+    </div>
+    <footer class="slds-card__footer">
+      <lightning-button
+        label="Cancel"
+        onclick={handleCancel}
+      ></lightning-button>
+      <lightning-button
+        class="slds-m-left_x-small"
+        variant="brand"
+        label={labels.copy}
+        onclick={handleCopy}
+        disabled={copyDisabled}
+      ></lightning-button>
+    </footer>
+  </article>
+</template>

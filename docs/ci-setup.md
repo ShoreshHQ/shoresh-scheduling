@@ -24,6 +24,7 @@ once by hand. Until then the "Scratch org deploy and Apex tests" check fails wit
    Usually nothing is printed; step 3 confirms it worked.
    If you see `command not found: jq`, run `brew install jq` and try again.
    If you see `NOT SET` or anything else, stop and tell Claude what it says.
+
 3. Check it is there:
 
    ```bash
@@ -32,6 +33,7 @@ once by hand. Until then the "Scratch org deploy and Apex tests" check fails wit
 
    The list should show `SFDX_AUTH_URL_DEVHUB` with today's date. (GitHub never shows the
    value again, only the name.)
+
 4. Re-run the failed check: open the pull request on GitHub, click the **Checks** tab, choose
    **CI**, then **Re-run all jobs**. Or tell Claude "the secret is set" and Claude will re-run it.
 

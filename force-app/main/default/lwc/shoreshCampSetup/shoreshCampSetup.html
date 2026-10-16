@@ -1,0 +1,330 @@
+<template>
+  <div class="slds-card slds-p-around_medium">
+    <template lwc:if={isLoading}>
+      <lightning-spinner alternative-text="Loading"></lightning-spinner>
+    </template>
+
+    <template lwc:if={error}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium"
+        role="alert"
+        data-id="error"
+      >
+        {error}
+      </div>
+    </template>
+
+    <!-- First visit: no camp yet -->
+    <template lwc:if={isNoCamp}>
+      <h2 class="slds-text-heading_medium slds-m-bottom_small">
+        Welcome to Shoresh
+      </h2>
+      <p class="slds-m-bottom_small">Start by naming your camp.</p>
+      <div class="slds-grid slds-grid_vertical-align-end slds-gutters_small">
+        <div class="slds-col">
+          <lightning-input
+            data-id="camp-name"
+            label="Camp name"
+            value={newCamp.Name}
+            required
+            onchange={handleNewCampName}
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-grow-none">
+          <lightning-button
+            variant="brand"
+            label="Create camp"
+            onclick={handleCreateCamp}
+            disabled={busy}
+          ></lightning-button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Header: camp, season, actions -->
+    <template lwc:if={hasCamp}>
+      <div
+        class="slds-grid slds-wrap slds-grid_vertical-align-end slds-gutters_small slds-m-bottom_medium"
+      >
+        <template lwc:if={hasSeveralCamps}>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+            <lightning-combobox
+              label={labels.camp}
+              value={campId}
+              options={campOptions}
+              onchange={handleCampChange}
+            ></lightning-combobox>
+          </div>
+        </template>
+        <template lwc:else>
+          <div class="slds-col slds-grow-none">
+            <h2 class="slds-text-heading_medium" data-id="camp-name-heading">
+              {campName}
+            </h2>
+          </div>
+        </template>
+        <template lwc:if={hasSeasons}>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+            <lightning-combobox
+              data-id="season-picker"
+              label={labels.season}
+              value={seasonId}
+              options={seasonOptions}
+              onchange={handleSeasonChange}
+            ></lightning-combobox>
+          </div>
+        </template>
+        <div class="slds-col">
+          <lightning-button-group>
+            <lightning-button
+              data-id="new-season"
+              label={labels.newSeason}
+              onclick={handleStartNewSeason}
+              disabled={busy}
+            ></lightning-button>
+            <template lwc:if={setup}>
+              <lightning-button
+                data-id="copy-season"
+                label={labels.copySeason}
+                onclick={handleStartCopy}
+                disabled={busy}
+              ></lightning-button>
+            </template>
+            <lightning-button
+              data-id="camp-words"
+              label={labels.campWords}
+              onclick={handleShowLabels}
+              disabled={busy}
+            ></lightning-button>
+          </lightning-button-group>
+        </div>
+      </div>
+    </template>
+
+    <!-- New season -->
+    <template lwc:if={isNewSeason}>
+      <h2 class="slds-text-heading_medium slds-m-bottom_x-small">
+        {labels.newSeasonTitle}
+      </h2>
+      <p class="slds-m-bottom_small">{labels.newSeasonHint}</p>
+      <div class="slds-grid slds-wrap slds-gutters_small">
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+          <lightning-input
+            data-form="new-season"
+            data-field="Name"
+            label={labels.seasonName}
+            value={newSeason.Name}
+            required
+            onchange={handleNewSeasonField}
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+          <lightning-input
+            data-form="new-season"
+            data-field="StartDate__c"
+            type="date"
+            label="First day"
+            value={newSeason.StartDate__c}
+            required
+            onchange={handleNewSeasonField}
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+          <lightning-input
+            data-form="new-season"
+            data-field="EndDate__c"
+            type="date"
+            label="Last day"
+            value={newSeason.EndDate__c}
+            required
+            onchange={handleNewSeasonField}
+          ></lightning-input>
+        </div>
+      </div>
+      <div class="slds-m-top_small">
+        <template lwc:if={hasSeasons}>
+          <lightning-button
+            label="Cancel"
+            onclick={handleCancelNewSeason}
+          ></lightning-button>
+        </template>
+        <lightning-button
+          class="slds-m-left_x-small"
+          data-id="create-season"
+          variant="brand"
+          label={labels.createSeason}
+          onclick={handleCreateSeason}
+          disabled={busy}
+        ></lightning-button>
+      </div>
+    </template>
+
+    <!-- Camp words -->
+    <template lwc:if={isLabels}>
+      <c-shoresh-camp-labels
+        camp-id={campId}
+        camp-name={campName}
+        onsaved={handleLabelsSaved}
+        oncancel={handleLabelsDone}
+      ></c-shoresh-camp-labels>
+    </template>
+
+    <!-- Copy -->
+    <template lwc:if={isCopy}>
+      <c-shoresh-copy-season
+        season={setup.season}
+        terms={terms}
+        oncopied={handleCopied}
+        oncancel={handleCancelCopy}
+      ></c-shoresh-copy-season>
+    </template>
+
+    <!-- Season setup -->
+    <template lwc:if={isSetup}>
+      <section class="slds-m-bottom_large">
+        <div class="slds-grid slds-wrap slds-gutters_small">
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+            <lightning-input
+              data-form="season"
+              data-field="Name"
+              label={labels.seasonName}
+              value={seasonForm.Name}
+              required
+              onchange={handleSeasonField}
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <lightning-input
+              data-form="season"
+              data-field="StartDate__c"
+              type="date"
+              label="First day"
+              value={seasonForm.StartDate__c}
+              required
+              onchange={handleSeasonField}
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <lightning-input
+              data-form="season"
+              data-field="EndDate__c"
+              type="date"
+              label="Last day"
+              value={seasonForm.EndDate__c}
+              required
+              onchange={handleSeasonField}
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+            <lightning-combobox
+              data-form="season"
+              data-field="Status__c"
+              label="Status"
+              value={seasonForm.Status__c}
+              options={statusOptions}
+              required
+              onchange={handleSeasonField}
+            ></lightning-combobox>
+          </div>
+        </div>
+        <template lwc:if={copiedFromName}>
+          <p
+            class="slds-text-color_weak slds-m-top_x-small"
+            data-id="copied-from"
+          >
+            {labels.copiedFrom}
+          </p>
+        </template>
+        <div class="slds-m-top_small">
+          <lightning-button
+            variant="brand"
+            label={labels.saveSeason}
+            onclick={handleSaveSeason}
+            disabled={seasonSaveDisabled}
+          ></lightning-button>
+          <lightning-button
+            class="slds-m-left_x-small"
+            variant="destructive-text"
+            label={labels.deleteSeason}
+            onclick={handleDeleteSeason}
+            disabled={busy}
+          ></lightning-button>
+        </div>
+      </section>
+
+      <template lwc:if={hasProblems}>
+        <div
+          class="slds-box slds-theme_warning slds-m-bottom_large"
+          data-id="problems"
+        >
+          <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+            {labels.problems}
+          </h3>
+          <ul class="slds-list_dotted">
+            <template for:each={problems} for:item="problem">
+              <li key={problem.key}>{problem.text}</li>
+            </template>
+          </ul>
+        </div>
+      </template>
+
+      <section class="slds-m-bottom_large">
+        <template lwc:if={hasNoWeeks}>
+          <lightning-button
+            class="slds-m-bottom_small"
+            data-id="fill-weeks"
+            label={labels.fillWeeks}
+            icon-name="utility:date_input"
+            onclick={handleFillWeeks}
+            disabled={busy}
+          ></lightning-button>
+        </template>
+        <c-shoresh-editable-table
+          data-id="weeks"
+          title={labels.weeks}
+          object-api-name="Week__c"
+          columns={weekColumns}
+          rows={setup.weeks}
+          add-label={labels.addWeek}
+          empty-message={labels.noWeeks}
+          new-row-defaults={weekDefaults}
+          busy={busy}
+          onsave={handleSaveRecords}
+          ondelete={handleDeleteRecord}
+        ></c-shoresh-editable-table>
+      </section>
+
+      <section>
+        <div
+          class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small"
+        >
+          <h2 class="slds-text-heading_medium slds-col">{labels.programs}</h2>
+          <div class="slds-col slds-grow-none">
+            <lightning-button
+              data-id="add-program"
+              label={labels.addProgram}
+              icon-name="utility:add"
+              onclick={handleAddProgram}
+              disabled={busy}
+            ></lightning-button>
+          </div>
+        </div>
+        <template lwc:if={hasPrograms}>
+          <template for:each={programs} for:item="item">
+            <c-shoresh-program
+              key={item.key}
+              entry={item.entry}
+              terms={terms}
+              busy={busy}
+              onsave={handleSaveRecords}
+              ondelete={handleDeleteRecord}
+            ></c-shoresh-program>
+          </template>
+        </template>
+        <template lwc:else>
+          <p class="slds-text-color_weak">{labels.noPrograms}</p>
+        </template>
+      </section>
+    </template>
+  </div>
+</template>

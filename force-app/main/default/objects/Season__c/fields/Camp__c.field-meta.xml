@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Camp__c</fullName>
+    <description
+  >The camp this season belongs to. A camp with seasons cannot be deleted.</description>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <label>Camp</label>
+    <referenceTo>Camp__c</referenceTo>
+    <relationshipLabel>Seasons</relationshipLabel>
+    <relationshipName>Seasons</relationshipName>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

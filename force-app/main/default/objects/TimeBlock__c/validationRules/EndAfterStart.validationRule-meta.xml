@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>EndAfterStart</fullName>
+    <active>true</active>
+    <description>Times in order.</description>
+    <errorConditionFormula>EndTime__c &lt;= StartTime__c</errorConditionFormula>
+    <errorDisplayField>EndTime__c</errorDisplayField>
+    <errorMessage>The end time must be after the start time.</errorMessage>
+</ValidationRule>

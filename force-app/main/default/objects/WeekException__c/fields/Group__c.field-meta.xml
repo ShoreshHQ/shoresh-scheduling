@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Group__c</fullName>
+    <description
+  >The group that does not run this week. A group named here cannot be deleted until this is removed.</description>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <label>Group</label>
+    <referenceTo>Group__c</referenceTo>
+    <relationshipLabel>Week Exceptions</relationshipLabel>
+    <relationshipName>WeekExceptions</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

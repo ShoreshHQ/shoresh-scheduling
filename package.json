@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Shoresh day-camp scheduling for Salesforce",
   "scripts": {
-    "lint": "eslint **/{aura,lwc}/**/*.js",
+    "lint": "eslint \"force-app/**/lwc/**/*.js\"",
     "test": "npm run test:unit",
     "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
     "test:unit:watch": "sfdx-lwc-jest --watch",
