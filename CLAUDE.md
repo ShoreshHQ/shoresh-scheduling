@@ -9,3 +9,6 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   prototypes) deploys to the test org. See `docs/ci-setup.md`.
 - Build choices for this repo: `docs/adr/`. Walkthrough for Greg: `docs/try-camp-setup.md`.
 - No namespace, package, or package version without Greg's go-ahead.
+- **Merging is by hand** (Greg, 2026-10-16): a PR is merged (squash) only after both CI checks pass
+  on its latest commit and an independent review is done. GitHub auto-merge stays off: on the free
+  plan this private repo cannot require checks, so auto-merge would not wait for the tests.
