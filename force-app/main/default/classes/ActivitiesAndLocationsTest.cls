@@ -350,11 +350,6 @@ private class ActivitiesAndLocationsTest {
       'rain plan there, then delete it.',
       InUse.reason(ids.get('Gym games'))
     );
-    // Group A is also in a week exception (fullSeason); that is said first.
-    Database.delete(
-      [SELECT Id FROM WeekException__c WHERE Group__c = :groupA],
-      AccessLevel.SYSTEM_MODE
-    );
     Assert.areEqual(
       'This can\'t be deleted yet: it is in "Who can do it" for "Swim". Change who can ' +
       'do that activity first, then delete it.',
@@ -374,23 +369,34 @@ private class ActivitiesAndLocationsTest {
     ShoreshTestData.saveWeekExceptions(
       new List<WeekException__c>{
         new WeekException__c(Week__c = week.Id, Location__c = ids.get('Gym')),
+        new WeekException__c(
+          Week__c = week.Id,
+          Location__c = ids.get('Field A')
+        ),
         new WeekException__c(Week__c = week.Id, Activity__c = ids.get('Soccer'))
       },
       new List<Id>()
     );
-    Assert.isTrue(
-      InUse.reason(ids.get('Gym')).contains('it is not open in "Week 1"')
+    // A record's own unticked weeks are not in the way: they go with it.
+    Assert.isFalse(InUse.reason(ids.get('Gym')).contains('Week 1'));
+    Assert.isNull(InUse.reason(ids.get('Soccer')));
+    SeasonSetupController.deleteRecord(ids.get('Soccer'));
+    SeasonSetupController.deleteRecord(ids.get('Field A'));
+    Assert.areEqual(
+      new Set<Id>{ ids.get('Gym') },
+      new Map<Id, Location__c>(
+          [
+            SELECT Id
+            FROM Location__c
+            WHERE Id IN (SELECT Location__c FROM WeekException__c)
+          ]
+        )
+        .keySet(),
+      'Only the Gym still has a week unticked'
     );
-    Assert.isTrue(
-      InUse.reason(ids.get('Gym'))
-        .contains('tick that week again under Open in')
-    );
-    Assert.isTrue(
-      InUse.reason(ids.get('Soccer')).contains('it does not run in "Week 1"')
-    );
-    Assert.isTrue(
-      InUse.reason(ids.get('Soccer'))
-        .contains('tick that week again under Runs in')
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM WeekException__c WHERE Activity__c != NULL]
     );
     try {
       SeasonSetupController.deleteRecord(ids.get('Pool'));

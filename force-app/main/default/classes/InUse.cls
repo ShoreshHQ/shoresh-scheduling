@@ -1,7 +1,8 @@
 /**
  * Why a record cannot be deleted from the setup screens because something else still uses it,
  * in the camp's own words; null when nothing is in the way. Salesforce's restrict-delete lookups
- * are the backstop; these messages say what uses the record and where to change it.
+ * are the backstop; these messages say what uses the record and where to change it. A record's
+ * own unticked weeks never stand in the way: they go with it (WeekExceptions.deleteWithWeeks).
  */
 public with sharing class InUse {
   private static final Integer MAX_NAMES = 20;
@@ -13,8 +14,7 @@ public with sharing class InUse {
       kind == Division__c.SObjectType ||
       kind == Program__c.SObjectType
     ) {
-      String marked = WeekExceptions.blockingDelete(recordId);
-      return marked != null ? marked : eligibilityReason(recordId, kind);
+      return eligibilityReason(recordId, kind);
     }
     if (kind == Location__c.SObjectType) {
       return locationReason(recordId);
@@ -110,31 +110,7 @@ public with sharing class InUse {
           thatOrThose(labels, 'Activity', activities.size())
       );
     }
-    List<String> weeks = closedWeeks(locationId);
-    if (!weeks.isEmpty()) {
-      parts.add('it is not open in ' + quoted(weeks));
-      fixes.add(
-        'tick ' +
-          thatOrThose(labels, 'Week', weeks.size()) +
-          ' again under Open in'
-      );
-    }
     return parts.isEmpty() ? null : refusal(parts, fixes);
-  }
-
-  private static List<String> closedWeeks(Id locationId) {
-    List<String> weeks = new List<String>();
-    for (WeekException__c mark : [
-      SELECT Week__r.Name
-      FROM WeekException__c
-      WHERE Location__c = :locationId
-      WITH USER_MODE
-      ORDER BY Week__r.StartDate__c
-      LIMIT 21
-    ]) {
-      weeks.add(mark.Week__r.Name);
-    }
-    return weeks;
   }
 
   /** "that activity" or "those activities", in the camp's words. */
@@ -190,26 +166,6 @@ public with sharing class InUse {
       );
       fixes.add(
         'choose another ' + labels.singularInSentence('RainPlan') + ' there'
-      );
-    }
-    List<WeekException__c> marks = [
-      SELECT Week__r.Name
-      FROM WeekException__c
-      WHERE Activity__c = :activityId
-      WITH USER_MODE
-      ORDER BY Week__r.StartDate__c
-      LIMIT 21
-    ];
-    if (!marks.isEmpty()) {
-      List<String> weeks = new List<String>();
-      for (WeekException__c mark : marks) {
-        weeks.add(mark.Week__r.Name);
-      }
-      parts.add('it does not run in ' + quoted(weeks));
-      fixes.add(
-        'tick ' +
-          thatOrThose(labels, 'Week', weeks.size()) +
-          ' again under Runs in'
       );
     }
     if (parts.isEmpty()) {

@@ -141,6 +141,33 @@ private class DeleteProtectionTest {
   }
 
   @IsTest
+  static void aRefusedProgramDeleteKeepsItsGroupsUntickedWeeks() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Program__c program = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+        WITH SYSTEM_MODE
+      ];
+      PublishedHistory.finder = new EverythingPublished();
+      try {
+        SeasonSetupController.deleteRecord(program.Id);
+        Assert.fail('A program with published history is kept');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('published schedules'));
+      }
+      // The groups' week ticks were cleared first; the refusal puts them back.
+      Assert.areEqual(1, [SELECT COUNT() FROM Program__c WITH SYSTEM_MODE]);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE]
+      );
+    }
+  }
+
+  @IsTest
   static void aWeekWithPublishedHistoryCannotBeDeleted() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');

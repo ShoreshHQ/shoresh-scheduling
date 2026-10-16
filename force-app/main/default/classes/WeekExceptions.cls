@@ -1,8 +1,7 @@
 /**
  * Week exceptions: "this group (or activity, or location) does not run this week". The screens
- * show them in the positive, as "Runs in" weeks left unticked (see RunsIn). Saving marks and
- * explaining, in the camp's own words, why a group (or the division or program above it) cannot
- * be deleted while it has a week unticked.
+ * show them in the positive, as "Runs in" weeks left unticked (see RunsIn). Saving marks, and
+ * clearing a record's own marks when it is deleted.
  */
 public with sharing class WeekExceptions {
   public static void save(List<WeekException__c> toAdd, List<Id> toRemove) {
@@ -78,58 +77,33 @@ public with sharing class WeekExceptions {
   }
 
   /**
-   * Why deleting this group, division, or program would be refused because a week exception
-   * names one of its groups; null when nothing is in the way.
+   * Deletes a record from the setup screens together with its own unticked weeks (Greg,
+   * 2026-10-16): a group, activity, or location's week exceptions, and for a division or program
+   * those of its groups. They would otherwise block the delete (restrict-delete lookups). All or
+   * none.
    */
-  public static String blockingDelete(Id recordId) {
-    Schema.SObjectType kind = recordId.getSObjectType();
-    if (
-      kind != Group__c.SObjectType &&
-      kind != Division__c.SObjectType &&
-      kind != Program__c.SObjectType
-    ) {
-      return null;
-    }
-    List<WeekException__c> marks = [
-      SELECT Group__r.Name, Week__r.Name, Week__r.Season__r.Camp__c
-      FROM WeekException__c
-      WHERE
-        Group__c = :recordId
-        OR Group__r.Division__c = :recordId
-        OR Group__r.Division__r.Program__c = :recordId
-      WITH USER_MODE
-      ORDER BY Week__r.StartDate__c, Group__r.Name, Id
-      LIMIT 21
-    ];
-    if (marks.isEmpty()) {
-      return null;
-    }
-    CampLabels labels = CampLabels.forCamp(marks[0].Week__r.Season__r.Camp__c);
-    List<String> pairs = new List<String>();
-    for (Integer i = 0; i < Math.min(marks.size(), 20); i++) {
-      pairs.add(
-        '"' + marks[i].Group__r.Name + '" in "' + marks[i].Week__r.Name + '"'
+  public static void deleteWithWeeks(Id recordId) {
+    Savepoint beforeDelete = Database.setSavepoint();
+    try {
+      Database.delete(
+        [
+          SELECT Id
+          FROM WeekException__c
+          WHERE
+            Group__c = :recordId
+            OR Group__r.Division__c = :recordId
+            OR Group__r.Division__r.Program__c = :recordId
+            OR Activity__c = :recordId
+            OR Location__c = :recordId
+          WITH USER_MODE
+        ],
+        true,
+        AccessLevel.USER_MODE
       );
+      Database.delete(recordId, true, AccessLevel.USER_MODE);
+    } catch (Exception e) {
+      Database.rollback(beforeDelete);
+      throw e;
     }
-    if (marks.size() > 20) {
-      pairs.add('and more');
-    }
-    String what = kind == Group__c.SObjectType
-      ? 'it has'
-      : 'some of its ' + labels.pluralInSentence('Group') + ' have';
-    String weeks = marks.size() == 1
-      ? 'that ' + labels.singularInSentence('Week')
-      : 'those ' + labels.pluralInSentence('Week');
-    return 'This can\'t be deleted yet: ' +
-      what +
-      ' ' +
-      labels.pluralInSentence('Week') +
-      ' unticked under Runs in (' +
-      String.join(pairs, ', ') +
-      '). Tick ' +
-      weeks +
-      ' again on the ' +
-      labels.plural('Group') +
-      ' screen first, then delete it.';
   }
 }

@@ -1,4 +1,4 @@
-# Trying Camp Setup as a camp director
+# Trying Shoresh as a camp director
 
 A walkthrough of the Shoresh page in the test org (a scratch org). Takes about
 15 minutes. Nothing here touches a real org.
@@ -13,7 +13,7 @@ A walkthrough of the Shoresh page in the test org (a scratch org). Takes about
    ```
 
 3. Wait about a minute. It prints "Putting Shoresh into the test org", then
-   your browser opens Salesforce on the **Camp Setup** tab of the **Shoresh** app.
+   your browser opens Salesforce on the **Shoresh** tab of the **Shoresh** app.
    If it stops with an error instead, copy the message to Claude.
 
 ## 2. Name your camp
@@ -46,9 +46,9 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    click again.)
 3. You land on **Roots**, the home screen. It has:
    - a **Build or generate the schedule** bar, marked **Coming**;
-   - **What has taken root**: a card each for Activities, Bunks, Units, Locations, and
-     Time blocks, with how many there are (all 0 for now), and a wide **Fixed activities**
-     card marked **Coming**;
+   - **What has taken root**: a card each for Activities, Bunks, Units, Locations,
+     Time blocks, and Weeks, with how many there are (all 0 for now), and a wide
+     **Fixed activities** card marked **Coming**;
    - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
      activities yet;
    - **Import last year** at the bottom, marked **Coming**.
@@ -79,8 +79,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 4. **Bunks**: a table **Bunks in Juniors** is there. Click **Add Bunk** twice. Name them
    _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to _Morning only_. To the right,
    under **Runs in**, every week is ticked: a new bunk runs every week. **Save changes**.
-5. Back on **Roots**, the cards count 1 unit, 2 bunks (named on the card), and 2 time blocks,
-   and those attention items are gone.
+5. Back on **Roots**, the cards count your weeks, 1 unit, 2 bunks (named on the card), and
+   2 time blocks, and those attention items are gone.
 
 ## 7. Locations
 
@@ -125,9 +125,8 @@ There is no separate grid any more: each row says which weeks it runs in.
 
 1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week) and click
    **Save changes**.
-2. Now try deleting Bunk 2 (trash can next to it, then confirm). Shoresh refuses: it says
-   Bunk 2 has weeks unticked under Runs in (Week 3), and to tick that week again on the Bunks
-   screen first. Nothing is deleted. Leave it unticked; the copy below carries it over.
+2. Leave it unticked; the copy below carries it over. (Deleting a bunk, activity, or location
+   simply takes its unticked weeks with it; you try that in step 11.)
 3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs)
    and save.
 
@@ -146,10 +145,15 @@ There is no separate grid any more: each row says which weeks it runs in.
 
 ## 11. Deleting
 
-1. On _Summer 2027_, open **Weeks**, click **Delete season** and confirm. It and everything in
-   it are gone; _Summer 2026_ is untouched.
-2. Deleting a bunk, unit, program, week, time block, location, or activity works the same way
-   (trash can icon, then confirm).
+1. On _Summer 2027_, open **Bunks** and delete **Bunk 2** (trash can, then confirm). It goes,
+   and its unticked Week 3 goes with it. Shoresh still refuses a delete when something else
+   depends on the record: try deleting **Bunk 1**, which is in Swim's **Who can do it**.
+2. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
+   _Summer 2026_ is untouched.
+3. Deleting a unit, program, week, time block, location, or activity works the same way
+   (trash can icon, then confirm), unless something else still uses it; Shoresh then says
+   what, and where to change it. Deleting a unit or program also clears its bunks' unticked
+   weeks.
 
 ## What is not here yet
 

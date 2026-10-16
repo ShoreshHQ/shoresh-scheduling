@@ -1,4 +1,4 @@
-/** Server side of the activity details panel on Camp Setup (who can do it, more rules). */
+/** Server side of the activity details panel on the Activities screen (who can do it, more rules). */
 public with sharing class ActivitiesController {
   @AuraEnabled
   public static void saveActivityDetails(

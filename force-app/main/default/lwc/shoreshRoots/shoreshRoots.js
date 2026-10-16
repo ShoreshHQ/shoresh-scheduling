@@ -1,14 +1,16 @@
 import { LightningElement, api } from "lwc";
 import { screenLabels } from "c/shoreshScreens";
 
-// Shoresh desktop's Roots home (RootsHomeScreen.jsx): the same cards, sizes, and places. Large
-// and wide cards name what they hold (up to 4 or 6 names, then "+N more"); small cards only count.
+// Shoresh desktop's Roots home (RootsHomeScreen.jsx): the same cards, sizes, and places, plus
+// Weeks in the spot the desktop leaves empty (Greg, 2026-10-16). Large and wide cards name what
+// they hold (up to 4 or 6 names, then "+N more"); small cards only count.
 const CARDS = [
   { key: "activities", size: "large", chips: 4 },
   { key: "groups", size: "large", chips: 4 },
   { key: "divisions", size: "small" },
   { key: "locations", size: "small" },
   { key: "timeBlocks", size: "small" },
+  { key: "weeks", size: "small" },
   { key: "fixedActivities", size: "wide", chips: 6, coming: true }
 ];
 
@@ -42,6 +44,8 @@ export default class ShoreshRoots extends LightningElement {
         return setup.locations || [];
       case "timeBlocks":
         return programs.flatMap((entry) => entry.timeBlocks || []);
+      case "weeks":
+        return setup.weeks || [];
       default:
         return [];
     }

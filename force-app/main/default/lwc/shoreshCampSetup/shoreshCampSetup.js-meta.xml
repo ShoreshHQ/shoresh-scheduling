@@ -2,7 +2,7 @@
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>67.0</apiVersion>
     <isExposed>true</isExposed>
-    <masterLabel>Shoresh Camp Setup</masterLabel>
+    <masterLabel>Shoresh</masterLabel>
     <description
   >Set up a camp's seasons, weeks, programs, divisions, groups, and time blocks, and copy a season.</description>
     <targets>

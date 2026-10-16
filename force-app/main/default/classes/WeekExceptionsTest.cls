@@ -119,41 +119,80 @@ private class WeekExceptionsTest {
     }
   }
 
+  private static Integer marksLeft() {
+    return [SELECT COUNT() FROM WeekException__c WITH SYSTEM_MODE];
+  }
+
   @IsTest
-  static void deletingADivisionOrProgramSaysWhichMarksAreInTheWay() {
+  static void deletingAGroupClearsItsOwnUntickedWeeks() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
-      Database.insert(
-        new List<CampLabel__c>{
-          new CampLabel__c(
-            Camp__c = camp.Id,
-            ModelTerm__c = 'Week',
-            Singular__c = 'session',
-            Plural__c = 'sessions'
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Map<String, Id> groups = groupIds(season.Id);
+      ShoreshTestData.saveWeekExceptions(
+        new List<WeekException__c>{
+          new WeekException__c(
+            Week__c = weekId(season.Id, 1),
+            Group__c = groups.get('Group A')
+          ),
+          new WeekException__c(
+            Week__c = weekId(season.Id, 2),
+            Group__c = groups.get('Group B')
           )
         },
-        AccessLevel.SYSTEM_MODE
+        null
       );
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
-      Group__c grp = [
-        SELECT Division__c, Division__r.Program__c
-        FROM Group__c
-        WHERE Name = 'Group A'
+      SeasonSetupController.deleteRecord(groups.get('Group A'));
+      Assert.isFalse(groupIds(season.Id).containsKey('Group A'));
+      Assert.areEqual(1, marksLeft(), 'Only Group B\'s week is left');
+    }
+  }
+
+  @IsTest
+  static void deletingADivisionOrProgramClearsItsGroupsUntickedWeeks() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c first = ShoreshTestData.fullSeason(
+        ShoreshTestData.camp('Camp Willow').Id
+      );
+      Season__c second = ShoreshTestData.fullSeason(
+        ShoreshTestData.camp('Camp Birch').Id
+      );
+      Assert.areEqual(2, marksLeft());
+      Division__c division = [
+        SELECT Id
+        FROM Division__c
+        WHERE Program__r.Season__c = :first.Id
         WITH SYSTEM_MODE
       ];
-      String expected = 'This can\'t be deleted yet: some of its groups have sessions unticked under Runs in ("Group A" in "Week 3"). Tick that session again on the Groups screen first, then delete it.';
-      Assert.areEqual(expected, WeekExceptions.blockingDelete(grp.Division__c));
-      Assert.areEqual(
-        expected,
-        WeekExceptions.blockingDelete(grp.Division__r.Program__c)
-      );
-      Assert.isNull(
-        WeekExceptions.blockingDelete(season.Id),
-        'Seasons clear their own'
-      );
-      Assert.isNull(
-        WeekExceptions.blockingDelete(groupIds(season.Id).get('Group B'))
-      );
+      SeasonSetupController.deleteRecord(division.Id);
+      Assert.areEqual(1, marksLeft());
+      Program__c program = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :second.Id
+        WITH SYSTEM_MODE
+      ];
+      SeasonSetupController.deleteRecord(program.Id);
+      Assert.areEqual(0, marksLeft());
+      Assert.areEqual(0, [SELECT COUNT() FROM Group__c WITH SYSTEM_MODE]);
+    }
+  }
+
+  @IsTest
+  static void aRefusedDeleteKeepsTheUntickedWeeks() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      // Swim is open only to Group A, which has Week 3 unticked.
+      ShoreshTestData.placesAndActivities(season.Id);
+      try {
+        SeasonSetupController.deleteRecord(groupIds(season.Id).get('Group A'));
+        Assert.fail('A group in who can do it is kept');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('"Who can do it" for "Swim"'));
+      }
+      Assert.isTrue(groupIds(season.Id).containsKey('Group A'));
+      Assert.areEqual(1, marksLeft());
     }
   }
 
@@ -169,47 +208,6 @@ private class WeekExceptionsTest {
       Assert.areEqual(
         groupIds(season.Id).get('Group A'),
         setup.weekExceptions[0].Group__c
-      );
-    }
-  }
-
-  @IsTest
-  static void aGroupMarkedInSeveralWeeksIsNamedInTheCampsWords() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Camp Willow');
-      Database.insert(
-        new CampLabel__c(
-          Camp__c = camp.Id,
-          ModelTerm__c = 'Group',
-          Singular__c = 'Bunk',
-          Plural__c = 'Bunks'
-        ),
-        AccessLevel.SYSTEM_MODE
-      );
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
-      Id groupA = groupIds(season.Id).get('Group A');
-      ShoreshTestData.saveWeekExceptions(
-        new List<WeekException__c>{
-          new WeekException__c(
-            Week__c = weekId(season.Id, 1),
-            Group__c = groupA
-          )
-        },
-        null
-      );
-      Assert.areEqual(
-        'This can\'t be deleted yet: it has weeks unticked under Runs in ("Group A" in "Week 1", "Group A" in "Week 3"). Tick those weeks again on the Bunks screen first, then delete it.',
-        WeekExceptions.blockingDelete(groupA)
-      );
-      Group__c grp = [
-        SELECT Division__c
-        FROM Group__c
-        WHERE Id = :groupA
-        WITH SYSTEM_MODE
-      ];
-      Assert.isTrue(
-        WeekExceptions.blockingDelete(grp.Division__c)
-          .contains('some of its Bunks have weeks unticked')
       );
     }
   }

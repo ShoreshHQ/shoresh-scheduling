@@ -8,11 +8,12 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
 
 ## Choices
 
-1. **One page, one screen at a time, every screen kept on the page.** The Camp Setup tab is
+1. **One page, one screen at a time, every screen kept on the page.** The tab is
    still one Lightning component (`shoreshCampSetup`), now with a left-hand menu
    (`shoreshMenu`, SLDS vertical navigation). Screens not shown are hidden, not removed, so
    unsaved typing on one screen is still there after visiting another. No new tab, object, or
-   field. The tab keeps its name and address (`Shoresh_Camp_Setup`).
+   field. The tab is labelled **Shoresh** (Greg, 2026-10-16, "for now"); its API name and
+   address stay `Shoresh_Camp_Setup`.
 2. **Menu order and words** follow the brief (Greg, 2026-10-16): Roots; Camp: Weeks, Programs,
    Divisions, Groups, Time blocks, Locations, Camp words; Activities: Activities, then Fixed
    activities, Recurring activities, Special events (marked Coming); Schedules (Coming). Every
@@ -32,7 +33,8 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    Left out: the desktop's "Download worksheet" (not planned for Salesforce), its undo of an
    import, its "couldn't be read" dashes, and its overflow chip (the list shows every item).
    Differences: every card opens its screen (the desktop's cards do not; the brief asks for
-   it); the empty place in the grid beside the lower half of Groups is kept as on the desktop.
+   it); and a small **Weeks** card fills the place the desktop's grid leaves empty, beside the
+   lower half of Groups (Greg, 2026-10-16).
 5. **Needs attention items know which screen fixes them.** `setupProblems` returns
    `{ screen, name, why }`; Roots lists all of them and each opens its screen, and each screen
    shows its own at the top. Two checks come from the desktop's Roots: a season with no
@@ -47,9 +49,12 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    unticked in one step. Saving them separately would have left a half-saved table (rows saved,
    ticks not) that a second Save would duplicate. `WeekExceptionsController` is removed; its
    tests call `WeekExceptions.save` through a test helper.
-8. **Refusals speak in the positive.** Deleting a group, division, or program with a week
-   unticked says which and asks to tick it again under Runs in on the groups screen; a location
-   says "not open in" and Open in; an activity says "does not run in" and Runs in. The refusal
-   itself is unchanged from slice 1.
+8. **Deleting takes a record's own unticked weeks with it** (Greg, 2026-10-16). A group,
+   activity, or location's week exceptions, and for a division or program its groups', are
+   deleted in the same all-or-none step as the record (`WeekExceptions.deleteWithWeeks`),
+   instead of refusing the delete as slice 1 did. A delete is still refused, with the existing
+   messages, when something else depends on the record (who can do it, a rain plan, a location
+   an activity uses). Salesforce's own Delete button still meets the restrict-delete lookups and
+   refuses; the Shoresh screens are the way to delete.
 9. **Camp words' Cancel** now puts back the saved words ("Cancel changes", like the tables)
    instead of leaving the screen, since Camp words is now a screen of its own.
