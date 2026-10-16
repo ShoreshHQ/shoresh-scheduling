@@ -5,7 +5,7 @@
  */
 
 // Built in a later slice: listed, not reachable yet.
-const COMING = new Set(["specialEvents", "schedules"]);
+const COMING = new Set(["specialEvents"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 

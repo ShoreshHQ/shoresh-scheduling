@@ -339,6 +339,29 @@ describe("c-shoresh-camp-setup", () => {
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "w1" });
   });
 
+  it("deleting a week says which saved versions go with it", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(
+      setupWith({
+        schedules: [
+          { Id: "s1", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
+          { Id: "s2", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
+          { Id: "s3", Week__c: "w1", Program__c: "p1", Status__c: "Published" }
+        ]
+      })
+    );
+    const element = await render();
+    LightningConfirm.open.mockResolvedValue(false);
+    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
+    );
+    await flush();
+    expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
+      "That includes 2 saved versions."
+    );
+  });
+
   it("deleting a season names everything that goes with it", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);
@@ -595,6 +618,7 @@ describe("c-shoresh-camp-setup", () => {
         "activities",
         "fixedActivities",
         "recurringActivities",
+        "schedules",
         "roots"
       ];
       // One after another, as a director clicks down the menu.
@@ -621,7 +645,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(items).toContainEqual(["Fixed activities", false]);
       expect(items).toContainEqual(["Recurring activities", false]);
       expect(items).toContainEqual(["Special events", true]);
-      expect(items).toContainEqual(["Schedules", true]);
+      expect(items).toContainEqual(["Schedules", false]);
     });
 
     it("opens the screen a Roots card or attention item points to", async () => {

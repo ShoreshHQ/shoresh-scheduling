@@ -100,8 +100,8 @@ public with sharing class WeekExceptions {
    * Deletes a record from the setup screens together with its own unticked weeks (Greg,
    * 2026-10-16): a group, activity, location, fixed activity, or recurring activity's week
    * exceptions (and a recurring activity's who-it-covers rows), and for a division or program
-   * those of its groups. They would otherwise block the delete (restrict-delete lookups). All or
-   * none.
+   * those of its groups; and a week's drafts and versions. They would otherwise block the
+   * delete (restrict-delete lookups). All or none.
    */
   public static void deleteWithWeeks(Id recordId) {
     Savepoint beforeDelete = Database.setSavepoint();
@@ -134,6 +134,20 @@ public with sharing class WeekExceptions {
         true,
         AccessLevel.USER_MODE
       );
+      // A week's drafts and versions go with it, as in Shoresh desktop. A published schedule
+      // stays, and the week's own delete check refuses the delete (history is kept).
+      if (recordId.getSObjectType() == Week__c.SObjectType) {
+        Database.delete(
+          [
+            SELECT Id
+            FROM Schedule__c
+            WHERE Week__c = :recordId AND Status__c != 'Published'
+            WITH USER_MODE
+          ],
+          true,
+          AccessLevel.USER_MODE
+        );
+      }
       Database.delete(recordId, true, AccessLevel.USER_MODE);
     } catch (Exception e) {
       Database.rollback(beforeDelete);

@@ -2,7 +2,8 @@
  * Reads everything set up in one season, shaped the way the setup screen shows it:
  * the season, its weeks, each program with its time blocks, divisions, groups, and fixed and
  * recurring activities (with who each recurring one covers), and the
- * season's location types, locations, and activities (with who can do each).
+ * season's location types, locations, and activities (with who can do each), and which weeks
+ * and programs have saved schedules.
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
@@ -88,6 +89,13 @@ public with sharing class SeasonSetupReader {
         RecurringActivity__c
       FROM WeekException__c
       WHERE Week__r.Season__c = :seasonId
+      WITH USER_MODE
+    ];
+    // Only what the delete messages need: which weeks and programs have saved schedules.
+    result.schedules = [
+      SELECT Id, Program__c, Week__c, Status__c
+      FROM Schedule__c
+      WHERE Program__r.Season__c = :seasonId
       WITH USER_MODE
     ];
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
@@ -212,6 +220,8 @@ public with sharing class SeasonSetupReader {
     public List<Location__c> locations;
     @AuraEnabled
     public List<Activity__c> activities;
+    @AuraEnabled
+    public List<Schedule__c> schedules;
     @AuraEnabled
     public List<CampLabels.TermLabel> labels;
   }

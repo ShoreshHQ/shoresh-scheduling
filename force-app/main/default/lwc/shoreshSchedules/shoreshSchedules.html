@@ -1,0 +1,220 @@
+<template>
+  <div class="schedules" data-id="schedules">
+    <!-- Toolbar, as on the desktop: the week, how to look at it, then Versions. -->
+    <div class="toolbar">
+      <template lwc:if={hasSeveralPrograms}>
+        <lightning-combobox
+          class="picker"
+          label={programLabel}
+          value={programId}
+          options={programOptions}
+          onchange={handleProgram}
+          data-id="program"
+        ></lightning-combobox>
+      </template>
+      <template lwc:if={canChoose}>
+        <lightning-combobox
+          class="picker"
+          label={weekLabel}
+          value={weekId}
+          options={weekOptions}
+          onchange={handleWeek}
+          data-id="week"
+        ></lightning-combobox>
+      </template>
+      <template lwc:if={opened}>
+        <div class="view-toggle" role="group" aria-label="View">
+          <template for:each={viewButtons} for:item="button">
+            <button
+              key={button.key}
+              type="button"
+              class={button.className}
+              aria-pressed={button.pressed}
+              data-view={button.key}
+              onclick={handleView}
+            >
+              {button.label}
+            </button>
+          </template>
+        </div>
+      </template>
+      <div class="spacer"></div>
+      <template lwc:if={canChoose}>
+        <div class="toolbar-end">
+          <c-shoresh-versions
+            versions={versions}
+            open-id={openId}
+            terms={terms}
+            busy={busy}
+            onopen={handleOpenVersion}
+            onrename={handleRename}
+          ></c-shoresh-versions>
+        </div>
+      </template>
+    </div>
+
+    <template lwc:if={busy}>
+      <lightning-spinner
+        alternative-text="Loading"
+        size="small"
+      ></lightning-spinner>
+    </template>
+    <template lwc:if={error}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+        role="alert"
+        data-id="schedules-error"
+      >
+        {error}
+      </div>
+    </template>
+
+    <template lwc:if={opened}>
+      <div class="viewing" data-id="viewing">
+        <span class="viewing-label">{viewingLabel}</span>
+        <span class="viewing-name">{openedName}</span>
+        <span class="viewing-meta">
+          {openedOrigin} ·
+          <lightning-formatted-date-time
+            value={openedSavedAt}
+            month="short"
+            day="numeric"
+            hour="numeric"
+            minute="2-digit"
+          ></lightning-formatted-date-time>
+          · read-only
+        </span>
+      </div>
+
+      <template lwc:if={hasNoDays}>
+        <p class="empty">{noDaysMessage}</p>
+      </template>
+      <template lwc:else>
+        <!-- Daily View: all groups for one day -->
+        <template lwc:if={isDaily}>
+          <div class="pills" data-id="day-pills">
+            <template for:each={dayPills} for:item="day">
+              <button
+                key={day.key}
+                type="button"
+                class={day.className}
+                data-index={day.index}
+                onclick={handleDay}
+              >
+                {day.label} <span class="pill-sub">{day.sub}</span>
+              </button>
+            </template>
+          </div>
+          <template lwc:if={dayProblem}>
+            <div
+              class="slds-notify slds-notify_alert slds-alert_warning"
+              role="alert"
+            >
+              {dayProblem}
+            </div>
+          </template>
+          <template lwc:else>
+            <c-shoresh-schedule-grid
+              data-id="daily-grid"
+              grid={dailyGrid}
+              corner={corner}
+            ></c-shoresh-schedule-grid>
+          </template>
+        </template>
+
+        <!-- Group View: one group's week -->
+        <template lwc:if={isGroup}>
+          <div class="pills" data-id="group-pills">
+            <template for:each={groupPills} for:item="grp">
+              <button
+                key={grp.key}
+                type="button"
+                class={grp.className}
+                data-key={grp.key}
+                onclick={handleGroup}
+              >
+                {grp.name}
+              </button>
+            </template>
+          </div>
+          <template lwc:if={groupGrid}>
+            <c-shoresh-schedule-grid
+              data-id="group-grid"
+              grid={groupGrid}
+              corner={corner}
+            ></c-shoresh-schedule-grid>
+          </template>
+        </template>
+
+        <!-- Activity View: where one activity runs across the week -->
+        <template lwc:if={isActivity}>
+          <template lwc:if={selectedActivity}>
+            <div class="drill-head">
+              <button
+                type="button"
+                class="back"
+                onclick={handleAllActivities}
+                data-id="all-activities"
+              >
+                {allActivitiesLabel}
+              </button>
+              <span class="drill-name">{selectedActivity.name}</span>
+              <template lwc:if={selectedActivity.location}>
+                <span class="drill-place">{selectedActivity.location}</span>
+              </template>
+            </div>
+            <c-shoresh-schedule-grid
+              data-id="activity-grid"
+              grid={activityGrid}
+              corner={corner}
+            ></c-shoresh-schedule-grid>
+          </template>
+          <template lwc:else>
+            <div class="cards" data-id="activity-cards">
+              <template for:each={activityCards} for:item="card">
+                <button
+                  key={card.key}
+                  type="button"
+                  class="card"
+                  data-key={card.key}
+                  onclick={handleActivity}
+                >
+                  <span class="card-name">{card.name}</span>
+                  <template lwc:if={card.location}>
+                    <span class="card-place">{card.location}</span>
+                  </template>
+                  <template lwc:if={card.gone}>
+                    <span class="note">deleted since</span>
+                  </template>
+                  <span class="card-summary">{card.summary}</span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </template>
+
+        <template lwc:if={showLegend}>
+          <div class="legend">
+            <template for:each={legend} for:item="entry">
+              <span key={entry.key} class="legend-entry">
+                <span class={entry.className}></span>
+                {entry.label}
+              </span>
+            </template>
+          </div>
+        </template>
+      </template>
+    </template>
+
+    <template lwc:elseif={showEmpty}>
+      <div class="empty-state" data-id="nothing-open">
+        <p>{emptyMessage}</p>
+      </div>
+    </template>
+    <template lwc:elseif={cannotChoose}>
+      <div class="empty-state" data-id="nothing-open">
+        <p>{emptyMessage}</p>
+      </div>
+    </template>
+  </div>
+</template>

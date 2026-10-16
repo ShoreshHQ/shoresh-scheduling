@@ -27,7 +27,8 @@ const SCREENS = [
   "campWords",
   "activities",
   "fixedActivities",
-  "recurringActivities"
+  "recurringActivities",
+  "schedules"
 ];
 
 const STATUS_OPTIONS = [
@@ -40,7 +41,7 @@ const STATUS_OPTIONS = [
  * The Shoresh page: a director picks (or starts) a season, then moves between screens with the
  * left-hand menu (desktop-style): Roots, the home, and one screen each for weeks, programs,
  * divisions, groups, time blocks, locations, camp words, activities, fixed activities, and
- * recurring activities. A season can also be
+ * recurring activities, and the schedule page (Schedules). A season can also be
  * copied to start a new one. Every model term is shown in the camp's own words.
  *
  * Every screen stays on the page while another is shown, so typing that is not saved yet is still
@@ -536,7 +537,7 @@ export default class ShoreshCampSetup extends LightningElement {
       message:
         `Delete "${this.setup.season.Name}" and everything set up in it (${t.pIn("Week")}, ${t.pIn("Program")}, ` +
         `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")}, ` +
-        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")})? ` +
+        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")}, and saved schedules)? ` +
         `This cannot be undone.`,
       variant: "header",
       theme: "error"
@@ -663,11 +664,26 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.saveAndReload(save, onFailure);
   }
 
+  /** For a week or program: its saved versions, which a delete takes with it. */
+  savedSchedulesNote(recordId) {
+    const count = ((this.setup && this.setup.schedules) || []).filter(
+      (s) =>
+        s.Status__c === "Version" &&
+        (s.Week__c === recordId || s.Program__c === recordId)
+    ).length;
+    if (!count) {
+      return "";
+    }
+    const t = this.terms;
+    const word = count === 1 ? t.sIn("Version") : t.pIn("Version");
+    return ` That includes ${count} saved ${word}.`;
+  }
+
   async handleDeleteRecord(event) {
     const { recordId, name } = event.detail;
     const ok = await LightningConfirm.open({
       label: "Delete",
-      message: `Delete "${name}"? Anything inside it is deleted too. This cannot be undone.`,
+      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)} This cannot be undone.`,
       variant: "header",
       theme: "warning"
     });

@@ -1,0 +1,73 @@
+<template>
+  <div class="frame-scroll">
+    <div class="frame" role="grid" style={frameStyle} data-id="schedule-grid">
+      <div class="grid grid_header" role="rowgroup" style={columnTemplate}>
+        <div role="row" class="row">
+          <div
+            role="columnheader"
+            class="head row-head"
+            style="grid-row: 1 / span 1; grid-column: 1 / span 1"
+          >
+            {corner}
+          </div>
+          <template for:each={columns} for:item="column">
+            <div
+              key={column.key}
+              role="columnheader"
+              class="head"
+              style={column.style}
+              data-column={column.key}
+            >
+              <span>{column.label}</span>
+              <template lwc:if={column.sub}>
+                <span class="head-sub">{column.sub}</span>
+              </template>
+              <template lwc:if={column.note}>
+                <span class="note">{column.note}</span>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="grid grid_body" role="rowgroup" style={bodyStyle}>
+        <template for:each={bodyRows} for:item="row">
+          <div key={row.key} role="row" class="row">
+            <div role="rowheader" class="row-head block" style={row.style}>
+              <span class="block-name">{row.name}</span>
+              <template for:each={row.timeLines} for:item="line">
+                <span key={line.key} class="block-time">{line.text}</span>
+              </template>
+              <template lwc:if={row.gone}>
+                <span class="note">deleted since</span>
+              </template>
+            </div>
+            <template for:each={row.cells} for:item="cell">
+              <div
+                key={cell.key}
+                role="gridcell"
+                class={cell.className}
+                style={cell.style}
+                title={cell.title}
+                data-cell={cell.key}
+              >
+                <div class="cell-inner">
+                  <template lwc:if={cell.names}>
+                    <template for:each={cell.names} for:item="name">
+                      <span key={name.key} class="cell-group">{name.name}</span>
+                    </template>
+                  </template>
+                  <template lwc:else>
+                    <span class="cell-name">{cell.text}</span>
+                    <template lwc:if={cell.note}>
+                      <span class="note">{cell.note}</span>
+                    </template>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</template>

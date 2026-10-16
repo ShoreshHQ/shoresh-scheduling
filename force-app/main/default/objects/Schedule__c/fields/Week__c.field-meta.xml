@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Week__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The week this schedule is for, in the same season as its program. Deleting the week from the Shoresh screens deletes its drafts and versions with it; a week with a published schedule cannot be deleted.</description>
+    <label>Week</label>
+    <referenceTo>Week__c</referenceTo>
+    <relationshipLabel>Schedules</relationshipLabel>
+    <relationshipName>Schedules</relationshipName>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

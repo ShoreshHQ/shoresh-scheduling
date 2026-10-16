@@ -1,0 +1,85 @@
+<template>
+  <div class="versions" onkeydown={handleKeydown}>
+    <lightning-button
+      label={title}
+      icon-name={buttonIcon}
+      icon-position="right"
+      aria-expanded={isOpen}
+      onclick={handleToggle}
+      data-id="versions-button"
+    ></lightning-button>
+    <template lwc:if={isOpen}>
+      <div class="panel" data-id="versions-panel">
+        <div class="panel-head">
+          <div class="panel-title">{title}</div>
+          <div class="panel-sub">{subtitle}</div>
+        </div>
+        <div class="panel-list">
+          <template lwc:if={isEmpty}>
+            <div class="empty">None yet</div>
+          </template>
+          <template for:each={rows} for:item="row">
+            <div key={row.id} class="version" data-version={row.id}>
+              <template lwc:if={row.renaming}>
+                <div class="rename">
+                  <input
+                    class="slds-input"
+                    value={renameValue}
+                    maxlength="80"
+                    aria-label="New name"
+                    oninput={handleRenameInput}
+                    onkeydown={handleRenameKey}
+                    data-id="rename-input"
+                  />
+                  <lightning-button
+                    variant="brand"
+                    label="Save"
+                    disabled={renameDisabled}
+                    onclick={handleSaveRename}
+                    data-id="rename-save"
+                  ></lightning-button>
+                </div>
+              </template>
+              <template lwc:else>
+                <div class="version-text">
+                  <div class="version-name">{row.name}</div>
+                  <div class="version-meta">
+                    {row.origin} ·
+                    <lightning-formatted-date-time
+                      value={row.savedAt}
+                      month="short"
+                      day="numeric"
+                      hour="numeric"
+                      minute="2-digit"
+                    ></lightning-formatted-date-time>
+                  </div>
+                </div>
+                <template lwc:if={row.onScreen}>
+                  <span class="on-screen">on screen now</span>
+                </template>
+                <button
+                  type="button"
+                  class="link link_quiet"
+                  data-id={row.id}
+                  data-action="rename"
+                  onclick={handleStartRename}
+                >
+                  rename
+                </button>
+                <button
+                  type="button"
+                  class="link"
+                  data-id={row.id}
+                  data-action="open"
+                  onclick={handleOpen}
+                >
+                  Open
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

@@ -1,0 +1,170 @@
+/* Shoresh desktop's schedule grid (scheduleGrid.css), in Salesforce's design tokens. */
+.frame-scroll {
+  overflow-x: auto;
+}
+
+.frame {
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  gap: 0;
+}
+
+/* Rows keep their cells in the screen reader's tree without a box of their own. */
+.row {
+  display: contents;
+}
+
+.head {
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+  border-bottom: 1.5px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.head-sub {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+
+.row-head {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.block {
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.block-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--slds-g-color-neutral-base-10, #181818);
+}
+
+.block-time {
+  font-size: 10px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  white-space: nowrap;
+  font-family: var(--slds-g-font-family-monospace, monospace);
+}
+
+.cell {
+  padding: 8px 6px;
+  min-width: 0;
+  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.cell-inner {
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 56px;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.cell-name {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* An activity: a filled box, as the desktop draws a placed activity. */
+.cell_activity .cell-inner {
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
+}
+
+/* A fixed or recurring activity: the desktop's anchor look, a bar down the left. */
+.cell_set-time .cell-inner {
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-left: 3px solid var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.cell_set-time .cell-name {
+  color: var(--slds-g-color-neutral-base-30, #444);
+  font-size: 11px;
+}
+
+/* Noted from a file but not set up in Shoresh yet: dashed, so it reads as unfinished. */
+.cell_not-set-up .cell-inner {
+  border: 1.5px dashed var(--slds-g-color-warning-base-60, #dd7a01);
+  background: var(--slds-g-color-warning-base-95, #fef1e5);
+}
+
+.cell_not-set-up .cell-name {
+  font-style: italic;
+}
+
+/* Nothing placed: the desktop's visible "Open", quiet. */
+.cell_open .cell-inner {
+  border: 1px dashed var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.cell_open .cell-name {
+  color: var(--slds-g-color-neutral-base-60, #939393);
+  font-weight: 400;
+}
+
+.cell_problem .cell-inner {
+  background: var(--slds-g-color-error-base-95, #fef1ee);
+  color: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+/* Activity View: where the activity is, a light tint and a bar; elsewhere, nothing. */
+.cell_activity-here {
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+  border-left: 3px solid var(--slds-g-color-brand-base-50, #0176d3);
+}
+
+.cell_activity-here .cell-inner,
+.cell_activity-none .cell-inner {
+  min-height: 0;
+  padding: 0;
+}
+
+.cell-group {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.note {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--slds-g-color-warning-base-40, #8c4b02);
+}

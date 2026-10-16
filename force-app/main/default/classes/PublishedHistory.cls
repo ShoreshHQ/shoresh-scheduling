@@ -1,10 +1,9 @@
 /**
  * Protects history: a season, program, or week with any published schedule cannot be deleted
- * (data model, "Protecting history"). Schedules do not exist yet, so the finder that looks for
- * them is a stand-in that finds none. When Schedule__c is built, replace NoSchedulesYet with a
- * query for schedules that were ever published (PublishedAt__c set) under the given records.
- * Deleting a season removes its programs and weeks without running their own delete checks,
- * so the season check must look at schedules under the season's programs and weeks too.
+ * (data model, "Protecting history"). Deleting a season removes its programs and weeks without
+ * running their own delete checks, so the season check looks at schedules under the season's
+ * programs too. Until publishing is built (with PublishedAt__c, which also marks schedules that
+ * were published once and replaced since), a published schedule is one with Status Published.
  */
 public with sharing class PublishedHistory {
   public interface Finder {
@@ -13,7 +12,7 @@ public with sharing class PublishedHistory {
   }
 
   @TestVisible
-  private static Finder finder = new NoSchedulesYet();
+  private static Finder finder = new PublishedSchedules();
 
   /**
    * Adds an error to every record in oldRecords that has published history, so the delete is
@@ -57,9 +56,33 @@ public with sharing class PublishedHistory {
     return text;
   }
 
-  private class NoSchedulesYet implements Finder {
+  private with sharing class PublishedSchedules implements Finder {
+    // System mode on purpose: history protects every published schedule the person can reach.
     public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return new Set<Id>();
+      Set<Id> result = new Set<Id>();
+      for (Schedule__c schedule : [
+        SELECT Program__c, Week__c, Program__r.Season__c
+        FROM Schedule__c
+        WHERE
+          Status__c = 'Published'
+          AND (Program__c IN :recordIds
+          OR Week__c IN :recordIds
+          OR Program__r.Season__c IN :recordIds)
+        WITH SYSTEM_MODE
+      ]) {
+        for (
+          Id owner : new List<Id>{
+            schedule.Program__c,
+            schedule.Week__c,
+            schedule.Program__r.Season__c
+          }
+        ) {
+          if (recordIds.contains(owner)) {
+            result.add(owner);
+          }
+        }
+      }
+      return result;
     }
   }
 }

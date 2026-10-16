@@ -1,0 +1,101 @@
+/* Shoresh desktop's Versions dropdown (VersionsDropdown.jsx), in Salesforce's design tokens. */
+.versions {
+  position: relative;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  width: 360px;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.panel-head {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.panel-sub {
+  font-size: 11px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  margin-top: 2px;
+}
+
+.panel-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.empty {
+  padding: 16px 14px;
+  font-size: 12px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.version {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.version-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.version-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.version-meta {
+  font-size: 10px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  margin-top: 1px;
+}
+
+.on-screen {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slds-g-color-brand-base-50, #0176d3);
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+  padding: 2px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.link {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slds-g-color-brand-base-50, #0176d3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+
+.link_quiet {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.rename {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}

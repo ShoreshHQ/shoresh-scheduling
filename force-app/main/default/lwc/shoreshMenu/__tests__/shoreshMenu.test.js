@@ -78,7 +78,7 @@ describe("c-shoresh-menu", () => {
       "Anchors",
       "Recurring activities",
       "Special events (Coming)",
-      "Schedules (Coming)"
+      "Schedules"
     ]);
   });
 
@@ -104,7 +104,9 @@ describe("c-shoresh-menu", () => {
     const element = await render(false, null);
     const links = [...element.shadowRoot.querySelectorAll("a[data-screen]")];
     expect(links.map((a) => a.dataset.screen)).toEqual(["campWords"]);
-    expect(canOpen("schedules", true)).toBe(false);
+    expect(canOpen("specialEvents", true)).toBe(false);
+    expect(canOpen("schedules", true)).toBe(true);
+    expect(canOpen("schedules", false)).toBe(false);
     expect(canOpen("fixedActivities", true)).toBe(true);
     expect(canOpen("recurringActivities", false)).toBe(false);
     expect(canOpen("weeks", false)).toBe(false);
