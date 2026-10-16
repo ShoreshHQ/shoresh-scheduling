@@ -6,5 +6,5 @@
     <errorConditionFormula
   >ISBLANK(Division__c) = ISBLANK(Group__c)</errorConditionFormula>
     <errorMessage
-  >Choose exactly one: a whole division or one group.</errorMessage>
+  >Name exactly one target, not both and not neither.</errorMessage>
 </ValidationRule>

@@ -64,7 +64,7 @@ public with sharing class InUse {
           : 'it is';
     return 'This can\'t be deleted yet: ' +
       what +
-      ' named in who can do ' +
+      ' in "Who can do it" for ' +
       quoted(names) +
       '. Change who can do ' +
       (rows.size() == 1

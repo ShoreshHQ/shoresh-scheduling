@@ -7,5 +7,5 @@
     <errorConditionFormula
   >AND(NOT(NoGroupLimit__c), OR(ISBLANK(GroupsAtOnce__c), GroupsAtOnce__c &lt; 1))</errorConditionFormula>
     <errorDisplayField>GroupsAtOnce__c</errorDisplayField>
-    <errorMessage>Must be 1 or more, or tick "no limit".</errorMessage>
+    <errorMessage>Must be 1 or more, or tick No limit.</errorMessage>
 </ValidationRule>

@@ -1,6 +1,13 @@
 import { createElement } from "lwc";
 import ShoreshActivityDetails from "c/shoreshActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
+import LightningConfirm from "lightning/confirm";
+
+jest.mock(
+  "lightning/confirm",
+  () => ({ __esModule: true, default: { open: jest.fn() } }),
+  { virtual: true }
+);
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -94,6 +101,7 @@ function allValid(element) {
 
 describe("c-shoresh-activity-details", () => {
   afterEach(() => {
+    jest.clearAllMocks();
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
@@ -192,5 +200,33 @@ describe("c-shoresh-activity-details", () => {
     expect(element.shadowRoot.textContent).toContain(
       "Add activities in the table above"
     );
+  });
+
+  it("switching activities with unsaved choices asks first, and staying keeps them", async () => {
+    const element = await render();
+    change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
+    await flush();
+    LightningConfirm.open.mockResolvedValue(false);
+    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await flush();
+    expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
+    expect(LightningConfirm.open.mock.calls[0][0].message).toBe(
+      'Discard your unsaved changes to "Archery"?'
+    );
+    expect(q(element, '[data-id="activity-picker"]').value).toBe("a1");
+    expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
+
+    LightningConfirm.open.mockResolvedValue(true);
+    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await flush();
+    expect(q(element, '[data-id="who-can-do-it"]').value).toEqual([]);
+    expect(button(element, "Save changes").disabled).toBe(true);
+  });
+
+  it("switching with nothing typed does not ask", async () => {
+    const element = await render();
+    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await flush();
+    expect(LightningConfirm.open).not.toHaveBeenCalled();
   });
 });

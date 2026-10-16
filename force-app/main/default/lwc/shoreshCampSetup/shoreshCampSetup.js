@@ -357,7 +357,7 @@ export default class ShoreshCampSetup extends LightningElement {
       locations: t.p("Location"),
       locationTypes: t.p("LocationType"),
       addLocationType: `Add ${t.s("LocationType")}`,
-      noLocationTypes: `No ${t.pIn("LocationType")} yet. They are optional: use them to sort ${t.pIn("Location")}.`,
+      noLocationTypes: `No ${t.pIn("LocationType")} yet. They are optional; ${t.pIn("Location")} are listed by ${t.sIn("LocationType")}.`,
       addLocation: `Add ${t.s("Location")}`,
       noLocations: `No ${t.pIn("Location")} yet.`,
       activities: t.p("Activity"),

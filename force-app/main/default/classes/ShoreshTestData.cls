@@ -108,7 +108,8 @@ public class ShoreshTestData {
   /**
    * Places and activities for a season made by fullSeason: a "Field" location type; Pool (fits 1),
    * Field A (fits 2, a Field), and Gym (fits 3); Swim at the Pool, open only to Group A; Soccer on
-   * Field A, outdoors, with Gym games as its rain plan; Gym games in the Gym, open to everyone.
+   * Field A, outdoors, with Gym games as its rain plan; Gym games in the Gym, open to the Juniors
+   * division.
    */
   public static Map<String, Id> placesAndActivities(Id seasonId) {
     Map<String, Id> ids = new Map<String, Id>();
@@ -160,11 +161,23 @@ public class ShoreshTestData {
       WHERE Name = 'Group A' AND Division__r.Program__r.Season__c = :seasonId
       WITH SYSTEM_MODE
     ];
+    Group__c groupAWithDivision = [
+      SELECT Division__c
+      FROM Group__c
+      WHERE Id = :groupA.Id
+      WITH SYSTEM_MODE
+    ];
     Database.insert(
-      new ActivityEligibility__c(
-        Activity__c = ids.get('Swim'),
-        Group__c = groupA.Id
-      ),
+      new List<ActivityEligibility__c>{
+        new ActivityEligibility__c(
+          Activity__c = ids.get('Swim'),
+          Group__c = groupA.Id
+        ),
+        new ActivityEligibility__c(
+          Activity__c = ids.get('Gym games'),
+          Division__c = groupAWithDivision.Division__c
+        )
+      },
       AccessLevel.SYSTEM_MODE
     );
     return ids;

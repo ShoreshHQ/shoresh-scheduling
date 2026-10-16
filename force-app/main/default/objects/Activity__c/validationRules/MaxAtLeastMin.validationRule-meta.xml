@@ -8,5 +8,5 @@
   >AND(NOT(NoWeeklyMax__c), OR(ISBLANK(TimesPerWeekMax__c), TimesPerWeekMax__c &lt; TimesPerWeekMin__c))</errorConditionFormula>
     <errorDisplayField>TimesPerWeekMax__c</errorDisplayField>
     <errorMessage
-  >Must be at least the minimum, or tick "no weekly maximum".</errorMessage>
+  >Must be at least the minimum, or tick No weekly maximum.</errorMessage>
 </ValidationRule>

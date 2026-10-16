@@ -45,7 +45,11 @@ public with sharing class SeasonSetupReader {
       FROM Location__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY
+        LocationType__r.SortOrder__c NULLS LAST,
+        LocationType__r.Name NULLS LAST,
+        SortOrder__c NULLS LAST,
+        Name
     ];
     result.activities = [
       SELECT

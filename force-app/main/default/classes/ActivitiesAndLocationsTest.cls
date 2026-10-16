@@ -356,8 +356,8 @@ private class ActivitiesAndLocationsTest {
       AccessLevel.SYSTEM_MODE
     );
     Assert.areEqual(
-      'This can\'t be deleted yet: it is named in who can do "Swim". Change who can do ' +
-      'that activity first, then delete it.',
+      'This can\'t be deleted yet: it is in "Who can do it" for "Swim". Change who can ' +
+      'do that activity first, then delete it.',
       InUse.reason(groupA)
     );
     Id division = [SELECT Division__c FROM Group__c WHERE Id = :groupA]
@@ -613,7 +613,7 @@ private class ActivitiesAndLocationsTest {
         ]
       );
       Assert.areEqual(
-        1,
+        2,
         [
           SELECT COUNT()
           FROM ActivityEligibility__c
@@ -622,5 +622,77 @@ private class ActivitiesAndLocationsTest {
         ]
       );
     }
+  }
+
+  @IsTest
+  static void copyingMapsADivisionInWhoCanDoItToTheCopiedDivision() {
+    Map<String, Id> ids = new Map<String, Id>();
+    Season__c season = seasonWithEverything(ids);
+    Id copyId = SeasonSetupController.copySeason(
+      season.Id,
+      'Summer 2027',
+      Date.newInstance(2027, 6, 28)
+    );
+    ActivityEligibility__c row = [
+      SELECT
+        Division__r.Name,
+        Division__r.Program__r.Season__c,
+        Division__r.CopiedFrom__c
+      FROM ActivityEligibility__c
+      WHERE Activity__r.Season__c = :copyId AND Activity__r.Name = 'Gym games'
+      WITH SYSTEM_MODE
+    ];
+    Assert.areEqual('Juniors', row.Division__r.Name);
+    Assert.areEqual(copyId, row.Division__r.Program__r.Season__c);
+    Assert.isNotNull(row.Division__r.CopiedFrom__c);
+  }
+
+  @IsTest
+  static void aSchedulerDeletesASeasonWithActivitiesFromTheScreen() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = new Map<String, Id>();
+      Season__c season = seasonWithEverything(ids);
+      SeasonSetupController.deleteRecord(season.Id);
+      Assert.areEqual(0, [SELECT COUNT() FROM Activity__c WITH SYSTEM_MODE]);
+      Assert.areEqual(0, [SELECT COUNT() FROM Location__c WITH SYSTEM_MODE]);
+    }
+  }
+
+  @IsTest
+  static void ownRainPlanRefusalUsesTheCampsWords() {
+    Map<String, Id> ids = new Map<String, Id>();
+    Season__c season = seasonWithEverything(ids);
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = season.Camp__c,
+        ModelTerm__c = 'RainPlan',
+        Singular__c = 'Wet-weather plan',
+        Plural__c = 'Wet-weather plans'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Assert.areEqual(
+      'Choose a different Wet-weather plan: an activity cannot be its own.',
+      saveError(
+        new Activity__c(Id = ids.get('Swim'), RainPlan__c = ids.get('Swim'))
+      )
+    );
+  }
+
+  @IsTest
+  static void aRefusedRowIsNamedInTheMessage() {
+    Map<String, Id> ids = new Map<String, Id>();
+    Season__c season = seasonWithEverything(ids);
+    Activity__c art = ShoreshTestData.activity(season.Id, 'Art', null);
+    art.GroupsAtOnce__c = 0;
+    Assert.areEqual(
+      '"Art": Must be 1 or more, or tick No limit.',
+      saveError(art)
+    );
+    Assert.areEqual(
+      '"Pool": Must be 1 or more.',
+      saveError(new Location__c(Id = ids.get('Pool'), GroupsThatFit__c = 0)),
+      'A change that left the name alone still names the row'
+    );
   }
 }

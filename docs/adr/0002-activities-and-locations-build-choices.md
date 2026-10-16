@@ -8,8 +8,9 @@ Status: accepted (2026-10-16). Design source: wiki `projects/shoresh-scheduling-
 
 1. **Location types are a list each camp makes up** (Greg, 2026-10-16): `LocationType__c`, a
    detail of the season with a unique name per season (hidden key, like weeks). Locations point
-   at a type with a lookup that clears when the type is deleted. Types only sort and filter; they
-   never affect scheduling. This replaces the data model's undefined `Kind__c`.
+   at a type with a lookup that clears when the type is deleted. Types only organize; they never
+   affect scheduling. This replaces the data model's undefined `Kind__c`. For now the locations
+   table is listed by type; a filter by type is not built yet (it may come with the camp map).
 2. **Rain plan is a clear-on-delete lookup**, not restrict-delete: Salesforce does not allow
    restrict-delete on a lookup from an object to itself. The setup screens still refuse to delete
    an activity that is another's rain plan and say which; deleting it elsewhere clears the rain
@@ -35,3 +36,8 @@ Status: accepted (2026-10-16). Design source: wiki `projects/shoresh-scheduling-
 10. **Choices that are hard to undo after release:** `Priority__c` values High and Low;
     `EarlyWeekByDay__c` values Monday to Friday; who-can-do-it records are auto-numbered (they
     have no name of their own); `Notes__c` are long text on locations and activities.
+11. **A refused save names the row** ('"Art": Must be 1 or more, or tick No limit.'), since a
+    table save can include many rows and validation rules cannot name the record themselves.
+    Validation messages avoid quotation marks: Salesforce returns them as `&quot;`.
+12. **Switching activities in the details panel with unsaved changes asks first** before
+    discarding them.

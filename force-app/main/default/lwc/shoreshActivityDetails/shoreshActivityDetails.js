@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import LightningConfirm from "lightning/confirm";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const RULE_FIELDS = [
@@ -150,8 +151,23 @@ export default class ShoreshActivityDetails extends LightningElement {
     };
   }
 
-  handleActivityChange(event) {
-    this.activityId = event.detail.value;
+  async handleActivityChange(event) {
+    const picker = event.target;
+    const chosen = event.detail.value;
+    if (this.changed) {
+      const ok = await LightningConfirm.open({
+        label: "Unsaved changes",
+        message: `Discard your unsaved changes to "${this.activity.Name}"?`,
+        variant: "header",
+        theme: "warning"
+      });
+      if (!ok) {
+        // Stay on the activity being edited.
+        picker.value = this.activityId;
+        return;
+      }
+    }
+    this.activityId = chosen;
     this.changed = false;
     this.draft = this.draftFor(this.activity);
   }

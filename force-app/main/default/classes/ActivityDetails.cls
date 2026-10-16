@@ -52,7 +52,12 @@ public with sharing class ActivityDetails {
         record.Id != null &&
         record.get('RainPlan__c') == record.Id
       ) {
-        return 'Choose a different one as the indoor backup: it cannot be its own.';
+        CampLabels labels = labelsFor(record.Id);
+        return 'Choose a different ' +
+          labels.singularInSentence('RainPlan') +
+          ': an ' +
+          labels.singularInSentence('Activity') +
+          ' cannot be its own.';
       }
     }
     return null;
