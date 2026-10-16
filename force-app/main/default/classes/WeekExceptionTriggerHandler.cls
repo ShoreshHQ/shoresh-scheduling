@@ -3,8 +3,26 @@ public with sharing class WeekExceptionTriggerHandler {
   private static final Map<Schema.SObjectField, String> TARGETS = new Map<Schema.SObjectField, String>{
     WeekException__c.Group__c => 'Group',
     WeekException__c.Activity__c => 'Activity',
-    WeekException__c.Location__c => 'Location'
+    WeekException__c.Location__c => 'Location',
+    WeekException__c.FixedActivity__c => 'FixedActivity',
+    WeekException__c.RecurringActivity__c => 'RecurringActivity'
   };
+
+  /** Before save: the season check. After delete or edit: weeks ticked again (SetTimeTriggers). */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<WeekException__c> rows,
+    List<WeekException__c> oldRows
+  ) {
+    if (operation == System.TriggerOperation.AFTER_DELETE) {
+      SetTimeTriggers.weekExceptionsRemoved(oldRows);
+    } else if (operation == System.TriggerOperation.AFTER_UPDATE) {
+      // A row moved to another target ticks its old target back on.
+      SetTimeTriggers.weekExceptionsMoved(rows);
+    } else {
+      beforeSave(rows);
+    }
+  }
 
   public static void beforeSave(List<WeekException__c> exceptions) {
     Set<Id> weekIds = new Set<Id>();
@@ -47,14 +65,17 @@ public with sharing class WeekExceptionTriggerHandler {
     }
   }
 
-  /** The season of each group, activity, and location named (Ids are unique across objects). */
+  /** The season of each group, activity, location, and fixed or recurring activity named (Ids are unique across objects). */
   private static Map<Id, Id> targetSeasons(List<WeekException__c> rows) {
     Set<Id> groupIds = new Set<Id>();
     Set<Id> otherIds = new Set<Id>();
+    Set<Id> setTimeIds = new Set<Id>();
     for (WeekException__c row : rows) {
       groupIds.add(row.Group__c);
       otherIds.add(row.Activity__c);
       otherIds.add(row.Location__c);
+      setTimeIds.add(row.FixedActivity__c);
+      setTimeIds.add(row.RecurringActivity__c);
     }
     Map<Id, Id> result = new Map<Id, Id>();
     for (Group__c grp : [
@@ -81,6 +102,7 @@ public with sharing class WeekExceptionTriggerHandler {
     ]) {
       result.put(location.Id, location.Season__c);
     }
+    result.putAll(SetupSeasons.ofSetTimeItems(setTimeIds));
     return result;
   }
 }

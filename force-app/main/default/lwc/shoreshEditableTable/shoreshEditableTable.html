@@ -34,6 +34,9 @@
                   >
                     {weeksHeading}
                   </th>
+                  <template lwc:if={hasNotes}>
+                    <th scope="col"></th>
+                  </template>
                   <th scope="col">
                     <span class="slds-assistive-text">Actions</span>
                   </th>
@@ -59,6 +62,13 @@
                       </div>
                     </th>
                   </template>
+                </template>
+                <template lwc:if={hasNotes}>
+                  <th scope="col">
+                    <div class="slds-truncate" title={notesHeading}>
+                      {notesHeading}
+                    </div>
+                  </th>
                 </template>
                 <th scope="col">
                   <span class="slds-assistive-text">Actions</span>
@@ -131,6 +141,21 @@
                           onchange={handleChange}
                         ></lightning-input>
                       </template>
+                      <template lwc:elseif={cell.isWho}>
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                          <span class="slds-m-right_x-small" data-id="who">
+                            {cell.whoSummary}
+                          </span>
+                          <lightning-button
+                            variant="base"
+                            label={cell.whoButton}
+                            title={cell.label}
+                            data-row-key={row.key}
+                            data-id="who-toggle"
+                            onclick={handleWhoToggle}
+                          ></lightning-button>
+                        </div>
+                      </template>
                       <template lwc:elseif={cell.isPicklist}>
                         <lightning-combobox
                           label={cell.label}
@@ -158,6 +183,27 @@
                       ></lightning-input>
                     </td>
                   </template>
+                  <template lwc:if={hasNotes}>
+                    <td
+                      class="slds-cell-wrap slds-text-color_weak"
+                      data-id="note"
+                    >
+                      {row.note}
+                      <template for:each={row.actions} for:item="action">
+                        <lightning-button
+                          key={action.key}
+                          class="slds-m-left_x-small"
+                          variant="base"
+                          label={action.label}
+                          data-row-key={row.key}
+                          data-action={action.name}
+                          data-id="row-action"
+                          onclick={handleRowAction}
+                          disabled={busy}
+                        ></lightning-button>
+                      </template>
+                    </td>
+                  </template>
                   <td>
                     <lightning-button-icon
                       icon-name="utility:delete"
@@ -170,6 +216,22 @@
                     ></lightning-button-icon>
                   </td>
                 </tr>
+                <template lwc:if={row.whoOpen}>
+                  <tr key={row.whoKey} data-who-row={row.key}>
+                    <td colspan={fullSpan}>
+                      <lightning-dual-listbox
+                        data-row-key={row.key}
+                        data-id="who-picker"
+                        label={row.whoLabel}
+                        source-label={row.whoSource}
+                        selected-label={row.whoSelected}
+                        options={row.whoOptions}
+                        value={row.who}
+                        onchange={handleWhoChange}
+                      ></lightning-dual-listbox>
+                    </td>
+                  </tr>
+                </template>
               </template>
             </tbody>
           </table>

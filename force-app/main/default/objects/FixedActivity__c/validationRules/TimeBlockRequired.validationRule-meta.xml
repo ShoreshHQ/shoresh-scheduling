@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TimeBlockRequired</fullName>
+    <active>true</active>
+    <description>It happens in a time block.</description>
+    <errorConditionFormula>ISBLANK(TimeBlock__c)</errorConditionFormula>
+    <errorDisplayField>TimeBlock__c</errorDisplayField>
+    <errorMessage>Choose when it starts.</errorMessage>
+</ValidationRule>

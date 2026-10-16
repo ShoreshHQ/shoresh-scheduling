@@ -1,6 +1,7 @@
 /**
  * Reads everything set up in one season, shaped the way the setup screen shows it:
- * the season, its weeks, each program with its time blocks, divisions, and groups, and the
+ * the season, its weeks, each program with its time blocks, divisions, groups, and fixed and
+ * recurring activities (with who each recurring one covers), and the
  * season's location types, locations, and activities (with who can do each).
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
@@ -68,7 +69,6 @@ public with sharing class SeasonSetupReader {
         SameDivisionOnly__c,
         EarlyWeekCount__c,
         EarlyWeekByDay__c,
-        EventOnly__c,
         Notes__c,
         SortOrder__c,
         (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
@@ -78,7 +78,14 @@ public with sharing class SeasonSetupReader {
       ORDER BY SortOrder__c NULLS LAST, Name
     ];
     result.weekExceptions = [
-      SELECT Id, Week__c, Group__c, Activity__c, Location__c
+      SELECT
+        Id,
+        Week__c,
+        Group__c,
+        Activity__c,
+        Location__c,
+        FixedActivity__c,
+        RecurringActivity__c
       FROM WeekException__c
       WHERE Week__r.Season__c = :seasonId
       WITH USER_MODE
@@ -114,12 +121,11 @@ public with sharing class SeasonSetupReader {
         StartTime__c,
         EndTime__c,
         PartOfDay__c,
-        EventsOnly__c,
         SortOrder__c
       FROM TimeBlock__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
-      ORDER BY StartTime__c, SortOrder__c
+      ORDER BY StartTime__c, SortOrder__c, Id
     ]) {
       programs.get(block.Program__c).timeBlocks.add(block);
     }
@@ -144,7 +150,51 @@ public with sharing class SeasonSetupReader {
     ]) {
       divisions.get(grp.Division__c).groups.add(grp);
     }
+    readSetTimeItems(programs);
     return programs.values();
+  }
+
+  private static void readSetTimeItems(Map<Id, ProgramSetup> programs) {
+    for (FixedActivity__c item : [
+      SELECT
+        Id,
+        Name,
+        Program__c,
+        TimeBlock__c,
+        Length__c,
+        Location__c,
+        LastTimeBlock__c,
+        SortOrder__c
+      FROM FixedActivity__c
+      WHERE Program__c IN :programs.keySet()
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ]) {
+      programs.get(item.Program__c).fixedActivities.add(item);
+    }
+    for (RecurringActivity__c item : [
+      SELECT
+        Id,
+        Name,
+        Program__c,
+        TimeBlock__c,
+        Length__c,
+        Location__c,
+        LastTimeBlock__c,
+        Monday__c,
+        Tuesday__c,
+        Wednesday__c,
+        Thursday__c,
+        Friday__c,
+        SortOrder__c,
+        (SELECT Id, Division__c, Group__c FROM Coverages__r)
+      FROM RecurringActivity__c
+      WHERE Program__c IN :programs.keySet()
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name
+    ]) {
+      programs.get(item.Program__c).recurringActivities.add(item);
+    }
   }
 
   public class SeasonSetup {
@@ -173,6 +223,10 @@ public with sharing class SeasonSetupReader {
     public List<TimeBlock__c> timeBlocks = new List<TimeBlock__c>();
     @AuraEnabled
     public List<DivisionSetup> divisions = new List<DivisionSetup>();
+    @AuraEnabled
+    public List<FixedActivity__c> fixedActivities = new List<FixedActivity__c>();
+    @AuraEnabled
+    public List<RecurringActivity__c> recurringActivities = new List<RecurringActivity__c>();
 
     public ProgramSetup(Program__c program) {
       this.program = program;

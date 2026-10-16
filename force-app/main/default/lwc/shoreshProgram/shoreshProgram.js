@@ -1,11 +1,13 @@
 import { LightningElement, api } from "lwc";
+import { setTimeNote, spanChange } from "c/shoreshSetupRules";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 /**
  * One part of one program, for the screen showing it (show): "program" (its name and operating
- * days), "timeBlocks", "divisions", or "groups" (each division's groups, with the weeks each runs
- * in). Saves and deletes go up to the setup screen as events.
+ * days), "timeBlocks", "divisions", "groups" (each division's groups, with the weeks each runs
+ * in), "fixedActivities", or "recurringActivities" (with their weeks, and for recurring ones the
+ * days and who each covers). Saves and deletes go up to the setup screen as events.
  */
 export default class ShoreshProgram extends LightningElement {
   @api terms;
@@ -14,6 +16,8 @@ export default class ShoreshProgram extends LightningElement {
   /** The season's weeks and week exceptions, for the groups' "Runs in" ticks. */
   @api weeks = [];
   @api weekExceptions = [];
+  /** The season's locations, for fixed and recurring activities. */
+  @api locations = [];
 
   name;
   days = {};
@@ -62,6 +66,15 @@ export default class ShoreshProgram extends LightningElement {
   get isGroups() {
     return this.show === "groups";
   }
+  get isFixed() {
+    return this.show === "fixedActivities";
+  }
+  get isRecurring() {
+    return this.show === "recurringActivities";
+  }
+  get hasTimeBlocks() {
+    return (this.entry.timeBlocks || []).length > 0;
+  }
   get hasDivisions() {
     return (this.entry.divisions || []).length > 0;
   }
@@ -97,9 +110,154 @@ export default class ShoreshProgram extends LightningElement {
           { label: "Morning", value: "Morning" },
           { label: "Afternoon", value: "Afternoon" }
         ]
-      },
-      { fieldName: "EventsOnly__c", label: "Events only", type: "checkbox" }
+      }
     ];
+  }
+
+  /** Name, time block, length, and location: what fixed and recurring activities share. */
+  get setTimeColumns() {
+    const t = this.terms;
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "TimeBlock__c",
+        label: t.s("TimeBlock"),
+        type: "picklist",
+        required: true,
+        options: (this.entry.timeBlocks || []).map((block) => ({
+          label: block.Name,
+          value: block.Id
+        }))
+      },
+      {
+        fieldName: "Length__c",
+        label: t.s("Length"),
+        type: "number",
+        min: 1,
+        required: true
+      },
+      {
+        fieldName: "Location__c",
+        label: t.s("Location"),
+        type: "picklist",
+        options: [
+          { label: "None", value: "" },
+          ...(this.locations || []).map((l) => ({ label: l.Name, value: l.Id }))
+        ]
+      }
+    ];
+  }
+
+  get fixedColumns() {
+    return this.setTimeColumns;
+  }
+
+  /** Plus a tick for each day the program runs, and who it covers. */
+  get recurringColumns() {
+    const t = this.terms;
+    const program = this.entry.program;
+    const days = DAYS.filter((day) => program[`${day}__c`]).map((day) => ({
+      fieldName: `${day}__c`,
+      label: day,
+      type: "checkbox"
+    }));
+    return [
+      ...this.setTimeColumns,
+      ...days,
+      {
+        fieldName: "Coverages__r",
+        label: "Who",
+        type: "who",
+        everyone: `Everyone in ${program.Name}`,
+        sourceLabel: `${t.p("Division")} and ${t.p("Group")}`,
+        selectedLabel: "Covers",
+        options: this.whoOptions
+      }
+    ];
+  }
+
+  /** The program's divisions, then its groups (with their division), as in "Who can do it". */
+  get whoOptions() {
+    const t = this.terms;
+    const divisions = [];
+    const groups = [];
+    (this.entry.divisions || []).forEach((d) => {
+      divisions.push({
+        label: `${t.s("Division")}: ${d.division.Name}`,
+        value: d.division.Id
+      });
+      (d.groups || []).forEach((grp) => {
+        groups.push({
+          label: `${grp.Name} (${d.division.Name})`,
+          value: grp.Id
+        });
+      });
+    });
+    return [...divisions, ...groups];
+  }
+
+  get fixedDefaults() {
+    return {
+      Program__c: this.programId,
+      Name: `${this.terms.s("FixedActivity")} {n}`,
+      Length__c: 1
+    };
+  }
+
+  get recurringDefaults() {
+    // No day ticked: the scheduler ticks at least one (Greg, 2026-10-16).
+    const defaults = {
+      Program__c: this.programId,
+      Name: `${this.terms.s("RecurringActivity")} {n}`,
+      Length__c: 1
+    };
+    DAYS.forEach((day) => {
+      defaults[`${day}__c`] = false;
+    });
+    return defaults;
+  }
+
+  /**
+   * Each saved row's note: whether time blocks changed what it covers since it was saved, and
+   * groups left out because they are not at camp then.
+   */
+  notesFor(items) {
+    const notes = {};
+    (items || []).forEach((item) => {
+      const moved = spanChange(this.entry, item, this.terms);
+      notes[item.Id] = [moved ? moved.why : "", setTimeNote(this.entry, item)]
+        .filter((note) => note)
+        .join(" ");
+    });
+    return notes;
+  }
+
+  /** The fixes offered on rows whose time blocks changed under them: Id -> actions. */
+  actionsFor(items) {
+    const actions = {};
+    (items || []).forEach((item) => {
+      const moved = spanChange(this.entry, item, this.terms);
+      if (moved) {
+        actions[item.Id] = moved.actions;
+      }
+    });
+    return actions;
+  }
+
+  get fixedActions() {
+    return this.actionsFor(this.entry.fixedActivities);
+  }
+
+  get recurringActions() {
+    return this.actionsFor(this.entry.recurringActivities);
+  }
+
+  get fixedNotes() {
+    return this.notesFor(this.entry.fixedActivities);
+  }
+
+  get recurringNotes() {
+    return this.notesFor(this.entry.recurringActivities);
   }
 
   get divisionColumns() {
@@ -126,8 +284,7 @@ export default class ShoreshProgram extends LightningElement {
   get blockDefaults() {
     return {
       Program__c: this.programId,
-      PartOfDay__c: "Morning",
-      EventsOnly__c: false
+      PartOfDay__c: "Morning"
     };
   }
 
@@ -159,7 +316,15 @@ export default class ShoreshProgram extends LightningElement {
       groupsNeedDivisions: `${program} has no ${t.pIn("Division")} yet. Add them under ${t.p("Division")} first.`,
       name: `${t.s("Program")} name`,
       days: "Runs on",
-      deleteProgram: `Delete this ${t.sIn("Program")}`
+      deleteProgram: `Delete this ${t.sIn("Program")}`,
+      fixed: `${t.p("FixedActivity")} in ${program}`,
+      addFixed: `Add ${t.s("FixedActivity")}`,
+      noFixed: `No ${t.pIn("FixedActivity")} yet. Each one takes every ${t.sIn("Group")} in ${program}, in one ${t.sIn("TimeBlock")}, every day it runs.`,
+      recurring: `${t.p("RecurringActivity")} in ${program}`,
+      addRecurring: `Add ${t.s("RecurringActivity")}`,
+      noRecurring: `No ${t.pIn("RecurringActivity")} yet. Each one takes chosen ${t.pIn("Group")} (or all of them) in one ${t.sIn("TimeBlock")}, on the days ticked.`,
+      needsBlocks: `${program} has no ${t.pIn("TimeBlock")} yet. Add them under ${t.p("TimeBlock")} first.`,
+      leftOut: "Notes"
     };
   }
 

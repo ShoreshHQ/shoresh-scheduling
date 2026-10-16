@@ -25,6 +25,12 @@ const terms = buildTerms([
     isCustom: false
   },
   { term: "Week", singular: "Week", plural: "Weeks", isCustom: false },
+  {
+    term: "FixedActivity",
+    singular: "Fixed activity",
+    plural: "Fixed activities",
+    isCustom: false
+  },
   { term: "Season", singular: "Season", plural: "Seasons", isCustom: false },
   {
     term: "RainPlan",
@@ -48,6 +54,7 @@ const SETUP = {
     {
       program: { Name: "Main" },
       timeBlocks: [{ Name: "Period 1" }, { Name: "Period 2" }],
+      fixedActivities: [{ Name: "Flagpole" }, { Name: "Carpool" }],
       divisions: [
         { division: { Id: "d1", Name: "Juniors" }, groups: bunks(6) },
         { division: { Id: "d2", Name: "Seniors" }, groups: [] }
@@ -117,6 +124,7 @@ describe("c-shoresh-roots", () => {
     expect(count("locations").textContent).toBe("1");
     expect(count("timeBlocks").textContent).toBe("2");
     expect(count("weeks").textContent).toBe("2");
+    expect(count("fixedActivities").textContent).toBe("2");
     expect(card(element, "weeks").className).toContain("roots-card_small");
     expect(count("groups").className).toContain("roots-count_rooted");
 
@@ -135,11 +143,19 @@ describe("c-shoresh-roots", () => {
     expect(card(element, "divisions").querySelector(".roots-chip")).toBeNull();
   });
 
+  it("names up to six fixed activities on the wide card", async () => {
+    const element = await render();
+    const chips = [
+      ...card(element, "fixedActivities").querySelectorAll(".roots-chip")
+    ].map((c) => c.textContent);
+    expect(chips).toEqual(["Flagpole", "Carpool"]);
+    expect(card(element, "fixedActivities").textContent).not.toContain(
+      "Coming"
+    );
+  });
+
   it("shows areas not built yet as coming, and they open nothing", async () => {
     const element = await render();
-    const fixed = card(element, "fixedActivities");
-    expect(fixed.tagName).toBe("DIV");
-    expect(fixed.textContent).toContain("Coming");
     const door = element.shadowRoot.querySelector('[data-id="schedule-door"]');
     expect(door.textContent).toContain("Build or generate the schedule");
     expect(door.textContent).toContain("Coming");
@@ -156,10 +172,12 @@ describe("c-shoresh-roots", () => {
     card(element, "groups").click();
     card(element, "timeBlocks").click();
     card(element, "weeks").click();
+    card(element, "fixedActivities").click();
     expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
       "groups",
       "timeBlocks",
-      "weeks"
+      "weeks",
+      "fixedActivities"
     ]);
   });
 

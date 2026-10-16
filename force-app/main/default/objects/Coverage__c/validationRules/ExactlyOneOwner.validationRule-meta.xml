@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ExactlyOneOwner</fullName>
+    <active>true</active>
+    <description
+  >Exactly one owner: so far only a recurring activity.</description>
+    <errorConditionFormula>ISBLANK(RecurringActivity__c)</errorConditionFormula>
+    <errorMessage>Choose what this row is for.</errorMessage>
+</ValidationRule>

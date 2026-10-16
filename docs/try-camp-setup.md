@@ -23,7 +23,7 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 1. Type a camp name (for example _Camp Willow_) and click **Create camp**.
 2. The camp name now shows at the top left, with a **New season** button. On the left is the
    Shoresh menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
-   Camp words; **Activities**: Activities, then Fixed activities, Recurring activities, and
+   Camp words; **Activities**: Activities, Fixed activities, Recurring activities, and
    Special events marked **Coming**; and Schedules, **Coming**). Until there is a season, only
    **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
 
@@ -48,7 +48,7 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    - a **Build or generate the schedule** bar, marked **Coming**;
    - **What has taken root**: a card each for Activities, Bunks, Units, Locations,
      Time blocks, and Weeks, with how many there are (all 0 for now), and a wide
-     **Fixed activities** card marked **Coming**;
+     **Fixed activities** card;
    - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
      activities yet;
    - **Import last year** at the bottom, marked **Coming**.
@@ -74,13 +74,14 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    (it runs Monday to Thursday) and click **Save**.
 2. **Time blocks**: the table is called _Time blocks in Main_. Click **Add Time block**, type
    _Period 1_, start 9:00 AM, end 9:45 AM, part of day Morning, then **Save changes**. Add
-   _Lunch_ 12:00 PM – 12:45 PM, Afternoon, tick **Events only**, **Save changes**.
+   _Period 2_ 10:00 AM – 10:45 AM, Morning, and _Lunch_ 12:00 PM – 12:45 PM, Afternoon,
+   **Save changes**.
 3. **Units**: click **Add Unit**, type _Juniors_, **Save changes**.
 4. **Bunks**: a table **Bunks in Juniors** is there. Click **Add Bunk** twice. Name them
    _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to _Morning only_. To the right,
    under **Runs in**, every week is ticked: a new bunk runs every week. **Save changes**.
 5. Back on **Roots**, the cards count your weeks, 1 unit, 2 bunks (named on the card), and
-   2 time blocks, and those attention items are gone.
+   3 time blocks, and those attention items are gone.
 
 ## 7. Locations
 
@@ -130,7 +131,62 @@ There is no separate grid any more: each row says which weeks it runs in.
 3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs)
    and save.
 
-## 10. Copy the season to next summer
+## 10. Fixed and recurring activities
+
+A **fixed activity** takes every bunk in the program, in one time block, every day the program
+runs (flagpole, lunch). A **recurring activity** takes chosen bunks (or all of them) in one time
+block on the days you tick (Bunk 1 swims Monday and Wednesday). They are separate from
+activities and from each other. Clashes are refused, never just shown.
+
+1. **Fixed activities** (under Activities in the menu). The table is _Fixed activities in
+   Main_. Click **Add Fixed activity**: type _Flagpole_, **Time block** Period 1, length 1, no
+   location. Every week is ticked under **Runs in**. Add a second one, _Lunch break_ in Lunch.
+   **Save changes**.
+2. The **Notes** column on Lunch break says _Bunk 2 is morning only and is left out._
+   Bunk 2 is not at camp in the afternoon, so Lunch break leaves it out rather than refusing.
+3. On **Roots**, the wide **Fixed activities** card now counts 2 and names them. Click it to
+   come back.
+4. **Try a clash.** Add _Carpool_ in Period 1 and save. Shoresh refuses:
+   _"Flagpole" and "Carpool" would both have Bunk 1 in Period 1 on Monday in Week 1. Change the
+   time block, length, or weeks of one of them._ Nothing is saved, and
+   your row is still there to fix. Remove it with its trash can.
+5. **Too many bunks at a location.** Set Flagpole's **Location** to the Pool and save:
+   refused, _"Pool" fits 1 Bunk at once, but "Flagpole" would have 2 there …_. Choose the Gym
+   instead and save. Now go to **Locations**, set the Gym's groups that fit to 1 and save:
+   refused from that side too, _… Keep it at 2 or more, or move it to another location first._
+   Put it back to 3.
+6. **Past the end of the day.** Set Lunch break's **Length** to 2 and save: refused, it would
+   run past the last time block of Main. Put it back to 1. (Deleting or moving a time block
+   that would cause this is refused the same way.)
+7. **Recurring activities.** The table is _Recurring activities in Main_, with a tick for
+   each day Main runs (Monday to Thursday; no Friday) and a **Who** column. Click
+   **Add Recurring activity**: _Bunk 1 swim_, Period 2, length 1, location Pool, tick
+   **Monday** and **Wednesday**. Under **Who** it says _Everyone in Main_; click **Change**,
+   move _Bunk 1 (Juniors)_ to **Covers**, click **Done**. **Save changes**.
+8. Add _Bunk 2 art_: Period 2, **Monday**, who _Bunk 2 (Juniors)_. Save. Both are kept: they
+   take different bunks.
+9. **Try a clash from the who side.** On Bunk 2 art, click **Change** and move Bunk 2 back
+   out, so it covers everyone. Save: refused, _"Bunk 1 swim" and "Bunk 2 art" would both have
+   Bunk 1 in Period 2 on Monday in Week 1 …_. Click **Cancel changes**.
+10. **Needs attention:** the Pool is closed in Week 2 (step 3 of the last section), so the box
+    at the top says _Bunk 1 swim: "Pool" is not open in Week 2, but this runs then._ Untick
+    **Week 2** on Bunk 1 swim and save; it goes away.
+11. Try deleting **Period 2** on **Time blocks**: refused, Bunk 1 swim and Bunk 2 art start in
+    it. Try deleting **Bunk 1**: refused, and the message names both things in the way: Swim's
+    **Who can do it** and who Bunk 1 swim covers.
+
+Two more things to know:
+
+- A bunk away for a week, or a location closed for a week, is not there that week, so it never
+  counts as a clash. Ticking that week back on is checked like any other change.
+- If you add, move, or delete a time block in the middle of an activity that takes more than
+  one block, it then covers different blocks. Shoresh doesn't refuse that, but it tells you
+  under Needs attention and on the row, with two fixes that say exactly what you'll get. You
+  try this on next summer's copy in section 12.
+
+Does this work the way you think in practice? Note anything that feels awkward.
+
+## 11. Copy the season to next summer
 
 1. Click **Copy this season** at the top. Shoresh suggests _Summer 2027_ starting Monday
    Jun 28, 2027, and lists every week with where it was and where it will be.
@@ -138,29 +194,42 @@ There is no separate grid any more: each row says which weeks it runs in.
    week would move to different weekdays. Change it back to Jun 28, 2027.
 3. Click **Copy season**. You land on Roots for _Summer 2027_. On **Weeks** it says
    _Copied from "Summer 2026"_; the weeks (a year later), program, time blocks, unit, bunks,
-   locations, activities (Soccer's rain plan, who can swim), and unticked weeks (Bunk 2 in
-   Week 3, the Pool in Week 2) all came along.
+   locations, activities (Soccer's rain plan, who can swim), fixed and recurring activities
+   (with who each covers), and unticked weeks (Bunk 2 in Week 3, the Pool in Week 2, Bunk 1
+   swim in Week 2) all came along. Anything waiting under "time blocks changed" is not
+   carried: the copy starts from what each activity covers on the day you copy.
 4. Use the **Season** picker at the top to go back to _Summer 2026_: it is exactly as you left
    it.
 
-## 11. Deleting
+## 12. Deleting
 
-1. On _Summer 2027_, open **Bunks** and delete **Bunk 2** (trash can, then confirm). It goes,
-   and its unticked Week 3 goes with it. Shoresh still refuses a delete when something else
-   depends on the record: try deleting **Bunk 1**, which is in Swim's **Who can do it**.
-2. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
+1. On _Summer 2027_, open **Recurring activities** and delete **Bunk 2 art**: it goes, with
+   who it covered. Then open **Bunks** and delete **Bunk 2** (trash can, then confirm). It
+   goes, and its unticked Week 3 goes with it. Shoresh still refuses a delete when something
+   else depends on the record: try deleting **Bunk 1**, which is in Swim's **Who can do it**
+   and in who Bunk 1 swim covers.
+2. **A time block added inside an activity.** Still on _Summer 2027_, delete **Bunk 1 swim**
+   too (Recurring activities), so Period 2 is free. On **Fixed activities**, set Flagpole's
+   **Length** to 2 and save: it covers Period 1 and Period 2. Now on **Time blocks** add
+   _Snack_ 9:45–10:00 AM, Morning, and save. Back on **Fixed activities**, Needs attention
+   and Flagpole's Notes say _Time blocks changed since it was saved: it covered Period 1 –
+   Period 2 and now covers Period 1 – Snack._ Two fixes are offered: **Keep Period 1 – Snack**
+   and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and save: the note stays.
+   Click **Stretch to Period 1 – Period 2**: the length becomes 3 and the note goes. (Deleting
+   a block inside an activity offers **Keep the shorter …** or **Extend to …** instead.)
+3. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
    _Summer 2026_ is untouched.
-3. Deleting a unit, program, week, time block, location, or activity works the same way
-   (trash can icon, then confirm), unless something else still uses it; Shoresh then says
-   what, and where to change it. Deleting a unit or program also clears its bunks' unticked
-   weeks.
+4. Deleting a unit, program, week, time block, location, activity, fixed activity, or
+   recurring activity works the same way (trash can icon, then confirm), unless something else
+   still uses it; Shoresh then says what, and where to change it. Deleting a unit or program
+   also clears its bunks' unticked weeks. A program with fixed or recurring activities is
+   refused until they are deleted.
 
 ## What is not here yet
 
 - Bringing in last year's schedule from a spreadsheet is coming next (the next piece after
   fixed and recurring activities). On Roots, **Import last year** is marked Coming.
-- Fixed activities, recurring activities, special events, and schedules are in the menu,
-  marked Coming.
+- Special events and schedules are in the menu, marked Coming.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

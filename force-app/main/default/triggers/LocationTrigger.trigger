@@ -1,3 +1,11 @@
-trigger LocationTrigger on Location__c(before insert, before update) {
-  LocationTriggerHandler.beforeSave(Trigger.new);
+trigger LocationTrigger on Location__c(
+  before insert,
+  before update,
+  after update
+) {
+  LocationTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.new,
+    Trigger.oldMap
+  );
 }

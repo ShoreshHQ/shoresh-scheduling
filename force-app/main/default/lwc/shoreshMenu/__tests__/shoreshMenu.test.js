@@ -12,6 +12,18 @@ const terms = buildTerms([
     isCustom: true
   },
   {
+    term: "FixedActivity",
+    singular: "Anchor",
+    plural: "Anchors",
+    isCustom: true
+  },
+  {
+    term: "RecurringActivity",
+    singular: "Recurring activity",
+    plural: "Recurring activities",
+    isCustom: false
+  },
+  {
     term: "SpecialEvent",
     singular: "Special event",
     plural: "Special events",
@@ -63,8 +75,8 @@ describe("c-shoresh-menu", () => {
       "Locations",
       "Camp words",
       "Periods",
-      "Fixed Periods (Coming)",
-      "Recurring Periods (Coming)",
+      "Anchors",
+      "Recurring activities",
       "Special events (Coming)",
       "Schedules (Coming)"
     ]);
@@ -93,6 +105,8 @@ describe("c-shoresh-menu", () => {
     const links = [...element.shadowRoot.querySelectorAll("a[data-screen]")];
     expect(links.map((a) => a.dataset.screen)).toEqual(["campWords"]);
     expect(canOpen("schedules", true)).toBe(false);
+    expect(canOpen("fixedActivities", true)).toBe(true);
+    expect(canOpen("recurringActivities", false)).toBe(false);
     expect(canOpen("weeks", false)).toBe(false);
     expect(canOpen("weeks", true)).toBe(true);
   });

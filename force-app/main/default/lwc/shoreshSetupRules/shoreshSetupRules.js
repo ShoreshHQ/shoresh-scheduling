@@ -10,7 +10,8 @@ export function setupProblems(setup, terms) {
   const problems = [
     ...weekProblems(setup, terms),
     ...structureProblems(setup, terms),
-    ...activityProblems(setup, terms)
+    ...activityProblems(setup, terms),
+    ...setTimeProblems(setup, terms)
   ];
   return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
 }
@@ -131,6 +132,227 @@ function groupsWithNothingToDo(setup, terms) {
             name: grp.Name,
             why: `No ${terms.pIn("Activity")} are open to this ${terms.sIn("Group")}.`
           });
+        }
+      });
+    });
+  });
+  return problems;
+}
+
+const AVAILABILITY = {
+  MorningOnly: { words: "morning only", away: "Afternoon" },
+  AfternoonOnly: { words: "afternoon only", away: "Morning" }
+};
+
+/**
+ * Which groups a fixed or recurring activity takes, block by block. A fixed activity takes every
+ * group in its program; a recurring one the divisions and groups it covers (every group when it
+ * names none). A group not at camp in a time block (morning or afternoon only) is left out of it.
+ * Returns [{ group, blocks: how many of its blocks the group is there for }] and the block count.
+ */
+function whoIsThere(entry, item) {
+  const blocks = entry.timeBlocks || [];
+  const start = item.TimeBlock__c
+    ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
+    : -1;
+  const span =
+    start < 0 ? [] : blocks.slice(start, start + (item.Length__c || 1));
+  const named = new Set(
+    (item.Coverages__r || []).map((row) => row.Division__c || row.Group__c)
+  );
+  const groups = [];
+  (entry.divisions || []).forEach((d) => {
+    (d.groups || []).forEach((grp) => {
+      if (named.size === 0 || named.has(grp.Id) || named.has(d.division.Id)) {
+        const away = (AVAILABILITY[grp.Availability__c] || {}).away;
+        groups.push({
+          group: grp,
+          blocks: span.filter((block) => !away || block.PartOfDay__c !== away)
+            .length
+        });
+      }
+    });
+  });
+  return { groups, span: span.length };
+}
+
+/**
+ * The note on a fixed or recurring activity's row: which groups are left out because they are not
+ * at camp then (Greg, 2026-10-16: left out and shown, not refused). Empty when nobody is.
+ */
+export function setTimeNote(entry, item) {
+  const { groups, span } = whoIsThere(entry, item);
+  return groups
+    .filter((g) => g.blocks < span)
+    .map((g) => {
+      const words = AVAILABILITY[g.group.Availability__c].words;
+      const part =
+        g.blocks === 0
+          ? ""
+          : ` of its ${AVAILABILITY[g.group.Availability__c].away.toLowerCase()} part`;
+      return `${g.group.Name} is ${words} and is left out${part}.`;
+    })
+    .join(" ");
+}
+
+/** "Period 1 – Lunch", or just "Period 1" for one block. */
+function range(first, last) {
+  return first.Id === last.Id ? first.Name : `${first.Name} – ${last.Name}`;
+}
+
+/**
+ * When time blocks were added, moved, or deleted after a fixed or recurring activity was saved, so
+ * it now covers different blocks (Greg, 2026-10-16: show it, with real fixes, each saying exactly
+ * what it will cover). Returns null when it covers what it did, or
+ * { why, actions: [{ key, label, changes }] } where changes are the fields a fix saves: the last
+ * block it covers now (keep the new coverage), or a new length (back to where it used to end).
+ * Only fixes that make sense are offered; when only keeping it does, the note says why.
+ */
+export function spanChange(entry, item, terms) {
+  const blocks = entry.timeBlocks || [];
+  const start = item.TimeBlock__c
+    ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
+    : -1;
+  if (start < 0) {
+    return null;
+  }
+  const length = item.Length__c || 1;
+  const now = Math.min(start + length, blocks.length) - 1;
+  if (blocks[now].Id === item.LastTimeBlock__c) {
+    return null;
+  }
+  const was = blocks.findIndex((block) => block.Id === item.LastTimeBlock__c);
+  const first = blocks[start];
+  const covers = (end) => range(first, blocks[end]);
+  const changed = `${terms.p("TimeBlock")} changed since it was saved:`;
+  const keep = {
+    key: "keep",
+    label: `Keep ${covers(now)}`,
+    changes: { LastTimeBlock__c: blocks[now].Id }
+  };
+  const keepOnly = (reason) => ({
+    why: `${changed} it now covers ${covers(now)}. ${reason}`,
+    actions: [keep]
+  });
+  if (was > now) {
+    // A block added inside it (or its first block moved earlier): it now stops short of where it
+    // used to end. Both fixes name what they cover in today's order, and both are clash-checked.
+    return {
+      why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
+      actions: [
+        keep,
+        {
+          key: "stretch",
+          label: `Stretch to ${covers(was)}`,
+          changes: { Length__c: was - start + 1 }
+        }
+      ]
+    };
+  }
+  if (was >= start) {
+    // A block inside it removed (or moved away): it now runs on past where it used to end.
+    return {
+      why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
+      actions: [shorter(covers, start, was), extend(keep, blocks[now])]
+    };
+  }
+  if (was < 0 && start + length <= blocks.length && length > 1) {
+    // The block it ended in was deleted: it now runs one block further.
+    return {
+      why: `${changed} the ${terms.sIn("TimeBlock")} it ended in was deleted, and it now covers ${covers(now)}.`,
+      actions: [shorter(covers, start, now - 1), extend(keep, blocks[now])]
+    };
+  }
+  if (was < 0 && start + length > blocks.length) {
+    return keepOnly(
+      "It now runs to the end of the day, so it can only be kept as it is."
+    );
+  }
+  if (was >= 0) {
+    return keepOnly(
+      "Where it used to end is now earlier than where it starts, so it can only be kept as it is."
+    );
+  }
+  return keepOnly("It can only be kept as it is.");
+}
+
+function shorter(covers, start, end) {
+  return {
+    key: "shorter",
+    label: `Keep the shorter ${covers(end)}`,
+    changes: { Length__c: end - start + 1 }
+  };
+}
+
+function extend(keep, last) {
+  return {
+    key: "extend",
+    label: `Extend to ${last.Name}`,
+    changes: keep.changes
+  };
+}
+
+/**
+ * Fixed and recurring activity nudges (clashes are refused, never shown here): one whose time
+ * blocks changed under it, one that runs in no weeks, one that every group it covers is left out
+ * of, and one whose location is not open in a week it runs.
+ */
+function setTimeProblems(setup, terms) {
+  const problems = [];
+  const weeks = setup.weeks || [];
+  const marks = setup.weekExceptions || [];
+  const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
+  (setup.programs || []).forEach((entry) => {
+    const kinds = [
+      ["fixedActivities", "FixedActivity__c", entry.fixedActivities],
+      ["recurringActivities", "RecurringActivity__c", entry.recurringActivities]
+    ];
+    kinds.forEach(([screen, field, items]) => {
+      (items || []).forEach((item) => {
+        const add = (why) => problems.push({ screen, name: item.Name, why });
+        const moved = spanChange(entry, item, terms);
+        if (moved) {
+          // Each fix is offered right on the attention item, as a save of this row.
+          problems.push({
+            screen,
+            name: item.Name,
+            why: moved.why,
+            actions: moved.actions.map((action) => ({
+              key: action.key,
+              label: action.label,
+              record: { sobjectType: field, Id: item.Id, ...action.changes }
+            }))
+          });
+        }
+        const off = new Set(
+          marks.filter((m) => m[field] === item.Id).map((m) => m.Week__c)
+        );
+        if (weeks.length > 0 && off.size >= weeks.length) {
+          add(`Runs in no ${terms.pIn("Week")}.`);
+        }
+        const { groups, span } = whoIsThere(entry, item);
+        if (
+          span > 0 &&
+          groups.length > 0 &&
+          groups.every((g) => g.blocks === 0)
+        ) {
+          add(
+            `Every ${terms.sIn("Group")} it covers is left out: none is at camp then.`
+          );
+        }
+        const location = locations.get(item.Location__c);
+        const shut = new Set(
+          marks
+            .filter((m) => location && m.Location__c === location.Id)
+            .map((m) => m.Week__c)
+        );
+        const closed = weeks
+          .filter((w) => shut.has(w.Id) && !off.has(w.Id))
+          .map((w) => w.Name);
+        if (closed.length > 0) {
+          add(
+            `"${location.Name}" is not open in ${closed.join(", ")}, but this runs then.`
+          );
         }
       });
     });

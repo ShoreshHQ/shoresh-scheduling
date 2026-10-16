@@ -93,7 +93,6 @@ public class ShoreshTestData {
       StartTime__c = Time.newInstance(startHour, 0, 0, 0),
       EndTime__c = Time.newInstance(startHour, 45, 0, 0),
       PartOfDay__c = startHour < 12 ? 'Morning' : 'Afternoon',
-      EventsOnly__c = startHour == 12,
       SortOrder__c = startHour
     );
     Database.insert(block, AccessLevel.SYSTEM_MODE);

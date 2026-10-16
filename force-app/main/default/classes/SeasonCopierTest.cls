@@ -103,7 +103,6 @@ private class SeasonCopierTest {
           StartTime__c,
           EndTime__c,
           PartOfDay__c,
-          EventsOnly__c,
           SortOrder__c,
           CopiedFrom__c,
           LastModifiedDate,

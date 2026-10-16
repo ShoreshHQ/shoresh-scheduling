@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LengthAtLeastOne</fullName>
+    <active>true</active>
+    <description>It takes at least one block.</description>
+    <errorConditionFormula
+  >OR(ISBLANK(Length__c), Length__c &lt; 1)</errorConditionFormula>
+    <errorDisplayField>Length__c</errorDisplayField>
+    <errorMessage>Must be 1 or more.</errorMessage>
+</ValidationRule>
