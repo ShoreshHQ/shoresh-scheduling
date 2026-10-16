@@ -7,7 +7,7 @@ Design, glossary, and decisions live in the Shoresh wiki (`projects/shoresh-sche
 
 ## Try it
 
-`scripts/try-in-scratch-org.sh` makes a fresh test org with this branch in it and opens
+`scripts/try-in-test-org.sh` puts this branch into the test org and opens
 **Camp Setup** (needs the Dev Hub login, alias `shoresh-devhub`). A click-by-click walkthrough
 is in [docs/try-camp-setup.md](docs/try-camp-setup.md). Build choices are in
 [docs/adr](docs/adr).
@@ -15,8 +15,8 @@ is in [docs/try-camp-setup.md](docs/try-camp-setup.md). Build choices are in
 ## Checks on every pull request
 
 - LWC Jest unit tests and Salesforce Code Analyzer.
-- A fresh scratch org from the Dev Hub: deploy, then run all Apex tests. Needs a one-time
-  secret; see [docs/ci-setup.md](docs/ci-setup.md).
+- Deploy to the test org, then run all Apex tests. There are exactly two Salesforce orgs, the
+  Dev Hub and one test org; see [docs/ci-setup.md](docs/ci-setup.md).
 
 ## Not done yet (needs Greg)
 

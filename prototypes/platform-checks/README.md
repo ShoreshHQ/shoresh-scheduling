@@ -4,7 +4,9 @@ Not part of the app. A separate SFDX project with just enough objects to test fo
 behaviours the data model depends on. Results are recorded in the wiki
 (`projects/shoresh-scheduling-data-model.md`, "Platform checks", and decision 0007).
 
-Run against a fresh scratch org:
+Historical: these checks ran 2026-10-15, before the two-org rule. To re-run them, deploy to
+the one test org (`shoresh-test`) instead of creating the org below
+([docs/ci-setup.md](../../docs/ci-setup.md)):
 
 ```bash
 sf org create scratch -f config/scratch-def.json -a shoresh-checks -v shoresh-devhub -y 1

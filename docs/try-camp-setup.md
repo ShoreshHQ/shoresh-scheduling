@@ -1,20 +1,19 @@
 # Trying Camp Setup as a camp director
 
-A walkthrough of the first Shoresh screen in a fresh test org (a scratch org). Takes about
-15 minutes. Nothing here touches a real org; the test org deletes itself after 7 days.
+A walkthrough of the first Shoresh screen in the test org (a scratch org). Takes about
+15 minutes. Nothing here touches a real org.
 
-## 1. Make a test org (one command)
+## 1. Put Shoresh into the test org (one command)
 
 1. In the Claude app, open a terminal tab (or open the Terminal app).
 2. Paste this and press Return:
 
    ```bash
-   ~/Dev/Shoresh/shoresh-scheduling/scripts/try-in-scratch-org.sh
+   ~/Dev/Shoresh/shoresh-scheduling/scripts/try-in-test-org.sh
    ```
 
-3. Wait about two minutes. It prints "Creating a test org", "Putting Shoresh into it", then
+3. Wait about a minute. It prints "Putting Shoresh into the test org", then
    your browser opens Salesforce on the **Camp Setup** tab of the **Shoresh** app.
-   A warning about "Record types ... capitalized" may appear along the way; it is harmless.
    If it stops with an error instead, copy the message to Claude.
 
 ## 2. Name your camp
@@ -100,8 +99,5 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).
 
-When you are done, the test org deletes itself after 7 days. To delete it now:
-
-```bash
-sf org delete scratch --target-org shoresh-try --no-prompt
-```
+The test org is shared with the automatic checks, so leave it in place when you are done.
+There is only ever one test org (see [ci-setup.md](ci-setup.md)).
