@@ -6,7 +6,7 @@ import { errorMessage } from "c/shoreshErrors";
 
 /**
  * The camp's own words for each term (decision 0006). Blank means the standard word.
- * Fires: saved, cancel.
+ * Fires: saved.
  */
 export default class ShoreshCampLabels extends LightningElement {
   @api campId;
@@ -72,7 +72,9 @@ export default class ShoreshCampLabels extends LightningElement {
     }
   }
 
+  /** Puts back the words as saved. */
   handleCancel() {
-    this.dispatchEvent(new CustomEvent("cancel"));
+    this.error = null;
+    this.load();
   }
 }

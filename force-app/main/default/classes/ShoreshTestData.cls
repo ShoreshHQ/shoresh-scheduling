@@ -1,6 +1,18 @@
 /** Synthetic camp data for tests. No real campers, families, or staff. */
 @IsTest
 public class ShoreshTestData {
+  /** Saves week exceptions on their own, with failures as the screens show them. */
+  public static void saveWeekExceptions(
+    List<WeekException__c> toAdd,
+    List<Id> toRemove
+  ) {
+    try {
+      WeekExceptions.save(toAdd, toRemove);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   public static Camp__c camp(String name) {
     Camp__c camp = new Camp__c(Name = name, TimeZone__c = 'America/New_York');
     Database.insert(camp, AccessLevel.SYSTEM_MODE);

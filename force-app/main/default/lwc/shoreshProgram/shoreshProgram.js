@@ -3,12 +3,17 @@ import { LightningElement, api } from "lwc";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 /**
- * One program: its name and operating days, its time blocks, its divisions, and each
- * division's groups. Saves and deletes go up to the setup screen as events.
+ * One part of one program, for the screen showing it (show): "program" (its name and operating
+ * days), "timeBlocks", "divisions", or "groups" (each division's groups, with the weeks each runs
+ * in). Saves and deletes go up to the setup screen as events.
  */
 export default class ShoreshProgram extends LightningElement {
   @api terms;
   @api busy = false;
+  @api show = "program";
+  /** The season's weeks and week exceptions, for the groups' "Runs in" ticks. */
+  @api weeks = [];
+  @api weekExceptions = [];
 
   name;
   days = {};
@@ -39,6 +44,22 @@ export default class ShoreshProgram extends LightningElement {
     });
     this.changed = false;
     this.submitted = false;
+  }
+
+  get isProgram() {
+    return this.show === "program";
+  }
+  get isTimeBlocks() {
+    return this.show === "timeBlocks";
+  }
+  get isDivisions() {
+    return this.show === "divisions";
+  }
+  get isGroups() {
+    return this.show === "groups";
+  }
+  get hasDivisions() {
+    return (this.entry.divisions || []).length > 0;
   }
 
   get programId() {
@@ -125,15 +146,17 @@ export default class ShoreshProgram extends LightningElement {
 
   get labels() {
     const t = this.terms;
+    const program = this.entry.program.Name;
     return {
-      timeBlocks: t.p("TimeBlock"),
+      timeBlocks: `${t.p("TimeBlock")} in ${program}`,
       addTimeBlock: `Add ${t.s("TimeBlock")}`,
       noTimeBlocks: `No ${t.pIn("TimeBlock")} yet.`,
-      divisions: t.p("Division"),
+      divisions: `${t.p("Division")} in ${program}`,
       addDivision: `Add ${t.s("Division")}`,
       noDivisions: `No ${t.pIn("Division")} yet.`,
       addGroup: `Add ${t.s("Group")}`,
       noGroups: `No ${t.pIn("Group")} yet.`,
+      groupsNeedDivisions: `${program} has no ${t.pIn("Division")} yet. Add them under ${t.p("Division")} first.`,
       name: `${t.s("Program")} name`,
       days: "Runs on",
       deleteProgram: `Delete this ${t.sIn("Program")}`

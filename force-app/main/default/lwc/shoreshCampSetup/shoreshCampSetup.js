@@ -8,11 +8,24 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
-import saveWeekExceptions from "@salesforce/apex/WeekExceptionsController.saveWeekExceptions";
+import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
+import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
+
+const SCREENS = [
+  "roots",
+  "weeks",
+  "programs",
+  "divisions",
+  "groups",
+  "timeBlocks",
+  "locations",
+  "campWords",
+  "activities"
+];
 
 const STATUS_OPTIONS = [
   { label: "Planning", value: "Planning" },
@@ -21,9 +34,13 @@ const STATUS_OPTIONS = [
 ];
 
 /**
- * Camp setup: a director picks (or starts) a season and sets up its dates, weeks, programs,
- * divisions, groups, time blocks, locations, and activities, or copies it to start a new season. Every model term on
- * the screen is shown in the camp's own words.
+ * The Shoresh page: a director picks (or starts) a season, then moves between screens with the
+ * left-hand menu (desktop-style): Roots, the home, and one screen each for weeks, programs,
+ * divisions, groups, time blocks, locations, camp words, and activities. A season can also be
+ * copied to start a new one. Every model term is shown in the camp's own words.
+ *
+ * Every screen stays on the page while another is shown, so typing that is not saved yet is still
+ * there when the director comes back to it.
  */
 export default class ShoreshCampSetup extends LightningElement {
   camps = [];
@@ -32,7 +49,8 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonId;
   setup;
   termLabels = [];
-  mode = "loading"; // loading | noCamp | setup | newSeason | copy | labels
+  mode = "loading"; // loading | noCamp | screens | newSeason | copy
+  screen = "roots";
   busy = false;
   error;
 
@@ -77,7 +95,7 @@ export default class ShoreshCampSetup extends LightningElement {
       : this.seasons.length
         ? this.seasons[0].Id
         : null;
-    this.mode = this.seasonId ? "setup" : "newSeason";
+    this.mode = this.seasonId ? "screens" : "newSeason";
     if (this.mode === "newSeason") {
       this.newSeason = {};
     }
@@ -120,17 +138,40 @@ export default class ShoreshCampSetup extends LightningElement {
   get isNoCamp() {
     return this.mode === "noCamp";
   }
-  get isSetup() {
-    return this.mode === "setup" && !!this.setup;
-  }
   get isNewSeason() {
     return this.mode === "newSeason";
   }
   get isCopy() {
     return this.mode === "copy" && !!this.setup;
   }
-  get isLabels() {
-    return this.mode === "labels";
+
+  // ---------- menu and screens ----------
+
+  get menu() {
+    return menuSections(this.terms, !!this.setup);
+  }
+  get currentScreen() {
+    return this.mode === "screens" ? this.screen : null;
+  }
+  /** Each screen's class: shown, or hidden (kept on the page with its unsaved typing). */
+  get shown() {
+    const result = {};
+    SCREENS.forEach((screen) => {
+      result[screen] = screen === this.currentScreen ? "" : "slds-hide";
+    });
+    return result;
+  }
+  /** One camp words editor per camp: choosing another camp starts it afresh. */
+  get campKeys() {
+    return this.campId ? [this.campId] : [];
+  }
+  handleNavigate(event) {
+    const screen = event.detail.screen;
+    if (!canOpen(screen, !!this.setup)) {
+      return;
+    }
+    this.screen = screen;
+    this.mode = "screens";
   }
   get hasCamp() {
     return !!this.campId && !this.isNoCamp && !this.isLoading;
@@ -155,13 +196,16 @@ export default class ShoreshCampSetup extends LightningElement {
     return STATUS_OPTIONS;
   }
   get problems() {
-    return setupProblems(this.setup, this.terms).map((text, i) => ({
-      key: `p${i}`,
-      text
-    }));
+    return setupProblems(this.setup, this.terms);
   }
-  get hasProblems() {
-    return this.problems.length > 0;
+  /** What needs attention on the screen shown (Roots lists everything in its own way). */
+  get screenProblems() {
+    return this.problems.filter(
+      (problem) => problem.screen === this.currentScreen
+    );
+  }
+  get hasScreenProblems() {
+    return this.screenProblems.length > 0;
   }
   get hasNoWeeks() {
     return this.setup && this.setup.weeks.length === 0;
@@ -200,8 +244,8 @@ export default class ShoreshCampSetup extends LightningElement {
       entry
     }));
   }
-  get hasPrograms() {
-    return this.programs.length > 0;
+  get hasNoPrograms() {
+    return this.programs.length === 0;
   }
 
   get locationTypeColumns() {
@@ -362,12 +406,13 @@ export default class ShoreshCampSetup extends LightningElement {
 
   get labels() {
     const t = this.terms;
+    const screens = screenLabels(t);
     return {
+      screens,
       camp: "Camp",
       season: t.s("Season"),
       newSeason: `New ${t.sIn("Season")}`,
       copySeason: `Copy this ${t.sIn("Season")}`,
-      campWords: "Camp words",
       seasonName: `${t.s("Season")} name`,
       saveSeason: `Save ${t.sIn("Season")}`,
       deleteSeason: `Delete ${t.sIn("Season")}`,
@@ -377,21 +422,18 @@ export default class ShoreshCampSetup extends LightningElement {
         ? `Or go back and use "Copy this ${t.sIn("Season")}" to start from an earlier one.`
         : `Give it a name and its first and last days. You can add ${t.pIn("Week")} and ${t.pIn("Program")} next.`,
       problems: "Needs attention",
-      weeks: t.p("Week"),
+      seasonDates: `${t.s("Season")} dates`,
       addWeek: `Add ${t.s("Week")}`,
       noWeeks: `No ${t.pIn("Week")} yet.`,
       fillWeeks: `Fill in ${t.pIn("Week")} from the ${t.sIn("Season")} dates`,
-      programs: t.p("Program"),
       addProgram: `Add ${t.s("Program")}`,
       noPrograms: `No ${t.pIn("Program")} yet. Every ${t.sIn("Season")} needs at least one.`,
       copiedFrom: `Copied from "${this.copiedFromName}".`,
-      locations: t.p("Location"),
       locationTypes: t.p("LocationType"),
       addLocationType: `Add ${t.s("LocationType")}`,
       noLocationTypes: `No ${t.pIn("LocationType")} yet. They are optional; ${t.pIn("Location")} are listed by ${t.sIn("LocationType")}.`,
       addLocation: `Add ${t.s("Location")}`,
       noLocations: `No ${t.pIn("Location")} yet.`,
-      activities: t.p("Activity"),
       catalogue: `${t.s("Activity")} catalogue`,
       addActivity: `Add ${t.s("Activity")}`,
       noActivities: `No ${t.pIn("Activity")} yet.`
@@ -425,25 +467,19 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(() => this.loadCamp());
   }
 
-  handleShowLabels() {
-    this.mode = "labels";
-  }
-
   async handleLabelsSaved() {
     this.toast("Saved. Shoresh screens now use your camp words.");
-    await this.handleLabelsDone();
-  }
-
-  async handleLabelsDone() {
-    this.mode = this.seasonId ? "setup" : "newSeason";
     await this.run(() => this.loadCamp());
+    // Stay on camp words, even before there is a season.
+    this.screen = "campWords";
+    this.mode = "screens";
   }
 
   // ---------- season ----------
 
   async handleSeasonChange(event) {
     this.seasonId = event.detail.value;
-    this.mode = "setup";
+    this.mode = "screens";
     await this.run(() => this.loadSeason());
   }
 
@@ -461,17 +497,18 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     const f = this.seasonForm;
     this.seasonSubmitted = true;
+    const records = [
+      {
+        sobjectType: "Season__c",
+        Id: f.Id,
+        Name: f.Name,
+        StartDate__c: f.StartDate__c,
+        EndDate__c: f.EndDate__c,
+        Status__c: f.Status__c
+      }
+    ];
     await this.saveAndReload(
-      [
-        {
-          sobjectType: "Season__c",
-          Id: f.Id,
-          Name: f.Name,
-          StartDate__c: f.StartDate__c,
-          EndDate__c: f.EndDate__c,
-          Status__c: f.Status__c
-        }
-      ],
+      () => saveRecords({ records }),
       () => {
         this.seasonSubmitted = false;
       }
@@ -496,6 +533,7 @@ export default class ShoreshCampSetup extends LightningElement {
       await deleteRecord({ recordId: this.seasonId });
       this.toast(`Deleted "${this.setup.season.Name}".`);
       this.seasonId = null;
+      this.screen = "roots";
       await this.loadCamp();
     });
   }
@@ -527,12 +565,13 @@ export default class ShoreshCampSetup extends LightningElement {
           }
         ]
       });
+      this.screen = "roots";
       await this.loadCamp(seasonId);
     });
   }
 
-  async handleCancelNewSeason() {
-    this.mode = this.seasonId ? "setup" : "newSeason";
+  handleCancelNewSeason() {
+    this.mode = this.seasonId ? "screens" : "newSeason";
   }
 
   // ---------- copy ----------
@@ -545,12 +584,13 @@ export default class ShoreshCampSetup extends LightningElement {
     this.toast(
       `Copied. You are now looking at the new ${this.terms.sIn("Season")}.`
     );
-    this.mode = "setup";
+    this.mode = "screens";
+    this.screen = "roots";
     await this.run(() => this.loadCamp(event.detail.seasonId));
   }
 
   handleCancelCopy() {
-    this.mode = "setup";
+    this.mode = "screens";
   }
 
   // ---------- weeks, programs, and everything inside ----------
@@ -564,28 +604,15 @@ export default class ShoreshCampSetup extends LightningElement {
 
   async handleAddProgram() {
     const count = this.programs.length;
-    await this.saveAndReload([
+    const records = [
       {
         sobjectType: "Program__c",
         Season__c: this.seasonId,
         Name: count ? `${this.terms.s("Program")} ${count + 1}` : "Main",
         SortOrder__c: count + 1
       }
-    ]);
-  }
-
-  async handleSaveWeekExceptions(event) {
-    const { toAdd, toRemove, onFailure } = event.detail;
-    let saved = false;
-    await this.run(async () => {
-      await saveWeekExceptions({ toAdd, toRemove });
-      saved = true;
-      this.toast("Saved.");
-      await this.loadSeason();
-    });
-    if (!saved && onFailure) {
-      onFailure();
-    }
+    ];
+    await this.saveAndReload(() => saveRecords({ records }));
   }
 
   async handleSaveActivityDetails(event) {
@@ -602,8 +629,14 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
+  /** A table's save: its rows, and (for tables with "Runs in" weeks) its week ticks with them. */
   async handleSaveRecords(event) {
-    await this.saveAndReload(event.detail.records, event.detail.onFailure);
+    const { records, weeksOff, weeksBackOn, onFailure } = event.detail;
+    const save =
+      weeksOff || weeksBackOn
+        ? () => saveRowsAndWeeks({ records, weeksOff, weeksBackOn })
+        : () => saveRecords({ records });
+    await this.saveAndReload(save, onFailure);
   }
 
   async handleDeleteRecord(event) {
@@ -626,13 +659,10 @@ export default class ShoreshCampSetup extends LightningElement {
 
   // ---------- helpers ----------
 
-  async saveAndReload(records, onFailure) {
-    if (!records || records.length === 0) {
-      return;
-    }
+  async saveAndReload(save, onFailure) {
     let saved = false;
     await this.run(async () => {
-      await saveRecords({ records });
+      await save();
       saved = true;
       this.toast("Saved.");
       await this.loadSeason();
@@ -665,7 +695,7 @@ export default class ShoreshCampSetup extends LightningElement {
   showError(e) {
     this.error = errorMessage(e);
     if (this.mode === "loading") {
-      this.mode = "setup";
+      this.mode = "screens";
     }
   }
 

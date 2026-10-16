@@ -258,7 +258,7 @@ private class SeasonSetupControllerTest {
         Assert.fail('A group in use is kept');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'This can\'t be deleted yet: it is marked as not running ("Group A" in "Week 3"). Clear that under Week exceptions first, then delete it.',
+          'This can\'t be deleted yet: it has weeks unticked under Runs in ("Group A" in "Week 3"). Tick that week again on the Groups screen first, then delete it.',
           errorOf(e)
         );
       }

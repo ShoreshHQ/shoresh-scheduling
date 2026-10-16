@@ -151,4 +151,19 @@ describe("c-shoresh-camp-labels", () => {
     ].find((b) => b.label === "Save words");
     expect(save.disabled).toBe(true);
   });
+  it("cancel changes puts back the words as saved", async () => {
+    const element = await render();
+    const bunk = input(element, "Group", "singular");
+    bunk.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Cabin" } })
+    );
+    await flush();
+    expect(input(element, "Group", "singular").value).toBe("Cabin");
+    element.shadowRoot
+      .querySelector('lightning-button[data-id="cancel-words"]')
+      .click();
+    await flush();
+    expect(input(element, "Group", "singular").value).toBe("Bunk");
+    expect(saveCampLabels).not.toHaveBeenCalled();
+  });
 });

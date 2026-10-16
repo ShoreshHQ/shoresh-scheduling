@@ -14,9 +14,15 @@ import { LightningElement, api } from "lwc";
  * where it is empty; no filterValue shows every row). Hidden rows keep their unsaved typing
  * and are still saved; new rows always show.
  *
+ * weeks / weekExceptions / weeksHeading: with weeks and a heading (such as "Runs in"), each row
+ * gets a tick per week, ticked unless a week exception names the row in that week. New rows
+ * start with every week ticked. weekPhrase words each tick for screen readers ("runs in").
+ *
  * Fires:
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
- *          fields only; call onFailure() if the save did not go through
+ *          fields only; call onFailure() if the save did not go through. With weeks, also
+ *          weeksOff [{ target, week }, or { row, week } for a new row: its place in records]
+ *          and weeksBackOn [week exception Ids]
  *   delete { recordId, name }
  */
 export default class ShoreshEditableTable extends LightningElement {
@@ -32,6 +38,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api busy = false;
   @api filterField;
   @api filterValue;
+  @api weeksHeading;
+  @api weekPhrase = "runs in";
 
   drafts = [];
   nextKey = 0;
@@ -39,6 +47,25 @@ export default class ShoreshEditableTable extends LightningElement {
   submitted = false;
   _rows = [];
   _columns = [];
+  _weeks = [];
+  _weekExceptions = [];
+
+  @api
+  get weeks() {
+    return this._weeks;
+  }
+  set weeks(value) {
+    this._weeks = value || [];
+  }
+
+  /** The season's week exceptions; only those naming this table's rows matter. */
+  @api
+  get weekExceptions() {
+    return this._weekExceptions;
+  }
+  set weekExceptions(value) {
+    this._weekExceptions = value || [];
+  }
 
   @api
   get columns() {
@@ -73,6 +100,7 @@ export default class ShoreshEditableTable extends LightningElement {
       const draft = this.draftFor(record, false);
       const old = previous.find((d) => !d.isNew && d.original.Id === record.Id);
       if (old) {
+        draft.weekTicks = new Map(old.weekTicks);
         old.changed.forEach((field) => {
           if (!sameValue(old.values[field], draft.original[field])) {
             draft.values[field] = old.values[field];
@@ -98,6 +126,8 @@ export default class ShoreshEditableTable extends LightningElement {
       original: shown,
       values: { ...shown },
       changed: new Set(),
+      // Unsaved week ticks: week Id -> ticked. Only differences from what is saved count.
+      weekTicks: new Map(),
       isNew
     };
   }
@@ -107,7 +137,57 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get isDirty() {
-    return this.drafts.some((d) => d.isNew || d.changed.size > 0);
+    const offWeeks = this.offWeeks;
+    return this.drafts.some(
+      (d) =>
+        d.isNew || d.changed.size > 0 || this.weekChanges(d, offWeeks).size > 0
+    );
+  }
+
+  get hasWeeks() {
+    return !!this.weeksHeading && this._weeks.length > 0;
+  }
+
+  get weekCount() {
+    return this._weeks.length;
+  }
+
+  get columnCount() {
+    return this.columns.length;
+  }
+
+  /** Row Id -> (week Id -> the week exception Ids saying the row does not run that week). */
+  get offWeeks() {
+    const result = new Map();
+    this._weekExceptions.forEach((mark) => {
+      const target = mark.Group__c || mark.Activity__c || mark.Location__c;
+      const weeks = result.get(target) || new Map();
+      weeks.set(mark.Week__c, [...(weeks.get(mark.Week__c) || []), mark.Id]);
+      result.set(target, weeks);
+    });
+    return result;
+  }
+
+  savedOff(draft, offWeeks) {
+    return (!draft.isNew && offWeeks.get(draft.original.Id)) || new Map();
+  }
+
+  /** Week ticks that differ from what is saved, for weeks still on screen: week Id -> ticked. */
+  weekChanges(draft, offWeeks) {
+    if (!this.hasWeeks) {
+      return new Map();
+    }
+    const saved = this.savedOff(draft, offWeeks);
+    const changes = new Map();
+    this._weeks.forEach((week) => {
+      if (
+        draft.weekTicks.has(week.Id) &&
+        draft.weekTicks.get(week.Id) === saved.has(week.Id)
+      ) {
+        changes.set(week.Id, draft.weekTicks.get(week.Id));
+      }
+    });
+    return changes;
   }
 
   get saveDisabled() {
@@ -138,6 +218,7 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get tableRows() {
+    const offWeeks = this.offWeeks;
     return this.visibleDrafts.map((draft) => ({
       key: draft.key,
       isNew: draft.isNew,
@@ -166,8 +247,32 @@ export default class ShoreshEditableTable extends LightningElement {
           value: col.type === "checkbox" ? undefined : value,
           checked: col.type === "checkbox" ? !!value : undefined
         };
-      })
+      }),
+      weekCells: this.weekCells(draft, offWeeks)
     }));
+  }
+
+  weekCells(draft, offWeeks) {
+    if (!this.hasWeeks) {
+      return [];
+    }
+    const saved = this.savedOff(draft, offWeeks);
+    const name = draft.values.Name || "This row";
+    return this._weeks.map((week) => ({
+      key: `${draft.key}-week-${week.Id}`,
+      weekId: week.Id,
+      checked: draft.weekTicks.has(week.Id)
+        ? draft.weekTicks.get(week.Id)
+        : !saved.has(week.Id),
+      label: `${name} ${this.weekPhrase} ${week.Name}`
+    }));
+  }
+
+  handleTick(event) {
+    const { rowKey, week } = event.target.dataset;
+    const draft = this.drafts.find((d) => d.key === rowKey);
+    draft.weekTicks = new Map(draft.weekTicks).set(week, event.target.checked);
+    this.drafts = [...this.drafts];
   }
 
   handleChange(event) {
@@ -239,6 +344,9 @@ export default class ShoreshEditableTable extends LightningElement {
       this.columns.filter((c) => c.type === "time").map((c) => c.fieldName)
     );
     const records = [];
+    const weeksOff = [];
+    const weeksBackOn = [];
+    const offWeeks = this.offWeeks;
     this.drafts.forEach((draft) => {
       if (draft.isNew) {
         records.push(toRecord(this.objectApiName, draft.values, timeFields));
@@ -249,14 +357,25 @@ export default class ShoreshEditableTable extends LightningElement {
         });
         records.push(toRecord(this.objectApiName, changes, timeFields));
       }
+      const saved = this.savedOff(draft, offWeeks);
+      this.weekChanges(draft, offWeeks).forEach((ticked, week) => {
+        if (ticked) {
+          weeksBackOn.push(...saved.get(week));
+        } else if (draft.isNew) {
+          weeksOff.push({ row: records.length - 1, week });
+        } else {
+          weeksOff.push({ target: draft.original.Id, week });
+        }
+      });
     });
     this.submitted = true;
     const onFailure = () => {
       this.submitted = false;
     };
-    this.dispatchEvent(
-      new CustomEvent("save", { detail: { records, onFailure } })
-    );
+    const detail = this.hasWeeks
+      ? { records, weeksOff, weeksBackOn, onFailure }
+      : { records, onFailure };
+    this.dispatchEvent(new CustomEvent("save", { detail }));
   }
 }
 

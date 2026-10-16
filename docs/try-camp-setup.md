@@ -1,6 +1,6 @@
 # Trying Camp Setup as a camp director
 
-A walkthrough of the first Shoresh screen in the test org (a scratch org). Takes about
+A walkthrough of the Shoresh page in the test org (a scratch org). Takes about
 15 minutes. Nothing here touches a real org.
 
 ## 1. Put Shoresh into the test org (one command)
@@ -21,58 +21,77 @@ A walkthrough of the first Shoresh screen in the test org (a scratch org). Takes
 The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 1. Type a camp name (for example _Camp Willow_) and click **Create camp**.
-2. The camp name now shows at the top left, with buttons **New season** and **Camp words**,
-   and a form **Start a new season**.
+2. The camp name now shows at the top left, with a **New season** button. On the left is the
+   Shoresh menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
+   Camp words; **Activities**: Activities, then Fixed activities, Recurring activities, and
+   Special events marked **Coming**; and Schedules, **Coming**). Until there is a season, only
+   **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
 
 ## 3. Use your camp's own words
 
-1. Click **Camp words**. A table lists every glossary term ("Standard word") with two empty
-   boxes.
+1. In the menu, click **Camp words**. A table lists every glossary term ("Standard word") with
+   two empty boxes.
 2. On the **Group / Groups** row type _Bunk_ and _Bunks_. On **Division / Divisions** type
    _Unit_ and _Units_.
 3. Scroll to the bottom and click **Save words**. You see "Saved. Shoresh screens now use your
-   camp words." Everywhere below, the screen now says Bunk and Unit.
+   camp words." The menu now says **Bunks** and **Units**, and so does everything below.
+   (**Cancel changes** puts back the words as saved.)
 
 ## 4. Create a season
 
-1. In **Start a new season**, type _Summer 2026_, set **First day** to Jun 29, 2026 and
-   **Last day** to Aug 7, 2026 (type the dates or pick them from the calendar).
+1. Click **New season** at the top. In **Start a new season**, type _Summer 2026_, set
+   **First day** to Jun 29, 2026 and **Last day** to Aug 7, 2026 (type the dates or pick them
+   from the calendar).
 2. Click **Create season**. (If a calendar was still open, the first click only closes it;
    click again.)
-3. The season appears, with a yellow **Needs attention** box: no weeks, no programs yet.
+3. You land on **Roots**, the home screen. It has:
+   - a **Build or generate the schedule** bar, marked **Coming**;
+   - **What has taken root**: a card each for Activities, Bunks, Units, Locations, and
+     Time blocks, with how many there are (all 0 for now), and a wide **Fixed activities**
+     card marked **Coming**;
+   - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
+     activities yet;
+   - **Import last year** at the bottom, marked **Coming**.
+4. Click the **Summer 2026 / No weeks yet** item. Shoresh opens the **Weeks** screen, where
+   it is fixed. Every card and every attention item works this way.
 
 ## 5. Weeks with real dates
 
-1. Click **Fill in weeks from the season dates**. Six weeks appear, Week 1 = Jun 29 – Jul 3,
-   each Monday to Friday.
+1. On **Weeks**, the season's own name, dates, and status are at the top (**Save season**,
+   **Delete season**). Below, click **Fill in weeks from the season dates**. Six weeks
+   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday.
 2. Try editing: change Week 6's end date, then **Save changes**. Or **Add Week** for an extra
    one, fill in its dates, **Save changes**.
 3. Try a mistake: give a week a start date another week already has and save. Shoresh
    refuses and says which week already starts that day.
+4. Unsaved typing stays put: change a week's name, click **Roots** in the menu, then
+   **Weeks** again. Your typing is still there, waiting for **Save changes** (or
+   **Cancel changes**).
 
 ## 6. A program, its time blocks, units, and bunks
 
-1. Under **Programs**, click **Add Program**. A program called _Main_ appears.
-2. Untick **Friday** (it runs Monday to Thursday) and click **Save**.
-3. **Time blocks**: click **Add Time block**, type _Period 1_, start 9:00 AM, end 9:45 AM,
-   part of day Morning, then **Save changes**. Add _Lunch_ 12:00 PM – 12:45 PM, Afternoon,
-   tick **Events only**, **Save changes**.
-4. **Units**: click **Add Unit**, type _Juniors_, **Save changes**. A new table
-   **Bunks in Juniors** appears.
-5. Click **Add Bunk** twice. Name them _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to
-   _Morning only_. **Save changes**.
-6. The **Needs attention** box disappears once nothing is missing.
+1. **Programs**: click **Add Program**. A program called _Main_ appears. Untick **Friday**
+   (it runs Monday to Thursday) and click **Save**.
+2. **Time blocks**: the table is called _Time blocks in Main_. Click **Add Time block**, type
+   _Period 1_, start 9:00 AM, end 9:45 AM, part of day Morning, then **Save changes**. Add
+   _Lunch_ 12:00 PM – 12:45 PM, Afternoon, tick **Events only**, **Save changes**.
+3. **Units**: click **Add Unit**, type _Juniors_, **Save changes**.
+4. **Bunks**: a table **Bunks in Juniors** is there. Click **Add Bunk** twice. Name them
+   _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to _Morning only_. To the right,
+   under **Runs in**, every week is ticked: a new bunk runs every week. **Save changes**.
+5. Back on **Roots**, the cards count 1 unit, 2 bunks (named on the card), and 2 time blocks,
+   and those attention items are gone.
 
 ## 7. Locations
 
-1. Scroll to **Locations**. First, optionally, **Location types**: click **Add Location type**,
+1. **Locations**: first, optionally, **Location types**: click **Add Location type**,
    type _Field_, **Save changes**. Types are only for sorting your locations.
 2. Under **Locations**, click **Add Location** three times and fill them in:
    - _Pool_, no type, **Groups that fit** 1
    - _Field A_, type _Field_, groups that fit 2
    - _Gym_, no type, groups that fit 3
 
-   Then **Save changes**.
+   Each row has an **Open in** tick for every week, all ticked. Then **Save changes**.
 
 3. Use **Show** above the table to see only _Field_ locations, or only those with no type.
    Choose _All location types_ to see them all again.
@@ -81,14 +100,14 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 ## 8. Activities
 
-1. Scroll to **Activities**. Click **Add Activity**. The new row starts with the usual
-   defaults: length 1, at least 1 and at most 1 time a week, Low priority, indoors, one bunk
-   at a time.
+1. **Activities** (under the Activities heading in the menu). Click **Add Activity**. The new
+   row starts with the usual defaults: length 1, at least 1 and at most 1 time a week, Low
+   priority, indoors, one bunk at a time, and every week ticked under **Runs in**.
 2. Make three: _Swim_ at the Pool; _Gym games_ in the Gym; _Soccer_ on Field A with
    **Outdoors** ticked. **Save changes**.
-3. A **Needs attention** line appears: _"Soccer" is outdoors and has no rain plan._ Set
-   Soccer's **Rain plan** to _Gym games_ and save; the line goes away. (Soccer's own name is
-   not offered as its rain plan.)
+3. A yellow **Needs attention** box at the top of the screen says
+   _Soccer: Outdoors and has no rain plan._ (Roots lists it too.) Set Soccer's **Rain plan**
+   to _Gym games_ and save; it goes away. (Soccer's own name is not offered as its rain plan.)
 4. Set Gym games' **Groups at once** to 5 and save. Needs attention now says the Gym fits 3, so
    scheduling will use 3. Put it back to 1.
 5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
@@ -102,38 +121,43 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 ## 9. Weeks something doesn't run
 
-1. Scroll to **Week exceptions** at the bottom. There is a row for each bunk, each activity,
-   and each location, and a column for each week.
-2. Tick **Bunk 2** under **Week 3** (say it is away on a trip that week) and click
+There is no separate grid any more: each row says which weeks it runs in.
+
+1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week) and click
    **Save changes**.
-3. Now try deleting Bunk 2 (trash can next to it, then confirm). Shoresh refuses: it says
-   Bunk 2 is marked as not running in Week 3 and to clear that under Week exceptions first.
-   Nothing is deleted. Leave the tick in place; the copy below carries it over.
-4. Tick **Pool** under **Week 2** (closed for repairs) and save.
+2. Now try deleting Bunk 2 (trash can next to it, then confirm). Shoresh refuses: it says
+   Bunk 2 has weeks unticked under Runs in (Week 3), and to tick that week again on the Bunks
+   screen first. Nothing is deleted. Leave it unticked; the copy below carries it over.
+3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs)
+   and save.
 
 ## 10. Copy the season to next summer
 
-1. Click **Copy this season**. Shoresh suggests _Summer 2027_ starting Monday Jun 28, 2027, and
-   lists every week with where it was and where it will be.
+1. Click **Copy this season** at the top. Shoresh suggests _Summer 2027_ starting Monday
+   Jun 28, 2027, and lists every week with where it was and where it will be.
 2. Change the start date to Jun 29, 2027 (a Tuesday). A yellow warning explains that every
    week would move to different weekdays. Change it back to Jun 28, 2027.
-3. Click **Copy season**. You land on _Summer 2027_, which says _Copied from "Summer 2026"_,
-   with the same weeks (a year later), program, time blocks, unit, bunks, locations,
-   activities (Soccer's rain plan, who can swim), and week exceptions.
+3. Click **Copy season**. You land on Roots for _Summer 2027_. On **Weeks** it says
+   _Copied from "Summer 2026"_; the weeks (a year later), program, time blocks, unit, bunks,
+   locations, activities (Soccer's rain plan, who can swim), and unticked weeks (Bunk 2 in
+   Week 3, the Pool in Week 2) all came along.
 4. Use the **Season** picker at the top to go back to _Summer 2026_: it is exactly as you left
    it.
 
 ## 11. Deleting
 
-1. On _Summer 2027_, click **Delete season** and confirm. It and everything in it are gone;
-   _Summer 2026_ is untouched.
+1. On _Summer 2027_, open **Weeks**, click **Delete season** and confirm. It and everything in
+   it are gone; _Summer 2026_ is untouched.
 2. Deleting a bunk, unit, program, week, time block, location, or activity works the same way
    (trash can icon, then confirm).
 
 ## What is not here yet
 
-- The camp map and importing from a spreadsheet are later pieces.
-- Events and schedules come in later pieces.
+- Bringing in last year's schedule from a spreadsheet is coming next (the next piece after
+  fixed and recurring activities). On Roots, **Import last year** is marked Coming.
+- Fixed activities, recurring activities, special events, and schedules are in the menu,
+  marked Coming.
+- The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).
 

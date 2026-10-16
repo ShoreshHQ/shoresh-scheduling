@@ -3,19 +3,6 @@
  * user-mode DML, so Salesforce enforces the scheduler's object, field, and record access.
  */
 public with sharing class SeasonSetupController {
-  // The only records these screens may save.
-  private static final Set<Schema.SObjectType> SAVABLE_TYPES = new Set<Schema.SObjectType>{
-    Camp__c.SObjectType,
-    Season__c.SObjectType,
-    Week__c.SObjectType,
-    Program__c.SObjectType,
-    Division__c.SObjectType,
-    Group__c.SObjectType,
-    TimeBlock__c.SObjectType,
-    LocationType__c.SObjectType,
-    Location__c.SObjectType,
-    Activity__c.SObjectType
-  };
   // Camps are never deleted from these screens.
   private static final Set<Schema.SObjectType> DELETABLE_TYPES = new Set<Schema.SObjectType>{
     Season__c.SObjectType,
@@ -79,25 +66,20 @@ public with sharing class SeasonSetupController {
   /** Creates new records and updates existing ones, all or none. Returns the Ids in order. */
   @AuraEnabled
   public static List<Id> saveRecords(List<SObject> records) {
-    for (SObject record : records) {
-      if (!SAVABLE_TYPES.contains(record.getSObjectType())) {
-        throw ScreenErrors.of('These screens cannot save that kind of record.');
-      }
-    }
-    String ownRainPlan = ActivityDetails.ownRainPlanProblem(records);
-    if (ownRainPlan != null) {
-      throw ScreenErrors.of(ownRainPlan);
-    }
-    try {
-      UserModeWrites.save(records);
-    } catch (Exception e) {
-      throw ScreenErrors.of(e);
-    }
-    List<Id> ids = new List<Id>();
-    for (SObject record : records) {
-      ids.add(record.Id);
-    }
-    return ids;
+    return saveRowsAndWeeks(records, null, null);
+  }
+
+  /**
+   * Saves a table's rows together with its "Runs in" week ticks, all or none. Returns the
+   * rows' Ids in order.
+   */
+  @AuraEnabled
+  public static List<Id> saveRowsAndWeeks(
+    List<SObject> records,
+    List<RunsIn.WeekOff> weeksOff,
+    List<Id> weeksBackOn
+  ) {
+    return ScreenSaves.save(records, weeksOff, weeksBackOn);
   }
 
   @AuraEnabled

@@ -1,8 +1,8 @@
 /**
- * Week exceptions: "this group (or activity, or location) does not run this week". Saving marks
- * and explaining,
- * in the camp's own words, why a group (or the division or program above it) cannot be deleted
- * while it is marked.
+ * Week exceptions: "this group (or activity, or location) does not run this week". The screens
+ * show them in the positive, as "Runs in" weeks left unticked (see RunsIn). Saving marks and
+ * explaining, in the camp's own words, why a group (or the division or program above it) cannot
+ * be deleted while it has a week unticked.
  */
 public with sharing class WeekExceptions {
   public static void save(List<WeekException__c> toAdd, List<Id> toRemove) {
@@ -115,16 +115,21 @@ public with sharing class WeekExceptions {
       pairs.add('and more');
     }
     String what = kind == Group__c.SObjectType
-      ? 'it is'
-      : 'some of its ' + labels.pluralInSentence('Group') + ' are';
+      ? 'it has'
+      : 'some of its ' + labels.pluralInSentence('Group') + ' have';
+    String weeks = marks.size() == 1
+      ? 'that ' + labels.singularInSentence('Week')
+      : 'those ' + labels.pluralInSentence('Week');
     return 'This can\'t be deleted yet: ' +
       what +
-      ' marked as not running (' +
+      ' ' +
+      labels.pluralInSentence('Week') +
+      ' unticked under Runs in (' +
       String.join(pairs, ', ') +
-      '). Clear ' +
-      (marks.size() == 1 ? 'that' : 'those') +
-      ' under ' +
-      labels.plural('WeekException') +
-      ' first, then delete it.';
+      '). Tick ' +
+      weeks +
+      ' again on the ' +
+      labels.plural('Group') +
+      ' screen first, then delete it.';
   }
 }

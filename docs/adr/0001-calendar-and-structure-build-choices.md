@@ -9,7 +9,7 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    `Group__c` (lookup, restrict-delete). `Activity__c` and `Location__c` are added when those
    objects are built; the "exactly one target" validation rule is widened then. Adding fields
    and editing a validation rule are both allowed after release, so nothing is locked in.
-   Camp Setup has a grid for them (one row per group, one column per week); copying a season copies them. Deleting a group, division, or program that a week exception still names is refused with a message listing the marks and pointing to that grid.
+   Camp Setup has a grid for them (one row per group, one column per week); copying a season copies them. Deleting a group, division, or program that a week exception still names is refused with a message listing the marks and pointing to that grid. (Since 0003 the grid is gone: each row has "Runs in" week ticks instead, and the message points there.)
 2. **Season delete is a before-delete trigger**, not a separate Shoresh action. Platform check
    (a) showed restrict lookups inside a season block deleting the whole season. The trigger
    clears week exceptions first, so both the Shoresh screen and Salesforce's own Delete button

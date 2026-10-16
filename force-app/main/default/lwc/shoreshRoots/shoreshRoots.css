@@ -1,0 +1,224 @@
+/* Shoresh desktop's Roots layout (RootsHomeScreen.jsx), in Salesforce's design tokens. */
+.roots {
+  max-width: 1180px;
+}
+
+.roots-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+/* The forward door to the schedule, tinted apart from the cards. */
+.roots-door {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--slds-g-color-accent-2, #0176d3);
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+/* Cards beside the attention list; stacked (attention first) on a narrow screen. */
+.roots-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.roots-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.roots-rail {
+  flex: 0 0 300px;
+  position: sticky;
+  top: 1.5rem;
+}
+
+@media (max-width: 1280px) {
+  .roots-layout {
+    flex-direction: column;
+  }
+  .roots-rail {
+    order: -1;
+    position: static;
+    width: 100%;
+    flex: none;
+  }
+  .roots-main {
+    width: 100%;
+  }
+}
+
+.roots-section-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  margin-bottom: 0.625rem;
+}
+
+/* Explicit places, as on the desktop, so the grid never shifts cards around. */
+.roots-bento {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.roots-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+button.roots-card {
+  cursor: pointer;
+}
+
+button.roots-card:hover,
+button.roots-card:focus {
+  border-color: var(--slds-g-color-accent-2, #0176d3);
+}
+
+.roots-card_activities {
+  grid-column: 1 / span 2;
+  grid-row: 1 / span 2;
+}
+.roots-card_groups {
+  grid-column: 1 / span 2;
+  grid-row: 3 / span 2;
+}
+.roots-card_divisions {
+  grid-column: 3;
+  grid-row: 1;
+}
+.roots-card_locations {
+  grid-column: 3;
+  grid-row: 2;
+}
+.roots-card_timeBlocks {
+  grid-column: 3;
+  grid-row: 3;
+}
+.roots-card_fixedActivities {
+  grid-column: 1 / span 3;
+  grid-row: 5;
+}
+
+.roots-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.roots-card_large .roots-card-header,
+.roots-card_wide .roots-card-header {
+  font-size: 0.9375rem;
+}
+
+.roots-count {
+  font-family: var(--slds-g-font-family-monospace, monospace);
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.roots-card_large .roots-count {
+  font-size: 1.125rem;
+}
+
+/* Something has taken root here. */
+.roots-count_rooted {
+  color: var(--slds-g-color-success-base-40, #2e844a);
+}
+
+.roots-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.roots-chip {
+  padding: 3px 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--slds-g-color-neutral-base-30, #444);
+}
+
+.roots-chip_more {
+  background: transparent;
+  border-style: dashed;
+}
+
+.roots-attention-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-left: 2px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.roots-attention-row:hover,
+.roots-attention-row:focus {
+  border-left-color: var(--slds-g-color-warning-base-60, #fe9339);
+}
+
+.roots-attention-name {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  overflow-wrap: break-word;
+}
+
+.roots-attention-why {
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  overflow-wrap: break-word;
+}
+
+.roots-tag {
+  padding: 2px 0.75rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  background: var(--slds-g-color-warning-base-90, #fff1e8);
+  white-space: nowrap;
+}
+
+.roots-all-clear {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.roots-bottom {
+  display: flex;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
