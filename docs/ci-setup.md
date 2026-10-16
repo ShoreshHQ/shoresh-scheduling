@@ -2,10 +2,10 @@
 
 **Rule (Greg, 2026-10-16): exactly two Salesforce orgs. Never create a third.**
 
-| Org | Alias | Used for |
-|---|---|---|
-| Dev Hub (Greg's Developer Edition org) | `shoresh-devhub` | The main org: owns the test org, and later the package |
-| The test org | `shoresh-test` | Everything else: the automatic checks on every pull request, Claude sessions, and Greg trying things out |
+| Org                                    | Alias            | Used for                                                                                                 |
+| -------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------- |
+| Dev Hub (Greg's Developer Edition org) | `shoresh-devhub` | The main org: owns the test org, and later the package                                                   |
+| The test org                           | `shoresh-test`   | Everything else: the automatic checks on every pull request, Claude sessions, and Greg trying things out |
 
 No extra orgs for experiments, prototypes, or parallel checks: those deploy to the test org too.
 The scripts enforce this: `scripts/renew-test-org.sh` deletes the old test org before creating

@@ -73,6 +73,7 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    - _Gym_, no type, groups that fit 3
 
    Then **Save changes**.
+
 3. Try a mistake: set the Pool's groups that fit to 0 and save. Shoresh says it must be 1 or
    more. Put it back to 1.
 
