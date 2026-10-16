@@ -372,4 +372,91 @@ describe("c-shoresh-editable-table", () => {
     expect(labels(0)).toEqual(["None", "Gym games"]);
     expect(labels(1)).toEqual(["None", "Soccer"]);
   });
+
+  describe("showing only some rows", () => {
+    const LOCATION_COLUMNS = [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "LocationType__c",
+        label: "Location type",
+        type: "picklist",
+        options: [
+          { label: "None", value: "" },
+          { label: "Field", value: "t1" }
+        ]
+      }
+    ];
+    const LOCATIONS = [
+      { Id: "l1", Name: "Pool" },
+      { Id: "l2", Name: "Field A", LocationType__c: "t1" },
+      { Id: "l3", Name: "Field B", LocationType__c: "t1" }
+    ];
+    const names = (element) =>
+      [...element.shadowRoot.querySelectorAll('[data-field="Name"]')].map(
+        (input) => input.value
+      );
+
+    it("shows only the chosen type, or rows with no type", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        addLabel: "Add Location",
+        columns: LOCATION_COLUMNS,
+        rows: LOCATIONS,
+        filterField: "LocationType__c",
+        filterValue: "t1"
+      });
+      await flush();
+      expect(names(element)).toEqual(["Field A", "Field B"]);
+      element.filterValue = "";
+      await flush();
+      expect(names(element)).toEqual(["Pool"]);
+      element.filterValue = undefined;
+      await flush();
+      expect(names(element)).toEqual(["Pool", "Field A", "Field B"]);
+    });
+
+    it("hidden rows keep unsaved typing and are still saved; new rows always show", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        addLabel: "Add Location",
+        columns: LOCATION_COLUMNS,
+        rows: LOCATIONS,
+        newRowDefaults: { Name: "Location {n}" }
+      });
+      await flush();
+      change(field(element, 0, "Name"), "Big pool");
+      element.filterField = "LocationType__c";
+      element.filterValue = "t1";
+      await flush();
+      expect(names(element)).toEqual(["Field A", "Field B"]);
+      button(element, "Add Location").click();
+      await flush();
+      expect(names(element)).toEqual(["Field A", "Field B", "Location 4"]);
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      allValid(element);
+      button(element, "Save changes").click();
+      const records = handler.mock.calls[0][0].detail.records;
+      expect(records[0]).toEqual({
+        sobjectType: "Location__c",
+        Id: "l1",
+        Name: "Big pool"
+      });
+      expect(records[1].Name).toBe("Location 4");
+    });
+
+    it("says so when nothing matches", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        columns: LOCATION_COLUMNS,
+        rows: [LOCATIONS[0]],
+        filterField: "LocationType__c",
+        filterValue: "t1"
+      });
+      await flush();
+      expect(
+        element.shadowRoot.querySelector('[data-id="none-shown"]')
+      ).not.toBeNull();
+    });
+  });
 });

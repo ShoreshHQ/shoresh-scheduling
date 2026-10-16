@@ -343,8 +343,23 @@
           onsave={handleSaveRecords}
           ondelete={handleDeleteRecord}
         ></c-shoresh-editable-table>
+        <template lwc:if={hasLocationTypes}>
+          <div
+            class="slds-size_1-of-1 slds-medium-size_1-of-4 slds-m-bottom_x-small"
+          >
+            <lightning-combobox
+              data-id="location-filter"
+              label="Show"
+              value={locationFilterValue}
+              options={locationFilterOptions}
+              onchange={handleLocationFilter}
+            ></lightning-combobox>
+          </div>
+        </template>
         <c-shoresh-editable-table
           data-id="locations"
+          filter-field="LocationType__c"
+          filter-value={locationTableFilter}
           title={labels.locations}
           object-api-name="Location__c"
           columns={locationColumns}

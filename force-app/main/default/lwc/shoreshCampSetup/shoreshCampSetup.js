@@ -42,6 +42,8 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonForm = {};
   seasonChanged = false;
   seasonSubmitted = false;
+  // Which location type the Locations table shows; "all" shows every location.
+  locationFilter = "all";
 
   connectedCallback() {
     this.loadCamps();
@@ -233,6 +235,35 @@ export default class ShoreshCampSetup extends LightningElement {
       },
       { fieldName: "Notes__c", label: "Notes", type: "text" }
     ];
+  }
+  get hasLocationTypes() {
+    return ((this.setup && this.setup.locationTypes) || []).length > 0;
+  }
+  get locationFilterOptions() {
+    const t = this.terms;
+    return [
+      { label: `All ${t.pIn("LocationType")}`, value: "all" },
+      ...((this.setup && this.setup.locationTypes) || []).map((type) => ({
+        label: type.Name,
+        value: type.Id
+      })),
+      { label: `No ${t.sIn("LocationType")}`, value: "" }
+    ];
+  }
+  get locationFilterValue() {
+    // A type deleted (or another season loaded) since it was chosen: show everything.
+    const known = this.locationFilterOptions.some(
+      (option) => option.value === this.locationFilter
+    );
+    return known ? this.locationFilter : "all";
+  }
+  get locationTableFilter() {
+    return this.locationFilterValue === "all"
+      ? undefined
+      : this.locationFilterValue;
+  }
+  handleLocationFilter(event) {
+    this.locationFilter = event.detail.value;
   }
   get locationDefaults() {
     return {

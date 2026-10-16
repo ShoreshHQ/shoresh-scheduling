@@ -14,119 +14,128 @@
       </div>
     </div>
     <template lwc:if={hasRows}>
-      <div class="slds-scrollable_x">
-        <table
-          class="slds-table slds-table_cell-buffer slds-table_bordered"
-          aria-label={title}
-        >
-          <thead>
-            <tr class="slds-line-height_reset">
-              <template for:each={columns} for:item="col">
-                <th key={col.fieldName} scope="col">
-                  <div class="slds-truncate" title={col.label}>{col.label}</div>
-                </th>
-              </template>
-              <th scope="col">
-                <span class="slds-assistive-text">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <template for:each={tableRows} for:item="row">
-              <tr key={row.key} data-row={row.key}>
-                <template for:each={row.cells} for:item="cell">
-                  <td key={cell.key}>
-                    <template lwc:if={cell.isText}>
-                      <lightning-input
-                        type="text"
-                        label={cell.label}
-                        variant="label-hidden"
-                        value={cell.value}
-                        required={cell.required}
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        onchange={handleChange}
-                      ></lightning-input>
-                    </template>
-                    <template lwc:elseif={cell.isNumber}>
-                      <lightning-input
-                        type="number"
-                        label={cell.label}
-                        variant="label-hidden"
-                        value={cell.value}
-                        required={cell.required}
-                        min={cell.min}
-                        step="1"
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        onchange={handleChange}
-                      ></lightning-input>
-                    </template>
-                    <template lwc:elseif={cell.isDate}>
-                      <lightning-input
-                        type="date"
-                        label={cell.label}
-                        variant="label-hidden"
-                        value={cell.value}
-                        required={cell.required}
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        onchange={handleChange}
-                      ></lightning-input>
-                    </template>
-                    <template lwc:elseif={cell.isTime}>
-                      <lightning-input
-                        type="time"
-                        label={cell.label}
-                        variant="label-hidden"
-                        value={cell.value}
-                        required={cell.required}
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        onchange={handleChange}
-                      ></lightning-input>
-                    </template>
-                    <template lwc:elseif={cell.isCheckbox}>
-                      <lightning-input
-                        type="checkbox"
-                        label={cell.label}
-                        variant="label-hidden"
-                        checked={cell.checked}
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        onchange={handleChange}
-                      ></lightning-input>
-                    </template>
-                    <template lwc:elseif={cell.isPicklist}>
-                      <lightning-combobox
-                        label={cell.label}
-                        variant="label-hidden"
-                        value={cell.value}
-                        options={cell.options}
-                        required={cell.required}
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        onchange={handleChange}
-                      ></lightning-combobox>
-                    </template>
-                  </td>
+      <template lwc:if={hasVisibleRows}>
+        <div class="slds-scrollable_x">
+          <table
+            class="slds-table slds-table_cell-buffer slds-table_bordered"
+            aria-label={title}
+          >
+            <thead>
+              <tr class="slds-line-height_reset">
+                <template for:each={columns} for:item="col">
+                  <th key={col.fieldName} scope="col">
+                    <div class="slds-truncate" title={col.label}>
+                      {col.label}
+                    </div>
+                  </th>
                 </template>
-                <td>
-                  <lightning-button-icon
-                    icon-name="utility:delete"
-                    alternative-text={row.deleteLabel}
-                    title={row.deleteLabel}
-                    variant="bare"
-                    data-row-key={row.key}
-                    onclick={handleDelete}
-                    disabled={busy}
-                  ></lightning-button-icon>
-                </td>
+                <th scope="col">
+                  <span class="slds-assistive-text">Actions</span>
+                </th>
               </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              <template for:each={tableRows} for:item="row">
+                <tr key={row.key} data-row={row.key}>
+                  <template for:each={row.cells} for:item="cell">
+                    <td key={cell.key}>
+                      <template lwc:if={cell.isText}>
+                        <lightning-input
+                          type="text"
+                          label={cell.label}
+                          variant="label-hidden"
+                          value={cell.value}
+                          required={cell.required}
+                          data-row-key={row.key}
+                          data-field={cell.fieldName}
+                          onchange={handleChange}
+                        ></lightning-input>
+                      </template>
+                      <template lwc:elseif={cell.isNumber}>
+                        <lightning-input
+                          type="number"
+                          label={cell.label}
+                          variant="label-hidden"
+                          value={cell.value}
+                          required={cell.required}
+                          min={cell.min}
+                          step="1"
+                          data-row-key={row.key}
+                          data-field={cell.fieldName}
+                          onchange={handleChange}
+                        ></lightning-input>
+                      </template>
+                      <template lwc:elseif={cell.isDate}>
+                        <lightning-input
+                          type="date"
+                          label={cell.label}
+                          variant="label-hidden"
+                          value={cell.value}
+                          required={cell.required}
+                          data-row-key={row.key}
+                          data-field={cell.fieldName}
+                          onchange={handleChange}
+                        ></lightning-input>
+                      </template>
+                      <template lwc:elseif={cell.isTime}>
+                        <lightning-input
+                          type="time"
+                          label={cell.label}
+                          variant="label-hidden"
+                          value={cell.value}
+                          required={cell.required}
+                          data-row-key={row.key}
+                          data-field={cell.fieldName}
+                          onchange={handleChange}
+                        ></lightning-input>
+                      </template>
+                      <template lwc:elseif={cell.isCheckbox}>
+                        <lightning-input
+                          type="checkbox"
+                          label={cell.label}
+                          variant="label-hidden"
+                          checked={cell.checked}
+                          data-row-key={row.key}
+                          data-field={cell.fieldName}
+                          onchange={handleChange}
+                        ></lightning-input>
+                      </template>
+                      <template lwc:elseif={cell.isPicklist}>
+                        <lightning-combobox
+                          label={cell.label}
+                          variant="label-hidden"
+                          value={cell.value}
+                          options={cell.options}
+                          required={cell.required}
+                          data-row-key={row.key}
+                          data-field={cell.fieldName}
+                          onchange={handleChange}
+                        ></lightning-combobox>
+                      </template>
+                    </td>
+                  </template>
+                  <td>
+                    <lightning-button-icon
+                      icon-name="utility:delete"
+                      alternative-text={row.deleteLabel}
+                      title={row.deleteLabel}
+                      variant="bare"
+                      data-row-key={row.key}
+                      onclick={handleDelete}
+                      disabled={busy}
+                    ></lightning-button-icon>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </template>
+      <template lwc:else>
+        <p class="slds-text-color_weak" data-id="none-shown">
+          Nothing to show with this choice.
+        </p>
+      </template>
       <div class="slds-m-top_x-small">
         <lightning-button
           label="Cancel changes"

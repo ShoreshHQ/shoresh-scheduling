@@ -74,7 +74,9 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
    Then **Save changes**.
 
-3. Try a mistake: set the Pool's groups that fit to 0 and save. Shoresh says it must be 1 or
+3. Use **Show** above the table to see only _Field_ locations, or only those with no type.
+   Choose _All location types_ to see them all again.
+4. Try a mistake: set the Pool's groups that fit to 0 and save. Shoresh says it must be 1 or
    more. Put it back to 1.
 
 ## 8. Activities

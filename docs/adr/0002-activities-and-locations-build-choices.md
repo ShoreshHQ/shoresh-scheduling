@@ -9,8 +9,9 @@ Status: accepted (2026-10-16). Design source: wiki `projects/shoresh-scheduling-
 1. **Location types are a list each camp makes up** (Greg, 2026-10-16): `LocationType__c`, a
    detail of the season with a unique name per season (hidden key, like weeks). Locations point
    at a type with a lookup that clears when the type is deleted. Types only organize; they never
-   affect scheduling. This replaces the data model's undefined `Kind__c`. For now the locations
-   table is listed by type; a filter by type is not built yet (it may come with the camp map).
+   affect scheduling. This replaces the data model's undefined `Kind__c`. The locations table is
+   listed by type and has a Show filter by type (Greg, 2026-10-16); filtering only hides rows, so
+   unsaved typing on hidden rows is kept and saved.
 2. **Rain plan is a clear-on-delete lookup**, not restrict-delete: Salesforce does not allow
    restrict-delete on a lookup from an object to itself. The setup screens still refuse to delete
    an activity that is another's rain plan and say which; deleting it elsewhere clears the rain

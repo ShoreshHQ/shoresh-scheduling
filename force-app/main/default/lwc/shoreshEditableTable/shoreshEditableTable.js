@@ -10,6 +10,10 @@ import { LightningElement, api } from "lwc";
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen. Only this table's own successful save clears it.
  *
+ * filterField / filterValue: show only rows whose filterField equals filterValue ("" means rows
+ * where it is empty; no filterValue shows every row). Hidden rows keep their unsaved typing
+ * and are still saved; new rows always show.
+ *
  * Fires:
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
  *          fields only; call onFailure() if the save did not go through
@@ -26,6 +30,8 @@ export default class ShoreshEditableTable extends LightningElement {
    */
   @api newRowDefaults = {};
   @api busy = false;
+  @api filterField;
+  @api filterValue;
 
   drafts = [];
   nextKey = 0;
@@ -112,8 +118,27 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.busy || !this.isDirty;
   }
 
+  get visibleDrafts() {
+    if (
+      !this.filterField ||
+      this.filterValue === undefined ||
+      this.filterValue === null
+    ) {
+      return this.drafts;
+    }
+    return this.drafts.filter(
+      (draft) =>
+        draft.isNew ||
+        (draft.values[this.filterField] || "") === this.filterValue
+    );
+  }
+
+  get hasVisibleRows() {
+    return this.visibleDrafts.length > 0;
+  }
+
   get tableRows() {
-    return this.drafts.map((draft) => ({
+    return this.visibleDrafts.map((draft) => ({
       key: draft.key,
       isNew: draft.isNew,
       deleteLabel: draft.isNew
