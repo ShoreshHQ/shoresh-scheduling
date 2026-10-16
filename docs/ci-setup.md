@@ -1,48 +1,39 @@
-# CI setup: connecting GitHub to the Dev Hub (one time, Greg)
+# CI setup: the shared test org
 
-Every pull request gets its own short-lived Salesforce test org (a scratch org). GitHub can
-only create one if it can log in to the Dev Hub. That login is a secret, so Greg sets it up
-once by hand. Until then the "Scratch org deploy and Apex tests" check fails with the message
-"The SFDX_AUTH_URL_DEVHUB secret is not set".
+The "Scratch org deploy and Apex tests" check deploys every pull request to **one shared test
+org** and runs the Apex tests there. (It used to create a brand-new org for every run, which
+used up the Dev Hub's allowance of 6 new orgs a day.)
 
-## What you need
+Two test orgs are in use at any time:
 
-- This Mac, with the Salesforce CLI logged in to the Dev Hub (it is: alias `shoresh-devhub`).
-- The GitHub CLI logged in as `gfeitel1-maker` (it is).
+| Org | Alias | Used by |
+|---|---|---|
+| Shared CI test org | `shoresh-ci` | The automatic checks on every pull request |
+| Hands-on test org | `shoresh-dev` | Claude sessions, and Greg trying things out |
 
-## Steps
+Test orgs last at most 30 days. Renewing the shared one also gives a clean, from-scratch check,
+which catches anything an org that has been deployed to many times could hide.
 
-1. Open the Terminal app (or a terminal tab in the Claude app).
-2. Paste this single line and press Return. It reads the Dev Hub login from the Salesforce
-   CLI and hands it straight to GitHub as an encrypted secret. Nothing is shown on screen or
-   saved to a file.
+Until the first renewal (2026-10-16), `SFDX_AUTH_URL_CI` points at the hands-on org
+`shoresh-dev` (expires 2026-10-22), because the Dev Hub's daily allowance was used up. Running
+`scripts/renew-ci-org.sh` once the allowance returns gives CI its own org.
 
-   ```bash
-   URL=$(sf org auth show-sfdx-auth-url --target-org shoresh-devhub --json | jq -er '.result.sfdxAuthUrl | select(startswith("force://"))') && gh secret set SFDX_AUTH_URL_DEVHUB --repo ShoreshHQ/shoresh-scheduling <<< "$URL" || echo "NOT SET: could not read the Dev Hub login. Tell Claude."; unset URL
-   ```
+## When the shared test org expires (every 30 days)
 
-   Usually nothing is printed; step 3 confirms it worked.
-   If you see `command not found: jq`, run `brew install jq` and try again.
-   If you see `NOT SET` or anything else, stop and tell Claude what it says.
+The check fails with "Could not log in to the shared test org". Ask Claude to renew it, or run
+this on this Mac from the project folder:
 
-3. Check it is there:
+```bash
+scripts/renew-ci-org.sh
+```
 
-   ```bash
-   gh secret list --repo ShoreshHQ/shoresh-scheduling
-   ```
+It creates a new 30-day org, hands its login to GitHub as the encrypted secret
+`SFDX_AUTH_URL_CI` (nothing is shown on screen or saved to a file), deletes the old org, and
+prints the new expiry date. Then re-run the failed check: on the pull request, **Checks** tab →
+**CI** → **Re-run all jobs**.
 
-   The list should show `SFDX_AUTH_URL_DEVHUB` with today's date. (GitHub never shows the
-   value again, only the name.)
+## What the secret can do
 
-4. Re-run the failed check: open the pull request on GitHub, click the **Checks** tab, choose
-   **CI**, then **Re-run all jobs**. Or tell Claude "the secret is set" and Claude will re-run it.
-
-## What this secret can do
-
-It is a login to the Dev Hub org (Greg's own Developer Edition org, separate from any employer
-org). Anyone who can change this repository's workflows could use it, so the repository stays
-private with Greg as the only admin. If it ever leaks: in the Dev Hub, Setup → Connected Apps
-OAuth Usage → Salesforce CLI → Revoke, then repeat the steps above.
-
-A later improvement is a dedicated connected app with a certificate (JWT login) so the CI login
-can be revoked separately from Greg's own CLI login.
+`SFDX_AUTH_URL_CI` is a login to a throwaway test org with no real data, so a leak can do little
+harm. The older `SFDX_AUTH_URL_DEVHUB` secret (a login to the Dev Hub itself) is no longer used
+by CI and can be removed.

@@ -47,32 +47,33 @@ jobs:
     name: Scratch org deploy and Apex tests
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    # Every pull request deploys to the same shared test org (scripts/renew-ci-org.sh makes
+    # it), instead of creating a new org each run, so CI does not use up the Dev Hub's daily
+    # allowance. One run at a time, so two pull requests never deploy over each other.
+    concurrency:
+      group: shared-test-org
+      cancel-in-progress: false
     env:
-      SFDX_AUTH_URL_DEVHUB: ${{ secrets.SFDX_AUTH_URL_DEVHUB }}
+      SFDX_AUTH_URL_CI: ${{ secrets.SFDX_AUTH_URL_CI }}
     steps:
       - uses: actions/checkout@v4
-      - name: Check the Dev Hub secret is set
+      - name: Check the shared test org secret is set
         run: |
-          if [ -z "$SFDX_AUTH_URL_DEVHUB" ]; then
-            echo "::error::The SFDX_AUTH_URL_DEVHUB secret is not set. See docs/ci-setup.md."
+          if [ -z "$SFDX_AUTH_URL_CI" ]; then
+            echo "::error::The SFDX_AUTH_URL_CI secret is not set. Run scripts/renew-ci-org.sh (see docs/ci-setup.md)."
             exit 1
           fi
-          case "$SFDX_AUTH_URL_DEVHUB" in
-            force://*) ;;
-            *) echo "::error::The SFDX_AUTH_URL_DEVHUB secret is not a Salesforce login. Set it again: docs/ci-setup.md."; exit 1 ;;
-          esac
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install Salesforce CLI
         run: npm install --global @salesforce/cli@2.154.4
-      - name: Log in to the Dev Hub
+      - name: Log in to the shared test org
         run: |
-          echo "$SFDX_AUTH_URL_DEVHUB" | sf org login sfdx-url --sfdx-url-stdin - --alias devhub --set-default-dev-hub
-      - name: Create a scratch org for this pull request
-        run: |
-          sf org create scratch --definition-file config/project-scratch-def.json \
-            --alias ci --set-default --duration-days 1 --wait 15
+          if ! echo "$SFDX_AUTH_URL_CI" | sf org login sfdx-url --sfdx-url-stdin - --alias ci --set-default; then
+            echo "::error::Could not log in to the shared test org. It has probably expired (they last 30 days). Run scripts/renew-ci-org.sh (see docs/ci-setup.md), then re-run this check."
+            exit 1
+          fi
       - name: Deploy
         run: |
           if [ -z "$(find force-app -type f ! -name .gitkeep)" ]; then
@@ -87,6 +88,3 @@ jobs:
           else
             sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 30
           fi
-      - name: Delete the scratch org
-        if: always()
-        run: sf org delete scratch --target-org ci --no-prompt || true
