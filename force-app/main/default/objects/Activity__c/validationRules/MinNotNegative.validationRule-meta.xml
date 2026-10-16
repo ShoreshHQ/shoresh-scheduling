@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>MinNotNegative</fullName>
+    <active>true</active>
+    <description>The weekly minimum is a number, 0 or more.</description>
+    <errorConditionFormula
+  >OR(ISBLANK(TimesPerWeekMin__c), TimesPerWeekMin__c &lt; 0)</errorConditionFormula>
+    <errorDisplayField>TimesPerWeekMin__c</errorDisplayField>
+    <errorMessage>Must be 0 or more.</errorMessage>
+</ValidationRule>

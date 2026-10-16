@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SameDivisionOnly__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >Ticked: groups doing this at the same time must come from the same division.</description>
+    <label>Same Division Only</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

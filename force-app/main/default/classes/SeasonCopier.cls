@@ -1,6 +1,6 @@
 /**
  * "Copy last season": makes a new season with new dates and new records for everything set up
- * in it, each linked to its original by CopiedFrom__c (decision: setup belongs to a season).
+ * in it (structure, locations, activities, who can do them, week exceptions), each linked to its original by CopiedFrom__c (decision: setup belongs to a season).
  * The original season and everything in it is only read, never written.
  *
  * Dates move by the number of days between the old and new start dates, so each week keeps its
@@ -85,7 +85,11 @@ public with sharing class SeasonCopier {
       copyTimeBlocks(programCopies);
       Map<Id, Division__c> divisionCopies = copyDivisions(programCopies);
       Map<Id, Group__c> groupCopies = copyGroups(divisionCopies);
-      copyWeekExceptions(weekCopies, groupCopies);
+      // Ids are unique across objects, so one map holds every original => copy.
+      Map<Id, Id> copies = copyIds(groupCopies);
+      copies.putAll(copyIds(divisionCopies));
+      copies.putAll(new SetupCopier(source.Id, season.Id).copy(copies));
+      copyWeekExceptions(weekCopies, copies);
       return season.Id;
     } catch (Exception e) {
       Database.rollback(beforeCopy);
@@ -206,14 +210,14 @@ public with sharing class SeasonCopier {
     return copies;
   }
 
-  /** Each exception moves to the copied week with the same position and the copied group. */
+  /** Each exception moves to the copied week with the same position and the copied target. */
   private void copyWeekExceptions(
     Map<Id, Week__c> weekCopies,
-    Map<Id, Group__c> groupCopies
+    Map<Id, Id> targetCopies
   ) {
     List<WeekException__c> copies = new List<WeekException__c>();
     for (WeekException__c row : [
-      SELECT Id, Week__c, Group__c
+      SELECT Id, Week__c, Group__c, Activity__c, Location__c
       FROM WeekException__c
       WHERE Week__c IN :weekCopies.keySet()
       WITH USER_MODE
@@ -221,13 +225,26 @@ public with sharing class SeasonCopier {
       copies.add(
         new WeekException__c(
           Week__c = weekCopies.get(row.Week__c).Id,
-          Group__c = row.Group__c == null
-            ? null
-            : groupCopies.get(row.Group__c).Id
+          Group__c = copyOf(targetCopies, row.Group__c),
+          Activity__c = copyOf(targetCopies, row.Activity__c),
+          Location__c = copyOf(targetCopies, row.Location__c)
         )
       );
     }
     Database.insert(copies, AccessLevel.USER_MODE);
+  }
+
+  private static Id copyOf(Map<Id, Id> copies, Id sourceId) {
+    return sourceId == null ? null : copies.get(sourceId);
+  }
+
+  /** Original Id => its copy's Id. */
+  private static Map<Id, Id> copyIds(Map<Id, SObject> copies) {
+    Map<Id, Id> result = new Map<Id, Id>();
+    for (Id sourceId : copies.keySet()) {
+      result.put(sourceId, copies.get(sourceId).Id);
+    }
+    return result;
   }
 
   public class Preview {

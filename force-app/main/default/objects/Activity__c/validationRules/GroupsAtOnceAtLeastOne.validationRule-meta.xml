@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GroupsAtOnceAtLeastOne</fullName>
+    <active>true</active>
+    <description
+  >At least one group at once, unless there is no limit.</description>
+    <errorConditionFormula
+  >AND(NOT(NoGroupLimit__c), OR(ISBLANK(GroupsAtOnce__c), GroupsAtOnce__c &lt; 1))</errorConditionFormula>
+    <errorDisplayField>GroupsAtOnce__c</errorDisplayField>
+    <errorMessage>Must be 1 or more, or tick No limit.</errorMessage>
+</ValidationRule>

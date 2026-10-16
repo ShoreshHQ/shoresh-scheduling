@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NoGroupLimit__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >Ticked: any number of groups at once (the location may still limit it). An explicit choice, never a blank number.</description>
+    <label>No Group Limit</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

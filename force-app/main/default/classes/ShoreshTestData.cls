@@ -105,6 +105,97 @@ public class ShoreshTestData {
     return season;
   }
 
+  /**
+   * Places and activities for a season made by fullSeason: a "Field" location type; Pool (fits 1),
+   * Field A (fits 2, a Field), and Gym (fits 3); Swim at the Pool, open only to Group A; Soccer on
+   * Field A, outdoors, with Gym games as its rain plan; Gym games in the Gym, open to the Juniors
+   * division.
+   */
+  public static Map<String, Id> placesAndActivities(Id seasonId) {
+    Map<String, Id> ids = new Map<String, Id>();
+    LocationType__c field = new LocationType__c(
+      Season__c = seasonId,
+      Name = 'Field',
+      SortOrder__c = 1
+    );
+    Database.insert(field, AccessLevel.SYSTEM_MODE);
+    ids.put('Field', field.Id);
+    List<Location__c> locations = new List<Location__c>{
+      new Location__c(
+        Season__c = seasonId,
+        Name = 'Pool',
+        GroupsThatFit__c = 1
+      ),
+      new Location__c(
+        Season__c = seasonId,
+        Name = 'Field A',
+        GroupsThatFit__c = 2,
+        LocationType__c = field.Id
+      ),
+      new Location__c(Season__c = seasonId, Name = 'Gym', GroupsThatFit__c = 3)
+    };
+    Database.insert(locations, AccessLevel.SYSTEM_MODE);
+    for (Location__c location : locations) {
+      ids.put(location.Name, location.Id);
+    }
+    List<Activity__c> activities = new List<Activity__c>{
+      activity(seasonId, 'Swim', ids.get('Pool')),
+      activity(seasonId, 'Soccer', ids.get('Field A')),
+      activity(seasonId, 'Gym games', ids.get('Gym'))
+    };
+    activities[1].Outdoor__c = true;
+    Database.insert(activities, AccessLevel.SYSTEM_MODE);
+    for (Activity__c activity : activities) {
+      ids.put(activity.Name, activity.Id);
+    }
+    Database.update(
+      new Activity__c(
+        Id = ids.get('Soccer'),
+        RainPlan__c = ids.get('Gym games')
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Group__c groupA = [
+      SELECT Id
+      FROM Group__c
+      WHERE Name = 'Group A' AND Division__r.Program__r.Season__c = :seasonId
+      WITH SYSTEM_MODE
+    ];
+    Group__c groupAWithDivision = [
+      SELECT Division__c
+      FROM Group__c
+      WHERE Id = :groupA.Id
+      WITH SYSTEM_MODE
+    ];
+    Database.insert(
+      new List<ActivityEligibility__c>{
+        new ActivityEligibility__c(
+          Activity__c = ids.get('Swim'),
+          Group__c = groupA.Id
+        ),
+        new ActivityEligibility__c(
+          Activity__c = ids.get('Gym games'),
+          Division__c = groupAWithDivision.Division__c
+        )
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+    return ids;
+  }
+
+  public static Activity__c activity(Id seasonId, String name, Id locationId) {
+    return new Activity__c(
+      Season__c = seasonId,
+      Name = name,
+      Location__c = locationId,
+      Length__c = 1,
+      TimesPerWeekMin__c = 1,
+      TimesPerWeekMax__c = 2,
+      Priority__c = 'Low',
+      GroupsAtOnce__c = 1
+    );
+  }
+
   /** A Standard User with the Shoresh Scheduler permission set. */
   public static User scheduler() {
     return standardUser(true);

@@ -6,9 +6,21 @@ public with sharing class ScreenErrors {
   };
 
   public static AuraHandledException of(Exception e) {
+    if (e instanceof UserModeWrites.SaveException) {
+      UserModeWrites.SaveException failed = (UserModeWrites.SaveException) e;
+      return of(withName(failed.recordName, dmlMessage(failed.failure)));
+    }
     return of(
       e instanceof DmlException ? dmlMessage((DmlException) e) : e.getMessage()
     );
+  }
+
+  /** '"Archery": Must be 1 or more.' unless the message already names the row. */
+  private static String withName(String name, String message) {
+    if (String.isBlank(name) || message.contains('"' + name + '"')) {
+      return message;
+    }
+    return '"' + name + '": ' + message;
   }
 
   public static AuraHandledException of(String message) {

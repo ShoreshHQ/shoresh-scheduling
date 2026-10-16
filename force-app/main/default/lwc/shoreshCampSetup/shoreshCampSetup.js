@@ -9,6 +9,7 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveWeekExceptions from "@salesforce/apex/WeekExceptionsController.saveWeekExceptions";
+import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
@@ -21,7 +22,7 @@ const STATUS_OPTIONS = [
 
 /**
  * Camp setup: a director picks (or starts) a season and sets up its dates, weeks, programs,
- * divisions, groups, and time blocks, or copies it to start a new season. Every model term on
+ * divisions, groups, time blocks, locations, and activities, or copies it to start a new season. Every model term on
  * the screen is shown in the camp's own words.
  */
 export default class ShoreshCampSetup extends LightningElement {
@@ -41,6 +42,8 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonForm = {};
   seasonChanged = false;
   seasonSubmitted = false;
+  // Which location type the Locations table shows; "all" shows every location.
+  locationFilter = "all";
 
   connectedCallback() {
     this.loadCamps();
@@ -201,6 +204,162 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.programs.length > 0;
   }
 
+  get locationTypeColumns() {
+    return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
+  }
+  get locationTypeDefaults() {
+    return { Season__c: this.seasonId };
+  }
+  get locationColumns() {
+    const t = this.terms;
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "LocationType__c",
+        label: t.s("LocationType"),
+        type: "picklist",
+        options: [
+          { label: "None", value: "" },
+          ...((this.setup && this.setup.locationTypes) || []).map((type) => ({
+            label: type.Name,
+            value: type.Id
+          }))
+        ]
+      },
+      {
+        fieldName: "GroupsThatFit__c",
+        label: t.s("GroupsThatFit"),
+        type: "number",
+        min: 1,
+        required: true
+      },
+      { fieldName: "Notes__c", label: "Notes", type: "text" }
+    ];
+  }
+  get hasLocationTypes() {
+    return ((this.setup && this.setup.locationTypes) || []).length > 0;
+  }
+  get locationFilterOptions() {
+    const t = this.terms;
+    return [
+      { label: `All ${t.pIn("LocationType")}`, value: "all" },
+      ...((this.setup && this.setup.locationTypes) || []).map((type) => ({
+        label: type.Name,
+        value: type.Id
+      })),
+      { label: `No ${t.sIn("LocationType")}`, value: "" }
+    ];
+  }
+  get locationFilterValue() {
+    // A type deleted (or another season loaded) since it was chosen: show everything.
+    const known = this.locationFilterOptions.some(
+      (option) => option.value === this.locationFilter
+    );
+    return known ? this.locationFilter : "all";
+  }
+  get locationTableFilter() {
+    return this.locationFilterValue === "all"
+      ? undefined
+      : this.locationFilterValue;
+  }
+  handleLocationFilter(event) {
+    this.locationFilter = event.detail.value;
+  }
+  get locationDefaults() {
+    return {
+      Season__c: this.seasonId,
+      Name: `${this.terms.s("Location")} {n}`,
+      GroupsThatFit__c: 1
+    };
+  }
+  get activityColumns() {
+    const t = this.terms;
+    const none = { label: "None", value: "" };
+    const activities = (this.setup && this.setup.activities) || [];
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "Location__c",
+        label: t.s("Location"),
+        type: "picklist",
+        options: [
+          none,
+          ...((this.setup && this.setup.locations) || []).map((l) => ({
+            label: l.Name,
+            value: l.Id
+          }))
+        ]
+      },
+      {
+        fieldName: "Length__c",
+        label: t.s("Length"),
+        type: "number",
+        min: 1,
+        required: true
+      },
+      {
+        fieldName: "TimesPerWeekMin__c",
+        label: `${t.s("TimesPerWeek")}: at least`,
+        type: "number",
+        min: 0,
+        required: true
+      },
+      {
+        fieldName: "TimesPerWeekMax__c",
+        label: `${t.s("TimesPerWeek")}: at most`,
+        type: "number",
+        min: 0
+      },
+      {
+        fieldName: "NoWeeklyMax__c",
+        label: "No weekly maximum",
+        type: "checkbox"
+      },
+      {
+        fieldName: "Priority__c",
+        label: "Priority",
+        type: "picklist",
+        options: [
+          { label: "High", value: "High" },
+          { label: "Low", value: "Low" }
+        ]
+      },
+      { fieldName: "Outdoor__c", label: "Outdoors", type: "checkbox" },
+      {
+        fieldName: "RainPlan__c",
+        label: t.s("RainPlan"),
+        type: "picklist",
+        excludeSelf: true,
+        options: [
+          none,
+          ...activities.map((a) => ({ label: a.Name, value: a.Id }))
+        ]
+      },
+      {
+        fieldName: "GroupsAtOnce__c",
+        label: t.s("GroupsAtOnce"),
+        type: "number",
+        min: 1
+      },
+      { fieldName: "NoGroupLimit__c", label: "No limit", type: "checkbox" }
+    ];
+  }
+  get activityDefaults() {
+    // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
+    return {
+      Season__c: this.seasonId,
+      Name: `${this.terms.s("Activity")} {n}`,
+      Length__c: 1,
+      TimesPerWeekMin__c: 1,
+      TimesPerWeekMax__c: 1,
+      Priority__c: "Low",
+      Outdoor__c: false,
+      GroupsAtOnce__c: 1,
+      NoWeeklyMax__c: false,
+      NoGroupLimit__c: false
+    };
+  }
+
   get labels() {
     const t = this.terms;
     return {
@@ -225,7 +384,17 @@ export default class ShoreshCampSetup extends LightningElement {
       programs: t.p("Program"),
       addProgram: `Add ${t.s("Program")}`,
       noPrograms: `No ${t.pIn("Program")} yet. Every ${t.sIn("Season")} needs at least one.`,
-      copiedFrom: `Copied from "${this.copiedFromName}".`
+      copiedFrom: `Copied from "${this.copiedFromName}".`,
+      locations: t.p("Location"),
+      locationTypes: t.p("LocationType"),
+      addLocationType: `Add ${t.s("LocationType")}`,
+      noLocationTypes: `No ${t.pIn("LocationType")} yet. They are optional; ${t.pIn("Location")} are listed by ${t.sIn("LocationType")}.`,
+      addLocation: `Add ${t.s("Location")}`,
+      noLocations: `No ${t.pIn("Location")} yet.`,
+      activities: t.p("Activity"),
+      catalogue: `${t.s("Activity")} catalogue`,
+      addActivity: `Add ${t.s("Activity")}`,
+      noActivities: `No ${t.pIn("Activity")} yet.`
     };
   }
 
@@ -315,7 +484,8 @@ export default class ShoreshCampSetup extends LightningElement {
       label: `Delete ${t.sIn("Season")}`,
       message:
         `Delete "${this.setup.season.Name}" and everything set up in it (${t.pIn("Week")}, ${t.pIn("Program")}, ` +
-        `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")})? This cannot be undone.`,
+        `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")})? ` +
+        `This cannot be undone.`,
       variant: "header",
       theme: "error"
     });
@@ -409,6 +579,20 @@ export default class ShoreshCampSetup extends LightningElement {
     let saved = false;
     await this.run(async () => {
       await saveWeekExceptions({ toAdd, toRemove });
+      saved = true;
+      this.toast("Saved.");
+      await this.loadSeason();
+    });
+    if (!saved && onFailure) {
+      onFailure();
+    }
+  }
+
+  async handleSaveActivityDetails(event) {
+    const { rules, whoCanDoIt, onFailure } = event.detail;
+    let saved = false;
+    await this.run(async () => {
+      await saveActivityDetails({ rules, whoCanDoIt });
       saved = true;
       this.toast("Saved.");
       await this.loadSeason();

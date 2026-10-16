@@ -63,39 +63,77 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    _Morning only_. **Save changes**.
 6. The **Needs attention** box disappears once nothing is missing.
 
-## 7. Weeks a bunk doesn't run
+## 7. Locations
 
-1. Scroll to **Week exceptions** at the bottom. There is a row for each bunk and a column for
-   each week.
+1. Scroll to **Locations**. First, optionally, **Location types**: click **Add Location type**,
+   type _Field_, **Save changes**. Types are only for sorting your locations.
+2. Under **Locations**, click **Add Location** three times and fill them in:
+   - _Pool_, no type, **Groups that fit** 1
+   - _Field A_, type _Field_, groups that fit 2
+   - _Gym_, no type, groups that fit 3
+
+   Then **Save changes**.
+
+3. Use **Show** above the table to see only _Field_ locations, or only those with no type.
+   Choose _All location types_ to see them all again.
+4. Try a mistake: set the Pool's groups that fit to 0 and save. Shoresh says it must be 1 or
+   more. Put it back to 1.
+
+## 8. Activities
+
+1. Scroll to **Activities**. Click **Add Activity**. The new row starts with the usual
+   defaults: length 1, at least 1 and at most 1 time a week, Low priority, indoors, one bunk
+   at a time.
+2. Make three: _Swim_ at the Pool; _Gym games_ in the Gym; _Soccer_ on Field A with
+   **Outdoors** ticked. **Save changes**.
+3. A **Needs attention** line appears: _"Soccer" is outdoors and has no rain plan._ Set
+   Soccer's **Rain plan** to _Gym games_ and save; the line goes away. (Soccer's own name is
+   not offered as its rain plan.)
+4. Set Gym games' **Groups at once** to 5 and save. Needs attention now says the Gym fits 3, so
+   scheduling will use 3. Put it back to 1.
+5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
+   to **Can do it**, then **Save changes**. Only Bunk 1 can swim now; nobody chosen means
+   every bunk.
+6. Still on Swim, under **More rules**: "Get this many done early in the week" 1, **By**
+   Tuesday (the swim test by Tuesday). **Save changes**.
+7. Try deleting the **Pool** (trash can in the Locations table). Shoresh refuses: Swim happens
+   there; choose another location for Swim first. Try deleting **Gym games**: refused,
+   because it is Soccer's rain plan.
+
+## 9. Weeks something doesn't run
+
+1. Scroll to **Week exceptions** at the bottom. There is a row for each bunk, each activity,
+   and each location, and a column for each week.
 2. Tick **Bunk 2** under **Week 3** (say it is away on a trip that week) and click
    **Save changes**.
 3. Now try deleting Bunk 2 (trash can next to it, then confirm). Shoresh refuses: it says
    Bunk 2 is marked as not running in Week 3 and to clear that under Week exceptions first.
    Nothing is deleted. Leave the tick in place; the copy below carries it over.
+4. Tick **Pool** under **Week 2** (closed for repairs) and save.
 
-## 8. Copy the season to next summer
+## 10. Copy the season to next summer
 
 1. Click **Copy this season**. Shoresh suggests _Summer 2027_ starting Monday Jun 28, 2027, and
    lists every week with where it was and where it will be.
 2. Change the start date to Jun 29, 2027 (a Tuesday). A yellow warning explains that every
    week would move to different weekdays. Change it back to Jun 28, 2027.
 3. Click **Copy season**. You land on _Summer 2027_, which says _Copied from "Summer 2026"_,
-   with the same weeks (a year later), program, time blocks, unit, bunks, and week exceptions.
+   with the same weeks (a year later), program, time blocks, unit, bunks, locations,
+   activities (Soccer's rain plan, who can swim), and week exceptions.
 4. Use the **Season** picker at the top to go back to _Summer 2026_: it is exactly as you left
    it.
 
-## 9. Deleting
+## 11. Deleting
 
 1. On _Summer 2027_, click **Delete season** and confirm. It and everything in it are gone;
    _Summer 2026_ is untouched.
-2. Deleting a bunk, unit, program, week, or time block works the same way (trash can icon,
-   then confirm).
+2. Deleting a bunk, unit, program, week, time block, location, or activity works the same way
+   (trash can icon, then confirm).
 
 ## What is not here yet
 
-- Week exceptions cover bunks only; activities and locations ("the pool is closed in Week 3")
-  come with those pieces.
-- Activities, locations, events, and schedules come in later pieces.
+- The camp map and importing from a spreadsheet are later pieces.
+- Events and schedules come in later pieces.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).
 

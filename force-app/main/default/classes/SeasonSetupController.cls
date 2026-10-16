@@ -11,7 +11,10 @@ public with sharing class SeasonSetupController {
     Program__c.SObjectType,
     Division__c.SObjectType,
     Group__c.SObjectType,
-    TimeBlock__c.SObjectType
+    TimeBlock__c.SObjectType,
+    LocationType__c.SObjectType,
+    Location__c.SObjectType,
+    Activity__c.SObjectType
   };
   // Camps are never deleted from these screens.
   private static final Set<Schema.SObjectType> DELETABLE_TYPES = new Set<Schema.SObjectType>{
@@ -20,7 +23,10 @@ public with sharing class SeasonSetupController {
     Program__c.SObjectType,
     Division__c.SObjectType,
     Group__c.SObjectType,
-    TimeBlock__c.SObjectType
+    TimeBlock__c.SObjectType,
+    LocationType__c.SObjectType,
+    Location__c.SObjectType,
+    Activity__c.SObjectType
   };
 
   @AuraEnabled
@@ -78,6 +84,10 @@ public with sharing class SeasonSetupController {
         throw ScreenErrors.of('These screens cannot save that kind of record.');
       }
     }
+    String ownRainPlan = ActivityDetails.ownRainPlanProblem(records);
+    if (ownRainPlan != null) {
+      throw ScreenErrors.of(ownRainPlan);
+    }
     try {
       UserModeWrites.save(records);
     } catch (Exception e) {
@@ -97,7 +107,7 @@ public with sharing class SeasonSetupController {
     ) {
       throw ScreenErrors.of('These screens cannot delete that kind of record.');
     }
-    String inUse = WeekExceptions.blockingDelete(recordId);
+    String inUse = InUse.reason(recordId);
     if (inUse != null) {
       throw ScreenErrors.of(inUse);
     }

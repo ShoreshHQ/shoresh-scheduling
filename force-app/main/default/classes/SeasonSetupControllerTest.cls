@@ -203,7 +203,7 @@ private class SeasonSetupControllerTest {
         Assert.fail('Backwards dates are refused');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'The end date must be on or after the start date.',
+          '"B": The end date must be on or after the start date.',
           errorOf(e)
         );
       }

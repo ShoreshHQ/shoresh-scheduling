@@ -1,10 +1,13 @@
 import { LightningElement, api } from "lwc";
 
-const keyOf = (groupId, weekId) => `${groupId}|${weekId}`;
+// Salesforce Ids are unique across objects, so a target Id alone says which row it is.
+const keyOf = (targetId, weekId) => `${targetId}|${weekId}`;
+const targetOf = (row) => row.Group__c || row.Activity__c || row.Location__c;
 
 /**
- * Which groups do not run in which weeks (week exceptions), as a grid: one row per group, one
- * column per week, a tick for "does not run". Changes stay on screen until Save.
+ * What does not run in which weeks (week exceptions), as a grid: one row per group, activity,
+ * and location, one column per week, a tick for "does not run" (or "closed"). Changes stay on
+ * screen until Save.
  *
  * Fires: save { toAdd, toRemove, onFailure }
  */
@@ -28,7 +31,7 @@ export default class ShoreshWeekExceptions extends LightningElement {
     this._setup = value;
     const saved = new Map();
     ((value && value.weekExceptions) || []).forEach((row) => {
-      const key = keyOf(row.Group__c, row.Week__c);
+      const key = keyOf(targetOf(row), row.Week__c);
       saved.set(key, [...(saved.get(key) || []), row.Id]);
     });
     this.saved = saved;
@@ -41,8 +44,8 @@ export default class ShoreshWeekExceptions extends LightningElement {
     // Something else was saved: keep unsaved ticks that still differ from what is saved,
     // for groups and weeks that are still there.
     const onScreen = new Set();
-    this.rows.forEach((row) =>
-      row.cells.forEach((cell) => onScreen.add(cell.key))
+    this.rowGroups().forEach((rows) =>
+      rows.forEach((row) => row.cells.forEach((cell) => onScreen.add(cell.key)))
     );
     const kept = new Map();
     this.pending.forEach((ticked, key) => {
@@ -61,32 +64,77 @@ export default class ShoreshWeekExceptions extends LightningElement {
   }
 
   get hasGrid() {
-    return this.weeks.length > 0 && this.rows.length > 0;
+    return (
+      this.weeks.length > 0 && this.rowGroups().some((rows) => rows.length > 0)
+    );
   }
 
-  get rows() {
-    const rows = [];
-    const weeks = this.weeks;
-    ((this._setup && this._setup.programs) || []).forEach((entry) => {
+  get columnCount() {
+    return this.weeks.length + 1;
+  }
+
+  /** Groups first, then activities, then locations; a section only when it has rows. */
+  get sections() {
+    const t = this.terms;
+    const [groups, activities, locations] = this.rowGroups();
+    return [
+      { key: "groups", heading: t.p("Group"), rows: groups },
+      { key: "activities", heading: t.p("Activity"), rows: activities },
+      { key: "locations", heading: t.p("Location"), rows: locations }
+    ].filter((section) => section.rows.length > 0);
+  }
+
+  /** [group rows, activity rows, location rows]. Needs no camp words, so it works before they load. */
+  rowGroups() {
+    const setup = this._setup || {};
+    const groups = [];
+    (setup.programs || []).forEach((entry) => {
       (entry.divisions || []).forEach((d) => {
         (d.groups || []).forEach((grp) => {
-          rows.push({
-            id: grp.Id,
-            name: grp.Name,
-            place: `${entry.program.Name} · ${d.division.Name}`,
-            cells: weeks.map((week) => {
-              const key = keyOf(grp.Id, week.id);
-              return {
-                key,
-                checked: this.isTicked(key),
-                label: `${grp.Name} does not run in ${week.name}`
-              };
-            })
-          });
+          groups.push(
+            this.row(
+              grp,
+              "Group__c",
+              `${entry.program.Name} · ${d.division.Name}`,
+              "does not run in"
+            )
+          );
         });
       });
     });
-    return rows;
+    const activities = (setup.activities || []).map((activity) =>
+      this.row(activity, "Activity__c", "", "does not run in")
+    );
+    const locations = (setup.locations || []).map((location) =>
+      this.row(location, "Location__c", "", "is closed in")
+    );
+    return [groups, activities, locations];
+  }
+
+  row(record, field, place, phrase) {
+    return {
+      id: record.Id,
+      name: record.Name,
+      place,
+      field,
+      cells: this.weeks.map((week) => {
+        const key = keyOf(record.Id, week.id);
+        return {
+          key,
+          checked: this.isTicked(key),
+          label: `${record.Name} ${phrase} ${week.name}`
+        };
+      })
+    };
+  }
+
+  /** The field each row's target goes in: Group__c, Activity__c, or Location__c. */
+  get fieldByTarget() {
+    const result = new Map();
+    this.rowGroups().forEach((rows) =>
+      rows.forEach((row) => result.set(row.id, row.field))
+    );
+    return result;
   }
 
   isTicked(key) {
@@ -106,9 +154,9 @@ export default class ShoreshWeekExceptions extends LightningElement {
     return {
       title: t.p("WeekException"),
       intro:
-        `Tick each ${t.sIn("Week")} a ${t.sIn("Group")} does not run ` +
-        `(for example, away on a trip). Copying the ${t.sIn("Season")} carries these over.`,
-      group: t.s("Group"),
+        `Tick each ${t.sIn("Week")} a ${t.sIn("Group")} or ${t.sIn("Activity")} does not run ` +
+        `(for example, away on a trip), or a ${t.sIn("Location")} is closed. ` +
+        `Copying the ${t.sIn("Season")} carries these over.`,
       empty: `Add ${t.pIn("Week")} and ${t.pIn("Group")} first.`
     };
   }
@@ -132,12 +180,13 @@ export default class ShoreshWeekExceptions extends LightningElement {
   handleSave() {
     const toAdd = [];
     const toRemove = [];
+    const fieldByTarget = this.fieldByTarget;
     this.pending.forEach((ticked, key) => {
-      const [groupId, weekId] = key.split("|");
+      const [targetId, weekId] = key.split("|");
       if (ticked) {
         toAdd.push({
           sobjectType: "WeekException__c",
-          Group__c: groupId,
+          [fieldByTarget.get(targetId)]: targetId,
           Week__c: weekId
         });
       } else {

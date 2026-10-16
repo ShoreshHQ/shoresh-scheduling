@@ -1,6 +1,7 @@
 /**
  * Deleting a season. Refuses a season with published history. Otherwise clears the rows inside
- * the season that point at the season's own records through restrict-delete lookups, which
+ * the season that point at the season's own records through restrict-delete lookups (week
+ * exceptions, activities and who can do them), which
  * would otherwise block the whole delete (platform check (a)). Salesforce checks those lookups
  * after before-delete triggers run, so clearing them here lets the season go.
  */
@@ -35,6 +36,17 @@ public with sharing class SeasonTriggerHandler {
     ];
     if (!exceptions.isEmpty()) {
       Database.delete(exceptions, true, AccessLevel.SYSTEM_MODE);
+    }
+    // Activities point at the season's locations, groups, and divisions through restrict-delete
+    // lookups. Deleting them first takes their who-can-do-it rows with them.
+    List<Activity__c> activities = [
+      SELECT Id
+      FROM Activity__c
+      WHERE Season__c IN :deletable
+      WITH SYSTEM_MODE
+    ];
+    if (!activities.isEmpty()) {
+      Database.delete(activities, true, AccessLevel.SYSTEM_MODE);
     }
   }
 }

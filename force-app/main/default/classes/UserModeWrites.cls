@@ -11,12 +11,45 @@ public with sharing class UserModeWrites {
       }
     }
     Savepoint beforeSave = Database.setSavepoint();
+    List<SObject> current = toInsert;
     try {
       Database.insert(toInsert, AccessLevel.USER_MODE);
+      current = toUpdate;
       Database.update(toUpdate, AccessLevel.USER_MODE);
     } catch (DmlException e) {
       Database.rollback(beforeSave);
-      throw e;
+      throw new SaveException(e, nameOf(current[e.getDmlIndex(0)]));
+    }
+  }
+
+  /** The record's name: sent with it, or (for a change that left the name alone) as saved. */
+  private static String nameOf(SObject record) {
+    Map<String, Object> given = record.getPopulatedFieldsAsMap();
+    if (given.containsKey('Name')) {
+      return (String) given.get('Name');
+    }
+    if (record.Id == null) {
+      return null;
+    }
+    List<SObject> saved = Database.queryWithBinds(
+      'SELECT Name FROM ' +
+        record.getSObjectType().getDescribe().getName() +
+        ' WHERE Id = :recordId',
+      new Map<String, Object>{ 'recordId' => record.Id },
+      AccessLevel.USER_MODE
+    );
+    return saved.isEmpty() ? null : (String) saved[0].get('Name');
+  }
+
+  /** A failed save, with the name of the row that was refused, so the screen can say which. */
+  public class SaveException extends Exception {
+    public DmlException failure;
+    public String recordName;
+
+    public SaveException(DmlException failure, String recordName) {
+      this(failure.getMessage());
+      this.failure = failure;
+      this.recordName = recordName;
     }
   }
 }

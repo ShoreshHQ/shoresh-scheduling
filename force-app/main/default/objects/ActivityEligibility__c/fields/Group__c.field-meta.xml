@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Group__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >This group may do the activity. A group named here cannot be deleted until this is removed.</description>
+    <label>Group</label>
+    <referenceTo>Group__c</referenceTo>
+    <relationshipLabel>Activity Eligibilities</relationshipLabel>
+    <relationshipName>ActivityEligibilities</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

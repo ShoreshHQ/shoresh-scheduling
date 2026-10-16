@@ -1,54 +1,86 @@
 /** Week exceptions: what doesn't run must belong to the same season as the week. */
 public with sharing class WeekExceptionTriggerHandler {
+  private static final Map<Schema.SObjectField, String> TARGETS = new Map<Schema.SObjectField, String>{
+    WeekException__c.Group__c => 'Group',
+    WeekException__c.Activity__c => 'Activity',
+    WeekException__c.Location__c => 'Location'
+  };
+
   public static void beforeSave(List<WeekException__c> exceptions) {
     Set<Id> weekIds = new Set<Id>();
-    Set<Id> groupIds = new Set<Id>();
     for (WeekException__c row : exceptions) {
       weekIds.add(row.Week__c);
-      if (row.Group__c != null) {
-        groupIds.add(row.Group__c);
-      }
     }
     Map<Id, Week__c> weeks = new Map<Id, Week__c>(
       [
-        SELECT Id, Season__c, Season__r.Camp__c
+        SELECT Id, Season__c
         FROM Week__c
         WHERE Id IN :weekIds
         WITH SYSTEM_MODE
       ]
     );
-    Map<Id, Group__c> groups = new Map<Id, Group__c>(
-      [
-        SELECT Id, Division__r.Program__r.Season__c
-        FROM Group__c
-        WHERE Id IN :groupIds
-        WITH SYSTEM_MODE
-      ]
-    );
-    Set<Id> campIds = new Set<Id>();
+    Map<Id, Id> seasonByTarget = targetSeasons(exceptions);
+    Set<Id> seasonIds = new Set<Id>();
     for (Week__c week : weeks.values()) {
-      campIds.add(week.Season__r.Camp__c);
+      seasonIds.add(week.Season__c);
     }
-    Map<Id, CampLabels> labelsByCamp = CampLabels.forCamps(campIds);
+    Map<Id, CampLabels> labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
     for (WeekException__c row : exceptions) {
       Week__c week = weeks.get(row.Week__c);
-      Group__c target = groups.get(row.Group__c);
-      if (
-        week != null &&
-        target != null &&
-        target.Division__r.Program__r.Season__c != week.Season__c
-      ) {
-        CampLabels labels = labelsByCamp.get(week.Season__r.Camp__c);
-        row.Group__c.addError(
-          'This ' +
-            labels.singularInSentence('Group') +
-            ' belongs to a different ' +
-            labels.singularInSentence('Season') +
-            ' than the ' +
-            labels.singularInSentence('Week') +
-            '.'
-        );
+      for (Schema.SObjectField field : TARGETS.keySet()) {
+        Id targetSeason = seasonByTarget.get((Id) row.get(field));
+        if (
+          week != null &&
+          targetSeason != null &&
+          targetSeason != week.Season__c
+        ) {
+          row.addError(
+            field,
+            SetupSeasons.otherSeason(
+              labelsBySeason.get(week.Season__c),
+              TARGETS.get(field),
+              'Week'
+            )
+          );
+        }
       }
     }
+  }
+
+  /** The season of each group, activity, and location named (Ids are unique across objects). */
+  private static Map<Id, Id> targetSeasons(List<WeekException__c> rows) {
+    Set<Id> groupIds = new Set<Id>();
+    Set<Id> otherIds = new Set<Id>();
+    for (WeekException__c row : rows) {
+      groupIds.add(row.Group__c);
+      otherIds.add(row.Activity__c);
+      otherIds.add(row.Location__c);
+    }
+    Map<Id, Id> result = new Map<Id, Id>();
+    for (Group__c grp : [
+      SELECT Id, Division__r.Program__r.Season__c
+      FROM Group__c
+      WHERE Id IN :groupIds
+      WITH SYSTEM_MODE
+    ]) {
+      result.put(grp.Id, grp.Division__r.Program__r.Season__c);
+    }
+    for (Activity__c activity : [
+      SELECT Id, Season__c
+      FROM Activity__c
+      WHERE Id IN :otherIds
+      WITH SYSTEM_MODE
+    ]) {
+      result.put(activity.Id, activity.Season__c);
+    }
+    for (Location__c location : [
+      SELECT Id, Season__c
+      FROM Location__c
+      WHERE Id IN :otherIds
+      WITH SYSTEM_MODE
+    ]) {
+      result.put(location.Id, location.Season__c);
+    }
+    return result;
   }
 }

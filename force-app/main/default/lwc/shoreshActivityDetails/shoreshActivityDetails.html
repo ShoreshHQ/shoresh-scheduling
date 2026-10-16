@@ -1,0 +1,106 @@
+<template>
+  <section class="slds-m-top_large">
+    <h2 class="slds-text-heading_medium slds-m-bottom_x-small">
+      {labels.title}
+    </h2>
+    <template lwc:if={hasActivities}>
+      <p class="slds-m-bottom_small">{labels.intro}</p>
+      <div class="slds-grid slds-wrap slds-gutters_small">
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+          <lightning-combobox
+            data-id="activity-picker"
+            label={labels.activity}
+            value={activityId}
+            options={activityOptions}
+            onchange={handleActivityChange}
+          ></lightning-combobox>
+        </div>
+      </div>
+
+      <h3 class="slds-text-heading_small slds-m-top_medium">
+        {labels.whoCanDoIt}
+      </h3>
+      <p class="slds-text-color_weak slds-m-bottom_x-small" data-id="who-note">
+        {everyoneNote}
+      </p>
+      <lightning-dual-listbox
+        data-id="who-can-do-it"
+        label={labels.whoCanDoIt}
+        variant="label-hidden"
+        source-label={labels.available}
+        selected-label={labels.chosen}
+        options={targetOptions}
+        value={whoCanDoIt}
+        onchange={handleWhoChange}
+      ></lightning-dual-listbox>
+
+      <h3
+        class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small"
+      >
+        {labels.moreRules}
+      </h3>
+      <lightning-input
+        type="checkbox"
+        data-field="SameDivisionOnly__c"
+        label={labels.sameDivision}
+        checked={rules.SameDivisionOnly__c}
+        onchange={handleRule}
+      ></lightning-input>
+      <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small">
+        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+          <lightning-input
+            type="number"
+            data-field="EarlyWeekCount__c"
+            label={labels.earlyCount}
+            value={rules.EarlyWeekCount__c}
+            min="1"
+            step="1"
+            onchange={handleRule}
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+          <lightning-combobox
+            data-field="EarlyWeekByDay__c"
+            label={labels.earlyDay}
+            value={earlyDay}
+            options={dayOptions}
+            onchange={handleRule}
+          ></lightning-combobox>
+        </div>
+      </div>
+      <lightning-input
+        class="slds-m-top_x-small"
+        type="checkbox"
+        data-field="EventOnly__c"
+        label={labels.eventOnly}
+        checked={rules.EventOnly__c}
+        onchange={handleRule}
+      ></lightning-input>
+      <lightning-textarea
+        class="slds-m-top_x-small"
+        data-field="Notes__c"
+        label={labels.notes}
+        value={rules.Notes__c}
+        onchange={handleRule}
+      ></lightning-textarea>
+
+      <div class="slds-m-top_small">
+        <lightning-button
+          label="Cancel changes"
+          onclick={handleCancel}
+          disabled={saveDisabled}
+        ></lightning-button>
+        <lightning-button
+          class="slds-m-left_x-small"
+          variant="brand"
+          label="Save changes"
+          onclick={handleSave}
+          disabled={saveDisabled}
+        ></lightning-button>
+      </div>
+    </template>
+    <template lwc:else>
+      <p class="slds-text-color_weak">{labels.empty}</p>
+    </template>
+  </section>
+</template>
