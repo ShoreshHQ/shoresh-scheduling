@@ -24,7 +24,7 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. The camp name now shows at the top left, with a **New season** button. On the left is the
    Shoresh menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
    Camp words; **Activities**: Activities, Fixed activities, Recurring activities, and
-   Special events marked **Coming**; and Schedules, **Coming**). Until there is a season, only
+   Special events marked **Coming**; and **Schedules**). Until there is a season, only
    **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
 
 ## 3. Use your camp's own words
@@ -225,11 +225,67 @@ Does this work the way you think in practice? Note anything that feels awkward.
    also clears its bunks' unticked weeks. A program with fixed or recurring activities is
    refused until they are deleted.
 
+## 13. The schedule page and versions
+
+Nothing in Shoresh saves a schedule yet (bringing in last year's spreadsheet comes next and will
+save one), so first add a made-up one.
+
+1. In the terminal tab, paste this and press Return:
+
+   ```bash
+   ~/Dev/Shoresh/shoresh-scheduling/scripts/make-sample-version.sh
+   ```
+
+   It prints _Done. In the Shoresh tab, pick the camp "Sample Camp (made up)", then open
+   Schedules._ The first time, it also sets up that invented camp: one week (28 June 2027),
+   one program, six bunks, seven time blocks, five activities, Lunch as a fixed activity,
+   and two recurring activities (Morning meeting on Mondays, Library time for Juniors on
+   Wednesdays). Your own camp is not touched. Running it again adds another version (and puts
+   Week 1 back if it was deleted).
+2. Reload the Shoresh tab. A **Camp** picker appears at the top: choose _Sample Camp (made
+   up)_. Click **Schedules** in the menu.
+3. The toolbar shows **Week** (_Week 1_) and, on the right after a divider, **Versions**. The
+   middle says _Nothing is open. Open a version to look at it._ with a button **Open Imported
+   from sample-week.xlsx (made up)**.
+4. Click **Versions**. The list (titled **Versions**) shows that version, _Imported_ and when
+   it was saved, with **rename** and **Open**. Click **Open**.
+5. A blue strip says _Looking at a version: Imported from sample-week.xlsx (made up) ·
+   Imported · (date) · read-only_, with **Close**. The **Daily View / Group View / Activity
+   View** toggle appears, as on the desktop.
+6. **Daily View** (all bunks for one day): day pills Monday to Friday. Monday shows a column
+   per bunk and a row per time block, each with its times. Boating runs two blocks and fills
+   both rows. Morning meeting (Monday Period 1) and Lunch have a grey bar down the left: they
+   are a recurring and a fixed activity. Bunk 6's last block says **Open** (nothing placed).
+   Click **Tuesday**: Period 6 is _Chugim_ in a dashed orange box marked _not set up yet_.
+   Thursday has a _Zoo trip_ for Bunks 4 to 6, Friday a _Field day_ and a _Color war_, all
+   marked _not set up yet_ (the import notes these; Shoresh cannot set them up yet). A legend
+   under the grid explains the four looks.
+7. **Group View** (one bunk's week): bunk pills. Pick _Bunk 1_: a column per day.
+   Wednesday's Period 4 is _Library time_ (Juniors only). Pick _Bunk 4_: Wednesday Period 4 is
+   an activity instead.
+8. **Activity View** (where one activity runs): a card per activity with its location, how
+   many groups do it, and how many times this week (for example _6 groups · 7 times this
+   week_). Click **Swim**: a grid of the week with the bunks swimming in each block. **← All Activities** goes back.
+9. **Rename it.** Open **Versions**, click **rename**, type _Last summer_, press Return (or
+   **Save**). The list and the blue strip both say _Last summer_. A blank name is refused:
+   _Give the version a name._
+10. **Cells cannot be changed here**, on purpose: placing and moving things comes with Manual
+    Build. **Close** puts the page back to _Nothing is open_.
+11. **Something deleted since the version was saved** still shows under its saved name, marked
+    _deleted since_. Try it: on **Activities**, delete _Art_, then open the version again.
+12. **Deleting the week takes its versions.** On **Weeks**, delete _Week 1_: the confirmation
+    says _That includes 1 saved version._ Confirm, and the version goes with the week (as on
+    the desktop). Once publishing exists, a week with a published schedule will not be
+    deletable. Run the script again for a new Week 1 and version.
+
 ## What is not here yet
 
 - Bringing in last year's schedule from a spreadsheet is coming next (the next piece after
   fixed and recurring activities). On Roots, **Import last year** is marked Coming.
-- Special events and schedules are in the menu, marked Coming.
+- Special events are in the menu, marked Coming.
+- On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
+  into a working schedule, saving and deleting versions, and publishing. Roots' **Build or
+  generate the schedule** is still marked Coming.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

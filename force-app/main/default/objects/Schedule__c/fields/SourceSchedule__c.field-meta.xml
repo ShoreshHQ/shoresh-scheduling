@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SourceSchedule__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The schedule this one was copied or saved from, if any. Cleared if that schedule is deleted.</description>
+    <label>Source Schedule</label>
+    <referenceTo>Schedule__c</referenceTo>
+    <relationshipLabel>Copies</relationshipLabel>
+    <relationshipName>Copies</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

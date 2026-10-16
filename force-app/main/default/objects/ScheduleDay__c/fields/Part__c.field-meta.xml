@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Part__c</fullName>
+    <defaultValue>1</defaultValue>
+    <description
+  >Which part of the day this record holds, from 1. A day is split into parts (whole groups, in group order) only when its grid would be over 100,000 characters.</description>
+    <label>Part</label>
+    <precision>9</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

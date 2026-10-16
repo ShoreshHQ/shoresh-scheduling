@@ -207,6 +207,62 @@ public class ShoreshTestData {
     );
   }
 
+  /** A saved version of a program's week, as an import makes one. */
+  public static Schedule__c version(Id programId, Id weekId, String name) {
+    Schedule__c schedule = new Schedule__c(
+      Program__c = programId,
+      Week__c = weekId,
+      Name = name,
+      Status__c = 'Version',
+      Origin__c = 'Imported',
+      VersionReason__c = 'Imported'
+    );
+    Database.insert(schedule, AccessLevel.SYSTEM_MODE);
+    return schedule;
+  }
+
+  /**
+   * A day's grid for the given blocks and groups: Swim (an activity, two blocks long) for the
+   * first group, Flagpole (a fixed activity) for the second, an elective not set up yet, and
+   * the rest empty. Ids are the records given, or made-up text where none is needed.
+   */
+  public static ScheduleGrid grid(
+    List<TimeBlock__c> blocks,
+    List<Group__c> groups,
+    Map<String, Id> itemIds
+  ) {
+    ScheduleGrid grid = new ScheduleGrid();
+    for (TimeBlock__c block : blocks) {
+      grid.blocks.add(
+        new ScheduleGrid.Block(block.Id, block.Name).at('09:00', '09:45')
+      );
+    }
+    grid.items.add(new ScheduleGrid.Item('A', itemIds.get('Swim'), 'Swim'));
+    grid.items.add(
+      new ScheduleGrid.Item('F', itemIds.get('Flagpole'), 'Flagpole')
+    );
+    grid.items.add(new ScheduleGrid.Item('E', '', 'Chugim'));
+    for (Integer g = 0; g < groups.size(); g++) {
+      grid.groups.add(new ScheduleGrid.GroupRef(groups[g].Id, groups[g].Name));
+      List<String> row = new List<String>();
+      for (Integer b = 0; b < blocks.size(); b++) {
+        row.add(cell(g, b));
+      }
+      grid.rows.add(row);
+    }
+    return grid;
+  }
+
+  private static String cell(Integer g, Integer b) {
+    if (g == 0) {
+      return b == 0 ? '1' : (b == 1 ? '^' : '');
+    }
+    if (g == 1) {
+      return b == 0 ? '2' : (b == 1 ? '3' : '');
+    }
+    return '';
+  }
+
   /** A Standard User with the Shoresh Scheduler permission set. */
   public static User scheduler() {
     return standardUser(true);

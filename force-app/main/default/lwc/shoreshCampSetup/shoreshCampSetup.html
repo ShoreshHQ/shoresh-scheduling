@@ -572,6 +572,17 @@
                 <p class="slds-text-color_weak">{labels.noPrograms}</p>
               </template>
             </div>
+
+            <!-- The schedule page: versions of a program's week, in three views -->
+            <div class={shown.schedules} data-screen="schedules">
+              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                {labels.screens.schedules}
+              </h2>
+              <c-shoresh-schedules
+                setup={setup}
+                terms={terms}
+              ></c-shoresh-schedules>
+            </div>
           </template>
         </div>
       </div>
