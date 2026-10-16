@@ -11,7 +11,8 @@
  *
  * Usage: node scripts/run-apex-tests.mjs [--target-org <alias>]
  * Exits 1 if no test class is found, any class fails, cannot run, or takes longer than 10
- * minutes, or coverage is below 75%.
+ * minutes, or coverage is below 75%. While the shared org is busy (another run or deploy), a
+ * class waits and tries again, for up to 3 minutes.
  */
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -115,8 +116,36 @@ function recordCoverage(result) {
   });
 }
 
+const BUSY_RETRIES = 6;
+const BUSY_WAIT_MS = 30 * 1000;
+
+/** The org is busy with another test run or deploy (shared org): worth waiting for. */
+function orgBusy(out) {
+  return (
+    !out.result &&
+    /ORG_ADMIN_LOCKED|admin operation already in progress/i.test(
+      `${out.name || ""} ${out.message || ""}`
+    )
+  );
+}
+
+function pause(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Runs one class, waiting (up to 3 minutes) while the shared org is busy. */
 function runClass(name) {
-  const out = sf([
+  let out = runOnce(name);
+  for (let attempt = 1; attempt <= BUSY_RETRIES && orgBusy(out); attempt++) {
+    console.log(`      (test org busy; trying ${name} again in 30 seconds)`);
+    pause(BUSY_WAIT_MS);
+    out = runOnce(name);
+  }
+  return summarize(out);
+}
+
+function runOnce(name) {
+  return sf([
     "apex",
     "run",
     "test",
@@ -127,6 +156,9 @@ function runClass(name) {
     "--result-format",
     "json"
   ]);
+}
+
+function summarize(out) {
   const result = out.result || {};
   const summary = result.summary;
   if (!summary) {
