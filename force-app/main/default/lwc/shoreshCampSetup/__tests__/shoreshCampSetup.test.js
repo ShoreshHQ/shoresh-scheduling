@@ -8,6 +8,7 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
+import saveWeekExceptions from "@salesforce/apex/WeekExceptionsController.saveWeekExceptions";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
@@ -32,6 +33,11 @@ jest.mock("@salesforce/apex/SeasonSetupController.deleteRecord", () => apex(), {
 });
 jest.mock(
   "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/WeekExceptionsController.saveWeekExceptions",
   () => apex(),
   { virtual: true }
 );
@@ -396,5 +402,43 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     expect(onFailure).toHaveBeenCalled();
+  });
+
+  it("saves week exceptions from the grid and reloads", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(setupWith());
+    saveWeekExceptions.mockResolvedValue();
+    const element = await render();
+    const grid = q(element, "c-shoresh-week-exceptions");
+    expect(grid.setup.season.Id).toBe("s1");
+    grid.dispatchEvent(
+      new CustomEvent("save", {
+        detail: { toAdd: [{ Group__c: "g1", Week__c: "w1" }], toRemove: ["x1"] }
+      })
+    );
+    await flush();
+    expect(saveWeekExceptions).toHaveBeenCalledWith({
+      toAdd: [{ Group__c: "g1", Week__c: "w1" }],
+      toRemove: ["x1"]
+    });
+    expect(getSeasonSetup).toHaveBeenCalledTimes(2);
+  });
+
+  it("tells the grid when its save failed", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(setupWith());
+    saveWeekExceptions.mockRejectedValue({ body: { message: "No." } });
+    const element = await render();
+    const onFailure = jest.fn();
+    q(element, "c-shoresh-week-exceptions").dispatchEvent(
+      new CustomEvent("save", {
+        detail: { toAdd: [], toRemove: [], onFailure }
+      })
+    );
+    await flush();
+    expect(onFailure).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent).toContain("No.");
   });
 });

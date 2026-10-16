@@ -23,11 +23,6 @@ public with sharing class SeasonSetupController {
     TimeBlock__c.SObjectType
   };
 
-  private static final Set<StatusCode> NO_ACCESS = new Set<StatusCode>{
-    StatusCode.INSUFFICIENT_ACCESS_OR_READONLY,
-    StatusCode.INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
-  };
-
   @AuraEnabled
   public static List<Camp__c> getCamps() {
     return [
@@ -77,7 +72,7 @@ public with sharing class SeasonSetupController {
   public static SeasonSetupReader.SeasonSetup getSeasonSetup(Id seasonId) {
     SeasonSetupReader.SeasonSetup setup = SeasonSetupReader.read(seasonId);
     if (setup == null) {
-      throw handled(
+      throw ScreenErrors.of(
         'That ' +
           CampLabels.modelTermsOnly().singularInSentence('Season') +
           ' was not found, or you do not have access to it.'
@@ -91,13 +86,13 @@ public with sharing class SeasonSetupController {
   public static List<Id> saveRecords(List<SObject> records) {
     for (SObject record : records) {
       if (!SAVABLE_TYPES.contains(record.getSObjectType())) {
-        throw handled('These screens cannot save that kind of record.');
+        throw ScreenErrors.of('These screens cannot save that kind of record.');
       }
     }
     try {
       UserModeWrites.save(records);
     } catch (Exception e) {
-      throw handled(e);
+      throw ScreenErrors.of(e);
     }
     List<Id> ids = new List<Id>();
     for (SObject record : records) {
@@ -111,12 +106,16 @@ public with sharing class SeasonSetupController {
     if (
       recordId == null || !DELETABLE_TYPES.contains(recordId.getSObjectType())
     ) {
-      throw handled('These screens cannot delete that kind of record.');
+      throw ScreenErrors.of('These screens cannot delete that kind of record.');
+    }
+    String inUse = WeekExceptions.blockingDelete(recordId);
+    if (inUse != null) {
+      throw ScreenErrors.of(inUse);
     }
     try {
       Database.delete(recordId, true, AccessLevel.USER_MODE);
     } catch (Exception e) {
-      throw handled(e);
+      throw ScreenErrors.of(e);
     }
   }
 
@@ -129,7 +128,7 @@ public with sharing class SeasonSetupController {
     try {
       CampLabels.save(campId, labels);
     } catch (Exception e) {
-      throw handled(e);
+      throw ScreenErrors.of(e);
     }
   }
 
@@ -139,7 +138,7 @@ public with sharing class SeasonSetupController {
     try {
       SeasonWeeks.fillFromSeasonDates(seasonId);
     } catch (Exception e) {
-      throw handled(e);
+      throw ScreenErrors.of(e);
     }
   }
 
@@ -151,7 +150,7 @@ public with sharing class SeasonSetupController {
     try {
       return new SeasonCopier(seasonId, newStartDate).preview();
     } catch (Exception e) {
-      throw handled(e);
+      throw ScreenErrors.of(e);
     }
   }
 
@@ -160,33 +159,7 @@ public with sharing class SeasonSetupController {
     try {
       return new SeasonCopier(seasonId, newStartDate).copy(newName);
     } catch (Exception e) {
-      throw handled(e);
+      throw ScreenErrors.of(e);
     }
-  }
-
-  /** The message the scheduler sees for anything that went wrong. */
-  private static AuraHandledException handled(Exception e) {
-    return handled(
-      e instanceof DmlException ? dmlMessage((DmlException) e) : e.getMessage()
-    );
-  }
-
-  private static String dmlMessage(DmlException e) {
-    StatusCode code = e.getDmlType(0);
-    if (code == StatusCode.DELETE_FAILED) {
-      return 'This can\'t be deleted while other records still use it. Change those first. (' +
-        e.getDmlMessage(0) +
-        ')';
-    }
-    if (NO_ACCESS.contains(code)) {
-      return 'You don\'t have permission to change this. Ask the person who set it up, or a Salesforce admin.';
-    }
-    return e.getDmlMessage(0);
-  }
-
-  private static AuraHandledException handled(String message) {
-    AuraHandledException e = new AuraHandledException(message);
-    e.setMessage(message);
-    return e;
   }
 }
