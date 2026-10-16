@@ -17,3 +17,7 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   24 hours, and past that every queued run fails at once. Run tests one class at a time with
   `sf apex run test --synchronous --class-names <Class> --target-org shoresh-test`; those don't count.
   CI runs every class that way (`scripts/run-apex-tests.mjs`, see `docs/ci-setup.md`).
+- **Don't use shoresh-test while a CI run is using it.** CI runs take turns with each other, but
+  not with sessions. Before deploying or running tests there, check
+  `gh run list --repo ShoreshHQ/shoresh-scheduling --status in_progress` (and `--status queued`), and
+  wait until no "Scratch org deploy and Apex tests" job is running.
