@@ -457,40 +457,17 @@ describe("fixed and recurring activities", () => {
       );
     });
 
-    it("when the block it starts in was moved, only keeping makes sense", () => {
+    it("when the block it starts in was moved, both fixes name what they cover in today's order", () => {
       // Rest: Period 3, length 2 (Period 3 – Period 4); Period 3 then moved before Period 1.
       const P4 = { Id: "b4", Name: "Period 4", PartOfDay__c: "Morning" };
-      const movedP3 = { ...P3, LastModifiedDate: "2026-10-16T15:00:00.000Z" };
-      const item = {
-        TimeBlock__c: "b3",
-        Length__c: 2,
-        LastTimeBlock__c: "b4",
-        CoverageSavedAt__c: "2026-10-16T14:00:00.000Z"
-      };
-      const moved = spanChange(withBlocks([movedP3, P1, P2, P4]), item, terms);
+      const item = { TimeBlock__c: "b3", Length__c: 2, LastTimeBlock__c: "b4" };
+      const moved = spanChange(withBlocks([P3, P1, P2, P4]), item, terms);
       expect(moved.why).toBe(
-        "Time blocks changed since it was saved: it now covers Period 3 – Period 1. " +
-          "Period 3, where it starts, was changed, so it can only be kept as it is " +
-          "(or change its length yourself)."
+        "Time blocks changed since it was saved: it covered Period 3 – Period 4 and now covers Period 3 – Period 1."
       );
-      expect(moved.actions.map((a) => a.label)).toEqual([
-        "Keep Period 3 – Period 1"
-      ]);
-      // A block added inside, with the first block untouched, still offers the stretch.
-      const added = spanChange(
-        withBlocks([
-          P1,
-          P2,
-          { ...P3, LastModifiedDate: "2026-10-16T13:00:00.000Z" },
-          SNACK,
-          P4
-        ]),
-        item,
-        terms
-      );
-      expect(added.actions.map((a) => a.label)).toEqual([
-        "Keep Period 3 – Snack",
-        "Stretch to Period 3 – Period 4"
+      expect(moved.actions.map((a) => [a.label, a.changes])).toEqual([
+        ["Keep Period 3 – Period 1", { LastTimeBlock__c: "b1" }],
+        ["Stretch to Period 3 – Period 4", { Length__c: 4 }]
       ]);
     });
 

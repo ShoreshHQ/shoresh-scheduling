@@ -107,7 +107,6 @@ public with sharing class SetTimeItemTriggerHandler {
         'LastTimeBlock__c',
         lastBlockOf(item, blocksByProgram.get((Id) item.get('Program__c')))
       );
-      item.put('CoverageSavedAt__c', System.now());
     }
   }
 

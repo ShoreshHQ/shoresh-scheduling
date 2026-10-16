@@ -99,10 +99,14 @@ wins.
     which goes through every clash check, and a refusal leaves the note in place. Only these,
     or changing the item's time block or length, clear the note: renaming it or changing its
     location does not. Where only keeping it makes sense, only that is offered, with the reason:
-    its first block was changed (moved) after the coverage was saved (`CoverageSavedAt__c`
-    against that block's last change); it now runs to the end of the day with its old end gone;
-    or its old end is now before its start. No fix ever saves a length below 1. (An item cannot
-    be left running past the end of the day: that delete or move is refused first.) Labels use the camp's words and block names.
+    it now runs to the end of the day with its old end gone, or its old end is now before its
+    start. No fix ever saves a length below 1. (An item cannot be left running past the end of
+    the day: that delete or move is refused first.) **A moved start block is treated like any
+    other coverage change**: both fixes are offered, each naming what it covers in today's order
+    ("Stretch to Period 3 – Period 4" covers everything from Period 3 to Period 4 as the day now
+    runs), and a stretch is clash-checked. Detecting the move would have needed another
+    permanent field and a change-time that also moves for unrelated edits, for a rare case
+    (coordinator, 2026-10-16: simpler wins).
     Clicking the Needs attention item on Roots opens the item's screen, where both fixes are on
     its attention item and its row.
 
@@ -118,7 +122,7 @@ wins.
 - Both items are details of the program (not the season), and `Coverage__c` a detail of the
   season.
 - `Length__c` counts time blocks, starting at `TimeBlock__c`; `LastTimeBlock__c` (clear on
-  delete) remembers where it ended when saved, and `CoverageSavedAt__c` when.
+  delete) remembers where it ended when saved.
 - Recurring days are five checkboxes, Monday to Friday (day camps only, decision 0001).
 - No coverage rows means everyone in the program (no `AllGroups__c`).
 - The restrict-delete lookups: time block, location, coverage targets, and week exceptions'

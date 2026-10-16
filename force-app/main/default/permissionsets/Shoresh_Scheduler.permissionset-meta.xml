@@ -141,11 +141,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>FixedActivity__c.CoverageSavedAt__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>FixedActivity__c.LastTimeBlock__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -252,11 +247,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RecurringActivity__c.CopiedFrom__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>RecurringActivity__c.CoverageSavedAt__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

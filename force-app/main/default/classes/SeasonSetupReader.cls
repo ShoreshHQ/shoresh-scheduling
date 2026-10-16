@@ -121,8 +121,7 @@ public with sharing class SeasonSetupReader {
         StartTime__c,
         EndTime__c,
         PartOfDay__c,
-        SortOrder__c,
-        LastModifiedDate
+        SortOrder__c
       FROM TimeBlock__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
@@ -165,7 +164,6 @@ public with sharing class SeasonSetupReader {
         Length__c,
         Location__c,
         LastTimeBlock__c,
-        CoverageSavedAt__c,
         SortOrder__c
       FROM FixedActivity__c
       WHERE Program__c IN :programs.keySet()
@@ -183,7 +181,6 @@ public with sharing class SeasonSetupReader {
         Length__c,
         Location__c,
         LastTimeBlock__c,
-        CoverageSavedAt__c,
         Monday__c,
         Tuesday__c,
         Wednesday__c,

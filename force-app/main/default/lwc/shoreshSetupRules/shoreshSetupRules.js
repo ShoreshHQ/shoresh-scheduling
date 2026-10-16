@@ -200,15 +200,6 @@ function range(first, last) {
   return first.Id === last.Id ? first.Name : `${first.Name} – ${last.Name}`;
 }
 
-/** Whether the item's first block was changed (say, moved) after its coverage was saved. */
-function startMoved(first, item) {
-  return (
-    !!item.CoverageSavedAt__c &&
-    !!first.LastModifiedDate &&
-    new Date(first.LastModifiedDate) > new Date(item.CoverageSavedAt__c)
-  );
-}
-
 /**
  * When time blocks were added, moved, or deleted after a fixed or recurring activity was saved, so
  * it now covers different blocks (Greg, 2026-10-16: show it, with real fixes, each saying exactly
@@ -243,14 +234,9 @@ export function spanChange(entry, item, terms) {
     why: `${changed} it now covers ${covers(now)}. ${reason}`,
     actions: [keep]
   });
-  if (startMoved(first, item)) {
-    return keepOnly(
-      `${first.Name}, where it starts, was changed, so it can only be kept as it is ` +
-        `(or change its ${terms.sIn("Length")} yourself).`
-    );
-  }
   if (was > now) {
-    // A block added inside it: it now stops short of where it used to end.
+    // A block added inside it (or its first block moved earlier): it now stops short of where it
+    // used to end. Both fixes name what they cover in today's order, and both are clash-checked.
     return {
       why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
       actions: [
