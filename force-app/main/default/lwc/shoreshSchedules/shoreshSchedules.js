@@ -42,6 +42,8 @@ export default class ShoreshSchedules extends LightningElement {
   groupKey;
   activityId;
   pending = 0;
+  // From choosing a week until its newest version is open (or it has none).
+  loading = false;
   error;
   loadedFor;
   // Each open asks the server once; only the latest answer is shown.
@@ -88,6 +90,13 @@ export default class ShoreshSchedules extends LightningElement {
   get hasSeveralPrograms() {
     return this.programOptions.length > 1;
   }
+  /** The empty state says what is true only once nothing is still loading. */
+  get showEmpty() {
+    return this.canChoose && !this.loading && !this.busy;
+  }
+  get cannotChoose() {
+    return !this.canChoose;
+  }
   get canChoose() {
     return !!this.programId && !!this.weekId;
   }
@@ -111,6 +120,7 @@ export default class ShoreshSchedules extends LightningElement {
       this.versions = [];
       this.opened = null;
       this.loadedFor = null;
+      this.loading = false;
       return;
     }
     if (key === this.loadedFor) {
@@ -120,6 +130,7 @@ export default class ShoreshSchedules extends LightningElement {
     this.opened = null;
     this.openTicket += 1;
     this.versions = [];
+    this.loading = true;
     const loaded = await this.run(async () => {
       const versions = await getVersions({
         programId: this.programId,
@@ -136,6 +147,9 @@ export default class ShoreshSchedules extends LightningElement {
     } else if (loaded && key === this.loadedFor && this.versions.length) {
       // The newest version opens by itself (Greg, 2026-10-16); Versions switches to another.
       await this.open(this.versions[0].id);
+    }
+    if (key === this.loadedFor || this.loadedFor === null) {
+      this.loading = false;
     }
   }
 

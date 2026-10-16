@@ -31,7 +31,22 @@ const SETUP = {
   locations: [{ Id: "l1", Name: "Pool" }]
 };
 
+// Newest first, as the server sends them.
 const VERSIONS = [
+  {
+    id: "s3",
+    name: "Before my changes",
+    origin: "Manual",
+    reason: "SavedByHand",
+    savedAt: "2026-10-16T16:00:00.000Z"
+  },
+  {
+    id: "s2",
+    name: "Imported again",
+    origin: "Imported",
+    reason: "Imported",
+    savedAt: "2026-10-16T15:00:00.000Z"
+  },
   {
     id: "s1",
     name: "Imported from sample-week.xlsx",
@@ -40,6 +55,25 @@ const VERSIONS = [
     savedAt: "2026-10-16T14:00:00.000Z"
   }
 ];
+
+/** The server's answer for whichever version is asked for. */
+const answerFor = ({ scheduleId }) => {
+  const version = VERSIONS.find((v) => v.id === scheduleId);
+  const view = opened();
+  return Promise.resolve({
+    ...view,
+    schedule: { ...view.schedule, ...version }
+  });
+};
+
+/** A server call that answers only when the test says so. */
+function later() {
+  let answer;
+  const promise = new Promise((resolve) => {
+    answer = resolve;
+  });
+  return { promise, answer };
+}
 
 const flush = () =>
   [...Array(10)].reduce(
@@ -73,16 +107,79 @@ describe("c-shoresh-schedules", () => {
 
   it("lists the first week's versions and opens the newest by itself", async () => {
     getVersions.mockResolvedValue(VERSIONS);
-    openSchedule.mockResolvedValue(opened());
+    openSchedule.mockImplementation(answerFor);
     const element = await render();
     expect(getVersions).toHaveBeenCalledWith({ programId: "p1", weekId: "w1" });
     expect(q(element, "c-shoresh-versions").versions).toEqual(VERSIONS);
     expect(q(element, '[data-id="program"]')).toBeNull(); // one program: no picker
-    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s1" });
+    expect(openSchedule).toHaveBeenCalledTimes(1);
+    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s3" });
     expect(q(element, '[data-id="viewing"]').textContent).toContain(
-      "Imported from sample-week.xlsx"
+      "Before my changes"
     );
+    expect(q(element, "c-shoresh-versions").openId).toBe("s3");
     expect(q(element, '[data-id="nothing-open"]')).toBeNull();
+  });
+
+  it("never says nothing is saved or open while the newest version is loading", async () => {
+    const list = later();
+    const version = later();
+    getVersions.mockReturnValue(list.promise);
+    openSchedule.mockReturnValue(version.promise);
+    const element = await render();
+    expect(q(element, '[data-id="nothing-open"]')).toBeNull();
+    list.answer(VERSIONS);
+    await flush();
+    expect(q(element, '[data-id="nothing-open"]')).toBeNull();
+    expect(q(element, '[data-id="viewing"]')).toBeNull();
+    version.answer(await answerFor({ scheduleId: "s3" }));
+    await flush();
+    expect(q(element, '[data-id="viewing"]')).not.toBeNull();
+    expect(q(element, '[data-id="nothing-open"]')).toBeNull();
+  });
+
+  it("a week's list that arrives after another week was chosen opens nothing", async () => {
+    const weekOne = later();
+    getVersions.mockReturnValueOnce(weekOne.promise);
+    openSchedule.mockImplementation(answerFor);
+    const element = await render();
+    getVersions.mockResolvedValueOnce([]);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    weekOne.answer(VERSIONS);
+    await flush();
+    expect(openSchedule).not.toHaveBeenCalled();
+    expect(q(element, "c-shoresh-versions").versions).toEqual([]);
+    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
+      "Nothing saved for Week 2 yet"
+    );
+  });
+
+  it("choosing another program opens that program's newest version", async () => {
+    const twoPrograms = {
+      ...SETUP,
+      programs: [
+        { program: { Id: "p1", Name: "Main" } },
+        { program: { Id: "p2", Name: "Teens" } }
+      ]
+    };
+    getVersions.mockResolvedValueOnce([]);
+    openSchedule.mockImplementation(answerFor);
+    const element = await render(twoPrograms);
+    expect(q(element, '[data-id="program"]')).not.toBeNull();
+    getVersions.mockResolvedValueOnce([VERSIONS[1], VERSIONS[2]]);
+    q(element, '[data-id="program"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "p2" } })
+    );
+    await flush();
+    expect(getVersions).toHaveBeenLastCalledWith({
+      programId: "p2",
+      weekId: "w1"
+    });
+    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s2" });
+    expect(q(element, "c-shoresh-versions").openId).toBe("s2");
   });
 
   it("says when a week has nothing saved yet", async () => {
@@ -104,17 +201,18 @@ describe("c-shoresh-schedules", () => {
 
   it("opens a version in Daily View, then Group View and Activity View", async () => {
     getVersions.mockResolvedValue(VERSIONS);
-    openSchedule.mockResolvedValue(opened());
+    openSchedule.mockImplementation(answerFor);
     const element = await render();
+    expect(q(element, "c-shoresh-versions").openId).toBe("s3");
     q(element, "c-shoresh-versions").dispatchEvent(
-      new CustomEvent("open", { detail: { id: "s1" } })
+      new CustomEvent("open", { detail: { id: "s2" } })
     );
     await flush();
-    expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s1" });
+    expect(openSchedule).toHaveBeenLastCalledWith({ scheduleId: "s2" });
     expect(q(element, '[data-id="viewing"]').textContent).toContain(
-      "Imported from sample-week.xlsx"
+      "Imported again"
     );
-    expect(q(element, "c-shoresh-versions").openId).toBe("s1");
+    expect(q(element, "c-shoresh-versions").openId).toBe("s2");
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
     ).toEqual(["Daily View", "Group View", "Activity View"]);
@@ -162,7 +260,7 @@ describe("c-shoresh-schedules", () => {
 
   it("another week opens its own newest version, or says it has none", async () => {
     getVersions.mockResolvedValueOnce(VERSIONS);
-    openSchedule.mockResolvedValue(opened());
+    openSchedule.mockImplementation(answerFor);
     const element = await render();
     getVersions.mockResolvedValueOnce([]);
     q(element, '[data-id="week"]').dispatchEvent(
@@ -188,7 +286,7 @@ describe("c-shoresh-schedules", () => {
 
   it("does not reload when the page hands the same setup again", async () => {
     getVersions.mockResolvedValue(VERSIONS);
-    openSchedule.mockResolvedValue(opened());
+    openSchedule.mockImplementation(answerFor);
     const element = await render();
     element.setup = { ...SETUP };
     await flush();
@@ -239,18 +337,18 @@ describe("c-shoresh-schedules", () => {
 
   it("renames a version, on screen and in the list", async () => {
     getVersions.mockResolvedValue(VERSIONS);
-    openSchedule.mockResolvedValue(opened());
+    openSchedule.mockImplementation(answerFor);
     renameSchedule.mockResolvedValue();
     const element = await render();
     const onDone = jest.fn();
     q(element, "c-shoresh-versions").dispatchEvent(
       new CustomEvent("rename", {
-        detail: { id: "s1", name: "Last summer", onDone }
+        detail: { id: "s3", name: "Last summer", onDone }
       })
     );
     await flush();
     expect(renameSchedule).toHaveBeenCalledWith({
-      scheduleId: "s1",
+      scheduleId: "s3",
       name: "Last summer"
     });
     expect(onDone).toHaveBeenCalledWith(true);
@@ -270,7 +368,7 @@ describe("c-shoresh-schedules", () => {
     const element = await render();
     const onDone = jest.fn();
     q(element, "c-shoresh-versions").dispatchEvent(
-      new CustomEvent("rename", { detail: { id: "s1", name: " ", onDone } })
+      new CustomEvent("rename", { detail: { id: "s3", name: " ", onDone } })
     );
     await flush();
     expect(onDone).toHaveBeenCalledWith(false);
@@ -278,7 +376,7 @@ describe("c-shoresh-schedules", () => {
       "Give the version a name."
     );
     expect(q(element, "c-shoresh-versions").versions[0].name).toBe(
-      "Imported from sample-week.xlsx"
+      "Before my changes"
     );
   });
 });

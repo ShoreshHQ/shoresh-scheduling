@@ -206,12 +206,12 @@
       </template>
     </template>
 
-    <template lwc:elseif={canChoose}>
+    <template lwc:elseif={showEmpty}>
       <div class="empty-state" data-id="nothing-open">
         <p>{emptyMessage}</p>
       </div>
     </template>
-    <template lwc:else>
+    <template lwc:elseif={cannotChoose}>
       <div class="empty-state" data-id="nothing-open">
         <p>{emptyMessage}</p>
       </div>

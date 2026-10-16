@@ -7,7 +7,8 @@ import {
   days,
   groupCells,
   groupGrid,
-  groups
+  groups,
+  kindLabel
 } from "c/shoreshScheduleViews";
 import { buildTerms } from "c/shoreshTerms";
 import { LABELS, opened } from "./data/scheduleFixture";
@@ -61,6 +62,24 @@ describe("c/shoreshScheduleViews", () => {
     expect(chugim.title).toBe("Chugim: Chug, not set up in Shoresh yet");
     const pottery = grid.cells.find((c) => c.key === "1-1");
     expect(pottery.note).toBe("deleted since");
+  });
+
+  it("calls a trip by the camp's own word", () => {
+    const camp = buildTerms([
+      ...LABELS,
+      { term: "Trip", singular: "Tiyul", plural: "Tiyulim", isCustom: true }
+    ]);
+    expect(kindLabel("T", camp)).toBe("Tiyul");
+    expect(kindLabel("T", t)).toBe("Trip");
+    const view = opened();
+    view.days[0].items = [
+      ...view.days[0].items.slice(0, 2),
+      { kind: "T", id: "", name: "Zoo trip", gone: false },
+      view.days[0].items[3]
+    ];
+    const zoo = dailyGrid(view, 0, camp).cells.find((c) => c.key === "1-0");
+    expect(zoo.title).toBe("Zoo trip: Tiyul, not set up in Shoresh yet");
+    expect(zoo.note).toBe("not set up yet");
   });
 
   it("shows nothing placed as Open", () => {
