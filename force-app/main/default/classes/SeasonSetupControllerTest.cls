@@ -403,7 +403,7 @@ private class SeasonSetupControllerTest {
       camp = ShoreshTestData.camp('Camp Willow');
     }
     System.runAs(other) {
-      Assert.isTrue(SeasonSetupController.canEditCampWords(camp.Id));
+      Assert.isNull(SeasonSetupController.campWordsBlockedReason(camp.Id));
       List<CampLabels.TermLabel> labels = SeasonSetupController.getLabels(
         camp.Id
       );
@@ -419,12 +419,16 @@ private class SeasonSetupControllerTest {
     List<CampLabels.TermLabel> labels = CampLabels.forCamp(camp.Id).all();
     setWords(labels, 'Group', 'Bunk/Bunks');
     System.runAs(ShoreshTestData.outsider()) {
-      Assert.isFalse(SeasonSetupController.canEditCampWords(camp.Id));
+      String expected = 'You don\'t have access to change camp words. A Salesforce admin can give you the Shoresh Scheduler permission set.';
+      Assert.areEqual(
+        expected,
+        SeasonSetupController.campWordsBlockedReason(camp.Id)
+      );
       try {
         SeasonSetupController.saveCampLabels(camp.Id, labels);
         Assert.fail('No Shoresh access, no changes');
       } catch (AuraHandledException e) {
-        Assert.isNotNull(errorOf(e));
+        Assert.areEqual(expected, errorOf(e));
       }
     }
     Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c WITH SYSTEM_MODE]);

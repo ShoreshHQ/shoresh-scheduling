@@ -51,21 +51,10 @@ public with sharing class SeasonSetupController {
     return CampLabels.forCamp(campId).all();
   }
 
-  /**
-   * Whether this person may change the camp's own words: anyone with Shoresh access can
-   * (Greg, 2026-10-15), unless an admin has narrowed access to camp records.
-   */
+  /** Why this person cannot change the camp's own words, or null when they can. */
   @AuraEnabled
-  public static Boolean canEditCampWords(Id campId) {
-    List<UserRecordAccess> access = [
-      SELECT RecordId, HasEditAccess
-      FROM UserRecordAccess
-      WHERE UserId = :UserInfo.getUserId() AND RecordId = :campId
-      WITH SYSTEM_MODE
-    ];
-    return !access.isEmpty() &&
-      access[0].HasEditAccess &&
-      Schema.sObjectType.CampLabel__c.isCreateable();
+  public static String campWordsBlockedReason(Id campId) {
+    return CampLabels.whyCannotEdit(campId);
   }
 
   @AuraEnabled
@@ -125,6 +114,10 @@ public with sharing class SeasonSetupController {
     Id campId,
     List<CampLabels.TermLabel> labels
   ) {
+    String blocked = CampLabels.whyCannotEdit(campId);
+    if (blocked != null) {
+      throw ScreenErrors.of(blocked);
+    }
     try {
       CampLabels.save(campId, labels);
     } catch (Exception e) {

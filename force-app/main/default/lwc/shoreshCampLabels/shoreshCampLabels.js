@@ -1,7 +1,7 @@
 import { LightningElement, api } from "lwc";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
-import canEditCampWords from "@salesforce/apex/SeasonSetupController.canEditCampWords";
+import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
 import { errorMessage } from "c/shoreshErrors";
 
 /**
@@ -15,7 +15,7 @@ export default class ShoreshCampLabels extends LightningElement {
   rows = [];
   error;
   busy = false;
-  canEdit = false;
+  blockedReason;
   loaded = false;
 
   connectedCallback() {
@@ -24,11 +24,11 @@ export default class ShoreshCampLabels extends LightningElement {
 
   async load() {
     try {
-      const [labels, canEdit] = await Promise.all([
+      const [labels, blockedReason] = await Promise.all([
         getLabels({ campId: this.campId }),
-        canEditCampWords({ campId: this.campId })
+        campWordsBlockedReason({ campId: this.campId })
       ]);
-      this.canEdit = canEdit;
+      this.blockedReason = blockedReason;
       this.loaded = true;
       this.rows = labels.map((row) => ({
         ...row,
@@ -45,11 +45,11 @@ export default class ShoreshCampLabels extends LightningElement {
   }
 
   get readOnly() {
-    return this.loaded && !this.canEdit;
+    return this.loaded && !!this.blockedReason;
   }
 
   get saveDisabled() {
-    return this.busy || !this.canEdit;
+    return this.busy || !this.loaded || !!this.blockedReason;
   }
 
   handleChange(event) {

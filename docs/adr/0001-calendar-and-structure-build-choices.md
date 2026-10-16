@@ -29,13 +29,19 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
    of objects; reads are `WITH USER_MODE`. Trigger checks read in system mode on purpose
    (duplicate keys must be found even in records the user cannot see).
-7. **Anyone with Shoresh access can change camp words** (Greg, 2026-10-15). Camp records are
-   readable and editable by everyone with access (org-wide Read/Write), and camp labels follow
-   their camp. This replaces the data model's "read-only for everyone". An admin who narrows
-   access to camp records makes the words read-only for those people, and the screen says so.
+7. **Anyone with Shoresh access can change camp labels** (Greg, 2026-10-15). "Shoresh access"
+   means the Shoresh Scheduler permission set. Camp records are readable and editable by
+   everyone with access (org-wide Read/Write), and camp labels follow their camp. This replaces
+   the data model's "read-only for everyone". Side effect: those users can also rename any camp
+   in the org and change its time zone (not delete it); in a multi-camp org that includes
+   other camps. If an admin narrows access to camp records, the label editor is read-only for
+   people without edit access and says so; someone without the permission set is told to ask
+   for it.
 8. **Choices that are hard to undo after release:** `Camp__c.TimeZone__c` is text (a standard
    time-zone name such as America/New_York) rather than a picklist, so any zone fits; nothing
    uses it yet. `TimeBlock__c.PartOfDay__c` is Morning or Afternoon only (day camps;
-   adding a value later is easy, removing one is not).
+   adding a value later is easy, removing one is not). Camp's org-wide Read/Write (point 7):
+   package upgrades do not change sharing settings in installed orgs, so narrowing it later
+   would only reach new installs.
 9. **Unsaved typing is kept** when another part of the setup screen is saved; only a table's
    own successful save replaces what it shows.
