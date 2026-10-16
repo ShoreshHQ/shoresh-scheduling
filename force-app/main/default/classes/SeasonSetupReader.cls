@@ -32,6 +32,12 @@ public with sharing class SeasonSetupReader {
       ORDER BY StartDate__c, SortOrder__c
     ];
     result.programs = readPrograms(seasonId);
+    result.weekExceptions = [
+      SELECT Id, Week__c, Group__c
+      FROM WeekException__c
+      WHERE Week__r.Season__c = :seasonId
+      WITH USER_MODE
+    ];
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
     return result;
   }
@@ -101,6 +107,8 @@ public with sharing class SeasonSetupReader {
     public Season__c season;
     @AuraEnabled
     public List<Week__c> weeks;
+    @AuraEnabled
+    public List<WeekException__c> weekExceptions;
     @AuraEnabled
     public List<ProgramSetup> programs;
     @AuraEnabled

@@ -64,18 +64,28 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    _Morning only_. **Save changes**.
 6. The **Needs attention** box disappears once nothing is missing.
 
-## 7. Copy the season to next summer
+## 7. Weeks a bunk doesn't run
+
+1. Scroll to **Week exceptions** at the bottom. There is a row for each bunk and a column for
+   each week.
+2. Tick **Bunk 2** under **Week 3** (say it is away on a trip that week) and click
+   **Save changes**.
+3. Now try deleting Bunk 2 (trash can next to it, then confirm). Shoresh refuses: it says
+   Bunk 2 is marked as not running in Week 3 and to clear that under Week exceptions first.
+   Nothing is deleted. Leave the tick in place; the copy below carries it over.
+
+## 8. Copy the season to next summer
 
 1. Click **Copy this season**. Shoresh suggests _Summer 2027_ starting Monday Jun 28, 2027, and
    lists every week with where it was and where it will be.
 2. Change the start date to Jun 29, 2027 (a Tuesday). A yellow warning explains that every
    week would move to different weekdays. Change it back to Jun 28, 2027.
 3. Click **Copy season**. You land on _Summer 2027_, which says _Copied from "Summer 2026"_,
-   with the same weeks (a year later), program, time blocks, unit, and bunks.
+   with the same weeks (a year later), program, time blocks, unit, bunks, and week exceptions.
 4. Use the **Season** picker at the top to go back to _Summer 2026_: it is exactly as you left
    it.
 
-## 8. Deleting
+## 9. Deleting
 
 1. On _Summer 2027_, click **Delete season** and confirm. It and everything in it are gone;
    _Summer 2026_ is untouched.
@@ -84,8 +94,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 ## What is not here yet
 
-- No screen for week exceptions ("the pool is closed in Week 3"); copying a season does carry
-  them over.
+- Week exceptions cover bunks only; activities and locations ("the pool is closed in Week 3")
+  come with those pieces.
 - Activities, locations, events, and schedules come in later pieces.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

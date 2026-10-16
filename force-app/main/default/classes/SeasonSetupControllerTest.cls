@@ -257,11 +257,8 @@ private class SeasonSetupControllerTest {
         SeasonSetupController.deleteRecord(used.Id);
         Assert.fail('A group in use is kept');
       } catch (AuraHandledException e) {
-        Assert.isTrue(
-          errorOf(e)
-            .startsWith(
-              'This can\'t be deleted while other records still use it.'
-            ),
+        Assert.areEqual(
+          'This can\'t be deleted yet: it is marked as not running ("Group A" in "Week 3"). Clear that under Week exceptions first, then delete it.',
           errorOf(e)
         );
       }

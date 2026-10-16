@@ -4,6 +4,10 @@
         <apexClass>SeasonSetupController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>WeekExceptionsController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <applicationVisibilities>
         <application>Shoresh</application>
         <visible>true</visible>

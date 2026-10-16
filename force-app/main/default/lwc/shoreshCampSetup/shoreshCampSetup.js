@@ -8,6 +8,7 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
+import saveWeekExceptions from "@salesforce/apex/WeekExceptionsController.saveWeekExceptions";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
@@ -401,6 +402,20 @@ export default class ShoreshCampSetup extends LightningElement {
         SortOrder__c: count + 1
       }
     ]);
+  }
+
+  async handleSaveWeekExceptions(event) {
+    const { toAdd, toRemove, onFailure } = event.detail;
+    let saved = false;
+    await this.run(async () => {
+      await saveWeekExceptions({ toAdd, toRemove });
+      saved = true;
+      this.toast("Saved.");
+      await this.loadSeason();
+    });
+    if (!saved && onFailure) {
+      onFailure();
+    }
   }
 
   async handleSaveRecords(event) {
