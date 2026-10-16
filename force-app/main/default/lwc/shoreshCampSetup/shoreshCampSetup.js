@@ -206,9 +206,17 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   /** What needs attention on the screen shown (Roots lists everything in its own way). */
   get screenProblems() {
-    return this.problems.filter(
-      (problem) => problem.screen === this.currentScreen
-    );
+    return this.problems
+      .filter((problem) => problem.screen === this.currentScreen)
+      .map((problem) => ({ ...problem, actions: problem.actions || [] }));
+  }
+
+  /** A fix offered on an attention item (a changed fixed or recurring activity): saves it. */
+  async handleProblemAction(event) {
+    const { problem, action } = event.currentTarget.dataset;
+    const found = this.problems.find((p) => p.key === problem);
+    const chosen = found.actions.find((a) => a.key === action);
+    await this.saveAndReload(() => saveRecords({ records: [chosen.record] }));
   }
   get hasScreenProblems() {
     return this.screenProblems.length > 0;

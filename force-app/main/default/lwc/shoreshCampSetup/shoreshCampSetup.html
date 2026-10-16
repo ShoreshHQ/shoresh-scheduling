@@ -185,6 +185,19 @@
                 <template for:each={screenProblems} for:item="problem">
                   <li key={problem.key}>
                     <strong>{problem.name}</strong>: {problem.why}
+                    <template for:each={problem.actions} for:item="action">
+                      <lightning-button
+                        key={action.key}
+                        class="slds-m-left_x-small"
+                        variant="base"
+                        label={action.label}
+                        data-problem={problem.key}
+                        data-action={action.key}
+                        data-id="problem-action"
+                        onclick={handleProblemAction}
+                        disabled={busy}
+                      ></lightning-button>
+                    </template>
                   </li>
                 </template>
               </ul>

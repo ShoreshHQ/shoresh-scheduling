@@ -73,8 +73,16 @@ public with sharing class SetTimeItemTriggerHandler {
   /**
    * Fills in the last time block each item covers now (its time block, then length - 1 more, cut
    * short at the end of the day). If time blocks change later so that it covers different ones,
-   * Needs attention says so until the item is saved again.
+   * Needs attention says so until its time block or length is changed, or the new coverage is
+   * kept (the screens send the last block it now covers).
    */
+  private static Boolean blocksTouched(SObject item, SObject was) {
+    return was == null ||
+      (Id) item.get('TimeBlock__c') != (Id) was.get('TimeBlock__c') ||
+      (Decimal) item.get('Length__c') != (Decimal) was.get('Length__c') ||
+      (Id) item.get('LastTimeBlock__c') != (Id) was.get('LastTimeBlock__c');
+  }
+
   private static void rememberLastBlocks(
     List<SObject> items,
     List<TimeBlock__c> blocksInOrder
@@ -86,22 +94,34 @@ public with sharing class SetTimeItemTriggerHandler {
       }
       blocksByProgram.get(block.Program__c).add(block.Id);
     }
+    // On an update, only a new time block or length, or a confirmed last block (Keep), sets it
+    // again: renaming or moving an item leaves a changed-blocks note in place (Greg, 2026-10-16).
+    Map<Id, SObject> before = Trigger.isExecuting && Trigger.isUpdate
+      ? Trigger.oldMap
+      : null;
     for (SObject item : items) {
-      List<Id> blocks = blocksByProgram.get((Id) item.get('Program__c'));
-      Integer start = blocks == null
-        ? -1
-        : blocks.indexOf((Id) item.get('TimeBlock__c'));
-      // A blank length counts as 1, as on the screens and in the clash check.
-      Decimal given = (Decimal) item.get('Length__c');
-      Integer length = given == null ? 1 : given.intValue();
+      if (before != null && !blocksTouched(item, before.get(item.Id))) {
+        continue;
+      }
       item.put(
         'LastTimeBlock__c',
-        start < 0 ||
-          length < 1
-          ? null
-          : blocks[Math.min(start + length, blocks.size()) - 1]
+        lastBlockOf(item, blocksByProgram.get((Id) item.get('Program__c')))
       );
     }
+  }
+
+  /** The last block it covers, given its program's blocks in order; null if it has none. */
+  private static Id lastBlockOf(SObject item, List<Id> blocks) {
+    Integer start = blocks == null
+      ? -1
+      : blocks.indexOf((Id) item.get('TimeBlock__c'));
+    // A blank length counts as 1, as on the screens and in the clash check.
+    Decimal given = (Decimal) item.get('Length__c');
+    Integer length = given == null ? 1 : given.intValue();
+    return start < 0 ||
+      length < 1
+      ? null
+      : blocks[Math.min(start + length, blocks.size()) - 1];
   }
 
   private void check(SObject item, Program__c program) {

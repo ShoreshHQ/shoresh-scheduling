@@ -180,9 +180,9 @@ Two more things to know:
 - A bunk away for a week, or a location closed for a week, is not there that week, so it never
   counts as a clash. Ticking that week back on is checked like any other change.
 - If you add, move, or delete a time block in the middle of an activity that takes more than
-  one block, it now covers different blocks. Shoresh doesn't refuse that, but it tells you
-  under Needs attention and on the row ("it now runs Period 1 to Snack, not to Period 2").
-  If that's what you meant, click **Keep as it is** on the row; if not, change it.
+  one block, it then covers different blocks. Shoresh doesn't refuse that, but it tells you
+  under Needs attention and on the row, with two fixes that say exactly what you'll get. You
+  try this on next summer's copy in section 12.
 
 Does this work the way you think in practice? Note anything that feels awkward.
 
@@ -196,7 +196,8 @@ Does this work the way you think in practice? Note anything that feels awkward.
    _Copied from "Summer 2026"_; the weeks (a year later), program, time blocks, unit, bunks,
    locations, activities (Soccer's rain plan, who can swim), fixed and recurring activities
    (with who each covers), and unticked weeks (Bunk 2 in Week 3, the Pool in Week 2, Bunk 1
-   swim in Week 2) all came along.
+   swim in Week 2) all came along. Anything waiting under "time blocks changed" is not
+   carried: the copy starts from what each activity covers on the day you copy.
 4. Use the **Season** picker at the top to go back to _Summer 2026_: it is exactly as you left
    it.
 
@@ -207,9 +208,18 @@ Does this work the way you think in practice? Note anything that feels awkward.
    goes, and its unticked Week 3 goes with it. Shoresh still refuses a delete when something
    else depends on the record: try deleting **Bunk 1**, which is in Swim's **Who can do it**
    and in who Bunk 1 swim covers.
-2. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
+2. **A time block added inside an activity.** Still on _Summer 2027_, delete **Bunk 1 swim**
+   too (Recurring activities), so Period 2 is free. On **Fixed activities**, set Flagpole's
+   **Length** to 2 and save: it covers Period 1 and Period 2. Now on **Time blocks** add
+   _Snack_ 9:45–10:00 AM, Morning, and save. Back on **Fixed activities**, Needs attention
+   and Flagpole's Notes say _Time blocks changed since it was saved: it covered Period 1 –
+   Period 2 and now covers Period 1 – Snack._ Two fixes are offered: **Keep Period 1 – Snack**
+   and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and save: the note stays.
+   Click **Stretch to Period 1 – Period 2**: the length becomes 3 and the note goes. (Deleting
+   a block inside an activity offers **Keep the shorter …** or **Extend to …** instead.)
+3. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
    _Summer 2026_ is untouched.
-3. Deleting a unit, program, week, time block, location, activity, fixed activity, or
+4. Deleting a unit, program, week, time block, location, activity, fixed activity, or
    recurring activity works the same way (trash can icon, then confirm), unless something else
    still uses it; Shoresh then says what, and where to change it. Deleting a unit or program
    also clears its bunks' unticked weeks. A program with fixed or recurring activities is

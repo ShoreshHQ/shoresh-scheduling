@@ -189,14 +189,16 @@
                       data-id="note"
                     >
                       {row.note}
-                      <template lwc:if={row.canKeep}>
+                      <template for:each={row.actions} for:item="action">
                         <lightning-button
+                          key={action.key}
                           class="slds-m-left_x-small"
                           variant="base"
-                          label="Keep as it is"
+                          label={action.label}
                           data-row-key={row.key}
-                          data-id="keep"
-                          onclick={handleKeep}
+                          data-action={action.name}
+                          data-id="row-action"
+                          onclick={handleRowAction}
                           disabled={busy}
                         ></lightning-button>
                       </template>

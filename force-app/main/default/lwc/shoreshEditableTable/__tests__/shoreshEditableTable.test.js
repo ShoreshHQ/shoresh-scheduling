@@ -741,17 +741,35 @@ describe("c-shoresh-editable-table", () => {
       expect(summaries(element)[0]).toBe("Bunk 1 (Juniors)");
     });
 
-    it("a row offered Keep as it is is saved unchanged", async () => {
+    it("a fix offered in a row's note saves just its changes to that row", async () => {
       const element = renderRecurring();
-      element.keepRows = ["r2"];
+      element.rowActions = {
+        r2: [
+          {
+            key: "keep",
+            label: "Keep Period 2 – Snack",
+            changes: { LastTimeBlock__c: "b9" }
+          },
+          {
+            key: "stretch",
+            label: "Stretch to Period 2 – Period 3",
+            changes: { Length__c: 3 }
+          }
+        ]
+      };
       await flush();
-      const keeps = element.shadowRoot.querySelectorAll('[data-id="keep"]');
-      expect(keeps.length).toBe(1);
+      const buttons = element.shadowRoot.querySelectorAll(
+        '[data-id="row-action"]'
+      );
+      expect([...buttons].map((b) => b.label)).toEqual([
+        "Keep Period 2 – Snack",
+        "Stretch to Period 2 – Period 3"
+      ]);
       const handler = jest.fn();
       element.addEventListener("save", handler);
-      keeps[0].click();
+      buttons[1].click();
       expect(handler.mock.calls[0][0].detail.records).toEqual([
-        { sobjectType: "RecurringActivity__c", Id: "r2" }
+        { sobjectType: "RecurringActivity__c", Id: "r2", Length__c: 3 }
       ]);
     });
 

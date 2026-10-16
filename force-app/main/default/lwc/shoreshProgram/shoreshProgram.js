@@ -218,35 +218,38 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   /**
-   * Each saved row's note: groups left out because they are not at camp then, and whether time
-   * blocks changed what it covers since it was saved.
+   * Each saved row's note: whether time blocks changed what it covers since it was saved, and
+   * groups left out because they are not at camp then.
    */
   notesFor(items) {
     const notes = {};
     (items || []).forEach((item) => {
-      notes[item.Id] = [
-        spanChange(this.entry, item, this.terms),
-        setTimeNote(this.entry, item)
-      ]
+      const moved = spanChange(this.entry, item, this.terms);
+      notes[item.Id] = [moved ? moved.why : "", setTimeNote(this.entry, item)]
         .filter((note) => note)
         .join(" ");
     });
     return notes;
   }
 
-  /** Rows whose time blocks changed under them, offered "Keep as it is". */
-  keepFor(items) {
-    return (items || [])
-      .filter((item) => spanChange(this.entry, item, this.terms))
-      .map((item) => item.Id);
+  /** The fixes offered on rows whose time blocks changed under them: Id -> actions. */
+  actionsFor(items) {
+    const actions = {};
+    (items || []).forEach((item) => {
+      const moved = spanChange(this.entry, item, this.terms);
+      if (moved) {
+        actions[item.Id] = moved.actions;
+      }
+    });
+    return actions;
   }
 
-  get fixedKeep() {
-    return this.keepFor(this.entry.fixedActivities);
+  get fixedActions() {
+    return this.actionsFor(this.entry.fixedActivities);
   }
 
-  get recurringKeep() {
-    return this.keepFor(this.entry.recurringActivities);
+  get recurringActions() {
+    return this.actionsFor(this.entry.recurringActivities);
   }
 
   get fixedNotes() {

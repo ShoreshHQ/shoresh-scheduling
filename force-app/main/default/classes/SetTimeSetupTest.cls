@@ -395,24 +395,122 @@ private class SetTimeSetupTest {
     Assert.areEqual('Recurring activities', labels.plural('RecurringActivity'));
   }
 
+  /** Rest: fixed, Period 1 for 2 blocks (Period 1 and Period 2). */
+  private static Id saveRest(Map<String, Id> ids) {
+    FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
+    rest.Length__c = 2;
+    Id restId = SetTimeTestData.save(new List<SObject>{ rest })[0];
+    Assert.areEqual(ids.get('Period 2'), lastBlock(restId));
+    return restId;
+  }
+
   @IsTest
-  static void anItemRemembersItsLastTimeBlockUntilKeptAgain() {
+  static void aBlockAddedInsideAnItemIsKeptOrStretchedNotForgotten() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
       Test.startTest();
-      FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
-      rest.Length__c = 2;
-      Id restId = SetTimeTestData.save(new List<SObject>{ rest })[0];
+      Id restId = saveRest(ids);
+      // Snack added between Period 1 and Period 2: Rest now covers Period 1 and Snack.
+      Id snack = SetTimeTestData.save(
+        new List<SObject>{
+          new TimeBlock__c(
+            Program__c = ids.get('Main'),
+            Name = 'Snack',
+            StartTime__c = Time.newInstance(9, 50, 0, 0),
+            EndTime__c = Time.newInstance(9, 55, 0, 0),
+            PartOfDay__c = 'Morning'
+          )
+        }
+      )[0];
+      Assert.areEqual(ids.get('Period 2'), lastBlock(restId), 'Still noted');
+      // Renaming it does not clear the note.
+      SetTimeTestData.save(
+        new List<SObject>{
+          new FixedActivity__c(Id = restId, Name = 'Quiet time')
+        }
+      );
+      Assert.areEqual(
+        ids.get('Period 2'),
+        lastBlock(restId),
+        'Rename keeps the note'
+      );
+      // Nap now takes Period 2, so stretching Quiet time back to Period 2 is refused.
+      SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Nap', 'Period 2') }
+      );
+      Assert.areEqual(
+        '"Nap" and "Quiet time" would both have Group A in Period 2 on Monday in Week 1. ' +
+        'Change the time block, length, or weeks of one of them.',
+        SetTimeTestData.refusal(
+          new List<SObject>{ new FixedActivity__c(Id = restId, Length__c = 3) }
+        )
+      );
+      Assert.areEqual(ids.get('Period 2'), lastBlock(restId), 'Note stays');
+      // Keep Period 1 – Snack.
+      SetTimeTestData.save(
+        new List<SObject>{
+          new FixedActivity__c(Id = restId, LastTimeBlock__c = snack)
+        }
+      );
+      Assert.areEqual(snack, lastBlock(restId));
+    }
+  }
+
+  @IsTest
+  static void aBlockAddedInsideAnItemCanBeStretchedOver() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      Id restId = saveRest(ids);
+      Database.insert(
+        new TimeBlock__c(
+          Program__c = ids.get('Main'),
+          Name = 'Snack',
+          StartTime__c = Time.newInstance(9, 50, 0, 0),
+          EndTime__c = Time.newInstance(9, 55, 0, 0),
+          PartOfDay__c = 'Morning'
+        ),
+        AccessLevel.USER_MODE
+      );
+      // Stretch to Period 1 – Period 2: three blocks now.
+      SetTimeTestData.save(
+        new List<SObject>{ new FixedActivity__c(Id = restId, Length__c = 3) }
+      );
       Assert.areEqual(ids.get('Period 2'), lastBlock(restId));
-      // Period 2 deleted: Rest now covers Period 1 and Lunch; what was saved is cleared, so the
-      // screens say what changed.
+    }
+  }
+
+  @IsTest
+  static void aBlockRemovedInsideAnItemIsShortenedOrExtended() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      Id restId = saveRest(ids);
+      // Period 2 deleted: Rest now runs on into Lunch; its saved end is gone.
       SeasonSetupController.deleteRecord(ids.get('Period 2'));
       Assert.isNull(lastBlock(restId));
-      // Keep as it is: the row saved unchanged.
+      // Extend to Lunch: the new coverage is kept.
       SetTimeTestData.save(
-        new List<SObject>{ new FixedActivity__c(Id = restId) }
+        new List<SObject>{
+          new FixedActivity__c(Id = restId, LastTimeBlock__c = ids.get('Lunch'))
+        }
       );
       Assert.areEqual(ids.get('Lunch'), lastBlock(restId));
+    }
+  }
+
+  @IsTest
+  static void aBlockRemovedInsideAnItemCanKeepTheShorterCoverage() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      Id restId = saveRest(ids);
+      SeasonSetupController.deleteRecord(ids.get('Period 2'));
+      // Keep the shorter Period 1.
+      SetTimeTestData.save(
+        new List<SObject>{ new FixedActivity__c(Id = restId, Length__c = 1) }
+      );
+      Assert.areEqual(ids.get('Period 1'), lastBlock(restId));
     }
   }
 

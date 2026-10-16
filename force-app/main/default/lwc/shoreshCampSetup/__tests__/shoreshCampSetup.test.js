@@ -516,6 +516,50 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(refusal);
   });
 
+  it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(
+      setupWith({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main", Monday__c: true },
+            timeBlocks: [
+              { Id: "t1", Name: "Period 1" },
+              { Id: "t9", Name: "Snack" },
+              { Id: "t2", Name: "Period 2" }
+            ],
+            divisions: [],
+            fixedActivities: [
+              {
+                Id: "f1",
+                Name: "Rest",
+                TimeBlock__c: "t1",
+                Length__c: 2,
+                LastTimeBlock__c: "t2"
+              }
+            ]
+          }
+        ]
+      })
+    );
+    saveRecords.mockResolvedValue(["f1"]);
+    const element = await render();
+    await openScreen(element, "fixedActivities");
+    const buttons = [
+      ...element.shadowRoot.querySelectorAll('[data-id="problem-action"]')
+    ];
+    expect(buttons.map((b) => b.label)).toEqual([
+      "Keep Period 1 – Snack",
+      "Stretch to Period 1 – Period 2"
+    ]);
+    buttons[1].click();
+    await flush();
+    expect(saveRecords).toHaveBeenCalledWith({
+      records: [{ sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }]
+    });
+  });
+
   it("tells a table with weeks when its save failed", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);

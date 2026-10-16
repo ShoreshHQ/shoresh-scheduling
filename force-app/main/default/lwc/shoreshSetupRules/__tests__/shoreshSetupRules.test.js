@@ -359,44 +359,121 @@ describe("fixed and recurring activities", () => {
     ]);
   });
 
-  it("says when time blocks changed what an item covers since it was saved", () => {
-    const rest = { TimeBlock__c: "t1", Length__c: 2, LastTimeBlock__c: "t2" };
-    expect(spanChange(ENTRY, rest, terms)).toBe("");
-    // A block added between Period 1 and Lunch.
-    const added = {
-      ...ENTRY,
-      timeBlocks: [
-        ENTRY.timeBlocks[0],
-        { Id: "t9", Name: "Snack", PartOfDay__c: "Morning" },
-        ENTRY.timeBlocks[1]
-      ]
-    };
-    expect(spanChange(added, rest, terms)).toBe(
-      "Time blocks changed since it was saved: it now runs Period 1 to Snack, not to Lunch. " +
-        "Keep it if that is right, or change it."
-    );
-    // Its last block deleted (Salesforce empties the saved last block).
-    expect(
-      spanChange(
-        { ...ENTRY, timeBlocks: [ENTRY.timeBlocks[0]] },
-        { ...rest, LastTimeBlock__c: null },
+  describe("time blocks changed under an item", () => {
+    const P1 = { Id: "b1", Name: "Period 1", PartOfDay__c: "Morning" };
+    const P2 = { Id: "b2", Name: "Period 2", PartOfDay__c: "Morning" };
+    const P3 = { Id: "b3", Name: "Period 3", PartOfDay__c: "Morning" };
+    const SNACK = { Id: "b9", Name: "Snack", PartOfDay__c: "Morning" };
+    const withBlocks = (timeBlocks) => ({ ...ENTRY, timeBlocks });
+    // Rest was saved covering Period 2 – Period 3.
+    const rest = { TimeBlock__c: "b2", Length__c: 2, LastTimeBlock__c: "b3" };
+
+    it("says nothing while it covers what it did", () => {
+      expect(spanChange(withBlocks([P1, P2, P3]), rest, terms)).toBeNull();
+    });
+
+    it("a block added inside it: keep the new coverage, or stretch back to where it ended", () => {
+      const moved = spanChange(withBlocks([P1, P2, SNACK, P3]), rest, terms);
+      expect(moved.why).toBe(
+        "Time blocks changed since it was saved: it covered Period 2 – Period 3 and now covers Period 2 – Snack."
+      );
+      expect(moved.actions).toEqual([
+        {
+          key: "keep",
+          label: "Keep Period 2 – Snack",
+          changes: { LastTimeBlock__c: "b9" }
+        },
+        {
+          key: "stretch",
+          label: "Stretch to Period 2 – Period 3",
+          changes: { Length__c: 3 }
+        }
+      ]);
+    });
+
+    it("a block inside it removed: keep the shorter coverage, or extend into the next block", () => {
+      // Saved as Period 1 – Period 2 (length 2); Period 2 deleted.
+      const item = { TimeBlock__c: "b1", Length__c: 2, LastTimeBlock__c: null };
+      const moved = spanChange(withBlocks([P1, P3]), item, terms);
+      expect(moved.why).toBe(
+        "Time blocks changed since it was saved: the time block it ended in was deleted, and it now covers Period 1 – Period 3."
+      );
+      expect(moved.actions).toEqual([
+        {
+          key: "shorter",
+          label: "Keep the shorter Period 1",
+          changes: { Length__c: 1 }
+        },
+        {
+          key: "extend",
+          label: "Extend to Period 3",
+          changes: { LastTimeBlock__c: "b3" }
+        }
+      ]);
+      // Saved as Period 1 – Period 2 (length 3 before Snack was removed from the middle).
+      const longer = {
+        TimeBlock__c: "b1",
+        Length__c: 3,
+        LastTimeBlock__c: "b2"
+      };
+      const shorter = spanChange(withBlocks([P1, P2, P3]), longer, terms);
+      expect(shorter.actions.map((a) => a.label)).toEqual([
+        "Keep the shorter Period 1 – Period 2",
+        "Extend to Period 3"
+      ]);
+      expect(shorter.actions[0].changes).toEqual({ Length__c: 2 });
+    });
+
+    it("offers only what makes sense, and says why", () => {
+      // Its old end moved before its start.
+      const moved = spanChange(
+        withBlocks([P3, P1, P2]),
+        { TimeBlock__c: "b1", Length__c: 2, LastTimeBlock__c: "b3" },
         terms
-      )
-    ).toBe(
-      "Time blocks changed since it was saved: it now runs Period 1 to Period 1. " +
-        "Keep it if that is right, or change it."
-    );
-    // In the camp's own words.
-    const periods = buildTerms([
-      {
-        term: "TimeBlock",
-        singular: "Period",
-        plural: "Periods",
-        isCustom: true
-      }
-    ]);
-    expect(spanChange(added, rest, periods)).toMatch(
-      /^Periods changed since it was saved/
-    );
+      );
+      expect(moved.why).toContain("so it can only be kept as it is");
+      expect(moved.actions.map((a) => a.label)).toEqual([
+        "Keep Period 1 – Period 2"
+      ]);
+    });
+
+    it("uses the camp's own words", () => {
+      const periods = buildTerms([
+        { term: "TimeBlock", singular: "Slot", plural: "Slots", isCustom: true }
+      ]);
+      expect(
+        spanChange(withBlocks([P1, P2, SNACK, P3]), rest, periods).why
+      ).toMatch(/^Slots changed since it was saved/);
+    });
+
+    it("offers the fixes on its Needs attention item, as saves of that row", () => {
+      const setup = {
+        season: {
+          Name: "S",
+          StartDate__c: "2026-06-29",
+          EndDate__c: "2026-08-07"
+        },
+        weeks: [],
+        activities: [{ Name: "Archery" }],
+        programs: [
+          {
+            ...withBlocks([P1, P2, SNACK, P3]),
+            fixedActivities: [{ Id: "f1", Name: "Rest", ...rest }]
+          }
+        ]
+      };
+      const item = setupProblems(setup, terms).find((p) => p.name === "Rest");
+      expect(item.screen).toBe("fixedActivities");
+      expect(item.actions.map((a) => [a.label, a.record])).toEqual([
+        [
+          "Keep Period 2 – Snack",
+          { sobjectType: "FixedActivity__c", Id: "f1", LastTimeBlock__c: "b9" }
+        ],
+        [
+          "Stretch to Period 2 – Period 3",
+          { sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }
+        ]
+      ]);
+    });
   });
 });

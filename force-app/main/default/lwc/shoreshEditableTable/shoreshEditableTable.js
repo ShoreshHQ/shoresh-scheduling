@@ -25,7 +25,7 @@ import { LightningElement, api } from "lwc";
  * do it" under the row. An empty choice means everyone.
  *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
- * keepRows: saved rows whose note offers "Keep as it is", which saves the row unchanged.
+ * rowActions: fixes offered in a saved row's note; each saves just its changes to that row.
  *
  * Fires:
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
@@ -52,8 +52,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api weekPhrase = "runs in";
   @api notesHeading;
   @api rowNotes = {};
-  /** Saved rows (Ids) to offer "Keep as it is": saving the row unchanged accepts it. */
-  @api keepRows = [];
+  /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
+  @api rowActions = {};
 
   drafts = [];
   nextKey = 0;
@@ -298,8 +298,13 @@ export default class ShoreshEditableTable extends LightningElement {
         ? `${whoColumn.label}: ${draft.values.Name || ""}`.trim()
         : "",
       note: draft.isNew ? "" : notes[draft.original.Id] || "",
-      canKeep:
-        !draft.isNew && (this.keepRows || []).includes(draft.original.Id),
+      actions: draft.isNew
+        ? []
+        : ((this.rowActions || {})[draft.original.Id] || []).map((action) => ({
+            ...action,
+            key: `${draft.key}-${action.key}`,
+            name: action.key
+          })),
       isNew: draft.isNew,
       deleteLabel: draft.isNew
         ? "Remove this new row"
@@ -379,15 +384,23 @@ export default class ShoreshEditableTable extends LightningElement {
     this.drafts = [...this.drafts];
   }
 
-  /** Saves a row exactly as it is, to accept what changed around it. */
-  handleKeep(event) {
-    const draft = this.drafts.find(
-      (d) => d.key === event.currentTarget.dataset.rowKey
+  /** A fix from the row's note: saves just its changes to that row. */
+  handleRowAction(event) {
+    const { rowKey, action } = event.currentTarget.dataset;
+    const draft = this.drafts.find((d) => d.key === rowKey);
+    const chosen = (this.rowActions[draft.original.Id] || []).find(
+      (a) => a.key === action
     );
     this.dispatchEvent(
       new CustomEvent("save", {
         detail: {
-          records: [{ sobjectType: this.objectApiName, Id: draft.original.Id }],
+          records: [
+            {
+              sobjectType: this.objectApiName,
+              Id: draft.original.Id,
+              ...chosen.changes
+            }
+          ],
           onFailure: () => {}
         }
       })

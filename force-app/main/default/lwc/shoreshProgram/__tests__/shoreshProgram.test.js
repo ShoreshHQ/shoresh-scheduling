@@ -324,18 +324,28 @@ describe("c-shoresh-program", () => {
       expect(fixed.rowNotes).toEqual({
         f1: "Bunk 2 is afternoon only and is left out."
       });
-      expect(fixed.keepRows).toEqual([]);
-      // Saved as ending in a block since deleted: noted, and offered "Keep as it is".
+      expect(fixed.rowActions).toEqual({});
+      // Saved as ending in a block since deleted: noted, with the fixes on the row.
       element.entry = {
         ...SET_TIME,
         fixedActivities: [
-          { ...SET_TIME.fixedActivities[0], LastTimeBlock__c: null }
+          {
+            ...SET_TIME.fixedActivities[0],
+            Length__c: 2,
+            LastTimeBlock__c: null
+          }
+        ],
+        timeBlocks: [
+          ...SET_TIME.timeBlocks,
+          { Id: "t2", Name: "Period 2", PartOfDay__c: "Morning" }
         ]
       };
       await flush();
-      expect(table(element).keepRows).toEqual(["f1"]);
+      expect(
+        table(element).rowActions.f1.map((action) => action.label)
+      ).toEqual(["Keep the shorter Period 1", "Extend to Period 2"]);
       expect(table(element).rowNotes.f1).toContain(
-        "Time blocks changed since it was saved"
+        "changed since it was saved"
       );
     });
 

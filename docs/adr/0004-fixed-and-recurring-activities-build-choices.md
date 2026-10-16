@@ -87,8 +87,25 @@ wins.
     2026-10-16: "if someone means to do that, then ok, if they didn't then they should know").
     Each item remembers the last time block it covered when saved (`LastTimeBlock__c`, filled
     in by Shoresh, cleared if that block is deleted). If blocks are added, moved, or deleted so
-    it now covers different ones, Needs attention and the row's Notes say what it covers now
-    and what it did; **Keep as it is** on the row saves it unchanged, which accepts it.
+    it now covers different ones, the row's Notes and Needs attention say what it covered and
+    what it covers now, with two real fixes, each naming exactly what it will cover (Greg,
+    2026-10-16, no plain dismiss):
+    - a block added inside it: **Keep Period 2 – Snack** (keep the new coverage) or
+      **Stretch to Period 2 – Period 3** (a longer length, so it ends where it used to);
+    - a block inside it removed: **Keep the shorter Period 1** (a shorter length) or
+      **Extend to Lunch** (same length, running into the next block).
+
+    Keep saves the last block it now covers; Stretch and Keep the shorter save a new length,
+    which goes through every clash check, and a refusal leaves the note in place. Only these,
+    or changing the item's time block or length, clear the note: renaming it or changing its
+    location does not. Where only one fix makes sense (its old end is now before its start),
+    only that one is offered, with the reason. Labels use the camp's words and block names.
+    Clicking the Needs attention item on Roots opens the item's screen, where both fixes are on
+    its attention item and its row.
+
+14. **Copying a season drops pending changed-blocks notes** (Greg, 2026-10-16: "if they are
+    moving on, they are moving on"): the copy starts from what each item covers at the time of
+    the copy.
 
 ## Choices that are hard to undo after release
 

@@ -195,10 +195,17 @@ export function setTimeNote(entry, item) {
     .join(" ");
 }
 
+/** "Period 1 – Lunch", or just "Period 1" for one block. */
+function range(first, last) {
+  return first.Id === last.Id ? first.Name : `${first.Name} – ${last.Name}`;
+}
+
 /**
  * When time blocks were added, moved, or deleted after a fixed or recurring activity was saved, so
- * it now covers different blocks (Greg, 2026-10-16: show it; it may be meant, or not). Returns
- * what to say, or "" when it covers what it did when saved.
+ * it now covers different blocks (Greg, 2026-10-16: show it, with real fixes, each saying exactly
+ * what it will cover). Returns null when it covers what it did, or
+ * { why, actions: [{ key, label, changes }] } where changes are the fields a fix saves: the last
+ * block it covers now (keep the new coverage), or a new length (back to where it used to end).
  */
 export function spanChange(entry, item, terms) {
   const blocks = entry.timeBlocks || [];
@@ -206,19 +213,70 @@ export function spanChange(entry, item, terms) {
     ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
     : -1;
   if (start < 0) {
-    return "";
+    return null;
   }
-  const last =
-    blocks[Math.min(start + (item.Length__c || 1), blocks.length) - 1];
-  if (last.Id === item.LastTimeBlock__c) {
-    return "";
+  const length = item.Length__c || 1;
+  const now = Math.min(start + length, blocks.length) - 1;
+  if (blocks[now].Id === item.LastTimeBlock__c) {
+    return null;
   }
-  const was = blocks.find((block) => block.Id === item.LastTimeBlock__c);
-  return (
-    `${terms.p("TimeBlock")} changed since it was saved: it now runs ${blocks[start].Name} to ${last.Name}` +
-    (was ? `, not to ${was.Name}.` : ".") +
-    " Keep it if that is right, or change it."
-  );
+  const was = blocks.findIndex((block) => block.Id === item.LastTimeBlock__c);
+  const first = blocks[start];
+  const keepNow = { LastTimeBlock__c: blocks[now].Id };
+  const changed = `${terms.p("TimeBlock")} changed since it was saved:`;
+  if (was > now) {
+    // A block added inside it: it now stops short of where it used to end.
+    return {
+      why: `${changed} it covered ${range(first, blocks[was])} and now covers ${range(first, blocks[now])}.`,
+      actions: [
+        {
+          key: "keep",
+          label: `Keep ${range(first, blocks[now])}`,
+          changes: keepNow
+        },
+        {
+          key: "stretch",
+          label: `Stretch to ${range(first, blocks[was])}`,
+          changes: { Length__c: was - start + 1 }
+        }
+      ]
+    };
+  }
+  if (was >= start || (was < 0 && length > 1)) {
+    // A block inside it removed (or moved away): it now runs on past where it used to end.
+    const end = was >= start ? was : now - 1;
+    return {
+      why:
+        was >= start
+          ? `${changed} it covered ${range(first, blocks[was])} and now covers ${range(first, blocks[now])}.`
+          : `${changed} the ${terms.sIn("TimeBlock")} it ended in was deleted, and it now covers ${range(first, blocks[now])}.`,
+      actions: [
+        {
+          key: "shorter",
+          label: `Keep the shorter ${range(first, blocks[end])}`,
+          changes: { Length__c: end - start + 1 }
+        },
+        {
+          key: "extend",
+          label: `Extend to ${blocks[now].Name}`,
+          changes: keepNow
+        }
+      ]
+    };
+  }
+  // Where it used to end is now before where it starts: only the new coverage makes sense.
+  return {
+    why:
+      `${changed} it now covers ${range(first, blocks[now])}. ` +
+      `Where it used to end is now earlier than where it starts, so it can only be kept as it is.`,
+    actions: [
+      {
+        key: "keep",
+        label: `Keep ${range(first, blocks[now])}`,
+        changes: keepNow
+      }
+    ]
+  };
 }
 
 /**
@@ -241,7 +299,17 @@ function setTimeProblems(setup, terms) {
         const add = (why) => problems.push({ screen, name: item.Name, why });
         const moved = spanChange(entry, item, terms);
         if (moved) {
-          add(moved);
+          // Each fix is offered right on the attention item, as a save of this row.
+          problems.push({
+            screen,
+            name: item.Name,
+            why: moved.why,
+            actions: moved.actions.map((action) => ({
+              key: action.key,
+              label: action.label,
+              record: { sobjectType: field, Id: item.Id, ...action.changes }
+            }))
+          });
         }
         const off = new Set(
           marks.filter((m) => m[field] === item.Id).map((m) => m.Week__c)
