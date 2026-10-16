@@ -5,11 +5,9 @@ trigger CoverageTrigger on Coverage__c(
   after update,
   after delete
 ) {
-  if (Trigger.isBefore) {
-    CoverageTriggerHandler.beforeSave(Trigger.new);
-  } else {
-    SetTimeTriggers.coverageChanged(
-      Trigger.isDelete ? Trigger.old : Trigger.new
-    );
-  }
+  CoverageTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.new,
+    Trigger.old
+  );
 }

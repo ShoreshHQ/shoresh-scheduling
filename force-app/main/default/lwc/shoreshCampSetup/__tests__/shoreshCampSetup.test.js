@@ -9,6 +9,7 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
+import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
@@ -38,6 +39,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho",
   () => apex(),
   { virtual: true }
 );
@@ -471,6 +477,43 @@ describe("c-shoresh-camp-setup", () => {
     });
     expect(saveRecords).not.toHaveBeenCalled();
     expect(getSeasonSetup).toHaveBeenCalledTimes(2);
+  });
+
+  it("saves recurring activities with their weeks and who each covers, and shows a refusal", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(setupWith());
+    saveRowsWeeksAndWho.mockResolvedValue([]);
+    const element = await render();
+    const recurring = q(
+      element,
+      'c-shoresh-program[data-id="recurring-activities"]'
+    );
+    expect(recurring.show).toBe("recurringActivities");
+    const detail = {
+      records: [{ sobjectType: "RecurringActivity__c", Name: "Swim" }],
+      weeksOff: [],
+      weeksBackOn: [],
+      who: [{ row: 0, targets: ["d1"] }]
+    };
+    recurring.dispatchEvent(new CustomEvent("save", { detail }));
+    await flush();
+    expect(saveRowsWeeksAndWho).toHaveBeenCalledWith({
+      records: detail.records,
+      extras: { weeksOff: [], weeksBackOn: [], who: detail.who }
+    });
+    expect(saveRowsAndWeeks).not.toHaveBeenCalled();
+
+    const refusal =
+      '"Flagpole" and "Swim" would both have Bunk 1 in Period 1 on Monday in Week 1.';
+    saveRowsWeeksAndWho.mockRejectedValue({ body: { message: refusal } });
+    const onFailure = jest.fn();
+    recurring.dispatchEvent(
+      new CustomEvent("save", { detail: { ...detail, onFailure } })
+    );
+    await flush();
+    expect(onFailure).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(refusal);
   });
 
   it("tells a table with weeks when its save failed", async () => {

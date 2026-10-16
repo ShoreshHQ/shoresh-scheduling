@@ -69,7 +69,7 @@ public with sharing class SetTimeGuard {
     String problem = firstProblem(seasonsOf(owners), side);
     if (problem != null) {
       for (SObject record : records) {
-        record.addError(problem, false);
+        record.addError(problem);
       }
     }
   }
@@ -98,52 +98,69 @@ public with sharing class SetTimeGuard {
 
   /** The seasons of the seasons, programs, divisions, and weeks given. */
   private static Set<Id> seasonsOf(Set<Id> owners) {
-    Set<Id> seasons = new Set<Id>();
-    Set<Id> programs = new Set<Id>();
-    Set<Id> divisions = new Set<Id>();
-    Set<Id> weeks = new Set<Id>();
+    Map<Schema.SObjectType, Set<Id>> byKind = new Map<Schema.SObjectType, Set<Id>>{
+      Season__c.SObjectType => new Set<Id>(),
+      Program__c.SObjectType => new Set<Id>(),
+      Division__c.SObjectType => new Set<Id>(),
+      Week__c.SObjectType => new Set<Id>()
+    };
     for (Id owner : owners) {
-      Schema.SObjectType kind = owner.getSObjectType();
-      if (kind == Season__c.SObjectType) {
-        seasons.add(owner);
-      } else if (kind == Program__c.SObjectType) {
-        programs.add(owner);
-      } else if (kind == Division__c.SObjectType) {
-        divisions.add(owner);
-      } else if (kind == Week__c.SObjectType) {
-        weeks.add(owner);
+      if (byKind.containsKey(owner.getSObjectType())) {
+        byKind.get(owner.getSObjectType()).add(owner);
       }
     }
-    if (!weeks.isEmpty()) {
-      for (Week__c week : [
-        SELECT Season__c
-        FROM Week__c
-        WHERE Id IN :weeks
-        WITH SYSTEM_MODE
-      ]) {
-        seasons.add(week.Season__c);
-      }
-    }
-    if (!programs.isEmpty()) {
-      for (Program__c program : [
-        SELECT Season__c
-        FROM Program__c
-        WHERE Id IN :programs
-        WITH SYSTEM_MODE
-      ]) {
-        seasons.add(program.Season__c);
-      }
-    }
-    if (!divisions.isEmpty()) {
-      for (Division__c division : [
-        SELECT Program__r.Season__c
-        FROM Division__c
-        WHERE Id IN :divisions
-        WITH SYSTEM_MODE
-      ]) {
-        seasons.add(division.Program__r.Season__c);
-      }
-    }
+    Set<Id> seasons = byKind.get(Season__c.SObjectType);
+    seasons.addAll(programSeasons(byKind.get(Program__c.SObjectType)));
+    seasons.addAll(divisionSeasons(byKind.get(Division__c.SObjectType)));
+    seasons.addAll(weekSeasons(byKind.get(Week__c.SObjectType)));
     return seasons;
+  }
+
+  private static Set<Id> programSeasons(Set<Id> ids) {
+    Set<Id> result = new Set<Id>();
+    if (ids.isEmpty()) {
+      return result;
+    }
+    for (Program__c program : [
+      SELECT Season__c
+      FROM Program__c
+      WHERE Id IN :ids
+      WITH SYSTEM_MODE
+    ]) {
+      result.add(program.Season__c);
+    }
+    return result;
+  }
+
+  private static Set<Id> divisionSeasons(Set<Id> ids) {
+    Set<Id> result = new Set<Id>();
+    if (ids.isEmpty()) {
+      return result;
+    }
+    for (Division__c division : [
+      SELECT Program__r.Season__c
+      FROM Division__c
+      WHERE Id IN :ids
+      WITH SYSTEM_MODE
+    ]) {
+      result.add(division.Program__r.Season__c);
+    }
+    return result;
+  }
+
+  private static Set<Id> weekSeasons(Set<Id> ids) {
+    Set<Id> result = new Set<Id>();
+    if (ids.isEmpty()) {
+      return result;
+    }
+    for (Week__c week : [
+      SELECT Season__c
+      FROM Week__c
+      WHERE Id IN :ids
+      WITH SYSTEM_MODE
+    ]) {
+      result.add(week.Season__c);
+    }
+    return result;
   }
 }

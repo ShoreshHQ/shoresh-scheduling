@@ -19,7 +19,7 @@ public with sharing class SetTimeLocationClashes {
     Map<Id, List<Visit>> visits = finder.visitsByLocation();
     for (Id locationId : visits.keySet()) {
       for (Id week : plan.weekIds) {
-        for (String day : SetTimePlan.DAYS) {
+        for (String day : SetTimePlan.WEEKDAYS) {
           finder.day = day;
           finder.week = week;
           SetTimeClash clash = finder.crowded(

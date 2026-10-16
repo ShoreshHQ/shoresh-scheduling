@@ -108,8 +108,8 @@ public with sharing class SetTimeTriggers {
   }
 
   private static Boolean daysChanged(Program__c now, Program__c was) {
-    for (String day : SetTimePlan.DAYS) {
-      if (now.get(day + '__c') != was.get(day + '__c')) {
+    for (String day : SetTimePlan.WEEKDAYS) {
+      if ((Boolean) now.get(day + '__c') != (Boolean) was.get(day + '__c')) {
         return true;
       }
     }

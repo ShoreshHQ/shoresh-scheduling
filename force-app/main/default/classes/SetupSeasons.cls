@@ -43,6 +43,10 @@ public with sharing class SetupSeasons {
   /** The season of each fixed and recurring activity named (through its program). */
   public static Map<Id, Id> ofSetTimeItems(Set<Id> itemIds) {
     Map<Id, Id> result = new Map<Id, Id>();
+    itemIds.remove(null);
+    if (itemIds.isEmpty()) {
+      return result;
+    }
     for (FixedActivity__c item : [
       SELECT Id, Program__r.Season__c
       FROM FixedActivity__c

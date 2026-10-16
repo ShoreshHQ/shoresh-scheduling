@@ -186,7 +186,7 @@ public with sharing class SetTimePlanReader {
 
   private void addFixed(FixedActivity__c record) {
     SetTimePlan.Item item = itemFor(record, 'FixedActivity');
-    for (String day : SetTimePlan.DAYS) {
+    for (String day : SetTimePlan.WEEKDAYS) {
       if (item.program.days.contains(day)) {
         item.days.add(day);
       }
@@ -198,8 +198,8 @@ public with sharing class SetTimePlanReader {
 
   private void addRecurring(RecurringActivity__c record) {
     SetTimePlan.Item item = itemFor(record, 'RecurringActivity');
-    for (String day : SetTimePlan.DAYS) {
-      if (record.get(day + '__c') == true) {
+    for (String day : SetTimePlan.WEEKDAYS) {
+      if ((Boolean) record.get(day + '__c') == true) {
         item.days.add(day);
       }
     }

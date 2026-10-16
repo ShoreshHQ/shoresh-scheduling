@@ -8,17 +8,19 @@ public with sharing class InUse {
   private static final Integer MAX_NAMES = 20;
 
   public static String reason(Id recordId) {
+    String found = activityUseReason(recordId);
+    // Then fixed and recurring activities (SetTimeInUse; locations are covered below).
+    return found != null ? found : SetTimeInUse.reason(recordId);
+  }
+
+  private static String activityUseReason(Id recordId) {
     Schema.SObjectType kind = recordId.getSObjectType();
     if (
       kind == Group__c.SObjectType ||
       kind == Division__c.SObjectType ||
       kind == Program__c.SObjectType
     ) {
-      String reason = eligibilityReason(recordId, kind);
-      return reason != null ? reason : SetTimeInUse.reason(recordId);
-    }
-    if (kind == TimeBlock__c.SObjectType) {
-      return SetTimeInUse.reason(recordId);
+      return eligibilityReason(recordId, kind);
     }
     if (kind == Location__c.SObjectType) {
       return locationReason(recordId);
@@ -114,24 +116,10 @@ public with sharing class InUse {
           thatOrThose(labels, 'Activity', activities.size())
       );
     }
-    List<String> setTime = SetTimeInUse.namesAt(locationId);
+    List<String> setTime = SetTimeInUse.atLocation(locationId, labels);
     if (!setTime.isEmpty()) {
-      parts.add(
-        quoted(setTime) +
-          (setTime.size() == 1 ? ' happens' : ' happen') +
-          ' here'
-      );
-      fixes.add(
-        'choose another ' +
-          labels.singularInSentence('Location') +
-          ' for ' +
-          (setTime.size() == 1 ? 'it' : 'them') +
-          ' on the ' +
-          labels.plural('FixedActivity') +
-          ' or ' +
-          labels.plural('RecurringActivity') +
-          ' screen'
-      );
+      parts.add(setTime[0]);
+      fixes.add(setTime[1]);
     }
     return parts.isEmpty() ? null : refusal(parts, fixes);
   }

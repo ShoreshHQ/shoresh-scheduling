@@ -3,6 +3,26 @@
  * location must belong to the same season.
  */
 public with sharing class SetTimeItemTriggerHandler {
+  // What each time block and location named belongs to: its program, or its season.
+  private Map<Id, Id> ownerOf;
+  private String term;
+
+  /** Before save: the checks above. After save: the clash check (SetTimeGuard). */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<SObject> items,
+    String term
+  ) {
+    if (
+      operation == System.TriggerOperation.BEFORE_INSERT ||
+      operation == System.TriggerOperation.BEFORE_UPDATE
+    ) {
+      beforeSave(items, term);
+    } else {
+      SetTimeTriggers.itemsSaved(items);
+    }
+  }
+
   public static void beforeSave(List<SObject> items, String term) {
     Set<Id> programIds = new Set<Id>();
     Set<Id> blockIds = new Set<Id>();
@@ -38,30 +58,33 @@ public with sharing class SetTimeItemTriggerHandler {
         WITH SYSTEM_MODE
       ]
     );
-    Set<Id> seasonIds = new Set<Id>();
-    for (Program__c program : programs.values()) {
-      seasonIds.add(program.Season__c);
-    }
     SetTimeItemTriggerHandler handler = new SetTimeItemTriggerHandler();
     handler.ownerOf = ownerOf;
-    handler.labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
     handler.term = term;
     for (SObject item : items) {
       handler.check(item, programs.get((Id) item.get('Program__c')));
     }
   }
 
-  private Map<Id, Id> ownerOf;
-  private Map<Id, CampLabels> labelsBySeason;
-  private String term;
-
   private void check(SObject item, Program__c program) {
     if (program == null) {
       return;
     }
-    CampLabels labels = labelsBySeason.get(program.Season__c);
     Id blockProgram = ownerOf.get((Id) item.get('TimeBlock__c'));
-    if (blockProgram != null && blockProgram != program.Id) {
+    Id locationSeason = ownerOf.get((Id) item.get('Location__c'));
+    Boolean otherBlock = blockProgram != null && blockProgram != program.Id;
+    Boolean otherLocation =
+      locationSeason != null &&
+      locationSeason != program.Season__c;
+    if (!otherBlock && !otherLocation) {
+      return;
+    }
+    // Only a refusal needs the camp's words.
+    CampLabels labels = SetupSeasons.labelsBySeason(
+        new Set<Id>{ program.Season__c }
+      )
+      .get(program.Season__c);
+    if (otherBlock) {
       item.addError(
         'TimeBlock__c',
         'This ' +
@@ -73,8 +96,7 @@ public with sharing class SetTimeItemTriggerHandler {
           '.'
       );
     }
-    Id locationSeason = ownerOf.get((Id) item.get('Location__c'));
-    if (locationSeason != null && locationSeason != program.Season__c) {
+    if (otherLocation) {
       item.addError(
         'Location__c',
         SetupSeasons.otherSeason(labels, 'Location', term)

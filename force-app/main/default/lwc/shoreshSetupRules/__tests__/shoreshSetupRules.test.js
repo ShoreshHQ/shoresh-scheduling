@@ -1,4 +1,5 @@
 import {
+  setTimeNote,
   setupProblems,
   suggestedCopyName,
   suggestedCopyStart
@@ -232,5 +233,120 @@ describe("copy suggestions", () => {
     expect(suggestedCopyName("Summer 2026", "2026-06-29", "2026-08-10")).toBe(
       "Summer 2026 (copy)"
     );
+  });
+});
+
+describe("fixed and recurring activities", () => {
+  const ENTRY = {
+    program: { Id: "p1", Name: "Main" },
+    timeBlocks: [
+      { Id: "t1", Name: "Period 1", PartOfDay__c: "Morning" },
+      { Id: "t2", Name: "Lunch", PartOfDay__c: "Afternoon" }
+    ],
+    divisions: [
+      {
+        division: { Id: "d1", Name: "Juniors" },
+        groups: [
+          { Id: "g1", Name: "Bunk 1", Availability__c: "AllDay" },
+          { Id: "g2", Name: "Bunk 2", Availability__c: "MorningOnly" }
+        ]
+      },
+      {
+        division: { Id: "d2", Name: "Seniors" },
+        groups: [{ Id: "g3", Name: "Bunk 3", Availability__c: "AfternoonOnly" }]
+      }
+    ]
+  };
+
+  it("says which groups are left out because they are not at camp then", () => {
+    expect(setTimeNote(ENTRY, { TimeBlock__c: "t2", Length__c: 1 })).toBe(
+      "Bunk 2 is morning only and is left out."
+    );
+    expect(setTimeNote(ENTRY, { TimeBlock__c: "t1", Length__c: 1 })).toBe(
+      "Bunk 3 is afternoon only and is left out."
+    );
+    expect(setTimeNote(ENTRY, { TimeBlock__c: "t1", Length__c: 2 })).toBe(
+      "Bunk 2 is morning only and is left out of its afternoon part. " +
+        "Bunk 3 is afternoon only and is left out of its morning part."
+    );
+    // A recurring activity only for the Seniors in the afternoon leaves nobody out.
+    expect(
+      setTimeNote(ENTRY, {
+        TimeBlock__c: "t2",
+        Length__c: 1,
+        Coverages__r: [{ Division__c: "d2" }]
+      })
+    ).toBe("");
+  });
+
+  it("needs attention when nobody it covers is there, it runs in no week, or its location is shut", () => {
+    const setup = {
+      season: {
+        Name: "Summer 2026",
+        StartDate__c: "2026-06-29",
+        EndDate__c: "2026-08-07"
+      },
+      weeks: [
+        {
+          Id: "w1",
+          Name: "Week 1",
+          StartDate__c: "2026-06-29",
+          EndDate__c: "2026-07-03"
+        },
+        {
+          Id: "w2",
+          Name: "Week 2",
+          StartDate__c: "2026-07-06",
+          EndDate__c: "2026-07-10"
+        }
+      ],
+      locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 3 }],
+      activities: [{ Name: "Archery" }],
+      weekExceptions: [
+        { Week__c: "w1", FixedActivity__c: "f2" },
+        { Week__c: "w2", FixedActivity__c: "f2" },
+        { Week__c: "w2", Location__c: "l1" }
+      ],
+      programs: [
+        {
+          ...ENTRY,
+          fixedActivities: [
+            {
+              Id: "f1",
+              Name: "Swim",
+              TimeBlock__c: "t1",
+              Length__c: 1,
+              Location__c: "l1"
+            },
+            { Id: "f2", Name: "Flag", TimeBlock__c: "t1", Length__c: 1 }
+          ],
+          recurringActivities: [
+            {
+              Id: "r1",
+              Name: "Juniors lunch",
+              TimeBlock__c: "t2",
+              Length__c: 1,
+              Coverages__r: [{ Group__c: "g2" }]
+            }
+          ]
+        }
+      ]
+    };
+    const nudges = setupProblems(setup, terms).filter((p) =>
+      ["fixedActivities", "recurringActivities"].includes(p.screen)
+    );
+    expect(nudges.map(({ screen, name, why }) => [screen, name, why])).toEqual([
+      [
+        "fixedActivities",
+        "Swim",
+        '"Pool" is not open in Week 2, but this runs then.'
+      ],
+      ["fixedActivities", "Flag", "Runs in no Sessions."],
+      [
+        "recurringActivities",
+        "Juniors lunch",
+        "Every Bunk it covers is left out: none is at camp then."
+      ]
+    ]);
   });
 });

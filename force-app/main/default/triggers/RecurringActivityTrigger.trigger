@@ -4,9 +4,9 @@ trigger RecurringActivityTrigger on RecurringActivity__c(
   after insert,
   after update
 ) {
-  if (Trigger.isBefore) {
-    SetTimeItemTriggerHandler.beforeSave(Trigger.new, 'RecurringActivity');
-  } else {
-    SetTimeTriggers.itemsSaved(Trigger.new);
-  }
+  SetTimeItemTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.new,
+    'RecurringActivity'
+  );
 }

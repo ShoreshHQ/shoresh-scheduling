@@ -85,18 +85,7 @@ public with sharing class SetTimeWho {
         continue;
       }
       Schema.SObjectType kind = target.getSObjectType();
-      if (kind != Division__c.SObjectType && kind != Group__c.SObjectType) {
-        CampLabels labels = CampLabels.forCamp(
-          item.Program__r.Season__r.Camp__c
-        );
-        throw new ShoreshException(
-          'Who it covers can only name ' +
-            labels.pluralInSentence('Division') +
-            ' and ' +
-            labels.pluralInSentence('Group') +
-            '.'
-        );
-      }
+      refuseOtherKinds(kind, item);
       Coverage__c row = new Coverage__c(
         Season__c = item.Program__r.Season__c,
         RecurringActivity__c = item.Id
@@ -108,5 +97,21 @@ public with sharing class SetTimeWho {
       result.add(row);
     }
     return result;
+  }
+
+  private static void refuseOtherKinds(
+    Schema.SObjectType kind,
+    RecurringActivity__c item
+  ) {
+    if (kind != Division__c.SObjectType && kind != Group__c.SObjectType) {
+      CampLabels labels = CampLabels.forCamp(item.Program__r.Season__r.Camp__c);
+      throw new ShoreshException(
+        'Who it covers can only name ' +
+          labels.pluralInSentence('Division') +
+          ' and ' +
+          labels.pluralInSentence('Group') +
+          '.'
+      );
+    }
   }
 }

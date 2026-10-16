@@ -7,7 +7,7 @@
  * not at camp in a time block (morning only, afternoon only) is left out of that block.
  */
 public with sharing class SetTimePlan {
-  public static final List<String> DAYS = new List<String>{
+  public static final List<String> WEEKDAYS = new List<String>{
     'Monday',
     'Tuesday',
     'Wednesday',
@@ -33,8 +33,8 @@ public with sharing class SetTimePlan {
 
     public ProgramPlan(Program__c program) {
       this.program = program;
-      for (String day : DAYS) {
-        if (program.get(day + '__c') == true) {
+      for (String day : WEEKDAYS) {
+        if ((Boolean) program.get(day + '__c') == true) {
           days.add(day);
         }
       }

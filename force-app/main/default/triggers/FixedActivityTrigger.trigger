@@ -4,9 +4,9 @@ trigger FixedActivityTrigger on FixedActivity__c(
   after insert,
   after update
 ) {
-  if (Trigger.isBefore) {
-    SetTimeItemTriggerHandler.beforeSave(Trigger.new, 'FixedActivity');
-  } else {
-    SetTimeTriggers.itemsSaved(Trigger.new);
-  }
+  SetTimeItemTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.new,
+    'FixedActivity'
+  );
 }

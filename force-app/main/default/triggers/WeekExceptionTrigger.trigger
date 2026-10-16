@@ -3,9 +3,9 @@ trigger WeekExceptionTrigger on WeekException__c(
   before update,
   after delete
 ) {
-  if (Trigger.isDelete) {
-    SetTimeTriggers.weekExceptionsRemoved(Trigger.old);
-  } else {
-    WeekExceptionTriggerHandler.beforeSave(Trigger.new);
-  }
+  WeekExceptionTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.new,
+    Trigger.old
+  );
 }

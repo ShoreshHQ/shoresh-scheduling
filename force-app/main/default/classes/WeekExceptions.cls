@@ -4,6 +4,15 @@
  * clearing a record's own marks when it is deleted.
  */
 public with sharing class WeekExceptions {
+  // What a week exception can name: exactly one of these.
+  private static final List<Schema.SObjectField> TARGETS = new List<Schema.SObjectField>{
+    WeekException__c.Group__c,
+    WeekException__c.Activity__c,
+    WeekException__c.Location__c,
+    WeekException__c.FixedActivity__c,
+    WeekException__c.RecurringActivity__c
+  };
+
   public static void save(List<WeekException__c> toAdd, List<Id> toRemove) {
     Set<Id> removeIds = new Set<Id>();
     for (Id rowId : toRemove == null ? new List<Id>() : toRemove) {
@@ -77,14 +86,6 @@ public with sharing class WeekExceptions {
     }
     return adds;
   }
-
-  private static final List<Schema.SObjectField> TARGETS = new List<Schema.SObjectField>{
-    WeekException__c.Group__c,
-    WeekException__c.Activity__c,
-    WeekException__c.Location__c,
-    WeekException__c.FixedActivity__c,
-    WeekException__c.RecurringActivity__c
-  };
 
   private static Id targetOf(WeekException__c row) {
     for (Schema.SObjectField field : TARGETS) {

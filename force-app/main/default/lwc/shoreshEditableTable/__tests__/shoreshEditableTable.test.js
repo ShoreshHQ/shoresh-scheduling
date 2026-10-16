@@ -611,4 +611,143 @@ describe("c-shoresh-editable-table", () => {
       expect(weeksBackOn).toEqual([]);
     });
   });
+
+  describe("who a row covers", () => {
+    const WHO = {
+      fieldName: "Coverages__r",
+      label: "Who",
+      type: "who",
+      everyone: "Everyone in Main",
+      sourceLabel: "Units and Bunks",
+      selectedLabel: "Covers",
+      options: [
+        { label: "Unit: Juniors", value: "d1" },
+        { label: "Bunk 1 (Juniors)", value: "g1" },
+        { label: "Bunk 2 (Juniors)", value: "g2" }
+      ]
+    };
+    const SWIM = [
+      {
+        Id: "r1",
+        Name: "Swim",
+        Monday__c: true,
+        Coverages__r: [{ Id: "c1", Group__c: "g1" }]
+      },
+      { Id: "r2", Name: "Lunch", Monday__c: true }
+    ];
+
+    function renderRecurring(rows = SWIM) {
+      return render({
+        objectApiName: "RecurringActivity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          { fieldName: "Monday__c", label: "Monday", type: "checkbox" },
+          WHO
+        ],
+        rows,
+        newRowDefaults: { Program__c: "p1", Monday__c: false },
+        notesHeading: "Left out",
+        rowNotes: { r1: "Bunk 3 is morning only and is left out." }
+      });
+    }
+
+    const summaries = (element) =>
+      [...element.shadowRoot.querySelectorAll('[data-id="who"]')].map((w) =>
+        w.textContent.trim()
+      );
+    const toggle = (element, row) =>
+      element.shadowRoot.querySelectorAll('[data-id="who-toggle"]')[row];
+    const picker = (element) =>
+      element.shadowRoot.querySelector('[data-id="who-picker"]');
+
+    function save(element) {
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      allValid(element);
+      button(element, "Save changes").click();
+      return handler.mock.calls[0][0].detail;
+    }
+
+    it("shows who each row covers, everyone when it names nobody", async () => {
+      const element = renderRecurring();
+      await flush();
+      expect(summaries(element)).toEqual([
+        "Bunk 1 (Juniors)",
+        "Everyone in Main"
+      ]);
+      expect(picker(element)).toBeNull();
+    });
+
+    it("opens the picker under the row and sends the new choice with the save", async () => {
+      const element = renderRecurring();
+      await flush();
+      toggle(element, 1).click();
+      await flush();
+      const listbox = picker(element);
+      expect(listbox.options).toEqual(WHO.options);
+      expect(listbox.value).toEqual([]);
+      expect(listbox.sourceLabel).toBe("Units and Bunks");
+      listbox.dispatchEvent(
+        new CustomEvent("change", { detail: { value: ["d1"] } })
+      );
+      await flush();
+      expect(summaries(element)[1]).toBe("Unit: Juniors");
+      expect(button(element, "Save changes").disabled).toBe(false);
+      const detail = save(element);
+      expect(detail.records).toEqual([]);
+      expect(detail.who).toEqual([{ target: "r2", targets: ["d1"] }]);
+    });
+
+    it("a new row is saved with its who, by its place in the rows sent", async () => {
+      const element = renderRecurring();
+      await flush();
+      button(element, "Add Time block").click();
+      await flush();
+      change(field(element, 2, "Name"), "Gym");
+      toggle(element, 2).click();
+      await flush();
+      picker(element).dispatchEvent(
+        new CustomEvent("change", { detail: { value: ["g2"] } })
+      );
+      await flush();
+      const detail = save(element);
+      expect(detail.records).toEqual([
+        {
+          sobjectType: "RecurringActivity__c",
+          Program__c: "p1",
+          Monday__c: false,
+          Name: "Gym",
+          SortOrder__c: 3
+        }
+      ]);
+      expect(detail.who).toEqual([{ row: 0, targets: ["g2"] }]);
+    });
+
+    it("keeps a chosen who when something else on the screen is saved", async () => {
+      const element = renderRecurring();
+      await flush();
+      toggle(element, 0).click();
+      await flush();
+      picker(element).dispatchEvent(
+        new CustomEvent("change", { detail: { value: ["g1", "g2"] } })
+      );
+      await flush();
+      element.rows = SWIM.map((row) => ({ ...row }));
+      await flush();
+      expect(summaries(element)[0]).toBe("Bunk 1 (Juniors), Bunk 2 (Juniors)");
+      expect(picker(element)).not.toBeNull();
+      button(element, "Cancel changes").click();
+      await flush();
+      expect(summaries(element)[0]).toBe("Bunk 1 (Juniors)");
+    });
+
+    it("shows each saved row's note", async () => {
+      const element = renderRecurring();
+      await flush();
+      const notes = [
+        ...element.shadowRoot.querySelectorAll('[data-id="note"]')
+      ].map((n) => n.textContent.trim());
+      expect(notes).toEqual(["Bunk 3 is morning only and is left out.", ""]);
+    });
+  });
 });

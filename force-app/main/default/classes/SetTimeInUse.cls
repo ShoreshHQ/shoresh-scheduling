@@ -13,11 +13,39 @@ public with sharing class SetTimeInUse {
     if (kind == Program__c.SObjectType) {
       return programReason(recordId);
     }
-    return coverageReason(recordId);
+    if (kind == Group__c.SObjectType || kind == Division__c.SObjectType) {
+      return coverageReason(recordId);
+    }
+    return null;
+  }
+
+  /**
+   * For a location's refusal: what happens there ('"Flagpole" happens here') and its fix, or an
+   * empty list when no fixed or recurring activity uses it.
+   */
+  public static List<String> atLocation(Id locationId, CampLabels labels) {
+    List<String> names = namesAt(locationId);
+    if (names.isEmpty()) {
+      return names;
+    }
+    return new List<String>{
+      InUse.quoted(names) +
+      (names.size() == 1 ? ' happens' : ' happen') +
+      ' here',
+      'choose another ' +
+      labels.singularInSentence('Location') +
+      ' for ' +
+      (names.size() == 1 ? 'it' : 'them') +
+      ' on the ' +
+      labels.plural('FixedActivity') +
+      ' or ' +
+      labels.plural('RecurringActivity') +
+      ' screen'
+    };
   }
 
   /** The fixed and recurring activities at a location, by name. */
-  public static List<String> namesAt(Id locationId) {
+  private static List<String> namesAt(Id locationId) {
     List<String> names = new List<String>();
     for (FixedActivity__c item : [
       SELECT Name
