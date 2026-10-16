@@ -158,4 +158,42 @@ private class RunsInTest {
       }
     }
   }
+
+  @IsTest
+  static void aRefusedWeekSavesNoneOfTheRows() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Season__c other = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Id otherWeek = ShoreshTestData.weeks(other.Id, 1)[0].Id;
+      Division__c division = [
+        SELECT Id
+        FROM Division__c
+        WHERE Name = 'Juniors'
+        WITH SYSTEM_MODE
+      ];
+      try {
+        SeasonSetupController.saveRowsAndWeeks(
+          new List<SObject>{
+            new Group__c(
+              Division__c = division.Id,
+              Name = 'Group C',
+              Availability__c = 'AllDay'
+            )
+          },
+          new List<RunsIn.WeekOff>{ weekOff(null, 0, otherWeek) },
+          null
+        );
+        Assert.fail('A week of another season is refused');
+      } catch (AuraHandledException e) {
+        Assert.isFalse(String.isBlank(e.getMessage()));
+      }
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Group__c WHERE Name = 'Group C' WITH SYSTEM_MODE],
+        'The new group is not kept when its week is refused'
+      );
+      Assert.isFalse(season.Id == other.Id);
+    }
+  }
 }

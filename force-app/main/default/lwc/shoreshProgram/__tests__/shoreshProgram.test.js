@@ -224,4 +224,39 @@ describe("c-shoresh-program", () => {
       element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
     ).toBe("Saved");
   });
+  it("keeps a new division typed on its screen while saving, and after a failed save", async () => {
+    const element = await render("divisions");
+    const table = element.shadowRoot.querySelector("c-shoresh-editable-table");
+    const tableButton = (label) =>
+      [...table.shadowRoot.querySelectorAll("lightning-button")].find(
+        (b) => b.label === label
+      );
+    tableButton("Add Unit").click();
+    await flush();
+    const names = () => [
+      ...table.shadowRoot.querySelectorAll('lightning-input[data-field="Name"]')
+    ];
+    const typed = names()[1];
+    typed.value = "Seniors";
+    typed.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Seniors" } })
+    );
+    await flush();
+    const saves = jest.fn();
+    element.addEventListener("save", saves);
+    table.shadowRoot
+      .querySelectorAll("lightning-input, lightning-combobox")
+      .forEach((input) => {
+        input.reportValidity = () => true;
+      });
+    tableButton("Save changes").click();
+    // The screen marks itself busy while saving, which redraws this program.
+    element.busy = true;
+    await flush();
+    expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
+    saves.mock.calls[0][0].detail.onFailure();
+    element.busy = false;
+    await flush();
+    expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
+  });
 });

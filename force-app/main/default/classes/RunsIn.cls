@@ -34,7 +34,11 @@ public with sharing class RunsIn {
     Savepoint beforeSave = Database.setSavepoint();
     try {
       UserModeWrites.save(rows);
-      WeekExceptions.save(marks(weeksOff, rows), weeksBackOn);
+      List<WeekException__c> adds = marks(weeksOff, rows);
+      // A save without week ticks (a season, a program) needs no week exception work.
+      if (!adds.isEmpty() || (weeksBackOn != null && !weeksBackOn.isEmpty())) {
+        WeekExceptions.save(adds, weeksBackOn);
+      }
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;

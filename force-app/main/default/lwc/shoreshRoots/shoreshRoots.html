@@ -1,8 +1,8 @@
 <template>
   <div class="roots" data-id="roots">
-    <h1 class="roots-title">Roots</h1>
+    <h2 class="roots-title">Roots</h2>
 
-    <div class="roots-door" data-id="schedule-door" aria-disabled="true">
+    <div class="roots-door" data-id="schedule-door">
       <span>Build or generate the schedule</span>
       <span class="slds-badge">Coming</span>
     </div>
@@ -14,12 +14,7 @@
           <div class="roots-bento">
             <template for:each={cards} for:item="card">
               <template lwc:if={card.coming}>
-                <div
-                  key={card.key}
-                  class={card.className}
-                  data-card={card.key}
-                  aria-disabled="true"
-                >
+                <div key={card.key} class={card.className} data-card={card.key}>
                   <div class="roots-card-header">
                     <span>{card.label}</span>
                     <span class="slds-badge">Coming</span>
@@ -33,7 +28,6 @@
                   class={card.className}
                   data-card={card.key}
                   data-screen={card.key}
-                  aria-label={card.ariaLabel}
                   onclick={handleOpen}
                 >
                   <span class="roots-card-header">

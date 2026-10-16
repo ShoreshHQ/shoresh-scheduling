@@ -172,6 +172,8 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     this.screen = screen;
     this.mode = "screens";
+    // A message about another screen's save does not belong on this one.
+    this.error = null;
   }
   get hasCamp() {
     return !!this.campId && !this.isNoCamp && !this.isLoading;

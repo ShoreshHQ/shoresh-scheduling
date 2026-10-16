@@ -64,8 +64,7 @@ export default class ShoreshRoots extends LightningElement {
           rows.length > 0 ? "roots-count roots-count_rooted" : "roots-count",
         chips: shown.map((name) => ({ key: `${card.key}-${name}`, name })),
         hasChips: shown.length > 0,
-        more: more > 0 ? `+${more} more` : null,
-        ariaLabel: `${labels[card.key]}: ${rows.length}`
+        more: more > 0 ? `+${more} more` : null
       };
     });
   }

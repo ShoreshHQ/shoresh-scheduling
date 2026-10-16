@@ -18,6 +18,7 @@ export default class ShoreshProgram extends LightningElement {
   name;
   days = {};
   changed = false;
+  divisionRecords = [];
   // True from this form's Save until the screen reloads (or reports the save failed).
   submitted = false;
   _entry;
@@ -29,6 +30,9 @@ export default class ShoreshProgram extends LightningElement {
   }
   set entry(value) {
     this._entry = value;
+    // One list per entry: a new list on every redraw would look like fresh rows to the table,
+    // and wipe what was typed there while a save is under way.
+    this.divisionRecords = (value.divisions || []).map((d) => d.division);
     // Keep a typed but unsaved name or days when something else on the screen was saved.
     if (!this.changed || this.submitted) {
       this.resetForm();
@@ -129,10 +133,6 @@ export default class ShoreshProgram extends LightningElement {
 
   get divisionDefaults() {
     return { Program__c: this.programId };
-  }
-
-  get divisionRecords() {
-    return (this.entry.divisions || []).map((d) => d.division);
   }
 
   get divisions() {
