@@ -2,9 +2,8 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ExactlyOneTarget</fullName>
     <active>true</active>
-    <description
-  >Exactly one target: a group, an activity, or a location.</description>
+    <description>Exactly one target: a group, an activity, a location, a fixed activity, or a recurring activity.</description>
     <errorConditionFormula
-  >IF(ISBLANK(Group__c), 0, 1) + IF(ISBLANK(Activity__c), 0, 1) + IF(ISBLANK(Location__c), 0, 1) &lt;&gt; 1</errorConditionFormula>
+  >IF(ISBLANK(Group__c), 0, 1) + IF(ISBLANK(Activity__c), 0, 1) + IF(ISBLANK(Location__c), 0, 1) + IF(ISBLANK(FixedActivity__c), 0, 1) + IF(ISBLANK(RecurringActivity__c), 0, 1) &lt;&gt; 1</errorConditionFormula>
     <errorMessage>Choose what does not run this week.</errorMessage>
 </ValidationRule>

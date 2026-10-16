@@ -506,6 +506,57 @@
                 onsave={handleSaveActivityDetails}
               ></c-shoresh-activity-details>
             </div>
+
+            <!-- Fixed activities, per program, with the weeks each runs in -->
+            <div class={shown.fixedActivities} data-screen="fixedActivities">
+              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                {labels.screens.fixedActivities}
+              </h2>
+              <template for:each={programs} for:item="item">
+                <c-shoresh-program
+                  key={item.key}
+                  show="fixedActivities"
+                  entry={item.entry}
+                  terms={terms}
+                  locations={setup.locations}
+                  weeks={setup.weeks}
+                  week-exceptions={setup.weekExceptions}
+                  busy={busy}
+                  onsave={handleSaveRecords}
+                  ondelete={handleDeleteRecord}
+                ></c-shoresh-program>
+              </template>
+              <template lwc:if={hasNoPrograms}>
+                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+              </template>
+            </div>
+
+            <!-- Recurring activities, per program: days, who, and weeks -->
+            <div
+              class={shown.recurringActivities}
+              data-screen="recurringActivities"
+            >
+              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                {labels.screens.recurringActivities}
+              </h2>
+              <template for:each={programs} for:item="item">
+                <c-shoresh-program
+                  key={item.key}
+                  show="recurringActivities"
+                  entry={item.entry}
+                  terms={terms}
+                  locations={setup.locations}
+                  weeks={setup.weeks}
+                  week-exceptions={setup.weekExceptions}
+                  busy={busy}
+                  onsave={handleSaveRecords}
+                  ondelete={handleDeleteRecord}
+                ></c-shoresh-program>
+              </template>
+              <template lwc:if={hasNoPrograms}>
+                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+              </template>
+            </div>
           </template>
         </div>
       </div>

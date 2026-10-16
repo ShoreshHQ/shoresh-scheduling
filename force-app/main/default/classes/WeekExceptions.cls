@@ -46,7 +46,13 @@ public with sharing class WeekExceptions {
     }
     Set<String> taken = new Set<String>();
     for (WeekException__c existing : [
-      SELECT Week__c, Group__c, Activity__c, Location__c
+      SELECT
+        Week__c,
+        Group__c,
+        Activity__c,
+        Location__c,
+        FixedActivity__c,
+        RecurringActivity__c
       FROM WeekException__c
       WHERE Week__c IN :weekIds
       WITH USER_MODE
@@ -62,7 +68,9 @@ public with sharing class WeekExceptions {
             Week__c = row.Week__c,
             Group__c = row.Group__c,
             Activity__c = row.Activity__c,
-            Location__c = row.Location__c
+            Location__c = row.Location__c,
+            FixedActivity__c = row.FixedActivity__c,
+            RecurringActivity__c = row.RecurringActivity__c
           )
         );
       }
@@ -70,15 +78,27 @@ public with sharing class WeekExceptions {
     return adds;
   }
 
+  private static final List<Schema.SObjectField> TARGETS = new List<Schema.SObjectField>{
+    WeekException__c.Group__c,
+    WeekException__c.Activity__c,
+    WeekException__c.Location__c,
+    WeekException__c.FixedActivity__c,
+    WeekException__c.RecurringActivity__c
+  };
+
   private static Id targetOf(WeekException__c row) {
-    return row.Group__c != null
-      ? row.Group__c
-      : row.Activity__c != null ? row.Activity__c : row.Location__c;
+    for (Schema.SObjectField field : TARGETS) {
+      if (row.get(field) != null) {
+        return (Id) row.get(field);
+      }
+    }
+    return null;
   }
 
   /**
    * Deletes a record from the setup screens together with its own unticked weeks (Greg,
-   * 2026-10-16): a group, activity, or location's week exceptions, and for a division or program
+   * 2026-10-16): a group, activity, location, fixed activity, or recurring activity's week
+   * exceptions (and a recurring activity's who-it-covers rows), and for a division or program
    * those of its groups. They would otherwise block the delete (restrict-delete lookups). All or
    * none.
    */
@@ -95,6 +115,19 @@ public with sharing class WeekExceptions {
             OR Group__r.Division__r.Program__c = :recordId
             OR Activity__c = :recordId
             OR Location__c = :recordId
+            OR FixedActivity__c = :recordId
+            OR RecurringActivity__c = :recordId
+          WITH USER_MODE
+        ],
+        true,
+        AccessLevel.USER_MODE
+      );
+      // A recurring activity's who-it-covers rows go with it too.
+      Database.delete(
+        [
+          SELECT Id
+          FROM Coverage__c
+          WHERE RecurringActivity__c = :recordId
           WITH USER_MODE
         ],
         true,

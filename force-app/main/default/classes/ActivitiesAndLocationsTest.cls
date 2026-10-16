@@ -525,11 +525,14 @@ private class ActivitiesAndLocationsTest {
       },
       AccessLevel.SYSTEM_MODE
     );
+    // The copy runs in a transaction of its own on screen; give it its own limits here too.
+    Test.startTest();
     Id copyId = SeasonSetupController.copySeason(
       season.Id,
       'Summer 2027',
       Date.newInstance(2027, 6, 28)
     );
+    Test.stopTest();
 
     Map<String, Activity__c> copies = new Map<String, Activity__c>();
     for (Activity__c activity : [

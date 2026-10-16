@@ -13,7 +13,9 @@ public with sharing class SeasonSetupController {
     TimeBlock__c.SObjectType,
     LocationType__c.SObjectType,
     Location__c.SObjectType,
-    Activity__c.SObjectType
+    Activity__c.SObjectType,
+    FixedActivity__c.SObjectType,
+    RecurringActivity__c.SObjectType
   };
 
   @AuraEnabled
@@ -82,6 +84,18 @@ public with sharing class SeasonSetupController {
     return ScreenSaves.save(records, weeksOff, weeksBackOn);
   }
 
+  /**
+   * Saves a table's rows with their week ticks and, for recurring activities, who each covers,
+   * all or none. Returns the rows' Ids in order.
+   */
+  @AuraEnabled
+  public static List<Id> saveRowsWeeksAndWho(
+    List<SObject> records,
+    ScreenSaves.Extras extras
+  ) {
+    return ScreenSaves.save(records, extras);
+  }
+
   @AuraEnabled
   public static void deleteRecord(Id recordId) {
     if (
@@ -93,10 +107,18 @@ public with sharing class SeasonSetupController {
     if (inUse != null) {
       throw ScreenErrors.of(inUse);
     }
+    // Deleting a time block can move the ones after it: fixed and recurring activities that
+    // span it are checked once the delete is done, and a clash undoes it.
+    SetTimeGuard.defer();
+    Savepoint beforeDelete = Database.setSavepoint();
     try {
       WeekExceptions.deleteWithWeeks(recordId);
+      SetTimeGuard.checkPending();
     } catch (Exception e) {
+      Database.rollback(beforeDelete);
       throw ScreenErrors.of(e);
+    } finally {
+      SetTimeGuard.resume();
     }
   }
 

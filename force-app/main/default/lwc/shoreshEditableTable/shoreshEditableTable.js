@@ -18,11 +18,20 @@ import { LightningElement, api } from "lwc";
  * gets a tick per week, ticked unless a week exception names the row in that week. New rows
  * start with every week ticked. weekPhrase words each tick for screen readers ("runs in").
  *
+ * A "who" column (type "who", fieldName: the child rows' relationship, such as Coverages__r,
+ * options: the divisions and groups to choose from, everyone: what an empty choice means,
+ * sourceLabel / selectedLabel: the picker's two list headings) shows
+ * who each row covers, with a Change button that opens the same picker as activities' "Who can
+ * do it" under the row. An empty choice means everyone.
+ *
+ * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
+ *
  * Fires:
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
  *          fields only; call onFailure() if the save did not go through. With weeks, also
  *          weeksOff [{ target, week }, or { row, week } for a new row: its place in records]
- *          and weeksBackOn [week exception Ids]
+ *          and weeksBackOn [week exception Ids]. With a who column, also who [{ target, targets },
+ *          or { row, targets } for a new row]
  *   delete { recordId, name }
  */
 export default class ShoreshEditableTable extends LightningElement {
@@ -40,6 +49,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api filterValue;
   @api weeksHeading;
   @api weekPhrase = "runs in";
+  @api notesHeading;
+  @api rowNotes = {};
 
   drafts = [];
   nextKey = 0;
@@ -101,6 +112,10 @@ export default class ShoreshEditableTable extends LightningElement {
       const old = previous.find((d) => !d.isNew && d.original.Id === record.Id);
       if (old) {
         draft.weekTicks = new Map(old.weekTicks);
+        if (this.whoChanged(old)) {
+          draft.who = old.who;
+        }
+        draft.whoOpen = old.whoOpen;
         old.changed.forEach((field) => {
           if (!sameValue(old.values[field], draft.original[field])) {
             draft.values[field] = old.values[field];
@@ -128,8 +143,33 @@ export default class ShoreshEditableTable extends LightningElement {
       changed: new Set(),
       // Unsaved week ticks: week Id -> ticked. Only differences from what is saved count.
       weekTicks: new Map(),
+      // Who the row covers (division and group Ids), as saved and as chosen on screen.
+      savedWho: this.whoOf(record),
+      who: this.whoOf(record),
+      whoOpen: false,
       isNew
     };
+  }
+
+  get whoColumn() {
+    return this.columns.find((col) => col.type === "who");
+  }
+
+  whoOf(record) {
+    const column = this.whoColumn;
+    if (!column) {
+      return [];
+    }
+    return (record[column.fieldName] || []).map(
+      (row) => row.Division__c || row.Group__c
+    );
+  }
+
+  whoChanged(draft) {
+    const saved = new Set(draft.savedWho);
+    return (
+      draft.who.length !== saved.size || draft.who.some((id) => !saved.has(id))
+    );
   }
 
   get hasRows() {
@@ -140,7 +180,10 @@ export default class ShoreshEditableTable extends LightningElement {
     const offWeeks = this.offWeeks;
     return this.drafts.some(
       (d) =>
-        d.isNew || d.changed.size > 0 || this.weekChanges(d, offWeeks).size > 0
+        d.isNew ||
+        d.changed.size > 0 ||
+        this.whoChanged(d) ||
+        this.weekChanges(d, offWeeks).size > 0
     );
   }
 
@@ -156,11 +199,30 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.columns.length;
   }
 
+  get hasNotes() {
+    return !!this.notesHeading;
+  }
+
+  /** Every column, for the row that opens under a row to choose who it covers. */
+  get fullSpan() {
+    return (
+      this.columns.length +
+      (this.hasWeeks ? this._weeks.length : 0) +
+      (this.hasNotes ? 1 : 0) +
+      1
+    );
+  }
+
   /** Row Id -> (week Id -> the week exception Ids saying the row does not run that week). */
   get offWeeks() {
     const result = new Map();
     this._weekExceptions.forEach((mark) => {
-      const target = mark.Group__c || mark.Activity__c || mark.Location__c;
+      const target =
+        mark.Group__c ||
+        mark.Activity__c ||
+        mark.Location__c ||
+        mark.FixedActivity__c ||
+        mark.RecurringActivity__c;
       const weeks = result.get(target) || new Map();
       weeks.set(mark.Week__c, [...(weeks.get(mark.Week__c) || []), mark.Id]);
       result.set(target, weeks);
@@ -219,8 +281,20 @@ export default class ShoreshEditableTable extends LightningElement {
 
   get tableRows() {
     const offWeeks = this.offWeeks;
+    const whoColumn = this.whoColumn;
+    const notes = this.rowNotes || {};
     return this.visibleDrafts.map((draft) => ({
       key: draft.key,
+      whoKey: `${draft.key}-who`,
+      whoOpen: !!whoColumn && draft.whoOpen,
+      who: draft.who,
+      whoOptions: whoColumn ? whoColumn.options : [],
+      whoSource: whoColumn ? whoColumn.sourceLabel : "",
+      whoSelected: whoColumn ? whoColumn.selectedLabel : "",
+      whoLabel: whoColumn
+        ? `${whoColumn.label}: ${draft.values.Name || ""}`.trim()
+        : "",
+      note: draft.isNew ? "" : notes[draft.original.Id] || "",
       isNew: draft.isNew,
       deleteLabel: draft.isNew
         ? "Remove this new row"
@@ -244,7 +318,12 @@ export default class ShoreshEditableTable extends LightningElement {
           isTime: col.type === "time",
           isCheckbox: col.type === "checkbox",
           isPicklist: col.type === "picklist",
-          value: col.type === "checkbox" ? undefined : value,
+          isWho: col.type === "who",
+          whoSummary:
+            col.type === "who" ? this.whoSummary(col, draft) : undefined,
+          whoButton: draft.whoOpen ? "Done" : "Change",
+          value:
+            col.type === "checkbox" || col.type === "who" ? undefined : value,
           checked: col.type === "checkbox" ? !!value : undefined
         };
       }),
@@ -266,6 +345,33 @@ export default class ShoreshEditableTable extends LightningElement {
         : !saved.has(week.Id),
       label: `${name} ${this.weekPhrase} ${week.Name}`
     }));
+  }
+
+  /** "Everyone", or the names chosen. */
+  whoSummary(column, draft) {
+    if (draft.who.length === 0) {
+      return column.everyone || "Everyone";
+    }
+    const names = new Map(
+      (column.options || []).map((option) => [option.value, option.label])
+    );
+    return draft.who.map((id) => names.get(id) || id).join(", ");
+  }
+
+  handleWhoToggle(event) {
+    const draft = this.drafts.find(
+      (d) => d.key === event.currentTarget.dataset.rowKey
+    );
+    draft.whoOpen = !draft.whoOpen;
+    this.drafts = [...this.drafts];
+  }
+
+  handleWhoChange(event) {
+    const draft = this.drafts.find(
+      (d) => d.key === event.target.dataset.rowKey
+    );
+    draft.who = [...event.detail.value];
+    this.drafts = [...this.drafts];
   }
 
   handleTick(event) {
@@ -346,6 +452,7 @@ export default class ShoreshEditableTable extends LightningElement {
     const records = [];
     const weeksOff = [];
     const weeksBackOn = [];
+    const who = [];
     const offWeeks = this.offWeeks;
     this.drafts.forEach((draft) => {
       if (draft.isNew) {
@@ -356,6 +463,11 @@ export default class ShoreshEditableTable extends LightningElement {
           changes[field] = draft.values[field];
         });
         records.push(toRecord(this.objectApiName, changes, timeFields));
+      }
+      if (draft.isNew && draft.who.length > 0) {
+        who.push({ row: records.length - 1, targets: [...draft.who] });
+      } else if (!draft.isNew && this.whoChanged(draft)) {
+        who.push({ target: draft.original.Id, targets: [...draft.who] });
       }
       const saved = this.savedOff(draft, offWeeks);
       this.weekChanges(draft, offWeeks).forEach((ticked, week) => {
@@ -375,6 +487,9 @@ export default class ShoreshEditableTable extends LightningElement {
     const detail = this.hasWeeks
       ? { records, weeksOff, weeksBackOn, onFailure }
       : { records, onFailure };
+    if (this.whoColumn) {
+      detail.who = who;
+    }
     this.dispatchEvent(new CustomEvent("save", { detail }));
   }
 }

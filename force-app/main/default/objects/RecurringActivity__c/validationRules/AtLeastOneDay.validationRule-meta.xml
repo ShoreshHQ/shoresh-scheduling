@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AtLeastOneDay</fullName>
+    <active>true</active>
+    <description>A recurring activity happens on at least one weekday.</description>
+    <errorConditionFormula
+  >NOT(Monday__c || Tuesday__c || Wednesday__c || Thursday__c || Friday__c)</errorConditionFormula>
+    <errorMessage>Tick at least one day.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RecurringActivity__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The recurring activity that does not run this week. Deleting it from Shoresh screens removes these rows first.</description>
+    <label>Recurring Activity</label>
+    <referenceTo>RecurringActivity__c</referenceTo>
+    <relationshipLabel>Week Exceptions</relationshipLabel>
+    <relationshipName>WeekExceptions</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

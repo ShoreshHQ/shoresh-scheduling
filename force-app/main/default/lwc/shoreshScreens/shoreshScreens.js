@@ -5,12 +5,7 @@
  */
 
 // Built in a later slice: listed, not reachable yet.
-const COMING = new Set([
-  "fixedActivities",
-  "recurringActivities",
-  "specialEvents",
-  "schedules"
-]);
+const COMING = new Set(["specialEvents", "schedules"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -26,9 +21,8 @@ export function screenLabels(t) {
     locations: t.p("Location"),
     campWords: "Camp words",
     activities: t.p("Activity"),
-    // Slice 3b renames the FixedEvent and RecurringEvent camp words to these terms.
-    fixedActivities: `Fixed ${t.pIn("Activity")}`,
-    recurringActivities: `Recurring ${t.pIn("Activity")}`,
+    fixedActivities: t.p("FixedActivity"),
+    recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
     schedules: "Schedules"
   };

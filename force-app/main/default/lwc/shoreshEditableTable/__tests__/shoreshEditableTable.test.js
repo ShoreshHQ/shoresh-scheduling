@@ -4,7 +4,7 @@ import ShoreshEditableTable, { timeText } from "c/shoreshEditableTable";
 const COLUMNS = [
   { fieldName: "Name", label: "Name", type: "text", required: true },
   { fieldName: "StartTime__c", label: "Start", type: "time", required: true },
-  { fieldName: "EventsOnly__c", label: "Events only", type: "checkbox" },
+  { fieldName: "Outdoor__c", label: "Outdoors", type: "checkbox" },
   {
     fieldName: "PartOfDay__c",
     label: "Part of day",
@@ -18,14 +18,14 @@ const ROWS = [
     Id: "a1",
     Name: "Period 1",
     StartTime__c: 32400000,
-    EventsOnly__c: false,
+    Outdoor__c: false,
     PartOfDay__c: "Morning"
   },
   {
     Id: "a2",
     Name: "Lunch",
     StartTime__c: 43200000,
-    EventsOnly__c: true,
+    Outdoor__c: true,
     PartOfDay__c: "Morning"
   }
 ];
@@ -98,7 +98,7 @@ describe("c-shoresh-editable-table", () => {
     const element = render({ rows: ROWS, columns: COLUMNS });
     await flush();
     expect(field(element, 0, "StartTime__c").value).toBe("09:00:00.000");
-    expect(field(element, 1, "EventsOnly__c").checked).toBe(true);
+    expect(field(element, 1, "Outdoor__c").checked).toBe(true);
 
     const other = render({ columns: COLUMNS, rows: ROWS });
     await flush();
@@ -164,14 +164,14 @@ describe("c-shoresh-editable-table", () => {
   it("checkboxes send true or false", async () => {
     const element = render({ columns: COLUMNS, rows: ROWS });
     await flush();
-    change(field(element, 0, "EventsOnly__c"), true);
+    change(field(element, 0, "Outdoor__c"), true);
     const handler = jest.fn();
     element.addEventListener("save", handler);
     await flush();
     allValid(element);
     button(element, "Save changes").click();
     expect(handler.mock.calls[0][0].detail.records).toEqual([
-      { sobjectType: "TimeBlock__c", Id: "a1", EventsOnly__c: true }
+      { sobjectType: "TimeBlock__c", Id: "a1", Outdoor__c: true }
     ]);
   });
 

@@ -506,6 +506,8 @@ describe("c-shoresh-camp-setup", () => {
         "locations",
         "campWords",
         "activities",
+        "fixedActivities",
+        "recurringActivities",
         "roots"
       ];
       // One after another, as a director clicks down the menu.
@@ -529,7 +531,9 @@ describe("c-shoresh-camp-setup", () => {
         section.items.map((item) => [item.label, item.coming])
       );
       expect(items).toContainEqual(["Bunks", false]);
-      expect(items).toContainEqual(["Fixed activities", true]);
+      expect(items).toContainEqual(["Fixed activities", false]);
+      expect(items).toContainEqual(["Recurring activities", false]);
+      expect(items).toContainEqual(["Special events", true]);
       expect(items).toContainEqual(["Schedules", true]);
     });
 
@@ -545,7 +549,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(shownScreens(element)).toEqual(["groups"]);
       // A screen not built yet does not open.
       q(element, "c-shoresh-roots").dispatchEvent(
-        new CustomEvent("navigate", { detail: { screen: "fixedActivities" } })
+        new CustomEvent("navigate", { detail: { screen: "specialEvents" } })
       );
       await flush();
       expect(shownScreens(element)).toEqual(["groups"]);

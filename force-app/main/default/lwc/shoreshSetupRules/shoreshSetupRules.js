@@ -10,7 +10,8 @@ export function setupProblems(setup, terms) {
   const problems = [
     ...weekProblems(setup, terms),
     ...structureProblems(setup, terms),
-    ...activityProblems(setup, terms)
+    ...activityProblems(setup, terms),
+    ...setTimeProblems(setup, terms)
   ];
   return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
 }
@@ -131,6 +132,116 @@ function groupsWithNothingToDo(setup, terms) {
             name: grp.Name,
             why: `No ${terms.pIn("Activity")} are open to this ${terms.sIn("Group")}.`
           });
+        }
+      });
+    });
+  });
+  return problems;
+}
+
+const AVAILABILITY = {
+  MorningOnly: { words: "morning only", away: "Afternoon" },
+  AfternoonOnly: { words: "afternoon only", away: "Morning" }
+};
+
+/**
+ * Which groups a fixed or recurring activity takes, block by block. A fixed activity takes every
+ * group in its program; a recurring one the divisions and groups it covers (every group when it
+ * names none). A group not at camp in a time block (morning or afternoon only) is left out of it.
+ * Returns [{ group, blocks: how many of its blocks the group is there for }] and the block count.
+ */
+function whoIsThere(entry, item) {
+  const blocks = entry.timeBlocks || [];
+  const start = item.TimeBlock__c
+    ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
+    : -1;
+  const span =
+    start < 0 ? [] : blocks.slice(start, start + (item.Length__c || 1));
+  const named = new Set(
+    (item.Coverages__r || []).map((row) => row.Division__c || row.Group__c)
+  );
+  const groups = [];
+  (entry.divisions || []).forEach((d) => {
+    (d.groups || []).forEach((grp) => {
+      if (named.size === 0 || named.has(grp.Id) || named.has(d.division.Id)) {
+        const away = (AVAILABILITY[grp.Availability__c] || {}).away;
+        groups.push({
+          group: grp,
+          blocks: span.filter((block) => !away || block.PartOfDay__c !== away)
+            .length
+        });
+      }
+    });
+  });
+  return { groups, span: span.length };
+}
+
+/**
+ * The note on a fixed or recurring activity's row: which groups are left out because they are not
+ * at camp then (Greg, 2026-10-16: left out and shown, not refused). Empty when nobody is.
+ */
+export function setTimeNote(entry, item) {
+  const { groups, span } = whoIsThere(entry, item);
+  return groups
+    .filter((g) => g.blocks < span)
+    .map((g) => {
+      const words = AVAILABILITY[g.group.Availability__c].words;
+      const part =
+        g.blocks === 0
+          ? ""
+          : ` of its ${AVAILABILITY[g.group.Availability__c].away.toLowerCase()} part`;
+      return `${g.group.Name} is ${words} and is left out${part}.`;
+    })
+    .join(" ");
+}
+
+/**
+ * Fixed and recurring activity nudges (clashes are refused, never shown here): one that runs in
+ * no weeks, one that every group it covers is left out of, and one whose location is not open in
+ * a week it runs.
+ */
+function setTimeProblems(setup, terms) {
+  const problems = [];
+  const weeks = setup.weeks || [];
+  const marks = setup.weekExceptions || [];
+  const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
+  (setup.programs || []).forEach((entry) => {
+    const kinds = [
+      ["fixedActivities", "FixedActivity__c", entry.fixedActivities],
+      ["recurringActivities", "RecurringActivity__c", entry.recurringActivities]
+    ];
+    kinds.forEach(([screen, field, items]) => {
+      (items || []).forEach((item) => {
+        const add = (why) => problems.push({ screen, name: item.Name, why });
+        const off = new Set(
+          marks.filter((m) => m[field] === item.Id).map((m) => m.Week__c)
+        );
+        if (weeks.length > 0 && off.size >= weeks.length) {
+          add(`Runs in no ${terms.pIn("Week")}.`);
+        }
+        const { groups, span } = whoIsThere(entry, item);
+        if (
+          span > 0 &&
+          groups.length > 0 &&
+          groups.every((g) => g.blocks === 0)
+        ) {
+          add(
+            `Every ${terms.sIn("Group")} it covers is left out: none is at camp then.`
+          );
+        }
+        const location = locations.get(item.Location__c);
+        const shut = new Set(
+          marks
+            .filter((m) => location && m.Location__c === location.Id)
+            .map((m) => m.Week__c)
+        );
+        const closed = weeks
+          .filter((w) => shut.has(w.Id) && !off.has(w.Id))
+          .map((w) => w.Name);
+        if (closed.length > 0) {
+          add(
+            `"${location.Name}" is not open in ${closed.join(", ")}, but this runs then.`
+          );
         }
       });
     });

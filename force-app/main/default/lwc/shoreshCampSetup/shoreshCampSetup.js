@@ -9,6 +9,7 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
+import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
@@ -24,7 +25,9 @@ const SCREENS = [
   "timeBlocks",
   "locations",
   "campWords",
-  "activities"
+  "activities",
+  "fixedActivities",
+  "recurringActivities"
 ];
 
 const STATUS_OPTIONS = [
@@ -36,7 +39,8 @@ const STATUS_OPTIONS = [
 /**
  * The Shoresh page: a director picks (or starts) a season, then moves between screens with the
  * left-hand menu (desktop-style): Roots, the home, and one screen each for weeks, programs,
- * divisions, groups, time blocks, locations, camp words, and activities. A season can also be
+ * divisions, groups, time blocks, locations, camp words, activities, fixed activities, and
+ * recurring activities. A season can also be
  * copied to start a new one. Every model term is shown in the camp's own words.
  *
  * Every screen stays on the page while another is shown, so typing that is not saved yet is still
@@ -523,7 +527,8 @@ export default class ShoreshCampSetup extends LightningElement {
       label: `Delete ${t.sIn("Season")}`,
       message:
         `Delete "${this.setup.season.Name}" and everything set up in it (${t.pIn("Week")}, ${t.pIn("Program")}, ` +
-        `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")})? ` +
+        `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")}, ` +
+        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")})? ` +
         `This cannot be undone.`,
       variant: "header",
       theme: "error"
@@ -631,13 +636,22 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
-  /** A table's save: its rows, and (for tables with "Runs in" weeks) its week ticks with them. */
+  /**
+   * A table's save: its rows, and (for tables with "Runs in" weeks) its week ticks with them, and
+   * (for recurring activities) who each covers.
+   */
   async handleSaveRecords(event) {
-    const { records, weeksOff, weeksBackOn, onFailure } = event.detail;
-    const save =
-      weeksOff || weeksBackOn
-        ? () => saveRowsAndWeeks({ records, weeksOff, weeksBackOn })
-        : () => saveRecords({ records });
+    const { records, weeksOff, weeksBackOn, who, onFailure } = event.detail;
+    let save = () => saveRecords({ records });
+    if (who) {
+      save = () =>
+        saveRowsWeeksAndWho({
+          records,
+          extras: { weeksOff, weeksBackOn, who }
+        });
+    } else if (weeksOff || weeksBackOn) {
+      save = () => saveRowsAndWeeks({ records, weeksOff, weeksBackOn });
+    }
     await this.saveAndReload(save, onFailure);
   }
 

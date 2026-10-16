@@ -6,7 +6,6 @@ const RULE_FIELDS = [
   "SameDivisionOnly__c",
   "EarlyWeekCount__c",
   "EarlyWeekByDay__c",
-  "EventOnly__c",
   "Notes__c"
 ];
 
@@ -145,7 +144,6 @@ export default class ShoreshActivityDetails extends LightningElement {
       sameDivision: `Only ${t.pIn("Group")} from the same ${t.sIn("Division")} at the same time`,
       earlyCount: "Get this many done early in the week",
       earlyDay: "By",
-      eventOnly: `Only part of events (never placed on its own)`,
       notes: "Notes",
       empty: `Add ${t.pIn("Activity")} in the table above and save them first.`
     };

@@ -11,7 +11,7 @@ const CARDS = [
   { key: "locations", size: "small" },
   { key: "timeBlocks", size: "small" },
   { key: "weeks", size: "small" },
-  { key: "fixedActivities", size: "wide", chips: 6, coming: true }
+  { key: "fixedActivities", size: "wide", chips: 6 }
 ];
 
 /**
@@ -46,6 +46,8 @@ export default class ShoreshRoots extends LightningElement {
         return programs.flatMap((entry) => entry.timeBlocks || []);
       case "weeks":
         return setup.weeks || [];
+      case "fixedActivities":
+        return programs.flatMap((entry) => entry.fixedActivities || []);
       default:
         return [];
     }

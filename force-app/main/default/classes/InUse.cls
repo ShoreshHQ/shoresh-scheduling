@@ -14,7 +14,11 @@ public with sharing class InUse {
       kind == Division__c.SObjectType ||
       kind == Program__c.SObjectType
     ) {
-      return eligibilityReason(recordId, kind);
+      String reason = eligibilityReason(recordId, kind);
+      return reason != null ? reason : SetTimeInUse.reason(recordId);
+    }
+    if (kind == TimeBlock__c.SObjectType) {
+      return SetTimeInUse.reason(recordId);
     }
     if (kind == Location__c.SObjectType) {
       return locationReason(recordId);
@@ -110,6 +114,25 @@ public with sharing class InUse {
           thatOrThose(labels, 'Activity', activities.size())
       );
     }
+    List<String> setTime = SetTimeInUse.namesAt(locationId);
+    if (!setTime.isEmpty()) {
+      parts.add(
+        quoted(setTime) +
+          (setTime.size() == 1 ? ' happens' : ' happen') +
+          ' here'
+      );
+      fixes.add(
+        'choose another ' +
+          labels.singularInSentence('Location') +
+          ' for ' +
+          (setTime.size() == 1 ? 'it' : 'them') +
+          ' on the ' +
+          labels.plural('FixedActivity') +
+          ' or ' +
+          labels.plural('RecurringActivity') +
+          ' screen'
+      );
+    }
     return parts.isEmpty() ? null : refusal(parts, fixes);
   }
 
@@ -179,7 +202,7 @@ public with sharing class InUse {
   }
 
   /** "Archery", "Swim" … up to 20 names, then "and more". */
-  private static String quoted(List<String> names) {
+  public static String quoted(List<String> names) {
     List<String> shown = new List<String>();
     for (Integer i = 0; i < Math.min(names.size(), MAX_NAMES); i++) {
       shown.add('"' + names[i] + '"');

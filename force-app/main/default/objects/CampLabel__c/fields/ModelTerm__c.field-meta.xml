@@ -146,14 +146,14 @@
                 <label>Assignment</label>
             </value>
             <value>
-                <fullName>FixedEvent</fullName>
+                <fullName>FixedActivity</fullName>
                 <default>false</default>
-                <label>Fixed event</label>
+                <label>Fixed activity</label>
             </value>
             <value>
-                <fullName>RecurringEvent</fullName>
+                <fullName>RecurringActivity</fullName>
                 <default>false</default>
-                <label>Recurring event</label>
+                <label>Recurring activity</label>
             </value>
             <value>
                 <fullName>SpecialEvent</fullName>

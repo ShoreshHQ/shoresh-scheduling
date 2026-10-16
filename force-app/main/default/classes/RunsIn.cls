@@ -1,5 +1,5 @@
 /**
- * "Runs in" weeks: each group, activity, and location row on the screens has a tick for every
+ * "Runs in" weeks: each group, activity, location, fixed activity, and recurring activity row on the screens has a tick for every
  * week, all ticked by default. An unticked week is stored as a week exception, exactly as before.
  * A table's rows and its week ticks are saved together, all or none.
  */
@@ -8,7 +8,9 @@ public with sharing class RunsIn {
   private static final Map<Schema.SObjectType, Schema.SObjectField> TARGET_FIELD = new Map<Schema.SObjectType, Schema.SObjectField>{
     Group__c.SObjectType => WeekException__c.Group__c,
     Activity__c.SObjectType => WeekException__c.Activity__c,
-    Location__c.SObjectType => WeekException__c.Location__c
+    Location__c.SObjectType => WeekException__c.Location__c,
+    FixedActivity__c.SObjectType => WeekException__c.FixedActivity__c,
+    RecurringActivity__c.SObjectType => WeekException__c.RecurringActivity__c
   };
 
   /** A week unticked on one row: a saved row (target), or a new one (its place in the rows sent). */
