@@ -91,14 +91,15 @@ public with sharing class SetTimeItemTriggerHandler {
       Integer start = blocks == null
         ? -1
         : blocks.indexOf((Id) item.get('TimeBlock__c'));
-      Decimal length = (Decimal) item.get('Length__c');
+      // A blank length counts as 1, as on the screens and in the clash check.
+      Decimal given = (Decimal) item.get('Length__c');
+      Integer length = given == null ? 1 : given.intValue();
       item.put(
         'LastTimeBlock__c',
         start < 0 ||
-          length == null ||
           length < 1
           ? null
-          : blocks[Math.min(start + length.intValue(), blocks.size()) - 1]
+          : blocks[Math.min(start + length, blocks.size()) - 1]
       );
     }
   }

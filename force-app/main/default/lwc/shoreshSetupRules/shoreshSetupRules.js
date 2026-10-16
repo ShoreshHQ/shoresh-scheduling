@@ -200,7 +200,7 @@ export function setTimeNote(entry, item) {
  * it now covers different blocks (Greg, 2026-10-16: show it; it may be meant, or not). Returns
  * what to say, or "" when it covers what it did when saved.
  */
-export function spanChange(entry, item) {
+export function spanChange(entry, item, terms) {
   const blocks = entry.timeBlocks || [];
   const start = item.TimeBlock__c
     ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
@@ -215,7 +215,7 @@ export function spanChange(entry, item) {
   }
   const was = blocks.find((block) => block.Id === item.LastTimeBlock__c);
   return (
-    `Time blocks changed since it was saved: it now runs ${blocks[start].Name} to ${last.Name}` +
+    `${terms.p("TimeBlock")} changed since it was saved: it now runs ${blocks[start].Name} to ${last.Name}` +
     (was ? `, not to ${was.Name}.` : ".") +
     " Keep it if that is right, or change it."
   );
@@ -239,7 +239,7 @@ function setTimeProblems(setup, terms) {
     kinds.forEach(([screen, field, items]) => {
       (items || []).forEach((item) => {
         const add = (why) => problems.push({ screen, name: item.Name, why });
-        const moved = spanChange(entry, item);
+        const moved = spanChange(entry, item, terms);
         if (moved) {
           add(moved);
         }

@@ -125,7 +125,7 @@ public with sharing class SeasonSetupReader {
       FROM TimeBlock__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
-      ORDER BY StartTime__c, SortOrder__c
+      ORDER BY StartTime__c, SortOrder__c, Id
     ]) {
       programs.get(block.Program__c).timeBlocks.add(block);
     }

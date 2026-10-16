@@ -53,10 +53,9 @@ private class SetTimeClashesTest {
           }
         )
       );
-      Assert.isTrue(
-        message.startsWith(
-          '"Flagpole" and "Swim" would both have Group C in Period 1 on Monday in Week 1.'
-        ),
+      Assert.areEqual(
+        '"Flagpole" and "Swim" would both have Group C in Period 1 on Monday in Week 1. ' +
+        'Change the time block, length, days, who it covers, or weeks of one of them.',
         message
       );
       Assert.areEqual(0, count('RecurringActivity__c'));
@@ -205,10 +204,9 @@ private class SetTimeClashesTest {
           }
         )
       );
-      Assert.isTrue(
-        message.startsWith(
-          '"Gym" and "Swim" would both have Group A in Period 1 on Monday in Week 1.'
-        ),
+      Assert.areEqual(
+        '"Gym" and "Swim" would both have Group A in Period 1 on Monday in Week 1. ' +
+        'Change the time block, length, days, who it covers, or weeks of one of them.',
         message
       );
       Assert.areEqual(2, count('Coverage__c'), 'Who is unchanged');
@@ -345,10 +343,10 @@ private class SetTimeClashesTest {
           )
         }
       );
-      Assert.isTrue(
-        message.startsWith(
-          '"Gym" fits 3 groups at once, but "Flagpole" and "Stretch" would have 4 there in Early on Monday in Week 1.'
-        ),
+      Assert.areEqual(
+        '"Gym" fits 3 groups at once, but "Flagpole" and "Stretch" would have 4 there in ' +
+          'Early on Monday in Week 1. Choose another location, or raise how many groups fit ' +
+          'at "Gym".',
         message
       );
     }
@@ -615,11 +613,59 @@ private class SetTimeClashesTest {
         new List<SObject>(),
         SetTimeTestData.extras(null, new List<Id>{ away.Id }, null)
       );
-      Assert.isTrue(
-        message.startsWith(
-          '"Flag" and "Swim C" would both have Group C in Period 2 on Monday in Week 1.'
-        ),
-        message
+      String expected =
+        '"Flag" and "Swim C" would both have Group C in Period 2 on Monday in Week 1. ' +
+        'Change one of them first, then try again.';
+      Assert.areEqual(expected, message);
+      // The same when the week is ticked back on directly in Salesforce.
+      Database.DeleteResult direct = Database.delete(
+        away,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Assert.isFalse(direct.isSuccess());
+      Assert.areEqual(expected, direct.getErrors()[0].getMessage());
+    }
+  }
+
+  @IsTest
+  static void aBunkAwayThatWeekIsNotCountedAtALocation() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      // Group C is away in Week 1; the Gym fits 2.
+      WeekException__c away = new WeekException__c(
+        Week__c = ids.get('Week 1'),
+        Group__c = ids.get('Group C')
+      );
+      Database.insert(away, AccessLevel.SYSTEM_MODE);
+      Database.update(
+        new Location__c(Id = ids.get('Gym'), GroupsThatFit__c = 2),
+        AccessLevel.SYSTEM_MODE
+      );
+      // Rest at the Gym, Week 1 only: Groups A and B come, Group C is away. Two fit.
+      List<RunsIn.WeekOff> notWeek1 = new List<RunsIn.WeekOff>();
+      for (Integer week = 2; week <= 6; week++) {
+        notWeek1.add(SetTimeTestData.weekOff(0, null, ids.get('Week ' + week)));
+      }
+      FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
+      rest.Location__c = ids.get('Gym');
+      SetTimeTestData.save(
+        new List<SObject>{ rest },
+        SetTimeTestData.extras(notWeek1, null, null)
+      );
+      Assert.areEqual(1, count('FixedActivity__c'));
+      // Group C back in Week 1, directly in Salesforce: three at the Gym, refused.
+      Database.DeleteResult direct = Database.delete(
+        away.Id,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Assert.isFalse(direct.isSuccess());
+      Assert.areEqual(
+        '"Gym" fits 2 groups at once, but "Rest" would have 3 there in Period 1 on Monday ' +
+        'in Week 1. Change "Rest" first, then try again.',
+        direct.getErrors()[0].getMessage()
       );
     }
   }
@@ -666,12 +712,18 @@ private class SetTimeClashesTest {
         new List<SObject>(),
         SetTimeTestData.extras(null, new List<Id>{ closed.Id }, null)
       );
-      Assert.isTrue(
-        message.startsWith(
-          '"Gym" fits 2 groups at once, but "Rest" would have 3 there in Period 1 on Monday in Week 2.'
-        ),
-        message
+      String expected =
+        '"Gym" fits 2 groups at once, but "Rest" would have 3 there in Period 1 on Monday ' +
+        'in Week 2. Change "Rest" first, then try again.';
+      Assert.areEqual(expected, message);
+      // The same when the Gym is opened again directly in Salesforce.
+      Database.DeleteResult direct = Database.delete(
+        closed,
+        false,
+        AccessLevel.USER_MODE
       );
+      Assert.isFalse(direct.isSuccess());
+      Assert.areEqual(expected, direct.getErrors()[0].getMessage());
     }
   }
 }

@@ -361,7 +361,7 @@ describe("fixed and recurring activities", () => {
 
   it("says when time blocks changed what an item covers since it was saved", () => {
     const rest = { TimeBlock__c: "t1", Length__c: 2, LastTimeBlock__c: "t2" };
-    expect(spanChange(ENTRY, rest)).toBe("");
+    expect(spanChange(ENTRY, rest, terms)).toBe("");
     // A block added between Period 1 and Lunch.
     const added = {
       ...ENTRY,
@@ -371,7 +371,7 @@ describe("fixed and recurring activities", () => {
         ENTRY.timeBlocks[1]
       ]
     };
-    expect(spanChange(added, rest)).toBe(
+    expect(spanChange(added, rest, terms)).toBe(
       "Time blocks changed since it was saved: it now runs Period 1 to Snack, not to Lunch. " +
         "Keep it if that is right, or change it."
     );
@@ -379,11 +379,24 @@ describe("fixed and recurring activities", () => {
     expect(
       spanChange(
         { ...ENTRY, timeBlocks: [ENTRY.timeBlocks[0]] },
-        { ...rest, LastTimeBlock__c: null }
+        { ...rest, LastTimeBlock__c: null },
+        terms
       )
     ).toBe(
       "Time blocks changed since it was saved: it now runs Period 1 to Period 1. " +
         "Keep it if that is right, or change it."
+    );
+    // In the camp's own words.
+    const periods = buildTerms([
+      {
+        term: "TimeBlock",
+        singular: "Period",
+        plural: "Periods",
+        isCustom: true
+      }
+    ]);
+    expect(spanChange(added, rest, periods)).toMatch(
+      /^Periods changed since it was saved/
     );
   });
 });

@@ -225,7 +225,7 @@ export default class ShoreshProgram extends LightningElement {
     const notes = {};
     (items || []).forEach((item) => {
       notes[item.Id] = [
-        spanChange(this.entry, item),
+        spanChange(this.entry, item, this.terms),
         setTimeNote(this.entry, item)
       ]
         .filter((note) => note)
@@ -237,7 +237,7 @@ export default class ShoreshProgram extends LightningElement {
   /** Rows whose time blocks changed under them, offered "Keep as it is". */
   keepFor(items) {
     return (items || [])
-      .filter((item) => spanChange(this.entry, item))
+      .filter((item) => spanChange(this.entry, item, this.terms))
       .map((item) => item.Id);
   }
 
