@@ -195,6 +195,47 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="viewing"]')).not.toBeNull();
   });
 
+  it("a failed load shows no stale list, and choosing the week again retries", async () => {
+    getVersions.mockResolvedValueOnce(VERSIONS);
+    const element = await render();
+    getVersions.mockRejectedValueOnce({ body: { message: "Lost access." } });
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="schedules-error"]').textContent).toContain(
+      "Lost access."
+    );
+    expect(q(element, "c-shoresh-versions").versions).toEqual([]);
+    expect(q(element, '[data-id="open-newest"]')).toBeNull();
+    getVersions.mockResolvedValueOnce([]);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    expect(getVersions).toHaveBeenCalledTimes(3);
+  });
+
+  it("a version that finishes loading after another week was chosen is not shown", async () => {
+    getVersions.mockResolvedValue(VERSIONS);
+    let answer;
+    openSchedule.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    const element = await render();
+    q(element, '[data-id="open-newest"]').click();
+    await flush();
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    answer(opened());
+    await flush();
+    expect(q(element, '[data-id="viewing"]')).toBeNull();
+  });
+
   it("renames a version, on screen and in the list", async () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockResolvedValue(opened());

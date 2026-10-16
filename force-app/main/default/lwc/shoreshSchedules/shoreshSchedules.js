@@ -41,9 +41,11 @@ export default class ShoreshSchedules extends LightningElement {
   dayIndex = 0;
   groupKey;
   activityId;
-  busy = false;
+  pending = 0;
   error;
   loadedFor;
+  // Each open asks the server once; only the latest answer is shown.
+  openTicket = 0;
 
   @api
   get setup() {
@@ -116,7 +118,9 @@ export default class ShoreshSchedules extends LightningElement {
     }
     this.loadedFor = key;
     this.opened = null;
-    await this.run(async () => {
+    this.openTicket += 1;
+    this.versions = [];
+    const loaded = await this.run(async () => {
       const versions = await getVersions({
         programId: this.programId,
         weekId: this.weekId
@@ -126,6 +130,10 @@ export default class ShoreshSchedules extends LightningElement {
         this.versions = versions || [];
       }
     });
+    if (!loaded && key === this.loadedFor) {
+      // Choosing the same week again tries again.
+      this.loadedFor = null;
+    }
   }
 
   // ---------- versions ----------
@@ -147,12 +155,19 @@ export default class ShoreshSchedules extends LightningElement {
     this.open(event.detail.id);
   }
   handleClose() {
+    this.openTicket += 1;
     this.opened = null;
   }
 
   async open(scheduleId) {
+    this.openTicket += 1;
+    const ticket = this.openTicket;
     await this.run(async () => {
       const opened = await openSchedule({ scheduleId });
+      if (ticket !== this.openTicket) {
+        // Another version opened, or another week chosen, while this one loaded.
+        return;
+      }
       this.opened = opened;
       this.dayIndex = 0;
       const all = groups(opened);
@@ -358,15 +373,22 @@ export default class ShoreshSchedules extends LightningElement {
 
   // ---------- helpers ----------
 
+  get busy() {
+    return this.pending > 0;
+  }
+
+  /** Runs a server call, showing its error if it fails. Returns whether it worked. */
   async run(work) {
-    this.busy = true;
+    this.pending += 1;
     this.error = null;
     try {
       await work();
+      return true;
     } catch (e) {
       this.error = errorMessage(e);
+      return false;
     } finally {
-      this.busy = false;
+      this.pending -= 1;
     }
   }
 }

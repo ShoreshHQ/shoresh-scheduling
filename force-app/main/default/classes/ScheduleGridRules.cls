@@ -17,11 +17,14 @@ public with sharing class ScheduleGridRules {
     'T'
   };
 
+  private static final Pattern ITEM_NUMBER = Pattern.compile('[0-9]{1,6}');
+
   /** Why a grid cannot be stored or read, in words that finish "could not be read: ...". */
   public class GridException extends Exception {
   }
 
   public static void check(ScheduleGrid grid) {
+    ScheduleGridFrameRules.check(grid);
     checkItems(grid.items);
     if (grid.rows.size() != grid.groups.size()) {
       throw new GridException(
@@ -87,7 +90,7 @@ public with sharing class ScheduleGridRules {
   }
 
   private static Boolean isItem(String cell, Integer itemCount) {
-    if (!cell.isNumeric() || cell.length() > 6) {
+    if (!ITEM_NUMBER.matcher(cell).matches()) {
       return false;
     }
     Integer position = Integer.valueOf(cell);

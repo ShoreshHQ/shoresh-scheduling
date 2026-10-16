@@ -30,11 +30,16 @@ public with sharing class ScheduleDaySaves {
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
+      FOR UPDATE
     ];
+    // The schedule is locked until this save ends, so two saves of the same schedule (even of a
+    // day that has no records yet) run one after the other and the second sees the first.
     Set<Date> days = new Set<Date>();
     for (DaySave save : saves) {
       checkDate(schedule, save.day);
-      days.add(save.day);
+      if (!days.add(save.day)) {
+        throw new ShoreshException('A save named the same day twice.');
+      }
     }
     Batch batch = new Batch(scheduleId, existingParts(scheduleId, days));
     for (DaySave save : saves) {
@@ -60,7 +65,7 @@ public with sharing class ScheduleDaySaves {
       FROM ScheduleDay__c
       WHERE Schedule__c = :scheduleId AND Date__c IN :days
       WITH USER_MODE
-      FOR UPDATE
+      ORDER BY Date__c, Part__c
     ]) {
       if (!result.containsKey(part.Date__c)) {
         result.put(part.Date__c, new List<ScheduleDay__c>());
@@ -74,7 +79,7 @@ public with sharing class ScheduleDaySaves {
     List<ScheduleDay__c> before,
     Integer expectedRevision
   ) {
-    Integer current = before.isEmpty()
+    Integer current = before.isEmpty() || before[0].Revision__c == null
       ? null
       : before[0].Revision__c.intValue();
     if (current != expectedRevision) {

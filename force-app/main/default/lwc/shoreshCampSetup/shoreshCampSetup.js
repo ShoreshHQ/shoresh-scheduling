@@ -664,10 +664,12 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.saveAndReload(save, onFailure);
   }
 
-  /** For a week or program: its saved schedules, which a delete takes with it. */
+  /** For a week or program: its saved versions, which a delete takes with it. */
   savedSchedulesNote(recordId) {
     const count = ((this.setup && this.setup.schedules) || []).filter(
-      (s) => s.Week__c === recordId || s.Program__c === recordId
+      (s) =>
+        s.Status__c === "Version" &&
+        (s.Week__c === recordId || s.Program__c === recordId)
     ).length;
     if (!count) {
       return "";

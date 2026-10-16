@@ -125,6 +125,18 @@ function weekBlocks(view) {
 }
 
 function blockRows(blocks) {
+  if (!blocks.length) {
+    // No day could be read: one empty row, so each day's "Could not be read" still shows.
+    return [
+      {
+        key: "none",
+        name: "",
+        timeLines: [],
+        gone: false,
+        style: "grid-row: 1 / span 1; grid-column: 1 / span 1;"
+      }
+    ];
+  }
   return blocks.map((block, index) => ({
     key: refKey(block),
     name: block.name,

@@ -144,6 +144,31 @@ private class SchedulesTest {
   }
 
   @IsTest
+  static void aSaveNamingTheSameDayTwiceIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Schedule__c version = ShoreshTestData.version(
+        c.program.Id,
+        c.weeks[0].Id,
+        'V'
+      );
+      try {
+        ScheduleDaySaves.write(
+          version.Id,
+          new List<ScheduleDaySaves.DaySave>{
+            save(c, 0, null),
+            save(c, 0, null)
+          }
+        );
+        Assert.fail('refused');
+      } catch (ShoreshException e) {
+        Assert.isTrue(e.getMessage().contains('same day twice'));
+      }
+      Assert.areEqual(0, ScheduleDays.read(version.Id).size());
+    }
+  }
+
+  @IsTest
   static void aDayOutsideTheWeekIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
@@ -238,6 +263,14 @@ private class SchedulesTest {
             GridFormatVersion__c = 2,
             Revision__c = 1,
             Part__c = 1
+          ),
+          new ScheduleDay__c(
+            Schedule__c = version.Id,
+            Date__c = monday.addDays(2),
+            Grid__c = grid(c).toText(),
+            GridFormatVersion__c = 1,
+            Revision__c = null,
+            Part__c = 1
           )
         },
         AccessLevel.SYSTEM_MODE
@@ -245,9 +278,14 @@ private class SchedulesTest {
       ScheduleViews.ScheduleView view = SchedulesController.openSchedule(
         version.Id
       );
-      Assert.areEqual(2, view.days.size());
+      Assert.areEqual(
+        3,
+        view.days.size(),
+        'one bad day does not hide the rest'
+      );
       Assert.isTrue(view.days[0].problem.contains('grid format'));
       Assert.isTrue(view.days[1].problem.contains('newer version'));
+      Assert.isTrue(view.days[2].problem.contains('no revision'));
       Assert.areEqual(0, view.days[1].rows.size());
     }
   }

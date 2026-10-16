@@ -26,8 +26,10 @@ public with sharing class ScheduleDays {
       }
       partsByDay.get(part.Date__c).add(part);
     }
+    List<Date> dates = new List<Date>(partsByDay.keySet());
+    dates.sort();
     List<DayGrid> days = new List<DayGrid>();
-    for (Date day : partsByDay.keySet()) {
+    for (Date day : dates) {
       days.add(readDay(day, partsByDay.get(day)));
     }
     return days;
@@ -36,9 +38,12 @@ public with sharing class ScheduleDays {
   private static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
     DayGrid result = new DayGrid();
     result.day = day;
-    result.revision = parts[0].Revision__c.intValue();
     List<String> texts = new List<String>();
     try {
+      if (parts[0].Revision__c == null) {
+        throw new ScheduleGridRules.GridException('it has no revision');
+      }
+      result.revision = parts[0].Revision__c.intValue();
       for (Integer i = 0; i < parts.size(); i++) {
         checkPart(parts[i], i, result.revision);
         texts.add(parts[i].Grid__c);

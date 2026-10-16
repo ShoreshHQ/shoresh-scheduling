@@ -17,6 +17,11 @@ public with sharing class ScheduleGridParts {
     }
     List<String> parts = new List<String>();
     Integer frameLength = emptyPart(grid).toText().length();
+    if (frameLength >= partLimit) {
+      throw new ScheduleGridRules.GridException(
+        'its time blocks and items alone are too long to store'
+      );
+    }
     ScheduleGrid part = emptyPart(grid);
     Integer partLength = frameLength;
     for (Integer g = 0; g < grid.groups.size(); g++) {

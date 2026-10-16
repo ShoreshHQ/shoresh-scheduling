@@ -59,7 +59,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      (`SD-000000`), not reportable or searchable (the grid is not meant for reports).
    - Not built yet: `PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`, the engine fields,
      `Assignments__c`, `RainyDay__c`, `ScheduleEntry__c`, `Assignment__c`.
-6. **The compact grid format, version 1** (`ScheduleGrid`, checked by `ScheduleGridRules`).
+6. **The compact grid format, version 1** (`ScheduleGrid`, checked by `ScheduleGridRules` and `ScheduleGridFrameRules`).
    JSON with four lists, written in a fixed order so the same day always gives the same text:
 
    ```json
@@ -78,8 +78,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      separated by commas. A cell is empty (nothing placed), a number (an item in `i`, from 1),
      or `^` (the item above carries on into this block: how a two-block activity is stored).
    - Refused, on save and on read: rows not matching groups, cells not matching blocks, a
-     number not in `i`, `^` in the first block or under an empty cell, an unknown kind, a
-     set-up kind without an id, an item without a name. A day that cannot be read shows "This
+     number not in `i` (digits 0 to 9 only), `^` in the first block or under an empty cell, an
+     unknown kind, a set-up kind without an id, an item, time block, or group without a name,
+     a time block or group without an id, a time not written "HH:mm". A day that cannot be read shows "This
      day could not be read: …" in its place, never half a grid.
    - Why this shape: the import (4b) writes it directly (its items are what the file names,
      sorted fixed, then recurring, then activities, with the rest noted as not set up yet); a
@@ -95,8 +96,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
 8. **Parts**: a day over 100,000 characters is split into parts of whole groups, in group
    order, each repeating `b` and `i` (`ScheduleGridParts`); parts are joined in part order and
    must have the same time blocks and items. One group too long for a part is refused.
-9. **Revisions** (`ScheduleDaySaves.write`): a save names the revision each day was opened at (none
-   for a new day). If any day was saved since, or a "new" day already exists, the whole save is
+9. **Revisions** (`ScheduleDaySaves.write`): a save locks its schedule until it ends, so two
+   saves of one schedule (even of a day with no records yet) run one after the other. It names
+   the revision each day was opened at (none for a new day), and may name each day once. If any day was saved since, or a "new" day already exists, the whole save is
    refused ("Someone else changed this schedule since you opened it…") and nothing is
    written. Every part of a day has the same revision, which goes up by one per save. A save
    across several days and parts writes all or none, in user mode. Nothing on screen saves

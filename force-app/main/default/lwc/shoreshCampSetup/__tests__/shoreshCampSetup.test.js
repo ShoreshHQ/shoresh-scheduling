@@ -346,7 +346,8 @@ describe("c-shoresh-camp-setup", () => {
       setupWith({
         schedules: [
           { Id: "s1", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
-          { Id: "s2", Week__c: "w1", Program__c: "p1", Status__c: "Version" }
+          { Id: "s2", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
+          { Id: "s3", Week__c: "w1", Program__c: "p1", Status__c: "Published" }
         ]
       })
     );

@@ -89,6 +89,16 @@ describe("c/shoreshScheduleViews", () => {
     expect(problem.style).toContain("grid-row: 1 / span 3");
   });
 
+  it("a week where no day could be read still says so in Group View", () => {
+    const view = opened();
+    view.days = [view.days[2]];
+    const grid = groupGrid(view, "g1", t);
+    expect(grid.rows).toHaveLength(1);
+    expect(grid.cells.map((c) => [c.row, c.text])).toEqual([
+      [0, "Could not be read"]
+    ]);
+  });
+
   it("Activity View: the catalogue's cards with how often each runs, and one opened", () => {
     const cards = activityCards(
       opened(),

@@ -39,7 +39,7 @@ private class ScheduleGridTest {
   }
 
   @IsTest
-  static void brokenGridsAreRefused() {
+  static void gridsWithBrokenRowsOrCellsAreRefused() {
     Map<String, ScheduleGrid> broken = new Map<String, ScheduleGrid>();
     ScheduleGrid grid = small();
     grid.rows.remove(1);
@@ -60,7 +60,13 @@ private class ScheduleGridTest {
     grid.rows[1][0] = '';
     grid.rows[1][1] = '^';
     broken.put('carrying on from an empty block', grid);
-    grid = small();
+    Assert.areEqual(broken.size(), refusals(broken), 'every one refused');
+  }
+
+  @IsTest
+  static void gridsWithBrokenNamesKindsOrTimesAreRefused() {
+    Map<String, ScheduleGrid> broken = new Map<String, ScheduleGrid>();
+    ScheduleGrid grid = small();
     grid.items[0].kind = 'Q';
     broken.put('an unknown kind', grid);
     grid = small();
@@ -69,14 +75,34 @@ private class ScheduleGridTest {
     grid = small();
     grid.items[2].name = ' ';
     broken.put('an item with no name', grid);
+    grid = small();
+    grid.rows[1][1] = '\uFF11';
+    broken.put('a digit that is not 0 to 9', grid);
+    grid = small();
+    grid.blocks[0].startTime = '9';
+    broken.put('a time that is not HH:mm', grid);
+    grid = small();
+    grid.groups[1].id = '';
+    broken.put('a group pointing at nothing', grid);
+    grid = small();
+    grid.blocks[1].name = '';
+    broken.put('a time block with no name', grid);
+    Assert.areEqual(broken.size(), refusals(broken), 'every one refused');
+  }
+
+  /** How many of the grids are refused, each with a reason. */
+  private static Integer refusals(Map<String, ScheduleGrid> broken) {
+    Integer refused = 0;
     for (String why : broken.keySet()) {
       try {
         broken.get(why).toText();
         Assert.fail('refused: ' + why);
       } catch (ScheduleGridRules.GridException e) {
         Assert.isNotNull(e.getMessage(), why);
+        refused++;
       }
     }
+    return refused;
   }
 
   @IsTest
@@ -163,8 +189,22 @@ private class ScheduleGridTest {
   }
 
   @IsTest
-  static void aGroupTooBigForAnyPartIsRefused() {
+  static void timeBlocksAndItemsTooBigForAnyPartAreRefused() {
     ScheduleGridParts.partLimit = 100;
+    try {
+      ScheduleGridParts.split(small());
+      Assert.fail('refused');
+    } catch (ScheduleGridRules.GridException e) {
+      Assert.isTrue(e.getMessage().contains('items alone'), e.getMessage());
+    }
+  }
+
+  @IsTest
+  static void aGroupTooBigForAnyPartIsRefused() {
+    ScheduleGrid frame = small();
+    frame.groups.clear();
+    frame.rows.clear();
+    ScheduleGridParts.partLimit = frame.toText().length() + 5;
     try {
       ScheduleGridParts.split(small());
       Assert.fail('refused');
