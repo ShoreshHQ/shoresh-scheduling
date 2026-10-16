@@ -350,11 +350,6 @@ private class ActivitiesAndLocationsTest {
       'rain plan there, then delete it.',
       InUse.reason(ids.get('Gym games'))
     );
-    // Group A is also in a week exception (fullSeason); that is said first.
-    Database.delete(
-      [SELECT Id FROM WeekException__c WHERE Group__c = :groupA],
-      AccessLevel.SYSTEM_MODE
-    );
     Assert.areEqual(
       'This can\'t be deleted yet: it is in "Who can do it" for "Swim". Change who can ' +
       'do that activity first, then delete it.',

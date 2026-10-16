@@ -79,7 +79,7 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 4. **Bunks**: a table **Bunks in Juniors** is there. Click **Add Bunk** twice. Name them
    _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to _Morning only_. To the right,
    under **Runs in**, every week is ticked: a new bunk runs every week. **Save changes**.
-5. Back on **Roots**, the cards count 6 weeks, 1 unit, 2 bunks (named on the card), and
+5. Back on **Roots**, the cards count your weeks, 1 unit, 2 bunks (named on the card), and
    2 time blocks, and those attention items are gone.
 
 ## 7. Locations
@@ -151,7 +151,8 @@ There is no separate grid any more: each row says which weeks it runs in.
 2. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
    _Summer 2026_ is untouched.
 3. Deleting a unit, program, week, time block, location, or activity works the same way
-   (trash can icon, then confirm). Deleting a unit or program also clears its bunks' unticked
+   (trash can icon, then confirm), unless something else still uses it; Shoresh then says
+   what, and where to change it. Deleting a unit or program also clears its bunks' unticked
    weeks.
 
 ## What is not here yet
