@@ -141,6 +141,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>FixedActivity__c.LastTimeBlock__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>FixedActivity__c.Length__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -247,6 +252,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RecurringActivity__c.Friday__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RecurringActivity__c.LastTimeBlock__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

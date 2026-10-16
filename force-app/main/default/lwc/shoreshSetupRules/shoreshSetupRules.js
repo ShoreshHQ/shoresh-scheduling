@@ -196,9 +196,35 @@ export function setTimeNote(entry, item) {
 }
 
 /**
- * Fixed and recurring activity nudges (clashes are refused, never shown here): one that runs in
- * no weeks, one that every group it covers is left out of, and one whose location is not open in
- * a week it runs.
+ * When time blocks were added, moved, or deleted after a fixed or recurring activity was saved, so
+ * it now covers different blocks (Greg, 2026-10-16: show it; it may be meant, or not). Returns
+ * what to say, or "" when it covers what it did when saved.
+ */
+export function spanChange(entry, item) {
+  const blocks = entry.timeBlocks || [];
+  const start = item.TimeBlock__c
+    ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
+    : -1;
+  if (start < 0) {
+    return "";
+  }
+  const last =
+    blocks[Math.min(start + (item.Length__c || 1), blocks.length) - 1];
+  if (last.Id === item.LastTimeBlock__c) {
+    return "";
+  }
+  const was = blocks.find((block) => block.Id === item.LastTimeBlock__c);
+  return (
+    `Time blocks changed since it was saved: it now runs ${blocks[start].Name} to ${last.Name}` +
+    (was ? `, not to ${was.Name}.` : ".") +
+    " Keep it if that is right, or change it."
+  );
+}
+
+/**
+ * Fixed and recurring activity nudges (clashes are refused, never shown here): one whose time
+ * blocks changed under it, one that runs in no weeks, one that every group it covers is left out
+ * of, and one whose location is not open in a week it runs.
  */
 function setTimeProblems(setup, terms) {
   const problems = [];
@@ -213,6 +239,10 @@ function setTimeProblems(setup, terms) {
     kinds.forEach(([screen, field, items]) => {
       (items || []).forEach((item) => {
         const add = (why) => problems.push({ screen, name: item.Name, why });
+        const moved = spanChange(entry, item);
+        if (moved) {
+          add(moved);
+        }
         const off = new Set(
           marks.filter((m) => m[field] === item.Id).map((m) => m.Week__c)
         );

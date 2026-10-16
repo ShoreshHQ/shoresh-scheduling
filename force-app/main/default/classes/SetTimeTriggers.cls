@@ -23,17 +23,26 @@ public with sharing class SetTimeTriggers {
     SetTimeGuard.changed(seasonIds, rows, SetTimeMessages.Side.ITEM);
   }
 
-  /** A week ticked again on a fixed or recurring activity (its week exception removed). */
+  /**
+   * A week ticked again (its week exception removed): a fixed or recurring activity runs that
+   * week, a bunk is back, or a location is open again.
+   */
   public static void weekExceptionsRemoved(List<WeekException__c> rows) {
-    Set<Id> weekIds = new Set<Id>();
+    Set<Id> itemWeeks = new Set<Id>();
     List<WeekException__c> onItems = new List<WeekException__c>();
+    Set<Id> otherWeeks = new Set<Id>();
+    List<WeekException__c> others = new List<WeekException__c>();
     for (WeekException__c row : rows) {
       if (row.FixedActivity__c != null || row.RecurringActivity__c != null) {
-        weekIds.add(row.Week__c);
+        itemWeeks.add(row.Week__c);
         onItems.add(row);
+      } else if (row.Group__c != null || row.Location__c != null) {
+        otherWeeks.add(row.Week__c);
+        others.add(row);
       }
     }
-    SetTimeGuard.changed(weekIds, onItems, SetTimeMessages.Side.ITEM);
+    SetTimeGuard.changed(itemWeeks, onItems, SetTimeMessages.Side.ITEM);
+    SetTimeGuard.changed(otherWeeks, others, SetTimeMessages.Side.OTHER);
   }
 
   /** A week exception edited: whatever it named before runs that week again. */

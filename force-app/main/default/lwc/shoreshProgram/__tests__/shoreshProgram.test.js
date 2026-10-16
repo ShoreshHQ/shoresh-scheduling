@@ -264,7 +264,13 @@ describe("c-shoresh-program", () => {
     const SET_TIME = {
       ...ENTRY,
       fixedActivities: [
-        { Id: "f1", Name: "Flagpole", TimeBlock__c: "t1", Length__c: 1 }
+        {
+          Id: "f1",
+          Name: "Flagpole",
+          TimeBlock__c: "t1",
+          Length__c: 1,
+          LastTimeBlock__c: "t1"
+        }
       ],
       recurringActivities: [
         {
@@ -272,6 +278,7 @@ describe("c-shoresh-program", () => {
           Name: "Swim",
           TimeBlock__c: "t1",
           Length__c: 1,
+          LastTimeBlock__c: "t1",
           Monday__c: true,
           Coverages__r: [{ Group__c: "g1" }]
         }
@@ -317,6 +324,19 @@ describe("c-shoresh-program", () => {
       expect(fixed.rowNotes).toEqual({
         f1: "Bunk 2 is afternoon only and is left out."
       });
+      expect(fixed.keepRows).toEqual([]);
+      // Saved as ending in a block since deleted: noted, and offered "Keep as it is".
+      element.entry = {
+        ...SET_TIME,
+        fixedActivities: [
+          { ...SET_TIME.fixedActivities[0], LastTimeBlock__c: null }
+        ]
+      };
+      await flush();
+      expect(table(element).keepRows).toEqual(["f1"]);
+      expect(table(element).rowNotes.f1).toContain(
+        "Time blocks changed since it was saved"
+      );
     });
 
     it("gives recurring activities a tick for each day the program runs and who they cover", async () => {

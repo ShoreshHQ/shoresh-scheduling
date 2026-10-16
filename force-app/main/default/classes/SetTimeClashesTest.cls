@@ -358,6 +358,7 @@ private class SetTimeClashesTest {
   static void timeBlockChangesThatWouldClashAreRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
       FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 2');
       rest.Length__c = 2;
       SetTimeTestData.save(new List<SObject>{ rest });
@@ -561,6 +562,115 @@ private class SetTimeClashesTest {
       Assert.isTrue(
         back.getErrors()[0].getMessage().contains('"Nap" and "Rest"'),
         back.getErrors()[0].getMessage()
+      );
+    }
+  }
+
+  @IsTest
+  static void aBunkAwayThatWeekIsNoClash() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      // Group C is away in Week 1.
+      SetTimeTestData.save(
+        new List<SObject>(),
+        SetTimeTestData.extras(
+          new List<RunsIn.WeekOff>{
+            SetTimeTestData.weekOff(null, ids.get('Group C'), ids.get('Week 1'))
+          },
+          null,
+          null
+        )
+      );
+      // Flag runs only in Week 1, where Swim C would share Group C: but Group C is away.
+      List<RunsIn.WeekOff> off = new List<RunsIn.WeekOff>();
+      for (Integer week = 2; week <= 6; week++) {
+        off.add(SetTimeTestData.weekOff(0, null, ids.get('Week ' + week)));
+      }
+      SetTimeTestData.save(
+        new List<SObject>{
+          SetTimeTestData.fixed(ids, 'Flag', 'Period 2'),
+          SetTimeTestData.recurring(ids, 'Swim C', 'Period 2')
+        },
+        SetTimeTestData.extras(
+          off,
+          null,
+          new List<SetTimeWho.Who>{
+            SetTimeTestData.who(1, null, new List<Id>{ ids.get('Group C') })
+          }
+        )
+      );
+      Assert.areEqual(
+        2,
+        count('FixedActivity__c') + count('RecurringActivity__c')
+      );
+      // Group C back in Week 1 would put it in both: refused.
+      WeekException__c away = [
+        SELECT Id
+        FROM WeekException__c
+        WHERE Group__c = :ids.get('Group C')
+        WITH SYSTEM_MODE
+      ];
+      String message = SetTimeTestData.refusal(
+        new List<SObject>(),
+        SetTimeTestData.extras(null, new List<Id>{ away.Id }, null)
+      );
+      Assert.isTrue(
+        message.startsWith(
+          '"Flag" and "Swim C" would both have Group C in Period 2 on Monday in Week 1.'
+        ),
+        message
+      );
+    }
+  }
+
+  @IsTest
+  static void aLocationClosedThatWeekIsNoClash() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      Database.insert(
+        new WeekException__c(
+          Week__c = ids.get('Week 2'),
+          Location__c = ids.get('Gym')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      // Rest at the Gym in Week 2 only, with 3 groups, after the Gym's fit drops to 2: the
+      // Gym is closed that week, so it is no clash. Opening it again is refused.
+      Database.update(
+        new Location__c(Id = ids.get('Gym'), GroupsThatFit__c = 2),
+        AccessLevel.SYSTEM_MODE
+      );
+      List<RunsIn.WeekOff> notWeek2 = new List<RunsIn.WeekOff>();
+      for (Integer week = 1; week <= 6; week++) {
+        if (week != 2) {
+          notWeek2.add(
+            SetTimeTestData.weekOff(0, null, ids.get('Week ' + week))
+          );
+        }
+      }
+      FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
+      rest.Location__c = ids.get('Gym');
+      SetTimeTestData.save(
+        new List<SObject>{ rest },
+        SetTimeTestData.extras(notWeek2, null, null)
+      );
+      WeekException__c closed = [
+        SELECT Id
+        FROM WeekException__c
+        WHERE Location__c = :ids.get('Gym')
+        WITH SYSTEM_MODE
+      ];
+      String message = SetTimeTestData.refusal(
+        new List<SObject>(),
+        SetTimeTestData.extras(null, new List<Id>{ closed.Id }, null)
+      );
+      Assert.isTrue(
+        message.startsWith(
+          '"Gym" fits 2 groups at once, but "Rest" would have 3 there in Period 1 on Monday in Week 2.'
+        ),
+        message
       );
     }
   }

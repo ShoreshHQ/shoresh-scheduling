@@ -49,12 +49,12 @@ wins.
    as soon as it is saved. Without this, a new recurring activity (everyone, until its who is
    saved a moment later) could be refused for a clash it would never have.
 6. **Morning-only and afternoon-only groups are left out, not refused.** A group not at camp in
-   a time block is not part of an item in that block; the row's **Left out** column says so
+   a time block is not part of an item in that block; the row's **Notes** column says so
    ("Bunk 3 is morning only and is left out", or "... left out of its afternoon part" for an
-   item that spans both). Group weeks ("Runs in" on bunks) and location weeks ("Open in") are
-   not used to excuse a clash: a bunk away in Week 3 still counts in Week 3. That is stricter,
-   never looser. A location closed in a week an item runs is shown in Needs attention, not
-   refused (it is not in the agreed list of clashes).
+   item that spans both). **A bunk away for a week, or a location closed for a week, is not
+   there that week, so it cannot clash** (Greg, 2026-10-16: "how could there be a clash?").
+   Ticking that bunk's or location's week back on is checked like any other change. An item
+   at a location closed in a week it runs is shown in Needs attention.
 7. **Who is chosen in the table**: a **Who** column shows "Everyone in Main" or the names, and
    **Change** opens the same picker as activities' "Who can do it" under the row. Who is saved
    with the row, all or none, so a new recurring activity can be saved already narrowed to its
@@ -83,11 +83,12 @@ wins.
     weeks, and locations (about seven queries). Seasons with no fixed or recurring activities
     are remembered for the rest of the transaction, so ordinary saves elsewhere cost little.
 
-13. **Open for Greg:** adding or deleting a time block in the middle of a multi-block item
-    changes which blocks it covers (Rest = Period 1 for 2 blocks covers Period 2; delete Period
-    2 and it covers Lunch). It is refused only if that causes a clash or runs past the end of
-    the day; otherwise it happens without a word. Options: refuse it, or show it in Needs
-    attention.
+13. **A time block change that moves what an item covers is shown, not refused** (Greg,
+    2026-10-16: "if someone means to do that, then ok, if they didn't then they should know").
+    Each item remembers the last time block it covered when saved (`LastTimeBlock__c`, filled
+    in by Shoresh, cleared if that block is deleted). If blocks are added, moved, or deleted so
+    it now covers different ones, Needs attention and the row's Notes say what it covers now
+    and what it did; **Keep as it is** on the row saves it unchanged, which accepts it.
 
 ## Choices that are hard to undo after release
 
@@ -96,7 +97,8 @@ wins.
   / `.RecurringActivity__c`.
 - Both items are details of the program (not the season), and `Coverage__c` a detail of the
   season.
-- `Length__c` counts time blocks, starting at `TimeBlock__c`.
+- `Length__c` counts time blocks, starting at `TimeBlock__c`; `LastTimeBlock__c` (clear on
+  delete) remembers where it ended when saved.
 - Recurring days are five checkboxes, Monday to Friday (day camps only, decision 0001).
 - No coverage rows means everyone in the program (no `AllGroups__c`).
 - The restrict-delete lookups: time block, location, coverage targets, and week exceptions'

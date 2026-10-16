@@ -4,7 +4,8 @@
  * SetTimePlanReader and read by the clash finders. A fixed activity takes every group in its
  * program on every day the program runs; a recurring activity takes the groups it covers
  * (every group in the program when it names none) on the days ticked. Either way, a group that is
- * not at camp in a time block (morning only, afternoon only) is left out of that block.
+ * not at camp in a time block (morning only, afternoon only) is left out of that block, and a group
+ * away for a week (or a location closed for a week) is not there that week, so it cannot clash.
  */
 public with sharing class SetTimePlan {
   public static final List<String> WEEKDAYS = new List<String>{
@@ -21,6 +22,8 @@ public with sharing class SetTimePlan {
   public List<Id> weekIds = new List<Id>();
   public Map<Id, String> weekNames = new Map<Id, String>();
   public Map<Id, Location__c> locations = new Map<Id, Location__c>();
+  // A group's or location's unticked weeks: a bunk away, or a location closed, that week.
+  public Map<Id, Set<Id>> weeksOff = new Map<Id, Set<Id>>();
   public List<Item> items = new List<Item>();
 
   /** One program: its time blocks in the order of the day, its groups, and the days it runs. */
@@ -106,10 +109,20 @@ public with sharing class SetTimePlan {
         block.PartOfDay__c == 'Afternoon';
   }
 
-  /** The first week both items run in, or null when they never share one. */
-  public Id firstSharedWeek(Item a, Item b) {
+  /** Whether a group is away, or a location closed, in a week. */
+  public Boolean isOff(Id target, Id weekId) {
+    return weeksOff.containsKey(target) &&
+      weeksOff.get(target).contains(weekId);
+  }
+
+  /** The first week both items run in with the group there, or null when there is none. */
+  public Id firstSharedWeek(Item a, Item b, Id groupId) {
     for (Id weekId : weekIds) {
-      if (a.weekIds.contains(weekId) && b.weekIds.contains(weekId)) {
+      if (
+        a.weekIds.contains(weekId) &&
+        b.weekIds.contains(weekId) &&
+        !isOff(groupId, weekId)
+      ) {
         return weekId;
       }
     }

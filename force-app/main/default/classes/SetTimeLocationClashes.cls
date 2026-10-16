@@ -2,7 +2,8 @@
  * A location with more groups at once than fit there, counting the groups each fixed or
  * recurring activity brings (only those at camp in each time block). Locations belong to the
  * season and programs keep their own time blocks, so "at once" means clock times that overlap,
- * on the same day of the same week.
+ * on the same day of the same week. A location closed that week, or a group away that week, is
+ * not counted.
  */
 public with sharing class SetTimeLocationClashes {
   private final SetTimePlan plan;
@@ -44,26 +45,32 @@ public with sharing class SetTimeLocationClashes {
       ) {
         continue;
       }
+      if (!result.containsKey(item.locationId)) {
+        result.put(item.locationId, new List<Visit>());
+      }
       for (Integer block : item.span()) {
-        Integer count = item.groupsIn(block).size();
-        if (count > 0) {
-          if (!result.containsKey(item.locationId)) {
-            result.put(item.locationId, new List<Visit>());
-          }
-          result.get(item.locationId)
-            .add(new Visit(item, item.program.blocks[block], count));
-        }
+        result.get(item.locationId)
+          .add(
+            new Visit(item, item.program.blocks[block], item.groupsIn(block))
+          );
       }
     }
     return result;
   }
 
+  /** The visits that day and week, each counting only the groups there that week. */
   private List<Visit> during(List<Visit> visits, String day, Id week) {
     List<Visit> result = new List<Visit>();
     for (Visit visit : visits) {
       if (
-        visit.item.weekIds.contains(week) && visit.item.runDays().contains(day)
+        visit.item.weekIds.contains(week) &&
+        !plan.isOff(visit.item.locationId, week) &&
+        visit.item.runDays().contains(day)
       ) {
+        visit.count = 0;
+        for (Group__c grp : visit.groups) {
+          visit.count += plan.isOff(grp.Id, week) ? 0 : 1;
+        }
         result.add(visit);
       }
     }
@@ -77,46 +84,51 @@ public with sharing class SetTimeLocationClashes {
   private SetTimeClash crowded(Location__c location, List<Visit> visits) {
     SetTimeClash busiest;
     for (Visit visit : visits) {
-      Integer count = 0;
-      List<String> names = new List<String>();
-      for (Visit other : visits) {
-        if (other.overlapsStartOf(visit)) {
-          count += other.count;
-          if (!names.contains(other.item.name)) {
-            names.add(other.item.name);
-          }
-        }
-      }
+      SetTimeClash clash = atStartOf(visit, visits);
       if (
-        count > location.GroupsThatFit__c &&
+        clash.count > location.GroupsThatFit__c &&
         (busiest == null ||
-        count > busiest.count)
+        clash.count > busiest.count)
       ) {
-        SetTimeClash clash = new SetTimeClash(
-          SetTimeClash.Kind.OVER_LOCATION,
-          visit.item
-        );
         clash.location = location;
-        clash.count = count;
-        clash.names = names;
-        clash.blockName = visit.block.Name;
-        clash.day = day;
-        clash.weekName = plan.weekNames.get(week);
         busiest = clash;
       }
     }
     return busiest;
   }
 
+  /** Who is at the location when a visit starts: how many groups, from which items. */
+  private SetTimeClash atStartOf(Visit visit, List<Visit> visits) {
+    SetTimeClash clash = new SetTimeClash(
+      SetTimeClash.Kind.OVER_LOCATION,
+      visit.item
+    );
+    clash.count = 0;
+    clash.blockName = visit.block.Name;
+    clash.day = day;
+    clash.weekName = plan.weekNames.get(week);
+    for (Visit other : visits) {
+      if (other.count > 0 && other.overlapsStartOf(visit)) {
+        clash.count += other.count;
+        if (!clash.names.contains(other.item.name)) {
+          clash.names.add(other.item.name);
+        }
+      }
+    }
+    return clash;
+  }
+
   private class Visit {
     SetTimePlan.Item item;
     TimeBlock__c block;
-    Integer count;
+    List<Group__c> groups;
+    // How many of its groups are there in the week being looked at.
+    Integer count = 0;
 
-    Visit(SetTimePlan.Item item, TimeBlock__c block, Integer count) {
+    Visit(SetTimePlan.Item item, TimeBlock__c block, List<Group__c> groups) {
       this.item = item;
       this.block = block;
-      this.count = count;
+      this.groups = groups;
     }
 
     /** Whether this visit is under way when the other one starts. */

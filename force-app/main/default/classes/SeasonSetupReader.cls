@@ -163,6 +163,7 @@ public with sharing class SeasonSetupReader {
         TimeBlock__c,
         Length__c,
         Location__c,
+        LastTimeBlock__c,
         SortOrder__c
       FROM FixedActivity__c
       WHERE Program__c IN :programs.keySet()
@@ -179,6 +180,7 @@ public with sharing class SeasonSetupReader {
         TimeBlock__c,
         Length__c,
         Location__c,
+        LastTimeBlock__c,
         Monday__c,
         Tuesday__c,
         Wednesday__c,

@@ -741,6 +741,20 @@ describe("c-shoresh-editable-table", () => {
       expect(summaries(element)[0]).toBe("Bunk 1 (Juniors)");
     });
 
+    it("a row offered Keep as it is is saved unchanged", async () => {
+      const element = renderRecurring();
+      element.keepRows = ["r2"];
+      await flush();
+      const keeps = element.shadowRoot.querySelectorAll('[data-id="keep"]');
+      expect(keeps.length).toBe(1);
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      keeps[0].click();
+      expect(handler.mock.calls[0][0].detail.records).toEqual([
+        { sobjectType: "RecurringActivity__c", Id: "r2" }
+      ]);
+    });
+
     it("shows each saved row's note", async () => {
       const element = renderRecurring();
       await flush();

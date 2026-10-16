@@ -1,6 +1,6 @@
 /**
  * Fixed and recurring activities: the time block must be one of the program's own, and the
- * location must belong to the same season.
+ * location must belong to the same season. Also remembers the last time block each covers.
  */
 public with sharing class SetTimeItemTriggerHandler {
   // What each time block and location named belongs to: its program, or its season.
@@ -34,12 +34,15 @@ public with sharing class SetTimeItemTriggerHandler {
     }
     // Ids are unique across objects: one map of what each block and location belongs to.
     Map<Id, Id> ownerOf = new Map<Id, Id>();
-    for (TimeBlock__c block : [
+    // The blocks named, and every block of the programs, in the order of the day.
+    List<TimeBlock__c> blocks = [
       SELECT Id, Program__c
       FROM TimeBlock__c
-      WHERE Id IN :blockIds
+      WHERE Id IN :blockIds OR Program__c IN :programIds
       WITH SYSTEM_MODE
-    ]) {
+      ORDER BY StartTime__c, SortOrder__c, Id
+    ];
+    for (TimeBlock__c block : blocks) {
       ownerOf.put(block.Id, block.Program__c);
     }
     for (Location__c location : [
@@ -63,6 +66,40 @@ public with sharing class SetTimeItemTriggerHandler {
     handler.term = term;
     for (SObject item : items) {
       handler.check(item, programs.get((Id) item.get('Program__c')));
+    }
+    rememberLastBlocks(items, blocks);
+  }
+
+  /**
+   * Fills in the last time block each item covers now (its time block, then length - 1 more, cut
+   * short at the end of the day). If time blocks change later so that it covers different ones,
+   * Needs attention says so until the item is saved again.
+   */
+  private static void rememberLastBlocks(
+    List<SObject> items,
+    List<TimeBlock__c> blocksInOrder
+  ) {
+    Map<Id, List<Id>> blocksByProgram = new Map<Id, List<Id>>();
+    for (TimeBlock__c block : blocksInOrder) {
+      if (!blocksByProgram.containsKey(block.Program__c)) {
+        blocksByProgram.put(block.Program__c, new List<Id>());
+      }
+      blocksByProgram.get(block.Program__c).add(block.Id);
+    }
+    for (SObject item : items) {
+      List<Id> blocks = blocksByProgram.get((Id) item.get('Program__c'));
+      Integer start = blocks == null
+        ? -1
+        : blocks.indexOf((Id) item.get('TimeBlock__c'));
+      Decimal length = (Decimal) item.get('Length__c');
+      item.put(
+        'LastTimeBlock__c',
+        start < 0 ||
+          length == null ||
+          length < 1
+          ? null
+          : blocks[Math.min(start + length.intValue(), blocks.size()) - 1]
+      );
     }
   }
 

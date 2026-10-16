@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastTimeBlock__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The last time block the fixed activity covered when it was last saved (filled in by Shoresh). If time blocks are added, moved, or deleted so that it now covers different ones, Shoresh says so under Needs attention.</description>
+    <label>Last Time Block</label>
+    <referenceTo>TimeBlock__c</referenceTo>
+    <relationshipLabel>Ending Fixed Activities</relationshipLabel>
+    <relationshipName>EndingFixedActivities</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

@@ -1,6 +1,6 @@
 /**
  * Two fixed or recurring activities with the same group in the same time block on the same day,
- * in a week both run in. Groups belong to one program, so only items in the same program can
+ * in a week both run in and the group is there. Groups belong to one program, so only items in the same program can
  * clash this way.
  */
 public with sharing class SetTimeGroupClashes {
@@ -31,7 +31,7 @@ public with sharing class SetTimeGroupClashes {
         ? taken.get(key)
         : new List<SetTimePlan.Item>();
       for (SetTimePlan.Item other : there) {
-        Id week = plan.firstSharedWeek(other, item);
+        Id week = plan.firstSharedWeek(other, item, cell.grp.Id);
         if (week != null) {
           return clash(other, cell, week);
         }

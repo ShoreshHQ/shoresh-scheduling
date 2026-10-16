@@ -76,6 +76,15 @@ public with sharing class SetTimePlanReader {
     return reader.plans;
   }
 
+  /** A bunk away, or a location closed, in the mark's week. */
+  private static void markOff(SetTimePlan plan, WeekException__c mark) {
+    Id target = mark.Group__c != null ? mark.Group__c : mark.Location__c;
+    if (!plan.weeksOff.containsKey(target)) {
+      plan.weeksOff.put(target, new Set<Id>());
+    }
+    plan.weeksOff.get(target).add(mark.Week__c);
+  }
+
   private void readSeasons(Set<Id> seasonIds) {
     for (Season__c season : [
       SELECT Id, Camp__c
@@ -88,7 +97,15 @@ public with sharing class SetTimePlanReader {
       plans.put(season.Id, plan);
     }
     for (Week__c week : [
-      SELECT Id, Name, Season__c
+      SELECT
+        Id,
+        Name,
+        Season__c,
+        (
+          SELECT Week__c, Group__c, Location__c
+          FROM WeekExceptions__r
+          WHERE Group__c != NULL OR Location__c != NULL
+        )
       FROM Week__c
       WHERE Season__c IN :seasonIds
       WITH SYSTEM_MODE
@@ -96,6 +113,9 @@ public with sharing class SetTimePlanReader {
     ]) {
       plans.get(week.Season__c).weekIds.add(week.Id);
       plans.get(week.Season__c).weekNames.put(week.Id, week.Name);
+      for (WeekException__c mark : week.WeekExceptions__r) {
+        markOff(plans.get(week.Season__c), mark);
+      }
     }
     for (Id seasonId : plans.keySet()) {
       if (plans.get(seasonId).weekIds.isEmpty()) {

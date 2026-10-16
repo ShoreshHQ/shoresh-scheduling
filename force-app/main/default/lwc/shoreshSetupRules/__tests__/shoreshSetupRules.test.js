@@ -1,4 +1,5 @@
 import {
+  spanChange,
   setTimeNote,
   setupProblems,
   suggestedCopyName,
@@ -316,9 +317,16 @@ describe("fixed and recurring activities", () => {
               Name: "Swim",
               TimeBlock__c: "t1",
               Length__c: 1,
+              LastTimeBlock__c: "t1",
               Location__c: "l1"
             },
-            { Id: "f2", Name: "Flag", TimeBlock__c: "t1", Length__c: 1 }
+            {
+              Id: "f2",
+              Name: "Flag",
+              TimeBlock__c: "t1",
+              Length__c: 1,
+              LastTimeBlock__c: "t1"
+            }
           ],
           recurringActivities: [
             {
@@ -326,6 +334,7 @@ describe("fixed and recurring activities", () => {
               Name: "Juniors lunch",
               TimeBlock__c: "t2",
               Length__c: 1,
+              LastTimeBlock__c: "t2",
               Coverages__r: [{ Group__c: "g2" }]
             }
           ]
@@ -348,5 +357,33 @@ describe("fixed and recurring activities", () => {
         "Every Bunk it covers is left out: none is at camp then."
       ]
     ]);
+  });
+
+  it("says when time blocks changed what an item covers since it was saved", () => {
+    const rest = { TimeBlock__c: "t1", Length__c: 2, LastTimeBlock__c: "t2" };
+    expect(spanChange(ENTRY, rest)).toBe("");
+    // A block added between Period 1 and Lunch.
+    const added = {
+      ...ENTRY,
+      timeBlocks: [
+        ENTRY.timeBlocks[0],
+        { Id: "t9", Name: "Snack", PartOfDay__c: "Morning" },
+        ENTRY.timeBlocks[1]
+      ]
+    };
+    expect(spanChange(added, rest)).toBe(
+      "Time blocks changed since it was saved: it now runs Period 1 to Snack, not to Lunch. " +
+        "Keep it if that is right, or change it."
+    );
+    // Its last block deleted (Salesforce empties the saved last block).
+    expect(
+      spanChange(
+        { ...ENTRY, timeBlocks: [ENTRY.timeBlocks[0]] },
+        { ...rest, LastTimeBlock__c: null }
+      )
+    ).toBe(
+      "Time blocks changed since it was saved: it now runs Period 1 to Period 1. " +
+        "Keep it if that is right, or change it."
+    );
   });
 });

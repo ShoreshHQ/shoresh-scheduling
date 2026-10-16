@@ -394,4 +394,35 @@ private class SetTimeSetupTest {
     Assert.areEqual('Fixed activities', labels.plural('FixedActivity'));
     Assert.areEqual('Recurring activities', labels.plural('RecurringActivity'));
   }
+
+  @IsTest
+  static void anItemRemembersItsLastTimeBlockUntilKeptAgain() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Test.startTest();
+      FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
+      rest.Length__c = 2;
+      Id restId = SetTimeTestData.save(new List<SObject>{ rest })[0];
+      Assert.areEqual(ids.get('Period 2'), lastBlock(restId));
+      // Period 2 deleted: Rest now covers Period 1 and Lunch; what was saved is cleared, so the
+      // screens say what changed.
+      SeasonSetupController.deleteRecord(ids.get('Period 2'));
+      Assert.isNull(lastBlock(restId));
+      // Keep as it is: the row saved unchanged.
+      SetTimeTestData.save(
+        new List<SObject>{ new FixedActivity__c(Id = restId) }
+      );
+      Assert.areEqual(ids.get('Lunch'), lastBlock(restId));
+    }
+  }
+
+  private static Id lastBlock(Id itemId) {
+    return [
+      SELECT LastTimeBlock__c
+      FROM FixedActivity__c
+      WHERE Id = :itemId
+      WITH SYSTEM_MODE
+    ]
+    .LastTimeBlock__c;
+  }
 }

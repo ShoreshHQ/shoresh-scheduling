@@ -25,6 +25,7 @@ import { LightningElement, api } from "lwc";
  * do it" under the row. An empty choice means everyone.
  *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
+ * keepRows: saved rows whose note offers "Keep as it is", which saves the row unchanged.
  *
  * Fires:
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
@@ -51,6 +52,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api weekPhrase = "runs in";
   @api notesHeading;
   @api rowNotes = {};
+  /** Saved rows (Ids) to offer "Keep as it is": saving the row unchanged accepts it. */
+  @api keepRows = [];
 
   drafts = [];
   nextKey = 0;
@@ -295,6 +298,8 @@ export default class ShoreshEditableTable extends LightningElement {
         ? `${whoColumn.label}: ${draft.values.Name || ""}`.trim()
         : "",
       note: draft.isNew ? "" : notes[draft.original.Id] || "",
+      canKeep:
+        !draft.isNew && (this.keepRows || []).includes(draft.original.Id),
       isNew: draft.isNew,
       deleteLabel: draft.isNew
         ? "Remove this new row"
@@ -372,6 +377,21 @@ export default class ShoreshEditableTable extends LightningElement {
     );
     draft.who = [...event.detail.value];
     this.drafts = [...this.drafts];
+  }
+
+  /** Saves a row exactly as it is, to accept what changed around it. */
+  handleKeep(event) {
+    const draft = this.drafts.find(
+      (d) => d.key === event.currentTarget.dataset.rowKey
+    );
+    this.dispatchEvent(
+      new CustomEvent("save", {
+        detail: {
+          records: [{ sobjectType: this.objectApiName, Id: draft.original.Id }],
+          onFailure: () => {}
+        }
+      })
+    );
   }
 
   handleTick(event) {

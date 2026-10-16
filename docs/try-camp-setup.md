@@ -142,7 +142,7 @@ activities and from each other. Clashes are refused, never just shown.
    Main_. Click **Add Fixed activity**: type _Flagpole_, **Time block** Period 1, length 1, no
    location. Every week is ticked under **Runs in**. Add a second one, _Lunch break_ in Lunch.
    **Save changes**.
-2. The **Left out** column on Lunch break says _Bunk 2 is morning only and is left out._
+2. The **Notes** column on Lunch break says _Bunk 2 is morning only and is left out._
    Bunk 2 is not at camp in the afternoon, so Lunch break leaves it out rather than refusing.
 3. On **Roots**, the wide **Fixed activities** card now counts 2 and names them. Click it to
    come back.
@@ -174,6 +174,15 @@ activities and from each other. Clashes are refused, never just shown.
 11. Try deleting **Period 2** on **Time blocks**: refused, Bunk 1 swim and Bunk 2 art start in
     it. Try deleting **Bunk 1**: refused, and the message names both things in the way: Swim's
     **Who can do it** and who Bunk 1 swim covers.
+
+Two more things to know:
+
+- A bunk away for a week, or a location closed for a week, is not there that week, so it never
+  counts as a clash. Ticking that week back on is checked like any other change.
+- If you add, move, or delete a time block in the middle of an activity that takes more than
+  one block, it now covers different blocks. Shoresh doesn't refuse that, but it tells you
+  under Needs attention and on the row ("it now runs Period 1 to Snack, not to Period 2").
+  If that's what you meant, click **Keep as it is** on the row; if not, change it.
 
 Does this work the way you think in practice? Note anything that feels awkward.
 
