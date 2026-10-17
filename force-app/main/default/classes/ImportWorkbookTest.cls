@@ -412,4 +412,37 @@ private class ImportWorkbookTest {
       );
     }
   }
+
+  /** A made-up kind, or a kind holding another object's record, would count as made by it. */
+  @IsTest
+  static void aTamperedRecordWithAnotherKindOrRecordIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result result = importWorkbook(c);
+      Contact someone = new Contact(LastName = 'Made Up');
+      Database.insert(someone, AccessLevel.SYSTEM_MODE);
+      Assert.isNotNull(result.importId);
+      expectTamperedRefused(
+        result,
+        JSON.serialize(new List<Object>()),
+        createdOf('Contact', someone.Id)
+      );
+      expectTamperedRefused(
+        result,
+        JSON.serialize(new List<Object>()),
+        createdOf('Week', someone.Id)
+      );
+    }
+  }
+
+  private static String createdOf(String term, Id recordId) {
+    return JSON.serialize(
+      new Map<String, Object>{
+        term => new Map<String, Object>{
+          'fieldsets' => new List<Object>{ new List<Object>{ 'Name' } },
+          'rows' => new List<Object>{ new List<Object>{ recordId, 0, 'x' } }
+        }
+      }
+    );
+  }
 }

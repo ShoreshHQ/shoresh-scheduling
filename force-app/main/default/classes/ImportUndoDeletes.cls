@@ -60,11 +60,19 @@ public with sharing class ImportUndoDeletes {
   }
 
   public void run(Map<String, Object> created) {
-    for (Object kind : created.values()) {
+    // Only kinds an import makes, each holding only its own records: an Id here counts as made
+    // by the import, so a hand-edited record can't make Undo remove something else.
+    for (String term : created.keySet()) {
+      Schema.SObjectType type = ImportFields.ofTerm(term);
       for (
-        Object row : (List<Object>) ((Map<String, Object>) kind).get('rows')
+        Object row : (List<Object>) ((Map<String, Object>) created.get(term))
+          .get('rows')
       ) {
-        createdIds.add((Id) (String) ((List<Object>) row)[0]);
+        Object recordId = ((List<Object>) row)[0];
+        if (ImportFields.ofRecord(recordId) != type) {
+          throw ImportFields.unreadableLog();
+        }
+        createdIds.add((Id) (String) recordId);
       }
     }
     // Who-can-do-it rows are not removed on their own: they go with their activity. A recurring
