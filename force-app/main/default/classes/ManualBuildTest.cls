@@ -194,6 +194,10 @@ private class ManualBuildTest {
         new Group__c(Id = ids.get('Group C'), Availability__c = 'MorningOnly'),
         AccessLevel.SYSTEM_MODE
       );
+      Database.update(
+        new Activity__c(Id = ids.get('Soccer'), NoWeeklyMax__c = true),
+        AccessLevel.SYSTEM_MODE
+      );
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Map<String, ManualBuildViews.ActivityOption> byName = new Map<String, ManualBuildViews.ActivityOption>();
       for (ManualBuildViews.ActivityOption option : view.activities) {
@@ -211,6 +215,8 @@ private class ManualBuildTest {
       // ShoreshTestData's activities: once or twice a week.
       Assert.areEqual(1, byName.get('Swim').minPerWeek);
       Assert.areEqual(2, byName.get('Swim').maxPerWeek);
+      // No weekly limit: none sent.
+      Assert.isNull(byName.get('Soccer').maxPerWeek);
       Assert.areEqual(1, view.away.size());
       Assert.areEqual(ids.get('Group C'), view.away[0].groupId);
       Assert.areEqual(new List<Id>{ ids.get('Lunch') }, view.away[0].blockIds);

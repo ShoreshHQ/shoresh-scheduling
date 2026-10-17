@@ -71,19 +71,7 @@ public with sharing class ManualBuildViews {
     Id seasonId,
     List<Group__c> groups
   ) {
-    Map<Id, Set<Id>> whoByActivity = new Map<Id, Set<Id>>();
-    for (ActivityEligibility__c row : [
-      SELECT Activity__c, Division__c, Group__c
-      FROM ActivityEligibility__c
-      WHERE Activity__r.Season__c = :seasonId
-      WITH USER_MODE
-    ]) {
-      if (!whoByActivity.containsKey(row.Activity__c)) {
-        whoByActivity.put(row.Activity__c, new Set<Id>());
-      }
-      whoByActivity.get(row.Activity__c).add(row.Division__c);
-      whoByActivity.get(row.Activity__c).add(row.Group__c);
-    }
+    Map<Id, Set<Id>> whoByActivity = whoCanDoIt(seasonId);
     List<ActivityOption> result = new List<ActivityOption>();
     for (Activity__c activity : [
       SELECT
@@ -98,33 +86,54 @@ public with sharing class ManualBuildViews {
       WITH USER_MODE
       ORDER BY SortOrder__c NULLS LAST, Name, Id
     ]) {
-      ActivityOption option = new ActivityOption();
-      option.id = activity.Id;
-      option.name = activity.Name;
-      option.length = activity.Length__c == null
-        ? 1
-        : Math.max(1, activity.Length__c.intValue());
-      option.minPerWeek = activity.TimesPerWeekMin__c == null
-        ? 0
-        : activity.TimesPerWeekMin__c.intValue();
-      option.maxPerWeek = activity.NoWeeklyMax__c ||
-        activity.TimesPerWeekMax__c == null
-        ? null
-        : activity.TimesPerWeekMax__c.intValue();
-      // No one named means everyone can do it.
-      Set<Id> who = whoByActivity.get(activity.Id);
-      for (Group__c grp : groups) {
-        if (
-          who != null &&
-          !who.contains(grp.Id) &&
-          !who.contains(grp.Division__c)
-        ) {
-          option.notFor.add(grp.Id);
-        }
-      }
-      result.add(option);
+      result.add(option(activity, whoByActivity.get(activity.Id), groups));
     }
     return result;
+  }
+
+  /** Each activity's "who can do it": the divisions and groups named. */
+  private static Map<Id, Set<Id>> whoCanDoIt(Id seasonId) {
+    Map<Id, Set<Id>> whoByActivity = new Map<Id, Set<Id>>();
+    for (ActivityEligibility__c row : [
+      SELECT Activity__c, Division__c, Group__c
+      FROM ActivityEligibility__c
+      WHERE Activity__r.Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      if (!whoByActivity.containsKey(row.Activity__c)) {
+        whoByActivity.put(row.Activity__c, new Set<Id>());
+      }
+      whoByActivity.get(row.Activity__c).add(row.Division__c);
+      whoByActivity.get(row.Activity__c).add(row.Group__c);
+    }
+    return whoByActivity;
+  }
+
+  /** One activity as Manual Build offers it. who: the "who can do it" names, or null for everyone. */
+  private static ActivityOption option(
+    Activity__c activity,
+    Set<Id> who,
+    List<Group__c> groups
+  ) {
+    ActivityOption option = new ActivityOption();
+    option.id = activity.Id;
+    option.name = activity.Name;
+    option.length = activity.Length__c == null
+      ? 1
+      : Math.max(1, activity.Length__c.intValue());
+    option.minPerWeek = activity.TimesPerWeekMin__c == null
+      ? 0
+      : activity.TimesPerWeekMin__c.intValue();
+    option.maxPerWeek = activity.NoWeeklyMax__c ||
+      activity.TimesPerWeekMax__c == null
+      ? null
+      : activity.TimesPerWeekMax__c.intValue();
+    for (Group__c grp : who == null ? new List<Group__c>() : groups) {
+      if (!who.contains(grp.Id) && !who.contains(grp.Division__c)) {
+        option.notFor.add(grp.Id);
+      }
+    }
+    return option;
   }
 
   private static List<AwaySlots> away(
