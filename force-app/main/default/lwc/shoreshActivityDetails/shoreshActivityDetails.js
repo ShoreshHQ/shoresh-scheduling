@@ -192,6 +192,9 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   handleRule(event) {
     const field = RULE_FIELDS[event.target.dataset.field];
+    if (!field) {
+      return;
+    }
     let value =
       event.target.type === "checkbox"
         ? event.target.checked

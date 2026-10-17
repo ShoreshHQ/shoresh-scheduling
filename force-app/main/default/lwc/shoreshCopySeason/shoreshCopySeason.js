@@ -24,11 +24,7 @@ export default class ShoreshCopySeason extends LightningElement {
   connectedCallback() {
     const start = this.season[FIELD.Season.StartDate];
     this.newStart = suggestedCopyStart(start);
-    this.newName = suggestedCopyName(
-      this.season.Name,
-      start,
-      this.newStart
-    );
+    this.newName = suggestedCopyName(this.season.Name, start, this.newStart);
     this.loadPreview();
   }
 

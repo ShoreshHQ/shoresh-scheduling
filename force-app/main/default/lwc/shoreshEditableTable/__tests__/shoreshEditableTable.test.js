@@ -119,6 +119,30 @@ describe("c-shoresh-editable-table", () => {
     }
   });
 
+  it("an object it doesn't know is an error, said on screen and in the console, never a table", async () => {
+    const error = jest.spyOn(console, "error").mockImplementation(() => {});
+    // A name with no package prefix in the namespaced run, or not Shoresh's at all.
+    const element = createElement("c-shoresh-editable-table", {
+      is: ShoreshEditableTable
+    });
+    Object.assign(element, {
+      title: "Mystery",
+      objectApiName: "Mystery__c",
+      columns: COLUMNS,
+      rows: ROWS
+    });
+    document.body.appendChild(element);
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-id="unknown-object"]').textContent
+    ).toContain("can't be shown");
+    expect(element.shadowRoot.querySelector("table")).toBeNull();
+    expect(element.shadowRoot.querySelector("lightning-button")).toBeNull();
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0][0]).toContain('unknown object "Mystery__c"');
+    error.mockRestore();
+  });
+
   it("turns Salesforce times into what the time field shows", () => {
     expect(timeText(32400000)).toBe("09:00:00.000");
     expect(timeText(45900000)).toBe("12:45:00.000");

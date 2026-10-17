@@ -97,6 +97,8 @@ export default class ShoreshEditableTable extends LightningElement {
   nextKey = 0;
   // True from this table's Save until the screen reloads (or reports the save failed).
   submitted = false;
+  // Said once in the console when the screen names an object this table doesn't know.
+  reportedUnknown = false;
   _rows = [];
   _columns = [];
   _weeks = [];
@@ -202,6 +204,9 @@ export default class ShoreshEditableTable extends LightningElement {
       return [];
     }
     const who = WHO_FIELDS[this.objectApiName];
+    if (!who) {
+      return [];
+    }
     return (record[column.fieldName] || []).map(
       (row) => row[who.Division] || row[who.Group]
     );
@@ -347,7 +352,21 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.visibleDrafts.length > 0;
   }
 
+  /**
+   * The screen named an object this table doesn't know (not one of Shoresh's, or written
+   * without the package's prefix): shown as an error, never edited or saved half-right.
+   */
+  get unknownObject() {
+    return !!this.objectApiName && !FIELDS_OF[this.objectApiName];
+  }
+
   renderedCallback() {
+    if (this.unknownObject && !this.reportedUnknown) {
+      this.reportedUnknown = true;
+      console.error(
+        `shoreshEditableTable: unknown object "${this.objectApiName}". Pass a name from c/shoreshSchema (OBJECT).`
+      );
+    }
     if (!this.sameNameScope) {
       return;
     }
@@ -598,6 +617,9 @@ export default class ShoreshEditableTable extends LightningElement {
   handleAdd() {
     const defaults =
       typeof this.newRowDefaults === "object" ? this.newRowDefaults : {};
+    if (this.unknownObject) {
+      return;
+    }
     const position = this.drafts.length + 1;
     const record = { [FIELDS_OF[this.objectApiName].SortOrder]: position };
     Object.keys(defaults).forEach((field) => {

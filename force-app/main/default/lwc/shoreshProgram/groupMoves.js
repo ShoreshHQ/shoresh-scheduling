@@ -20,7 +20,9 @@ function namingDivision(divisionId, groupId, activities, recurringActivities) {
     )
     .forEach((a) => lists.set(a.Id, a.Name));
   (recurringActivities || [])
-    .filter((r) => counts(r[CHILDREN.RecurringActivity.Coverages], FIELD.Coverage))
+    .filter((r) =>
+      counts(r[CHILDREN.RecurringActivity.Coverages], FIELD.Coverage)
+    )
     .forEach((r) => lists.set(r.Id, r.Name));
   return lists;
 }
@@ -71,5 +73,7 @@ export function moveNote(values, original, context) {
   if (joined.length) {
     parts.push(`is now in ${nameList(joined)} (for ${to})`);
   }
-  return parts.length ? `Moves to ${to}: ${name} ${parts.join(" and ")}.` : null;
+  return parts.length
+    ? `Moves to ${to}: ${name} ${parts.join(" and ")}.`
+    : null;
 }

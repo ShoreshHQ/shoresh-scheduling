@@ -114,9 +114,7 @@ export default class ShoreshImport extends LightningElement {
   /** The camp's answers from earlier imports (Greg: a similar file does not ask again). */
   async rememberedAnswers() {
     const campId =
-      this.setup &&
-      this.setup.season &&
-      this.setup.season[FIELD.Season.Camp];
+      this.setup && this.setup.season && this.setup.season[FIELD.Season.Camp];
     let saved = [];
     try {
       saved = campId ? await getAnswers({ campId }) : [];
