@@ -607,16 +607,48 @@ Same made-up camp, Manual Build, Week 1.
     The confirmation now says _That includes its Manual Build and 1 saved version._ (or
     however many there are). Click **Cancel**.
 
-Not in these parts yet: the counters (Still needed, Spread across the week, Overlapping) and
-their dots on the grid, Clear day or week, Copy day, Versions on this screen, and Publish. Each
+Not in these parts yet: Clear day or week, Copy day, Versions on this screen, and Publish. Each
 comes in the next pieces of Manual Build.
+
+## 21. Manual Build: counters and the bronze dots
+
+This uses the made-up camp's Week 1 from sections 19 and 20 (every activity runs one to three
+times a week; Swim is at the Pool, which fits 3 bunks, and takes 3 bunks at once).
+
+1. Open **Manual Build**, Week 1. Under the toolbar, **Placed** shows how many cells are filled
+   out of the cells to fill (Lunch, Morning meeting, Library time, and cells where a bunk isn't
+   at camp aren't counted). Place something and the number goes up at once.
+2. **Still needed** has a number beside it. Click it: a list opens under the counters, one line
+   for each activity and bunk short of its weekly minimum (_Swim · Bunk 1: 1 still needed_).
+   Click **Still needed** again to close it. Nothing on the grid is highlighted.
+3. **Overlapping.** In Daily View, Monday, place Swim in Period 2 for Bunks 1, 2, 3 and 4. Each
+   of the four gets a small bronze dot in its top corner, with no words beside it. Hold the
+   pointer on a dot: _Over its limit of 3 bunks at once · More bunks at Pool than fit_. An
+   **Overlapping** counter appears. Click it: _Swim · Monday · Period 2: Over its limit of 3
+   bunks at once_ and _Pool · Monday · Period 2: More bunks at Pool than fit_.
+4. Drag Bunk 4's Swim to Period 3. The dots and the **Overlapping** counter go at once (a
+   counter at zero isn't shown).
+5. **Twice in a day.** Place Art in Bunk 1's Period 5 and Period 6. Both get the dot: _Twice in a
+   day_. Undo one.
+6. **Over its weekly limit.** Place Soccer for Bunk 5 on Monday, Tuesday, Wednesday and
+   Thursday (its limit is 3). All four get the dot: _Over its weekly limit_. Nothing stops you.
+7. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
+   words show beside the dot while the cell has focus. Escape hides them. A screen reader reads
+   them as part of the cell.
+8. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
+   Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
+   Bunk 1_. Set Boating back to everyone afterwards.
+9. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
+   the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
+   counter lists each bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by
+   Tuesday_). Clear those two settings afterwards.
 
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule (marked Coming in the menu). In Manual Build: the counters and their dots,
-  Clear and Copy day, Versions on that screen, opening a version in it, and publishing.
+- Generated Schedule (marked Coming in the menu). In Manual Build: Clear and Copy day, Versions
+  on that screen, opening a version in it, and publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

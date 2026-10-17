@@ -333,9 +333,48 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - Activity View is unchanged: it lists the bunks doing an activity in each block, so a
       bunk's away blocks have nothing to show there.
 
+23. **Part 3: checks and counters** (Greg's decisions 2 to 4; desktop `computeFindings`,
+    `computeOverlaps.js`; coordinator's answers 2026-10-17). Worked out live from the grid by
+    `checks.js` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
+    clears as soon as its cause moves. A day that can't be read is left out. Inputs come from
+    the setup records every screen already gets (`checkInputs.js`, field names from
+    `c/shoreshSchema`), so the server sends nothing new.
+    - **One rules module with Generated Schedule.** The words are the engine's (`reasonFor`,
+      #38), and the rule order is the order its rules give way. `checks.js` moves into
+      `c/shoreshEngine` as the exported `checkWeek` (coordinator's call), and Manual Build
+      imports it from there once #38 is on main.
+    - **The bronze dot** (`c-shoresh-dot`, no visible words) goes on a placement, never on a
+      fixed or recurring activity or a not-set-up item. One dot per placement, its reasons
+      joined by " · ", in this order: _Over its weekly limit_ (on all of that activity's
+      placements for that bunk that week, since picking "the extra one" would be arbitrary);
+      _Twice in a day_ (on both); _Not set up for Bunk 2_; _Over its limit of 2 bunks at once_;
+      _Shares Pool with another division_ (an activity for one division at a time, sharing its
+      place with another division; or _With another division at the same time_ for one with no
+      place); _More bunks at Pool than fit_ (fixed and recurring activities count toward the
+      place); _Already busy then_ (a bunk in two time blocks whose times overlap; blocks that
+      only touch don't). A placement running several blocks counts once toward weekly and daily
+      counts, and in each block it covers for at-once, division and place checks.
+    - **The grid** (`c-shoresh-schedule-grid`) takes a `dot` (its words) on any cell and knows
+      nothing about why, so Generated Schedule reuses it. The words show on hover, on a tap,
+      and while the cell has keyboard focus, and are in the cell's assistive text.
+    - **Counters** under the toolbar (desktop): **Placed** _34 of 120_ (cells filled, of the
+      cells to fill: at camp, not fixed or recurring; neutral). **Still needed** (activity and
+      bunk pairs short of the weekly minimum), **Spread across the week** (short of the
+      early-week goal, by that day inclusive, only when the week has a day by then), and
+      **Overlapping** (each clash once: a place in a block, an activity in a block, a bunk in two
+      overlapping blocks). Each shows its count as a separate numeral and is left out at zero
+      (design guide). A click opens the list of its lines, in the engine's words (_Swim · Bunk 3:
+      2 still needed_, _… by Wednesday_, _Swim · Monday · Period 2: Over its limit of 3 bunks at
+      once_); a second click closes it. The grid isn't highlighted by the list (desktop).
+    - **Waits for part 6:** an activity, place or bunk closed that week (a week exception).
+    - **Checked by** 16 scenario tests, a 2,000-week seeded property test against an
+      independent placement-by-placement oracle (every dot's words, both lists, the overlap
+      count, Placed), mutations of each rule, and screen tests for the counters, the list, the
+      dots and their focus.
+
 ## Choices that are hard to undo after release
 
-None in parts 1 and 2: no new objects, fields, or picklist values. The draft uses ADR 0005's
+None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
 the screen and the server.
 
