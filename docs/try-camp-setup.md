@@ -503,36 +503,36 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
    shows _Week 1_, and there is one button: **Start a blank week**. Click it.
 3. The week opens in **Daily View** on Monday, as on the desktop. Lunch is in every bunk's Lunch
    row, and Morning meeting is in every bunk's Period 1. Both have the grey bar down the left.
-   Every other slot says **Open**. Click **Wednesday**: Library time is in Period 4 for Bunks 1
+   Every other cell says **Open**. Click **Wednesday**: Library time is in Period 4 for Bunks 1
    to 3 only. Nothing appears under **Versions** on the Schedules page: the week you build is
    not a saved version.
-4. **Type a name into a slot.** Double-click Bunk 1's Period 2. A small box opens under it,
+4. **Type a name into a cell.** Double-click Bunk 1's Period 2. A small box opens under it,
    headed _Bunk 1 · Monday · Period 2_. Type `sw`: the list shows _Swim_. Press Return. Swim
-   is in the slot at once, and it is saved. Reload the page and it is still there.
+   is in the cell at once, and it is saved. Reload the page and it is still there.
 5. **Multi-block activities fill their length.** Double-click Bunk 2's Period 2, type `boat`, and
    press Return. Boating fills Period 2 and Period 3 (it runs two blocks). Now put Boating in
    Bunk 3's Period 3: it takes only Period 3, because Lunch is next.
-6. **Clear a slot.** Click Bunk 1's Swim, then press Delete (or Backspace). It says **Open**
-   again. Typing into a filled slot also offers **Open** first in the list.
+6. **Clear a cell.** Click Bunk 1's Swim, then press Delete (or Backspace). It says **Open**
+   again. Typing into a filled cell also offers **Open** first in the list.
 7. **Fixed and recurring activities stay put.** Double-click Lunch: nothing opens. They change
    only on the Fixed and Recurring activities screens.
-8. **A new name.** Double-click any Open slot and type `Archery`. The list offers
+8. **A new name.** Double-click any Open cell and type `Archery`. The list offers
    _Add "Archery" to activities_. Press Return: Archery is placed, and it now appears on the
    **Activities** screen with the usual starting values. Typing `swim ` (any spacing or
    capitals) finds the existing Swim instead of adding a second one.
 9. **An activity not set up for a bunk.** On the **Activities** screen, set Swim's _who can
-   do it_ to _Juniors_ only. Back in Manual Build, double-click Bunk 5's Open slot (a Senior
+   do it_ to _Juniors_ only. Back in Manual Build, double-click Bunk 5's Open cell (a Senior
    bunk) and type `sw`. Swim is still offered, at the end of the list, with a bronze dot. Hold
    the pointer over the dot (or arrow down to Swim) and _Not set up for Bunk 5_ appears. It can
    still be placed.
-10. **Keyboard only.** Click any slot once, then use the arrow keys to move around the grid. Enter
+10. **Keyboard only.** Click any cell once, then use the arrow keys to move around the grid. Enter
     (or F2) opens the box, the up and down arrows choose, Return places, and Escape closes it
-    without changing anything. Delete clears the slot.
+    without changing anything. Delete clears the cell.
 11. **Group View.** Click **Group View** and pick _Bunk 2_. The columns are the days, and
     everything above works the same way here.
 12. **Two people at once.** Open the Shoresh tab in a second browser window (or have someone
     else open it), both on Manual Build, Week 1. In window A, put Soccer in Bunk 4's Period 5.
-    In window B, which still shows that slot as Open, put Art in the same slot. Window B asks
+    In window B, which still shows that cell as Open, put Art in the same cell. Window B asks
     **Changed by someone else** and shows _Bunk 4 · Monday · Period 5_, _Theirs: Soccer_,
     _Yours: Art_.
     - **Keep theirs** leaves Soccer.
@@ -541,8 +541,9 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
     Nothing is overwritten without asking. Two people working on different bunks of the same
     day never see this. The other window shows your changes when it saves its next edit, or
     when you click back into it.
+
 13. **A morning-only bunk.** On the **Bunks** screen, set Bunk 6 to come in the morning only.
-    Back in Manual Build, Bunk 6's empty afternoon slots are hatched and say _Not at camp_, and
+    Back in Manual Build, Bunk 6's empty afternoon cells are hatched and say _Not at camp_, and
     nothing can be placed there.
 
 ## 20. Manual Build: drag, move, and undo
@@ -558,40 +559,41 @@ Same made-up camp, Manual Build, Week 1.
    - Activities still under their minimum are on top, then a line, then the rest, each part in
      name order.
    - **Filter…** narrows the list as you type.
-2. **Drag an activity onto a slot.** Drag _Swim_ onto an Open slot: it is placed and saved.
+2. **Drag an activity onto a cell.** Drag _Swim_ onto an Open cell: it is placed and saved.
    Drag _Boating_ (two blocks) onto Period 2: it takes Period 2 and Period 3. Drag it onto the
    last block of the day: it takes the one block there is.
 3. **Over the weekly limit is allowed.** Keep placing Swim in one bunk's Group View past its
    most. Nothing stops you; the count gets a bronze dot. Hold the pointer over the dot, tap it,
    or Tab to Swim in the list: _Over its weekly limit_ appears. Every bronze dot works this way.
-4. **Move and swap.** Drag a placed Swim onto an Open slot (any bunk, any day): it moves there.
-   - Drag it onto a slot with Soccer: the two swap.
-   - Drag it onto Boating: _Only single-block activities swap._ appears under the toolbar, and
+4. **Move and swap.** Drag a placed Swim onto an Open cell (any bunk, any day): it moves there.
+   - Drag it onto a cell with Soccer: the two swap.
+   - Drag it onto Boating: _Only activities one time block long swap._ (in your camp's words) appears under the toolbar, and
      nothing changes.
    - Drag Boating to a spot with only one block free: _Boating doesn't fit there._
    - Drag anything onto Lunch: _Lunch stays where it is set up._
-5. **Take one out.** Drag a placement back onto the list on the left: that slot is Open again.
+5. **Take one out.** Drag a placement back onto the list on the left: that cell is Open again.
 6. **Longer or shorter.** A placed activity has a small bar at its bottom. Drag the bar down
-   onto the next Open slot to make it run longer, or onto its own first slot to make it one
-   block. From the keyboard, Shift with the down arrow adds a block and Shift with the up arrow
-   takes one off.
+   onto the next Open cell to make it run longer, or onto its own top to make it one block.
+   Without dragging: click the bar once, then click the cell where it should end. From the
+   keyboard, Shift with the down arrow adds a block and Shift with the up arrow takes one off.
 7. **Undo and Redo.** In the toolbar:
    - **Undo** reverses the last change. Hold the pointer over it to see which one
      (_Undo: Placed Swim · Bunk 1 · Monday · Period 2_).
    - **Redo** puts it back.
    - Ctrl+Z (Cmd+Z on a Mac) and Ctrl+Shift+Z or Ctrl+Y do the same.
    - Undo keeps the last 50 changes of this visit. Choosing another week starts afresh.
-8. **Everything from the keyboard.** Click a placed slot once, then:
+8. **Everything from the keyboard.** Click a placed cell once, then:
    - press Space to pick it up;
    - move with the arrow keys and press Space to put it down there (a move, or a swap);
    - Escape puts it back where it was.
 
-   For a list activity, press Enter or Space on it in the list, then move to a slot and press
+   For a list activity, press Enter or Space on it in the list, then move to a cell and press
    Space or Enter to place it.
+
 9. **Two people.** With two windows (section 19, step 12), an Undo in window A after window B
-   changed the same slot asks _Changed by someone else_ too.
+   changed the same cell asks _Changed by someone else_ too.
    - **Keep theirs** leaves B's change, and that step drops out of Undo.
-   - **Use yours** puts back exactly what you had: the same slots, the same length.
+   - **Use yours** puts back exactly what you had: the same cells, the same length.
 10. **Deleting a week with a Manual Build.** On the **Weeks** screen, click delete on Week 1.
     The confirmation now says _That includes its Manual Build and 1 saved version._ (or
     however many there are). Click **Cancel**.
