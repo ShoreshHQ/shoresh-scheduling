@@ -22,11 +22,15 @@ const EXTENSION = /\.(xlsx|xlsm|xls|csv|tsv|txt)$/i;
 
 // ---------- comma-separated files ----------
 
+/** The separator the first few lines use most: comma, semicolon, or tab. */
 function delimiterOf(text) {
-  const firstLine = text.split(/\r?\n/, 1)[0] || "";
+  const lines = text
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "")
+    .slice(0, 5);
   const counts = [",", ";", "\t"].map((d) => ({
     d,
-    n: firstLine.split(d).length - 1
+    n: lines.reduce((sum, line) => sum + line.split(d).length - 1, 0)
   }));
   counts.sort((a, b) => b.n - a.n);
   return counts[0].n > 0 ? counts[0].d : ",";

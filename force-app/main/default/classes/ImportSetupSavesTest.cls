@@ -5,6 +5,14 @@
  */
 @IsTest
 private class ImportSetupSavesTest {
+  private static final List<String> WEEK = new List<String>{
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday'
+  };
+
   private static Map<String, Object> entry(List<Object> pairs) {
     Map<String, Object> result = new Map<String, Object>();
     for (Integer i = 0; i < pairs.size(); i += 2) {
@@ -37,14 +45,6 @@ private class ImportSetupSavesTest {
   private static void add(Map<String, Object> plan, String name, Object value) {
     ((List<Object>) plan.get(name)).add(value);
   }
-
-  private static final List<String> WEEK = new List<String>{
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday'
-  };
 
   /** A new camp's week: Main, three blocks, Juniors and Seniors with two bunks each. */
   private static Map<String, Object> newCampPlan(Id seasonId) {

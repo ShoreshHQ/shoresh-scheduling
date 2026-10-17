@@ -129,11 +129,20 @@ export function hasClockTime(text) {
   return CLOCK.test(tidy(text));
 }
 
+// What follows a bare hour that starts a range: "9 - 9:45", "9-10am", "1 to 2pm".
+const RANGE_NEXT =
+  /^\s*(?:-|–|—|to)\s*\d{1,2}(?:[:.]\d{2}|\s*(?:a\.?m\.?|p\.?m\.?|a|p)(?![a-z]))/i;
+
 function timeTokens(text) {
   const tokens = [];
-  for (const match of tidy(text).matchAll(TIME_GLOBAL)) {
-    // A bare number with no minutes and no AM/PM is not a time ("Period 2").
-    if (match[2] || match[3]) {
+  const clean = tidy(text);
+  for (const match of clean.matchAll(TIME_GLOBAL)) {
+    // A bare number with no minutes and no AM/PM is not a time ("Period 2"), unless it starts
+    // a range whose other end is one ("9 - 9:45", "1-2pm").
+    const startsRange = RANGE_NEXT.test(
+      clean.slice(match.index + match[0].length)
+    );
+    if (match[2] || match[3] || (tokens.length === 0 && startsRange)) {
       tokens.push(match);
     }
   }
@@ -246,11 +255,11 @@ export function cellName(value) {
 
 /**
  * Group names listed in one cell of a by-activity schedule: "Bunk 1, Bunk 2", "Bunk 1 / Bunk 2",
- * one per line, or "Bunk 1 & Bunk 2".
+ * one per line, or "Bunk 1 & Bunk 2". Not on "and", which can be part of a group's name.
  */
 export function listedNames(value) {
   return String(value === null || value === undefined ? "" : value)
-    .split(/\s*(?:[,;/\n]|\s&\s|\sand\s|\s\+\s)\s*/i)
+    .split(/\s*(?:[,;/\n]|\s&\s|\s\+\s)\s*/i)
     .map((part) => tidy(part))
     .filter((part) => part.length > 0 && !NOT_A_NAME.some((p) => p.test(part)));
 }

@@ -28,10 +28,14 @@ function digitsOf(text) {
 
 function differentEnding(a, b) {
   const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-  if (short.length < MIN_STEM || !long.startsWith(short)) {
+  if (!long.startsWith(short)) {
     return false;
   }
   const tail = long.slice(short.length);
+  if (short.length < MIN_STEM) {
+    // Short names only by a plain plural: Art / Arts, Gym / Gyms.
+    return short.length >= 3 && /^(s|es)$/.test(tail);
+  }
   // "Swim" / "Swimming": the last letter doubled before the ending.
   const doubled =
     tail.charAt(0) === short.charAt(short.length - 1) ? tail.slice(1) : null;
@@ -158,30 +162,61 @@ export function similarPairs(kind, fileNames, campNames) {
   return pairs.sort((x, y) => x.id.localeCompare(y.id));
 }
 
+function rootOf(parent, name) {
+  let root = name;
+  while (parent.get(root) !== root) {
+    root = parent.get(root);
+  }
+  return root;
+}
+
+/** The spelling a merged set keeps: the camp's name if it has one, else the most chosen. */
+function keptSpelling(members, votes, campNames) {
+  const camp = members.filter((m) => campNames.has(m)).sort();
+  if (camp.length) {
+    return camp[0];
+  }
+  return [...members].sort(
+    (x, y) => (votes.get(y) || 0) - (votes.get(x) || 0) || x.localeCompare(y)
+  )[0];
+}
+
 /**
- * The name each spelling is to be read as, from the answered pairs. answer "a" or "b" keeps
- * that spelling for both; anything else keeps them apart. Chains ("Swim" -> "Swimming" ->
- * "Swim lessons") are followed to the end. Returns a Map(name -> name).
+ * The name each spelling is to be read as, from the answered pairs. "a" or "b" says the two are
+ * the same and which spelling to keep; anything else keeps them apart. Names said to be the same
+ * form one set (Swim, Swimming, Swim lessons), which keeps one spelling: the camp's, if one of
+ * them is already set up, otherwise the one chosen most often (then alphabetical), so answers
+ * never swap names around. Returns a Map(name -> name kept), for the names that change.
  */
 export function mergesFrom(pairs, answers) {
-  const into = new Map();
+  const parent = new Map();
+  const votes = new Map();
+  const campNames = new Set();
+  const join = (x, y) => {
+    [x, y].forEach((n) => parent.has(n) || parent.set(n, n));
+    parent.set(rootOf(parent, x), rootOf(parent, y));
+  };
   for (const pair of pairs) {
     const answer = answers[pair.id];
-    if (answer === "a") {
-      into.set(pair.b, pair.a);
-    } else if (answer === "b") {
-      into.set(pair.a, pair.b);
+    if (answer !== "a" && answer !== "b") {
+      continue;
+    }
+    join(pair.a, pair.b);
+    const kept = answer === "a" ? pair.a : pair.b;
+    votes.set(kept, (votes.get(kept) || 0) + 1);
+    if (pair.existing) {
+      campNames.add(pair.existing);
     }
   }
+  const sets = new Map();
+  for (const name of parent.keys()) {
+    const root = rootOf(parent, name);
+    sets.set(root, [...(sets.get(root) || []), name]);
+  }
   const resolved = new Map();
-  for (const name of into.keys()) {
-    let target = name;
-    const seen = new Set([name]);
-    while (into.has(target) && !seen.has(into.get(target))) {
-      target = into.get(target);
-      seen.add(target);
-    }
-    resolved.set(name, target);
+  for (const members of sets.values()) {
+    const kept = keptSpelling(members, votes, campNames);
+    members.filter((m) => m !== kept).forEach((m) => resolved.set(m, kept));
   }
   return resolved;
 }

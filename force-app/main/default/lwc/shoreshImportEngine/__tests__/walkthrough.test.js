@@ -6,7 +6,9 @@ import {
   planFor,
   questionCards
 } from "c/shoreshImportEngine";
-import { existingSetup, samples, terms } from "./data/samples";
+import { existingSetup, samples, terms, findSamplesFrom } from "./data/samples";
+
+findSamplesFrom(__dirname);
 
 const DAY_FIELDS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const toMinutes = (clock) =>

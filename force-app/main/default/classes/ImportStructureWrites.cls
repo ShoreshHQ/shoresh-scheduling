@@ -62,7 +62,10 @@ public with sharing class ImportStructureWrites {
         : new TimeBlock__c(Id = keys.existing(entry.id()));
       block.StartTime__c = entry.clock('start');
       block.EndTime__c = entry.clock('end');
-      block.PartOfDay__c = entry.text('partOfDay');
+      if (entry.has('partOfDay')) {
+        // Only new blocks: a changed block keeps the part of day the camp gave it.
+        block.PartOfDay__c = entry.text('partOfDay');
+      }
       rows.add(block);
     }
     writer.write('TimeBlock', entries, rows);

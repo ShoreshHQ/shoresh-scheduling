@@ -17,11 +17,14 @@ import {
 } from "c/shoreshImportEngine";
 import { errorMessage } from "c/shoreshErrors";
 
-const LAYOUT_WORDS = {
-  allCamp: "All camp: a page per day, groups across",
-  byGroup: "By group: a page per group, days across",
-  byActivity: "By activity: the groups doing each activity listed in its cell"
-};
+/** Each layout in the camp's words. */
+function layoutWords(t) {
+  return {
+    allCamp: `All camp: a page per day, ${t.pIn("Group")} across`,
+    byGroup: `By ${t.sIn("Group")}: a page per ${t.sIn("Group")}, days across`,
+    byActivity: `By ${t.sIn("Activity")}: the ${t.pIn("Group")} doing each ${t.sIn("Activity")} listed in its cell`
+  };
+}
 
 /**
  * Import last year (slice 4b), following Shoresh desktop's import (ImportScreen.jsx,
@@ -204,6 +207,7 @@ export default class ShoreshImport extends LightningElement {
   // ---------- what was found ----------
 
   get fileRows() {
+    const words = layoutWords(this.terms);
     const byFile = new Map();
     for (const page of this.proposal ? this.proposal.reading.pages : []) {
       if (!byFile.has(page.file)) {
@@ -219,7 +223,7 @@ export default class ShoreshImport extends LightningElement {
         layout,
         pageCount: pages.length === 1 ? "1 page" : `${pages.length} pages`,
         unsure: pages.some((p) => !p.confident),
-        options: LAYOUTS.map((value) => ({ label: LAYOUT_WORDS[value], value }))
+        options: LAYOUTS.map((value) => ({ label: words[value], value }))
       };
     });
   }

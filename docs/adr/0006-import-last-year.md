@@ -94,6 +94,14 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
    changed without the director choosing "Change". Not compared (the file is one sample week, and
    these are the director's rules): times a week, groups at once, who can do it, who a
    recurring activity covers, locations.
+   Also (from the independent review): two timetables never share one program on their own
+   (their time blocks differ), so the second is asked about; a camp block that two of the
+   file's blocks fall in can only be kept or left out (one set of times cannot fit both); a
+   group the camp has in another program than the one its schedule goes to is left out and
+   said so; "Juniors only" (or everyone) is written by group when the camp's division (or
+   program) has groups the file does not show; a time block whose times change keeps its
+   name and part of day; a name that is an activity in one program and set-time in another
+   is set up as each, and said so.
 10. **What new records take from the file.** Time blocks: name and times (an end not written is
     taken from the next block; the last one is as long as the others, and the summary says so;
     a block with no times at all is left out and said). Programs: the days the file shows.

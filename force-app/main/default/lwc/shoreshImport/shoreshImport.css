@@ -41,7 +41,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 2rem 1rem;
-  border: 2px dashed var(--slds-g-color-border-base-2, #c9c9c9);
+  border: 2px dashed var(--slds-g-color-border-base-1, #c9c9c9);
   border-radius: 0.5rem;
   text-align: center;
 }
@@ -150,7 +150,7 @@
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 4px solid var(--slds-g-color-border-base-2, #c9c9c9);
+  border-left: 4px solid var(--slds-g-color-border-base-1, #c9c9c9);
   border-radius: 0.25rem;
   background: var(--slds-g-color-neutral-base-100, #fff);
 }

@@ -1,6 +1,15 @@
 import { buildProposal, LEAVE_OUT, questionCards } from "c/shoreshImportEngine";
-import { similarity, similarPairs } from "../names";
-import { byGroupFiles, csv, DAYS, samples, terms } from "./data/samples";
+import { mergesFrom, similarity, similarPairs } from "../names";
+import {
+  byGroupFiles,
+  csv,
+  DAYS,
+  samples,
+  terms,
+  findSamplesFrom
+} from "./data/samples";
+
+findSamplesFrom(__dirname);
 
 const GROUPS = [
   "Juniors - Bunk 1",
@@ -243,7 +252,9 @@ describe("similar names: always asked, never merged on their own", () => {
     ["Archery", "Archrey", "letter"],
     ["Lunch 1", "Lunch 2", null],
     ["Bunk 3A", "Bunk 3B", null],
-    ["Art", "Arts", null],
+    ["Art", "Arts", "ending"],
+    ["Gym", "Gyms", "ending"],
+    ["Art", "Arty", null],
     ["Soccer", "Hockey", null]
   ])("%s / %s: %s", (a, b, reason) => {
     expect(similarity(a, b)).toBe(reason);
@@ -321,5 +332,42 @@ describe("a large camp", () => {
     expect(Date.now() - started).toBeLessThan(2000);
     expect(p.groups).toHaveLength(40);
     expect(p.fixed.map((f) => f.name)).toEqual(["Lunch"]);
+  });
+});
+
+describe("similar-name answers merge sets, never swap names (review finding 6)", () => {
+  const pair = (a, b, existing = null) => ({ id: `${a}|${b}`, a, b, existing });
+
+  it("a cycle of answers keeps one spelling for all three", () => {
+    const pairs = [
+      pair("Swim", "Swimm"),
+      pair("Swimm", "Swims"),
+      pair("Swim", "Swims")
+    ];
+    const merged = mergesFrom(pairs, {
+      "Swim|Swimm": "b",
+      "Swimm|Swims": "b",
+      "Swim|Swims": "a"
+    });
+    const kept = new Set(
+      ["Swim", "Swimm", "Swims"].map((n) => merged.get(n) || n)
+    );
+    expect(kept.size).toBe(1);
+  });
+
+  it("the camp's spelling wins when one of them is set up", () => {
+    const pairs = [pair("Musik", "Music", "Music"), pair("Musik", "Muzik")];
+    const merged = mergesFrom(pairs, {
+      "Musik|Music": "b",
+      "Musik|Muzik": "b"
+    });
+    expect(merged.get("Musik")).toBe("Music");
+    expect(merged.get("Muzik")).toBe("Music");
+  });
+
+  it("different keeps them apart", () => {
+    expect(
+      mergesFrom([pair("Art", "Arts")], { "Art|Arts": "different" }).size
+    ).toBe(0);
   });
 });

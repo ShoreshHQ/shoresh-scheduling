@@ -78,7 +78,9 @@ function notedNames(usable, timetables, terms) {
 
 function timetableFacts(t, usable, specialDays, divisionOf) {
   const here = usable.filter((p) => p.timetable === t.index);
-  const weeks = [...new Set(here.map((p) => p.week))].sort();
+  const weeks = [...new Set(here.map((p) => p.week))].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true })
+  );
   const daysByWeek = new Map(
     weeks.map((w) => [
       w,
@@ -205,16 +207,20 @@ export function blockRecordKey(t, index) {
 }
 
 /** Who a pattern covers: everyone ([]), whole divisions, or the groups by name. */
-function whoOf(groups, facts, keyOf) {
-  if (groups.length === facts.groups.length) {
+function whoOf(groups, facts, keyOf, programKey) {
+  if (
+    groups.length === facts.groups.length &&
+    keyOf.coveredBy(programKey, groups)
+  ) {
     return { keys: [], names: [] };
   }
   const divisions = [...new Set(groups.map((g) => facts.divisionOf.get(g)))];
-  const whole = divisions.every((d) =>
-    facts.groups
-      .filter((g) => facts.divisionOf.get(g) === d)
-      .every((g) => groups.includes(g))
-  );
+  const whole =
+    divisions.every((d) =>
+      facts.groups
+        .filter((g) => facts.divisionOf.get(g) === d)
+        .every((g) => groups.includes(g))
+    ) && groups.every((g) => keyOf.coveredBy(keyOf.divisionOf(g), groups));
   if (whole) {
     return {
       keys: [...new Set(groups.map((g) => keyOf.divisionOf(g)))],
@@ -258,7 +264,7 @@ export function setTimeRecords(decision, keyOf) {
     blockKey: blockRecordKey(t, p.block),
     length: p.length,
     days: WEEKDAYS.filter((d) => p.days.includes(d)),
-    who: whoOf(p.groups, decision.facts, keyOf),
+    who: whoOf(p.groups, decision.facts, keyOf, t.key),
     place
   }));
 }
@@ -277,7 +283,8 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
   );
   const whole =
     inDivisions.length === doers.length &&
-    inDivisions.length < allGroups.length;
+    inDivisions.length < allGroups.length &&
+    doers.every((g) => keyOf.coveredBy(keyOf.divisionOf(g), doers));
   const eligible = whole ? inDivisions : allGroups;
   const weeks = [...new Set(cells.map((c) => c.week))];
   const perGroupWeek = eligible.flatMap((g) =>

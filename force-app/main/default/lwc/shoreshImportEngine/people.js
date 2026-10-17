@@ -18,7 +18,8 @@ function campGroups(existing) {
           id: g.Id,
           division: d.division.Name,
           divisionId: d.division.Id,
-          programId: entry.program.Id
+          programId: entry.program.Id,
+          programName: entry.program.Name
         });
       }
     }
@@ -115,11 +116,13 @@ function newGroup(group, divisions, choices, answers, asks) {
 
 /**
  * Every group in the files with its record and division, per timetable: { groups, divisions,
- * divisionOf: Map(group -> division name), asks }.
+ * divisionOf: Map(group -> division name), asks, notes }. A group the camp has in another
+ * program than the one its schedule goes to is left out, and said so.
  */
 export function mapGroups(reading, timetables, existing, answers) {
   const camp = campGroups(existing);
   const asks = [];
+  const notes = [];
   const groups = [];
   const divisions = [];
   for (const timetable of timetables) {
@@ -137,9 +140,23 @@ export function mapGroups(reading, timetables, existing, answers) {
       (g) => g.timetable === timetable.index
     )) {
       const current = camp.get(group.name);
-      const record = current
-        ? existingGroup(group, current, here, answers, asks)
-        : newGroup(group, here, choices, answers, asks);
+      const elsewhere =
+        current &&
+        (!timetable.program || current.programId !== timetable.program.id);
+      if (elsewhere) {
+        // A group belongs to one program; its schedule from these files would go to another.
+        notes.push({
+          type: "otherProgram",
+          group: group.name,
+          program: current.programName,
+          to: timetable.name
+        });
+      }
+      const record = elsewhere
+        ? { name: group.name, leftOut: true, isNew: false }
+        : current
+          ? existingGroup(group, current, here, answers, asks)
+          : newGroup(group, here, choices, answers, asks);
       groups.push({
         ...record,
         timetable: timetable.index,
@@ -151,5 +168,5 @@ export function mapGroups(reading, timetables, existing, answers) {
   const divisionOf = new Map(
     groups.filter((g) => !g.leftOut).map((g) => [g.name, g.division])
   );
-  return { groups, divisions, divisionOf, asks };
+  return { groups, divisions, divisionOf, asks, notes };
 }

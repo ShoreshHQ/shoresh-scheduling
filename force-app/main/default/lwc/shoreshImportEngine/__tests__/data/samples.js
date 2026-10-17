@@ -1,24 +1,27 @@
 // Made-up camp data for the import tests (not a test itself). Everything is invented.
-/* global __dirname */
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import * as XLSX from "xlsx";
 import { csvFile, workbookFile } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 
-export const SAMPLES = join(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "..",
-  "..",
-  "..",
-  "..",
-  "docs",
-  "samples",
-  "import"
-);
+// docs/samples/import, found from the tests folder each test file names (findSamplesFrom).
+let SAMPLES = "";
+
+export function findSamplesFrom(testsFolder) {
+  SAMPLES = join(
+    testsFolder,
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "docs",
+    "samples",
+    "import"
+  );
+}
 
 export function sample(name) {
   const path = join(SAMPLES, name);

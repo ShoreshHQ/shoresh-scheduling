@@ -6,7 +6,16 @@ import {
   foundLists,
   importNotes
 } from "c/shoreshImportEngine";
-import { csv, existingSetup, program, samples, terms } from "./data/samples";
+import {
+  csv,
+  existingSetup,
+  program,
+  samples,
+  terms,
+  findSamplesFrom
+} from "./data/samples";
+
+findSamplesFrom(__dirname);
 
 const at = (h, m = 0) => h * 60 + m;
 const MAPLE_BLOCKS = [
@@ -100,8 +109,7 @@ describe("adding to a season that has setup already", () => {
         key: "tb1",
         id: "tb1",
         start: "09:00",
-        end: "09:45",
-        partOfDay: "Morning"
+        end: "09:45"
       }
     ]);
     const left = propose(existing, { [card.id]: LEAVE_OUT });
@@ -387,5 +395,183 @@ describe("what the save sends", () => {
       "Trip, Thursday, 3 groups"
     ]);
     expect(importNotes(p, terms).map((n) => n.key)).toContain("rules");
+  });
+});
+
+describe("review findings", () => {
+  const times = ["9:00-9:45", "9:50-10:35", "12:00-12:45"];
+  const other = ["9:00-9:50", "9:55-10:40", "12:00-12:45"];
+  const day = (rows, groups) => (name) =>
+    csv(`${name}.csv`, [
+      ["Time", ...groups],
+      ...rows.map((b, i) => [
+        b,
+        ...groups.map((g, gi) => {
+          return i === 2 ? "Lunch" : ["Swim", "Art", "Soccer"][(gi + i) % 3];
+        })
+      ])
+    ]);
+  const week = (rows, groups, prefix) =>
+    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d) =>
+      day(rows, groups)(`${prefix} ${d}`)
+    );
+  const blocksOf = (rows) =>
+    rows.map((r, i) => {
+      const [a, b] = r.split("-").map((x) => {
+        const [h, m] = x.split(":").map(Number);
+        return (h < 7 ? h + 12 : h) * 60 + m;
+      });
+      return [`b${i}`, `Period ${i + 1}`, a, b];
+    });
+
+  it("two timetables never share one existing program on their own (finding 2)", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: blocksOf(times),
+          divisions: [["d1", "Juniors", [["g1", "Bunk 1"]]]]
+        })
+      ]
+    });
+    const files = [
+      ...week(times, ["Bunk 1"], "A"),
+      ...week(other, ["Bunk 9"], "B")
+    ];
+    const p = propose(existing, {}, files);
+    expect(p.timetables.map((x) => x.program && x.program.id)).toEqual([
+      "p1",
+      null
+    ]);
+    const card = cardsOf(p).find((c) => c.id.startsWith("program|"));
+    expect(card.options.map((o) => o.value)).toEqual(["new", LEAVE_OUT]);
+    const plan = planFor(
+      propose(existing, { [card.id]: "new" }, files),
+      existing,
+      "s"
+    );
+    expect(plan.programs.map((x) => x.name)).toEqual(["Program 2"]);
+    expect(new Set(plan.timeBlocks.map((b) => b.key)).size).toBe(
+      plan.timeBlocks.length
+    );
+  });
+
+  it("a camp block two file blocks fall in cannot be changed, only kept or left out (finding 3)", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", { blocks: [["b1", "Morning", 9 * 60, 10 * 60]] })
+      ]
+    });
+    const files = week(
+      ["9:00-9:30", "9:30-10:00", "12:00-12:45"],
+      ["Bunk 1"],
+      "A"
+    );
+    const cards = cardsOf(propose(existing, {}, files)).filter((c) =>
+      c.id.startsWith("change|block")
+    );
+    expect(cards).toHaveLength(2);
+    cards.forEach((c) =>
+      expect(c.options.map((o) => o.value)).toEqual(["keep", LEAVE_OUT])
+    );
+    const answers = Object.fromEntries(cards.map((c) => [c.id, "change"]));
+    expect(
+      planFor(
+        propose(existing, answers, files),
+        existing,
+        "s"
+      ).timeBlocks.filter((b) => b.id)
+    ).toEqual([]);
+  });
+
+  it("a group the camp has in another program is left out, and said so (finding 4)", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Juniors camp", {
+          blocks: blocksOf(times),
+          divisions: [["d1", "Juniors", [["g1", "Bunk 1"]]]]
+        }),
+        program("p2", "Seniors camp", {
+          divisions: [["d2", "Seniors", [["g3", "Bunk 3"]]]]
+        })
+      ]
+    });
+    const files = week(times, ["Bunk 1", "Bunk 3"], "A");
+    const first = propose(existing, {}, files);
+    const card = cardsOf(first).find((c) => c.id.startsWith("program|"));
+    const p = propose(existing, { [card.id]: "p1" }, files);
+    expect(p.groups.find((g) => g.name === "Bunk 3").leftOut).toBe(true);
+    expect(importNotes(p, terms).map((n) => n.text)).toContain(
+      "Bunk 3 is in Seniors camp, not Juniors camp, so its schedule from these files is left out. Import its file on its own to add it to Seniors camp."
+    );
+    const plan = planFor(p, existing, "s");
+    expect(plan.recurringActivities.flatMap((r) => r.who)).not.toContain("g3");
+  });
+
+  it("an activity in one program and fixed in another counts only its activity times (finding 5)", () => {
+    const fixedSwim = (name) =>
+      csv(`${name}.csv`, [
+        ["Time", "Bunk 7", "Bunk 8"],
+        ...other.map((b, i) => [
+          b,
+          i === 0 ? "Swim" : "Art",
+          i === 0 ? "Swim" : "Soccer"
+        ])
+      ]);
+    const files = [
+      ...week(times, ["Bunk 1", "Bunk 2", "Bunk 3"], "A"),
+      ...["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d) =>
+        fixedSwim(`B ${d}`)
+      )
+    ];
+    const p = propose(existingSetup(), {}, files);
+    expect(p.fixed.map((f) => f.name)).toContain("Swim");
+    const swim = p.activities.find((a) => a.name === "Swim");
+    expect(swim.max).toBeLessThanOrEqual(5);
+    expect(importNotes(p, terms).some((n) => n.key === "mixed|Swim")).toBe(
+      true
+    );
+  });
+
+  it("Juniors only is said by bunk when the camp's Juniors have a bunk the file does not show", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: MAPLE_BLOCKS,
+          divisions: [
+            [
+              "d1",
+              "Juniors",
+              [
+                ["g1", "Bunk 1"],
+                ["g2", "Bunk 2"],
+                ["g3", "Bunk 3"],
+                ["g9", "Bunk 9"]
+              ]
+            ]
+          ]
+        })
+      ]
+    });
+    const p = propose(existing, { "kind|Library time": "recurring" });
+    const library = p.recurring.find((r) => r.name === "Library time");
+    expect(library.who.keys).toEqual(["g1", "g2", "g3"]);
+  });
+
+  it("a changed block keeps its part of day; new blocks get one", () => {
+    const blocks = MAPLE_BLOCKS.map((b) => {
+      return b[0] === "tb1" ? ["tb1", "Period 1", at(9), at(9, 50)] : b;
+    });
+    const existing = existingSetup({
+      programs: [program("p1", "Main", { blocks })]
+    });
+    const card = cardsOf(propose(existing)).find((c) =>
+      c.id.startsWith("change|block")
+    );
+    const [changed] = planFor(
+      propose(existing, { [card.id]: "change" }),
+      existing,
+      "s"
+    ).timeBlocks;
+    expect(changed.partOfDay).toBeUndefined();
   });
 });

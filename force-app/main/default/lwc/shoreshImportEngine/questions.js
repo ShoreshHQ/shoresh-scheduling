@@ -225,10 +225,18 @@ function blockCard(ask, t) {
     lane: "standard",
     title: `${ask.program}: ${ask.current.name} is set up as ${times(ask.current)}. The file has ${times(ask.file)}.`,
     subject: `What the file has in ${ask.file.name}`,
-    subtitle: `Matched by time: the file calls it ${quoted(ask.file.name)}.`,
+    subtitle: ask.noChange
+      ? `The file has more than one ${t.sIn("TimeBlock")} in ${ask.current.name}'s time, so its times cannot simply change.`
+      : `Matched by time: the file calls it ${quoted(ask.file.name)}.`,
     options: [
-      { value: "keep", label: `Keep ${current}` },
-      { value: "change", label: `Change it to ${times(ask.file)}` },
+      {
+        value: "keep",
+        label: `Keep ${current}`,
+        description: `What the file has at ${times(ask.file)} goes into ${ask.current.name}.`
+      },
+      ...(ask.noChange
+        ? []
+        : [{ value: "change", label: `Change it to ${times(ask.file)}` }]),
       leaveOut(`What the file has in this ${t.sIn("TimeBlock")} is not added.`)
     ]
   };

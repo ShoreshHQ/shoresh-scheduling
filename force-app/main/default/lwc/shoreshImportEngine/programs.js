@@ -49,19 +49,24 @@ function newProgramName(taken, count) {
   return `Program ${n}`;
 }
 
-/** The program a timetable goes to: sure from its groups, or the camp's only program; else asked. */
-function chooseProgram(groups, programs, timetableCount, answers) {
+/**
+ * The program a timetable goes to: sure from its groups, or the camp's only program; else asked.
+ * A program already taken by another timetable of these files is never chosen on its own
+ * (their time blocks differ, so they cannot share it): that is asked too.
+ */
+function chooseProgram(groups, programs, context, answers) {
   const id = `program|${[...groups].sort().join(",")}`;
+  const free = programs.filter((p) => !context.used.has(p.id));
   const owners = programs.filter((p) =>
     groups.some((g) => p.groups.includes(g))
   );
-  if (owners.length === 1) {
+  if (owners.length === 1 && free.includes(owners[0])) {
     return { program: owners[0] };
   }
   if (programs.length === 0) {
     return { program: null };
   }
-  if (programs.length === 1 && timetableCount === 1 && owners.length === 0) {
+  if (programs.length === 1 && context.count === 1 && owners.length === 0) {
     return { program: programs[0] };
   }
   const answer = answers[id];
@@ -69,7 +74,7 @@ function chooseProgram(groups, programs, timetableCount, answers) {
     id,
     type: "program",
     groups,
-    options: programs.map((p) => ({ id: p.id, name: p.name }))
+    options: free.map((p) => ({ id: p.id, name: p.name }))
   };
   if (answer === LEAVE_OUT) {
     return { leftOut: true, ask };
@@ -77,7 +82,7 @@ function chooseProgram(groups, programs, timetableCount, answers) {
   if (answer === "new") {
     return { program: null, ask };
   }
-  const picked = programs.find((p) => p.id === answer);
+  const picked = free.find((p) => p.id === answer);
   return { program: picked || null, ask, unanswered: !picked };
 }
 
@@ -85,38 +90,74 @@ function overlap(a, b) {
   return Math.max(0, Math.min(a.end, b.end) - Math.max(a.start, b.start));
 }
 
+function touchingBlocks(block, program) {
+  const blocks = program ? program.blocks.filter((b) => b.start !== null) : [];
+  return blocks
+    .filter((b) => overlap(b, block) > 0)
+    .sort((a, b) => overlap(b, block) - overlap(a, block));
+}
+
+/**
+ * The camp's blocks that more than one of the file's blocks overlaps (9:00-10:00 against
+ * 9:00-9:30 and 9:30-10:00): changing their times cannot fit both, so it is not offered.
+ */
+function sharedBlocks(fileBlocks, program) {
+  const claims = new Map();
+  for (const block of fileBlocks.filter((b) => b.start !== null)) {
+    const exact =
+      program &&
+      program.blocks.some(
+        (b) => b.start === block.start && b.end === block.end
+      );
+    const [best] = exact ? [] : touchingBlocks(block, program);
+    if (best) {
+      claims.set(best.id, (claims.get(best.id) || 0) + 1);
+    }
+  }
+  return new Set(
+    [...claims].filter(([, n]) => n > 1).map(([blockId]) => blockId)
+  );
+}
+
 /** One file block against the program's blocks: same, asked about, or new. */
-function matchBlock(block, program, answers, asks) {
+function matchBlock(block, program, context) {
   if (block.start === null) {
     const byName =
       program &&
       program.blocks.find((b) => looseKey(b.name) === looseKey(block.name));
     return byName ? { id: byName.id, name: byName.name } : { untimed: true };
   }
-  const blocks = program ? program.blocks.filter((b) => b.start !== null) : [];
-  const same = blocks.find(
-    (b) => b.start === block.start && b.end === block.end
-  );
+  const same =
+    program &&
+    program.blocks.find((b) => b.start === block.start && b.end === block.end);
   if (same) {
     return { id: same.id, name: same.name };
   }
-  const touching = blocks
-    .filter((b) => overlap(b, block) > 0)
-    .sort((a, b) => overlap(b, block) - overlap(a, block));
-  if (touching.length === 0) {
+  const [current] = touchingBlocks(block, program);
+  if (!current) {
     return { isNew: true };
   }
-  const current = touching[0];
+  const noChange = context.shared.has(current.id);
   const id = `change|block|${program.name}|${current.name}|${clock(block.start)}-${clock(block.end)}`;
-  asks.push({ id, type: "block", program: program.name, current, file: block });
-  const answer = answers[id];
+  context.asks.push({
+    id,
+    type: "block",
+    program: program.name,
+    current,
+    file: block,
+    noChange
+  });
+  const answer = context.answers[id];
   if (answer === LEAVE_OUT) {
     return { leftOut: true };
   }
   return {
     id: current.id,
     name: current.name,
-    change: answer === "change" ? { start: block.start, end: block.end } : null
+    change:
+      answer === "change" && !noChange
+        ? { start: block.start, end: block.end }
+        : null
   };
 }
 
@@ -157,17 +198,21 @@ export function mapPrograms(reading, existing, answers) {
   const programs = existingPrograms(existing);
   const taken = new Set(programs.map((p) => looseKey(p.name)));
   const asks = [];
+  const used = new Set();
   let created = 0;
   const result = reading.timetables.map((timetable) => {
     const groups = groupsOfTimetable(reading, timetable.index);
     const choice = chooseProgram(
       groups,
       programs,
-      reading.timetables.length,
+      { used, count: reading.timetables.length },
       answers
     );
     if (choice.ask) {
       asks.push(choice.ask);
+    }
+    if (choice.program) {
+      used.add(choice.program.id);
     }
     const placements = reading.placements.filter(
       (p) => p.timetable === timetable.index
@@ -183,13 +228,18 @@ export function mapPrograms(reading, existing, answers) {
       created++;
     }
     const days = programDays(program, fileDays, answers, asks);
+    const context = {
+      answers,
+      asks,
+      shared: sharedBlocks(timetable.blocks, program)
+    };
     const blocks = timetable.blocks.map((block) => ({
       fileKey: block.key,
       name: block.name,
       start: block.start,
       end: block.end,
       guessedEnd: !!block.guessedEnd,
-      ...matchBlock(block, program, answers, asks)
+      ...matchBlock(block, program, context)
     }));
     return {
       index: timetable.index,

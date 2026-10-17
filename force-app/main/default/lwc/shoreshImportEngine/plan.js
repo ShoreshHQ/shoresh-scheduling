@@ -10,6 +10,10 @@ function maxSort(records) {
   return Math.max(0, ...(records || []).map((r) => r.SortOrder__c || 0));
 }
 
+function article(word) {
+  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
+}
+
 function partOfDay(minutes) {
   return minutes < 12 * 60 ? "Morning" : "Afternoon";
 }
@@ -52,12 +56,12 @@ function blockRecords(proposal) {
           sortOrder: existingMax + ++n
         });
       } else if (b.change) {
+        // Only the times change: the block's name and part of day stay as the camp set them.
         result.push({
           key: b.id,
           id: b.id,
           start: clock(b.change.start),
-          end: clock(b.change.end),
-          partOfDay: partOfDay(b.change.start)
+          end: clock(b.change.end)
         });
       }
     });
@@ -390,6 +394,27 @@ export function importNotes(proposal, t) {
       notes.push({
         key: `kind|${n.name}`,
         text: `${n.name} is already set up as ${n.kind === "fixed" ? t.sIn("FixedActivity") : t.sIn("RecurringActivity")} in ${n.program}, but the file has it at other times. It stays as it is.`
+      })
+    );
+  proposal.notes
+    .filter((n) => n.type === "otherProgram")
+    .forEach((n) =>
+      notes.push({
+        key: `program|${n.group}`,
+        text: `${n.group} is in ${n.program}, not ${n.to}, so its schedule from these files is left out. Import its file on its own to add it to ${n.program}.`
+      })
+    );
+  const kindWords = {
+    activity: t.sIn("Activity"),
+    fixed: t.sIn("FixedActivity"),
+    recurring: t.sIn("RecurringActivity")
+  };
+  proposal.notes
+    .filter((n) => n.type === "mixedKinds")
+    .forEach((n) =>
+      notes.push({
+        key: `mixed|${n.name}`,
+        text: `${n.name} is ${n.places.map((x) => `${article(kindWords[x.kind])} in ${x.program}`).join(" and ")}. Each is set up where it is.`
       })
     );
   if (proposal.activities.length) {

@@ -8,7 +8,9 @@ import {
   listedNames
 } from "../text";
 import { parseCsv, sheetToPages, distinctName, sharedPrefix } from "../sheets";
-import { csv, samples, terms } from "./data/samples";
+import { csv, samples, terms, findSamplesFrom } from "./data/samples";
+
+findSamplesFrom(__dirname);
 
 const at = (h, m = 0) => h * 60 + m;
 
@@ -42,12 +44,19 @@ describe("reading a cell", () => {
     });
     expect(timeRange("14:00")).toEqual({ start: at(14), end: null });
     expect(timeRange("Period 2")).toBeNull();
+    // A bare hour that starts a range (review finding 1).
+    expect(timeRange("9 - 9:45am")).toEqual({ start: at(9), end: at(9, 45) });
+    expect(timeRange("9-10am")).toEqual({ start: at(9), end: at(10) });
+    expect(timeRange("1-2pm")).toEqual({ start: at(13), end: at(14) });
+    expect(timeRange("12-12:45")).toEqual({ start: at(12), end: at(12, 45) });
+    expect(timeRange("Period 1 - 2")).toBeNull();
   });
 
   it("takes times out of names", () => {
     expect(withoutTimes("Period 1 (9:00-9:45)")).toBe("Period 1");
     expect(withoutTimes("Lunch 11:30 - 12:15")).toBe("Lunch");
     expect(withoutTimes("9:00 to 9:45")).toBe("");
+    expect(withoutTimes("Period 1 9-10am")).toBe("Period 1");
   });
 
   it("reads a name and its place, and skips what names nothing", () => {

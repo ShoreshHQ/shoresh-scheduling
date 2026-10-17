@@ -19,13 +19,37 @@ import { WEEKDAYS } from "./text";
 
 const MS_PER_MINUTE = 60000;
 
-function keysFor(groups) {
+/** The camp's group names in each of its divisions and programs, by record Id. */
+function campMembers(existing) {
+  const members = new Map();
+  for (const entry of (existing && existing.programs) || []) {
+    const all = [];
+    for (const d of entry.divisions || []) {
+      const names = (d.groups || []).map((g) => g.Name);
+      members.set(d.division.Id, names);
+      all.push(...names);
+    }
+    members.set(entry.program.Id, all);
+  }
+  return members;
+}
+
+/**
+ * Keys of the records a "who" names, and whether a division or program as a whole means only
+ * the groups the file names: a division (or program) the camp already has may hold groups the
+ * file does not mention, and "Juniors only" would then reach them too.
+ */
+function keysFor(groups, existing) {
   const byName = new Map(
     groups.filter((g) => !g.leftOut).map((g) => [g.name, g])
   );
+  const members = campMembers(existing);
+  const coveredBy = (recordKey, names) =>
+    (members.get(recordKey) || []).every((n) => names.includes(n));
   return {
     group: (name) => (byName.get(name) || {}).key,
-    divisionOf: (name) => (byName.get(name) || {}).divisionKey
+    divisionOf: (name) => (byName.get(name) || {}).divisionKey,
+    coveredBy
   };
 }
 
@@ -158,24 +182,45 @@ function setTimeFrom(decisions, ctx, keyOf) {
   return added;
 }
 
+/** Where a name is something other than an activity in another program, say so. */
+function noteMixedKinds(name, decisions, ctx) {
+  const kinds = decisions.filter((d) => d.name === name && !d.leftOut);
+  if (new Set(kinds.map((d) => d.kind)).size > 1) {
+    ctx.notes.push({
+      type: "mixedKinds",
+      name,
+      places: kinds.map((d) => ({ kind: d.kind, program: d.timetable.name }))
+    });
+  }
+}
+
+/**
+ * Activities, each from its placements in the programs where it is an activity (not where it
+ * is fixed, recurring, or left out), counting the groups of those programs.
+ */
 function activitiesFrom(decisions, usable, groups, ctx, keyOf) {
-  const names = [
-    ...new Set(
-      decisions
-        .filter((d) => d.kind === "activity" && !d.leftOut)
-        .map((d) => d.name)
-    )
-  ].sort();
-  const allGroups = groups.filter((g) => !g.leftOut).map((g) => g.name);
+  const asActivity = decisions.filter(
+    (d) => d.kind === "activity" && !d.leftOut
+  );
+  const names = [...new Set(asActivity.map((d) => d.name))].sort();
   const divisionOf = new Map(groups.map((g) => [g.name, g.division]));
   const added = [];
   for (const name of names) {
-    const cells = usable.filter((p) => p.text === name);
+    const where = new Set(
+      asActivity.filter((d) => d.name === name).map((d) => d.timetable.index)
+    );
+    const cells = usable.filter(
+      (p) => p.text === name && where.has(p.timetable)
+    );
+    const pool = groups
+      .filter((g) => !g.leftOut && where.has(g.timetable))
+      .map((g) => g.name);
+    noteMixedKinds(name, decisions, ctx);
     const existing = ctx.camp.activities.get(name);
     if (existing) {
       compareActivity(name, cells, existing, ctx);
     } else {
-      added.push(activityRecord(name, cells, allGroups, divisionOf, keyOf));
+      added.push(activityRecord(name, cells, pool, divisionOf, keyOf));
     }
   }
   return added;
@@ -298,14 +343,14 @@ export function buildProposal(input) {
     timetables: programs.timetables,
     answers,
     asks: [],
-    notes: [],
+    notes: [...people.notes],
     updates: { fixed: [], recurring: [], activities: [] },
     specialDays: noted.specialDays,
     divisionOf: people.divisionOf,
     noted: noted.kinds
   };
   const decisions = decideKinds(usable, ctx);
-  const keyOf = keysFor(people.groups);
+  const keyOf = keysFor(people.groups, input.existing);
   const setTime = setTimeFrom(decisions, ctx, keyOf);
   const activities = activitiesFrom(
     decisions,
