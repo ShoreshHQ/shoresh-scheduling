@@ -45,14 +45,18 @@ export function moveNote(values, original, context) {
     context.activities,
     context.recurringActivities
   );
+  // A list naming both divisions keeps the group either way.
+  const inBoth = new Set(loses.filter((n) => gains.includes(n)));
+  const left = loses.filter((n) => !inBoth.has(n));
+  const joined = gains.filter((n) => !inBoth.has(n));
   const parts = [];
-  if (loses.length) {
-    parts.push(`is no longer in ${nameList(loses)} (for ${from})`);
+  if (left.length) {
+    parts.push(`is no longer in ${nameList(left)} (for ${from})`);
   }
-  if (gains.length) {
-    parts.push(`is now in ${nameList(gains)} (for ${to})`);
+  if (joined.length) {
+    parts.push(`is now in ${nameList(joined)} (for ${to})`);
   }
   return parts.length
     ? `Moves to ${to}: ${name} ${parts.join(" and ")}.`
-    : `Moves to ${to}. Nothing set up is for ${from} or ${to} by name, so nothing else changes.`;
+    : `Moves to ${to}. Nothing set up is for ${from} or ${to} by name, so moving changes nothing else.`;
 }

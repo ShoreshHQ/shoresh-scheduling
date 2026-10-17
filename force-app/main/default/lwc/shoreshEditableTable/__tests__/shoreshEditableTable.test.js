@@ -804,6 +804,33 @@ describe("c-shoresh-editable-table", () => {
     expect(element.shadowRoot.textContent).toContain("Moving");
   });
 
+  it("shows a saved-only column as text on a new row", async () => {
+    const unit = {
+      fieldName: "Division__c",
+      label: "Unit",
+      type: "picklist",
+      savedOnly: true,
+      options: [
+        { label: "Juniors", value: "d1" },
+        { label: "Seniors", value: "d2" }
+      ]
+    };
+    const element = render({
+      columns: [COLUMNS[0], unit],
+      rows: [{ Id: "g1", Name: "Bunk 1", Division__c: "d1" }],
+      newRowDefaults: { Division__c: "d1" }
+    });
+    await flush();
+    button(element, "Add Time block").click();
+    await flush();
+    expect(element.shadowRoot.querySelectorAll("lightning-combobox").length).toBe(
+      1
+    );
+    expect(
+      element.shadowRoot.querySelector('[data-id="fixed"]').textContent
+    ).toBe("Juniors");
+  });
+
   describe("same names", () => {
     const named = (names) =>
       names.map((Name, i) => ({ Id: `r${i}`, Name, PartOfDay__c: "Morning" }));
@@ -847,17 +874,14 @@ describe("c-shoresh-editable-table", () => {
         ["Lunch 1", "Lunch 2"],
         ["Pool", " POOL"]
       ];
-      for (const pair of pairs) {
-        const element = render({
-          columns: COLUMNS,
-          rows: named(pair),
-          flagSameNames: true
-        });
-        // eslint-disable-next-line no-await-in-loop
-        await flush();
+      const elements = pairs.map((pair) =>
+        render({ columns: COLUMNS, rows: named(pair), flagSameNames: true })
+      );
+      await flush();
+      pairs.forEach((pair, i) => {
         const same = looseKey(pair[0]) === looseKey(pair[1]);
-        expect(tags(element)).toEqual([same, same]);
-      }
+        expect(tags(elements[i])).toEqual([same, same]);
+      });
     });
   });
 });

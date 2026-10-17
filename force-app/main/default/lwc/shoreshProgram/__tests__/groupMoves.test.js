@@ -13,7 +13,12 @@ const CONTEXT = {
       Name: "Climbing",
       Eligibilities__r: [{ Division__c: "d1" }, { Group__c: "g1" }]
     },
-    { Name: "Art" }
+    { Name: "Art" },
+    // Open to both: the group keeps it either way.
+    {
+      Name: "Canoe",
+      Eligibilities__r: [{ Division__c: "d1" }, { Division__c: "d2" }]
+    }
   ],
   recurringActivities: [
     { Name: "Morning circle", Coverages__r: [{ Division__c: "d2" }] }
@@ -41,7 +46,7 @@ describe("moveNote", () => {
         recurringActivities: []
       })
     ).toBe(
-      "Moves to Seniors. Nothing set up is for Juniors or Seniors by name, so nothing else changes."
+      "Moves to Seniors. Nothing set up is for Juniors or Seniors by name, so moving changes nothing else."
     );
   });
 });

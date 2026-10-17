@@ -7,7 +7,8 @@ import { looseKey } from "c/shoreshImportEngine";
  *
  * columns: [{ fieldName, label, type: 'text'|'number'|'date'|'time'|'checkbox'|'picklist', options,
  *   required, min, excludeSelf }]  (min: smallest number allowed, for number columns;
- *   excludeSelf: a picklist of records leaves out the row's own record)
+ *   excludeSelf: a picklist of records leaves out the row's own record; savedOnly: new rows show
+ *   the value as text, not a field to change)
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen. Only this table's own successful save clears it.
  *
@@ -216,8 +217,23 @@ export default class ShoreshEditableTable extends LightningElement {
   get hasNotes() {
     return (
       !!this.notesHeading ||
-      this.visibleDrafts.some((d) => !!this.noteFromDraft(d))
+      this.visibleDrafts.some((d) => !!this.draftNotes.get(d.key))
     );
+  }
+
+  /** Each saved row's draft note, worked out once per change (row key -> text). */
+  get draftNotes() {
+    if (
+      this._notesFor !== this.drafts ||
+      this._notesFrom !== this.draftNote
+    ) {
+      this._notesFor = this.drafts;
+      this._notesFrom = this.draftNote;
+      this._draftNotes = new Map(
+        this.drafts.map((d) => [d.key, this.noteFromDraft(d)])
+      );
+    }
+    return this._draftNotes;
   }
 
   get notesTitle() {
@@ -330,6 +346,7 @@ export default class ShoreshEditableTable extends LightningElement {
   get tableRows() {
     const offWeeks = this.offWeeks;
     const sameNames = this.sameNameKeys;
+    const draftNotes = this.draftNotes;
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
     return this.visibleDrafts.map((draft) => ({
@@ -345,7 +362,7 @@ export default class ShoreshEditableTable extends LightningElement {
         : "",
       note: draft.isNew
         ? ""
-        : this.noteFromDraft(draft) || notes[draft.original.Id] || "",
+        : draftNotes.get(draft.key) || notes[draft.original.Id] || "",
       actions: draft.isNew
         ? []
         : ((this.rowActions || {})[draft.original.Id] || []).map((action) => ({
@@ -359,6 +376,15 @@ export default class ShoreshEditableTable extends LightningElement {
         : `Delete ${draft.values.Name || ""}`.trim(),
       cells: this.columns.map((col) => {
         const value = draft.values[col.fieldName];
+        if (col.savedOnly && draft.isNew) {
+          const shown = (col.options || []).find((o) => o.value === value);
+          return {
+            key: `${draft.key}-${col.fieldName}`,
+            fieldName: col.fieldName,
+            isFixed: true,
+            fixedText: shown ? shown.label : ""
+          };
+        }
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,

@@ -277,6 +277,8 @@ export default class ShoreshProgram extends LightningElement {
               label: this.terms.s("Division"),
               type: "picklist",
               required: true,
+              // A new row is added under its own unit; a saved one can move.
+              savedOnly: true,
               options: this.divisionRecords.map((d) => ({
                 label: d.Name,
                 value: d.Id

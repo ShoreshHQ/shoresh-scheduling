@@ -88,11 +88,17 @@ private class ScreenErrorsTest {
   @IsTest
   static void aNumberedRowIsNotNamedInTheMessage() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    CampLabel__c label = new CampLabel__c(
+      Camp__c = camp.Id,
+      ModelTerm__c = 'Group',
+      Singular__c = 'Bunk',
+      Plural__c = 'Bunks'
+    );
+    Database.insert(label, AccessLevel.SYSTEM_MODE);
     try {
+      // A change to a saved row is where its name (here CL-00001) used to be read.
       UserModeWrites.save(
-        new List<SObject>{
-          new CampLabel__c(Camp__c = camp.Id, ModelTerm__c = 'Group')
-        }
+        new List<SObject>{ new CampLabel__c(Id = label.Id, Singular__c = null) }
       );
       Assert.fail('A label needs its words');
     } catch (UserModeWrites.SaveException e) {

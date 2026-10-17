@@ -97,7 +97,8 @@ public with sharing class ScreenSaves {
       RecurringActivity__c.Friday__c
     }
   };
-  // The parent each kind is created under: set when a row is added, never changed after.
+  // The parent each kind is created under: set when a row is added, never changed after (except
+  // a group's division, above).
   private static final Map<Schema.SObjectType, Schema.SObjectField> PARENT_FIELD = new Map<Schema.SObjectType, Schema.SObjectField>{
     Season__c.SObjectType => Season__c.Camp__c,
     Week__c.SObjectType => Week__c.Season__c,

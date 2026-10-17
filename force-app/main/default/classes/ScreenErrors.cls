@@ -85,7 +85,7 @@ public with sharing class ScreenErrors {
   private static String duplicateMessage(SObject record) {
     Schema.SObjectType kind = record == null ? null : record.getSObjectType();
     if (kind == Week__c.SObjectType) {
-      return 'A ' +
+      return 'Another ' +
         ScreenErrorWords.forWeek((Week__c) record).singularInSentence('Week') +
         ' already starts on that date.';
     }
