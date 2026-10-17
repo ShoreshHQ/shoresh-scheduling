@@ -487,12 +487,14 @@ in the _Import test_ season, in this order).
    together, including the camp words.
 6. Rename a sheet (for example _Weeks_ to _Dates_) and import again: it is still read, by
    what it holds. A sheet of your own that Shoresh can't read shows under _Sheets not read_.
+7. In a season with other dates (for example after **Copy season** to next summer), import
+   the same workbook. The _Weeks_ section shows _Matched by order_: _Week 1 (Jun 28 2027) →
+   Week 1_ of this season, and so on. This season keeps its own dates, and the _Runs in_ ticks
+   follow the pairing.
 
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
-- A workbook from last year is paired with this season's weeks by order (_Matched by
-  order_ in the _Weeks_ section): this season keeps its own dates.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
   into a working schedule, saving and deleting versions, and publishing. Roots' **Build or
