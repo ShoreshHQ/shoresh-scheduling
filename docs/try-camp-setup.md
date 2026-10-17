@@ -431,7 +431,8 @@ in the _Import test_ season, in this order).
    (Monday, Wednesday, Friday); _Review here_ shows _Weekend · Runs on: Saturday isn't a camp
    day_. Click **Add 1**.
 2. **Units** (`maple-grove-units.csv`): _Middlers_ is new. _“Explorers” is a new program.
-   Which days?_ Tick two days and click **OK**; _Explorers_ then shows under **Also adding**,
+   Which days?_ Monday to Friday start ticked; untick Tuesday and Thursday and click **Use
+   these days**; _Explorers_ then shows under **Also adding**,
    with its days. Click **Add 3**.
 3. **Bunks** (`maple-grove-bunks.csv`): _Bunk 3 · Unit: Juniors → Seniors_ (Keep or Change;
    Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Review here**
@@ -441,7 +442,7 @@ in the _Import test_ season, in this order).
    under **Review here** (_End is before Start_).
 5. **Fixed activities** (`maple-grove-fixed.csv`): _Lunch_ gets a location, _Dining hall_,
    under **Also adding**. _“Snack break” is a new time block in Main. When is it?_ Fill in
-   Start and End and click **OK**.
+   Start and End and click **Use these times**.
 6. **Recurring activities** (`maple-grove-recurring.csv`): _Morning meeting · Runs on:
    Monday → Monday, Wednesday_. _Rest hour_ is for Juniors and Middlers. _Campfire_ is under
    **Review here** (Saturday). A day a program doesn't run is asked, not refused: _Main doesn't
