@@ -52,5 +52,11 @@ export function isCsv(name) {
 }
 
 export { questionCards } from "./questions";
-export { planFor, foundLists, importNotes, unplacedLines } from "./plan";
+export {
+  planFor,
+  foundLists,
+  importNotes,
+  unplacedLines,
+  undoMessage
+} from "./plan";
 export { versionName } from "./version";

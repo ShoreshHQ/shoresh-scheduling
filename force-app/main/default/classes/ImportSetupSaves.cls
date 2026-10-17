@@ -11,6 +11,9 @@ public with sharing class ImportSetupSaves {
     public Map<String, Integer> added { get; set; }
     @AuraEnabled
     public Map<String, Integer> changed { get; set; }
+    /** The import's record, for Undo last import. */
+    @AuraEnabled
+    public Id importId { get; set; }
 
     public Result() {
       added = new Map<String, Integer>();
@@ -54,7 +57,10 @@ public with sharing class ImportSetupSaves {
     try {
       new ImportStructureWrites(plan, writer).run();
       new ImportItemWrites(plan, writer).run();
+      new ImportVersionWrites(plan, writer).run();
       SetTimeGuard.checkPending();
+      ImportAnswers.save(seasons[0].Camp__c, plan);
+      writer.result.importId = record(plan, writer);
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;
@@ -62,5 +68,19 @@ public with sharing class ImportSetupSaves {
       SetTimeGuard.resume();
     }
     return writer.result;
+  }
+
+  /** The import's own record: its files, and what it created and changed (for Undo). */
+  private static Id record(ImportPlan plan, ImportWriter writer) {
+    Import__c done = new Import__c(
+      Season__c = plan.seasonId,
+      Files__c = String.isBlank(plan.text('files'))
+        ? null
+        : plan.text('files').left(255),
+      Created__c = JSON.serialize(writer.created),
+      Changed__c = JSON.serialize(writer.changed)
+    );
+    Database.insert(done, AccessLevel.USER_MODE);
+    return done.Id;
   }
 }

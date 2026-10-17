@@ -18,6 +18,23 @@ public with sharing class ImportPlan {
     }
   }
 
+  /** A list of plain values ("forget": question keys). */
+  public List<String> texts(String listName) {
+    List<String> result = new List<String>();
+    Object value = raw.get(listName);
+    if (value instanceof List<Object>) {
+      for (Object item : (List<Object>) value) {
+        result.add(String.valueOf(item));
+      }
+    }
+    return result;
+  }
+
+  public String text(String name) {
+    Object value = raw.get(name);
+    return value == null ? null : String.valueOf(value);
+  }
+
   /** The entries of one list ("programs", "timeBlocks", ...); none when it is missing. */
   public List<Entry> entries(String listName) {
     List<Entry> result = new List<Entry>();
@@ -62,6 +79,12 @@ public with sharing class ImportPlan {
     public Integer whole(String name) {
       Object value = values.get(name);
       return value == null ? null : Integer.valueOf(value);
+    }
+
+    /** A list inside an entry, as given (a version's days). */
+    public List<Object> list(String name) {
+      Object value = values.get(name);
+      return value instanceof List<Object> ? (List<Object>) value : new List<Object>();
     }
 
     public List<String> texts(String name) {

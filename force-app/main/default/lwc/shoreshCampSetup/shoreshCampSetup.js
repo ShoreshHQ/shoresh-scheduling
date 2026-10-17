@@ -11,6 +11,8 @@ import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addW
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
+import undoImport from "@salesforce/apex/ImportController.undoImport";
+import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
@@ -611,6 +613,26 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(async () => {
       await this.loadSeason();
       this.seasons = await getSeasons({ campId: this.campId });
+    });
+  }
+
+  /** Roots' Undo last import, confirmed first (desktop wording). */
+  async handleUndoImport(event) {
+    const { importId, files } = event.detail;
+    const ok = await LightningConfirm.open({
+      label: `Undo the import of ${files || "the last file"}?`,
+      message:
+        "What this import added is removed, and what it changed goes back to how it was. Anything you have edited since the import stays as it is.",
+      variant: "header",
+      theme: "warning"
+    });
+    if (!ok) {
+      return;
+    }
+    await this.run(async () => {
+      const result = await undoImport({ importId });
+      this.toast(undoMessage(result));
+      await this.loadSeason();
     });
   }
 

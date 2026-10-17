@@ -226,3 +226,17 @@ button.roots-card:focus {
   padding-top: 1rem;
   border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
 }
+
+/* Last import, with Undo (desktop LastImportUndo.jsx). */
+.roots-last-import {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.roots-weak {
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  font-size: 0.8125rem;
+}

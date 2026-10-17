@@ -62,7 +62,7 @@ public with sharing class ImportItemWrites {
         who.add(row);
       }
     }
-    UserModeWrites.save(who);
+    writer.saveTracked('ActivityEligibility', who);
   }
 
   private Activity__c newActivity(ImportPlan.Entry entry) {
@@ -147,7 +147,7 @@ public with sharing class ImportItemWrites {
         coverage.add(row);
       }
     }
-    UserModeWrites.save(coverage);
+    writer.saveTracked('Coverage', coverage);
   }
 
   /** Division__c or Group__c, for who an item is for. */

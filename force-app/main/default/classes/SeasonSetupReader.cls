@@ -98,6 +98,16 @@ public with sharing class SeasonSetupReader {
       WHERE Program__r.Season__c = :seasonId
       WITH USER_MODE
     ];
+    // The last import that stands, for Roots' Undo last import.
+    List<Import__c> imports = [
+      SELECT Id, Files__c, CreatedDate
+      FROM Import__c
+      WHERE Season__c = :seasonId AND UndoneAt__c = NULL
+      WITH USER_MODE
+      ORDER BY CreatedDate DESC, Name DESC
+      LIMIT 1
+    ];
+    result.lastImport = imports.isEmpty() ? null : imports[0];
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
     return result;
   }
@@ -224,6 +234,8 @@ public with sharing class SeasonSetupReader {
     public List<Schedule__c> schedules;
     @AuraEnabled
     public List<CampLabels.TermLabel> labels;
+    @AuraEnabled
+    public Import__c lastImport;
   }
 
   public class ProgramSetup {

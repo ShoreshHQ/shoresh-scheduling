@@ -46,7 +46,8 @@ public with sharing class ImportKeys {
         FROM RecurringActivity__c
         WHERE Program__r.Season__c = :seasonId
         WITH USER_MODE
-      ]
+      ],
+      [SELECT Id FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE]
     };
     for (List<SObject> records : lists) {
       for (SObject record : records) {

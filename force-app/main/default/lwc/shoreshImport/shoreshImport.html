@@ -140,6 +140,9 @@
               <template lwc:if={card.answered}>
                 <div class="import-card-done">
                   <span>✓ {card.answerLabel}</span>
+                  <template lwc:if={card.fromMemory}>
+                    <span class="import-tag">remembered</span>
+                  </template>
                   <span class="import-weak">{card.title}</span>
                   <lightning-button
                     variant="base"
@@ -244,11 +247,20 @@
         </div>
       </div>
 
+      <template lwc:if={rememberedCount}>
+        <p class="import-weak slds-m-bottom_small" data-id="remembered">
+          {rememberedText}
+        </p>
+      </template>
+
       <template for:each={reviewCards} for:item="card">
         <div key={card.id} class={card.className} data-card={card.id}>
           <template lwc:if={card.answered}>
             <div class="import-card-done">
               <span>✓ {card.answerLabel}</span>
+              <template lwc:if={card.fromMemory}>
+                <span class="import-tag">remembered</span>
+              </template>
               <span class="import-weak">{card.title}</span>
               <lightning-button
                 variant="base"
@@ -323,6 +335,29 @@
           </ul>
         </section>
       </template>
+      <template lwc:if={hasVersions}>
+        <section class="import-section" data-id="version">
+          <div class="import-section-label">Last year's schedule</div>
+          <ul class="slds-list_dotted">
+            <template for:each={versionLines} for:item="line">
+              <li key={line.key}>{line.text}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <template lwc:if={hasUnplaced}>
+        <section class="import-section" data-id="unplaced">
+          <div class="import-section-label">{unplacedTitle}</div>
+          <ul class="slds-list_dotted">
+            <template for:each={unplaced} for:item="line">
+              <li key={line.key}>
+                <strong>{line.name}</strong>: {line.count} ({line.why}), for
+                example {line.whereText}
+              </li>
+            </template>
+          </ul>
+        </section>
+      </template>
       <template lwc:if={hasLeftOut}>
         <section class="import-section" data-id="left-out">
           <div class="import-section-label">Left out for now</div>
@@ -360,7 +395,20 @@
           </ul>
         </section>
       </template>
+      <template lwc:if={undone}>
+        <div class="import-banner" data-id="undone">{undone}</div>
+      </template>
       <div class="import-footer">
+        <template lwc:if={canUndo}>
+          <span class="import-weak"
+            >Undo this import here, or later from Roots.</span
+          >
+          <lightning-button
+            label="Undo this import"
+            onclick={handleUndo}
+            data-id="undo"
+          ></lightning-button>
+        </template>
         <lightning-button
           variant="brand"
           label="Continue"

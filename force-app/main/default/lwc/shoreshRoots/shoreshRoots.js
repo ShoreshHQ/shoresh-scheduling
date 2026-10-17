@@ -91,6 +91,31 @@ export default class ShoreshRoots extends LightningElement {
     return (this.problems || []).length > 0;
   }
 
+  /** The season's last import that stands: "Last import: <files>, <when>". */
+  get lastImport() {
+    const last = this.setup && this.setup.lastImport;
+    if (!last) {
+      return null;
+    }
+    const when = new Date(last.CreatedDate).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+    return {
+      id: last.Id,
+      files: last.Files__c,
+      line: `Last import: ${last.Files__c || "a file"}, ${when}`
+    };
+  }
+
+  handleUndoImport() {
+    this.dispatchEvent(
+      new CustomEvent("undoimport", {
+        detail: { importId: this.lastImport.id, files: this.lastImport.files }
+      })
+    );
+  }
+
   handleOpen(event) {
     this.dispatchEvent(
       new CustomEvent("navigate", {

@@ -410,9 +410,9 @@ export function unplacedLines(proposal, t) {
       entry.where.push(`${p.group}, ${p.day}, ${p.block}`);
     }
   }
-  return [...groups.values()].sort(
-    (a, b) => a.name.localeCompare(b.name) || a.why.localeCompare(b.why)
-  );
+  return [...groups.values()]
+    .map((entry) => ({ ...entry, whereText: entry.where.join("; ") }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.why.localeCompare(b.why));
 }
 
 /** Things the director should know that are not questions: [{ key, text }]. */
@@ -515,4 +515,26 @@ export function importNotes(proposal, t) {
     });
   }
   return notes;
+}
+
+/** What Undo last import did, in one message (desktop wording, LastImportUndo.jsx). */
+export function undoMessage(result) {
+  const parts = [
+    `Import undone. Removed ${result.removed} ${result.removed === 1 ? "thing" : "things"} it added`
+  ];
+  if (result.restored) {
+    parts[0] += ` and put back ${result.restored} it changed`;
+  }
+  parts[0] += ".";
+  if (result.keptEdited && result.keptEdited.length) {
+    parts.push(
+      `Kept, because they were changed since: ${nameList(result.keptEdited, 6)}.`
+    );
+  }
+  if (result.keptInUse && result.keptInUse.length) {
+    parts.push(
+      `Kept, because something else still uses them: ${nameList(result.keptInUse, 6)}.`
+    );
+  }
+  return parts.join(" ");
 }

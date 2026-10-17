@@ -12,4 +12,24 @@ public with sharing class ImportController {
       throw ScreenErrors.of(e);
     }
   }
+
+  /** The answers this camp gave before, so a similar file does not ask again. */
+  @AuraEnabled
+  public static List<ImportAnswers.Answer> getAnswers(Id campId) {
+    try {
+      return ImportAnswers.forCamp(campId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Undo last import: removes what it created and puts back what it changed, keeping edits. */
+  @AuraEnabled
+  public static ImportUndo.Result undoImport(Id importId) {
+    try {
+      return ImportUndo.undo(importId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
 }
