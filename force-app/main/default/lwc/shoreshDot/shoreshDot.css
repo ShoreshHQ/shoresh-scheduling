@@ -1,0 +1,57 @@
+@import "c/shoreshTokens";
+
+.wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* A touch target bigger than the 6px dot itself. */
+  padding: 4px;
+  margin: -4px;
+  cursor: help;
+}
+
+.wrap:focus-visible {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: 0;
+  border-radius: 50%;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-caution);
+  flex: none;
+}
+
+/* The words: a small quiet box above the dot. Never bronze text (too light to read). The area
+   reaches down to the dot with no gap, so the pointer can move from the dot onto the words and
+   they stay (WCAG 1.4.13). It catches the pointer only when the pointer brought it up; shown for
+   keyboard focus it lets clicks through to whatever is under it. */
+.tip-area {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9100;
+  padding-bottom: 4px;
+  pointer-events: none;
+}
+
+.tip-area_pointer {
+  pointer-events: auto;
+}
+
+.tip {
+  display: block;
+  padding: 4px 8px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--slds-g-font-family, inherit);
+  color: var(--slds-g-color-neutral-base-10, #181818);
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}

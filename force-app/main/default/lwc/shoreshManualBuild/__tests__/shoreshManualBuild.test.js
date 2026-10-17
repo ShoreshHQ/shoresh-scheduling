@@ -6,6 +6,7 @@ import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
+import { useYoursSendsWhatWasShown } from "./data/shownIsSent";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -131,7 +132,9 @@ describe("c-shoresh-manual-build", () => {
     await flush();
     const note = q(element, '[data-id="not-placed"]');
     expect(note.textContent).toContain("Rest · Bunk 2 · Monday");
-    expect(note.querySelector(".dot")).not.toBeNull();
+    const dot = note.querySelector("c-shoresh-dot");
+    expect(dot.label).toBe("Not placed: the cell was taken");
+    expect(dot.focusable).toBe(true);
   });
 
   it("is a keyboard grid with one cell in the tab order; arrows move between cells", async () => {
@@ -172,7 +175,8 @@ describe("c-shoresh-manual-build", () => {
               groupId: "g1",
               firstBlockId: "t2",
               before: ["", ""],
-              after: ["A:a2", "^A:a2"]
+              after: ["A:a2", "^A:a2"],
+              blockIds: ["t2", "t3"]
             }
           ]
         }
@@ -210,12 +214,41 @@ describe("c-shoresh-manual-build", () => {
     getDraft.mockResolvedValue(draft());
     const element = await render();
     await press(cell(element, "1-1"), "Enter");
-    expect(optionLabels(element)).toEqual([
-      "Boating",
-      "Soccer",
-      "SwimNot set up for Bunk 2"
-    ]);
-    expect(q(element, ".tag .dot")).not.toBeNull();
+    expect(optionLabels(element)).toEqual(["Boating", "Soccer", "Swim"]);
+    const dots = qa(element, '[role="option"] c-shoresh-dot');
+    expect(dots.map((d) => d.label)).toEqual(["Not set up for Bunk 2"]);
+  });
+
+  it("arrowing to an option with a dot shows its words; screen readers hear them in the option", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    const input = await type(element, "sw");
+    const option = q(element, '[role="option"]');
+    const dot = option.querySelector("c-shoresh-dot");
+    // The option is the highlighted one, so its dot's words show.
+    expect(option.getAttribute("aria-selected")).toBe("true");
+    expect(dot.open).toBe(true);
+    expect(
+      dot.shadowRoot.querySelector('[data-id="dot-words"]').textContent
+    ).toBe("Not set up for Bunk 2");
+    await type(element, "s");
+    await press(input, "ArrowDown");
+    expect(dot.open).toBe(true);
+  });
+
+  it("Escape on a dot's words closes the words only, not the typing box", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    const input = await type(element, "sw");
+    const dot = q(element, '[role="option"] c-shoresh-dot');
+    expect(dot.shadowRoot.querySelector('[data-id="dot-tip"]')).not.toBeNull();
+    await press(input, "Escape");
+    expect(dot.shadowRoot.querySelector('[data-id="dot-tip"]')).toBeNull();
+    expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+    await press(input, "Escape");
+    expect(q(element, '[data-id="slot-editor"]')).toBeNull();
   });
 
   it("Delete clears a placed slot; Open is offered when typing into a filled one", async () => {
@@ -234,7 +267,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a3"],
-      after: [""]
+      after: [""],
+      blockIds: ["t2"]
     });
     expect(cellText(element, "0-1")).toBe("Open");
   });
@@ -296,14 +330,15 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="yours"]').textContent).toBe("Swim");
     // Theirs shows on the grid meanwhile: nothing was overwritten.
     expect(cellText(element, "0-1")).toBe("Soccer");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a3"],
-      after: ["A:a1"]
+      after: ["A:a1"],
+      blockIds: ["t2"]
     });
     expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(cellText(element, "0-1")).toBe("Swim");
@@ -393,14 +428,15 @@ describe("c-shoresh-manual-build", () => {
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
     expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a2", "^A:a2"],
-      after: ["A:a1", ""]
+      after: ["A:a1", ""],
+      blockIds: ["t2", "t3"]
     });
   });
 
@@ -436,14 +472,15 @@ describe("c-shoresh-manual-build", () => {
       "Bunk 1 · Monday · Lunch"
     );
     expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a2", "^A:a2"],
-      after: ["", "A:a1"]
+      after: ["", "A:a1"],
+      blockIds: ["t2", "t3"]
     });
   });
 
@@ -466,14 +503,15 @@ describe("c-shoresh-manual-build", () => {
     );
     expect(q(element, '[data-id="theirs"]').textContent).toBe("Soccer");
     expect(q(element, '[data-id="yours"]').textContent).toBe("Boating");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
       firstBlockId: "t2",
       before: ["", "A:a3"],
-      after: ["A:a2", "^A:a2"]
+      after: ["A:a2", "^A:a2"],
+      blockIds: ["t2", "t3"]
     });
   });
 
@@ -487,14 +525,15 @@ describe("c-shoresh-manual-build", () => {
     // While the question is open: Soccer for Bunk 2, waiting.
     await press(cell(element, "1-1"), "Enter");
     await press(await type(element, "soccer"), "Enter");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a3"],
-      after: ["A:a1"]
+      after: ["A:a1"],
+      blockIds: ["t2"]
     });
     expect(saveSlots.mock.calls[2][0].edits[0].runs[0].groupId).toBe("g2");
   });
@@ -554,14 +593,13 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 
-  it("Use yours when theirs already matches yours says so instead of saving", async () => {
+  it("when theirs already matches yours there is nothing to ask", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockResolvedValueOnce(answer(WITH_SWIM, ["1,2,", "1,,"], [0]));
     const element = await render();
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(saveSlots).toHaveBeenCalledTimes(1);
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Already as you had it."
@@ -582,7 +620,7 @@ describe("c-shoresh-manual-build", () => {
       "Open",
       "Boating",
       "Soccer",
-      "SwimNot set up for Bunk 2"
+      "Swim"
     ]);
   });
 

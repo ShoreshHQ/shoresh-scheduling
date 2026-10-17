@@ -156,16 +156,190 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       All new code reads object and field names through `ShoreshSchema`, typed references, and
       `c/shoreshSchema`. The LWC suite runs in the namespaced Jest run.
 
+## Choices (part 2)
+
+13. **The activity list** (desktop `ActivityPalette.jsx`, `shoreshBuildPalette` with `counts.js`):
+    - a rail left of the grid in Daily and Group View;
+    - a **Filter…** box;
+    - activities under their weekly minimum first, then a line, then the rest, each part by
+      name;
+    - each chip says _N placed (needs 3–5)_ (also _needs 6+_, _up to 5_, _needs 2_).
+      Group View counts the bunk shown against the activity's times a week. Daily View counts
+      the camp, against those times multiplied by the bunks it is set up for (the desktop's
+      scope). A multi-block placement counts once. **Over the maximum is never blocked** (Greg
+      #2): the chip can still be dragged, and its count gets the bronze dot. The desktop greys it
+      out and stops the drag. The dots on the grid come in part 3. The server sends each
+      activity's `minPerWeek` and `maxPerWeek` (null when it has no weekly limit).
+14. **Drag and drop** (desktop `dragHandlers.js`), HTML drag events:
+    - a list activity onto a slot places it, or replaces what is there. It fills its length
+      over Open slots and says so when there wasn't room (_Placed Boating · … (1 of 2)_);
+    - a placement onto an Open slot **moves** it and keeps its length. Somewhere too short is
+      refused (_Boating doesn't fit there._), not cut;
+    - onto a filled slot the two **swap**. As on the desktop, only single-block activities
+      swap (_Only single-block activities swap._);
+    - back onto the list **takes it out**.
+      Fixed and recurring activities don't move and nothing lands on them. Refusals are a quiet
+      line under the toolbar (`role=status`), never a banner.
+15. **Longer and shorter** (desktop `useSpanExtendDrag.js`; Greg #7 "can be shortened"):
+    - a placement's bottom handle dragged to a slot of the same bunk and day makes it end
+      there, longer over Open, at-camp slots only;
+    - Shift+Down and Shift+Up add or take off a block.
+16. **One way to describe every change** (`moves.js`). The change is made on a copy of the
+    rows it touches. Each row is then compared with its original, and the run sent is exactly
+    the slots that differ, widened to whole placements. A move within one row is one run; a
+    move or swap across rows is two runs in one edit, made together or not at all.
+17. **Undo and Redo** (desktop `useUndoRedo.js`; Greg #10), `history.js`:
+    - 50 steps per visit; choosing another week clears them, and Versions holds older history
+      (part 4);
+    - the toolbar buttons are named for the step (_Undo: Swapped Swim and Soccer_), with
+      Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, and Ctrl+Y (not inside the typing box);
+    - an Undo is the step's runs sent back the other way, so it is checked like any edit.
+      Over someone else's newer change it asks _keep theirs or use yours_. Keeping theirs
+      drops the step from both Undo and Redo;
+    - a refused save clears Undo, because what is saved is no longer known there.
+18. **Keyboard, at parity with drag** (accessibility):
+    - Space on a placement picks it up (_Swim picked up from Bunk 1 · Monday · Period 2._);
+      arrow keys move; Space or Enter puts it down (move or swap); Escape puts it back;
+    - Enter, Space, or a click on a list activity picks it up, and focus goes to the grid;
+    - while something is picked up, a click on a slot puts it down too;
+    - the picked slot and the picked list activity are outlined; `aria-pressed` is on the
+      list chip.
+19. **Review fixes (part 2):**
+    - **Length without dragging (WCAG 2.5.7):** a click on a placement's handle picks up its
+      end (_Swim: choose where it ends._), and a click on a slot of the same bunk and day sets
+      it. A handle dropped on a multi-block cell lands on the block under the pointer.
+    - **Drags:** a drag that ends without a drop is forgotten (`dragend`). A drop counts only
+      if it carries the dragged thing's name. The drag carries the name shown, never a record
+      Id, so a drop into a text box writes a word.
+    - **Undo:** after **Use yours**, the Undo step is what was really saved, so Undo brings
+      theirs back whole. Keeping theirs also drops a waiting Undo or Redo of that step.
+      Ctrl/Cmd+Z does nothing in the Filter box, the typing box, or the question.
+    - **Picked up:** let go when the view, day, or bunk changes, or the week reloads. The
+      picked cell is `aria-selected`.
+    - **Refused:**
+      - a swap never puts anything where the bunk isn't at camp;
+      - something not set up yet stays where it is (_Chugim stays where it is._);
+      - the swap refusal uses the camp's words (_Only activities one Period long swap._);
+      - a list activity dropped on a leftover where the bunk isn't at camp says so;
+      - putting something back where it was says _Put back._
+    - **Counts:** in Group View, a bunk an activity isn't set up for needs none of it
+      (_0 placed_; the dot if any is placed).
+    - **The refusal line** is plain text; the always-present live region announces it, once.
+
+20. **The bronze dot shows no words** (Greg, 2026-10-17). `c-shoresh-dot`, used for every
+    "needs a look" dot from here on (the grid's in part 3 too):
+    - its words (a few, in camp terms: _Over its weekly limit_, _Not set up for Bunk 2_,
+      _Not placed: the cell was taken_) show in a small tooltip on hover, on a tap, and when
+      the dot or the row it sits on has keyboard focus (the list chip, the highlighted option
+      in the typing box);
+    - screen readers read them without hovering: they are assistive text inside the row, so
+      part of its name; the tooltip itself is hidden from them;
+    - a dot alone (Start's _Not placed_ note) is its own tab stop. A tap on a dot inside a row
+      shows the words and doesn't also act on the row.
+      `lightning-helptext` was not used: its info icon is a different look from the dot. The
+      tooltip uses the SLDS neutral colours, never bronze text.
+21. **Review fixes, round 2 (coordinator):**
+    - **What the question lists is what Use yours sends** (`conflicts.js`). Each edit carries
+      its intent: the director's cells, each named by day, group, and **time block Id** (never
+      by position, which moves when a block is added), with what it should hold, and the
+      director's view of every row it touches, also by time block Id. The intent travels with
+      the edit through questions, Use yours, and further questions. When a question opens,
+      `plan()` makes the intent on the server's week as it is now: the director's cells, and
+      anything of theirs those cells overlap cleared in full. Its runs are exactly what Use
+      yours sends, and its rows come from the same comparison. **The rule: every cell Use yours
+      would change is listed, except the director's own cells that still hold what the
+      director expected there.** What the director expects in their own cells is what the edit
+      names as there before it: for an edit, the screen when it was made; for an Undo or Redo,
+      what the step left, even if the screen has since refreshed to someone else's change
+      (which is then listed, not replaced). Every run also names the time block of each of its
+      cells (`blockIds`, required: a run without them is refused as unreadable), kept with the
+      step for Undo and Redo: the screen never mistakes a block added inside it since for one
+      of them, and the server (`SlotSaves`, `SlotEdits.Run.onBlocks`) makes a run only on
+      exactly those blocks, or returns a conflict, so a placement never lands shifted onto a
+      new block. So nothing
+      anyone else put anywhere (in the director's cells, or in a placement of theirs that would
+      be cleared) is replaced without being shown. With nothing to list there is no question;
+      with nothing to change, _Already as you had it._ After Use yours, what the question
+      showed counts as seen, for a further question. One thing Use yours does without asking:
+      when theirs is the same activity, shorter, and the cells it no longer covers were Open
+      when the director made the edit, it is made the director's length again; no one's
+      activity is lost. (If someone shortened the director's own activity, those cells are
+      listed.)
+    - **When the plan can't be made** nothing is sent; the edit, Undo, or Redo leaves the Undo
+      and Redo lists (an edit never saved; an Undo or Redo can't be made), and a waiting Undo
+      or Redo of it goes. The quiet line says why:
+      - a cell's day, bunk, or time block left the week: _Bunk 1 · Monday · Lunch isn't in the
+        week any more._;
+      - a time block was added inside the director's cells: _Bunk 1 · Monday has changed. Try
+        again._;
+      - a fixed or recurring activity is now where the director's cells are (they are never
+        cleared): _Flagpole stays where it is set up._;
+      - for an Undo or Redo, the same reason after what can't be undone: _Can't undo Placed
+        Swim · …: Flagpole stays where it is set up._ (When it is pressed, before anything is
+        sent, the cause isn't known: _Can't undo Placed Swim · …: the week has changed._)
+        The line stays until the director's next change or answer, and is said again once, with
+        the first save that follows (whose words would otherwise talk over it). Other notes are
+        said once and never twice on the line: _Redo skipped._ with its own save, _Already as
+        you had it._ at once.
+    - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
+      are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
+      runs, and Period 3 is never part of the edit, whatever someone puts there.
+    - **Checked by a seeded property test** (`conflicts.property.test.js`): 3,000 generated
+      weeks (two days, three bunks, fixed and recurring activities, activities one to three
+      blocks long). Each gets a director's edit: a plain edit (place, multi-block, clear, move or
+      swap within or across days and bunks, length), or an Undo or Redo of any of those, some of
+      them steps Use yours made (their runs from `plan()` over someone else's change), half
+      pressed after the screen refreshed to someone else's change. Then random changes by others
+      (cells, cleared placements, longer or shorter activities, new fixed or recurring
+      activities, time blocks added anywhere including inside a placement, or removed), and up
+      to three questions in a row. The test server makes runs as `SlotSaves` does, only on the
+      blocks they name. The test keeps its own record of what the director expected and saw,
+      and checks each time: the rule, strictly; that no fixed or recurring activity is ever
+      changed; after each save, that every cell was written in exactly the time block it was
+      meant for (from the test's own record for the first send), holding what the director
+      chose; and that Use yours is never refused when nobody changed anything after the
+      answer. Breaking the rule, the record of what was
+      expected, or the server's block check fails it. On the screen, every test that clicks Use
+      yours checks the same rule by time block Id against the server's week at question time
+      (`useYoursSendsWhatWasShown`), carrying the director's own cells and what they have seen
+      through a further question.
+    - **Use yours and Undo:** a waiting Undo or Redo of the same step is dropped (it was worked
+      out from what the director saw); a dropped Undo puts the step back on top of Undo, and a
+      dropped Redo is said with the save (_Placed Swim · …. Redo skipped._) and stays on the
+      quiet line. The saved change can always be undone: if a later change cleared Redo after
+      it was undone, it goes on top of Undo. A change, or a Redo of one, becomes what was saved,
+      in the same place in the Undo list. An Undo made over theirs is done and leaves both
+      lists, so there is never an _Undo: Undone: …_. Focus returns to the cell, after either
+      answer.
+    - **A swap checks both ends**: neither activity may land where its new bunk isn't at camp.
+      It is refused on the quiet line, not by the server.
+    - **The handle** is a slim bar to see and drag, in a 48 × 24 px area to click (WCAG 2.5.8). A
+      drag that starts off the bar is a move, and with something picked up, a click on the
+      handle puts it down like a click anywhere on the cell.
+    - **Quiet words for quiet no-ops:** a length chosen in another bunk or day (_Swim can only
+      change length within Bunk 1 · Monday._), or before its start (_Swim can't end before it starts._); Space on
+      a fixed or recurring activity (_Lunch stays where it is set up._), on the quiet line too.
+    - **The swap refusal** reads _Longer activities don't swap._ (camp words).
+    - **The dot's tooltip** (WCAG 1.4.13): Escape closes it (and is used up, so it doesn't also
+      close the typing box or answer a question); the pointer can move from the dot onto it with
+      no gap and it stays; a second tap hides it. Shown for keyboard focus, it lets clicks
+      through to whatever is under it.
+22. **Follow-ups from part 1:**
+    - deleting a week or program now says _That includes its Manual Build and 2 saved
+      versions._ (`shoreshCampSetup.savedSchedulesNote`, through `c/shoreshSchema`);
+    - the slot box follows its slot when the page scrolls, and closes when the slot leaves the
+      screen;
+    - an empty cell is recognised by the views' `open` flag, not by its text;
+    - Activity View is unchanged: it lists the bunks doing an activity in each block, so a
+      bunk's away blocks have nothing to show there.
+
 ## Choices that are hard to undo after release
 
-None in this part: no new objects, fields, or picklist values. The draft uses ADR 0005's
+None in parts 1 and 2: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
 the screen and the server.
 
 ## Not done here
 
-- **Deleting a week or program** says how many saved versions go with it (ADR 0005 §10) but
-  doesn't mention its Manual Build draft, which goes too. It needs a line in that confirmation
-  (`shoreshCampSetup`, which the namespace PR 5 is converting), so it is a follow-up.
 - **Truly simultaneous Starts** are not exercised by a test (Apex tests run one at a time). The
   test calls Start twice; the code takes the program lock before looking again.
