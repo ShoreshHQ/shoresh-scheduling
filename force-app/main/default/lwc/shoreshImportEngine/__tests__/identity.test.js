@@ -244,6 +244,22 @@ describe("moving a group to the division the file shows (Greg)", () => {
     ]);
   });
 
+  it("leaves out what is open to both units: moving neither loses nor gains it", () => {
+    const both = JSON.parse(JSON.stringify(existing));
+    both.activities.push({
+      Id: "a2",
+      Name: "Swim",
+      Length__c: 1,
+      Eligibilities__r: [{ Division__c: "d1" }, { Division__c: "d2" }]
+    });
+    const card = cards(propose(files, both)).find((c) =>
+      c.id.startsWith("move|")
+    );
+    expect(card.subtitle).toBe(
+      "If it moves, Bunk 3 is no longer in Library (for Juniors) and is now in Boating (for Seniors)."
+    );
+  });
+
   it("each answer saves what it says", () => {
     const id = cards(propose(files, existing)).find((c) =>
       c.id.startsWith("move|")
