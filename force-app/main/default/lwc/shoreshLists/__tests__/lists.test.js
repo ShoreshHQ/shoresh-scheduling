@@ -1099,7 +1099,8 @@ describe("PR 19 review, coordinator round 2", () => {
     ];
     const p = read("activities", rows);
     const [card] = similarCards(p, terms, {});
-    expect(card.title).toBe("Are “Archry” and “Archery” the same activity?");
+    // One spelling whatever the order: most written, then alphabetical ("archry").
+    expect(card.title).toBe("Are “archry” and “Archery” the same activity?");
     const answers = { [card.id]: LEAVE_OUT };
     const done = read("activities", rows, answers);
     expect(done.rows.map((r) => r.status)).toEqual([
@@ -1107,7 +1108,7 @@ describe("PR 19 review, coordinator round 2", () => {
       "leftOut",
       "new"
     ]);
-    expect(done.alsoAdd.activity).toEqual([{ name: "Archry", skipped: false }]);
+    expect(done.alsoAdd.activity).toEqual([{ name: "archry", skipped: false }]);
     expect(waitingFor(done, terms, answers)).toEqual([]);
     const plan = listPlan(done, answers, "s1", "f");
     const keys = new Set(plan.records.map((r) => r.key));

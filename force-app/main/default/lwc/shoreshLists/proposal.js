@@ -185,6 +185,7 @@ function matchNames(leads, screen, setup, answers) {
  * guessed; and decided on every row of the file, so a row that can't be read changes nothing.
  */
 function groupMoves(rows, records, allRows) {
+  const claims = new Map();
   rows
     .filter((r) => !r.existing && !r.open && !r.leftOut && !r.found.length)
     .forEach((r) => {
@@ -205,14 +206,42 @@ function groupMoves(rows, records, allRows) {
           looseKey(other.values.division || "") === home
       );
       if (!listedAtHome) {
-        r.existing = named[0];
-        r.found = named;
+        claims.set(named[0], [...(claims.get(named[0]) || []), r]);
       }
     });
+  // Two rows moving one group to two divisions: never picked by order; both are new groups.
+  claims.forEach((claimants, rec) => {
+    if (claimants.length === 1) {
+      claimants[0].existing = rec;
+      claimants[0].found = [rec];
+    }
+  });
+}
+
+/**
+ * A name written several ways (capitals and spacing aside) is spelled one way whatever the row
+ * order: as an item set up spells it, if one does; else the way written most often, then the
+ * first alphabetically.
+ */
+function settleSpelling(readable, records) {
+  const names = new Set(records.map((rec) => rec.Name));
+  readable.forEach((r) => {
+    const counts = new Map();
+    (r.spellings || [r.name]).forEach((n) =>
+      counts.set(n, (counts.get(n) || 0) + 1)
+    );
+    const ranked = [...counts.entries()].sort(
+      (x, y) => y[1] - x[1] || x[0].localeCompare(y[0])
+    );
+    const name = (ranked.find(([n]) => names.has(n)) || ranked[0])[0];
+    r.name = name;
+    r.values.name = name;
+  });
 }
 
 function matchScope(leads, records, kind, answers) {
   const readable = leads.filter(usable);
+  settleSpelling(readable, records);
   const campNames = records.map((r) => r.Name);
   const pairs = similarPairs(
     PAIR_KIND[kind],
@@ -570,8 +599,10 @@ function settleLeads(read) {
       const key = itemKey(r);
       if (first.has(key)) {
         r.repeatOf = first.get(key);
+        r.repeatOf.spellings.push(r.name);
       } else {
         first.set(key, r);
+        r.spellings = [r.name];
       }
     });
   return read.filter((r) => r.name && !r.repeatOf);

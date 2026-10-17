@@ -826,3 +826,62 @@ describe("groups in any row order, second pass", () => {
     });
   });
 });
+
+describe("PR B review, third pass: one outcome in any order", () => {
+  function shuffles(rows) {
+    const result = [rows, [...rows].reverse()];
+    for (let seed = 1; seed <= 5; seed++) {
+      let x = seed * 15485863;
+      const shuffled = [...rows];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        x = (x * 9301 + 49297) % 233280;
+        const j = Math.floor((x / 233280) * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      result.push(shuffled);
+    }
+    return result;
+  }
+  const outcome = (heading, body) => {
+    const p = read("groups", [heading, ...body]);
+    return [
+      p.rows.map((r) => `${r.status}`).sort(),
+      listPlan(p, {}, "s1", "f")
+        .records.map((r) => r.key || r.id)
+        .sort(),
+      questionCards(p, terms, {}).map((c) => c.id)
+    ];
+  };
+
+  it("two rows claiming one move: neither is picked; both are new groups", () => {
+    const results = shuffles([
+      ["Middlers", "Bunk 1"],
+      ["Seniors", "Bunk 1"]
+    ]).map((b) => outcome(["Division", "Group"], b));
+    results.forEach((r) => expect(r).toEqual(results[0]));
+    expect(results[0][1]).toEqual([
+      "Division:p1:Middlers",
+      "Group:p1:Middlers:Bunk 1",
+      "Group:p1:Seniors:Bunk 1"
+    ]);
+  });
+
+  it("one name in mixed capitals: matched as set up, no question, in any order", () => {
+    const results = shuffles([
+      ["Juniors", "bunk 1"],
+      ["Seniors", "Bunk 1"],
+      ["juniors", "Bunk 1"]
+    ]).map((b) => outcome(["Division", "Group"], b));
+    results.forEach((r) => expect(r).toEqual(results[0]));
+    expect(results[0][2]).toEqual([]);
+  });
+
+  it("a new group written two ways is spelled one way in any order", () => {
+    const results = shuffles([
+      ["Juniors", "Bunk 1", "sometimes"],
+      ["Seniors", "Bunk 1", "All day"],
+      ["Seniors", "BUNK 1", "All day"]
+    ]).map((b) => outcome(["Division", "Group", "Availability"], b));
+    results.forEach((r) => expect(r).toEqual(results[0]));
+  });
+});

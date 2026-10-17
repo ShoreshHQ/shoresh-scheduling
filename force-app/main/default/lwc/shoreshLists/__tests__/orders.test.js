@@ -205,7 +205,7 @@ describe("a rain plan follows the rows as the director settled them, in any orde
     expect(p.rows.map((r) => [r.name, r.status])).toEqual([
       ["Golf", "unreadable"],
       ["golf", "unreadable"],
-      ["Musik", "asked"],
+      ["musik", "asked"],
       ["musik", "asked"]
     ]);
   });

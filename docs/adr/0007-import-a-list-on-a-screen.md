@@ -35,7 +35,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    `ImportAnswer__c` (key `columns|<screen>|<heading>`, per camp like every answer); 4b never
    asks those keys. Similar-name answers share 4b's keys (`similar|activity|...`), so a camp
    that said Music and Musik are the same is not asked again.
-3. **Nothing defaults quietly.** A cell that can't be read (a Yes/No cell saying "maybe", "two"
+3. **Nothing defaults quietly.** A name written several ways (capitals and spacing aside) is
+   spelled one way whatever the row order: as an item set up spells it, else as written most
+   often, then the first alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
    in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
    Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
    inside a cell (Alt+Enter) separates names in a list, as a comma does. Rows are settled
@@ -130,7 +132,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
 15. **A group is its program, division, and name** (ADR 0006 §14), by the division the row
     resolves to, so "Bunk 1" in Juniors and in Seniors are two groups. **A group in another
     division** of its program is a difference ("Unit: Juniors →
-    Seniors"); Change moves it (GroupMoves refuses another program's). A list never changes
+    Seniors"); Change moves it (GroupMoves refuses another program's). It is not a move when the file
+    also names the group in the division it is in, or when two rows would move the same group
+    (never picked by order): those rows are new groups. A list never changes
     which program anything is in, and only adds divisions (never renames them).
 16. **Who a recurring activity covers** (Coverage rows) is written and undone like who can do
     an activity (`ImportWhoKinds`): replaced only on Change, put back by Undo unless edited
