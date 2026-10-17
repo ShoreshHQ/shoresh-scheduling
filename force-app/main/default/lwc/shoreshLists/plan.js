@@ -13,12 +13,6 @@ function quoted(name) {
   return `“${name}”`;
 }
 
-const SIMILAR_WHY = {
-  spelling: "They differ only in capitals, spaces, or punctuation.",
-  ending: "They differ only in the ending.",
-  letter: "They differ by one letter."
-};
-
 function kindWord(kind, t) {
   return {
     activity: t.sIn("Activity"),
@@ -34,7 +28,6 @@ export function similarCards(proposal, t, answers) {
     const card = {
       id: pair.id,
       title: `Are ${quoted(pair.a)} and ${quoted(pair.b)} the same ${word}?`,
-      detail: SIMILAR_WHY[pair.reason],
       // Import last year asks this with both spellings; either "same" answer means the camp's.
       answer:
         pair.existing && answers[pair.id] === "a"
@@ -160,6 +153,27 @@ function conflicts(proposal) {
   return messages;
 }
 
+/**
+ * The last guard before saving: every link in the save request names a record set up or one
+ * the same request adds. One that doesn't is shown to be looked at, never sent to fail.
+ */
+function danglingLinks(proposal, answers) {
+  if (!proposal.rows) {
+    return [];
+  }
+  const plan = listPlan(proposal, answers, null, "");
+  const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+  const isKey = (value) => typeof value === "string" && value.includes(":");
+  const broken = [];
+  plan.records.forEach((record) => {
+    const links = [...Object.values(record.refs || {}), ...(record.who || [])];
+    if (links.some((link) => isKey(link) && !keys.has(link))) {
+      broken.push(record.fields.Name || record.key || record.id);
+    }
+  });
+  return broken.map((name) => `Review here: ${name}`);
+}
+
 /** What still needs an answer (or a fix in the file) before the list can be saved. */
 export function waitingFor(proposal, t, answers) {
   if (proposal.empty) {
@@ -196,6 +210,7 @@ export function waitingFor(proposal, t, answers) {
     );
   }
   waiting.push(...conflicts(proposal));
+  waiting.push(...danglingLinks(proposal, answers));
   const count = proposal.rows.filter(
     (r) =>
       r.status === "new" ||

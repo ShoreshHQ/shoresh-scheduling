@@ -148,7 +148,7 @@ function activitiesScreen(t) {
         type: "wholeOrNone",
         none: "No maximum",
         min: 0,
-        // A blank cell clears it: no maximum.
+        // A blank cell clears it on an item set up: no maximum. A new one starts as by hand.
         blankMeans: NONE,
         // A new activity done at least 3 times a week is done at most 3 times, not 1.
         newValue: (values) => Math.max(1, values.min || 0),
@@ -204,7 +204,7 @@ function activitiesScreen(t) {
         type: "wholeOrNone",
         none: "No limit",
         min: 1,
-        // A blank cell clears it: no limit.
+        // A blank cell clears it on an item set up: no limit. A new one starts as by hand.
         blankMeans: NONE,
         newValue: 1,
         fromRecord: (r) => (r.NoGroupLimit__c ? NONE : r.GroupsAtOnce__c),

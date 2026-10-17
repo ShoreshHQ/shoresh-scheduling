@@ -81,8 +81,6 @@ function readRows(rows, start, used) {
       } else if (read.blank && column.requiredValue) {
         // It can't be cleared, and a blank is never quietly skipped.
         problems.push(`${column.heading} is blank`);
-      } else if (read.blank && column.blankMeans !== undefined) {
-        values[column.key] = column.blankMeans;
       } else if (read.blank) {
         blanks.add(column.key);
       } else {
@@ -127,6 +125,25 @@ function usable(row) {
  * or standing for the same item set up. Checked last, among rows that will be saved, so the
  * row it points to is always one that is used.
  */
+/**
+ * A row repeating an earlier one's name follows it: left out with it, or unreadable when it
+ * can't be read. Done before rain plans are matched, so a plan never names a row not saved.
+ */
+function settleRepeats(rows) {
+  rows
+    .filter((r) => r.repeatOf && usable(r))
+    .forEach((r) => {
+      if (r.repeatOf.leftOut) {
+        r.leftOut = true;
+        r.sameAs = r.repeatOf.name;
+      } else if (r.repeatOf.problems.length) {
+        r.problems.push(
+          `Same as row ${r.repeatOf.rowNumber}, which can't be read`
+        );
+      }
+    });
+}
+
 function markRepeats(rows) {
   const first = new Map();
   rows
@@ -321,7 +338,8 @@ function matchRefs(rows, column, records, answers) {
  */
 function rainPlans(read, column, setup, answers) {
   const camp = new Set((setup.activities || []).map((a) => a.Name));
-  const rows = read.filter(usable);
+  // Repeats are settled first: a plan never names a row that won't be saved.
+  const rows = read.filter((r) => usable(r) && !r.repeatOf);
   // The row a plan names: the first usable one of that name (capitals and spacing aside), as
   // repeats are; the plan then takes that row's spelling, so the link finds what is saved.
   const rowOf = new Map();
@@ -458,14 +476,16 @@ export function listProposal(input) {
   result.pairs.push(...matchNames(read, records, screen.kind, answers));
   result.cards = whichOne(read, screen, setup, answers);
   const targets = whoTargets(setup);
+  // The list's own names, first spelling of each (repeats follow the row they repeat).
   const ownNames = read
-    .filter((r) => !r.problems.length && !r.leftOut)
+    .filter((r) => usable(r) && !r.repeatOf)
     .map((r) => r.name);
   // A rain plan naming a row of the list (capitals and spacing aside, as repeats are) takes
   // that row's spelling: it is that row, not a similar name to ask about.
-  const ownKeys = new Map(
-    read.filter(usable).map((r) => [looseKey(r.name), r.name])
-  );
+  const ownKeys = new Map(ownNames.map((name) => [looseKey(name), name]));
+  // Every row's name, left out or unreadable too: a rain plan naming one is that row, never a
+  // similar name to ask about (it is added as by hand if the row isn't saved: ADR 0007 §5).
+  const rowNames = read.filter((r) => !r.repeatOf).map((r) => r.name);
   read.forEach((r) => {
     const plan = r.values.rainPlan;
     if (plan && ownKeys.has(looseKey(plan))) {
@@ -478,7 +498,7 @@ export function listProposal(input) {
       const refs = matchRefs(
         read,
         column,
-        refRecords(column, setup, ownNames),
+        refRecords(column, setup, rowNames),
         answers
       );
       result.pairs.push(...refs.pairs);
@@ -536,6 +556,7 @@ export function listProposal(input) {
     }
   });
   checkNewLimits(read, screen);
+  settleRepeats(read);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainAdds = rain
     ? rainPlans(read, rain.column, setup, answers)
@@ -642,7 +663,10 @@ function describeRow(r, used, screen, setup, answers) {
       // Not in this row (a rain plan left unticked): nothing to compare.
       return;
     }
-    const to = blank ? blankValue(column) : r.values[column.key];
+    // A blank clears an item set up: to none, or to "no maximum" or "no limit".
+    const to = blank
+      ? (column.blankMeans ?? blankValue(column))
+      : r.values[column.key];
     const from = column.fromRecord(r.existing, setup);
     if (!same(normal(column, from), normal(column, to))) {
       const id = changeKey(screen.key, r.existing.Name, column.key, to);

@@ -1084,3 +1084,77 @@ describe("PR 19 review, round 3", () => {
     });
   });
 });
+
+describe("PR 19 review, coordinator round 2", () => {
+  it("1. a rain plan naming a repeated row that is left out adds the activity, and every link resolves", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Archry", ""],
+      ["archry", ""],
+      ["Swim", "Archry"]
+    ];
+    const p = read("activities", rows);
+    const [card] = similarCards(p, terms, {});
+    expect(card.title).toBe("Are “Archry” and “Archery” the same activity?");
+    const answers = { [card.id]: LEAVE_OUT };
+    const done = read("activities", rows, answers);
+    expect(done.rows.map((r) => r.status)).toEqual([
+      "leftOut",
+      "leftOut",
+      "new"
+    ]);
+    expect(done.alsoAdd.activity).toEqual([{ name: "Archry", skipped: false }]);
+    expect(waitingFor(done, terms, answers)).toEqual([]);
+    const plan = listPlan(done, answers, "s1", "f");
+    const keys = new Set(plan.records.map((r) => r.key));
+    plan.records.forEach((r) =>
+      Object.values(r.refs || {})
+        .filter((v) => v && v.includes(":"))
+        .forEach((v) => expect(keys.has(v)).toBe(true))
+    );
+  });
+
+  it("2. a blank at most or groups at once starts a new activity as by hand", () => {
+    const p = read("activities", [
+      [
+        "Activity",
+        "Times a week: at least",
+        "Times a week: at most",
+        "Groups at once"
+      ],
+      ["Golf", "3", "", ""]
+    ]);
+    expect(rowNamed(p, "Golf").values).toMatchObject({
+      min: 3,
+      max: 3,
+      groupsAtOnce: 1
+    });
+  });
+
+  it("3. similar-name cards are the names and the answers, nothing more", () => {
+    const [card] = similarCards(
+      read("activities", [["Activity"], ["Musik"]]),
+      terms,
+      {}
+    );
+    expect(Object.keys(card).sort()).toEqual([
+      "answer",
+      "id",
+      "options",
+      "title"
+    ]);
+  });
+});
+
+describe("the last guard before saving", () => {
+  it("a link to nothing in the season or the save is flagged, never sent", () => {
+    const p = read("activities", [
+      ["Activity", "Rain plan"],
+      ["Swim", ""]
+    ]);
+    // As if a rule above had missed one: a rain plan to an activity nobody adds.
+    const swim = p.rows.find((r) => r.name === "Swim");
+    swim.values.rainPlan = "Ghost";
+    expect(waitingFor(p, terms, {})).toEqual(["Review here: Swim"]);
+  });
+});

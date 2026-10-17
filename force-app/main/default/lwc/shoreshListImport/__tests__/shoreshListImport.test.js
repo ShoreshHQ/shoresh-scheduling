@@ -173,6 +173,12 @@ describe("c-shoresh-list-import", () => {
     });
     $(element, 'lightning-button[data-id="undo"]').click();
     await flush();
+    expect(LightningConfirm.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: "Undo activities.csv?",
+        message: "Remove 2 · put back 1"
+      })
+    );
     expect(undoImport).toHaveBeenCalledWith({ importId: "imp1" });
     expect($(element, '[data-id="undone"]')).not.toBeNull();
   });

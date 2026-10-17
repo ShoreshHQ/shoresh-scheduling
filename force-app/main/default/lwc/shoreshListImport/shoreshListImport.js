@@ -510,9 +510,8 @@ export default class ShoreshListImport extends LightningElement {
 
   async handleUndo() {
     const ok = await LightningConfirm.open({
-      label: `Undo the import of ${this.fileName}?`,
-      message:
-        "What this import added is removed, and what it changed goes back to how it was. Anything you have edited since the import stays as it is.",
+      label: `Undo ${this.fileName}?`,
+      message: this.undoCounts,
       variant: "header",
       theme: "warning"
     });
@@ -530,6 +529,28 @@ export default class ShoreshListImport extends LightningElement {
     } finally {
       this.undoing = false;
     }
+  }
+
+  /** "Remove 5 · put back 2": what Undo does, in counts. */
+  get undoCounts() {
+    const total = (counts) =>
+      Object.values(counts || {}).reduce((sum, n) => sum + n, 0);
+    const parts = [];
+    const added = total(this.result && this.result.added);
+    const changed = total(this.result && this.result.changed);
+    if (added) {
+      parts.push(`Remove ${added}`);
+    }
+    if (changed) {
+      parts.push(`${parts.length ? "put back" : "Put back"} ${changed}`);
+    }
+    return parts.join(" · ");
+  }
+
+  get questionsHeading() {
+    return this.openCount
+      ? `Questions for you (${this.openCount})`
+      : "Questions for you";
   }
 
   get canUndo() {

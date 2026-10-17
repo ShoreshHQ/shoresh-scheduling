@@ -43,9 +43,11 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    that will be saved, so the row it points to is one that is used.
 4. **Only the columns the file has are compared** (Greg, #2). A row naming something set up
    shows every difference ("Times per week: at least: 3 → 2") with Keep or Change, and every
-   one must be answered. **A blank cell clears the value** (Greg, Q1): an optional value to
-   none, "at most" to no maximum, "groups at once" to no limit, "who can do it" to everyone,
-   each shown as a difference tagged "clears". A value an item can't be without (length,
+   one must be answered. **A blank cell clears the value** of an item set up (Greg, Q1): an
+   optional value to none, "at most" to no maximum, "groups at once" to no limit, "who can do
+   it" to everyone, each shown as a difference tagged "clears". **A new item starts as one
+   added by hand** wherever its cell is blank (at most = at least, or 1; one group at a time;
+   everyone). A value an item can't be without (length,
    times a week at least, groups that fit, priority) can't be cleared: a blank there makes
    the row unreadable ("Length is blank"), never skipped. "Change all from this file" answers
    only the differences not answered yet (a Keep the director chose stays), and its label says
@@ -63,7 +65,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    it is shown ticked under "Also adding" and can be unticked, and then the rows naming it are
    saved without that rain plan and the summary says so. Every question can be answered
    "Leave it out for now", which leaves out the rows that need it. Only what will be saved
-   counts: a place named in a difference answered Keep is not added.
+   counts: a place named in a difference answered Keep is not added. The last guard before saving: every
+   link in the save request names a record set up or one the same request adds; one that
+   doesn't is shown under "Review here", never sent to fail.
 6. **Columns that are not a screen's fields** follow the screen: "Times a week: at most" and
    "Groups at once" take a number or "No maximum" / "No limit" (one column instead of the
    screen's number and tick); "Early in the week" reads "2 by Wednesday"; "Who can do it" lists
