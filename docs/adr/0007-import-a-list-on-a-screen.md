@@ -223,7 +223,14 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     season keeps its own dates (a new name is still a Keep or Change); the preview shows each
     pairing ("Week 1 (Jun 28 2027) → Week 1 (Jun 26 2028)") and Runs in follows it. A workbook
     week past the season's last is left out (its ticks aren't read); a season week past the
-    workbook's is listed as not in the workbook and left as it is. Dates are read only when certain: 2027-06-28,
+    workbook's is listed as not in the workbook and left as it is. Which way (by start date or
+    by order) is decided once per sheet, on every row whose dates can be read, before any row
+    is set aside, so setting one aside never flips it. A season with dates but no weeks yet
+    (coordinator's call, 2026-10-17, following Greg's "copy the weeks, update the dates"): its
+    weeks are first filled from its dates as "Fill in weeks" makes them (`SeasonWeeks.toFill`,
+    in the same save), then paired by order; the preview shows "Will also add: Week 1 (Jun 26
+    2028) …" and the pairing; Undo removes the filled weeks unless used or edited since; the
+    save refuses if the season's dates no longer give the weeks the preview showed. Dates are read only when certain: 2027-06-28,
     "Jun 28, 2027", "28-Jun-27", or numbers whose day and month order another date in the
     column settles; "7/5/2027" alone could be read two ways and can't be read.
 28. **Runs in**: each row finds its item by kind, program, unit, and name; each week column its
@@ -231,7 +238,11 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     or Change per item; Change adds or removes that item's weeks off. An item the workbook adds
     runs the weeks it says. A blank tick, an item or week not found, can't be read.
 29. **Camp words**: a Keep or Change per word. A word the workbook leaves out stays. Undo puts
-    words back, keeping one edited since and naming it (Greg).
+    words back, keeping one edited since and naming it (Greg). A word equal to Shoresh's own is
+    no camp word, as the camp words editor saves it: a camp word set back to it is removed, and
+    Undo puts it back unless the camp chose a word for that term since. The camp row is locked
+    (FOR UPDATE) while an import or its Undo changes camp words, so two seasons' imports take
+    turns over them.
 30. **Server**: `ImportController.saveWorkbook`, the list save in workbook mode, adds Week and
     WeekException kinds (weeks are added or renamed, never moved to another start date; a week
     off removed is checked to be in the season) and camp words (with the camp's edit access).
@@ -251,6 +262,10 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     Matched by start date, a week the workbook adds or gives a new end that would overlap
     another week of the season is unreadable ("Overlaps Week 2 (Jul 5 2027)"), never added on
     top; two Runs in columns for one week are neither read, both said (independent review).
+    The Weeks screen flags overlapping weeks too, without blocking: the bronze dot and
+    "Overlaps another week" in the camp's word, as for a same name. A week off Undo can't put
+    back is named by item and week ("Swim (Week 2)"); one whose week is in another season
+    refuses the Undo.
     Camp words are the camp's, not the season's: undoing one season's workbook puts them back
     for every season of the camp (a product call left open for Greg).
 

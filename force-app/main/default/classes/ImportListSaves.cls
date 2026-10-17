@@ -73,17 +73,21 @@ public with sharing class ImportListSaves {
     SetTimeGuard.defer();
     Savepoint beforeSave = Database.setSavepoint();
     try {
+      ImportWorkbookExtras extras = new ImportWorkbookExtras(
+        writer,
+        plan.seasonId,
+        seasons[0].Camp__c
+      );
+      // Another season's workbook into a season with no weeks: filled first, then paired.
+      if (workbook) {
+        extras.fillWeeks(plan.entries('fillWeeks'));
+      }
       for (String kind : ORDER) {
         if (byKind.containsKey(kind)) {
           saveKind(kind, byKind.get(kind));
         }
       }
       if (workbook) {
-        ImportWorkbookExtras extras = new ImportWorkbookExtras(
-          writer,
-          plan.seasonId,
-          seasons[0].Camp__c
-        );
         extras.weeksBackOn(weeksBackOn);
         extras.campWords(plan.entries('campWords'));
       }

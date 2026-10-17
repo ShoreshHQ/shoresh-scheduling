@@ -495,9 +495,261 @@ private class ImportWorkbookTest {
           'week' => c.weeks[1].Id,
           'field' => field,
           'target' => target,
-          'name' => 'Week 2'
+          'name' => 'Week 2',
+          'item' => 'Swim'
         }
       }
     );
+  }
+
+  // ---- Coordinator's review, round 1 ----
+
+  /** A season with dates (Jun 29 to Aug 7 2026: six weeks) and no weeks yet. */
+  private static Season__c emptySeason() {
+    Camp__c camp = ShoreshTestData.camp('Birch Hollow (made up)');
+    return ShoreshTestData.season(camp.Id, 'Summer 2026');
+  }
+
+  private static List<Object> fill(List<String> names) {
+    List<Object> result = new List<Object>();
+    Date monday = Date.newInstance(2026, 6, 29);
+    for (Integer i = 0; i < names.size(); i++) {
+      result.add(
+        new Map<String, Object>{
+          'start' => String.valueOf(monday.addDays(7 * i)),
+          'name' => names[i]
+        }
+      );
+    }
+    return result;
+  }
+
+  private static ImportSetupSaves.Result importFilling(
+    Id seasonId,
+    List<Object> fillWeeks,
+    List<Object> records
+  ) {
+    Map<String, Object> p = plan(seasonId, records, new List<Object>());
+    p.put('fillWeeks', fillWeeks);
+    return ImportController.saveWorkbook(JSON.serialize(p));
+  }
+
+  @IsTest
+  static void anotherSeasonsWorkbookFillsAnEmptySeasonsWeeksAndUndoRemovesThem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = emptySeason();
+      Map<String, Object> archery = rec(
+        'Activity',
+        'Activity:Archery',
+        new Map<String, Object>{
+          'Name' => 'Archery',
+          'Length__c' => 1,
+          'TimesPerWeekMin__c' => 1,
+          'TimesPerWeekMax__c' => 2,
+          'Priority__c' => 'Low',
+          'GroupsAtOnce__c' => 1
+        }
+      );
+      archery.put('who', new List<Object>());
+      ImportSetupSaves.Result result = importFilling(
+        season.Id,
+        fill(
+          new List<String>{
+            'Opening week',
+            'Week 2',
+            'Week 3',
+            'Week 4',
+            'Week 5',
+            'Week 6'
+          }
+        ),
+        new List<Object>{
+          archery,
+          // Runs in, paired by order onto a week this save fills in.
+          linked(
+            rec(
+              'WeekException',
+              'WeekException:Activity:Archery:Week:2026-07-06',
+              new Map<String, Object>()
+            ),
+            new Map<String, Object>{
+              'Week__c' => 'Week:2026-07-06',
+              'Activity__c' => 'Activity:Archery'
+            }
+          )
+        }
+      );
+      Assert.areEqual(6, result.added.get('Week'));
+      List<Week__c> weeks = [
+        SELECT
+          Name,
+          StartDate__c,
+          EndDate__c,
+          SortOrder__c,
+          (SELECT Activity__r.Name FROM WeekExceptions__r)
+        FROM Week__c
+        WHERE Season__c = :season.Id
+        ORDER BY StartDate__c
+      ];
+      Assert.areEqual(6, weeks.size());
+      Assert.areEqual('Opening week', weeks[0].Name);
+      Assert.areEqual(Date.newInstance(2026, 7, 3), weeks[0].EndDate__c);
+      Assert.areEqual(1, weeks[0].SortOrder__c);
+      Assert.areEqual(
+        'Archery',
+        weeks[1].WeekExceptions__r[0].Activity__r.Name
+      );
+
+      // One week renamed since: Undo keeps it, and removes the rest.
+      weeks[5].Name = 'Closing week';
+      update as user weeks[5];
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Closing week' }, undone.keptEdited);
+      Assert.areEqual(
+        new List<String>{ 'Closing week' },
+        new List<String>{
+          [SELECT Name FROM Week__c WHERE Season__c = :season.Id]
+          .Name
+        }
+      );
+    }
+  }
+
+  @IsTest
+  static void weeksToFillThatNoLongerMatchTheSeasonsDatesAreRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = emptySeason();
+      try {
+        importFilling(
+          season.Id,
+          fill(new List<String>{ 'Week 1', 'Week 2' }),
+          new List<Object>()
+        );
+        Assert.fail(
+          'weeks that differ from the season\'s dates must be refused'
+        );
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('dates changed'), e.getMessage());
+      }
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Week__c WHERE Season__c = :season.Id]
+      );
+    }
+  }
+
+  @IsTest
+  static void aWeekOffThatCantBePutBackIsNamedByItemAndWeek() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result result = importWorkbook(c);
+      delete as user new Activity__c(Id = c.swim.Id);
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Swim (Week 2)' }, undone.gone);
+    }
+  }
+
+  @IsTest
+  static void aWeekOffToPutBackInAnotherSeasonOrWithoutAnItemNameIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result result = importWorkbook(c);
+      Season__c other = ShoreshTestData.season(c.camp.Id, 'Summer 2027');
+      Week__c elsewhere = ShoreshTestData.weeks(other.Id, 1)[0];
+      Assert.isNotNull(result.importId);
+      Map<String, Object> entry = (Map<String, Object>) ((List<Object>) JSON.deserializeUntyped(
+        weekOn(c, 'Activity__c', c.swim.Id)
+      ))[0];
+      entry.put('week', elsewhere.Id);
+      expectTamperedRefused(
+        result,
+        JSON.serialize(new List<Object>{ entry }),
+        null
+      );
+      entry.put('week', c.weeks[1].Id);
+      entry.put('item', 5);
+      expectTamperedRefused(
+        result,
+        JSON.serialize(new List<Object>{ entry }),
+        null
+      );
+    }
+  }
+
+  @IsTest
+  static void shoreshsOwnWordIsNoCampWordAndUndoPutsTheCampsBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      insert as user new CampLabel__c(
+        Camp__c = c.camp.Id,
+        ModelTerm__c = 'Division',
+        Singular__c = 'Unit',
+        Plural__c = 'Units'
+      );
+      ImportSetupSaves.Result result = ImportController.saveWorkbook(
+        JSON.serialize(
+          plan(
+            c.season.Id,
+            new List<Object>(),
+            new List<Object>{
+              word('Division', 'Division', 'Divisions'),
+              word('Group', 'Group', 'Groups')
+            }
+          )
+        )
+      );
+      // Unit is gone, and Group (no camp word before) gets none.
+      Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c]);
+      Assert.isNull(result.added.get('CampLabel'));
+      Assert.areEqual(1, result.changed.get('CampLabel'));
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(1, undone.restored);
+      Assert.areEqual(
+        'Unit',
+        CampLabels.forCamp(c.camp.Id).singular('Division')
+      );
+    }
+  }
+
+  @IsTest
+  static void aCampWordChosenAgainSinceIsKeptWhenUndoWouldPutOneBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      insert as user new CampLabel__c(
+        Camp__c = c.camp.Id,
+        ModelTerm__c = 'Division',
+        Singular__c = 'Unit',
+        Plural__c = 'Units'
+      );
+      ImportSetupSaves.Result result = ImportController.saveWorkbook(
+        JSON.serialize(
+          plan(
+            c.season.Id,
+            new List<Object>(),
+            new List<Object>{ word('Division', 'Division', 'Divisions') }
+          )
+        )
+      );
+      insert as user new CampLabel__c(
+        Camp__c = c.camp.Id,
+        ModelTerm__c = 'Division',
+        Singular__c = 'Village',
+        Plural__c = 'Villages'
+      );
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Village' }, undone.keptEdited);
+      Assert.areEqual(
+        'Village',
+        CampLabels.forCamp(c.camp.Id).singular('Division')
+      );
+    }
   }
 }

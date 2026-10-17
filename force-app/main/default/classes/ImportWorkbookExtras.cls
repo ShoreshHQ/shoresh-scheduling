@@ -15,8 +15,42 @@ public with sharing class ImportWorkbookExtras {
   }
 
   /**
+   * The season's weeks filled from its dates, as "Fill in weeks" makes them (SeasonWeeks), for
+   * another season's workbook to pair with (coordinator, following Greg's "copy the weeks,
+   * update the dates"): entries [{ start, name }] in order, as the preview showed them. Added
+   * like any week the import adds, so Undo removes them unless used or edited since.
+   */
+  public void fillWeeks(List<ImportPlan.Entry> entries) {
+    if (entries.isEmpty()) {
+      return;
+    }
+    List<Week__c> weeks = SeasonWeeks.toFill(seasonId);
+    if (weeks.size() != entries.size()) {
+      throw datesChanged();
+    }
+    for (Integer i = 0; i < weeks.size(); i++) {
+      if (String.valueOf(weeks[i].StartDate__c) != entries[i].text('start')) {
+        throw datesChanged();
+      }
+      weeks[i].Name = word(entries[i].text('name'));
+    }
+    writer.writeTracked('Week', weeks, new List<SObject>());
+    for (Week__c week : weeks) {
+      writer.keys.put('Week:' + String.valueOf(week.StartDate__c), week.Id);
+    }
+  }
+
+  private ShoreshException datesChanged() {
+    return new ShoreshException(
+      'This ' +
+        CampLabels.forCamp(campId).singularInSentence('Season') +
+        '\'s dates changed after the workbook was read. Choose the file again.'
+    );
+  }
+
+  /**
    * Removes weeks off (WeekException__c) the workbook ticks back on; each must be in the season.
-   * Logged as { weekOn, week, field, target, name } for Undo.
+   * Logged as { weekOn, week, field, target, name (the week's), item (the item's name) } for Undo.
    */
   public void weeksBackOn(List<ImportPlan.Entry> entries) {
     Set<Id> ids = new Set<Id>();
@@ -38,6 +72,11 @@ public with sharing class ImportWorkbookExtras {
         Id,
         Week__c,
         Week__r.Name,
+        Group__r.Name,
+        Location__r.Name,
+        Activity__r.Name,
+        FixedActivity__r.Name,
+        RecurringActivity__r.Name,
         Group__c,
         Location__c,
         Activity__c,
@@ -59,7 +98,8 @@ public with sharing class ImportWorkbookExtras {
           'week' => off.Week__c,
           'field' => field,
           'target' => target,
-          'name' => off.Week__r.Name
+          'name' => off.Week__r.Name,
+          'item' => off.getSObject(field.replace('__c', '__r')).get('Name')
         },
         target
       );
@@ -84,69 +124,12 @@ public with sharing class ImportWorkbookExtras {
     throw ImportListSaves.unreadable();
   }
 
-  /** The camp's words the director chose to change: [{ term, fields: { Singular__c, Plural__c } }]. */
+  /** The camp's words the director chose to change (ImportCampWords). */
   public void campWords(List<ImportPlan.Entry> entries) {
-    if (entries.isEmpty()) {
-      return;
-    }
-    String why = CampLabels.whyCannotEdit(campId);
-    if (why != null) {
-      throw new ShoreshException(why);
-    }
-    Map<String, CampLabel__c> current = new Map<String, CampLabel__c>();
-    for (CampLabel__c label : [
-      SELECT Id, ModelTerm__c
-      FROM CampLabel__c
-      WHERE Camp__c = :campId
-      WITH USER_MODE
-    ]) {
-      current.put(label.ModelTerm__c, label);
-    }
-    List<SObject> added = new List<SObject>();
-    List<SObject> changed = new List<SObject>();
-    for (CampLabel__c label : labelsOf(entries)) {
-      if (current.containsKey(label.ModelTerm__c)) {
-        changed.add(
-          new CampLabel__c(
-            Id = current.get(label.ModelTerm__c).Id,
-            Singular__c = label.Singular__c,
-            Plural__c = label.Plural__c
-          )
-        );
-      } else {
-        label.Camp__c = campId;
-        added.add(label);
-      }
-    }
-    writer.writeTracked('CampLabel', added, changed);
+    new ImportCampWords(writer, campId).save(entries);
   }
 
-  /** Each entry as a word for one of Shoresh's terms, once each, never blank. */
-  private static List<CampLabel__c> labelsOf(List<ImportPlan.Entry> entries) {
-    Set<String> terms = new Set<String>();
-    for (CampLabels.TermLabel label : CampLabels.modelTermsOnly().all()) {
-      terms.add(label.term);
-    }
-    List<CampLabel__c> result = new List<CampLabel__c>();
-    Set<String> seen = new Set<String>();
-    for (ImportPlan.Entry entry : entries) {
-      String term = entry.text('term');
-      Map<String, Object> fields = entry.valuesOf('fields');
-      if (!terms.contains(term) || !seen.add(term) || fields.size() != 2) {
-        throw ImportListSaves.unreadable();
-      }
-      result.add(
-        new CampLabel__c(
-          ModelTerm__c = term,
-          Singular__c = word(fields.get('Singular__c')),
-          Plural__c = word(fields.get('Plural__c'))
-        )
-      );
-    }
-    return result;
-  }
-
-  private static String word(Object value) {
+  public static String word(Object value) {
     String text = value == null ? '' : String.valueOf(value).trim();
     if (String.isBlank(text) || text.length() > 80) {
       throw ImportListSaves.unreadable();

@@ -1,6 +1,14 @@
 /** Fills an empty season with weeks from its dates, named in the camp's own words. */
 public with sharing class SeasonWeeks {
   public static void fillFromSeasonDates(Id seasonId) {
+    Database.insert(toFill(seasonId), AccessLevel.USER_MODE);
+  }
+
+  /**
+   * The weeks "Fill in weeks" adds to an empty season, not yet saved: a camp workbook from
+   * another season adds them in its own save (slice 4c part D) before pairing its weeks.
+   */
+  public static List<Week__c> toFill(Id seasonId) {
     Season__c season = [
       SELECT
         Id,
@@ -49,7 +57,7 @@ public with sharing class SeasonWeeks {
           ' to fill in. Check its first and last days.'
       );
     }
-    Database.insert(weeks, AccessLevel.USER_MODE);
+    return weeks;
   }
 
   public class WeeksException extends ShoreshException {

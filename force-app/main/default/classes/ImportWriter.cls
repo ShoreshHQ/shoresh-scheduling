@@ -145,6 +145,19 @@ public with sharing class ImportWriter {
     }
   }
 
+  /** A camp word a workbook set back to Shoresh's own (removed): logged for Undo to put back. */
+  public void logWordOff(CampLabel__c label) {
+    changed.add(
+      new Map<String, Object>{
+        'wordOff' => label.Id,
+        'term' => label.ModelTerm__c,
+        'singular' => label.Singular__c,
+        'plural' => label.Plural__c
+      }
+    );
+    countChange('CampLabel', label.Id);
+  }
+
   /** A week an item was off that a workbook ticked back on (removed): logged for Undo. */
   public void logWeekBackOn(Map<String, Object> entry, Id target) {
     changed.add(entry);
