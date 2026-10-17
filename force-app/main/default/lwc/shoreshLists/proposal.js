@@ -619,21 +619,126 @@ function settleBlanks(rows) {
  * The first row of each name (capitals and spacing aside) leads, even if it can't be read; the
  * rows after it with that name repeat it and follow it, never saved on their own.
  */
-function settleLeads(read) {
-  const first = new Map();
+function settleLeads(read, screen, used, answers) {
+  const groups = new Map();
   read
     .filter((r) => r.name)
     .forEach((r) => {
       const key = itemKey(r);
-      if (first.has(key)) {
-        r.repeatOf = first.get(key);
-        r.repeatOf.spellings.push(r.name);
-      } else {
-        first.set(key, r);
-        r.spellings = [r.name];
-      }
+      groups.set(key, [...(groups.get(key) || []), r]);
     });
-  return read.filter((r) => r.name && !r.repeatOf);
+  const cards = [];
+  groups.forEach((rows, key) => {
+    const spellings = rows.map((r) => r.name);
+    let lead = rows[0];
+    const differ = differingRows(rows, used);
+    if (differ) {
+      const id = `rowsDiffer|${screen.key}|${key}`;
+      const answer = answers[id];
+      cards.push({
+        id,
+        title: `Rows for “${lead.name}” differ`,
+        options: [
+          ...differ.map((variant) => ({
+            value: `row:${variant.row.rowNumber}`,
+            label: `Row ${variant.row.rowNumber}: ${variant.label}`
+          })),
+          { value: LEAVE_OUT, label: "Leave it out for now" }
+        ],
+        answer: answer || null,
+        noMemory: true
+      });
+      const chosen = rows.find((r) => `row:${r.rowNumber}` === answer);
+      if (chosen) {
+        lead = chosen;
+        rows
+          .filter(
+            (r) =>
+              r !== chosen &&
+              differ.some(
+                (v) => v.members.includes(r) && !v.members.includes(chosen)
+              )
+          )
+          .forEach((r) => {
+            r.notChosen = true;
+          });
+      } else if (answer === LEAVE_OUT) {
+        rows.forEach((r) => {
+          r.leftOut = true;
+        });
+      } else {
+        rows.forEach((r) => {
+          r.open = true;
+        });
+      }
+    }
+    lead.spellings = spellings;
+    rows
+      .filter((r) => r !== lead)
+      .forEach((r) => {
+        r.repeatOf = lead;
+      });
+  });
+  return {
+    leads: read.filter((r) => r.name && !r.repeatOf),
+    cards
+  };
+}
+
+/**
+ * Rows for one item whose details differ (coordinator, after #20's review: as Import last year
+ * asks when files disagree, never the first row winning): the variants, each with the row
+ * that first gives it and what differs, or null when they agree (then they are repeats).
+ */
+function differingRows(rows, used) {
+  const readable = rows.filter((r) => !r.problems.length);
+  if (readable.length < 2) {
+    return null;
+  }
+  const columns = used
+    .map(({ column }) => column)
+    .filter((c) => c.key !== "name" && !c.scope);
+  const valueOf = (r, c) => {
+    if (r.blanks.has(c.key) || (r.requiredBlanks || []).includes(c)) {
+      return "";
+    }
+    const v = r.values[c.key];
+    if (Array.isArray(v)) {
+      return v
+        .map((x) => looseKey(String(x)))
+        .sort()
+        .join(",");
+    }
+    return typeof v === "string" ? looseKey(v) : JSON.stringify(v ?? "");
+  };
+  const variants = new Map();
+  readable.forEach((r) => {
+    const key = columns.map((c) => valueOf(r, c)).join("\u0000");
+    variants.set(key, [...(variants.get(key) || []), r]);
+  });
+  if (variants.size < 2) {
+    return null;
+  }
+  const differing = columns.filter(
+    (c) => new Set(readable.map((r) => valueOf(r, c))).size > 1
+  );
+  return [...variants.values()].map((members) => ({
+    row: members[0],
+    members,
+    label: differing
+      .map((c) => {
+        const v = members[0].values[c.key];
+        // Who names are still as written here, not yet records.
+        const text =
+          c.type === "list"
+            ? (v || []).join(", ") || "Everyone"
+            : cellText(c, v, null);
+        return text === "" || text === undefined
+          ? "none"
+          : String(Array.isArray(v) ? v.join(", ") : text);
+      })
+      .join(" · ")
+  }));
 }
 
 /**
@@ -645,7 +750,11 @@ function finishRepeats(read) {
     .filter((r) => r.repeatOf && !r.problems.length)
     .forEach((r) => {
       const lead = r.repeatOf;
-      if (lead.problems.length) {
+      if (r.notChosen) {
+        // The director chose another row for this item.
+        r.leftOut = true;
+        r.sameAs = `row ${lead.rowNumber}`;
+      } else if (lead.problems.length) {
         r.problems.push(`Same as row ${lead.rowNumber}, which can't be read`);
       } else if (lead.leftOut) {
         r.leftOut = true;
@@ -770,7 +879,9 @@ export function listProposal(input) {
     "division"
   ]);
   result.pairs.push(...divisions.pairs);
-  const leads = settleLeads(read);
+  const settled = settleLeads(read, screen, used, answers);
+  const leads = settled.leads;
+  result.cards.push(...settled.cards);
   result.pairs.push(...matchNames(leads, screen, setup, answers));
   result.cards.push(...whichOne(leads, screen, setup, answers));
   used

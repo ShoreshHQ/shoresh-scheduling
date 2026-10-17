@@ -231,16 +231,40 @@ describe("rows", () => {
     ]);
   });
 
-  it("a name written twice: the first row is used and the second says so", () => {
+  it("a name written twice with the same details: the second says so", () => {
     const p = read("locations", [
       ["Location", "Groups that fit"],
       ["Barn", "1"],
-      ["barn", "2"]
+      ["barn", "1"]
     ]);
     expect(p.rows[1]).toMatchObject({
       status: "unreadable",
       problems: ["Same as row 2"]
     });
+  });
+
+  it("a name written twice with different details: asked which row is right", () => {
+    const rows = [
+      ["Location", "Groups that fit"],
+      ["Barn", "1"],
+      ["barn", "2"]
+    ];
+    const p = read("locations", rows);
+    expect(p.rows.map((r) => r.status)).toEqual(["asked", "asked"]);
+    const [card] = questionCards(p, terms, {});
+    expect(card.title).toBe("Rows for “Barn” differ");
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Row 2: 1",
+      "Row 3: 2",
+      "Leave it out for now"
+    ]);
+    const answers = { [card.id]: "row:3" };
+    const done = read("locations", rows, answers);
+    expect(done.rows.map((r) => [r.status, r.values.fit])).toEqual([
+      ["leftOut", 1],
+      ["new", 2]
+    ]);
+    expect(waitingFor(done, terms, answers)).toEqual([]);
   });
 
   it("reads yes/no words and takes the formula guard off", () => {
@@ -1013,7 +1037,7 @@ describe("PR 19 review", () => {
     const p = read("activities", [
       ["Activity", "Who can do it"],
       ["Golf", "Bunk 1"],
-      ["golf", "Juniors"]
+      ["golf", "Bunk 1"]
     ]);
     expect(p.rows[1].problems).toEqual(["Same as row 2, which can't be read"]);
   });
@@ -1047,7 +1071,7 @@ describe("PR 19 review, round 3", () => {
     const p = read("activities", [
       ["Activity", "Rain plan"],
       ["Pottery", "Pottery"],
-      ["Pottery", ""],
+      ["Pottery", "Pottery"],
       ["Swim", "Pottery"]
     ]);
     const plan = listPlan(p, {}, "s1", "f");

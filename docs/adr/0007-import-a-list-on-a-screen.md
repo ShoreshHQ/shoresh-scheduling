@@ -36,13 +36,17 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    asks those keys. Similar-name answers share 4b's keys (`similar|activity|...`), so a camp
    that said Music and Musik are the same is not asked again.
 3. **Nothing defaults quietly.** Rows of one name (capitals and spacing aside) are one item:
-   its identity and values come from the first row; its spelling, whatever the row order, is
-   as an item set up spells it, else as written most often, then the first alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
+   when its rows say the same thing, the first row leads; when they differ in any column the
+   file has (coordinator, #20 review), a question shows each version ("Row 3: 9:30 AM ·
+   10:00 AM") with Leave it out, and the chosen row leads. Its spelling, whatever the row
+   order, is as an item set up spells it, else as written most often, then the first
+   alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
    in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
    Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
    inside a cell (Alt+Enter) separates names in a list, as a comma does. Rows are settled
    before anything they name is resolved: the first row of each name (capitals and spacing
-   aside) leads, even one that can't be read, and the rows after it with that name follow it:
+   aside) leads (or the row chosen when they differ), even one that can't be read, and the
+   other rows with that name follow it:
    not saved ("Same as row 2", or "Same as row 2, which can't be read"), left out with it, or
    waiting with it while it is asked about. Two rows answered to be one item set up keep the
    first.
