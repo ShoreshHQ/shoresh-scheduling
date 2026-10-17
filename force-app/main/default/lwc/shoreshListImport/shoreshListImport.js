@@ -34,6 +34,7 @@ import {
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { errorMessage } from "c/shoreshErrors";
+import { FIELD } from "c/shoreshSchema";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 
@@ -195,7 +196,8 @@ export default class ShoreshListImport extends LightningElement {
 
   /** Column choices and answers this camp gave before (Greg: remembered per camp and screen). */
   async rememberedAnswers() {
-    const campId = this.setup && this.setup.season && this.setup.season.Camp__c;
+    const campId =
+      this.setup && this.setup.season && this.setup.season[FIELD.Season.Camp];
     let saved = [];
     try {
       saved = campId ? await getAnswers({ campId }) : [];

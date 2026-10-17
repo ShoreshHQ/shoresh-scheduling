@@ -21,6 +21,7 @@ import {
   workbookFile
 } from "c/shoreshImportEngine";
 import { errorMessage } from "c/shoreshErrors";
+import { FIELD } from "c/shoreshSchema";
 
 /** Each layout in the camp's words. */
 function layoutWords(t) {
@@ -112,7 +113,8 @@ export default class ShoreshImport extends LightningElement {
 
   /** The camp's answers from earlier imports (Greg: a similar file does not ask again). */
   async rememberedAnswers() {
-    const campId = this.setup && this.setup.season && this.setup.season.Camp__c;
+    const campId =
+      this.setup && this.setup.season && this.setup.season[FIELD.Season.Camp];
     let saved = [];
     try {
       saved = campId ? await getAnswers({ campId }) : [];

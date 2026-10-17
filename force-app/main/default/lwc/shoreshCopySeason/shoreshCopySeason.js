@@ -3,6 +3,7 @@ import previewCopy from "@salesforce/apex/SeasonSetupController.previewCopy";
 import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { suggestedCopyName, suggestedCopyStart } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
+import { FIELD } from "c/shoreshSchema";
 
 /**
  * "Copy last season": pick a name and a new start date, see exactly where every week lands,
@@ -10,7 +11,7 @@ import { errorMessage } from "c/shoreshErrors";
  * Fires: copied { seasonId }, cancel.
  */
 export default class ShoreshCopySeason extends LightningElement {
-  /** The season being copied: { Id, Name, StartDate__c, EndDate__c }. */
+  /** The season being copied: its Id, Name, and start and end dates. */
   @api season;
   @api terms;
 
@@ -21,12 +22,9 @@ export default class ShoreshCopySeason extends LightningElement {
   busy = false;
 
   connectedCallback() {
-    this.newStart = suggestedCopyStart(this.season.StartDate__c);
-    this.newName = suggestedCopyName(
-      this.season.Name,
-      this.season.StartDate__c,
-      this.newStart
-    );
+    const start = this.season[FIELD.Season.StartDate];
+    this.newStart = suggestedCopyStart(start);
+    this.newName = suggestedCopyName(this.season.Name, start, this.newStart);
     this.loadPreview();
   }
 

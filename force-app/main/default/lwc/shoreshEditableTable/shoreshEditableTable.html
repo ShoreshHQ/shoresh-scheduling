@@ -1,5 +1,26 @@
 <template>
-  <div class="slds-m-bottom_medium">
+  <template lwc:if={unknownObject}>
+    <article
+      class="slds-card slds-card_boundary slds-m-bottom_medium"
+      data-id="unknown-object"
+      role="alert"
+    >
+      <div class="slds-card__body slds-card__body_inner slds-media">
+        <lightning-icon
+          class="slds-media__figure"
+          icon-name="utility:error"
+          variant="error"
+          size="small"
+          alternative-text="Error"
+        ></lightning-icon>
+        <div class="slds-media__body">
+          <h3 class="slds-text-heading_small">{title}</h3>
+          <p>This table can't be shown. Please tell Shoresh support.</p>
+        </div>
+      </div>
+    </article>
+  </template>
+  <div lwc:else class="slds-m-bottom_medium">
     <div
       class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small"
     >

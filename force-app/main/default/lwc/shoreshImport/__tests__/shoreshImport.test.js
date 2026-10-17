@@ -8,6 +8,7 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import LightningConfirm from "lightning/confirm";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
   "@salesforce/apex/ImportController.saveSetup",
@@ -80,7 +81,7 @@ const flush = () =>
 
 async function render() {
   const element = createElement("c-shoresh-import", { is: ShoreshImport });
-  element.setup = SETUP;
+  element.setup = nsRecord(SETUP);
   element.terms = buildTerms([]);
   document.body.appendChild(element);
   await flush();
@@ -298,7 +299,7 @@ describe("c-shoresh-import", () => {
 
   it("Use this setup waits for the choices on the preview too", async () => {
     const element = createElement("c-shoresh-import", { is: ShoreshImport });
-    element.setup = {
+    element.setup = nsRecord({
       ...SETUP,
       programs: [
         {
@@ -320,7 +321,7 @@ describe("c-shoresh-import", () => {
           recurringActivities: []
         }
       ]
-    };
+    });
     element.terms = buildTerms([]);
     document.body.appendChild(element);
     await flush();
@@ -353,7 +354,7 @@ describe("c-shoresh-import", () => {
 
     async function renderWith(setup) {
       const element = createElement("c-shoresh-import", { is: ShoreshImport });
-      element.setup = setup;
+      element.setup = nsRecord(setup);
       element.terms = buildTerms([]);
       document.body.appendChild(element);
       await flush();
