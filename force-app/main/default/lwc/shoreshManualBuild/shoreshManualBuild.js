@@ -35,17 +35,6 @@ function loose(text) {
     .toLowerCase();
 }
 
-/** A run as saveSlots takes it (SlotEdits.Run): the screen's own blockIds left out. */
-function asSaved(run) {
-  return {
-    day: run.day,
-    groupId: run.groupId,
-    firstBlockId: run.firstBlockId,
-    before: run.before,
-    after: run.after
-  };
-}
-
 /** One slot, the same in Daily and Group View. */
 function slotKey(slot) {
   return `${slot.day}|${slot.group}|${slot.block}`;
@@ -842,8 +831,9 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /**
-   * A run as the server takes it: the day's date, the group's and first block's Ids. blockIds
-   * (every cell's block, for Undo and Redo later) stays on the screen.
+   * A run as the server takes it: the day's date, the group's and first block's Ids, and every
+   * cell's block (blockIds), so it lands on those blocks or comes back as a conflict, now and
+   * when it is undone or redone.
    */
   toServerRun(run) {
     const day = this.schedule.days[run.day];
@@ -977,7 +967,7 @@ export default class ShoreshManualBuild extends LightningElement {
     try {
       const result = await saveSlots({
         scheduleId: this.schedule.schedule.id,
-        edits: [{ runs: entry.edit.runs.map(asSaved) }]
+        edits: [entry.edit]
       });
       this.queue = this.queue.slice(1);
       this.server = result.schedule;
@@ -1480,7 +1470,7 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     if (!made.runs.length) {
-      this.say(
+      this.sayOnce(
         entry.note
           ? `Already as you had it. ${entry.note}`
           : "Already as you had it."
@@ -1632,10 +1622,19 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- helpers ----------
 
-  /** A short note under the toolbar, said by screen readers too. */
+  /**
+   * Why something couldn't be done, on the quiet line until the director's next change, and said
+   * by screen readers: now, and again with the next save, whose words would talk over it.
+   */
   say(text) {
-    this.notice = text;
+    this.sayOnce(text);
     this.unrepeated = text;
+  }
+
+  /** A short note on the quiet line, said by screen readers once. */
+  sayOnce(text) {
+    this.notice = text;
+    this.unrepeated = null;
     this.announce(text);
   }
 

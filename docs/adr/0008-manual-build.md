@@ -251,8 +251,11 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       director expected there.** What the director expects in their own cells is what the edit
       names as there before it: for an edit, the screen when it was made; for an Undo or Redo,
       what the step left, even if the screen has since refreshed to someone else's change
-      (which is then listed, not replaced). An Undo or Redo also carries the time block of each
-      of its cells, so a block added inside it since isn't mistaken for one of them. So nothing
+      (which is then listed, not replaced). Every run also names the time block of each of its
+      cells (`blockIds`), kept with the step for Undo and Redo: the screen never mistakes a
+      block added inside it since for one of them, and the server (`SlotSaves`,
+      `SlotEdits.Run.onBlocks`) makes a run only on exactly those blocks, or returns a
+      conflict, so a placement never lands shifted onto a new block. So nothing
       anyone else put anywhere (in the director's cells, or in a placement of theirs that would
       be cleared) is replaced without being shown. With nothing to list there is no question;
       with nothing to change, _Already as you had it._ After Use yours, what the question
@@ -274,22 +277,29 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
         Swim · …: Flagpole stays where it is set up._ (When it is pressed, before anything is
         sent, the cause isn't known: _Can't undo Placed Swim · …: the week has changed._)
         The line stays until the director's next change or answer, and is said again once, with
-        the first save that follows (whose words would otherwise talk over it).
+        the first save that follows (whose words would otherwise talk over it). Other notes
+        (_Redo skipped._, _Already as you had it._) are said once, with their own save, and
+        never twice on the line.
     - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
       are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
       runs, and Period 3 is never part of the edit, whatever someone puts there.
     - **Checked by a seeded property test** (`conflicts.property.test.js`): 3,000 generated
       weeks (two days, three bunks, fixed and recurring activities, activities one to three
-      blocks long), each with a random edit (place, multi-block, clear, move or swap within or
-      across days and bunks, length, Undo, half of them pressed after the screen refreshed to
-      someone else's change), random changes by others (cells, cleared placements, longer or
-      shorter activities, new fixed or recurring activities, time blocks added anywhere
-      including inside a placement, or removed), and up to three questions in a row. The test
-      keeps its own record of what the director saw and checks the rule strictly each time,
-      and that no fixed or recurring activity is ever changed. Breaking the rule, or the record of what was seen, fails it. On the screen,
-      every test that clicks Use yours checks the same rule by time block Id against the
-      server's week at question time (`useYoursSendsWhatWasShown`), carrying the director's
-      own cells and what they have seen through a further question.
+      blocks long). Each gets a director's edit: a plain edit (place, multi-block, clear, move or
+      swap within or across days and bunks, length), or an Undo or Redo of any of those, some of
+      them steps Use yours made (their runs from `plan()` over someone else's change), half
+      pressed after the screen refreshed to someone else's change. Then random changes by others
+      (cells, cleared placements, longer or shorter activities, new fixed or recurring
+      activities, time blocks added anywhere including inside a placement, or removed), and up
+      to three questions in a row. The test server makes runs as `SlotSaves` does, only on the
+      blocks they name. The test keeps its own record of what the director expected and saw,
+      and checks each time: the rule, strictly; that no fixed or recurring activity is ever
+      changed; and after each save, that every cell was written in exactly the time block it
+      was meant for, holding what the director chose. Breaking the rule, the record of what was
+      expected, or the server's block check fails it. On the screen, every test that clicks Use
+      yours checks the same rule by time block Id against the server's week at question time
+      (`useYoursSendsWhatWasShown`), carrying the director's own cells and what they have seen
+      through a further question.
     - **Use yours and Undo:** a waiting Undo or Redo of the same step is dropped (it was worked
       out from what the director saw); a dropped Undo puts the step back on top of Undo, and a
       dropped Redo is said with the save (_Placed Swim · …. Redo skipped._) and stays on the

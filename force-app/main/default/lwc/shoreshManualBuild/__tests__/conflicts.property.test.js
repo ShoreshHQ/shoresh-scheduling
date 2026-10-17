@@ -138,6 +138,14 @@ function serverApply(state, runs) {
     if (g < 0 || first < 0 || first + run.before.length > day.blocks.length) {
       return false;
     }
+    // Only on the blocks the run names (SlotEdits.Run.onBlocks).
+    if (
+      run.blockIds &&
+      (run.blockIds.length !== run.after.length ||
+        run.blockIds.some((id, i) => blockIds(day)[first + i] !== id))
+    ) {
+      return false;
+    }
     const row = rowsByDay[d][g];
     if (run.before.some((slot, i) => row[first + i] !== slot)) {
       return false;
@@ -308,8 +316,8 @@ function toServer(days, run) {
   };
 }
 
-/** A random edit on the week the director sees: { days (seen), runs (server shape) }. */
-function directorEdit(rnd, days) {
+/** A plain edit on the week the director sees, in server shape, or null. */
+function plainEdit(rnd, days) {
   const at = () => {
     const day = int(rnd, days.length);
     return {
@@ -319,7 +327,7 @@ function directorEdit(rnd, days) {
     };
   };
   const nowhereAway = () => false;
-  const kind = int(rnd, 7);
+  const kind = int(rnd, 6);
   let runs = null;
   if (kind <= 1) {
     const p = at();
@@ -341,54 +349,96 @@ function directorEdit(rnd, days) {
     const p = at();
     const result = resizeEdit(days, p, p.block + int(rnd, 4) - 1, nowhereAway);
     runs = result && result.runs;
-  } else if (kind === 5) {
+  } else {
     const result = removeEdit(days, at());
     runs = result && result.runs;
-  } else {
-    // An Undo of a change made and saved earlier (a placement), sent back the other way.
-    const p = at();
-    const run = editRun(
-      days[p.day],
-      p.group,
-      p.block,
-      pick(rnd, ACTIVITIES),
-      1 + int(rnd, 2),
-      nowhereAway
-    );
-    if (!run) {
-      return null;
-    }
-    const rows = rowsOf(days[p.day]);
-    run.after.forEach((slot, i) => {
-      rows[p.group][run.first + i] = slot;
-    });
-    const changed = days.map((day, d) => {
-      return d === p.day ? dayOf(day.dateValue, blockIds(day), rows) : day;
-    });
-    const undoRuns = inverse([{ day: p.day, group: p.group, ...run }]).map(
-      (r) => toServer(changed, r)
-    );
-    // Half the time the screen has since refreshed to someone else's change, near the step or
-    // anywhere: the Undo still expects what the step left.
-    if (rnd() < 0.5) {
-      const refreshed = { days: copyWeek(changed) };
-      const times = 1 + int(rnd, 2);
-      for (let i = 0; i < times; i++) {
-        otherChange(rnd, refreshed, rnd() < 0.8 ? undoRuns : null);
-      }
-      return {
-        days: refreshed.days,
-        expects: changed,
-        runs: undoRuns,
-        refreshed: true
-      };
-    }
-    return { days: changed, expects: changed, runs: undoRuns };
   }
-  if (!runs || !runs.length) {
+  return runs && runs.length ? runs.map((r) => toServer(days, r)) : null;
+}
+
+/** A week with runs made on it, or null when they don't fit. */
+function madeOn(week, runs) {
+  const state = { days: copyWeek(week) };
+  return serverApply(state, runs) ? state.days : null;
+}
+
+/**
+ * A step saved earlier, whose runs came from plan() after someone else's change (Use yours), or
+ * null when the change didn't get in its way.
+ */
+function viaUseYours(rnd, days, runs) {
+  const theirs = { days: copyWeek(days) };
+  otherChange(rnd, theirs, runs);
+  const intent = intentOf(
+    days,
+    runs,
+    () => "",
+    () => ""
+  );
+  if (intent.missing || madeOn(theirs.days, runs)) {
     return null;
   }
-  return { days, runs: runs.map((r) => toServer(days, r)) };
+  const asked = plan(theirs.days, intent);
+  const after =
+    asked.runs && asked.runs.length && madeOn(theirs.days, asked.runs);
+  return after ? { runs: asked.runs, after } : null;
+}
+
+/**
+ * What the director sends: { days (the screen), expects (the week the runs were worked out on),
+ * runs (server shape), kind, useYours, refreshed }. A plain edit, or an Undo or Redo of any
+ * plain edit (a placement, multi-block, clear, move, swap across days and bunks, length), some of
+ * them steps that Use yours made, and half pressed after the screen refreshed to someone else's
+ * change.
+ */
+function directorEdit(rnd, days) {
+  const runs = plainEdit(rnd, days);
+  if (!runs) {
+    return null;
+  }
+  if (rnd() < 0.5) {
+    return { days, expects: days, runs, kind: "edit" };
+  }
+  let step = { runs, after: madeOn(days, runs) };
+  let useYours = false;
+  if (rnd() < 0.6) {
+    const replaced = viaUseYours(rnd, days, runs);
+    if (replaced) {
+      step = replaced;
+      useYours = true;
+    }
+  }
+  if (!step.after) {
+    return null;
+  }
+  const redo = rnd() < 0.4;
+  let expects = step.after;
+  let send = inverse(step.runs);
+  if (redo) {
+    expects = madeOn(step.after, send);
+    send = step.runs;
+    if (!expects) {
+      return null;
+    }
+  }
+  const result = {
+    days: expects,
+    expects,
+    runs: send,
+    kind: redo ? "redo" : "undo",
+    useYours
+  };
+  // Half the time the screen has since refreshed to someone else's change, near the step or
+  // anywhere: the Undo or Redo still expects what the step left.
+  if (rnd() < 0.5) {
+    const refreshed = { days: copyWeek(expects) };
+    const times = 1 + int(rnd, 2);
+    for (let i = 0; i < times; i++) {
+      otherChange(rnd, refreshed, rnd() < 0.8 ? send : null);
+    }
+    return { ...result, days: refreshed.days, refreshed: true };
+  }
+  return result;
 }
 
 // ---------- the oracle: kept independently of the code under test ----------
@@ -419,6 +469,62 @@ function ownOf(days, runs) {
     );
   });
   return own;
+}
+
+/** What each of the director's own cells should hold, by block Id. */
+function wantsOf(days, runs) {
+  const wants = new Map();
+  runs.forEach((run) => {
+    const day = days.find((dd) => dd.dateValue === run.day);
+    const first = blockIds(day).indexOf(run.firstBlockId);
+    run.after.forEach((after, i) =>
+      wants.set(cellKey(run.day, run.groupId, day.blocks[first + i].id), after)
+    );
+  });
+  return wants;
+}
+
+/**
+ * Where a save will write, by position in the server's week before it (what the server goes by),
+ * with the block each cell was meant for.
+ */
+function targetsOf(state, runs) {
+  const targets = [];
+  runs.forEach((run) => {
+    const day = state.days.find((dd) => dd.dateValue === run.day);
+    const first = day ? blockIds(day).indexOf(run.firstBlockId) : -1;
+    run.after.forEach((after, i) => {
+      const block = first >= 0 ? day.blocks[first + i] : null;
+      targets.push({
+        key: block ? cellKey(run.day, run.groupId, block.id) : null,
+        meant: cellKey(run.day, run.groupId, run.blockIds[i]),
+        after
+      });
+    });
+  });
+  return targets;
+}
+
+/**
+ * After a save: it wrote exactly the time blocks each cell was meant for (never shifted onto a
+ * block added since), and what it wrote in the director's own cells is what they chose.
+ */
+function expectWritten(state, targets, wants, failures, seed) {
+  const now = seenModelOf(state.days);
+  targets.forEach(({ key, meant, after }) => {
+    if (key !== meant) {
+      failures.push(
+        `seed ${seed}: a cell meant for ${meant} was written to ${key}`
+      );
+    } else if (now.get(key) !== after) {
+      failures.push(`seed ${seed}: ${key} holds ${now.get(key)}, not ${after}`);
+    }
+    if (wants.has(meant) && wants.get(meant) !== after) {
+      failures.push(
+        `seed ${seed}: ${meant} was written ${after}, not the director's ${wants.get(meant)}`
+      );
+    }
+  });
 }
 
 function expectStrict(made, state, own, seen, failures, seed) {
@@ -471,7 +577,11 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
       changed: 0,
       fixed: 0,
       refreshed: 0,
-      missing: 0
+      missing: 0,
+      edit: 0,
+      undo: 0,
+      redo: 0,
+      useYours: 0
     };
     for (let seed = 1; seed <= SEEDS; seed++) {
       const rnd = random(seed);
@@ -484,6 +594,9 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
       const expects = edit.expects || edit.days;
       const seen = seenModelOf(expects);
       const own = ownOf(expects, edit.runs);
+      const wants = wantsOf(expects, edit.runs);
+      counts[edit.kind] += 1;
+      counts.useYours += edit.useYours ? 1 : 0;
       let intent = intentOf(
         edit.days,
         edit.runs,
@@ -503,7 +616,9 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
       let runs = edit.runs;
       // Up to three questions in a row about the same edit.
       for (let question = 0; question < 3; question++) {
+        const targets = targetsOf(state, runs);
         if (serverApply(state, runs)) {
+          expectWritten(state, targets, wants, failures, seed);
           break;
         }
         if (question === 0) {
@@ -540,5 +655,8 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
     expect(counts.fixed).toBeGreaterThan(5);
     expect(counts.refreshed).toBeGreaterThan(20);
     expect(counts.missing).toBeGreaterThan(5);
+    expect(counts.undo).toBeGreaterThan(300);
+    expect(counts.redo).toBeGreaterThan(200);
+    expect(counts.useYours).toBeGreaterThan(50);
   });
 });

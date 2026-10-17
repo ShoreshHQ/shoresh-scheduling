@@ -389,6 +389,73 @@ private class ManualBuildTest {
   }
 
   @IsTest
+  static void aRunIsMadeOnlyOnTheTimeBlocksItWasMadeOn() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      Date mon = monday(view.schedule).dateValue;
+      String soccer = a(ids, 'Soccer');
+      // The screen placed Soccer in Period 2 and a block it knew as next to it: since then, the
+      // block after Period 2 is Lunch, not that one. A conflict, and nothing is written.
+      SlotEdits.Run moved = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      moved.blockIds = new List<String>{
+        ids.get('Period 2'),
+        ids.get('Period 1')
+      };
+      SlotEdits.Result shifted = save(
+        draftId,
+        edit(
+          moved,
+          new List<String>{ '', '' },
+          new List<String>{ soccer, '^' + soccer }
+        )
+      );
+      Assert.areEqual(new List<Integer>{ 0 }, shifted.conflicts);
+      Assert.areEqual(
+        new List<String>{ '', '' },
+        new List<String>{
+          slots(monday(shifted.schedule), 0)[1],
+          slots(monday(shifted.schedule), 0)[2]
+        }
+      );
+      // Naming fewer blocks than it changes is a conflict too.
+      SlotEdits.Run fewer = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      fewer.blockIds = new List<String>{ ids.get('Period 2') };
+      Assert.areEqual(
+        new List<Integer>{ 0 },
+        save(
+            draftId,
+            edit(
+              fewer,
+              new List<String>{ '', '' },
+              new List<String>{ soccer, '^' + soccer }
+            )
+          )
+          .conflicts
+      );
+      // On the blocks it names (15-character Ids match 18-character ones), it is made.
+      SlotEdits.Run same = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      same.blockIds = new List<String>{
+        String.valueOf(ids.get('Period 2')).left(15),
+        ids.get('Lunch')
+      };
+      SlotEdits.Result made = save(
+        draftId,
+        edit(
+          same,
+          new List<String>{ '', '' },
+          new List<String>{ soccer, '^' + soccer }
+        )
+      );
+      Assert.areEqual(0, made.conflicts.size());
+      Assert.areEqual(soccer, slots(monday(made.schedule), 0)[1]);
+      Assert.areEqual('^' + soccer, slots(monday(made.schedule), 0)[2]);
+    }
+  }
+
+  @IsTest
   static void fixedRecurringAndAwaySlotsCannotBeChanged() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();

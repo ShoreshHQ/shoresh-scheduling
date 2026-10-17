@@ -145,7 +145,8 @@ describe("c-shoresh-manual-build: moving things", () => {
         groupId: "g1",
         firstBlockId: "t3",
         before: [""],
-        after: ["A:a2"]
+        after: ["A:a2"],
+        blockIds: ["t3"]
       }
     ]);
     // Only one Period left before the day ends: placed as far as it goes, and said so.
@@ -167,7 +168,8 @@ describe("c-shoresh-manual-build: moving things", () => {
         groupId: "g1",
         firstBlockId: "t2",
         before: ["A:a1", ""],
-        after: ["", "A:a1"]
+        after: ["", "A:a1"],
+        blockIds: ["t2", "t3"]
       }
     ]);
     await render();
@@ -180,14 +182,16 @@ describe("c-shoresh-manual-build: moving things", () => {
         groupId: "g1",
         firstBlockId: "t2",
         before: ["A:a1"],
-        after: ["A:a3"]
+        after: ["A:a3"],
+        blockIds: ["t2"]
       },
       {
         day: "2026-06-29",
         groupId: "g2",
         firstBlockId: "t2",
         before: ["A:a3"],
-        after: ["A:a1"]
+        after: ["A:a1"],
+        blockIds: ["t2"]
       }
     ]);
     expect(q(second, '[data-id="undo"]').title).toBe(
@@ -209,7 +213,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     );
   });
 
-  it("a placement dragged back onto the list is taken out", async () => {
+  it("a placement dragged back onto the list is cleared, in the same word as Delete", async () => {
     const element = await render();
     await fire(cell(element, "1-1"), "dragstart");
     palette(element)
@@ -222,9 +226,13 @@ describe("c-shoresh-manual-build: moving things", () => {
         groupId: "g2",
         firstBlockId: "t2",
         before: ["A:a3"],
-        after: [""]
+        after: [""],
+        blockIds: ["t2"]
       }
     ]);
+    expect(q(element, '[data-id="undo"]').title).toBe(
+      "Undo: Cleared Soccer · Bunk 2 · Monday · Period 2"
+    );
   });
 
   it("from the keyboard: Space picks up, arrows choose, Space puts down", async () => {
@@ -268,7 +276,8 @@ describe("c-shoresh-manual-build: moving things", () => {
         groupId: "g1",
         firstBlockId: "t2",
         before: ["A:a1", ""],
-        after: ["A:a1", "^A:a1"]
+        after: ["A:a1", "^A:a1"],
+        blockIds: ["t2", "t3"]
       }
     ]);
     expect(q(element, '[data-id="undo"]').title).toBe(
@@ -305,7 +314,8 @@ describe("c-shoresh-manual-build: moving things", () => {
         groupId: "g2",
         firstBlockId: "t2",
         before: [""],
-        after: ["A:a3"]
+        after: ["A:a3"],
+        blockIds: ["t2"]
       }
     ]);
     expect(q(element, '[data-id="redo"]').title).toBe(
@@ -898,24 +908,135 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(q(element, '[data-id="redo"]').disabled).toBe(true);
   });
 
-  it("a placement dragged back onto the list is cleared, in the same word as Delete", async () => {
-    const element = await render();
-    await fire(cell(element, "0-1"), "dragstart");
-    await fire(
-      palette(element).shadowRoot.querySelector('[data-id="palette"]'),
-      "drop"
+  it("an Undo of a placement with a time block added inside it since says it can't", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    // Boating placed in Period 2 and Lunch and saved; by the answer, a Rest block sits between
+    // them, and Boating runs through it.
+    const wider = schedule([FLAGPOLE, BOATING, SOCCER], ["1,2,^,^", "1,3,,"]);
+    const blocks = wider.days[0].blocks;
+    wider.days[0] = {
+      ...wider.days[0],
+      blocks: [
+        blocks[0],
+        blocks[1],
+        {
+          id: "t9",
+          name: "Rest",
+          startTime: "11:00",
+          endTime: "11:30",
+          gone: false
+        },
+        blocks[2]
+      ]
+    };
+    saveSlots.mockResolvedValueOnce({ conflicts: [], schedule: wider });
+    await fire(chip(element, "a2"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    expect(sentRuns(0)[0].blockIds).toEqual(["t2", "t3"]);
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    // Taking back Period 2 and Lunch can't mean Period 2 and Rest.
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Can't undo Placed Boating · Bunk 1 · Monday · Period 2: the week has changed."
     );
-    expect(sentRuns()).toEqual([
-      {
-        day: "2026-06-29",
-        groupId: "g1",
-        firstBlockId: "t2",
-        before: ["A:a1"],
-        after: [""]
-      }
-    ]);
-    expect(q(element, '[data-id="undo"]').title).toBe(
-      "Undo: Cleared Swim · Bunk 1 · Monday · Period 2"
+  });
+
+  it("Keep theirs clears an earlier refusal from the line", async () => {
+    const element = await refusedThenAsked();
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(q(element, '[data-id="notice"]')).toBeNull();
+  });
+
+  it("Use yours clears an earlier refusal from the line", async () => {
+    const element = await refusedThenAsked();
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(q(element, '[data-id="notice"]')).toBeNull();
+  });
+
+  it("Redo skipped is said once, and not again with the next save", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    saveSlots.mockReturnValueOnce(placing.promise);
+    // Two changes, each undone and redone, all waiting behind the first save.
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true, shiftKey: true });
+    await press(cell(element, "1-1"), "Delete");
+    await press(cell(element, "1-1"), "z", { ctrlKey: true });
+    await press(cell(element, "1-1"), "z", { ctrlKey: true, shiftKey: true });
+    // Each change meets a conflict with nothing of anyone else's to replace: made without a
+    // question, and its waiting Undo and Redo are dropped.
+    const before = schedule([FLAGPOLE, SOCCER], ["1,,", "1,2,"]);
+    const placed = schedule([FLAGPOLE, SWIM, SOCCER], ["1,2,", "1,3,"]);
+    saveSlots
+      .mockResolvedValueOnce({ conflicts: [], schedule: placed })
+      .mockResolvedValueOnce({ conflicts: [0], schedule: placed });
+    const cleared = later();
+    saveSlots.mockReturnValueOnce(cleared.promise);
+    placing.answer({ conflicts: [0], schedule: before });
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Placed Swim · Bunk 1 · Monday · Period 2. Redo skipped."
+    );
+    cleared.answer({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SWIM], ["1,2,", "1,,"])
+    });
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(4);
+    expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Cleared Bunk 2 · Monday · Period 2"
+    );
+  });
+
+  it("Already as you had it is said once, not with the next save", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    const clearing = later();
+    saveSlots
+      .mockReturnValueOnce(placing.promise)
+      .mockReturnValueOnce(clearing.promise);
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    await press(cell(element, "1-1"), "Delete");
+    // Someone else already placed Swim there.
+    const placed = schedule([FLAGPOLE, SWIM, SOCCER], ["1,2,", "1,3,"]);
+    placing.answer({ conflicts: [0], schedule: placed });
+    await flush();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Already as you had it."
+    );
+    clearing.answer({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SWIM], ["1,2,", "1,,"])
+    });
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Cleared Bunk 2 · Monday · Period 2"
     );
   });
 });
+
+/** A refusal on the line (the first change), then a question about the second. */
+async function refusedThenAsked() {
+  const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+  const placing = later();
+  saveSlots.mockReturnValueOnce(placing.promise);
+  await fire(chip(element, "a1"), "dragstart");
+  await fire(cell(element, "0-1"), "drop");
+  await press(cell(element, "1-1"), "Delete");
+  // Flagpole is now set up in Bunk 1 · Period 2, and someone put Boating in Bunk 2 · Period 2.
+  const changed = schedule([FLAGPOLE, BOATING], ["1,1,", "1,2,"]);
+  saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: changed });
+  placing.answer({ conflicts: [0], schedule: changed });
+  await flush();
+  expect(q(element, '[data-id="notice"]').textContent).toBe(
+    "Flagpole stays where it is set up."
+  );
+  expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+  return element;
+}

@@ -175,7 +175,8 @@ describe("c-shoresh-manual-build", () => {
               groupId: "g1",
               firstBlockId: "t2",
               before: ["", ""],
-              after: ["A:a2", "^A:a2"]
+              after: ["A:a2", "^A:a2"],
+              blockIds: ["t2", "t3"]
             }
           ]
         }
@@ -266,7 +267,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a3"],
-      after: [""]
+      after: [""],
+      blockIds: ["t2"]
     });
     expect(cellText(element, "0-1")).toBe("Open");
   });
@@ -335,7 +337,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a3"],
-      after: ["A:a1"]
+      after: ["A:a1"],
+      blockIds: ["t2"]
     });
     expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(cellText(element, "0-1")).toBe("Swim");
@@ -432,7 +435,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a2", "^A:a2"],
-      after: ["A:a1", ""]
+      after: ["A:a1", ""],
+      blockIds: ["t2", "t3"]
     });
   });
 
@@ -475,7 +479,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a2", "^A:a2"],
-      after: ["", "A:a1"]
+      after: ["", "A:a1"],
+      blockIds: ["t2", "t3"]
     });
   });
 
@@ -505,7 +510,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["", "A:a3"],
-      after: ["A:a2", "^A:a2"]
+      after: ["A:a2", "^A:a2"],
+      blockIds: ["t2", "t3"]
     });
   });
 
@@ -526,7 +532,8 @@ describe("c-shoresh-manual-build", () => {
       groupId: "g1",
       firstBlockId: "t2",
       before: ["A:a3"],
-      after: ["A:a1"]
+      after: ["A:a1"],
+      blockIds: ["t2"]
     });
     expect(saveSlots.mock.calls[2][0].edits[0].runs[0].groupId).toBe("g2");
   });
