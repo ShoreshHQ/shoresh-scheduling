@@ -74,12 +74,17 @@ export async function useYoursSendsWhatWasShown(
   let chain = chains.get(element);
   // Use yours's save carries on to this question if every save since met someone else's change
   // (one with nothing to list is sent again without asking); otherwise this is a new edit.
-  let carriesOn = Boolean(chain) && chain.call <= asked;
-  for (let i = carriesOn ? chain.call : asked; i < asked; i++) {
-    // eslint-disable-next-line no-await-in-loop
-    const result = await saveSlots.mock.results[i].value;
-    carriesOn = carriesOn && result.conflicts.length > 0;
-  }
+  // (Only those saves are awaited: each was answered, since a later one was sent after it.)
+  const since =
+    chain && chain.call <= asked
+      ? await Promise.all(
+          saveSlots.mock.results
+            .slice(chain.call, asked)
+            .map((result) => result.value)
+        )
+      : null;
+  const carriesOn =
+    Boolean(since) && since.every((a) => a.conflicts.length > 0);
   if (!carriesOn) {
     const own = editCells(saveSlots.mock.calls[asked], seenSchedule);
     chain = {
