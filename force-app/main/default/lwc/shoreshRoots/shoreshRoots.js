@@ -4,6 +4,7 @@ import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { errorMessage } from "c/shoreshErrors";
 import { screenLabels } from "c/shoreshScreens";
+import { FIELD } from "c/shoreshSchema";
 
 // Shoresh desktop's Roots home (RootsHomeScreen.jsx): the same cards, sizes, and places, plus
 // Weeks in the spot the desktop leaves empty (Greg, 2026-10-16). Large and wide cards name what
@@ -108,8 +109,8 @@ export default class ShoreshRoots extends LightningElement {
     });
     return {
       id: last.Id,
-      files: last.Files__c,
-      line: `Last import: ${last.Files__c || "a file"}, ${when}`
+      files: last[FIELD.Import.Files],
+      line: `Last import: ${last[FIELD.Import.Files] || "a file"}, ${when}`
     };
   }
 
