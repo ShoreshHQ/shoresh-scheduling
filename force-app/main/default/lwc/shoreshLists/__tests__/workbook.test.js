@@ -807,3 +807,34 @@ describe("coordinator's review of PR D", () => {
     expect(rows.Twin.problems).toEqual(["Another Session starts Jun 28 2027"]);
   });
 });
+
+describe("import security hardening", () => {
+  it("a season with only a first day says it needs both, rather than leave every week out", () => {
+    const from = camp();
+    const s = freshSeason();
+    s.weeks = [];
+    s.season = { ...s.season, StartDate__c: "2028-06-26" };
+    const p = propose(
+      s,
+      file(campWorkbookSheets(from, buildTerms(from.labels)))
+    );
+    expect(p.weeks.rows.map((r) => [r.status, r.reason])).toEqual([
+      ["leftOut", "this season needs its first and last day"],
+      ["leftOut", "this season needs its first and last day"]
+    ]);
+  });
+  it("a season with only a last day says so too", () => {
+    const from = camp();
+    const s = freshSeason();
+    s.weeks = [];
+    s.season = { ...s.season, EndDate__c: "2028-08-11" };
+    const p = propose(
+      s,
+      file(campWorkbookSheets(from, buildTerms(from.labels)))
+    );
+    expect(p.weeks.rows.map((r) => r.reason)).toEqual([
+      "this season needs its first and last day",
+      "this season needs its first and last day"
+    ]);
+  });
+});

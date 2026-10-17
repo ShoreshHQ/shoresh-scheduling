@@ -101,7 +101,10 @@ public with sharing class ImportWriter {
         changed.add(entry);
         Id recordId = (Id) entry.get('id');
         countChange(
-          recordId.getSObjectType().getDescribe().getName().removeEnd('__c'),
+          recordId.getSObjectType()
+            .getDescribe()
+            .getLocalName()
+            .removeEnd('__c'),
           recordId
         );
         continue;
@@ -177,7 +180,10 @@ public with sharing class ImportWriter {
 
   public void logWho(WhoChange change) {
     countChange(
-      change.owner.getSObjectType().getDescribe().getName().removeEnd('__c'),
+      change.owner.getSObjectType()
+        .getDescribe()
+        .getLocalName()
+        .removeEnd('__c'),
       change.owner.Id
     );
     changed.add(

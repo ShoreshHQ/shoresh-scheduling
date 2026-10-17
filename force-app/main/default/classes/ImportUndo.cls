@@ -30,7 +30,10 @@ public with sharing class ImportUndo {
   }
 
   public static Result undo(Id importId) {
-    Import__c done = load(importId);
+    Import__c done = withLog(load(importId));
+    // Before anything is put back: someone who can only read the season is told so plainly,
+    // not refused part-way by one of the records.
+    ImportLog.requireEditAccess(done.Season__c);
     Result result = new Result();
     SetTimeGuard.defer();
     Savepoint beforeUndo = Database.setSavepoint();
@@ -70,11 +73,7 @@ public with sharing class ImportUndo {
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
-      // Only the field that changes: the season it is in can't be sent back in user mode.
-      Database.update(
-        new Import__c(Id = done.Id, UndoneAt__c = Datetime.now()),
-        AccessLevel.USER_MODE
-      );
+      ImportLog.markUndone(done);
     } catch (Exception e) {
       Database.rollback(beforeUndo);
       throw e;
@@ -84,14 +83,30 @@ public with sharing class ImportUndo {
     return result;
   }
 
-  /** Why Undo stopped, with the record and Salesforce's reason: nothing was undone. */
+  /** An import's log is the server's (ImportLog): one without it is never acted on. */
+  private static Import__c withLog(Import__c done) {
+    if (String.isBlank(done.Created__c) || String.isBlank(done.Changed__c)) {
+      throw ImportFields.unreadableLog();
+    }
+    return done;
+  }
+
+  /**
+   * Why Undo stopped, with the record and the reason in Shoresh's words (ScreenErrors: never the
+   * platform's own wording): nothing was undone.
+   */
   public static ShoreshException refused(
     String name,
     String what,
     Database.Error error
   ) {
     return new ShoreshException(
-      'Nothing was undone. ' + name + ': ' + what + '. ' + error.getMessage()
+      'Nothing was undone. ' +
+        name +
+        ': ' +
+        what +
+        '. ' +
+        ScreenErrors.messageOf(error)
     );
   }
 

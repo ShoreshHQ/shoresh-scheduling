@@ -53,6 +53,14 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
      remove them anyway; system mode only skips the person's delete permission on those child objects, never their record
      access. It is needed because restrict-delete lookups between the children would otherwise
      block the season delete (point 2).
+   - **A second, for an import's record** (`ImportLog`, security hardening 2026-10-17):
+     schedulers can read Import__c but not create, edit, or delete it, so no one can rewrite
+     what Undo last import trusts (Created__c, Changed__c), reopen an import already undone
+     (UndoneAt__c), or add a blank import that would become "the last one". `ImportLog` alone
+     writes Import__c, in system mode: it records an import, and marks one undone, only after
+     checking the person can read imports and has edit access to that season (UserRecordAccess,
+     read in system mode as `CampLabels` does). Record sharing is checked explicitly, not
+     skipped. Every change an import or Undo makes to the camp's setup stays user mode.
 7. **Anyone with Shoresh access can change camp labels** (Greg, 2026-10-15). "Shoresh access"
    means the Shoresh Scheduler permission set. Camp records are readable and editable by
    everyone with access (org-wide Read/Write), and camp labels follow their camp. This replaces

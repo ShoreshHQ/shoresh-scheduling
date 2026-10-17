@@ -1,3 +1,5 @@
+@import "c/shoreshTokens";
+
 /* Shoresh desktop's import and review screens (ImportScreen.jsx, ReconciliationScreen.jsx,
    reconciliationCards.jsx), in Salesforce's design tokens. */
 .import {
@@ -73,7 +75,7 @@
 }
 
 .import-banner_done {
-  border-left-color: #2f6b58;
+  border-left-color: var(--shoresh-success);
 }
 
 .import-section {
@@ -139,19 +141,35 @@
   gap: 0.5rem;
 }
 
-.import-tag_new {
-  color: #2f6b58;
+/* New: the success dot, with the tag in ordinary text. */
+.import-tag_new::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.25rem;
+  border-radius: 50%;
+  background: var(--shoresh-success);
+  vertical-align: middle;
 }
 
 .import-tag_changes {
-  color: #173b63;
+  color: var(--shoresh-primary);
 }
 
-.import-tag_left-out {
-  color: #b8833a;
+/* Left out: the bronze caution dot, with the tag in ordinary text. */
+.import-tag_left-out::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.25rem;
+  border-radius: 50%;
+  background: var(--shoresh-caution);
+  vertical-align: middle;
 }
 
-/* Question cards: the desktop's lanes. Hold cards (amber) come first. */
+/* Question cards: the desktop's lanes. Hold cards (bronze border) come first. */
 .import-card {
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
@@ -163,7 +181,7 @@
 
 .import-card_hold {
   padding: 1rem;
-  border-left-color: #b8833a;
+  border-left-color: var(--shoresh-caution);
 }
 
 .import-card_answered {
@@ -245,7 +263,7 @@
 .import-progress-bar span {
   display: block;
   height: 100%;
-  background: #2f6b58;
+  background: var(--shoresh-secondary);
 }
 
 /* The bottom bar stays in view while the list scrolls, as on the desktop. */

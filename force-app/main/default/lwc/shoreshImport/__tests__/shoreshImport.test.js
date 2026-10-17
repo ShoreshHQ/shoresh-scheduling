@@ -141,7 +141,10 @@ describe("c-shoresh-import", () => {
     );
     expect($(element, '[data-id="drop"]').textContent).toContain(
       ".xlsx · .xls · .csv"
-    );
+    ); // The hidden file input is named, and the button is its only tab stop.
+    const input = $(element, 'input[data-id="files"]');
+    expect(input.getAttribute("aria-label")).toBe("Choose files");
+    expect(input.getAttribute("tabindex")).toBe("-1");
   });
 
   it("refuses a file it cannot read, and adds nothing", async () => {
@@ -399,6 +402,14 @@ describe("c-shoresh-import", () => {
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);
       expect(artRoom.textContent).not.toContain("remembered");
+      // Headed in the camp's word, with what it was named with in plain text: no help icon.
+      const places = $(element, '[data-id="places"]');
+      expect(places.querySelector(".import-section-label").textContent).toBe(
+        "Locations"
+      );
+      expect(pool.querySelector("lightning-input").fieldLevelHelp).toBeFalsy();
+      expect(pool.textContent).toContain("Swim");
+      expect(places.querySelector("p")).toBeNull();
     });
 
     it("the summary says where last year's schedule went, and the import can be undone", async () => {

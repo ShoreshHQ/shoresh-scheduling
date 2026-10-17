@@ -1,3 +1,5 @@
+@import "c/shoreshTokens";
+
 /* Import a list (slice 4c), in the look of Import last year (c/shoreshImport). */
 .list-import {
   max-width: 1000px;
@@ -43,8 +45,9 @@
   padding: 0.25rem 0;
 }
 
+/* Needs a look: a bronze border, the heading in ordinary text. */
 .list-heading_attention .list-heading-text {
-  color: var(--slds-g-color-warning-base-30, #8c4b02);
+  border-bottom: 2px solid var(--shoresh-caution);
   font-weight: 600;
 }
 
@@ -53,7 +56,7 @@
   padding: 0.75rem;
   margin-bottom: 0.5rem;
   border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 4px solid var(--slds-g-color-warning-base-60, #fe9339);
+  border-left: 4px solid var(--shoresh-caution);
   border-radius: 0.25rem;
 }
 
@@ -84,9 +87,9 @@
 /* A change that empties a field stands out, so it never hides in "Change all". */
 .list-clears {
   padding: 0 0.375rem;
+  border: 1px solid var(--shoresh-caution);
   border-radius: 0.25rem;
-  background: var(--slds-g-color-warning-base-90, #fef1cd);
-  color: var(--slds-g-color-warning-base-30, #8c4b02);
+  background: var(--shoresh-caution-tint);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -108,7 +111,11 @@
   flex: 1;
   margin-left: 1.25rem;
   list-style: disc;
-  color: var(--slds-g-color-warning-base-30, #8c4b02);
+}
+
+/* What is still waiting: bronze dots, ordinary text. */
+.list-waiting li::marker {
+  color: var(--shoresh-caution);
 }
 
 /* Small state tags: "Not used", "Remembered", "clears". */
@@ -121,8 +128,8 @@
 }
 
 .list-tag_attention {
-  background: var(--slds-g-color-warning-base-90, #fef1cd);
-  color: var(--slds-g-color-warning-base-30, #8c4b02);
+  border: 1px solid var(--shoresh-caution);
+  background: var(--shoresh-caution-tint);
   font-weight: 600;
 }
 

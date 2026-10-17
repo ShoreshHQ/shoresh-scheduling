@@ -46,7 +46,8 @@ public with sharing class ImportWhoKinds {
 
     /** A row saying the owner is for a division or group. */
     public SObject row(Id ownerId, Id targetId, Id seasonId) {
-      SObject row = Schema.getGlobalDescribe().get(childType).newSObject();
+      // The object from ImportFields' constant map, never looked up by a name.
+      SObject row = ImportFields.ofTerm(term).newSObject();
       row.put(ownerField, ownerId);
       row.put(ImportItemWrites.targetField(targetId), targetId);
       if (childType == 'Coverage__c') {

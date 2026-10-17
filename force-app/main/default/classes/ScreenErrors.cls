@@ -81,6 +81,28 @@ public with sharing class ScreenErrors {
     return fallback;
   }
 
+  /**
+   * One record's refusal from a partial save or delete (Undo last import), in the same words as
+   * a screen save: Shoresh's own messages as they are, the platform's never.
+   */
+  public static String messageOf(Database.Error error) {
+    StatusCode code = error.getStatusCode();
+    if (code == StatusCode.FIELD_CUSTOM_VALIDATION_EXCEPTION) {
+      return error.getMessage();
+    }
+    if (code == StatusCode.DUPLICATE_VALUE) {
+      return duplicateMessage(null);
+    }
+    if (PLAIN.containsKey(code)) {
+      return PLAIN.get(code);
+    }
+    System.debug(
+      LoggingLevel.ERROR,
+      'Shoresh: ' + String.valueOf(code) + ': ' + error.getMessage()
+    );
+    return COULD_NOT_SAVE;
+  }
+
   /** Shoresh's own checks catch duplicates first; this is for two saves at the same moment. */
   private static String duplicateMessage(SObject record) {
     Schema.SObjectType kind = record == null ? null : record.getSObjectType();
