@@ -5,7 +5,7 @@
  * The one place screens get object, field and relationship names. Salesforce adds the package
  * namespace to these imports (`shoresh__StartDate__c` once it has one), so records read and
  * saved with them keep working when the namespace arrives. Elsewhere, never spell a name as
- * text: scripts/namespace-safety.js counts those spellings and CI fails if any file gains one.
+ * text: scripts/namespace-safety.js fails CI on any one (docs/adr/0009-namespace-safe-names.md).
  *
  *   import { FIELD, OBJECT } from "c/shoreshSchema";
  *   week[FIELD.Week.StartDate]          // not week.StartDate__c
