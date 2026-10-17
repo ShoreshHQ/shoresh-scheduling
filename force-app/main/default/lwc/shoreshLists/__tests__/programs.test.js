@@ -715,3 +715,114 @@ describe("PR B review", () => {
     expect(forward.rows.map((r) => r.status)).toEqual(["new", "asked"]);
   });
 });
+
+describe("PR B review, second pass", () => {
+  it("a group answered the same as one set up is added once, in its own division only", () => {
+    const rows = [
+      ["Division", "Group"],
+      ["Juniors", "Bunk1"],
+      ["Seniors", "Bunk1"]
+    ];
+    const p = read("groups", rows);
+    const cards = questionCards(p, terms, {});
+    expect(cards.map((c) => c.title)).toEqual([
+      "Are “Bunk1” and “Bunk 1” the same group?"
+    ]);
+    const answers = { [cards[0].id]: "b" };
+    const done = read("groups", rows, answers);
+    expect(done.rows.map((r) => [r.status, r.id || null])).toEqual([
+      ["unchanged", "g1"],
+      ["new", null]
+    ]);
+  });
+
+  it("a misspelled division answered the same still lets the other row be a new group", () => {
+    const rows = [
+      ["Division", "Group"],
+      ["Junior", "Bunk 1"],
+      ["Seniors", "Bunk 1"]
+    ];
+    const card = questionCards(read("groups", rows), terms, {})[0];
+    const answers = { [card.id]: "b" };
+    const done = read("groups", rows, answers);
+    expect(done.rows.map((r) => [r.status, r.id || null])).toEqual([
+      ["unchanged", "g1"],
+      ["new", null]
+    ]);
+  });
+
+  it("a row that can't be read still counts as listing a group at home", () => {
+    const p = read("groups", [
+      ["Division", "Group", "Availability"],
+      ["Juniors", "Bunk 1", "sometimes"],
+      ["Seniors", "Bunk 1", "All day"]
+    ]);
+    expect(p.rows.map((r) => r.status)).toEqual(["unreadable", "new"]);
+  });
+
+  it("the morning/evening question follows the program as resolved", () => {
+    const p = read("timeBlocks", [
+      ["Program", "Time block", "Start", "End"],
+      ["", "Late", "6:00", "6:30"],
+      ["Main", "Late", "6:00", "6:30"]
+    ]);
+    expect(questionCards(p, terms, {}).map((c) => c.id)).toEqual([
+      "ampm|main|late"
+    ]);
+  });
+});
+
+describe("groups in any row order, second pass", () => {
+  function shuffles(rows) {
+    const result = [rows, [...rows].reverse()];
+    for (let seed = 1; seed <= 5; seed++) {
+      let x = seed * 104729;
+      const shuffled = [...rows];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        x = (x * 9301 + 49297) % 233280;
+        const j = Math.floor((x / 233280) * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      result.push(shuffled);
+    }
+    return result;
+  }
+  function settled(body, policy) {
+    const answers = {};
+    let p;
+    for (let round = 0; round < 5; round++) {
+      p = read("groups", [["Division", "Group"], ...body], answers);
+      const open = questionCards(p, terms, answers).filter((c) => !c.answer);
+      if (!open.length) {
+        break;
+      }
+      open.forEach((c) => {
+        answers[c.id] = policy(c);
+      });
+    }
+    const plan = listPlan(p, answers, "s1", "f");
+    return plan.records
+      .map((r) => `${r.kind} ${(r.id || r.key).toLowerCase()}`)
+      .sort();
+  }
+  [
+    [
+      "same",
+      (c) => (c.options.find((o) => o.value === "b") || c.options[0]).value
+    ],
+    ["different", () => "different"],
+    ["leave out", () => LEAVE_OUT]
+  ].forEach(([label, policy]) => {
+    it(`repeated and misspelled groups, answered ${label}: one outcome`, () => {
+      const body = [
+        ["Juniors", "bunk 1"],
+        ["Seniors", "Bunk 1"],
+        ["juniors", "bunk 1"],
+        ["Junior", "Bunk 2"],
+        ["Seniors", "Bunk1"]
+      ];
+      const outcomes = shuffles(body).map((b) => settled(b, policy));
+      outcomes.forEach((o) => expect(o).toEqual(outcomes[0]));
+    });
+  });
+});

@@ -122,9 +122,14 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     A division is added as it is. A recurring activity on a day its program doesn't run asks:
     add the day to the program, leave the day out of the row, or leave the row out.
 14. **Days** read "Monday, Wednesday", "Mon-Fri", "Tue/Thu", "weekdays"; Saturday and Sunday
-    can't be read. **Times** read "9:00", "9:00 AM", "13:30"; Shoresh writes "9:00 AM". A part
-    of day left blank starts as the time says (before noon: morning).
-15. **A group in another division** of its program is a difference ("Unit: Juniors →
+    can't be read. **Times** read "9:00", "9:00 AM", "13:30"; Shoresh writes "9:00 AM"; a time
+    outside a camp day ("15:00 AM", before 5 in the morning) can't be read. A new block whose
+    list has no Part of day column starts as the time says (before noon: morning); a blank
+    cell in a column the file has can't be read, as for every value an item can't be without
+    (§4), as are a blank Length or Availability.
+15. **A group is its program, division, and name** (ADR 0006 §14), by the division the row
+    resolves to, so "Bunk 1" in Juniors and in Seniors are two groups. **A group in another
+    division** of its program is a difference ("Unit: Juniors →
     Seniors"); Change moves it (GroupMoves refuses another program's). A list never changes
     which program anything is in, and only adds divisions (never renames them).
 16. **Who a recurring activity covers** (Coverage rows) is written and undone like who can do

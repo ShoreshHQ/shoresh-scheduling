@@ -142,18 +142,73 @@ function matchNames(leads, screen, setup, answers) {
   const scoped = screen.scope === "program";
   const rows = leads.filter((r) => usable(r) && (!scoped || r.program));
   const records = screen.records(setup);
+  // A group is matched within its program and (resolved) division; other items in their scope.
+  const bucketOf = (r) => {
+    return screen.kind === "Group"
+      ? `${scopeOf(r)}|${looseKey(r.values.division || "")}`
+      : scopeOf(r);
+  };
+  const inBucket = (rec, r) => {
+    if (!scoped) {
+      return true;
+    }
+    if (rec._programId !== scopeOf(r)) {
+      return false;
+    }
+    return (
+      screen.kind !== "Group" ||
+      looseKey(rec._divisionName) === looseKey(r.values.division || "")
+    );
+  };
   const pairs = [];
-  [...new Set(rows.map(scopeOf))].sort().forEach((scope) => {
+  [...new Set(rows.map(bucketOf))].sort().forEach((bucket) => {
+    const inThis = rows.filter((r) => bucketOf(r) === bucket);
     pairs.push(
       ...matchScope(
-        rows.filter((r) => scopeOf(r) === scope),
-        scoped ? records.filter((rec) => rec._programId === scope) : records,
+        inThis,
+        records.filter((rec) => inBucket(rec, inThis[0])),
         screen.kind,
         answers
       )
     );
   });
+  if (screen.kind === "Group") {
+    groupMoves(rows, records, leads);
+  }
   return pairs;
+}
+
+/**
+ * A group the file names in another division of its program is that group moving (a
+ * difference to Keep or Change), unless the file also names it in the division it is in: then
+ * this row is a new group of the same name. Only one of that name in the program, never
+ * guessed; and decided on every row of the file, so a row that can't be read changes nothing.
+ */
+function groupMoves(rows, records, allRows) {
+  rows
+    .filter((r) => !r.existing && !r.open && !r.leftOut && !r.found.length)
+    .forEach((r) => {
+      const named = records.filter(
+        (rec) =>
+          rec._programId === scopeOf(r) &&
+          looseKey(rec.Name) === looseKey(r.name)
+      );
+      if (named.length !== 1) {
+        return;
+      }
+      const home = looseKey(named[0]._divisionName);
+      // A row that can't be read has no program settled: it may be this one.
+      const listedAtHome = allRows.some(
+        (other) =>
+          (!other.program || scopeOf(other) === scopeOf(r)) &&
+          looseKey(other.name) === looseKey(r.name) &&
+          looseKey(other.values.division || "") === home
+      );
+      if (!listedAtHome) {
+        r.existing = named[0];
+        r.found = named;
+      }
+    });
 }
 
 function matchScope(leads, records, kind, answers) {
@@ -221,26 +276,6 @@ function matchScope(leads, records, kind, answers) {
       }
     }
     r.existing = r.found.length === 1 ? r.found[0] : null;
-  });
-  // A group the file names in another division is a move, unless the file also names it in
-  // the division it is in: then that row is it, and this one is a new group of the same name.
-  readable.forEach((r) => {
-    const rec = r.existing;
-    if (!rec || !rec._divisionName || r.values.division === undefined) {
-      return;
-    }
-    const elsewhere =
-      looseKey(rec._divisionName) !== looseKey(r.values.division);
-    const listedAtHome = readable.some(
-      (other) =>
-        other !== r &&
-        looseKey(other.name) === looseKey(r.name) &&
-        looseKey(other.values.division || "") === looseKey(rec._divisionName)
-    );
-    if (elsewhere && listedAtHome) {
-      r.existing = null;
-      r.found = [];
-    }
   });
   return pairs;
 }
@@ -399,12 +434,10 @@ function programEntry(setup, programId) {
  * (refs.js); a division it doesn't have is added; a time block is added once the director says
  * when it is (adds.js). Returns { pairs, cards, blocks: [{ programId, name, start, end }] }.
  */
-function resolveProgramRefs(leads, used, setup, answers, t) {
+function resolveProgramRefs(leads, used, setup, answers, t, kinds) {
   const result = { pairs: [], cards: [], blocks: [] };
   used
-    .filter(
-      ({ column }) => column.ref === "division" || column.ref === "timeBlock"
-    )
+    .filter(({ column }) => kinds.includes(column.ref))
     .forEach(({ column }) => {
       const rows = leads.filter((r) => usable(r) && r.program);
       [...new Set(rows.map(scopeOf))].sort().forEach((scope) => {
@@ -667,10 +700,17 @@ export function listProposal(input) {
   }
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
-  result.cards.push(...resolveAmpm(read, answers));
   const programs = resolvePrograms(read, screen, setup, answers, t);
   result.pairs.push(...programs.pairs);
   result.cards.push(...programs.cards);
+  // Asked per block once its program is settled (the key is the program as resolved).
+  result.cards.push(...resolveAmpm(read, answers));
+  // A group's division is resolved before rows are settled: a group is its program,
+  // division, and name, by the division it resolves to, not as written.
+  const divisions = resolveProgramRefs(read, used, setup, answers, t, [
+    "division"
+  ]);
+  result.pairs.push(...divisions.pairs);
   const leads = settleLeads(read);
   result.pairs.push(...matchNames(leads, screen, setup, answers));
   result.cards.push(...whichOne(leads, screen, setup, answers));
@@ -691,7 +731,9 @@ export function listProposal(input) {
         )
       );
     });
-  const programRefs = resolveProgramRefs(leads, used, setup, answers, t);
+  const programRefs = resolveProgramRefs(leads, used, setup, answers, t, [
+    "timeBlock"
+  ]);
   result.pairs.push(...programRefs.pairs);
   result.cards.push(...programRefs.cards);
   const targets = whoTargets(setup);
