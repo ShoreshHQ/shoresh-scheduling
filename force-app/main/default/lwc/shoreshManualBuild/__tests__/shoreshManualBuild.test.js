@@ -420,6 +420,93 @@ describe("c-shoresh-manual-build", () => {
     expect(cellText(element, "0-1")).toBe("Swim");
   });
 
+  it("Use yours over theirs that starts earlier keeps your cell and replaces all of theirs", async () => {
+    // Someone put two-block Boating in Bunk 1's Period 2 and Lunch; I typed Swim into Lunch.
+    const boating = [
+      { kind: "F", id: "f1", name: "Flagpole", gone: false },
+      { kind: "A", id: "a2", name: "Boating", gone: false }
+    ];
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(boating, ["1,2,^", "1,,"], [0]));
+    saveSlots.mockResolvedValueOnce(answer(WITH_SWIM, ["1,,2", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-2"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    expect(q(element, '[data-id="conflict"]').textContent).toContain(
+      "Bunk 1 · Monday · Lunch"
+    );
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
+      day: "2026-06-29",
+      groupId: "g1",
+      firstBlockId: "t2",
+      before: ["A:a2", "^A:a2"],
+      after: ["", "A:a1"]
+    });
+  });
+
+  it("Use yours where theirs is in your second block keeps your full length", async () => {
+    // I typed two-block Boating into Period 2; someone had put Soccer in Lunch meanwhile.
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(WITH_SOCCER, ["1,,2", "1,,"], [0]));
+    saveSlots.mockResolvedValueOnce(
+      answer(
+        [WITH_SOCCER[0], { kind: "A", id: "a2", name: "Boating" }],
+        ["1,2,^", "1,,"]
+      )
+    );
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "boat"), "Enter");
+    // The slot that changed is Lunch, and theirs there is Soccer (not "Open").
+    expect(q(element, '[data-id="conflict"]').textContent).toContain(
+      "Bunk 1 · Monday · Lunch"
+    );
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Soccer");
+    expect(q(element, '[data-id="yours"]').textContent).toBe("Boating");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
+      day: "2026-06-29",
+      groupId: "g1",
+      firstBlockId: "t2",
+      before: ["", "A:a3"],
+      after: ["A:a2", "^A:a2"]
+    });
+  });
+
+  it("Use yours goes before the edits that waited, worked out on the server's week", async () => {
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(WITH_SOCCER, ["1,2,", "1,,"], [0]));
+    saveSlots.mockResolvedValue(answer(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    // While the question is open: Soccer for Bunk 2, waiting.
+    await press(cell(element, "1-1"), "Enter");
+    await press(await type(element, "soccer"), "Enter");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
+      day: "2026-06-29",
+      groupId: "g1",
+      firstBlockId: "t2",
+      before: ["A:a3"],
+      after: ["A:a1"]
+    });
+    expect(saveSlots.mock.calls[2][0].edits[0].runs[0].groupId).toBe("g2");
+  });
+
+  it("something left where a bunk isn't at camp can only be cleared", async () => {
+    getDraft.mockResolvedValue(draft(WITH_SOCCER, ["1,,", "1,,2"]));
+    const element = await render();
+    await press(cell(element, "1-2"), "Enter");
+    await type(element, "sw");
+    expect(optionLabels(element)).toEqual(["Open"]);
+  });
+
   it("an error goes away once a save works", async () => {
     getDraft.mockResolvedValue(draft());
     addActivity.mockRejectedValueOnce({

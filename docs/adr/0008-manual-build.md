@@ -35,8 +35,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
 3. **Start a blank week** (desktop `placeFixedEvents`). It makes one day for each date of the week
    the program runs (its Monday to Friday ticks). Each day has the program's time blocks and its
    groups that are not away that week (a week exception on the group). Fixed and recurring
-   activities go where slice 3b's `SetTimePlan` puts them (their weeks, days, who, and length;
-   morning-only and afternoon-only groups left out). Everything else is Open. The same setup
+   activities go where slice 3b's `SetTimePlan` puts them (their weeks, days, who, and length).
+   A group that isn't at camp for part of the item's length (a morning-only group, and an item
+   that crosses into the afternoon) gets only the part it is there for. Everything else is Open. The same setup
    always gives the same grids. A program with no time blocks, no groups at camp, or no days
    that week is refused with a sentence naming it. A fixed or recurring activity whose slot is
    already taken (only possible with setup saved around the clash check) is not placed, and the
@@ -68,10 +69,14 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      edit again, naming what is there now).
    - Undo (part 2) is an edit like any other, so undoing over someone else's newer change asks
      the same question.
-   - **Use yours** works the edit out again on the week as it is now. If theirs is a longer
-     activity, all of it is replaced, and nothing is cut short unasked.
-   - While the question is open, later edits wait. They are sent, each checked the same way,
-     once the director answers.
+   - The dialog names the first cell that isn't what the director saw, with theirs and yours
+     there.
+   - **Use yours** makes exactly the change the director chose: the same cells, the same
+     length. It is made on the server's latest copy of the week, not on the screen's, which
+     may include edits still waiting. Anything of theirs that overlaps it is replaced in full,
+     so nothing is left cut short.
+   - While the question is open, later edits wait. **Use yours** goes first; then they are
+     sent, each checked the same way.
 5. **What an edit may not do** (refused with a sentence, nothing saved):
    - change, cover, or place a fixed or recurring activity (they stay where setup puts them;
      part 6 adds "Update to match setup");
@@ -79,9 +84,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    - place an activity from another season;
    - change anything but a Manual Build draft (a version, a published schedule, or a later
      Generated Schedule draft);
-   - cut into a placement: a run may not start partway through one or change what the slots
-     outside it belong to. It must cover the whole of any multi-block placement it changes; the
-     screen always sends it that way;
+   - start partway through a placement (refused: the screen never sends that). A run that would
+     change what the slots outside it belong to is a **conflict**, not a refusal: the screen's
+     picture of the day was out of date (say, someone placed the same activity at another
+     length);
    - change a day that can't be read (refused with ADR 0005's "This day could not be read: …",
      not offered as a conflict).
    Slots are compared exactly (Apex `==` ignores capitals, so `equals` is used).
@@ -91,14 +97,16 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    you type (spaces and capitals aside):
    - **Open**, when the slot is filled and nothing is typed;
    - the activities set up for that bunk;
+   - only **Open** for something left in a block where the group isn't at camp (it can only be
+     cleared);
    - then the rest, each with a bronze dot and _Not set up for <bunk>_ (Greg #3: allowed, with
      a dot). The desktop lists only eligible activities; here typing must be able to do what
      dragging can;
    - then **Add "<name>" to activities** (Greg, Q2), when no activity has that name.
    **Add** creates an activity with the Activities screen's hand-add starting values (length 1,
    once a week, low priority, one group at a time). A name the season already has gives that
-   activity instead. Add needs a Manual Build draft and locks it, so two people adding the same
-   new name at once get one activity. Electives, special events, and special days are not offered: they are not
+   activity instead. Add needs a Manual Build draft and locks its season, so two people adding
+   the same new name at once, from any week or program of the season, get one activity. Electives, special events, and special days are not offered: they are not
    set up in Salesforce yet. The wording avoids an article built from a camp word (design guide).
 7. **Multi-block activities fill their length** (Greg #7). From the slot's first block, an
    activity runs for its length over Open slots. It stops at a filled slot, a block where the

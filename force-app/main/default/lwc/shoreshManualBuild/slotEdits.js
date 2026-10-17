@@ -38,7 +38,11 @@ export function slots(day, g) {
 
 /** The placement a slot is part of: its first block and length ('' for Open, length 1). */
 export function placement(day, g, b) {
-  const row = slots(day, g);
+  return placementIn(slots(day, g), b);
+}
+
+/** The same, on a row of slot identities. */
+export function placementIn(row, b) {
   if (row[b] === OPEN) {
     return { first: b, length: 1, slot: OPEN };
   }
@@ -122,4 +126,54 @@ export function applyRun(day, g, run, named) {
   const rows = [...day.rows];
   rows[g] = tokens.join(",");
   return { ...day, items, rows };
+}
+
+/**
+ * The run that turns one row into another: the slots that differ, widened so it starts and ends
+ * on whole placements (the server refuses a run that cuts into one). Null when nothing differs.
+ */
+export function diffRun(before, after) {
+  let first = before.findIndex((slot, i) => slot !== after[i]);
+  if (first < 0) {
+    return null;
+  }
+  let last = before.length - 1;
+  while (before[last] === after[last]) {
+    last -= 1;
+  }
+  const carries = (slot) => slot.startsWith(CARRIES_ON);
+  while (first > 0 && (carries(before[first]) || carries(after[first]))) {
+    first -= 1;
+  }
+  while (
+    last + 1 < before.length &&
+    (carries(before[last + 1]) || carries(after[last + 1]))
+  ) {
+    last += 1;
+  }
+  return {
+    first,
+    before: before.slice(first, last + 1),
+    after: after.slice(first, last + 1)
+  };
+}
+
+/**
+ * "Use yours": exactly the run the director chose (same start, same length) made on the row as
+ * it is now. Anything of theirs overlapping it goes in full, so nothing is left cut short.
+ */
+export function rebaseRun(row, first, after) {
+  const next = [...row];
+  for (let b = first; b < first + after.length; b++) {
+    if (row[b] !== OPEN) {
+      const theirs = placementIn(row, b);
+      for (let c = theirs.first; c < theirs.first + theirs.length; c++) {
+        next[c] = OPEN;
+      }
+    }
+  }
+  after.forEach((slot, i) => {
+    next[first + i] = slot;
+  });
+  return diffRun(row, next);
 }

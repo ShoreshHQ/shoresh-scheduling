@@ -350,8 +350,9 @@ private class ManualBuildTest {
       ScheduleViews.DayView day = monday(placed.schedule);
       Assert.areEqual(soccer, slots(day, 0)[1]);
       Assert.areEqual('^' + soccer, slots(day, 0)[2]);
-      // Changing only its first block would cut into the block it carries on into.
-      String cut = refusal(
+      // Changing only its first block would cut into the block it carries on into: the screen's
+      // picture was out of date, so it comes back as a conflict, and nothing changes.
+      SlotEdits.Result cut = save(
         draftId,
         edit(
           at(mon, ids.get('Group A'), ids.get('Period 2')),
@@ -359,7 +360,8 @@ private class ManualBuildTest {
           new List<String>{ a(ids, 'Swim') }
         )
       );
-      Assert.isTrue(cut.contains('cut into'), cut);
+      Assert.areEqual(new List<Integer>{ 0 }, cut.conflicts);
+      Assert.areEqual(soccer, slots(monday(cut.schedule), 0)[1]);
       SlotEdits.Result removed = save(
         draftId,
         edit(

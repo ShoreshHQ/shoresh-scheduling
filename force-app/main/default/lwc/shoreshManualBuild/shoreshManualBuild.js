@@ -22,6 +22,7 @@ import {
   isSetTime,
   owner,
   placement,
+  rebaseRun,
   slots
 } from "./slotEdits";
 
@@ -213,6 +214,8 @@ export default class ShoreshManualBuild extends LightningElement {
 
   show(draft, fresh) {
     this.draft = draft;
+    // The week as the server last sent it, without edits still waiting to save.
+    this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
       this.dayIndex = 0;
       const all = groups(draft.schedule);
@@ -581,8 +584,13 @@ export default class ShoreshManualBuild extends LightningElement {
     const forGroup = matches.filter((a) => !a.notFor.includes(grp.id));
     const notForGroup = matches.filter((a) => a.notFor.includes(grp.id));
     const options = [];
-    if (placement(day, slot.group, slot.block).slot !== OPEN && !typed) {
+    const filled = placement(day, slot.group, slot.block).slot !== OPEN;
+    if (filled && (!typed || this.isAwaySlot(slot))) {
       options.push({ key: "open", kind: "open", label: "Open" });
+    }
+    // Left there from an earlier setup where the group isn't at camp: it can only be cleared.
+    if (this.isAwaySlot(slot)) {
+      return this.marked(options);
     }
     forGroup.forEach((a) =>
       options.push({ key: a.id, kind: "activity", label: a.name, activity: a })
@@ -611,6 +619,11 @@ export default class ShoreshManualBuild extends LightningElement {
         name
       });
     }
+    return this.marked(options);
+  }
+
+  /** The options with ids for the listbox and the one highlighted. */
+  marked(options) {
     const highlight = Math.min(this.editor.highlight, options.length - 1);
     return options.map((option, i) => ({
       ...option,
@@ -818,9 +831,8 @@ export default class ShoreshManualBuild extends LightningElement {
         edits: [entry.edit]
       });
       this.queue = this.queue.slice(1);
-      // The server's draft, with the edits still waiting made on top of it.
-      this.draft = { ...this.draft, schedule: result.schedule };
-      this.queue.forEach((waiting) => this.applyLocally(waiting.edit));
+      this.server = result.schedule;
+      this.showServerAndWaiting();
       if (result.conflicts.length) {
         this.askAboutConflict(entry);
       } else {
@@ -844,28 +856,56 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- someone else changed it ----------
 
-  askAboutConflict(entry) {
-    const [run] = entry.edit.runs;
-    const dayIndex = this.schedule.days.findIndex(
-      (d) => d.dateValue === run.day
-    );
-    const day = this.schedule.days[dayIndex];
+  /** The draft on screen: the server's week with the edits still waiting made on top. */
+  showServerAndWaiting() {
+    this.draft = { ...this.draft, schedule: this.server };
+    this.queue.forEach((waiting) => this.applyLocally(waiting.edit));
+  }
+
+  /** Where a run is in the server's week: { dayIndex, day, g, first }, or null. */
+  locate(run) {
+    const dayIndex = this.server.days.findIndex((d) => d.dateValue === run.day);
+    const day = this.server.days[dayIndex];
     const g = day ? day.groups.findIndex((grp) => grp.id === run.groupId) : -1;
     const first = day
       ? day.blocks.findIndex((block) => block.id === run.firstBlockId)
       : -1;
-    if (g < 0 || first < 0) {
-      this.error = `${this.weekName} changed since you opened it. Your last change was not saved.`;
-      return;
+    return g < 0 || first < 0 ? null : { dayIndex, day, g, first };
+  }
+
+  askAboutConflict(entry) {
+    // The first run, and in it the first slot, that isn't what the director saw.
+    for (const run of entry.edit.runs) {
+      const at = this.locate(run);
+      if (!at) {
+        this.error = `${this.weekName} changed since you opened it. Your last change was not saved.`;
+        return;
+      }
+      const now = slots(at.day, at.g).slice(
+        at.first,
+        at.first + run.after.length
+      );
+      const i = now.findIndex((slot, n) => slot !== run.before[n]);
+      if (i >= 0) {
+        this.conflict = {
+          entry,
+          where: this.slotName({ day: at.dayIndex, group: at.g }, at.first + i),
+          theirs: this.nameOf(now[i], at.day),
+          yours: this.nameOf(run.after[i], at.day)
+        };
+        this.announce(`${this.conflict.where} changed since you opened it.`);
+        return;
+      }
     }
-    const now = slots(day, g).slice(first, first + run.after.length);
+    // Every slot as seen, but the day around them had changed (a longer placement next door).
+    const [run] = entry.edit.runs;
+    const at = this.locate(run);
     this.conflict = {
       entry,
-      where: this.slotName({ day: dayIndex, group: g }, first),
-      theirs: this.nameOf(now[0], day),
-      yours: this.nameOf(run.after[0], day)
+      where: this.slotName({ day: at.dayIndex, group: at.g }, at.first),
+      theirs: this.nameOf(slots(at.day, at.g)[at.first], at.day),
+      yours: this.nameOf(run.after[0], at.day)
     };
-    this.announce(`${this.conflict.where} changed since you opened it.`);
   }
 
   handleKeepTheirs() {
@@ -878,11 +918,32 @@ export default class ShoreshManualBuild extends LightningElement {
     this.saveNext();
   }
 
-  /** The same change again, worked out on the week as it is now (theirs may be longer). */
+  /**
+   * Exactly the change the director chose (same slots, same length) made on the server's week as
+   * it is now; anything of theirs overlapping it is replaced in full. It goes first, before the
+   * edits that waited for the answer.
+   */
   handleUseYours() {
-    const { slot, key, next, length } = this.conflict.entry;
+    const { entry } = this.conflict;
     this.conflict = null;
-    this.change(slot, key, next, length);
+    const runs = [];
+    for (const run of entry.edit.runs) {
+      const at = this.locate(run);
+      const rebased = at && rebaseRun(slots(at.day, at.g), at.first, run.after);
+      if (rebased) {
+        runs.push({
+          ...run,
+          firstBlockId: at.day.blocks[rebased.first].id,
+          before: rebased.before,
+          after: rebased.after
+        });
+      }
+    }
+    if (runs.length) {
+      this.queue = [{ ...entry, edit: { runs } }, ...this.queue];
+      this.showServerAndWaiting();
+    }
+    this.saveNext();
   }
 
   /** Escape keeps theirs; Tab stays on the dialog's two buttons. */

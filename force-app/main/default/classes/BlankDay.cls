@@ -50,7 +50,10 @@ public with sharing class BlankDay {
       if (row == null) {
         continue;
       }
-      if (!free(row, first, span.size())) {
+      // A group at camp for only part of the item's length (a morning-only group, a block
+      // that crosses into the afternoon) takes the part it is there for.
+      Integer length = atCampFor(item, grp, span);
+      if (!free(row, first, length)) {
         notPlaced.add(item.name + ' · ' + grp.Name);
         continue;
       }
@@ -58,10 +61,26 @@ public with sharing class BlankDay {
         position = add(item);
       }
       row[first] = position;
-      for (Integer b = first + 1; b < first + span.size(); b++) {
+      for (Integer b = first + 1; b < first + length; b++) {
         row[b] = ScheduleGrid.CARRIES_ON;
       }
     }
+  }
+
+  /** How many of the item's blocks, from its first, the group is at camp for. */
+  private static Integer atCampFor(
+    SetTimePlan.Item item,
+    Group__c grp,
+    List<Integer> span
+  ) {
+    Integer length = 0;
+    while (
+      length < span.size() &&
+      SetTimePlan.atCamp(grp, item.program.blocks[span[length]])
+    ) {
+      length++;
+    }
+    return length;
   }
 
   private String add(SetTimePlan.Item item) {

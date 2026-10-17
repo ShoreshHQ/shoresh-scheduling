@@ -104,8 +104,7 @@ public with sharing class SlotSaves {
       writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
       inRun.add(first + i);
     }
-    SlotRules.checkNeighbours(was, SlotIds.ofRow(grid, g), inRun);
-    return true;
+    return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }
 
   /** One slot (at: group and block positions) given what it should now hold. */

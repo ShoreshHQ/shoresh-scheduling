@@ -1,9 +1,11 @@
 import {
   OPEN,
   applyRun,
+  diffRun,
   editRun,
   identity,
   placement,
+  rebaseRun,
   slots
 } from "../slotEdits";
 import { WITH_SOCCER, day } from "./data/draftFixture";
@@ -103,5 +105,31 @@ describe("slot edits", () => {
       gone: false
     });
     expect(slots(changed, 1)).toEqual(slots(monday(), 1));
+  });
+
+  it("a run covers what changed, widened to whole placements", () => {
+    expect(
+      diffRun([FLAGPOLE, BOATING, `^${BOATING}`], [FLAGPOLE, BOATING, OPEN])
+    ).toEqual({
+      first: 1,
+      before: [BOATING, `^${BOATING}`],
+      after: [BOATING, OPEN]
+    });
+    expect(diffRun([FLAGPOLE], [FLAGPOLE])).toBeNull();
+  });
+
+  it("use yours makes exactly your run, replacing all of anything of theirs it overlaps", () => {
+    expect(rebaseRun([FLAGPOLE, BOATING, `^${BOATING}`], 2, [SOCCER])).toEqual({
+      first: 1,
+      before: [BOATING, `^${BOATING}`],
+      after: [OPEN, SOCCER]
+    });
+    expect(
+      rebaseRun([FLAGPOLE, OPEN, SOCCER], 1, [BOATING, `^${BOATING}`])
+    ).toEqual({
+      first: 1,
+      before: [OPEN, SOCCER],
+      after: [BOATING, `^${BOATING}`]
+    });
   });
 });

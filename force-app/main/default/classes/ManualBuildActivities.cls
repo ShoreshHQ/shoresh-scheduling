@@ -12,9 +12,18 @@ public with sharing class ManualBuildActivities {
     String name
   ) {
     String trimmed = checkedName(name);
-    // Locked, so two people adding the same new name at once get one activity.
     Schedule__c schedule = ManualDrafts.locked(scheduleId);
     Id seasonId = schedule.Program__r.Season__c;
+    // The season locked, so two people adding the same new name at once (from any week or
+    // program of it) get one activity: the second waits, then finds the first one's.
+    if (
+      [SELECT Id FROM Season__c WHERE Id = :seasonId WITH USER_MODE FOR UPDATE]
+        .isEmpty()
+    ) {
+      throw new ShoreshException(
+        'That season was not found, or you do not have access to it.'
+      );
+    }
     Id activityId = sameName(seasonId, trimmed);
     if (activityId == null) {
       activityId = create(seasonId, trimmed);

@@ -104,8 +104,11 @@ public with sharing class SlotRules {
     return String.valueOf(grid.items.size());
   }
 
-  /** A run may not change what the slots outside it belong to (cut into a placement). */
-  public static void checkNeighbours(
+  /**
+   * Whether the slots outside a run still belong to what they did (the run didn't cut into a
+   * placement). When they don't, the screen's picture of the day was out of date: a conflict.
+   */
+  public static Boolean neighboursKept(
     List<String> was,
     List<String> now,
     Set<Integer> inRun
@@ -115,18 +118,17 @@ public with sharing class SlotRules {
         !inRun.contains(b) &&
         !SlotIds.owner(now[b]).equals(SlotIds.owner(was[b]))
       ) {
-        throw new ShoreshException(
-          'That change would cut into the slot next to it. Reload the page and try again.'
-        );
+        return false;
       }
     }
+    return true;
   }
 
   /** A run may not start partway through a placement (it would cut off the part before). */
   public static void checkStartsClean(String firstSlot) {
     if (SlotIds.isCarryOn(firstSlot)) {
       throw new ShoreshException(
-        'That change would cut into the slot next to it. Reload the page and try again.'
+        'That change would cut into the cell next to it. Reload the page and try again.'
       );
     }
   }
