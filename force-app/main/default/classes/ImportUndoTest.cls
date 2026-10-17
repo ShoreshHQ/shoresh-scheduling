@@ -718,4 +718,119 @@ private class ImportUndoTest {
       Assert.areEqual(0, [SELECT COUNT() FROM Location__c WHERE Name = 'Barn']);
     }
   }
+
+  @IsTest
+  static void afterAnUndoNoEarlierImportCanBeUndone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = seasonWithWeek();
+      ImportSetupSaves.Result first = ImportController.saveSetup(
+        JSON.serialize(ImportTestPlans.newCamp(season.Id))
+      );
+      Map<String, Object> second = ImportTestPlans.emptyPlan(season.Id);
+      ImportTestPlans.add(
+        second,
+        'locations',
+        ImportTestPlans.entry(
+          new List<Object>{
+            'key',
+            'L|Barn',
+            'name',
+            'Barn',
+            'groupsThatFit',
+            1
+          }
+        )
+      );
+      ImportSetupSaves.Result later = ImportController.saveSetup(
+        JSON.serialize(second)
+      );
+      Test.setCreatedDate(first.importId, Datetime.now().addMinutes(-1));
+      Test.startTest();
+      ImportController.undoImport(later.importId);
+      // Greg, 2026-10-17: Undo goes back one import only. Roots offers nothing now.
+      Assert.isNull(SeasonSetupController.getSeasonSetup(season.Id).lastImport);
+      try {
+        ImportController.undoImport(first.importId);
+        Assert.fail('the import before an undone one stays');
+      } catch (AuraHandledException e) {
+        Assert.areEqual('Only the last import can be undone.', e.getMessage());
+      }
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Program__c WHERE Season__c = :season.Id]
+      );
+      // The next import brings Undo back, for that import.
+      ImportSetupSaves.Result next = ImportController.saveSetup(
+        JSON.serialize(second)
+      );
+      Assert.areEqual(
+        next.importId,
+        SeasonSetupController.getSeasonSetup(season.Id).lastImport.Id
+      );
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void aProgramWithAPublishedScheduleIsKept() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = seasonWithWeek();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(ImportTestPlans.newCamp(season.Id))
+      );
+      Program__c main = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+      ];
+      Database.insert(
+        new Schedule__c(
+          Program__c = main.Id,
+          Week__c = [SELECT Id FROM Week__c WHERE Season__c = :season.Id]
+          .Id,
+          Name = 'Published',
+          Status__c = 'Published',
+          Origin__c = 'Manual'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      // Kept as in use (the schedule is inside it), not refused by history protection.
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Main' }, undone.keptInUse);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Schedule__c WHERE Program__c = :main.Id]
+      );
+      Assert.isNull(SeasonSetupController.getSeasonSetup(season.Id).lastImport);
+    }
+  }
+
+  @IsTest
+  static void aPublishedImportedVersionKeepsItsProgram() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = seasonWithWeek();
+      ImportSetupSaves.Result result = importWithVersion(season);
+      Schedule__c version = [
+        SELECT Id, Name, Program__c
+        FROM Schedule__c
+        WHERE Program__r.Season__c = :season.Id
+      ];
+      version.Status__c = 'Published';
+      Database.update(version, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ version.Name }, undone.keptEdited);
+      Assert.isTrue(
+        undone.keptInUse.contains('Main'),
+        String.join(undone.keptInUse, ', ')
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Schedule__c WHERE Id = :version.Id]
+      );
+    }
+  }
 }

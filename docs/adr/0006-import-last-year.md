@@ -247,8 +247,15 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       which record and why ("Nothing was undone. Swim: couldn't put back what it was before.
       <reason>"), and the import stays undoable, so the director can fix it and try again.
       Rolling back was chosen over a partial Undo because "nothing changed" is simpler to explain.
-    - Only a season's **last** import that stands can be undone, once (imports in the same second
-      go by their number); the clash check runs at the end, and a clash undoes the Undo.
+    - **Undo goes back one import only** (Greg, 2026-10-17): it is offered only for the season's
+      most recent import (imports in the same second go by their number), and only once. After
+      that import is undone, no earlier import can be undone and Roots offers no Undo, until the
+      next import, whose Undo it then offers. The clash check runs at the end, and a clash undoes
+      the Undo.
+    - **A program with published schedules is kept**, not refused: a published schedule is inside
+      its program, so the "something inside it" check keeps the program as in use before any
+      delete is tried, and history protection never sees it. The same holds when the imported
+      version itself was published since: it is kept as changed, and its program as in use.
     - **Imports and Undos in one season take turns:** both lock the season row first
       (`ImportUndo.lockSeason`, `FOR UPDATE`), and Undo re-reads the import and "last" under the
       lock, so two Undos, or an Undo and an import saving, can't interleave.

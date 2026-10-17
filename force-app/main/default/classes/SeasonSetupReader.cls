@@ -98,16 +98,19 @@ public with sharing class SeasonSetupReader {
       WHERE Program__r.Season__c = :seasonId
       WITH USER_MODE
     ];
-    // The last import that stands, for Roots' Undo last import.
+    // The most recent import, for Roots' Undo last import; none once it is undone (Greg,
+    // 2026-10-17: Undo goes back one import only, and comes back with the next import).
     List<Import__c> imports = [
-      SELECT Id, Files__c, CreatedDate
+      SELECT Id, Files__c, CreatedDate, UndoneAt__c
       FROM Import__c
-      WHERE Season__c = :seasonId AND UndoneAt__c = NULL
+      WHERE Season__c = :seasonId
       WITH USER_MODE
       ORDER BY CreatedDate DESC, Name DESC
       LIMIT 1
     ];
-    result.lastImport = imports.isEmpty() ? null : imports[0];
+    result.lastImport = imports.isEmpty() || imports[0].UndoneAt__c != null
+      ? null
+      : imports[0];
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
     return result;
   }
