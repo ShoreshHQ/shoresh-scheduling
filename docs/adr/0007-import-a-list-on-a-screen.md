@@ -130,8 +130,13 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     new time block's start and end, and a 5 or 6 o'clock time's morning or evening (ADR 0006).
     A division is added as it is. A recurring activity on a day its program doesn't run asks:
     add the day to the program, leave the day out of the row, or leave the row out.
-14. **Days** read "Monday, Wednesday", "Mon-Fri", "Tue/Thu", "weekdays"; Saturday and Sunday
-    can't be read. **Times** read "9:00", "9:00 AM", "13:30"; Shoresh writes "9:00 AM"; a time
+14. **Days** read "Monday, Wednesday", "Mon-Fri", "Mon thru Fri", "Tue/Thu", "Mon Wed Fri",
+    "Wednesdays", "weekdays", and letters (coordinator, #20 review): "M/W/F", "M-F", "MWF",
+    "Tu", "Th", "W", "F". A lone T is Tuesday when the cell writes Thursday another way ("T/Th"),
+    Thursday when it writes Tuesday another way, and otherwise asked ("is T Tuesday or
+    Thursday?"). Saturday and Sunday can't be read. **Times** read "9:00", "9:00 AM", "13:30",
+    and a bare hour by the camp-day rule (ADR 0006): "9" is 9:00 AM, 7 to 11 the morning, 12 to 4
+    the afternoon, 5 and 6 asked. Shoresh writes "9:00 AM"; a time
     outside a camp day ("15:00 AM", before 5 in the morning) can't be read. A new block whose
     list has no Part of day column starts as the time says (before noon: morning); a blank
     cell in a column the file has can't be read, as for every value an item can't be without
@@ -145,7 +150,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     which program anything is in, and only adds divisions (never renames them).
 16. **Who a recurring activity covers** (Coverage rows) is written and undone like who can do
     an activity (`ImportWhoKinds`): replaced only on Change, put back by Undo unless edited
-    since.
+    since. Undo decides whether to keep a recurring activity it added (edited since, or in use)
+    before it removes the Coverage rows it added, and keeps those of one it keeps: an edited
+    activity never quietly becomes "everyone".
 
 ## Choices that are hard to undo after release
 

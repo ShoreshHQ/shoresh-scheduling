@@ -41,6 +41,8 @@ public with sharing class ImportUndoDeletes {
 
   private ImportUndo.Result result;
   private Set<Id> createdIds = new Set<Id>();
+  // Records the import made that this Undo keeps (edited since, or in use).
+  private Set<Id> keptIds = new Set<Id>();
 
   public ImportUndoDeletes(ImportUndo.Result result) {
     this.result = result;
@@ -54,15 +56,56 @@ public with sharing class ImportUndoDeletes {
         createdIds.add((Id) (String) ((List<Object>) row)[0]);
       }
     }
-    // Who-can-do-it rows are not removed on their own: they go with their activity.
+    // Who-can-do-it rows are not removed on their own: they go with their activity. A recurring
+    // activity kept (edited since) keeps who it covers, so it is decided before its Coverage
+    // rows (which must go before it) are removed.
+    Map<String, List<SObject>> decided = new Map<String, List<SObject>>();
+    if (created.containsKey('RecurringActivity')) {
+      decided.put(
+        'RecurringActivity',
+        decide(
+          'RecurringActivity',
+          (Map<String, Object>) created.get('RecurringActivity')
+        )
+      );
+    }
     for (String term : ORDER) {
-      if (created.containsKey(term)) {
-        remove(term, (Map<String, Object>) created.get(term));
+      if (!created.containsKey(term)) {
+        continue;
       }
+      List<SObject> toDelete = decided.containsKey(term)
+        ? decided.get(term)
+        : decide(term, (Map<String, Object>) created.get(term));
+      deleteAll(term == 'Coverage' ? withoutKeptCover(toDelete) : toDelete);
     }
   }
 
-  private void remove(String term, Map<String, Object> kind) {
+  /** Coverage rows of a recurring activity this Undo keeps: kept with it. */
+  private List<SObject> withoutKeptCover(List<SObject> coverage) {
+    Set<Id> kept = new Set<Id>();
+    for (SObject record : coverage) {
+      kept.add(record.Id);
+    }
+    kept = new Map<Id, Coverage__c>(
+        [
+          SELECT Id
+          FROM Coverage__c
+          WHERE Id IN :kept AND RecurringActivity__c IN :keptIds
+          WITH USER_MODE
+        ]
+      )
+      .keySet();
+    List<SObject> result = new List<SObject>();
+    for (SObject record : coverage) {
+      if (!kept.contains(record.Id)) {
+        result.add(record);
+      }
+    }
+    return result;
+  }
+
+  /** The records of one kind to delete; those edited since or holding others are kept. */
+  private List<SObject> decide(String term, Map<String, Object> kind) {
     List<List<String>> fieldsets = new List<List<String>>();
     Set<String> fields = new Set<String>();
     for (Object fieldset : (List<Object>) kind.get('fieldsets')) {
@@ -95,12 +138,13 @@ public with sharing class ImportUndoDeletes {
         toDelete.add(record);
       }
     }
-    deleteAll(toDelete);
+    return toDelete;
   }
 
   /** A record kept is no longer the import's: whatever it is inside is kept too. */
   private void keep(SObject record, List<String> names) {
     createdIds.remove(record.Id);
+    keptIds.add(record.Id);
     names.add((String) record.get('Name'));
   }
 
