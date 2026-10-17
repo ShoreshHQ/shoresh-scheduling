@@ -31,11 +31,29 @@ function locateRow(days, dateValue, groupId) {
 }
 
 /**
- * The intent of runs (as the server takes them) made on `days` (the week on screen when the edit
- * was made). nameOf({ dayIndex, g, block }) names a cell ("Bunk 1 · Monday · Lunch") and
+ * The time block Ids of a run's cells in a day, or null when they aren't there next to each other.
+ * A run from Undo or Redo carries its own (blockIds, from the week the step was made on), so a
+ * block added inside it since is found rather than mistaken for one of its cells.
+ */
+function blockIdsOf(day, run) {
+  const first = day.blocks.findIndex((b) => b.id === run.firstBlockId);
+  if (first < 0 || first + run.after.length > day.blocks.length) {
+    return null;
+  }
+  const here = day.blocks
+    .slice(first, first + run.after.length)
+    .map((b) => b.id);
+  const ids = run.blockIds || here;
+  return ids.every((id, i) => id === here[i]) ? ids : null;
+}
+
+/**
+ * The intent of runs (as the server takes them) made on `days` (the week on screen when the edit,
+ * Undo, or Redo was made). nameOf({ dayIndex, g, block }) names a cell ("Bunk 1 · Monday · Lunch") and
  * rowNameOf({ dayIndex, g }) its row ("Bunk 1 · Monday"), kept so a cell that later leaves the
  * week can still be named. missing: a run names a day, group, or block the week doesn't have
- * (an Undo of a change whose block has since gone): nothing can be sent.
+ * (an Undo of a change whose block has since gone, or with a block added inside it): nothing can
+ * be sent.
  */
 export function intentOf(days, runs, nameOf, rowNameOf) {
   const cells = [];
@@ -43,10 +61,8 @@ export function intentOf(days, runs, nameOf, rowNameOf) {
   let missing = false;
   runs.forEach((run, r) => {
     const at = locateRow(days, run.day, run.groupId);
-    const first = at
-      ? at.day.blocks.findIndex((b) => b.id === run.firstBlockId)
-      : -1;
-    if (!at || first < 0 || first + run.after.length > at.day.blocks.length) {
+    const ids = at ? blockIdsOf(at.day, run) : null;
+    if (!ids) {
       missing = true;
       return;
     }
@@ -58,12 +74,17 @@ export function intentOf(days, runs, nameOf, rowNameOf) {
         seen[key][block.id] = row[b];
       });
     }
+    const first = at.day.blocks.findIndex((b) => b.id === ids[0]);
     run.after.forEach((after, i) => {
+      // What the director expects in their own cells is what the run names: for an edit, the
+      // screen when it was made; for an Undo or Redo, what the step left (the screen may since
+      // have refreshed to someone else's change, which must then be listed, not replaced).
+      seen[key][ids[i]] = run.before[i];
       cells.push({
         run: r,
         day: run.day,
         groupId: run.groupId,
-        blockId: at.day.blocks[first + i].id,
+        blockId: ids[i],
         after,
         name: nameOf
           ? nameOf({ dayIndex: at.dayIndex, g: at.g, block: first + i })
@@ -171,7 +192,10 @@ export function plan(days, intent) {
         groupId: cells[0].groupId,
         firstBlockId: at.day.blocks[run.first].id,
         before: run.before,
-        after: run.after
+        after: run.after,
+        blockIds: at.day.blocks
+          .slice(run.first, run.first + run.after.length)
+          .map((b) => b.id)
       });
       run.before.forEach((theirs, i) => {
         const block = run.first + i;

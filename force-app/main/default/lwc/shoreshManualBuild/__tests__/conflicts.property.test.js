@@ -20,6 +20,10 @@ const GROUPS = [
 ];
 const ACTIVITIES = ["A:a1", "A:a2", "A:a3", "A:a4"];
 const FIXED = "F:f1";
+const RECURRING = "R:r1";
+const SET_TIME = [FIXED, RECURRING];
+/** A fixed or recurring activity (or a block of one): it stays where setup puts it. */
+const isSetTime = (slot) => /^\^?[FR]:/.test(slot);
 const SEEDS = 3000;
 
 // ---------- weeks from rows of identities ----------
@@ -80,7 +84,7 @@ function randomRow(rnd, width) {
     if (r < 0.3) {
       row.push("");
     } else if (r < 0.38) {
-      row.push(FIXED);
+      row.push(pick(rnd, SET_TIME));
     } else {
       const a = pick(rnd, ACTIVITIES);
       const length = Math.min(room, 1 + int(rnd, 3));
@@ -159,7 +163,7 @@ function serverApply(state, runs) {
         (slot, b) =>
           b >= first &&
           b < first + run.after.length &&
-          slot.replace("^", "").startsWith("F:") &&
+          isSetTime(slot) &&
           row[b] !== slot
       )
     ) {
@@ -220,11 +224,13 @@ function otherChange(rnd, state, near) {
       row[i] = "";
     }
   };
-  const isFixed = (at) => ownerAt(row, at).startsWith("F:");
+  const isFixed = (at) => isSetTime(ownerAt(row, at));
   const r = rnd();
   if (r < 0.3) {
     // A new activity, one to three blocks, over whatever was there (not fixed activities).
-    const length = 1 + int(rnd, 3);
+    // Sometimes it is a fixed or recurring one (setup changed).
+    const setTime = rnd() < 0.25;
+    const length = setTime ? 1 : 1 + int(rnd, 3);
     if (b + length > row.length) {
       return;
     }
@@ -236,7 +242,7 @@ function otherChange(rnd, state, near) {
     for (let i = b; i < b + length; i++) {
       clearAt(i);
     }
-    const a = pick(rnd, ACTIVITIES);
+    const a = setTime ? pick(rnd, SET_TIME) : pick(rnd, ACTIVITIES);
     row[b] = a;
     for (let i = b + 1; i < b + length; i++) {
       row[i] = `^${a}`;
@@ -294,7 +300,11 @@ function toServer(days, run) {
     groupId: day.groups[run.group].id,
     firstBlockId: day.blocks[run.first].id,
     before: run.before,
-    after: run.after
+    after: run.after,
+    // Each cell's block, as the screen keeps it with a step for Undo and Redo.
+    blockIds: day.blocks
+      .slice(run.first, run.first + run.after.length)
+      .map((b) => b.id)
   };
 }
 
@@ -355,12 +365,20 @@ function directorEdit(rnd, days) {
     const changed = days.map((day, d) => {
       return d === p.day ? dayOf(day.dateValue, blockIds(day), rows) : day;
     });
-    return {
-      days: changed,
-      runs: inverse([{ day: p.day, group: p.group, ...run }]).map((r) =>
-        toServer(changed, r)
-      )
-    };
+    const runs = inverse([{ day: p.day, group: p.group, ...run }]).map((r) =>
+      toServer(changed, r)
+    );
+    // Half the time the screen has since refreshed to someone else's change, near the step or
+    // anywhere: the Undo still expects what the step left.
+    if (rnd() < 0.5) {
+      const refreshed = { days: copyWeek(changed) };
+      const times = 1 + int(rnd, 2);
+      for (let i = 0; i < times; i++) {
+        otherChange(rnd, refreshed, rnd() < 0.8 ? runs : null);
+      }
+      return { days: refreshed.days, expects: changed, runs, refreshed: true };
+    }
+    return { days: changed, expects: changed, runs };
   }
   if (!runs || !runs.length) {
     return null;
@@ -410,7 +428,7 @@ function expectStrict(made, state, own, seen, failures, seed) {
       }
       const key = cellKey(run.day, run.groupId, day.blocks[first + i].id);
       changed.add(key);
-      if (theirs.replace("^", "").startsWith("F:")) {
+      if (isSetTime(theirs)) {
         failures.push(`seed ${seed}: plan changes a fixed activity at ${key}`);
       }
       if (own.has(key) && seen.get(key) === theirs) {
@@ -441,7 +459,15 @@ function expectStrict(made, state, own, seen, failures, seed) {
 describe("keep theirs or use yours: what is shown is what is sent", () => {
   it(`holds over ${SEEDS} generated weeks, edits, and other people's changes`, () => {
     const failures = [];
-    const counts = { conflicts: 0, again: 0, gone: 0, changed: 0, fixed: 0 };
+    const counts = {
+      conflicts: 0,
+      again: 0,
+      gone: 0,
+      changed: 0,
+      fixed: 0,
+      refreshed: 0,
+      missing: 0
+    };
     for (let seed = 1; seed <= SEEDS; seed++) {
       const rnd = random(seed);
       const start = randomWeek(rnd);
@@ -449,14 +475,21 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
       if (!edit) {
         continue;
       }
-      const seen = seenModelOf(edit.days);
-      const own = ownOf(edit.days, edit.runs);
+      // What the director expects: the screen for an edit, what the step left for an Undo.
+      const expects = edit.expects || edit.days;
+      const seen = seenModelOf(expects);
+      const own = ownOf(expects, edit.runs);
       let intent = intentOf(
         edit.days,
         edit.runs,
         () => "cell",
         () => "row"
       );
+      if (intent.missing) {
+        // The refreshed screen has lost a block of the step: the screen says so (moving.test).
+        counts.missing += 1;
+        continue;
+      }
       const state = { days: copyWeek(edit.days) };
       const changes = 1 + int(rnd, 3);
       for (let i = 0; i < changes; i++) {
@@ -470,6 +503,7 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
         }
         if (question === 0) {
           counts.conflicts += 1;
+          counts.refreshed += edit.refreshed ? 1 : 0;
         } else {
           counts.again += 1;
         }
@@ -498,5 +532,7 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
     expect(counts.conflicts).toBeGreaterThan(400);
     expect(counts.again).toBeGreaterThan(50);
     expect(counts.changed + counts.gone).toBeGreaterThan(5);
+    expect(counts.fixed).toBeGreaterThan(5);
+    expect(counts.refreshed).toBeGreaterThan(20);
   });
 });

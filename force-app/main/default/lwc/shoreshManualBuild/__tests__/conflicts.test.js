@@ -123,7 +123,8 @@ describe("keep theirs or use yours: the cases a review found", () => {
         groupId: "g1",
         firstBlockId: "t2",
         before: ["A:a4"],
-        after: ["A:a3"]
+        after: ["A:a3"],
+        blockIds: ["t2"]
       }
     ]);
   });

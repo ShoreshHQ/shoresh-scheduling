@@ -248,33 +248,45 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       anything of theirs those cells overlap cleared in full. Its runs are exactly what Use
       yours sends, and its rows come from the same comparison. **The rule: every cell Use yours
       would change is listed, except the director's own cells that still hold what the
-      director saw there.** So nothing anyone else put anywhere (in the director's cells, or in
-      a placement of theirs that would be cleared) is replaced without being shown. With
-      nothing to list there is no question; with nothing to change, _Already as you had it._
-      After Use yours, what the question showed counts as seen, for a further question.
-    - **When the plan can't be made** nothing is sent, the edit leaves Undo (it never saved),
-      and a waiting Undo or Redo of it goes; the quiet line says why:
+      director expected there.** What the director expects in their own cells is what the edit
+      names as there before it: for an edit, the screen when it was made; for an Undo or Redo,
+      what the step left, even if the screen has since refreshed to someone else's change
+      (which is then listed, not replaced). An Undo or Redo also carries the time block of each
+      of its cells, so a block added inside it since isn't mistaken for one of them. So nothing
+      anyone else put anywhere (in the director's cells, or in a placement of theirs that would
+      be cleared) is replaced without being shown. With nothing to list there is no question;
+      with nothing to change, _Already as you had it._ After Use yours, what the question
+      showed counts as seen, for a further question. One thing Use yours does without asking:
+      when theirs is the same activity, shorter, it is made the director's length again; no
+      one's activity is lost.
+    - **When the plan can't be made** nothing is sent; the edit, Undo, or Redo leaves the Undo
+      and Redo lists (an edit never saved; an Undo or Redo can't be made), and a waiting Undo
+      or Redo of it goes. The quiet line says why:
       - a cell's day, bunk, or time block left the week: _Bunk 1 · Monday · Lunch isn't in the
         week any more._;
-      - a time block was added inside the director's cells: _Bunk 1 · Monday changed since you
-        opened it. Try again._;
+      - a time block was added inside the director's cells: _Bunk 1 · Monday has changed. Try
+        again._;
       - a fixed or recurring activity is now where the director's cells are (they are never
-        cleared): _Flagpole stays where it is set up._
-        An Undo or Redo whose block has since gone isn't sent: _Can't undo Placed Swim · …: the
-        week has changed._
+        cleared): _Flagpole stays where it is set up._;
+      - for an Undo or Redo, whichever the reason (found when it is pressed or when it meets
+        the server): _Can't undo Placed Swim · …: the week has changed._
+        The line stays, and is said again with each save that follows, until the director's
+        next change or answer.
     - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
       are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
       runs, and Period 3 is never part of the edit, whatever someone puts there.
     - **Checked by a seeded property test** (`conflicts.property.test.js`): 3,000 generated
-      weeks (two days, three bunks, fixed activities, activities one to three blocks long),
-      each with a random edit (place, multi-block, clear, move or swap within or across days
-      and bunks, length, Undo), random changes by others (cells, cleared placements, longer or
-      shorter activities, time blocks added anywhere including inside a placement, or
-      removed), and up to three questions in a row. The test keeps its own record of what the
+      weeks (two days, three bunks, fixed and recurring activities, activities one to three
+      blocks long), each with a random edit (place, multi-block, clear, move or swap within or
+      across days and bunks, length, Undo, half of them pressed after the screen refreshed to
+      someone else's change), random changes by others (cells, cleared placements, longer or
+      shorter activities, new fixed or recurring activities, time blocks added anywhere
+      including inside a placement, or removed), and up to three questions in a row. The test keeps its own record of what the
       director saw and checks the rule strictly each time, and that no fixed activity is ever
       changed. Breaking the rule, or the record of what was seen, fails it. On the screen,
       every test that clicks Use yours checks the same rule by time block Id against the
-      server's week at question time (`useYoursSendsWhatWasShown`).
+      server's week at question time (`useYoursSendsWhatWasShown`), carrying the director's
+      own cells and what they have seen through a further question.
     - **Use yours and Undo:** a waiting Undo or Redo of the same step is dropped (it was worked
       out from what the director saw); a dropped Undo puts the step back on top of Undo, and a
       dropped Redo is said with the save (_Placed Swim · …. Redo skipped._) and stays on the

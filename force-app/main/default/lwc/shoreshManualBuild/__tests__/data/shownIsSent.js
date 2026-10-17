@@ -1,7 +1,8 @@
 // The promise behind "keep theirs or use yours", checked on the screen (ADR 0008 §21): Use yours
-// may leave unlisted only the director's own cells that still hold what the director saw there;
-// every other cell it changes is listed, and every listed cell is changed. Cells are compared by
-// day, group, and time block Id, in the server's week as it was when the question opened.
+// may leave unlisted only the director's own cells that still hold what the director expected
+// there; every other cell it changes is listed, and every listed cell is changed. Cells are
+// compared by day, group, and time block Id, in the server's week as it was when the question
+// opened.
 // Each test that clicks Use yours calls it.
 import { slots } from "../../slotEdits";
 
@@ -46,10 +47,20 @@ function contents(week) {
   return held;
 }
 
+// A further question about the same edit carries on from the one before: what the director
+// owns, and what they have seen (updated with each question's rows), by element.
+const chains = new WeakMap();
+
+const editCells = (call, week) =>
+  call[0].edits.flatMap((edit) => cellsOf(edit.runs, week));
+
 /**
- * Clicks Use yours and checks it against the question. seenSchedule: the week as the director
- * saw it when making the edit. The edit is the save that got the question (the last one sent:
- * saves wait while a question is open), and its answer is the server's week at question time.
+ * Clicks Use yours and checks it against the question. seenSchedule: the week the director's own
+ * edit (or Undo or Redo) was made on. The director's own cells and what they expected there come
+ * from that save (each run's before: the screen for an edit, what the step left for an Undo); a
+ * further question about the same edit keeps them, with what each question showed now seen.
+ * The save that got the question is the last one sent (saves wait while a question is open), and
+ * its answer is the server's week at question time.
  */
 export async function useYoursSendsWhatWasShown(
   element,
@@ -60,12 +71,14 @@ export async function useYoursSendsWhatWasShown(
   const asked = saveSlots.mock.calls.length - 1;
   const answer = await saveSlots.mock.results[asked].value;
   const atQuestion = answer.schedule;
-  const own = new Set(
-    cellsOf(saveSlots.mock.calls[asked][0].edits[0].runs, seenSchedule).map(
-      (c) => c.key
-    )
-  );
-  const seen = contents(seenSchedule);
+  let chain = chains.get(element);
+  if (!chain || chain.call !== asked) {
+    const own = editCells(saveSlots.mock.calls[asked], seenSchedule);
+    chain = {
+      own: new Set(own.map((c) => c.key)),
+      seen: new Map(own.map((c) => [c.key, c.before]))
+    };
+  }
   // Rows name positions in the server's week at question time; turn them into block Ids.
   const listed = listedCells(element)
     .map((position) => {
@@ -76,15 +89,20 @@ export async function useYoursSendsWhatWasShown(
     .sort();
   element.shadowRoot.querySelector('[data-id="use-yours"]').click();
   await flush();
-  const sent = cellsOf(
-    saveSlots.mock.calls[asked + 1][0].edits[0].runs,
-    atQuestion
-  ).filter((c) => c.before !== c.after);
+  const sent = editCells(saveSlots.mock.calls[asked + 1], atQuestion).filter(
+    (c) => c.before !== c.after
+  );
   const mustList = sent
-    .filter((c) => !(own.has(c.key) && seen.get(c.key) === c.before))
+    .filter(
+      (c) => !(chain.own.has(c.key) && chain.seen.get(c.key) === c.before)
+    )
     .map((c) => c.key)
     .sort();
   expect(listed).toEqual(mustList);
   const sentKeys = sent.map((c) => c.key);
   listed.forEach((key) => expect(sentKeys).toContain(key));
+  // The director has now seen what this question listed.
+  const held = contents(atQuestion);
+  listed.forEach((key) => chain.seen.set(key, held.get(key)));
+  chains.set(element, { ...chain, call: asked + 1 });
 }

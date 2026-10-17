@@ -747,7 +747,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     await fire(cell(element, "0-1"), "drop");
     expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Bunk 1 · Monday changed since you opened it. Try again."
+      "Bunk 1 · Monday has changed. Try again."
     );
     expect(saveSlots).toHaveBeenCalledTimes(1);
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
@@ -788,5 +788,88 @@ describe("c-shoresh-manual-build: moving things", () => {
     await useYoursSendsWhatWasShown(element);
     await useYoursSendsWhatWasShown(element);
     expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+  });
+
+  it("an Undo after the screen refreshed to someone else's change asks before replacing it", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    // Swim placed and saved; by the answer, someone has changed it to Soccer.
+    const theirs = schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]);
+    saveSlots.mockResolvedValueOnce({ conflicts: [], schedule: theirs });
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    expect(q(element, '[data-id="undo"]').title).toBe(
+      "Undo: Placed Swim · Bunk 1 · Monday · Period 2"
+    );
+    saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: theirs });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    // The Undo expects Swim there: Soccer is someone else's, so it is asked about.
+    expect(sentRuns(1)[0].before).toEqual(["A:a1"]);
+    expect(rowCells(element)).toEqual(["0|0|1"]);
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Soccer");
+    await useYoursSendsWhatWasShown(element);
+  });
+
+  it("a Redo after the screen refreshed to someone else's change asks before replacing it", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SWIM, SOCCER], ["1,2,", "1,3,"])
+    });
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    // Undone and saved; by the answer, someone has put Soccer there.
+    const theirs = schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]);
+    saveSlots.mockResolvedValueOnce({ conflicts: [], schedule: theirs });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: theirs });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true, shiftKey: true });
+    expect(sentRuns(2)[0].before).toEqual([""]);
+    expect(rowCells(element)).toEqual(["0|0|1"]);
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Soccer");
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(3);
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+  });
+
+  it("a change that couldn't be made stays on the line while the next one saves", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    saveSlots.mockReturnValueOnce(placing.promise);
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    await press(cell(element, "1-1"), "Delete");
+    placing.answer({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,1,", "1,2,"])
+    });
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Flagpole stays where it is set up."
+    );
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Cleared Bunk 2 · Monday · Period 2. Flagpole stays where it is set up."
+    );
+    // The director's next change clears it.
+    await press(cell(element, "1-1"), "z", { ctrlKey: true });
+    expect(q(element, '[data-id="notice"]')).toBeNull();
+  });
+
+  it("a refused Undo says it can't be undone, not to try again", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    // Flagpole is now set up where the Undo goes.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,1,", "1,2,"])
+    });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Can't undo Placed Swim · Bunk 1 · Monday · Period 2: the week has changed."
+    );
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
   });
 });

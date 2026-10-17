@@ -35,6 +35,17 @@ function loose(text) {
     .toLowerCase();
 }
 
+/** A run as saveSlots takes it (SlotEdits.Run): the screen's own blockIds left out. */
+function saved(run) {
+  return {
+    day: run.day,
+    groupId: run.groupId,
+    firstBlockId: run.firstBlockId,
+    before: run.before,
+    after: run.after
+  };
+}
+
 /** One slot, the same in Daily and Group View. */
 function slotKey(slot) {
   return `${slot.day}|${slot.group}|${slot.block}`;
@@ -827,7 +838,10 @@ export default class ShoreshManualBuild extends LightningElement {
     this.commit([{ day: slot.day, group: slot.group, ...run }], label, key);
   }
 
-  /** A run as the server takes it: the day's date, the group's and first block's Ids. */
+  /**
+   * A run as the server takes it: the day's date, the group's and first block's Ids. blockIds
+   * (every cell's block, for Undo and Redo later) stays on the screen.
+   */
   toServerRun(run) {
     const day = this.schedule.days[run.day];
     return {
@@ -835,7 +849,10 @@ export default class ShoreshManualBuild extends LightningElement {
       groupId: day.groups[run.group].id,
       firstBlockId: day.blocks[run.first].id,
       before: run.before,
-      after: run.after
+      after: run.after,
+      blockIds: day.blocks
+        .slice(run.first, run.first + run.after.length)
+        .map((b) => b.id)
     };
   }
 
@@ -956,7 +973,7 @@ export default class ShoreshManualBuild extends LightningElement {
     try {
       const result = await saveSlots({
         scheduleId: this.schedule.schedule.id,
-        edits: [entry.edit]
+        edits: [{ runs: entry.edit.runs.map(saved) }]
       });
       this.queue = this.queue.slice(1);
       this.server = result.schedule;
@@ -965,10 +982,16 @@ export default class ShoreshManualBuild extends LightningElement {
         this.askAboutConflict(entry);
       } else {
         this.error = null;
-        // A note that came with this change (Redo skipped.) stays to be seen, and is said with it.
-        this.notice = entry.note || null;
+        // A note that came with this change (Redo skipped.) is added to the line. Anything
+        // already there (an earlier change that couldn't be made) stays until the director's
+        // next change, and is said again with this one.
+        if (entry.note) {
+          this.notice = this.notice
+            ? `${this.notice} ${entry.note}`
+            : entry.note;
+        }
         this.announce(
-          entry.note ? `${entry.label}. ${entry.note}` : entry.label
+          this.notice ? `${entry.label}. ${this.notice}` : entry.label
         );
       }
     } catch (e) {
@@ -1430,14 +1453,17 @@ export default class ShoreshManualBuild extends LightningElement {
     if (made.gone || made.changed || made.fixed) {
       // Nothing of this edit was saved: it leaves Undo, and a waiting Undo or Redo of it goes.
       this.abandon(entry);
-      if (made.gone) {
+      if (entry.kind !== "edit") {
+        // The step has left Undo and Redo: nothing to try again.
+        this.say(
+          `Can't ${entry.kind === "redo" ? "redo" : "undo"} ${entry.baseLabel}: the week has changed.`
+        );
+      } else if (made.gone) {
         this.say(
           `${made.gone.name || this.weekName} isn't in the week any more.`
         );
       } else if (made.changed) {
-        this.say(
-          `${made.changed.rowName} changed since you opened it. Try again.`
-        );
+        this.say(`${made.changed.rowName} has changed. Try again.`);
       } else {
         const day = this.server.days.find(
           (d) => d.dateValue === made.fixed.day
@@ -1446,7 +1472,6 @@ export default class ShoreshManualBuild extends LightningElement {
       }
       return;
     }
-    this.notice = null;
     if (!made.runs.length) {
       this.say("Already as you had it.");
       return;
@@ -1503,6 +1528,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   handleKeepTheirs() {
     const { key, stepId } = this.conflict.entry;
+    this.notice = null;
     const firstRun = this.conflict.made.runs[0];
     this.conflict = null;
     // Their change stands, so this step never happened: nothing to undo or redo, and an Undo or
@@ -1518,6 +1544,7 @@ export default class ShoreshManualBuild extends LightningElement {
   /** Use yours: exactly the plan the question showed (conflicts.js), nothing else. */
   handleUseYours() {
     const { entry, made } = this.conflict;
+    this.notice = null;
     this.conflict = null;
     this.useYours(entry, made);
   }

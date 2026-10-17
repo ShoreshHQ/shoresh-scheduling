@@ -592,7 +592,9 @@ Same made-up camp, Manual Build, Week 1.
 
 9. **Two people.** With two windows (section 19, step 12):
    - an Undo in window A, after window B changed the same cell, asks _Changed by someone else_
-     too;
+     too, even after window A has caught up and shows B's change (place _Swim_ in A, change it
+     to _Soccer_ in B, make any other change in A so it shows _Soccer_, then click **Undo**
+     twice in A: the second asks before clearing B's _Soccer_). Redo does the same;
    - a swap or move in window A, after B changed both cells, asks once, listing each cell that
      differs (_Theirs_ and _Yours_ for each);
    - if B's activity is longer than the cell you changed, the part of it **Use yours** would clear
