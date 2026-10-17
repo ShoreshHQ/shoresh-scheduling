@@ -4,6 +4,10 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
 import { draft, schedule } from "./data/draftFixture";
+import {
+  listedCells,
+  useYoursSendsWhatWasShown as shownIsSent
+} from "./data/shownIsSent";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -55,7 +59,11 @@ const flush = () =>
 const MONDAY_ITEMS = [FLAGPOLE, SWIM, SOCCER];
 const MONDAY_ROWS = ["1,2,", "1,3,"];
 
+// The week as the director saw it: each test's saves answer with it.
+let lastStart;
+
 async function render(start = draft(MONDAY_ITEMS, MONDAY_ROWS)) {
+  lastStart = start;
   getDraft.mockResolvedValue(start);
   saveSlots.mockImplementation(() =>
     Promise.resolve({ conflicts: [], schedule: start.schedule })
@@ -78,43 +86,12 @@ const palette = (element) => q(element, "c-shoresh-build-palette");
 const chip = (element, id) =>
   palette(element).shadowRoot.querySelector(`button[data-id="${id}"]`);
 const sentRuns = (call = 0) => saveSlots.mock.calls[call][0].edits[0].runs;
-const DATES = ["2026-06-29", "2026-06-30"];
-const GROUP_IDS = ["g1", "g2"];
-const BLOCK_IDS = ["t1", "t2", "t3"];
-
 /** The cells the question lists, as "day|group|block" positions. */
-const rowCells = (element) =>
-  [...q(element, '[data-id="conflict"]').querySelectorAll(".conflict-row")].map(
-    (row) => row.dataset.cell
-  );
+const rowCells = (element) => listedCells(element);
 
-/** The cells a save would change (what it held differs from what it will hold). */
-function changedCells(runs) {
-  const cells = [];
-  runs.forEach((run) => {
-    const first = BLOCK_IDS.indexOf(run.firstBlockId);
-    run.before.forEach((slot, i) => {
-      if (slot !== run.after[i]) {
-        cells.push(
-          `${DATES.indexOf(run.day)}|${GROUP_IDS.indexOf(run.groupId)}|${first + i}`
-        );
-      }
-    });
-  });
-  return cells;
-}
-
-/**
- * The invariant: Use yours sends a change to exactly the cells the question listed, and to no
- * others (nothing changed unseen).
- */
-async function useYoursSendsWhatWasShown(element) {
-  const shown = rowCells(element).sort();
-  const calls = saveSlots.mock.calls.length;
-  q(element, '[data-id="use-yours"]').click();
-  await flush();
-  expect(changedCells(sentRuns(calls)).sort()).toEqual(shown);
-}
+/** Use yours sends a change to exactly the cells the question listed (and to nothing unseen). */
+const useYoursSendsWhatWasShown = (element) =>
+  shownIsSent(element, saveSlots, lastStart.schedule, flush);
 
 async function fire(target, type) {
   target.dispatchEvent(new CustomEvent(type, { bubbles: true }));
@@ -529,8 +506,7 @@ describe("c-shoresh-manual-build: moving things", () => {
       schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,^", "1,2,"])
     });
     await flush();
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    await useYoursSendsWhatWasShown(element);
     // Only the Use yours went: the waiting Undo was dropped.
     expect(saveSlots).toHaveBeenCalledTimes(2);
     expect(sentRuns(1)[0]).toMatchObject({
@@ -551,8 +527,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     q(element, '[data-id="undo"]').click();
     await flush();
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    await useYoursSendsWhatWasShown(element);
     expect(q(element, '[data-id="undo"]').title).toBe("Undo");
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
   });
@@ -664,6 +639,48 @@ describe("c-shoresh-manual-build: moving things", () => {
     await press(cell(element, "0-0"), " ");
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Flagpole stays where it is set up."
+    );
+  });
+
+  it("after Use yours, the director's saved change can always be undone", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    saveSlots.mockReturnValueOnce(placing.promise);
+    // Swim placed, undone at once, and Soccer placed elsewhere, all before Swim's save answers.
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    await fire(chip(element, "a3"), "dragstart");
+    await fire(cell(element, "0-2"), "drop");
+    // Swim's save meets someone's Boating.
+    placing.answer({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,", "1,2,"])
+    });
+    await flush();
+    await useYoursSendsWhatWasShown(element);
+    expect(q(element, '[data-id="undo"]').title).toBe(
+      "Undo: Placed Swim · Bunk 1 · Monday · Period 2"
+    );
+  });
+
+  it("a Redo dropped by Use yours is said, and stays on the line after the save", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    saveSlots.mockReturnValueOnce(placing.promise);
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true, shiftKey: true });
+    placing.answer({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,", "1,2,"])
+    });
+    await flush();
+    await useYoursSendsWhatWasShown(element);
+    expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Placed Swim · Bunk 1 · Monday · Period 2. Redo skipped."
     );
   });
 });

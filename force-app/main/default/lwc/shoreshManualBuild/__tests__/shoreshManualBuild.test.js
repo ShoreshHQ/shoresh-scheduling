@@ -6,6 +6,7 @@ import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
+import { useYoursSendsWhatWasShown } from "./data/shownIsSent";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -327,8 +328,8 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="yours"]').textContent).toBe("Swim");
     // Theirs shows on the grid meanwhile: nothing was overwritten.
     expect(cellText(element, "0-1")).toBe("Soccer");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
@@ -424,8 +425,8 @@ describe("c-shoresh-manual-build", () => {
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
     expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
@@ -467,8 +468,8 @@ describe("c-shoresh-manual-build", () => {
       "Bunk 1 · Monday · Lunch"
     );
     expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
@@ -497,8 +498,8 @@ describe("c-shoresh-manual-build", () => {
     );
     expect(q(element, '[data-id="theirs"]').textContent).toBe("Soccer");
     expect(q(element, '[data-id="yours"]').textContent).toBe("Boating");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",
@@ -518,8 +519,8 @@ describe("c-shoresh-manual-build", () => {
     // While the question is open: Soccer for Bunk 2, waiting.
     await press(cell(element, "1-1"), "Enter");
     await press(await type(element, "soccer"), "Enter");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Use yours sends exactly what the question listed.
+    await useYoursSendsWhatWasShown(element, saveSlots, schedule(), flush);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
       day: "2026-06-29",
       groupId: "g1",

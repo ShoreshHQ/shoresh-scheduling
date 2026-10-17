@@ -239,20 +239,35 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       `lightning-helptext` was not used: its info icon is a different look from the dot. The
       tooltip uses the SLDS neutral colours, never bronze text.
 21. **Review fixes, round 2 (coordinator):**
-    - **What the question lists is what Use yours sends.** When the question opens, the edit is
-      worked out as Use yours would make it (each run on the server's week, the director's
-      cells and lengths, anything of theirs it overlaps replaced in full). Its rows are the
-      cells that edit would change whose content isn't what the director saw, including any
-      part of theirs it would clear (_Lunch · Theirs: Boating · Yours: Open_); rows where theirs
-      and yours read the same are left out. Use yours sends exactly those worked-out runs, so
-      the two can't disagree (a Jest invariant checks it in every conflict test). Cells the
-      director changed that nobody else touched are sent but not listed: they aren't in
-      question. When theirs already matches yours there is nothing to ask (_Already as you had
-      it._). A swap, a move (the cell it leaves too), and an Undo of either can each touch
-      several cells; one question answers for the whole edit.
+    - **What the question lists is what Use yours sends** (`conflicts.js`). Each edit carries
+      its intent: the director's cells, each named by day, group, and **time block Id** (never
+      by position, which moves when a block is added), with what it should hold, and the
+      director's view of every row it touches, also by time block Id. The intent travels with
+      the edit through questions, Use yours, and second questions. When a question opens,
+      `plan()` makes the intent on the server's week as it is now: the director's cells, and
+      anything of theirs those cells overlap cleared in full. Its rows are the cells that would
+      change from what is there now while what is there now isn't what the director saw; its
+      runs are exactly what Use yours sends. One comparison makes both, so every cell someone
+      else changed is shown before anything of theirs is replaced, and nothing is replaced
+      that wasn't shown. Cells the director changed that nobody else touched are sent but not
+      listed. With nothing of theirs to replace there is no question; with nothing to change,
+      _Already as you had it._ After Use yours, what the question showed counts as seen, for a
+      second question. A cell that left the week, or whose blocks are no longer next to each
+      other (a block was added inside it), is named and nothing is sent.
+    - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
+      are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
+      runs, and Period 3 is never part of the edit, whatever someone puts there.
+    - **Checked by a seeded property test** (`conflicts.test.js`): 1,000 generated weeks, each
+      with a random edit (place, multi-block, clear, move, swap, length, Undo), random changes
+      by others (cells, cleared placements, an added time block), and sometimes a further
+      change after the question opened. Every time, the cells sent that differ from what the
+      director saw equal the rows listed. On the screen, every test that clicks Use yours runs
+      the same check (`useYoursSendsWhatWasShown`).
     - **Use yours and Undo:** a waiting Undo or Redo of the same step is dropped (it was worked
       out from what the director saw); a dropped Undo puts the step back on top of Undo, and a
-      dropped Redo is said (_Redo skipped._). A change, or a Redo of one, becomes what was saved,
+      dropped Redo is said with the save (_Placed Swim · …. Redo skipped._) and stays on the
+      quiet line. The saved change can always be undone: if a later change cleared Redo after
+      it was undone, it goes on top of Undo. A change, or a Redo of one, becomes what was saved,
       in the same place in the Undo list. An Undo made over theirs is done and leaves both
       lists, so there is never an _Undo: Undone: …_. Focus returns to the cell, after either
       answer.

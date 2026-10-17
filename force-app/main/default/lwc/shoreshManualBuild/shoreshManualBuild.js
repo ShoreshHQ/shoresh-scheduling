@@ -21,12 +21,11 @@ import {
   editRun,
   isSetTime,
   owner,
-  placement,
-  rebaseRun,
-  slots
+  placement
 } from "./slotEdits";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { History } from "./history";
+import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
 
 /** Names compared the way people mean them: spaces and capitals aside. */
@@ -888,12 +887,11 @@ export default class ShoreshManualBuild extends LightningElement {
         stepId,
         kind,
         baseLabel: baseLabel || label,
-        // Each run's whole row as the director saw it when making the edit: a cell that isn't
-        // this any more is someone else's change.
-        seen: serverRuns.map((run) => this.rowSeen(run)),
-        slotKey: this.slotKeyOf(firstRun, serverRuns[0]),
-        // Each run's cells by name, to say which one is gone if the day loses a block.
-        cells: serverRuns.map((run) => this.cellNames(run))
+        // What the director chose and saw, by time block (conflicts.js): what a question compares.
+        intent: intentOf(this.schedule.days, serverRuns, (at) =>
+          this.slotName({ day: at.dayIndex, group: at.g }, at.block)
+        ),
+        slotKey: this.slotKeyOf(firstRun, serverRuns[0])
       }
     ];
     this.applyLocally(edit);
@@ -952,8 +950,11 @@ export default class ShoreshManualBuild extends LightningElement {
         this.askAboutConflict(entry);
       } else {
         this.error = null;
-        this.notice = null;
-        this.announce(entry.label);
+        // A note that came with this change (Redo skipped.) stays to be seen, and is said with it.
+        this.notice = entry.note || null;
+        this.announce(
+          entry.note ? `${entry.label}. ${entry.note}` : entry.label
+        );
       }
     } catch (e) {
       const dropped = this.queue.length - 1;
@@ -1410,98 +1411,39 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   askAboutConflict(entry) {
-    // A cell the day no longer has (its time block was removed): nothing to ask, say which.
-    const gone = this.goneCell(entry);
-    if (gone) {
-      this.say(`${gone} isn't in the week any more.`);
+    const made = plan(this.server.days, entry.intent);
+    if (made.gone) {
+      this.say(
+        `${made.gone.name || this.weekName} isn't in the week any more.`
+      );
       return;
     }
     this.notice = null;
-    const runs = this.rebasedRuns(entry);
-    if (runs === null) {
-      this.error = `${this.weekName} changed since you opened it. Your last change was not saved.`;
-      return;
-    }
-    if (!runs.length) {
+    if (!made.runs.length) {
       this.say("Already as you had it.");
       return;
     }
-    const rows = this.changedCells(entry, runs);
-    // What the question shows and what Use yours sends are worked out once, from the same runs.
-    this.conflict = { entry, rows, runs };
+    if (!made.rows.length) {
+      // Nothing of anyone else's would be replaced: no question, it is just made.
+      this.useYours(entry, made);
+      return;
+    }
+    const rows = made.rows.map((row) => {
+      const day = this.server.days[row.dayIndex];
+      return {
+        key: `${row.dayIndex}|${row.g}|${row.block}`,
+        where: this.slotName({ day: row.dayIndex, group: row.g }, row.block),
+        theirs: this.nameOf(row.theirs, day),
+        yours: this.nameOf(row.yours, day)
+      };
+    });
+    // What the question shows and what Use yours sends are one plan (conflicts.js).
+    this.conflict = { entry, rows, made };
     this.announce(
       rows.length === 1
         ? `${rows[0].where} changed since you opened it.`
         : `${rows.length} cells changed since you opened it.`
     );
-  }
-
-  /**
-   * The edit as Use yours would make it: each run made on the server's week as it is now, the
-   * same cells and lengths the director chose, anything of theirs it overlaps replaced in full
-   * (rebaseRun). Each run keeps where it is and the director's view of its row. Null when a run
-   * can't be found.
-   */
-  rebasedRuns(entry) {
-    const runs = [];
-    for (let r = 0; r < entry.edit.runs.length; r++) {
-      const run = entry.edit.runs[r];
-      const at = this.locate(run);
-      if (!at) {
-        return null;
-      }
-      const row = slots(at.day, at.g);
-      const rebased = rebaseRun(row, at.first, run.after);
-      if (rebased) {
-        runs.push({
-          server: {
-            ...run,
-            firstBlockId: at.day.blocks[rebased.first].id,
-            before: rebased.before,
-            after: rebased.after
-          },
-          at,
-          first: rebased.first,
-          seen: (entry.seen || [])[r]
-        });
-      }
-    }
-    return runs;
-  }
-
-  /**
-   * The question's rows: every cell Use yours would change whose content isn't what the director
-   * saw (someone else's change, including any part of theirs that would be cleared), with theirs
-   * and yours. If the director's view isn't known, every cell it would change.
-   */
-  changedCells(entry, runs) {
-    const rows = [];
-    const all = [];
-    runs.forEach(({ server, at, first, seen }) => {
-      server.before.forEach((theirs, i) => {
-        const yours = server.after[i];
-        if (theirs === yours) {
-          return;
-        }
-        const row = this.conflictRow(at, first + i, theirs, yours);
-        if (row.theirs === row.yours) {
-          return;
-        }
-        all.push(row);
-        if (!seen || seen[first + i] !== theirs) {
-          rows.push(row);
-        }
-      });
-    });
-    return rows.length ? rows : all;
-  }
-
-  /** A run's whole row as the week on screen has it now, or null. */
-  rowSeen(run) {
-    const weekDays = this.schedule ? this.schedule.days : [];
-    const day = weekDays.find((d) => d.dateValue === run.day);
-    const g = day ? day.groups.findIndex((grp) => grp.id === run.groupId) : -1;
-    return g < 0 ? null : slots(day, g);
   }
 
   /** The grid cell a run starts in, in the view on screen, or null. */
@@ -1523,56 +1465,9 @@ export default class ShoreshManualBuild extends LightningElement {
     }
   }
 
-  conflictRow(at, block, theirs, yours) {
-    return {
-      key: `${at.dayIndex}|${at.g}|${block}`,
-      where: this.slotName({ day: at.dayIndex, group: at.g }, block),
-      theirs: this.nameOf(theirs, at.day),
-      yours: this.nameOf(yours || OPEN, at.day)
-    };
-  }
-
-  /** The name of the first cell of an edit the server's week no longer has, or null. */
-  goneCell(entry) {
-    const named = entry.cells || [];
-    for (let r = 0; r < entry.edit.runs.length; r++) {
-      const run = entry.edit.runs[r];
-      const cells = named[r] || [];
-      const at = this.locate(run);
-      if (!at) {
-        return cells[0] || this.weekName;
-      }
-      const blocks = at.day.blocks.length;
-      if (at.first + run.after.length > blocks) {
-        return cells[blocks - at.first] || cells[0] || this.weekName;
-      }
-    }
-    return null;
-  }
-
-  /** "Bunk 1 · Monday · Period 2" for each cell of a run, from the week on screen. */
-  cellNames(run) {
-    const weekDays = this.schedule ? this.schedule.days : [];
-    const dayIndex = weekDays.findIndex((d) => d.dateValue === run.day);
-    const day = weekDays[dayIndex];
-    if (!day) {
-      return [];
-    }
-    const group = day.groups.findIndex((grp) => grp.id === run.groupId);
-    const first = day.blocks.findIndex((b) => b.id === run.firstBlockId);
-    if (group < 0 || first < 0) {
-      return [];
-    }
-    return run.after.map((_, i) => {
-      return first + i < day.blocks.length
-        ? this.slotName({ day: dayIndex, group }, first + i)
-        : "";
-    });
-  }
-
   handleKeepTheirs() {
     const { key, stepId } = this.conflict.entry;
-    const firstRun = this.conflict.runs[0].server;
+    const firstRun = this.conflict.made.runs[0];
     this.conflict = null;
     // Their change stands, so this step never happened: nothing to undo or redo, and an Undo or
     // Redo of it still waiting is dropped too.
@@ -1584,15 +1479,19 @@ export default class ShoreshManualBuild extends LightningElement {
     this.saveNext();
   }
 
-  /**
-   * Exactly the change the director chose (same cells, same lengths), as the question showed it:
-   * the runs worked out when it opened, nothing else. It goes first, before the edits that
-   * waited for the answer.
-   */
+  /** Use yours: exactly the plan the question showed (conflicts.js), nothing else. */
   handleUseYours() {
-    const { entry, runs: planned } = this.conflict;
+    const { entry, made } = this.conflict;
     this.conflict = null;
-    const runs = planned.map((run) => run.server);
+    this.useYours(entry, made);
+  }
+
+  /**
+   * Sends a plan for an edit, first, before the edits that waited. Its intent now counts what the
+   * question showed as seen, for a second question.
+   */
+  useYours(entry, made) {
+    const runs = made.runs;
     // A waiting Undo or Redo of this step was worked out from what the director saw, not from
     // what is saved now: it is dropped, and a dropped Redo is said.
     const dropped = this.queue.filter((w) => w.stepId === entry.stepId);
@@ -1601,23 +1500,30 @@ export default class ShoreshManualBuild extends LightningElement {
       // An Undo made over theirs is done: nothing to redo.
       this.history.forget(entry.stepId);
     } else {
-      // A change (or a Redo of one) is, from now, what was really saved: Undo takes back this,
-      // from the same place in the list.
-      this.history.replace(entry.stepId, {
-        id: entry.stepId,
-        runs,
-        label: entry.baseLabel
-      });
-    }
-    // A waiting Undo dropped never happened: the step is back where Undo finds it.
-    if (dropped.some((w) => w.kind === "undo")) {
-      this.history.unundo(entry.stepId);
+      // A change (or a Redo of one) is, from now, what was really saved: Undo takes back this.
+      // It keeps its place in Undo; if it had none left (a later change cleared Redo after it
+      // was undone), it goes on top, so it can always be taken back.
+      const step = { id: entry.stepId, runs, label: entry.baseLabel };
+      if (dropped.some((w) => w.kind === "undo")) {
+        this.history.unundo(entry.stepId);
+      }
+      if (!this.history.replace(entry.stepId, step)) {
+        this.history.ensure(step);
+      }
     }
     this.historyVersion += 1;
-    if (dropped.some((w) => w.kind === "redo")) {
-      this.say("Redo skipped.");
-    }
-    this.queue = [{ ...entry, edit: { runs } }, ...this.queue];
+    const note = dropped.some((w) => w.kind === "redo")
+      ? "Redo skipped."
+      : null;
+    this.queue = [
+      {
+        ...entry,
+        note,
+        intent: withSeen(entry.intent, made.rows),
+        edit: { runs }
+      },
+      ...this.queue
+    ];
     this.showServerAndWaiting();
     this.focusAfterQuestion(entry, runs[0]);
     this.saveNext();

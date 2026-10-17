@@ -7,7 +7,7 @@
  * desktop. A position is { day, group, block }: indexes into the schedule's days, that day's
  * groups, and its time blocks.
  */
-import { OPEN, diffRun, isSetTime, placementIn, slots } from "./slotEdits";
+import { OPEN, diffRuns, isSetTime, placementIn, slots } from "./slotEdits";
 
 const CARRIES_ON = "^";
 
@@ -57,11 +57,10 @@ class Rows {
   runs() {
     const result = [];
     this.changed.forEach((row, key) => {
-      const run = diffRun(this.original.get(key), row);
-      if (run) {
-        const [day, group] = key.split("|").map(Number);
-        result.push({ day, group, ...run });
-      }
+      const [day, group] = key.split("|").map(Number);
+      diffRuns(this.original.get(key), row).forEach((run) =>
+        result.push({ day, group, ...run })
+      );
     });
     return result;
   }

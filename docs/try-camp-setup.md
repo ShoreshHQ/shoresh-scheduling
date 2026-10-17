@@ -596,10 +596,10 @@ Same made-up camp, Manual Build, Week 1.
    - a swap or move in window A, after B changed both cells, asks once, listing each cell that
      differs (_Theirs_ and _Yours_ for each);
    - if B's activity is longer than the cell you changed, the part of it **Use yours** would clear
-     is listed too (_Bunk 1 · Monday · Lunch · Theirs: Boating · Yours: Open_). Nothing changes
-     that the question didn't show;
+     is listed too (_Bunk 1 · Monday · Lunch · Theirs: Boating · Yours: Open_). Every cell B
+     changed is shown before anything of B's is replaced;
    - **Keep theirs** leaves all of B's changes, and that step drops out of Undo;
-   - **Use yours** makes exactly what the question listed. Undo then brings B's back.
+   - **Use yours** makes your change over the cells listed. Undo then brings B's back.
 10. **Deleting a week with a Manual Build.** On the **Weeks** screen, click delete on Week 1.
     The confirmation now says _That includes its Manual Build and 1 saved version._ (or
     however many there are). Click **Cancel**.

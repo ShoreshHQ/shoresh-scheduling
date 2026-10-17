@@ -159,6 +159,50 @@ export function diffRun(before, after) {
 }
 
 /**
+ * The runs that turn one row into another: each stretch of slots that differ, widened only as far
+ * as the placements they are part of (the server refuses a run that cuts into one). Slots in
+ * between that don't change are never in a run, so a swap of Period 2 and Period 4 is two runs
+ * and leaves Period 3 alone, whatever is there.
+ */
+export function diffRuns(before, after) {
+  const carries = (slot) => slot.startsWith(CARRIES_ON);
+  const spans = [];
+  let i = 0;
+  while (i < before.length) {
+    if (before[i] === after[i]) {
+      i += 1;
+      continue;
+    }
+    let first = i;
+    let last = i;
+    while (last + 1 < before.length && before[last + 1] !== after[last + 1]) {
+      last += 1;
+    }
+    i = last + 1;
+    while (first > 0 && (carries(before[first]) || carries(after[first]))) {
+      first -= 1;
+    }
+    while (
+      last + 1 < before.length &&
+      (carries(before[last + 1]) || carries(after[last + 1]))
+    ) {
+      last += 1;
+    }
+    const previous = spans[spans.length - 1];
+    if (previous && first <= previous.last) {
+      previous.last = Math.max(previous.last, last);
+    } else {
+      spans.push({ first, last });
+    }
+  }
+  return spans.map(({ first, last }) => ({
+    first,
+    before: before.slice(first, last + 1),
+    after: after.slice(first, last + 1)
+  }));
+}
+
+/**
  * "Use yours": exactly the run the director chose (same start, same length) made on the row as
  * it is now. Anything of theirs overlapping it goes in full, so nothing is left cut short.
  */

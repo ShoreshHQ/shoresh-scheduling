@@ -55,10 +55,20 @@ export class History {
     this.redos = this.redos.filter((step) => step.id !== id);
   }
 
-  /** A step whose change was made differently (Use yours): the same place in the list. */
+  /**
+   * A step whose change was made differently (Use yours): the same place in the list. False
+   * when the step is in neither list.
+   */
   replace(id, step) {
+    const found = [...this.undos, ...this.redos].some((s) => s.id === id);
     this.undos = this.undos.map((s) => (s.id === id ? step : s));
     this.redos = this.redos.map((s) => (s.id === id ? step : s));
+    return found;
+  }
+
+  /** A saved change with no place left in either list: on top of Undo, Redo kept. */
+  ensure(step) {
+    this.undos = [...this.undos, step].slice(-LIMIT);
   }
 
   /** An Undo that was never made (dropped): its step goes back to the top of Undo. */
