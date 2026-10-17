@@ -235,6 +235,20 @@ describe("c-shoresh-manual-build", () => {
     expect(dot.open).toBe(true);
   });
 
+  it("Escape on a dot's words closes the words only, not the typing box", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    const input = await type(element, "sw");
+    const dot = q(element, '[role="option"] c-shoresh-dot');
+    expect(dot.shadowRoot.querySelector('[data-id="dot-tip"]')).not.toBeNull();
+    await press(input, "Escape");
+    expect(dot.shadowRoot.querySelector('[data-id="dot-tip"]')).toBeNull();
+    expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+    await press(input, "Escape");
+    expect(q(element, '[data-id="slot-editor"]')).toBeNull();
+  });
+
   it("Delete clears a placed slot; Open is offered when typing into a filled one", async () => {
     getDraft.mockResolvedValue(draft(WITH_SOCCER, ["1,2,", "1,,"]));
     saveSlots.mockResolvedValue(
@@ -571,14 +585,13 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 
-  it("Use yours when theirs already matches yours says so instead of saving", async () => {
+  it("when theirs already matches yours there is nothing to ask", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockResolvedValueOnce(answer(WITH_SWIM, ["1,2,", "1,,"], [0]));
     const element = await render();
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(saveSlots).toHaveBeenCalledTimes(1);
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Already as you had it."

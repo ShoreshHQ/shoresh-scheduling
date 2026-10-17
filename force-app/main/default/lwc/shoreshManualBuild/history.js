@@ -55,6 +55,21 @@ export class History {
     this.redos = this.redos.filter((step) => step.id !== id);
   }
 
+  /** A step whose change was made differently (Use yours): the same place in the list. */
+  replace(id, step) {
+    this.undos = this.undos.map((s) => (s.id === id ? step : s));
+    this.redos = this.redos.map((s) => (s.id === id ? step : s));
+  }
+
+  /** An Undo that was never made (dropped): its step goes back to the top of Undo. */
+  unundo(id) {
+    const step = this.redos.find((s) => s.id === id);
+    if (step) {
+      this.redos = this.redos.filter((s) => s.id !== id);
+      this.undos = [...this.undos, step].slice(-LIMIT);
+    }
+  }
+
   clear() {
     this.undos = [];
     this.redos = [];

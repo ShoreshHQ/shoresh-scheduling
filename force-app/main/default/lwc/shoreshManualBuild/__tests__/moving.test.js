@@ -78,6 +78,43 @@ const palette = (element) => q(element, "c-shoresh-build-palette");
 const chip = (element, id) =>
   palette(element).shadowRoot.querySelector(`button[data-id="${id}"]`);
 const sentRuns = (call = 0) => saveSlots.mock.calls[call][0].edits[0].runs;
+const DATES = ["2026-06-29", "2026-06-30"];
+const GROUP_IDS = ["g1", "g2"];
+const BLOCK_IDS = ["t1", "t2", "t3"];
+
+/** The cells the question lists, as "day|group|block" positions. */
+const rowCells = (element) =>
+  [...q(element, '[data-id="conflict"]').querySelectorAll(".conflict-row")].map(
+    (row) => row.dataset.cell
+  );
+
+/** The cells a save would change (what it held differs from what it will hold). */
+function changedCells(runs) {
+  const cells = [];
+  runs.forEach((run) => {
+    const first = BLOCK_IDS.indexOf(run.firstBlockId);
+    run.before.forEach((slot, i) => {
+      if (slot !== run.after[i]) {
+        cells.push(
+          `${DATES.indexOf(run.day)}|${GROUP_IDS.indexOf(run.groupId)}|${first + i}`
+        );
+      }
+    });
+  });
+  return cells;
+}
+
+/**
+ * The invariant: Use yours sends a change to exactly the cells the question listed, and to no
+ * others (nothing changed unseen).
+ */
+async function useYoursSendsWhatWasShown(element) {
+  const shown = rowCells(element).sort();
+  const calls = saveSlots.mock.calls.length;
+  q(element, '[data-id="use-yours"]').click();
+  await flush();
+  expect(changedCells(sentRuns(calls)).sort()).toEqual(shown);
+}
 
 async function fire(target, type) {
   target.dispatchEvent(new CustomEvent(type, { bubbles: true }));
@@ -268,7 +305,7 @@ describe("c-shoresh-manual-build: moving things", () => {
 
   it("the bottom handle dragged to a lower slot makes it reach there", async () => {
     const element = await render();
-    const handle = cell(element, "0-1").querySelector("[data-handle]");
+    const handle = cell(element, "0-1").querySelector("[data-handle-bar]");
     await fire(handle, "dragstart");
     await fire(cell(element, "0-2"), "drop");
     expect(sentRuns()[0].after).toEqual(["A:a1", "^A:a1"]);
@@ -355,8 +392,16 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     await fire(chip(element, "a1"), "dragstart");
     await fire(cell(element, "0-1"), "drop");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
+    // Their Boating's Lunch would be cleared too: it is listed, not done unseen.
+    expect(rowCells(element)).toEqual(["0|0|1", "0|0|2"]);
+    expect(
+      [
+        ...q(element, '[data-id="conflict"]').querySelectorAll(
+          '[data-id="yours"]'
+        )
+      ].map((d) => d.textContent)
+    ).toEqual(["Swim", "Open"]);
+    await useYoursSendsWhatWasShown(element);
     expect(sentRuns(1)[0]).toMatchObject({
       before: ["A:a2", "^A:a2"],
       after: ["A:a1", ""]
@@ -389,7 +434,7 @@ describe("c-shoresh-manual-build: moving things", () => {
   it("the handle dropped low on a multi-block cell keeps the blocks above", async () => {
     const element = await render(draft([FLAGPOLE, BOATING], ["1,2,^", "1,,"]));
     await fire(
-      cell(element, "0-1").querySelector("[data-handle]"),
+      cell(element, "0-1").querySelector("[data-handle-bar]"),
       "dragstart"
     );
     // The drop lands on Boating's own cell: near the top means Period 2 only.
@@ -435,6 +480,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(q(element, '[data-id="announce"]').textContent).toBe(
       "2 cells changed since you opened it."
     );
+    await useYoursSendsWhatWasShown(element);
   });
 
   it("when a move meets someone else's change, the cell it leaves is listed too", async () => {
@@ -540,7 +586,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     cell(element, "1-2").click();
     await flush();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Swim ends on Bunk 1 · Monday only."
+      "Swim can only change length within Bunk 1 · Monday."
     );
     cell(element, "0-1").querySelector("[data-handle]").click();
     await flush();
@@ -550,5 +596,74 @@ describe("c-shoresh-manual-build: moving things", () => {
       "Swim can't end before it starts."
     );
     expect(saveSlots).not.toHaveBeenCalled();
+  });
+
+  it("placing after the start of their longer activity lists the part of theirs before it", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    // Someone had put two-block Boating in Bunk 1's Period 2 and Lunch; I drop Swim on Lunch.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,^", "1,2,"])
+    });
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-2"), "drop");
+    expect(rowCells(element)).toEqual(["0|0|1", "0|0|2"]);
+    const yours = [
+      ...q(element, '[data-id="conflict"]').querySelectorAll(
+        '[data-id="yours"]'
+      )
+    ].map((d) => d.textContent);
+    expect(yours).toEqual(["Open", "Swim"]);
+    await useYoursSendsWhatWasShown(element);
+  });
+
+  it("with something picked up, a click on another placement's handle puts it down there", async () => {
+    const element = await render();
+    await press(cell(element, "1-1"), " ");
+    cell(element, "0-1").querySelector("[data-handle]").click();
+    await flush();
+    // Soccer swapped with Swim, rather than Swim's length being picked up instead.
+    expect(sentRuns()).toHaveLength(2);
+    expect(q(element, '[data-id="announce"]').textContent).not.toContain(
+      "choose where it ends"
+    );
+  });
+
+  it("a drag that starts in the handle's click area but off the bar is a move", async () => {
+    const element = await render();
+    await fire(
+      cell(element, "0-1").querySelector("[data-handle]"),
+      "dragstart"
+    );
+    await fire(cell(element, "0-2"), "drop");
+    expect(sentRuns()[0]).toMatchObject({
+      before: ["A:a1", ""],
+      after: ["", "A:a1"]
+    });
+  });
+
+  it("Use yours on a Redo leaves the change there to undo", async () => {
+    const element = await render();
+    await press(cell(element, "0-1"), "Delete");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    q(element, '[data-id="redo"]').click();
+    await flush();
+    await useYoursSendsWhatWasShown(element);
+    expect(q(element, '[data-id="undo"]').title).toBe(
+      "Undo: Cleared Bunk 1 · Monday · Period 2"
+    );
+  });
+
+  it("Space on a fixed activity says it stays put, on the quiet line too", async () => {
+    const element = await render();
+    await press(cell(element, "0-0"), " ");
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Flagpole stays where it is set up."
+    );
   });
 });

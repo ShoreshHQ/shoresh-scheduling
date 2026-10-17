@@ -96,12 +96,13 @@
                     </template>
                   </template>
                   <template lwc:if={cell.handle}>
-                    <span
-                      class="handle"
-                      draggable="true"
-                      data-handle="true"
-                      aria-hidden="true"
-                    ></span>
+                    <span class="handle" data-handle="true" aria-hidden="true">
+                      <span
+                        class="handle-bar"
+                        draggable="true"
+                        data-handle-bar="true"
+                      ></span>
+                    </span>
                   </template>
                 </div>
               </div>

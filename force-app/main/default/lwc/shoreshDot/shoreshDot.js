@@ -35,16 +35,20 @@ export default class ShoreshDot extends LightningElement {
 
   connectedCallback() {
     // Escape closes the words wherever focus is (the row, or the dot), as tooltips must.
+    // It listens first (capture) and uses the key up, so the same press doesn't also close the
+    // typing box or answer a question.
     this.onKey = (event) => {
       if (event.key === "Escape" && this.showTip) {
         this.dismissed = true;
+        event.stopPropagation();
+        event.preventDefault();
       }
     };
-    window.addEventListener("keydown", this.onKey);
+    window.addEventListener("keydown", this.onKey, true);
   }
 
   disconnectedCallback() {
-    window.removeEventListener("keydown", this.onKey);
+    window.removeEventListener("keydown", this.onKey, true);
   }
 
   get showTip() {
@@ -53,6 +57,13 @@ export default class ShoreshDot extends LightningElement {
       !this.dismissed &&
       (this._open || this.hovered || this.tapped || this.focused)
     );
+  }
+
+  /** The words can be pointed at only when the pointer brought them up (hover or tap). */
+  get tipClass() {
+    return this.hovered || this.tapped
+      ? "tip-area tip-area_pointer"
+      : "tip-area";
   }
 
   get tabIndex() {
@@ -82,6 +93,10 @@ export default class ShoreshDot extends LightningElement {
    * neither is taken as a click on the row (picking an activity, say).
    */
   handleTap(event) {
+    // A click on the words themselves is left alone.
+    if (event.target.closest && event.target.closest(".tip-area")) {
+      return;
+    }
     event.stopPropagation();
     event.preventDefault();
     if (this.tapped) {

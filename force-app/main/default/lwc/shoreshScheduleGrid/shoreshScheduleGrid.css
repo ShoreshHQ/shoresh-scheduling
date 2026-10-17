@@ -210,7 +210,7 @@
   position: relative;
 }
 
-/* The handle: a slim bar to see, a 24px area to hit (WCAG 2.5.8). */
+/* The handle: a slim bar to see and drag, in a 48 x 24 px area to click (WCAG 2.5.8). */
 .handle {
   position: absolute;
   left: 50%;
@@ -218,11 +218,10 @@
   width: 48px;
   height: 24px;
   transform: translateX(-50%);
-  cursor: ns-resize;
+  cursor: pointer;
 }
 
-.handle::after {
-  content: "";
+.handle-bar {
   position: absolute;
   left: 8px;
   right: 8px;
@@ -230,6 +229,7 @@
   height: 5px;
   border-radius: 3px;
   background: var(--slds-g-color-brand-base-50, #0176d3);
+  cursor: ns-resize;
 }
 
 .cell_picked .cell-inner {

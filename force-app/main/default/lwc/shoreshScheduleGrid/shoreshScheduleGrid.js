@@ -246,7 +246,9 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (!key) {
       return;
     }
-    const resizing = !!event.target.closest("[data-handle]");
+    // Only a drag that starts on the visible bar changes the length; one that starts elsewhere
+    // in the handle's larger click area moves the placement, as anywhere else in the cell.
+    const resizing = !!event.target.closest("[data-handle-bar]");
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "move";
       // The name shown, so a drop somewhere else (a text box) writes a word, not machinery.

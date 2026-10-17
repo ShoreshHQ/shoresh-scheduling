@@ -35,7 +35,7 @@ describe("c-shoresh-dot", () => {
     await flush();
     expect(tip(element).textContent).toBe("Not set up for Bunk 2");
     // The tooltip repeats the assistive text, so screen readers skip it.
-    expect(tip(element).getAttribute("aria-hidden")).toBe("true");
+    expect(tip(element).parentElement.getAttribute("aria-hidden")).toBe("true");
     q(element, '[data-id="dot"]').dispatchEvent(new CustomEvent("mouseleave"));
     await flush();
     expect(tip(element)).toBeNull();

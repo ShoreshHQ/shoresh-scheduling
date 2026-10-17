@@ -873,7 +873,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /** Shows runs on the grid at once and queues them for the server. */
-  send(serverRuns, label, key, stepId, firstRun, kind = "edit") {
+  send(serverRuns, label, key, stepId, firstRun, kind = "edit", baseLabel) {
     this.notice = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
@@ -887,6 +887,10 @@ export default class ShoreshManualBuild extends LightningElement {
         label,
         stepId,
         kind,
+        baseLabel: baseLabel || label,
+        // Each run's whole row as the director saw it when making the edit: a cell that isn't
+        // this any more is someone else's change.
+        seen: serverRuns.map((run) => this.rowSeen(run)),
         slotKey: this.slotKeyOf(firstRun, serverRuns[0]),
         // Each run's cells by name, to say which one is gone if the day loses a block.
         cells: serverRuns.map((run) => this.cellNames(run))
@@ -993,7 +997,15 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     const { step, runs } = this.history.undo();
     this.historyVersion += 1;
-    this.send(runs, `Undone: ${step.label}`, null, step.id, null, "undo");
+    this.send(
+      runs,
+      `Undone: ${step.label}`,
+      null,
+      step.id,
+      null,
+      "undo",
+      step.label
+    );
   }
 
   handleRedo() {
@@ -1002,7 +1014,15 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     const { step, runs } = this.history.redo();
     this.historyVersion += 1;
-    this.send(runs, `Redone: ${step.label}`, null, step.id, null, "redo");
+    this.send(
+      runs,
+      `Redone: ${step.label}`,
+      null,
+      step.id,
+      null,
+      "redo",
+      step.label
+    );
   }
 
   /** Ctrl or Cmd with Z undoes, with Shift (or Ctrl+Y) redoes; typing boxes keep their own. */
@@ -1170,7 +1190,7 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!cell.movable) {
       const reason = this.lockedReason(cell.slot);
       if (reason) {
-        this.announce(reason);
+        this.refuse(reason);
       }
       return;
     }
@@ -1191,6 +1211,11 @@ export default class ShoreshManualBuild extends LightningElement {
    * WCAG 2.5.7); a click on another cell of the same bunk and day then makes it end there.
    */
   handleHandleClick(event) {
+    // With something picked up, a click anywhere on a cell puts it down there.
+    if (this.picked) {
+      this.handleCellSpace(event);
+      return;
+    }
     const cell = this.cellByKey(event.detail.key);
     if (!cell || !cell.movable) {
       return;
@@ -1253,7 +1278,7 @@ export default class ShoreshManualBuild extends LightningElement {
     ) {
       // A length ends in the placement's own bunk and day.
       this.say(
-        `${this.placedName(what.slot)} ends on ${this.dayGroupName(what.slot)} only.`
+        `${this.placedName(what.slot)} can only change length within ${this.dayGroupName(what.slot)}.`
       );
     } else if (what.kind === "resize") {
       // How far down a multi-block cell the handle landed picks the block within it.
@@ -1392,12 +1417,18 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     this.notice = null;
-    const rows = this.changedCells(entry);
-    if (rows === null) {
+    const runs = this.rebasedRuns(entry);
+    if (runs === null) {
       this.error = `${this.weekName} changed since you opened it. Your last change was not saved.`;
       return;
     }
-    this.conflict = { entry, rows };
+    if (!runs.length) {
+      this.say("Already as you had it.");
+      return;
+    }
+    const rows = this.changedCells(entry, runs);
+    // What the question shows and what Use yours sends are worked out once, from the same runs.
+    this.conflict = { entry, rows, runs };
     this.announce(
       rows.length === 1
         ? `${rows[0].where} changed since you opened it.`
@@ -1406,41 +1437,90 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /**
-   * Every cell an edit would change that isn't what the director saw, once per placement:
-   * { key, where, theirs, yours }. When every cell is as seen but a placement next to them
-   * changed (someone made it longer), that neighbouring cell. Null when a run can't be found.
+   * The edit as Use yours would make it: each run made on the server's week as it is now, the
+   * same cells and lengths the director chose, anything of theirs it overlaps replaced in full
+   * (rebaseRun). Each run keeps where it is and the director's view of its row. Null when a run
+   * can't be found.
    */
-  changedCells(entry) {
-    const rows = [];
-    for (const run of entry.edit.runs) {
+  rebasedRuns(entry) {
+    const runs = [];
+    for (let r = 0; r < entry.edit.runs.length; r++) {
+      const run = entry.edit.runs[r];
       const at = this.locate(run);
       if (!at) {
         return null;
       }
-      const now = slots(at.day, at.g).slice(
-        at.first,
-        at.first + run.after.length
-      );
-      now.forEach((slot, i) => {
-        const differs = slot !== run.before[i];
-        // A block carrying on the cell above is the same placement: named once.
-        const sameAsAbove =
-          i > 0 && slot.startsWith("^") && now[i - 1] !== run.before[i - 1];
-        if (differs && !sameAsAbove) {
-          rows.push(this.conflictRow(at, at.first + i, slot, run.after[i]));
+      const row = slots(at.day, at.g);
+      const rebased = rebaseRun(row, at.first, run.after);
+      if (rebased) {
+        runs.push({
+          server: {
+            ...run,
+            firstBlockId: at.day.blocks[rebased.first].id,
+            before: rebased.before,
+            after: rebased.after
+          },
+          at,
+          first: rebased.first,
+          seen: (entry.seen || [])[r]
+        });
+      }
+    }
+    return runs;
+  }
+
+  /**
+   * The question's rows: every cell Use yours would change whose content isn't what the director
+   * saw (someone else's change, including any part of theirs that would be cleared), with theirs
+   * and yours. If the director's view isn't known, every cell it would change.
+   */
+  changedCells(entry, runs) {
+    const rows = [];
+    const all = [];
+    runs.forEach(({ server, at, first, seen }) => {
+      server.before.forEach((theirs, i) => {
+        const yours = server.after[i];
+        if (theirs === yours) {
+          return;
+        }
+        const row = this.conflictRow(at, first + i, theirs, yours);
+        if (row.theirs === row.yours) {
+          return;
+        }
+        all.push(row);
+        if (!seen || seen[first + i] !== theirs) {
+          rows.push(row);
         }
       });
+    });
+    return rows.length ? rows : all;
+  }
+
+  /** A run's whole row as the week on screen has it now, or null. */
+  rowSeen(run) {
+    const weekDays = this.schedule ? this.schedule.days : [];
+    const day = weekDays.find((d) => d.dateValue === run.day);
+    const g = day ? day.groups.findIndex((grp) => grp.id === run.groupId) : -1;
+    return g < 0 ? null : slots(day, g);
+  }
+
+  /** The grid cell a run starts in, in the view on screen, or null. */
+  keyForRun(run) {
+    const wanted = this.slotKeyOf(null, run);
+    const grid = this.editGrid;
+    const cell =
+      wanted && grid
+        ? grid.cells.find((c) => c.slot && slotKey(c.slot) === wanted)
+        : null;
+    return cell ? cell.key : null;
+  }
+
+  focusAfterQuestion(entry, run) {
+    const key = entry.key || (run ? this.keyForRun(run) : null);
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    if (grid && key) {
+      grid.focusCell(key);
     }
-    if (!rows.length) {
-      const [run] = entry.edit.runs;
-      const at = this.locate(run);
-      const row = slots(at.day, at.g);
-      const after = at.first + run.after.length;
-      const changed =
-        after < row.length && row[after].startsWith("^") ? after : at.first;
-      rows.push(this.conflictRow(at, changed, row[changed], run.after[0]));
-    }
-    return rows;
   }
 
   conflictRow(at, block, theirs, yours) {
@@ -1492,6 +1572,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   handleKeepTheirs() {
     const { key, stepId } = this.conflict.entry;
+    const firstRun = this.conflict.runs[0].server;
     this.conflict = null;
     // Their change stands, so this step never happened: nothing to undo or redo, and an Undo or
     // Redo of it still waiting is dropped too.
@@ -1499,69 +1580,46 @@ export default class ShoreshManualBuild extends LightningElement {
     this.historyVersion += 1;
     this.queue = this.queue.filter((waiting) => waiting.stepId !== stepId);
     this.showServerAndWaiting();
-    const grid = this.template.querySelector('[data-id="edit-grid"]');
-    if (grid && key) {
-      grid.focusCell(key);
-    }
+    this.focusAfterQuestion({ key }, firstRun);
     this.saveNext();
   }
 
   /**
-   * Exactly the change the director chose (same slots, same length) made on the server's week as
-   * it is now; anything of theirs overlapping it is replaced in full. It goes first, before the
-   * edits that waited for the answer.
+   * Exactly the change the director chose (same cells, same lengths), as the question showed it:
+   * the runs worked out when it opened, nothing else. It goes first, before the edits that
+   * waited for the answer.
    */
   handleUseYours() {
-    const { entry } = this.conflict;
+    const { entry, runs: planned } = this.conflict;
     this.conflict = null;
-    const runs = [];
-    let gone = false;
-    for (const run of entry.edit.runs) {
-      const at = this.locate(run);
-      const row = at ? slots(at.day, at.g) : [];
-      if (!at || at.first + run.after.length > row.length) {
-        // The day no longer has those time blocks.
-        gone = true;
-        break;
-      }
-      const rebased = rebaseRun(row, at.first, run.after);
-      if (rebased) {
-        runs.push({
-          ...run,
-          firstBlockId: at.day.blocks[rebased.first].id,
-          before: rebased.before,
-          after: rebased.after
-        });
-      }
-    }
-    if (gone) {
-      const cell = this.goneCell(entry);
-      this.say(`${cell || this.weekName} isn't in the week any more.`);
-    } else if (!runs.length) {
-      this.say("Already as you had it.");
-    } else {
-      // A waiting Undo or Redo of this step was worked out from what the director saw, not
-      // from what is saved now: dropped.
-      this.queue = this.queue.filter(
-        (waiting) => waiting.stepId !== entry.stepId
-      );
+    const runs = planned.map((run) => run.server);
+    // A waiting Undo or Redo of this step was worked out from what the director saw, not from
+    // what is saved now: it is dropped, and a dropped Redo is said.
+    const dropped = this.queue.filter((w) => w.stepId === entry.stepId);
+    this.queue = this.queue.filter((w) => w.stepId !== entry.stepId);
+    if (entry.kind === "undo") {
+      // An Undo made over theirs is done: nothing to redo.
       this.history.forget(entry.stepId);
-      let stepId = null;
-      if (entry.kind === "edit") {
-        // What is saved now is this, not the step as first made: Undo must take back this.
-        this.stepSeq += 1;
-        stepId = this.stepSeq;
-        this.history.record({ id: stepId, runs, label: entry.label });
-      }
-      // An Undo or Redo made over theirs is done; it doesn't become a new step to undo.
-      this.historyVersion += 1;
-      this.queue = [{ ...entry, stepId, edit: { runs } }, ...this.queue];
-      this.showServerAndWaiting();
+    } else {
+      // A change (or a Redo of one) is, from now, what was really saved: Undo takes back this,
+      // from the same place in the list.
+      this.history.replace(entry.stepId, {
+        id: entry.stepId,
+        runs,
+        label: entry.baseLabel
+      });
     }
-    const grid = this.template.querySelector('[data-id="edit-grid"]');
-    if (grid && entry.key) {
-      grid.focusCell(entry.key);
+    // A waiting Undo dropped never happened: the step is back where Undo finds it.
+    if (dropped.some((w) => w.kind === "undo")) {
+      this.history.unundo(entry.stepId);
     }
+    this.historyVersion += 1;
+    if (dropped.some((w) => w.kind === "redo")) {
+      this.say("Redo skipped.");
+    }
+    this.queue = [{ ...entry, edit: { runs } }, ...this.queue];
+    this.showServerAndWaiting();
+    this.focusAfterQuestion(entry, runs[0]);
     this.saveNext();
   }
 

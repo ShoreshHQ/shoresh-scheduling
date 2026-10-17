@@ -24,13 +24,26 @@
   flex: none;
 }
 
-/* The words: a small quiet box above the dot. Never bronze text (too light to read). */
-.tip {
+/* The words: a small quiet box above the dot. Never bronze text (too light to read). The area
+   reaches down to the dot with no gap, so the pointer can move from the dot onto the words and
+   they stay (WCAG 1.4.13). It catches the pointer only when the pointer brought it up; shown for
+   keyboard focus it lets clicks through to whatever is under it. */
+.tip-area {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9100;
+  padding-bottom: 4px;
+  pointer-events: none;
+}
+
+.tip-area_pointer {
+  pointer-events: auto;
+}
+
+.tip {
+  display: block;
   padding: 4px 8px;
   white-space: nowrap;
   font-size: 11px;

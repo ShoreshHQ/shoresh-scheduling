@@ -12,7 +12,9 @@
     <span class="dot" aria-hidden="true"></span>
     <span class="slds-assistive-text" data-id="dot-words">{label}</span>
     <template lwc:if={showTip}>
-      <span class="tip" aria-hidden="true" data-id="dot-tip">{label}</span>
+      <span class={tipClass} aria-hidden="true">
+        <span class="tip" data-id="dot-tip">{label}</span>
+      </span>
     </template>
   </span>
 </template>
