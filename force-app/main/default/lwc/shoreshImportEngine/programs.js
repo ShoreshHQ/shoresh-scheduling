@@ -4,6 +4,7 @@
  * same block; one overlapping at different times is asked about (keep, change, or leave out);
  * the rest are added.
  */
+import { FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 
@@ -19,13 +20,13 @@ function existingPrograms(existing, rules) {
   return ((existing && existing.programs) || []).map((entry) => ({
     id: entry.program.Id,
     name: entry.program.Name,
-    days: WEEKDAYS.filter((d) => entry.program[`${d}__c`]),
+    days: WEEKDAYS.filter((d) => entry.program[FIELD.Program[d]]),
     blocks: (entry.timeBlocks || []).map((b) => ({
       id: b.Id,
       name: b.Name,
-      start: minutesOf(b.StartTime__c),
-      end: minutesOf(b.EndTime__c),
-      sortOrder: b.SortOrder__c || 0
+      start: minutesOf(b[FIELD.TimeBlock.StartTime]),
+      end: minutesOf(b[FIELD.TimeBlock.EndTime]),
+      sortOrder: b[FIELD.TimeBlock.SortOrder] || 0
     })),
     // Group identities (identity.js), as the files' groups are named.
     groups: (entry.divisions || []).flatMap((d) =>

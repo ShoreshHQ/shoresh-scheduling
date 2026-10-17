@@ -5,7 +5,7 @@ import {
   LEAVE_OUT,
   planFor,
   questionCards
-} from "c/shoreshImportEngine";
+} from "./data/engine";
 import { csv, existingSetup, program, terms } from "./data/samples";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];

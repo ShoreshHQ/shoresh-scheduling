@@ -1,3 +1,17 @@
+import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
+
+// Names as the package has them (c/shoreshSchema). A fixed or recurring activity's fields come
+// in as `fields` (FIELD.FixedActivity or FIELD.RecurringActivity), whichever it is.
+const WEEK = FIELD.Week;
+const SEASON = FIELD.Season;
+const ACTIVITY = FIELD.Activity;
+const LOCATION = FIELD.Location;
+const GROUP = FIELD.Group;
+const BLOCK = FIELD.TimeBlock;
+const OFF = FIELD.WeekException;
+const WHO = FIELD.ActivityEligibility;
+const COVERS = FIELD.Coverage;
+
 /**
  * Problems in a season's setup, shown to the scheduler and never fixed silently. Each says what it
  * is about (name), what is wrong (why), and which screen fixes it (screen, see shoreshScreens).
@@ -20,19 +34,19 @@ function weekProblems(setup, terms) {
   const problems = [];
   const season = setup.season;
   const weeks = [...(setup.weeks || [])].sort((a, b) => {
-    return a.StartDate__c < b.StartDate__c ? -1 : 1;
+    return a[WEEK.StartDate] < b[WEEK.StartDate] ? -1 : 1;
   });
   const add = (name, why) => problems.push({ screen: "weeks", name, why });
   weeks.forEach((week) => {
     if (
-      week.StartDate__c < season.StartDate__c ||
-      week.EndDate__c > season.EndDate__c
+      week[WEEK.StartDate] < season[SEASON.StartDate] ||
+      week[WEEK.EndDate] > season[SEASON.EndDate]
     ) {
       add(week.Name, `Falls outside the dates of this ${terms.sIn("Season")}.`);
     }
   });
   for (let i = 1; i < weeks.length; i++) {
-    if (weeks[i].StartDate__c <= weeks[i - 1].EndDate__c) {
+    if (weeks[i][WEEK.StartDate] <= weeks[i - 1][WEEK.EndDate]) {
       add(`${weeks[i - 1].Name} and ${weeks[i].Name}`, "Share dates.");
     }
   }
@@ -91,20 +105,18 @@ function activityProblems(setup, terms) {
   const add = (name, why) => problems.push({ screen: "activities", name, why });
   const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
   activities.forEach((activity) => {
-    if (activity.Outdoor__c && !activity.RainPlan__c) {
+    if (activity[ACTIVITY.Outdoor] && !activity[ACTIVITY.RainPlan]) {
       add(activity.Name, `Outdoors and has no ${terms.sIn("RainPlan")}.`);
     }
-    const location = locations.get(activity.Location__c);
-    if (
-      location &&
-      !activity.NoGroupLimit__c &&
-      activity.GroupsAtOnce__c > location.GroupsThatFit__c
-    ) {
+    const location = locations.get(activity[ACTIVITY.Location]);
+    const atOnce = activity[ACTIVITY.GroupsAtOnce];
+    const fits = location && location[LOCATION.GroupsThatFit];
+    if (location && !activity[ACTIVITY.NoGroupLimit] && atOnce > fits) {
       add(
         activity.Name,
-        `Allows ${activity.GroupsAtOnce__c} ${terms.pIn("Group")} at once, ` +
-          `but "${location.Name}" fits ${location.GroupsThatFit__c}. Scheduling uses ` +
-          `${location.GroupsThatFit__c}; change whichever number is wrong.`
+        `Allows ${atOnce} ${terms.pIn("Group")} at once, ` +
+          `but "${location.Name}" fits ${fits}. Scheduling uses ` +
+          `${fits}; change whichever number is wrong.`
       );
     }
   });
@@ -116,7 +128,9 @@ function groupsWithNothingToDo(setup, terms) {
   const openTo = (setup.activities || []).map(
     (a) =>
       new Set(
-        (a.Eligibilities__r || []).map((e) => e.Division__c || e.Group__c)
+        (a[CHILDREN.Activity.Eligibilities] || []).map(
+          (e) => e[WHO.Division] || e[WHO.Group]
+        )
       )
   );
   const problems = [];
@@ -150,25 +164,28 @@ const AVAILABILITY = {
  * names none). A group not at camp in a time block (morning or afternoon only) is left out of it.
  * Returns [{ group, blocks: how many of its blocks the group is there for }] and the block count.
  */
-function whoIsThere(entry, item) {
+function whoIsThere(entry, item, fields) {
   const blocks = entry.timeBlocks || [];
-  const start = item.TimeBlock__c
-    ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
+  const start = item[fields.TimeBlock]
+    ? blocks.findIndex((block) => block.Id === item[fields.TimeBlock])
     : -1;
   const span =
-    start < 0 ? [] : blocks.slice(start, start + (item.Length__c || 1));
+    start < 0 ? [] : blocks.slice(start, start + (item[fields.Length] || 1));
   const named = new Set(
-    (item.Coverages__r || []).map((row) => row.Division__c || row.Group__c)
+    (item[CHILDREN.RecurringActivity.Coverages] || []).map(
+      (row) => row[COVERS.Division] || row[COVERS.Group]
+    )
   );
   const groups = [];
   (entry.divisions || []).forEach((d) => {
     (d.groups || []).forEach((grp) => {
       if (named.size === 0 || named.has(grp.Id) || named.has(d.division.Id)) {
-        const away = (AVAILABILITY[grp.Availability__c] || {}).away;
+        const away = (AVAILABILITY[grp[GROUP.Availability]] || {}).away;
         groups.push({
           group: grp,
-          blocks: span.filter((block) => !away || block.PartOfDay__c !== away)
-            .length
+          blocks: span.filter(
+            (block) => !away || block[BLOCK.PartOfDay] !== away
+          ).length
         });
       }
     });
@@ -180,16 +197,15 @@ function whoIsThere(entry, item) {
  * The note on a fixed or recurring activity's row: which groups are left out because they are not
  * at camp then (Greg, 2026-10-16: left out and shown, not refused). Empty when nobody is.
  */
-export function setTimeNote(entry, item) {
-  const { groups, span } = whoIsThere(entry, item);
+export function setTimeNote(entry, item, fields) {
+  const { groups, span } = whoIsThere(entry, item, fields);
   return groups
     .filter((g) => g.blocks < span)
     .map((g) => {
-      const words = AVAILABILITY[g.group.Availability__c].words;
+      const availability = AVAILABILITY[g.group[GROUP.Availability]];
+      const words = availability.words;
       const part =
-        g.blocks === 0
-          ? ""
-          : ` of its ${AVAILABILITY[g.group.Availability__c].away.toLowerCase()} part`;
+        g.blocks === 0 ? "" : ` of its ${availability.away.toLowerCase()} part`;
       return `${g.group.Name} is ${words} and is left out${part}.`;
     })
     .join(" ");
@@ -208,27 +224,28 @@ function range(first, last) {
  * block it covers now (keep the new coverage), or a new length (back to where it used to end).
  * Only fixes that make sense are offered; when only keeping it does, the note says why.
  */
-export function spanChange(entry, item, terms) {
+export function spanChange(entry, item, terms, fields) {
   const blocks = entry.timeBlocks || [];
-  const start = item.TimeBlock__c
-    ? blocks.findIndex((block) => block.Id === item.TimeBlock__c)
+  const start = item[fields.TimeBlock]
+    ? blocks.findIndex((block) => block.Id === item[fields.TimeBlock])
     : -1;
   if (start < 0) {
     return null;
   }
-  const length = item.Length__c || 1;
+  const length = item[fields.Length] || 1;
   const now = Math.min(start + length, blocks.length) - 1;
-  if (blocks[now].Id === item.LastTimeBlock__c) {
+  const last = item[fields.LastTimeBlock];
+  if (blocks[now].Id === last) {
     return null;
   }
-  const was = blocks.findIndex((block) => block.Id === item.LastTimeBlock__c);
+  const was = blocks.findIndex((block) => block.Id === last);
   const first = blocks[start];
   const covers = (end) => range(first, blocks[end]);
   const changed = `${terms.p("TimeBlock")} changed since it was saved:`;
   const keep = {
     key: "keep",
     label: `Keep ${covers(now)}`,
-    changes: { LastTimeBlock__c: blocks[now].Id }
+    changes: { [fields.LastTimeBlock]: blocks[now].Id }
   };
   const keepOnly = (reason) => ({
     why: `${changed} it now covers ${covers(now)}. ${reason}`,
@@ -244,7 +261,7 @@ export function spanChange(entry, item, terms) {
         {
           key: "stretch",
           label: `Stretch to ${covers(was)}`,
-          changes: { Length__c: was - start + 1 }
+          changes: { [fields.Length]: was - start + 1 }
         }
       ]
     };
@@ -253,14 +270,17 @@ export function spanChange(entry, item, terms) {
     // A block inside it removed (or moved away): it now runs on past where it used to end.
     return {
       why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
-      actions: [shorter(covers, start, was), extend(keep, blocks[now])]
+      actions: [shorter(covers, start, was, fields), extend(keep, blocks[now])]
     };
   }
   if (was < 0 && start + length <= blocks.length && length > 1) {
     // The block it ended in was deleted: it now runs one block further.
     return {
       why: `${changed} the ${terms.sIn("TimeBlock")} it ended in was deleted, and it now covers ${covers(now)}.`,
-      actions: [shorter(covers, start, now - 1), extend(keep, blocks[now])]
+      actions: [
+        shorter(covers, start, now - 1, fields),
+        extend(keep, blocks[now])
+      ]
     };
   }
   if (was < 0 && start + length > blocks.length) {
@@ -276,11 +296,11 @@ export function spanChange(entry, item, terms) {
   return keepOnly("It can only be kept as it is.");
 }
 
-function shorter(covers, start, end) {
+function shorter(covers, start, end, fields) {
   return {
     key: "shorter",
     label: `Keep the shorter ${covers(end)}`,
-    changes: { Length__c: end - start + 1 }
+    changes: { [fields.Length]: end - start + 1 }
   };
 }
 
@@ -303,14 +323,28 @@ function setTimeProblems(setup, terms) {
   const marks = setup.weekExceptions || [];
   const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
   (setup.programs || []).forEach((entry) => {
+    // Each kind: its screen, its object and fields, the week exception field naming it, and
+    // its items.
     const kinds = [
-      ["fixedActivities", "FixedActivity__c", entry.fixedActivities],
-      ["recurringActivities", "RecurringActivity__c", entry.recurringActivities]
+      [
+        "fixedActivities",
+        OBJECT.FixedActivity,
+        FIELD.FixedActivity,
+        OFF.FixedActivity,
+        entry.fixedActivities
+      ],
+      [
+        "recurringActivities",
+        OBJECT.RecurringActivity,
+        FIELD.RecurringActivity,
+        OFF.RecurringActivity,
+        entry.recurringActivities
+      ]
     ];
-    kinds.forEach(([screen, field, items]) => {
+    kinds.forEach(([screen, object, itemFields, field, items]) => {
       (items || []).forEach((item) => {
         const add = (why) => problems.push({ screen, name: item.Name, why });
-        const moved = spanChange(entry, item, terms);
+        const moved = spanChange(entry, item, terms, itemFields);
         if (moved) {
           // Each fix is offered right on the attention item, as a save of this row.
           problems.push({
@@ -320,17 +354,17 @@ function setTimeProblems(setup, terms) {
             actions: moved.actions.map((action) => ({
               key: action.key,
               label: action.label,
-              record: { sobjectType: field, Id: item.Id, ...action.changes }
+              record: { sobjectType: object, Id: item.Id, ...action.changes }
             }))
           });
         }
         const off = new Set(
-          marks.filter((m) => m[field] === item.Id).map((m) => m.Week__c)
+          marks.filter((m) => m[field] === item.Id).map((m) => m[OFF.Week])
         );
         if (weeks.length > 0 && off.size >= weeks.length) {
           add(`Runs in no ${terms.pIn("Week")}.`);
         }
-        const { groups, span } = whoIsThere(entry, item);
+        const { groups, span } = whoIsThere(entry, item, itemFields);
         if (
           span > 0 &&
           groups.length > 0 &&
@@ -340,11 +374,11 @@ function setTimeProblems(setup, terms) {
             `Every ${terms.sIn("Group")} it covers is left out: none is at camp then.`
           );
         }
-        const location = locations.get(item.Location__c);
+        const location = locations.get(item[itemFields.Location]);
         const shut = new Set(
           marks
-            .filter((m) => location && m.Location__c === location.Id)
-            .map((m) => m.Week__c)
+            .filter((m) => location && m[OFF.Location] === location.Id)
+            .map((m) => m[OFF.Week])
         );
         const closed = weeks
           .filter((w) => shut.has(w.Id) && !off.has(w.Id))

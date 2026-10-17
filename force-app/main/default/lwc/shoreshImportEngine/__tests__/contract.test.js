@@ -4,7 +4,8 @@
 // rename on either side fails here.
 import { readFileSync } from "fs";
 import { join } from "path";
-import { buildProposal, planFor } from "c/shoreshImportEngine";
+import { buildProposal, customKeys, planFor } from "./data/engine";
+import { NAMESPACE_PREFIX } from "c/shoreshSchema";
 import {
   csv,
   existingSetup,
@@ -101,6 +102,18 @@ function placesPlan() {
 
 describe("the save request matches what the server reads", () => {
   const plan = fullPlan();
+
+  it("names no field as text: the plan uses its own keys, never a bare field name", () => {
+    // Today the import's plan names fields by its own words (name, blockKey...), not field
+    // names; if it ever writes one, it must be the package's (prefixed in the namespaced run).
+    const written = customKeys([plan, placesPlan()]);
+    expect(written.filter((k) => !k.startsWith(NAMESPACE_PREFIX))).toEqual(
+      NAMESPACE_PREFIX ? [] : written
+    );
+    expect(
+      customKeys({ a: [{ shoresh__X__c: 1, Name: 2, Y__r: {} }] })
+    ).toEqual(["shoresh__X__c", "Y__r"]);
+  });
   const sent = new Set(
     [plan, placesPlan()].flatMap((one) =>
       Object.values(one)

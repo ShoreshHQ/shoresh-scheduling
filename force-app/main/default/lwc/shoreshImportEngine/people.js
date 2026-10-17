@@ -10,6 +10,7 @@
  * in another division (Bunk 3 in Seniors, set up in Juniors), the director chooses: move it,
  * keep it where it is, add a new one, or leave it out; the card says what moving changes.
  */
+import { CHILDREN, FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT } from "./reading-constants";
 import { looseKey } from "./text";
 
@@ -88,18 +89,26 @@ class Divisions {
 function whoNaming(existing, divisionId, groupId, otherDivisionId) {
   const names = [];
   // A list naming both divisions keeps the group either way: neither lost nor gained.
-  const counts = (rows) =>
-    rows.some((r) => r.Division__c === divisionId) &&
-    !rows.some((r) => r.Division__c === otherDivisionId) &&
-    !rows.some((r) => r.Group__c === groupId);
+  // who: the rows' own fields (who can do an activity, or who a recurring activity covers).
+  const counts = (rows, who) =>
+    rows.some((r) => r[who.Division] === divisionId) &&
+    !rows.some((r) => r[who.Division] === otherDivisionId) &&
+    !rows.some((r) => r[who.Group] === groupId);
   for (const a of (existing && existing.activities) || []) {
-    if (counts(a.Eligibilities__r || [])) {
+    if (
+      counts(
+        a[CHILDREN.Activity.Eligibilities] || [],
+        FIELD.ActivityEligibility
+      )
+    ) {
       names.push(a.Name);
     }
   }
   for (const entry of (existing && existing.programs) || []) {
     for (const r of entry.recurringActivities || []) {
-      if (counts(r.Coverages__r || [])) {
+      if (
+        counts(r[CHILDREN.RecurringActivity.Coverages] || [], FIELD.Coverage)
+      ) {
         names.push(r.Name);
       }
     }

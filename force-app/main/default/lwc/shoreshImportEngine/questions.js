@@ -7,6 +7,7 @@
  * a bold question, a grey line saying what the file shows, and the answers. "hold" cards (which
  * kind something is, which program, files that disagree) come first, as the desktop's hold lane.
  */
+import { FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, shortClock } from "./text";
 
@@ -345,10 +346,18 @@ function whichGroupCard(ask, t) {
   };
 }
 
+/** The fields of the item a set-time change card is about: fixed or recurring. */
+function itemFields(ask) {
+  return ask.type === "recurring"
+    ? FIELD.RecurringActivity
+    : FIELD.FixedActivity;
+}
+
 function itemBlockName(ask) {
   const program = ask.timetable.program;
+  const timeBlock = itemFields(ask).TimeBlock;
   const block =
-    program && program.blocks.find((b) => b.id === ask.record.TimeBlock__c);
+    program && program.blocks.find((b) => b.id === ask.record[timeBlock]);
   return block ? block.name : "its time block";
 }
 
@@ -358,11 +367,12 @@ function lengthText(length, t) {
 
 function setTimeChangeCard(ask, t) {
   const recurring = ask.type === "recurring";
+  const fields = itemFields(ask);
   const currentDays = recurring
-    ? ` on ${dayList(WEEKDAYS.filter((d) => ask.record[`${d}__c`]))}`
+    ? ` on ${dayList(WEEKDAYS.filter((d) => ask.record[FIELD.RecurringActivity[d]]))}`
     : "";
   const fileDays = recurring ? ` on ${dayList(ask.days)}` : "";
-  const now = `${itemBlockName(ask)}${lengthText(ask.record.Length__c, t)}${currentDays}`;
+  const now = `${itemBlockName(ask)}${lengthText(ask.record[fields.Length], t)}${currentDays}`;
   const file = `${ask.block.name}${lengthText(ask.length, t)}${fileDays}`;
   return {
     id: ask.id,
@@ -386,10 +396,13 @@ function activityChangeCard(ask, t) {
     id: ask.id,
     stage: "review",
     lane: "standard",
-    title: `${quoted(ask.name)} is set up as ${blocks(ask.record.Length__c)} long. In the file it runs ${blocks(ask.length)}.`,
+    title: `${quoted(ask.name)} is set up as ${blocks(ask.record[FIELD.Activity.Length])} long. In the file it runs ${blocks(ask.length)}.`,
     subject: `The change to ${ask.name}`,
     options: [
-      { value: "keep", label: `Keep ${blocks(ask.record.Length__c)}` },
+      {
+        value: "keep",
+        label: `Keep ${blocks(ask.record[FIELD.Activity.Length])}`
+      },
       { value: "change", label: `Change it to ${blocks(ask.length)}` },
       leaveOut("It stays as it is this time.")
     ]

@@ -4,7 +4,11 @@
 // (jest/namespace.js); from then on a bare `__c` name in that component fails its tests here.
 const base = require('./jest.config');
 
-const NAMESPACED_SUITES = ['shoreshSchema'];
+const NAMESPACED_SUITES = [
+    'shoreshSchema',
+    'shoreshSetupRules',
+    'shoreshImportEngine'
+];
 
 module.exports = {
     ...base,

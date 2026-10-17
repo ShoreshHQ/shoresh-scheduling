@@ -5,7 +5,7 @@ import {
   questionCards,
   foundLists,
   importNotes
-} from "c/shoreshImportEngine";
+} from "./data/engine";
 import {
   csv,
   existingSetup,
@@ -199,6 +199,9 @@ describe("adding to a season that has setup already", () => {
       "“Lunch” is set up at Period 4. The file has it at Lunch."
     );
     const boating = cardsOf(p).find((c) => c.id.startsWith("change|activity"));
+    expect(boating.title).toBe(
+      "“Boating” is set up as 1 time block long. In the file it runs 2 time blocks."
+    );
     expect(boating.options.map((o) => o.label)).toEqual([
       "Keep 1 time block",
       "Change it to 2 time blocks",
@@ -560,6 +563,66 @@ describe("review findings", () => {
     const p = propose(existing, { "kind|Library time": "recurring" });
     const library = p.recurring.find((r) => r.name === "Library time");
     expect(library.who.keys).toEqual(["g1", "g2", "g3"]);
+  });
+
+  it("a recurring activity set up differently: the card says where, how long, and which days", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: MAPLE_BLOCKS,
+          recurring: [
+            {
+              Id: "r1",
+              Name: "Library time",
+              TimeBlock__c: "tb1",
+              Length__c: 2,
+              Monday__c: true,
+              Tuesday__c: false,
+              Wednesday__c: true,
+              Thursday__c: false,
+              Friday__c: false
+            }
+          ]
+        })
+      ]
+    });
+    const card = cardsOf(
+      propose(existing, { "kind|Library time": "recurring" })
+    ).find((c) => c.id.startsWith("change|recurring"));
+    expect(card.title).toBe(
+      "“Library time” is set up at Period 1, 2 time blocks long on Monday and Wednesday. The file has it at Period 4 on Wednesday."
+    );
+  });
+
+  it("a new time block goes after the program's own, by their places in order", () => {
+    const existing = existingSetup({
+      programs: [program("p1", "Main", { blocks: MAPLE_BLOCKS.slice(0, 6) })]
+    });
+    const added = planFor(propose(existing), existing, "s").timeBlocks.filter(
+      (b) => b.id === null
+    );
+    expect(added.map((b) => [b.name, b.sortOrder])).toEqual([["Period 6", 7]]);
+  });
+
+  it("new divisions and activities go after the camp's own, by their places in order", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: MAPLE_BLOCKS,
+          divisions: [["d1", "Juniors", [["g1", "Bunk 1"]]]]
+        })
+      ],
+      activities: [{ Id: "a1", Name: "Boating", Length__c: 1, SortOrder__c: 4 }]
+    });
+    const plan = planFor(propose(existing), existing, "s");
+    expect(
+      plan.divisions
+        .filter((d) => d.id === null)
+        .map((d) => [d.name, d.sortOrder])
+    ).toEqual([["Seniors", 2]]);
+    const added = plan.activities.filter((a) => a.id === null);
+    expect(added.length).toBeGreaterThan(0);
+    expect(Math.min(...added.map((a) => a.sortOrder))).toBe(5);
   });
 
   it("a changed block keeps its part of day; new blocks get one", () => {

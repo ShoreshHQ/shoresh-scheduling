@@ -7,7 +7,7 @@ import {
   questionCards,
   undoMessage,
   unplacedLines
-} from "c/shoreshImportEngine";
+} from "./data/engine";
 import {
   csv,
   existingSetup,
@@ -140,6 +140,17 @@ describe("the imported version", () => {
       "Week 2",
       LEAVE_OUT
     ]);
+    // Weeks in date order whatever order the season lists them in.
+    const shuffled = propose(
+      samples("all-camp"),
+      existingSetup({ weeks: [WEEK2, WEEK1] }),
+      answers
+    );
+    expect(
+      questionCards(shuffled, terms, answers)
+        .find((c) => c.id.startsWith("week|"))
+        .options.map((o) => o.value)
+    ).toEqual(["Week 1", "Week 2", LEAVE_OUT]);
     expect(
       propose(samples("all-camp"), existing, {
         ...answers,
@@ -178,6 +189,23 @@ describe("the imported version", () => {
       ["Swim", 1, "Shoresh plans Monday to Friday"]
     ]);
     expect(lines[0].whereText).toBe("Bunk 2, Saturday, 9:00-9:45");
+  });
+
+  it("a day past the end of a short week is listed, not placed", () => {
+    const short = { ...WEEK1, EndDate__c: "2027-06-30" };
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Swim", "Art"]
+    ];
+    const files = ["Monday", "Thursday"].map((d) => csv(`${d}.csv`, rows));
+    const p = propose(files, existingSetup({ weeks: [short] }));
+    expect(p.versions[0].days.map((d) => d.date)).toEqual(["2027-06-28"]);
+    expect(
+      unplacedLines(p, terms).map((l) => [l.name, l.count, l.why])
+    ).toEqual([
+      ["Art", 1, "that week has no such day"],
+      ["Swim", 1, "that week has no such day"]
+    ]);
   });
 
   it("a name left out for now is not placed, and is listed", () => {
