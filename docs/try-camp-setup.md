@@ -451,10 +451,26 @@ in the _Import test_ season, in this order).
 7. Each screen's import is undone on its own by **Undo this import**, or Roots' **Undo last
    import**, including a bunk moved and who a recurring activity covers.
 
+## 17. Download a list, or the whole camp
+
+1. Open **Activities**. Next to **Import a list** is **Download this list**. Click it: an Excel
+   file _Activities - Import test.xlsx_ is saved. It has the screen's columns, one row per
+   activity, in the same layout **Import a list** reads.
+2. Open it, change one activity's _Times a week: at least_, save it, and import it with
+   **Import a list**. The box shows that one difference and nothing else.
+3. On a screen with nothing set up yet, **Download this list** gives the headings only: a
+   template to fill in.
+4. On **Roots**, click **Download camp workbook**. The file _Import test - camp
+   workbook.xlsx_ has a sheet per setup screen (Programs, Units, Bunks, Time blocks,
+   Locations, Activities, Fixed activities, Recurring activities, in your camp's words), then
+   _Location types_, _Camp words_, _Weeks_, and _Runs in_ (a Yes or No under each week, as the
+   screens' ticks).
+5. Import the workbook on any screen: it reads that screen's sheet, and shows _Unchanged_ for
+   every row. (Importing the whole workbook at once on Roots comes next.)
+
 ## What is not here yet
 
-- **Download this list**, and the full camp workbook (export, and import on Roots), are the
-  next pieces. Moving a bunk to another unit on the Bunks screen
+- Importing the whole camp workbook at once on Roots is the next piece. Moving a bunk to another unit on the Bunks screen
   comes after them.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version

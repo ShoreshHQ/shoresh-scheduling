@@ -257,3 +257,32 @@ describe("c-shoresh-roots", () => {
     ).toBeNull();
   });
 });
+
+describe("Download camp workbook", () => {
+  it("saves every list and the extra sheets in one file", async () => {
+    const XLSX = require("xlsx");
+    window.XLSX = XLSX;
+    const saved = [];
+    const spy = jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function click() {
+        saved.push(this);
+      });
+    const element = await render({
+      ...SETUP,
+      season: { Id: "s1", Name: "Summer 2027" }
+    });
+    element.shadowRoot
+      .querySelector('lightning-button[data-id="download-workbook"]')
+      .click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saved).toHaveLength(1);
+    expect(saved[0].download).toBe("Summer 2027 - camp workbook.xlsx");
+    const wb = XLSX.read(saved[0].href.split("base64,")[1], { type: "base64" });
+    expect(wb.SheetNames).toContain("Runs in");
+    spy.mockRestore();
+    delete window.XLSX;
+  });
+});
