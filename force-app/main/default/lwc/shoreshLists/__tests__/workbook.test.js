@@ -445,4 +445,29 @@ describe("a workbook from another season", () => {
     expect(p.weeks.byOrder).toBe(false);
     expect(workbookWaiting(p, {})).toEqual(["Nothing to change"]);
   });
+
+  it("this season's workbook with a week outside its dates: that week is left out, said", () => {
+    const s = camp();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2027-06-28",
+      EndDate__c: "2027-07-09"
+    };
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Weeks.push(["Week 9", "2027-08-23", "2027-08-27"]);
+        sheets["Runs in"][0].push("Week 9");
+        sheets["Runs in"].slice(1).forEach((r) => r.push("No"));
+      })
+    );
+    const weeks = p.sections.find((x) => x.key === "weeks").rows;
+    expect(weeks.map((r) => [r.name, r.status, r.reason])).toEqual([
+      ["Week 1", "unchanged", undefined],
+      ["Week 2", "unchanged", undefined],
+      ["Week 9", "leftOut", "starts outside this season's dates"]
+    ]);
+    // Its ticks (all No) aren't read: nothing changes.
+    expect(workbookWaiting(p, {})).toEqual(["Nothing to change"]);
+  });
 });

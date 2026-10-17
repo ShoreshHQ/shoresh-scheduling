@@ -333,7 +333,8 @@ function bySeasonOrder(weeks) {
  *   season copies weeks ("you'd copy the weeks but need to update the dates"): its first week
  *   is the season's first, and so on, the season keeping its own dates. A workbook week past
  *   the season's last is left out; a season week past the workbook's is left as it is.
- * Returns { byOrder, pairs: [{ row, week (set up) | null, leftOut }] }.
+ *   A this-season workbook's week starting outside the season's dates is left out too.
+ * Returns { byOrder, pairs: [{ row, week (set up) | null, leftOut (why, or null) }] }.
  */
 export function matchWeeks(fileWeeks, setupWeeks, season) {
   const from = (season && season.StartDate__c) || null;
@@ -351,16 +352,22 @@ export function matchWeeks(fileWeeks, setupWeeks, season) {
       pairs: rows.map((row, i) => ({
         row,
         week: ordered[i] || null,
-        leftOut: !ordered[i]
+        leftOut: ordered[i] ? null : "no week of this season left for it"
       }))
     };
   }
   const byStart = new Map((setupWeeks || []).map((w) => [w.StartDate__c, w]));
   return {
     byOrder,
+    // Some weeks inside the season's dates and some not (coordinator): those outside are left
+    // out and said, never added to this season or dropped quietly.
     pairs: fileWeeks.map((row) => ({
       row,
-      week: byStart.get(row.start) || null
+      week: byStart.get(row.start) || null,
+      leftOut:
+        !byStart.has(row.start) && !inSeason(row.start)
+          ? "starts outside this season's dates"
+          : null
     }))
   };
 }
@@ -442,7 +449,7 @@ function readWeeks(sheet, setup, answers) {
     if (leftOut) {
       // Another season's week past this season's last: its Runs in ticks aren't read.
       row.status = "leftOut";
-      row.reason = "no week of this season left for it";
+      row.reason = leftOut;
       result.refs.set(foldName(`${row.name} (${row.start})`), SKIP_WEEK);
       result.refs.set(foldName(row.name), SKIP_WEEK);
       return;
