@@ -60,3 +60,15 @@ export {
   undoMessage
 } from "./plan";
 export { versionName } from "./version";
+
+// Shared with the per-screen list imports (c/shoreshLists, slice 4c).
+export { similarity, foldName, similarPairs, mergesFrom } from "./names";
+export {
+  WEEKDAYS,
+  tidy,
+  looseKey,
+  dayOf,
+  timeRange,
+  clock,
+  shortClock
+} from "./text";

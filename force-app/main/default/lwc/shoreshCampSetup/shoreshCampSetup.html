@@ -444,6 +444,15 @@
               <h2 class="slds-text-heading_medium slds-m-bottom_small">
                 {labels.screens.locations}
               </h2>
+              <div class="slds-m-bottom_small">
+                <c-shoresh-list-import
+                  data-id="locations-list-import"
+                  screen-key="locations"
+                  setup={setup}
+                  terms={terms}
+                  onimported={handleImported}
+                ></c-shoresh-list-import>
+              </div>
               <c-shoresh-editable-table
                 data-id="location-types"
                 title={labels.locationTypes}
@@ -496,6 +505,15 @@
               <h2 class="slds-text-heading_medium slds-m-bottom_small">
                 {labels.screens.activities}
               </h2>
+              <div class="slds-m-bottom_small">
+                <c-shoresh-list-import
+                  data-id="activities-list-import"
+                  screen-key="activities"
+                  setup={setup}
+                  terms={terms}
+                  onimported={handleImported}
+                ></c-shoresh-list-import>
+              </div>
               <c-shoresh-editable-table
                 data-id="activities"
                 title={labels.catalogue}

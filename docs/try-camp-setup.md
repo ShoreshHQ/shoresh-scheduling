@@ -370,10 +370,62 @@ per bunk, bunks across with one sheet per day, or activities across with the bun
 cells. Anything Shoresh is not sure about becomes a question; nothing is saved until **Use this
 setup**.
 
+## 15. Import a list on a screen
+
+The Locations and Activities screens can each read a list from Excel or CSV: one row per
+location or activity, headings in the first row. Made-up lists for the _Maple Grove_ camp of
+section 14 are in `docs/samples/lists` (do section 14 first, in the _Import test_ season).
+
+**Locations**
+
+1. Open **Locations**. Under the heading, click **Import a list**. A box opens: _Import
+   Locations_, a **Choose a file** button, and _.xlsx · .xls · .csv_.
+2. Choose `docs/samples/lists/maple-grove-locations.csv`.
+3. The box shows the file's name, then:
+   - **Columns**: each heading in the file with the column it fills (_Location_, _Location
+     type_, _Groups that fit_, _Notes_). A heading Shoresh doesn't know is tagged **Not used**;
+     its dropdown can point it at a column, and the choice is tagged **Remembered** next time.
+   - **Also adding**: _Indoors · location type_, _Outdoors · location type_, _Waterfront ·
+     location type_, ticked and greyed out.
+   - **New (4)**: Pool, Lake, Art room, Field.
+   - **Can't read**: _Row 6 · Gym · Groups that fit: "two" is not a whole number_.
+4. The button at the bottom says **Add 4**. Click it. The box says _Saved_, with what was added
+   (3 location types, 4 locations), and **Undo this import**. Click **Done**.
+
+**Activities**
+
+5. Open **Activities**, click **Import a list**, and choose
+   `docs/samples/lists/maple-grove-activities.csv`.
+6. **Columns**: _Colour_ is tagged **Not used**. Leave it.
+7. **Questions** (Save waits for them):
+   - _Are “Musik” and “Music” the same activity?_ Click **Same: “Music”**. The card folds to
+     _✓ Same: “Music”_; **Change** reopens it.
+   - _“Middlers” is new. What is it?_ Click **Division in Main** (your camp's word for division,
+     such as Unit).
+8. **Also adding** lists what saving would add: _Gaga pit · location_ and _Middlers · unit_ for
+   the new Gaga row. A rain plan that isn't set up (_Movies_, Boating's) joins it once you choose
+   **Change** for Boating's rain plan. It is added as an activity added by hand would be, and
+   its tick can be taken off: the row is then saved without that rain plan, and the summary
+   says _Boating · no rain plan_.
+9. **New**: _Gaga_. **Can't read**: _Row 7 · Hiking · Outdoors: "maybe" isn't Yes or No_.
+10. **Changes**: Swim, Boating, Music, and Archery, one line per difference, such as _Times per
+    week: at least: 1 → 2_, each with **Keep** and **Change**. Only the columns the file has
+    are compared. A blank cell clears a value, and that line is tagged **clears**. Click
+    **Keep** on one line. The button above now says **Change the other …**; click it. The Keep
+    you chose stays.
+11. When nothing is waiting, the button at the bottom says what it will do (for example
+    **Add 1, change 4**). Click it. Open Archery's details below the table: _Who can do it_
+    now shows what the file said.
+12. Click **Undo this import** and confirm. What the list added is removed, and the activities
+    it changed go back to how they were, including who can do them. Anything you edited in the
+    meantime stays, and the message names it.
+
 ## What is not here yet
 
-- Importing lists of bunks, activities, or locations on each screen is the next piece of the
-  import. Moving a bunk to another unit on the Bunks screen comes after it.
+- Importing a list on the other screens (Program days, Units, Bunks, Time blocks, Fixed and
+  Recurring activities), **Download this list**, and the full camp workbook (export, and
+  import on Roots) are the next pieces. Moving a bunk to another unit on the Bunks screen
+  comes after them.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
   into a working schedule, saving and deleting versions, and publishing. Roots' **Build or

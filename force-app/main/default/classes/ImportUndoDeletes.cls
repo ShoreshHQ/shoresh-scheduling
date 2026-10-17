@@ -12,6 +12,7 @@ public with sharing class ImportUndoDeletes {
     'FixedActivity',
     'Activity',
     'Location',
+    'LocationType',
     'Group',
     'Division',
     'TimeBlock',
@@ -33,7 +34,9 @@ public with sharing class ImportUndoDeletes {
       'EndingFixedActivities__r',
       'EndingRecurringActivities__r'
     },
-    'Activity' => new List<String>{ 'Eligibilities__r', 'RainPlanFor__r' }
+    'Activity' => new List<String>{ 'Eligibilities__r', 'RainPlanFor__r' },
+    // A type's locations would quietly lose it: one the import didn't add keeps it.
+    'LocationType' => new List<String>{ 'Locations__r' }
   };
 
   private ImportUndo.Result result;

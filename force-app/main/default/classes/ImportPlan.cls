@@ -89,6 +89,14 @@ public with sharing class ImportPlan {
         : new List<Object>();
     }
 
+    /** A map inside an entry, as given (a list record's fields); empty when missing. */
+    public Map<String, Object> valuesOf(String name) {
+      Object value = values.get(name);
+      return value instanceof Map<String, Object>
+        ? (Map<String, Object>) value
+        : new Map<String, Object>();
+    }
+
     public List<String> texts(String name) {
       List<String> result = new List<String>();
       Object value = values.get(name);

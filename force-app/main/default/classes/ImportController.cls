@@ -13,6 +13,19 @@ public with sharing class ImportController {
     }
   }
 
+  /**
+   * Adds and changes the setup list a director imported on one screen (slice 4c), all or none.
+   * plan: the JSON the screen builds (c/shoreshLists listPlan).
+   */
+  @AuraEnabled
+  public static ImportSetupSaves.Result saveList(String plan) {
+    try {
+      return ImportListSaves.save(plan);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** The answers this camp gave before, so a similar file does not ask again. */
   @AuraEnabled
   public static List<ImportAnswers.Answer> getAnswers(Id campId) {

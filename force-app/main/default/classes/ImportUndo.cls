@@ -1,7 +1,9 @@
 /**
  * Undo last import (Greg, 2026-10-16): removes what the import created, its version included,
  * and puts back what it changed, but keeps anything edited since or still in use, and says
- * which. Only a season's last import that has not been undone can be undone.
+ * which. Only the season's most recent import can be undone, and only once (Greg, 2026-10-17):
+ * once it is undone, no earlier import can be undone until the next import. Setup lists
+ * imported on a screen (slice 4c) are imports too.
  */
 public with sharing class ImportUndo {
   /** What Undo did, for the screen. */
@@ -34,8 +36,20 @@ public with sharing class ImportUndo {
     Savepoint beforeUndo = Database.setSavepoint();
     try {
       // Put back first (a group moved into a division the import made goes home), then remove.
-      new ImportUndoRestores(result)
-        .run((List<Object>) JSON.deserializeUntyped(done.Changed__c));
+      List<Object> changes = new List<Object>();
+      List<Object> whoLists = new List<Object>();
+      for (
+        Object entry : (List<Object>) JSON.deserializeUntyped(done.Changed__c)
+      ) {
+        // Who lists a list import replaced (slice 4c) are put back on their own.
+        if (((Map<String, Object>) entry).containsKey('who')) {
+          whoLists.add(entry);
+        } else {
+          changes.add(entry);
+        }
+      }
+      new ImportUndoRestores(result).run(changes);
+      new ImportUndoWho(result).run(whoLists);
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
