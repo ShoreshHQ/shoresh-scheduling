@@ -1,14 +1,13 @@
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 
-// Names as the package has them (c/shoreshSchema). A fixed and a recurring activity name their
-// shared fields the same, so ITEM serves both.
+// Names as the package has them (c/shoreshSchema). A fixed or recurring activity's fields come
+// in as `fields` (FIELD.FixedActivity or FIELD.RecurringActivity), whichever it is.
 const WEEK = FIELD.Week;
 const SEASON = FIELD.Season;
 const ACTIVITY = FIELD.Activity;
 const LOCATION = FIELD.Location;
 const GROUP = FIELD.Group;
 const BLOCK = FIELD.TimeBlock;
-const ITEM = FIELD.RecurringActivity;
 const OFF = FIELD.WeekException;
 const WHO = FIELD.ActivityEligibility;
 const COVERS = FIELD.Coverage;
@@ -165,13 +164,13 @@ const AVAILABILITY = {
  * names none). A group not at camp in a time block (morning or afternoon only) is left out of it.
  * Returns [{ group, blocks: how many of its blocks the group is there for }] and the block count.
  */
-function whoIsThere(entry, item) {
+function whoIsThere(entry, item, fields) {
   const blocks = entry.timeBlocks || [];
-  const start = item[ITEM.TimeBlock]
-    ? blocks.findIndex((block) => block.Id === item[ITEM.TimeBlock])
+  const start = item[fields.TimeBlock]
+    ? blocks.findIndex((block) => block.Id === item[fields.TimeBlock])
     : -1;
   const span =
-    start < 0 ? [] : blocks.slice(start, start + (item[ITEM.Length] || 1));
+    start < 0 ? [] : blocks.slice(start, start + (item[fields.Length] || 1));
   const named = new Set(
     (item[CHILDREN.RecurringActivity.Coverages] || []).map(
       (row) => row[COVERS.Division] || row[COVERS.Group]
@@ -198,8 +197,8 @@ function whoIsThere(entry, item) {
  * The note on a fixed or recurring activity's row: which groups are left out because they are not
  * at camp then (Greg, 2026-10-16: left out and shown, not refused). Empty when nobody is.
  */
-export function setTimeNote(entry, item) {
-  const { groups, span } = whoIsThere(entry, item);
+export function setTimeNote(entry, item, fields) {
+  const { groups, span } = whoIsThere(entry, item, fields);
   return groups
     .filter((g) => g.blocks < span)
     .map((g) => {
@@ -225,17 +224,17 @@ function range(first, last) {
  * block it covers now (keep the new coverage), or a new length (back to where it used to end).
  * Only fixes that make sense are offered; when only keeping it does, the note says why.
  */
-export function spanChange(entry, item, terms) {
+export function spanChange(entry, item, terms, fields) {
   const blocks = entry.timeBlocks || [];
-  const start = item[ITEM.TimeBlock]
-    ? blocks.findIndex((block) => block.Id === item[ITEM.TimeBlock])
+  const start = item[fields.TimeBlock]
+    ? blocks.findIndex((block) => block.Id === item[fields.TimeBlock])
     : -1;
   if (start < 0) {
     return null;
   }
-  const length = item[ITEM.Length] || 1;
+  const length = item[fields.Length] || 1;
   const now = Math.min(start + length, blocks.length) - 1;
-  const last = item[ITEM.LastTimeBlock];
+  const last = item[fields.LastTimeBlock];
   if (blocks[now].Id === last) {
     return null;
   }
@@ -246,7 +245,7 @@ export function spanChange(entry, item, terms) {
   const keep = {
     key: "keep",
     label: `Keep ${covers(now)}`,
-    changes: { [ITEM.LastTimeBlock]: blocks[now].Id }
+    changes: { [fields.LastTimeBlock]: blocks[now].Id }
   };
   const keepOnly = (reason) => ({
     why: `${changed} it now covers ${covers(now)}. ${reason}`,
@@ -262,7 +261,7 @@ export function spanChange(entry, item, terms) {
         {
           key: "stretch",
           label: `Stretch to ${covers(was)}`,
-          changes: { [ITEM.Length]: was - start + 1 }
+          changes: { [fields.Length]: was - start + 1 }
         }
       ]
     };
@@ -271,14 +270,17 @@ export function spanChange(entry, item, terms) {
     // A block inside it removed (or moved away): it now runs on past where it used to end.
     return {
       why: `${changed} it covered ${covers(was)} and now covers ${covers(now)}.`,
-      actions: [shorter(covers, start, was), extend(keep, blocks[now])]
+      actions: [shorter(covers, start, was, fields), extend(keep, blocks[now])]
     };
   }
   if (was < 0 && start + length <= blocks.length && length > 1) {
     // The block it ended in was deleted: it now runs one block further.
     return {
       why: `${changed} the ${terms.sIn("TimeBlock")} it ended in was deleted, and it now covers ${covers(now)}.`,
-      actions: [shorter(covers, start, now - 1), extend(keep, blocks[now])]
+      actions: [
+        shorter(covers, start, now - 1, fields),
+        extend(keep, blocks[now])
+      ]
     };
   }
   if (was < 0 && start + length > blocks.length) {
@@ -294,11 +296,11 @@ export function spanChange(entry, item, terms) {
   return keepOnly("It can only be kept as it is.");
 }
 
-function shorter(covers, start, end) {
+function shorter(covers, start, end, fields) {
   return {
     key: "shorter",
     label: `Keep the shorter ${covers(end)}`,
-    changes: { [ITEM.Length]: end - start + 1 }
+    changes: { [fields.Length]: end - start + 1 }
   };
 }
 
@@ -321,25 +323,28 @@ function setTimeProblems(setup, terms) {
   const marks = setup.weekExceptions || [];
   const locations = new Map((setup.locations || []).map((l) => [l.Id, l]));
   (setup.programs || []).forEach((entry) => {
-    // Each kind: its screen, its object, the week exception field naming it, and its items.
+    // Each kind: its screen, its object and fields, the week exception field naming it, and
+    // its items.
     const kinds = [
       [
         "fixedActivities",
         OBJECT.FixedActivity,
+        FIELD.FixedActivity,
         OFF.FixedActivity,
         entry.fixedActivities
       ],
       [
         "recurringActivities",
         OBJECT.RecurringActivity,
+        FIELD.RecurringActivity,
         OFF.RecurringActivity,
         entry.recurringActivities
       ]
     ];
-    kinds.forEach(([screen, object, field, items]) => {
+    kinds.forEach(([screen, object, itemFields, field, items]) => {
       (items || []).forEach((item) => {
         const add = (why) => problems.push({ screen, name: item.Name, why });
-        const moved = spanChange(entry, item, terms);
+        const moved = spanChange(entry, item, terms, itemFields);
         if (moved) {
           // Each fix is offered right on the attention item, as a save of this row.
           problems.push({
@@ -359,7 +364,7 @@ function setTimeProblems(setup, terms) {
         if (weeks.length > 0 && off.size >= weeks.length) {
           add(`Runs in no ${terms.pIn("Week")}.`);
         }
-        const { groups, span } = whoIsThere(entry, item);
+        const { groups, span } = whoIsThere(entry, item, itemFields);
         if (
           span > 0 &&
           groups.length > 0 &&
@@ -369,7 +374,7 @@ function setTimeProblems(setup, terms) {
             `Every ${terms.sIn("Group")} it covers is left out: none is at camp then.`
           );
         }
-        const location = locations.get(item[ITEM.Location]);
+        const location = locations.get(item[itemFields.Location]);
         const shut = new Set(
           marks
             .filter((m) => location && m[OFF.Location] === location.Id)

@@ -89,21 +89,26 @@ class Divisions {
 function whoNaming(existing, divisionId, groupId, otherDivisionId) {
   const names = [];
   // A list naming both divisions keeps the group either way: neither lost nor gained.
-  // Who rows of either kind name a division or group by the same field names.
-  const division = FIELD.Coverage.Division;
-  const group = FIELD.Coverage.Group;
-  const counts = (rows) =>
-    rows.some((r) => r[division] === divisionId) &&
-    !rows.some((r) => r[division] === otherDivisionId) &&
-    !rows.some((r) => r[group] === groupId);
+  // who: the rows' own fields (who can do an activity, or who a recurring activity covers).
+  const counts = (rows, who) =>
+    rows.some((r) => r[who.Division] === divisionId) &&
+    !rows.some((r) => r[who.Division] === otherDivisionId) &&
+    !rows.some((r) => r[who.Group] === groupId);
   for (const a of (existing && existing.activities) || []) {
-    if (counts(a[CHILDREN.Activity.Eligibilities] || [])) {
+    if (
+      counts(
+        a[CHILDREN.Activity.Eligibilities] || [],
+        FIELD.ActivityEligibility
+      )
+    ) {
       names.push(a.Name);
     }
   }
   for (const entry of (existing && existing.programs) || []) {
     for (const r of entry.recurringActivities || []) {
-      if (counts(r[CHILDREN.RecurringActivity.Coverages] || [])) {
+      if (
+        counts(r[CHILDREN.RecurringActivity.Coverages] || [], FIELD.Coverage)
+      ) {
         names.push(r.Name);
       }
     }

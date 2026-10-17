@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { FIELD } from "c/shoreshSchema";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
 import { moveNote } from "./groupMoves";
 
@@ -234,11 +235,14 @@ export default class ShoreshProgram extends LightningElement {
    * Each saved row's note: whether time blocks changed what it covers since it was saved, and
    * groups left out because they are not at camp then.
    */
-  notesFor(items) {
+  notesFor(items, fields) {
     const notes = {};
     (items || []).forEach((item) => {
-      const moved = spanChange(this.entry, item, this.terms);
-      notes[item.Id] = [moved ? moved.why : "", setTimeNote(this.entry, item)]
+      const moved = spanChange(this.entry, item, this.terms, fields);
+      notes[item.Id] = [
+        moved ? moved.why : "",
+        setTimeNote(this.entry, item, fields)
+      ]
         .filter((note) => note)
         .join(" ");
     });
@@ -246,10 +250,10 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   /** The fixes offered on rows whose time blocks changed under them: Id -> actions. */
-  actionsFor(items) {
+  actionsFor(items, fields) {
     const actions = {};
     (items || []).forEach((item) => {
-      const moved = spanChange(this.entry, item, this.terms);
+      const moved = spanChange(this.entry, item, this.terms, fields);
       if (moved) {
         actions[item.Id] = moved.actions;
       }
@@ -258,19 +262,25 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   get fixedActions() {
-    return this.actionsFor(this.entry.fixedActivities);
+    return this.actionsFor(this.entry.fixedActivities, FIELD.FixedActivity);
   }
 
   get recurringActions() {
-    return this.actionsFor(this.entry.recurringActivities);
+    return this.actionsFor(
+      this.entry.recurringActivities,
+      FIELD.RecurringActivity
+    );
   }
 
   get fixedNotes() {
-    return this.notesFor(this.entry.fixedActivities);
+    return this.notesFor(this.entry.fixedActivities, FIELD.FixedActivity);
   }
 
   get recurringNotes() {
-    return this.notesFor(this.entry.recurringActivities);
+    return this.notesFor(
+      this.entry.recurringActivities,
+      FIELD.RecurringActivity
+    );
   }
 
   get divisionColumns() {

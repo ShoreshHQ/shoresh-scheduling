@@ -1,5 +1,6 @@
 import * as rules from "c/shoreshSetupRules";
 import { buildTerms } from "c/shoreshTerms";
+import { FIELD } from "c/shoreshSchema";
 import { nsName, nsRecord } from "shoresh-jest/namespace";
 
 const { suggestedCopyName, suggestedCopyStart } = rules;
@@ -7,10 +8,12 @@ const { suggestedCopyName, suggestedCopyStart } = rules;
 // (nsRecord: unchanged normally, shoresh__-prefixed in the namespaced run). Expected records go
 // through nsRecord too.
 const setupProblems = (setup, t) => rules.setupProblems(nsRecord(setup), t);
+// The set-time notes here are about recurring activities (who they cover), and the changed
+// blocks about a fixed one ("Rest"): each is given its own object's fields.
 const setTimeNote = (entry, item) =>
-  rules.setTimeNote(nsRecord(entry), nsRecord(item));
+  rules.setTimeNote(nsRecord(entry), nsRecord(item), FIELD.RecurringActivity);
 const spanChange = (entry, item, t) =>
-  rules.spanChange(nsRecord(entry), nsRecord(item), t);
+  rules.spanChange(nsRecord(entry), nsRecord(item), t, FIELD.FixedActivity);
 
 const terms = buildTerms([
   { term: "Week", singular: "Session", plural: "Sessions", isCustom: true },
@@ -111,6 +114,42 @@ describe("setupProblems", () => {
         activities: [swim]
       })
     ).toEqual([["divisions", "Main", "No divisions yet."]]);
+  });
+
+  it("shows a week that starts before the season", () => {
+    expect(
+      found({
+        season,
+        weeks: [week("Early", "2026-06-22", "2026-06-26")],
+        programs: [fullProgram],
+        activities: [swim]
+      })
+    ).toEqual([["weeks", "Early", "Falls outside the dates of this season."]]);
+  });
+
+  it("an activity with no limit on groups at once is never more than its location fits", () => {
+    const setup = (noLimit) => ({
+      season,
+      weeks: [week("Session 1", "2026-06-29", "2026-07-03")],
+      programs: [fullProgram],
+      locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 2 }],
+      activities: [
+        {
+          ...swim,
+          Location__c: "l1",
+          GroupsAtOnce__c: 5,
+          NoGroupLimit__c: noLimit
+        }
+      ]
+    });
+    expect(found(setup(true))).toEqual([]);
+    expect(found(setup(false))).toEqual([
+      [
+        "activities",
+        "Swim",
+        'Allows 5 Bunks at once, but "Pool" fits 2. Scheduling uses 2; change whichever number is wrong.'
+      ]
+    ]);
   });
 
   it("gives each problem a key of its own", () => {
@@ -275,6 +314,14 @@ describe("fixed and recurring activities", () => {
       "Bunk 2 is morning only and is left out of its afternoon part. " +
         "Bunk 3 is afternoon only and is left out of its morning part."
     );
+    // One only for the Juniors at lunch leaves out their morning-only bunk.
+    expect(
+      setTimeNote(ENTRY, {
+        TimeBlock__c: "t2",
+        Length__c: 1,
+        Coverages__r: [{ Division__c: "d1" }]
+      })
+    ).toBe("Bunk 2 is morning only and is left out.");
     // A recurring activity only for the Seniors in the afternoon leaves nobody out.
     expect(
       setTimeNote(ENTRY, {
@@ -514,6 +561,48 @@ describe("fixed and recurring activities", () => {
       expect(
         spanChange(withBlocks([P1, P2, SNACK, P3]), rest, periods).why
       ).toMatch(/^Slots changed since it was saved/);
+    });
+
+    it("offers a recurring activity's fixes as saves of a recurring activity", () => {
+      const setup = {
+        season,
+        weeks: [
+          {
+            Id: "w1",
+            Name: "Session 1",
+            StartDate__c: "2026-06-29",
+            EndDate__c: "2026-07-03"
+          }
+        ],
+        weekExceptions: [{ Week__c: "w1", RecurringActivity__c: "r1" }],
+        activities: [{ Name: "Archery" }],
+        programs: [
+          {
+            ...withBlocks([P1, P2, SNACK, P3]),
+            recurringActivities: [{ Id: "r1", Name: "Rest", ...rest }]
+          }
+        ]
+      };
+      const nudges = setupProblems(setup, terms).filter(
+        (p) => p.name === "Rest"
+      );
+      expect(nudges.map((p) => [p.screen, p.why])).toEqual([
+        [
+          "recurringActivities",
+          "Time blocks changed since it was saved: it covered Period 2 – Period 3 and now covers Period 2 – Snack."
+        ],
+        ["recurringActivities", "Runs in no Sessions."]
+      ]);
+      expect(nudges[0].actions.map((a) => a.record)).toEqual(
+        nsRecord([
+          {
+            sobjectType: "RecurringActivity__c",
+            Id: "r1",
+            LastTimeBlock__c: "b9"
+          },
+          { sobjectType: "RecurringActivity__c", Id: "r1", Length__c: 3 }
+        ])
+      );
     });
 
     it("offers the fixes on its Needs attention item, as saves of that row", () => {

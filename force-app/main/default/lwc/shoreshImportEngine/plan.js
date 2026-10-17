@@ -7,11 +7,9 @@ import { FIELD } from "c/shoreshSchema";
 import { clock, shortClock } from "./text";
 import { dayList, nameList } from "./questions";
 
-// Every kind names its place in order the same way.
-const SORT_ORDER = FIELD.Program.SortOrder;
-
-function maxSort(records) {
-  return Math.max(0, ...(records || []).map((r) => r[SORT_ORDER] || 0));
+/** The highest place in order among records, by the records' own sort-order field. */
+function maxSort(records, sortOrder) {
+  return Math.max(0, ...(records || []).map((r) => r[sortOrder] || 0));
 }
 
 function article(word) {
@@ -78,7 +76,7 @@ function groupRecords(proposal, existing) {
   const allGroups = programs.flatMap((p) =>
     (p.divisions || []).flatMap((d) => d.groups || [])
   );
-  const base = maxSort(allGroups);
+  const base = maxSort(allGroups, FIELD.Group.SortOrder);
   const kept = proposal.groups.filter((g) => !g.leftOut);
   const added = kept
     .filter((g) => g.isNew)
@@ -108,7 +106,10 @@ function divisionRecords(proposal, existing) {
     .map((d) => {
       const entry = programs.find((p) => p.program.Id === d.programKey);
       const base = entry
-        ? maxSort((entry.divisions || []).map((x) => x.division))
+        ? maxSort(
+            (entry.divisions || []).map((x) => x.division),
+            FIELD.Division.SortOrder
+          )
         : 0;
       count.set(d.programKey, (count.get(d.programKey) || 0) + 1);
       return {
@@ -122,7 +123,10 @@ function divisionRecords(proposal, existing) {
 }
 
 function activityRecords(proposal, existing) {
-  const base = maxSort(existing && existing.activities);
+  const base = maxSort(
+    existing && existing.activities,
+    FIELD.Activity.SortOrder
+  );
   const added = proposal.activities.map((a, i) => ({
     key: `A|${a.name}`,
     id: null,
