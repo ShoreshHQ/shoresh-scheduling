@@ -89,11 +89,51 @@
         </template>
       </section>
 
+      <template lwc:if={hasProgramChoices}>
+        <section class="import-section" data-id="program-choices">
+          <div class="import-section-label">{labels.programs}</div>
+          <template for:each={programChoices} for:item="choice">
+            <div key={choice.id} class="import-choice" data-choice={choice.id}>
+              <span class="import-choice-name">{choice.title}</span>
+              <lightning-combobox
+                label={choice.title}
+                variant="label-hidden"
+                placeholder={choice.placeholder}
+                value={choice.value}
+                options={choice.comboOptions}
+                data-id={choice.id}
+                onchange={handleChoice}
+              ></lightning-combobox>
+            </div>
+          </template>
+        </section>
+      </template>
+
+      <template lwc:if={hasUnitChoices}>
+        <section class="import-section" data-id="unit-choices">
+          <div class="import-section-label">{labels.units}</div>
+          <template for:each={unitChoices} for:item="choice">
+            <div key={choice.id} class="import-choice" data-choice={choice.id}>
+              <span class="import-choice-name">{choice.title}</span>
+              <lightning-combobox
+                label={choice.title}
+                variant="label-hidden"
+                placeholder={choice.placeholder}
+                value={choice.value}
+                options={choice.comboOptions}
+                data-id={choice.id}
+                onchange={handleChoice}
+              ></lightning-combobox>
+            </div>
+          </template>
+        </section>
+      </template>
+
       <template lwc:if={hasPreviewCards}>
         <section class="import-section" data-id="similar">
-          <div class="import-section-label">Similar names</div>
+          <div class="import-section-label">Check these first</div>
           <p class="import-weak slds-m-bottom_x-small">
-            Not merged unless you say so.
+            Similar names are not merged unless you say so.
           </p>
           <template for:each={previewCards} for:item="card">
             <div key={card.id} class={card.className} data-card={card.id}>

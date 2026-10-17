@@ -18,7 +18,8 @@ export function blockFromLabel(label) {
     label: tidy(label),
     name: name || tidy(label),
     start: range ? range.start : null,
-    end: range ? range.end : null
+    end: range ? range.end : null,
+    guessedPm: !!(range && range.guessedPm)
   };
 }
 
@@ -68,6 +69,23 @@ function median(values) {
   return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 45;
 }
 
+/**
+ * A block written without AM or PM that the camp-day rule put in the evening ("6:30-7:15" read
+ * as 6:30 PM) is early morning when, read that way, it ends before the rest of the day starts.
+ */
+function earlyMorning(blocks) {
+  const sure = blocks.filter((b) => !b.guessedPm);
+  const firstStart = Math.min(...sure.map((b) => b.start));
+  for (const b of blocks) {
+    const end = b.end === null ? b.start + 1 : b.end;
+    if (b.guessedPm && b.start >= 17 * 60 && end - 12 * 60 <= firstStart) {
+      b.start -= 12 * 60;
+      b.end = b.end === null ? null : b.end - 12 * 60;
+      b.readAsMorning = true;
+    }
+  }
+}
+
 /** One timetable's blocks: each once, in time order, every end filled in (or marked guessed). */
 function orderedBlocks(blocks) {
   const byKey = new Map();
@@ -78,6 +96,7 @@ function orderedBlocks(blocks) {
   }
   const timed = [...byKey.values()].filter((b) => b.start !== null);
   const untimed = [...byKey.values()].filter((b) => b.start === null);
+  earlyMorning(timed);
   timed.sort((a, b) => a.start - b.start || (a.end || 0) - (b.end || 0));
   const usual = median(
     timed.filter((b) => b.end !== null).map((b) => b.end - b.start)
@@ -135,6 +154,7 @@ export function collectGroups(noted, timetableOfPage) {
     if (!byName.has(name)) {
       byName.set(name, {
         name,
+        recordName: entry.recordName || name,
         votes: new Map(),
         timetable: timetableOfPage.get(entry.page),
         order: byName.size,
@@ -143,7 +163,7 @@ export function collectGroups(noted, timetableOfPage) {
     }
     byName.get(name).onlyInCells =
       byName.get(name).onlyInCells && !!entry.fromCell;
-    if (entry.division) {
+    if (entry.division && !entry.weakDivision) {
       const votes = byName.get(name).votes;
       votes.set(entry.division, (votes.get(entry.division) || 0) + 1);
     }
@@ -168,6 +188,7 @@ export function collectGroups(noted, timetableOfPage) {
     }
     return {
       name: group.name,
+      recordName: group.recordName,
       division,
       timetable: group.timetable,
       order

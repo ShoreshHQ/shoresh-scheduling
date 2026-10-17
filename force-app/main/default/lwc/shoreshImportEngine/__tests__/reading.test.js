@@ -16,39 +16,48 @@ const at = (h, m = 0) => h * 60 + m;
 
 describe("reading a cell", () => {
   it("reads times the way a day camp writes them", () => {
-    expect(timeRange("9:00-9:45")).toEqual({ start: at(9), end: at(9, 45) });
-    expect(timeRange("Period 1 (9:00 - 9:45)")).toEqual({
+    expect(timeRange("9:00-9:45")).toMatchObject({
+      start: at(9),
+      end: at(9, 45)
+    });
+    expect(timeRange("Period 1 (9:00 - 9:45)")).toMatchObject({
       start: at(9),
       end: at(9, 45)
     });
     // A bare 1 to 6 is the afternoon; 7 to 11 the morning; 12 noon (desktop's camp-day rule).
-    expect(timeRange("1:10 - 1:55")).toEqual({
+    expect(timeRange("1:10 - 1:55")).toMatchObject({
       start: at(13, 10),
       end: at(13, 55)
     });
-    expect(timeRange("11:30 - 12:15")).toEqual({
+    expect(timeRange("11:30 - 12:15")).toMatchObject({
       start: at(11, 30),
       end: at(12, 15)
     });
-    expect(timeRange("12:20 - 1:05")).toEqual({
+    expect(timeRange("12:20 - 1:05")).toMatchObject({
       start: at(12, 20),
       end: at(13, 5)
     });
-    expect(timeRange("1:30 - 2:15 PM")).toEqual({
+    expect(timeRange("1:30 - 2:15 PM")).toMatchObject({
       start: at(13, 30),
       end: at(14, 15)
     });
-    expect(timeRange("11:30 - 12:15 PM")).toEqual({
+    expect(timeRange("11:30 - 12:15 PM")).toMatchObject({
       start: at(11, 30),
       end: at(12, 15)
     });
-    expect(timeRange("14:00")).toEqual({ start: at(14), end: null });
+    expect(timeRange("14:00")).toMatchObject({ start: at(14), end: null });
     expect(timeRange("Period 2")).toBeNull();
     // A bare hour that starts a range (review finding 1).
-    expect(timeRange("9 - 9:45am")).toEqual({ start: at(9), end: at(9, 45) });
-    expect(timeRange("9-10am")).toEqual({ start: at(9), end: at(10) });
-    expect(timeRange("1-2pm")).toEqual({ start: at(13), end: at(14) });
-    expect(timeRange("12-12:45")).toEqual({ start: at(12), end: at(12, 45) });
+    expect(timeRange("9 - 9:45am")).toMatchObject({
+      start: at(9),
+      end: at(9, 45)
+    });
+    expect(timeRange("9-10am")).toMatchObject({ start: at(9), end: at(10) });
+    expect(timeRange("1-2pm")).toMatchObject({ start: at(13), end: at(14) });
+    expect(timeRange("12-12:45")).toMatchObject({
+      start: at(12),
+      end: at(12, 45)
+    });
     expect(timeRange("Period 1 - 2")).toBeNull();
   });
 
@@ -318,5 +327,31 @@ describe("files that cover the same week", () => {
       buildProposal({ files, existing: null, terms, answers: {} }).reading
         .disagreements
     ).toEqual([]);
+  });
+});
+
+describe("times the review found misread (PR 15 review, finding 4)", () => {
+  it("reads ranges of bare hours", () => {
+    expect(timeRange("9-10")).toMatchObject({ start: at(9), end: at(10) });
+    expect(timeRange("12-1")).toMatchObject({ start: at(12), end: at(13) });
+    expect(timeRange("Lunch 12-1")).toMatchObject({
+      start: at(12),
+      end: at(13)
+    });
+    expect(timeRange("Period 1 - 2")).toBeNull();
+    expect(timeRange("Bunk 3-4")).toBeNull();
+  });
+
+  it("an early block without AM or PM, before the morning, is read as morning", () => {
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["6:30-7:15", "Breakfast", "Breakfast"],
+      ["7:30-8:15", "Swim", "Art"],
+      ["8:20-9:05", "Art", "Swim"]
+    ];
+    const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+    const p = buildProposal({ files, existing: null, terms, answers: {} });
+    const [first] = p.timetables[0].blocks;
+    expect([first.start, first.end]).toEqual([at(6, 30), at(7, 15)]);
   });
 });

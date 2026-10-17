@@ -139,18 +139,45 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     fold to "✓ answer" with **Change**); **Use this setup**; then the summary (added, changed as
     chosen, left out for now, not set up yet, good to know) and **Continue** to Roots.
 
-## Differences from the desktop (proposed, not settled)
+14. **Fixes after PR #15's review, and Greg's answers (2026-10-16), in a follow-up PR:**
+    - **A group is its division and its name.** "Bunk 1" in Juniors and "Bunk 1" in Seniors are
+      two groups (shown as "Bunk 1 (Juniors)" where a name is used in several divisions), in
+      everything the import does: placements, cross-checks, set-time patterns, the version. A
+      file that names such a group without its division asks "Which Bunk 1 is in <file>?". A
+      division taken only from a file's name ("Camp 2026 - Bunk 3") is a hint, overruled by a
+      division any page states.
+    - **Who can do an activity is written out unless the files cover every group in the
+      season**: whole divisions where the groups cover them, the groups by name otherwise. An
+      empty list (everyone) would otherwise reach groups of other programs, or ones the files do
+      not show.
+    - **The same files give the same result in any order** (files sorted by name, then sheet
+      order).
+    - **Times**: ranges of bare hours ("9-10", "12-1") are read; a block written without AM or
+      PM that the camp-day rule would put in the evening is read as morning when it ends before
+      the rest of the day starts ("6:30-7:15" before "7:30"), and "Good to know" says so.
+    - **Divisions and programs are chosen on the preview** (Greg: the desktop's dropdown per
+      group). Every new group shows its division: the file's preselected; none preselected when
+      the file is silent and the program has divisions (the import waits); Main only for a
+      program with no divisions and a file naming none, shown and changeable. Each set of groups
+      shows its program the same way (preselected when sure, including a camp's only program).
+    - **Moving a group between divisions is allowed** (Greg). `Group__c.Division__c` is now
+      reparentable (master-detail). A group the camp has in another division than the file
+      shows gets a card: **Move**, **Keep it in <division>**, **Add a new <group> to
+      <division>**, or **Leave it out for now**; it says which activities and recurring
+      activities name either division in who they are for, so nothing shifts unseen. A group can
+      move only within its own program (`GroupMoves`, refused otherwise), and a move re-runs the
+      fixed and recurring clash check. Moving a group on the Groups screen is a separate small PR
+      after part 2.
 
-- **Not built:** the review's four tiles (Understood, Needs attention, Changed, Not in source)
-  and its reveal animation; the question cards are one list in the desktop's lane order.
-  Proposed for later polish with Greg, with a mockup, if he wants them.
-- **Layout can be changed per file** (the desktop only displayed it).
-- **No per-group division dropdown on the preview**: divisions come from the file, and a group
-  whose division the file does not give is a question card (only when the program already has
-  divisions; otherwise the groups go into one division, Main, to rename later).
+## Differences from the desktop (settled with Greg, 2026-10-16)
+
+- **Layout can be changed per file** (the desktop only displayed it): kept.
+- **The review's four tiles and reveal animation:** later, as polish, with a mockup first.
+- **Division dropdown per group** on the preview, as the desktop has it (item 14).
 - **Undo, the imported version, remembered answers:** part 2.
 
 ## Choices that are hard to undo after release
 
 - The static resource name `SheetJS` and the Apex class `ImportController` (`saveSetup`) are
   part of the package's surface once released. No new objects or fields in part 1.
+- `Group__c.Division__c` is reparentable (groups can move between divisions of a program).

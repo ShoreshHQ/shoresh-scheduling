@@ -85,7 +85,7 @@ describe("Import last year, as the walkthrough tells it", () => {
       terms,
       {}
     );
-    const similar = preview.filter((c) => c.stage === "preview");
+    const similar = preview.filter((c) => c.stage === "preview" && !c.select);
     expect(similar.map((c) => c.title)).toEqual([
       "Are “Music” and “Musik” the same activity?"
     ]);
@@ -168,7 +168,7 @@ describe("Import last year, as the walkthrough tells it", () => {
         .map((p) => p.name)
     ).toEqual(["Bunk 1", "Bunk 2", "Bunk 3", "Bunk 4", "Bunk 5", "Bunk 6"]);
     const similar = questionCards(first, terms, {}).filter(
-      (c) => c.stage === "preview"
+      (c) => c.stage === "preview" && !c.select
     );
     expect(similar.map((c) => c.title)).toEqual([
       "Are “Musik” and “Music” the same activity?"

@@ -99,7 +99,10 @@ public with sharing class SetTimeTriggers {
     SetTimeGuard.changed(programIds, blocks, SetTimeMessages.Side.TIME_BLOCK);
   }
 
-  /** New groups, or a group now at camp at another part of the day. */
+  /**
+   * New groups, a group now at camp at another part of the day, or a group moved to another
+   * division (who a recurring activity aimed at either division covers changes).
+   */
   public static void groupsSaved(
     List<Group__c> groups,
     Map<Id, Group__c> before
@@ -107,11 +110,16 @@ public with sharing class SetTimeTriggers {
     Set<Id> divisionIds = new Set<Id>();
     List<Group__c> changed = new List<Group__c>();
     for (Group__c grp : groups) {
+      Group__c old = before == null ? null : before.get(grp.Id);
       if (
-        before == null ||
-        grp.Availability__c != before.get(grp.Id).Availability__c
+        old == null ||
+        grp.Availability__c != old.Availability__c ||
+        grp.Division__c != old.Division__c
       ) {
         divisionIds.add(grp.Division__c);
+        if (old != null) {
+          divisionIds.add(old.Division__c);
+        }
         changed.add(grp);
       }
     }

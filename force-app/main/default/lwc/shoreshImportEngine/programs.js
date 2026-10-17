@@ -15,7 +15,7 @@ function minutesOf(ms) {
     : Math.round(ms / MS_PER_MINUTE);
 }
 
-function existingPrograms(existing) {
+function existingPrograms(existing, rules) {
   return ((existing && existing.programs) || []).map((entry) => ({
     id: entry.program.Id,
     name: entry.program.Name,
@@ -27,8 +27,9 @@ function existingPrograms(existing) {
       end: minutesOf(b.EndTime__c),
       sortOrder: b.SortOrder__c || 0
     })),
+    // Group identities (identity.js), as the files' groups are named.
     groups: (entry.divisions || []).flatMap((d) =>
-      (d.groups || []).map((g) => g.Name)
+      (d.groups || []).map((g) => rules.identityOf(g.Name, d.division.Name))
     ),
     entry
   }));
@@ -50,39 +51,47 @@ function newProgramName(taken, count) {
 }
 
 /**
- * The program a timetable goes to: sure from its groups, or the camp's only program; else asked.
- * A program already taken by another timetable of these files is never chosen on its own
- * (their time blocks differ, so they cannot share it): that is asked too.
+ * The program a set of groups goes to, always shown and changeable (Greg, 2026-10-16):
+ * preselected when sure (the program their groups are in, the camp's only program, or a new one
+ * for a camp with none); otherwise nothing is preselected and the import waits for a choice. A
+ * program already taken by another set of groups in these files is not offered (their time
+ * blocks differ, so they cannot share it). Answers name the program, never its record Id.
  */
-function chooseProgram(groups, programs, context, answers) {
-  const id = `program|${[...groups].sort().join(",")}`;
-  const free = programs.filter((p) => !context.used.has(p.id));
+function sureProgram(groups, programs, free, context) {
   const owners = programs.filter((p) =>
     groups.some((g) => p.groups.includes(g))
   );
   if (owners.length === 1 && free.includes(owners[0])) {
-    return { program: owners[0] };
+    return owners[0].name;
   }
   if (programs.length === 0) {
-    return { program: null };
+    return "new";
   }
   if (programs.length === 1 && context.count === 1 && owners.length === 0) {
-    return { program: programs[0] };
+    return programs[0].name;
   }
-  const answer = answers[id];
+  return null;
+}
+
+function chooseProgram(groups, programs, context, answers) {
+  const id = `program|${[...groups].sort().join(",")}`;
+  const free = programs.filter((p) => !context.used.has(p.id));
+  const preselected = sureProgram(groups, programs, free, context);
   const ask = {
     id,
     type: "program",
     groups,
-    options: free.map((p) => ({ id: p.id, name: p.name }))
+    options: free.map((p) => p.name),
+    preselected
   };
+  const answer = answers[id] || preselected;
   if (answer === LEAVE_OUT) {
     return { leftOut: true, ask };
   }
   if (answer === "new") {
     return { program: null, ask };
   }
-  const picked = free.find((p) => p.id === answer);
+  const picked = free.find((p) => p.name === answer);
   return { program: picked || null, ask, unanswered: !picked };
 }
 
@@ -195,7 +204,7 @@ function programDays(program, fileDays, answers, asks) {
  * raised.
  */
 export function mapPrograms(reading, existing, answers) {
-  const programs = existingPrograms(existing);
+  const programs = existingPrograms(existing, reading.identities);
   const taken = new Set(programs.map((p) => looseKey(p.name)));
   const asks = [];
   const used = new Set();
@@ -239,6 +248,7 @@ export function mapPrograms(reading, existing, answers) {
       start: block.start,
       end: block.end,
       guessedEnd: !!block.guessedEnd,
+      readAsMorning: !!block.readAsMorning,
       ...matchBlock(block, program, context)
     }));
     return {

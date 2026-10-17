@@ -90,13 +90,19 @@ public with sharing class ImportStructureWrites {
     List<SObject> rows = new List<SObject>();
     List<ImportPlan.Entry> entries = plan.entries('groups');
     for (ImportPlan.Entry entry : entries) {
+      // A group the director chose to move: only its division changes.
       rows.add(
-        new Group__c(
-          Division__c = keys.of(entry.text('divisionKey')),
-          Name = entry.text('name'),
-          Availability__c = 'AllDay',
-          SortOrder__c = entry.whole('sortOrder')
-        )
+        entry.isNew()
+          ? new Group__c(
+              Division__c = keys.of(entry.text('divisionKey')),
+              Name = entry.text('name'),
+              Availability__c = 'AllDay',
+              SortOrder__c = entry.whole('sortOrder')
+            )
+          : new Group__c(
+              Id = keys.existing(entry.id()),
+              Division__c = keys.of(entry.text('divisionKey'))
+            )
       );
     }
     writer.write('Group', entries, rows);

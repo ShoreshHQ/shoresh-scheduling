@@ -275,6 +275,29 @@ export function setTimeRecords(decision, keyOf) {
  * that could do it and did not), how many groups at once, who can do it (whole divisions, only
  * when no other group did it), and its place when the file names one place for it.
  */
+/**
+ * Who can do an activity, written out whenever it is not everyone in the season: whole divisions
+ * where the groups cover them, the groups by name otherwise.
+ */
+function whoOfPool(pool, divisionOf, keyOf) {
+  const keys = [];
+  const names = [];
+  for (const division of [...new Set(pool.map((g) => divisionOf.get(g)))]) {
+    const here = pool.filter((g) => divisionOf.get(g) === division);
+    const key = keyOf.divisionOf(here[0]);
+    if (keyOf.coveredBy(key, pool)) {
+      keys.push(key);
+      names.push(division);
+    } else {
+      here.forEach((g) => {
+        keys.push(keyOf.group(g));
+        names.push(g);
+      });
+    }
+  }
+  return { keys, names };
+}
+
 export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
   const doers = [...new Set(cells.map((c) => c.group))];
   const divisions = [...new Set(doers.map((g) => divisionOf.get(g)))];
@@ -296,6 +319,17 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
     atOnce.set(key, (atOnce.get(key) || 0) + 1);
   });
   const lengths = new Set(cells.map((c) => c.span));
+  // "Everyone" only when the files cover every group in the season (review, 2026-10-16):
+  // otherwise the groups of other programs, or ones the files do not show, would be included.
+  let who = { keys: [], names: [] };
+  if (whole) {
+    who = {
+      keys: [...new Set(doers.map((g) => keyOf.divisionOf(g)))],
+      names: divisions
+    };
+  } else if (!keyOf.isWholeSeason(eligible)) {
+    who = whoOfPool(eligible, divisionOf, keyOf);
+  }
   return {
     kind: "activity",
     name,
@@ -304,12 +338,7 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
     min: Math.min(...perGroupWeek),
     max: Math.max(...perGroupWeek),
     groupsAtOnce: Math.max(...atOnce.values()),
-    who: whole
-      ? {
-          keys: [...new Set(doers.map((g) => keyOf.divisionOf(g)))],
-          names: divisions
-        }
-      : { keys: [], names: [] },
+    who,
     place: onePlace(cells)
   };
 }

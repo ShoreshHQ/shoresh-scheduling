@@ -158,7 +158,7 @@ describe("c-shoresh-import", () => {
     // The similar names must be answered before the review.
     const review = $(element, 'lightning-button[data-id="review"]');
     expect(review.disabled).toBe(true);
-    expect(review.label).toBe("Answer the question above first");
+    expect(review.label).toBe("Answer the choice above first");
     const similar = $(element, '[data-id="similar"] [data-card]').dataset.card;
     await answer(element, similar, "a");
     expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(

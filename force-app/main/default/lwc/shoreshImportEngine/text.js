@@ -154,10 +154,46 @@ function timeTokens(text) {
  * "1:30 – 2:15 PM", "Period 1 (9:00-9:45)". The end is null when only a start is written.
  * Returns null when the label holds no time.
  */
+// "9-10", "12-1": a range of bare hours, at the end of a label, not after a word that numbers
+// things ("Period 1 - 2").
+const BARE_RANGE = /(^|[\s(])(\d{1,2})\s*(?:-|–|—|to)\s*(\d{1,2})\s*\)?\s*$/i;
+const NUMBERING_WORD =
+  /(period|block|session|activity|perek|chug|bunk|group|cabin|tent|team|week|day|grade|room|unit)\s*$/i;
+
+function bareHourRange(text) {
+  const clean = tidy(text);
+  const match = clean.match(BARE_RANGE);
+  if (
+    !match ||
+    NUMBERING_WORD.test(clean.slice(0, match.index + match[1].length))
+  ) {
+    return null;
+  }
+  const [from, to] = [Number(match[2]), Number(match[3])];
+  if (from < 1 || from > 12 || to < 1 || to > 12) {
+    return null;
+  }
+  const start = minutesOf(match[2], null, null);
+  let end = minutesOf(match[3], null, null);
+  if (end <= start) {
+    end = minutesOf(match[3], null, start >= 12 * 60 ? "p" : null);
+  }
+  return end > start
+    ? { start, end, guessedPm: from < MORNING_FROM_HOUR }
+    : null;
+}
+
+/**
+ * The start and end a label gives, as minutes after midnight: "9:00-9:45", "9 - 9:45am",
+ * "1:30 – 2:15 PM", "9-10", "Period 1 (9:00-9:45)". The end is null when only a start is
+ * written. guessedPm: the start had no AM or PM and the camp-day rule made it the afternoon (a
+ * timetable may still read it as early morning: structure.js). Null when the label holds no
+ * time.
+ */
 export function timeRange(text) {
   const tokens = timeTokens(text);
   if (tokens.length === 0) {
-    return null;
+    return bareHourRange(text);
   }
   const [first, second] = tokens;
   // "1:30 - 2:15 PM": the PM written once covers both ends.
@@ -181,7 +217,10 @@ export function timeRange(text) {
   if (start === null) {
     return null;
   }
-  return { start, end: end !== null && end > start ? end : null };
+  const hour = Number(first[1]);
+  const guessedPm =
+    !first[3] && !firstMark && hour >= 1 && hour < MORNING_FROM_HOUR;
+  return { start, end: end !== null && end > start ? end : null, guessedPm };
 }
 
 /** The label with its times taken out: "Period 1 (9:00-9:45)" -> "Period 1". */

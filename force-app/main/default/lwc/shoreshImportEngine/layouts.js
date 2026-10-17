@@ -170,7 +170,7 @@ class CellReader {
   }
 
   add(column, rowIndex, entry) {
-    const key = `${column}|${entry.group}`;
+    const key = `${column}|${entry.group}|${entry.division || ""}`;
     const last = this.lastInColumn.get(key);
     if (
       last &&
@@ -195,11 +195,13 @@ class CellReader {
     this.out.push(placement);
   }
 
-  noteGroup(name, division, fromCell) {
+  noteGroup(name, division, fromCell, weakDivision) {
     this.groups.push({
       name,
       division: division || null,
+      weakDivision: !!weakDivision,
       page: this.pageIndex,
+      file: this.page.file,
       fromCell: !!fromCell
     });
   }
@@ -219,6 +221,7 @@ function readCampPage(reader, page, day) {
       if (named) {
         reader.add(c, r, {
           group,
+          division: division || null,
           day,
           text: named.name,
           place: named.place,
@@ -230,8 +233,12 @@ function readCampPage(reader, page, day) {
 }
 
 function readGroupPage(reader, page) {
-  const split = divisionInTitle(pageName(page));
-  reader.noteGroup(split.group, split.division);
+  const name = pageName(page);
+  const split = divisionInTitle(name);
+  // A division read from a file's name ("Camp 2026 - Bunk 3") is only a hint: the camp's name
+  // or a year looks just like one. A division any page states outright wins over it.
+  const fromFileName = name === (page.names || {}).file;
+  reader.noteGroup(split.group, split.division, false, fromFileName);
   page.columns.forEach((heading, c) => {
     const day = dayOf(heading);
     if (!day) {
@@ -242,6 +249,8 @@ function readGroupPage(reader, page) {
       if (named) {
         reader.add(c, r, {
           group: split.group,
+          division: split.division,
+          weakDivision: fromFileName,
           day,
           text: named.name,
           place: named.place,
@@ -256,7 +265,11 @@ function readActivityCell(reader, column, r, cell, entry) {
   for (const listed of listedNames(cell)) {
     const split = divisionInTitle(listed);
     reader.noteGroup(split.group, split.division, true);
-    reader.add(column, r, { ...entry, group: split.group });
+    reader.add(column, r, {
+      ...entry,
+      group: split.group,
+      division: split.division
+    });
   }
 }
 

@@ -1,0 +1,346 @@
+// A group is its division and its name (PR 15 review blocker), and Greg's choices on the
+// preview: a division per new group, a program per set of groups, and moving a group.
+import {
+  buildProposal,
+  LEAVE_OUT,
+  planFor,
+  questionCards
+} from "c/shoreshImportEngine";
+import { csv, existingSetup, program, terms } from "./data/samples";
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const BLOCKS = ["9:00-9:45", "9:50-10:35", "12:00-12:45"];
+const at = (h, m = 0) => h * 60 + m;
+
+/** An all-camp week: a division row over the group columns. */
+function campWeek(divisionRow, groups, cell) {
+  return DAYS.map((day, d) =>
+    csv(`Camp ${day}.csv`, [
+      ["", ...divisionRow],
+      ["Time", ...groups],
+      ...BLOCKS.map((b, bi) => [b, ...groups.map((_, g) => cell(g, d, bi))])
+    ])
+  );
+}
+
+function rotation(g, d, b) {
+  return b === 2
+    ? "Lunch"
+    : ["Swim", "Art", "Soccer", "Music"][(g + b + d) % 4];
+}
+const propose = (files, existing = null, answers = {}) =>
+  buildProposal({ files, existing, terms, answers });
+const cards = (p, answers = {}) => questionCards(p, terms, answers);
+
+describe("the same group name in different divisions", () => {
+  it("are two groups, never merged, and raise no false disagreements", () => {
+    const files = campWeek(
+      ["Juniors", "Juniors", "Seniors", "Seniors"],
+      ["Bunk 1", "Bunk 2", "Bunk 1", "Bunk 2"],
+      rotation
+    );
+    const p = propose(files);
+    expect(p.groups.map((g) => [g.name, g.recordName, g.division])).toEqual([
+      ["Bunk 1 (Juniors)", "Bunk 1", "Juniors"],
+      ["Bunk 2 (Juniors)", "Bunk 2", "Juniors"],
+      ["Bunk 1 (Seniors)", "Bunk 1", "Seniors"],
+      ["Bunk 2 (Seniors)", "Bunk 2", "Seniors"]
+    ]);
+    expect(p.reading.disagreements).toEqual([]);
+    const plan = planFor(p, null, "s");
+    expect(plan.groups.map((g) => [g.name, g.divisionKey])).toEqual([
+      ["Bunk 1", "D|P0|Juniors"],
+      ["Bunk 2", "D|P0|Juniors"],
+      ["Bunk 1", "D|P0|Seniors"],
+      ["Bunk 2", "D|P0|Seniors"]
+    ]);
+    expect(p.fixed.map((f) => f.name)).toEqual(["Lunch"]);
+  });
+
+  it("columns named Juniors - Bunk 1 and Seniors - Bunk 1 are two groups too", () => {
+    const files = DAYS.map((day, d) =>
+      csv(`Camp ${day}.csv`, [
+        ["Time", "Juniors - Bunk 1", "Seniors - Bunk 1"],
+        ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
+      ])
+    );
+    expect(propose(files).groups.map((g) => g.name)).toEqual([
+      "Bunk 1 (Juniors)",
+      "Bunk 1 (Seniors)"
+    ]);
+  });
+
+  it("a file that does not say which one asks, and uses the answer", () => {
+    const camp = campWeek(
+      ["Juniors", "Seniors"],
+      ["Bunk 1", "Bunk 1"],
+      rotation
+    );
+    const lone = csv("Bunk 1.csv", [
+      ["Time", ...DAYS],
+      ...BLOCKS.map((b, bi) => [b, ...DAYS.map((_, d) => rotation(0, d, bi))])
+    ]);
+    const files = [...camp, lone];
+    const ask = cards(propose(files)).find(
+      (c) => c.id === "whichGroup|Bunk 1|Bunk 1.csv"
+    );
+    expect(ask.title).toBe("Which Bunk 1 is in Bunk 1.csv?");
+    expect(ask.options.map((o) => o.value)).toEqual([
+      "Bunk 1 (Juniors)",
+      "Bunk 1 (Seniors)",
+      LEAVE_OUT
+    ]);
+    const answered = propose(files, null, { [ask.id]: "Bunk 1 (Juniors)" });
+    expect(answered.groups.map((g) => g.name)).toEqual([
+      "Bunk 1 (Juniors)",
+      "Bunk 1 (Seniors)"
+    ]);
+    expect(answered.reading.disagreements).toEqual([]);
+  });
+
+  it("a division only hinted at by a file name gives way to one a file states", () => {
+    const camp = campWeek(
+      ["Juniors", "Juniors"],
+      ["Bunk 1", "Bunk 2"],
+      rotation
+    );
+    const lone = csv("Camp 2026 - Bunk 1.csv", [
+      ["Time", ...DAYS],
+      ...BLOCKS.map((b, bi) => [b, ...DAYS.map((_, d) => rotation(0, d, bi))])
+    ]);
+    const p = propose([...camp, lone]);
+    expect(p.groups.map((g) => g.name)).toEqual(["Bunk 1", "Bunk 2"]);
+    expect(cards(p).some((c) => c.id.startsWith("whichGroup"))).toBe(false);
+  });
+});
+
+describe("division and program, shown for every new group and changeable (Greg)", () => {
+  const existing = existingSetup({
+    programs: [
+      program("p1", "Main", {
+        blocks: [
+          ["b1", "P1", at(9), at(9, 45)],
+          ["b2", "P2", at(9, 50), at(10, 35)],
+          ["b3", "Lunch", at(12), at(12, 45)]
+        ],
+        divisions: [
+          ["d1", "Juniors", [["g1", "Bunk 1"]]],
+          ["d2", "Seniors", []]
+        ]
+      })
+    ]
+  });
+  const noUnits = DAYS.map((day, d) =>
+    csv(`Camp ${day}.csv`, [
+      ["Time", "Bunk 1", "Bunk 7"],
+      ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
+    ])
+  );
+
+  it("the file's division is preselected; none is preselected when the file is silent and the program has divisions", () => {
+    const p = propose(noUnits, existing);
+    const units = cards(p).filter((c) => c.select === "division");
+    expect(units.map((c) => [c.subject, c.preselected])).toEqual([
+      ["Bunk 7", null]
+    ]);
+    expect(units[0].answer).toBeNull();
+    expect(units[0].options.map((o) => o.value)).toEqual([
+      "Juniors",
+      "Seniors",
+      LEAVE_OUT
+    ]);
+    const plan = planFor(
+      propose(noUnits, existing, { [units[0].id]: "Seniors" }),
+      existing,
+      "s"
+    );
+    expect(plan.groups).toEqual([
+      {
+        key: "G|Bunk 7",
+        id: null,
+        divisionKey: "d2",
+        name: "Bunk 7",
+        sortOrder: 2
+      }
+    ]);
+  });
+
+  it("a camp with no divisions and a file naming none starts with Main, shown and changeable", () => {
+    const p = propose(noUnits);
+    const units = cards(p).filter((c) => c.select === "division");
+    expect(units.map((c) => c.answer)).toEqual(["Main", "Main"]);
+  });
+
+  it("the program is shown preselected for the camp's only program, and can be changed", () => {
+    const p = propose(noUnits, existing);
+    const choice = cards(p).find((c) => c.select === "program");
+    expect(choice.answer).toBe("Main");
+    expect(choice.options.map((o) => o.value)).toEqual([
+      "Main",
+      "new",
+      LEAVE_OUT
+    ]);
+    const moved = propose(noUnits, existing, { [choice.id]: "new" });
+    expect(moved.timetables[0].program).toBeNull();
+  });
+});
+
+describe("moving a group to the division the file shows (Greg)", () => {
+  const blocks = [
+    ["b1", "P1", at(9), at(9, 45)],
+    ["b2", "P2", at(9, 50), at(10, 35)],
+    ["b3", "Lunch", at(12), at(12, 45)]
+  ];
+  const existing = existingSetup({
+    programs: [
+      program("p1", "Main", {
+        blocks,
+        divisions: [
+          ["d1", "Juniors", [["g3", "Bunk 3"]]],
+          ["d2", "Seniors", [["g4", "Bunk 4"]]]
+        ],
+        recurring: [
+          {
+            Id: "r1",
+            Name: "Library",
+            TimeBlock__c: "b2",
+            Length__c: 1,
+            Monday__c: true,
+            Coverages__r: [{ Division__c: "d1" }]
+          }
+        ]
+      })
+    ],
+    activities: [
+      {
+        Id: "a1",
+        Name: "Boating",
+        Length__c: 1,
+        Eligibilities__r: [{ Division__c: "d2" }]
+      }
+    ]
+  });
+  const files = campWeek(
+    ["Seniors", "Seniors"],
+    ["Bunk 3", "Bunk 4"],
+    rotation
+  );
+
+  it("asks: move, keep, add a new one, or leave out, saying what moving changes", () => {
+    const card = cards(propose(files, existing)).find((c) =>
+      c.id.startsWith("move|")
+    );
+    expect(card.title).toBe(
+      "Bunk 3 is in Juniors. The file puts it in Seniors."
+    );
+    expect(card.subtitle).toBe(
+      "Moving changes who things are for: no longer in Library (who it is for names Juniors); now in Boating (who it is for names Seniors)."
+    );
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Move Bunk 3 from Juniors to Seniors",
+      "Keep it in Juniors",
+      "Add a new Bunk 3 to Seniors",
+      "Leave it out for now"
+    ]);
+  });
+
+  it("each answer saves what it says", () => {
+    const id = cards(propose(files, existing)).find((c) =>
+      c.id.startsWith("move|")
+    ).id;
+    const plan = (answer) =>
+      planFor(propose(files, existing, { [id]: answer }), existing, "s").groups;
+    expect(plan("move")).toEqual([{ key: "g3", id: "g3", divisionKey: "d2" }]);
+    expect(plan("keep")).toEqual([]);
+    expect(plan("new")).toEqual([
+      {
+        key: "G|Bunk 3 (Seniors)",
+        id: null,
+        divisionKey: "d2",
+        name: "Bunk 3",
+        sortOrder: 2
+      }
+    ]);
+    expect(plan(LEAVE_OUT)).toEqual([]);
+  });
+});
+
+describe("who can do an imported activity (PR 15 review, finding 2)", () => {
+  it("is written out when the season has groups the files do not show", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          divisions: [
+            [
+              "d1",
+              "Cabins",
+              [
+                ["g7", "Cabin 7"],
+                ["g8", "Cabin 8"]
+              ]
+            ]
+          ]
+        })
+      ]
+    });
+    const files = DAYS.map((day, d) =>
+      csv(`Camp ${day}.csv`, [
+        ["Time", "Bunk 1", "Bunk 2"],
+        ...BLOCKS.map((b, bi) => [
+          b,
+          ...[0, 1].map((g) => {
+            return bi === 0 && (g + d) % 2 === 0
+              ? "Archery"
+              : rotation(g, d, bi);
+          })
+        ])
+      ])
+    );
+    const card = cards(propose(files, existing)).find(
+      (c) => c.select === "program"
+    );
+    const p = propose(files, existing, { [card.id]: "new" });
+    const archery = p.activities.find((a) => a.name === "Archery");
+    expect(archery.who.names).toEqual(["Main"]);
+    expect(archery.who.keys).toEqual(["D|P0|Main"]);
+  });
+
+  it("is everyone when the files cover every group in the season", () => {
+    const files = DAYS.map((day, d) =>
+      csv(`Camp ${day}.csv`, [
+        ["Time", "Bunk 1", "Bunk 2"],
+        ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
+      ])
+    );
+    expect(
+      propose(files).activities.every((a) => a.who.keys.length === 0)
+    ).toBe(true);
+  });
+});
+
+describe("the same files in any order give the same result (PR 15 review, finding 3)", () => {
+  it("plan and questions do not depend on the order files were chosen in", () => {
+    const camp = campWeek(
+      ["Juniors", "Seniors"],
+      ["Bunk 1", "Bunk 9"],
+      rotation
+    );
+    const other = DAYS.map((day, d) =>
+      csv(`Other ${day}.csv`, [
+        ["Time", "Cabin 1"],
+        ...["8:00-8:50", "9:00-9:50", "12:00-12:45"].map((b, bi) => [
+          b,
+          rotation(0, d, bi)
+        ])
+      ])
+    );
+    const forward = propose([...camp, ...other]);
+    const backward = propose([...other, ...camp].reverse());
+    expect(JSON.stringify(planFor(backward, null, "s"))).toBe(
+      JSON.stringify(planFor(forward, null, "s"))
+    );
+    expect(cards(backward).map((c) => c.id)).toEqual(
+      cards(forward).map((c) => c.id)
+    );
+  });
+});
