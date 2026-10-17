@@ -22,11 +22,12 @@ public with sharing class ImportLog {
   }
 
   /** Marks an import undone, once Undo has put everything back in user mode. */
-  public static void markUndone(Id importId) {
-    // An import is controlled by its season: edit access to it is edit access to the season.
-    requireEditAccess(importId);
+  public static void markUndone(Import__c done) {
+    // An import is controlled by its season (and schedulers have no edit on imports
+    // themselves): the season is what the person must be able to edit.
+    requireEditAccess(done.Season__c);
     Database.update(
-      new Import__c(Id = importId, UndoneAt__c = Datetime.now()),
+      new Import__c(Id = done.Id, UndoneAt__c = Datetime.now()),
       AccessLevel.SYSTEM_MODE
     );
   }

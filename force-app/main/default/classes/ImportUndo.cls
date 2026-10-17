@@ -70,7 +70,7 @@ public with sharing class ImportUndo {
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
-      ImportLog.markUndone(done.Id);
+      ImportLog.markUndone(done);
     } catch (Exception e) {
       Database.rollback(beforeUndo);
       throw e;
