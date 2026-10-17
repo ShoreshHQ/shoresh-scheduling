@@ -96,9 +96,9 @@ public with sharing class ImportUndoDeletes {
   }
 
   /** A record kept is no longer the import's: whatever it is inside is kept too. */
-  private void keep(SObject record, List<String> into) {
+  private void keep(SObject record, List<String> names) {
     createdIds.remove(record.Id);
-    into.add((String) record.get('Name'));
+    names.add((String) record.get('Name'));
   }
 
   /** Records with something inside them the import did not make (one query, with sub-queries). */
@@ -107,9 +107,9 @@ public with sharing class ImportUndoDeletes {
     if (!INSIDE.containsKey(term)) {
       return result;
     }
-    List<String> inside = new List<String>();
+    List<String> subqueries = new List<String>();
     for (String relationship : INSIDE.get(term)) {
-      inside.add(
+      subqueries.add(
         '(SELECT Id FROM ' +
           relationship +
           ' WHERE Id NOT IN :createdIds LIMIT 1)'
@@ -119,7 +119,7 @@ public with sharing class ImportUndoDeletes {
     for (
       SObject record : Database.queryWithBinds(
         'SELECT Id, ' +
-          String.join(inside, ', ') +
+          String.join(subqueries, ', ') +
           ' FROM ' +
           term +
           '__c WHERE Id IN :ids',

@@ -6,12 +6,12 @@ public with sharing class ScheduleDayReads {
   /** The days a save names, each once and within the schedule's week. */
   public static Set<Date> checkedDays(
     Schedule__c schedule,
-    List<DaySave> saves
+    List<ScheduleDaySaves.DaySave> saves
   ) {
     Set<Date> days = new Set<Date>();
-    for (DaySave save : saves) {
-      checkDate(schedule, save.day);
-      if (!days.add(save.day)) {
+    for (ScheduleDaySaves.DaySave daySave : saves) {
+      checkDate(schedule, daySave.day);
+      if (!days.add(daySave.day)) {
         throw new ShoreshException('A save named the same day twice.');
       }
     }

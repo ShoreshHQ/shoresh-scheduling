@@ -290,4 +290,21 @@ describe("part 2 review", () => {
       )
     ).toBe(true);
   });
+
+  it("answers to which group a file means, and to morning or evening, are remembered too", () => {
+    const monday = csv("Monday.csv", [
+      ["Time", "Bunk 1"],
+      ["6:00-6:30", "Wake up"],
+      ["9:00-9:45", "Swim"]
+    ]);
+    const p0 = propose([monday], existing);
+    const id = questionCards(p0, terms, {}).find((c) =>
+      c.id.startsWith("ampm|")
+    ).id;
+    const given = { [id]: "morning" };
+    const plan = planFor(propose([monday], existing, given), existing, "s", {
+      answers: given
+    });
+    expect(plan.remember).toEqual([{ key: id, answer: "morning" }]);
+  });
 });

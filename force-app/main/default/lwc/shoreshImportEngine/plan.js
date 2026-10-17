@@ -167,6 +167,8 @@ export function answersToKeep(proposal, answers) {
   const ids = new Set([
     ...proposal.reading.pairs.map((x) => x.id),
     ...proposal.reading.disagreements.map((x) => x.id),
+    ...proposal.reading.groupAsks.map((x) => x.id),
+    ...proposal.reading.timeAsks.map((x) => x.id),
     ...proposal.asks.map((x) => x.id),
     ...proposal.offeredPlaces.map((x) => x.id)
   ]);
