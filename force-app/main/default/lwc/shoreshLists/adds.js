@@ -11,6 +11,7 @@
  * Answers are names and choices, never record Ids, so they still work in a copied season.
  */
 import { LEAVE_OUT, clock, looseKey } from "c/shoreshImportEngine";
+import { dashLabels } from "./cells";
 
 export function whoAddKey(name, program) {
   return program
@@ -27,6 +28,10 @@ export function blockAddKey(program, name) {
 }
 
 /** Asked per block (its program and name), as Import last year does (ADR 0006 §15). */
+export function dashKey(program, name) {
+  return `dash|${looseKey(program)}|${looseKey(name)}`;
+}
+
 export function tueThuKey(program, name) {
   return `tueThu|${looseKey(program)}|${looseKey(name)}`;
 }
@@ -243,6 +248,25 @@ export function tueThuCards(asks, answers) {
       ],
       answer: answers[id] || null
     }));
+}
+
+/** A dash between two days ("T-Th"): a range, or just those two? One question per item. */
+export function dashCards(asks, answers) {
+  return [...asks.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([id, ask]) => {
+      const labels = dashLabels(ask.from, ask.to);
+      return {
+        id,
+        title: `“${ask.name}” on ${ask.text}: ${labels.range}, or ${labels.list.replace(/^Just/, "just")}?`,
+        options: [
+          { value: "range", label: labels.range },
+          { value: "list", label: labels.list },
+          LEAVE_OUT_OPTION
+        ],
+        answer: answers[id] || null
+      };
+    });
 }
 
 /**

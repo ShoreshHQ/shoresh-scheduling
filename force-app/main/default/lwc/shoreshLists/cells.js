@@ -142,13 +142,25 @@ function dayWord(word) {
 }
 
 /**
- * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon-Wed", "Mon thru Fri",
- * "Tue/Thu", "MWF", "M-F", "Mon Wed Fri", "Mondays and Fridays", "weekdays". A lone T is
- * Tuesday when the cell writes Thursday another way ("T/Th"), Thursday when it writes Tuesday
- * another way, and otherwise asked: { ask: true } until tIs ("Tuesday" or "Thursday") says.
+ * A dash between two days that are not next to each other and don't span the week ("T-Th",
+ * "Mon-Wed"): "ask" (a range, or just those two days?), or "range" to read it as a range.
+ */
+export const TWO_DAY_DASH = "ask";
+
+const SHORT = (day) => day.slice(0, 3);
+const SEPARATOR = new Set(["-", "~"]);
+
+/**
+ * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon thru Fri", "M-F",
+ * "Tue/Thu", "MWF", "Mon Wed Fri", "Mondays and Fridays", "weekdays".
+ * - A lone T is Tuesday when the cell writes Thursday another way ("T/Th"), Thursday when it
+ *   writes Tuesday another way, and otherwise asked ({ ask: "t" }) until said.t says.
+ * - Two or more dashes are a list ("Mon-Wed-Fri"). One dash is a range when its days are next
+ *   to each other or span the week ("Mon-Tue", "M-F"); otherwise asked ({ ask: "dash", from,
+ *   to }) until said.dash is "range" or "list". "thru", "through", "to" are always ranges.
  * Saturday and Sunday can't be read: Shoresh camps run Monday to Friday.
  */
-export function days(text, tIs) {
+export function days(text, said = {}) {
   if (EVERY_DAY.has(text.toLowerCase().replace(/\s*([-–])\s*/g, "-"))) {
     return { value: [...WEEKDAYS] };
   }
@@ -158,9 +170,14 @@ export function days(text, tIs) {
     .map(tidy)
     .filter((p) => p)) {
     const words = part
-      .replace(/\b(?:thru|through|to|until|till)\b/gi, "-")
-      .match(/[–-]|[^\s–-]+/g);
-    const read = words.map((w) => (/^[–-]$/.test(w) ? "-" : dayWord(w)));
+      .replace(/\b(?:thru|through|to|until|till)\b/gi, "~")
+      .match(/[–~-]|[^\s–~-]+/g);
+    const read = words.map((w) => {
+      if (w === "~") {
+        return "~";
+      }
+      return /^[–-]$/.test(w) ? "-" : dayWord(w);
+    });
     const bad = read.findIndex((d) => !d);
     if (bad >= 0) {
       return { problem: `"${words[bad]}" isn't a day` };
@@ -169,7 +186,7 @@ export function days(text, tIs) {
   }
   const written = parts.flatMap((p) => p.read).flat();
   const weekend = written.find(
-    (d) => d !== "-" && d !== TUE_OR_THU && !WEEKDAYS.includes(d)
+    (d) => !SEPARATOR.has(d) && d !== TUE_OR_THU && !WEEKDAYS.includes(d)
   );
   if (weekend) {
     return { problem: `${weekend} isn't a camp day` };
@@ -183,9 +200,9 @@ export function days(text, tIs) {
   if (lone === 2 && !tue && !thu) {
     meanings = ["Tuesday", "Thursday"];
   } else if (lone === 1) {
-    const t = tue === thu ? tIs : tue ? "Thursday" : "Tuesday";
+    const t = tue === thu ? said.t : tue ? "Thursday" : "Tuesday";
     if (!t) {
-      return { ask: true };
+      return { ask: "t" };
     }
     meanings = [t];
   } else if (lone) {
@@ -193,34 +210,91 @@ export function days(text, tIs) {
   }
   const queue = [...meanings];
   const found = new Set();
+  let unsure = null;
   for (const { part, read } of parts) {
     const words = read.map((d) => {
       return Array.isArray(d)
         ? d.map((x) => (x === TUE_OR_THU ? queue.shift() : x))
         : d;
     });
-    for (let i = 0; i < words.length; i++) {
-      if (words[i] !== "-") {
-        words[i].forEach((d) => found.add(d));
-        continue;
-      }
-      const before = words[i - 1];
-      const after = words[i + 1];
-      if (!Array.isArray(before) || !Array.isArray(after)) {
-        return { problem: `"${part}" isn't a day` };
-      }
-      const from = WEEKDAYS.indexOf(before[before.length - 1]);
-      const to = WEEKDAYS.indexOf(after[0]);
-      if (to < from) {
-        return { problem: `"${part}" goes backwards` };
-      }
-      WEEKDAYS.slice(from, to + 1).forEach((d) => found.add(d));
+    const read2 = readPart(part, words, said);
+    if (read2.problem) {
+      return read2;
     }
+    unsure = unsure || read2.unsure;
+    read2.picked.forEach((d) => found.add(d));
+  }
+  if (unsure) {
+    return { ask: "dash", ...unsure };
   }
   // Only separators ("/", "and"): no days written, as if blank.
   return found.size
     ? { value: WEEKDAYS.filter((d) => found.has(d)) }
     : { blank: true };
+}
+
+/** One part of a days cell, its words read: { picked, unsure } or { problem }. */
+function readPart(part, words, said) {
+  const picked = [];
+  const seps = words.filter((w) => SEPARATOR.has(w));
+  // A separator always has a day on each side.
+  const stranded = words.some(
+    (w, i) =>
+      SEPARATOR.has(w) &&
+      (i === 0 ||
+        i === words.length - 1 ||
+        SEPARATOR.has(words[i - 1]) ||
+        SEPARATOR.has(words[i + 1]))
+  );
+  if (stranded) {
+    return { problem: `"${part}" isn't a day` };
+  }
+  if (seps.length >= 2 && seps.every((w) => w === "-")) {
+    // "Mon-Wed-Fri": a list, in order.
+    const listed = words.filter((w) => !SEPARATOR.has(w)).flat();
+    const index = listed.map((d) => WEEKDAYS.indexOf(d));
+    if (index.some((x, i) => i && x < index[i - 1])) {
+      return { problem: `"${part}" goes backwards` };
+    }
+    return { picked: listed };
+  }
+  let unsure = null;
+  for (let i = 0; i < words.length; i++) {
+    if (!SEPARATOR.has(words[i])) {
+      picked.push(...words[i]);
+      continue;
+    }
+    const before = words[i - 1];
+    const after = words[i + 1];
+    const from = WEEKDAYS.indexOf(before[before.length - 1]);
+    const to = WEEKDAYS.indexOf(after[0]);
+    if (to < from) {
+      return { problem: `"${part}" goes backwards` };
+    }
+    const ambiguous =
+      words[i] === "-" &&
+      TWO_DAY_DASH === "ask" &&
+      before.length === 1 &&
+      after.length === 1 &&
+      to - from > 1 &&
+      !(from === 0 && to === WEEKDAYS.length - 1);
+    if (ambiguous && said.dash === "list") {
+      continue;
+    }
+    if (ambiguous && said.dash !== "range") {
+      unsure = unsure || { from: WEEKDAYS[from], to: WEEKDAYS[to] };
+    }
+    picked.push(...WEEKDAYS.slice(from, to + 1));
+  }
+  return { picked, unsure };
+}
+
+/** The two answers a dash question offers: "Tue to Thu", "Just Tue and Thu". */
+export function dashLabels(from, to) {
+  return {
+    range: `${SHORT(from)} to ${SHORT(to)}`,
+    list: `Just ${SHORT(from)} and ${SHORT(to)}`
+  };
 }
 
 /**
@@ -247,9 +321,13 @@ function time(text) {
     : { value: range.start };
 }
 
-/** "9": 9:00 AM. 7 to 11 is the morning, 12 to 4 the afternoon, 5 and 6 asked, 13 to 23 as on a 24-hour clock. */
+/** "9": 9:00 AM. 7 to 11 is the morning, 12 to 4 the afternoon, 5 and 6 asked. */
 function bareHour(hour, text) {
   if (hour < 1 || hour > 23) {
+    return { problem: `"${text}" isn't a camp-day time` };
+  }
+  if (hour >= 13) {
+    // A bare 13 to 23 is outside the camp-day rule (ADR 0007 §14); "8 PM" written out is read.
     return { problem: `"${text}" isn't a camp-day time` };
   }
   if (hour >= 7) {

@@ -28,6 +28,8 @@ import { resolveWho, whoTargets } from "./who";
 import {
   ampmCards,
   ampmKey,
+  dashCards,
+  dashKey,
   tueThuCards,
   tueThuKey,
   blockAddKey,
@@ -96,7 +98,7 @@ function readRows(rows, start, used) {
     const values = {};
     const blanks = new Set();
     const unsure = {};
-    const tueOrThu = {};
+    const dayAsks = {};
     const problems = [];
     const requiredBlanks = [];
     used.forEach(({ column, index }) => {
@@ -104,7 +106,7 @@ function readRows(rows, start, used) {
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
       } else if (read.ask) {
-        tueOrThu[column.key] = tidy(row[index]);
+        dayAsks[column.key] = tidy(row[index]);
       } else if (
         read.blank &&
         column.requiredValue &&
@@ -140,7 +142,7 @@ function readRows(rows, start, used) {
       values,
       blanks,
       unsure,
-      tueOrThu,
+      dayAsks,
       requiredBlanks,
       problems
     });
@@ -478,37 +480,56 @@ function resolveAmpm(read, answers) {
   return ampmCards(asks, answers);
 }
 
-/** A lone "T" in a days cell: Tuesday or Thursday, asked per item, never guessed. */
-function resolveTueThu(read, answers) {
-  const asks = new Map();
+/**
+ * A days cell that can't be read without an answer, asked per item, never guessed: a lone "T"
+ * (Tuesday or Thursday?), then a dash between two days ("T-Th": a range, or just those two?).
+ */
+function resolveDayAsks(read, answers) {
+  const asks = { t: new Map(), dash: new Map() };
+  const note = (kind, id, r, text, extra) => {
+    const ask = asks[kind].get(id) || { names: [], texts: [] };
+    // The days shown come from the first cell alphabetically, whatever the row order.
+    const first = !ask.texts.length || text < ask.texts[0];
+    asks[kind].set(id, {
+      ...(first ? extra : { from: ask.from, to: ask.to }),
+      names: [...ask.names, r.name],
+      texts: [...new Set([...ask.texts, text])].sort()
+    });
+  };
   read.filter(usable).forEach((r) => {
-    Object.entries(r.tueOrThu).forEach(([key, text]) => {
-      const id = tueThuKey(r.values.program || "", r.name);
-      const ask = asks.get(id) || { names: [], texts: [] };
-      asks.set(id, {
-        names: [...ask.names, r.name],
-        texts: [...new Set([...ask.texts, text])].sort()
-      });
-      const answer = answers[id];
-      if (answer === LEAVE_OUT) {
-        r.leftOut = true;
-      } else if (answer === "Tuesday" || answer === "Thursday") {
-        const reread = readDays(text, answer);
-        if (reread.problem) {
-          r.problems.push(reread.problem);
+    Object.entries(r.dayAsks).forEach(([key, text]) => {
+      const program = r.values.program || "";
+      const said = {};
+      let reread = readDays(text, said);
+      while (reread.ask && !r.leftOut && !r.open) {
+        const kind = reread.ask;
+        const id =
+          kind === "t" ? tueThuKey(program, r.name) : dashKey(program, r.name);
+        note(kind, id, r, text, { from: reread.from, to: reread.to });
+        const answer = answers[id];
+        const allowed =
+          kind === "t" ? ["Tuesday", "Thursday"] : ["range", "list"];
+        if (answer === LEAVE_OUT) {
+          r.leftOut = true;
+        } else if (allowed.includes(answer)) {
+          said[kind] = answer;
+          reread = readDays(text, said);
         } else {
-          r.values[key] = reread.value;
+          r.open = true;
         }
-      } else {
-        r.open = true;
+      }
+      if (reread.problem) {
+        r.problems.push(reread.problem);
+      } else if (!reread.ask) {
+        r.values[key] = reread.value;
       }
     });
   });
-  asks.forEach((ask) => {
+  [...asks.t.values(), ...asks.dash.values()].forEach((ask) => {
     ask.name = mostWritten(ask.names);
     ask.text = ask.texts.join(", ");
   });
-  return tueThuCards(asks, answers);
+  return [...tueThuCards(asks.t, answers), ...dashCards(asks.dash, answers)];
 }
 
 function programEntry(setup, programId) {
@@ -682,7 +703,9 @@ function settleLeads(read, screen, used, answers) {
     // from the other rows (PR 19 review, 5c).
     const broken = rows.find((r) => r.problems.length);
     let lead = broken || rows[0];
-    const differ = broken ? null : differingRows(rows, used);
+    // Compared once every row's own questions are answered (a lone T, 5 or 6 o'clock).
+    const differ =
+      broken || rows.some((r) => r.open) ? null : differingRows(rows, used);
     if (differ) {
       const id = `rowsDiffer|${screen.key}|${key}`;
       const answer = answers[id];
@@ -928,7 +951,7 @@ export function listProposal(input) {
   result.cards.push(...programs.cards);
   // Asked per block once its program is settled (the key is the program as resolved).
   result.cards.push(...resolveAmpm(read, answers));
-  result.cards.push(...resolveTueThu(read, answers));
+  result.cards.push(...resolveDayAsks(read, answers));
   // A group's division is resolved before rows are settled: a group is its program,
   // division, and name, by the division it resolves to, not as written.
   const divisions = resolveProgramRefs(read, used, setup, answers, t, [

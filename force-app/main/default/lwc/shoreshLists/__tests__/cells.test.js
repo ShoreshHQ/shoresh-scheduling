@@ -7,7 +7,7 @@ const TIME = { type: "time" };
 describe("days", () => {
   it.each([
     ["Monday, Wednesday", ["Monday", "Wednesday"]],
-    ["Mon-Wed", ["Monday", "Tuesday", "Wednesday"]],
+    ["Mon-Tue", ["Monday", "Tuesday"]],
     ["Tue/Thu", ["Tuesday", "Thursday"]],
     ["weekdays", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
     ["Mon - Fri", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
@@ -30,7 +30,12 @@ describe("days", () => {
     ["TTh", ["Tuesday", "Thursday"]],
     ["MTWThF", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
     ["M Tu W T F", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
-    ["Mon Wed-Fri", ["Monday", "Wednesday", "Thursday", "Friday"]],
+    ["Mon Wed-Thu", ["Monday", "Wednesday", "Thursday"]],
+    // Coordinator, #20 round 2: two or more dashes are a list.
+    ["Mon-Wed-Fri", ["Monday", "Wednesday", "Friday"]],
+    ["M-W-F", ["Monday", "Wednesday", "Friday"]],
+    ["Mon - Wed - Fri", ["Monday", "Wednesday", "Friday"]],
+    ["Mon thru Wed", ["Monday", "Tuesday", "Wednesday"]],
     // Two lone Ts: Tuesday, then Thursday.
     ["MTWTF", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
     ["M T W T F", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
@@ -57,17 +62,49 @@ describe("days", () => {
   it.each(["T", "M/T/W", "T-F"])(
     "asks whether T is Tuesday or Thursday in %s",
     (text) => {
-      expect(readCell(DAYS, text)).toEqual({ ask: true });
+      expect(readCell(DAYS, text)).toEqual({ ask: "t" });
     }
   );
 
   it("reads T as answered", () => {
-    expect(days("M/T/W", "Thursday")).toEqual({
+    expect(days("M/T/W", { t: "Thursday" })).toEqual({
       value: ["Monday", "Wednesday", "Thursday"]
     });
-    expect(days("T-F", "Tuesday")).toEqual({
-      value: ["Tuesday", "Wednesday", "Thursday", "Friday"]
+    expect(days("T-F", { t: "Thursday" })).toEqual({
+      value: ["Thursday", "Friday"]
     });
+    // Tuesday to Friday is neither next door nor the whole week: asked next.
+    expect(days("T-F", { t: "Tuesday" })).toEqual({
+      ask: "dash",
+      from: "Tuesday",
+      to: "Friday"
+    });
+  });
+
+  it.each([
+    ["T-Th", "Tuesday", "Thursday"],
+    ["Tue-Thu", "Tuesday", "Thursday"],
+    ["M-W", "Monday", "Wednesday"],
+    ["Mon, Wed-Fri", "Wednesday", "Friday"]
+  ])("asks whether %s is a range or two days", (text, from, to) => {
+    expect(readCell(DAYS, text)).toEqual({ ask: "dash", from, to });
+  });
+
+  it("reads a two-day dash as answered", () => {
+    expect(days("T-Th", { dash: "range" })).toEqual({
+      value: ["Tuesday", "Wednesday", "Thursday"]
+    });
+    expect(days("T-Th", { dash: "list" })).toEqual({
+      value: ["Tuesday", "Thursday"]
+    });
+  });
+
+  it.each([
+    ["W-F-M", '"W-F-M" goes backwards'],
+    ["Th-T", '"Th-T" goes backwards'],
+    ["M--F", '"M--F" isn\'t a day']
+  ])("can't read %s", (text, problem) => {
+    expect(readCell(DAYS, text)).toEqual({ problem });
   });
 });
 
@@ -80,17 +117,19 @@ describe("bare hours (coordinator, #20 review)", () => {
     ["1", { value: 13 * 60 }],
     ["4", { value: 16 * 60 }],
     ["5", { value: 17 * 60, unsure: true }],
-    ["6", { value: 18 * 60, unsure: true }],
-    ["15", { value: 15 * 60 }]
+    ["6", { value: 18 * 60, unsure: true }]
   ])("%s", (text, expected) => {
     expect(readCell(TIME, text)).toEqual(expected);
   });
 
-  it.each(["0", "24", "99"])("can't read %s", (text) => {
-    expect(readCell(TIME, text)).toEqual({
-      problem: `"${text}" isn't a camp-day time`
-    });
-  });
+  it.each(["0", "13", "15", "20", "23", "24", "99"])(
+    "can't read %s",
+    (text) => {
+      expect(readCell(TIME, text)).toEqual({
+        problem: `"${text}" isn't a camp-day time`
+      });
+    }
+  );
 });
 
 describe("times", () => {

@@ -260,6 +260,71 @@ describe("a lone T in a days cell", () => {
   });
 });
 
+describe("a dash between two days (coordinator, #20 round 2)", () => {
+  const rows = [
+    ["Recurring activity", "Time block", "Runs on"],
+    ["Flag", "Period 1", "T-Th"]
+  ];
+
+  it("asks a range or just the two days, and reads them as answered", () => {
+    const p = read("recurringActivities", rows);
+    expect(row(p, "Flag").status).toBe("asked");
+    const card = questionCards(p, terms, {}).find((c) =>
+      c.id.startsWith("dash|")
+    );
+    expect(card.title).toBe("“Flag” on T-Th: Tue to Thu, or just Tue and Thu?");
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Tue to Thu",
+      "Just Tue and Thu",
+      "Leave it out for now"
+    ]);
+    const list = read("recurringActivities", rows, { [card.id]: "list" });
+    expect(row(list, "Flag").values.days).toEqual(["Tuesday", "Thursday"]);
+    const range = read("recurringActivities", rows, { [card.id]: "range" });
+    expect(row(range, "Flag").values.days).toEqual([
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ]);
+  });
+
+  it("asks T first, then the dash when the answer leaves one", () => {
+    const tf = [rows[0], ["Flag", "Period 1", "T-F"]];
+    const first = questionCards(read("recurringActivities", tf), terms, {});
+    expect(first.map((c) => c.id.split("|")[0])).toEqual(["tueThu"]);
+    const t = { [first[0].id]: "Tuesday" };
+    const second = questionCards(read("recurringActivities", tf, t), terms, t)
+      .filter((c) => !c.answer)
+      .map((c) => c.id.split("|")[0]);
+    expect(second).toEqual(["dash"]);
+  });
+});
+
+describe("rows that differ wait for a row's own question", () => {
+  it("asks the lone T first, then compares", () => {
+    const rows = [
+      ["Recurring activity", "Time block", "Runs on"],
+      ["Flag", "Period 1", "T"],
+      ["flag", "Period 1", "Tue"]
+    ];
+    const ids = (p, a) =>
+      questionCards(p, terms, a)
+        .filter((c) => !c.answer)
+        .map((c) => c.id.split("|")[0]);
+    expect(ids(read("recurringActivities", rows), {})).toEqual(["tueThu"]);
+    const p = read("recurringActivities", rows);
+    const id = questionCards(p, terms, {})[0].id;
+    // Tuesday: the rows agree, nothing more to ask.
+    const same = { [id]: "Tuesday" };
+    expect(ids(read("recurringActivities", rows, same), same)).toEqual([]);
+    // Thursday: they differ, now asked.
+    const differ = { [id]: "Thursday" };
+    expect(ids(read("recurringActivities", rows, differ), differ)).toEqual([
+      "rowsDiffer"
+    ]);
+  });
+});
+
 describe("time blocks", () => {
   it("compares times, asks 6 o'clock, and can't read an end before the start", () => {
     const rows = [

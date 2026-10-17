@@ -147,7 +147,11 @@ const LISTS = {
       ["Main", "Mon-Fri"],
       ["main", "Mon-Fri"],
       ["Teens", "Mon/Wed"],
-      ["teens", "Tue"]
+      ["teens", "Tue"],
+      ["Hikers", "M-W-F"],
+      ["hikers", "Mon - Wed - Fri"],
+      ["Rovers", "T-Th"],
+      ["rovers", "Tue-Thu"]
     ]
   ],
   divisions: [
@@ -202,7 +206,10 @@ const LISTS = {
     [
       ["Flag", "Period 1", "Mon", "Juniors"],
       ["flag", "Period 1", "Tue", "Seniors"],
-      ["Swim", "Period 1", "Mon", "Juniors"]
+      ["Swim", "Period 1", "Mon", "Juniors"],
+      ["Golf", "Period 1", "M-W-F", "Juniors"],
+      ["Tennis", "Period 1", "T-Th", "Juniors"],
+      ["tennis", "Period 1", "T", "Juniors"]
     ]
   ]
 };

@@ -134,9 +134,14 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     "Wednesdays", "weekdays", and letters (coordinator, #20 review): "M/W/F", "M-F", "MWF",
     "Tu", "Th", "W", "F". A lone T is Tuesday when the cell writes Thursday another way ("T/Th"),
     Thursday when it writes Tuesday another way, and otherwise asked ("is T Tuesday or
-    Thursday?"). Saturday and Sunday can't be read. **Times** read "9:00", "9:00 AM", "13:30",
+    Thursday?"); two ("MTWTF") are Tuesday, then Thursday. Two or more dashes are a list
+    ("Mon-Wed-Fri" is three days; coordinator, #20 round 2). One dash is a range when its days
+    are next to each other ("Mon-Tue") or span the week ("M-F"); any other ("T-Th") is asked:
+    "Tue to Thu, or just Tue and Thu?" (`TWO_DAY_DASH` in cells.js; "range" reads them all as
+    ranges, pending Greg). "thru", "through" and "to" are always ranges. Saturday and Sunday
+    can't be read. **Times** read "9:00", "9:00 AM", "13:30",
     and a bare hour by the camp-day rule (ADR 0006): "9" is 9:00 AM, 7 to 11 the morning, 12 to 4
-    the afternoon, 5 and 6 asked. Shoresh writes "9:00 AM"; a time
+    the afternoon, 5 and 6 asked; a bare 13 to 23 can't be read ("8 PM" written out can). Shoresh writes "9:00 AM"; a time
     outside a camp day ("15:00 AM", before 5 in the morning) can't be read. A new block whose
     list has no Part of day column starts as the time says (before noon: morning); a blank
     cell in a column the file has can't be read, as for every value an item can't be without
