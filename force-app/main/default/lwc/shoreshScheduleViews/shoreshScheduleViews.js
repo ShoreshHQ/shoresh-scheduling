@@ -188,6 +188,8 @@ function cell(key, at, item, t) {
   return {
     key,
     row: at.row,
+    column: at.column,
+    length: at.length,
     style: place(at.row, at.column, at.length),
     ...cellView(item, t)
   };
@@ -198,6 +200,8 @@ function problemCell(dayIndex, rowCount, problem) {
   return {
     key: `${dayIndex}-problem`,
     row: 0,
+    column: dayIndex,
+    length: Math.max(rowCount, 1),
     style: place(0, dayIndex, Math.max(rowCount, 1)),
     text: "Could not be read",
     className: "cell cell_problem",
@@ -335,6 +339,8 @@ export function activityGrid(view, activityId) {
       cells.push({
         key: `${dayIndex}-${row}`,
         row,
+        column: dayIndex,
+        length: 1,
         style: place(row, dayIndex, 1),
         className: here.length
           ? "cell cell_activity-here"

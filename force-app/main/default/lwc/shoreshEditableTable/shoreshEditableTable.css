@@ -1,0 +1,18 @@
+@import "c/shoreshTokens";
+
+/* "Needs a look": the bronze caution dot, with a short tag in ordinary text. */
+.same-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--slds-g-color-neutral-base-30, #444);
+}
+
+.same-name-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-caution);
+}

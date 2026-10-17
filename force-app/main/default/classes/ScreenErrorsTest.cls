@@ -84,4 +84,130 @@ private class ScreenErrorsTest {
       );
     }
   }
+
+  @IsTest
+  static void aNumberedRowIsNotNamedInTheMessage() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    CampLabel__c label = new CampLabel__c(
+      Camp__c = camp.Id,
+      ModelTerm__c = 'Group',
+      Singular__c = 'Bunk',
+      Plural__c = 'Bunks'
+    );
+    Database.insert(label, AccessLevel.SYSTEM_MODE);
+    try {
+      // A change to a saved row is where its name (here CL-00001) used to be read.
+      UserModeWrites.save(
+        new List<SObject>{ new CampLabel__c(Id = label.Id, Singular__c = null) }
+      );
+      Assert.fail('A label needs its words');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.areEqual(
+        'Something required is blank. Fill it in and save again.',
+        ScreenErrors.of(e).getMessage(),
+        'No "CL-00001" in front'
+      );
+    }
+  }
+
+  @IsTest
+  static void aWeekIsNamedInTheCampsOwnWord() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = camp.Id,
+        ModelTerm__c = 'Week',
+        Singular__c = 'Session',
+        Plural__c = 'Sessions'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Week__c saved = ShoreshTestData.weeks(season.Id, 1)[0];
+    Assert.areEqual(
+      'Session',
+      ScreenErrorWords.forWeek(new Week__c(Season__c = season.Id))
+        .singularInSentence('Week')
+    );
+    Assert.areEqual(
+      'Session',
+      ScreenErrorWords.forWeek(new Week__c(Id = saved.Id))
+        .singularInSentence('Week')
+    );
+    Assert.areEqual(
+      'week',
+      ScreenErrorWords.forWeek(new Week__c()).singularInSentence('Week'),
+      'Unknown camp: the standard word'
+    );
+  }
+
+  @IsTest
+  static void aMissingSeasonIsNamedInTheCampsOwnWord() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = camp.Id,
+        ModelTerm__c = 'Season',
+        Singular__c = 'Session',
+        Plural__c = 'Sessions'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Season__c gone = ShoreshTestData.season(camp.Id, 'Summer 2025');
+    Database.delete(gone, AccessLevel.SYSTEM_MODE);
+    try {
+      SeasonSetupController.getSeasonSetupInCamp(camp.Id, gone.Id);
+      Assert.fail('A removed season is not shown');
+    } catch (AuraHandledException e) {
+      Assert.areEqual(
+        'That Session wasn\'t found. Reload the page.',
+        e.getMessage()
+      );
+    }
+  }
+
+  @IsTest
+  static void aSeasonFromAnotherCampIsNotShown() {
+    Camp__c willow = ShoreshTestData.camp('Camp Willow');
+    Camp__c cedar = ShoreshTestData.camp('Camp Cedar');
+    Season__c cedars = ShoreshTestData.season(cedar.Id, 'Summer 2026');
+    Assert.isNotNull(
+      SeasonSetupController.getSeasonSetupInCamp(cedar.Id, cedars.Id),
+      'Its own camp sees it'
+    );
+    try {
+      SeasonSetupController.getSeasonSetupInCamp(willow.Id, cedars.Id);
+      Assert.fail('Another camp\'s season is refused');
+    } catch (AuraHandledException e) {
+      Assert.areEqual(
+        'That season wasn\'t found. Reload the page.',
+        e.getMessage()
+      );
+    }
+  }
+
+  @IsTest
+  static void aMessageFromElsewhereKeepsTheRowsName() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+    try {
+      // The date rule's own message happens to start with this week's name.
+      UserModeWrites.save(
+        new List<SObject>{
+          new Week__c(
+            Id = week.Id,
+            Name = 'The end',
+            EndDate__c = week.StartDate__c.addDays(-1)
+          )
+        }
+      );
+      Assert.fail('Backwards dates are refused');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.areEqual(
+        '"The end": The end date must be on or after the start date.',
+        ScreenErrors.of(e).getMessage()
+      );
+    }
+  }
 }

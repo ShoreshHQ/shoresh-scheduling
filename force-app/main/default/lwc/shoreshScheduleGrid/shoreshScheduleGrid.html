@@ -1,10 +1,19 @@
 <template>
   <div class="frame-scroll">
-    <div class="frame" role="table" style={frameStyle} data-id="schedule-grid">
+    <div
+      class="frame"
+      role="table"
+      aria-label={label}
+      aria-rowcount={rowCount}
+      aria-colcount={colCount}
+      style={frameStyle}
+      data-id="schedule-grid"
+    >
       <div class="grid grid_header" role="rowgroup" style={columnTemplate}>
-        <div role="row" class="row">
+        <div role="row" class="row" aria-rowindex="1">
           <div
             role="columnheader"
+            aria-colindex="1"
             class="head row-head"
             style="grid-row: 1 / span 1; grid-column: 1 / span 1"
           >
@@ -14,6 +23,7 @@
             <div
               key={column.key}
               role="columnheader"
+              aria-colindex={column.colIndex}
               class="head"
               style={column.style}
               data-column={column.key}
@@ -31,8 +41,18 @@
       </div>
       <div class="grid grid_body" role="rowgroup" style={bodyStyle}>
         <template for:each={bodyRows} for:item="row">
-          <div key={row.key} role="row" class="row">
-            <div role="rowheader" class="row-head block" style={row.style}>
+          <div
+            key={row.key}
+            role="row"
+            class="row"
+            aria-rowindex={row.rowIndex}
+          >
+            <div
+              role="rowheader"
+              aria-colindex="1"
+              class="row-head block"
+              style={row.style}
+            >
               <span class="block-name">{row.name}</span>
               <template for:each={row.timeLines} for:item="line">
                 <span key={line.key} class="block-time">{line.text}</span>
@@ -45,6 +65,8 @@
               <div
                 key={cell.key}
                 role="cell"
+                aria-colindex={cell.colIndex}
+                aria-rowspan={cell.rowSpan}
                 class={cell.className}
                 style={cell.style}
                 title={cell.title}

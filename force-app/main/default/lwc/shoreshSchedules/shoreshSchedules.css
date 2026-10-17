@@ -1,3 +1,5 @@
+@import "c/shoreshTokens";
+
 /* Shoresh desktop's schedule screen (ScheduleScreen.jsx and its views), in Salesforce's tokens. */
 .schedules {
   position: relative;
@@ -210,8 +212,8 @@
 }
 
 .swatch_not-set-up {
-  border: 1.5px dashed var(--slds-g-color-warning-base-60, #dd7a01);
-  background: var(--slds-g-color-warning-base-95, #fef1e5);
+  border: 1.5px dashed var(--shoresh-caution);
+  background: var(--shoresh-caution-tint);
 }
 
 .swatch_open {
@@ -221,7 +223,7 @@
 .note {
   font-size: 10px;
   font-weight: 600;
-  color: var(--slds-g-color-warning-base-40, #8c4b02);
+  color: var(--shoresh-text-secondary);
 }
 
 .empty-state {

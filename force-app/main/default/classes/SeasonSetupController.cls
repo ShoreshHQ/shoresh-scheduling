@@ -66,8 +66,17 @@ public with sharing class SeasonSetupController {
 
   @AuraEnabled
   public static SeasonSetupReader.SeasonSetup getSeasonSetup(Id seasonId) {
+    return getSeasonSetupInCamp(null, seasonId);
+  }
+
+  /** The same, for a screen showing one camp: a missing season is named in that camp's words. */
+  @AuraEnabled
+  public static SeasonSetupReader.SeasonSetup getSeasonSetupInCamp(
+    Id campId,
+    Id seasonId
+  ) {
     try {
-      return SeasonSetupReader.readForScreen(seasonId);
+      return SeasonSetupReader.readForScreen(seasonId, campId);
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }

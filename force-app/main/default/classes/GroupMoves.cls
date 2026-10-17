@@ -37,12 +37,17 @@ public with sharing class GroupMoves {
       }
       Division__c target = divisions.get(grp.Division__c);
       Division__c origin = divisions.get(moves.get(grp.Id));
-      if (target.Program__c != origin.Program__c) {
-        Id campId = origin.Program__r.Season__r.Camp__c;
-        if (!labelsByCamp.containsKey(campId)) {
-          labelsByCamp.put(campId, CampLabels.forCamp(campId));
-        }
-        CampLabels labels = labelsByCamp.get(campId);
+      Id campId = origin.Program__r.Season__r.Camp__c;
+      if (!labelsByCamp.containsKey(campId)) {
+        labelsByCamp.put(campId, CampLabels.forCamp(campId));
+      }
+      CampLabels labels = labelsByCamp.get(campId);
+      if (target == null) {
+        // No name here: the screen puts the row's name in front ("Bunk 3": Pick its unit.).
+        grp.addError(
+          'Pick its ' + labels.singularInSentence('Division') + '.'
+        );
+      } else if (target.Program__c != origin.Program__c) {
         grp.addError(
           labels.plural('Group') +
             ' can move only to another ' +

@@ -7,14 +7,21 @@
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
-  /** The season for the setup screen; refused when it is gone or out of reach. */
-  public static SeasonSetup readForScreen(Id seasonId) {
+  /**
+   * The season for the setup screen; refused when it is gone or out of reach, in the words of the
+   * camp the screen is showing (the season's own camp cannot be read when it is out of reach).
+   */
+  public static SeasonSetup readForScreen(Id seasonId, Id campId) {
     SeasonSetup setup = read(seasonId);
-    if (setup == null) {
+    // A season from another camp is not this screen's, whatever the person may see.
+    if (setup == null || (campId != null && setup.season.Camp__c != campId)) {
+      CampLabels labels = campId == null
+        ? CampLabels.modelTermsOnly()
+        : CampLabels.forCamp(campId);
       throw new ShoreshException(
         'That ' +
-          CampLabels.modelTermsOnly().singularInSentence('Season') +
-          ' was not found, or you do not have access to it.'
+          labels.singularInSentence('Season') +
+          ' wasn\'t found. Reload the page.'
       );
     }
     return setup;

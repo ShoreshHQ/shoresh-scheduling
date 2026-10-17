@@ -69,7 +69,10 @@ private class SeasonSetupControllerTest {
         SeasonSetupController.getSeasonSetup(season.Id);
         Assert.fail('Not shared, not shown');
       } catch (AuraHandledException e) {
-        Assert.isTrue(errorOf(e).contains('was not found'));
+        Assert.areEqual(
+          'That season wasn\'t found. Reload the page.',
+          errorOf(e)
+        );
       }
     }
   }

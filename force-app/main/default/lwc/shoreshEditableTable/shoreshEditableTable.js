@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { looseKey } from "c/shoreshImportEngine";
 
 /**
  * A small table of records edited in place. Changes stay on screen until the scheduler
@@ -6,7 +7,8 @@ import { LightningElement, api } from "lwc";
  *
  * columns: [{ fieldName, label, type: 'text'|'number'|'date'|'time'|'checkbox'|'picklist', options,
  *   required, min, excludeSelf }]  (min: smallest number allowed, for number columns;
- *   excludeSelf: a picklist of records leaves out the row's own record)
+ *   excludeSelf: a picklist of records leaves out the row's own record; savedOnly: new rows show
+ *   the value as text, not a field to change)
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen. Only this table's own successful save clears it.
  *
@@ -24,10 +26,23 @@ import { LightningElement, api } from "lwc";
  * who each row covers, with a Change button that opens the same picker as activities' "Who can
  * do it" under the row. An empty choice means everyone.
  *
+ * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
+ *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
+ *   "Same name as another" tag. Every row counts, hidden or unsaved. A heads-up only.
+ *   sameNameScope / sameNamesElsewhere: when rows can move to another scope (a group's
+ *   division), a row is compared within the scope its values now name, and against
+ *   sameNamesElsewhere[scope] (names in other scopes' tables, and names moving in from them).
+ *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
+ * draftNote / draftNoteHeading: a note worked out from a saved row's unsaved values,
+ *   draftNote(values, original) -> text or null, shown in that column while it applies (instead
+ *   of the row's saved note). Without notesHeading the column shows only while one applies.
  * rowActions: fixes offered in a saved row's note; each saves just its changes to that row.
  *
  * Fires:
+ *   pendingnames { moved: { scope: [names] } } - with sameNameScope, whenever the saved rows
+ *          switched to another scope (and not saved yet) change, so the screen can show those
+ *          names to the other scopes' tables
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
  *          fields only; call onFailure() if the save did not go through. With weeks, also
  *          weeksOff [{ target, week }, or { row, week } for a new row: its place in records]
@@ -52,6 +67,11 @@ export default class ShoreshEditableTable extends LightningElement {
   @api weekPhrase = "runs in";
   @api notesHeading;
   @api rowNotes = {};
+  @api flagSameNames = false;
+  @api sameNameScope;
+  @api sameNamesElsewhere = {};
+  @api draftNote;
+  @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
   @api rowActions = {};
 
@@ -203,7 +223,35 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get hasNotes() {
-    return !!this.notesHeading;
+    return (
+      !!this.notesHeading ||
+      this.visibleDrafts.some((d) => !!this.draftNotes.get(d.key))
+    );
+  }
+
+  /** Each saved row's draft note, worked out once per change (row key -> text). */
+  get draftNotes() {
+    if (
+      this._notesFor !== this.drafts ||
+      this._notesFrom !== this.draftNote
+    ) {
+      this._notesFor = this.drafts;
+      this._notesFrom = this.draftNote;
+      this._draftNotes = new Map(
+        this.drafts.map((d) => [d.key, this.noteFromDraft(d)])
+      );
+    }
+    return this._draftNotes;
+  }
+
+  get notesTitle() {
+    return this.notesHeading || this.draftNoteHeading;
+  }
+
+  noteFromDraft(draft) {
+    return !draft.isNew && typeof this.draftNote === "function"
+      ? this.draftNote(draft.values, draft.original)
+      : null;
   }
 
   /** Every column, for the row that opens under a row to choose who it covers. */
@@ -282,8 +330,59 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.visibleDrafts.length > 0;
   }
 
+  renderedCallback() {
+    if (!this.sameNameScope) {
+      return;
+    }
+    const field = this.sameNameScope;
+    const moved = {};
+    this.drafts.forEach((draft) => {
+      const to = draft.values[field];
+      if (!draft.isNew && to && to !== draft.original[field] && draft.values.Name) {
+        moved[to] = [...(moved[to] || []), draft.values.Name];
+      }
+    });
+    const signature = JSON.stringify(moved);
+    if (signature !== this._movedSignature) {
+      this._movedSignature = signature;
+      this.dispatchEvent(new CustomEvent("pendingnames", { detail: { moved } }));
+    }
+  }
+
+  /** Keys of the rows whose name another row also has, in the same scope. */
+  get sameNameKeys() {
+    const same = new Set();
+    if (!this.flagSameNames) {
+      return same;
+    }
+    const scopeOf = (draft) =>
+      (this.sameNameScope ? draft.values[this.sameNameScope] || "" : "");
+    const elsewhere = this.sameNamesElsewhere || {};
+    const byName = new Map();
+    this.drafts.forEach((draft) => {
+      const name = looseKey(draft.values.Name);
+      if (!name) {
+        return;
+      }
+      const scope = scopeOf(draft);
+      const key = `${scope}|${name}`;
+      byName.set(key, [...(byName.get(key) || []), draft.key]);
+      if ((elsewhere[scope] || []).some((other) => looseKey(other) === name)) {
+        same.add(draft.key);
+      }
+    });
+    byName.forEach((keys) => {
+      if (keys.length > 1) {
+        keys.forEach((key) => same.add(key));
+      }
+    });
+    return same;
+  }
+
   get tableRows() {
     const offWeeks = this.offWeeks;
+    const sameNames = this.sameNameKeys;
+    const draftNotes = this.draftNotes;
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
     return this.visibleDrafts.map((draft) => ({
@@ -297,7 +396,9 @@ export default class ShoreshEditableTable extends LightningElement {
       whoLabel: whoColumn
         ? `${whoColumn.label}: ${draft.values.Name || ""}`.trim()
         : "",
-      note: draft.isNew ? "" : notes[draft.original.Id] || "",
+      note: draft.isNew
+        ? ""
+        : draftNotes.get(draft.key) || notes[draft.original.Id] || "",
       actions: draft.isNew
         ? []
         : ((this.rowActions || {})[draft.original.Id] || []).map((action) => ({
@@ -311,6 +412,15 @@ export default class ShoreshEditableTable extends LightningElement {
         : `Delete ${draft.values.Name || ""}`.trim(),
       cells: this.columns.map((col) => {
         const value = draft.values[col.fieldName];
+        if (col.savedOnly && draft.isNew) {
+          const shown = (col.options || []).find((o) => o.value === value);
+          return {
+            key: `${draft.key}-${col.fieldName}`,
+            fieldName: col.fieldName,
+            isFixed: true,
+            fixedText: shown ? shown.label : ""
+          };
+        }
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
@@ -322,6 +432,7 @@ export default class ShoreshEditableTable extends LightningElement {
               )
             : col.options,
           isText: col.type === "text" || !col.type,
+          sameName: col.fieldName === "Name" && sameNames.has(draft.key),
           isNumber: col.type === "number",
           min: col.min,
           isDate: col.type === "date",

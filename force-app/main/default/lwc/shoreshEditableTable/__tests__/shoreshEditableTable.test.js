@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshEditableTable, { timeText } from "c/shoreshEditableTable";
+import { looseKey } from "c/shoreshImportEngine";
 
 const COLUMNS = [
   { fieldName: "Name", label: "Name", type: "text", required: true },
@@ -780,6 +781,134 @@ describe("c-shoresh-editable-table", () => {
         ...element.shadowRoot.querySelectorAll('[data-id="note"]')
       ].map((n) => n.textContent.trim());
       expect(notes).toEqual(["Bunk 3 is morning only and is left out.", ""]);
+    });
+  });
+
+  it("shows a note worked out from a saved row's unsaved values while it applies", async () => {
+    const element = render({
+      columns: COLUMNS,
+      rows: ROWS,
+      draftNoteHeading: "Moving",
+      draftNote: (values, original) =>
+        (values.Name !== original.Name ? `Renamed to ${values.Name}` : null)
+    });
+    await flush();
+    expect(element.shadowRoot.querySelector('[data-id="note"]')).toBe(null);
+    change(field(element, 0, "Name"), "Swim time");
+    await flush();
+    const notes = [...element.shadowRoot.querySelectorAll('[data-id="note"]')];
+    expect(notes.map((n) => n.textContent.trim())).toEqual([
+      "Renamed to Swim time",
+      ""
+    ]);
+    expect(element.shadowRoot.textContent).toContain("Moving");
+  });
+
+  it("shows a saved-only column as text on a new row", async () => {
+    const unit = {
+      fieldName: "Division__c",
+      label: "Unit",
+      type: "picklist",
+      savedOnly: true,
+      options: [
+        { label: "Juniors", value: "d1" },
+        { label: "Seniors", value: "d2" }
+      ]
+    };
+    const element = render({
+      columns: [COLUMNS[0], unit],
+      rows: [{ Id: "g1", Name: "Bunk 1", Division__c: "d1" }],
+      newRowDefaults: { Division__c: "d1" }
+    });
+    await flush();
+    button(element, "Add Time block").click();
+    await flush();
+    expect(element.shadowRoot.querySelectorAll("lightning-combobox").length).toBe(
+      1
+    );
+    expect(
+      element.shadowRoot.querySelector('[data-id="fixed"]').textContent
+    ).toBe("Juniors");
+  });
+
+  describe("same names", () => {
+    const named = (names) =>
+      names.map((Name, i) => ({ Id: `r${i}`, Name, PartOfDay__c: "Morning" }));
+    const tags = (element) =>
+      [...element.shadowRoot.querySelectorAll("tbody tr")].map(
+        (tr) => !!tr.querySelector('[data-id="same-name"]')
+      );
+
+    it("tags each row whose name another row has, ignoring capitals and spacing", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: named(["Swim", "Archery", "  swim "]),
+        flagSameNames: true
+      });
+      await flush();
+      expect(tags(element)).toEqual([true, false, true]);
+      expect(
+        element.shadowRoot.querySelector('[data-id="same-name"]').textContent
+      ).toContain("Same name as another");
+    });
+
+    it("follows what is typed, and stays off unless asked for", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: named(["Swim", "Archery"]),
+        flagSameNames: true
+      });
+      await flush();
+      change(field(element, 1, "Name"), "SWIM");
+      await flush();
+      expect(tags(element)).toEqual([true, true]);
+      const plain = render({ columns: COLUMNS, rows: named(["Swim", "swim"]) });
+      await flush();
+      expect(tags(plain)).toEqual([false, false]);
+    });
+
+    it("compares a row moved to another scope with that scope's names", async () => {
+      const unit = {
+        fieldName: "Division__c",
+        label: "Unit",
+        type: "picklist",
+        options: [
+          { label: "Juniors", value: "d1" },
+          { label: "Seniors", value: "d2" }
+        ]
+      };
+      const element = render({
+        columns: [COLUMNS[0], unit],
+        rows: [
+          { Id: "g1", Name: "Bunk 1", Division__c: "d1" },
+          { Id: "g2", Name: "Bunk 2", Division__c: "d1" }
+        ],
+        flagSameNames: true,
+        sameNameScope: "Division__c",
+        sameNamesElsewhere: { d2: ["Bunk 2", "Bunk 9"] }
+      });
+      await flush();
+      expect(tags(element)).toEqual([false, false]);
+      change(field(element, 1, "Division__c"), "d2");
+      await flush();
+      expect(tags(element)).toEqual([false, true]);
+    });
+
+    it("matches names exactly as the import's looseKey does", async () => {
+      const pairs = [
+        ["Bunk  3", "bunk 3"],
+        ["Arts & Crafts", "arts and crafts"],
+        ["Lunch 1", "Lunch 2"],
+        ["Pool", " POOL"]
+      ];
+      const elements = pairs.map((pair) =>
+        render({ columns: COLUMNS, rows: named(pair), flagSameNames: true })
+      );
+      await flush();
+      pairs.forEach((pair, i) => {
+        const same = looseKey(pair[0]) === looseKey(pair[1]);
+        expect(tags(elements[i])).toEqual([same, same]);
+      });
     });
   });
 });

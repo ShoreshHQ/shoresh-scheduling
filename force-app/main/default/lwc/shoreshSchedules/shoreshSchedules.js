@@ -280,6 +280,10 @@ export default class ShoreshSchedules extends LightningElement {
   get dailyGrid() {
     return dailyGrid(this.opened, this.dayIndex, this.t);
   }
+  get dailyGridLabel() {
+    const day = this.dayPills.find((pill) => pill.index === this.dayIndex);
+    return day ? day.label : null;
+  }
   handleDay(event) {
     this.dayIndex = Number(event.currentTarget.dataset.index);
   }
@@ -293,6 +297,10 @@ export default class ShoreshSchedules extends LightningElement {
   }
   get groupGrid() {
     return this.groupKey ? groupGrid(this.opened, this.groupKey, this.t) : null;
+  }
+  get groupGridLabel() {
+    const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
+    return grp ? grp.name : null;
   }
   handleGroup(event) {
     this.groupKey = event.currentTarget.dataset.key;
@@ -322,6 +330,10 @@ export default class ShoreshSchedules extends LightningElement {
   }
   get activityGrid() {
     return activityGrid(this.opened, this.activityId);
+  }
+  get activityGridLabel() {
+    const activity = this.selectedActivity;
+    return activity ? activity.name : null;
   }
   get allActivitiesLabel() {
     return `← All ${this.t.p("Activity")}`;

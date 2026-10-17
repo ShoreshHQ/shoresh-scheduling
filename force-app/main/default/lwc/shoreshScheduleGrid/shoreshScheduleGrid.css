@@ -1,3 +1,5 @@
+@import "c/shoreshTokens";
+
 /* Shoresh desktop's schedule grid (scheduleGrid.css), in Salesforce's design tokens. */
 .frame-scroll {
   overflow-x: auto;
@@ -121,8 +123,8 @@
 
 /* Noted from a file but not set up in Shoresh yet: dashed, so it reads as unfinished. */
 .cell_not-set-up .cell-inner {
-  border: 1.5px dashed var(--slds-g-color-warning-base-60, #dd7a01);
-  background: var(--slds-g-color-warning-base-95, #fef1e5);
+  border: 1.5px dashed var(--shoresh-caution);
+  background: var(--shoresh-caution-tint);
 }
 
 .cell_not-set-up .cell-name {
@@ -166,5 +168,5 @@
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
-  color: var(--slds-g-color-warning-base-40, #8c4b02);
+  color: var(--shoresh-text-secondary);
 }

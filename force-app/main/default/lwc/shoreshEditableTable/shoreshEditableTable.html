@@ -65,8 +65,8 @@
                 </template>
                 <template lwc:if={hasNotes}>
                   <th scope="col">
-                    <div class="slds-truncate" title={notesHeading}>
-                      {notesHeading}
+                    <div class="slds-truncate" title={notesTitle}>
+                      {notesTitle}
                     </div>
                   </th>
                 </template>
@@ -91,6 +91,15 @@
                           data-field={cell.fieldName}
                           onchange={handleChange}
                         ></lightning-input>
+                        <template lwc:if={cell.sameName}>
+                          <span class="same-name" data-id="same-name">
+                            <span
+                              class="same-name-dot"
+                              aria-hidden="true"
+                            ></span
+                            >Same name as another
+                          </span>
+                        </template>
                       </template>
                       <template lwc:elseif={cell.isNumber}>
                         <lightning-input
@@ -168,6 +177,9 @@
                           onchange={handleChange}
                         ></lightning-combobox>
                       </template>
+                      <template lwc:elseif={cell.isFixed}>
+                        <span data-id="fixed">{cell.fixedText}</span>
+                      </template>
                     </td>
                   </template>
                   <template for:each={row.weekCells} for:item="cell">
@@ -187,6 +199,7 @@
                     <td
                       class="slds-cell-wrap slds-text-color_weak"
                       data-id="note"
+                      aria-live="polite"
                     >
                       {row.note}
                       <template for:each={row.actions} for:item="action">

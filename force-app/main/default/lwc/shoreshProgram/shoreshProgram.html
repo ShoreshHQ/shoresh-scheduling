@@ -61,6 +61,7 @@
       data-id="time-blocks"
       title={labels.timeBlocks}
       object-api-name="TimeBlock__c"
+      flag-same-names
       columns={blockColumns}
       rows={entry.timeBlocks}
       add-label={labels.addTimeBlock}
@@ -77,6 +78,7 @@
       data-id="divisions"
       title={labels.divisions}
       object-api-name="Division__c"
+      flag-same-names
       columns={divisionColumns}
       rows={divisionRecords}
       add-label={labels.addDivision}
@@ -96,11 +98,18 @@
           data-id="groups"
           title={division.title}
           object-api-name="Group__c"
+          flag-same-names
+          same-name-scope="Division__c"
+          same-names-elsewhere={division.namesElsewhere}
+          data-division={division.id}
+          onpendingnames={handlePendingNames}
           columns={groupColumns}
           rows={division.groups}
           add-label={labels.addGroup}
           empty-message={labels.noGroups}
           new-row-defaults={division.defaults}
+          draft-note={groupMoveNote}
+          draft-note-heading="Moving"
           weeks={weeks}
           week-exceptions={weekExceptions}
           weeks-heading="Runs in"
@@ -124,6 +133,7 @@
         data-id="fixed-activities"
         title={labels.fixed}
         object-api-name="FixedActivity__c"
+        flag-same-names
         columns={fixedColumns}
         rows={entry.fixedActivities}
         add-label={labels.addFixed}
@@ -154,6 +164,7 @@
         data-id="recurring-activities"
         title={labels.recurring}
         object-api-name="RecurringActivity__c"
+        flag-same-names
         columns={recurringColumns}
         rows={entry.recurringActivities}
         add-label={labels.addRecurring}

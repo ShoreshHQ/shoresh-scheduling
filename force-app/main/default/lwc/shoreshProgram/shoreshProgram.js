@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
+import { moveNote } from "./groupMoves";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -18,11 +19,15 @@ export default class ShoreshProgram extends LightningElement {
   @api weekExceptions = [];
   /** The season's locations, for fixed and recurring activities. */
   @api locations = [];
+  /** The season's activities with who can do each, for what moving a group changes. */
+  @api activities = [];
 
   name;
   days = {};
   changed = false;
   divisionRecords = [];
+  // Bunks switched to another unit on screen and not saved yet: table's unit -> { unit: [names] }.
+  pendingMoves = {};
   // True from this form's Save until the screen reloads (or reports the save failed).
   submitted = false;
   _entry;
@@ -265,8 +270,27 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   get groupColumns() {
+    // A group moves to another division of its own program only (GroupMoves).
+    const move =
+      this.divisionRecords.length > 1
+        ? [
+            {
+              fieldName: "Division__c",
+              label: this.terms.s("Division"),
+              type: "picklist",
+              required: true,
+              // A new row is added under its own unit; a saved one can move.
+              savedOnly: true,
+              options: this.divisionRecords.map((d) => ({
+                label: d.Name,
+                value: d.Id
+              }))
+            }
+          ]
+        : [];
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
+      ...move,
       {
         fieldName: "Availability__c",
         label: this.terms.s("Availability"),
@@ -279,6 +303,16 @@ export default class ShoreshProgram extends LightningElement {
         ]
       }
     ];
+  }
+
+  /** What moving a group changes, shown under its row before Save. */
+  get groupMoveNote() {
+    const context = {
+      divisions: this.divisionRecords,
+      activities: this.activities,
+      recurringActivities: this._entry.recurringActivities
+    };
+    return (values, original) => moveNote(values, original, context);
   }
 
   get blockDefaults() {
@@ -297,8 +331,35 @@ export default class ShoreshProgram extends LightningElement {
       id: d.division.Id,
       title: `${this.terms.p("Group")} in ${d.division.Name}`,
       groups: d.groups,
-      defaults: { Division__c: d.division.Id, Availability__c: "AllDay" }
+      defaults: { Division__c: d.division.Id, Availability__c: "AllDay" },
+      namesElsewhere: this.namesElsewhere(d.division.Id)
     }));
+  }
+
+  /**
+   * For one unit's table: each other unit's bunks (saved, and moving there from other tables),
+   * and the bunks moving into this unit from other tables, so a clash shows on both rows.
+   */
+  namesElsewhere(divisionId) {
+    const movingInto = (target) =>
+      Object.entries(this.pendingMoves)
+        .filter(([from]) => from !== divisionId)
+        .flatMap(([, moved]) => moved[target] || []);
+    return Object.fromEntries(
+      (this.entry.divisions || []).map((other) => {
+        const id = other.division.Id;
+        const saved =
+          id === divisionId ? [] : (other.groups || []).map((g) => g.Name);
+        return [id, [...saved, ...movingInto(id)]];
+      })
+    );
+  }
+
+  handlePendingNames(event) {
+    this.pendingMoves = {
+      ...this.pendingMoves,
+      [event.currentTarget.dataset.division]: event.detail.moved
+    };
   }
 
   get labels() {
