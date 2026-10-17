@@ -275,3 +275,12 @@ describe("round trip", () => {
     ]);
   });
 });
+
+describe("an empty list is the template", () => {
+  it("headings only, in the camp's words", () => {
+    const empty = { ...camp(), activities: [], locations: [], programs: [] };
+    expect(listRows("groups", empty, terms)).toEqual([
+      ["Program", "Unit", "Bunk", "Availability"]
+    ]);
+  });
+});

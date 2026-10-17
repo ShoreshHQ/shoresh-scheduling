@@ -164,6 +164,28 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     before it removes the Coverage rows it added, and keeps those of one it keeps: an edited
     activity never quietly becomes "everyone".
 
+## Part C: writing lists and the camp workbook (2026-10-17)
+
+17. **"Download this list"** on every screen writes the screen's list in the layout "Import a
+    list" reads (`export.js`), as an Excel file named for the screen and season. An empty list
+    is the template: headings only. Values are written as the import reads them: Yes / No, "No
+    maximum", "No limit", "2 by Wednesday", "9:00 AM", days by name, who lists by the shortest
+    name no other unit or bunk shares ("Juniors (Main)" where two programs have a Juniors),
+    "Everyone" for no list.
+18. **"Download camp workbook"** on Roots writes every screen's list as its own sheet, named
+    as the menu names the screen, in menu order, then what has no list of its own so a camp
+    can be rebuilt from the workbook (coordinator, Q3): the location types (the Locations
+    sheet only names those in use), the camp's words (only those it changed), the weeks, and
+    the weeks each item runs in ("Runs in": a Yes or No under each week, as the screens'
+    ticks). Each screen's import finds its own sheet by name. Importing the whole workbook in
+    one go is part D.
+19. **Round trip** (Greg, #5): every screen's list, and the workbook, read back with no
+    changes, no questions, and nothing to add (Jest, a camp with two programs that share unit
+    and bunk names).
+20. **Formula guard**: every text cell starting with = + - @ or a tab or line break is written
+    with an apostrophe in front, which the import takes off again; numbers are written as
+    numbers.
+
 ## Choices that are hard to undo after release
 
 - `ImportController.saveList` and the plan's shape (records with kind, key or id, fields,
