@@ -9,6 +9,7 @@
       style={frameStyle}
       data-id="schedule-grid"
       onfocusin={handleFocusIn}
+      onfocusout={handleFocusOut}
       onkeydown={handleKeyDown}
       ondblclick={handleDoubleClick}
       onclick={handleClick}
@@ -94,6 +95,14 @@
                     <template lwc:if={cell.note}>
                       <span class="note">{cell.note}</span>
                     </template>
+                  </template>
+                  <template lwc:if={cell.dot}>
+                    <span class="cell-dot"
+                      ><c-shoresh-dot
+                        label={cell.dot}
+                        open={cell.dotOpen}
+                      ></c-shoresh-dot
+                    ></span>
                   </template>
                   <template lwc:if={cell.handle}>
                     <span class="handle" data-handle="true" aria-hidden="true">
