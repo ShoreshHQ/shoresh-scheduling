@@ -31,6 +31,9 @@ public with sharing class ImportUndo {
 
   public static Result undo(Id importId) {
     Import__c done = withLog(load(importId));
+    // Before anything is put back: someone who can only read the season is told so plainly,
+    // not refused part-way by one of the records.
+    ImportLog.requireEditAccess(done.Season__c);
     Result result = new Result();
     SetTimeGuard.defer();
     Savepoint beforeUndo = Database.setSavepoint();

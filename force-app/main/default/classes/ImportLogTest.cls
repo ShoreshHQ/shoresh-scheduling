@@ -41,9 +41,17 @@ private class ImportLogTest {
     try {
       Database.update(edit, AccessLevel.USER_MODE);
       Assert.fail('an import\'s record is not the scheduler\'s to edit');
-    } catch (Exception e) {
-      Assert.isNotNull(e.getMessage());
+    } catch (TypeException e) {
+      expectNoAccess(e, 'UPDATE');
     }
+  }
+
+  /** The platform's refusal for an object the person has no permission on, nothing else. */
+  private static void expectNoAccess(TypeException e, String operation) {
+    Assert.areEqual(
+      'DML operation ' + operation + ' not allowed on Import__c',
+      e.getMessage()
+    );
   }
 
   /**
@@ -63,8 +71,8 @@ private class ImportLogTest {
       try {
         Database.delete(result.importId, AccessLevel.USER_MODE);
         Assert.fail('an import is not the scheduler\'s to delete');
-      } catch (Exception e) {
-        Assert.isNotNull(e.getMessage());
+      } catch (TypeException e) {
+        expectNoAccess(e, 'DELETE');
       }
       Import__c kept = [
         SELECT Created__c, UndoneAt__c
@@ -126,8 +134,8 @@ private class ImportLogTest {
       try {
         Database.insert(new Import__c(Season__c = s.Id), AccessLevel.USER_MODE);
         Assert.fail('an import is not the scheduler\'s to add');
-      } catch (Exception e) {
-        Assert.isNotNull(e.getMessage());
+      } catch (TypeException e) {
+        expectNoAccess(e, 'INSERT');
       }
       Assert.areEqual(0, [SELECT COUNT() FROM Import__c]);
     }
@@ -188,5 +196,62 @@ private class ImportLogTest {
       [SELECT UndoneAt__c FROM Import__c WHERE Id = :result.importId]
       .UndoneAt__c
     );
+  }
+
+  /**
+   * An import that added weeks: someone who can only read the season is told plainly that they
+   * need edit access, before anything is touched; the weeks stay.
+   */
+  @IsTest
+  static void undoTellsAReaderTheyNeedEditAccessBeforeTouchingAnything() {
+    User owner = ShoreshTestData.scheduler();
+    User reader = ShoreshTestData.scheduler();
+    Season__c s;
+    ImportSetupSaves.Result result;
+    System.runAs(owner) {
+      s = season();
+      result = importAWeek(s.Id);
+      shareToRead(s.Id, reader.Id);
+    }
+    System.runAs(reader) {
+      try {
+        ImportController.undoImport(result.importId);
+        Assert.fail('read access to the season is not enough to undo');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(
+          'You don\'t have edit access to this season. Ask the person who set it up, or a Salesforce admin.',
+          e.getMessage()
+        );
+      }
+    }
+    Assert.areEqual(1, [SELECT COUNT() FROM Week__c WHERE Season__c = :s.Id]);
+  }
+
+  private static void shareToRead(Id seasonId, Id userId) {
+    Database.insert(
+      new Season__Share(
+        ParentId = seasonId,
+        UserOrGroupId = userId,
+        AccessLevel = 'Read',
+        RowCause = Schema.Season__Share.RowCause.Manual
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+  }
+
+  /** Deleting a season still works with imports in it: they go with it (master-detail). */
+  @IsTest
+  static void aSchedulerDeletingASeasonDeletesItsImportsToo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c s = season();
+      importAWeek(s.Id);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Import__c WHERE Season__c = :s.Id]
+      );
+      Database.delete(s, AccessLevel.USER_MODE);
+      Assert.areEqual(0, [SELECT COUNT() FROM Season__c WHERE Id = :s.Id]);
+      Assert.areEqual(0, [SELECT COUNT() FROM Import__c]);
+    }
   }
 }

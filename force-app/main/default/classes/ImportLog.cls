@@ -36,7 +36,7 @@ public with sharing class ImportLog {
    * The person may read imports (Shoresh Scheduler) and edit this record. Read in system mode:
    * UserRecordAccess is the platform's own answer about this person (as CampLabels does).
    */
-  private static void requireEditAccess(Id recordId) {
+  public static void requireEditAccess(Id recordId) {
     List<UserRecordAccess> access = [
       SELECT RecordId, HasEditAccess
       FROM UserRecordAccess
