@@ -1,15 +1,5 @@
 {
-  "force-app/main/default/lwc/shoreshActivityDetails/shoreshActivityDetails.html": 7,
-  "force-app/main/default/lwc/shoreshActivityDetails/shoreshActivityDetails.js": 10,
   "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.html": 15,
   "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.js": 47,
-  "force-app/main/default/lwc/shoreshCopySeason/shoreshCopySeason.js": 2,
-  "force-app/main/default/lwc/shoreshEditableTable/shoreshEditableTable.js": 16,
-  "force-app/main/default/lwc/shoreshImport/shoreshImport.js": 1,
-  "force-app/main/default/lwc/shoreshListImport/shoreshListImport.js": 1,
-  "force-app/main/default/lwc/shoreshProgram/groupMoves.js": 10,
-  "force-app/main/default/lwc/shoreshProgram/shoreshProgram.html": 6,
-  "force-app/main/default/lwc/shoreshProgram/shoreshProgram.js": 24,
-  "force-app/main/default/lwc/shoreshRoots/shoreshRoots.js": 2,
-  "force-app/main/default/lwc/shoreshSchedules/shoreshSchedules.js": 1
+  "force-app/main/default/lwc/shoreshRoots/shoreshRoots.js": 2
 }

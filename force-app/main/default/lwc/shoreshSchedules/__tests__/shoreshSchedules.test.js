@@ -4,6 +4,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import {
   LABELS,
   opened
@@ -86,7 +87,7 @@ async function render(setup = SETUP) {
     is: ShoreshSchedules
   });
   element.terms = buildTerms(LABELS);
-  element.setup = setup;
+  element.setup = nsRecord(setup);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -288,7 +289,7 @@ describe("c-shoresh-schedules", () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockImplementation(answerFor);
     const element = await render();
-    element.setup = { ...SETUP };
+    element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(getVersions).toHaveBeenCalledTimes(1);
     expect(q(element, '[data-id="viewing"]')).not.toBeNull();

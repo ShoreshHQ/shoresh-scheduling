@@ -9,6 +9,13 @@ const NAMESPACED_SUITES = [
     'shoreshSetupRules',
     'shoreshImportEngine',
     'shoreshLists',
+    'shoreshEditableTable',
+    'shoreshProgram',
+    'shoreshActivityDetails',
+    'shoreshCopySeason',
+    'shoreshImport',
+    'shoreshListImport',
+    'shoreshSchedules',
     'shoreshManualBuild'
 ];
 

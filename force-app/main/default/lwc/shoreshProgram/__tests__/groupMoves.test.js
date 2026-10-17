@@ -1,4 +1,9 @@
-import { moveNote } from "../groupMoves";
+import { moveNote as noteFor } from "../groupMoves";
+import { nsRecord } from "shoresh-jest/namespace";
+
+// The rows as the package's screens hand them over (unchanged, or prefixed in the namespaced run).
+const moveNote = (values, original, context) =>
+  noteFor(nsRecord(values), nsRecord(original), nsRecord(context));
 
 const CONTEXT = {
   divisions: [

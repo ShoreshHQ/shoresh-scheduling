@@ -41,18 +41,18 @@
       </h3>
       <lightning-input
         type="checkbox"
-        data-field="SameDivisionOnly__c"
+        data-field="sameDivision"
         label={labels.sameDivision}
-        checked={rules.SameDivisionOnly__c}
+        checked={sameDivision}
         onchange={handleRule}
       ></lightning-input>
       <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small">
         <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
           <lightning-input
             type="number"
-            data-field="EarlyWeekCount__c"
+            data-field="earlyCount"
             label={labels.earlyCount}
-            value={rules.EarlyWeekCount__c}
+            value={earlyCount}
             min="1"
             step="1"
             onchange={handleRule}
@@ -60,7 +60,7 @@
         </div>
         <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
           <lightning-combobox
-            data-field="EarlyWeekByDay__c"
+            data-field="earlyDay"
             label={labels.earlyDay}
             value={earlyDay}
             options={dayOptions}
@@ -70,9 +70,9 @@
       </div>
       <lightning-textarea
         class="slds-m-top_x-small"
-        data-field="Notes__c"
+        data-field="notes"
         label={labels.notes}
-        value={rules.Notes__c}
+        value={notes}
         onchange={handleRule}
       ></lightning-textarea>
 
