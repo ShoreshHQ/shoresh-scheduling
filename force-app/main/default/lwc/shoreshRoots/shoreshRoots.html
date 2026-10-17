@@ -63,6 +63,12 @@
             label="Import last year"
             onclick={handleOpen}
           ></lightning-button>
+          <lightning-button
+            data-id="download-workbook"
+            label="Download camp workbook"
+            icon-name="utility:download"
+            onclick={handleDownloadWorkbook}
+          ></lightning-button>
           <template lwc:if={lastImport}>
             <div class="roots-last-import" data-id="last-import">
               <span>{lastImport.line}</span>

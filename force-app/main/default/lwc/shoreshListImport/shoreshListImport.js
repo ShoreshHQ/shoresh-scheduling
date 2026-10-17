@@ -24,10 +24,12 @@ import {
   questionCards,
   rainAddKey,
   shownValue,
-  waitingFor
+  waitingFor,
+  listRows
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { errorMessage } from "c/shoreshErrors";
+import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 
 /** Minutes after midnight as "9:00 AM". */
 function timeText(minutes) {
@@ -71,6 +73,25 @@ export default class ShoreshListImport extends LightningElement {
   handleOpen() {
     this.open = true;
     this.reset();
+  }
+
+  /** The screen's list, in the layout "Import a list" reads (an empty list is the template). */
+  async handleDownload() {
+    try {
+      await downloadWorkbook(
+        this,
+        [
+          {
+            name: this.screenName,
+            rows: listRows(this.screenKey, this.setup, this.terms)
+          }
+        ],
+        fileNameOf(`${this.screenName} - ${this.setup.season.Name}`)
+      );
+    } catch (e) {
+      this.open = true;
+      this.error = `The list could not be saved. ${errorMessage(e)}`;
+    }
   }
 
   handleClose() {

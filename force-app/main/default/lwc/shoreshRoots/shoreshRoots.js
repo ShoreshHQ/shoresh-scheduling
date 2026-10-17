@@ -1,4 +1,8 @@
 import { LightningElement, api } from "lwc";
+import { campWorkbookSheets } from "c/shoreshLists";
+import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { ShowToastEvent } from "lightning/platformShowToastEvent";
+import { errorMessage } from "c/shoreshErrors";
 import { screenLabels } from "c/shoreshScreens";
 
 // Shoresh desktop's Roots home (RootsHomeScreen.jsx): the same cards, sizes, and places, plus
@@ -122,5 +126,27 @@ export default class ShoreshRoots extends LightningElement {
         detail: { screen: event.currentTarget.dataset.screen }
       })
     );
+  }
+
+  /**
+   * The whole camp in one workbook (slice 4c part C): a sheet per setup list, in the layout each
+   * screen imports, plus location types, camp words, weeks, and the weeks each item runs in.
+   */
+  async handleDownloadWorkbook() {
+    try {
+      await downloadWorkbook(
+        this,
+        campWorkbookSheets(this.setup, this.terms),
+        fileNameOf(`${this.setup.season.Name} - camp workbook`)
+      );
+    } catch (e) {
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "The workbook could not be saved",
+          message: errorMessage(e),
+          variant: "error"
+        })
+      );
+    }
   }
 }

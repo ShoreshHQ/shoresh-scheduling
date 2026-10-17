@@ -320,11 +320,19 @@
     </div>
   </template>
   <template lwc:else>
-    <lightning-button
-      data-id="open"
-      label="Import a list"
-      icon-name="utility:upload"
-      onclick={handleOpen}
-    ></lightning-button>
+    <lightning-button-group>
+      <lightning-button
+        data-id="open"
+        label="Import a list"
+        icon-name="utility:upload"
+        onclick={handleOpen}
+      ></lightning-button>
+      <lightning-button
+        data-id="download"
+        label="Download this list"
+        icon-name="utility:download"
+        onclick={handleDownload}
+      ></lightning-button>
+    </lightning-button-group>
   </template>
 </template>
