@@ -49,16 +49,16 @@ function afterSave(plan) {
       recurringActivities: plan.recurringActivities
         .filter((r) => r.programKey === p.key)
         .map((r, i) => {
-          const record = {
+          const item = {
             Id: `R${i}`,
             Name: r.name,
             TimeBlock__c: r.blockKey,
             Length__c: r.length
           };
           DAY_FIELDS.forEach((d) => {
-            record[`${d}__c`] = r.days.includes(d);
+            item[`${d}__c`] = r.days.includes(d);
           });
-          return record;
+          return item;
         })
     };
   });
