@@ -40,17 +40,25 @@ public with sharing class ImportWorkbookExtras {
     }
   }
 
-  /** The weeks "Fill in weeks" would add now; weeks added since the preview are said plainly. */
+  /**
+   * The weeks "Fill in weeks" would add now. Weeks added since the preview are said plainly
+   * (not "add one at a time"); dates changed since are said as such.
+   */
   private List<Week__c> weeksToFill() {
-    try {
-      return SeasonWeeks.toFill(seasonId);
-    } catch (SeasonWeeks.WeeksException e) {
-      // Not "add one at a time": the person chose a file, not a weeks screen action.
+    if (
+      [SELECT COUNT() FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE] >
+      0
+    ) {
       throw new ShoreshException(
         'The ' +
           CampLabels.forCamp(campId).pluralInSentence('Week') +
           ' changed since you chose the file. Choose it again.'
       );
+    }
+    try {
+      return SeasonWeeks.toFill(seasonId);
+    } catch (SeasonWeeks.WeeksException e) {
+      throw datesChanged();
     }
   }
 

@@ -555,13 +555,10 @@ function readWeeks(sheet, setup, answers, t) {
   const byOrder = weeksByOrder(read, setup.season);
   const toFill = byOrder ? weeksToFill(setup, t) : [];
   const seasonWeeks = toFill.length ? toFill : setup.weeks || [];
-  // Nothing to pair with and no weeks to fill: a season with only a first or a last day says
-  // so, rather than leaving every week out as having no week left.
+  // A season with only a first or a last day can't tell this season's weeks from another's:
+  // every week is left out, saying so, rather than "no week left" or added by mistake.
   const season = setup.season || {};
-  const needsDates =
-    byOrder &&
-    !seasonWeeks.length &&
-    !season.StartDate__c !== !season.EndDate__c;
+  const needsDates = !season.StartDate__c !== !season.EndDate__c;
   // Two weeks starting the same day: both are said, never the first row kept.
   const starts = new Map();
   read.forEach((r) => starts.set(r.start, (starts.get(r.start) || 0) + 1));
@@ -570,7 +567,7 @@ function readWeeks(sheet, setup, answers, t) {
     .forEach((r) => {
       r.problems.push(`Another ${t.sIn("Week")} starts ${shortDate(r.start)}`);
     });
-  if (!byOrder) {
+  if (!byOrder && !needsDates) {
     sayOverlaps(
       matchWeeks(
         read.filter((r) => !r.problems.length),
@@ -585,7 +582,7 @@ function readWeeks(sheet, setup, answers, t) {
   // this season: none is paired until each can be read.
   const unreadable = result.rows.filter((r) => r.problems.length);
   const usable = read.filter((r) => !r.problems.length);
-  if (unreadable.length && byOrder) {
+  if (unreadable.length && byOrder && !needsDates) {
     usable.forEach((r) => {
       r.problems.push(
         `Matched by order once row ${unreadable.map((u) => u.rowNumber).join(", ")} can be read`
@@ -597,7 +594,7 @@ function readWeeks(sheet, setup, answers, t) {
   result.byOrder = byOrder;
   matched.pairs.forEach(({ row, week, leftOut }) => {
     const named = read.filter((r) => looseKey(r.name) === looseKey(row.name));
-    if (leftOut) {
+    if (leftOut || needsDates) {
       // Another season's week past this season's last: its Runs in ticks aren't read. Its bare
       // name only when no other week has it, so a week read under that name is never skipped.
       row.status = "leftOut";
@@ -673,7 +670,7 @@ function readWeeks(sheet, setup, answers, t) {
     }
   });
   const nameOf = (w) => w.saveName || w.Name;
-  if (byOrder) {
+  if (byOrder && !needsDates) {
     const paired = new Set(matched.pairs.map((p) => p.week && p.week.Id));
     result.lists = [
       ...(toFill.length

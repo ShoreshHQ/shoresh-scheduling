@@ -30,7 +30,7 @@ public with sharing class ImportUndo {
   }
 
   public static Result undo(Id importId) {
-    Import__c done = load(importId);
+    Import__c done = withLog(load(importId));
     Result result = new Result();
     SetTimeGuard.defer();
     Savepoint beforeUndo = Database.setSavepoint();
@@ -78,6 +78,14 @@ public with sharing class ImportUndo {
       SetTimeGuard.resume();
     }
     return result;
+  }
+
+  /** An import's log is the server's (ImportLog): one without it is never acted on. */
+  private static Import__c withLog(Import__c done) {
+    if (String.isBlank(done.Created__c) || String.isBlank(done.Changed__c)) {
+      throw ImportFields.unreadableLog();
+    }
+    return done;
   }
 
   /**

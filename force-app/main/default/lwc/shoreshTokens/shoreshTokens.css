@@ -3,12 +3,13 @@
  * for what SLDS has no hook for. Import with @import "c/shoreshTokens"; then use the variables.
  * Bronze is the caution hue (needs a look, unfinished). It is for dots and borders, never text:
  * on white it is too light to read. Navy (primary) is the brand; forest (secondary) a
- * structural accent, never a status.
+ * structural accent, never a status; success (done) is for small marks only, never text.
  */
 :host {
   --shoresh-primary: #173b63;
   --shoresh-secondary: #2f6b58;
   --shoresh-caution: #b8833a;
+  --shoresh-success: #4c8a63;
   --shoresh-caution-tint: #f6efe4;
   --shoresh-text-secondary: #5c6670;
 }

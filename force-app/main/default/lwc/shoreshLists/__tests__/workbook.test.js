@@ -823,4 +823,18 @@ describe("import security hardening", () => {
       ["leftOut", "this season needs its first and last day"]
     ]);
   });
+  it("a season with only a last day says so too", () => {
+    const from = camp();
+    const s = freshSeason();
+    s.weeks = [];
+    s.season = { ...s.season, EndDate__c: "2028-08-11" };
+    const p = propose(
+      s,
+      file(campWorkbookSheets(from, buildTerms(from.labels)))
+    );
+    expect(p.weeks.rows.map((r) => r.reason)).toEqual([
+      "this season needs its first and last day",
+      "this season needs its first and last day"
+    ]);
+  });
 });

@@ -117,4 +117,76 @@ private class ImportLogTest {
       }
     }
   }
+
+  /** No one adds an import by hand: a blank one would become "the last import". */
+  @IsTest
+  static void aSchedulerCantAddAnImportByHand() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c s = season();
+      try {
+        Database.insert(new Import__c(Season__c = s.Id), AccessLevel.USER_MODE);
+        Assert.fail('an import is not the scheduler\'s to add');
+      } catch (Exception e) {
+        Assert.isNotNull(e.getMessage());
+      }
+      Assert.areEqual(0, [SELECT COUNT() FROM Import__c]);
+    }
+  }
+
+  /**
+   * Someone who can only read the season can't mark its import undone, even when everything
+   * Undo puts back (a camp word) is theirs to change: nothing is undone.
+   */
+  @IsTest
+  static void someoneWhoCanOnlyReadTheSeasonCantUndoItsImport() {
+    User owner = ShoreshTestData.scheduler();
+    User reader = ShoreshTestData.scheduler();
+    Camp__c camp;
+    ImportSetupSaves.Result result;
+    System.runAs(owner) {
+      camp = ShoreshTestData.camp('Birch Hollow (made up)');
+      Season__c s = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      result = ImportController.saveWorkbook(
+        JSON.serialize(
+          new Map<String, Object>{
+            'seasonId' => s.Id,
+            'files' => 'camp.xlsx',
+            'records' => new List<Object>(),
+            'campWords' => new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'CampLabel',
+                'term' => 'Group',
+                'fields' => new Map<String, Object>{
+                  'Singular__c' => 'Cabin',
+                  'Plural__c' => 'Cabins'
+                }
+              }
+            }
+          }
+        )
+      );
+      Database.insert(
+        new Season__Share(
+          ParentId = s.Id,
+          UserOrGroupId = reader.Id,
+          AccessLevel = 'Read',
+          RowCause = Schema.Season__Share.RowCause.Manual
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+    }
+    System.runAs(reader) {
+      try {
+        ImportController.undoImport(result.importId);
+        Assert.fail('read access to the season is not enough to undo');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('edit access'), e.getMessage());
+      }
+    }
+    Assert.areEqual('Cabin', CampLabels.forCamp(camp.Id).singular('Group'));
+    Assert.isNull(
+      [SELECT UndoneAt__c FROM Import__c WHERE Id = :result.importId]
+      .UndoneAt__c
+    );
+  }
 }
