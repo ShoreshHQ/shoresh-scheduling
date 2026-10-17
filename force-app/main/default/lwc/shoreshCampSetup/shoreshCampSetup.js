@@ -559,10 +559,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleSeasonField(event) {
-    this.seasonForm = {
-      ...this.seasonForm,
-      [SEASON_INPUTS[event.target.dataset.field]]: event.detail.value
-    };
+    const field = SEASON_INPUTS[event.target.dataset.field];
+    if (!field) {
+      return;
+    }
+    this.seasonForm = { ...this.seasonForm, [field]: event.detail.value };
     this.seasonChanged = true;
   }
 
@@ -620,10 +621,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleNewSeasonField(event) {
-    this.newSeason = {
-      ...this.newSeason,
-      [SEASON_INPUTS[event.target.dataset.field]]: event.detail.value
-    };
+    const field = SEASON_INPUTS[event.target.dataset.field];
+    if (!field) {
+      return;
+    }
+    this.newSeason = { ...this.newSeason, [field]: event.detail.value };
   }
 
   async handleCreateSeason() {

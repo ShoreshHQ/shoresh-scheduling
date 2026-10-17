@@ -461,6 +461,33 @@ describe("c-shoresh-camp-setup", () => {
     });
   });
 
+  it("renames a season and saves the new name with its dates", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRecords.mockResolvedValue(nsRecord(["s1"]));
+    const element = await render();
+    element.shadowRoot
+      .querySelector('[data-form="season"][data-field="name"]')
+      .dispatchEvent(
+        new CustomEvent("change", {
+          detail: { value: "Summer 2026 (day camp)" }
+        })
+      );
+    await flush();
+    validAll(element);
+    button(element, "Save season").click();
+    await flush();
+    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toEqual({
+      sobjectType: "Season__c",
+      Id: "s1",
+      Name: "Summer 2026 (day camp)",
+      StartDate__c: "2026-06-29",
+      EndDate__c: "2026-08-07",
+      Status__c: "Planning"
+    });
+  });
+
   it("says which season a copy came from", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
