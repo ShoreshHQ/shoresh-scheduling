@@ -104,8 +104,12 @@ export function moveEdit(days, from, to, isAway) {
     }
     return { runs: rows.runs() };
   }
+  // A swap puts something at both ends: neither may be where its bunk isn't at camp.
   if (isAway({ ...to, block: q.first })) {
-    return { refused: REFUSED.AWAY };
+    return { refused: REFUSED.AWAY, at: to };
+  }
+  if (isAway({ ...from, block: p.first })) {
+    return { refused: REFUSED.AWAY, at: from };
   }
   if (!q.slot.startsWith("A:")) {
     // Something noted from a file but not set up yet: it stays where it is.

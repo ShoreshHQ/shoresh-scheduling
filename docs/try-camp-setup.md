@@ -590,10 +590,14 @@ Same made-up camp, Manual Build, Week 1.
    For a list activity, press Enter or Space on it in the list, then move to a cell and press
    Space or Enter to place it.
 
-9. **Two people.** With two windows (section 19, step 12), an Undo in window A after window B
-   changed the same cell asks _Changed by someone else_ too.
-   - **Keep theirs** leaves B's change, and that step drops out of Undo.
-   - **Use yours** puts back exactly what you had: the same cells, the same length.
+9. **Two people.** With two windows (section 19, step 12):
+   - an Undo in window A, after window B changed the same cell, asks _Changed by someone else_
+     too;
+   - a swap or move in window A, after B changed both cells, asks once, listing each cell that
+     differs (_Theirs_ and _Yours_ for each);
+   - **Keep theirs** leaves all of B's changes, and that step drops out of Undo;
+   - **Use yours** makes your whole change: the same cells, the same lengths. Anything of B's it
+     overlaps goes in full, and Undo then brings B's back.
 10. **Deleting a week with a Manual Build.** On the **Weeks** screen, click delete on Week 1.
     The confirmation now says _That includes its Manual Build and 1 saved version._ (or
     however many there are). Click **Cancel**.

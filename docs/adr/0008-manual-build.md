@@ -238,7 +238,25 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       shows the words and doesn't also act on the row.
       `lightning-helptext` was not used: its info icon is a different look from the dot. The
       tooltip uses the SLDS neutral colours, never bronze text.
-21. **Follow-ups from part 1:**
+21. **Review fixes, round 2 (coordinator):**
+    - **The question lists every cell** an edit would change that isn't what the director saw,
+      once per placement (_Theirs_ and _Yours_ for each), in one dialog; Keep theirs or Use yours
+      answers for the whole edit. A swap, a move (the cell it leaves too), and an Undo of either
+      can each touch two cells.
+    - **Use yours** drops any waiting Undo or Redo of the same step (it was worked out from what
+      the director saw). For a new change, the step becomes what was saved. An Undo or Redo
+      made over theirs is done and leaves both lists, so there is never an _Undo: Undone: …_.
+      Focus returns to the cell.
+    - **A swap checks both ends**: neither activity may land where its new bunk isn't at camp.
+      It is refused on the quiet line, not by the server.
+    - **The handle** is a slim bar to see and a 48 × 24 px area to hit (WCAG 2.5.8).
+    - **Quiet words for quiet no-ops:** a length chosen in another bunk or day (_Swim ends on
+      Bunk 1 · Monday only._), or before its start (_Swim can't end before it starts._); Space on
+      a fixed or recurring activity (_Lunch stays where it is set up._).
+    - **The swap refusal** reads _Longer activities don't swap._ (camp words).
+    - **The dot's tooltip** (WCAG 1.4.13): Escape closes it, the pointer can move onto it, and a
+      second tap hides it.
+22. **Follow-ups from part 1:**
     - deleting a week or program now says _That includes its Manual Build and 2 saved
       versions._ (`shoreshCampSetup.savedSchedulesNote`, through `c/shoreshSchema`);
     - the slot box follows its slot when the page scrolls, and closes when the slot leaves the

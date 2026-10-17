@@ -12,16 +12,46 @@ import { LightningElement, api } from "lwc";
  */
 export default class ShoreshDot extends LightningElement {
   @api label;
-  @api open = false;
   @api focusable = false;
 
   hovered = false;
   tapped = false;
   focused = false;
+  // Escape closed the words; they stay closed until the pointer, focus, or row moves on.
+  dismissed = false;
+  _open = false;
+
+  /** The row the dot sits on has focus or is highlighted. */
+  @api
+  get open() {
+    return this._open;
+  }
+  set open(value) {
+    if (!!value !== this._open) {
+      this.dismissed = false;
+    }
+    this._open = !!value;
+  }
+
+  connectedCallback() {
+    // Escape closes the words wherever focus is (the row, or the dot), as tooltips must.
+    this.onKey = (event) => {
+      if (event.key === "Escape" && this.showTip) {
+        this.dismissed = true;
+      }
+    };
+    window.addEventListener("keydown", this.onKey);
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener("keydown", this.onKey);
+  }
 
   get showTip() {
     return (
-      !!this.label && (this.open || this.hovered || this.tapped || this.focused)
+      !!this.label &&
+      !this.dismissed &&
+      (this._open || this.hovered || this.tapped || this.focused)
     );
   }
 
@@ -29,12 +59,14 @@ export default class ShoreshDot extends LightningElement {
     return this.focusable ? "0" : null;
   }
 
+  // The tooltip sits inside the dot's area, so the pointer can move onto it and it stays.
   handleEnter() {
     this.hovered = true;
   }
   handleLeave() {
     this.hovered = false;
     this.tapped = false;
+    this.dismissed = false;
   }
   handleFocus() {
     this.focused = true;
@@ -42,12 +74,22 @@ export default class ShoreshDot extends LightningElement {
   handleBlur() {
     this.focused = false;
     this.tapped = false;
+    this.dismissed = false;
   }
 
-  /** A tap shows the words, and isn't taken as a click on the row (picking an activity, say). */
+  /**
+   * A tap shows the words, a second tap hides them (on touch a tap also counts as hovering), and
+   * neither is taken as a click on the row (picking an activity, say).
+   */
   handleTap(event) {
     event.stopPropagation();
     event.preventDefault();
-    this.tapped = !this.tapped;
+    if (this.tapped) {
+      this.dismissed = true;
+      this.tapped = false;
+    } else {
+      this.dismissed = false;
+      this.tapped = true;
+    }
   }
 }

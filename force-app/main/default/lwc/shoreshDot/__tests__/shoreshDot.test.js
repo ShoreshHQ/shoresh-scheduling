@@ -73,4 +73,31 @@ describe("c-shoresh-dot", () => {
     await flush();
     expect(tip(element)).toBeNull();
   });
+
+  it("Escape closes the words; they come back when the row is next focused", async () => {
+    const element = render();
+    element.open = true;
+    await flush();
+    expect(tip(element)).not.toBeNull();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await flush();
+    expect(tip(element)).toBeNull();
+    element.open = false;
+    await flush();
+    element.open = true;
+    await flush();
+    expect(tip(element)).not.toBeNull();
+  });
+
+  it("on touch, where a tap also counts as hovering, a second tap hides the words", async () => {
+    const element = render();
+    const dot = q(element, '[data-id="dot"]');
+    dot.dispatchEvent(new CustomEvent("mouseenter"));
+    dot.click();
+    await flush();
+    expect(tip(element)).not.toBeNull();
+    dot.click();
+    await flush();
+    expect(tip(element)).toBeNull();
+  });
 });

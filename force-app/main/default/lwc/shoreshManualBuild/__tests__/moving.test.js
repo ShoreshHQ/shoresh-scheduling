@@ -37,6 +37,14 @@ const SWIM = { kind: "A", id: "a1", name: "Swim", gone: false };
 const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
 const BOATING = { kind: "A", id: "a2", name: "Boating", gone: false };
 
+function later() {
+  let answer;
+  const promise = new Promise((resolve) => {
+    answer = resolve;
+  });
+  return { promise, answer };
+}
+
 const flush = () =>
   [...Array(10)].reduce(
     (chain) => chain.then(() => undefined),
@@ -72,9 +80,7 @@ const chip = (element, id) =>
 const sentRuns = (call = 0) => saveSlots.mock.calls[call][0].edits[0].runs;
 
 async function fire(target, type) {
-  target.dispatchEvent(
-    new CustomEvent(type, { bubbles: true, composed: true })
-  );
+  target.dispatchEvent(new CustomEvent(type, { bubbles: true }));
   await flush();
 }
 
@@ -185,7 +191,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     await fire(cell(element, "1-1"), "drop");
     expect(saveSlots).not.toHaveBeenCalled();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Only activities one Period long swap."
+      "Longer activities don't swap."
     );
   });
 
@@ -327,7 +333,11 @@ describe("c-shoresh-manual-build: moving things", () => {
   it("a drag that ended without a drop can't act later", async () => {
     const element = await render();
     await fire(cell(element, "0-1"), "dragstart");
-    await fire(cell(element, "0-1"), "dragend");
+    // A real dragend crosses into the page (composed), as the browser sends it.
+    cell(element, "0-1").dispatchEvent(
+      new CustomEvent("dragend", { bubbles: true, composed: true })
+    );
+    await flush();
     palette(element)
       .shadowRoot.querySelector('[data-id="palette"]')
       .dispatchEvent(new CustomEvent("drop"));
@@ -402,5 +412,143 @@ describe("c-shoresh-manual-build: moving things", () => {
     cell(element, "0-2").click();
     await flush();
     expect(sentRuns()[0].after).toEqual(["A:a1", "^A:a1"]);
+  });
+
+  it("when a swap meets someone else's change, the question lists every cell that differs", async () => {
+    const element = await render();
+    // Someone put Boating in both Bunk 1's and Bunk 2's Period 2.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, BOATING], ["1,2,", "1,2,"])
+    });
+    await fire(cell(element, "0-1"), "dragstart");
+    await fire(cell(element, "1-1"), "drop");
+    const rows = [
+      ...q(element, '[data-id="conflict"]').querySelectorAll(".conflict-row")
+    ].map((row) =>
+      [...row.querySelectorAll("p, dt, dd")].map((n) => n.textContent).join(" ")
+    );
+    expect(rows).toEqual([
+      "Bunk 1 · Monday · Period 2 Theirs Boating Yours Soccer",
+      "Bunk 2 · Monday · Period 2 Theirs Boating Yours Swim"
+    ]);
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "2 cells changed since you opened it."
+    );
+  });
+
+  it("when a move meets someone else's change, the cell it leaves is listed too", async () => {
+    const element = await render();
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, BOATING], ["1,2,", "1,,2"])
+    });
+    // Swim moves down to Bunk 1's Lunch; someone had put Boating where it was.
+    await fire(cell(element, "0-1"), "dragstart");
+    await fire(cell(element, "0-2"), "drop");
+    const wheres = [
+      ...q(element, '[data-id="conflict"]').querySelectorAll(".conflict-where")
+    ].map((w) => w.textContent);
+    expect(wheres).toEqual(["Bunk 1 · Monday · Period 2"]);
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
+  });
+
+  it("an Undo of a swap that meets someone else's change lists both cells", async () => {
+    const element = await render();
+    await fire(cell(element, "0-1"), "dragstart");
+    await fire(cell(element, "1-1"), "drop");
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, BOATING], ["1,2,", "1,2,"])
+    });
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(
+      q(element, '[data-id="conflict"]').querySelectorAll(".conflict-row")
+        .length
+    ).toBe(2);
+  });
+
+  it("Use yours drops an Undo of the same change still waiting, and Undo stays true", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    saveSlots.mockReturnValueOnce(placing.promise);
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    // Undo straight away, while the placing is still saving.
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    // Someone had put two-block Boating there.
+    placing.answer({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,^", "1,2,"])
+    });
+    await flush();
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    // Only the Use yours went: the waiting Undo was dropped.
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(sentRuns(1)[0]).toMatchObject({
+      before: ["A:a2", "^A:a2"],
+      after: ["A:a1", ""]
+    });
+    expect(q(element, '[data-id="undo"]').title).toBe(
+      "Undo: Placed Swim · Bunk 1 · Monday · Period 2"
+    );
+  });
+
+  it("Use yours on an Undo's question doesn't make an Undo of an Undo", async () => {
+    const element = await render();
+    await press(cell(element, "0-1"), "Delete");
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(q(element, '[data-id="undo"]').title).toBe("Undo");
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+  });
+
+  it("a swap never sends an activity to where its new bunk isn't at camp", async () => {
+    // Swim left in Bunk 2's Lunch (Bunk 2 isn't at camp then), Soccer in Bunk 1's Period 2.
+    const element = await render(
+      draft([FLAGPOLE, SWIM, SOCCER], ["1,3,", "1,,2"])
+    );
+    await fire(cell(element, "1-2"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Bunk 2 isn't at camp then."
+    );
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("Space on a fixed activity says it stays put", async () => {
+    const element = await render();
+    await press(cell(element, "0-0"), " ");
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Flagpole stays where it is set up."
+    );
+  });
+
+  it("a length ending in another bunk, or before it starts, says so", async () => {
+    const element = await render();
+    cell(element, "0-1").querySelector("[data-handle]").click();
+    await flush();
+    cell(element, "1-2").click();
+    await flush();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Swim ends on Bunk 1 · Monday only."
+    );
+    cell(element, "0-1").querySelector("[data-handle]").click();
+    await flush();
+    cell(element, "0-0").click();
+    await flush();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Swim can't end before it starts."
+    );
+    expect(saveSlots).not.toHaveBeenCalled();
   });
 });

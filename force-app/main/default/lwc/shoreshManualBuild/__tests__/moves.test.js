@@ -128,6 +128,10 @@ describe("moves", () => {
   it("never swaps something into a block where the bunk isn't at camp", () => {
     expect(
       moveEdit(week(), at(0, 0, 1), at(1, 1, 1), (p) => p.group === 1)
-    ).toEqual({ refused: REFUSED.AWAY });
+    ).toEqual({ refused: REFUSED.AWAY, at: at(1, 1, 1) });
+    // Nor the other way: the dragged one's own cell is where its bunk isn't at camp.
+    expect(
+      moveEdit(week(), at(0, 0, 1), at(1, 1, 1), (p) => p.group === 0)
+    ).toEqual({ refused: REFUSED.AWAY, at: at(0, 0, 1) });
   });
 });

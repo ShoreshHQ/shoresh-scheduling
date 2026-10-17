@@ -357,13 +357,19 @@
             </h2>
           </div>
           <div class="slds-modal__content slds-p-around_medium">
-            <p class="conflict-where">{conflict.where}</p>
-            <dl class="conflict-choices">
-              <dt>Theirs</dt>
-              <dd data-id="theirs">{conflict.theirs}</dd>
-              <dt>Yours</dt>
-              <dd data-id="yours">{conflict.yours}</dd>
-            </dl>
+            <ul class="conflict-rows">
+              <template for:each={conflict.rows} for:item="row">
+                <li key={row.key} class="conflict-row">
+                  <p class="conflict-where">{row.where}</p>
+                  <dl class="conflict-choices">
+                    <dt>Theirs</dt>
+                    <dd data-id="theirs">{row.theirs}</dd>
+                    <dt>Yours</dt>
+                    <dd data-id="yours">{row.yours}</dd>
+                  </dl>
+                </li>
+              </template>
+            </ul>
           </div>
           <div class="slds-modal__footer">
             <button
