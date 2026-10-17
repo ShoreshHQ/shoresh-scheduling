@@ -42,6 +42,14 @@ export default class ShoreshProgram extends LightningElement {
     // One list per entry: a new list on every redraw would look like fresh rows to the table,
     // and wipe what was typed there while a save is under way.
     this.divisionRecords = (value.divisions || []).map((d) => d.division);
+    // A deleted unit's table is gone, and so are the bunk moves it had not saved.
+    const units = new Set(this.divisionRecords.map((d) => d.Id));
+    const stale = Object.keys(this.pendingMoves).filter((id) => !units.has(id));
+    if (stale.length) {
+      this.pendingMoves = Object.fromEntries(
+        Object.entries(this.pendingMoves).filter(([id]) => units.has(id))
+      );
+    }
     // Keep a typed but unsaved name or days when something else on the screen was saved.
     if (!this.changed || this.submitted) {
       this.resetForm();

@@ -202,6 +202,66 @@ describe("c-shoresh-program", () => {
     await check(1, "d1");
   });
 
+  describe("an unsaved bunk move that clashes with another unit", () => {
+    const twoUnits = {
+      ...ENTRY,
+      divisions: [
+        {
+          division: { Id: "d1", Name: "Juniors" },
+          groups: [{ Id: "g1", Name: "Bunk 7", Division__c: "d1" }]
+        },
+        {
+          division: { Id: "d2", Name: "Seniors" },
+          groups: [{ Id: "g2", Name: "bunk 7", Division__c: "d2" }]
+        }
+      ],
+      recurringActivities: []
+    };
+    const tablesOf = (element) => [
+      ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+    ];
+    const flagged = (table) =>
+      !!table.shadowRoot.querySelector('[data-id="same-name"]');
+
+    async function movedJuniorsBunk() {
+      const element = createElement("c-shoresh-program", { is: ShoreshProgram });
+      element.entry = twoUnits;
+      element.terms = terms;
+      element.show = "groups";
+      element.activities = [];
+      document.body.appendChild(element);
+      await flush();
+      const unit = tablesOf(element)[0].shadowRoot.querySelector(
+        '[data-field="Division__c"]'
+      );
+      unit.value = "d2";
+      unit.dispatchEvent(new CustomEvent("change", { detail: { value: "d2" } }));
+      await flush();
+      await flush();
+      expect(tablesOf(element).map(flagged)).toEqual([true, true]);
+      return element;
+    }
+
+    it("clears both flags when the move is cancelled", async () => {
+      const element = await movedJuniorsBunk();
+      const juniors = tablesOf(element)[0];
+      [...juniors.shadowRoot.querySelectorAll("lightning-button")]
+        .find((b) => b.label === "Cancel changes")
+        .click();
+      await flush();
+      await flush();
+      expect(tablesOf(element).map(flagged)).toEqual([false, false]);
+    });
+
+    it("forgets the move when its unit is deleted", async () => {
+      const element = await movedJuniorsBunk();
+      element.entry = { ...twoUnits, divisions: [twoUnits.divisions[1]] };
+      await flush();
+      await flush();
+      expect(tablesOf(element).map(flagged)).toEqual([false]);
+    });
+  });
+
   it("offers no division choice when the program has one", async () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
