@@ -1,13 +1,4 @@
 {
-  "force-app/main/default/classes/ActivityDetails.cls": 7,
-  "force-app/main/default/classes/SetTimeCopier.cls": 7,
-  "force-app/main/default/classes/SetTimeInUse.cls": 3,
-  "force-app/main/default/classes/SetTimeItemTriggerHandler.cls": 18,
-  "force-app/main/default/classes/SetTimePlan.cls": 1,
-  "force-app/main/default/classes/SetTimePlanReader.cls": 7,
-  "force-app/main/default/classes/SetTimeTriggers.cls": 3,
-  "force-app/main/default/classes/SetTimeWho.cls": 2,
-  "force-app/main/default/classes/UserModeWrites.cls": 1,
   "force-app/main/default/lwc/shoreshActivityDetails/shoreshActivityDetails.html": 7,
   "force-app/main/default/lwc/shoreshActivityDetails/shoreshActivityDetails.js": 10,
   "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.html": 15,

@@ -45,23 +45,24 @@ public with sharing class ImportUndoWho {
 
   /** The owners as they are now (kind by kind), and which divisions and groups still exist. */
   private void read(List<Object> entries) {
-    Map<String, Set<Id>> ownersByType = new Map<String, Set<Id>>();
+    // By each kind's term: the kinds are objects without equals/hashCode of their own.
+    Map<String, ImportWhoKinds.Kind> kinds = new Map<String, ImportWhoKinds.Kind>();
+    Map<String, Set<Id>> ownersByKind = new Map<String, Set<Id>>();
     Set<Id> targets = new Set<Id>();
     for (Object item : entries) {
       Map<String, Object> entry = (Map<String, Object>) item;
-      String type = (String) entry.get('type');
-      if (!ownersByType.containsKey(type)) {
-        ownersByType.put(type, new Set<Id>());
+      ImportWhoKinds.Kind kind = kindOf(entry);
+      if (!kinds.containsKey(kind.term)) {
+        kinds.put(kind.term, kind);
+        ownersByKind.put(kind.term, new Set<Id>());
       }
-      ownersByType.get(type).add((Id) (String) entry.get('who'));
-      for (String target : texts((List<Object>) entry.get('before'))) {
-        targets.add((Id) target);
+      ownersByKind.get(kind.term).add((Id) (String) entry.get('who'));
+      for (String target : texts(entry.get('before'))) {
+        targets.add(targetId(target));
       }
     }
-    for (String type : ownersByType.keySet()) {
-      now.putAll(
-        ImportWhoKinds.forChild(type).ownersWithRows(ownersByType.get(type))
-      );
+    for (String term : kinds.keySet()) {
+      now.putAll(kinds.get(term).ownersWithRows(ownersByKind.get(term)));
     }
     for (Division__c row : [
       SELECT Id
@@ -87,9 +88,7 @@ public with sharing class ImportUndoWho {
       result.gone.add((String) entry.get('name'));
       return;
     }
-    ImportWhoKinds.Kind kind = ImportWhoKinds.forChild(
-      (String) entry.get('type')
-    );
+    ImportWhoKinds.Kind kind = kindOf(entry);
     List<SObject> rows = owner.getSObjects(kind.relationship) ??
       new List<SObject>();
     List<String> current = new List<String>();
@@ -97,14 +96,14 @@ public with sharing class ImportUndoWho {
       current.add(ImportWhoKinds.targetOf(row));
     }
     current.sort();
-    if (current != texts((List<Object>) entry.get('after'))) {
+    if (current != texts(entry.get('after'))) {
       result.keptEdited.add((String) owner.get('Name'));
       return;
     }
     remove.addAll(rows);
     Boolean missing = false;
-    for (String target : texts((List<Object>) entry.get('before'))) {
-      if (!stillThere.contains((Id) target)) {
+    for (String target : texts(entry.get('before'))) {
+      if (!stillThere.contains(targetId(target))) {
         // A division or group deleted since can't be put back in the list.
         missing = true;
         continue;
@@ -145,9 +144,40 @@ public with sharing class ImportUndoWho {
     set;
   }
 
-  private static List<String> texts(List<Object> values) {
+  /**
+   * The entry's kind of who list, checked against its owner: an import's record is text that can
+   * be edited, so anything else (another object, an owner of the other kind) is the refusal.
+   */
+  private static ImportWhoKinds.Kind kindOf(Map<String, Object> entry) {
+    ImportWhoKinds.Kind kind = ImportWhoKinds.forChild(entry.get('type'));
+    if (
+      ImportFields.ofRecord(entry.get('who')) != kind.ownerObject ||
+      !(entry.get('name') instanceof String)
+    ) {
+      throw ImportFields.unreadableLog();
+    }
+    return kind;
+  }
+
+  /** A division or group from the log, or the refusal. */
+  private static Id targetId(String target) {
+    Schema.SObjectType type = ImportFields.ofRecord(target);
+    if (type != Division__c.SObjectType && type != Group__c.SObjectType) {
+      throw ImportFields.unreadableLog();
+    }
+    return (Id) target;
+  }
+
+  /** A list of texts from the log, sorted, or the refusal. */
+  private static List<String> texts(Object values) {
+    if (!(values instanceof List<Object>)) {
+      throw ImportFields.unreadableLog();
+    }
     List<String> result = new List<String>();
-    for (Object value : values) {
+    for (Object value : (List<Object>) values) {
+      if (!(value instanceof String)) {
+        throw ImportFields.unreadableLog();
+      }
       result.add((String) value);
     }
     result.sort();

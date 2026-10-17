@@ -47,8 +47,8 @@ public with sharing class ImportUndo {
         Object entry : (List<Object>) JSON.deserializeUntyped(done.Changed__c)
       ) {
         // Who lists a list import replaced (slice 4c), and weeks off a workbook removed (part
-        // D), are put back on their own.
-        Map<String, Object> values = (Map<String, Object>) entry;
+        // D), are put back on their own. Anything that isn't an entry is the refusal.
+        Map<String, Object> values = entryOf(entry);
         if (values.containsKey('who')) {
           whoLists.add(entry);
         } else if (values.containsKey('weekOn')) {
@@ -81,6 +81,14 @@ public with sharing class ImportUndo {
       SetTimeGuard.resume();
     }
     return result;
+  }
+
+  /** One entry of what an import changed; anything that isn't one is the refusal. */
+  private static Map<String, Object> entryOf(Object entry) {
+    if (!(entry instanceof Map<String, Object>)) {
+      throw ImportFields.unreadableLog();
+    }
+    return (Map<String, Object>) entry;
   }
 
   /** An import's log is the server's (ImportLog): one without it is never acted on. */

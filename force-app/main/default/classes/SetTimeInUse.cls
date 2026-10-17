@@ -209,9 +209,11 @@ public with sharing class SetTimeInUse {
     void add(List<SObject> items) {
       for (SObject item : items) {
         names.add((String) item.get('Name'));
-        campId = (Id) item.getSObject('Program__r')
-          .getSObject('Season__r')
-          .get('Camp__c');
+        campId = (Id) item.getSObject(
+            SetTimePlan.fieldsOf(item.getSObjectType()).program
+          )
+          .getSObject(Program__c.Season__c)
+          .get(Season__c.Camp__c);
       }
     }
 

@@ -8,7 +8,9 @@ public with sharing class SetTimeTriggers {
   public static void itemsSaved(List<SObject> items) {
     Set<Id> programIds = new Set<Id>();
     for (SObject item : items) {
-      programIds.add((Id) item.get('Program__c'));
+      programIds.add(
+        (Id) item.get(SetTimePlan.fieldsOf(item.getSObjectType()).program)
+      );
     }
     SetTimeGuard.itemsSaved();
     SetTimeGuard.changed(programIds, items, SetTimeMessages.Side.ITEM);
@@ -144,7 +146,11 @@ public with sharing class SetTimeTriggers {
 
   private static Boolean daysChanged(Program__c now, Program__c was) {
     for (String day : SetTimePlan.WEEKDAYS) {
-      if ((Boolean) now.get(day + '__c') != (Boolean) was.get(day + '__c')) {
+      Schema.SObjectField field = SetTimePlan.dayField(
+        Program__c.SObjectType,
+        day
+      );
+      if ((Boolean) now.get(field) != (Boolean) was.get(field)) {
         return true;
       }
     }

@@ -66,6 +66,22 @@ public with sharing class ShoreshSchema {
     return name;
   }
 
+  /**
+   * The fields a record was given (sent from a screen, or set in code), its Id left out. Rows
+   * report them with the prefix once there is one; each is turned into its field here.
+   */
+  public static Set<Schema.SObjectField> populatedFields(SObject record) {
+    Schema.SObjectType type = record.getSObjectType();
+    Set<Schema.SObjectField> result = new Set<Schema.SObjectField>();
+    for (String reported : record.getPopulatedFieldsAsMap().keySet()) {
+      Schema.SObjectField found = field(type, reported);
+      if (reported != 'Id' && found != null) {
+        result.add(found);
+      }
+    }
+    return result;
+  }
+
   /** The field's name without the prefix ("StartDate__c"): how stored names are kept. */
   public static String localName(Schema.SObjectField field) {
     String name = localNames.get(field);
