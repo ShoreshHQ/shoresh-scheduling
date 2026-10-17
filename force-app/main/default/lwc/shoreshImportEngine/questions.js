@@ -201,18 +201,20 @@ function kindCard(ask, t) {
   };
 }
 
+/** Shown on the preview as a choice beside the groups: which program they go to. */
 function programCard(ask, t) {
   return {
     id: ask.id,
-    stage: "review",
-    lane: "hold",
-    title: `Which ${t.sIn("Program")} are ${nameList(ask.groups)} in?`,
+    stage: "preview",
+    select: "program",
+    lane: "standard",
+    title: `${t.s("Program")} for ${nameList(ask.groups)}`,
     subject: nameList(ask.groups),
-    subtitle: `Their ${t.pIn("TimeBlock")} do not match another ${t.sIn("Program")} in the files.`,
+    preselected: ask.preselected,
     options: [
-      ...ask.options.map((p) => ({ value: p.id, label: p.name })),
+      ...ask.options.map((name) => ({ value: name, label: name })),
       { value: "new", label: `A new ${t.sIn("Program")}` },
-      leaveOut(`These ${t.pIn("Group")} are not added this time.`)
+      { value: LEAVE_OUT, label: `Leave these ${t.pIn("Group")} out for now` }
     ]
   };
 }
@@ -258,32 +260,87 @@ function daysCard(ask) {
   };
 }
 
-function groupCard(ask, t) {
+function moveEffects(ask) {
+  const parts = [];
+  if (ask.loses.length) {
+    parts.push(`is no longer in ${nameList(ask.loses)} (for ${ask.from})`);
+  }
+  if (ask.gains.length) {
+    parts.push(`is now in ${nameList(ask.gains)} (for ${ask.to})`);
+  }
+  return parts.length
+    ? `If it moves, ${ask.group} ${parts.join(" and ")}.`
+    : `Nothing set up is for ${ask.from} or ${ask.to} by name, so moving changes nothing else.`;
+}
+
+/** A group the camp has in another division than the file shows. */
+function moveCard(ask, t) {
+  const sameProgram = ask.canMove;
   return {
     id: ask.id,
     stage: "review",
-    lane: "standard",
-    title: `${ask.group} is in ${ask.current}. The file puts it in ${ask.file}.`,
+    lane: "hold",
+    title: sameProgram
+      ? `${ask.group} is in ${ask.from}. The file puts it in ${ask.to}.`
+      : `${ask.group} is in ${ask.from}, in ${ask.program}. The file puts it in ${ask.to}.`,
     subject: ask.group,
-    subtitle: `Shoresh does not move ${article(t.sIn("Group"))} to another ${t.sIn("Division")} for now. Its schedule from the file is added where it is.`,
+    subtitle: sameProgram
+      ? moveEffects(ask)
+      : `${ask.program} is another ${t.sIn("Program")}, so this ${t.sIn("Group")} cannot move here or take this schedule.`,
     options: [
-      { value: "keep", label: `Keep it in ${ask.current}` },
+      ...(sameProgram
+        ? [
+            {
+              value: "move",
+              label: `Move ${ask.group} from ${ask.from} to ${ask.to}`
+            },
+            {
+              value: "keep",
+              label: `Keep it in ${ask.from}`,
+              description: "Its schedule from the file is added there."
+            }
+          ]
+        : []),
+      {
+        value: "new",
+        label: `Add a new ${ask.group} to ${ask.to}`,
+        description: `Two ${t.pIn("Group")} called ${ask.group}, one in each.`
+      },
       leaveOut(`${ask.group} and its schedule are not added.`)
     ]
   };
 }
 
+/** Shown on the preview beside each new group: the division it goes into. */
 function divisionCard(ask, t) {
   return {
     id: ask.id,
-    stage: "review",
+    stage: "preview",
+    select: "division",
     lane: "standard",
-    title: `Which ${t.sIn("Division")} is ${ask.group} in?`,
+    title: ask.group,
     subject: ask.group,
-    subtitle: `The file does not say.`,
+    preselected: ask.preselected,
     options: [
       ...ask.options.map((name) => ({ value: name, label: name })),
-      leaveOut(`${ask.group} and its schedule are not added.`)
+      { value: LEAVE_OUT, label: `Leave it out for now` }
+    ],
+    placeholder: `Choose a ${t.sIn("Division")}`
+  };
+}
+
+/** A group name used in several divisions, in a file that does not say which. */
+function whichGroupCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "preview",
+    lane: "hold",
+    title: `Which ${ask.name} is in ${ask.file}?`,
+    subject: `${ask.name} in ${ask.file}`,
+    subtitle: `There is more than one ${t.sIn("Group")} called ${ask.name}, and the file does not say its ${t.sIn("Division")}.`,
+    options: [
+      ...ask.options.map((name) => ({ value: name, label: name })),
+      leaveOut(`What the file has for ${ask.name} is not added.`)
     ]
   };
 }
@@ -339,12 +396,32 @@ function activityChangeCard(ask, t) {
   };
 }
 
+/** A 5 or 6 o'clock block without AM or PM: morning or evening? */
+function ampmCard(ask) {
+  const range = (offset) =>
+    `${shortClock(ask.start - offset)}\u2013${shortClock(ask.end - offset)}`;
+  return {
+    id: ask.id,
+    stage: "preview",
+    lane: "hold",
+    title: `Is ${ask.name} ${range(0)} in the morning or the evening?`,
+    subject: `${ask.name} ${range(0)}`,
+    subtitle: "The file gives no AM or PM.",
+    options: [
+      { value: "morning", label: `In the morning (${range(12 * 60)} AM)` },
+      { value: "evening", label: `In the evening (${range(0)} PM)` },
+      leaveOut("This time block and what is in it are not added.")
+    ]
+  };
+}
+
 const CARDS = {
   kind: kindCard,
   program: programCard,
+  move: moveCard,
+  whichGroup: whichGroupCard,
   block: blockCard,
   days: daysCard,
-  group: groupCard,
   division: divisionCard,
   fixed: setTimeChangeCard,
   recurring: setTimeChangeCard,
@@ -355,6 +432,8 @@ const CARDS = {
 export function questionCards(proposal, t, answers) {
   const cards = [
     ...proposal.reading.pairs.map((pair) => similarCard(pair, t)),
+    ...proposal.reading.timeAsks.map(ampmCard),
+    ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
     ...proposal.reading.disagreements.map(crossCard),
     ...proposal.asks.map((ask) => CARDS[ask.type](ask, t))
   ];
@@ -362,6 +441,10 @@ export function questionCards(proposal, t, answers) {
   const order = (c) => (c.stage === "preview" ? 0 : c.lane === "hold" ? 1 : 2);
   return cards
     .filter((c) => !seen.has(c.id) && seen.add(c.id))
-    .map((c, i) => ({ ...c, answer: answers[c.id] || null, position: i }))
+    .map((c, i) => ({
+      ...c,
+      answer: answers[c.id] || c.preselected || null,
+      position: i
+    }))
     .sort((a, b) => order(a) - order(b) || a.position - b.position);
 }

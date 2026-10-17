@@ -242,6 +242,7 @@ save one), so first add a made-up one.
    and two recurring activities (Morning meeting on Mondays, Library time for Juniors on
    Wednesdays). Your own camp is not touched. Running it again adds another version (and puts
    Week 1 back if it was deleted).
+
 2. Reload the Shoresh tab. A **Camp** picker appears at the top: choose _Sample Camp (made
    up)_. Click **Schedules** in the menu.
 3. The newest version opens by itself. The toolbar shows **Week** (_Week 1_), the **Daily View
@@ -300,10 +301,15 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 4. The screen now says _Found in the file. Nothing added yet._ and shows:
    - **Files**: the file, _5 pages_, and its **Layout**: _All camp: a page per day, groups
      across_. (If Shoresh ever reads a file the wrong way round, change it here.)
-   - **Similar names**: _Are “Music” and “Musik” the same activity?_ (Musik is a planted
+   - **Check these first**: _Are “Music” and “Musik” the same activity?_ (Musik is a planted
      typo.) Click **Same: call it “Music”**. The card folds to _✓ Same: call it “Music”_;
      **Change** takes it back.
-   - What was found, kind by kind, each marked _new_: the program _Main_ (Monday to Friday),
+   - **Programs for these bunks**: _Program for Bunk 1, Bunk 2, …_ with _A new program_
+     chosen (this season has none yet). **Unit for each new bunk**: each bunk with its unit
+     from the file (_Juniors_ or _Seniors_) already chosen; any can be changed. (When a file
+     does not say a bunk's unit and the program already has units, nothing is chosen and
+     **Review** waits until you choose.)
+   - What was found, kind by kind, each marked _new_: the new program, named _Main_ (Monday to Friday),
      seven **Time blocks** with their times, the six bunks with their units (_Juniors_,
      _Seniors_, from the row above the bunk names in the file), **Fixed activities**: _Lunch_,
      **Recurring activities**: _Morning meeting_ (Period 1 on Monday, everyone), and the
@@ -313,7 +319,7 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
      (a trip). Shoresh notes them but does not create them.
    - **Good to know**: outdoors, rain plans, and priority are not in a schedule file; set
      them on the Activities screen.
-5. Click **Review**. The next screen says _Reconciling maple-grove-2026-all-camp.xlsx_ and
+5. Click **Review** (it is greyed out until every choice above is made). The next screen says _Reconciling maple-grove-2026-all-camp.xlsx_ and
    _0 of 1 questions answered_. The one question: _Is “Library time” at a set time, or an
    activity?_ (Juniors had it at Period 4 on Wednesday, in one week only, so Shoresh cannot be
    sure.) The answers: **A recurring activity**, **An activity**, or **Leave it out for now**.

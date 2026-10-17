@@ -18,14 +18,23 @@ export function blockFromLabel(label) {
     label: tidy(label),
     name: name || tidy(label),
     start: range ? range.start : null,
-    end: range ? range.end : null
+    end: range ? range.end : null,
+    guessedPm: !!(range && range.guessedPm)
   };
 }
 
 function blockKey(block) {
-  return block.start === null
-    ? `name:${looseKey(block.name)}`
-    : `${block.start}-${block.end === null ? "" : block.end}`;
+  if (block.start === null) {
+    return `name:${looseKey(block.name)}`;
+  }
+  // A time read as afternoon only by the camp-day rule ("6:00-6:30") is kept apart from a
+  // stated one ("6:00 PM-6:30 PM") until the director says morning or evening.
+  const guessed = block.guessedPm && block.start >= 17 * 60 ? "?" : "";
+  return `${block.start}-${block.end === null ? "" : block.end}${guessed}`;
+}
+
+function sameTimes(a, b) {
+  return a.start === b.start && a.end === b.end;
 }
 
 function overlaps(a, b) {
@@ -39,7 +48,9 @@ function overlaps(a, b) {
 
 function conflicts(blocksA, blocksB) {
   return blocksA.some((a) =>
-    blocksB.some((b) => blockKey(a) !== blockKey(b) && overlaps(a, b))
+    blocksB.some(
+      (b) => blockKey(a) !== blockKey(b) && !sameTimes(a, b) && overlaps(a, b)
+    )
   );
 }
 
@@ -58,9 +69,26 @@ function pageBlocks(page, pageIndex, placements) {
     if (short && !used.has(r)) {
       return;
     }
-    blocks.push({ ...block, row: r, key: blockKey(block) });
+    blocks.push({
+      ...block,
+      row: r,
+      key: blockKey(block),
+      holds: mostSeen(placements, pageIndex, r)
+    });
   });
   return blocks;
+}
+
+/** What a row holds most often ("Late pickup"), to name a block that is only a time. */
+function mostSeen(placements, pageIndex, row) {
+  const counts = new Map();
+  placements
+    .filter((p) => p.page === pageIndex && p.row === row)
+    .forEach((p) => counts.set(p.text, (counts.get(p.text) || 0) + 1));
+  const [top] = [...counts].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  );
+  return top ? top[0] : null;
 }
 
 function median(values) {
@@ -68,8 +96,40 @@ function median(values) {
   return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 45;
 }
 
+/**
+ * A block written without AM or PM at 5 or 6 o'clock ("6:00-6:30") could be early morning
+ * (before the day) or evening (aftercare): nothing in the file settles it, so the director is
+ * asked (coordinator review, 2026-10-16), never guessed. Until answered it stays in the evening,
+ * as the camp-day rule reads it; "Leave it out" leaves the block out with what is in it.
+ */
+function morningOrEvening(blocks, context) {
+  for (const b of blocks.filter((x) => x.guessedPm && x.start >= 17 * 60)) {
+    // A block that is only a time is named by what it holds.
+    const name = /[A-Za-z]/.test(b.name) ? b.name : b.holds || "This block";
+    // Per time and what it holds: two programs' "6:00-6:30" rows are separate questions.
+    const id = `ampm|${b.label}|${name}`;
+    context.asks.push({
+      id,
+      type: "ampm",
+      name,
+      start: b.start,
+      end: b.end
+    });
+    const answer = context.answers[id];
+    // Unanswered, it is not merged with any other block.
+    b.pending = !answer;
+    if (answer === "morning") {
+      b.start -= 12 * 60;
+      b.end = b.end === null ? null : b.end - 12 * 60;
+      b.readAsMorning = true;
+    } else if (answer === "leaveOut") {
+      b.leftOutByAnswer = true;
+    }
+  }
+}
+
 /** One timetable's blocks: each once, in time order, every end filled in (or marked guessed). */
-function orderedBlocks(blocks) {
+function orderedBlocks(blocks, context) {
   const byKey = new Map();
   for (const block of blocks) {
     if (!byKey.has(block.key)) {
@@ -78,6 +138,33 @@ function orderedBlocks(blocks) {
   }
   const timed = [...byKey.values()].filter((b) => b.start !== null);
   const untimed = [...byKey.values()].filter((b) => b.start === null);
+  morningOrEvening(timed, context);
+  // An answer can make two blocks the same ("6:00 AM-6:30 AM" and "6:00-6:30" read as
+  // morning): keep one, and send the other's placements to it.
+  const aliases = new Map();
+  const seen = new Map();
+  // Unanswered or left out, a bare time is never merged into another block.
+  for (const b of timed.filter((x) => !x.pending && !x.leftOutByAnswer)) {
+    const at = `${b.start}-${b.end}`;
+    const first = seen.get(at);
+    if (!first) {
+      seen.set(at, b);
+    } else if (first.guessedPm && !b.guessedPm) {
+      // Keep the block whose label states AM or PM ("6:00 AM-6:30 AM").
+      aliases.set(first.key, b.key);
+      seen.set(at, b);
+    } else {
+      aliases.set(b.key, first.key);
+    }
+  }
+  for (const [from, to] of aliases) {
+    if (aliases.has(to)) {
+      aliases.set(from, aliases.get(to));
+    }
+  }
+  const kept = timed.filter((b) => !aliases.has(b.key));
+  timed.length = 0;
+  timed.push(...kept);
   timed.sort((a, b) => a.start - b.start || (a.end || 0) - (b.end || 0));
   const usual = median(
     timed.filter((b) => b.end !== null).map((b) => b.end - b.start)
@@ -89,7 +176,9 @@ function orderedBlocks(blocks) {
       block.guessedEnd = !next;
     }
   });
-  return [...timed, ...untimed];
+  const result = [...timed, ...untimed];
+  result.aliases = aliases;
+  return result;
 }
 
 /**
@@ -98,7 +187,8 @@ function orderedBlocks(blocks) {
  * { timetables: [{ index, pages, blocks }], blockAt: Map("page|row" -> block key),
  *   timetableOfPage: Map(page -> index) }.
  */
-export function buildTimetables(pages, placements) {
+export function buildTimetables(pages, placements, answers = {}) {
+  const context = { answers, asks: [] };
   const timetables = [];
   const timetableOfPage = new Map();
   const blockAt = new Map();
@@ -115,10 +205,18 @@ export function buildTimetables(pages, placements) {
     timetableOfPage.set(pageIndex, target.index);
   });
   timetables.forEach((t) => {
-    t.blocks = orderedBlocks(t.raw);
+    t.blocks = orderedBlocks(t.raw, context);
+    for (const [key, value] of blockAt) {
+      if (
+        t.blocks.aliases.has(value) &&
+        t.pages.includes(Number(key.split("|")[0]))
+      ) {
+        blockAt.set(key, t.blocks.aliases.get(value));
+      }
+    }
     delete t.raw;
   });
-  return { timetables, blockAt, timetableOfPage };
+  return { timetables, blockAt, timetableOfPage, asks: context.asks };
 }
 
 /**
@@ -135,6 +233,9 @@ export function collectGroups(noted, timetableOfPage) {
     if (!byName.has(name)) {
       byName.set(name, {
         name,
+        recordName: entry.recordName || name,
+        base: entry.base || name,
+        hint: entry.hint || null,
         votes: new Map(),
         timetable: timetableOfPage.get(entry.page),
         order: byName.size,
@@ -143,7 +244,7 @@ export function collectGroups(noted, timetableOfPage) {
     }
     byName.get(name).onlyInCells =
       byName.get(name).onlyInCells && !!entry.fromCell;
-    if (entry.division) {
+    if (entry.division && !entry.weakDivision) {
       const votes = byName.get(name).votes;
       votes.set(entry.division, (votes.get(entry.division) || 0) + 1);
     }
@@ -168,6 +269,9 @@ export function collectGroups(noted, timetableOfPage) {
     }
     return {
       name: group.name,
+      recordName: group.recordName,
+      base: group.base,
+      hint: group.hint,
       division,
       timetable: group.timetable,
       order

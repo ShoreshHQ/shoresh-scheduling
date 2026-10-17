@@ -1,4 +1,4 @@
-import { buildProposal } from "c/shoreshImportEngine";
+import { buildProposal, questionCards } from "c/shoreshImportEngine";
 import {
   cellName,
   dayOf,
@@ -16,39 +16,48 @@ const at = (h, m = 0) => h * 60 + m;
 
 describe("reading a cell", () => {
   it("reads times the way a day camp writes them", () => {
-    expect(timeRange("9:00-9:45")).toEqual({ start: at(9), end: at(9, 45) });
-    expect(timeRange("Period 1 (9:00 - 9:45)")).toEqual({
+    expect(timeRange("9:00-9:45")).toMatchObject({
+      start: at(9),
+      end: at(9, 45)
+    });
+    expect(timeRange("Period 1 (9:00 - 9:45)")).toMatchObject({
       start: at(9),
       end: at(9, 45)
     });
     // A bare 1 to 6 is the afternoon; 7 to 11 the morning; 12 noon (desktop's camp-day rule).
-    expect(timeRange("1:10 - 1:55")).toEqual({
+    expect(timeRange("1:10 - 1:55")).toMatchObject({
       start: at(13, 10),
       end: at(13, 55)
     });
-    expect(timeRange("11:30 - 12:15")).toEqual({
+    expect(timeRange("11:30 - 12:15")).toMatchObject({
       start: at(11, 30),
       end: at(12, 15)
     });
-    expect(timeRange("12:20 - 1:05")).toEqual({
+    expect(timeRange("12:20 - 1:05")).toMatchObject({
       start: at(12, 20),
       end: at(13, 5)
     });
-    expect(timeRange("1:30 - 2:15 PM")).toEqual({
+    expect(timeRange("1:30 - 2:15 PM")).toMatchObject({
       start: at(13, 30),
       end: at(14, 15)
     });
-    expect(timeRange("11:30 - 12:15 PM")).toEqual({
+    expect(timeRange("11:30 - 12:15 PM")).toMatchObject({
       start: at(11, 30),
       end: at(12, 15)
     });
-    expect(timeRange("14:00")).toEqual({ start: at(14), end: null });
+    expect(timeRange("14:00")).toMatchObject({ start: at(14), end: null });
     expect(timeRange("Period 2")).toBeNull();
     // A bare hour that starts a range (review finding 1).
-    expect(timeRange("9 - 9:45am")).toEqual({ start: at(9), end: at(9, 45) });
-    expect(timeRange("9-10am")).toEqual({ start: at(9), end: at(10) });
-    expect(timeRange("1-2pm")).toEqual({ start: at(13), end: at(14) });
-    expect(timeRange("12-12:45")).toEqual({ start: at(12), end: at(12, 45) });
+    expect(timeRange("9 - 9:45am")).toMatchObject({
+      start: at(9),
+      end: at(9, 45)
+    });
+    expect(timeRange("9-10am")).toMatchObject({ start: at(9), end: at(10) });
+    expect(timeRange("1-2pm")).toMatchObject({ start: at(13), end: at(14) });
+    expect(timeRange("12-12:45")).toMatchObject({
+      start: at(12),
+      end: at(12, 45)
+    });
     expect(timeRange("Period 1 - 2")).toBeNull();
   });
 
@@ -318,5 +327,76 @@ describe("files that cover the same week", () => {
       buildProposal({ files, existing: null, terms, answers: {} }).reading
         .disagreements
     ).toEqual([]);
+  });
+});
+
+describe("times the review found misread (PR 15 review, finding 4)", () => {
+  it("reads ranges of bare hours", () => {
+    expect(timeRange("9-10")).toMatchObject({ start: at(9), end: at(10) });
+    expect(timeRange("12-1")).toMatchObject({ start: at(12), end: at(13) });
+    expect(timeRange("Lunch 12-1")).toMatchObject({
+      start: at(12),
+      end: at(13)
+    });
+    expect(timeRange("Period 1 - 2")).toBeNull();
+    expect(timeRange("Bunk 3-4")).toBeNull();
+  });
+
+  it("a 5 or 6 o'clock block without AM or PM is asked about, never guessed (round 2)", () => {
+    const rows = [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["7:00-8:00", "Early care", "Early care"],
+      ["9:00-9:45", "Swim", "Art"],
+      ["6:00-6:30", "Late pickup", "Late pickup"]
+    ];
+    const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
+    const first = buildProposal({ files, existing: null, terms, answers: {} });
+    const card = questionCards(first, terms, {}).find((c) =>
+      c.id.startsWith("ampm|")
+    );
+    expect(card.title).toBe(
+      "Is Late pickup 6:00\u20136:30 in the morning or the evening?"
+    );
+    expect(card.stage).toBe("preview");
+    expect(card.answer).toBeNull();
+    expect(card.options.map((o) => o.label)).toEqual([
+      "In the morning (6:00\u20136:30 AM)",
+      "In the evening (6:00\u20136:30 PM)",
+      "Leave it out for now"
+    ]);
+    const evening = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { [card.id]: "evening" }
+    });
+    expect(evening.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(7),
+      at(9),
+      at(18)
+    ]);
+    const morning = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { [card.id]: "morning" }
+    });
+    expect(morning.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(6),
+      at(7),
+      at(9)
+    ]);
+    const left = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { [card.id]: "leaveOut" }
+    });
+    expect(left.activities.map((x) => x.name)).not.toContain("Late pickup");
+  });
+
+  it("Periods 1-2 and Period 1-2 are not times", () => {
+    expect(timeRange("Periods 1-2")).toBeNull();
+    expect(timeRange("Period 1-2")).toBeNull();
   });
 });

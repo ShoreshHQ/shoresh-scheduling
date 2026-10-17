@@ -83,10 +83,14 @@ function groupRecords(proposal, existing) {
       key: g.key,
       id: null,
       divisionKey: g.divisionKey,
-      name: g.name,
+      name: g.recordName || g.name,
       sortOrder: base + i + 1
     }));
-  return added;
+  // A group the director chose to move to another division.
+  const moved = kept
+    .filter((g) => g.moveTo)
+    .map((g) => ({ key: g.id, id: g.id, divisionKey: g.moveTo }));
+  return [...added, ...moved];
 }
 
 function divisionRecords(proposal, existing) {
@@ -369,6 +373,14 @@ export function importNotes(proposal, t) {
         notes.push({
           key: `untimed|${x.key}|${b.fileKey}`,
           text: `${b.name} has no times in the file, so it is left out with what is in it. Add it on the ${t.p("TimeBlock")} screen.`
+        })
+      );
+    x.blocks
+      .filter((b) => b.isNew && b.readAsMorning)
+      .forEach((b) =>
+        notes.push({
+          key: `morning|${x.key}|${b.fileKey}`,
+          text: `${b.name} has no AM or PM in the file and comes before the rest of the day, so it is read as ${shortClock(b.start)}\u2013${shortClock(b.end)} in the morning.`
         })
       );
     x.blocks

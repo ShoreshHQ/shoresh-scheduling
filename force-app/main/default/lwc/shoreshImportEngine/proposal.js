@@ -19,37 +19,51 @@ import { WEEKDAYS } from "./text";
 
 const MS_PER_MINUTE = 60000;
 
-/** The camp's group names in each of its divisions and programs, by record Id. */
-function campMembers(existing) {
+/** The camp's groups (as identities, identity.js) in each of its divisions and programs, by Id. */
+function campMembers(existing, rules) {
   const members = new Map();
+  const season = [];
   for (const entry of (existing && existing.programs) || []) {
     const all = [];
     for (const d of entry.divisions || []) {
-      const names = (d.groups || []).map((g) => g.Name);
+      const names = (d.groups || []).map((g) =>
+        rules.identityOf(g.Name, d.division.Name)
+      );
       members.set(d.division.Id, names);
       all.push(...names);
     }
     members.set(entry.program.Id, all);
+    season.push(...all);
   }
-  return members;
+  return { members, season };
 }
 
 /**
- * Keys of the records a "who" names, and whether a division or program as a whole means only
- * the groups the file names: a division (or program) the camp already has may hold groups the
- * file does not mention, and "Juniors only" would then reach them too.
+ * Keys of the records a "who" names, and whether a division, a program, or the whole season
+ * means only the groups given: the camp may have groups the files do not show, and "Juniors
+ * only" or "everyone" would then reach them too.
  */
-function keysFor(groups, existing) {
-  const byName = new Map(
-    groups.filter((g) => !g.leftOut).map((g) => [g.name, g])
-  );
-  const members = campMembers(existing);
-  const coveredBy = (recordKey, names) =>
-    (members.get(recordKey) || []).every((n) => names.includes(n));
+function keysFor(groups, existing, rules) {
+  const kept = groups.filter((g) => !g.leftOut);
+  const byName = new Map(kept.map((g) => [g.name, g]));
+  const camp = campMembers(existing, rules);
+  // The camp knows its groups without a schedule number: compare those.
+  const bases = (names) => names.map((n) => (byName.get(n) || {}).base || n);
+  const coveredBy = (recordKey, names) => {
+    const given = bases(names);
+    return (camp.members.get(recordKey) || []).every((n) => given.includes(n));
+  };
+  const season = [
+    ...new Set([...camp.season, ...kept.map((g) => g.base || g.name)])
+  ];
   return {
     group: (name) => (byName.get(name) || {}).key,
     divisionOf: (name) => (byName.get(name) || {}).divisionKey,
-    coveredBy
+    coveredBy,
+    isWholeSeason: (names) => {
+      const given = bases(names);
+      return season.every((n) => given.includes(n));
+    }
   };
 }
 
@@ -350,7 +364,7 @@ export function buildProposal(input) {
     noted: noted.kinds
   };
   const decisions = decideKinds(usable, ctx);
-  const keyOf = keysFor(people.groups, input.existing);
+  const keyOf = keysFor(people.groups, input.existing, reading.identities);
   const setTime = setTimeFrom(decisions, ctx, keyOf);
   const activities = activitiesFrom(
     decisions,

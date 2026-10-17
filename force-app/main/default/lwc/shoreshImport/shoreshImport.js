@@ -165,14 +165,52 @@ export default class ShoreshImport extends LightningElement {
     };
   }
 
+  get labels() {
+    const t = this.terms;
+    return {
+      programs: `${t.p("Program")} for these ${t.pIn("Group")}`,
+      units: `${t.s("Division")} for each new ${t.sIn("Group")}`
+    };
+  }
+
+  /** Question cards on the preview (similar names, which group a file means). */
   get previewCards() {
-    return this.cards.filter((c) => c.stage === "preview");
+    return this.cards.filter((c) => c.stage === "preview" && !c.select);
   }
   get hasPreviewCards() {
     return this.previewCards.length > 0;
   }
+  /** The program for each set of groups, and the division for each new group: dropdowns. */
+  get programChoices() {
+    return this.cards
+      .filter((c) => c.select === "program")
+      .map((c) => this.choiceView(c));
+  }
+  get hasProgramChoices() {
+    return this.programChoices.length > 0;
+  }
+  get unitChoices() {
+    return this.cards
+      .filter((c) => c.select === "division")
+      .map((c) => this.choiceView(c));
+  }
+  get hasUnitChoices() {
+    return this.unitChoices.length > 0;
+  }
+  choiceView(card) {
+    return {
+      ...card,
+      value: card.answered ? card.answer : null,
+      comboOptions: card.options.map((o) => ({
+        label: o.label,
+        value: o.value
+      })),
+      placeholder: card.placeholder || "Choose"
+    };
+  }
   get previewOpen() {
-    return this.previewCards.filter((c) => !c.answered).length;
+    return this.cards.filter((c) => c.stage === "preview" && !c.answered)
+      .length;
   }
   get reviewCards() {
     return this.cards.filter((c) => c.stage === "review");
@@ -194,6 +232,14 @@ export default class ShoreshImport extends LightningElement {
   handleAnswer(event) {
     const [id, value] = event.currentTarget.dataset.key.split("::");
     this.answers = { ...this.answers, [id]: value };
+    this.recompute();
+  }
+
+  handleChoice(event) {
+    this.answers = {
+      ...this.answers,
+      [event.target.dataset.id]: event.detail.value
+    };
     this.recompute();
   }
 
@@ -311,7 +357,7 @@ export default class ShoreshImport extends LightningElement {
 
   get reviewLabel() {
     return this.previewOpen > 0
-      ? `Answer the ${this.previewOpen === 1 ? "question" : `${this.previewOpen} questions`} above first`
+      ? `Answer the ${this.previewOpen === 1 ? "choice" : `${this.previewOpen} choices`} above first`
       : "Review";
   }
   get reviewDisabled() {
@@ -325,7 +371,11 @@ export default class ShoreshImport extends LightningElement {
       : "Use this setup";
   }
   get saveDisabled() {
-    return this.isSaving || this.answeredCount < this.reviewCards.length;
+    return (
+      this.isSaving ||
+      this.previewOpen > 0 ||
+      this.answeredCount < this.reviewCards.length
+    );
   }
   get saveHint() {
     if (!this.hasReviewCards) {

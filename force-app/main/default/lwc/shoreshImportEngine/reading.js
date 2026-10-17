@@ -15,8 +15,10 @@ import { mergesFrom, similarPairs } from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import { buildTimetables, collectGroups, crossCheck } from "./structure";
 import { WEEKDAYS, looseKey, withoutWeek } from "./text";
+import { identifyGroups } from "./identity";
 
-export const LEAVE_OUT = "leaveOut";
+export { LEAVE_OUT } from "./reading-constants";
+import { LEAVE_OUT } from "./reading-constants";
 
 function pageKeys(pages) {
   const seen = new Map();
@@ -66,7 +68,12 @@ function nameFromFiles(pages, found) {
       return page;
     }
     const file = distinctName(base(page), prefix) || page.names.file;
-    return { ...page, names: { ...page.names, file } };
+    // With nothing shared between file names, the whole name is used, camp name and all: a
+    // division read from it is only a hint.
+    return {
+      ...page,
+      names: { ...page.names, file, fileIsWholeName: !prefix }
+    };
   });
 }
 
@@ -167,13 +174,23 @@ function settleCells(byCell, answers, disagreements) {
   return result;
 }
 
+/** Files by name; two of the same name by what is in them, so the order never depends on how they were chosen. */
+function byNameThenContent(a, b) {
+  const content = (f) =>
+    JSON.stringify((f.sheets || []).map((sheet) => [sheet.name, sheet.rows]));
+  return a.name.localeCompare(b.name) || content(a).localeCompare(content(b));
+}
+
 /**
  * Everything the files say, with the director's answers so far applied.
  * input: { files, existing (SeasonSetupReader shape, or null), answers, layouts }.
  */
 export function readImport(input) {
   const answers = input.answers || {};
-  const { pages, unread } = filesToPages(input.files);
+  // The same files give the same result whatever order they were chosen in (by name, then
+  // their own sheet order).
+  const files = [...(input.files || [])].sort(byNameThenContent);
+  const { pages, unread } = filesToPages(files);
   const keys = pageKeys(pages);
   const read = readPages(pages, keys, input.existing, input.layouts || {});
   const camp = campNames(input.existing);
@@ -205,12 +222,22 @@ export function readImport(input) {
     merges,
     leftOutByPairs(pairs, answers)
   );
-  const { timetables, blockAt, timetableOfPage } = buildTimetables(
-    pages,
-    named.kept
-  );
-  const weekend = named.kept.filter((p) => !WEEKDAYS.includes(p.day));
-  const placed = named.kept
+  // A group is its division and its name (Bunk 1 in Juniors is not Bunk 1 in Seniors).
+  // Timetables first (they do not depend on which group is which), then each group's
+  // identity: its division and name, and its schedule when two programs share both.
+  const {
+    timetables,
+    blockAt,
+    timetableOfPage,
+    asks: timeAsks
+  } = buildTimetables(read.pages, named.kept, answers);
+  const identified = identifyGroups(named.kept, named.groups, {
+    existing: input.existing,
+    answers,
+    timetableOfPage
+  });
+  const weekend = identified.kept.filter((p) => !WEEKDAYS.includes(p.day));
+  const placed = identified.kept
     .filter((p) => WEEKDAYS.includes(p.day))
     .map((p) => ({
       ...p,
@@ -232,6 +259,9 @@ export function readImport(input) {
     weekend,
     timetables,
     placements: settleCells(byCell, answers, disagreements),
-    groups: collectGroups(named.groups, timetableOfPage)
+    groups: collectGroups(identified.groups, timetableOfPage),
+    groupAsks: identified.asks,
+    timeAsks,
+    identities: identified.rules
   };
 }

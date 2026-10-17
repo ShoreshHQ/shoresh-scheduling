@@ -275,11 +275,38 @@ export function setTimeRecords(decision, keyOf) {
  * that could do it and did not), how many groups at once, who can do it (whole divisions, only
  * when no other group did it), and its place when the file names one place for it.
  */
+/**
+ * Who can do an activity, written out whenever it is not everyone in the season: whole divisions
+ * where the groups cover them, the groups by name otherwise.
+ */
+function whoOfPool(pool, divisionOf, keyOf) {
+  const keys = [];
+  const names = [];
+  // By division record, not name: two programs may each have a "Juniors".
+  for (const key of [...new Set(pool.map((g) => keyOf.divisionOf(g)))]) {
+    const here = pool.filter((g) => keyOf.divisionOf(g) === key);
+    if (keyOf.coveredBy(key, pool)) {
+      keys.push(key);
+      names.push(divisionOf.get(here[0]));
+    } else {
+      here.forEach((g) => {
+        keys.push(keyOf.group(g));
+        names.push(g);
+      });
+    }
+  }
+  return { keys, names };
+}
+
 export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
   const doers = [...new Set(cells.map((c) => c.group))];
-  const divisions = [...new Set(doers.map((g) => divisionOf.get(g)))];
+  // Divisions by record (two programs may each have a "Juniors").
+  const divisionKeys = [...new Set(doers.map((g) => keyOf.divisionOf(g)))];
+  const divisions = divisionKeys.map((key) =>
+    divisionOf.get(doers.find((g) => keyOf.divisionOf(g) === key))
+  );
   const inDivisions = allGroups.filter((g) =>
-    divisions.includes(divisionOf.get(g))
+    divisionKeys.includes(keyOf.divisionOf(g))
   );
   const whole =
     inDivisions.length === doers.length &&
@@ -296,6 +323,17 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
     atOnce.set(key, (atOnce.get(key) || 0) + 1);
   });
   const lengths = new Set(cells.map((c) => c.span));
+  // "Everyone" only when the files cover every group in the season (review, 2026-10-16):
+  // otherwise the groups of other programs, or ones the files do not show, would be included.
+  let who = { keys: [], names: [] };
+  if (whole) {
+    who = {
+      keys: [...new Set(doers.map((g) => keyOf.divisionOf(g)))],
+      names: divisions
+    };
+  } else if (!keyOf.isWholeSeason(eligible)) {
+    who = whoOfPool(eligible, divisionOf, keyOf);
+  }
   return {
     kind: "activity",
     name,
@@ -304,12 +342,7 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
     min: Math.min(...perGroupWeek),
     max: Math.max(...perGroupWeek),
     groupsAtOnce: Math.max(...atOnce.values()),
-    who: whole
-      ? {
-          keys: [...new Set(doers.map((g) => keyOf.divisionOf(g)))],
-          names: divisions
-        }
-      : { keys: [], names: [] },
+    who,
     place: onePlace(cells)
   };
 }

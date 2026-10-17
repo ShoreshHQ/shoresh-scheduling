@@ -139,18 +139,81 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     fold to "✓ answer" with **Change**); **Use this setup**; then the summary (added, changed as
     chosen, left out for now, not set up yet, good to know) and **Continue** to Roots.
 
-## Differences from the desktop (proposed, not settled)
+14. **Fixes after PR #15's review, and Greg's answers (2026-10-16), in a follow-up PR:**
+    - **A group is its division and its name.** "Bunk 1" in Juniors and "Bunk 1" in Seniors are
+      two groups (shown as "Bunk 1 (Juniors)" where a name is used in several divisions), in
+      everything the import does: placements, cross-checks, set-time patterns, the version. A
+      file that names such a group without its division asks "Which Bunk 1 is in <file>?". A
+      division taken only from a file's name ("Camp 2026 - Bunk 3") is a hint, overruled by a
+      division any page states.
+    - **Who can do an activity is written out unless the files cover every group in the
+      season**: whole divisions where the groups cover them, the groups by name otherwise. An
+      empty list (everyone) would otherwise reach groups of other programs, or ones the files do
+      not show.
+    - **The same files give the same result in any order** (files sorted by name, then sheet
+      order).
+    - **Times**: ranges of bare hours ("9-10", "12-1") are read; a 5 or 6 o'clock block without
+      AM or PM is asked about (item 15).
+    - **Divisions and programs are chosen on the preview** (Greg: the desktop's dropdown per
+      group). Every new group shows its division: the file's preselected; none preselected when
+      the file is silent and the program has divisions (the import waits); Main only for a
+      program with no divisions and a file naming none, shown and changeable. Each set of groups
+      shows its program the same way (preselected when sure, including a camp's only program).
+    - **Moving a group between divisions is allowed** (Greg). `Group__c.Division__c` is now
+      reparentable (master-detail). A group the camp has in another division than the file
+      shows gets a card: **Move**, **Keep it in <division>**, **Add a new <group> to
+      <division>**, or **Leave it out for now**; it says which activities and recurring
+      activities name either division in who they are for, so nothing shifts unseen. A group can
+      move only within its own program (`GroupMoves`, refused otherwise), and a move re-runs the
+      fixed and recurring clash check. Moving a group on the Groups screen is a separate small PR
+      after part 2.
 
-- **Not built:** the review's four tiles (Understood, Needs attention, Changed, Not in source)
-  and its reveal animation; the question cards are one list in the desktop's lane order.
-  Proposed for later polish with Greg, with a mockup, if he wants them.
-- **Layout can be changed per file** (the desktop only displayed it).
-- **No per-group division dropdown on the preview**: divisions come from the file, and a group
-  whose division the file does not give is a question card (only when the program already has
-  divisions; otherwise the groups go into one division, Main, to rename later).
+15. **After PR #16's two reviews (2026-10-16):**
+    - A group is its **program**, division, and name: the same division and name in two
+      programs ("Juniors: Bunk 1" in each) are two groups, shown with their schedule's number
+      ("Bunk 1 (schedule 2)"); the camp's groups are matched within the program.
+    - Who-lists are worked out by division record, never by division name (two programs may
+      each have a "Main" or a "Juniors").
+    - "Keep it in <division>" is offered only for a group in the same program; a group of
+      another program can only be added anew or left out.
+    - The move card leaves out activities that also name the group itself, and says it plainly
+      ("If it moves, Bunk 3 is no longer in Library (for Juniors) and is now in Boating (for
+      Seniors).").
+    - A division that already has a group of that name is not offered in that group's
+      dropdown, so the dropdown cannot quietly make a duplicate.
+    - A block written without AM or PM at 5 or 6 o'clock ("6:00-6:30") is never guessed: the
+      preview asks "Is Late pickup 6:00–6:30 in the morning or the evening?" (morning, evening,
+      or leave it out; until answered it reads as evening). "Grades 3-5", "Ages 6-8", "Periods
+      1-2", "Period 1-2" are not times.
+    - The division dropdown hides only divisions of the same program that already have a group
+      of that name.
+    - Bare hours from 7 to 11 are always morning and 12 to 4 afternoon: Shoresh is for day camps
+      only (decision 0001), so "7:30-8:30 Evening program" reads as morning. Only 5 and 6
+      o'clock are asked about. Answering "morning" can make two pages' versions of a block the
+      same ("6:00 AM-6:30 AM" and "6:00-6:30"): they are then one block. Until it is answered, a bare
+      time is never merged with a stated one ("6:00 PM-6:30 PM"); the block kept is the one
+      whose label states AM or PM. The question is per
+      time and what the block holds, so two programs' rows are asked about separately.
+    - A division read only from a lone file's whole name ("Juniors - Bunk 1.csv") is offered in
+      that group's dropdown but never preselected (nor is Main over it), unless it matches a
+      division the camp has or a page states. A program with no divisions can always choose Main (not
+      preselected when a file name suggests another).
+    - Two files with the same name are ordered by what is in them; "Use this setup" also waits
+      for the preview's choices; `GroupMoves` reads camp words once per camp.
+16. **Deferred by Greg (2026-10-16)** to the Groups-screen move PR and Manual Build: a group
+    moved on Salesforce's own record page changes who it is eligible for with no card (the
+    clash check still runs); and schedules already built may show a moved group in an activity
+    it is no longer eligible for, with nothing pointing it out.
+
+## Differences from the desktop (settled with Greg, 2026-10-16)
+
+- **Layout can be changed per file** (the desktop only displayed it): kept.
+- **The review's four tiles and reveal animation:** later, as polish, with a mockup first.
+- **Division dropdown per group** on the preview, as the desktop has it (item 14).
 - **Undo, the imported version, remembered answers:** part 2.
 
 ## Choices that are hard to undo after release
 
 - The static resource name `SheetJS` and the Apex class `ImportController` (`saveSetup`) are
   part of the package's surface once released. No new objects or fields in part 1.
+- `Group__c.Division__c` is reparentable (groups can move between divisions of a program).

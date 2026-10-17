@@ -33,7 +33,9 @@ function propose(existing, answers = {}, files = samples("all-camp")) {
 }
 
 function cardsOf(p, answers = {}) {
-  return questionCards(p, terms, answers).filter((c) => c.stage === "review");
+  return questionCards(p, terms, answers).filter(
+    (c) => c.stage === "review" || c.select
+  );
 }
 
 describe("adding to a season that has setup already", () => {
@@ -130,9 +132,9 @@ describe("adding to a season that has setup already", () => {
       "Juniors camp",
       "Seniors camp",
       "A new program",
-      "Leave it out for now"
+      "Leave these groups out for now"
     ]);
-    const chosen = propose(existing, { [card.id]: "p1" });
+    const chosen = propose(existing, { [card.id]: "Juniors camp" });
     expect(chosen.timetables[0].program.id).toBe("p1");
     const fresh = planFor(
       propose(existing, { [card.id]: "new" }),
@@ -442,8 +444,9 @@ describe("review findings", () => {
       "p1",
       null
     ]);
-    const card = cardsOf(p).find((c) => c.id.startsWith("program|"));
+    const card = cardsOf(p).find((c) => c.id === "program|Bunk 9");
     expect(card.options.map((o) => o.value)).toEqual(["new", LEAVE_OUT]);
+    expect(card.preselected).toBeNull();
     const plan = planFor(
       propose(existing, { [card.id]: "new" }, files),
       existing,
@@ -498,7 +501,7 @@ describe("review findings", () => {
     const files = week(times, ["Bunk 1", "Bunk 3"], "A");
     const first = propose(existing, {}, files);
     const card = cardsOf(first).find((c) => c.id.startsWith("program|"));
-    const p = propose(existing, { [card.id]: "p1" }, files);
+    const p = propose(existing, { [card.id]: "Juniors camp" }, files);
     expect(p.groups.find((g) => g.name === "Bunk 3").leftOut).toBe(true);
     expect(importNotes(p, terms).map((n) => n.text)).toContain(
       "Bunk 3 is in Seniors camp, not Juniors camp, so its schedule from these files is left out. Import its file on its own to add it to Seniors camp."

@@ -748,4 +748,304 @@ private class ImportSetupSavesTest {
       Assert.isTrue(cpu < 8000, 'CPU ms: ' + cpu);
     }
   }
+
+  private static void assertRefused(Map<String, Object> plan) {
+    try {
+      ImportController.saveSetup(JSON.serialize(plan));
+      Assert.fail('a record from another season must be refused');
+    } catch (AuraHandledException e) {
+      Assert.isTrue(
+        e.getMessage().contains('not in this season'),
+        e.getMessage()
+      );
+    }
+  }
+
+  @IsTest
+  static void changingARecordInAnotherSeasonIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      TimeBlock__c block = [
+        SELECT Id, EndTime__c
+        FROM TimeBlock__c
+        WHERE Program__r.Season__c = :other.Id
+        LIMIT 1
+      ];
+      Map<String, Object> plan = emptyPlan(season.Id);
+      add(
+        plan,
+        'timeBlocks',
+        entry(
+          new List<Object>{
+            'key',
+            block.Id,
+            'id',
+            block.Id,
+            'start',
+            '08:00',
+            'end',
+            '08:30'
+          }
+        )
+      );
+      assertRefused(plan);
+      Assert.areEqual(
+        block.EndTime__c,
+        [SELECT EndTime__c FROM TimeBlock__c WHERE Id = :block.Id].EndTime__c
+      );
+    }
+  }
+
+  @IsTest
+  static void whoNamingAnotherSeasonIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Id otherDivision = [
+        SELECT Id
+        FROM Division__c
+        WHERE Program__r.Season__c = :other.Id
+        LIMIT 1
+      ]
+      .Id;
+      Map<String, Object> plan = emptyPlan(season.Id);
+      add(
+        plan,
+        'activities',
+        entry(
+          new List<Object>{
+            'key',
+            'A|Archery',
+            'name',
+            'Archery',
+            'length',
+            1,
+            'min',
+            0,
+            'max',
+            1,
+            'groupsAtOnce',
+            1,
+            'who',
+            new List<Object>{ otherDivision },
+            'sortOrder',
+            1
+          }
+        )
+      );
+      assertRefused(plan);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Activity__c WHERE Season__c = :season.Id]
+      );
+    }
+  }
+
+  @IsTest
+  static void aGroupMovesToAnotherDivisionOfItsProgram() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Program__c main = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+        LIMIT 1
+      ];
+      Division__c seniors = ShoreshTestData.division(main.Id, 'Seniors');
+      Group__c groupA = [
+        SELECT Id, Division__c
+        FROM Group__c
+        WHERE Name = 'Group A'
+        LIMIT 1
+      ];
+      Map<String, Object> plan = emptyPlan(season.Id);
+      add(
+        plan,
+        'groups',
+        entry(
+          new List<Object>{
+            'key',
+            groupA.Id,
+            'id',
+            groupA.Id,
+            'divisionKey',
+            seniors.Id
+          }
+        )
+      );
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(plan)
+      );
+      Test.stopTest();
+      Assert.areEqual(1, result.changed.get('Group'));
+      Assert.areEqual(
+        seniors.Id,
+        [SELECT Division__c FROM Group__c WHERE Id = :groupA.Id].Division__c
+      );
+    }
+  }
+
+  @IsTest
+  static void aGroupCannotMoveToAnotherProgram() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Program__c other = ShoreshTestData.program(season.Id, 'Afternoons');
+      Division__c elsewhere = ShoreshTestData.division(other.Id, 'Seniors');
+      Group__c groupA = [
+        SELECT Id
+        FROM Group__c
+        WHERE Name = 'Group A'
+        LIMIT 1
+      ];
+      try {
+        Database.update(
+          new Group__c(Id = groupA.Id, Division__c = elsewhere.Id),
+          AccessLevel.USER_MODE
+        );
+        Assert.fail('a move to another program must be refused');
+      } catch (DmlException e) {
+        Assert.isTrue(
+          e.getMessage()
+            .contains('can move only to another division of their own program'),
+          e.getMessage()
+        );
+      }
+    }
+  }
+
+  /**
+   * Group A has Morning circle (for Group A) at Period 1 on Mondays; Seniors have Assembly then.
+   * Moving Group A into Seniors would put it in both at once: refused.
+   */
+  @IsTest
+  static void aMoveThatMakesAClashIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Program__c main = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+        LIMIT 1
+      ];
+      Division__c seniors = ShoreshTestData.division(main.Id, 'Seniors');
+      ShoreshTestData.groupIn(seniors.Id, 'Group C');
+      Group__c groupA = [
+        SELECT Id, Division__c
+        FROM Group__c
+        WHERE Name = 'Group A'
+        LIMIT 1
+      ];
+      TimeBlock__c period1 = [
+        SELECT Id
+        FROM TimeBlock__c
+        WHERE Program__c = :main.Id AND Name = 'Period 1'
+      ];
+      RecurringActivity__c circle = new RecurringActivity__c(
+        Program__c = main.Id,
+        Name = 'Morning circle',
+        TimeBlock__c = period1.Id,
+        Length__c = 1,
+        Monday__c = true
+      );
+      RecurringActivity__c assembly = new RecurringActivity__c(
+        Program__c = main.Id,
+        Name = 'Assembly',
+        TimeBlock__c = period1.Id,
+        Length__c = 1,
+        Monday__c = true
+      );
+      SetTimeGuard.defer();
+      Database.insert(
+        new List<SObject>{ circle, assembly },
+        AccessLevel.SYSTEM_MODE
+      );
+      Database.insert(
+        new List<SObject>{
+          new Coverage__c(
+            Season__c = season.Id,
+            RecurringActivity__c = circle.Id,
+            Group__c = groupA.Id
+          ),
+          new Coverage__c(
+            Season__c = season.Id,
+            RecurringActivity__c = assembly.Id,
+            Division__c = seniors.Id
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      SetTimeGuard.checkPending();
+      SetTimeGuard.resume();
+      try {
+        Database.update(
+          new Group__c(Id = groupA.Id, Division__c = seniors.Id),
+          AccessLevel.USER_MODE
+        );
+        Assert.fail(
+          'a move that puts a group in two places at once must be refused'
+        );
+      } catch (DmlException e) {
+        Assert.isTrue(
+          e.getMessage().contains('Morning circle') ||
+          e.getMessage().contains('Assembly'),
+          e.getMessage()
+        );
+      }
+      Assert.areEqual(
+        groupA.Division__c,
+        [SELECT Division__c FROM Group__c WHERE Id = :groupA.Id].Division__c
+      );
+    }
+  }
+
+  /** A bulk update moving 150 groups into another program: each refused, within the limits. */
+  @IsTest
+  static void manyMovesToAnotherProgramAreRefusedWithinLimits() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Big Pines (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Program__c first = ShoreshTestData.program(season.Id, 'Mornings');
+      Program__c second = ShoreshTestData.program(season.Id, 'Afternoons');
+      Division__c origin = ShoreshTestData.division(first.Id, 'Juniors');
+      Division__c elsewhere = ShoreshTestData.division(second.Id, 'Juniors');
+      List<Group__c> groups = new List<Group__c>();
+      for (Integer i = 0; i < 150; i++) {
+        groups.add(
+          new Group__c(
+            Division__c = origin.Id,
+            Name = 'Bunk ' + i,
+            Availability__c = 'AllDay',
+            SortOrder__c = i
+          )
+        );
+      }
+      Database.insert(groups, AccessLevel.SYSTEM_MODE);
+      for (Group__c grp : groups) {
+        grp.Division__c = elsewhere.Id;
+      }
+      Test.startTest();
+      List<Database.SaveResult> results = Database.update(
+        groups,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Integer queries = Limits.getQueries();
+      Test.stopTest();
+      for (Database.SaveResult result : results) {
+        Assert.isFalse(result.isSuccess());
+      }
+      Assert.isTrue(queries < 20, 'queries: ' + queries);
+      Assert.areEqual(
+        150,
+        [SELECT COUNT() FROM Group__c WHERE Division__c = :origin.Id]
+      );
+    }
+  }
 }
