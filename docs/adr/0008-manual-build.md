@@ -252,10 +252,11 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       names as there before it: for an edit, the screen when it was made; for an Undo or Redo,
       what the step left, even if the screen has since refreshed to someone else's change
       (which is then listed, not replaced). Every run also names the time block of each of its
-      cells (`blockIds`), kept with the step for Undo and Redo: the screen never mistakes a
-      block added inside it since for one of them, and the server (`SlotSaves`,
-      `SlotEdits.Run.onBlocks`) makes a run only on exactly those blocks, or returns a
-      conflict, so a placement never lands shifted onto a new block. So nothing
+      cells (`blockIds`, required: a run without them is refused as unreadable), kept with the
+      step for Undo and Redo: the screen never mistakes a block added inside it since for one
+      of them, and the server (`SlotSaves`, `SlotEdits.Run.onBlocks`) makes a run only on
+      exactly those blocks, or returns a conflict, so a placement never lands shifted onto a
+      new block. So nothing
       anyone else put anywhere (in the director's cells, or in a placement of theirs that would
       be cleared) is replaced without being shown. With nothing to list there is no question;
       with nothing to change, _Already as you had it._ After Use yours, what the question
@@ -277,9 +278,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
         Swim · …: Flagpole stays where it is set up._ (When it is pressed, before anything is
         sent, the cause isn't known: _Can't undo Placed Swim · …: the week has changed._)
         The line stays until the director's next change or answer, and is said again once, with
-        the first save that follows (whose words would otherwise talk over it). Other notes
-        (_Redo skipped._, _Already as you had it._) are said once, with their own save, and
-        never twice on the line.
+        the first save that follows (whose words would otherwise talk over it). Other notes are
+        said once and never twice on the line: _Redo skipped._ with its own save, _Already as
+        you had it._ at once.
     - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
       are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
       runs, and Period 3 is never part of the edit, whatever someone puts there.
@@ -294,8 +295,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       to three questions in a row. The test server makes runs as `SlotSaves` does, only on the
       blocks they name. The test keeps its own record of what the director expected and saw,
       and checks each time: the rule, strictly; that no fixed or recurring activity is ever
-      changed; and after each save, that every cell was written in exactly the time block it
-      was meant for, holding what the director chose. Breaking the rule, the record of what was
+      changed; after each save, that every cell was written in exactly the time block it was
+      meant for (from the test's own record for the first send), holding what the director
+      chose; and that Use yours is never refused when nobody changed anything after the
+      answer. Breaking the rule, the record of what was
       expected, or the server's block check fails it. On the screen, every test that clicks Use
       yours checks the same rule by time block Id against the server's week at question time
       (`useYoursSendsWhatWasShown`), carrying the director's own cells and what they have seen

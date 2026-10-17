@@ -12,6 +12,9 @@ private class ManualBuildTest {
 
   private static Map<String, Id> camp() {
     Map<String, Id> ids = SetTimeTestData.camp();
+    SlotRunsTestData.useBlocks(
+      new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
+    );
     FixedActivity__c flagpole = SetTimeTestData.fixed(
       ids,
       'Flagpole',
@@ -69,11 +72,7 @@ private class ManualBuildTest {
     String groupId,
     String firstBlockId
   ) {
-    SlotEdits.Run run = new SlotEdits.Run();
-    run.day = day;
-    run.groupId = groupId;
-    run.firstBlockId = firstBlockId;
-    return run;
+    return SlotRunsTestData.at(day, groupId, firstBlockId);
   }
 
   private static SlotEdits.Edit edit(
@@ -81,11 +80,7 @@ private class ManualBuildTest {
     List<String> before,
     List<String> after
   ) {
-    run.before = before;
-    run.after = after;
-    SlotEdits.Edit edit = new SlotEdits.Edit();
-    edit.runs = new List<SlotEdits.Run>{ run };
-    return edit;
+    return SlotRunsTestData.edit(run, before, after);
   }
 
   private static SlotEdits.Result save(Id scheduleId, SlotEdits.Edit edit) {
@@ -452,6 +447,16 @@ private class ManualBuildTest {
       Assert.areEqual(0, made.conflicts.size());
       Assert.areEqual(soccer, slots(monday(made.schedule), 0)[1]);
       Assert.areEqual('^' + soccer, slots(monday(made.schedule), 0)[2]);
+      // A run that names no blocks wasn't sent by the screen as it is: refused, not guessed.
+      SlotEdits.Run unnamed = at(mon, ids.get('Group B'), ids.get('Period 2'));
+      unnamed.blockIds = new List<String>();
+      Assert.areEqual(
+        'That change could not be read. Reload the page and try again.',
+        refusal(
+          draftId,
+          edit(unnamed, new List<String>{ '' }, new List<String>{ soccer })
+        )
+      );
     }
   }
 

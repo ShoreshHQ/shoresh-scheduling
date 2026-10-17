@@ -379,9 +379,14 @@ function viaUseYours(rnd, days, runs) {
     return null;
   }
   const asked = plan(theirs.days, intent);
-  const after =
-    asked.runs && asked.runs.length && madeOn(theirs.days, asked.runs);
-  return after ? { runs: asked.runs, after } : null;
+  if (!asked.runs || !asked.runs.length) {
+    return null;
+  }
+  const after = madeOn(theirs.days, asked.runs);
+  if (!after) {
+    throw new Error("Use yours, worked out on the server's week, was refused");
+  }
+  return { runs: asked.runs, after };
 }
 
 /**
@@ -484,20 +489,30 @@ function wantsOf(days, runs) {
   return wants;
 }
 
+/** Each run's time blocks, by position in the week it was worked out on (the test's record). */
+function blocksOf(days, runs) {
+  return runs.map((run) => {
+    const day = days.find((dd) => dd.dateValue === run.day);
+    const first = blockIds(day).indexOf(run.firstBlockId);
+    return run.after.map((_, i) => day.blocks[first + i].id);
+  });
+}
+
 /**
  * Where a save will write, by position in the server's week before it (what the server goes by),
- * with the block each cell was meant for.
+ * with the block each cell was meant for (meant: per run, its blocks).
  */
-function targetsOf(state, runs) {
+function targetsOf(state, runs, meant) {
   const targets = [];
-  runs.forEach((run) => {
+  runs.forEach((run, r) => {
     const day = state.days.find((dd) => dd.dateValue === run.day);
     const first = day ? blockIds(day).indexOf(run.firstBlockId) : -1;
     run.after.forEach((after, i) => {
       const block = first >= 0 ? day.blocks[first + i] : null;
+      const meantId = meant[r] && meant[r][i];
       targets.push({
         key: block ? cellKey(run.day, run.groupId, block.id) : null,
-        meant: cellKey(run.day, run.groupId, run.blockIds[i]),
+        meant: meantId ? cellKey(run.day, run.groupId, meantId) : null,
         after
       });
     });
@@ -512,7 +527,9 @@ function targetsOf(state, runs) {
 function expectWritten(state, targets, wants, failures, seed) {
   const now = seenModelOf(state.days);
   targets.forEach(({ key, meant, after }) => {
-    if (key !== meant) {
+    if (!meant) {
+      failures.push(`seed ${seed}: a run names no time block for ${key}`);
+    } else if (key !== meant) {
       failures.push(
         `seed ${seed}: a cell meant for ${meant} was written to ${key}`
       );
@@ -614,11 +631,22 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
         otherChange(rnd, state, rnd() < 0.6 ? edit.runs : null);
       }
       let runs = edit.runs;
+      // The first send's blocks come from the test's record; Use yours's from plan() (blockIds),
+      // made on the server's week at the question.
+      let meant = blocksOf(expects, edit.runs);
+      let quietSinceAnswer = false;
       // Up to three questions in a row about the same edit.
       for (let question = 0; question < 3; question++) {
-        const targets = targetsOf(state, runs);
+        const targets = targetsOf(state, runs, meant);
         if (serverApply(state, runs)) {
           expectWritten(state, targets, wants, failures, seed);
+          break;
+        }
+        if (quietSinceAnswer) {
+          // Use yours was worked out on the server's week as it is: nothing can be in its way.
+          failures.push(
+            `seed ${seed}: Use yours was refused with nothing changed since`
+          );
           break;
         }
         if (question === 0) {
@@ -642,7 +670,9 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
         );
         intent = withSeen(intent, made.rows);
         runs = made.runs;
-        if (rnd() < 0.5) {
+        meant = runs.map((run) => run.blockIds);
+        quietSinceAnswer = rnd() >= 0.5;
+        if (!quietSinceAnswer) {
           otherChange(rnd, state, runs);
         }
       }

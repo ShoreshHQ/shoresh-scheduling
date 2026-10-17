@@ -23,7 +23,7 @@ public with sharing class SlotEdits {
     public List<String> after { get; set; }
     // Each slot's time block, from the week the screen made the run on: the run is made only on
     // those blocks, so a block added among them since is a conflict, not a shifted placement.
-    // Optional (null: from firstBlockId on).
+    // Required.
     @AuraEnabled
     public List<String> blockIds { get; set; }
 
@@ -37,11 +37,16 @@ public with sharing class SlotEdits {
         first + before.size() <= blockCount;
     }
 
-    /** Whether the day's blocks from first are the ones it was made on (when it names them). */
+    /** Whether the day's blocks from first are the ones it was made on. */
     public Boolean onBlocks(List<String> dayBlockIds, Integer first) {
-      return blockIds == null ||
-        (blockIds.size() == after.size() &&
-        SlotIds.sameBlocks(dayBlockIds, first, blockIds));
+      if (blockIds == null || blockIds.isEmpty()) {
+        // Every run names its blocks: one that doesn't wasn't sent by the screen as it is now.
+        throw new ShoreshException(
+          'That change could not be read. Reload the page and try again.'
+        );
+      }
+      return blockIds.size() == after.size() &&
+        SlotIds.sameBlocks(dayBlockIds, first, blockIds);
     }
   }
 

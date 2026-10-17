@@ -93,18 +93,12 @@ public with sharing class SlotIds {
     return -1;
   }
 
-  /**
-   * Whether a day's time blocks from first are the wanted ones, in order (null wanted: nothing to
-   * check).
-   */
+  /** Whether a day's time blocks from first are the wanted ones, in order. */
   public static Boolean sameBlocks(
     List<String> dayIds,
     Integer first,
     List<String> wanted
   ) {
-    if (wanted == null) {
-      return true;
-    }
     if (first + wanted.size() > dayIds.size()) {
       return false;
     }
