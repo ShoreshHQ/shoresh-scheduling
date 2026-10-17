@@ -20,7 +20,9 @@ export default class ShoreshDot extends LightningElement {
   focused = false;
 
   get showTip() {
-    return !!this.label && (this.open || this.hovered || this.tapped || this.focused);
+    return (
+      !!this.label && (this.open || this.hovered || this.tapped || this.focused)
+    );
   }
 
   get tabIndex() {

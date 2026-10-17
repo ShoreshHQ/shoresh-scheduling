@@ -131,7 +131,9 @@ describe("c-shoresh-manual-build", () => {
     await flush();
     const note = q(element, '[data-id="not-placed"]');
     expect(note.textContent).toContain("Rest · Bunk 2 · Monday");
-    expect(note.querySelector(".dot")).not.toBeNull();
+    const dot = note.querySelector("c-shoresh-dot");
+    expect(dot.label).toBe("Not placed: the cell was taken");
+    expect(dot.focusable).toBe(true);
   });
 
   it("is a keyboard grid with one cell in the tab order; arrows move between cells", async () => {
@@ -210,12 +212,27 @@ describe("c-shoresh-manual-build", () => {
     getDraft.mockResolvedValue(draft());
     const element = await render();
     await press(cell(element, "1-1"), "Enter");
-    expect(optionLabels(element)).toEqual([
-      "Boating",
-      "Soccer",
-      "SwimNot set up for Bunk 2"
-    ]);
-    expect(q(element, ".tag .dot")).not.toBeNull();
+    expect(optionLabels(element)).toEqual(["Boating", "Soccer", "Swim"]);
+    const dots = qa(element, '[role="option"] c-shoresh-dot');
+    expect(dots.map((d) => d.label)).toEqual(["Not set up for Bunk 2"]);
+  });
+
+  it("arrowing to an option with a dot shows its words; screen readers hear them in the option", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    const input = await type(element, "sw");
+    const option = q(element, '[role="option"]');
+    const dot = option.querySelector("c-shoresh-dot");
+    // The option is the highlighted one, so its dot's words show.
+    expect(option.getAttribute("aria-selected")).toBe("true");
+    expect(dot.open).toBe(true);
+    expect(
+      dot.shadowRoot.querySelector('[data-id="dot-words"]').textContent
+    ).toBe("Not set up for Bunk 2");
+    await type(element, "s");
+    await press(input, "ArrowDown");
+    expect(dot.open).toBe(true);
   });
 
   it("Delete clears a placed slot; Open is offered when typing into a filled one", async () => {
@@ -522,27 +539,36 @@ describe("c-shoresh-manual-build", () => {
     );
   });
 
-  it("Use yours on a cell no longer in the week says so, and the rest still save", async () => {
+  it("a cell the day no longer has is named, not asked about, and the rest still save", async () => {
     getDraft.mockResolvedValue(draft());
+    // Lunch was taken out of the program's day while I typed two-block Boating into Period 2.
     const shorter = schedule(WITH_SOCCER, ["1,2", "1,"]);
     shorter.days[0] = {
       ...shorter.days[0],
       blocks: shorter.days[0].blocks.slice(0, 2)
     };
     saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: shorter });
-    saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,2,", "1,2,"]));
+    const rest = later();
+    saveSlots.mockReturnValueOnce(rest.promise);
     const element = await render();
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "boat"), "Enter");
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Bunk 1 · Monday · Lunch isn't in the week any more."
+    );
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Bunk 1 · Monday · Lunch isn't in the week any more."
+    );
+    // The next change still saves.
     await press(cell(element, "1-1"), "Enter");
     await press(await type(element, "soccer"), "Enter");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Not placed: that cell isn't in the week any more."
-    );
     expect(saveSlots).toHaveBeenCalledTimes(2);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0].groupId).toBe("g2");
+    // Once the rest have saved, the line goes.
+    rest.answer(answer(WITH_SOCCER, ["1,2", "1,2"]));
+    await flush();
+    expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 
   it("Use yours when theirs already matches yours says so instead of saving", async () => {
@@ -557,6 +583,24 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Already as you had it."
     );
+  });
+
+  it("an activity that starts where the bunk is at camp offers the full list", async () => {
+    // Boating starts in Period 2 (at camp) and carries on into Lunch (away): the start decides.
+    getDraft.mockResolvedValue(
+      draft(
+        [WITH_SOCCER[0], { kind: "A", id: "a2", name: "Boating", gone: false }],
+        ["1,,", "1,2,^"]
+      )
+    );
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    expect(optionLabels(element)).toEqual([
+      "Open",
+      "Boating",
+      "Soccer",
+      "Swim"
+    ]);
   });
 
   it("an activity that starts where a bunk isn't at camp can only be cleared", async () => {

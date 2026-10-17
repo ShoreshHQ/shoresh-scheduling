@@ -522,8 +522,9 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
    capitals) finds the existing Swim instead of adding a second one.
 9. **An activity not set up for a bunk.** On the **Activities** screen, set Swim's _who can
    do it_ to _Juniors_ only. Back in Manual Build, double-click Bunk 5's Open slot (a Senior
-   bunk) and type `sw`. Swim is still offered, at the end of the list, with a bronze dot and
-   _Not set up for Bunk 5_. It can still be placed.
+   bunk) and type `sw`. Swim is still offered, at the end of the list, with a bronze dot. Hold
+   the pointer over the dot (or arrow down to Swim) and _Not set up for Bunk 5_ appears. It can
+   still be placed.
 10. **Keyboard only.** Click any slot once, then use the arrow keys to move around the grid. Enter
     (or F2) opens the box, the up and down arrows choose, Return places, and Escape closes it
     without changing anything. Delete clears the slot.
@@ -561,7 +562,8 @@ Same made-up camp, Manual Build, Week 1.
    Drag _Boating_ (two blocks) onto Period 2: it takes Period 2 and Period 3. Drag it onto the
    last block of the day: it takes the one block there is.
 3. **Over the weekly limit is allowed.** Keep placing Swim in one bunk's Group View past its
-   most. Nothing stops you; the count gets a bronze dot.
+   most. Nothing stops you; the count gets a bronze dot. Hold the pointer over the dot, tap it,
+   or Tab to Swim in the list: _Over its weekly limit_ appears. Every bronze dot works this way.
 4. **Move and swap.** Drag a placed Swim onto an Open slot (any bunk, any day): it moves there.
    - Drag it onto a slot with Soccer: the two swap.
    - Drag it onto Boating: _Only single-block activities swap._ appears under the toolbar, and

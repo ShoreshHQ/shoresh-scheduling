@@ -283,8 +283,6 @@
   background: var(--slds-g-color-brand-base-95, #eef4ff);
 }
 
-
-
 .conflict-where {
   font-weight: 600;
   margin-bottom: 12px;
@@ -313,7 +311,6 @@
   background: var(--shoresh-caution-tint);
   font-size: 13px;
 }
-
 
 /* The activity list on the left of the grid, as on the desktop. */
 .build-layout {

@@ -50,7 +50,9 @@ describe("c-shoresh-build-palette", () => {
     expect(q(element, ".zone-line")).not.toBeNull();
     // Over its weekly limit: the bronze dot, never blocked.
     const swim = q(element, 'button[data-id="a1"]');
-    expect(swim.querySelector(".dot")).not.toBeNull();
+    expect(swim.querySelector("c-shoresh-dot").label).toBe(
+      "Over its weekly limit"
+    );
     expect(swim.getAttribute("draggable")).toBe("true");
     expect(
       q(element, '[data-id="palette-filter"]').getAttribute("aria-label")
@@ -90,5 +92,21 @@ describe("c-shoresh-build-palette", () => {
     // A camp with no activities and nothing typed says nothing.
     const empty = render({ stillNeeded: [], placed: [] });
     expect(q(empty, ".no-matches")).toBeNull();
+  });
+
+  it("keyboard focus on an over-limit chip shows its dot's words", async () => {
+    const element = render();
+    const swim = q(element, 'button[data-id="a1"]');
+    const dot = swim.querySelector("c-shoresh-dot");
+    expect(dot.open).toBe(false);
+    swim.dispatchEvent(new CustomEvent("focus"));
+    await Promise.resolve();
+    expect(dot.open).toBe(true);
+    expect(
+      dot.shadowRoot.querySelector('[data-id="dot-tip"]').textContent
+    ).toBe("Over its weekly limit");
+    swim.dispatchEvent(new CustomEvent("blur"));
+    await Promise.resolve();
+    expect(dot.open).toBe(false);
   });
 });
