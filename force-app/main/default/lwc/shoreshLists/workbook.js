@@ -472,6 +472,8 @@ function weeksToFill(setup, t) {
       Name: `${t.s("Week")} ${i + 1}`,
       [WEEK.StartDate]: w.start,
       [WEEK.EndDate]: w.end,
+      // In order, as "Fill in weeks" numbers them.
+      [WEEK.SortOrder]: i + 1,
       filled: true
     })
   );
@@ -731,7 +733,9 @@ function readWeeks(sheet, setup, answers, t) {
     fields: {
       Name: nameOf(w),
       [WEEK.StartDate]: w[WEEK.StartDate],
-      [WEEK.EndDate]: w[WEEK.EndDate]
+      [WEEK.EndDate]: w[WEEK.EndDate],
+      // The later sheets see the weeks in their places, as the save numbers them.
+      [WEEK.SortOrder]: w[WEEK.SortOrder]
     }
   }));
   return result;

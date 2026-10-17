@@ -1086,6 +1086,19 @@ describe("namespace safety: what the workbook reads and writes", () => {
     ]);
   });
 
+  it("a season with one date only: another season's weeks would go by order (and all wait)", () => {
+    const from = camp();
+    const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
+    const startOnly = freshSeason();
+    startOnly.season = { ...startOnly.season, StartDate__c: "2028-06-26" };
+    const endOnly = freshSeason();
+    endOnly.season = { ...endOnly.season, EndDate__c: "2026-08-01" };
+    // Neither season has a week starting within its dates, so both read the workbook by order;
+    // with one date only, every week is left out until the season has both.
+    expect(propose(startOnly, workbook).weeks.byOrder).toBe(true);
+    expect(propose(endOnly, workbook).weeks.byOrder).toBe(true);
+  });
+
   it("the weeks filled in from the season's dates are what the later sheets see", () => {
     const from = camp();
     const s = freshSeason();
@@ -1104,12 +1117,13 @@ describe("namespace safety: what the workbook reads and writes", () => {
       seen.weeks.map((w) => [
         w.Name,
         w[FIELD.Week.StartDate],
-        w[FIELD.Week.EndDate]
+        w[FIELD.Week.EndDate],
+        w[FIELD.Week.SortOrder]
       ])
     ).toEqual([
-      ["Week 1", "2028-06-26", "2028-06-30"],
-      ["Week 2", "2028-07-03", "2028-07-07"],
-      ["Week 3", "2028-07-10", "2028-07-12"]
+      ["Week 1", "2028-06-26", "2028-06-30", 1],
+      ["Week 2", "2028-07-03", "2028-07-07", 2],
+      ["Week 3", "2028-07-10", "2028-07-12", 3]
     ]);
   });
 });

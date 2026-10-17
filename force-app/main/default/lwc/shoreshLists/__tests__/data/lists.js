@@ -41,6 +41,10 @@ function asSent(value) {
   }
   const result = {};
   for (const [key, inner] of Object.entries(value)) {
+    // A field that doesn't exist on the object comes out of c/shoreshSchema as undefined.
+    if (key === "undefined" || key === "null") {
+      throw new Error(`The save names a field that doesn't exist: ${key}`);
+    }
     if (CUSTOM.test(key) && !key.startsWith(NAMESPACE_PREFIX)) {
       throw new Error(
         `The save names a field without the package's prefix: ${key}`
