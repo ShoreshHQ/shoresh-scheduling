@@ -28,8 +28,9 @@ export function blockAddKey(program, name) {
 }
 
 /** Asked per block (its program and name), as Import last year does (ADR 0006 §15). */
-export function dashKey(program, name) {
-  return `dash|${looseKey(program)}|${looseKey(name)}`;
+/** One question per dash as written ("M-W", "Tu-Th"), per item. */
+export function dashKey(program, name, dash) {
+  return `dash|${looseKey(program)}|${looseKey(name)}|${dash}`;
 }
 
 export function tueThuKey(program, name) {

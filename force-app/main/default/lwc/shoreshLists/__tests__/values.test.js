@@ -209,7 +209,10 @@ const LISTS = {
       ["Swim", "Period 1", "Mon", "Juniors"],
       ["Golf", "Period 1", "M-W-F", "Juniors"],
       ["Tennis", "Period 1", "T-Th", "Juniors"],
-      ["tennis", "Period 1", "T", "Juniors"]
+      ["tennis", "Period 1", "T", "Juniors"],
+      ["Archery", "Period 1", "M-W/Tu-Th", "Juniors"],
+      ["archery", "Period 1", "M\u2014W/Tu\u2011Th", "Juniors"],
+      ["Chess", "Period 1", "MW-F", "Juniors"]
     ]
   ]
 };

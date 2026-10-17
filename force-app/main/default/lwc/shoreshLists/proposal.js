@@ -16,7 +16,7 @@ import {
   similarPairs,
   tidy
 } from "c/shoreshImportEngine";
-import { NONE, days as readDays, readCell } from "./cells";
+import { NONE, dashKeyOf, days as readDays, readCell } from "./cells";
 import {
   headingRowIndex,
   mapHeadings,
@@ -502,20 +502,35 @@ function resolveDayAsks(read, answers) {
       const said = {};
       let reread = readDays(text, said);
       while (reread.ask && !r.leftOut && !r.open) {
-        const kind = reread.ask;
-        const id =
-          kind === "t" ? tueThuKey(program, r.name) : dashKey(program, r.name);
-        note(kind, id, r, text, { from: reread.from, to: reread.to });
-        const answer = answers[id];
-        const allowed =
-          kind === "t" ? ["Tuesday", "Thursday"] : ["range", "list"];
-        if (answer === LEAVE_OUT) {
-          r.leftOut = true;
-        } else if (allowed.includes(answer)) {
-          said[kind] = answer;
+        // A lone T first; then every dash still unsure, each its own question.
+        const asked =
+          reread.ask === "t"
+            ? [{ kind: "t", id: tueThuKey(program, r.name), text }]
+            : reread.dashes.map((d) => ({
+                kind: "dash",
+                id: dashKey(program, r.name, dashKeyOf(d.text)),
+                text: d.text,
+                from: d.from,
+                to: d.to,
+                key: dashKeyOf(d.text)
+              }));
+        asked.forEach((a) => {
+          note(a.kind, a.id, r, a.text, { from: a.from, to: a.to });
+          const answer = answers[a.id];
+          const allowed =
+            a.kind === "t" ? ["Tuesday", "Thursday"] : ["range", "list"];
+          if (answer === LEAVE_OUT) {
+            r.leftOut = true;
+          } else if (!allowed.includes(answer)) {
+            r.open = true;
+          } else if (a.kind === "t") {
+            said.t = answer;
+          } else {
+            said.dashes = { ...said.dashes, [a.key]: answer };
+          }
+        });
+        if (!r.leftOut && !r.open) {
           reread = readDays(text, said);
-        } else {
-          r.open = true;
         }
       }
       if (reread.problem) {

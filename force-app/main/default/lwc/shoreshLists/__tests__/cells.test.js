@@ -2,6 +2,7 @@
 import { days, readCell } from "../cells";
 
 const DAYS = { type: "days" };
+const WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const TIME = { type: "time" };
 
 describe("days", () => {
@@ -76,8 +77,7 @@ describe("days", () => {
     // Tuesday to Friday is neither next door nor the whole week: asked next.
     expect(days("T-F", { t: "Tuesday" })).toEqual({
       ask: "dash",
-      from: "Tuesday",
-      to: "Friday"
+      dashes: [{ text: "T-F", from: "Tuesday", to: "Friday" }]
     });
   });
 
@@ -87,14 +87,97 @@ describe("days", () => {
     ["M-W", "Monday", "Wednesday"],
     ["Mon, Wed-Fri", "Wednesday", "Friday"]
   ])("asks whether %s is a range or two days", (text, from, to) => {
-    expect(readCell(DAYS, text)).toEqual({ ask: "dash", from, to });
+    expect(readCell(DAYS, text)).toMatchObject({
+      ask: "dash",
+      dashes: [{ from, to }]
+    });
+  });
+
+  // Coordinator, #20 round 3.
+  it.each([
+    ["M\u2014F", "em dash"],
+    ["M\u2010F", "Unicode hyphen"],
+    ["M\u2011F", "non-breaking hyphen"],
+    ["M\u2012F", "figure dash"],
+    ["M\u2212F", "minus sign"],
+    ["Mon \u2013 Fri", "en dash"]
+  ])("reads %s (%s) as a dash", (text) => {
+    expect(readCell(DAYS, text)).toEqual({ value: WEEK });
+  });
+
+  // Own probe of odd spellings, #20 round 3.
+  it.each([
+    ["Mo We Fr", ["Monday", "Wednesday", "Friday"]],
+    ["every weekday", WEEK],
+    ["M.W.F", ["Monday", "Wednesday", "Friday"]],
+    ["mon\u2014fri", WEEK],
+    ["Mon\u00a0-\u00a0Fri", WEEK],
+    ["tues & thurs", ["Tuesday", "Thursday"]],
+    ["Tue/Thu/", ["Tuesday", "Thursday"]],
+    ["Th-F", ["Thursday", "Friday"]]
+  ])("reads %s", (text, expected) => {
+    expect(readCell(DAYS, text)).toEqual({ value: expected });
+  });
+
+  it.each([
+    ["Mon~Fri", '"Mon~Fri" isn\'t a day'],
+    ["Mon\u2026Fri", '"Mon\u2026Fri" isn\'t a day'],
+    ["MonWedFri", '"MonWedFri" isn\'t a day'],
+    ["Sa Su", "Saturday isn't a camp day"],
+    ["R", '"R" isn\'t a day']
+  ])("shows %s as unreadable rather than guess", (text, problem) => {
+    expect(readCell(DAYS, text)).toEqual({ problem });
+  });
+
+  it("asks about an em-dash two-day dash too", () => {
+    expect(readCell(DAYS, "Tu\u2014Th")).toEqual({
+      ask: "dash",
+      dashes: [{ text: "Tu-Th", from: "Tuesday", to: "Thursday" }]
+    });
+  });
+
+  it("asks each dash on its own, and reads each answer", () => {
+    expect(readCell(DAYS, "M-W/Tu-Th")).toEqual({
+      ask: "dash",
+      dashes: [
+        { text: "M-W", from: "Monday", to: "Wednesday" },
+        { text: "Tu-Th", from: "Tuesday", to: "Thursday" }
+      ]
+    });
+    expect(
+      days("M-W/Tu-Th", { dashes: { "m-w": "list", "tu-th": "range" } })
+    ).toEqual({ value: ["Monday", "Tuesday", "Wednesday", "Thursday"] });
+    // One answered, the other still asked.
+    expect(days("M-W/Tu-Th", { dashes: { "m-w": "list" } })).toMatchObject({
+      ask: "dash",
+      dashes: [{ text: "Tu-Th" }]
+    });
+  });
+
+  it.each([
+    ["MW-F", "MW-F", "Wednesday", "Friday"],
+    ["M-WF", "M-WF", "Monday", "Wednesday"]
+  ])(
+    "asks about a dash next to run-together letters: %s",
+    (text, dash, from, to) => {
+      expect(readCell(DAYS, text)).toEqual({
+        ask: "dash",
+        dashes: [{ text: dash, from, to }]
+      });
+    }
+  );
+
+  it("reads run-together letters around a dash next door with no question", () => {
+    expect(readCell(DAYS, "MW-Th")).toEqual({
+      value: ["Monday", "Wednesday", "Thursday"]
+    });
   });
 
   it("reads a two-day dash as answered", () => {
-    expect(days("T-Th", { dash: "range" })).toEqual({
+    expect(days("T-Th", { dashes: { "t-th": "range" } })).toEqual({
       value: ["Tuesday", "Wednesday", "Thursday"]
     });
-    expect(days("T-Th", { dash: "list" })).toEqual({
+    expect(days("T-Th", { dashes: { "t-th": "list" } })).toEqual({
       value: ["Tuesday", "Thursday"]
     });
   });
@@ -105,6 +188,31 @@ describe("days", () => {
     ["M--F", '"M--F" isn\'t a day']
   ])("can't read %s", (text, problem) => {
     expect(readCell(DAYS, text)).toEqual({ problem });
+  });
+});
+
+describe("odd times are shown, never guessed (#20 round 3 probe)", () => {
+  it.each([
+    "9:00-10:00",
+    "9:00\u201410:00",
+    "9:00\u221210:00",
+    "9 - 10",
+    "noon",
+    "0930",
+    "9:5",
+    "9:60",
+    "\uff11\uff10:\uff10\uff10"
+  ])("can't read %s", (text) => {
+    expect(readCell(TIME, text).problem).toBeTruthy();
+  });
+
+  it.each([
+    ["9.30am", 570],
+    ["9:30 a.m.", 570],
+    ["9:00\u00a0AM", 540],
+    ["8 PM", 1200]
+  ])("reads %s", (text, value) => {
+    expect(readCell(TIME, text)).toEqual({ value });
   });
 });
 

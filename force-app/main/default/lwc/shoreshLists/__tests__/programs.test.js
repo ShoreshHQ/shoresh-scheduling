@@ -288,6 +288,24 @@ describe("a dash between two days (coordinator, #20 round 2)", () => {
     ]);
   });
 
+  it("asks each dash in a cell on its own (#20 round 3)", () => {
+    const two = [rows[0], ["Flag", "Period 1", "M-W/Tu\u2014Th"]];
+    const cards = questionCards(read("recurringActivities", two), terms, {});
+    expect(cards.map((c) => c.title)).toEqual([
+      "“Flag” on M-W: Mon to Wed, or just Mon and Wed?",
+      "“Flag” on Tu-Th: Tue to Thu, or just Tue and Thu?"
+    ]);
+    const one = { [cards[0].id]: "list" };
+    // The first answer decides nothing about the second.
+    expect(row(read("recurringActivities", two, one), "Flag").status).toBe(
+      "asked"
+    );
+    const both = { ...one, [cards[1].id]: "range" };
+    expect(
+      row(read("recurringActivities", two, both), "Flag").values.days
+    ).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday"]);
+  });
+
   it("asks T first, then the dash when the answer leaves one", () => {
     const tf = [rows[0], ["Flag", "Period 1", "T-F"]];
     const first = questionCards(read("recurringActivities", tf), terms, {});

@@ -138,7 +138,12 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     ("Mon-Wed-Fri" is three days; coordinator, #20 round 2). One dash is a range when its days
     are next to each other ("Mon-Tue") or span the week ("M-F"); any other ("T-Th") is asked:
     "Tue to Thu, or just Tue and Thu?" (`TWO_DAY_DASH` in cells.js; "range" reads them all as
-    ranges, pending Greg). "thru", "through" and "to" are always ranges. Saturday and Sunday
+    ranges, pending Greg). Each such dash is its own question, by how it is written ("M-W",
+    "Tu-Th"), and a dash next to run-together letters ("MW-F") is no surer than one between
+    single days (coordinator, #20 round 3). Every dash-like character (em dash, minus,
+    Unicode hyphens) is a dash. Two-letter days ("Mo We Fr") are read; anything else odd
+    ("Mon~Fri", "MonWedFri") can't be read rather than be guessed. "thru", "through" and "to"
+    are always ranges. Saturday and Sunday
     can't be read. **Times** read "9:00", "9:00 AM", "13:30",
     and a bare hour by the camp-day rule (ADR 0006): "9" is 9:00 AM, 7 to 11 the morning, 12 to 4
     the afternoon, 5 and 6 asked; a bare 13 to 23 can't be read ("8 PM" written out can). Shoresh writes "9:00 AM"; a time

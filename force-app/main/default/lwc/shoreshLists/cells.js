@@ -99,6 +99,7 @@ function early(text) {
 const EVERY_DAY = new Set([
   "weekdays",
   "every day",
+  "every weekday",
   "everyday",
   "daily",
   "all",
@@ -114,7 +115,13 @@ const LETTERS = {
   tu: "Tuesday",
   w: "Wednesday",
   th: "Thursday",
-  f: "Friday"
+  f: "Friday",
+  // Two-letter days ("Mo We Fr"), as calendars write them.
+  mo: "Monday",
+  we: "Wednesday",
+  fr: "Friday",
+  sa: "Saturday",
+  su: "Sunday"
 };
 const TUE_OR_THU = "T";
 
@@ -148,7 +155,14 @@ function dayWord(word) {
 export const TWO_DAY_DASH = "ask";
 
 const SHORT = (day) => day.slice(0, 3);
-const SEPARATOR = new Set(["-", "~"]);
+
+/** Every dash-like character (en, em, figure dash, Unicode and non-breaking hyphens, minus) as "-". */
+export function plainDashes(text) {
+  return String(text).replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+}
+// "thru", "to": a range always. A character no one types, so a "~" in the cell stays unread.
+const RANGE_WORD = "\uE000";
+const SEPARATOR = new Set(["-", RANGE_WORD]);
 
 /**
  * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon thru Fri", "M-F",
@@ -160,8 +174,9 @@ const SEPARATOR = new Set(["-", "~"]);
  *   to }) until said.dash is "range" or "list". "thru", "through", "to" are always ranges.
  * Saturday and Sunday can't be read: Shoresh camps run Monday to Friday.
  */
-export function days(text, said = {}) {
-  if (EVERY_DAY.has(text.toLowerCase().replace(/\s*([-–])\s*/g, "-"))) {
+export function days(written, said = {}) {
+  const text = plainDashes(written);
+  if (EVERY_DAY.has(text.toLowerCase().replace(/\s*-\s*/g, "-"))) {
     return { value: [...WEEKDAYS] };
   }
   const parts = [];
@@ -170,22 +185,17 @@ export function days(text, said = {}) {
     .map(tidy)
     .filter((p) => p)) {
     const words = part
-      .replace(/\b(?:thru|through|to|until|till)\b/gi, "~")
-      .match(/[–~-]|[^\s–~-]+/g);
-    const read = words.map((w) => {
-      if (w === "~") {
-        return "~";
-      }
-      return /^[–-]$/.test(w) ? "-" : dayWord(w);
-    });
+      .replace(/\b(?:thru|through|to|until|till)\b/gi, RANGE_WORD)
+      .match(/[\uE000-]|[^\s\uE000-]+/g);
+    const read = words.map((w) => (SEPARATOR.has(w) ? w : dayWord(w)));
     const bad = read.findIndex((d) => !d);
     if (bad >= 0) {
       return { problem: `"${words[bad]}" isn't a day` };
     }
-    parts.push({ part, read });
+    parts.push({ part, read, raw: words });
   }
-  const written = parts.flatMap((p) => p.read).flat();
-  const weekend = written.find(
+  const all = parts.flatMap((p) => p.read).flat();
+  const weekend = all.find(
     (d) => !SEPARATOR.has(d) && d !== TUE_OR_THU && !WEEKDAYS.includes(d)
   );
   if (weekend) {
@@ -193,9 +203,9 @@ export function days(text, said = {}) {
   }
   // Each lone T in turn: two are Tuesday then Thursday ("MTWTF"); one follows the day the cell
   // writes another way, else the answer.
-  const lone = written.filter((d) => d === TUE_OR_THU).length;
-  const tue = written.includes("Tuesday");
-  const thu = written.includes("Thursday");
+  const lone = all.filter((d) => d === TUE_OR_THU).length;
+  const tue = all.includes("Tuesday");
+  const thu = all.includes("Thursday");
   let meanings = [];
   if (lone === 2 && !tue && !thu) {
     meanings = ["Tuesday", "Thursday"];
@@ -210,22 +220,22 @@ export function days(text, said = {}) {
   }
   const queue = [...meanings];
   const found = new Set();
-  let unsure = null;
-  for (const { part, read } of parts) {
+  const unsure = [];
+  for (const { part, read, raw } of parts) {
     const words = read.map((d) => {
       return Array.isArray(d)
         ? d.map((x) => (x === TUE_OR_THU ? queue.shift() : x))
         : d;
     });
-    const read2 = readPart(part, words, said);
+    const read2 = readPart(part, words, raw, said);
     if (read2.problem) {
       return read2;
     }
-    unsure = unsure || read2.unsure;
+    unsure.push(...read2.unsure);
     read2.picked.forEach((d) => found.add(d));
   }
-  if (unsure) {
-    return { ask: "dash", ...unsure };
+  if (unsure.length) {
+    return { ask: "dash", dashes: unsure };
   }
   // Only separators ("/", "and"): no days written, as if blank.
   return found.size
@@ -234,7 +244,7 @@ export function days(text, said = {}) {
 }
 
 /** One part of a days cell, its words read: { picked, unsure } or { problem }. */
-function readPart(part, words, said) {
+function readPart(part, words, raw, said) {
   const picked = [];
   const seps = words.filter((w) => SEPARATOR.has(w));
   // A separator always has a day on each side.
@@ -256,9 +266,9 @@ function readPart(part, words, said) {
     if (index.some((x, i) => i && x < index[i - 1])) {
       return { problem: `"${part}" goes backwards` };
     }
-    return { picked: listed };
+    return { picked: listed, unsure: [] };
   }
-  let unsure = null;
+  const unsure = [];
   for (let i = 0; i < words.length; i++) {
     if (!SEPARATOR.has(words[i])) {
       picked.push(...words[i]);
@@ -271,22 +281,29 @@ function readPart(part, words, said) {
     if (to < from) {
       return { problem: `"${part}" goes backwards` };
     }
+    // Sure only when the days are next to each other or span the week; run-together letters
+    // ("MW-F") are no surer than single days.
     const ambiguous =
       words[i] === "-" &&
       TWO_DAY_DASH === "ask" &&
-      before.length === 1 &&
-      after.length === 1 &&
       to - from > 1 &&
       !(from === 0 && to === WEEKDAYS.length - 1);
-    if (ambiguous && said.dash === "list") {
+    const dash = `${raw[i - 1]}-${raw[i + 1]}`;
+    const answer = (said.dashes || {})[dashKeyOf(dash)];
+    if (ambiguous && answer === "list") {
       continue;
     }
-    if (ambiguous && said.dash !== "range") {
-      unsure = unsure || { from: WEEKDAYS[from], to: WEEKDAYS[to] };
+    if (ambiguous && answer !== "range") {
+      unsure.push({ text: dash, from: WEEKDAYS[from], to: WEEKDAYS[to] });
     }
     picked.push(...WEEKDAYS.slice(from, to + 1));
   }
   return { picked, unsure };
+}
+
+/** A dash as written, for its own question: "M-W" and "m - w" are one. */
+export function dashKeyOf(dash) {
+  return tidy(plainDashes(dash)).toLowerCase().replace(/\s+/g, "");
 }
 
 /** The two answers a dash question offers: "Tue to Thu", "Just Tue and Thu". */
