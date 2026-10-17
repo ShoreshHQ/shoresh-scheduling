@@ -544,18 +544,66 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
     Back in Manual Build, Bunk 6's empty afternoon slots are hatched and say _Not at camp_, and
     nothing can be placed there.
 
-Not in this part yet: dragging from a list of activities, moving or swapping slots, Undo, the
-counters (Still needed, Spread across the week, Overlapping) and their dots, Clear day or
-week, Copy day, Versions on this screen, and Publish. Each comes in the next pieces of Manual
-Build.
+## 20. Manual Build: drag, move, and undo
+
+Same made-up camp, Manual Build, Week 1.
+
+1. **The list of activities** is on the left of the grid in Daily and Group View (not in Activity
+   View). Each one shows how often it is placed, against how often it should be:
+   _2 placed (needs 3–5)_.
+   - Daily View counts the whole camp. The weekly numbers are multiplied by the bunks the
+     activity is set up for.
+   - Group View counts the bunk shown.
+   - Activities still under their minimum are on top, then a line, then the rest, each part in
+     name order.
+   - **Filter…** narrows the list as you type.
+2. **Drag an activity onto a slot.** Drag _Swim_ onto an Open slot: it is placed and saved.
+   Drag _Boating_ (two blocks) onto Period 2: it takes Period 2 and Period 3. Drag it onto the
+   last block of the day: it takes the one block there is.
+3. **Over the weekly limit is allowed.** Keep placing Swim in one bunk's Group View past its
+   most. Nothing stops you; the count gets a bronze dot.
+4. **Move and swap.** Drag a placed Swim onto an Open slot (any bunk, any day): it moves there.
+   - Drag it onto a slot with Soccer: the two swap.
+   - Drag it onto Boating: _Only single-block activities swap._ appears under the toolbar, and
+     nothing changes.
+   - Drag Boating to a spot with only one block free: _Boating doesn't fit there._
+   - Drag anything onto Lunch: _Lunch stays where it is set up._
+5. **Take one out.** Drag a placement back onto the list on the left: that slot is Open again.
+6. **Longer or shorter.** A placed activity has a small bar at its bottom. Drag the bar down
+   onto the next Open slot to make it run longer, or onto its own first slot to make it one
+   block. From the keyboard, Shift with the down arrow adds a block and Shift with the up arrow
+   takes one off.
+7. **Undo and Redo.** In the toolbar:
+   - **Undo** reverses the last change. Hold the pointer over it to see which one
+     (_Undo: Placed Swim · Bunk 1 · Monday · Period 2_).
+   - **Redo** puts it back.
+   - Ctrl+Z (Cmd+Z on a Mac) and Ctrl+Shift+Z or Ctrl+Y do the same.
+   - Undo keeps the last 50 changes of this visit. Choosing another week starts afresh.
+8. **Everything from the keyboard.** Click a placed slot once, then:
+   - press Space to pick it up;
+   - move with the arrow keys and press Space to put it down there (a move, or a swap);
+   - Escape puts it back where it was.
+
+   For a list activity, press Enter or Space on it in the list, then move to a slot and press
+   Space or Enter to place it.
+9. **Two people.** With two windows (section 19, step 12), an Undo in window A after window B
+   changed the same slot asks _Changed by someone else_ too.
+   - **Keep theirs** leaves B's change, and that step drops out of Undo.
+   - **Use yours** puts back exactly what you had: the same slots, the same length.
+10. **Deleting a week with a Manual Build.** On the **Weeks** screen, click delete on Week 1.
+    The confirmation now says _That includes its Manual Build and 1 saved version._ (or
+    however many there are). Click **Cancel**.
+
+Not in these parts yet: the counters (Still needed, Spread across the week, Overlapping) and
+their dots on the grid, Clear day or week, Copy day, Versions on this screen, and Publish. Each
+comes in the next pieces of Manual Build.
 
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule (marked Coming in the menu). In Manual Build: drag and drop, Undo, the
-  counters, Clear and Copy day, Versions on that screen, opening a version in it, and
-  publishing.
+- Generated Schedule (marked Coming in the menu). In Manual Build: the counters and their dots,
+  Clear and Copy day, Versions on that screen, opening a version in it, and publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

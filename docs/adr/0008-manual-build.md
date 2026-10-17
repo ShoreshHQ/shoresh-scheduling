@@ -151,9 +151,66 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     All new code reads object and field names through `ShoreshSchema`, typed references, and
     `c/shoreshSchema`. The LWC suite runs in the namespaced Jest run.
 
+## Choices (part 2)
+
+13. **The activity list** (desktop `ActivityPalette.jsx`, `shoreshBuildPalette` with `counts.js`):
+    - a rail left of the grid in Daily and Group View;
+    - a **Filter…** box;
+    - activities under their weekly minimum first, then a line, then the rest, each part by
+      name;
+    - each chip says _N placed (needs 3–5)_ (also _needs 6+_, _up to 5_, _needs 2_).
+    Group View counts the bunk shown against the activity's times a week. Daily View counts
+    the camp, against those times multiplied by the bunks it is set up for (the desktop's
+    scope). A multi-block placement counts once. **Over the maximum is never blocked** (Greg
+    #2): the chip can still be dragged, and its count gets the bronze dot. The desktop greys it
+    out and stops the drag. The dots on the grid come in part 3. The server sends each
+    activity's `minPerWeek` and `maxPerWeek` (null when it has no weekly limit).
+14. **Drag and drop** (desktop `dragHandlers.js`), HTML drag events:
+    - a list activity onto a slot places it, or replaces what is there. It fills its length
+      over Open slots and says so when there wasn't room (_Placed Boating · … (1 of 2)_);
+    - a placement onto an Open slot **moves** it and keeps its length. Somewhere too short is
+      refused (_Boating doesn't fit there._), not cut;
+    - onto a filled slot the two **swap**. As on the desktop, only single-block activities
+      swap (_Only single-block activities swap._);
+    - back onto the list **takes it out**.
+    Fixed and recurring activities don't move and nothing lands on them. Refusals are a quiet
+    line under the toolbar (`role=status`), never a banner.
+15. **Longer and shorter** (desktop `useSpanExtendDrag.js`; Greg #7 "can be shortened"):
+    - a placement's bottom handle dragged to a slot of the same bunk and day makes it end
+      there, longer over Open, at-camp slots only;
+    - Shift+Down and Shift+Up add or take off a block.
+16. **One way to describe every change** (`moves.js`). The change is made on a copy of the
+    rows it touches. Each row is then compared with its original, and the run sent is exactly
+    the slots that differ, widened to whole placements. A move within one row is one run; a
+    move or swap across rows is two runs in one edit, made together or not at all.
+17. **Undo and Redo** (desktop `useUndoRedo.js`; Greg #10), `history.js`:
+    - 50 steps per visit; choosing another week clears them, and Versions holds older history
+      (part 4);
+    - the toolbar buttons are named for the step (_Undo: Swapped Swim and Soccer_), with
+      Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, and Ctrl+Y (not inside the typing box);
+    - an Undo is the step's runs sent back the other way, so it is checked like any edit.
+      Over someone else's newer change it asks _keep theirs or use yours_. Keeping theirs
+      drops the step from both Undo and Redo;
+    - a refused save clears Undo, because what is saved is no longer known there.
+18. **Keyboard, at parity with drag** (accessibility):
+    - Space on a placement picks it up (_Swim picked up from Bunk 1 · Monday · Period 2._);
+      arrow keys move; Space or Enter puts it down (move or swap); Escape puts it back;
+    - Enter, Space, or a click on a list activity picks it up, and focus goes to the grid;
+    - while something is picked up, a click on a slot puts it down too;
+    - the picked slot and the picked list activity are outlined; `aria-pressed` is on the
+      list chip.
+19. **Follow-ups from part 1:**
+    - deleting a week or program now says _That includes its Manual Build and 2 saved
+      versions._ (`shoreshCampSetup.savedSchedulesNote`, through `c/shoreshSchema`);
+    - the slot box follows its slot when the page scrolls, and closes when the slot leaves the
+      screen;
+    - an empty cell is recognised by the views' `open` flag, not by its text;
+    - Activity View is unchanged: it lists the bunks doing an activity in each block, so a
+      bunk's away blocks have nothing to show there.
+
 ## Choices that are hard to undo after release
 
-None in this part: no new objects, fields, or picklist values. The draft uses ADR 0005's
+None in parts 1 and 2: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
 the screen and the server.
 
