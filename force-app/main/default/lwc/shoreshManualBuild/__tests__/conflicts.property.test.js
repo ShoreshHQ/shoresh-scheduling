@@ -365,8 +365,8 @@ function directorEdit(rnd, days) {
     const changed = days.map((day, d) => {
       return d === p.day ? dayOf(day.dateValue, blockIds(day), rows) : day;
     });
-    const runs = inverse([{ day: p.day, group: p.group, ...run }]).map((r) =>
-      toServer(changed, r)
+    const undoRuns = inverse([{ day: p.day, group: p.group, ...run }]).map(
+      (r) => toServer(changed, r)
     );
     // Half the time the screen has since refreshed to someone else's change, near the step or
     // anywhere: the Undo still expects what the step left.
@@ -374,11 +374,16 @@ function directorEdit(rnd, days) {
       const refreshed = { days: copyWeek(changed) };
       const times = 1 + int(rnd, 2);
       for (let i = 0; i < times; i++) {
-        otherChange(rnd, refreshed, rnd() < 0.8 ? runs : null);
+        otherChange(rnd, refreshed, rnd() < 0.8 ? undoRuns : null);
       }
-      return { days: refreshed.days, expects: changed, runs, refreshed: true };
+      return {
+        days: refreshed.days,
+        expects: changed,
+        runs: undoRuns,
+        refreshed: true
+      };
     }
-    return { days: changed, expects: changed, runs };
+    return { days: changed, expects: changed, runs: undoRuns };
   }
   if (!runs || !runs.length) {
     return null;

@@ -36,7 +36,7 @@ function loose(text) {
 }
 
 /** A run as saveSlots takes it (SlotEdits.Run): the screen's own blockIds left out. */
-function saved(run) {
+function asSaved(run) {
   return {
     day: run.day,
     groupId: run.groupId,
@@ -973,7 +973,7 @@ export default class ShoreshManualBuild extends LightningElement {
     try {
       const result = await saveSlots({
         scheduleId: this.schedule.schedule.id,
-        edits: [{ runs: entry.edit.runs.map(saved) }]
+        edits: [{ runs: entry.edit.runs.map(asSaved) }]
       });
       this.queue = this.queue.slice(1);
       this.server = result.schedule;
