@@ -92,14 +92,6 @@ function readRows(rows, start, used) {
       problems.push("No name");
     }
     if (
-      values.rainPlan &&
-      looseKey(values.rainPlan) === looseKey(values.name)
-    ) {
-      problems.push(
-        `${used.find((u) => u.column.key === "rainPlan").column.heading}: can't be itself`
-      );
-    }
-    if (
       typeof values.min === "number" &&
       typeof values.max === "number" &&
       values.max < values.min
@@ -147,6 +139,10 @@ function matchNames(leads, records, kind, answers) {
       if (b) {
         b.leftOut = true;
       }
+    } else if (pair.existing && sameThing && rowOf.has(pair.existing)) {
+      // The same as the camp's item, which another row of the file gives: that row is used.
+      a.leftOut = true;
+      a.sameAs = pair.existing;
     } else if (pair.existing && sameThing) {
       // Either spelling chosen (Import last year asks with both): the camp's item is used.
       a.found = byName.get(pair.existing) || [];
@@ -216,7 +212,11 @@ function whichOne(read, screen, setup, answers) {
         r.existing = chosen;
       } else if (answer === LEAVE_OUT) {
         r.leftOut = true;
-      } else if (answer !== "new") {
+      } else if (answer === "new") {
+        // A new one of that name, spelled as the items set up are.
+        r.name = name;
+        r.values.name = name;
+      } else {
         r.open = true;
       }
     });

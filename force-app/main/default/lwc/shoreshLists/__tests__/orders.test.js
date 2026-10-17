@@ -380,3 +380,71 @@ describe("own review of round 3", () => {
     expect(p.rows.find((r) => r.name === "Music").status).toBe("changed");
   });
 });
+
+describe("own review of round 3, second pass", () => {
+  function twoArcheries() {
+    const s = setup();
+    s.activities.push({ ...s.activities[0], Id: "a3" });
+    return s;
+  }
+  function run(rows, policy, s) {
+    const answers = {};
+    let p;
+    for (let round = 0; round < 6; round++) {
+      p = listProposal({
+        screenKey: "activities",
+        file: file(rows[0], rows.slice(1)),
+        setup: s,
+        terms,
+        answers
+      });
+      const open = questionCards(p, terms, answers).filter((c) => !c.answer);
+      if (!open.length) {
+        break;
+      }
+      open.forEach((c) => {
+        answers[c.id] = policy(c);
+      });
+    }
+    return { p, answers };
+  }
+  const rows = [
+    ["Activity", "Rain plan"],
+    ["Archery", ""],
+    ["Archry", "Kayak"],
+    ["Kayak", "Archry"]
+  ];
+  const sameThen = (whichAnswer) => (card) =>
+    card.title.startsWith("Which")
+      ? whichAnswer
+      : card.options.find((o) => o.label.includes("“Archery”")).value;
+
+  it("A: answered the same as Archery, then a new Archery: one new Archery, linked", () => {
+    const { p, answers } = run(rows, sameThen("new"), twoArcheries());
+    const plan = listPlan(p, answers, "s1", "f");
+    const names = plan.records.map((r) => r.fields.Name).sort();
+    expect(names).toEqual(["Archery", "Kayak"]);
+    const kayak = plan.records.find((r) => r.fields.Name === "Kayak");
+    expect(kayak.refs.RainPlan__c).toBe("Activity:Archery");
+  });
+
+  it("B: Which answered Leave out: a plan naming its misspelling is not added either", () => {
+    const { p } = run(rows, sameThen(LEAVE_OUT), twoArcheries());
+    const kayak = p.rows.find((r) => r.name === "Kayak");
+    expect(kayak.problems).toEqual(["Rain plan: 2 are called “Archery”"]);
+  });
+
+  it("names fold as rows do: a plan naming its own row in other capitals is itself", () => {
+    const s = setup();
+    s.activities.push({ ...s.activities[0], Id: "a4", Name: "ARCHERY" });
+    const { p } = run(
+      [
+        ["Activity", "Rain plan"],
+        ["Archery", "ARCHERY"]
+      ],
+      () => "a1",
+      s
+    );
+    expect(p.rows[0].problems).toEqual(["Rain plan: can't be itself"]);
+  });
+});

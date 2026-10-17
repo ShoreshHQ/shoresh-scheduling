@@ -63,7 +63,14 @@ export function resolver(records, leads) {
         ? { id: lead.existing.Id, name: lead.existing.Name }
         : { key: `Activity:${lead.name}`, name: lead.name };
     }
-    // Not saved: the item set up of that name, or one added as by hand.
+    // Not saved: what it matched (one item set up, or several: never guessed), the item set up
+    // of its name, or one added as by hand.
+    if (lead.found && lead.found.length === 1) {
+      return { id: lead.found[0].Id, name: lead.found[0].Name };
+    }
+    if (lead.found && lead.found.length > 1) {
+      return { ambiguous: lead.found.length, name: lead.found[0].Name };
+    }
     return fromCamp(lead.name) || { add: lead.name, name: lead.name };
   };
   return (name) => {
