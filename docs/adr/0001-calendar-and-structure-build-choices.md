@@ -32,7 +32,8 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    undo refusal still adds the platform's text; it is changed with the import code.)
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
    of objects and, per object, of the fields the screens send (a parent field only on a new
-   row); reads are `WITH USER_MODE`. **Trigger and save-time checks read in system mode** on
+   row, except a group's division: a group moves to another division of its own program on
+   the groups screen, and `GroupMoves` refuses any other); reads are `WITH USER_MODE`. **Trigger and save-time checks read in system mode** on
    purpose, so a check never depends on the saver's object and field access: duplicate checks,
    season matches, delete protection, and the fixed and recurring activity clash check
    (`SetTimeGuard`, `SetTimePlanReader`), which also runs at the end of screen saves. Their

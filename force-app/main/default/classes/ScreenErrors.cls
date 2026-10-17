@@ -43,7 +43,7 @@ public with sharing class ScreenErrors {
       UserModeWrites.SaveException failed = (UserModeWrites.SaveException) e;
       return withName(
         failed.recordName,
-        dmlMessage(failed.failure, failed.kind, fallback)
+        dmlMessage(failed.failure, failed.record, fallback)
       );
     }
     if (e instanceof DmlException) {
@@ -63,7 +63,7 @@ public with sharing class ScreenErrors {
 
   private static String dmlMessage(
     DmlException e,
-    Schema.SObjectType kind,
+    SObject record,
     String fallback
   ) {
     StatusCode code = e.getDmlType(0);
@@ -72,7 +72,7 @@ public with sharing class ScreenErrors {
       return e.getDmlMessage(0);
     }
     if (code == StatusCode.DUPLICATE_VALUE) {
-      return duplicateMessage(kind);
+      return duplicateMessage(record);
     }
     if (PLAIN.containsKey(code)) {
       return PLAIN.get(code);
@@ -82,14 +82,18 @@ public with sharing class ScreenErrors {
   }
 
   /** Shoresh's own checks catch duplicates first; this is for two saves at the same moment. */
-  private static String duplicateMessage(Schema.SObjectType kind) {
+  private static String duplicateMessage(SObject record) {
+    Schema.SObjectType kind = record == null ? null : record.getSObjectType();
     if (kind == Week__c.SObjectType) {
       return 'A ' +
-        CampLabels.modelTermsOnly().singularInSentence('Week') +
+        ScreenErrorWords.forWeek((Week__c) record).singularInSentence('Week') +
         ' already starts on that date.';
     }
     if (kind == CampLabel__c.SObjectType) {
       return 'That word is already set.';
+    }
+    if (kind == ImportAnswer__c.SObjectType) {
+      return 'Someone else saved at the same time. Try again.';
     }
     return 'That name is already used. Pick another.';
   }

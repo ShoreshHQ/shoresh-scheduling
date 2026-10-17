@@ -35,10 +35,12 @@ public with sharing class ScreenSaves {
       Division__c.Name,
       Division__c.SortOrder__c
     },
+    // A group may also move to another division of its own program (GroupMoves refuses others).
     Group__c.SObjectType => new Set<Schema.SObjectField>{
       Group__c.Name,
       Group__c.SortOrder__c,
-      Group__c.Availability__c
+      Group__c.Availability__c,
+      Group__c.Division__c
     },
     TimeBlock__c.SObjectType => new Set<Schema.SObjectField>{
       TimeBlock__c.Name,

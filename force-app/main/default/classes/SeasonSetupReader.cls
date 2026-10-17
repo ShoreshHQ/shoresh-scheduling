@@ -12,9 +12,7 @@ public with sharing class SeasonSetupReader {
     SeasonSetup setup = read(seasonId);
     if (setup == null) {
       throw new ShoreshException(
-        'That ' +
-          CampLabels.modelTermsOnly().singularInSentence('Season') +
-          ' was not found, or you do not have access to it.'
+        'That was not found, or you don\'t have access to it. Reload the page.'
       );
     }
     return setup;

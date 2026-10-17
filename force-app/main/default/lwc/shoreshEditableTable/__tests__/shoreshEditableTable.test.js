@@ -782,4 +782,24 @@ describe("c-shoresh-editable-table", () => {
       expect(notes).toEqual(["Bunk 3 is morning only and is left out.", ""]);
     });
   });
+
+  it("shows a note worked out from a saved row's unsaved values while it applies", async () => {
+    const element = render({
+      columns: COLUMNS,
+      rows: ROWS,
+      draftNoteHeading: "Moving",
+      draftNote: (values, original) =>
+        (values.Name !== original.Name ? `Renamed to ${values.Name}` : null)
+    });
+    await flush();
+    expect(element.shadowRoot.querySelector('[data-id="note"]')).toBe(null);
+    change(field(element, 0, "Name"), "Swim time");
+    await flush();
+    const notes = [...element.shadowRoot.querySelectorAll('[data-id="note"]')];
+    expect(notes.map((n) => n.textContent.trim())).toEqual([
+      "Renamed to Swim time",
+      ""
+    ]);
+    expect(element.shadowRoot.textContent).toContain("Moving");
+  });
 });

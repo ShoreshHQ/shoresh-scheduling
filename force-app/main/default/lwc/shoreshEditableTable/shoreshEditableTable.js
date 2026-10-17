@@ -25,6 +25,9 @@ import { LightningElement, api } from "lwc";
  * do it" under the row. An empty choice means everyone.
  *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
+ * draftNote / draftNoteHeading: a note worked out from a saved row's unsaved values,
+ *   draftNote(values, original) -> text or null, shown in that column while it applies (instead
+ *   of the row's saved note). Without notesHeading the column shows only while one applies.
  * rowActions: fixes offered in a saved row's note; each saves just its changes to that row.
  *
  * Fires:
@@ -52,6 +55,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api weekPhrase = "runs in";
   @api notesHeading;
   @api rowNotes = {};
+  @api draftNote;
+  @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
   @api rowActions = {};
 
@@ -203,7 +208,20 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get hasNotes() {
-    return !!this.notesHeading;
+    return (
+      !!this.notesHeading ||
+      this.visibleDrafts.some((d) => !!this.noteFromDraft(d))
+    );
+  }
+
+  get notesTitle() {
+    return this.notesHeading || this.draftNoteHeading;
+  }
+
+  noteFromDraft(draft) {
+    return !draft.isNew && typeof this.draftNote === "function"
+      ? this.draftNote(draft.values, draft.original)
+      : null;
   }
 
   /** Every column, for the row that opens under a row to choose who it covers. */
@@ -297,7 +315,9 @@ export default class ShoreshEditableTable extends LightningElement {
       whoLabel: whoColumn
         ? `${whoColumn.label}: ${draft.values.Name || ""}`.trim()
         : "",
-      note: draft.isNew ? "" : notes[draft.original.Id] || "",
+      note: draft.isNew
+        ? ""
+        : this.noteFromDraft(draft) || notes[draft.original.Id] || "",
       actions: draft.isNew
         ? []
         : ((this.rowActions || {})[draft.original.Id] || []).map((action) => ({

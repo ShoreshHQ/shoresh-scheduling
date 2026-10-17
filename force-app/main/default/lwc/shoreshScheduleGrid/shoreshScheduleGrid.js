@@ -6,14 +6,21 @@ import { LightningElement, api } from "lwc";
  * their rows. Read-only.
  *
  * grid: { columns, rows, cells } from c/shoreshScheduleViews. corner: the top-left label.
+ * label: the table's name for screen readers (the day, group, or activity shown).
+ *
+ * For screen readers it is a table: the header row, then one row per time block. A cell sits in
+ * the row it starts in, says which column it is in (aria-colindex) and how many blocks it runs
+ * (aria-rowspan); a slot with nothing in it (a group not at camp that day) simply has no cell.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
   @api corner;
+  @api label;
 
   get columns() {
     return ((this.grid && this.grid.columns) || []).map((column, i) => ({
       ...column,
+      colIndex: i + 2,
       style: `grid-row: 1 / span 1; grid-column: ${i + 2} / span 1;`
     }));
   }
@@ -23,8 +30,23 @@ export default class ShoreshScheduleGrid extends LightningElement {
     const cells = (this.grid && this.grid.cells) || [];
     return ((this.grid && this.grid.rows) || []).map((row, i) => ({
       ...row,
-      cells: cells.filter((cell) => cell.row === i)
+      rowIndex: i + 2,
+      cells: cells
+        .filter((cell) => cell.row === i)
+        .map((cell) => ({
+          ...cell,
+          colIndex: cell.column + 2,
+          rowSpan: cell.length || 1
+        }))
     }));
+  }
+
+  get rowCount() {
+    return this.bodyRows.length + 1;
+  }
+
+  get colCount() {
+    return this.columns.length + 1;
   }
 
   get columnTemplate() {

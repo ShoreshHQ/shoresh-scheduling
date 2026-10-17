@@ -84,4 +84,54 @@ private class ScreenErrorsTest {
       );
     }
   }
+
+  @IsTest
+  static void aNumberedRowIsNotNamedInTheMessage() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    try {
+      UserModeWrites.save(
+        new List<SObject>{
+          new CampLabel__c(Camp__c = camp.Id, ModelTerm__c = 'Group')
+        }
+      );
+      Assert.fail('A label needs its words');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.areEqual(
+        'Something required is blank. Fill it in and save again.',
+        ScreenErrors.of(e).getMessage(),
+        'No "CL-00001" in front'
+      );
+    }
+  }
+
+  @IsTest
+  static void aWeekIsNamedInTheCampsOwnWord() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = camp.Id,
+        ModelTerm__c = 'Week',
+        Singular__c = 'Session',
+        Plural__c = 'Sessions'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Week__c saved = ShoreshTestData.weeks(season.Id, 1)[0];
+    Assert.areEqual(
+      'Session',
+      ScreenErrorWords.forWeek(new Week__c(Season__c = season.Id))
+        .singularInSentence('Week')
+    );
+    Assert.areEqual(
+      'Session',
+      ScreenErrorWords.forWeek(new Week__c(Id = saved.Id))
+        .singularInSentence('Week')
+    );
+    Assert.areEqual(
+      'week',
+      ScreenErrorWords.forWeek(new Week__c()).singularInSentence('Week'),
+      'Unknown camp: the standard word'
+    );
+  }
 }

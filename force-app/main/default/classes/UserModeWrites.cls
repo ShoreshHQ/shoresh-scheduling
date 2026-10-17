@@ -19,12 +19,25 @@ public with sharing class UserModeWrites {
     } catch (DmlException e) {
       Database.rollback(beforeSave);
       SObject refused = current[e.getDmlIndex(0)];
-      throw new SaveException(e, nameOf(refused), refused.getSObjectType());
+      throw new SaveException(e, nameOf(refused), refused);
     }
   }
 
-  /** The record's name: sent with it, or (for a change that left the name alone) as saved. */
+  /**
+   * The record's name: sent with it, or (for a change that left the name alone) as saved. None
+   * for kinds whose name is a number Salesforce gives (CL-00001): that means nothing to a camp.
+   */
   private static String nameOf(SObject record) {
+    if (
+      record.getSObjectType()
+        .getDescribe()
+        .fields.getMap()
+        .get('Name')
+        .getDescribe()
+        .isAutoNumber()
+    ) {
+      return null;
+    }
     Map<String, Object> given = record.getPopulatedFieldsAsMap();
     if (given.containsKey('Name')) {
       return (String) given.get('Name');
@@ -46,17 +59,17 @@ public with sharing class UserModeWrites {
   public class SaveException extends Exception {
     public DmlException failure;
     public String recordName;
-    public Schema.SObjectType kind;
+    public SObject record;
 
     public SaveException(
       DmlException failure,
       String recordName,
-      Schema.SObjectType kind
+      SObject record
     ) {
       this(failure.getMessage());
       this.failure = failure;
       this.recordName = recordName;
-      this.kind = kind;
+      this.record = record;
     }
   }
 }

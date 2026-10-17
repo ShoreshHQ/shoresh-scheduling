@@ -362,7 +362,7 @@ private class SeasonCopierTest {
         Assert.fail('Copy without access is refused');
       } catch (SeasonCopier.CopyException e) {
         Assert.areEqual(
-          'That season was not found, or you do not have access to it.',
+          'That was not found, or you don\'t have access to it. Reload the page.',
           e.getMessage()
         );
       }

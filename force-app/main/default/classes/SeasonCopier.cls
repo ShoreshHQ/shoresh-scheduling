@@ -25,9 +25,7 @@ public with sharing class SeasonCopier {
     }
     if (found.isEmpty()) {
       throw new CopyException(
-        'That ' +
-          CampLabels.modelTermsOnly().singularInSentence('Season') +
-          ' was not found, or you do not have access to it.'
+        'That was not found, or you don\'t have access to it. Reload the page.'
       );
     }
     source = found[0];

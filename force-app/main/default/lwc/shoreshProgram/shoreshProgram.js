@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
+import { moveNote } from "./groupMoves";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -18,6 +19,8 @@ export default class ShoreshProgram extends LightningElement {
   @api weekExceptions = [];
   /** The season's locations, for fixed and recurring activities. */
   @api locations = [];
+  /** The season's activities with who can do each, for what moving a group changes. */
+  @api activities = [];
 
   name;
   days = {};
@@ -265,8 +268,25 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   get groupColumns() {
+    // A group moves to another division of its own program only (GroupMoves).
+    const move =
+      this.divisionRecords.length > 1
+        ? [
+            {
+              fieldName: "Division__c",
+              label: this.terms.s("Division"),
+              type: "picklist",
+              required: true,
+              options: this.divisionRecords.map((d) => ({
+                label: d.Name,
+                value: d.Id
+              }))
+            }
+          ]
+        : [];
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
+      ...move,
       {
         fieldName: "Availability__c",
         label: this.terms.s("Availability"),
@@ -279,6 +299,16 @@ export default class ShoreshProgram extends LightningElement {
         ]
       }
     ];
+  }
+
+  /** What moving a group changes, shown under its row before Save. */
+  get groupMoveNote() {
+    const context = {
+      divisions: this.divisionRecords,
+      activities: this.activities,
+      recurringActivities: this._entry.recurringActivities
+    };
+    return (values, original) => moveNote(values, original, context);
   }
 
   get blockDefaults() {

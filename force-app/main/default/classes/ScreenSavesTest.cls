@@ -45,4 +45,46 @@ private class ScreenSavesTest {
       Assert.areEqual(3, [SELECT COUNT() FROM Program__c WITH SYSTEM_MODE]);
     }
   }
+
+  @IsTest
+  static void aGroupMovesToAnotherDivisionOfItsOwnProgramOnly() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Program__c main = ShoreshTestData.program(season.Id, 'Main');
+      Program__c other = ShoreshTestData.program(season.Id, 'Other');
+      Division__c juniors = ShoreshTestData.division(main.Id, 'Juniors');
+      Division__c seniors = ShoreshTestData.division(main.Id, 'Seniors');
+      Division__c elsewhere = ShoreshTestData.division(other.Id, 'Elsewhere');
+      Group__c bunk = ShoreshTestData.groupIn(juniors.Id, 'Bunk 3');
+
+      SeasonSetupController.saveRecords(
+        new List<SObject>{ new Group__c(Id = bunk.Id, Division__c = seniors.Id) }
+      );
+      Assert.areEqual(
+        seniors.Id,
+        [SELECT Division__c FROM Group__c WHERE Id = :bunk.Id WITH SYSTEM_MODE]
+        .Division__c
+      );
+
+      try {
+        SeasonSetupController.saveRecords(
+          new List<SObject>{
+            new Group__c(Id = bunk.Id, Division__c = elsewhere.Id)
+          }
+        );
+        Assert.fail('Another program\'s division is refused');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(
+          '"Bunk 3": Groups can move only to another division of their own program.',
+          e.getMessage()
+        );
+      }
+      Assert.areEqual(
+        seniors.Id,
+        [SELECT Division__c FROM Group__c WHERE Id = :bunk.Id WITH SYSTEM_MODE]
+        .Division__c
+      );
+    }
+  }
 }
