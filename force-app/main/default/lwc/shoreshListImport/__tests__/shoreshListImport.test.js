@@ -1,6 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshListImport from "c/shoreshListImport";
 import saveList from "@salesforce/apex/ImportController.saveList";
+import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import LightningConfirm from "lightning/confirm";
@@ -8,6 +9,11 @@ import { buildTerms } from "c/shoreshTerms";
 
 jest.mock(
   "@salesforce/apex/ImportController.saveList",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/ImportController.saveWorkbook",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -368,5 +374,131 @@ describe("Download this list", () => {
       false
     );
     delete window.XLSX;
+  });
+});
+
+describe("Import camp workbook (Roots)", () => {
+  // The round-trip tests' made-up camp: two programs, two weeks, its own words.
+  const { camp } = require("../../shoreshLists/__tests__/data/camp");
+  const XLSX = require("xlsx");
+  const { campWorkbookSheets, sheetName } = require("c/shoreshLists");
+
+  function workbookBytes(setup, edit) {
+    const sheets = campWorkbookSheets(setup, buildTerms(setup.labels));
+    const wb = XLSX.utils.book_new();
+    sheets.forEach(({ name, rows }) => {
+      if (edit) {
+        edit(name, rows);
+      }
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet(rows),
+        sheetName(name)
+      );
+    });
+    return XLSX.write(wb, { type: "array", bookType: "xlsx" });
+  }
+
+  async function openWorkbook(setup, bytes) {
+    window.XLSX = XLSX;
+    getAnswers.mockResolvedValue([]);
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.workbook = true;
+    element.setup = {
+      ...setup,
+      season: { ...setup.season, Name: "Summer 2027" }
+    };
+    element.terms = buildTerms(setup.labels);
+    document.body.appendChild(element);
+    $(element, 'lightning-button[data-id="open"]').click();
+    await flush();
+    const input = $(element, 'input[data-id="file"]');
+    Object.defineProperty(input, "files", {
+      value: [
+        {
+          name: "Summer 2027 - camp workbook.xlsx",
+          arrayBuffer: () => Promise.resolve(bytes)
+        }
+      ]
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    return element;
+  }
+
+  afterEach(() => {
+    delete window.XLSX;
+    jest.clearAllMocks();
+  });
+
+  it("opens as Import camp workbook, without a list download", () => {
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.workbook = true;
+    element.setup = camp();
+    element.terms = buildTerms(camp().labels);
+    document.body.appendChild(element);
+    expect($(element, 'lightning-button[data-id="open"]').label).toBe(
+      "Import camp workbook"
+    );
+    expect($(element, 'lightning-button[data-id="download"]')).toBeNull();
+  });
+
+  it("the camp's own workbook: one section per sheet, nothing to change", async () => {
+    const setup = camp();
+    const element = await openWorkbook(setup, workbookBytes(setup));
+    expect($$(element, ".list-sheet-title").map((h) => h.textContent)).toEqual([
+      "Camp words",
+      "Weeks",
+      "Programs",
+      "Units",
+      "Bunks",
+      "Time blocks",
+      "Location types",
+      "Locations",
+      "Activities",
+      "Fixed activities",
+      "Recurring activities",
+      "Runs in"
+    ]);
+    expect($(element, '[data-id="waiting"]').textContent).toContain(
+      "Nothing to change"
+    );
+  });
+
+  it("a renamed week is a Keep or Change, and Save sends the whole workbook", async () => {
+    const setup = camp();
+    const element = await openWorkbook(
+      setup,
+      workbookBytes(setup, (name, rows) => {
+        if (name === "Weeks") {
+          rows[1][0] = "Opening week";
+        }
+        if (name === "Runs in") {
+          rows[0][4] = "Opening week";
+        }
+      })
+    );
+    const weeks = $(element, '[data-section="section-weeks"]');
+    expect(weeks.textContent).toContain("Name: Week 1 → Opening week");
+    buttonNamed(element, "Change", weeks).click();
+    await flush();
+    const save = $(element, 'lightning-button[data-id="save"]');
+    expect(save.label).toBe("Change 1");
+    saveWorkbook.mockResolvedValue({
+      importId: "i1",
+      added: {},
+      changed: { Week: 1 }
+    });
+    save.click();
+    await flush();
+    const plan = JSON.parse(saveWorkbook.mock.calls[0][0].plan);
+    expect(plan.records).toEqual([
+      { kind: "Week", id: "w1", fields: { Name: "Opening week" } }
+    ]);
+    expect($(element, '[data-id="saved"]')).not.toBeNull();
   });
 });

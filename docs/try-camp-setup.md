@@ -466,12 +466,33 @@ in the _Import test_ season, in this order).
    _Location types_, _Camp words_, _Weeks_, and _Runs in_ (a Yes or No under each week, as the
    screens' ticks).
 5. Import the workbook on any screen: it reads that screen's sheet, and shows _Unchanged_ for
-   every row. (Importing the whole workbook at once on Roots comes next.)
+   every row.
+
+## 18. Import the whole camp workbook on Roots
+
+1. On **Roots**, click **Download camp workbook** (section 17), then **Import camp workbook**
+   and choose that file. One box shows every sheet as its own section, and _Nothing to change_.
+2. Open the workbook in Excel and make four changes:
+   - _Weeks_: rename _Week 1_ to _Opening week_, and on _Runs in_ rename that column too.
+   - _Runs in_: change one activity's _Yes_ to _No_ under a week.
+   - _Activities_: add a row _Kayak_ (Length 1, at least 1 a week).
+   - _Camp words_: change _Bunk / Bunks_ to _Cabin / Cabins_ (or add the row if your camp
+     still uses Shoresh's words).
+3. Import it on Roots. The _Weeks_, _Runs in_ and _Camp words_ sections each show a Keep or
+   Change; _Activities_ shows _Kayak_ under New. Click **Change** on each (or **Change all
+   from this file**). The save button says what it will do, for example _Add 1, change 3_.
+4. Save. The week is renamed, the activity is off that week, Kayak is added, and the menu
+   says Cabins.
+5. Click **Undo this import** (or Roots' **Undo last import**). All four changes are put back
+   together, including the camp words.
+6. Rename a sheet (for example _Weeks_ to _Dates_) and import again: it is still read, by
+   what it holds. A sheet of your own that Shoresh can't read shows under _Sheets not read_.
 
 ## What is not here yet
 
-- Importing the whole camp workbook at once on Roots is the next piece. Moving a bunk to another unit on the Bunks screen
-  comes after them.
+- Moving a bunk to another unit on the Bunks screen comes later.
+- A workbook from another season: its weeks are matched by their start dates for now; how
+  last year's weeks map onto a new season is Greg's to settle.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
   into a working schedule, saving and deleting versions, and publishing. Roots' **Build or

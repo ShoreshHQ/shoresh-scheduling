@@ -199,6 +199,43 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
 23. **Files are saved from a Blob** (`URL.createObjectURL`, let go a second later), not a
     data: link, so a large camp's workbook isn't cut off by a browser's link length.
 
+## Part D: importing the camp workbook on Roots (2026-10-17)
+
+24. **One import for the whole camp** (Greg, Q3): **Import camp workbook** on Roots reads every
+    sheet of the workbook Roots downloads, in one review, one save, and one Undo. Nothing the
+    workbook leaves out is deleted. It is the panel of "Import a list" in a workbook mode: one
+    section per sheet; the questions, **Change all from this file**, and the save label cover
+    the whole file.
+25. **Sheets are found by what they hold** (coordinator): camp words, weeks, and Runs in by
+    their headings; each list by how well its headings fit (most matched, fewest unknown, one
+    sheet per list). A camp word making "Weeks (2)", or a sheet renamed, still reads. A sheet
+    nothing reads is listed under "Sheets not read".
+26. **Order**: camp words first (the other sheets' headings are in them), then weeks, then the
+    lists in the order they depend on each other (programs, units, bunks, time blocks, location
+    types, locations, activities, fixed, recurring), each read as its screen reads it against
+    the season as the sheets before would leave it (`withRecords`), so nothing is added or asked
+    twice. A later sheet's change to something an earlier one adds is folded into the add.
+27. **Weeks** are found by start date (`matchWeeks`, kept in one function: how a workbook from
+    another season maps onto this one is Greg's call). A new name or end date is a Keep or
+    Change; a new start date is a week to add. Dates are read only when certain: 2027-06-28,
+    "Jun 28, 2027", "28-Jun-27", or numbers whose day and month order another date in the
+    column settles; "7/5/2027" alone could be read two ways and can't be read.
+28. **Runs in**: each row finds its item by kind, program, unit, and name; each week column its
+    week by name, or "Name (start date)" when two weeks share a name. A changed tick is a Keep
+    or Change per item; Change adds or removes that item's weeks off. An item the workbook adds
+    runs the weeks it says. A blank tick, an item or week not found, can't be read.
+29. **Camp words**: a Keep or Change per word. A word the workbook leaves out stays. Undo puts
+    words back, keeping one edited since and naming it (Greg).
+30. **Server**: `ImportController.saveWorkbook`, the list save in workbook mode, adds Week and
+    WeekException kinds (weeks are added or renamed, never moved to another start date; a week
+    off removed is checked to be in the season) and camp words (with the camp's edit access).
+    Undo removes added weeks and weeks off unless used, puts removed weeks off back, and
+    restores changed weeks and words. A screen's list can't write these kinds.
+31. **Undo trusts nothing in an import's record** (security review): Import__c's Created__c and
+    Changed__c are text a scheduler can edit, so every object and field name Undo takes from
+    them must be one an import writes (`ImportFields`); anything else refuses the Undo with
+    "this import's record can't be read", and nothing is undone.
+
 ## Choices that are hard to undo after release
 
 - `ImportController.saveList` and the plan's shape (records with kind, key or id, fields,
