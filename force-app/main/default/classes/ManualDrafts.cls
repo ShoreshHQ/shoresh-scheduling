@@ -25,8 +25,18 @@ public with sharing class ManualDrafts {
     return found.isEmpty() ? null : found[0];
   }
 
+  /** A started week: the draft, and what Start a blank week could not place. */
+  public class Started {
+    public Id draftId;
+    public List<String> notPlaced = new List<String>();
+
+    private Started(Id draftId) {
+      this.draftId = draftId;
+    }
+  }
+
   /** Starts a blank week, or returns the draft someone already started. */
-  public static Id start(Id programId, Id weekId) {
+  public static Started start(Id programId, Id weekId) {
     List<Program__c> locked = [
       SELECT Id
       FROM Program__c
@@ -36,15 +46,15 @@ public with sharing class ManualDrafts {
     ];
     if (locked.isEmpty()) {
       throw new ShoreshException(
-        'That was not found, or you do not have access to it.'
+        'That program was not found, or you do not have access to it.'
       );
     }
     // Looked for again under the lock: a start that waited sees the one before it.
     Schedule__c existing = find(programId, weekId);
     if (existing != null) {
-      return existing.Id;
+      return new Started(existing.Id);
     }
-    List<ScheduleDaySaves.DaySave> days = BlankWeek.days(programId, weekId);
+    BlankWeek.Week week = BlankWeek.build(programId, weekId);
     Savepoint beforeStart = Database.setSavepoint();
     try {
       Schedule__c draft = new Schedule__c(
@@ -55,8 +65,10 @@ public with sharing class ManualDrafts {
         Origin__c = MANUAL
       );
       Database.insert(draft, AccessLevel.USER_MODE);
-      ScheduleDaySaves.write(draft.Id, days);
-      return draft.Id;
+      ScheduleDaySaves.write(draft.Id, week.days);
+      Started started = new Started(draft.Id);
+      started.notPlaced = week.notPlaced;
+      return started;
     } catch (Exception e) {
       Database.rollback(beforeStart);
       throw e;
@@ -64,14 +76,15 @@ public with sharing class ManualDrafts {
   }
 
   /**
-   * A draft, locked until this save ends, so saves of one schedule take turns. A version (or a
-   * published schedule) can't be changed.
+   * A Manual Build draft, locked until this save ends, so saves of one schedule take turns. A
+   * version (or a published schedule) can't be changed here.
    */
   public static Schedule__c locked(Id scheduleId) {
     List<Schedule__c> found = [
       SELECT
         Id,
         Status__c,
+        Origin__c,
         Program__c,
         Program__r.Season__c,
         Program__r.Season__r.Camp__c
@@ -85,7 +98,7 @@ public with sharing class ManualDrafts {
         'That schedule was not found, or you do not have access to it.'
       );
     }
-    if (found[0].Status__c != DRAFT) {
+    if (found[0].Status__c != DRAFT || found[0].Origin__c != MANUAL) {
       CampLabels labels = CampLabels.forCamp(
         found[0].Program__r.Season__r.Camp__c
       );

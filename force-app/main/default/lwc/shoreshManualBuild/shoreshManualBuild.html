@@ -60,6 +60,19 @@
       {announcement}
     </div>
 
+    <template lwc:if={notPlaced}>
+      <div class="not-placed" role="status" data-id="not-placed">
+        <span class="not-placed-head"
+          ><span class="dot"></span>Couldn't place, its slot was taken</span
+        >
+        <ul>
+          <template for:each={notPlaced} for:item="line">
+            <li key={line}>{line}</li>
+          </template>
+        </ul>
+      </div>
+    </template>
+
     <template lwc:if={draft}>
       <template lwc:if={hasNoDays}>
         <p class="empty">{noDaysMessage}</p>
@@ -221,7 +234,7 @@
           role="combobox"
           aria-label={editorLabel}
           aria-autocomplete="list"
-          aria-expanded={hasEditorOptions}
+          aria-expanded={editorExpanded}
           aria-controls="slot-options"
           aria-activedescendant={activeOptionId}
           autocomplete="off"

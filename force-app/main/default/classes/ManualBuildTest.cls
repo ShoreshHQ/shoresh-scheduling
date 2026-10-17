@@ -64,7 +64,11 @@ private class ManualBuildTest {
   }
 
   /** Where a run starts: a day, a group, and its first time block. */
-  private static SlotEdits.Run at(Date day, Id groupId, Id firstBlockId) {
+  private static SlotEdits.Run at(
+    Date day,
+    String groupId,
+    String firstBlockId
+  ) {
     SlotEdits.Run run = new SlotEdits.Run();
     run.day = day;
     run.groupId = groupId;
@@ -508,6 +512,125 @@ private class ManualBuildTest {
         ids.get('Swim'),
         ManualBuildController.addActivity(draftId, 'SWIM').id
       );
+    }
+  }
+
+  @IsTest
+  static void aRunMayNotStartPartwayThroughSomeoneElsesPlacement() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      String soccer = a(ids, 'Soccer');
+      save(
+        draftId,
+        edit(
+          at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+          new List<String>{ '', '' },
+          new List<String>{ soccer, '^' + soccer }
+        )
+      );
+      // Its second block alone, even naming it correctly, would cut Soccer short unasked.
+      String cut = refusal(
+        draftId,
+        edit(
+          at(MONDAY, ids.get('Group A'), ids.get('Lunch')),
+          new List<String>{ '^' + soccer },
+          new List<String>{ a(ids, 'Swim') }
+        )
+      );
+      Assert.isTrue(cut.contains('cut into'), cut);
+    }
+  }
+
+  @IsTest
+  static void editsAreMatchedByRecordNotSpellingAndEachConflictIsNamed() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      String swim15 = 'A:' + String.valueOf(ids.get('Swim')).left(15);
+      List<SlotEdits.Edit> edits = new List<SlotEdits.Edit>{
+        // 15-character Ids for the group, the block, and the activity.
+        edit(
+          at(
+            MONDAY,
+            String.valueOf(ids.get('Group A')).left(15),
+            String.valueOf(ids.get('Period 2')).left(15)
+          ),
+          new List<String>{ '' },
+          new List<String>{ swim15 }
+        ),
+        // Names a slot as Soccer, which it never held: a conflict, and only this one.
+        edit(
+          at(MONDAY, ids.get('Group B'), ids.get('Period 2')),
+          new List<String>{ a(ids, 'Soccer') },
+          new List<String>{ '' }
+        ),
+        edit(
+          at(MONDAY, ids.get('Group C'), ids.get('Period 2')),
+          new List<String>{ '' },
+          new List<String>{ a(ids, 'Soccer') }
+        )
+      };
+      SlotEdits.Result result = ManualBuildController.saveSlots(draftId, edits);
+      Assert.areEqual(new List<Integer>{ 1 }, result.conflicts);
+      ScheduleViews.DayView day = monday(result.schedule);
+      Assert.areEqual(a(ids, 'Swim'), slots(day, 0)[1]);
+      Assert.areEqual(a(ids, 'Soccer'), slots(day, 2)[1]);
+    }
+  }
+
+  @IsTest
+  static void aDayThatCannotBeReadIsRefusedNotAConflict() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      ScheduleDay__c monday = [
+        SELECT Id
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :draftId AND Date__c = :MONDAY
+        WITH SYSTEM_MODE
+      ];
+      Database.update(
+        new ScheduleDay__c(Id = monday.Id, Grid__c = 'not a grid'),
+        AccessLevel.SYSTEM_MODE
+      );
+      String refused = refusal(
+        draftId,
+        edit(
+          at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+          new List<String>{ '' },
+          new List<String>{ a(ids, 'Swim') }
+        )
+      );
+      Assert.isTrue(refused.startsWith('This day could not be read'), refused);
+    }
+  }
+
+  @IsTest
+  static void anActivityIsAddedOnlyFromAManualBuildDraft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      Schedule__c version = ShoreshTestData.version(
+        ids.get('Main'),
+        ids.get('Week 1'),
+        'Imported from last-summer.xlsx (made up)'
+      );
+      try {
+        ManualBuildController.addActivity(version.Id, 'Archery');
+        Assert.fail('An activity was added from a version.');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(
+          e.getMessage().contains('can\'t be changed'),
+          e.getMessage()
+        );
+      }
     }
   }
 

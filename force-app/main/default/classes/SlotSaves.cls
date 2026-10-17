@@ -54,10 +54,7 @@ public with sharing class SlotSaves {
     // Worked on copies, so an edit that does not fit leaves the days as they were.
     Map<Date, ScheduleGrid> working = new Map<Date, ScheduleGrid>();
     for (SlotEdits.Run run : edit.runs) {
-      ScheduleDays.DayGrid day = days.get(run.day);
-      if (day == null || day.grid == null) {
-        return false;
-      }
+      ScheduleDays.DayGrid day = readable(run.day);
       if (!working.containsKey(run.day)) {
         working.put(run.day, ScheduleGrid.fromText(day.grid.toText()));
       }
@@ -72,6 +69,22 @@ public with sharing class SlotSaves {
     return true;
   }
 
+  /** A day of the schedule that can be read; anything else is refused, not a conflict. */
+  private ScheduleDays.DayGrid readable(Date day) {
+    ScheduleDays.DayGrid read = days.get(day);
+    if (read == null) {
+      throw new ShoreshException(
+        'That day is not in this schedule. Reload the page.'
+      );
+    }
+    if (read.grid == null) {
+      throw new ShoreshException(
+        'This day could not be read: ' + read.problem + '.'
+      );
+    }
+    return read;
+  }
+
   private Boolean applyRun(SlotEdits.Run run, ScheduleGrid grid) {
     Integer g = SlotIds.indexOf(grid.groupIds(), run.groupId);
     Integer first = SlotIds.indexOf(grid.blockIds(), run.firstBlockId);
@@ -80,10 +93,12 @@ public with sharing class SlotSaves {
     }
     List<String> was = SlotIds.ofRow(grid, g);
     for (Integer i = 0; i < run.before.size(); i++) {
-      if (was[first + i] != SlotIds.normal(run.before[i])) {
+      if (!was[first + i].equals(SlotIds.normal(run.before[i]))) {
         return false;
       }
     }
+    // A run starts where a placement starts: starting inside one would cut off its first part.
+    SlotRules.checkStartsClean(was[first]);
     Set<Integer> inRun = new Set<Integer>();
     for (Integer i = 0; i < run.after.size(); i++) {
       writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
@@ -99,7 +114,7 @@ public with sharing class SlotSaves {
     Integer b = at[1];
     String slot = SlotIds.normal(after);
     List<String> row = SlotIds.ofRow(grid, g);
-    if (slot == row[b]) {
+    if (slot.equals(row[b])) {
       return;
     }
     rules.checkNotSetTime(row[b], slot);
@@ -108,7 +123,7 @@ public with sharing class SlotSaves {
       grid.rows[g][b] = SlotIds.OPEN;
     } else if (SlotIds.isCarryOn(slot)) {
       String previous = b == 0 ? SlotIds.OPEN : row[b - 1];
-      if (SlotIds.owner(previous) != slot.substring(1)) {
+      if (!SlotIds.owner(previous).equals(slot.substring(1))) {
         throw new ShoreshException(
           'That change could not be read. Reload the page and try again.'
         );

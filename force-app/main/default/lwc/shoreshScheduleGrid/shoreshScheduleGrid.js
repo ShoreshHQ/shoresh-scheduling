@@ -79,6 +79,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
           ...cell,
           role: this.editable ? "gridcell" : "cell",
           tabIndex: this.editable ? (cell.key === current ? "0" : "-1") : null,
+          // A slot that can't change here (a fixed activity, a group not at camp).
+          ariaReadOnly: this.editable && cell.readOnly ? "true" : null,
           colIndex: cell.column + 2,
           rowSpan: cell.length || 1
         }))

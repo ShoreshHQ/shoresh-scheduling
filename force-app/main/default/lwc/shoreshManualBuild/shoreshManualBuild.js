@@ -32,6 +32,11 @@ function loose(text) {
     .toLowerCase();
 }
 
+/** One slot, the same in Daily and Group View. */
+function slotKey(slot) {
+  return `${slot.day}|${slot.group}|${slot.block}`;
+}
+
 /**
  * Manual Build (desktop: the Manual schedule): a program's week built by hand. A week not started
  * yet offers "Start a blank week" (fixed and recurring activities placed, the rest Open). In Daily
@@ -86,11 +91,19 @@ export default class ShoreshManualBuild extends LightningElement {
 
   connectedCallback() {
     this.onWindowFocus = () => this.refresh();
+    // The slot box sits where the slot was on screen; scrolling would leave it behind.
+    this.onScroll = () => {
+      if (this.editor) {
+        this.closeEditor();
+      }
+    };
     window.addEventListener("focus", this.onWindowFocus);
+    window.addEventListener("scroll", this.onScroll, true);
   }
 
   disconnectedCallback() {
     window.removeEventListener("focus", this.onWindowFocus);
+    window.removeEventListener("scroll", this.onScroll, true);
   }
 
   get t() {
@@ -167,6 +180,10 @@ export default class ShoreshManualBuild extends LightningElement {
         weekId: this.weekId
       });
       if (ticket === this.loadTicket) {
+        // A reload after a refused save keeps saying why; another week starts clean.
+        if (!again) {
+          this.error = null;
+        }
         this.show(draft, !again);
       }
     } catch (e) {
@@ -202,6 +219,12 @@ export default class ShoreshManualBuild extends LightningElement {
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
     }
+  }
+
+  /** Just after Start a blank week: fixed or recurring activities whose slot was taken. */
+  get notPlaced() {
+    const lines = (this.draft && this.draft.notPlaced) || [];
+    return lines.length ? lines : null;
   }
 
   get showStart() {
@@ -331,7 +354,7 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!grid) {
       return null;
     }
-    const saving = new Set(this.queue.map((entry) => entry.key));
+    const saving = new Set(this.queue.map((entry) => entry.slotKey));
     return {
       ...grid,
       cells: grid.cells.map((cell) => this.decorate(cell, saving))
@@ -339,17 +362,19 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   decorate(cell, saving) {
-    let result = cell;
+    let result = cell.slot
+      ? { ...cell, readOnly: this.lockedReason(cell.slot) !== null }
+      : cell;
     if (cell.slot && cell.text === "Open" && this.isAwaySlot(cell.slot)) {
       const grp = this.dayOf(cell.slot).groups[cell.slot.group];
       result = {
-        ...cell,
+        ...result,
         text: "Not at camp",
         className: "cell cell_away",
         title: `${grp.name}: not at camp`
       };
     }
-    if (saving.has(cell.key)) {
+    if (cell.slot && saving.has(slotKey(cell.slot))) {
       result = { ...result, className: `${result.className} cell_saving` };
     }
     return result;
@@ -459,7 +484,8 @@ export default class ShoreshManualBuild extends LightningElement {
     if (isSetTime(at.slot)) {
       return `${this.nameOf(at.slot, day)} stays where it is set up.`;
     }
-    if (this.isAwaySlot(slot)) {
+    // A placement left there from an earlier setup can still be cleared.
+    if (at.slot === OPEN && this.isAwaySlot(slot)) {
       return `${day.groups[slot.group].name} isn't at camp then.`;
     }
     return null;
@@ -479,7 +505,7 @@ export default class ShoreshManualBuild extends LightningElement {
       return saved.name;
     }
     const activity = this.activityFor(item);
-    return activity ? activity.name : item.slice(2);
+    return activity ? activity.name : "deleted since";
   }
 
   activityFor(item) {
@@ -526,7 +552,7 @@ export default class ShoreshManualBuild extends LightningElement {
       this.announce(reason);
       return;
     }
-    this.change(cell, OPEN, 1);
+    this.change(cell.slot, cell.key, OPEN, 1);
   }
 
   // ---------- the slot editor (type a name) ----------
@@ -597,8 +623,8 @@ export default class ShoreshManualBuild extends LightningElement {
     const option = this.editorOptions.find((o) => o.selected === "true");
     return option ? option.id : null;
   }
-  get hasEditorOptions() {
-    return this.editorOptions.length > 0;
+  get editorExpanded() {
+    return String(this.editorOptions.length > 0);
   }
 
   handleEditorInput(event) {
@@ -669,7 +695,7 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     if (option.kind === "open") {
-      this.change(cell, OPEN, 1);
+      this.change(cell.slot, cell.key, OPEN, 1);
       return;
     }
     let activity = option.activity;
@@ -690,14 +716,16 @@ export default class ShoreshManualBuild extends LightningElement {
         };
       }
     }
-    this.change(cell, `A:${activity.id}`, activity.length);
+    this.change(cell.slot, cell.key, `A:${activity.id}`, activity.length);
   }
 
   // ---------- saving ----------
 
-  /** Makes an edit on screen at once and queues it for the server. */
-  change(cell, next, length) {
-    const { slot } = cell;
+  /**
+   * Makes an edit on screen at once and queues it for the server. slot: the day, group, and time
+   * block; key: the grid cell to put focus back on; next: what the slot should hold.
+   */
+  change(slot, key, next, length) {
     const day = this.dayOf(slot);
     const run = editRun(
       day,
@@ -725,7 +753,21 @@ export default class ShoreshManualBuild extends LightningElement {
       next === OPEN
         ? `Cleared ${this.slotName(slot, run.first)}`
         : `Placed ${this.nameOf(next, day)} · ${this.slotName(slot, run.first)}`;
-    this.queue = [...this.queue, { edit, key: cell.key, label }];
+    // A reload already on its way is older than this edit: its answer must not replace it.
+    this.loadTicket += 1;
+    this.loading = false;
+    this.queue = [
+      ...this.queue,
+      {
+        edit,
+        key,
+        label,
+        slot,
+        next,
+        length,
+        slotKey: slotKey({ ...slot, block: run.first })
+      }
+    ];
     this.applyLocally(edit);
     this.saveNext();
   }
@@ -764,7 +806,8 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** Sends queued edits one at a time, so each names what the one before it left. */
   async saveNext() {
-    if (this.saving || !this.queue.length) {
+    // While "keep theirs or use yours" is open, the rest wait for the answer.
+    if (this.saving || this.conflict || !this.queue.length) {
       return;
     }
     this.saving = true;
@@ -781,10 +824,16 @@ export default class ShoreshManualBuild extends LightningElement {
       if (result.conflicts.length) {
         this.askAboutConflict(entry);
       } else {
+        this.error = null;
         this.announce(entry.label);
       }
     } catch (e) {
-      this.error = errorMessage(e);
+      const dropped = this.queue.length - 1;
+      this.error =
+        errorMessage(e) +
+        (dropped > 0
+          ? ` ${dropped} more ${dropped === 1 ? "change was" : "changes were"} not saved.`
+          : "");
       this.queue = [];
       this.load(true);
     } finally {
@@ -811,39 +860,40 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     const now = slots(day, g).slice(first, first + run.after.length);
     this.conflict = {
-      edit: entry.edit,
-      key: entry.key,
-      label: entry.label,
+      entry,
       where: this.slotName({ day: dayIndex, group: g }, first),
       theirs: this.nameOf(now[0], day),
-      yours: this.nameOf(run.after[0], day),
-      now
+      yours: this.nameOf(run.after[0], day)
     };
     this.announce(`${this.conflict.where} changed since you opened it.`);
   }
 
   handleKeepTheirs() {
-    const key = this.conflict.key;
+    const { key } = this.conflict.entry;
     this.conflict = null;
     const grid = this.template.querySelector('[data-id="edit-grid"]');
     if (grid) {
       grid.focusCell(key);
     }
-  }
-
-  handleUseYours() {
-    const { edit, key, label, now } = this.conflict;
-    this.conflict = null;
-    const [run] = edit.runs;
-    const retry = { runs: [{ ...run, before: now }] };
-    this.queue = [...this.queue, { edit: retry, key, label }];
-    this.applyLocally(retry);
     this.saveNext();
   }
 
+  /** The same change again, worked out on the week as it is now (theirs may be longer). */
+  handleUseYours() {
+    const { slot, key, next, length } = this.conflict.entry;
+    this.conflict = null;
+    this.change(slot, key, next, length);
+  }
+
+  /** Escape keeps theirs; Tab stays on the dialog's two buttons. */
   handleConflictKeyDown(event) {
     if (event.key === "Escape") {
       this.handleKeepTheirs();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      const keep = this.template.querySelector('[data-id="keep-theirs"]');
+      const use = this.template.querySelector('[data-id="use-yours"]');
+      (this.template.activeElement === keep ? use : keep).focus();
     }
   }
 
@@ -861,7 +911,12 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- helpers ----------
 
+  /** Said by screen readers; the same words twice in a row are still said again. */
   announce(text) {
-    this.announcement = text;
+    this.announcement = "";
+
+    Promise.resolve().then(() => {
+      this.announcement = text;
+    });
   }
 }

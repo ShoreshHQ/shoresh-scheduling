@@ -22,21 +22,30 @@ public with sharing class BlankWeek {
   private List<Group__c> groups;
   private List<SetTimePlan.Item> items;
 
+  /** A blank week: its days, and any fixed or recurring activity whose slot was taken. */
+  public class Week {
+    public List<ScheduleDaySaves.DaySave> days = new List<ScheduleDaySaves.DaySave>();
+    // "Rest · Bunk 3 · Monday"
+    public List<String> notPlaced = new List<String>();
+  }
+
   /** The week's days, ready to save into a new schedule. */
-  public static List<ScheduleDaySaves.DaySave> days(Id programId, Id weekId) {
+  public static Week build(Id programId, Id weekId) {
     Program__c program = ProgramReads.programOf(programId);
     Week__c week = ProgramReads.weekOf(weekId, program);
     BlankWeek blank = new BlankWeek();
     blank.blocks = checkedBlocks(program);
     blank.groups = checkedGroups(program, week);
     blank.items = setTimeItems(program, weekId);
-    List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+    Week result = new Week();
     for (Date day : runDays(program, week)) {
-      saves.add(
-        new ScheduleDaySaves.DaySave(day, blank.grid(weekdayOf(day)), null)
-      );
+      BlankDay filled = blank.filled(weekdayOf(day));
+      result.days.add(new ScheduleDaySaves.DaySave(day, filled.grid, null));
+      for (String line : filled.notPlaced) {
+        result.notPlaced.add(line + ' · ' + weekdayOf(day));
+      }
     }
-    return saves;
+    return result;
   }
 
   /** "Monday" for a date, whatever the user's language. */
@@ -109,34 +118,33 @@ public with sharing class BlankWeek {
     return result;
   }
 
-  private ScheduleGrid grid(String weekday) {
+  private BlankDay filled(String weekday) {
     BlankDay day = new BlankDay(blocks, groups);
     for (SetTimePlan.Item item : items) {
       if (item.runDays().contains(weekday)) {
         day.place(item);
       }
     }
-    return day.grid;
+    return day;
   }
 
   /**
    * The program's fixed and recurring activities that run this week. SetTimePlanReader reads in
-   * system mode (it backs the clash check); here the scheduler must be able to read both kinds.
+   * system mode (it backs the clash check), so the user must first be able to read every object
+   * and field it reads (SetTimeAccess).
    */
   private static List<SetTimePlan.Item> setTimeItems(
     Program__c program,
     Id weekId
   ) {
-    if (
-      !FixedActivity__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
-        .isAccessible() ||
-      !RecurringActivity__c.SObjectType.getDescribe(
-          SObjectDescribeOptions.DEFERRED
-        )
-        .isAccessible()
-    ) {
+    if (!SetTimeAccess.canRead()) {
+      CampLabels labels = CampLabels.forCamp(program.Season__r.Camp__c);
       throw new ShoreshException(
-        'You don\'t have access to this camp\'s set times. Ask a Salesforce admin.'
+        'You don\'t have access to this camp\'s ' +
+          labels.pluralInSentence('FixedActivity') +
+          ' and ' +
+          labels.pluralInSentence('RecurringActivity') +
+          '. Ask a Salesforce admin.'
       );
     }
     SetTimePlan plan = SetTimePlanReader.read(new Set<Id>{ program.Season__c })

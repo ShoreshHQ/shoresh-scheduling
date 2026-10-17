@@ -70,7 +70,7 @@ public with sharing class SlotRules {
 
   /** Nothing goes where a group isn't at camp (a morning-only group's afternoon). */
   public void checkAtCamp(String slot, String groupId, String blockId) {
-    if (slot == SlotIds.OPEN) {
+    if (String.isEmpty(slot)) {
       return;
     }
     Group__c grp = groups.get(Id.valueOf(groupId));
@@ -85,7 +85,7 @@ public with sharing class SlotRules {
   /** The stored cell for an item starting in a slot, adding it to the day's list if new. */
   public String startToken(ScheduleGrid grid, String slot) {
     for (Integer i = 0; i < grid.items.size(); i++) {
-      if (SlotIds.of(grid.items[i]) == slot) {
+      if (SlotIds.of(grid.items[i]).equals(slot)) {
         return String.valueOf(i + 1);
       }
     }
@@ -112,12 +112,22 @@ public with sharing class SlotRules {
   ) {
     for (Integer b = 0; b < now.size(); b++) {
       if (
-        !inRun.contains(b) && SlotIds.owner(now[b]) != SlotIds.owner(was[b])
+        !inRun.contains(b) &&
+        !SlotIds.owner(now[b]).equals(SlotIds.owner(was[b]))
       ) {
         throw new ShoreshException(
           'That change would cut into the slot next to it. Reload the page and try again.'
         );
       }
+    }
+  }
+
+  /** A run may not start partway through a placement (it would cut off the part before). */
+  public static void checkStartsClean(String firstSlot) {
+    if (SlotIds.isCarryOn(firstSlot)) {
+      throw new ShoreshException(
+        'That change would cut into the slot next to it. Reload the page and try again.'
+      );
     }
   }
 }

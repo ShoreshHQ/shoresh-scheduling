@@ -22,7 +22,7 @@ public with sharing class ProgramReads {
     ];
     if (found.isEmpty()) {
       throw new ShoreshException(
-        'That was not found, or you do not have access to it.'
+        'That program was not found, or you do not have access to it.'
       );
     }
     return found[0];

@@ -23,7 +23,10 @@ public with sharing class ManualBuildController {
     Id weekId
   ) {
     try {
-      return ManualBuildViews.open(ManualDrafts.start(programId, weekId));
+      ManualDrafts.Started started = ManualDrafts.start(programId, weekId);
+      ManualBuildViews.DraftView view = ManualBuildViews.open(started.draftId);
+      view.notPlaced = started.notPlaced;
+      return view;
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

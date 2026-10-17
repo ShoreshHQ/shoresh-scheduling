@@ -12,12 +12,8 @@ public with sharing class ManualBuildActivities {
     String name
   ) {
     String trimmed = checkedName(name);
-    Schedule__c schedule = [
-      SELECT Program__c, Program__r.Season__c
-      FROM Schedule__c
-      WHERE Id = :scheduleId
-      WITH USER_MODE
-    ];
+    // Locked, so two people adding the same new name at once get one activity.
+    Schedule__c schedule = ManualDrafts.locked(scheduleId);
     Id seasonId = schedule.Program__r.Season__c;
     Id activityId = sameName(seasonId, trimmed);
     if (activityId == null) {

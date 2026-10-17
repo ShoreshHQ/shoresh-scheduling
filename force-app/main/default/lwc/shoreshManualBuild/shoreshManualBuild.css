@@ -318,3 +318,20 @@
 .conflict-choices dd {
   font-weight: 600;
 }
+
+/* After Start a blank week: what could not be placed, with the "needs a look" dot. */
+.not-placed {
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  font-size: 13px;
+}
+
+.not-placed-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}

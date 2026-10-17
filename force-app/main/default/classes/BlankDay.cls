@@ -4,6 +4,8 @@
  */
 public with sharing class BlankDay {
   public ScheduleGrid grid = new ScheduleGrid();
+  // "Rest · Bunk 3": a fixed or recurring activity whose slot was already taken.
+  public List<String> notPlaced = new List<String>();
   private Map<Id, Integer> blockIndex = new Map<Id, Integer>();
   private Map<Id, Integer> groupIndex = new Map<Id, Integer>();
 
@@ -31,8 +33,8 @@ public with sharing class BlankDay {
 
   /**
    * One fixed or recurring activity, in every group it takes. A slot already taken is left as
-   * it is: setup refuses such clashes (slice 3b), so it only happens with setup saved around
-   * them.
+   * it is and named in notPlaced: setup refuses such clashes (slice 3b), so it only happens with
+   * setup saved around them, and the director is told rather than left to find it.
    */
   public void place(SetTimePlan.Item item) {
     List<Integer> span = item.span();
@@ -45,7 +47,11 @@ public with sharing class BlankDay {
       List<String> row = groupIndex.containsKey(grp.Id)
         ? grid.rows[groupIndex.get(grp.Id)]
         : null;
-      if (row == null || !free(row, first, span.size())) {
+      if (row == null) {
+        continue;
+      }
+      if (!free(row, first, span.size())) {
+        notPlaced.add(item.name + ' · ' + grp.Name);
         continue;
       }
       if (position == null) {

@@ -11,6 +11,10 @@ public with sharing class ManualBuildViews {
     public List<ActivityOption> activities = new List<ActivityOption>();
     @AuraEnabled
     public List<AwaySlots> away = new List<AwaySlots>();
+    // Only just after Start a blank week: fixed or recurring activities whose slot was taken
+    // ("Rest · Bunk 3 · Monday").
+    @AuraEnabled
+    public List<String> notPlaced = new List<String>();
   }
 
   public class ActivityOption {
@@ -36,12 +40,18 @@ public with sharing class ManualBuildViews {
 
   /** The draft opened for Manual Build. */
   public static DraftView open(Id scheduleId) {
-    Schedule__c schedule = [
+    List<Schedule__c> found = [
       SELECT Program__c, Program__r.Season__c
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
     ];
+    if (found.isEmpty()) {
+      throw new ShoreshException(
+        'That schedule was not found, or you do not have access to it.'
+      );
+    }
+    Schedule__c schedule = found[0];
     DraftView view = new DraftView();
     view.schedule = ScheduleViews.open(scheduleId);
     List<Group__c> groups = ProgramReads.groupsOf(schedule.Program__c);

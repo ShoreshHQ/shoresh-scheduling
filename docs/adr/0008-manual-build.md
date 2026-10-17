@@ -38,9 +38,14 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    activities go where slice 3b's `SetTimePlan` puts them (their weeks, days, who, and length;
    morning-only and afternoon-only groups left out). Everything else is Open. The same setup
    always gives the same grids. A program with no time blocks, no groups at camp, or no days
-   that week is refused with a sentence naming it. `SetTimePlanReader` reads in system mode
-   because it backs the clash check (ADR 0001 §6). Start first checks that the scheduler can
-   read fixed and recurring activities, and every other read is in user mode.
+   that week is refused with a sentence naming it. A fixed or recurring activity whose slot is
+   already taken (only possible with setup saved around the clash check) is not placed, and the
+   screen lists it after Start (_Rest · Bunk 3 · Monday_) rather than leaving it to be found.
+   `SetTimePlanReader` reads in system mode because it backs the clash check (ADR 0001 §6).
+   Before a screen uses it, `SetTimeAccess` checks that the scheduler can read every object
+   and field it reads, so system mode shows nothing user mode wouldn't. A second copy of its
+   queries in user mode was the other option; it would have meant two versions of slice 3b's
+   reader to keep in step. Every other read is in user mode.
 4. **Slot saves: compare and set, slot by slot** (Greg #11: each slot saves on its own; a slot
    someone else changed asks "keep theirs or use yours"; nothing is overwritten unseen). The
    day-level revision check of ADR 0005 §9 would make two people editing different bunks of the
@@ -63,14 +68,23 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      edit again, naming what is there now).
    - Undo (part 2) is an edit like any other, so undoing over someone else's newer change asks
      the same question.
+   - **Use yours** works the edit out again on the week as it is now. If theirs is a longer
+     activity, all of it is replaced, and nothing is cut short unasked.
+   - While the question is open, later edits wait. They are sent, each checked the same way,
+     once the director answers.
 5. **What an edit may not do** (refused with a sentence, nothing saved):
    - change, cover, or place a fixed or recurring activity (they stay where setup puts them;
      part 6 adds "Update to match setup");
    - place anything in a block where the group is not at camp (morning or afternoon only);
    - place an activity from another season;
-   - change a version (only a draft can be changed);
-   - cut into a placement next to the run. A run must cover the whole of any multi-block
-     placement it changes; the screen always sends it that way.
+   - change anything but a Manual Build draft (a version, a published schedule, or a later
+     Generated Schedule draft);
+   - cut into a placement: a run may not start partway through one or change what the slots
+     outside it belong to. It must cover the whole of any multi-block placement it changes; the
+     screen always sends it that way;
+   - change a day that can't be read (refused with ADR 0005's "This day could not be read: …",
+     not offered as a conflict).
+   Slots are compared exactly (Apex `==` ignores capitals, so `equals` is used).
    Items no slot uses any more are dropped from the day's list (`ScheduleGrid.dropUnusedItems`).
 6. **Typing a name** (desktop `CellInlineEditor`). Double-click, Enter, or F2 on a slot opens a
    small box under it, named for the slot (_Bunk 1 · Monday · Period 2_). It lists, filtered as
@@ -83,7 +97,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    - then **Add "<name>" to activities** (Greg, Q2), when no activity has that name.
    **Add** creates an activity with the Activities screen's hand-add starting values (length 1,
    once a week, low priority, one group at a time). A name the season already has gives that
-   activity instead. Electives, special events, and special days are not offered: they are not
+   activity instead. Add needs a Manual Build draft and locks it, so two people adding the same
+   new name at once get one activity. Electives, special events, and special days are not offered: they are not
    set up in Salesforce yet. The wording avoids an article built from a camp word (design guide).
 7. **Multi-block activities fill their length** (Greg #7). From the slot's first block, an
    activity runs for its length over Open slots. It stops at a filled slot, a block where the
@@ -95,16 +110,21 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    - Enter or F2 opens the box. Its input is a combobox over a listbox: up and down arrows
      choose, Return picks, Escape closes and puts focus back on the slot.
    - Delete or Backspace clears a slot.
-   - A slot that can't change is announced instead (_Lunch stays where it is set up._).
+   - A slot that can't change is marked `aria-readonly` and announced when tried (_Lunch stays
+     where it is set up._). A placement left in a block where the group isn't at camp can
+     still be cleared.
    - A polite live region announces each saved edit (_Placed Swim · Bunk 1 · Monday ·
-     Period 2_) and each conflict. The conflict dialog is modal, starts on **Keep theirs**, and
-     Escape keeps theirs.
+     Period 2_) and each conflict, and says the same words again when repeated. The conflict
+     dialog is modal and keeps Tab on its two buttons. It starts on **Keep theirs**, and Escape
+     keeps theirs.
    The read-only grid (Schedules page) is unchanged: a table, not focusable.
 9. **Saving feels instant.** An edit shows on the grid at once, slightly faded until the server
    has it. Edits made meanwhile are queued and sent one at a time, in order, each on top of the
-   server's latest answer. A refused save shows its sentence and reloads the week.
-   Coming back to the browser window reloads the week (unless an edit is under way), so
-   other people's changes show. There is no push from the server.
+   server's latest answer. A refused save shows its sentence (plus how many waiting changes
+   were not saved) and reloads the week; the sentence stays until the next save works or
+   another week is chosen. Coming back to the browser window reloads the week (unless an edit
+   is under way), so other people's changes show. A reload that started before an edit never
+   replaces it. There is no push from the server. The slot box closes when the page scrolls.
 10. **Not at camp.** In the draft, a slot where the group isn't at camp (from today's setup:
     morning-only or afternoon-only groups) is hatched and says _Not at camp_; nothing can be
     placed there. The legend gains that look.
@@ -117,6 +137,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - `SlotSaves`, `SlotRules`, `SlotIds`: compare and set, and its rules;
     - `ManualBuildViews`: activities with who they're not set up for, and away slots;
     - `ManualBuildActivities`: adding an activity;
+    - `SetTimeAccess`: the read check before the system-mode set-time reader;
     - LWC `shoreshManualBuild` (with `slotEdits.js`); an `editable` mode on
       `shoreshScheduleGrid`.
     All new code reads object and field names through `ShoreshSchema`, typed references, and

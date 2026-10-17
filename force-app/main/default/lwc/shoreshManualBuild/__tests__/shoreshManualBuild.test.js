@@ -120,6 +120,20 @@ describe("c-shoresh-manual-build", () => {
     expect(cellText(element, "0-1")).toBe("Open");
   });
 
+  it("Start a blank week names any fixed or recurring activity whose slot was taken", async () => {
+    getDraft.mockResolvedValue(null);
+    startBlankWeek.mockResolvedValue({
+      ...draft(),
+      notPlaced: ["Rest · Bunk 2 · Monday"]
+    });
+    const element = await render();
+    q(element, '[data-id="start-week"]').click();
+    await flush();
+    const note = q(element, '[data-id="not-placed"]');
+    expect(note.textContent).toContain("Rest · Bunk 2 · Monday");
+    expect(note.querySelector(".dot")).not.toBeNull();
+  });
+
   it("is a keyboard grid with one cell in the tab order; arrows move between cells", async () => {
     getDraft.mockResolvedValue(draft());
     const element = await render();
@@ -346,6 +360,103 @@ describe("c-shoresh-manual-build", () => {
     );
     expect(getDraft).toHaveBeenCalledTimes(2);
     expect(cellText(element, "0-1")).toBe("Open");
+  });
+
+  it("while keep-theirs-or-yours is open, later edits wait for the answer", async () => {
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(WITH_SOCCER, ["1,2,", "1,,"], [0]));
+    saveSlots.mockResolvedValueOnce(answer(WITH_SOCCER, ["1,2,", "1,2,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+    await press(cell(element, "1-1"), "Enter");
+    await press(await type(element, "soccer"), "Enter");
+    // Bunk 2's edit shows, but is not sent while the question is open.
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(cellText(element, "1-1")).toBe("Soccer");
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0].groupId).toBe("g2");
+  });
+
+  it("Use yours over a longer activity of theirs replaces all of it", async () => {
+    const boating = [
+      { kind: "F", id: "f1", name: "Flagpole", gone: false },
+      { kind: "A", id: "a2", name: "Boating", gone: false }
+    ];
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(boating, ["1,2,^", "1,,"], [0]));
+    saveSlots.mockResolvedValueOnce(answer(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Boating");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0]).toEqual({
+      day: "2026-06-29",
+      groupId: "g1",
+      firstBlockId: "t2",
+      before: ["A:a2", "^A:a2"],
+      after: ["A:a1", ""]
+    });
+  });
+
+  it("a reload that started before an edit doesn't replace it when it answers", async () => {
+    getDraft.mockResolvedValueOnce(draft());
+    const element = await render();
+    const stale = later();
+    getDraft.mockReturnValueOnce(stale.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    saveSlots.mockResolvedValue(answer(WITH_SWIM, ["1,2,", "1,,"]));
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    expect(cellText(element, "0-1")).toBe("Swim");
+    stale.answer(draft());
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Swim");
+  });
+
+  it("an error goes away once a save works", async () => {
+    getDraft.mockResolvedValue(draft());
+    addActivity.mockRejectedValueOnce({
+      body: { message: "Keep the name to 80 characters or fewer." }
+    });
+    saveSlots.mockResolvedValue(answer(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "x".repeat(81)), "Enter");
+    expect(q(element, '[data-id="build-error"]')).not.toBeNull();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("slots that can't change are read-only for screen readers", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render();
+    expect(cell(element, "0-0").getAttribute("aria-readonly")).toBe("true");
+    expect(cell(element, "1-2").getAttribute("aria-readonly")).toBe("true");
+    expect(cell(element, "0-1").getAttribute("aria-readonly")).toBeNull();
+  });
+
+  it("Tab stays on the question's two buttons", async () => {
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(WITH_SOCCER, ["1,2,", "1,,"], [0]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    const keep = q(element, '[data-id="keep-theirs"]');
+    expect(element.shadowRoot.activeElement).toBe(keep);
+    await press(keep, "Tab");
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="use-yours"]')
+    );
+    await press(q(element, '[data-id="use-yours"]'), "Tab");
+    expect(element.shadowRoot.activeElement).toBe(keep);
   });
 
   it("Group View edits one bunk's week the same way", async () => {

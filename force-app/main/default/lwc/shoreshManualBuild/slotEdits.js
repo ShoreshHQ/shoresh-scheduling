@@ -66,7 +66,7 @@ export function placement(day, g, b) {
 export function editRun(day, g, b, next, length, isAway) {
   const row = slots(day, g);
   const at = placement(day, g, b);
-  if (isSetTime(at.slot) || (next !== OPEN && isAway(b))) {
+  if (isSetTime(at.slot) || (next !== OPEN && isAway(at.first))) {
     return null;
   }
   let take = 0;
