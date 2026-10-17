@@ -295,4 +295,37 @@ private class ImportListProgramsTest {
       );
     }
   }
+
+  @IsTest
+  static void undoPutsAMovedGroupBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result moved = save(
+        plan(
+          c.season.Id,
+          new List<Object>{
+            withRefs(
+              rec(
+                'Group',
+                c.bunk1,
+                new Map<String, Object>{ 'Availability__c' => 'AllDay' }
+              ),
+              new Map<String, Object>{ 'Division__c' => c.seniors }
+            )
+          }
+        )
+      );
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(moved.importId);
+      Test.stopTest();
+      Group__c back = [
+        SELECT Division__c, Availability__c
+        FROM Group__c
+        WHERE Id = :c.bunk1
+      ];
+      Assert.areEqual(c.juniors, back.Division__c);
+      Assert.areEqual('MorningOnly', back.Availability__c);
+      Assert.areEqual(1, undone.restored);
+    }
+  }
 }
