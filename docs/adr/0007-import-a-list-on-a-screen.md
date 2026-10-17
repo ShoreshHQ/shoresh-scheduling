@@ -185,6 +185,14 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
 20. **Formula guard**: every text cell starting with = + - @ or a tab or line break is written
     with an apostrophe in front, which the import takes off again; numbers are written as
     numbers.
+21. **What a spreadsheet can't hold is said, never cut** (own review before opening part C):
+    a cell over Excel's 32,767 characters stops the download with a message naming the item.
+    Sheet names drop what Excel refuses (: \ / ? * [ ], an apostrophe at either end, the
+    name "History", half an emoji at the 31-character cut). In a who list, a name with a
+    comma, semicolon, line break, quote, or a bracket left open is written in double quotes,
+    a quote inside written twice. Two weeks of one name head their "Runs in" columns with
+    their start dates. Two items of exactly one name are asked which is which on the way
+    back (shown, never guessed): a known limit of names that aren't unique.
 
 ## Choices that are hard to undo after release
 

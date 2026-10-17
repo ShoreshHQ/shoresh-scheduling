@@ -18,10 +18,9 @@ export function sanitizeCell(value) {
   }
   // Text already starting with an apostrophe before such a character keeps it: one more, which
   // reading takes off again ("'=x" stays "'=x").
-  const guarded =
-    FORMULA_START.test(value) ||
-    (value.startsWith("'") && FORMULA_START.test(value.slice(1)));
-  return guarded ? `'${value}` : value;
+  // Any apostrophes already before such a character keep theirs: one more, which reading
+  // takes off again ("'=x" stays "'=x", "''=x" stays "''=x").
+  return FORMULA_START.test(value.replace(/^'+/, "")) ? `'${value}` : value;
 }
 
 /** The apostrophe sanitizeCell added, taken off; "'Round the campfire" stays as it is. */
@@ -30,10 +29,7 @@ export function unescapeCell(value) {
     return value;
   }
   const rest = value.slice(1);
-  const guarded =
-    FORMULA_START.test(rest) ||
-    (rest.startsWith("'") && FORMULA_START.test(rest.slice(1)));
-  return guarded ? rest : value;
+  return FORMULA_START.test(rest.replace(/^'+/, "")) ? rest : value;
 }
 
 /** "No maximum", "No limit": a number column that can also say there is none. */
@@ -104,10 +100,24 @@ export function splitList(text) {
 
 /**
  * A name as a list cell writes it: in double quotes when it holds a comma, semicolon, line break,
- * or quote; a quote inside is written twice ("@Bunk ""3""").
+ * quote, or a bracket left open; a quote inside is written twice ("@Bunk ""3""").
  */
 export function listName(name) {
-  return /[,;\n"]/.test(name) ? `"${String(name).replace(/"/g, '""')}"` : name;
+  return /[,;\n"]/.test(name) || !bracketsClose(name)
+    ? `"${String(name).replace(/"/g, '""')}"`
+    : name;
+}
+
+/** Whether every "(" in a name has its ")": reading a list keeps a bracket's commas inside. */
+function bracketsClose(name) {
+  let depth = 0;
+  for (const ch of String(name)) {
+    depth += ch === "(" ? 1 : ch === ")" ? -1 : 0;
+    if (depth < 0) {
+      return false;
+    }
+  }
+  return depth === 0;
 }
 
 /** "2 by Wednesday", "2 by Wed": how many early in the week, by which day. */

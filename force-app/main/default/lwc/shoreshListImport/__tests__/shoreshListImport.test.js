@@ -313,3 +313,56 @@ describe("c-shoresh-list-import", () => {
     );
   });
 });
+
+describe("Download this list", () => {
+  function panel(setup) {
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.screenKey = "activities";
+    element.setup = setup;
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    return element;
+  }
+
+  it("saves this screen's list as a file", async () => {
+    window.XLSX = require("xlsx");
+    const saved = [];
+    const spy = jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function click() {
+        saved.push(this);
+      });
+    const element = panel(SETUP);
+    $(element, 'lightning-button[data-id="download"]').click();
+    await flush();
+    expect(saved.map((a) => a.download)).toEqual([
+      "Activities - Summer 2027.xlsx"
+    ]);
+    spy.mockRestore();
+    delete window.XLSX;
+  });
+
+  it("says so in a message when the list can't be written, naming the item", async () => {
+    window.XLSX = require("xlsx");
+    const toasts = [];
+    const element = panel({
+      ...SETUP,
+      activities: [{ ...SETUP.activities[0], Notes__c: "x".repeat(32768) }]
+    });
+    element.addEventListener("lightning__showtoast", (e) =>
+      toasts.push(e.detail)
+    );
+    $(element, 'lightning-button[data-id="download"]').click();
+    await flush();
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0].title).toBe("The list could not be downloaded");
+    expect(toasts[0].message).toContain("“Archery”");
+    // Ready again afterwards.
+    expect($(element, 'lightning-button[data-id="download"]').disabled).toBe(
+      false
+    );
+    delete window.XLSX;
+  });
+});

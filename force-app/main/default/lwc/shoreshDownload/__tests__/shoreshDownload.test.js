@@ -37,7 +37,7 @@ describe("c-shoresh-download", () => {
     expect(clicked[0].download).toBe("Activities - Summer 2027.xlsx");
     const base64 = clicked[0].href.split("base64,")[1];
     const wb = XLSX.read(base64, { type: "base64" });
-    expect(wb.SheetNames).toEqual(["Activities", "Runs in  weeks "]);
+    expect(wb.SheetNames).toEqual(["Activities", "Runs in  weeks"]);
     expect(
       XLSX.utils.sheet_to_json(wb.Sheets.Activities, { header: 1 })
     ).toEqual([

@@ -26,6 +26,7 @@ const CARDS = [
  * Fires: navigate { screen }
  */
 export default class ShoreshRoots extends LightningElement {
+  downloading = false;
   /** The season setup from SeasonSetupController. */
   @api setup;
   @api terms;
@@ -133,6 +134,10 @@ export default class ShoreshRoots extends LightningElement {
    * screen imports, plus location types, camp words, weeks, and the weeks each item runs in.
    */
   async handleDownloadWorkbook() {
+    if (this.downloading) {
+      return;
+    }
+    this.downloading = true;
     try {
       await downloadWorkbook(
         this,
@@ -142,11 +147,13 @@ export default class ShoreshRoots extends LightningElement {
     } catch (e) {
       this.dispatchEvent(
         new ShowToastEvent({
-          title: "The workbook could not be saved",
+          title: "The workbook could not be downloaded",
           message: errorMessage(e),
           variant: "error"
         })
       );
+    } finally {
+      this.downloading = false;
     }
   }
 }

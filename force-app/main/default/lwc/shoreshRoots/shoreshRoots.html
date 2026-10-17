@@ -67,6 +67,7 @@
             data-id="download-workbook"
             label="Download camp workbook"
             icon-name="utility:download"
+            disabled={downloading}
             onclick={handleDownloadWorkbook}
           ></lightning-button>
           <template lwc:if={lastImport}>

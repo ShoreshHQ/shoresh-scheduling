@@ -47,7 +47,11 @@ function notesColumn() {
     words: ["note", "comments", "comment"],
     type: "text",
     keepSpacing: true,
-    fromRecord: (r) => r.Notes__c || null,
+    // As a list reads them back: one kind of line break, and spaces alone are no notes.
+    fromRecord: (r) => {
+      const notes = String(r.Notes__c || "").replace(/\r\n?/g, "\n");
+      return notes.trim() ? notes : null;
+    },
     write: (v) => ({ Notes__c: v || null })
   };
 }

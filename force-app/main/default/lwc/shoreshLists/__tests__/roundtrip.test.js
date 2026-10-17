@@ -575,3 +575,120 @@ describe("adversarial downloads read back with nothing to do", () => {
     });
   });
 });
+
+describe("PR C own review: what the probes found", () => {
+  function back(screenKey, setup, t = terms) {
+    const file = roundTrip([
+      { name: "List", rows: listRows(screenKey, setup, t) }
+    ]);
+    const p = listProposal({ screenKey, file, setup, terms: t, answers: {} });
+    return {
+      changed: p.rows.filter((r) => r.status !== "unchanged"),
+      questions: questionCards(p, t, {}).map((c) => c.title)
+    };
+  }
+
+  it("a bunk whose name leaves a bracket open reads back in a who list", () => {
+    const s = camp();
+    s.programs[0].divisions[0].groups.push({
+      Id: "g9",
+      Name: "Bunk (A",
+      Availability__c: "AllDay"
+    });
+    s.activities[1].Eligibilities__r = [{ Group__c: "g9" }, { Group__c: "g1" }];
+    expect(back("activities", s)).toEqual({ changed: [], questions: [] });
+  });
+
+  it("notes longer than a spreadsheet cell holds are refused, naming the item, never cut", () => {
+    const s = camp();
+    s.locations[1].Notes__c = "x".repeat(32768);
+    expect(() => listRows("locations", s, terms)).toThrow(
+      "Notes for “Gym” is longer than a spreadsheet cell holds."
+    );
+    // The apostrophe the guard adds counts too.
+    s.locations[1].Notes__c = `=${"x".repeat(32766)}`;
+    expect(() => listRows("locations", s, terms)).toThrow("“Gym”");
+    s.locations[1].Notes__c = "x".repeat(32767);
+    expect(() => listRows("locations", s, terms)).not.toThrow();
+  });
+
+  it("notes with Windows line breaks, or only spaces, read back unchanged", () => {
+    const s = camp();
+    s.locations[1].Notes__c = "One\r\nTwo";
+    s.locations.push({
+      Id: "l5",
+      Name: "Barn",
+      GroupsThatFit__c: 1,
+      Notes__c: "   "
+    });
+    expect(back("locations", s)).toEqual({ changed: [], questions: [] });
+  });
+
+  it("a name starting with two apostrophes before = reads back as it is", () => {
+    const s = camp();
+    s.locations[1].Name = "''=Gym";
+    expect(back("locations", s)).toEqual({ changed: [], questions: [] });
+  });
+
+  it.each([
+    ["Kids'", "Kids"],
+    ["'Quoted'", "Quoted"],
+    ["History", "History sheet"],
+    ["history", "history sheet"],
+    [`${"a".repeat(30)}\u{1F600}`, "a".repeat(30)],
+    ["''", "Sheet"]
+  ])("sheet name %s becomes %s", (name, expected) => {
+    expect(sheetName(name)).toBe(expected);
+  });
+
+  it("camp words ending in an apostrophe or called History still make a workbook", () => {
+    const t = buildTerms([
+      {
+        term: "Group",
+        modelSingular: "Group",
+        singular: "Kid",
+        plural: "Kids'",
+        isCustom: true
+      },
+      {
+        term: "Activity",
+        modelSingular: "Activity",
+        singular: "History",
+        plural: "History",
+        isCustom: true
+      }
+    ]);
+    const file = roundTrip(campWorkbookSheets(camp(), t));
+    expect(file.sheets.map((x) => x.name)).toEqual(
+      expect.arrayContaining(["Kids", "History sheet"])
+    );
+    ["groups", "activities"].forEach((screenKey) => {
+      const p = listProposal({
+        screenKey,
+        file,
+        setup: camp(),
+        terms: t,
+        answers: {}
+      });
+      expect(p.rows.filter((r) => r.status !== "unchanged")).toEqual([]);
+    });
+  });
+
+  it("two weeks of one name are told apart on Runs in by their start dates", () => {
+    const s = camp();
+    s.weeks[1].Name = "Week 1";
+    const runsIn = campWorkbookSheets(s, terms).find(
+      (x) => x.name === "Runs in"
+    ).rows[0];
+    expect(runsIn.slice(4)).toEqual([
+      "Week 1 (2027-06-28)",
+      "Week 1 (2027-07-05)"
+    ]);
+  });
+
+  it("two activities of exactly one name are asked which is which: shown, never guessed (a known limit)", () => {
+    const s = camp();
+    s.activities.push({ ...s.activities[1], Id: "a8" });
+    expect(back("activities", s).questions).toContain("Which “Board games”?");
+  });
+});

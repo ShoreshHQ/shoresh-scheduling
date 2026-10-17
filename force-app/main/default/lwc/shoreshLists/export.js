@@ -30,7 +30,25 @@ export function listRows(screenKey, setup, t) {
         cellText(column, column.fromRecord(record, setup), targets)
       )
     );
-  return [screen.columns.map((c) => c.heading), ...rows].map(safe);
+  const written = [screen.columns.map((c) => c.heading), ...rows].map(safe);
+  fitsExcel(written);
+  return written;
+}
+
+/** Excel's most in one cell. */
+const CELL_LIMIT = 32767;
+
+/** Refuses a cell Excel can't hold, naming its row, rather than cut it short. */
+function fitsExcel(rows) {
+  rows.forEach((row) =>
+    row.forEach((cell, c) => {
+      if (typeof cell === "string" && cell.length > CELL_LIMIT) {
+        throw new Error(
+          `${rows[0][c]} for “${row[0]}” is longer than a spreadsheet cell holds.`
+        );
+      }
+    })
+  );
 }
 
 /** The location types: a list of names (the Locations sheet only names the types in use). */
@@ -64,6 +82,13 @@ function weekRows(setup, t) {
  */
 function runsInRows(setup, t) {
   const weeks = setup.weeks || [];
+  // Two weeks of one name are told apart by their start dates.
+  const named = weeks.map((w) => String(w.Name).toLowerCase());
+  const heading = (w) => {
+    const twice =
+      named.filter((n) => n === String(w.Name).toLowerCase()).length > 1;
+    return twice ? `${w.Name} (${w.StartDate__c})` : w.Name;
+  };
   const off = new Set(
     (setup.weekExceptions || []).map((x) => {
       const item =
@@ -100,13 +125,7 @@ function runsInRows(setup, t) {
   (setup.locations || []).forEach((l) => add("Location", "", l));
   (setup.activities || []).forEach((a) => add("Activity", "", a));
   return [
-    [
-      "Kind",
-      t.s("Program"),
-      t.s("Division"),
-      "Name",
-      ...weeks.map((w) => w.Name)
-    ],
+    ["Kind", t.s("Program"), t.s("Division"), "Name", ...weeks.map(heading)],
     ...rows
   ].map(safe);
 }
@@ -138,16 +157,28 @@ function uniqueNames(sheets) {
   return sheets.map((sheet) => {
     let name = sheetName(sheet.name);
     for (let n = 2; taken.has(name.toLowerCase()); n++) {
-      name = `${sheetName(sheet.name).slice(0, 26)} (${n})`;
+      name = `${sheetName(sheetName(sheet.name).slice(0, 26))} (${n})`;
     }
     taken.add(name.toLowerCase());
     return { ...sheet, name };
   });
 }
 
-/** Excel's sheet names: at most 31 characters, none of : \ / ? * [ ]. */
+/**
+ * Excel's sheet names: at most 31 characters, none of : \ / ? * [ ], no apostrophe at either
+ * end, and never "History" (Excel keeps that one).
+ */
 export function sheetName(name) {
-  return String(name)
+  let clean = String(name)
     .replace(/[:\\/?*[\]]/g, " ")
-    .slice(0, 31);
+    .replace(/^'+|'+$/g, "")
+    .trim();
+  if (clean.toLowerCase() === "history") {
+    clean = `${clean} sheet`;
+  }
+  clean = clean.slice(0, 31).replace(/'+$/, "");
+  // Never half of a two-part character (an emoji) at the cut.
+  return (
+    (/[\uD800-\uDBFF]$/.test(clean) ? clean.slice(0, -1) : clean) || "Sheet"
+  );
 }
