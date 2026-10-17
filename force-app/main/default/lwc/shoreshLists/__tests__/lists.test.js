@@ -19,7 +19,7 @@ import {
   waitingFor,
   listScreen,
   LIST_SCREENS
-} from "c/shoreshLists";
+} from "./data/lists";
 
 const terms = buildTerms([]);
 const bunkTerms = buildTerms([
@@ -369,6 +369,38 @@ describe("matching what is set up", () => {
     expect(
       waitingFor(read("activities", rows, answers), terms, answers)
     ).toEqual(["Archery: at most 3 would be below at least 4"]);
+  });
+
+  it("refuses a new at most below the at least kept as it is", () => {
+    const rows = [
+      ["Activity", "Times a week: at least", "Times a week: at most"],
+      ["Archery", "1", "2"]
+    ];
+    const p = read("activities", rows);
+    const [min, max] = rowNamed(p, "Archery").differences;
+    const answers = { [min.id]: KEEP, [max.id]: CHANGE };
+    expect(
+      waitingFor(read("activities", rows, answers), terms, answers)
+    ).toEqual(["Archery: at most 2 would be below at least 3"]);
+  });
+
+  it("no maximum set up: a new at least has nothing to be above", () => {
+    const s = setup();
+    // No weekly maximum, with an old number left behind from before.
+    Object.assign(s.activities[1], {
+      NoWeeklyMax__c: true,
+      TimesPerWeekMax__c: 1
+    });
+    const rows = [
+      ["Activity", "Times a week: at least"],
+      ["Music", "3"]
+    ];
+    const p = read("activities", rows, {}, terms, s);
+    const [min] = rowNamed(p, "Music").differences;
+    const answers = { [min.id]: CHANGE };
+    expect(
+      waitingFor(read("activities", rows, answers, terms, s), terms, answers)
+    ).toEqual([]);
   });
 
   it("who can do it: names of divisions and groups, with the ones two records share written out", () => {

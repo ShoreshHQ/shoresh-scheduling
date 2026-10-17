@@ -12,6 +12,7 @@
  * Pure JavaScript: Roots shows the proposal, and sends workbookPlan's request to
  * ImportController.saveWorkbook.
  */
+import { CHILDREN, FIELD, localName } from "c/shoreshSchema";
 import { buildTerms } from "c/shoreshTerms";
 import {
   LEAVE_OUT,
@@ -47,12 +48,16 @@ const RUNS_IN_KINDS = [
   "FixedActivity",
   "RecurringActivity"
 ];
+// Weeks, seasons, and weeks off (a week exception names its week and one item, by kind).
+const WEEK = FIELD.Week;
+const SEASON = FIELD.Season;
+const OFF = FIELD.WeekException;
 const TARGET_FIELD = {
-  Group: "Group__c",
-  Location: "Location__c",
-  Activity: "Activity__c",
-  FixedActivity: "FixedActivity__c",
-  RecurringActivity: "RecurringActivity__c"
+  Group: OFF.Group,
+  Location: OFF.Location,
+  Activity: OFF.Activity,
+  FixedActivity: OFF.FixedActivity,
+  RecurringActivity: OFF.RecurringActivity
 };
 
 function cells(sheet) {
@@ -252,7 +257,10 @@ function readCampWords(sheet, labels, answers) {
         answers
       )
     );
-    entry.fields = { Singular__c: singular, Plural__c: plural };
+    entry.fields = {
+      [FIELD.CampLabel.Singular]: singular,
+      [FIELD.CampLabel.Plural]: plural
+    };
     // The other sheets were written in the workbook's words.
     label.singular = singular;
     label.plural = plural;
@@ -332,7 +340,11 @@ function columnOrder(texts) {
   return orders.size === 1 ? [...orders][0] : null;
 }
 
+/** "Jul 3 2027"; "none" for a date not set (a week set up with no end). */
 function shortDate(isoDate) {
+  if (!isoDate) {
+    return "none";
+  }
   const [y, m, d] = isoDate.split("-").map(Number);
   return `${MONTHS[m - 1].charAt(0).toUpperCase()}${MONTHS[m - 1].slice(1)} ${d} ${y}`;
 }
@@ -343,8 +355,8 @@ export const SKIP_WEEK = "skip";
 function bySeasonOrder(weeks) {
   return [...(weeks || [])].sort(
     (a, b) =>
-      String(a.StartDate__c).localeCompare(String(b.StartDate__c)) ||
-      (a.SortOrder__c || 0) - (b.SortOrder__c || 0) ||
+      String(a[WEEK.StartDate]).localeCompare(String(b[WEEK.StartDate])) ||
+      (a[WEEK.SortOrder] || 0) - (b[WEEK.SortOrder] || 0) ||
       String(a.Id).localeCompare(String(b.Id))
   );
 }
@@ -378,7 +390,9 @@ export function matchWeeks(fileWeeks, setupWeeks, season, decided) {
       }))
     };
   }
-  const byStart = new Map((setupWeeks || []).map((w) => [w.StartDate__c, w]));
+  const byStart = new Map(
+    (setupWeeks || []).map((w) => [w[WEEK.StartDate], w])
+  );
   return {
     byOrder,
     // Some weeks inside the season's dates and some not (coordinator): those outside are left
@@ -393,14 +407,17 @@ export function matchWeeks(fileWeeks, setupWeeks, season, decided) {
 }
 
 function seasonHas(season) {
-  const from = (season && season.StartDate__c) || null;
-  const to = (season && season.EndDate__c) || null;
+  const from = (season && season[SEASON.StartDate]) || null;
+  const to = (season && season[SEASON.EndDate]) || null;
   return (start) => (!from || start >= from) && (!to || start <= to);
 }
 
 /** Another season's workbook (no week starting within this season's dates): paired by order. */
 export function weeksByOrder(fileWeeks, season) {
-  const dated = !!(season && (season.StartDate__c || season.EndDate__c));
+  const dated = !!(
+    season &&
+    (season[SEASON.StartDate] || season[SEASON.EndDate])
+  );
   const inSeason = seasonHas(season);
   return (
     dated && fileWeeks.length > 0 && !fileWeeks.some((r) => inSeason(r.start))
@@ -444,19 +461,22 @@ function weeksToFill(setup, t) {
   const season = setup.season || {};
   if (
     (setup.weeks || []).length ||
-    !season.StartDate__c ||
-    !season.EndDate__c
+    !season[SEASON.StartDate] ||
+    !season[SEASON.EndDate]
   ) {
     return [];
   }
-  return weekdayWeeks(season.StartDate__c, season.EndDate__c).map((w, i) => ({
-    Id: `Week:${w.start}`,
-    Name: `${t.s("Week")} ${i + 1}`,
-    StartDate__c: w.start,
-    EndDate__c: w.end,
-    SortOrder__c: i + 1,
-    filled: true
-  }));
+  return weekdayWeeks(season[SEASON.StartDate], season[SEASON.EndDate]).map(
+    (w, i) => ({
+      Id: `Week:${w.start}`,
+      Name: `${t.s("Week")} ${i + 1}`,
+      [WEEK.StartDate]: w.start,
+      [WEEK.EndDate]: w.end,
+      // In order, as "Fill in weeks" numbers them.
+      [WEEK.SortOrder]: i + 1,
+      filled: true
+    })
+  );
 }
 
 /** Why a week is left out, in the camp's words. */
@@ -478,7 +498,7 @@ function sayOverlaps(pairs, setupWeeks) {
       .map((p) => ({
         row: p.row,
         // Only a week added, or given a new end, is the workbook's to say.
-        moves: !p.week || p.week.EndDate__c !== p.row.end,
+        moves: !p.week || p.week[WEEK.EndDate] !== p.row.end,
         name: p.row.name,
         start: p.row.start,
         end: p.row.end
@@ -487,8 +507,8 @@ function sayOverlaps(pairs, setupWeeks) {
       .filter((w) => !matchedIds.has(w.Id))
       .map((w) => ({
         name: w.Name,
-        start: w.StartDate__c,
-        end: w.EndDate__c || w.StartDate__c
+        start: w[WEEK.StartDate],
+        end: w[WEEK.EndDate] || w[WEEK.StartDate]
       }))
   ];
   after
@@ -558,7 +578,7 @@ function readWeeks(sheet, setup, answers, t) {
   // A season with only a first or a last day can't tell this season's weeks from another's:
   // every week is left out, saying so, rather than "no week left" or added by mistake.
   const season = setup.season || {};
-  const needsDates = !season.StartDate__c !== !season.EndDate__c;
+  const needsDates = !season[SEASON.StartDate] !== !season[SEASON.EndDate];
   // Two weeks starting the same day: both are said, never the first row kept.
   const starts = new Map();
   read.forEach((r) => starts.set(r.start, (starts.get(r.start) || 0) + 1));
@@ -615,8 +635,8 @@ function readWeeks(sheet, setup, answers, t) {
         key: row.ref,
         fields: {
           Name: row.name,
-          StartDate__c: row.start,
-          EndDate__c: row.end
+          [WEEK.StartDate]: row.start,
+          [WEEK.EndDate]: row.end
         }
       });
     } else {
@@ -624,25 +644,26 @@ function readWeeks(sheet, setup, answers, t) {
       row.week = week;
       if (matched.byOrder) {
         // Shown: "Week 1 (Jun 30 2026) → Week 1 (Jun 28 2027)".
-        row.pairing = `${row.name} (${shortDate(row.start)}) → ${week.Name} (${shortDate(week.StartDate__c)})`;
+        row.pairing = `${row.name} (${shortDate(row.start)}) → ${week.Name} (${shortDate(week[WEEK.StartDate])})`;
       }
       const changes = [];
       if (row.name !== week.Name) {
         changes.push(["Name", "Name", week.Name, row.name]);
       }
       // By order the season keeps its own dates.
-      if (!matched.byOrder && row.end !== week.EndDate__c) {
+      if (!matched.byOrder && row.end !== week[WEEK.EndDate]) {
         changes.push([
-          "EndDate__c",
+          WEEK.EndDate,
           "End",
-          shortDate(week.EndDate__c),
+          shortDate(week[WEEK.EndDate]),
           shortDate(row.end)
         ]);
       }
       row.status = changes.length ? "changed" : "unchanged";
       row.differences = changes.map(([field, heading, from, to]) => ({
         ...difference(
-          `change|weeks|${week.Id}|${field}|${field === "Name" ? row.name : row.end}`,
+          // The field's local name: a remembered answer means the same with the namespace.
+          `change|weeks|${week.Id}|${localName(field)}|${field === "Name" ? row.name : row.end}`,
           heading,
           from,
           to,
@@ -679,7 +700,7 @@ function readWeeks(sheet, setup, answers, t) {
               key: "filled",
               heading: "Will also add",
               lines: toFill.map((w) => ({
-                pairing: `${nameOf(w)} (${shortDate(w.StartDate__c)})`
+                pairing: `${nameOf(w)} (${shortDate(w[WEEK.StartDate])})`
               }))
             }
           ]
@@ -694,14 +715,16 @@ function readWeeks(sheet, setup, answers, t) {
         heading: "Not in the workbook",
         lines: bySeasonOrder(setup.weeks)
           .filter((w) => !paired.has(w.Id))
-          .map((w) => ({ pairing: `${w.Name} (${shortDate(w.StartDate__c)})` }))
+          .map((w) => ({
+            pairing: `${w.Name} (${shortDate(w[WEEK.StartDate])})`
+          }))
       }
     ];
   }
   // The weeks to fill, as the save makes them (start dates checked again there), and as records
   // for the lists and Runs in read after.
   result.fillWeeks = toFill.map((w) => ({
-    start: w.StartDate__c,
+    start: w[WEEK.StartDate],
     name: nameOf(w)
   }));
   result.fillRecords = toFill.map((w) => ({
@@ -709,8 +732,10 @@ function readWeeks(sheet, setup, answers, t) {
     key: w.Id,
     fields: {
       Name: nameOf(w),
-      StartDate__c: w.StartDate__c,
-      EndDate__c: w.EndDate__c
+      [WEEK.StartDate]: w[WEEK.StartDate],
+      [WEEK.EndDate]: w[WEEK.EndDate],
+      // The later sheets see the weeks in their places, as the save numbers them.
+      [WEEK.SortOrder]: w[WEEK.SortOrder]
     }
   }));
   return result;
@@ -732,16 +757,18 @@ function divisionsOf(setup) {
   return (setup.programs || []).flatMap((e) => e.divisions || []);
 }
 
-function whoRows(ids, setup) {
+/** who: the rows' own fields (who can do an activity, or who a recurring activity covers). */
+function whoRows(ids, setup, who) {
   const divisions = new Set(divisionsOf(setup).map((d) => d.division.Id));
   return (ids || []).map((id) => {
-    return divisions.has(id) ? { Division__c: id } : { Group__c: id };
+    return divisions.has(id) ? { [who.Division]: id } : { [who.Group]: id };
   });
 }
 
 function fieldsOf(record) {
   const fields = { ...record.fields };
-  ["StartTime__c", "EndTime__c"].forEach((f) => {
+  // A time block's times are written as "HH:mm" and read back as milliseconds.
+  [FIELD.TimeBlock.StartTime, FIELD.TimeBlock.EndTime].forEach((f) => {
     if (typeof fields[f] === "string") {
       fields[f] = ms(fields[f]);
     }
@@ -769,7 +796,15 @@ export function withRecords(setup, records) {
   };
   records.forEach((record) => {
     const id = record.id || record.key;
-    const who = record.who ? whoRows(record.who, s) : null;
+    const who = record.who
+      ? whoRows(
+          record.who,
+          s,
+          record.kind === "Activity"
+            ? FIELD.ActivityEligibility
+            : FIELD.Coverage
+        )
+      : null;
     switch (record.kind) {
       case "Program": {
         const entry = entryOf(id);
@@ -791,7 +826,7 @@ export function withRecords(setup, records) {
         if (found) {
           Object.assign(found.division, record.fields);
         } else {
-          const entry = entryOf(record.refs.Program__c);
+          const entry = entryOf(record.refs[FIELD.Division.Program]);
           if (entry) {
             entry.divisions = entry.divisions || [];
             entry.divisions.push({
@@ -806,7 +841,7 @@ export function withRecords(setup, records) {
         const holder = divisionsOf(s).find((d) =>
           (d.groups || []).some((g) => g.Id === id)
         );
-        const target = (record.refs || {}).Division__c;
+        const target = (record.refs || {})[FIELD.Group.Division];
         const into = target
           ? divisionsOf(s).find((d) => d.division.Id === target)
           : holder;
@@ -833,11 +868,16 @@ export function withRecords(setup, records) {
           RecurringActivity: "recurringActivities"
         }[record.kind];
         const found = inPrograms(list).find(({ item }) => item.Id === id);
-        const extra = who ? { Coverages__r: who } : {};
+        // Only a recurring activity has who it covers.
+        const extra = who
+          ? { [CHILDREN.RecurringActivity.Coverages]: who }
+          : {};
         if (found) {
           Object.assign(found.item, fieldsOf(record), extra);
         } else {
-          const entry = entryOf((record.refs || {}).Program__c);
+          const entry = entryOf(
+            (record.refs || {})[FIELD[record.kind].Program]
+          );
           if (entry) {
             entry[list] = entry[list] || [];
             upsert(entry[list], record, extra);
@@ -855,7 +895,11 @@ export function withRecords(setup, records) {
         break;
       case "Activity":
         s.activities = s.activities || [];
-        upsert(s.activities, record, who ? { Eligibilities__r: who } : {});
+        upsert(
+          s.activities,
+          record,
+          who ? { [CHILDREN.Activity.Eligibilities]: who } : {}
+        );
         break;
       case "Week":
         s.weeks = s.weeks || [];
@@ -979,7 +1023,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
   const offNow = new Map();
   (setup.weekExceptions || []).forEach((x) => {
     const target = RUNS_IN_KINDS.map((k) => x[TARGET_FIELD[k]]).find((v) => v);
-    offNow.set(`${target}|${x.Week__c}`, x);
+    offNow.set(`${target}|${x[OFF.Week]}`, x);
   });
   // A column whose week isn't in the workbook (or can't be read) is said once; the other
   // columns are still read.
@@ -1087,7 +1131,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
         kind: "WeekException",
         key: `WeekException:${item.id}:${c.week}`,
         fields: {},
-        refs: { Week__c: c.week, [TARGET_FIELD[kind]]: item.id }
+        refs: { [OFF.Week]: c.week, [TARGET_FIELD[kind]]: item.id }
       })),
       ...toRemove.map(({ x }) => ({
         kind: "WeekException",

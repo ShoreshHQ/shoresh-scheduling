@@ -8,6 +8,7 @@ const NAMESPACED_SUITES = [
     'shoreshSchema',
     'shoreshSetupRules',
     'shoreshImportEngine',
+    'shoreshLists',
     'shoreshManualBuild'
 ];
 

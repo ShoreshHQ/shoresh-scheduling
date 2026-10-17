@@ -3,7 +3,7 @@
 // what they say, not by row number), similar names, and names to add.
 import { buildTerms } from "c/shoreshTerms";
 import { csvFile, LEAVE_OUT } from "c/shoreshImportEngine";
-import { CHANGE, listPlan, listProposal, questionCards } from "c/shoreshLists";
+import { CHANGE, listPlan, listProposal, questionCards } from "./data/lists";
 
 const terms = buildTerms([]);
 const MS = 60000;

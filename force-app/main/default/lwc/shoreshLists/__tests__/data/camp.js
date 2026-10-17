@@ -52,7 +52,14 @@ export function camp() {
         EndDate__c: "2027-07-09"
       }
     ],
-    weekExceptions: [{ Id: "x1", Week__c: "w2", Activity__c: "a2" }],
+    // A week off of every kind of item (the Runs in sheet and screens read each kind's field).
+    weekExceptions: [
+      { Id: "x1", Week__c: "w2", Activity__c: "a2" },
+      { Id: "x2", Week__c: "w1", Group__c: "g2" },
+      { Id: "x3", Week__c: "w2", Location__c: "l2" },
+      { Id: "x4", Week__c: "w1", FixedActivity__c: "f2" },
+      { Id: "x5", Week__c: "w2", RecurringActivity__c: "r1" }
+    ],
     locationTypes: [
       { Id: "lt1", Name: "Waterfront" },
       { Id: "lt2", Name: "Unused type" }
@@ -135,7 +142,7 @@ export function camp() {
             Length__c: 1,
             Monday__c: true,
             Wednesday__c: true,
-            Coverages__r: [{ Division__c: "d2" }]
+            Coverages__r: [{ Division__c: "d2" }, { Group__c: "g1" }]
           }
         ]
       }),
