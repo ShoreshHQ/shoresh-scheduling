@@ -63,8 +63,15 @@ export function resolver(records, leads) {
         ? { id: lead.existing.Id, name: lead.existing.Name }
         : { key: `Activity:${lead.name}`, name: lead.name };
     }
-    // Not saved: what it matched (one item set up, or several: never guessed), the item set up
-    // of its name, or one added as by hand.
+    // Not saved: the item the director picked for it ("Which Archery?"), or a new one as by
+    // hand if that was the answer; else what it matched (one item set up, or several: never
+    // guessed), the item set up of its name, or one added as by hand.
+    if (lead.existing) {
+      return { id: lead.existing.Id, name: lead.existing.Name };
+    }
+    if (lead.pickedNew) {
+      return { add: lead.name, name: lead.name };
+    }
     if (lead.found && lead.found.length === 1) {
       return { id: lead.found[0].Id, name: lead.found[0].Name };
     }

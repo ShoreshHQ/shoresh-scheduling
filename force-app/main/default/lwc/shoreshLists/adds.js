@@ -72,17 +72,28 @@ function whoAddition(name, answer, setup) {
  * leftOut (looseKeys), open (looseKeys) }.
  */
 export function unknownWho(rows, targets, setup, answers, t) {
-  const names = new Map();
+  // One spelling per name whatever the row order: the most written, then alphabetical.
+  const spellings = new Map();
   rows
     .filter((r) => !r.problems.length && Array.isArray(r.values.who))
     .forEach((r) => {
       r.values.who.forEach((name) => {
         const key = looseKey(name);
-        if (!targets.bySpelling.has(key) && !names.has(key)) {
-          names.set(key, name);
+        if (!targets.bySpelling.has(key)) {
+          const seen = spellings.get(key) || new Map();
+          seen.set(name, (seen.get(name) || 0) + 1);
+          spellings.set(key, seen);
         }
       });
     });
+  const names = new Map(
+    [...spellings.entries()].map(([key, seen]) => [
+      key,
+      [...seen.entries()].sort(
+        (x, y) => y[1] - x[1] || x[0].localeCompare(y[0])
+      )[0][0]
+    ])
+  );
   const result = { cards: [], adds: [], leftOut: new Set(), open: new Set() };
   const options = whoOptions(setup, t);
   [...names.entries()]

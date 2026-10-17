@@ -449,3 +449,156 @@ describe("own review of round 3, second pass", () => {
     expect(p.rows[0].problems).toEqual(["Rain plan: can't be itself"]);
   });
 });
+
+describe("review round 4", () => {
+  function twoArcheries() {
+    const s = setup();
+    s.activities.push({ ...s.activities[0], Id: "a3" });
+    // "Pools" is then asked about as similar to "Pool", and answered Leave out.
+    s.locations.push({ Id: "l2", Name: "Pool", GroupsThatFit__c: 1 });
+    return s;
+  }
+  function settleWith(rows, policy, s) {
+    const answers = {};
+    let p;
+    for (let round = 0; round < 6; round++) {
+      p = listProposal({
+        screenKey: "activities",
+        file: file(rows[0], rows.slice(1)),
+        setup: s,
+        terms,
+        answers
+      });
+      const open = questionCards(p, terms, answers).filter((c) => !c.answer);
+      if (!open.length) {
+        break;
+      }
+      open.forEach((c) => {
+        answers[c.id] = policy(c);
+      });
+    }
+    return { p, answers };
+  }
+  const rows = [
+    ["Activity", "Location", "Rain plan"],
+    ["Archery", "Pools", ""],
+    ["Swim", "", "Archery"]
+  ];
+
+  it("Which Archery? answered a3, then the row left out: a plan naming it links to a3", () => {
+    orders(rows.slice(1)).forEach((body) => {
+      const { p, answers } = settleWith(
+        [rows[0], ...body],
+        (c) => (c.title.startsWith("Which") ? "a3" : LEAVE_OUT),
+        twoArcheries()
+      );
+      const plan = listPlan(p, answers, "s1", "f");
+      const swim = plan.records.find((r) => r.fields.Name === "Swim");
+      expect(swim.refs.RainPlan__c).toBe("a3");
+    });
+  });
+
+  it("Which Archery? answered a new one, then left out: the plan adds Archery as by hand", () => {
+    orders(rows.slice(1)).forEach((body) => {
+      const { p, answers } = settleWith(
+        [rows[0], ...body],
+        (c) => (c.title.startsWith("Which") ? "new" : LEAVE_OUT),
+        twoArcheries()
+      );
+      expect(p.alsoAdd.activity).toEqual([{ name: "Archery", skipped: false }]);
+      const plan = listPlan(p, answers, "s1", "f");
+      const swim = plan.records.find((r) => r.fields.Name === "Swim");
+      expect(swim.refs.RainPlan__c).toBe("Activity:Archery");
+    });
+  });
+});
+
+describe("Who can do it, in any order", () => {
+  function withDivisions() {
+    const s = setup();
+    s.programs = [
+      {
+        program: { Id: "p1", Name: "Main" },
+        divisions: [
+          {
+            division: { Id: "d1", Name: "Juniors" },
+            groups: [{ Id: "g1", Name: "Bunk 1" }]
+          }
+        ]
+      }
+    ];
+    return s;
+  }
+  function outcomeOf(body, policy) {
+    const answers = {};
+    let p;
+    for (let round = 0; round < 6; round++) {
+      p = listProposal({
+        screenKey: "activities",
+        file: csvFile(
+          "list.csv",
+          [["Activity", "Who can do it"], ...body]
+            .map((r) =>
+              r.map((c) => (c.includes(",") ? `"${c}"` : c)).join(",")
+            )
+            .join("\n")
+        ),
+        setup: withDivisions(),
+        terms,
+        answers
+      });
+      const open = questionCards(p, terms, answers).filter((c) => !c.answer);
+      if (!open.length) {
+        break;
+      }
+      open.forEach((c) => {
+        answers[c.id] = policy(c);
+      });
+    }
+    expect(waitingFor(p, terms, answers)).toEqual([]);
+    const plan = listPlan(p, answers, "s1", "f");
+    const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+    plan.records.forEach((r) =>
+      (r.who || [])
+        .filter((v) => v.includes(":"))
+        .forEach((v) => expect(keys.has(v)).toBe(true))
+    );
+    return plan.records
+      .map(
+        (r) =>
+          `${r.kind} ${r.fields.Name.toLowerCase()} ${(r.who || []).join("+")}`
+      )
+      .sort();
+  }
+
+  it("names in any capitals and spacing are the same division; a new one is added once", () => {
+    const body = [
+      ["Golf", "juniors"],
+      ["Chess", " JUNIORS , Middlers"],
+      ["Drama", "middlers"],
+      ["Pottery", "Bunk 1, MIDDLERS"]
+    ];
+    const results = orders(body).map((b) =>
+      outcomeOf(b, (c) => c.options[0].value)
+    );
+    results.forEach((r) => expect(r).toEqual(results[0]));
+    expect(results[0]).toEqual([
+      "Activity chess Division:p1:middlers+d1",
+      "Activity drama Division:p1:middlers",
+      "Activity golf d1",
+      "Activity pottery Division:p1:middlers+g1",
+      "Division middlers "
+    ]);
+  });
+
+  it("a who name left out leaves out every row that names it, and nothing else", () => {
+    const body = [
+      ["Golf", "Middlers"],
+      ["Chess", "Juniors"],
+      ["Drama", "middlers, Juniors"]
+    ];
+    const results = orders(body).map((b) => outcomeOf(b, () => LEAVE_OUT));
+    results.forEach((r) => expect(r).toEqual(results[0]));
+    expect(results[0]).toEqual(["Activity chess d1"]);
+  });
+});

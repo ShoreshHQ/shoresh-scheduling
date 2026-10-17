@@ -216,6 +216,7 @@ function whichOne(read, screen, setup, answers) {
         // A new one of that name, spelled as the items set up are.
         r.name = name;
         r.values.name = name;
+        r.pickedNew = true;
       } else {
         r.open = true;
       }
