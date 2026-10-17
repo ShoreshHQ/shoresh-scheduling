@@ -272,10 +272,18 @@ describe("c-shoresh-list-import", () => {
     input.dispatchEvent(new CustomEvent("change"));
     await flush();
     const days = $(element, "lightning-checkbox-group");
+    // Monday to Friday, ticked to start with.
+    expect(days.value).toEqual([
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ]);
     days.dispatchEvent(
       new CustomEvent("change", { detail: { value: ["Monday", "Friday"] } })
     );
-    buttonNamed(element, "OK").click();
+    buttonNamed(element, "Use these days").click();
     await flush();
     const [start, end] = $$(element, "lightning-input").filter(
       (box) => box.type === "time"
@@ -286,7 +294,7 @@ describe("c-shoresh-list-import", () => {
     end.dispatchEvent(
       new CustomEvent("change", { detail: { value: "10:30:00.000" } })
     );
-    buttonNamed(element, "OK").click();
+    buttonNamed(element, "Use these times").click();
     await flush();
     const labels = $$(element, '[data-id="also-add"] lightning-input').map(
       (box) => box.label

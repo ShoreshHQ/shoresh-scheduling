@@ -10,6 +10,7 @@ import {
   isCsv,
   isReadable,
   undoMessage,
+  WEEKDAYS,
   workbookFile
 } from "c/shoreshImportEngine";
 import {
@@ -270,7 +271,8 @@ export default class ShoreshListImport extends LightningElement {
           answered: !!chosen,
           answerLabel: chosen ? chosen.label : "",
           fromMemory: !!chosen && this.remembered[card.id] === card.answer,
-          draftDays: (this.drafts[card.id] || {}).days || [],
+          // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
+          draftDays: this.draftDays(card.id),
           draftProblem: (this.drafts[card.id] || {}).problem || "",
           options: card.options.map((o) => ({
             ...o,
@@ -383,9 +385,12 @@ export default class ShoreshListImport extends LightningElement {
   drafts = {};
 
   get dayOptions() {
-    return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(
-      (d) => ({ label: d, value: d })
-    );
+    return WEEKDAYS.map((d) => ({ label: d, value: d }));
+  }
+
+  draftDays(id) {
+    const days = (this.drafts[id] || {}).days;
+    return days === undefined ? [...WEEKDAYS] : days;
   }
 
   handleDraft(event) {
@@ -399,11 +404,17 @@ export default class ShoreshListImport extends LightningElement {
 
   /** Days: "Monday,Wednesday"; times: "09:00-10:00" (the time inputs give "09:00:00.000"). */
   handleDraftDone(event) {
-    const id = event.currentTarget.dataset.id;
+    const { id, kind } = event.currentTarget.dataset;
     const draft = this.drafts[id] || {};
-    if (draft.days && draft.days.length) {
-      this.answer(id, draft.days.join(","));
-    } else if (draft.start && draft.end && draft.end > draft.start) {
+    const days = this.draftDays(id);
+    if (kind === "days" && days.length) {
+      this.answer(id, days.join(","));
+    } else if (
+      kind === "times" &&
+      draft.start &&
+      draft.end &&
+      draft.end > draft.start
+    ) {
       this.answer(id, `${draft.start.slice(0, 5)}-${draft.end.slice(0, 5)}`);
     } else {
       // Said on the card, never a click that does nothing.
@@ -411,7 +422,8 @@ export default class ShoreshListImport extends LightningElement {
         ...this.drafts,
         [id]: {
           ...draft,
-          problem: draft.days ? "No days" : "End is before Start, or missing"
+          problem:
+            kind === "days" ? "No days" : "End is before Start, or missing"
         }
       };
     }

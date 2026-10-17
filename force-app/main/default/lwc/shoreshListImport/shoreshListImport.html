@@ -115,8 +115,9 @@
                       onchange={handleDraft}
                     ></lightning-checkbox-group>
                     <lightning-button
-                      label="OK"
+                      label="Use these days"
                       data-id={card.id}
+                      data-kind="days"
                       onclick={handleDraftDone}
                     ></lightning-button>
                   </template>
@@ -136,8 +137,9 @@
                       onchange={handleDraft}
                     ></lightning-input>
                     <lightning-button
-                      label="OK"
+                      label="Use these times"
                       data-id={card.id}
+                      data-kind="times"
                       onclick={handleDraftDone}
                     ></lightning-button>
                   </template>
