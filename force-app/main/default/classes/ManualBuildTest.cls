@@ -590,14 +590,14 @@ private class ManualBuildTest {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
-      ScheduleDay__c monday = [
+      ScheduleDay__c stored = [
         SELECT Id
         FROM ScheduleDay__c
         WHERE Schedule__c = :draftId AND Date__c = :MONDAY
         WITH SYSTEM_MODE
       ];
       Database.update(
-        new ScheduleDay__c(Id = monday.Id, Grid__c = 'not a grid'),
+        new ScheduleDay__c(Id = stored.Id, Grid__c = 'not a grid'),
         AccessLevel.SYSTEM_MODE
       );
       String refused = refusal(
