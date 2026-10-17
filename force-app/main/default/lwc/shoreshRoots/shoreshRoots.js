@@ -23,7 +23,7 @@ const CARDS = [
  * how many there are), and "Needs your attention". Every card and every attention item opens the
  * screen where it is fixed. Areas not built yet show as coming.
  *
- * Fires: navigate { screen }
+ * Fires: navigate { screen }; imported (a camp workbook was imported or undone)
  */
 export default class ShoreshRoots extends LightningElement {
   downloading = false;
@@ -127,6 +127,11 @@ export default class ShoreshRoots extends LightningElement {
         detail: { screen: event.currentTarget.dataset.screen }
       })
     );
+  }
+
+  /** A camp workbook was imported or undone: the page reloads the season. */
+  handleImported() {
+    this.dispatchEvent(new CustomEvent("imported"));
   }
 
   /**

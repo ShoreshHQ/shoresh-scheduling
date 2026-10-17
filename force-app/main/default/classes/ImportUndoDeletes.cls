@@ -6,6 +6,8 @@
 public with sharing class ImportUndoDeletes {
   // Children first. Who-can-do-it rows go with their activity.
   private static final List<String> ORDER = new List<String>{
+    // Weeks items are off (a workbook's Runs in, slice 4c part D), before the items and weeks.
+    'WeekException',
     'Schedule',
     'Coverage',
     'RecurringActivity',
@@ -16,7 +18,17 @@ public with sharing class ImportUndoDeletes {
     'Group',
     'Division',
     'TimeBlock',
-    'Program'
+    'Program',
+    'Week',
+    'CampLabel'
+  };
+  // What a week off or a who row belongs to: decided before those rows go.
+  private static final Set<String> ITEMS = new Set<String>{
+    'RecurringActivity',
+    'FixedActivity',
+    'Activity',
+    'Location',
+    'Group'
   };
   // Records inside each kind (master-detail children), or pointing at it through a link that
   // would quietly clear (a time block an item ends at, an activity used as a rain plan):
@@ -30,6 +42,8 @@ public with sharing class ImportUndoDeletes {
       'Schedules__r'
     },
     'Division' => new List<String>{ 'Groups__r' },
+    // A week added by a workbook that anything else now uses (a version, a week off) stays.
+    'Week' => new List<String>{ 'WeekExceptions__r', 'Schedules__r' },
     'TimeBlock' => new List<String>{
       'EndingFixedActivities__r',
       'EndingRecurringActivities__r'
@@ -54,25 +68,18 @@ public with sharing class ImportUndoDeletes {
   }
 
   public void run(Map<String, Object> created) {
-    for (Object kind : created.values()) {
-      for (
-        Object row : (List<Object>) ((Map<String, Object>) kind).get('rows')
-      ) {
-        createdIds.add((Id) (String) ((List<Object>) row)[0]);
-      }
-    }
-    // Who-can-do-it rows are not removed on their own: they go with their activity. A recurring
-    // activity kept (edited since) keeps who it covers, so it is decided before its Coverage
-    // rows (which must go before it) are removed.
+    collectCreated(created);
+    // Who-can-do-it rows and weeks off are not removed on their own: they go with their item. An
+    // item kept (edited since, or in use) keeps who it covers and the weeks it is off, so items
+    // are decided (in ORDER, as a kept one can hold another) before those rows are removed.
     Map<String, List<SObject>> decided = new Map<String, List<SObject>>();
-    if (created.containsKey('RecurringActivity')) {
-      decided.put(
-        'RecurringActivity',
-        decide(
-          'RecurringActivity',
-          (Map<String, Object>) created.get('RecurringActivity')
-        )
-      );
+    for (String term : ORDER) {
+      if (ITEMS.contains(term) && created.containsKey(term)) {
+        decided.put(
+          term,
+          decide(term, (Map<String, Object>) created.get(term))
+        );
+      }
     }
     for (String term : ORDER) {
       if (!created.containsKey(term)) {
@@ -81,27 +88,67 @@ public with sharing class ImportUndoDeletes {
       List<SObject> toDelete = decided.containsKey(term)
         ? decided.get(term)
         : decide(term, (Map<String, Object>) created.get(term));
-      deleteAll(term == 'Coverage' ? withoutKeptCover(toDelete) : toDelete);
+      deleteAll(withoutKeptItems(term, toDelete));
     }
   }
 
-  /** Coverage rows of a recurring activity this Undo keeps: kept with it. */
-  private List<SObject> withoutKeptCover(List<SObject> coverage) {
-    Set<Id> kept = new Set<Id>();
-    for (SObject record : coverage) {
-      kept.add(record.Id);
+  /**
+   * Every record the import made. Only kinds an import makes, each holding only its own records:
+   * an Id here counts as made by the import, so a hand-edited record can't make Undo remove
+   * something else.
+   */
+  private void collectCreated(Map<String, Object> created) {
+    for (String term : created.keySet()) {
+      Schema.SObjectType type = ImportFields.ofTerm(term);
+      for (
+        Object row : (List<Object>) ((Map<String, Object>) created.get(term))
+          .get('rows')
+      ) {
+        Object recordId = ((List<Object>) row)[0];
+        if (ImportFields.ofRecord(recordId) != type) {
+          throw ImportFields.unreadableLog();
+        }
+        createdIds.add((Id) (String) recordId);
+      }
     }
-    kept = new Map<Id, Coverage__c>(
-        [
-          SELECT Id
-          FROM Coverage__c
-          WHERE Id IN :kept AND RecurringActivity__c IN :keptIds
-          WITH USER_MODE
-        ]
-      )
-      .keySet();
+  }
+
+  /** Coverage rows and weeks off of an item this Undo keeps: kept with it, unnamed. */
+  private List<SObject> withoutKeptItems(String term, List<SObject> rows) {
+    if (term != 'Coverage' && term != 'WeekException') {
+      return rows;
+    }
+    Set<Id> ids = new Map<Id, SObject>(rows).keySet();
+    Set<Id> kept = term == 'Coverage'
+      ? new Map<Id, Coverage__c>(
+            [
+              SELECT Id
+              FROM Coverage__c
+              WHERE Id IN :ids AND RecurringActivity__c IN :keptIds
+              WITH USER_MODE
+            ]
+          )
+          .keySet()
+      : new Map<Id, WeekException__c>(
+            [
+              SELECT Id
+              FROM WeekException__c
+              WHERE
+                Id IN :ids
+                AND (Group__c IN :keptIds
+                OR Location__c IN :keptIds
+                OR Activity__c IN :keptIds
+                OR FixedActivity__c IN :keptIds
+                OR RecurringActivity__c IN :keptIds)
+              WITH USER_MODE
+            ]
+          )
+          .keySet();
+    // Kept rows are no longer the import's, so a week the import added keeps them too.
+    createdIds.removeAll(kept);
+    keptIds.addAll(kept);
     List<SObject> result = new List<SObject>();
-    for (SObject record : coverage) {
+    for (SObject record : rows) {
       if (!kept.contains(record.Id)) {
         result.add(record);
       }
@@ -126,7 +173,7 @@ public with sharing class ImportUndoDeletes {
       rows.put((Id) (String) ((List<Object>) row)[0], (List<Object>) row);
     }
     Map<Id, SObject> now = ImportUndoValues.read(
-      term + '__c',
+      ImportFields.ofTerm(term),
       fields,
       rows.keySet()
     );
@@ -150,7 +197,7 @@ public with sharing class ImportUndoDeletes {
   private void keep(SObject record, List<String> names) {
     createdIds.remove(record.Id);
     keptIds.add(record.Id);
-    names.add((String) record.get('Name'));
+    names.add(ImportFields.nameOf(record));
   }
 
   /** Records with something inside them the import did not make (one query, with sub-queries). */
@@ -173,8 +220,8 @@ public with sharing class ImportUndoDeletes {
         'SELECT Id, ' +
           String.join(subqueries, ', ') +
           ' FROM ' +
-          term +
-          '__c WHERE Id IN :ids',
+          ImportFields.ofTerm(term).getDescribe().getName() +
+          ' WHERE Id IN :ids',
         new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
         AccessLevel.USER_MODE
       )
@@ -208,7 +255,7 @@ public with sharing class ImportUndoDeletes {
       Database.Error error = outcomes[i].getErrors()[0];
       if (error.getStatusCode() != StatusCode.DELETE_FAILED) {
         throw ImportUndo.refused(
-          (String) records[i].get('Name'),
+          ImportFields.nameOf(records[i]),
           'couldn\'t remove it',
           error
         );

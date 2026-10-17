@@ -38,18 +38,35 @@ public with sharing class ImportUndo {
       // Put back first (a group moved into a division the import made goes home), then remove.
       List<Object> changes = new List<Object>();
       List<Object> whoLists = new List<Object>();
+      List<Object> weeksBackOn = new List<Object>();
+      List<Object> wordsOff = new List<Object>();
       for (
         Object entry : (List<Object>) JSON.deserializeUntyped(done.Changed__c)
       ) {
-        // Who lists a list import replaced (slice 4c) are put back on their own.
-        if (((Map<String, Object>) entry).containsKey('who')) {
+        // Who lists a list import replaced (slice 4c), and weeks off a workbook removed (part
+        // D), are put back on their own.
+        Map<String, Object> values = (Map<String, Object>) entry;
+        if (values.containsKey('who')) {
           whoLists.add(entry);
+        } else if (values.containsKey('weekOn')) {
+          weeksBackOn.add(entry);
+        } else if (values.containsKey('wordOff')) {
+          wordsOff.add(entry);
         } else {
           changes.add(entry);
         }
       }
+      Id campId = touchesCampWords(done, changes, wordsOff)
+        ? campOf(done.Season__c)
+        : null;
+      if (campId != null) {
+        // Camp words are shared by the camp's seasons: another season's import waits.
+        lockCamp(campId);
+      }
       new ImportUndoRestores(result).run(changes);
       new ImportUndoWho(result).run(whoLists);
+      new ImportUndoWeeksOff(result, done.Season__c).run(weeksBackOn);
+      new ImportUndoWords(result, campId).run(wordsOff);
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
@@ -122,6 +139,54 @@ public with sharing class ImportUndo {
     if (locked.isEmpty()) {
       throw new ShoreshException(
         'That import was already undone, or it was not found.'
+      );
+    }
+  }
+
+  /** Whether Undo changes camp words: one the import added, changed, or set back. */
+  private static Boolean touchesCampWords(
+    Import__c done,
+    List<Object> changes,
+    List<Object> wordsOff
+  ) {
+    if (
+      !wordsOff.isEmpty() ||
+      ((Map<String, Object>) JSON.deserializeUntyped(done.Created__c))
+        .containsKey('CampLabel')
+    ) {
+      return true;
+    }
+    for (Object entry : changes) {
+      if (
+        ImportFields.ofRecord(((Map<String, Object>) entry).get('id')) ==
+        CampLabel__c.SObjectType
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static Id campOf(Id seasonId) {
+    return [SELECT Camp__c FROM Season__c WHERE Id = :seasonId WITH USER_MODE]
+    .Camp__c;
+  }
+
+  /**
+   * Holds the camp until this save or Undo is done, when it changes camp words: they are the
+   * camp's, so two seasons' imports (or Undos) can't interleave their changes to them.
+   */
+  public static void lockCamp(Id campId) {
+    List<Camp__c> locked = [
+      SELECT Id
+      FROM Camp__c
+      WHERE Id = :campId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    if (locked.isEmpty()) {
+      throw new ShoreshException(
+        'That camp was not found, or you do not have access to it.'
       );
     }
   }

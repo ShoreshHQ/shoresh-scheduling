@@ -2,7 +2,7 @@
   <template lwc:if={open}>
     <div class="list-import slds-m-bottom_medium" data-id="list-import">
       <div class="list-header">
-        <h3 class="slds-text-heading_small">Import {screenName}</h3>
+        <h3 class="slds-text-heading_small">{title}</h3>
         <lightning-button
           data-id="close"
           variant="base"
@@ -59,28 +59,6 @@
               options={sheetOptions}
               onchange={handleSheet}
             ></lightning-combobox>
-          </div>
-        </template>
-
-        <template lwc:if={hasMapping}>
-          <h4 class="list-section">Columns</h4>
-          <div class="list-headings" data-id="headings">
-            <template for:each={headings} for:item="heading">
-              <div key={heading.key} class={heading.className}>
-                <span class="list-heading-text">“{heading.text}”</span>
-                <lightning-combobox
-                  data-id={heading.key}
-                  label={heading.text}
-                  variant="label-hidden"
-                  value={heading.value}
-                  options={columnOptions}
-                  onchange={handleColumn}
-                ></lightning-combobox>
-                <template lwc:if={heading.note}>
-                  <span class={heading.tagClass}>{heading.note}</span>
-                </template>
-              </div>
-            </template>
           </div>
         </template>
 
@@ -162,109 +140,200 @@
           </template>
         </template>
 
-        <template lwc:if={hasAlsoAdd}>
-          <h4 class="list-section">Also adding</h4>
-          <div data-id="also-add">
-            <template for:each={alsoAdd} for:item="item">
-              <template lwc:if={item.canUntick}>
-                <lightning-input
-                  key={item.key}
-                  type="checkbox"
-                  label={item.label}
-                  checked={item.checked}
-                  data-rain-plan={item.rainPlan}
-                  onchange={handleAlsoAdd}
-                ></lightning-input>
-              </template>
-              <template lwc:else>
-                <lightning-input
-                  key={item.key}
-                  type="checkbox"
-                  label={item.label}
-                  checked
-                  disabled
-                ></lightning-input>
-              </template>
-            </template>
-          </div>
+        <template lwc:if={hasUnanswered}>
+          <lightning-button
+            class="list-change-all"
+            data-id="change-all"
+            label={changeAllLabel}
+            onclick={handleChangeAll}
+          ></lightning-button>
         </template>
 
-        <template lwc:if={newRows.length}>
-          <h4 class="list-section">New ({newRows.length})</h4>
-          <ul class="list-names" data-id="new">
-            <template for:each={newRows} for:item="row">
-              <li key={row.key}>
-                {row.name}
-                <template lwc:if={row.starting}>
-                  <span class="list-tag slds-m-left_x-small"
-                    >{row.starting}</span
-                  >
-                </template>
-              </li>
+        <template for:each={sections} for:item="section">
+          <div key={section.key} class="list-sheet" data-section={section.key}>
+            <template lwc:if={section.showLabel}>
+              <h4 class="list-sheet-title">{section.label}</h4>
             </template>
-          </ul>
-        </template>
 
-        <template lwc:if={hasChanges}>
-          <div class="list-changes-header">
-            <h4 class="list-section">Changes</h4>
-            <template lwc:if={hasUnanswered}>
-              <lightning-button
-                data-id="change-all"
-                label={changeAllLabel}
-                onclick={handleChangeAll}
-              ></lightning-button>
-            </template>
-          </div>
-          <template for:each={changedRows} for:item="row">
-            <div key={row.key} class="list-changed" data-row={row.name}>
-              <div class="list-card-title">{row.name}</div>
-              <template for:each={row.differences} for:item="d">
-                <div key={d.id} class={d.className}>
-                  <span>{d.text}</span>
-                  <template lwc:if={d.clears}>
-                    <span class="list-clears">clears</span>
+            <template for:each={section.lists} for:item="list">
+              <div key={list.key} data-list={list.key}>
+                <div
+                  class="list-section"
+                  role="heading"
+                  aria-level={section.level}
+                >
+                  {list.heading}
+                </div>
+                <ul class="list-names">
+                  <template for:each={list.lines} for:item="line">
+                    <li key={line.key}>{line.text}</li>
                   </template>
-                  <lightning-button
-                    label="Keep"
-                    variant={d.keepVariant}
-                    data-id={d.id}
-                    onclick={handleKeep}
-                  ></lightning-button>
-                  <lightning-button
-                    label="Change"
-                    variant={d.changeVariant}
-                    data-id={d.id}
-                    onclick={handleChange}
-                  ></lightning-button>
+                </ul>
+              </div>
+            </template>
+
+            <template lwc:if={section.hasMapping}>
+              <div
+                class="list-section"
+                role="heading"
+                aria-level={section.level}
+              >
+                Columns
+              </div>
+              <div class="list-headings" data-id="headings">
+                <template for:each={section.headings} for:item="heading">
+                  <div key={heading.key} class={heading.className}>
+                    <span class="list-heading-text">“{heading.text}”</span>
+                    <lightning-combobox
+                      data-id={heading.key}
+                      label={heading.text}
+                      variant="label-hidden"
+                      value={heading.value}
+                      options={section.columnOptions}
+                      onchange={handleColumn}
+                    ></lightning-combobox>
+                    <template lwc:if={heading.note}>
+                      <span class={heading.tagClass}>{heading.note}</span>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <template lwc:if={section.hasAlsoAdd}>
+              <div
+                class="list-section"
+                role="heading"
+                aria-level={section.level}
+              >
+                Also adding
+              </div>
+              <div data-id="also-add">
+                <template for:each={section.alsoAdd} for:item="item">
+                  <template lwc:if={item.canUntick}>
+                    <lightning-input
+                      key={item.key}
+                      type="checkbox"
+                      label={item.label}
+                      checked={item.checked}
+                      data-rain-plan={item.rainPlan}
+                      onchange={handleAlsoAdd}
+                    ></lightning-input>
+                  </template>
+                  <template lwc:else>
+                    <lightning-input
+                      key={item.key}
+                      type="checkbox"
+                      label={item.label}
+                      checked
+                      disabled
+                    ></lightning-input>
+                  </template>
+                </template>
+              </div>
+            </template>
+
+            <template lwc:if={section.hasNew}>
+              <div
+                class="list-section"
+                role="heading"
+                aria-level={section.level}
+              >
+                {section.newHeading}
+              </div>
+              <ul class="list-names" data-id="new">
+                <template for:each={section.newRows} for:item="row">
+                  <li key={row.key}>
+                    {row.name}
+                    <template lwc:if={row.starting}>
+                      <span class="list-tag slds-m-left_x-small"
+                        >{row.starting}</span
+                      >
+                    </template>
+                  </li>
+                </template>
+              </ul>
+            </template>
+
+            <template lwc:if={section.hasChanges}>
+              <div
+                class="list-section"
+                role="heading"
+                aria-level={section.level}
+              >
+                Changes
+              </div>
+              <template for:each={section.changedRows} for:item="row">
+                <div key={row.key} class="list-changed" data-row={row.name}>
+                  <div class="list-card-title">{row.name}</div>
+                  <template for:each={row.differences} for:item="d">
+                    <div key={d.id} class={d.className}>
+                      <span>{d.text}</span>
+                      <template lwc:if={d.clears}>
+                        <span class="list-clears">clears</span>
+                      </template>
+                      <button
+                        type="button"
+                        class={d.keepClass}
+                        aria-pressed={d.keepPressed}
+                        aria-label={d.keepLabel}
+                        data-id={d.id}
+                        onclick={handleKeep}
+                      >
+                        Keep
+                      </button>
+                      <button
+                        type="button"
+                        class={d.changeClass}
+                        aria-pressed={d.changePressed}
+                        aria-label={d.changeLabel}
+                        data-id={d.id}
+                        onclick={handleChange}
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </template>
                 </div>
               </template>
-            </div>
-          </template>
-        </template>
-
-        <template lwc:if={unchangedCount}>
-          <p class="list-weak slds-m-top_small" data-id="unchanged">
-            Unchanged ({unchangedCount})
-          </p>
-        </template>
-
-        <template lwc:if={unreadableRows.length}>
-          <h4 class="list-section">Review here ({unreadableRows.length})</h4>
-          <ul class="list-names" data-id="unreadable">
-            <template for:each={unreadableRows} for:item="row">
-              <li key={row.key}>{row.text}</li>
             </template>
-          </ul>
-        </template>
 
-        <template lwc:if={leftOutRows.length}>
-          <h4 class="list-section">Left out ({leftOutRows.length})</h4>
-          <ul class="list-names" data-id="left-out">
-            <template for:each={leftOutRows} for:item="row">
-              <li key={row.key}>{row.text}</li>
+            <template lwc:if={section.unchangedCount}>
+              <p class="list-weak slds-m-top_small" data-id="unchanged">
+                Unchanged ({section.unchangedCount})
+              </p>
             </template>
-          </ul>
+
+            <template lwc:if={section.hasUnreadable}>
+              <div
+                class="list-section"
+                role="heading"
+                aria-level={section.level}
+              >
+                {section.unreadableHeading}
+              </div>
+              <ul class="list-names" data-id="unreadable">
+                <template for:each={section.unreadableRows} for:item="row">
+                  <li key={row.key}>{row.text}</li>
+                </template>
+              </ul>
+            </template>
+
+            <template lwc:if={section.hasLeftOut}>
+              <div
+                class="list-section"
+                role="heading"
+                aria-level={section.level}
+              >
+                {section.leftOutHeading}
+              </div>
+              <ul class="list-names" data-id="left-out">
+                <template for:each={section.leftOutRows} for:item="row">
+                  <li key={row.key}>{row.text}</li>
+                </template>
+              </ul>
+            </template>
+          </div>
         </template>
 
         <div class="list-footer">
@@ -323,17 +392,19 @@
     <lightning-button-group>
       <lightning-button
         data-id="open"
-        label="Import a list"
+        label={openLabel}
         icon-name="utility:upload"
         onclick={handleOpen}
       ></lightning-button>
-      <lightning-button
-        data-id="download"
-        label="Download this list"
-        icon-name="utility:download"
-        disabled={downloading}
-        onclick={handleDownload}
-      ></lightning-button>
+      <template lwc:if={showDownload}>
+        <lightning-button
+          data-id="download"
+          label="Download this list"
+          icon-name="utility:download"
+          disabled={downloading}
+          onclick={handleDownload}
+        ></lightning-button>
+      </template>
     </lightning-button-group>
   </template>
 </template>

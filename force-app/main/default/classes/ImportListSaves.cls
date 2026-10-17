@@ -11,6 +11,8 @@
 public with sharing class ImportListSaves {
   // Kinds in the order they depend on each other.
   private static final List<String> ORDER = new List<String>{
+    // A camp workbook's weeks first, and the weeks items are off last (part D).
+    'Week',
     'LocationType',
     'Location',
     'Program',
@@ -19,7 +21,8 @@ public with sharing class ImportListSaves {
     'TimeBlock',
     'Activity',
     'FixedActivity',
-    'RecurringActivity'
+    'RecurringActivity',
+    'WeekException'
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
@@ -27,13 +30,22 @@ public with sharing class ImportListSaves {
   private ImportPlan plan;
   private ImportKeys keys;
   private ImportWriter writer;
+  private Boolean workbook;
+  private List<ImportPlan.Entry> weeksBackOn = new List<ImportPlan.Entry>();
 
+  /** One screen's list. */
   public static ImportSetupSaves.Result save(String planText) {
-    return new ImportListSaves(new ImportPlan(planText)).run();
+    return new ImportListSaves(new ImportPlan(planText), false).run();
   }
 
-  private ImportListSaves(ImportPlan plan) {
+  /** A camp workbook (part D): every list, the weeks, the weeks items run, the camp's words. */
+  public static ImportSetupSaves.Result saveWorkbook(String planText) {
+    return new ImportListSaves(new ImportPlan(planText), true).run();
+  }
+
+  private ImportListSaves(ImportPlan plan, Boolean workbook) {
     this.plan = plan;
+    this.workbook = workbook;
   }
 
   private ImportSetupSaves.Result run() {
@@ -61,10 +73,23 @@ public with sharing class ImportListSaves {
     SetTimeGuard.defer();
     Savepoint beforeSave = Database.setSavepoint();
     try {
+      ImportWorkbookExtras extras = new ImportWorkbookExtras(
+        writer,
+        plan.seasonId,
+        seasons[0].Camp__c
+      );
+      // Another season's workbook into a season with no weeks: filled first, then paired.
+      if (workbook) {
+        extras.fillWeeks(plan.entries('fillWeeks'));
+      }
       for (String kind : ORDER) {
         if (byKind.containsKey(kind)) {
           saveKind(kind, byKind.get(kind));
         }
+      }
+      if (workbook) {
+        extras.weeksBackOn(weeksBackOn);
+        extras.campWords(plan.entries('campWords'));
       }
       SetTimeGuard.checkPending();
       ImportAnswers.save(seasons[0].Camp__c, plan);
@@ -82,8 +107,16 @@ public with sharing class ImportListSaves {
     Map<String, List<ImportPlan.Entry>> result = new Map<String, List<ImportPlan.Entry>>();
     for (ImportPlan.Entry entry : plan.entries('records')) {
       String kind = entry.text('kind');
-      if (!ImportListRows.isKind(kind)) {
+      Boolean allowed = workbook
+        ? ImportListRows.isWorkbookKind(kind)
+        : ImportListRows.isListKind(kind);
+      if (!allowed) {
         throw unreadable();
+      }
+      // A week an item is off no longer (a workbook's Runs in): removed after the rest.
+      if (kind == 'WeekException' && entry.text('remove') == 'true') {
+        weeksBackOn.add(entry);
+        continue;
       }
       if (!result.containsKey(kind)) {
         result.put(kind, new List<ImportPlan.Entry>());
@@ -94,7 +127,7 @@ public with sharing class ImportListSaves {
   }
 
   private void saveKind(String kind, List<ImportPlan.Entry> entries) {
-    Schema.SObjectType type = Schema.getGlobalDescribe().get(kind + '__c');
+    Schema.SObjectType type = ImportFields.ofTerm(kind);
     List<SObject> rows = new List<SObject>();
     // Links to records of the same kind added in this save: written once those exist.
     List<List<Object>> later = new List<List<Object>>();
@@ -156,7 +189,9 @@ public with sharing class ImportListSaves {
     String changed = JSON.serialize(writer.changed);
     if (created.length() > LOG_LIMIT || changed.length() > LOG_LIMIT) {
       throw new ShoreshException(
-        'This list is too long to be undone later, so nothing was saved. Split it into two files and import each one.'
+        workbook
+          ? 'This workbook is too big to be undone later, so nothing was saved. Import its sheets on their own screens.'
+          : 'This list is too long to be undone later, so nothing was saved. Split it into two files and import each one.'
       );
     }
     Import__c done = new Import__c(

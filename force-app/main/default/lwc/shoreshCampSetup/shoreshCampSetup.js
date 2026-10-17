@@ -446,6 +446,7 @@ export default class ShoreshCampSetup extends LightningElement {
       seasonDates: `${t.s("Season")} dates`,
       addWeek: `Add ${t.s("Week")}`,
       noWeeks: `No ${t.pIn("Week")} yet.`,
+      overlapsWeek: `Overlaps another ${t.sIn("Week")}`,
       fillWeeks: `Fill in ${t.pIn("Week")} from the ${t.sIn("Season")} dates`,
       addProgram: `Add ${t.s("Program")}`,
       noPrograms: `No ${t.pIn("Program")} yet. Every ${t.sIn("Season")} needs at least one.`,

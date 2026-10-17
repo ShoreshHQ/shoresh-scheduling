@@ -187,7 +187,11 @@ function danglingLinks(proposal, answers) {
     return [];
   }
   const plan = listPlan(proposal, answers, null, "");
-  const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+  // Records this request adds, and (a camp workbook) those the sheets before it add.
+  const keys = new Set([
+    ...plan.records.map((r) => r.key).filter((k) => k),
+    ...(proposal.knownKeys || [])
+  ]);
   const isKey = (value) => typeof value === "string" && value.includes(":");
   const broken = [];
   plan.records.forEach((record) => {

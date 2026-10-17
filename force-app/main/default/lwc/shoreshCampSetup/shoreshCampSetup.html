@@ -225,6 +225,7 @@
                 problems={problems}
                 onnavigate={handleNavigate}
                 onundoimport={handleUndoImport}
+                onimported={handleImported}
               ></c-shoresh-roots>
             </div>
 
@@ -334,6 +335,7 @@
                 add-label={labels.addWeek}
                 empty-message={labels.noWeeks}
                 new-row-defaults={weekDefaults}
+                overlap-label={labels.overlapsWeek}
                 busy={busy}
                 onsave={handleSaveRecords}
                 ondelete={handleDeleteRecord}

@@ -70,6 +70,13 @@
             disabled={downloading}
             onclick={handleDownloadWorkbook}
           ></lightning-button>
+          <c-shoresh-list-import
+            data-id="workbook-import"
+            workbook
+            setup={setup}
+            terms={terms}
+            onimported={handleImported}
+          ></c-shoresh-list-import>
           <template lwc:if={lastImport}>
             <div class="roots-last-import" data-id="last-import">
               <span>{lastImport.line}</span>

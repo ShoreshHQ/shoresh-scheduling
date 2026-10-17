@@ -85,10 +85,12 @@ class Divisions {
  * Activities and recurring activities whose who names a division, leaving out any that also
  * name the group itself (moving does not change those for it).
  */
-function whoNaming(existing, divisionId, groupId) {
+function whoNaming(existing, divisionId, groupId, otherDivisionId) {
   const names = [];
+  // A list naming both divisions keeps the group either way: neither lost nor gained.
   const counts = (rows) =>
     rows.some((r) => r.Division__c === divisionId) &&
+    !rows.some((r) => r.Division__c === otherDivisionId) &&
     !rows.some((r) => r.Group__c === groupId);
   for (const a of (existing && existing.activities) || []) {
     if (counts(a.Eligibilities__r || [])) {
@@ -149,8 +151,15 @@ function movedGroup(group, other, here, ctx) {
     to: group.division,
     canMove,
     program: other.programName,
-    loses: whoNaming(ctx.existing, other.divisionId, other.id),
-    gains: target ? whoNaming(ctx.existing, target.id, other.id) : []
+    loses: whoNaming(
+      ctx.existing,
+      other.divisionId,
+      other.id,
+      target && target.id
+    ),
+    gains: target
+      ? whoNaming(ctx.existing, target.id, other.id, other.divisionId)
+      : []
   });
   const answer = ctx.answers[id];
   if (answer === LEAVE_OUT) {

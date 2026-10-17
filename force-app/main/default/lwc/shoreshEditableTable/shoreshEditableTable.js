@@ -29,6 +29,8 @@ import { looseKey } from "c/shoreshImportEngine";
  * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
  *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
  *   "Same name as another" tag. Every row counts, hidden or unsaved. A heads-up only.
+ * overlapLabel: a row whose StartDate__c to EndDate__c overlaps another row's gets the same dot
+ *   with this tag ("Overlaps another week", in the camp's words). A heads-up only.
  *   sameNameScope / sameNamesElsewhere: when rows can move to another scope (a group's
  *   division), a row is compared within the scope its values now name, and against
  *   sameNamesElsewhere[scope] (names in other scopes' tables, and names moving in from them).
@@ -68,6 +70,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api notesHeading;
   @api rowNotes = {};
   @api flagSameNames = false;
+  // Weeks: the tag for a row whose dates overlap another row's (StartDate__c to EndDate__c).
+  @api overlapLabel;
   @api sameNameScope;
   @api sameNamesElsewhere = {};
   @api draftNote;
@@ -231,10 +235,7 @@ export default class ShoreshEditableTable extends LightningElement {
 
   /** Each saved row's draft note, worked out once per change (row key -> text). */
   get draftNotes() {
-    if (
-      this._notesFor !== this.drafts ||
-      this._notesFrom !== this.draftNote
-    ) {
+    if (this._notesFor !== this.drafts || this._notesFrom !== this.draftNote) {
       this._notesFor = this.drafts;
       this._notesFrom = this.draftNote;
       this._draftNotes = new Map(
@@ -338,14 +339,21 @@ export default class ShoreshEditableTable extends LightningElement {
     const moved = {};
     this.drafts.forEach((draft) => {
       const to = draft.values[field];
-      if (!draft.isNew && to && to !== draft.original[field] && draft.values.Name) {
+      if (
+        !draft.isNew &&
+        to &&
+        to !== draft.original[field] &&
+        draft.values.Name
+      ) {
         moved[to] = [...(moved[to] || []), draft.values.Name];
       }
     });
     const signature = JSON.stringify(moved);
     if (signature !== this._movedSignature) {
       this._movedSignature = signature;
-      this.dispatchEvent(new CustomEvent("pendingnames", { detail: { moved } }));
+      this.dispatchEvent(
+        new CustomEvent("pendingnames", { detail: { moved } })
+      );
     }
   }
 
@@ -379,9 +387,34 @@ export default class ShoreshEditableTable extends LightningElement {
     return same;
   }
 
+  /** Keys of the rows whose dates overlap another row's, saved or not. */
+  get overlapKeys() {
+    const keys = new Set();
+    if (!this.overlapLabel) {
+      return keys;
+    }
+    const dated = this.drafts.filter(
+      (d) => d.values.StartDate__c && d.values.EndDate__c
+    );
+    dated.forEach((a) => {
+      if (
+        dated.some(
+          (b) =>
+            b !== a &&
+            a.values.StartDate__c <= b.values.EndDate__c &&
+            b.values.StartDate__c <= a.values.EndDate__c
+        )
+      ) {
+        keys.add(a.key);
+      }
+    });
+    return keys;
+  }
+
   get tableRows() {
     const offWeeks = this.offWeeks;
     const sameNames = this.sameNameKeys;
+    const overlaps = this.overlapKeys;
     const draftNotes = this.draftNotes;
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
@@ -433,6 +466,8 @@ export default class ShoreshEditableTable extends LightningElement {
             : col.options,
           isText: col.type === "text" || !col.type,
           sameName: col.fieldName === "Name" && sameNames.has(draft.key),
+          overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
+          overlapLabel: this.overlapLabel,
           isNumber: col.type === "number",
           min: col.min,
           isDate: col.type === "date",

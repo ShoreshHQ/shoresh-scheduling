@@ -1050,6 +1050,7 @@ export function listProposal(input) {
   result.targets = targets;
   result.setupActivities = setup.activities || [];
   result.setup = setup;
+  result.knownKeys = input.knownKeys || [];
   result.alsoAdd = alsoAdded(result.rows, used, {
     rain: rainPlans.adds,
     who: whoAdds.adds,

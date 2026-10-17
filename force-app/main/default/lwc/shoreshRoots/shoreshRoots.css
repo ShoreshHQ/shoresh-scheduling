@@ -1,3 +1,5 @@
+@import "c/shoreshTokens";
+
 /* Shoresh desktop's Roots layout (RootsHomeScreen.jsx), in Salesforce's design tokens. */
 .roots {
   max-width: 1180px;
@@ -188,7 +190,7 @@ button.roots-card:focus {
 
 .roots-attention-row:hover,
 .roots-attention-row:focus {
-  border-left-color: var(--slds-g-color-warning-base-60, #fe9339);
+  border-left-color: var(--shoresh-caution);
 }
 
 .roots-attention-name {
@@ -208,7 +210,7 @@ button.roots-card:focus {
   padding: 2px 0.75rem;
   border-radius: 999px;
   font-size: 0.6875rem;
-  background: var(--slds-g-color-warning-base-90, #fff1e8);
+  background: var(--shoresh-caution-tint);
   white-space: nowrap;
 }
 

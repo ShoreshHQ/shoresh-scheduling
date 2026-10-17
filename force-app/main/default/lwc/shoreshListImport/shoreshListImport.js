@@ -3,6 +3,7 @@ import { loadScript } from "lightning/platformResourceLoader";
 import LightningConfirm from "lightning/confirm";
 import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import saveList from "@salesforce/apex/ImportController.saveList";
+import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import {
@@ -25,12 +26,22 @@ import {
   rainAddKey,
   shownValue,
   waitingFor,
-  listRows
+  listRows,
+  workbookCards,
+  workbookPlan,
+  workbookProposal,
+  workbookWaiting
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { errorMessage } from "c/shoreshErrors";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
+
+// What a camp workbook saves that has no camp word of its own (part D), in the camp's words.
+const OWN_WORDS = {
+  CampLabel: () => ["camp word", "camp words"],
+  WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
+};
 
 /** Minutes after midnight as "9:00 AM". */
 function timeText(minutes) {
@@ -44,6 +55,9 @@ function timeText(minutes) {
  * is saved before "Save". Every answer runs the list again (c/shoreshLists), so what is shown is
  * always what will be saved.
  *
+ * With workbook (Roots, slice 4c part D) it imports the camp workbook instead: every sheet, in
+ * one review, one save, and one Undo, each sheet's list shown as its own section.
+ *
  * screenKey: which list (activities, locations, ...); setup: the season setup; terms: the
  * camp's words. Fires: imported (after a save or an Undo, so the page reloads the season).
  */
@@ -51,6 +65,7 @@ export default class ShoreshListImport extends LightningElement {
   @api screenKey;
   @api setup;
   @api terms;
+  @api workbook = false;
 
   open = false;
   downloading = false;
@@ -70,6 +85,16 @@ export default class ShoreshListImport extends LightningElement {
 
   get screenName() {
     return screenLabels(this.terms)[this.screenKey];
+  }
+  get title() {
+    return this.workbook ? "Import camp workbook" : `Import ${this.screenName}`;
+  }
+  /** Roots has its own "Download camp workbook". */
+  get showDownload() {
+    return !this.workbook;
+  }
+  get openLabel() {
+    return this.workbook ? "Import camp workbook" : "Import a list";
   }
 
   handleOpen() {
@@ -187,6 +212,16 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   recompute() {
+    if (this.workbook) {
+      this.proposal = workbookProposal({
+        file: this.file,
+        setup: this.setup,
+        terms: this.terms,
+        labels: (this.setup && this.setup.labels) || [],
+        answers: this.answers
+      });
+      return;
+    }
     this.proposal = listProposal({
       screenKey: this.screenKey,
       file: this.file,
@@ -227,7 +262,7 @@ export default class ShoreshListImport extends LightningElement {
     }));
   }
   get showSheetChoice() {
-    return this.sheetOptions.length > 1;
+    return !this.workbook && this.sheetOptions.length > 1;
   }
   /** The sheet read: the one Shoresh picked, or the one the director chose. */
   get currentSheet() {
@@ -239,14 +274,102 @@ export default class ShoreshListImport extends LightningElement {
     this.recompute();
   }
 
-  get hasMapping() {
-    return !!(this.proposal && this.proposal.mapping);
+  /**
+   * The review, part by part: one section for a screen's list; for a workbook, one per sheet
+   * read (its name shown), and the sheets nothing reads.
+   */
+  get sections() {
+    if (!this.proposal) {
+      return [];
+    }
+    if (!this.workbook) {
+      return [this.sectionOf(this.screenKey, "", this.proposal)];
+    }
+    const sections = this.proposal.sections.map((s) => {
+      const section = this.sectionOf(
+        s.key,
+        s.label,
+        s.extra ? { rows: s.rows } : s.proposal
+      );
+      // A workbook from another season: its weeks paired with this season's, by order.
+      section.lists = (s.lists || [])
+        .filter((list) => list.lines.length)
+        .map((list) => ({
+          key: `${s.key}-${list.key}`,
+          heading: `${list.heading} (${list.lines.length})`,
+          lines: list.lines.map((line, i) => ({
+            key: `${list.key}-${i}`,
+            text: line.pairing
+          }))
+        }));
+      return section;
+    });
+    if (this.proposal.unused.length) {
+      sections.push({
+        ...this.sectionOf("unused", "Not read", { rows: [] }),
+        unreadableRows: this.proposal.unused.map(({ name, why }) => ({
+          key: `unused-${name}`,
+          text: why ? `“${name}” · ${why}` : `“${name}”`
+        })),
+        hasUnreadable: true,
+        unreadableHeading: `Sheets not read (${this.proposal.unused.length})`
+      });
+    }
+    return sections;
   }
 
-  get columnOptions() {
+  /** The lists' proposals (a workbook's extra sheets are rows only). */
+  get proposals() {
+    if (!this.proposal) {
+      return [];
+    }
+    return this.workbook
+      ? this.proposal.sections.map((s) => {
+          return s.extra ? { rows: s.rows } : s.proposal;
+        })
+      : [this.proposal];
+  }
+
+  sectionOf(key, label, p) {
+    const alsoAdd = this.alsoAddOf(p);
+    const newRows = this.newRowsOf(p);
+    const changedRows = this.changedRowsOf(p);
+    const unreadableRows = this.rowsOf(p, "unreadable").map((r) => ({
+      key: `row-${r.rowNumber}`,
+      text: `Row ${r.rowNumber}${r.name ? ` · ${r.name}` : ""} · ${r.problems.join("; ")}`
+    }));
+    const leftOutRows = this.leftOutRowsOf(p);
+    return {
+      key: `section-${key}`,
+      label,
+      showLabel: !!label,
+      // Under a workbook's sheet title (h4), a sheet's own headings are one level down.
+      level: label ? "5" : "4",
+      hasMapping: !!p.mapping,
+      headings: p.mapping ? this.headingsOf(p) : [],
+      columnOptions: p.mapping ? this.columnOptionsOf(p) : [],
+      alsoAdd,
+      hasAlsoAdd: alsoAdd.length > 0,
+      newRows,
+      hasNew: newRows.length > 0,
+      newHeading: `New (${newRows.length})`,
+      changedRows,
+      hasChanges: changedRows.length > 0,
+      unchangedCount: this.rowsOf(p, "unchanged").length,
+      unreadableRows,
+      hasUnreadable: unreadableRows.length > 0,
+      unreadableHeading: `Review here (${unreadableRows.length})`,
+      leftOutRows,
+      hasLeftOut: leftOutRows.length > 0,
+      leftOutHeading: `Left out (${leftOutRows.length})`,
+      lists: []
+    };
+  }
+
+  columnOptionsOf(p) {
     return [
       { label: "Not used", value: UNUSED },
-      ...this.proposal.screen.columns.map((c) => ({
+      ...p.screen.columns.map((c) => ({
         label: c.heading,
         value: c.key
       }))
@@ -254,8 +377,8 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   /** Each heading in the file and the column it fills. */
-  get headings() {
-    return this.proposal.mapping.headings.map((h) => {
+  headingsOf(p) {
+    return p.mapping.headings.map((h) => {
       const remembered =
         h.how === "chosen" && this.remembered[h.key] === this.answers[h.key];
       let note = "";
@@ -288,34 +411,38 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get cards() {
-    return questionCards(this.proposal, this.terms, this.answers).map(
-      (card) => {
-        let chosen = card.options.find((o) => o.value === card.answer);
-        if (!chosen && card.answer && card.daysQuestion) {
-          chosen = { label: card.answer.split(",").join(", ") };
-        } else if (!chosen && card.answer && card.timesQuestion) {
-          const [start, end] = card.answer.split("-").map((hm) => {
-            const [h, m] = hm.split(":").map(Number);
-            return timeText(h * 60 + m);
-          });
-          chosen = { label: `${start}–${end}` };
-        }
-        return {
-          ...card,
-          answered: !!chosen,
-          answerLabel: chosen ? chosen.label : "",
-          fromMemory: !!chosen && this.remembered[card.id] === card.answer,
-          // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
-          draftDays: this.draftDays(card.id),
-          draftProblem: (this.drafts[card.id] || {}).problem || "",
-          options: card.options.map((o) => ({
-            ...o,
-            key: `${card.id}::${o.value}`
-          })),
-          className: chosen ? "list-card list-card_done" : "list-card"
-        };
+    if (!this.proposal) {
+      return [];
+    }
+    const cards = this.workbook
+      ? workbookCards(this.proposal, this.answers)
+      : questionCards(this.proposal, this.terms, this.answers);
+    return cards.map((card) => {
+      let chosen = card.options.find((o) => o.value === card.answer);
+      if (!chosen && card.answer && card.daysQuestion) {
+        chosen = { label: card.answer.split(",").join(", ") };
+      } else if (!chosen && card.answer && card.timesQuestion) {
+        const [start, end] = card.answer.split("-").map((hm) => {
+          const [h, m] = hm.split(":").map(Number);
+          return timeText(h * 60 + m);
+        });
+        chosen = { label: `${start}–${end}` };
       }
-    );
+      return {
+        ...card,
+        answered: !!chosen,
+        answerLabel: chosen ? chosen.label : "",
+        fromMemory: !!chosen && this.remembered[card.id] === card.answer,
+        // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
+        draftDays: this.draftDays(card.id),
+        draftProblem: (this.drafts[card.id] || {}).problem || "",
+        options: card.options.map((o) => ({
+          ...o,
+          key: `${card.id}::${o.value}`
+        })),
+        className: chosen ? "list-card list-card_done" : "list-card"
+      };
+    });
   }
   /** Questions still to answer (the heading never shows an attention zero: answered cards fold). */
   get openCount() {
@@ -338,9 +465,9 @@ export default class ShoreshListImport extends LightningElement {
   /**
    * What is added with the list because rows name it: ticked, and can't be unticked (Greg, #4).
    */
-  get alsoAdd() {
+  alsoAddOf(p) {
     const t = this.terms;
-    const add = (this.proposal && this.proposal.alsoAdd) || {};
+    const add = p.alsoAdd || {};
     const words = { location: "Location", locationType: "LocationType" };
     const lines = [];
     ["locationType", "location"].forEach((ref) => {
@@ -481,7 +608,8 @@ export default class ShoreshListImport extends LightningElement {
 
   /** Rows saved without the rain plan the file gave them, for the summary. */
   get droppedPlans() {
-    return ((this.proposal && this.proposal.rows) || [])
+    return this.proposals
+      .flatMap((p) => p.rows || [])
       .filter(
         (r) =>
           r.droppedPlan && ["new", "changed", "unchanged"].includes(r.status)
@@ -492,18 +620,17 @@ export default class ShoreshListImport extends LightningElement {
       }));
   }
 
-  get hasAlsoAdd() {
-    return this.alsoAdd.length > 0;
+  rowsOf(p, status) {
+    return (p.rows || []).filter((r) => r.status === status);
   }
 
+  /** Rows of a status across every list. */
   rowsWith(status) {
-    return ((this.proposal && this.proposal.rows) || []).filter(
-      (r) => r.status === status
-    );
+    return this.proposals.flatMap((p) => this.rowsOf(p, status));
   }
 
-  get newRows() {
-    return this.rowsWith("new").map((r) => ({
+  newRowsOf(p) {
+    return this.rowsOf(p, "new").map((r) => ({
       key: `row-${r.rowNumber}`,
       name: r.name,
       // Blank cells it can't be without start as when added by hand.
@@ -512,50 +639,72 @@ export default class ShoreshListImport extends LightningElement {
         : ""
     }));
   }
-  get unchangedCount() {
-    return this.rowsWith("unchanged").length;
-  }
-  get unreadableRows() {
-    return this.rowsWith("unreadable").map((r) => ({
+  leftOutRowsOf(p) {
+    return this.rowsOf(p, "leftOut").map((r) => ({
       key: `row-${r.rowNumber}`,
-      text: `Row ${r.rowNumber}${r.name ? ` · ${r.name}` : ""} · ${r.problems.join("; ")}`
-    }));
-  }
-  get leftOutRows() {
-    return this.rowsWith("leftOut").map((r) => ({
-      key: `row-${r.rowNumber}`,
-      text: r.usedRow
-        ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
-        : r.sameAs
-          ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
-          : `Row ${r.rowNumber} · ${r.name}`
+      text: r.reason
+        ? `Row ${r.rowNumber} · ${r.name} · ${r.reason}`
+        : r.usedRow
+          ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
+          : r.sameAs
+            ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
+            : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
   get askedCount() {
     return this.rowsWith("asked").length;
   }
 
-  /** Each difference: "times a week: at least 3 → 2", with Keep or Change; clears stand out. */
-  get changedRows() {
-    return this.rowsWith("changed").map((r) => ({
-      key: `row-${r.rowNumber}`,
-      name: r.existingName,
-      differences: r.differences.map((d) => ({
-        id: d.id,
-        text: `${d.heading}: ${shownValue(this.proposal, d.column, d.from)} → ${shownValue(this.proposal, d.column, d.to)}`,
-        clears: d.clears,
-        keepVariant: d.answer === KEEP ? "brand" : "neutral",
-        changeVariant: d.answer === CHANGE ? "brand" : "neutral",
-        className: d.clears ? "list-diff list-diff_clears" : "list-diff"
-      }))
-    }));
+  /**
+   * Each difference: "times a week: at least 3 → 2", with Keep or Change; clears stand out. A
+   * workbook's extra sheets give their own words (camp words, weeks, Runs in).
+   */
+  changedRowsOf(p) {
+    const button = (on) => {
+      return on
+        ? "slds-button slds-button_brand"
+        : "slds-button slds-button_neutral";
+    };
+    return this.rowsOf(p, "changed").map((r) => {
+      const name = r.existingName || r.name;
+      return {
+        key: `row-${r.rowNumber}`,
+        name,
+        differences: r.differences.map((d) => {
+          const text = p.screen
+            ? `${d.heading}: ${shownValue(p, d.column, d.from)} → ${shownValue(p, d.column, d.to)}`
+            : d.text || `${d.heading}: ${d.from} → ${d.to}`;
+          // Each Keep and Change names its item and difference, and says which is chosen.
+          return {
+            id: d.id,
+            text,
+            clears: d.clears,
+            keepClass: button(d.answer === KEEP),
+            changeClass: button(d.answer === CHANGE),
+            keepPressed: String(d.answer === KEEP),
+            changePressed: String(d.answer === CHANGE),
+            keepLabel: `Keep, ${name}: ${text}`,
+            changeLabel: `Change, ${name}: ${text}`,
+            className: d.clears ? "list-diff list-diff_clears" : "list-diff"
+          };
+        })
+      };
+    });
   }
 
+  /** Every difference not yet answered, across the whole file. */
   get changeAll() {
-    return changeAllCounts(this.proposal);
-  }
-  get hasChanges() {
-    return this.changedRows.length > 0;
+    return this.proposals
+      .map((p) => changeAllCounts(p))
+      .reduce(
+        (sum, c) => ({
+          changes: sum.changes + c.changes,
+          clears: sum.clears + c.clears,
+          answered: sum.answered + c.answered,
+          ids: [...sum.ids, ...c.ids]
+        }),
+        { changes: 0, clears: 0, answered: 0, ids: [] }
+      );
   }
   /** Only differences not answered yet; clearing a value never hides inside it (it says how many). */
   get hasUnanswered() {
@@ -581,9 +730,12 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get waiting() {
-    return this.proposal
-      ? waitingFor(this.proposal, this.terms, this.answers)
-      : [];
+    if (!this.proposal) {
+      return [];
+    }
+    return this.workbook
+      ? workbookWaiting(this.proposal, this.answers)
+      : waitingFor(this.proposal, this.terms, this.answers);
   }
   get waitingLines() {
     return this.waiting.map((text, i) => ({ key: `w${i}`, text }));
@@ -593,13 +745,16 @@ export default class ShoreshListImport extends LightningElement {
   }
   /** The exit says what it does: "Add 3, change 2". */
   get saveLabel() {
-    if (this.hasWaiting || !this.proposal || !this.proposal.rows) {
+    if (this.hasWaiting || !this.proposal || !this.proposals.length) {
       return "Save";
     }
     // Everything saving adds, the ticked extras with it.
+    // Weeks an added item runs are counted with the item.
     const added =
-      this.rowsWith("new").length +
-      this.alsoAdd.filter((item) => item.checked).length;
+      this.rowsWith("new").filter((r) => !r.withItem).length +
+      this.proposals
+        .flatMap((p) => this.alsoAddOf(p))
+        .filter((item) => item.checked).length;
     const changed = this.rowsWith("changed").filter((r) =>
       r.differences.some((d) => d.answer === CHANGE)
     ).length;
@@ -623,13 +778,22 @@ export default class ShoreshListImport extends LightningElement {
     this.stage = "saving";
     this.error = null;
     try {
-      const plan = listPlan(
-        this.proposal,
-        this.answers,
-        this.setup.season.Id,
-        `${this.file.name} (${this.screenName})`
-      );
-      this.result = await saveList({ plan: JSON.stringify(plan) });
+      if (this.workbook) {
+        const plan = workbookPlan(
+          this.proposal,
+          this.answers,
+          this.setup.season.Id
+        );
+        this.result = await saveWorkbook({ plan: JSON.stringify(plan) });
+      } else {
+        const plan = listPlan(
+          this.proposal,
+          this.answers,
+          this.setup.season.Id,
+          `${this.file.name} (${this.screenName})`
+        );
+        this.result = await saveList({ plan: JSON.stringify(plan) });
+      }
       this.stage = "done";
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
@@ -646,9 +810,15 @@ export default class ShoreshListImport extends LightningElement {
         .sort()
         .forEach((term) => {
           const n = counts[term];
+          const own = OWN_WORDS[term] && OWN_WORDS[term](t);
+          const word = own
+            ? own[n === 1 ? 0 : 1]
+            : n === 1
+              ? t.sIn(term)
+              : t.pIn(term);
           lines.push({
             key: `${verb}-${term}`,
-            text: `${verb} ${n} ${n === 1 ? t.sIn(term) : t.pIn(term)}`
+            text: `${verb} ${n} ${word}`
           });
         });
     };

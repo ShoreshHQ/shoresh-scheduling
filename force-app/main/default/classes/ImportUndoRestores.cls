@@ -15,8 +15,11 @@ public with sharing class ImportUndoRestores {
     Map<Schema.SObjectType, List<Map<String, Object>>> byKind = new Map<Schema.SObjectType, List<Map<String, Object>>>();
     for (Object item : changed) {
       Map<String, Object> entry = (Map<String, Object>) item;
-      Schema.SObjectType kind = ((Id) (String) entry.get('id'))
-        .getSObjectType();
+      Schema.SObjectType kind = ImportFields.ofRecord(entry.get('id'));
+      ImportFields.check(
+        kind,
+        ((Map<String, Object>) entry.get('before')).keySet()
+      );
       if (!byKind.containsKey(kind)) {
         byKind.put(kind, new List<Map<String, Object>>());
       }
@@ -55,11 +58,7 @@ public with sharing class ImportUndoRestores {
       ids.add((Id) (String) entry.get('id'));
       fields.addAll(((Map<String, Object>) entry.get('after')).keySet());
     }
-    Map<Id, SObject> now = ImportUndoValues.read(
-      kind.getDescribe().getName(),
-      fields,
-      ids
-    );
+    Map<Id, SObject> now = ImportUndoValues.read(kind, fields, ids);
     List<SObject> rows = new List<SObject>();
     for (Map<String, Object> entry : entries) {
       SObject current = now.get((Id) (String) entry.get('id'));
@@ -74,10 +73,10 @@ public with sharing class ImportUndoRestores {
           (Map<String, Object>) entry.get('after')
         )
       ) {
-        result.keptEdited.add((String) current.get('Name'));
+        result.keptEdited.add(ImportFields.nameOf(current));
         continue;
       }
-      names.put(current.Id, (String) current.get('Name'));
+      names.put(current.Id, ImportFields.nameOf(current));
       SObject row = kind.newSObject(current.Id);
       Map<String, Object> before = (Map<String, Object>) entry.get('before');
       for (String field : before.keySet()) {

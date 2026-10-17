@@ -120,6 +120,53 @@ public with sharing class ImportWriter {
     }
   }
 
+  /**
+   * Records a camp workbook adds or changes beside its lists (camp words, part D): the added
+   * kept for Undo to remove, the changed with their values before.
+   */
+  public void writeTracked(
+    String term,
+    List<SObject> added,
+    List<SObject> existing
+  ) {
+    List<Map<String, Object>> before = ImportUndoLog.before(existing);
+    if (!existing.isEmpty()) {
+      UserModeWrites.save(existing);
+    }
+    changed.addAll(ImportUndoLog.withAfter(before, existing));
+    for (SObject row : existing) {
+      countChange(term, row.Id);
+    }
+    if (!added.isEmpty()) {
+      saveTracked(term, added);
+    }
+    for (Integer i = 0; i < added.size(); i++) {
+      result.countAdded(term);
+    }
+  }
+
+  /** A camp word a workbook set back to Shoresh's own (removed): logged for Undo to put back. */
+  public void logWordOff(CampLabel__c label) {
+    changed.add(
+      new Map<String, Object>{
+        'wordOff' => label.Id,
+        'term' => label.ModelTerm__c,
+        'singular' => label.Singular__c,
+        'plural' => label.Plural__c
+      }
+    );
+    countChange('CampLabel', label.Id);
+  }
+
+  /** A week an item was off that a workbook ticked back on (removed): logged for Undo. */
+  public void logWeekBackOn(Map<String, Object> entry, Id target) {
+    changed.add(entry);
+    countChange(
+      target.getSObjectType().getDescribe().getLocalName().removeEnd('__c'),
+      target
+    );
+  }
+
   /** A who list an import replaced: whose, which rows' object, and the targets before and after. */
   public class WhoChange {
     public SObject owner;

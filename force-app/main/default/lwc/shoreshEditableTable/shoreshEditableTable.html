@@ -100,6 +100,15 @@
                             >Same name as another
                           </span>
                         </template>
+                        <template lwc:if={cell.overlaps}>
+                          <span class="same-name" data-id="overlaps">
+                            <span
+                              class="same-name-dot"
+                              aria-hidden="true"
+                            ></span
+                            >{cell.overlapLabel}
+                          </span>
+                        </template>
                       </template>
                       <template lwc:elseif={cell.isNumber}>
                         <lightning-input
