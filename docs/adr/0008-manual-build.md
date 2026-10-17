@@ -199,7 +199,29 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - while something is picked up, a click on a slot puts it down too;
     - the picked slot and the picked list activity are outlined; `aria-pressed` is on the
       list chip.
-19. **Follow-ups from part 1:**
+19. **Review fixes (part 2):**
+    - **Length without dragging (WCAG 2.5.7):** a click on a placement's handle picks up its
+      end (_Swim: choose where it ends._), and a click on a slot of the same bunk and day sets
+      it. A handle dropped on a multi-block cell lands on the block under the pointer.
+    - **Drags:** a drag that ends without a drop is forgotten (`dragend`). A drop counts only
+      if it carries the dragged thing's name. The drag carries the name shown, never a record
+      Id, so a drop into a text box writes a word.
+    - **Undo:** after **Use yours**, the Undo step is what was really saved, so Undo brings
+      theirs back whole. Keeping theirs also drops a waiting Undo or Redo of that step.
+      Ctrl/Cmd+Z does nothing in the Filter box, the typing box, or the question.
+    - **Picked up:** let go when the view, day, or bunk changes, or the week reloads. The
+      picked cell is `aria-selected`.
+    - **Refused:**
+      - a swap never puts anything where the bunk isn't at camp;
+      - something not set up yet stays where it is (_Chugim stays where it is._);
+      - the swap refusal uses the camp's words (_Only activities one Period long swap._);
+      - a list activity dropped on a leftover where the bunk isn't at camp says so;
+      - putting something back where it was says _Put back._
+    - **Counts:** in Group View, a bunk an activity isn't set up for needs none of it
+      (_0 placed_; the dot if any is placed).
+    - **The refusal line** is plain text; the always-present live region announces it, once.
+
+20. **Follow-ups from part 1:**
     - deleting a week or program now says _That includes its Manual Build and 2 saved
       versions._ (`shoreshCampSetup.savedSchedulesNote`, through `c/shoreshSchema`);
     - the slot box follows its slot when the page scrolls, and closes when the slot leaves the
