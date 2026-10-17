@@ -260,46 +260,47 @@ function daysCard(ask) {
   };
 }
 
-function moveEffects(ask, t) {
+function moveEffects(ask) {
   const parts = [];
   if (ask.loses.length) {
-    parts.push(
-      `no longer in ${nameList(ask.loses)} (who it is for names ${ask.from})`
-    );
+    parts.push(`is no longer in ${nameList(ask.loses)} (for ${ask.from})`);
   }
   if (ask.gains.length) {
-    parts.push(`now in ${nameList(ask.gains)} (who it is for names ${ask.to})`);
+    parts.push(`is now in ${nameList(ask.gains)} (for ${ask.to})`);
   }
   return parts.length
-    ? `Moving changes who things are for: ${parts.join("; ")}.`
-    : `Nothing set up names ${ask.from} or ${ask.to} in who it is for, so moving changes no ${t.sIn("Activity")}'s who.`;
+    ? `If it moves, ${ask.group} ${parts.join(" and ")}.`
+    : `Nothing set up is for ${ask.from} or ${ask.to} by name, so moving changes nothing else.`;
 }
 
 /** A group the camp has in another division than the file shows. */
 function moveCard(ask, t) {
+  const sameProgram = ask.canMove;
   return {
     id: ask.id,
     stage: "review",
     lane: "hold",
-    title: `${ask.group} is in ${ask.from}. The file puts it in ${ask.to}.`,
+    title: sameProgram
+      ? `${ask.group} is in ${ask.from}. The file puts it in ${ask.to}.`
+      : `${ask.group} is in ${ask.from}, in ${ask.program}. The file puts it in ${ask.to}.`,
     subject: ask.group,
-    subtitle: ask.canMove
-      ? moveEffects(ask, t)
-      : `${ask.to} is in another ${t.sIn("Program")}, so ${ask.group} cannot move there.`,
+    subtitle: sameProgram
+      ? moveEffects(ask)
+      : `${ask.program} is another ${t.sIn("Program")}, so this ${t.sIn("Group")} cannot move here or take this schedule.`,
     options: [
-      ...(ask.canMove
+      ...(sameProgram
         ? [
             {
               value: "move",
               label: `Move ${ask.group} from ${ask.from} to ${ask.to}`
+            },
+            {
+              value: "keep",
+              label: `Keep it in ${ask.from}`,
+              description: "Its schedule from the file is added there."
             }
           ]
         : []),
-      {
-        value: "keep",
-        label: `Keep it in ${ask.from}`,
-        description: "Its schedule from the file is added there."
-      },
       {
         value: "new",
         label: `Add a new ${ask.group} to ${ask.to}`,

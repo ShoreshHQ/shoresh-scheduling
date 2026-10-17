@@ -71,18 +71,32 @@ function median(values) {
 
 /**
  * A block written without AM or PM that the camp-day rule put in the evening ("6:30-7:15" read
- * as 6:30 PM) is early morning when, read that way, it ends before the rest of the day starts.
+ * as 6:30 PM) is early morning when, read that way, it ends at most half an hour before the day's
+ * first block with a sure time (7:30), or before an early block already moved that way. An
+ * afternoon block (aftercare at 5:00-6:00) never qualifies; nor does anything when no block's
+ * time is sure.
  */
+const EARLY_GAP_MINUTES = 30;
+
 function earlyMorning(blocks) {
   const sure = blocks.filter((b) => !b.guessedPm);
-  const firstStart = Math.min(...sure.map((b) => b.start));
-  for (const b of blocks) {
-    const end = b.end === null ? b.start + 1 : b.end;
-    if (b.guessedPm && b.start >= 17 * 60 && end - 12 * 60 <= firstStart) {
-      b.start -= 12 * 60;
-      b.end = b.end === null ? null : b.end - 12 * 60;
-      b.readAsMorning = true;
+  if (sure.length === 0) {
+    return;
+  }
+  let boundary = Math.min(...sure.map((b) => b.start));
+  const evening = blocks
+    .filter((b) => b.guessedPm && b.start >= 17 * 60)
+    .sort((x, y) => y.start - x.start);
+  for (const b of evening) {
+    const end = (b.end === null ? b.start + 1 : b.end) - 12 * 60;
+    const gap = boundary - end;
+    if (gap < 0 || gap > EARLY_GAP_MINUTES) {
+      continue;
     }
+    b.start -= 12 * 60;
+    b.end = b.end === null ? null : b.end - 12 * 60;
+    b.readAsMorning = true;
+    boundary = b.start;
   }
 }
 
@@ -155,6 +169,7 @@ export function collectGroups(noted, timetableOfPage) {
       byName.set(name, {
         name,
         recordName: entry.recordName || name,
+        base: entry.base || name,
         votes: new Map(),
         timetable: timetableOfPage.get(entry.page),
         order: byName.size,
@@ -189,6 +204,7 @@ export function collectGroups(noted, timetableOfPage) {
     return {
       name: group.name,
       recordName: group.recordName,
+      base: group.base,
       division,
       timetable: group.timetable,
       order

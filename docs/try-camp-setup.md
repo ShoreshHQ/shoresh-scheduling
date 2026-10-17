@@ -309,7 +309,7 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
      from the file (_Juniors_ or _Seniors_) already chosen; any can be changed. (When a file
      does not say a bunk's unit and the program already has units, nothing is chosen and
      **Review** waits until you choose.)
-   - What was found, kind by kind, each marked _new_: the program _Main_ (Monday to Friday),
+   - What was found, kind by kind, each marked _new_: the new program, named _Main_ (Monday to Friday),
      seven **Time blocks** with their times, the six bunks with their units (_Juniors_,
      _Seniors_, from the row above the bunk names in the file), **Fixed activities**: _Lunch_,
      **Recurring activities**: _Morning meeting_ (Period 1 on Monday, everyone), and the

@@ -29,6 +29,8 @@ public with sharing class GroupMoves {
         WITH SYSTEM_MODE
       ]
     );
+    // One set of camp words per camp, read once (a bulk update may move many groups).
+    Map<Id, CampLabels> labelsByCamp = new Map<Id, CampLabels>();
     for (Group__c grp : groups) {
       if (!moves.containsKey(grp.Id)) {
         continue;
@@ -36,9 +38,11 @@ public with sharing class GroupMoves {
       Division__c target = divisions.get(grp.Division__c);
       Division__c origin = divisions.get(moves.get(grp.Id));
       if (target.Program__c != origin.Program__c) {
-        CampLabels labels = CampLabels.forCamp(
-          origin.Program__r.Season__r.Camp__c
-        );
+        Id campId = origin.Program__r.Season__r.Camp__c;
+        if (!labelsByCamp.containsKey(campId)) {
+          labelsByCamp.put(campId, CampLabels.forCamp(campId));
+        }
+        CampLabels labels = labelsByCamp.get(campId);
         grp.addError(
           labels.plural('Group') +
             ' can move only to another ' +

@@ -918,4 +918,90 @@ private class ImportSetupSavesTest {
       }
     }
   }
+
+  /**
+   * Group A has Morning circle (for Group A) at Period 1 on Mondays; Seniors have Assembly then.
+   * Moving Group A into Seniors would put it in both at once: refused.
+   */
+  @IsTest
+  static void aMoveThatMakesAClashIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Program__c main = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :season.Id
+        LIMIT 1
+      ];
+      Division__c seniors = ShoreshTestData.division(main.Id, 'Seniors');
+      ShoreshTestData.groupIn(seniors.Id, 'Group C');
+      Group__c groupA = [
+        SELECT Id, Division__c
+        FROM Group__c
+        WHERE Name = 'Group A'
+        LIMIT 1
+      ];
+      TimeBlock__c period1 = [
+        SELECT Id
+        FROM TimeBlock__c
+        WHERE Program__c = :main.Id AND Name = 'Period 1'
+      ];
+      RecurringActivity__c circle = new RecurringActivity__c(
+        Program__c = main.Id,
+        Name = 'Morning circle',
+        TimeBlock__c = period1.Id,
+        Length__c = 1,
+        Monday__c = true
+      );
+      RecurringActivity__c assembly = new RecurringActivity__c(
+        Program__c = main.Id,
+        Name = 'Assembly',
+        TimeBlock__c = period1.Id,
+        Length__c = 1,
+        Monday__c = true
+      );
+      SetTimeGuard.defer();
+      Database.insert(
+        new List<SObject>{ circle, assembly },
+        AccessLevel.SYSTEM_MODE
+      );
+      Database.insert(
+        new List<SObject>{
+          new Coverage__c(
+            Season__c = season.Id,
+            RecurringActivity__c = circle.Id,
+            Group__c = groupA.Id
+          ),
+          new Coverage__c(
+            Season__c = season.Id,
+            RecurringActivity__c = assembly.Id,
+            Division__c = seniors.Id
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      SetTimeGuard.checkPending();
+      SetTimeGuard.resume();
+      try {
+        Database.update(
+          new Group__c(Id = groupA.Id, Division__c = seniors.Id),
+          AccessLevel.USER_MODE
+        );
+        Assert.fail(
+          'a move that puts a group in two places at once must be refused'
+        );
+      } catch (DmlException e) {
+        Assert.isTrue(
+          e.getMessage().contains('Morning circle') ||
+          e.getMessage().contains('Assembly'),
+          e.getMessage()
+        );
+      }
+      Assert.areEqual(
+        groupA.Division__c,
+        [SELECT Division__c FROM Group__c WHERE Id = :groupA.Id].Division__c
+      );
+    }
+  }
 }

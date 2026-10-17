@@ -371,7 +371,11 @@ export default class ShoreshImport extends LightningElement {
       : "Use this setup";
   }
   get saveDisabled() {
-    return this.isSaving || this.answeredCount < this.reviewCards.length;
+    return (
+      this.isSaving ||
+      this.previewOpen > 0 ||
+      this.answeredCount < this.reviewCards.length
+    );
   }
   get saveHint() {
     if (!this.hasReviewCards) {

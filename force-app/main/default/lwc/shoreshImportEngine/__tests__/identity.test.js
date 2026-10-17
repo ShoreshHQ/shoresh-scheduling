@@ -234,7 +234,7 @@ describe("moving a group to the division the file shows (Greg)", () => {
       "Bunk 3 is in Juniors. The file puts it in Seniors."
     );
     expect(card.subtitle).toBe(
-      "Moving changes who things are for: no longer in Library (who it is for names Juniors); now in Boating (who it is for names Seniors)."
+      "If it moves, Bunk 3 is no longer in Library (for Juniors) and is now in Boating (for Seniors)."
     );
     expect(card.options.map((o) => o.label)).toEqual([
       "Move Bunk 3 from Juniors to Seniors",
@@ -342,5 +342,180 @@ describe("the same files in any order give the same result (PR 15 review, findin
     expect(cards(backward).map((c) => c.id)).toEqual(
       cards(forward).map((c) => c.id)
     );
+  });
+});
+
+describe("PR 16 reviews", () => {
+  const teens = existingSetup({
+    programs: [
+      program("pt", "Teens", {
+        divisions: [["dt", "Teens", [["gt", "Teen 1"]]]]
+      })
+    ]
+  });
+  /** A week for one program: its own times so it is its own timetable. */
+  const week = (prefix, groups, times, cell) =>
+    DAYS.map((day, d) =>
+      csv(`${prefix} ${day}.csv`, [
+        ["Time", ...groups],
+        ...times.map((b, bi) => [b, ...groups.map((_, g) => cell(g, d, bi))])
+      ])
+    );
+  const morning = ["9:00-9:45", "9:50-10:35", "12:00-12:45"];
+  const later = ["9:15-10:00", "10:05-10:50", "12:15-1:00"];
+  function all(g, d, b) {
+    return b === 0 && (g + d) % 2 === 0 ? "Archery" : rotation(g, d, b);
+  }
+
+  it("two new programs each with a division called Main: who names both (coordinator blocker)", () => {
+    const files = [
+      ...week("A", ["Red", "Blue"], morning, all),
+      ...week("B", ["Green", "Gold"], later, all)
+    ];
+    const first = propose(files, teens);
+    const answers = Object.fromEntries(
+      cards(first)
+        .filter((c) => c.select === "program")
+        .map((c) => [c.id, "new"])
+    );
+    const p = propose(files, teens, answers);
+    const archery = p.activities.find((a) => a.name === "Archery");
+    const keys = archery.who.keys;
+    expect(keys.sort()).toEqual(["D|P0|Main", "D|P1|Main"]);
+  });
+
+  it("the same division and name in two programs are two groups", () => {
+    const files = [
+      ...DAYS.map((day, d) =>
+        csv(`A ${day}.csv`, [
+          ["", "Juniors", "Juniors"],
+          ["Time", "Bunk 1", "Bunk 2"],
+          ...morning.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
+        ])
+      ),
+      ...DAYS.map((day, d) =>
+        csv(`B ${day}.csv`, [
+          ["", "Juniors", "Juniors"],
+          ["Time", "Bunk 1", "Bunk 3"],
+          ...later.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
+        ])
+      )
+    ];
+    const p = propose(files);
+    expect(p.groups.map((g) => g.name)).toEqual([
+      "Bunk 1 (schedule 1)",
+      "Bunk 2",
+      "Bunk 1 (schedule 2)",
+      "Bunk 3"
+    ]);
+    expect(
+      planFor(p, null, "s").groups.map((g) => [g.name, g.divisionKey])
+    ).toEqual([
+      ["Bunk 1", "D|P0|Juniors"],
+      ["Bunk 2", "D|P0|Juniors"],
+      ["Bunk 1", "D|P1|Juniors"],
+      ["Bunk 3", "D|P1|Juniors"]
+    ]);
+  });
+
+  it("an aftercare block at 5:00-6:00 stays in the afternoon", () => {
+    const rows = [
+      ["Time", "Bunk 1"],
+      ["9:00-9:45", "Swim"],
+      ["3:00-3:45", "Art"],
+      ["5:00-6:00", "Aftercare"]
+    ];
+    const p = propose(["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows)));
+    expect(p.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(9),
+      at(15),
+      at(17)
+    ]);
+  });
+
+  it("the move card leaves out what names the group itself", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: [
+            ["b1", "P1", at(9), at(9, 45)],
+            ["b2", "P2", at(9, 50), at(10, 35)],
+            ["b3", "Lunch", at(12), at(12, 45)]
+          ],
+          divisions: [
+            ["d1", "Juniors", [["g3", "Bunk 3"]]],
+            ["d2", "Seniors", [["g4", "Bunk 4"]]]
+          ]
+        })
+      ],
+      activities: [
+        {
+          Id: "a1",
+          Name: "Pottery",
+          Length__c: 1,
+          Eligibilities__r: [{ Division__c: "d1" }, { Group__c: "g3" }]
+        }
+      ]
+    });
+    const files = campWeek(
+      ["Seniors", "Seniors"],
+      ["Bunk 3", "Bunk 4"],
+      rotation
+    );
+    const card = cards(propose(files, existing)).find((c) =>
+      c.id.startsWith("move|")
+    );
+    expect(card.subtitle).toBe(
+      "Nothing set up is for Juniors or Seniors by name, so moving changes nothing else."
+    );
+  });
+
+  it("a division that already has a group of that name is not offered for it", () => {
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          divisions: [
+            ["d1", "Juniors", [["g1", "Bunk 1"]]],
+            ["d2", "Seniors", [["g9", "Bunk 9"]]]
+          ]
+        })
+      ]
+    });
+    const files = DAYS.map((day, d) =>
+      csv(`Camp ${day}.csv`, [
+        ["Time", "Bunk 9", "Bunk 5"],
+        ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
+      ])
+    );
+    const p = propose(files, existing);
+    const unit = cards(p).find((c) => c.id === "division|Bunk 5");
+    expect(unit.options.map((o) => o.value)).toEqual([
+      "Juniors",
+      "Seniors",
+      LEAVE_OUT
+    ]);
+  });
+
+  it("two files of the same name give the same result either way round", () => {
+    const one = csv("Monday.csv", [
+      ["Time", "Bunk 1"],
+      ["9:00-9:45", "Swim"]
+    ]);
+    const two = csv("Monday.csv", [
+      ["Time", "Bunk 1"],
+      ["9:00-9:45", "Art"]
+    ]);
+    const a = propose([one, two]);
+    const b = propose([two, one]);
+    expect(cards(a).map((c) => [c.id, c.subtitle])).toEqual(
+      cards(b).map((c) => [c.id, c.subtitle])
+    );
+  });
+
+  it("Grades 3-5 and Ages 6-8 are not times", () => {
+    const { timeRange } = jest.requireActual("../text");
+    expect(timeRange("Grades 3-5")).toBeNull();
+    expect(timeRange("Ages 6-8")).toBeNull();
+    expect(timeRange("Friday 9-10")).toMatchObject({ start: at(9) });
   });
 });

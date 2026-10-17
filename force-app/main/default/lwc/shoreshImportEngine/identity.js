@@ -70,12 +70,55 @@ export function groupIdentities(noted, existing) {
   };
 }
 
+/** The division a qualified identity names: "Bunk 1 (Juniors, schedule 2)" -> "Juniors". */
+export function divisionOfIdentity(name, identity) {
+  if (identity === name || !identity.startsWith(`${name} (`)) {
+    return null;
+  }
+  const inside = identity.slice(name.length + 2, -1).split(", schedule ")[0];
+  return inside.startsWith("schedule ") ? null : inside;
+}
+
+/** The identity without its schedule: what the camp's records are matched against. */
+export function baseIdentity(identity) {
+  return identity
+    .replace(/ \(schedule \d+\)$/, "")
+    .replace(/, schedule \d+\)$/, ")");
+}
+
+/**
+ * The same division and name in two timetables (two programs, as in program A's "Juniors: Bunk
+ * 1" and program B's "Juniors: Bunk 1") are two groups: each gets its schedule's number,
+ * "Bunk 1 (Juniors, schedule 2)".
+ */
+function bySchedule(entries, timetableOfPage) {
+  const schedules = new Map();
+  for (const e of entries) {
+    const t = timetableOfPage.get(e.page);
+    schedules.set(
+      e.identity,
+      new Set([...(schedules.get(e.identity) || []), t])
+    );
+  }
+  return (identity, page) => {
+    if ((schedules.get(identity) || new Set()).size < 2) {
+      return identity;
+    }
+    const n = timetableOfPage.get(page) + 1;
+    return identity.endsWith(")")
+      ? `${identity.slice(0, -1)}, schedule ${n})`
+      : `${identity} (schedule ${n})`;
+  };
+}
+
 /**
  * Every placement and noted group with its group's identity in `group` (and the name as the file
- * wrote it in `recordName`). An ambiguous name without a division is asked about, once per file:
- * "Which Bunk 1 is this?"; until answered, the first choice stands in; "Leave it out" drops it.
+ * wrote it in `recordName`, the identity without its schedule in `base`). An ambiguous name
+ * without a division is asked about, once per file: "Which Bunk 1 is this?"; until answered,
+ * the first choice stands in; "Leave it out" drops it.
  */
-export function identifyGroups(placements, noted, existing, answers) {
+export function identifyGroups(placements, noted, context) {
+  const { existing, answers, timetableOfPage } = context;
   const rules = groupIdentities(noted, existing);
   const asks = new Map();
   const resolve = (name, given, file, weak) => {
@@ -94,35 +137,41 @@ export function identifyGroups(placements, noted, existing, answers) {
     }
     return options.includes(answer) ? answer : options[0];
   };
-  const kept = placements
-    .map((p) => ({
-      ...p,
-      recordName: p.group,
-      group: resolve(p.group, p.division, p.file, p.weakDivision)
+  const resolvedNoted = noted
+    .map((g) => ({
+      ...g,
+      identity: resolve(g.name, g.division, g.file, g.weakDivision)
     }))
-    .filter((p) => p.group);
-  // A qualified identity carries its division ("Bunk 1 (Seniors)" is in Seniors).
-  const divisionIn = (name, identity) => {
-    return identity !== name ? identity.slice(name.length + 2, -1) : null;
-  };
-  const groups = noted
-    .map((g) => {
-      const identity = resolve(g.name, g.division, g.file, g.weakDivision);
-      // A hint that matches what is known is taken; one that does not is dropped.
-      const hinted =
-        g.weakDivision && rules.known(g.name, g.division) ? g.division : null;
-      const division =
-        divisionIn(g.name, identity) || (g.weakDivision ? hinted : g.division);
+    .filter((g) => g.identity);
+  const scheduled = bySchedule(resolvedNoted, timetableOfPage);
+  const kept = placements
+    .map((p) => {
+      const identity = resolve(p.group, p.division, p.file, p.weakDivision);
       return (
         identity && {
-          ...g,
-          recordName: g.name,
-          name: identity,
-          division,
-          weakDivision: false
+          ...p,
+          recordName: p.group,
+          base: identity,
+          group: scheduled(identity, p.page)
         }
       );
     })
     .filter(Boolean);
+  const groups = resolvedNoted.map((g) => {
+    // A hint that matches what is known is taken; one that does not is dropped.
+    const hinted =
+      g.weakDivision && rules.known(g.name, g.division) ? g.division : null;
+    const division =
+      divisionOfIdentity(g.name, g.identity) ||
+      (g.weakDivision ? hinted : g.division);
+    return {
+      ...g,
+      recordName: g.name,
+      base: g.identity,
+      name: scheduled(g.identity, g.page),
+      division,
+      weakDivision: false
+    };
+  });
   return { kept, groups, asks: [...asks.values()], rules };
 }

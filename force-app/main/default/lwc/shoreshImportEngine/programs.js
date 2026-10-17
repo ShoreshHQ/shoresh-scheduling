@@ -39,6 +39,13 @@ function groupsOfTimetable(reading, index) {
   return reading.groups.filter((g) => g.timetable === index).map((g) => g.name);
 }
 
+/** The same groups as the camp names them (identities without a schedule number). */
+function baseGroupsOfTimetable(reading, index) {
+  return reading.groups
+    .filter((g) => g.timetable === index)
+    .map((g) => g.base || g.name);
+}
+
 function newProgramName(taken, count) {
   if (count === 0 && !taken.has("main")) {
     return "Main";
@@ -57,9 +64,9 @@ function newProgramName(taken, count) {
  * program already taken by another set of groups in these files is not offered (their time
  * blocks differ, so they cannot share it). Answers name the program, never its record Id.
  */
-function sureProgram(groups, programs, free, context) {
+function sureProgram(bases, programs, free, context) {
   const owners = programs.filter((p) =>
-    groups.some((g) => p.groups.includes(g))
+    bases.some((g) => p.groups.includes(g))
   );
   if (owners.length === 1 && free.includes(owners[0])) {
     return owners[0].name;
@@ -74,9 +81,10 @@ function sureProgram(groups, programs, free, context) {
 }
 
 function chooseProgram(groups, programs, context, answers) {
+  const bases = context.bases || groups;
   const id = `program|${[...groups].sort().join(",")}`;
   const free = programs.filter((p) => !context.used.has(p.id));
-  const preselected = sureProgram(groups, programs, free, context);
+  const preselected = sureProgram(bases, programs, free, context);
   const ask = {
     id,
     type: "program",
@@ -214,7 +222,11 @@ export function mapPrograms(reading, existing, answers) {
     const choice = chooseProgram(
       groups,
       programs,
-      { used, count: reading.timetables.length },
+      {
+        used,
+        count: reading.timetables.length,
+        bases: baseGroupsOfTimetable(reading, timetable.index)
+      },
       answers
     );
     if (choice.ask) {

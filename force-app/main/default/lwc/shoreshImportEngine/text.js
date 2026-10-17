@@ -158,7 +158,7 @@ function timeTokens(text) {
 // things ("Period 1 - 2").
 const BARE_RANGE = /(^|[\s(])(\d{1,2})\s*(?:-|–|—|to)\s*(\d{1,2})\s*\)?\s*$/i;
 const NUMBERING_WORD =
-  /(period|block|session|activity|perek|chug|bunk|group|cabin|tent|team|week|day|grade|room|unit)\s*$/i;
+  /\b(periods?|blocks?|sessions?|activity|activities|perek|chugs?|chugim|bunks?|groups?|cabins?|tents?|teams?|weeks?|days?|grades?|ages?|rooms?|units?|levels?)\s*$/i;
 
 function bareHourRange(text) {
   const clean = tidy(text);

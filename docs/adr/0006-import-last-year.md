@@ -169,6 +169,29 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       fixed and recurring clash check. Moving a group on the Groups screen is a separate small PR
       after part 2.
 
+15. **After PR #16's two reviews (2026-10-16):**
+    - A group is its **program**, division, and name: the same division and name in two
+      programs ("Juniors: Bunk 1" in each) are two groups, shown with their schedule's number
+      ("Bunk 1 (schedule 2)"); the camp's groups are matched within the program.
+    - Who-lists are worked out by division record, never by division name (two programs may
+      each have a "Main" or a "Juniors").
+    - "Keep it in <division>" is offered only for a group in the same program; a group of
+      another program can only be added anew or left out.
+    - The move card leaves out activities that also name the group itself, and says it plainly
+      ("If it moves, Bunk 3 is no longer in Library (for Juniors) and is now in Boating (for
+      Seniors).").
+    - A division that already has a group of that name is not offered in that group's
+      dropdown, so the dropdown cannot quietly make a duplicate.
+    - Early-morning reading needs a block with a sure time and ends at most half an hour before
+      it (an aftercare block at 5:00-6:00 stays in the afternoon). "Grades 3-5", "Ages 6-8",
+      "Periods 1-2" are not times.
+    - Two files with the same name are ordered by what is in them; "Use this setup" also waits
+      for the preview's choices; `GroupMoves` reads camp words once per camp.
+16. **Deferred by Greg (2026-10-16)** to the Groups-screen move PR and Manual Build: a group
+    moved on Salesforce's own record page changes who it is eligible for with no card (the
+    clash check still runs); and schedules already built may show a moved group in an activity
+    it is no longer eligible for, with nothing pointing it out.
+
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 
 - **Layout can be changed per file** (the desktop only displayed it): kept.

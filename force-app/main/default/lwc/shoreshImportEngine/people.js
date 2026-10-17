@@ -30,7 +30,10 @@ function campGroups(existing, rules) {
           programId: entry.program.Id,
           programName: entry.program.Name
         };
-        byIdentity.set(record.identity, record);
+        byIdentity.set(record.identity, [
+          ...(byIdentity.get(record.identity) || []),
+          record
+        ]);
         byName.set(g.Name, [...(byName.get(g.Name) || []), record]);
       }
     }
@@ -78,16 +81,23 @@ class Divisions {
 
 // ---------- what moving a group changes ----------
 
-function whoNaming(existing, divisionId) {
+/**
+ * Activities and recurring activities whose who names a division, leaving out any that also
+ * name the group itself (moving does not change those for it).
+ */
+function whoNaming(existing, divisionId, groupId) {
   const names = [];
+  const counts = (rows) =>
+    rows.some((r) => r.Division__c === divisionId) &&
+    !rows.some((r) => r.Group__c === groupId);
   for (const a of (existing && existing.activities) || []) {
-    if ((a.Eligibilities__r || []).some((e) => e.Division__c === divisionId)) {
+    if (counts(a.Eligibilities__r || [])) {
       names.push(a.Name);
     }
   }
   for (const entry of (existing && existing.programs) || []) {
     for (const r of entry.recurringActivities || []) {
-      if ((r.Coverages__r || []).some((c) => c.Division__c === divisionId)) {
+      if (counts(r.Coverages__r || [])) {
         names.push(r.Name);
       }
     }
@@ -97,9 +107,10 @@ function whoNaming(existing, divisionId) {
 
 // ---------- one group ----------
 
-function existingGroup(current) {
+function existingGroup(current, group) {
   return {
-    name: current.identity,
+    name: group.name,
+    base: group.base,
     recordName: current.name,
     key: current.id,
     id: current.id,
@@ -112,6 +123,7 @@ function existingGroup(current) {
 function newGroup(group, division) {
   return {
     name: group.name,
+    base: group.base,
     recordName: group.recordName,
     key: `G|${group.name}`,
     id: null,
@@ -136,8 +148,9 @@ function movedGroup(group, other, here, ctx) {
     from: other.division,
     to: group.division,
     canMove,
-    loses: whoNaming(ctx.existing, other.divisionId),
-    gains: target ? whoNaming(ctx.existing, target.id) : []
+    program: other.programName,
+    loses: whoNaming(ctx.existing, other.divisionId, other.id),
+    gains: target ? whoNaming(ctx.existing, target.id, other.id) : []
   });
   const answer = ctx.answers[id];
   if (answer === LEAVE_OUT) {
@@ -148,14 +161,13 @@ function movedGroup(group, other, here, ctx) {
       isNew: false
     };
   }
-  if (answer === "keep") {
-    return { ...existingGroup(other), name: group.name };
+  if (answer === "keep" && canMove) {
+    return existingGroup(other, group);
   }
   if (answer === "move" && canMove) {
     const to = here.get(group.division);
     return {
-      ...existingGroup(other),
-      name: group.name,
+      ...existingGroup(other, group),
       moveTo: to.key,
       divisionKey: to.key,
       division: to.name
@@ -169,13 +181,23 @@ function unitChoice(group, here, fileDivisions, ctx) {
   const id = `division|${group.name}`;
   const noUnits = here.known.length === 0 && fileDivisions.length === 0;
   const preselected = group.division || (noUnits ? DEFAULT_DIVISION : null);
+  // A division that already has a group of this name is not offered: choosing it would make a
+  // second one (Bunk 1 in Seniors when Seniors has its own Bunk 1).
+  const taken = new Set(
+    [
+      ...(ctx.camp.byName.get(group.recordName) || []).map((o) => o.division),
+      ...(ctx.fileDivisionsOf.get(group.recordName) || [])
+    ]
+      .filter((d) => d && looseKey(d) !== looseKey(group.division || ""))
+      .map(looseKey)
+  );
   const options = [
     ...new Set([
       ...here.known.map((d) => d.name),
       ...fileDivisions,
       ...(preselected ? [preselected] : [])
     ])
-  ];
+  ].filter((d) => !taken.has(looseKey(d)));
   ctx.asks.push({
     id,
     type: "division",
@@ -199,17 +221,17 @@ function unitChoice(group, here, fileDivisions, ctx) {
 }
 
 function groupRecord(group, here, fileDivisions, ctx) {
-  const current = ctx.camp.byIdentity.get(group.name);
   const timetable = here.timetable;
-  if (
-    current &&
-    (!timetable.program || current.programId !== timetable.program.id)
-  ) {
+  const programId = timetable.program ? timetable.program.id : null;
+  const matches = ctx.camp.byIdentity.get(group.base) || [];
+  const current = matches.find((m) => m.programId === programId);
+  if (!current && matches.length) {
     // A group belongs to one program; its schedule from these files would go to another.
+    const other = matches[0];
     ctx.notes.push({
       type: "otherProgram",
       group: group.name,
-      program: current.programName,
+      program: other.programName,
       to: timetable.name
     });
     return {
@@ -220,7 +242,7 @@ function groupRecord(group, here, fileDivisions, ctx) {
     };
   }
   if (current) {
-    return existingGroup(current);
+    return existingGroup(current, group);
   }
   const others = (ctx.camp.byName.get(group.recordName) || []).filter(
     (o) => !ctx.fileIdentities.has(o.identity)
@@ -243,7 +265,11 @@ export function mapGroups(reading, timetables, existing, answers) {
     asks: [],
     notes: [],
     camp: campGroups(existing, reading.identities),
-    fileIdentities: new Set(reading.groups.map((g) => g.name))
+    fileIdentities: new Set(reading.groups.map((g) => g.base)),
+    fileDivisionsOf: reading.groups.reduce((map, g) => {
+      map.set(g.recordName, [...(map.get(g.recordName) || []), g.division]);
+      return map;
+    }, new Map())
   };
   const groups = [];
   const divisions = [];

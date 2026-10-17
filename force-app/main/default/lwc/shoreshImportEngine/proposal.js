@@ -47,14 +47,23 @@ function keysFor(groups, existing, rules) {
   const kept = groups.filter((g) => !g.leftOut);
   const byName = new Map(kept.map((g) => [g.name, g]));
   const camp = campMembers(existing, rules);
-  const coveredBy = (recordKey, names) =>
-    (camp.members.get(recordKey) || []).every((n) => names.includes(n));
-  const season = [...new Set([...camp.season, ...kept.map((g) => g.name)])];
+  // The camp knows its groups without a schedule number: compare those.
+  const bases = (names) => names.map((n) => (byName.get(n) || {}).base || n);
+  const coveredBy = (recordKey, names) => {
+    const given = bases(names);
+    return (camp.members.get(recordKey) || []).every((n) => given.includes(n));
+  };
+  const season = [
+    ...new Set([...camp.season, ...kept.map((g) => g.base || g.name)])
+  ];
   return {
     group: (name) => (byName.get(name) || {}).key,
     divisionOf: (name) => (byName.get(name) || {}).divisionKey,
     coveredBy,
-    isWholeSeason: (names) => season.every((n) => names.includes(n))
+    isWholeSeason: (names) => {
+      const given = bases(names);
+      return season.every((n) => given.includes(n));
+    }
   };
 }
 

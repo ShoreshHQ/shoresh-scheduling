@@ -169,6 +169,13 @@ function settleCells(byCell, answers, disagreements) {
   return result;
 }
 
+/** Files by name; two of the same name by what is in them, so the order never depends on how they were chosen. */
+function byNameThenContent(a, b) {
+  const content = (f) =>
+    JSON.stringify((f.sheets || []).map((sheet) => [sheet.name, sheet.rows]));
+  return a.name.localeCompare(b.name) || content(a).localeCompare(content(b));
+}
+
 /**
  * Everything the files say, with the director's answers so far applied.
  * input: { files, existing (SeasonSetupReader shape, or null), answers, layouts }.
@@ -177,9 +184,7 @@ export function readImport(input) {
   const answers = input.answers || {};
   // The same files give the same result whatever order they were chosen in (by name, then
   // their own sheet order).
-  const files = [...(input.files || [])].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const files = [...(input.files || [])].sort(byNameThenContent);
   const { pages, unread } = filesToPages(files);
   const keys = pageKeys(pages);
   const read = readPages(pages, keys, input.existing, input.layouts || {});
@@ -213,16 +218,17 @@ export function readImport(input) {
     leftOutByPairs(pairs, answers)
   );
   // A group is its division and its name (Bunk 1 in Juniors is not Bunk 1 in Seniors).
-  const identified = identifyGroups(
-    named.kept,
-    named.groups,
-    input.existing,
-    answers
-  );
+  // Timetables first (they do not depend on which group is which), then each group's
+  // identity: its division and name, and its schedule when two programs share both.
   const { timetables, blockAt, timetableOfPage } = buildTimetables(
     read.pages,
-    identified.kept
+    named.kept
   );
+  const identified = identifyGroups(named.kept, named.groups, {
+    existing: input.existing,
+    answers,
+    timetableOfPage
+  });
   const weekend = identified.kept.filter((p) => !WEEKDAYS.includes(p.day));
   const placed = identified.kept
     .filter((p) => WEEKDAYS.includes(p.day))

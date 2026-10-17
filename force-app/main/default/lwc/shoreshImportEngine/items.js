@@ -282,12 +282,12 @@ export function setTimeRecords(decision, keyOf) {
 function whoOfPool(pool, divisionOf, keyOf) {
   const keys = [];
   const names = [];
-  for (const division of [...new Set(pool.map((g) => divisionOf.get(g)))]) {
-    const here = pool.filter((g) => divisionOf.get(g) === division);
-    const key = keyOf.divisionOf(here[0]);
+  // By division record, not name: two programs may each have a "Juniors".
+  for (const key of [...new Set(pool.map((g) => keyOf.divisionOf(g)))]) {
+    const here = pool.filter((g) => keyOf.divisionOf(g) === key);
     if (keyOf.coveredBy(key, pool)) {
       keys.push(key);
-      names.push(division);
+      names.push(divisionOf.get(here[0]));
     } else {
       here.forEach((g) => {
         keys.push(keyOf.group(g));
@@ -300,9 +300,13 @@ function whoOfPool(pool, divisionOf, keyOf) {
 
 export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
   const doers = [...new Set(cells.map((c) => c.group))];
-  const divisions = [...new Set(doers.map((g) => divisionOf.get(g)))];
+  // Divisions by record (two programs may each have a "Juniors").
+  const divisionKeys = [...new Set(doers.map((g) => keyOf.divisionOf(g)))];
+  const divisions = divisionKeys.map((key) =>
+    divisionOf.get(doers.find((g) => keyOf.divisionOf(g) === key))
+  );
   const inDivisions = allGroups.filter((g) =>
-    divisions.includes(divisionOf.get(g))
+    divisionKeys.includes(keyOf.divisionOf(g))
   );
   const whole =
     inDivisions.length === doers.length &&
