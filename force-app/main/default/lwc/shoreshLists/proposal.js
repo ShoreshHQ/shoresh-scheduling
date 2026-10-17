@@ -16,7 +16,7 @@ import {
   similarPairs,
   tidy
 } from "c/shoreshImportEngine";
-import { NONE, readCell } from "./cells";
+import { NONE, days as readDays, readCell } from "./cells";
 import {
   headingRowIndex,
   mapHeadings,
@@ -28,6 +28,8 @@ import { resolveWho, whoTargets } from "./who";
 import {
   ampmCards,
   ampmKey,
+  tueThuCards,
+  tueThuKey,
   blockAddKey,
   unknownBlocks,
   unknownRainPlans,
@@ -94,12 +96,15 @@ function readRows(rows, start, used) {
     const values = {};
     const blanks = new Set();
     const unsure = {};
+    const tueOrThu = {};
     const problems = [];
     const requiredBlanks = [];
     used.forEach(({ column, index }) => {
       const read = readCell(column, row[index]);
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
+      } else if (read.ask) {
+        tueOrThu[column.key] = tidy(row[index]);
       } else if (
         read.blank &&
         column.requiredValue &&
@@ -135,6 +140,7 @@ function readRows(rows, start, used) {
       values,
       blanks,
       unsure,
+      tueOrThu,
       requiredBlanks,
       problems
     });
@@ -461,6 +467,31 @@ function resolveAmpm(read, answers) {
       }
     });
   return ampmCards(asks, answers);
+}
+
+/** A lone "T" in a days cell: Tuesday or Thursday, asked per item, never guessed. */
+function resolveTueThu(read, answers) {
+  const asks = new Map();
+  read.filter(usable).forEach((r) => {
+    Object.entries(r.tueOrThu).forEach(([key, text]) => {
+      const id = tueThuKey(r.values.program || "", r.name);
+      asks.set(id, { name: r.name, text });
+      const answer = answers[id];
+      if (answer === LEAVE_OUT) {
+        r.leftOut = true;
+      } else if (answer === "Tuesday" || answer === "Thursday") {
+        const reread = readDays(text, answer);
+        if (reread.problem) {
+          r.problems.push(reread.problem);
+        } else {
+          r.values[key] = reread.value;
+        }
+      } else {
+        r.open = true;
+      }
+    });
+  });
+  return tueThuCards(asks, answers);
 }
 
 function programEntry(setup, programId) {
@@ -873,6 +904,7 @@ export function listProposal(input) {
   result.cards.push(...programs.cards);
   // Asked per block once its program is settled (the key is the program as resolved).
   result.cards.push(...resolveAmpm(read, answers));
+  result.cards.push(...resolveTueThu(read, answers));
   // A group's division is resolved before rows are settled: a group is its program,
   // division, and name, by the division it resolves to, not as written.
   const divisions = resolveProgramRefs(read, used, setup, answers, t, [

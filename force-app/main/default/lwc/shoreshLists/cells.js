@@ -108,36 +108,102 @@ const EVERY_DAY = new Set([
   "monday to friday"
 ]);
 
+/** Day letters, read only in a days cell: M, Tu, W, Th, F. A lone T is asked (TUE_OR_THU). */
+const LETTERS = {
+  m: "Monday",
+  tu: "Tuesday",
+  w: "Wednesday",
+  th: "Thursday",
+  f: "Friday"
+};
+const TUE_OR_THU = "T";
+
+/** The days one word names: ["Monday"], ["Monday", "Wednesday", "Friday"] for "MWF", or null. */
+function dayWord(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (w === "t") {
+    return [TUE_OR_THU];
+  }
+  if (LETTERS[w]) {
+    return [LETTERS[w]];
+  }
+  // "Wednesdays", "Mondays".
+  const day =
+    dayOf(w) || (w.length > 3 && w.endsWith("s") && dayOf(w.slice(0, -1)));
+  if (day) {
+    return [day];
+  }
+  // Run together: "MWF", "MTWThF", "TTh".
+  return /^(?:th|tu|m|t|w|f)+$/.test(w)
+    ? w
+        .match(/th|tu|m|t|w|f/g)
+        .map((l) => (l === "t" ? TUE_OR_THU : LETTERS[l]))
+    : null;
+}
+
 /**
- * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon-Wed", "Tue/Thu",
- * "weekdays". Saturday and Sunday can't be read: Shoresh camps run Monday to Friday.
+ * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon-Wed", "Mon thru Fri",
+ * "Tue/Thu", "MWF", "M-F", "Mon Wed Fri", "Mondays and Fridays", "weekdays". A lone T is
+ * Tuesday when the cell writes Thursday another way ("T/Th"), Thursday when it writes Tuesday
+ * another way, and otherwise asked: { ask: true } until tIs ("Tuesday" or "Thursday") says.
+ * Saturday and Sunday can't be read: Shoresh camps run Monday to Friday.
  */
-function days(text) {
+export function days(text, tIs) {
   if (EVERY_DAY.has(text.toLowerCase().replace(/\s*([-–])\s*/g, "-"))) {
     return { value: [...WEEKDAYS] };
   }
-  const found = new Set();
+  const parts = [];
   for (const part of text
+    .replace(/\b(?:thru|through|to|until|till)\b/gi, "-")
     .split(/[,;/&+\n]|\band\b/i)
     .map(tidy)
     .filter((p) => p)) {
-    const range = part.split(/\s*(?:-|–|\bto\b)\s*/i);
-    const ends = range.map(dayOf);
-    if (ends.some((d) => !d) || ends.length > 2) {
-      return { problem: `"${part}" isn't a day` };
+    const words = part.match(/[–-]|[^\s–-]+/g);
+    const read = words.map((w) => (/^[–-]$/.test(w) ? "-" : dayWord(w)));
+    const bad = read.findIndex((d) => !d);
+    if (bad >= 0) {
+      return { problem: `"${words[bad]}" isn't a day` };
     }
-    const weekend = ends.find((d) => !WEEKDAYS.includes(d));
-    if (weekend) {
-      return {
-        problem: `${weekend} isn't a camp day`
-      };
+    parts.push({ part, read });
+  }
+  const written = parts.flatMap((p) => p.read).flat();
+  const weekend = written.find(
+    (d) => d !== "-" && d !== TUE_OR_THU && !WEEKDAYS.includes(d)
+  );
+  if (weekend) {
+    return { problem: `${weekend} isn't a camp day` };
+  }
+  let t = tIs;
+  if (written.includes(TUE_OR_THU) && !t) {
+    const tue = written.includes("Tuesday");
+    const thu = written.includes("Thursday");
+    if (tue === thu) {
+      return { ask: true };
     }
-    const from = WEEKDAYS.indexOf(ends[0]);
-    const to = WEEKDAYS.indexOf(ends[ends.length - 1]);
-    if (to < from) {
-      return { problem: `"${part}" goes backwards` };
+    t = tue ? "Thursday" : "Tuesday";
+  }
+  const found = new Set();
+  for (const { part, read } of parts) {
+    const words = read.map((d) => {
+      return Array.isArray(d) ? d.map((x) => (x === TUE_OR_THU ? t : x)) : d;
+    });
+    for (let i = 0; i < words.length; i++) {
+      if (words[i] !== "-") {
+        words[i].forEach((d) => found.add(d));
+        continue;
+      }
+      const before = words[i - 1];
+      const after = words[i + 1];
+      if (!Array.isArray(before) || !Array.isArray(after)) {
+        return { problem: `"${part}" isn't a day` };
+      }
+      const from = WEEKDAYS.indexOf(before[before.length - 1]);
+      const to = WEEKDAYS.indexOf(after[0]);
+      if (to < from) {
+        return { problem: `"${part}" goes backwards` };
+      }
+      WEEKDAYS.slice(from, to + 1).forEach((d) => found.add(d));
     }
-    WEEKDAYS.slice(from, to + 1).forEach((d) => found.add(d));
   }
   // Only separators ("/", "and"): no days written, as if blank.
   return found.size
@@ -150,6 +216,9 @@ function days(text) {
  * afternoon (Shoresh is for day camps); 5 and 6 o'clock are asked, never guessed (ADR 0006).
  */
 function time(text) {
+  if (/^\d{1,2}$/.test(text)) {
+    return bareHour(Number(text), text);
+  }
   const range = timeRange(text);
   if (!range || range.end !== null || !/\d/.test(text)) {
     return { problem: `"${text}" isn't a time` };
@@ -164,6 +233,20 @@ function time(text) {
   return !marked && (hour === 5 || hour === 6)
     ? { value: range.start, unsure: true }
     : { value: range.start };
+}
+
+/** "9": 9:00 AM. 7 to 11 is the morning, 12 to 4 the afternoon, 5 and 6 asked, 13 to 23 as on a 24-hour clock. */
+function bareHour(hour, text) {
+  if (hour < 1 || hour > 23) {
+    return { problem: `"${text}" isn't a camp-day time` };
+  }
+  if (hour >= 7) {
+    return { value: hour * 60 };
+  }
+  // 1 to 6: the afternoon; 5 and 6 read as evening until asked.
+  return hour >= 5
+    ? { value: (hour + 12) * 60, unsure: true }
+    : { value: (hour + 12) * 60 };
 }
 
 /**

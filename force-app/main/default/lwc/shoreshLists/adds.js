@@ -27,6 +27,10 @@ export function blockAddKey(program, name) {
 }
 
 /** Asked per block (its program and name), as Import last year does (ADR 0006 §15). */
+export function tueThuKey(program, name) {
+  return `tueThu|${looseKey(program)}|${looseKey(name)}`;
+}
+
 export function ampmKey(program, name) {
   return `ampm|${looseKey(program)}|${looseKey(name)}`;
 }
@@ -221,6 +225,22 @@ export function unknownBlocks(asks, answers, t) {
       }
     });
   return result;
+}
+
+/** A lone "T" in a days cell: one question per item. asks: Map(key -> { name, text }). */
+export function tueThuCards(asks, answers) {
+  return [...asks.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([id, ask]) => ({
+      id,
+      title: `“${ask.name}” on ${ask.text}: is T Tuesday or Thursday?`,
+      options: [
+        { value: "Tuesday", label: "Tuesday" },
+        { value: "Thursday", label: "Thursday" },
+        LEAVE_OUT_OPTION
+      ],
+      answer: answers[id] || null
+    }));
 }
 
 /**

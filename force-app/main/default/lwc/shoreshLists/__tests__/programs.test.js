@@ -217,6 +217,30 @@ describe("groups", () => {
   });
 });
 
+describe("a lone T in a days cell", () => {
+  it("asks Tuesday or Thursday, and reads the days as answered", () => {
+    const rows = [
+      ["Recurring activity", "Time block", "Runs on"],
+      ["Flag", "Period 1", "M/T"]
+    ];
+    const p = read("recurringActivities", rows);
+    expect(row(p, "Flag").status).toBe("asked");
+    const card = questionCards(p, terms, {}).find((c) =>
+      c.id.startsWith("tueThu|")
+    );
+    expect(card.title).toBe("“Flag” on M/T: is T Tuesday or Thursday?");
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Tuesday",
+      "Thursday",
+      "Leave it out for now"
+    ]);
+    const done = read("recurringActivities", rows, { [card.id]: "Thursday" });
+    expect(row(done, "Flag").values.days).toEqual(["Monday", "Thursday"]);
+    const out = read("recurringActivities", rows, { [card.id]: LEAVE_OUT });
+    expect(row(out, "Flag").status).toBe("leftOut");
+  });
+});
+
 describe("time blocks", () => {
   it("compares times, asks 6 o'clock, and can't read an end before the start", () => {
     const rows = [
