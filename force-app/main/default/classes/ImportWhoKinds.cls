@@ -5,8 +5,29 @@
  * never from the screen.
  */
 public with sharing class ImportWhoKinds {
+  private static final Map<String, Kind> BY_OWNER = new Map<String, Kind>{
+    'Activity' => new Kind(
+      new List<String>{
+        'Activity__c',
+        'ActivityEligibility__c',
+        'Activity__c',
+        'Eligibilities__r',
+        'ActivityEligibility'
+      }
+    ),
+    'RecurringActivity' => new Kind(
+      new List<String>{
+        'RecurringActivity__c',
+        'Coverage__c',
+        'RecurringActivity__c',
+        'Coverages__r',
+        'Coverage'
+      }
+    )
+  };
+
   /** One kind of who list. */
-  public class Kind {
+  public with sharing class Kind {
     public String ownerObject { get; private set; }
     public String childType { get; private set; }
     public String ownerField { get; private set; }
@@ -14,18 +35,13 @@ public with sharing class ImportWhoKinds {
     /** ImportWriter's name for the created rows (Undo removes them in this order). */
     public String term { get; private set; }
 
-    Kind(
-      String ownerObject,
-      String childType,
-      String ownerField,
-      String relationship,
-      String term
-    ) {
-      this.ownerObject = ownerObject;
-      this.childType = childType;
-      this.ownerField = ownerField;
-      this.relationship = relationship;
-      this.term = term;
+    /** names: owner object, rows' object, owner field, relationship, ImportWriter term. */
+    Kind(List<String> names) {
+      this.ownerObject = names[0];
+      this.childType = names[1];
+      this.ownerField = names[2];
+      this.relationship = names[3];
+      this.term = names[4];
     }
 
     /** A row saying the owner is for a division or group. */
@@ -52,23 +68,6 @@ public with sharing class ImportWhoKinds {
       );
     }
   }
-
-  private static final Map<String, Kind> BY_OWNER = new Map<String, Kind>{
-    'Activity' => new Kind(
-      'Activity__c',
-      'ActivityEligibility__c',
-      'Activity__c',
-      'Eligibilities__r',
-      'ActivityEligibility'
-    ),
-    'RecurringActivity' => new Kind(
-      'RecurringActivity__c',
-      'Coverage__c',
-      'RecurringActivity__c',
-      'Coverages__r',
-      'Coverage'
-    )
-  };
 
   /** By the owner's kind ("Activity", "RecurringActivity"). */
   public static Kind forOwner(String ownerKind) {

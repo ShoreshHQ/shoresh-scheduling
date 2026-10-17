@@ -55,15 +55,21 @@ private class ImportListProgramsTest {
   private static Map<String, Object> rec(
     String kind,
     String keyOrId,
-    Map<String, Object> fields,
-    Map<String, Object> refs
+    Map<String, Object> fields
   ) {
     Map<String, Object> r = new Map<String, Object>{
       'kind' => kind,
-      'fields' => fields,
-      'refs' => refs
+      'fields' => fields
     };
     r.put(keyOrId.contains(':') ? 'key' : 'id', keyOrId);
+    return r;
+  }
+
+  private static Map<String, Object> withRefs(
+    Map<String, Object> r,
+    Map<String, Object> refs
+  ) {
+    r.put('refs', refs);
     return r;
   }
 
@@ -99,46 +105,56 @@ private class ImportListProgramsTest {
         plan(
           c.season.Id,
           new List<Object>{
-            rec(
-              'Program',
-              teens,
-              days('Teens', new List<String>{ 'Monday', 'Wednesday' }),
+            withRefs(
+              rec(
+                'Program',
+                teens,
+                days('Teens', new List<String>{ 'Monday', 'Wednesday' })
+              ),
               new Map<String, Object>()
             ),
-            rec(
-              'Division',
-              'Division:' + teens + ':Hikers',
-              new Map<String, Object>{ 'Name' => 'Hikers' },
+            withRefs(
+              rec(
+                'Division',
+                'Division:' + teens + ':Hikers',
+                new Map<String, Object>{ 'Name' => 'Hikers' }
+              ),
               new Map<String, Object>{ 'Program__c' => teens }
             ),
-            rec(
-              'Group',
-              'Group:Division:' + teens + ':Hikers:Tent 1',
-              new Map<String, Object>{
-                'Name' => 'Tent 1',
-                'Availability__c' => 'AllDay'
-              },
+            withRefs(
+              rec(
+                'Group',
+                'Group:Division:' + teens + ':Hikers:Tent 1',
+                new Map<String, Object>{
+                  'Name' => 'Tent 1',
+                  'Availability__c' => 'AllDay'
+                }
+              ),
               new Map<String, Object>{
                 'Division__c' => 'Division:' +
                 teens +
                 ':Hikers'
               }
             ),
-            rec(
-              'TimeBlock',
-              'TimeBlock:' + teens + ':Trail',
-              new Map<String, Object>{
-                'Name' => 'Trail',
-                'StartTime__c' => '10:00',
-                'EndTime__c' => '11:00',
-                'PartOfDay__c' => 'Morning'
-              },
+            withRefs(
+              rec(
+                'TimeBlock',
+                'TimeBlock:' + teens + ':Trail',
+                new Map<String, Object>{
+                  'Name' => 'Trail',
+                  'StartTime__c' => '10:00',
+                  'EndTime__c' => '11:00',
+                  'PartOfDay__c' => 'Morning'
+                }
+              ),
               new Map<String, Object>{ 'Program__c' => teens }
             ),
-            rec(
-              'FixedActivity',
-              'FixedActivity:' + teens + ':Snack',
-              new Map<String, Object>{ 'Name' => 'Snack', 'Length__c' => 1 },
+            withRefs(
+              rec(
+                'FixedActivity',
+                'FixedActivity:' + teens + ':Snack',
+                new Map<String, Object>{ 'Name' => 'Snack', 'Length__c' => 1 }
+              ),
               new Map<String, Object>{
                 'Program__c' => teens,
                 'TimeBlock__c' => 'TimeBlock:' +
@@ -180,13 +196,15 @@ private class ImportListProgramsTest {
         plan(
           c.season.Id,
           new List<Object>{
-            rec(
-              'TimeBlock',
-              c.period1.Id,
-              new Map<String, Object>{
-                'StartTime__c' => '09:15',
-                'EndTime__c' => '10:00'
-              },
+            withRefs(
+              rec(
+                'TimeBlock',
+                c.period1.Id,
+                new Map<String, Object>{
+                  'StartTime__c' => '09:15',
+                  'EndTime__c' => '10:00'
+                }
+              ),
               new Map<String, Object>()
             ),
             new Map<String, Object>{
@@ -238,10 +256,8 @@ private class ImportListProgramsTest {
         plan(
           c.season.Id,
           new List<Object>{
-            rec(
-              'Group',
-              c.bunk1,
-              new Map<String, Object>(),
+            withRefs(
+              rec('Group', c.bunk1, new Map<String, Object>()),
               new Map<String, Object>{ 'Division__c' => c.seniors }
             )
           }
@@ -255,16 +271,12 @@ private class ImportListProgramsTest {
       Id elsewhere = ShoreshTestData.division(other.Id, 'Elsewhere').Id;
       Test.startTest();
       List<Map<String, Object>> refused = new List<Map<String, Object>>{
-        rec(
-          'Group',
-          c.bunk1,
-          new Map<String, Object>(),
+        withRefs(
+          rec('Group', c.bunk1, new Map<String, Object>()),
           new Map<String, Object>{ 'Division__c' => elsewhere }
         ),
-        rec(
-          'TimeBlock',
-          c.period1.Id,
-          new Map<String, Object>(),
+        withRefs(
+          rec('TimeBlock', c.period1.Id, new Map<String, Object>()),
           new Map<String, Object>{ 'Program__c' => other.Id }
         )
       };
