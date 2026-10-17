@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshEditableTable, { timeText } from "c/shoreshEditableTable";
+import { looseKey } from "c/shoreshImportEngine";
 
 const COLUMNS = [
   { fieldName: "Name", label: "Name", type: "text", required: true },
@@ -801,5 +802,62 @@ describe("c-shoresh-editable-table", () => {
       ""
     ]);
     expect(element.shadowRoot.textContent).toContain("Moving");
+  });
+
+  describe("same names", () => {
+    const named = (names) =>
+      names.map((Name, i) => ({ Id: `r${i}`, Name, PartOfDay__c: "Morning" }));
+    const tags = (element) =>
+      [...element.shadowRoot.querySelectorAll("tbody tr")].map(
+        (tr) => !!tr.querySelector('[data-id="same-name"]')
+      );
+
+    it("tags each row whose name another row has, ignoring capitals and spacing", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: named(["Swim", "Archery", "  swim "]),
+        flagSameNames: true
+      });
+      await flush();
+      expect(tags(element)).toEqual([true, false, true]);
+      expect(
+        element.shadowRoot.querySelector('[data-id="same-name"]').textContent
+      ).toContain("Same name as another");
+    });
+
+    it("follows what is typed, and stays off unless asked for", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: named(["Swim", "Archery"]),
+        flagSameNames: true
+      });
+      await flush();
+      change(field(element, 1, "Name"), "SWIM");
+      await flush();
+      expect(tags(element)).toEqual([true, true]);
+      const plain = render({ columns: COLUMNS, rows: named(["Swim", "swim"]) });
+      await flush();
+      expect(tags(plain)).toEqual([false, false]);
+    });
+
+    it("matches names exactly as the import's looseKey does", async () => {
+      const pairs = [
+        ["Bunk  3", "bunk 3"],
+        ["Arts & Crafts", "arts and crafts"],
+        ["Lunch 1", "Lunch 2"],
+        ["Pool", " POOL"]
+      ];
+      for (const pair of pairs) {
+        const element = render({
+          columns: COLUMNS,
+          rows: named(pair),
+          flagSameNames: true
+        });
+        // eslint-disable-next-line no-await-in-loop
+        await flush();
+        const same = looseKey(pair[0]) === looseKey(pair[1]);
+        expect(tags(element)).toEqual([same, same]);
+      }
+    });
   });
 });

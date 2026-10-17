@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { looseKey } from "c/shoreshImportEngine";
 
 /**
  * A small table of records edited in place. Changes stay on screen until the scheduler
@@ -23,6 +24,10 @@ import { LightningElement, api } from "lwc";
  * sourceLabel / selectedLabel: the picker's two list headings) shows
  * who each row covers, with a Change button that opens the same picker as activities' "Who can
  * do it" under the row. An empty choice means everyone.
+ *
+ * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
+ *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
+ *   "Same name as another" tag. Every row counts, hidden or unsaved. A heads-up only.
  *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
  * draftNote / draftNoteHeading: a note worked out from a saved row's unsaved values,
@@ -55,6 +60,7 @@ export default class ShoreshEditableTable extends LightningElement {
   @api weekPhrase = "runs in";
   @api notesHeading;
   @api rowNotes = {};
+  @api flagSameNames = false;
   @api draftNote;
   @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
@@ -300,8 +306,30 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.visibleDrafts.length > 0;
   }
 
+  /** Keys of the rows whose name another row also has. */
+  get sameNameKeys() {
+    const same = new Set();
+    if (!this.flagSameNames) {
+      return same;
+    }
+    const byName = new Map();
+    this.drafts.forEach((draft) => {
+      const name = looseKey(draft.values.Name);
+      if (name) {
+        byName.set(name, [...(byName.get(name) || []), draft.key]);
+      }
+    });
+    byName.forEach((keys) => {
+      if (keys.length > 1) {
+        keys.forEach((key) => same.add(key));
+      }
+    });
+    return same;
+  }
+
   get tableRows() {
     const offWeeks = this.offWeeks;
+    const sameNames = this.sameNameKeys;
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
     return this.visibleDrafts.map((draft) => ({
@@ -342,6 +370,7 @@ export default class ShoreshEditableTable extends LightningElement {
               )
             : col.options,
           isText: col.type === "text" || !col.type,
+          sameName: col.fieldName === "Name" && sameNames.has(draft.key),
           isNumber: col.type === "number",
           min: col.min,
           isDate: col.type === "date",

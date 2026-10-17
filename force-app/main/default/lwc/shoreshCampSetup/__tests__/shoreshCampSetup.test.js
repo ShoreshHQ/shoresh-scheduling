@@ -463,6 +463,19 @@ describe("c-shoresh-camp-setup", () => {
     expect(onFailure).toHaveBeenCalled();
   });
 
+  it("flags same names on the season's location types, locations, and activities only", async () => {
+    getCamps.mockResolvedValue([CAMP]);
+    getSeasons.mockResolvedValue([SEASON]);
+    getSeasonSetup.mockResolvedValue(setupWith({}));
+    const element = await render();
+    const flagged = (id) =>
+      q(element, `c-shoresh-editable-table[data-id="${id}"]`).flagSameNames;
+    expect(flagged("location-types")).toBe(true);
+    expect(flagged("locations")).toBe(true);
+    expect(flagged("activities")).toBe(true);
+    expect(flagged("weeks")).toBeFalsy();
+  });
+
   it("saves a table's rows with its Runs in weeks, and reloads", async () => {
     getCamps.mockResolvedValue([CAMP]);
     getSeasons.mockResolvedValue([SEASON]);

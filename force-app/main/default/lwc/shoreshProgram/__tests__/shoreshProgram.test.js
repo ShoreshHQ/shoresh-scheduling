@@ -142,6 +142,19 @@ describe("c-shoresh-program", () => {
     );
   });
 
+  it("flags same names within the program's tables and each unit's bunks", async () => {
+    for (const show of ["timeBlocks", "divisions", "groups"]) {
+      // eslint-disable-next-line no-await-in-loop
+      const element = await render(show);
+      const tables = [
+        ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+      ];
+      expect(tables.length).toBeGreaterThan(0);
+      tables.forEach((table) => expect(table.flagSameNames).toBe(true));
+      document.body.removeChild(element);
+    }
+  });
+
   it("offers no division choice when the program has one", async () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
