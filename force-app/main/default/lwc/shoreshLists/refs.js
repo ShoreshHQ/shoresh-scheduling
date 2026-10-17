@@ -14,7 +14,8 @@ import {
   LEAVE_OUT,
   looseKey,
   mergesFrom,
-  similarPairs
+  similarPairs,
+  tidy
 } from "c/shoreshImportEngine";
 
 function usable(row) {
@@ -38,9 +39,12 @@ function byFold(records) {
 export function resolver(records, leads) {
   const camp = byFold(records);
   const leadOf = new Map((leads || []).map((r) => [looseKey(r.name), r]));
+  // Two leads whose names differ only in capitals (two items set up, "Swim" and "swim"): a
+  // name spelled exactly as one of them is that one.
+  const exactLead = new Map((leads || []).map((r) => [r.name, r]));
   const fromCamp = (name) => {
     const found = camp.get(looseKey(name)) || [];
-    const exact = found.filter((r) => r.Name === name);
+    const exact = found.filter((r) => tidy(r.Name) === tidy(name));
     const pick = found.length === 1 ? found : exact;
     if (pick.length === 1) {
       return { id: pick[0].Id, name: pick[0].Name };
@@ -84,7 +88,7 @@ export function resolver(records, leads) {
     if (!name) {
       return null;
     }
-    const lead = leadOf.get(looseKey(name));
+    const lead = exactLead.get(tidy(name)) || leadOf.get(looseKey(name));
     return lead ? follow(lead, new Set()) : fromCamp(name);
   };
 }

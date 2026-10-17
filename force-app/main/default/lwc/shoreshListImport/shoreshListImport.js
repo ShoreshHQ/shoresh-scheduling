@@ -24,10 +24,13 @@ import {
   questionCards,
   rainAddKey,
   shownValue,
-  waitingFor
+  waitingFor,
+  listRows
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { errorMessage } from "c/shoreshErrors";
+import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { ShowToastEvent } from "lightning/platformShowToastEvent";
 
 /** Minutes after midnight as "9:00 AM". */
 function timeText(minutes) {
@@ -50,6 +53,7 @@ export default class ShoreshListImport extends LightningElement {
   @api terms;
 
   open = false;
+  downloading = false;
   stage = "pick"; // pick | reading | review | saving | done
   file;
   sheet;
@@ -71,6 +75,36 @@ export default class ShoreshListImport extends LightningElement {
   handleOpen() {
     this.open = true;
     this.reset();
+  }
+
+  /** The screen's list, in the layout "Import a list" reads (an empty list is the template). */
+  async handleDownload() {
+    if (this.downloading) {
+      return;
+    }
+    this.downloading = true;
+    try {
+      await downloadWorkbook(
+        this,
+        [
+          {
+            name: this.screenName,
+            rows: listRows(this.screenKey, this.setup, this.terms)
+          }
+        ],
+        fileNameOf(`${this.screenName} - ${this.setup.season.Name}`)
+      );
+    } catch (e) {
+      this.dispatchEvent(
+        new ShowToastEvent({
+          title: "The list could not be downloaded",
+          message: errorMessage(e),
+          variant: "error"
+        })
+      );
+    } finally {
+      this.downloading = false;
+    }
   }
 
   handleClose() {

@@ -250,7 +250,7 @@ function mostWritten(spellings) {
 }
 
 function settleSpelling(readable, records) {
-  const names = new Set(records.map((rec) => rec.Name));
+  const names = new Set(records.map((rec) => tidy(rec.Name)));
   readable.forEach((r) => {
     const counts = new Map();
     (r.spellings || [r.name]).forEach((n) =>
@@ -268,15 +268,16 @@ function settleSpelling(readable, records) {
 function matchScope(leads, records, kind, answers) {
   const readable = leads.filter(usable);
   settleSpelling(readable, records);
-  const campNames = records.map((r) => r.Name);
+  const campNames = [...new Set(records.map((r) => tidy(r.Name)))];
   const pairs = similarPairs(
     PAIR_KIND[kind],
     readable.map((r) => ({ name: r.name, count: 1 })),
     campNames
   );
   const byName = new Map();
+  // Spaces aside, as the file's names are read ("Board  games" is "Board games").
   records.forEach((r) =>
-    byName.set(r.Name, [...(byName.get(r.Name) || []), r])
+    byName.set(tidy(r.Name), [...(byName.get(tidy(r.Name)) || []), r])
   );
   const rowOf = new Map(readable.map((r) => [r.name, r]));
   readable.forEach((r) => {
@@ -703,12 +704,27 @@ function settleBlanks(rows) {
  * The first row of each name (capitals and spacing aside) leads, even if it can't be read; the
  * rows after it with that name repeat it and follow it, never saved on their own.
  */
-function settleLeads(read, screen, used, answers) {
+function settleLeads(read, screen, used, answers, records) {
+  // Two set up whose names differ only in capitals ("Swim", "swim") are two items: a row
+  // spelled exactly as one of them is that one, never a repeat of the other.
+  const spellingsOf = new Map();
+  records.forEach((rec) => {
+    const key = looseKey(rec.Name);
+    spellingsOf.set(
+      key,
+      new Set([...(spellingsOf.get(key) || []), tidy(rec.Name)])
+    );
+  });
+  const exact = new Set(
+    [...spellingsOf.values()]
+      .filter((names) => names.size > 1)
+      .flatMap((names) => [...names])
+  );
   const groups = new Map();
   read
     .filter((r) => r.name)
     .forEach((r) => {
-      const key = itemKey(r);
+      const key = exact.has(r.name) ? `${itemKey(r)}|=${r.name}` : itemKey(r);
       groups.set(key, [...(groups.get(key) || []), r]);
     });
   const cards = [];
@@ -973,7 +989,13 @@ export function listProposal(input) {
     "division"
   ]);
   result.pairs.push(...divisions.pairs);
-  const settled = settleLeads(read, screen, used, answers);
+  const settled = settleLeads(
+    read,
+    screen,
+    used,
+    answers,
+    screen.records(setup)
+  );
   const leads = settled.leads;
   result.cards.push(...settled.cards);
   result.pairs.push(...matchNames(leads, screen, setup, answers));

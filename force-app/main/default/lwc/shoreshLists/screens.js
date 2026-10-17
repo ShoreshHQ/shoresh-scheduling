@@ -12,7 +12,7 @@
  * record: location, locationType, activity); fromRecord (the value a saved record has, as a
  * cell would give it).
  */
-import { NONE } from "./cells";
+import { NONE, listName } from "./cells";
 import { whoNames } from "./who";
 import {
   divisionsScreen,
@@ -46,7 +46,12 @@ function notesColumn() {
     heading: "Notes",
     words: ["note", "comments", "comment"],
     type: "text",
-    fromRecord: (r) => r.Notes__c || null,
+    keepSpacing: true,
+    // As a list reads them back: one kind of line break, and spaces alone are no notes.
+    fromRecord: (r) => {
+      const notes = String(r.Notes__c || "").replace(/\r\n?/g, "\n");
+      return notes.trim() ? notes : null;
+    },
     write: (v) => ({ Notes__c: v || null })
   };
 }
@@ -313,7 +318,9 @@ export function cellText(column, value, targets) {
       return option ? option.label : value;
     }
     case "list":
-      return value.length ? whoNames(value, targets).join(", ") : "Everyone";
+      return value.length
+        ? whoNames(value, targets).map(listName).join(", ")
+        : "Everyone";
     case "early":
       return `${value.count} by ${value.day}`;
     case "days":

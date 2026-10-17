@@ -45,16 +45,18 @@ export function pickSheet(file, screen, t) {
       SHOWN_TERMS.s(screen.term)
     ].map(foldName)
   );
-  const named = sheets.find((s) => names.has(foldName(s.name)));
-  if (named) {
-    return named.name;
-  }
-  const fits = sheets.find((s) => {
+  const fit = (s) => {
     const rows = s.rows || [];
     const at = headingRowIndex(rows);
     return at >= 0 && mapHeadings(rows[at], screen, {}).missing.length === 0;
-  });
-  return (fits || sheets[0]).name;
+  };
+  // Named for the screen and with its headings first ("Cabins" and "Cabins (2)" when two
+  // screens share a word), then named for it, then any whose headings fit.
+  const named = sheets.filter((s) =>
+    names.has(foldName(s.name.replace(/ \(\d+\)$/, "")))
+  );
+  const pick = named.find(fit) || named[0] || sheets.find(fit) || sheets[0];
+  return pick.name;
 }
 
 /** The names of the sheets with something in them, to choose from. */
