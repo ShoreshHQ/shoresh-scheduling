@@ -492,13 +492,70 @@ in the _Import test_ season, in this order).
    Week 1_ of this season, and so on. This season keeps its own dates, and the _Runs in_ ticks
    follow the pairing.
 
+## 19. Manual Build: start a week and fill it by typing
+
+This uses the made-up camp from section 13. If you haven't run that script yet, run it first.
+
+1. Reload the Shoresh tab and choose _Sample Camp (made up)_ in the **Camp** picker. The menu's
+   last section now reads **Manual Build**, **Generated Schedule** (marked _Coming_), and
+   **Schedules**. On Roots, **Build or generate the schedule** is now a button (no _Coming_).
+2. Click **Build or generate the schedule** (or **Manual Build** in the menu). The **Week** picker
+   shows _Week 1_, and there is one button: **Start a blank week**. Click it.
+3. The week opens in **Daily View** on Monday, as on the desktop. Lunch is in every bunk's Lunch
+   row, and Morning meeting is in every bunk's Period 1. Both have the grey bar down the left.
+   Every other slot says **Open**. Click **Wednesday**: Library time is in Period 4 for Bunks 1
+   to 3 only. Nothing appears under **Versions** on the Schedules page: the week you build is
+   not a saved version.
+4. **Type a name into a slot.** Double-click Bunk 1's Period 2. A small box opens under it,
+   headed _Bunk 1 · Monday · Period 2_. Type `sw`: the list shows _Swim_. Press Return. Swim
+   is in the slot at once, and it is saved. Reload the page and it is still there.
+5. **Multi-block activities fill their length.** Double-click Bunk 2's Period 2, type `boat`, and
+   press Return. Boating fills Period 2 and Period 3 (it runs two blocks). Now put Boating in
+   Bunk 3's Period 3: it takes only Period 3, because Lunch is next.
+6. **Clear a slot.** Click Bunk 1's Swim, then press Delete (or Backspace). It says **Open**
+   again. Typing into a filled slot also offers **Open** first in the list.
+7. **Fixed and recurring activities stay put.** Double-click Lunch: nothing opens. They change
+   only on the Fixed and Recurring activities screens.
+8. **A new name.** Double-click any Open slot and type `Archery`. The list offers
+   _Add "Archery" to activities_. Press Return: Archery is placed, and it now appears on the
+   **Activities** screen with the usual starting values. Typing `swim ` (any spacing or
+   capitals) finds the existing Swim instead of adding a second one.
+9. **An activity not set up for a bunk.** On the **Activities** screen, set Swim's _who can
+   do it_ to _Juniors_ only. Back in Manual Build, double-click Bunk 5's Open slot (a Senior
+   bunk) and type `sw`. Swim is still offered, at the end of the list, with a bronze dot and
+   _Not set up for Bunk 5_. It can still be placed.
+10. **Keyboard only.** Click any slot once, then use the arrow keys to move around the grid. Enter
+    (or F2) opens the box, the up and down arrows choose, Return places, and Escape closes it
+    without changing anything. Delete clears the slot.
+11. **Group View.** Click **Group View** and pick _Bunk 2_. The columns are the days, and
+    everything above works the same way here.
+12. **Two people at once.** Open the Shoresh tab in a second browser window (or have someone
+    else open it), both on Manual Build, Week 1. In window A, put Soccer in Bunk 4's Period 5.
+    In window B, which still shows that slot as Open, put Art in the same slot. Window B asks
+    **Changed by someone else** and shows _Bunk 4 · Monday · Period 5_, _Theirs: Soccer_,
+    _Yours: Art_.
+    - **Keep theirs** leaves Soccer.
+    - **Use yours** puts Art there.
+
+    Nothing is overwritten without asking. Two people working on different bunks of the same
+    day never see this. The other window shows your changes when it saves its next edit, or
+    when you click back into it.
+13. **A morning-only bunk.** On the **Bunks** screen, set Bunk 6 to come in the morning only.
+    Back in Manual Build, Bunk 6's empty afternoon slots are hatched and say _Not at camp_, and
+    nothing can be placed there.
+
+Not in this part yet: dragging from a list of activities, moving or swapping slots, Undo, the
+counters (Still needed, Spread across the week, Overlapping) and their dots, Clear day or
+week, Copy day, Versions on this screen, and Publish. Each comes in the next pieces of Manual
+Build.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
-  into a working schedule, saving and deleting versions, and publishing. Roots' **Build or
-  generate the schedule** is still marked Coming.
+- Generated Schedule (marked Coming in the menu). In Manual Build: drag and drop, Undo, the
+  counters, Clear and Copy day, Versions on that screen, opening a version in it, and
+  publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).
