@@ -193,7 +193,8 @@ describe("determinism", () => {
       const result = generateWeek(reorderedGrid(camp(spec), seed));
       expect(byGroup(result)).toEqual(byGroup(expected));
       expect(result.flags).toEqual(expected.flags);
-      expect(result.stillToPlace).toEqual(expected.stillToPlace);
+      expect(result.stillNeeded).toEqual(expected.stillNeeded);
+      expect(result.spread).toEqual(expected.spread);
     }
   });
 

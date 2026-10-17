@@ -1,5 +1,10 @@
 import { buildTerms } from "c/shoreshTerms";
+import { reasonFor } from "./words";
+import { checkWeek, weekdayOf } from "./checks";
+import { readLocations as readLocationMap } from "./checkInputs";
+import { identity } from "./grid";
 import {
+  atCamp,
   compareText,
   minutes,
   readActivities,
@@ -10,9 +15,10 @@ import {
   readPartsOfDay,
   readSetTimeLocations
 } from "./setup";
-import { OVERLAP, RELAX_ORDER, RULE, lockKey, scheduleWeek } from "./week";
+import { BUSY, RELAX_ORDER, RULE, lockKey, scheduleWeek } from "./week";
 
-export { RELAX_ORDER, RULE };
+export { BUSY, RELAX_ORDER, RULE, reasonFor, checkWeek };
+export { readActivities, readLocations, readProgram } from "./checkInputs";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
 export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
@@ -44,14 +50,16 @@ const DAY_NAMES = {
  *     groups that fit and groups at once
  *   terms: the camp's words (c/shoreshTerms), for the reasons
  *
- * Returns { ok: true, days, flags, stillToPlace, openCells } or { ok: false, error }:
+ * Returns { ok: true, days, flags, stillNeeded, spread, overlapping, cells, openCells } or
+ * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
- *   flags: [{ date, groupId, blockId, activityId, bends: [RULE...], reason }] for every cell of
- *     a placement that bends a rule because nothing fitted cleanly
- *   stillToPlace: [{ kind: "weeklyMin" | "earlyWeek", groupId, activityId, placed, wanted,
- *     byDay?, text }]
- *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell nothing can go in at
- *     all (the group is busy at an overlapping time, or no activity is short enough)
+ *   flags: checkWeek's dots on the finished week, one entry per cell of each dotted placement:
+ *     [{ date, groupId, blockId, activityId, bends: [RULE...], reason }]. A cell the engine had to
+ *     bend a rule for always has one; so does anything kept that breaks a rule
+ *   stillNeeded, spread, overlapping, cells: checkWeek's lines and counts, the same words as
+ *     Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
+ *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open because the
+ *     group is busy at an overlapping time ("Already busy then")
  */
 export function generateWeek(input) {
   const t = input.terms || buildTerms([]);
@@ -77,10 +85,11 @@ export function generateWeek(input) {
       error: `This ${t.sIn("Week")} has no days to build.`
     };
   }
-  const { fit, names: locationNames } = readLocations(input.locations);
-  // "Try another" may send the option as text ("2").
-  const asNumber = Number(input.option);
-  const option = Number.isInteger(asNumber) && asNumber > 0 ? asNumber : 1;
+  const option = optionOf(input.option);
+  if (!option) {
+    return { ok: false, error: "That option can't be built." };
+  }
+  const { fit } = readLocations(input.locations);
   const model = {
     days,
     groups,
@@ -104,26 +113,94 @@ export function generateWeek(input) {
     ...otherPrograms(input.otherPrograms, days)
   };
   const state = scheduleWeek(model);
-  const words = { t, groups, locationNames, fit };
+  const built = writeDays(model, state);
+  const checked = checkWeek(built, checkModel(input, model), {
+    t,
+    dayName: (date) => DAY_NAMES[weekdayOf(date)] || ""
+  });
   return {
     ok: true,
-    days: writeDays(model, state),
-    flags: flagList(model, state, words),
-    stillToPlace: stillToPlace(model, state),
-    openCells: state.openCells.map(({ key, why }) => {
+    days: built,
+    flags: flagCells(built, checked),
+    stillNeeded: checked.stillNeeded,
+    spread: checked.spread,
+    overlapping: checked.overlapping,
+    cells: checked.cells,
+    openCells: state.openCells.map(({ key }) => {
       const [groupId, d, blockId] = state.splitKey(key);
-      const group = groups.get(groupId);
-      return {
-        date: days[d].date,
-        groupId,
-        blockId,
-        reason:
-          why === OVERLAP
-            ? `${group.name} is busy at an overlapping time`
-            : `No ${t.sIn("Activity")} is short enough for this ${t.sIn("Gap")}`
-      };
+      return { date: days[d].date, groupId, blockId, reason: reasonFor(BUSY) };
     })
   };
+}
+
+/**
+ * The option for "Try another": 1, 2, ... (a number, or the same as text). Left out means the
+ * first; 0, a fraction or anything else is refused rather than quietly built as option 1, so a
+ * screen bug can't show the wrong week as if it were the one asked for.
+ */
+function optionOf(value) {
+  if (value === undefined || value === null || value === "") {
+    return 1;
+  }
+  const n = typeof value === "number" ? value : Number(String(value).trim());
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * checkWeek's model from the engine's inputs: the activities that run this week, the places,
+ * each group's division, where fixed and recurring activities take place, who each activity
+ * isn't set up for (and a group setup no longer has isn't set up for anything), not-at-camp
+ * blocks, and shorter-than-set-up dotted (the engine's last bend).
+ */
+export function checkModel(input, model) {
+  const groupsInSetup = model.groups;
+  const parts = readPartsOfDay(input.timeBlocks);
+  const notFor = new Map(
+    model.acts.map((act) => [
+      act.id,
+      model.groupIds.filter((g) => !model.eligibility.get(act.id).has(g))
+    ])
+  );
+  return {
+    activities: new Map(model.acts.map((a) => [a.id, a])),
+    locations: readLocationMap(input.locations),
+    divisions: new Map(
+      [...groupsInSetup.values()].map((g) => [g.id, g.division])
+    ),
+    setTimeLocations: model.setTimeLocation,
+    notFor,
+    isAway: (groupId, blockId) =>
+      groupsInSetup.has(groupId) &&
+      !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
+    dotShorter: true,
+    othersAt: (kind, id, d, blockId) =>
+      (kind === "place" ? model.otherPlace : model.otherActivity).get(
+        `${id}|${d}|${blockId}`
+      ) || 0
+  };
+}
+
+/** checkWeek's dots, one entry per cell of each dotted placement. */
+function flagCells(days, checked) {
+  const out = [];
+  for (const p of checked.placements) {
+    const bends = checked.bends.get(p.key);
+    if (!bends) {
+      continue;
+    }
+    const day = days[p.d];
+    for (let b = p.first; b < p.first + p.length; b++) {
+      out.push({
+        date: day.dateValue,
+        groupId: p.groupId,
+        blockId: day.blocks[b].id,
+        activityId: p.id,
+        bends: [...bends],
+        reason: checked.flags.get(p.key)
+      });
+    }
+  }
+  return out;
 }
 
 /** Groups in setup order, then any group the grid has that setup doesn't (kept as it is). */
@@ -184,10 +261,6 @@ function activityItem(act) {
   return { kind: "A", id: act.id, name: act.name, gone: false };
 }
 
-function identity(item) {
-  return `${item.kind}:${item.id || item.name}`;
-}
-
 /** Each day in Manual Build's shape: items in the order cells first use them, rows rebuilt. */
 function writeDays(model, state) {
   return model.days.map((day) => {
@@ -227,142 +300,4 @@ function writeDays(model, state) {
     );
     return { ...day.frame, items, rows };
   });
-}
-
-/**
- * The hover reason for one rule a placement bends, in camp words. Manual Build reuses these words
- * for its dots (ADR 0010), so both schedules say the same thing: keep them here, and change them
- * for both.
- *
- * rule: a RULE value. groupName: the group the cell belongs to. placeName: the activity's place
- * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
- * camp's words (c/shoreshTerms); model words when left out.
- */
-export function reasonFor(
-  rule,
-  { groupName, placeName, groupsAtOnce, terms } = {}
-) {
-  const t = terms || buildTerms([]);
-  switch (rule) {
-    case RULE.WEEKLY_MAX:
-      return "Over its weekly limit";
-    case RULE.ONCE_A_DAY:
-      return "Twice in a day";
-    case RULE.ELIGIBILITY:
-      return `Not set up for ${groupName}`;
-    case RULE.GROUPS_AT_ONCE:
-      return `Over its limit of ${groupsAtOnce} ${
-        groupsAtOnce === 1 ? t.sIn("Group") : t.pIn("Group")
-      } at once`;
-    case RULE.SAME_DIVISION:
-      return placeName
-        ? `Shares ${placeName} with another ${t.sIn("Division")}`
-        : `With another ${t.sIn("Division")} at the same time`;
-    case RULE.PLACE_CAPACITY:
-      return `More ${t.pIn("Group")} at ${placeName} than fit`;
-    default:
-      return "";
-  }
-}
-
-/** A flag on every cell of each placement that bends a rule. */
-function flagList(model, state, words) {
-  const out = [];
-  for (const [head, bends] of state.flags) {
-    const [groupId, d, blockId] = state.splitKey(head);
-    const act = state.actById.get(state.assigned.get(head));
-    const day = model.days[d];
-    const reason = bends
-      .map((rule) =>
-        reasonFor(rule, {
-          groupName: words.groups.get(groupId).name,
-          placeName:
-            act.locationId && words.fit.has(act.locationId)
-              ? words.locationNames.get(act.locationId)
-              : null,
-          groupsAtOnce: act.atOnce,
-          terms: words.t
-        })
-      )
-      .join(" · ");
-    const first = day.blockIndex.get(blockId);
-    for (let i = 0; i < act.span; i++) {
-      const block = day.blocks[first + i];
-      const k = block ? state.cellKey(groupId, d, block.id) : null;
-      if (
-        k &&
-        state.assigned.get(k) === act.id &&
-        (i === 0 || state.spanTails.has(k))
-      ) {
-        out.push({
-          date: day.date,
-          groupId,
-          blockId: block.id,
-          activityId: act.id,
-          bends: [...bends],
-          reason
-        });
-      }
-    }
-  }
-  return out;
-}
-
-/** Weekly minimums not met and early-week goals missed, group by group, in setup order. */
-function stillToPlace(model, state) {
-  const earlyHeads = new Map();
-  for (const [k, actId] of state.assigned) {
-    if (!state.spanTails.has(k)) {
-      const [groupId, d] = state.splitKey(k);
-      const key = `${groupId}|${actId}`;
-      if (!earlyHeads.has(key)) {
-        earlyHeads.set(key, []);
-      }
-      earlyHeads.get(key).push(d);
-    }
-  }
-  const out = [];
-  for (const groupId of model.groupIds) {
-    const group = model.groups.get(groupId);
-    if (!group) {
-      continue;
-    }
-    for (const act of model.acts) {
-      if (!model.eligibility.get(act.id).has(groupId)) {
-        continue;
-      }
-      const placed = state.usageCount.get(`${groupId}|${act.id}`) || 0;
-      if (placed < act.min) {
-        out.push({
-          kind: "weeklyMin",
-          groupId,
-          activityId: act.id,
-          placed,
-          wanted: act.min,
-          text: `${act.name} · ${group.name}: ${act.min - placed} still needed`
-        });
-      }
-      if (
-        act.early &&
-        model.days.some((day) => day.weekday <= act.early.byDay)
-      ) {
-        const early = (earlyHeads.get(`${groupId}|${act.id}`) || []).filter(
-          (d) => model.days[d].weekday <= act.early.byDay
-        ).length;
-        if (early < act.early.count) {
-          const byDay = DAY_NAMES[act.early.byDay];
-          out.push({
-            kind: "earlyWeek",
-            groupId,
-            activityId: act.id,
-            placed: early,
-            wanted: act.early.count,
-            byDay,
-            text: `${act.name} · ${group.name}: ${act.early.count - early} still needed by ${byDay}`
-          });
-        }
-      }
-    }
-  }
-  return out;
 }

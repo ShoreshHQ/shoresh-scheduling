@@ -21,7 +21,8 @@ export const RULE = Object.freeze({
   ELIGIBILITY: "eligibility",
   GROUPS_AT_ONCE: "groupsAtOnce",
   SAME_DIVISION: "sameDivision",
-  PLACE_CAPACITY: "placeCapacity"
+  PLACE_CAPACITY: "placeCapacity",
+  SHORTER: "shorterThanSetUp"
 });
 
 /**
@@ -35,10 +36,14 @@ export const RELAX_ORDER = Object.freeze([
   RULE.ELIGIBILITY,
   RULE.GROUPS_AT_ONCE,
   RULE.SAME_DIVISION,
-  RULE.PLACE_CAPACITY
+  RULE.PLACE_CAPACITY,
+  RULE.SHORTER
 ]);
 // Most serious first, for comparing two bends.
 const SEVERITY = [...RELAX_ORDER].reverse();
+
+/** Not a rule that bends: the group holds something at an overlapping time. */
+export const BUSY = "busy";
 
 // Why nothing can go in a cell at all: no room for the activity's full length, or the group is
 // already somewhere at an overlapping time. These never give way.
@@ -108,8 +113,6 @@ export function scheduleWeek(model) {
   const activityUsers = new Map(); // "activity|day|block" -> groups doing it
   const otherPlace = model.otherPlace || new Map();
   const otherActivity = model.otherActivity || new Map();
-  const flags = new Map(); // head cell -> rules its placement bends
-  const relaxed = new Set(); // heads placed by the never-blank pass
 
   const getCount = (g, actId) => usageCount.get(`${g}|${actId}`) || 0;
   const onDay = (g, d, actId) =>
@@ -152,11 +155,16 @@ export function scheduleWeek(model) {
     }
   }
 
+  let openSlotByKey = null; // the cells the generator fills, once the grid is read
+  // A placement shortened to fit a gap (the last bend): head cell -> its length.
+  const runLength = new Map();
+
   /** The blocks a placement of `act` at block `b` covers (its head and whatever of its tail fits). */
-  function ownBlocks(act, d, b) {
+  function ownBlocks(act, g, d, b) {
     const own = [b];
     const idx = blockIdx(d, b);
-    for (let i = 1; i < act.span; i++) {
+    const length = runLength.get(cellKey(g, d, b)) || act.span;
+    for (let i = 1; i < length; i++) {
       const next = blocksOf(d)[idx + i];
       if (next) {
         own.push(next.id);
@@ -165,12 +173,22 @@ export function scheduleWeek(model) {
     return own;
   }
 
-  function place(act, g, d, b) {
+  // Open cells nothing is in yet: the repairs may trade one for another, never add one.
+  let emptyCells = 0;
+  const isOpenSlot = (k) => openSlotByKey && openSlotByKey.has(k);
+
+  function place(act, g, d, b, length) {
+    if (length && length !== act.span) {
+      runLength.set(cellKey(g, d, b), length);
+    }
     assigned.set(cellKey(g, d, b), act.id);
     bump(usageCount, `${g}|${act.id}`, 1);
     bump(dailyUsage, `${g}|${d}|${act.id}`, 1);
-    ownBlocks(act, d, b).forEach((blockId, i) => {
+    ownBlocks(act, g, d, b).forEach((blockId, i) => {
       const k = cellKey(g, d, blockId);
+      if (isOpenSlot(k)) {
+        emptyCells--;
+      }
       if (i > 0) {
         assigned.set(k, act.id);
         spanTails.add(k);
@@ -184,8 +202,11 @@ export function scheduleWeek(model) {
   function unplace(act, g, d, b) {
     bump(usageCount, `${g}|${act.id}`, -1);
     bump(dailyUsage, `${g}|${d}|${act.id}`, -1);
-    for (const blockId of ownBlocks(act, d, b)) {
+    for (const blockId of ownBlocks(act, g, d, b)) {
       const k = cellKey(g, d, blockId);
+      if (isOpenSlot(k)) {
+        emptyCells++;
+      }
       assigned.delete(k);
       spanTails.delete(k);
       if (act.locationId != null) {
@@ -201,10 +222,12 @@ export function scheduleWeek(model) {
         (u) => u.groupId === g
       );
     }
+    runLength.delete(cellKey(g, d, b));
   }
 
   // ── Pass 1: read the grid ──────────────────────────────────────────────────
   const openSlots = [];
+  const busyThen = new Set(); // Open cells left Open: the group is busy at an overlapping time
   const lockedOpen = new Set();
   const away = new Set();
 
@@ -264,6 +287,7 @@ export function scheduleWeek(model) {
         covered.add(run.first + i);
       }
     }
+    const open = [];
     row.forEach((token, b) => {
       if (covered.has(b)) {
         return;
@@ -275,14 +299,52 @@ export function scheduleWeek(model) {
       } else if (!atCamp(group, block.partOfDay)) {
         away.add(k);
       } else {
+        open.push(b);
+      }
+    });
+    const chosen = fillable(day, open, covered);
+    for (const b of open) {
+      if (chosen.has(b)) {
         openSlots.push({
           groupId,
           dayIndex: day.index,
-          blockId: block.id,
+          blockId: day.blocks[b].id,
           eligibleActs: acts.filter((a) => eligibility.get(a.id).has(groupId))
         });
+      } else {
+        busyThen.add(cellKey(groupId, day.index, day.blocks[b].id));
       }
-    });
+    }
+  }
+
+  /**
+   * Of a group's Open cells on a day (block indexes, in order), the ones to fill. Where blocks
+   * overlap in time a group can be in only one of them, so this keeps the most cells that can all
+   * be filled: none overlapping a kept cell, then earliest end first (which leaves the fewest
+   * Open). The same cells whatever order anything is filled in.
+   */
+  function fillable(day, open, covered) {
+    const peers = peersByDay[day.index];
+    const overlapsAny = (b, list) =>
+      (peers.get(day.blocks[b].id) || []).some((peerId) =>
+        list.has(day.blockIndex.get(peerId))
+      );
+    const free = open.filter((b) => !overlapsAny(b, covered));
+    const timed = free
+      .filter((b) => peers.has(day.blocks[b].id))
+      .sort(
+        (x, y) =>
+          day.blocks[x].end - day.blocks[y].end ||
+          day.blocks[x].start - day.blocks[y].start ||
+          x - y
+      );
+    const chosen = new Set(free.filter((b) => !peers.has(day.blocks[b].id)));
+    for (const b of timed) {
+      if (!overlapsAny(b, chosen)) {
+        chosen.add(b);
+      }
+    }
+    return chosen;
   }
 
   for (const groupId of model.groupIds) {
@@ -293,7 +355,8 @@ export function scheduleWeek(model) {
     }
   }
 
-  const openSlotByKey = new Map(openSlots.map((s) => [keyOf(s), s]));
+  openSlotByKey = new Map(openSlots.map((s) => [keyOf(s), s]));
+  emptyCells = openSlots.length;
   const openSlotsByGroup = new Map();
   const openSlotsByPeriod = new Map();
   for (const s of openSlots) {
@@ -368,7 +431,8 @@ export function scheduleWeek(model) {
    * reason it can't (the desktop's blockedBy order). With `all` true: null when it can't go here
    * at all (LENGTH or OVERLAP), else every rule it would bend ([] when none).
    */
-  function check(act, g, d, b, all) {
+  function check(act, g, d, b, all, length) {
+    const span = length || act.span;
     const found = [];
     const note = (code) => {
       if (!found.includes(code)) {
@@ -396,9 +460,9 @@ export function scheduleWeek(model) {
       problems.forEach(note);
     }
     const own = [b];
-    if (act.span > 1) {
+    if (span > 1) {
       const idx = blockIdx(d, b);
-      for (let i = 1; i < act.span; i++) {
+      for (let i = 1; i < span; i++) {
         const next = blocksOf(d)[idx + i];
         const nk = next ? cellKey(g, d, next.id) : null;
         // A multi-block activity needs its whole length in consecutive Open, at-camp cells.
@@ -830,7 +894,9 @@ export function scheduleWeek(model) {
 
   function repair() {
     let filled = true;
-    while (filled) {
+    // Each productive sweep fills at least one cell, so this many sweeps is always enough; the
+    // cap is a guard so a future edit can never freeze the browser.
+    for (let sweep = 0; filled && sweep <= openSlots.length; sweep++) {
       filled = false;
       for (const u of openSlots) {
         if (assigned.has(keyOf(u))) {
@@ -903,12 +969,23 @@ export function scheduleWeek(model) {
   function spanKeys(hk) {
     const [g, d, b] = splitKey(hk);
     const act = actById.get(assigned.get(hk));
-    return ownBlocks(act, d, b).map((blockId) => cellKey(g, d, blockId));
+    return ownBlocks(act, g, d, b).map((blockId) => cellKey(g, d, blockId));
   }
 
   // Repair 2 (raise): one more session of `act` for a group short of its weekly minimum, by an
   // ejection chain: lift what sits in the cells it needs, place it, re-place anything left short.
-  function raise(act, groupId, depth, held, liftSpans) {
+  // `lenient` (the minimum repair only): a cell the chain empties may stay Open for never-blank to
+  // fill, provided the whole chain, checked at the top (`limit`), leaves no more Open cells than
+  // it found. A move that meets a minimum then never adds a bend.
+  function raise(
+    act,
+    groupId,
+    depth,
+    held,
+    liftSpans,
+    lenient = false,
+    limit = null
+  ) {
     for (const head of openSlotsByGroup.get(groupId) || []) {
       if (minRepairBudget-- <= 0 || repairWorkLeft-- <= 0) {
         return false;
@@ -1012,7 +1089,7 @@ export function scheduleWeek(model) {
           }
           if (
             depth === 0 ||
-            !raise(l, groupId, depth - 1, nextHeld, liftSpans)
+            !raise(l, groupId, depth - 1, nextHeld, liftSpans, lenient)
           ) {
             ok = false;
             break;
@@ -1029,7 +1106,7 @@ export function scheduleWeek(model) {
           const fill = v ? fits(v)[0] : null;
           if (fill) {
             jPlace(fill, v.groupId, v.dayIndex, v.blockId);
-          } else {
+          } else if (!lenient) {
             ok = false;
           }
         }
@@ -1040,7 +1117,9 @@ export function scheduleWeek(model) {
           if (getCount(peer.groupId, act.id) >= getMin(act.id)) {
             continue;
           }
-          if (!raise(act, peer.groupId, depth - 1, nextHeld, liftSpans)) {
+          if (
+            !raise(act, peer.groupId, depth - 1, nextHeld, liftSpans, lenient)
+          ) {
             ok = false;
           }
         }
@@ -1054,11 +1133,11 @@ export function scheduleWeek(model) {
           const fill = fits(peer)[0];
           if (fill) {
             jPlace(fill, peer.groupId, peer.dayIndex, peer.blockId);
-          } else {
+          } else if (!lenient) {
             ok = false;
           }
         }
-        if (ok) {
+        if (ok && (limit == null || emptyCells <= limit)) {
           return true;
         }
       }
@@ -1166,10 +1245,25 @@ export function scheduleWeek(model) {
         if (!eligibility.get(act.id).has(groupId)) {
           continue;
         }
-        while (getCount(groupId, act.id) < getMin(act.id)) {
+        // Each pass raises the count by one, so the minimum bounds the passes (a guard as above).
+        for (
+          let pass = 0;
+          pass <= getMin(act.id) && getCount(groupId, act.id) < getMin(act.id);
+          pass++
+        ) {
           minRepairBudget = MIN_REPAIR_BUDGET;
           journal.length = 0;
-          if (raise(act, groupId, MIN_REPAIR_DEPTH, new Set(), false)) {
+          if (
+            raise(
+              act,
+              groupId,
+              MIN_REPAIR_DEPTH,
+              new Set(),
+              false,
+              true,
+              emptyCells
+            )
+          ) {
             continue;
           }
           // Only when that fails may the chain lift a multi-block placement, on its own budget.
@@ -1177,7 +1271,15 @@ export function scheduleWeek(model) {
           journal.length = 0;
           const sharedWorkLeft = repairWorkLeft;
           repairWorkLeft = SPAN_LIFT_WORK;
-          const raised = raise(act, groupId, MIN_REPAIR_DEPTH, new Set(), true);
+          const raised = raise(
+            act,
+            groupId,
+            MIN_REPAIR_DEPTH,
+            new Set(),
+            true,
+            true,
+            emptyCells
+          );
           repairWorkLeft = sharedWorkLeft;
           if (!raised) {
             break;
@@ -1189,7 +1291,9 @@ export function scheduleWeek(model) {
 
   // Never blank (Greg, 2026-10-17): a cell nothing fits cleanly gets the least-bad activity, the
   // one whose most serious bend is least serious (RELAX_ORDER), then high priority, then the one
-  // the group has had least, then the stable key. Only LENGTH and OVERLAP leave a cell Open.
+  // the group has had least, then the stable key. Last of all (coordinator, under Greg's rule), a
+  // multi-block activity may go in shorter than set up, as long as the gap allows. The only cells
+  // left Open are those where the group is busy at an overlapping time.
   const openCells = [];
   function neverBlank() {
     for (const u of openSlots) {
@@ -1199,41 +1303,50 @@ export function scheduleWeek(model) {
       }
       let best = null;
       let bestRank = null;
-      for (const act of acts) {
-        const bends = check(act, u.groupId, u.dayIndex, u.blockId, true);
+      const consider = (act, length) => {
+        const bends = check(
+          act,
+          u.groupId,
+          u.dayIndex,
+          u.blockId,
+          true,
+          length
+        );
         if (bends === null) {
-          continue;
+          return false;
+        }
+        if (length < act.span) {
+          bends.push(RULE.SHORTER);
         }
         const rank = [
           ...SEVERITY.map((rule) => (bends.includes(rule) ? 1 : 0)),
+          -length,
           PRIORITY_RANK[act.priority],
           getCount(u.groupId, act.id),
           tieOf(u, act)
         ];
         if (!bestRank || lexLess(rank, bestRank)) {
-          best = { act, bends };
+          best = { act, bends, length };
           bestRank = rank;
+        }
+        return true;
+      };
+      for (const act of acts) {
+        // Its full length if that fits the gap, else the longest run that does.
+        let length = act.span;
+        while (length >= 1 && !consider(act, length)) {
+          length--;
         }
       }
       if (best) {
-        place(best.act, u.groupId, u.dayIndex, u.blockId);
-        relaxed.add(k);
-        if (best.bends.length) {
-          flags.set(
-            k,
-            RELAX_ORDER.filter((rule) => best.bends.includes(rule))
-          );
-        }
+        // Its dots come from checkWeek on the finished week (checks.js), like any other cell's.
+        place(best.act, u.groupId, u.dayIndex, u.blockId, best.length);
       } else {
-        // The group already holds something at an overlapping time, or no activity fits the gap.
-        const overlap = (peersByDay[u.dayIndex].get(u.blockId) || []).some(
-          (peer) => {
-            const pk = cellKey(u.groupId, u.dayIndex, peer);
-            return assigned.has(pk) || keptKeys.has(pk);
-          }
-        );
-        openCells.push({ key: k, why: overlap ? OVERLAP : LENGTH });
+        openCells.push({ key: k, why: OVERLAP });
       }
+    }
+    for (const k of busyThen) {
+      openCells.push({ key: k, why: OVERLAP });
     }
   }
 
@@ -1251,7 +1364,6 @@ export function scheduleWeek(model) {
     assigned,
     spanTails,
     keptCells,
-    flags,
     openCells,
     usageCount,
     away,

@@ -107,6 +107,10 @@ export function readActivities(records, weekExceptions, weekId) {
         ? null
         : Math.max(1, wholeNumber(r[ACTIVITY.GroupsAtOnce], 1)),
       sameDivision: Boolean(r[ACTIVITY.SameDivisionOnly]),
+      sortOrder:
+        typeof r[ACTIVITY.SortOrder] === "number"
+          ? r[ACTIVITY.SortOrder]
+          : null,
       priority: r[ACTIVITY.Priority] === "High" ? "high" : "low",
       early: count && count > 0 && byDay ? { count, byDay } : null
     };

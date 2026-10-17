@@ -76,6 +76,6 @@ describe("generateWeek on a large camp", () => {
     expect(ms).toBeLessThan(1500);
     expect(problems(spec, input, result)).toEqual([]);
     expect(result.flags.length).toBeGreaterThan(0);
-    expect(result.stillToPlace.length).toBeGreaterThan(0);
+    expect(result.stillNeeded.length).toBeGreaterThan(0);
   });
 });

@@ -56,7 +56,7 @@ export function problems(spec, input, result) {
   );
   const fillOpen = input.mode === "fillOpen";
   for (const f of result.flags) {
-    if (!f.bends.length || !/^[A-Z][^·]*\S( · [A-Z][^·]*\S)*$/.test(f.reason)) {
+    if (!f.bends.length || !/^\S[^·]*\S( · \S[^·]*\S)*$/.test(f.reason)) {
       out.push(`flag without a rule or a reason: ${JSON.stringify(f)}`);
     }
   }
@@ -155,12 +155,10 @@ export function problems(spec, input, result) {
         if (here && !cell && !lock.has(k) && !openCells.has(k)) {
           out.push(`blank: ${k}`);
         }
-        // A cell listed as impossible really is: the group is busy at an overlapping time, or
-        // no activity is one block long.
+        // A cell left Open really can't be filled: the group is busy at an overlapping time.
         if (
           openCells.has(k) &&
-          !(cell === null && peers[b].some((j) => row[j])) &&
-          spec.activities.some((a) => a.span === 1)
+          !(cell === null && peers[b].some((j) => row[j]))
         ) {
           out.push(`listed as impossible but isn't: ${k}`);
         }
@@ -214,7 +212,10 @@ export function problems(spec, input, result) {
           ) {
             len++;
           }
-          if (len !== act.span) {
+          const shortened =
+            len < act.span &&
+            (flagged.get(k) || []).includes("shorterThanSetUp");
+          if (len !== act.span && !shortened) {
             out.push(`multi-block run of ${len} for ${act.id}: ${k}`);
           }
         }

@@ -33,11 +33,14 @@ describe("never blank (Greg, 2026-10-17)", () => {
       "swim",
       "swim"
     ]);
-    expect(result.flags).toHaveLength(1);
-    expect(result.flags[0]).toMatchObject({
-      bends: [RULE.WEEKLY_MAX],
-      reason: "Over its weekly limit"
-    });
+    // Over the limit dots every one of that group's sessions of it (Manual Build's rule).
+    expect(result.flags).toHaveLength(2);
+    for (const flag of result.flags) {
+      expect(flag).toMatchObject({
+        bends: [RULE.WEEKLY_MAX],
+        reason: "Over its weekly limit"
+      });
+    }
   });
 
   it("repeats an activity in a day before leaving a cell blank", () => {
@@ -45,7 +48,11 @@ describe("never blank (Greg, 2026-10-17)", () => {
       blocks: [block(0), block(1)],
       activities: [activity("swim")]
     });
-    expect(result.flags.map((f) => f.bends)).toEqual([[RULE.ONCE_A_DAY]]);
+    // Twice in a day dots both.
+    expect(result.flags.map((f) => f.bends)).toEqual([
+      [RULE.ONCE_A_DAY],
+      [RULE.ONCE_A_DAY]
+    ]);
     expect(result.flags[0].reason).toBe("Twice in a day");
   });
 
@@ -59,7 +66,7 @@ describe("never blank (Greg, 2026-10-17)", () => {
         { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
       ])
     });
-    expect(result.flags).toHaveLength(1);
+    expect(result.flags).toHaveLength(2);
     expect(result.flags[0]).toMatchObject({
       bends: [RULE.GROUPS_AT_ONCE],
       reason: "Over its limit of 1 Bunk at once"
@@ -72,7 +79,10 @@ describe("never blank (Greg, 2026-10-17)", () => {
       locations: [{ id: "pool", name: "Pool", fit: 1 }],
       activities: [activity("swim", { atOnce: null, location: "pool" })]
     });
-    expect(result.flags.map((f) => f.bends)).toEqual([[RULE.PLACE_CAPACITY]]);
+    expect(result.flags.map((f) => f.bends)).toEqual([
+      [RULE.PLACE_CAPACITY],
+      [RULE.PLACE_CAPACITY]
+    ]);
     expect(result.flags[0].reason).toBe("More groups at Pool than fit");
   });
 
@@ -85,7 +95,9 @@ describe("never blank (Greg, 2026-10-17)", () => {
       [RULE.ELIGIBILITY]: activity("z", { atOnce: null, eligible: ["g2"] }),
       [RULE.GROUPS_AT_ONCE]: activity("w", { atOnce: 1 }),
       [RULE.SAME_DIVISION]: activity("v", { atOnce: null, sameDivision: true }),
-      [RULE.PLACE_CAPACITY]: activity("u", { atOnce: null, location: "hut" })
+      [RULE.PLACE_CAPACITY]: activity("u", { atOnce: null, location: "hut" }),
+      // Two blocks long, in a one-block gap (Bunk g1's second block is kept).
+      [RULE.SHORTER]: activity("t", { atOnce: null, span: 2 })
     };
     const spec = (rules) => ({
       mode: "fillOpen",
@@ -139,7 +151,7 @@ describe("never blank (Greg, 2026-10-17)", () => {
     expect(result.openCells).toEqual([
       expect.objectContaining({
         groupId: "g1",
-        reason: "Bunk g1 is busy at an overlapping time"
+        reason: "Already busy then"
       })
     ]);
   });
@@ -155,9 +167,108 @@ describe("never blank (Greg, 2026-10-17)", () => {
     expect(result.openCells).toEqual([
       expect.objectContaining({
         blockId: "bx",
-        reason: "Bunk g1 is busy at an overlapping time"
+        reason: "Already busy then"
       })
     ]);
+  });
+
+  it("where blocks overlap, keeps the most cells filled (8:00 and 9:00 rather than 8:30)", () => {
+    for (let option = 1; option <= 10; option++) {
+      const result = run({
+        option,
+        groups: [group("g1"), group("g2")],
+        blocks: [
+          block(0),
+          block(0, { id: "bx", startTime: "08:30", endTime: "09:15" }),
+          block(1)
+        ],
+        activities: [activity("swim"), activity("arts"), activity("hike")]
+      });
+      for (const g of ["g1", "g2"]) {
+        expect([at(result, 0, g, 0), at(result, 0, g, 2)]).not.toContain(null);
+        expect(at(result, 0, g, 1)).toBeNull();
+      }
+      expect(
+        result.openCells.map((c) => [c.groupId, c.blockId, c.reason])
+      ).toEqual([
+        ["g1", "bx", "Already busy then"],
+        ["g2", "bx", "Already busy then"]
+      ]);
+    }
+  });
+
+  it("keeps the most cells even when the overlapping block has the fewest choices", () => {
+    // Another program holds two of the three activities at 8:46-8:59, a time only the 8:30 block
+    // covers, so greedy filling would take 8:30 first and lose 8:00 and 9:00.
+    for (let option = 1; option <= 10; option++) {
+      const result = run({
+        option,
+        blocks: [
+          block(0),
+          block(0, { id: "bx", startTime: "08:30", endTime: "09:15" }),
+          block(1)
+        ],
+        activities: ["swim", "arts", "hike"].map((id) =>
+          activity(id, { atOnce: 1 })
+        ),
+        otherPrograms: ["arts", "hike"].map((activityId) => ({
+          date: dateAt(0),
+          startTime: "08:46",
+          endTime: "08:59",
+          activityId
+        }))
+      });
+      expect([
+        at(result, 0, "g1", 0),
+        at(result, 0, "g1", 1),
+        at(result, 0, "g1", 2)
+      ]).toEqual([expect.any(String), null, expect.any(String)]);
+    }
+  });
+
+  it("an Open cell beside a kept one at an overlapping time stays Open, already busy", () => {
+    const result = run({
+      blocks: [
+        block(0),
+        block(0, { id: "bx", startTime: "08:30", endTime: "09:15" }),
+        block(1)
+      ],
+      activities: [activity("swim"), activity("arts")],
+      cells: [{ day: 0, group: "g1", block: "bx", act: "swim" }],
+      locks: [{ date: dateAt(0), groupId: "g1", blockId: "bx" }]
+    });
+    expect(at(result, 0, "g1", 1)).toBe("swim");
+    expect(result.openCells.map((c) => c.blockId)).toEqual(["b0", "b1"]);
+  });
+
+  it("fills a gap too short for any activity with one shorter than set up, flagged, as the last bend", () => {
+    const spec = {
+      mode: "fillOpen",
+      groups: [group("g1")],
+      blocks: [block(0), block(1), block(2)],
+      activities: [activity("hike", { span: 2, max: null })],
+      // A one-block gap at b1, between a kept hike and a trip.
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "hike", length: 1 },
+        { day: 0, group: "g1", block: "b2", act: "Zoo trip", kind: "T" }
+      ]
+    };
+    const input = camp(spec);
+    const result = generateWeek(input);
+    expect(cellsOf(result.days)[0].g1[1]).toEqual({
+      kind: "A",
+      id: "hike",
+      head: true
+    });
+    expect(flagAt(result, 0, "g1", "b1")).toMatchObject({
+      reason: "Twice in a day · hike is shorter than set up"
+    });
+    expect(flagAt(result, 0, "g1", "b1").bends).toEqual([
+      RULE.ONCE_A_DAY,
+      RULE.SHORTER
+    ]);
+    expect(result.openCells).toEqual([]);
+    expect(problems(spec, input, result)).toEqual([]);
   });
 
   it("says so clearly when there are no activities at all, and returns no grid", () => {
@@ -528,25 +639,29 @@ describe("the hard rules", () => {
 
 describe("other programs count against capacity (G5 supplies them)", () => {
   it("a place another program fills at that clock time is full for this one", () => {
-    const result = run({
-      blocks: [block(0), block(1)],
-      locations: [{ id: "pool", fit: 1 }],
-      activities: [
-        activity("swim", { atOnce: null, location: "pool", min: 1, max: 1 }),
-        activity("arts", { atOnce: null })
-      ],
-      otherPrograms: [
-        {
-          date: dateAt(0),
-          startTime: "07:30",
-          endTime: "08:30",
-          locationId: "pool",
-          groups: 1
-        }
-      ]
-    });
-    expect(at(result, 0, "g1", 0)).toBe("arts");
-    expect(at(result, 0, "g1", 1)).toBe("swim");
+    for (let option = 1; option <= 10; option++) {
+      const result = run({
+        option,
+        blocks: [block(0), block(1)],
+        locations: [{ id: "pool", fit: 1 }],
+        activities: [
+          activity("swim", { atOnce: null, location: "pool", min: 1, max: 1 }),
+          activity("arts", { atOnce: null })
+        ],
+        otherPrograms: [
+          {
+            date: dateAt(0),
+            startTime: "07:30",
+            endTime: "08:30",
+            locationId: "pool",
+            groups: 1
+          }
+        ]
+      });
+      expect(at(result, 0, "g1", 0)).toBe("arts");
+      expect(at(result, 0, "g1", 1)).toBe("swim");
+      expect(result.flags).toEqual([]);
+    }
   });
 
   it("another program's groups at an activity count against its groups at once", () => {
@@ -623,7 +738,8 @@ describe("soft goals and what is still to place", () => {
     expect(
       at(result, 1, "g1", 0) === "climb" || at(result, 1, "g1", 1) === "climb"
     ).toBe(true);
-    expect(result.stillToPlace).toEqual([]);
+    expect(result.stillNeeded).toEqual([]);
+    expect(result.spread).toEqual([]);
   });
 
   it("a session later in the week doesn't count toward an early goal", () => {
@@ -666,23 +782,9 @@ describe("soft goals and what is still to place", () => {
       locations: [{ id: "wall", fit: 1 }],
       fixed: [{ id: "lunch", block: "b0", groups: ["g2"] }]
     });
-    expect(result.stillToPlace).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          kind: "weeklyMin",
-          groupId: "g2",
-          activityId: "climb",
-          placed: 0,
-          wanted: 2,
-          text: "climb · Bunk g2: 2 still needed"
-        }),
-        expect.objectContaining({
-          kind: "earlyWeek",
-          groupId: "g2",
-          byDay: "Monday",
-          text: "climb · Bunk g2: 1 still needed by Monday"
-        })
-      ])
+    expect(result.stillNeeded).toContain("climb · Bunk g2: 2 still needed");
+    expect(result.spread).toContain(
+      "climb · Bunk g2: 1 still needed by Monday"
     );
   });
 
@@ -720,6 +822,18 @@ describe("soft goals and what is still to place", () => {
 });
 
 describe("Try another", () => {
+  it("refuses an option of 0, a fraction or anything that isn't a number", () => {
+    const spec = { activities: [activity("swim")] };
+    for (const option of [0, -1, 1.5, "0", "two", NaN]) {
+      expect(generateWeek({ ...camp(spec), option })).toEqual({
+        ok: false,
+        error: "That option can't be built."
+      });
+    }
+    const first = generateWeek({ ...camp(spec), option: undefined });
+    expect(first).toEqual(generateWeek(camp({ ...spec, option: 1 })));
+  });
+
   it("takes the option as a number or as text", () => {
     const spec = {
       days: 3,

@@ -1,6 +1,6 @@
 /**
  * The desktop generator's tests (Scheduling-Project- src/engine/buildSchedule*.test.js), ported
- * to Salesforce's shapes. Desktop words map as: UNDERSERVED -> stillToPlace "weeklyMin";
+ * to Salesforce's shapes. Desktop words map as: UNDERSERVED -> a "still needed" line;
  * UNFILLABLE -> a flagged cell (Generated Schedule never leaves one blank); max_groups_per_slot
  * -> Groups at once; a camp seed -> the option number; preplaced slots -> locked cells.
  */
@@ -11,7 +11,7 @@ import { problems } from "./data/check";
 
 const run = (spec) => generateWeek(camp(spec));
 const short = (result) => ({
-  stillNeeded: result.stillToPlace.filter((s) => s.kind === "weeklyMin").length,
+  stillNeeded: result.stillNeeded.length,
   flagged: result.flags.length
 });
 const ids = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
@@ -163,7 +163,7 @@ describe("capped activities in an exactly fitting week (T380)", () => {
     expect(bad).toEqual([]);
   });
 
-  it("one spare cell per group (9 cells, 8 capped activities): at most 2 of options 1..100 leave a minimum short", () => {
+  it("one spare cell per group (9 cells, 8 capped activities) still meets every minimum (options 1..100)", () => {
     const bad = [];
     for (let option = 1; option <= 100; option++) {
       const r = short(
@@ -173,10 +173,16 @@ describe("capped activities in an exactly fitting week (T380)", () => {
         bad.push(`option ${option}: ${JSON.stringify(r)}`);
       }
     }
-    // The desktop's 100 seeds all met every minimum; here options 80 and 82 leave one session
-    // short (6 in 1,000 options). Same repair limits, different tie-breaks: the min repair won't
-    // move a session out of a cell it can't refill cleanly. Pinned so it cannot get worse.
-    expect(bad.length).toBeLessThanOrEqual(2);
+    // The minimum repair may leave the cell a move empties for never-blank to fill, as long as
+    // no more cells are left Open than before (ADR 0010): 0 of 1,000 options short.
+    expect(bad).toEqual([]);
+  });
+
+  it("option 139 (the review's repro): the minimum repair makes the move", () => {
+    const r = run(
+      spec({ option: 139, days: 3, blocks: [block(1), block(2), block(3)] })
+    );
+    expect(r.stillNeeded).toEqual([]);
   });
 
   it("capped activities sharing a location with a tight capacity still fill (options 1..100)", () => {
@@ -216,7 +222,7 @@ describe("no activity left below its minimum when the week can hold it", () => {
         a("Hike", { priority: "Low", span: 2, min: 1 })
       ])
     );
-    expect(result.stillToPlace).toEqual([]);
+    expect(result.stillNeeded).toEqual([]);
     expect(runsOf(result, "g1", "Hike")).toEqual([{ day: 0, blocks: [0, 1] }]);
   });
 
@@ -224,7 +230,7 @@ describe("no activity left below its minimum when the week can hold it", () => {
     const result = run(
       spec([a("Archery"), a("Drama"), a("Swim", { priority: "Low", min: 1 })])
     );
-    expect(result.stillToPlace).toEqual([]);
+    expect(result.stillNeeded).toEqual([]);
   });
 
   it("never lifts an activity below its own minimum to do it", () => {
@@ -235,7 +241,21 @@ describe("no activity left below its minimum when the week can hold it", () => {
         a("Hike", { priority: "Low", span: 2, min: 1 })
       ])
     );
-    expect(result.stillToPlace.map((s) => s.activityId)).toEqual(["Hike"]);
+    expect(result.stillNeeded).toEqual(["Hike · Bunk g1: 1 still needed"]);
+  });
+
+  it("doesn't meet a minimum by leaving a cell Open that wasn't (no extra bend for it)", () => {
+    // Lifting the hike to fit swim would leave its second block for never-blank to bend.
+    const result = run({
+      blocks: [block(1), block(2)],
+      activities: [
+        a("Hike", { span: 2, max: 1 }),
+        a("Swim", { priority: "Low", min: 1, max: 1 })
+      ]
+    });
+    expect(runsOf(result, "g1", "Hike")).toEqual([{ day: 0, blocks: [0, 1] }]);
+    expect(result.flags).toEqual([]);
+    expect(result.stillNeeded).toEqual(["Swim · Bunk g1: 1 still needed"]);
   });
 
   // The desktop's acceptance rule in miniature: build a full week, read the rules off it the way
@@ -365,9 +385,9 @@ describe("multi-block activities are placed first, contiguously, as one session"
         expect(r.blocks[1] - r.blocks[0]).toBe(1);
       }
     }
-    expect(result.stillToPlace.filter((s) => s.activityId === "ropes")).toEqual(
-      []
-    );
+    expect(
+      result.stillNeeded.filter((line) => line.startsWith("ropes ·"))
+    ).toEqual([]);
   });
 
   it("a 3-block activity goes in the only 3-block runs a day has (either side of a midday fixed activity)", () => {
@@ -443,9 +463,7 @@ describe("multi-block activities are placed first, contiguously, as one session"
     for (const g of groups) {
       expect(runsOf(result, g.id, "ropes").map((r) => r.day)).toEqual([0, 1]);
     }
-    expect(result.stillToPlace.filter((s) => s.kind === "earlyWeek")).toEqual(
-      []
-    );
+    expect(result.spread).toEqual([]);
   });
 });
 

@@ -30,7 +30,10 @@ cells) and 0009 (names through `c/shoreshSchema`).
    the least-bad choice goes in with the bronze dot, and hover says which rule it bends. Rules
    give way in this order (coordinator): weekly max, then once a day, then who it's set up for,
    then groups at once, then the place's capacity last. **Same division only gives way just
-   before the place's capacity** (Greg, 2026-10-17). Locks, fixed and recurring activities and
+   before the place's capacity** (Greg, 2026-10-17). **Last of all, an activity may go in
+   shorter than set up** when a gap is too short for any activity at its full length, flagged
+   ("Hike is shorter than set up") (coordinator, 2026-10-17, under Greg's never-blank rule). The
+   only cells left Open are those where the group is busy at an overlapping time. Locks, fixed and recurring activities and
    not-at-camp cells never give way. Not-at-camp cells stay hatched.
 8. **Anyone with Shoresh Scheduler access** can generate.
 9. **"Early in the week: N by Wednesday" counts Wednesday** (Greg, 2026-10-17).
@@ -58,9 +61,12 @@ cells) and 0009 (names through `c/shoreshSchema`).
    time blocks, activities, who-it's-set-up-for rows, locations, fixed and recurring activities
    (for their places), and week exceptions. Every field name comes from `c/shoreshSchema` (ADR
    0009); fixed and recurring activities are each read with their own field set. Also: the
-   program, week and option (the seed; the option may come as a number or as text), the mode, locks, other programs' occupancy, and the
-   camp's words for the reasons.
-3. **What is kept.**
+   program, week and option (the seed: 1, 2, ..., as a number or as text; left out means 1; 0,
+   a fraction or anything else is refused with "That option can't be built." so a screen bug
+   can't show the wrong week as if it were the one asked for), the mode, locks, other programs'
+   occupancy, and the camp's words for the reasons.
+3. **What is kept.** ("Kept" is this ADR's and the code's word for a cell the build leaves alone;
+   on screen the only word is **Lock**, decision 3.)
    - A full build keeps locked placements, fixed and recurring activities, things not set up yet
      from an import (elective, special day, special event, trip), and the rows of groups setup no
      longer has. Every other activity is cleared and the cell built again.
@@ -92,7 +98,10 @@ cells) and 0009 (names through `c/shoreshSchema`).
    - a multi-block activity needs its whole length in consecutive Open, at-camp cells, and is one
      session;
    - one placement per group across blocks whose clock times overlap (touching times don't).
-     Structural rules (length, overlap) never give way.
+     Where a group's Open cells overlap, the build first picks the most of them that can all be
+     filled (none overlapping a kept cell, then earliest end first, which leaves the fewest
+     Open), the same whatever order anything is filled in; the rest are left Open, "Already busy
+     then". Blocks 8:00–8:45, 8:30–9:15 and 9:00–9:45 fill 8:00 and 9:00. This never gives way.
 5. **Soft goals.** Weekly minimum; early in the week (`EarlyWeekCount__c` by
    `EarlyWeekByDay__c`); high priority before low (blank priority is low). **"By Wednesday"
    counts Wednesday** (the plain reading of the Activities screen's "By"). The desktop counted
@@ -103,7 +112,14 @@ cells) and 0009 (names through `c/shoreshSchema`).
    the tight-week capped matching (desktop T380); greedy fewest-choices, high then low; then the
    three repair passes, each step undone unless it ends whole: a reshuffle per stranded cell, the
    weekly-minimum ejection chain, and moving a blocking session. Budgets are the desktop's, so a
-   week that can't fit gives up fast. Differences from the desktop, each on purpose:
+   week that can't fit gives up fast, and the two repair loops have hard caps as well (each
+   productive sweep or pass makes progress, so the caps never bind on a working engine; they keep
+   a future edit from freezing the browser). Differences from the desktop, each on purpose:
+   - the weekly-minimum repair may leave a cell its move empties for never-blank to fill, as long
+     as the whole chain leaves no more cells Open than it found: a move that meets a minimum
+     then never adds a bend. The desktop refused any move whose emptied cell it couldn't refill
+     cleanly (coordinator's review, 2026-10-17; the "one spare cell" sweep went from 6 in 1,000
+     options short to none);
    - ties are broken by pre-drawn keys, never `rand() - 0.5` in a sort (an inconsistent
      comparator gives different orders in different browsers);
    - in the greedy round, the early-week goal comes first, then the fewest sessions so far, then
@@ -119,20 +135,21 @@ cells) and 0009 (names through `c/shoreshSchema`).
    once a day, who it's set up for, groups at once, same division only, the place's capacity);
    then high priority; then the one the group has had least; then the key. Same division only
    gives way just before the place's capacity (decision 7): it is a rule about sharing the
-   place. Each cell of the placement returns a flag with the rules
-   it bends and a reason in camp words for the hover: "Over its weekly limit", "Twice in a day",
-   "Not set up for Bunk 3", "Over its limit of 2 bunks at once", "Shares Pool with another
-   division" (or "With another division at the same time" for an activity with no place),
-   "More bunks at Pool than fit". Group, division, week and gap are the camp's own words
-   (`c/shoreshTerms`). The reasons are written in one place (`reasonFor` in `shoreshEngine.js`)
-   and Manual Build part 3 reuses them, so the dots say the same words on both schedules: change
-   them there, deliberately, and for both. Only a cell nothing can go in at all (the group is
-   busy at an overlapping time, or no activity is short enough for the gap) stays Open, listed
-   in `openCells` with its reason. No activities at all, or none running this week, returns an
-   error result ("No activities are set up yet." / "No activities run this week.") instead of a
-   grid.
-8. **Determinism.** The seed is `programId|weekId|option`, hashed with 32-bit FNV-1a into
-   mulberry32 (the desktop's generator). Each Open cell gets its own stream (seed + date + group +
+   place. Last, a multi-block activity may go in shorter than set up, its longest run that fits
+   the gap (decision 7). Only a cell where the group is busy at an overlapping time stays Open,
+   listed in `openCells` ("Already busy then"). No activities at all, none running this week, no
+   days to build, or an option that can't be used returns an error result instead of a grid:
+   "No activities are set up yet.", "No activities run this week.", "This week has no days to
+   build.", "That option can't be built." (week and activity in the camp's own words).
+   The hover reasons, in camp words: "Over its weekly limit", "Twice in a day", "Not set up for
+   Bunk 3", "Over its limit of 2 bunks at once", "Shares Pool with another division" (or "With
+   another division at the same time" for an activity with no place), "More bunks at Pool than
+   fit", "Hike is shorter than set up", and "Already busy then". Group, division, week and gap
+   are the camp's own words (`c/shoreshTerms`). They are written in one place (`reasonFor`,
+   `words.js`); Manual Build part 3 will reuse them, so the dots say the same words on both
+   schedules: change them there, deliberately, and for both.
+8. **Determinism.** The seed is `programId|weekId|option`, hashed with 32-bit FNV-1a (the
+   desktop hashed its camp id with djb2) into mulberry32 (the desktop's generator). Each Open cell gets its own stream (seed + date + group +
    block), from which one key per activity is drawn in activity order before placing starts; the
    matching has its own stream. Every input is sorted by SortOrder, then Id (by character code,
    never locale); days by date; other programs' occupancy by date, time, place, activity. So the
@@ -142,14 +159,31 @@ cells) and 0009 (names through `c/shoreshSchema`).
    date and clock time. An entry counts against each of this program's blocks whose time
    overlaps it, on places' groups that fit and activities' groups at once. No count means one
    group; a count of 0 takes no room. Default: none.
-10. **Output.** The days in the same shape Manual Build uses (frame unchanged; items listed in the
-    order cells use them; items no cell uses are dropped), `flags` per cell, `stillToPlace`
-    (weekly minimums not met, early-week goals missed, each with a line like "Swim · Bunk 3:
-    1 still needed by Wednesday"), and `openCells`. Flags and reasons are not stored: G3 works
-    them out again on load (coordinator's call).
-11. **Code layout** (`force-app/main/default/lwc/shoreshEngine`): `shoreshEngine.js` (entry point,
-    output, words), `setup.js` (reads inputs, ordering), `week.js` (the builder), `random.js`
-    (hash and stream).
+10. **One rules module: `checkWeek`.** The dots come from the finished grid, not from how it was
+    built: `checkWeek(days, model, { t, dayName })` (`checks.js`), written and tested for Manual
+    Build part 3 (its scenario tests and its 2,000-week property test against an independent
+    oracle came with it) and moved here so both schedules use it (coordinator, 2026-10-17). One
+    function per rule, in the order rules give way, with `reasonFor`'s words. A rule broken by
+    several placements dots all of them: over the weekly limit dots each of that group's
+    placements of it, twice in a day dots both, too many at an activity or a place dots each
+    one there; fixed and recurring activities count toward a place but never get a dot. So the
+    same grid always gets the same dots, whatever order it was filled in, and anything kept
+    that breaks a rule is dotted too. Additions here: shorter than set up (only when the model
+    asks, as the engine does; Manual Build shortens by hand), other programs' groups (counted
+    at places and activities, another division for same division only), and each dot's rule
+    names (`bends`). `checkInputs.js` reads the season's records into its model (activities and
+    places through the engine's own readers); the engine builds the same model from its inputs
+    (`checkModel`).
+11. **Output.** The days in the same shape Manual Build uses (frame unchanged; items listed in the
+    order cells use them; items no cell uses are dropped); `flags`, checkWeek's dots on the
+    finished week, one entry per cell; checkWeek's `stillNeeded` and `spread` lines ("Swim ·
+    Bunk 3: 1 still needed by Wednesday"), `overlapping` and `cells` (filled of to fill), in the
+    same words and order as Manual Build; and `openCells`. Flags and reasons are not stored: G3
+    works them out again on load with `checkWeek` (coordinator's call).
+12. **Code layout** (`force-app/main/default/lwc/shoreshEngine`): `shoreshEngine.js` (entry
+    point, output), `setup.js` (reads inputs, ordering), `week.js` (the builder), `random.js`
+    (hash and stream), `grid.js` (reads a day's rows, so the engine never depends on a screen),
+    `words.js` (`reasonFor`), `checks.js` and `checkInputs.js` (the rules module).
 
 ## Tests
 
@@ -157,24 +191,27 @@ cells) and 0009 (names through `c/shoreshSchema`).
   below a minimum, the capped-activity matching sweeps, the minimum repair (including the
   1,000 seeded weeks known to be feasible, with locks every fifth week), multi-block first
   (contiguous sessions, 3-block runs, the 30-case groups-at-once grid), overlapping blocks.
-- The rules one at a time (`rules.test.js`), including each step of the order rules give way.
+- The rules one at a time (`rules.test.js`), including each step of the order rules give way,
+  overlapping blocks keeping the most cells, and the shorter-than-set-up bend.
+- `checkWeek`'s own tests (`checks.test.js`, `checks.property.test.js`), moved with it.
 - A seeded property test (`properties.test.js`, 300 random small camps with divisions,
   part-day groups, overlapping blocks, places, fixed activities, locks and kept cells from an
   earlier build, both modes, other programs), checked by an independent checker
   (`__tests__/data/check.js`): no hard rule broken unless a flag on a generated cell names it;
-  never blank; locked, fixed and not-at-camp cells untouched; deterministic.
+  never blank (a cell left Open must have the group busy at an overlapping time); locked, fixed
+  and not-at-camp cells untouched; deterministic; and the engine's dots are exactly what
+  `checkWeek` says about its finished week, with checkWeek's model built from the camp, not by
+  the engine.
 - Determinism (`determinism.test.js`): a pinned week, byte-identical rebuilds, 20 shuffled input
   orders, shuffled grid group order, no `Math.random`, different options, weeks and programs.
 - Performance (`performance.test.js`): 12 groups × 5 days × 8 blocks, a week that fits and one
-  that can't, each well under 2 seconds in Jest (about 15 ms and 350 ms on a laptop).
-- Mutation check of the key guards (review practice): 27 deliberate breakages of the rules,
-  kept cells, never-blank, the seed and input ordering; every one makes a test fail (one, taking
-  out the repair rollback, makes the build loop forever).
-- Known limit, pinned: in the desktop's "one spare cell" sweep (8 groups, 9 cells, 8 activities
-  once a week, one group at a time), options 80 and 82 of 1..100 leave one session short (6 in
-  1,000). The desktop's own 100 seeds all passed; the repairs are the same, the tie-breaks
-  differ. The minimum repair won't move a session out of a cell it can't refill cleanly, even
-  though never-blank would fill it. A later change could let it, with care.
+  that can't, each well under 2 seconds in Jest (about 15 ms and 350 ms on a laptop). For G3: the
+  coordinator measured a 40 × 5 × 12 week that can't fit at 4–5 seconds, so the screen may need
+  to run the build in pieces; nothing in G1 stops that.
+- Mutation check of the key guards (review practice): deliberate breakages of the rules, kept
+  cells, never-blank, the overlap choice, the shortened fill, the repair limit, the seed, input
+  ordering and checkWeek's rules; every one makes a test fail (taking out the repair rollback
+  makes the build loop forever).
 
 ## Choices that are hard to undo after release
 
