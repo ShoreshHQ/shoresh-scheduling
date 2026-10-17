@@ -137,8 +137,8 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     Thursday?"); two ("MTWTF") are Tuesday, then Thursday. Two or more dashes are a list
     ("Mon-Wed-Fri" is three days; coordinator, #20 round 2). One dash is a range when its days
     are next to each other ("Mon-Tue") or span the week ("M-F"); any other ("T-Th") is asked:
-    "Tue to Thu, or just Tue and Thu?" (`TWO_DAY_DASH` in cells.js; "range" reads them all as
-    ranges, pending Greg). Each such dash is its own question, by how it is written ("M-W",
+    "Tue to Thu, or just Tue and Thu?" Asked only when it matters (Greg, 2026-10-17;
+    `TWO_DAY_DASH = "ask"` in cells.js). Each such dash is its own question, by how it is written ("M-W",
     "Tu-Th"), and a dash next to run-together letters ("MW-F") is no surer than one between
     single days (coordinator, #20 round 3). Every dash-like character (em dash, minus,
     Unicode hyphens) is a dash. Two-letter days ("Mo We Fr") are read; anything else odd
