@@ -2,6 +2,7 @@ import { createElement } from "lwc";
 import ShoreshRoots from "c/shoreshRoots";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
+import { nsRecord } from "shoresh-jest/namespace";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -72,9 +73,9 @@ const flush = () => Promise.resolve();
 
 async function render(setup = SETUP) {
   const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
-  element.setup = setup;
+  element.setup = nsRecord(setup);
   element.terms = terms;
-  element.problems = setupProblems(setup, terms);
+  element.problems = setupProblems(nsRecord(setup), terms);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -219,7 +220,7 @@ describe("c-shoresh-roots", () => {
 
   it("says all clear when nothing needs attention", async () => {
     const element = createElement("c-shoresh-roots", { is: ShoreshRoots });
-    element.setup = SETUP;
+    element.setup = nsRecord(SETUP);
     element.terms = terms;
     element.problems = [];
     document.body.appendChild(element);
