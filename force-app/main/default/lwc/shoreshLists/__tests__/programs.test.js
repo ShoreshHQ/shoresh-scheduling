@@ -217,6 +217,25 @@ describe("groups", () => {
   });
 });
 
+describe("a new unit's spelling in Who lists", () => {
+  it("counts every row, repeats too, whatever the order", () => {
+    const body = [
+      ["Flag", "Period 1", "Mon", "hikers"],
+      ["Flag", "Period 1", "Mon", "Hikers"],
+      ["Swim", "Period 1", "Mon", "Hikers"]
+    ];
+    [body, [...body].reverse()].forEach((b) => {
+      const p = read("recurringActivities", [
+        ["Recurring activity", "Time block", "Runs on", "Who"],
+        ...b
+      ]);
+      const titles = questionCards(p, terms, {}).map((c) => c.title);
+      expect(titles).toContain("“Hikers” is new in Main. What is it?");
+      expect(titles.join(" ")).not.toContain("“hikers”");
+    });
+  });
+});
+
 describe("a lone T in a days cell", () => {
   it("asks Tuesday or Thursday, and reads the days as answered", () => {
     const rows = [

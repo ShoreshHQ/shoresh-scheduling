@@ -704,6 +704,10 @@ function settleLeads(read, screen, used, answers) {
       }
     }
     lead.spellings = spellings;
+    // Who names as every row agreeing with the lead writes them, for one spelling per name.
+    lead.whoWritten = rows
+      .filter((r) => !r.notChosen && Array.isArray(r.values.who))
+      .flatMap((r) => r.values.who);
     rows
       .filter((r) => r !== lead)
       .forEach((r) => {

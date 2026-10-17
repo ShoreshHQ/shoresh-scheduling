@@ -94,16 +94,18 @@ function whoAddition(name, answer, programs) {
 export function unknownWho(buckets, answers, t) {
   const result = { cards: [], adds: [], leftOut: new Set(), open: new Set() };
   buckets.forEach((bucket, index) => {
-    // One spelling per name whatever the row order: the most written, then alphabetical.
+    // One spelling per name whatever the row order: the most written across every row (repeats
+    // too), then alphabetical.
     const spellings = new Map();
     bucket.rows
       .filter(
         (r) => !r.problems.length && !r.leftOut && Array.isArray(r.values.who)
       )
       .forEach((r) => {
-        r.values.who.forEach((name) => {
+        const own = new Set(r.values.who.map(looseKey));
+        (r.whoWritten || r.values.who).forEach((name) => {
           const key = looseKey(name);
-          if (!bucket.targets.bySpelling.has(key)) {
+          if (own.has(key) && !bucket.targets.bySpelling.has(key)) {
             const seen = spellings.get(key) || new Map();
             seen.set(name, (seen.get(name) || 0) + 1);
             spellings.set(key, seen);
