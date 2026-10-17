@@ -166,7 +166,8 @@ public with sharing class ImportFields {
         return term;
       }
     }
-    throw unreadableLog();
+    // Only objects imports write are counted: anything else is Shoresh's own mistake.
+    throw new IllegalArgumentException('Not a kind imports write: ' + type);
   }
 
   /** The object of a record an import wrote, or the refusal: never one an import doesn't write. */
@@ -199,10 +200,13 @@ public with sharing class ImportFields {
     return found;
   }
 
-  /** Refuses any field an import doesn't write on this object. */
+  /** Refuses any field an import doesn't write on this object, or one named twice. */
   public static void check(Schema.SObjectType type, Set<String> names) {
+    Set<Schema.SObjectField> seen = new Set<Schema.SObjectField>();
     for (String name : names) {
-      field(type, name);
+      if (!seen.add(field(type, name))) {
+        throw unreadableLog();
+      }
     }
   }
 

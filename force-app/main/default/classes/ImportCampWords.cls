@@ -126,8 +126,8 @@ public with sharing class ImportCampWords {
         name
       );
       if (
-        field != CampLabel__c.Singular__c &&
-        field != CampLabel__c.Plural__c
+        (field != CampLabel__c.Singular__c &&
+        field != CampLabel__c.Plural__c) || result.containsKey(field)
       ) {
         throw ImportListSaves.unreadable();
       }

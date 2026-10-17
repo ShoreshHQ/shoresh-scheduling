@@ -17,6 +17,8 @@ public with sharing class ShoreshSchema {
   private static String simulatedPrefix;
   private static String realPrefix;
   private static Map<Schema.SObjectType, Map<String, Schema.SObjectField>> fieldsByLocalName = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>();
+  // Imports and Undo ask for the same fields' names row after row.
+  private static Map<Schema.SObjectField, String> localNames = new Map<Schema.SObjectField, String>();
 
   /** What Salesforce puts before this package's names: '' today, 'shoresh__' once it has one. */
   public static String prefix() {
@@ -66,7 +68,12 @@ public with sharing class ShoreshSchema {
 
   /** The field's name without the prefix ("StartDate__c"): how stored names are kept. */
   public static String localName(Schema.SObjectField field) {
-    return field.getDescribe().getLocalName();
+    String name = localNames.get(field);
+    if (name == null) {
+      name = field.getDescribe().getLocalName();
+      localNames.put(field, name);
+    }
+    return name;
   }
 
   /** The object's name without the prefix ("Week__c"). */
@@ -86,7 +93,8 @@ public with sharing class ShoreshSchema {
 
   /**
    * The name of the parent's list of child rows that point at it through this field, for a
-   * subquery ("Eligibilities__r" for ActivityEligibility__c.Activity__c); null if none.
+   * subquery ("Eligibilities__r" for ActivityEligibility__c.Activity__c). A field that doesn't
+   * point at the parent is Shoresh's own mistake: refused plainly, never sent as a query.
    */
   public static String childRelationship(
     Schema.SObjectType parent,
@@ -102,7 +110,9 @@ public with sharing class ShoreshSchema {
         return child.getRelationshipName();
       }
     }
-    return null;
+    throw new ShoreshException(
+      'Shoresh could not read how its records fit together. Nothing was changed. Please tell Shoresh support.'
+    );
   }
 
   private static Map<String, Schema.SObjectField> localFields(
@@ -123,7 +133,7 @@ public with sharing class ShoreshSchema {
         Schema.DescribeFieldResult described = each.getDescribe();
         if (
           !described.isCustom() ||
-          described.getName() == realPrefix() + described.getLocalName()
+          isOwn(described.getName(), described.getLocalName(), realPrefix())
         ) {
           byName.put(described.getLocalName().toLowerCase(), each);
         }
@@ -131,5 +141,18 @@ public with sharing class ShoreshSchema {
       fieldsByLocalName.put(type, byName);
     }
     return byName;
+  }
+
+  /**
+   * Whether a custom field is this package's own: its full name is exactly the package's prefix
+   * and its local name. A customer's own StartDate__c on our object, or another package's, is not.
+   */
+  @TestVisible
+  private static Boolean isOwn(
+    String fullName,
+    String localName,
+    String packagePrefix
+  ) {
+    return fullName == packagePrefix + localName;
   }
 }

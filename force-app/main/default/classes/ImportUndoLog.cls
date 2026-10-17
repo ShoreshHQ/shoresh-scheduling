@@ -144,7 +144,8 @@ public with sharing class ImportUndoLog {
   /**
    * A short fingerprint of a record's values for the given fields (sorted). Fields are named by
    * their local names in it, however the list spells them, so a fingerprint taken before the
-   * namespace arrived still matches.
+   * namespace arrived still matches. The names must be Shoresh's own or already checked
+   * (ImportUndoValues.read checks a log's): this never queries, but it trusts what it is given.
    */
   public static String digest(SObject record, List<String> fields) {
     Schema.SObjectType kind = record.getSObjectType();

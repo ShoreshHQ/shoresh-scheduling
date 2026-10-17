@@ -154,9 +154,12 @@ private class ImportNamespaceTest {
         FROM Import__c
         WHERE Id = :result.importId
       ];
+      // Only Shoresh's prefix is simulated: the platform still reports bare names here, so this
+      // shows the screen's prefixed names don't reach the log. That logs keep local names when
+      // the platform itself reports prefixed ones is checked after the namespace is registered.
       Assert.isFalse(
         (logged.Created__c + logged.Changed__c).contains(PREFIX),
-        'Logs keep local names'
+        'Screen spellings stay out of the log'
       );
       Assert.isTrue(
         logged.Changed__c.contains('"type":"Week__c"'),
@@ -309,6 +312,32 @@ private class ImportNamespaceTest {
       Assert.areEqual(
         'Group',
         CampLabels.forCamp(c.camp.Id).singular('Group'),
+        'Nothing saved'
+      );
+    }
+  }
+
+  /** One field sent twice, spelled with and without the prefix: refused, not guessed at. */
+  @IsTest
+  static void aFieldSentTwiceInTwoSpellingsIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ShoreshSchema.simulatedPrefix = PREFIX;
+      Camp c = camp();
+      Map<String, Object> plan = workbook(c, new List<Object>());
+      Map<String, Object> week = (Map<String, Object>) ((List<Object>) plan.get(
+        'records'
+      ))[1];
+      ((Map<String, Object>) week.get('fields'))
+        .put(PREFIX + 'EndDate__c', '2026-07-03');
+      try {
+        ImportController.saveWorkbook(JSON.serialize(plan));
+        Assert.fail('a field sent twice must be refused');
+      } catch (AuraHandledException e) {
+        Assert.isNotNull(e.getMessage(), 'Says why');
+      }
+      Assert.areEqual(
+        'Week 1',
+        [SELECT Name FROM Week__c WHERE Id = :c.weeks[0].Id].Name,
         'Nothing saved'
       );
     }

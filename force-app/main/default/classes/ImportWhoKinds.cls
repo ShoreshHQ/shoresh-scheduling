@@ -5,24 +5,32 @@
  * references here, never names from the screen or a log.
  */
 public with sharing class ImportWhoKinds {
-  private static final Map<String, Kind> BY_OWNER = new Map<String, Kind>{
-    'Activity' => new Kind(
-      'ActivityEligibility',
-      new List<Schema.SObjectField>{
-        ActivityEligibility__c.Activity__c,
-        ActivityEligibility__c.Division__c,
-        ActivityEligibility__c.Group__c
-      }
-    ),
-    'RecurringActivity' => new Kind(
-      'Coverage',
-      new List<Schema.SObjectField>{
-        Coverage__c.RecurringActivity__c,
-        Coverage__c.Division__c,
-        Coverage__c.Group__c
-      }
-    )
-  };
+  // Built on first use: each kind reads its relationship from describe.
+  private static Map<String, Kind> byOwner;
+
+  private static Map<String, Kind> kinds() {
+    if (byOwner == null) {
+      byOwner = new Map<String, Kind>{
+        'Activity' => new Kind(
+          'ActivityEligibility',
+          new List<Schema.SObjectField>{
+            ActivityEligibility__c.Activity__c,
+            ActivityEligibility__c.Division__c,
+            ActivityEligibility__c.Group__c
+          }
+        ),
+        'RecurringActivity' => new Kind(
+          'Coverage',
+          new List<Schema.SObjectField>{
+            Coverage__c.RecurringActivity__c,
+            Coverage__c.Division__c,
+            Coverage__c.Group__c
+          }
+        )
+      };
+    }
+    return byOwner;
+  }
 
   /** One kind of who list. */
   public with sharing class Kind {
@@ -89,7 +97,7 @@ public with sharing class ImportWhoKinds {
 
   /** By the owner's kind ("Activity", "RecurringActivity"). */
   public static Kind forOwner(String ownerKind) {
-    return BY_OWNER.get(ownerKind);
+    return kinds().get(ownerKind);
   }
 
   /**
@@ -100,7 +108,7 @@ public with sharing class ImportWhoKinds {
     String name = childType instanceof String
       ? ShoreshSchema.withoutPrefix((String) childType)
       : null;
-    for (Kind kind : BY_OWNER.values()) {
+    for (Kind kind : kinds().values()) {
       if (
         name != null &&
         name.equalsIgnoreCase(ShoreshSchema.localName(kind.childType))
@@ -115,8 +123,8 @@ public with sharing class ImportWhoKinds {
   /** The division or group a who row names. */
   public static String targetOf(SObject row) {
     Kind kind = row.getSObjectType() == Coverage__c.SObjectType
-      ? BY_OWNER.get('RecurringActivity')
-      : BY_OWNER.get('Activity');
+      ? kinds().get('RecurringActivity')
+      : kinds().get('Activity');
     Object division = row.get(kind.divisionField);
     return division != null
       ? (String) division

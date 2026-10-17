@@ -157,6 +157,8 @@ public with sharing class ImportListRows {
   public SObject rowFor(ImportPlan.Entry entry) {
     SObject row = entry.isNew() ? newRow() : existingRow(entry.id());
     Map<String, Object> values = entry.valuesOf('fields');
+    // One field sent twice (spelled with and without the prefix) is refused, not guessed at.
+    Set<Schema.SObjectField> seen = new Set<Schema.SObjectField>();
     for (String name : values.keySet()) {
       // The screen names fields (with the package's prefix once it has one).
       Schema.SObjectField field = ShoreshSchema.field(type, name);
@@ -168,7 +170,12 @@ public with sharing class ImportListRows {
         !entry.isNew() &&
         kind != 'Week';
       Boolean moving = field == Week__c.StartDate__c && !entry.isNew();
-      if (!PLAIN_FIELDS.get(kind).contains(field) || renaming || moving) {
+      if (
+        !PLAIN_FIELDS.get(kind).contains(field) ||
+        renaming ||
+        moving ||
+        !seen.add(field)
+      ) {
         throw ImportListSaves.unreadable();
       }
       row.put(field, ImportUndoValues.asField(field, values.get(name)));
@@ -199,10 +206,15 @@ public with sharing class ImportListRows {
   public List<List<Object>> putLinks(SObject row, ImportPlan.Entry entry) {
     List<List<Object>> waiting = new List<List<Object>>();
     Map<String, Object> links = entry.valuesOf('refs');
+    Set<Schema.SObjectField> seen = new Set<Schema.SObjectField>();
     for (String name : links.keySet()) {
       Schema.SObjectField field = ShoreshSchema.field(type, name);
       Boolean moving = NEW_ONLY_LINKS.contains(field) && !entry.isNew();
-      if (!LINK_FIELDS.get(kind).contains(field) || moving) {
+      if (
+        !LINK_FIELDS.get(kind).contains(field) ||
+        moving ||
+        !seen.add(field)
+      ) {
         throw ImportListSaves.unreadable();
       }
       String target = (String) links.get(name);

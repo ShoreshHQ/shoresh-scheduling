@@ -179,13 +179,43 @@ private class ShoreshSchemaTest {
   }
 
   @IsTest
-  static void noChildListForAFieldThatDoesNotPointAtTheParent() {
-    Assert.isNull(
+  static void aFieldThatDoesNotPointAtTheParentIsRefusedPlainly() {
+    try {
       ShoreshSchema.childRelationship(
         Activity__c.SObjectType,
         Coverage__c.Group__c
-      ),
-      'Coverage rows don\'t point at activities'
+      );
+      Assert.fail('Coverage rows don\'t point at activities');
+    } catch (ShoreshException e) {
+      Assert.isTrue(
+        e.getMessage().contains('Nothing was changed'),
+        e.getMessage()
+      );
+    }
+  }
+
+  /** The guard against a customer's same-named field, with and without a namespace. */
+  @IsTest
+  static void onlyThisPackagesOwnCustomFieldsCount() {
+    Assert.isTrue(
+      ShoreshSchema.isOwn('shoresh__Length__c', 'Length__c', 'shoresh__'),
+      'Ours, namespaced'
+    );
+    Assert.isFalse(
+      ShoreshSchema.isOwn('Length__c', 'Length__c', 'shoresh__'),
+      'A customer\'s own field on our object'
+    );
+    Assert.isFalse(
+      ShoreshSchema.isOwn('other__Length__c', 'Length__c', 'shoresh__'),
+      'Another package\'s field'
+    );
+    Assert.isTrue(
+      ShoreshSchema.isOwn('Length__c', 'Length__c', ''),
+      'Ours, before the namespace'
+    );
+    Assert.isFalse(
+      ShoreshSchema.isOwn('other__Length__c', 'Length__c', ''),
+      'Another package\'s field, before the namespace'
     );
   }
 
