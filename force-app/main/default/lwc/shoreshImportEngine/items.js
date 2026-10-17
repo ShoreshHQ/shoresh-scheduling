@@ -258,7 +258,7 @@ export function setTimeRecords(decision, keyOf) {
   }
   return decision.patterns.map((p) => ({
     kind: "recurring",
-    key: `R|${t.key}|${decision.name}|${p.block}|${p.days.join(",")}`,
+    key: `R|${t.key}|${decision.name}|${p.block}|${p.length}|${p.days.join(",")}`,
     groups: p.groups,
     name: decision.name,
     timetable: t,

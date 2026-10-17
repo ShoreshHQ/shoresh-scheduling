@@ -29,10 +29,13 @@ public with sharing class ImportVersionWrites {
       );
     }
     writer.saveTracked('Schedule', schedules);
+    // All the versions' days in one save (an import may hold many weeks).
+    Map<Id, List<ScheduleDaySaves.DaySave>> daysBySchedule = new Map<Id, List<ScheduleDaySaves.DaySave>>();
     for (Integer i = 0; i < entries.size(); i++) {
-      ScheduleDaySaves.write(schedules[i].Id, days(entries[i]));
+      daysBySchedule.put(schedules[i].Id, days(entries[i]));
       writer.result.countAdded('Version');
     }
+    ScheduleDaySaves.writeAll(daysBySchedule);
   }
 
   private List<ScheduleDaySaves.DaySave> days(ImportPlan.Entry entry) {

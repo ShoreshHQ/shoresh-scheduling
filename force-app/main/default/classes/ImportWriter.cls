@@ -7,15 +7,16 @@
 public with sharing class ImportWriter {
   public ImportKeys keys { get; private set; }
   public ImportSetupSaves.Result result { get; private set; }
-  // Created records by kind: [{ id, fields: values written }].
-  public Map<String, List<Map<String, Object>>> created { get; private set; }
+  // Created records by kind: { fieldsets: [[field, ...]], rows: [[id, fieldset, fingerprint]] }:
+  // the values written, as a fingerprint, so Undo can tell whether anyone edited them since.
+  public Map<String, Map<String, Object>> created { get; private set; }
   // Changed records: [{ id, type, before, after }].
   public List<Map<String, Object>> changed { get; private set; }
 
   public ImportWriter(ImportKeys keys) {
     this.keys = keys;
     this.result = new ImportSetupSaves.Result();
-    this.created = new Map<String, List<Map<String, Object>>>();
+    this.created = new Map<String, Map<String, Object>>();
     this.changed = new List<Map<String, Object>>();
   }
 
@@ -49,15 +50,25 @@ public with sharing class ImportWriter {
 
   private void track(String term, SObject row) {
     if (!created.containsKey(term)) {
-      created.put(term, new List<Map<String, Object>>());
-    }
-    created
-      .get(term)
-      .add(
+      created.put(
+        term,
         new Map<String, Object>{
-          'id' => row.Id,
-          'fields' => ImportUndoLog.values(row)
+          'fieldsets' => new List<Object>(),
+          'rows' => new List<Object>()
         }
+      );
+    }
+    Map<String, Object> kind = created.get(term);
+    List<Object> fieldsets = (List<Object>) kind.get('fieldsets');
+    List<String> fields = ImportUndoLog.fieldsOf(row);
+    Integer fieldset = fieldsets.indexOf(fields);
+    if (fieldset < 0) {
+      fieldsets.add(fields);
+      fieldset = fieldsets.size() - 1;
+    }
+    ((List<Object>) kind.get('rows'))
+      .add(
+        new List<Object>{ row.Id, fieldset, ImportUndoLog.digest(row, fields) }
       );
   }
 }

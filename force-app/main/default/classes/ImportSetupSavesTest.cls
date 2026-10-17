@@ -746,6 +746,13 @@ private class ImportSetupSavesTest {
       Assert.isTrue(queries < 60, 'queries: ' + queries);
       Assert.isTrue(dml < 60, 'DML statements: ' + dml);
       Assert.isTrue(cpu < 8000, 'CPU ms: ' + cpu);
+      Integer logged = [
+          SELECT Created__c
+          FROM Import__c
+          WHERE Id = :result.importId
+        ]
+        .Created__c.length();
+      Assert.isTrue(logged < 30000, 'the undo record stays small: ' + logged);
     }
   }
 

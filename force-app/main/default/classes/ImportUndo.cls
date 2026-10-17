@@ -29,10 +29,11 @@ public with sharing class ImportUndo {
     SetTimeGuard.defer();
     Savepoint beforeUndo = Database.setSavepoint();
     try {
-      new ImportUndoDeletes(result)
-        .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
+      // Put back first (a group moved into a division the import made goes home), then remove.
       new ImportUndoRestores(result)
         .run((List<Object>) JSON.deserializeUntyped(done.Changed__c));
+      new ImportUndoDeletes(result)
+        .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
       done.UndoneAt__c = Datetime.now();
       Database.update(done, AccessLevel.USER_MODE);

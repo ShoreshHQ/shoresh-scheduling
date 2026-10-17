@@ -53,6 +53,7 @@ export default class ShoreshImport extends LightningElement {
   error;
   result;
   undone;
+  undoing = false;
   remembered = {};
   dragging = false;
   sheetJsLoaded = false;
@@ -112,7 +113,13 @@ export default class ShoreshImport extends LightningElement {
   /** The camp's answers from earlier imports (Greg: a similar file does not ask again). */
   async rememberedAnswers() {
     const campId = this.setup && this.setup.season && this.setup.season.Camp__c;
-    const saved = campId ? await getAnswers({ campId }) : [];
+    let saved = [];
+    try {
+      saved = campId ? await getAnswers({ campId }) : [];
+    } catch {
+      // Without remembered answers the import still works: everything is asked.
+      saved = [];
+    }
     const answers = {};
     (saved || []).forEach((row) => {
       answers[row.key] = row.answer;
@@ -483,7 +490,9 @@ export default class ShoreshImport extends LightningElement {
     return this.unplaced.length > 0;
   }
   get canUndo() {
-    return !!(this.result && this.result.importId) && !this.undone;
+    return (
+      !!(this.result && this.result.importId) && !this.undone && !this.undoing
+    );
   }
 
   async handleUndo() {
@@ -494,15 +503,18 @@ export default class ShoreshImport extends LightningElement {
       variant: "header",
       theme: "warning"
     });
-    if (!ok) {
+    if (!ok || this.undoing) {
       return;
     }
+    this.undoing = true;
     try {
       const result = await undoImport({ importId: this.result.importId });
       this.undone = undoMessage(result);
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.error = `That import could not be undone. ${errorMessage(e)}`;
+    } finally {
+      this.undoing = false;
     }
   }
 

@@ -97,4 +97,47 @@ public with sharing class ImportUndoLog {
       ? (Object) String.valueOf(value).left(5)
       : value;
   }
+
+  /** One text for comparing values: numbers without trailing zeros, times as "HH:mm". */
+  public static String normalized(Object value) {
+    Object plainValue = plain(value);
+    if (plainValue == null) {
+      return '';
+    }
+    if (
+      plainValue instanceof Decimal ||
+      plainValue instanceof Integer ||
+      plainValue instanceof Long ||
+      plainValue instanceof Double
+    ) {
+      return Decimal.valueOf(String.valueOf(plainValue))
+        .stripTrailingZeros()
+        .toPlainString();
+    }
+    return String.valueOf(plainValue);
+  }
+
+  /** A short fingerprint of a record's values for the given fields (sorted). */
+  public static String digest(SObject record, List<String> fields) {
+    List<String> parts = new List<String>();
+    for (String field : fields) {
+      parts.add(field + '=' + normalized(record.get(field)));
+    }
+    return EncodingUtil.convertToHex(
+        Crypto.generateDigest('MD5', Blob.valueOf(String.join(parts, '\n')))
+      )
+      .left(16);
+  }
+
+  /** A row's written fields, sorted, its Id left out. */
+  public static List<String> fieldsOf(SObject row) {
+    List<String> fields = new List<String>();
+    for (String field : row.getPopulatedFieldsAsMap().keySet()) {
+      if (field != 'Id') {
+        fields.add(field);
+      }
+    }
+    fields.sort();
+    return fields;
+  }
 }

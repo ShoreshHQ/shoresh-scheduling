@@ -143,6 +143,7 @@ function itemKeyFinder(proposal) {
     const fits = mine.find(
       (r) =>
         r.block === p.blockIndex &&
+        r.length === p.span &&
         r.days.includes(p.day) &&
         r.groups.includes(p.group)
     );
@@ -165,7 +166,9 @@ function dayGrid(t, groups, placements, context) {
     const start = column.get(p.blockIndex);
     if (!item) {
       context.unmatched.push({ ...p, why: "leftOut" });
-    } else if (g < 0 || start === undefined || rows[g][start] !== "") {
+    } else if (g < 0) {
+      context.unmatched.push({ ...p, why: "groupLeftOut" });
+    } else if (start === undefined || rows[g][start] !== "") {
       context.unmatched.push({ ...p, why: "twoAtOnce" });
     } else {
       rows[g][start] = items.number(item.kind, item.key, p.text);
@@ -224,7 +227,9 @@ function versionFor(t, week, label, context) {
 
 function reasonFor(p, proposal) {
   const t = proposal.timetables[p.timetable];
-  const group = proposal.groups.find((g) => g.name === p.group);
+  const group = proposal.groups.find(
+    (g) => g.name === p.group && g.timetable === p.timetable
+  );
   if (!t || t.leftOut) {
     return "programLeftOut";
   }
@@ -264,8 +269,19 @@ export function versionsFor(proposal, input) {
   );
   const versions = [];
   for (const t of proposal.timetables.filter((x) => !x.leftOut)) {
+    const used = new Set();
     for (const label of labels) {
       const week = mapped.byLabel.get(label);
+      if (week && used.has(week.Id)) {
+        // Two weeks of the files went to the same season week: the first one is kept.
+        proposal.usable
+          .filter((p) => p.timetable === t.index && p.week === label)
+          .forEach((p) => context.unmatched.push({ ...p, why: "sameWeek" }));
+        continue;
+      }
+      if (week) {
+        used.add(week.Id);
+      }
       const here = proposal.usable.filter(
         (p) => p.timetable === t.index && p.week === label
       );

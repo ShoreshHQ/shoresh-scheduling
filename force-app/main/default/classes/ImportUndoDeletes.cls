@@ -17,7 +17,9 @@ public with sharing class ImportUndoDeletes {
     'TimeBlock',
     'Program'
   };
-  // Records inside each kind (master-detail child relationships): anything left there keeps it.
+  // Records inside each kind (master-detail children), or pointing at it through a link that
+  // would quietly clear (a time block an item ends at, an activity used as a rain plan):
+  // anything there not made by the import, or kept by this Undo, keeps it.
   private static final Map<String, List<String>> INSIDE = new Map<String, List<String>>{
     'Program' => new List<String>{
       'Divisions__r',
@@ -27,7 +29,11 @@ public with sharing class ImportUndoDeletes {
       'Schedules__r'
     },
     'Division' => new List<String>{ 'Groups__r' },
-    'Activity' => new List<String>{ 'Eligibilities__r' }
+    'TimeBlock' => new List<String>{
+      'EndingFixedActivities__r',
+      'EndingRecurringActivities__r'
+    },
+    'Activity' => new List<String>{ 'Eligibilities__r', 'RainPlanFor__r' }
   };
 
   private ImportUndo.Result result;
@@ -38,45 +44,61 @@ public with sharing class ImportUndoDeletes {
   }
 
   public void run(Map<String, Object> created) {
-    for (Object entries : created.values()) {
-      for (Object entry : (List<Object>) entries) {
-        createdIds.add((Id) (String) ((Map<String, Object>) entry).get('id'));
+    for (Object kind : created.values()) {
+      for (
+        Object row : (List<Object>) ((Map<String, Object>) kind).get('rows')
+      ) {
+        createdIds.add((Id) (String) ((List<Object>) row)[0]);
       }
     }
+    // Who-can-do-it rows are not removed on their own: they go with their activity.
     for (String term : ORDER) {
       if (created.containsKey(term)) {
-        remove(term, (List<Object>) created.get(term));
+        remove(term, (Map<String, Object>) created.get(term));
       }
     }
   }
 
-  private void remove(String term, List<Object> entries) {
-    Map<Id, Map<String, Object>> written = new Map<Id, Map<String, Object>>();
+  private void remove(String term, Map<String, Object> kind) {
+    List<List<String>> fieldsets = new List<List<String>>();
     Set<String> fields = new Set<String>();
-    for (Object item : entries) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      Map<String, Object> values = (Map<String, Object>) entry.get('fields');
-      written.put((Id) (String) entry.get('id'), values);
-      fields.addAll(values.keySet());
+    for (Object fieldset : (List<Object>) kind.get('fieldsets')) {
+      List<String> names = new List<String>();
+      for (Object name : (List<Object>) fieldset) {
+        names.add((String) name);
+      }
+      fieldsets.add(names);
+      fields.addAll(names);
     }
-    String objectName = term + '__c';
+    Map<Id, List<Object>> rows = new Map<Id, List<Object>>();
+    for (Object row : (List<Object>) kind.get('rows')) {
+      rows.put((Id) (String) ((List<Object>) row)[0], (List<Object>) row);
+    }
     Map<Id, SObject> now = ImportUndoValues.read(
-      objectName,
+      term + '__c',
       fields,
-      written.keySet()
+      rows.keySet()
     );
     Set<Id> holding = holdingOthers(term, now.keySet());
     List<SObject> toDelete = new List<SObject>();
     for (SObject record : now.values()) {
-      if (!ImportUndoValues.unchanged(record, written.get(record.Id))) {
-        result.keptEdited.add((String) record.get('Name'));
+      List<Object> row = rows.get(record.Id);
+      List<String> written = fieldsets[(Integer) row[1]];
+      if (ImportUndoLog.digest(record, written) != (String) row[2]) {
+        keep(record, result.keptEdited);
       } else if (holding.contains(record.Id)) {
-        result.keptInUse.add((String) record.get('Name'));
+        keep(record, result.keptInUse);
       } else {
         toDelete.add(record);
       }
     }
     deleteAll(toDelete);
+  }
+
+  /** A record kept is no longer the import's: whatever it is inside is kept too. */
+  private void keep(SObject record, List<String> into) {
+    createdIds.remove(record.Id);
+    into.add((String) record.get('Name'));
   }
 
   /** Records with something inside them the import did not make (one query, with sub-queries). */
@@ -125,7 +147,7 @@ public with sharing class ImportUndoDeletes {
       if (outcomes[i].isSuccess()) {
         result.removed++;
       } else {
-        result.keptInUse.add((String) records[i].get('Name'));
+        keep(records[i], result.keptInUse);
       }
     }
   }

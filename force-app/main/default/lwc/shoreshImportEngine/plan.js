@@ -384,7 +384,9 @@ const UNPLACED_WHY = {
   dayNotInWeek: (t) => `that ${t.sIn("Week")} has no such day`,
   weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
   noWeeks: (t) => `the ${t.sIn("Season")} has no ${t.pIn("Week")} yet`,
-  twoAtOnce: () => "something else is already in that cell"
+  twoAtOnce: () => "something else is already in that cell",
+  sameWeek: (t) =>
+    `another ${t.sIn("Week")} of the files went to the same ${t.sIn("Week")}`
 };
 
 /**

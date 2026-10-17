@@ -214,3 +214,80 @@ describe("answers to remember", () => {
     expect(plan.versions).toHaveLength(1);
   });
 });
+
+describe("part 2 review", () => {
+  const answers = {
+    "similar|activity|music|musik|Music|Musik": "a",
+    "kind|Library time": "recurring"
+  };
+  const existing = existingSetup({ weeks: [WEEK1] });
+
+  it("every key in a version grid is a record the save creates or one the camp has", () => {
+    const p = propose(samples("all-camp"), existing, answers);
+    const plan = planFor(p, existing, "s", { answers });
+    const planned = new Set(
+      [
+        "programs",
+        "timeBlocks",
+        "divisions",
+        "groups",
+        "locations",
+        "activities",
+        "fixedActivities",
+        "recurringActivities"
+      ].flatMap((list) => plan[list].map((e) => e.key))
+    );
+    for (const day of plan.versions.flatMap((v) => v.days)) {
+      const keys = [
+        ...day.grid.b.map((b) => b[0]),
+        ...day.grid.g.map((g) => g[0]),
+        ...day.grid.i.map((i) => i[1]).filter(Boolean)
+      ];
+      keys.forEach((key) => expect(planned.has(key)).toBe(true));
+    }
+  });
+
+  it("two recurring records differing only in length have their own keys", () => {
+    const rows = (span) => [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Swim", "Swim"],
+      ["9:50-10:35", span ? "Swim" : "Art", "Soccer"],
+      ["12:00-12:45", "Lunch", "Lunch"]
+    ];
+    const files = ["Monday", "Wednesday"].map((d) =>
+      csv(`${d}.csv`, [["", "Juniors", "Seniors"], ...rows(true)])
+    );
+    files.push(
+      ...["Tuesday", "Thursday", "Friday"].map((d) =>
+        csv(`${d}.csv`, [["", "Juniors", "Seniors"], ...rows(false)])
+      )
+    );
+    const p = propose(files, existing, { "kind|Swim": "recurring" });
+    const swim = p.recurring.filter((r) => r.name === "Swim");
+    expect(new Set(swim.map((r) => r.key)).size).toBe(swim.length);
+  });
+
+  it("two weeks of the files that go to the same season week: the second is listed, not saved", () => {
+    const w1 = samples("all-camp").map((f) => ({
+      ...f,
+      name: `Week 1 ${f.name}`
+    }));
+    const w2 = samples("all-camp").map((f) => ({
+      ...f,
+      name: `Week 2 ${f.name}`
+    }));
+    const card = (p) =>
+      questionCards(p, terms, answers).find((c) => c.id === "week|Week 2");
+    const first = propose([...w1, ...w2], existing, answers);
+    const p = propose([...w1, ...w2], existing, {
+      ...answers,
+      [card(first).id]: "Week 1"
+    });
+    expect(p.versions).toHaveLength(1);
+    expect(
+      unplacedLines(p, terms).some(
+        (l) => l.why === "another week of the files went to the same week"
+      )
+    ).toBe(true);
+  });
+});
