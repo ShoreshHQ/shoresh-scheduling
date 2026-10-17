@@ -1,0 +1,3 @@
+# False positives: SLDS CSS design-token names ("token": "--slds-g-shadow-…") in a copied skill index.
+.claude/skills/design-systems-slds-apply/assets/hooks-index.json:generic-api-key:4729
+.claude/skills/design-systems-slds-apply/assets/hooks-index.json:generic-api-key:4738
