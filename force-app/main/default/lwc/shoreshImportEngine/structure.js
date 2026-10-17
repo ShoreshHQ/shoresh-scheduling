@@ -24,9 +24,17 @@ export function blockFromLabel(label) {
 }
 
 function blockKey(block) {
-  return block.start === null
-    ? `name:${looseKey(block.name)}`
-    : `${block.start}-${block.end === null ? "" : block.end}`;
+  if (block.start === null) {
+    return `name:${looseKey(block.name)}`;
+  }
+  // A time read as afternoon only by the camp-day rule ("6:00-6:30") is kept apart from a
+  // stated one ("6:00 PM-6:30 PM") until the director says morning or evening.
+  const guessed = block.guessedPm && block.start >= 17 * 60 ? "?" : "";
+  return `${block.start}-${block.end === null ? "" : block.end}${guessed}`;
+}
+
+function sameTimes(a, b) {
+  return a.start === b.start && a.end === b.end;
 }
 
 function overlaps(a, b) {
@@ -40,7 +48,9 @@ function overlaps(a, b) {
 
 function conflicts(blocksA, blocksB) {
   return blocksA.some((a) =>
-    blocksB.some((b) => blockKey(a) !== blockKey(b) && overlaps(a, b))
+    blocksB.some(
+      (b) => blockKey(a) !== blockKey(b) && !sameTimes(a, b) && overlaps(a, b)
+    )
   );
 }
 
@@ -106,6 +116,8 @@ function morningOrEvening(blocks, context) {
       end: b.end
     });
     const answer = context.answers[id];
+    // Unanswered, it is not merged with any other block.
+    b.pending = !answer;
     if (answer === "morning") {
       b.start -= 12 * 60;
       b.end = b.end === null ? null : b.end - 12 * 60;
@@ -131,12 +143,22 @@ function orderedBlocks(blocks, context) {
   // morning): keep one, and send the other's placements to it.
   const aliases = new Map();
   const seen = new Map();
-  for (const b of timed) {
+  for (const b of timed.filter((x) => !x.pending)) {
     const at = `${b.start}-${b.end}`;
-    if (seen.has(at)) {
-      aliases.set(b.key, seen.get(at).key);
-    } else {
+    const first = seen.get(at);
+    if (!first) {
       seen.set(at, b);
+    } else if (first.guessedPm && !b.guessedPm) {
+      // Keep the block whose label states AM or PM ("6:00 AM-6:30 AM").
+      aliases.set(first.key, b.key);
+      seen.set(at, b);
+    } else {
+      aliases.set(b.key, first.key);
+    }
+  }
+  for (const [from, to] of aliases) {
+    if (aliases.has(to)) {
+      aliases.set(from, aliases.get(to));
     }
   }
   const kept = timed.filter((b) => !aliases.has(b.key));

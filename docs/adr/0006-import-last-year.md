@@ -190,11 +190,14 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     - Bare hours from 7 to 11 are always morning and 12 to 4 afternoon: Shoresh is for day camps
       only (decision 0001), so "7:30-8:30 Evening program" reads as morning. Only 5 and 6
       o'clock are asked about. Answering "morning" can make two pages' versions of a block the
-      same ("6:00 AM-6:30 AM" and "6:00-6:30"): they are then one block. The question is per
+      same ("6:00 AM-6:30 AM" and "6:00-6:30"): they are then one block. Until it is answered, a bare
+      time is never merged with a stated one ("6:00 PM-6:30 PM"); the block kept is the one
+      whose label states AM or PM. The question is per
       time and what the block holds, so two programs' rows are asked about separately.
     - A division read only from a lone file's whole name ("Juniors - Bunk 1.csv") is offered in
       that group's dropdown but never preselected (nor is Main over it), unless it matches a
-      division the camp has or a page states.
+      division the camp has or a page states. A program with no divisions can always choose Main (not
+      preselected when a file name suggests another).
     - Two files with the same name are ordered by what is in them; "Use this setup" also waits
       for the preview's choices; `GroupMoves` reads camp words once per camp.
 16. **Deferred by Greg (2026-10-16)** to the Groups-screen move PR and Manual Build: a group

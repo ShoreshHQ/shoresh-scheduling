@@ -575,7 +575,11 @@ describe("PR 16 round 3", () => {
     const p = propose([lone("Juniors - Bunk 1.csv")]);
     const unit = cards(p).find((c) => c.select === "division");
     expect(unit.answer).toBeNull();
-    expect(unit.options.map((o) => o.value)).toEqual(["Juniors", LEAVE_OUT]);
+    expect(unit.options.map((o) => o.value)).toEqual([
+      "Juniors",
+      "Main",
+      LEAVE_OUT
+    ]);
   });
 
   it("a lone file's unit is offered beside the camp's own", () => {
@@ -637,5 +641,75 @@ describe("PR 16 round 3", () => {
       "Is Breakfast 6:00–6:30 in the morning or the evening?",
       "Is Pickup 6:00–6:30 in the morning or the evening?"
     ]);
+  });
+});
+
+describe("PR 16 round 4", () => {
+  it("a new camp can always choose Main, beside a unit a file name suggests", () => {
+    const file = csv("Maple Grove 2026 - Bunk 1.csv", [
+      ["Time", ...DAYS],
+      ...BLOCKS.map((b, bi) => [b, ...DAYS.map((_, d) => rotation(0, d, bi))])
+    ]);
+    const unit = cards(propose([file])).find((c) => c.select === "division");
+    expect(unit.answer).toBeNull();
+    expect(unit.options.map((o) => o.value)).toEqual([
+      "Maple Grove 2026",
+      "Main",
+      LEAVE_OUT
+    ]);
+  });
+
+  const pickup = csv("Monday.csv", [
+    ["Time", "Bunk 1"],
+    ["6:00 PM-6:30 PM", "Pickup"],
+    ["9:00-9:45", "Swim"]
+  ]);
+  const wake = csv("Tuesday.csv", [
+    ["Time", "Bunk 1"],
+    ["6:00-6:30", "Wake up"],
+    ["9:00-9:45", "Art"]
+  ]);
+  const blockOf = (p, text) => {
+    const placement = p.reading.placements.find((x) => x.text === text);
+    return p.timetables[0].blocks.find((b) => b.fileKey === placement.blockKey);
+  };
+
+  it("a bare time is not merged with a stated one before its question is answered", () => {
+    const p = propose([pickup, wake]);
+    const card = cards(p).find((c) => c.id.startsWith("ampm|"));
+    expect(card.title).toBe(
+      "Is Wake up 6:00–6:30 in the morning or the evening?"
+    );
+    expect(blockOf(p, "Wake up").fileKey).not.toBe(
+      blockOf(p, "Pickup").fileKey
+    );
+    const morning = propose([pickup, wake], null, { [card.id]: "morning" });
+    expect([
+      blockOf(morning, "Wake up").start,
+      blockOf(morning, "Pickup").start
+    ]).toEqual([at(6), at(18)]);
+    const evening = propose([pickup, wake], null, { [card.id]: "evening" });
+    expect(blockOf(evening, "Wake up").fileKey).toBe(
+      blockOf(evening, "Pickup").fileKey
+    );
+  });
+
+  it("the block kept is the one whose label states AM or PM", () => {
+    const bare = csv("A Monday.csv", [
+      ["Time", "Bunk 1"],
+      ["6:00-6:30", "Wake up"],
+      ["9:00-9:45", "Swim"]
+    ]);
+    const stated = csv("B Tuesday.csv", [
+      ["Time", "Bunk 1"],
+      ["6:00 AM-6:30 AM", "Wake up"],
+      ["9:00-9:45", "Art"]
+    ]);
+    const card = cards(propose([bare, stated])).find((c) =>
+      c.id.startsWith("ampm|")
+    );
+    const p = propose([bare, stated], null, { [card.id]: "morning" });
+    expect(p.timetables[0].blocks[0].name).toBe("6:00 AM-6:30 AM");
+    expect(p.timetables[0].blocks).toHaveLength(2);
   });
 });

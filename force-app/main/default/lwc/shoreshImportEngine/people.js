@@ -205,7 +205,9 @@ function unitChoice(group, here, fileDivisions, ctx) {
       ...here.known.map((d) => d.name),
       ...fileDivisions,
       ...(group.hint ? [group.hint] : []),
-      ...(preselected ? [preselected] : [])
+      ...(preselected ? [preselected] : []),
+      // A program with no divisions can always start with Main (round 4).
+      ...(noUnits ? [DEFAULT_DIVISION] : [])
     ])
   ].filter((d) => !taken.has(looseKey(d)));
   ctx.asks.push({
