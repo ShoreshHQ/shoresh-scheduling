@@ -1,5 +1,5 @@
 <template>
-  <div class="schedules" data-id="manual-build">
+  <div class="schedules" data-id="manual-build" onkeydown={handleKeyDown}>
     <!-- Toolbar, as on the desktop: the week, then how to look at it. -->
     <div class="toolbar">
       <template lwc:if={hasSeveralPrograms}>
@@ -37,8 +37,35 @@
             </button>
           </template>
         </div>
+        <div class="undo-redo">
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            title={undoTitle}
+            aria-label={undoTitle}
+            disabled={cannotUndo}
+            onclick={handleUndo}
+            data-id="undo"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            title={redoTitle}
+            aria-label={redoTitle}
+            disabled={cannotRedo}
+            onclick={handleRedo}
+            data-id="redo"
+          >
+            Redo
+          </button>
+        </div>
       </template>
     </div>
+    <template lwc:if={notice}>
+      <p class="notice" role="status" data-id="notice">{notice}</p>
+    </template>
 
     <template lwc:if={loading}>
       <lightning-spinner
@@ -78,68 +105,99 @@
         <p class="empty">{noDaysMessage}</p>
       </template>
       <template lwc:else>
-        <template lwc:if={isDaily}>
-          <div class="pills" data-id="day-pills">
-            <template for:each={dayPills} for:item="day">
-              <button
-                key={day.key}
-                type="button"
-                class={day.className}
-                data-index={day.index}
-                onclick={handleDay}
-              >
-                {day.label} <span class="pill-sub">{day.sub}</span>
-              </button>
+        <div class="build-layout">
+          <template lwc:if={showPalette}>
+            <c-shoresh-build-palette
+              class="build-palette"
+              still-needed={neededChips}
+              placed={placedChips}
+              heading={paletteHeading}
+              filter={filter}
+              picked-id={pickedActivityId}
+              onfilter={handleFilter}
+              onpickactivity={handlePickActivity}
+              onactivitydragstart={handleActivityDragStart}
+              onremovedrop={handleRemoveDrop}
+            ></c-shoresh-build-palette>
+          </template>
+          <div class="build-main">
+            <template lwc:if={isDaily}>
+              <div class="pills" data-id="day-pills">
+                <template for:each={dayPills} for:item="day">
+                  <button
+                    key={day.key}
+                    type="button"
+                    class={day.className}
+                    data-index={day.index}
+                    onclick={handleDay}
+                  >
+                    {day.label} <span class="pill-sub">{day.sub}</span>
+                  </button>
+                </template>
+              </div>
+              <template lwc:if={dayProblem}>
+                <div
+                  class="slds-notify slds-notify_alert slds-alert_warning"
+                  role="alert"
+                >
+                  {dayProblem}
+                </div>
+              </template>
+              <template lwc:else>
+                <c-shoresh-schedule-grid
+                  data-id="edit-grid"
+                  grid={editGrid}
+                  corner={corner}
+                  label={dailyGridLabel}
+                  editable
+                  oneditcell={handleEditCell}
+                  onclearcell={handleClearCell}
+                  oncellspace={handleCellSpace}
+                  oncellclick={handleCellClick}
+                  oncellescape={handleCellEscape}
+                  oncellresize={handleCellResize}
+                  oncelldragstart={handleCellDragStart}
+                  onresizestart={handleResizeStart}
+                  oncelldrop={handleCellDrop}
+                ></c-shoresh-schedule-grid>
+              </template>
+            </template>
+
+            <template lwc:if={isGroup}>
+              <div class="pills" data-id="group-pills">
+                <template for:each={groupPills} for:item="grp">
+                  <button
+                    key={grp.key}
+                    type="button"
+                    class={grp.className}
+                    data-key={grp.key}
+                    onclick={handleGroup}
+                  >
+                    {grp.name}
+                  </button>
+                </template>
+              </div>
+              <template lwc:if={editGrid}>
+                <c-shoresh-schedule-grid
+                  data-id="edit-grid"
+                  grid={editGrid}
+                  corner={corner}
+                  label={groupGridLabel}
+                  editable
+                  oneditcell={handleEditCell}
+                  onclearcell={handleClearCell}
+                  oncellspace={handleCellSpace}
+                  oncellclick={handleCellClick}
+                  oncellescape={handleCellEscape}
+                  oncellresize={handleCellResize}
+                  oncelldragstart={handleCellDragStart}
+                  onresizestart={handleResizeStart}
+                  oncelldrop={handleCellDrop}
+                ></c-shoresh-schedule-grid>
+              </template>
             </template>
           </div>
-          <template lwc:if={dayProblem}>
-            <div
-              class="slds-notify slds-notify_alert slds-alert_warning"
-              role="alert"
-            >
-              {dayProblem}
-            </div>
-          </template>
-          <template lwc:else>
-            <c-shoresh-schedule-grid
-              data-id="edit-grid"
-              grid={editGrid}
-              corner={corner}
-              label={dailyGridLabel}
-              editable
-              oneditcell={handleEditCell}
-              onclearcell={handleClearCell}
-            ></c-shoresh-schedule-grid>
-          </template>
-        </template>
-
-        <template lwc:if={isGroup}>
-          <div class="pills" data-id="group-pills">
-            <template for:each={groupPills} for:item="grp">
-              <button
-                key={grp.key}
-                type="button"
-                class={grp.className}
-                data-key={grp.key}
-                onclick={handleGroup}
-              >
-                {grp.name}
-              </button>
-            </template>
-          </div>
-          <template lwc:if={editGrid}>
-            <c-shoresh-schedule-grid
-              data-id="edit-grid"
-              grid={editGrid}
-              corner={corner}
-              label={groupGridLabel}
-              editable
-              oneditcell={handleEditCell}
-              onclearcell={handleClearCell}
-            ></c-shoresh-schedule-grid>
-          </template>
-        </template>
-
+        </div>
         <template lwc:if={isActivity}>
           <template lwc:if={selectedActivity}>
             <div class="drill-head">

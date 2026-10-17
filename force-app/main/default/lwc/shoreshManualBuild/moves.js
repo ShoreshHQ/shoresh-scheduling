@@ -7,7 +7,7 @@
  * desktop. A position is { day, group, block }: indexes into the schedule's days, that day's
  * groups, and its time blocks.
  */
-import { OPEN, isSetTime, slots } from "./slotEdits";
+import { OPEN, diffRun, isSetTime, placementIn, slots } from "./slotEdits";
 
 const CARRIES_ON = "^";
 
@@ -19,57 +19,6 @@ export const REFUSED = Object.freeze({
   NO_ROOM: "noRoom"
 });
 
-function carries(slot) {
-  return slot.startsWith(CARRIES_ON);
-}
-
-/** The placement a slot of a row is part of: first block, length, and what starts there. */
-export function placementIn(row, b) {
-  if (row[b] === OPEN) {
-    return { first: b, length: 1, slot: OPEN };
-  }
-  let first = b;
-  while (first > 0 && carries(row[first])) {
-    first -= 1;
-  }
-  let length = 1;
-  while (
-    first + length < row.length &&
-    row[first + length] === CARRIES_ON + row[first]
-  ) {
-    length += 1;
-  }
-  return { first, length, slot: row[first] };
-}
-
-/**
- * The run that turns one row into another: the slots that differ, widened so it starts and ends
- * on whole placements. Null when nothing differs.
- */
-export function diffRun(before, after) {
-  let first = before.findIndex((slot, i) => slot !== after[i]);
-  if (first < 0) {
-    return null;
-  }
-  let last = before.length - 1;
-  while (before[last] === after[last]) {
-    last -= 1;
-  }
-  while (first > 0 && (carries(before[first]) || carries(after[first]))) {
-    first -= 1;
-  }
-  while (
-    last + 1 < before.length &&
-    (carries(before[last + 1]) || carries(after[last + 1]))
-  ) {
-    last += 1;
-  }
-  return {
-    first,
-    before: before.slice(first, last + 1),
-    after: after.slice(first, last + 1)
-  };
-}
 
 /** Puts an item at a block for up to `length` blocks over Open, at-camp slots. Returns how many. */
 function fill(row, start, slot, length, isAway) {
@@ -214,25 +163,4 @@ export function inverse(runs) {
   return [...runs]
     .reverse()
     .map((run) => ({ ...run, before: run.after, after: run.before }));
-}
-
-/**
- * "Use yours" for a run someone else's change got in the way of: the run's slots set as yours on
- * the row as it is now, widened again to whole placements.
- */
-export function rebase(currentRow, run) {
-  const after = [...currentRow];
-  run.after.forEach((slot, i) => {
-    after[run.first + i] = slot;
-  });
-  // A carry-on left without its start (theirs was longer) is Open now.
-  for (let b = 0; b < after.length; b++) {
-    if (
-      carries(after[b]) &&
-      (b === 0 || (after[b - 1] !== after[b].slice(1) && after[b - 1] !== after[b]))
-    ) {
-      after[b] = OPEN;
-    }
-  }
-  return diffRun(currentRow, after);
 }

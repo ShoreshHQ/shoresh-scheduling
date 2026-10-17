@@ -62,9 +62,7 @@ export function paletteChips(schedule, activities, groupId, filter) {
     .toLowerCase();
   const chips = (activities || [])
     .filter(
-      (a) =>
-        !typed ||
-        a.name.replace(/\s+/g, "").toLowerCase().includes(typed)
+      (a) => !typed || a.name.replace(/\s+/g, "").toLowerCase().includes(typed)
     )
     .map((a) => {
       const scale = groupId

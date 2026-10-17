@@ -1,15 +1,6 @@
-import {
-  REFUSED,
-  diffRun,
-  inverse,
-  moveEdit,
-  rebase,
-  removeEdit,
-  resizeEdit
-} from "../moves";
+import { REFUSED, inverse, moveEdit, removeEdit, resizeEdit } from "../moves";
 import { day } from "./data/draftFixture";
 
-const F = "F:f1";
 const SWIM = "A:a1";
 const BOATING = "A:a2";
 const SOCCER = "A:a3";
@@ -30,20 +21,6 @@ const week = () => [
 ];
 
 describe("moves", () => {
-  it("a run covers what changed, widened to whole placements", () => {
-    expect(diffRun(["", "", ""], ["", SWIM, ""])).toEqual({
-      first: 1,
-      before: [""],
-      after: [SWIM]
-    });
-    expect(diffRun([F, BOATING, `^${BOATING}`], [F, BOATING, ""])).toEqual({
-      first: 1,
-      before: [BOATING, `^${BOATING}`],
-      after: [BOATING, ""]
-    });
-    expect(diffRun([F, SWIM], [F, SWIM])).toBeNull();
-  });
-
   it("onto an Open slot of another day it moves, leaving Open behind", () => {
     const result = moveEdit(week(), at(0, 0, 1), at(1, 0, 2), nowhereAway);
     expect(result.runs).toEqual([
@@ -146,15 +123,5 @@ describe("moves", () => {
       { day: 1, group: 0, first: 2, before: [SWIM], after: [""] },
       { day: 0, group: 0, first: 1, before: [""], after: [SWIM] }
     ]);
-  });
-
-  it("use yours over a longer activity of theirs takes all of it", () => {
-    // Theirs: Boating over blocks 1-2. Mine: Swim in block 1.
-    const now = [F, BOATING, `^${BOATING}`];
-    expect(rebase(now, { first: 1, after: [SWIM] })).toEqual({
-      first: 1,
-      before: [BOATING, `^${BOATING}`],
-      after: [SWIM, ""]
-    });
   });
 });

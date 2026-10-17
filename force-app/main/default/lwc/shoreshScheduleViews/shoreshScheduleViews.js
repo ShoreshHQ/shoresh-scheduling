@@ -161,6 +161,7 @@ function cellView(item, t) {
   if (!item) {
     return {
       text: "Open",
+      open: true,
       className: "cell cell_open",
       note: null,
       title: "Open"

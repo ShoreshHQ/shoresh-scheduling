@@ -39,11 +39,27 @@ export default class ShoreshScheduleGrid extends LightningElement {
     }
 
     Promise.resolve().then(() => {
-      const cell = this.cellElement(this.activeKey);
+      const cell = this.cellElement(this.currentKey);
       if (cell) {
         cell.focus();
       }
     });
+  }
+
+  /** Where a cell is on screen now, or null when it isn't shown. */
+  @api
+  cellRect(key) {
+    const cell = this.cellElement(key);
+    if (!cell) {
+      return null;
+    }
+    const rect = cell.getBoundingClientRect();
+    return {
+      top: rect.top,
+      left: rect.left,
+      bottom: rect.bottom,
+      width: rect.width
+    };
   }
 
   get frameRole() {
@@ -147,7 +163,10 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (!cell) {
       return;
     }
-    if (event.shiftKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+    if (
+      event.shiftKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
       event.preventDefault();
       this.send("cellresize", {
         key,

@@ -25,6 +25,9 @@ import {
   rebaseRun,
   slots
 } from "./slotEdits";
+import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
+import { History } from "./history";
+import { paletteChips } from "./counts";
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -41,9 +44,13 @@ function slotKey(slot) {
 /**
  * Manual Build (desktop: the Manual schedule): a program's week built by hand. A week not started
  * yet offers "Start a blank week" (fixed and recurring activities placed, the rest Open). In Daily
- * and Group View a slot is changed by typing a name (double-click, Enter, or F2) and cleared with
- * Delete; each edit saves at once. An edit to a slot someone else changed since asks "keep theirs
- * or use yours" (Greg, 2026-10-17); nothing is overwritten unseen. Activity View is read-only.
+ * and Group View an activity is dragged from the list onto a slot, a placement dragged to another
+ * slot (moved, or swapped with what is there) or back to the list (taken out), its bottom handle
+ * dragged to make it longer or shorter; or a name is typed (double-click, Enter, or F2) and Delete
+ * clears. From the keyboard, Space picks up a placement or a list activity and Space puts it
+ * down; Shift with Up or Down changes the length. Each edit saves at once and can be undone (50
+ * steps). An edit to a slot someone else changed since asks "keep theirs or use yours" (Greg,
+ * 2026-10-17); nothing is overwritten unseen. Activity View is read-only.
  *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
  */
@@ -72,6 +79,18 @@ export default class ShoreshManualBuild extends LightningElement {
   queue = [];
   saving = false;
   loadTicket = 0;
+  // The activity list's Filter box.
+  filter = "";
+  // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
+  // { kind: "cell" | "resize", slot, key }.
+  picked;
+  dragging;
+  // A refused move, said in a few words ("Swim doesn't fit there.").
+  notice;
+  history = new History();
+  // Bumped whenever history changes, so Undo and Redo show what they would do.
+  historyVersion = 0;
+  stepSeq = 0;
 
   @api
   get setup() {
@@ -93,11 +112,7 @@ export default class ShoreshManualBuild extends LightningElement {
   connectedCallback() {
     this.onWindowFocus = () => this.refresh();
     // The slot box sits where the slot was on screen; scrolling would leave it behind.
-    this.onScroll = () => {
-      if (this.editor) {
-        this.closeEditor();
-      }
-    };
+    this.onScroll = () => this.followEditor();
     window.addEventListener("focus", this.onWindowFocus);
     window.addEventListener("scroll", this.onScroll, true);
   }
@@ -174,6 +189,11 @@ export default class ShoreshManualBuild extends LightningElement {
       this.draft = null;
       this.loading = true;
       this.closeEditor();
+      // Undo is for this visit to this week (Greg #10).
+      this.history.clear();
+      this.historyVersion += 1;
+      this.picked = null;
+      this.notice = null;
     }
     try {
       const draft = await getDraft({
@@ -365,10 +385,23 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   decorate(cell, saving) {
-    let result = cell.slot
-      ? { ...cell, readOnly: this.lockedReason(cell.slot) !== null }
-      : cell;
-    if (cell.slot && cell.text === "Open" && this.isAwaySlot(cell.slot)) {
+    let result = cell;
+    if (cell.slot) {
+      const here = placement(
+        this.dayOf(cell.slot),
+        cell.slot.group,
+        cell.slot.block
+      ).slot;
+      result = {
+        ...cell,
+        readOnly: this.lockedReason(cell.slot) !== null,
+        movable: here.startsWith("A:")
+      };
+      if (this.picked && this.picked.key === cell.key) {
+        result.className = `${result.className} cell_picked`;
+      }
+    }
+    if (cell.slot && cell.open && this.isAwaySlot(cell.slot)) {
       const grp = this.dayOf(cell.slot).groups[cell.slot.group];
       result = {
         ...result,
@@ -520,6 +553,10 @@ export default class ShoreshManualBuild extends LightningElement {
   handleEditCell(event) {
     const cell = this.cellByKey(event.detail.key);
     if (!cell || !cell.slot) {
+      return;
+    }
+    if (this.picked) {
+      this.handleCellSpace(event);
       return;
     }
     const reason = this.lockedReason(cell.slot);
@@ -690,6 +727,20 @@ export default class ShoreshManualBuild extends LightningElement {
     this.closeEditor();
   }
 
+  /** Scrolling moves the slot box with its slot, or closes it when the slot is out of sight. */
+  followEditor() {
+    if (!this.editor) {
+      return;
+    }
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    const rect = grid ? grid.cellRect(this.editor.key) : null;
+    if (!rect) {
+      this.closeEditor();
+      return;
+    }
+    this.editor = { ...this.editor, top: rect.bottom + 4, left: rect.left };
+  }
+
   closeEditor(refocus = false) {
     const key = this.editor && this.editor.key;
     this.editor = null;
@@ -751,34 +802,61 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!run) {
       return;
     }
-    const edit = {
-      runs: [
-        {
-          day: day.dateValue,
-          groupId: day.groups[slot.group].id,
-          firstBlockId: day.blocks[run.first].id,
-          before: run.before,
-          after: run.after
-        }
-      ]
-    };
-    const label =
+    let label =
       next === OPEN
         ? `Cleared ${this.slotName(slot, run.first)}`
         : `Placed ${this.nameOf(next, day)} · ${this.slotName(slot, run.first)}`;
+    const placed = run.after.filter((s) => s !== OPEN).length;
+    if (next !== OPEN && placed < (length || 1)) {
+      // Not enough room for its whole length: placed as far as it goes, and said so.
+      label += ` (${placed} of ${length})`;
+    }
+    this.commit([{ day: slot.day, group: slot.group, ...run }], label, key);
+  }
+
+  /** A run as the server takes it: the day's date, the group's and first block's Ids. */
+  toServerRun(run) {
+    const day = this.schedule.days[run.day];
+    return {
+      day: day.dateValue,
+      groupId: day.groups[run.group].id,
+      firstBlockId: day.blocks[run.first].id,
+      before: run.before,
+      after: run.after
+    };
+  }
+
+  /** A new change ({ day, group, first, before, after } runs): saved, and one Undo step. */
+  commit(runs, label, key) {
+    const serverRuns = runs.map((run) => this.toServerRun(run));
+    this.stepSeq += 1;
+    const step = { id: this.stepSeq, runs: serverRuns, label };
+    this.history.record(step);
+    this.historyVersion += 1;
+    this.send(serverRuns, label, key, step.id, runs[0]);
+  }
+
+  /** Shows runs on the grid at once and queues them for the server. */
+  send(serverRuns, label, key, stepId, firstRun) {
+    this.notice = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
     this.loading = false;
+    const edit = { runs: serverRuns };
     this.queue = [
       ...this.queue,
       {
         edit,
         key,
         label,
-        slot,
-        next,
-        length,
-        slotKey: slotKey({ ...slot, block: run.first })
+        stepId,
+        slotKey: firstRun
+          ? slotKey({
+              day: firstRun.day,
+              group: firstRun.group,
+              block: firstRun.first
+            })
+          : null
       }
     ];
     this.applyLocally(edit);
@@ -847,11 +925,325 @@ export default class ShoreshManualBuild extends LightningElement {
           ? ` ${dropped} more ${dropped === 1 ? "change was" : "changes were"} not saved.`
           : "");
       this.queue = [];
+      // What is saved is no longer known here: undoing could only guess.
+      this.history.clear();
+      this.historyVersion += 1;
       this.load(true);
     } finally {
       this.saving = false;
     }
     this.saveNext();
+  }
+
+  // ---------- undo and redo ----------
+
+  get canUndo() {
+    return this.historyVersion >= 0 && this.history.canUndo;
+  }
+  get cannotUndo() {
+    return !this.canUndo;
+  }
+  get cannotRedo() {
+    return !(this.historyVersion >= 0 && this.history.canRedo);
+  }
+  get undoTitle() {
+    return this.canUndo ? `Undo: ${this.history.undoLabel}` : "Undo";
+  }
+  get redoTitle() {
+    return this.cannotRedo ? "Redo" : `Redo: ${this.history.redoLabel}`;
+  }
+
+  handleUndo() {
+    if (!this.canUndo) {
+      return;
+    }
+    const { step, runs } = this.history.undo();
+    this.historyVersion += 1;
+    this.send(runs, `Undone: ${step.label}`, null, step.id, null);
+  }
+
+  handleRedo() {
+    if (this.cannotRedo) {
+      return;
+    }
+    const { step, runs } = this.history.redo();
+    this.historyVersion += 1;
+    this.send(runs, `Redone: ${step.label}`, null, step.id, null);
+  }
+
+  /** Ctrl or Cmd with Z undoes, with Shift (or Ctrl+Y) redoes; typing boxes keep their own. */
+  handleKeyDown(event) {
+    const tag = event.target && event.target.tagName;
+    if (!(event.ctrlKey || event.metaKey) || tag === "INPUT") {
+      return;
+    }
+    const key = String(event.key).toLowerCase();
+    if (key === "z" && !event.shiftKey) {
+      event.preventDefault();
+      this.handleUndo();
+    } else if ((key === "z" && event.shiftKey) || key === "y") {
+      event.preventDefault();
+      this.handleRedo();
+    }
+  }
+
+  // ---------- the activity list ----------
+
+  get showPalette() {
+    return !this.isActivity;
+  }
+  get chips() {
+    return paletteChips(
+      this.schedule,
+      (this.draft && this.draft.activities) || [],
+      this.isGroup ? this.groupKey : null,
+      this.filter
+    );
+  }
+  get neededChips() {
+    return this.chips.stillNeeded;
+  }
+  get placedChips() {
+    return this.chips.placed;
+  }
+  get paletteHeading() {
+    return this.t.p("Activity");
+  }
+  get pickedActivityId() {
+    return this.picked && this.picked.kind === "activity"
+      ? this.picked.id
+      : null;
+  }
+
+  handleFilter(event) {
+    this.filter = event.detail.value;
+  }
+
+  /** Enter, Space, or a click on a list activity picks it up; then a slot puts it down. */
+  handlePickActivity(event) {
+    const { id } = event.detail;
+    if (this.pickedActivityId === id) {
+      this.letGo();
+      return;
+    }
+    this.picked = { kind: "activity", id };
+    this.announce(`${this.activityName(id)} picked up.`);
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    if (grid) {
+      grid.focusCell();
+    }
+  }
+
+  handleActivityDragStart(event) {
+    this.dragging = { kind: "activity", id: event.detail.id };
+  }
+
+  /** A placement dragged back onto the list is taken out of the week. */
+  handleRemoveDrop() {
+    const dragged = this.dragging;
+    this.dragging = null;
+    if (dragged && dragged.kind === "cell") {
+      this.removeAt(dragged.slot);
+    }
+  }
+
+  activityName(id) {
+    const activity = this.activityFor(`A:${id}`);
+    return activity ? activity.name : "";
+  }
+
+  activityLength(id) {
+    const activity = this.activityFor(`A:${id}`);
+    return activity ? activity.length : 1;
+  }
+
+  // ---------- dragging, picking up, putting down ----------
+
+  handleCellDragStart(event) {
+    const cell = this.cellByKey(event.detail.key);
+    this.dragging =
+      cell && cell.movable
+        ? { kind: "cell", slot: cell.slot, key: cell.key }
+        : null;
+  }
+
+  handleResizeStart(event) {
+    const cell = this.cellByKey(event.detail.key);
+    this.dragging =
+      cell && cell.movable
+        ? { kind: "resize", slot: cell.slot, key: cell.key }
+        : null;
+  }
+
+  handleCellDrop(event) {
+    const dragged = this.dragging;
+    this.dragging = null;
+    this.putDown(dragged, this.cellByKey(event.detail.key));
+  }
+
+  /** Space: puts down what is picked up, or picks up the placement in the slot. */
+  handleCellSpace(event) {
+    const cell = this.cellByKey(event.detail.key);
+    if (!cell) {
+      return;
+    }
+    if (this.picked) {
+      const picked = this.picked;
+      this.picked = null;
+      this.putDown(picked, cell);
+      return;
+    }
+    if (cell.movable) {
+      this.picked = { kind: "cell", slot: cell.slot, key: cell.key };
+      this.announce(
+        `${this.nameOf(placement(this.dayOf(cell.slot), cell.slot.group, cell.slot.block).slot, this.dayOf(cell.slot))} picked up from ${this.slotName(cell.slot)}.`
+      );
+    }
+  }
+
+  handleCellClick(event) {
+    if (this.picked) {
+      this.handleCellSpace(event);
+    }
+  }
+
+  handleCellEscape() {
+    if (this.picked) {
+      this.letGo();
+    }
+  }
+
+  letGo() {
+    this.picked = null;
+    this.announce("Put back.");
+  }
+
+  /** Shift with Up or Down: one block shorter or longer. */
+  handleCellResize(event) {
+    const cell = this.cellByKey(event.detail.key);
+    if (!cell || !cell.movable) {
+      return;
+    }
+    const at = placement(
+      this.dayOf(cell.slot),
+      cell.slot.group,
+      cell.slot.block
+    );
+    this.resizeTo(
+      cell.slot,
+      cell.key,
+      at.first + at.length - 1 + event.detail.delta
+    );
+  }
+
+  /** What was dragged or picked up, put down on a cell. */
+  putDown(what, cell) {
+    if (!what || !cell || !cell.slot) {
+      return;
+    }
+    if (what.kind === "activity") {
+      const reason = this.lockedReason(cell.slot);
+      if (reason) {
+        this.refuse(reason);
+        return;
+      }
+      this.change(
+        cell.slot,
+        cell.key,
+        `A:${what.id}`,
+        this.activityLength(what.id)
+      );
+    } else if (what.kind === "cell") {
+      this.moveTo(what.slot, cell);
+    } else if (
+      what.kind === "resize" &&
+      what.slot.day === cell.slot.day &&
+      what.slot.group === cell.slot.group
+    ) {
+      this.resizeTo(what.slot, what.key, cell.slot.block);
+    }
+  }
+
+  moveTo(from, cell) {
+    const fromDay = this.dayOf(from);
+    const name = this.nameOf(
+      placement(fromDay, from.group, from.block).slot,
+      fromDay
+    );
+    const result = moveEdit(this.schedule.days, from, cell.slot, (p) =>
+      this.isAwaySlot(p)
+    );
+    if (!result) {
+      return;
+    }
+    if (result.refused) {
+      this.refuse(this.refusal(result.refused, name, cell.slot));
+      return;
+    }
+    const day = this.dayOf(cell.slot);
+    const there = placement(day, cell.slot.group, cell.slot.block).slot;
+    const label =
+      there === OPEN
+        ? `Moved ${name} to ${this.slotName(cell.slot)}`
+        : `Swapped ${name} and ${this.nameOf(there, day)}`;
+    this.commit(result.runs, label, cell.key);
+  }
+
+  removeAt(slot) {
+    const day = this.dayOf(slot);
+    const name = this.nameOf(placement(day, slot.group, slot.block).slot, day);
+    const result = removeEdit(this.schedule.days, slot);
+    if (result) {
+      this.commit(
+        result.runs,
+        `Took out ${name} · ${this.slotName(slot)}`,
+        null
+      );
+    }
+  }
+
+  resizeTo(slot, key, lastBlock) {
+    const day = this.dayOf(slot);
+    const at = placement(day, slot.group, slot.block);
+    const name = this.nameOf(at.slot, day);
+    const result = resizeEdit(this.schedule.days, slot, lastBlock, (p) =>
+      this.isAwaySlot(p)
+    );
+    if (!result) {
+      return;
+    }
+    if (result.refused) {
+      this.refuse(this.refusal(result.refused, name, slot));
+      return;
+    }
+    const length = lastBlock - at.first + 1;
+    const word =
+      length === 1 ? this.t.sIn("TimeBlock") : this.t.pIn("TimeBlock");
+    this.commit(
+      result.runs,
+      `${name} runs ${length} ${word} · ${this.slotName({ ...slot, block: at.first })}`,
+      key
+    );
+  }
+
+  /** A refused move, in a few words. */
+  refusal(reason, name, slot) {
+    const day = this.dayOf(slot);
+    switch (reason) {
+      case REFUSED.SET_TIME:
+        return `${this.nameOf(placement(day, slot.group, slot.block).slot, day)} stays where it is set up.`;
+      case REFUSED.AWAY:
+        return `${day.groups[slot.group].name} isn't at camp then.`;
+      case REFUSED.SWAP_LONG:
+        return "Only single-block activities swap.";
+      default:
+        return `${name} doesn't fit there.`;
+    }
+  }
+
+  refuse(text) {
+    this.notice = text;
+    this.announce(text);
   }
 
   // ---------- someone else changed it ----------
@@ -909,8 +1301,11 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleKeepTheirs() {
-    const { key } = this.conflict.entry;
+    const { key, stepId } = this.conflict.entry;
     this.conflict = null;
+    // Their change stands, so this step never happened: nothing to undo or redo.
+    this.history.forget(stepId);
+    this.historyVersion += 1;
     const grid = this.template.querySelector('[data-id="edit-grid"]');
     if (grid) {
       grid.focusCell(key);
