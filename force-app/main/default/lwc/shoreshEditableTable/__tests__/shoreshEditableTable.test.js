@@ -143,6 +143,25 @@ describe("c-shoresh-editable-table", () => {
     error.mockRestore();
   });
 
+  it("a table given no object at all shows the same error, and can't add a row", async () => {
+    const error = jest.spyOn(console, "error").mockImplementation(() => {});
+    const element = createElement("c-shoresh-editable-table", {
+      is: ShoreshEditableTable
+    });
+    Object.assign(element, { title: "Nothing named", columns: COLUMNS });
+    document.body.appendChild(element);
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-id="unknown-object"]')
+    ).not.toBeNull();
+    expect(element.shadowRoot.querySelector("lightning-icon").iconName).toBe(
+      "utility:error"
+    );
+    expect(element.shadowRoot.querySelector("lightning-button")).toBeNull();
+    expect(error).toHaveBeenCalledTimes(1);
+    error.mockRestore();
+  });
+
   it("turns Salesforce times into what the time field shows", () => {
     expect(timeText(32400000)).toBe("09:00:00.000");
     expect(timeText(45900000)).toBe("12:45:00.000");

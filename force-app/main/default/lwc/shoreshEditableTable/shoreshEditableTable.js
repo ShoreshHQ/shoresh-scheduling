@@ -353,11 +353,11 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   /**
-   * The screen named an object this table doesn't know (not one of Shoresh's, or written
+   * The screen named an object this table doesn't know (none, not one of Shoresh's, or written
    * without the package's prefix): shown as an error, never edited or saved half-right.
    */
   get unknownObject() {
-    return !!this.objectApiName && !FIELDS_OF[this.objectApiName];
+    return !FIELDS_OF[this.objectApiName];
   }
 
   renderedCallback() {
