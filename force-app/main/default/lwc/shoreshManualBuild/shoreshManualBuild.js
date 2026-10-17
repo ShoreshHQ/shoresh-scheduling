@@ -87,6 +87,8 @@ export default class ShoreshManualBuild extends LightningElement {
   announcement = "";
   // A short line under the toolbar when something the director chose couldn't be made.
   notice;
+  // A line said that the next save's announcement would talk over: said again with it, once.
+  unrepeated = null;
   // Edits waiting for the server, oldest first; each { edit, key, label }.
   queue = [];
   saving = false;
@@ -199,6 +201,7 @@ export default class ShoreshManualBuild extends LightningElement {
       this.draft = null;
       this.loading = true;
       this.notice = null;
+      this.unrepeated = null;
       this.closeEditor();
       // Undo is for this visit to this week (Greg #10).
       this.history.clear();
@@ -908,6 +911,7 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     this.notice = null;
+    this.unrepeated = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
     this.loading = false;
@@ -984,15 +988,18 @@ export default class ShoreshManualBuild extends LightningElement {
         this.error = null;
         // A note that came with this change (Redo skipped.) is added to the line. Anything
         // already there (an earlier change that couldn't be made) stays until the director's
-        // next change, and is said again with this one.
-        if (entry.note && !(this.notice || "").includes(entry.note)) {
-          this.notice = this.notice
-            ? `${this.notice} ${entry.note}`
-            : entry.note;
+        // next change, and is said again with the first save after it, which would otherwise
+        // talk over it.
+        const fresh =
+          entry.note && !(this.notice || "").includes(entry.note)
+            ? entry.note
+            : null;
+        if (fresh) {
+          this.notice = this.notice ? `${this.notice} ${fresh}` : fresh;
         }
-        this.announce(
-          this.notice ? `${entry.label}. ${this.notice}` : entry.label
-        );
+        const said = [this.unrepeated, fresh].filter(Boolean).join(" ");
+        this.unrepeated = null;
+        this.announce(said ? `${entry.label}. ${said}` : entry.label);
       }
     } catch (e) {
       const dropped = this.queue.length - 1;
@@ -1453,23 +1460,23 @@ export default class ShoreshManualBuild extends LightningElement {
     if (made.gone || made.changed || made.fixed) {
       // Nothing of this edit was saved: it leaves Undo, and a waiting Undo or Redo of it goes.
       this.abandon(entry);
-      if (entry.kind !== "edit") {
-        // The step has left Undo and Redo: nothing to try again.
-        this.say(
-          `Can't ${entry.kind === "redo" ? "redo" : "undo"} ${entry.baseLabel}: the week has changed.`
-        );
-      } else if (made.gone) {
-        this.say(
-          `${made.gone.name || this.weekName} isn't in the week any more.`
-        );
+      let why;
+      if (made.gone) {
+        why = `${made.gone.name || this.weekName} isn't in the week any more`;
       } else if (made.changed) {
-        this.say(`${made.changed.rowName} has changed. Try again.`);
+        why = `${made.changed.rowName} has changed`;
       } else {
         const day = this.server.days.find(
           (d) => d.dateValue === made.fixed.day
         );
-        this.say(`${this.nameOf(made.slot, day)} stays where it is set up.`);
+        why = `${this.nameOf(made.slot, day)} stays where it is set up`;
       }
+      // An Undo or Redo has left both lists: nothing to try again.
+      this.say(
+        entry.kind === "edit"
+          ? `${why}.${made.changed ? " Try again." : ""}`
+          : `Can't ${entry.kind === "redo" ? "redo" : "undo"} ${entry.baseLabel}: ${why}.`
+      );
       return;
     }
     if (!made.runs.length) {
@@ -1533,6 +1540,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleKeepTheirs() {
     const { key, stepId } = this.conflict.entry;
     this.notice = null;
+    this.unrepeated = null;
     const firstRun = this.conflict.made.runs[0];
     this.conflict = null;
     // Their change stands, so this step never happened: nothing to undo or redo, and an Undo or
@@ -1549,6 +1557,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleUseYours() {
     const { entry, made } = this.conflict;
     this.notice = null;
+    this.unrepeated = null;
     this.conflict = null;
     this.useYours(entry, made);
   }
@@ -1626,6 +1635,7 @@ export default class ShoreshManualBuild extends LightningElement {
   /** A short note under the toolbar, said by screen readers too. */
   say(text) {
     this.notice = text;
+    this.unrepeated = text;
     this.announce(text);
   }
 

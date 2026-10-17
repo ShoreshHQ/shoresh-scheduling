@@ -835,21 +835,46 @@ describe("c-shoresh-manual-build: moving things", () => {
   it("a change that couldn't be made stays on the line while the next one saves", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
     const placing = later();
-    saveSlots.mockReturnValueOnce(placing.promise);
+    const clearing = later();
+    const placingAgain = later();
+    saveSlots
+      .mockReturnValueOnce(placing.promise)
+      .mockReturnValueOnce(clearing.promise)
+      .mockReturnValueOnce(placingAgain.promise);
     await fire(chip(element, "a1"), "dragstart");
     await fire(cell(element, "0-1"), "drop");
     await press(cell(element, "1-1"), "Delete");
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-2"), "drop");
     placing.answer({
       conflicts: [0],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,1,", "1,2,"])
     });
     await flush();
-    expect(saveSlots).toHaveBeenCalledTimes(2);
+    clearing.answer({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,1,", "1,,"])
+    });
+    await flush();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Flagpole stays where it is set up."
     );
+    // Said again with the first save after it, which would otherwise talk over it…
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
       "Cleared Bunk 2 · Monday · Period 2. Flagpole stays where it is set up."
+    );
+    // …and only that one; it stays on the line.
+    placingAgain.answer({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SWIM], ["1,1,2", "1,,"])
+    });
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(3);
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Placed Swim · Bunk 1 · Monday · Lunch"
+    );
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Flagpole stays where it is set up."
     );
     // The director's next change clears it.
     await press(cell(element, "1-1"), "z", { ctrlKey: true });
@@ -868,7 +893,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     await press(cell(element, "0-1"), "z", { ctrlKey: true });
     expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Can't undo Placed Swim · Bunk 1 · Monday · Period 2: the week has changed."
+      "Can't undo Placed Swim · Bunk 1 · Monday · Period 2: Flagpole stays where it is set up."
     );
     expect(q(element, '[data-id="redo"]').disabled).toBe(true);
   });

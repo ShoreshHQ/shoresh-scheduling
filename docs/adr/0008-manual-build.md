@@ -270,10 +270,11 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
         again._;
       - a fixed or recurring activity is now where the director's cells are (they are never
         cleared): _Flagpole stays where it is set up._;
-      - for an Undo or Redo, whichever the reason (found when it is pressed or when it meets
-        the server): _Can't undo Placed Swim · …: the week has changed._
-        The line stays, and is said again with each save that follows, until the director's
-        next change or answer.
+      - for an Undo or Redo, the same reason after what can't be undone: _Can't undo Placed
+        Swim · …: Flagpole stays where it is set up._ (When it is pressed, before anything is
+        sent, the cause isn't known: _Can't undo Placed Swim · …: the week has changed._)
+        The line stays until the director's next change or answer, and is said again once, with
+        the first save that follows (whose words would otherwise talk over it).
     - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
       are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
       runs, and Period 3 is never part of the edit, whatever someone puts there.
