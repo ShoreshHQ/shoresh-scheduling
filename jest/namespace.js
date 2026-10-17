@@ -42,3 +42,55 @@ export function nsRecord(value) {
   }
   return copy;
 }
+
+/**
+ * A name a component sent, with the package's prefix taken off ("shoresh__Week__c" ->
+ * "Week__c"). In the namespaced run a custom name without the prefix fails the test.
+ */
+export function bareName(name) {
+  if (typeof name !== "string" || !NAMESPACE_PREFIX) {
+    return name;
+  }
+  if (name.startsWith(NAMESPACE_PREFIX)) {
+    return name.slice(NAMESPACE_PREFIX.length);
+  }
+  if (CUSTOM.test(name)) {
+    throw new Error(`Sent without the package's prefix: ${name}`);
+  }
+  return name;
+}
+
+/**
+ * What a component or engine sends (a save, an event's detail), with bare names again so a
+ * test's expectations read the same in both runs. In the namespaced run every custom key and
+ * `sobjectType` must carry the prefix: a bare one, or a field that came out undefined, fails
+ * the test here. Functions and other values pass through.
+ */
+export function bareRecord(value) {
+  if (Array.isArray(value)) {
+    return value.map(bareRecord);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  const copy = {};
+  for (const [key, inner] of Object.entries(value)) {
+    if (key === "undefined") {
+      throw new Error("A field that doesn't exist was sent (undefined)");
+    }
+    const named =
+      CUSTOM.test(key) ||
+      (key === "sobjectType" &&
+        typeof inner === "string" &&
+        CUSTOM.test(inner));
+    const checked = key === "sobjectType" ? inner : key;
+    if (named && NAMESPACE_PREFIX && !checked.startsWith(NAMESPACE_PREFIX)) {
+      throw new Error(`Sent without the package's prefix: ${checked}`);
+    }
+    copy[bareName(key)] =
+      key === "sobjectType" && typeof inner === "string"
+        ? bareName(inner)
+        : bareRecord(inner);
+  }
+  return copy;
+}

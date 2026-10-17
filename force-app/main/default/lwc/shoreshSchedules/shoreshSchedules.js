@@ -4,6 +4,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { errorMessage } from "c/shoreshErrors";
+import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
   activityGrid,
@@ -315,7 +316,7 @@ export default class ShoreshSchedules extends LightningElement {
     const location =
       activity &&
       ((this._setup && this._setup.locations) || []).find(
-        (l) => l.Id === activity.Location__c
+        (l) => l.Id === activity[FIELD.Activity.Location]
       );
     return location ? location.Name : null;
   }

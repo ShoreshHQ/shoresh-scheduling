@@ -60,7 +60,7 @@
     <c-shoresh-editable-table
       data-id="time-blocks"
       title={labels.timeBlocks}
-      object-api-name="TimeBlock__c"
+      object-api-name={objects.TimeBlock}
       flag-same-names
       columns={blockColumns}
       rows={entry.timeBlocks}
@@ -77,7 +77,7 @@
     <c-shoresh-editable-table
       data-id="divisions"
       title={labels.divisions}
-      object-api-name="Division__c"
+      object-api-name={objects.Division}
       flag-same-names
       columns={divisionColumns}
       rows={divisionRecords}
@@ -97,9 +97,9 @@
           key={division.id}
           data-id="groups"
           title={division.title}
-          object-api-name="Group__c"
+          object-api-name={objects.Group}
           flag-same-names
-          same-name-scope="Division__c"
+          same-name-scope={groupDivisionField}
           same-names-elsewhere={division.namesElsewhere}
           data-division={division.id}
           onpendingnames={handlePendingNames}
@@ -132,7 +132,7 @@
       <c-shoresh-editable-table
         data-id="fixed-activities"
         title={labels.fixed}
-        object-api-name="FixedActivity__c"
+        object-api-name={objects.FixedActivity}
         flag-same-names
         columns={fixedColumns}
         rows={entry.fixedActivities}
@@ -163,7 +163,7 @@
       <c-shoresh-editable-table
         data-id="recurring-activities"
         title={labels.recurring}
-        object-api-name="RecurringActivity__c"
+        object-api-name={objects.RecurringActivity}
         flag-same-names
         columns={recurringColumns}
         rows={entry.recurringActivities}

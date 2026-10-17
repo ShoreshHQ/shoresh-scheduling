@@ -1,6 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshEditableTable, { timeText } from "c/shoreshEditableTable";
 import { looseKey } from "c/shoreshImportEngine";
+import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 const COLUMNS = [
   { fieldName: "Name", label: "Name", type: "text", required: true },
@@ -33,22 +34,52 @@ const ROWS = [
 
 const flush = () => Promise.resolve();
 
+// Properties naming objects or fields, and the records, as a screen of the package hands them
+// over (nsName / nsRecord: unchanged normally, shoresh__-prefixed in the namespaced run).
+const NAME_PROPS = ["objectApiName", "filterField", "sameNameScope"];
+const RECORD_PROPS = ["rows", "weekExceptions", "newRowDefaults", "rowActions"];
+
+function packaged(props) {
+  const result = { ...props };
+  NAME_PROPS.filter((k) => result[k]).forEach((k) => {
+    result[k] = nsName(result[k]);
+  });
+  RECORD_PROPS.filter((k) => result[k]).forEach((k) => {
+    result[k] = nsRecord(result[k]);
+  });
+  if (result.columns) {
+    result.columns = result.columns.map((c) => ({
+      ...c,
+      fieldName: nsName(c.fieldName)
+    }));
+  }
+  return result;
+}
+
+/** An event's detail as the table sent it, with bare names (bareRecord checks the prefix). */
+function detailOf(handler, call = 0) {
+  return bareRecord(handler.mock.calls[call][0].detail);
+}
+
 function render(props = {}) {
   const element = createElement("c-shoresh-editable-table", {
     is: ShoreshEditableTable
   });
-  Object.assign(element, {
-    title: "Time blocks",
-    objectApiName: "TimeBlock__c",
-    addLabel: "Add Time block",
-    ...props
-  });
+  Object.assign(
+    element,
+    packaged({
+      title: "Time blocks",
+      objectApiName: "TimeBlock__c",
+      addLabel: "Add Time block",
+      ...props
+    })
+  );
   document.body.appendChild(element);
   return element;
 }
 
 function field(element, rowIndex, name) {
-  return element.shadowRoot.querySelectorAll(`[data-field="${name}"]`)[
+  return element.shadowRoot.querySelectorAll(`[data-field="${nsName(name)}"]`)[
     rowIndex
   ];
 }
@@ -138,7 +169,7 @@ describe("c-shoresh-editable-table", () => {
     allValid(element);
     button(element, "Save changes").click();
 
-    const { records, onFailure } = handler.mock.calls[0][0].detail;
+    const { records, onFailure } = detailOf(handler);
     expect(typeof onFailure).toBe("function");
     expect(records).toEqual([
       { sobjectType: "TimeBlock__c", Id: "a1", Name: "Period One" },
@@ -171,7 +202,7 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     allValid(element);
     button(element, "Save changes").click();
-    expect(handler.mock.calls[0][0].detail.records).toEqual([
+    expect(detailOf(handler).records).toEqual([
       { sobjectType: "TimeBlock__c", Id: "a1", Outdoor__c: true }
     ]);
   });
@@ -195,7 +226,7 @@ describe("c-shoresh-editable-table", () => {
     element.addEventListener("delete", handler);
 
     element.shadowRoot.querySelectorAll("lightning-button-icon")[0].click();
-    expect(handler.mock.calls[0][0].detail).toEqual({
+    expect(detailOf(handler)).toEqual({
       recordId: "a1",
       name: "Period 1"
     });
@@ -230,7 +261,9 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     change(field(element, 2, "Name"), "Unsaved new block");
     // The screen reloads after another table saved: Lunch was renamed elsewhere.
-    element.rows = [ROWS[0], { ...ROWS[1], Name: "Lunch (renamed)" }];
+    element.rows = packaged({
+      rows: [ROWS[0], { ...ROWS[1], Name: "Lunch (renamed)" }]
+    }).rows;
     await flush();
     expect(field(element, 0, "Name").value).toBe("Typed");
     expect(field(element, 1, "Name").value).toBe("Lunch (renamed)");
@@ -246,11 +279,13 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     allValid(element);
     button(element, "Save changes").click();
-    element.rows = [
-      { ...ROWS[0], Name: "Period One" },
-      ROWS[1],
-      { Id: "a3", Name: "New" }
-    ];
+    element.rows = packaged({
+      rows: [
+        { ...ROWS[0], Name: "Period One" },
+        ROWS[1],
+        { Id: "a3", Name: "New" }
+      ]
+    }).rows;
     await flush();
     expect(element.shadowRoot.querySelectorAll("tbody tr").length).toBe(3);
     expect(button(element, "Save changes").disabled).toBe(true);
@@ -264,8 +299,8 @@ describe("c-shoresh-editable-table", () => {
     element.addEventListener("save", handler);
     allValid(element);
     button(element, "Save changes").click();
-    handler.mock.calls[0][0].detail.onFailure();
-    element.rows = ROWS;
+    detailOf(handler).onFailure();
+    element.rows = packaged({ rows: ROWS }).rows;
     await flush();
     expect(field(element, 0, "Name").value).toBe("Typed");
   });
@@ -293,7 +328,7 @@ describe("c-shoresh-editable-table", () => {
     element.addEventListener("save", handler);
     allValid(element);
     button(element, "Save changes").click();
-    expect(handler.mock.calls[0][0].detail.records[0]).toEqual({
+    expect(detailOf(handler).records[0]).toEqual({
       sobjectType: "TimeBlock__c",
       Id: "a1",
       Name: "10:30",
@@ -307,7 +342,7 @@ describe("c-shoresh-editable-table", () => {
     change(field(element, 0, "Name"), "Typed");
     button(element, "Add Time block").click();
     await flush();
-    element.columns = [...COLUMNS];
+    element.columns = packaged({ columns: [...COLUMNS] }).columns;
     await flush();
     expect(field(element, 0, "Name").value).toBe("Typed");
     expect(element.shadowRoot.querySelectorAll("tbody tr").length).toBe(3);
@@ -339,7 +374,7 @@ describe("c-shoresh-editable-table", () => {
     element.addEventListener("save", handler);
     allValid(element);
     button(element, "Save changes").click();
-    expect(handler.mock.calls[0][0].detail.records).toEqual([
+    expect(detailOf(handler).records).toEqual([
       { sobjectType: "Location__c", Id: "l1", GroupsThatFit__c: 3 },
       { sobjectType: "Location__c", Id: "l2", GroupsThatFit__c: null }
     ]);
@@ -426,7 +461,7 @@ describe("c-shoresh-editable-table", () => {
       });
       await flush();
       change(field(element, 0, "Name"), "Big pool");
-      element.filterField = "LocationType__c";
+      element.filterField = nsName("LocationType__c");
       element.filterValue = "t1";
       await flush();
       expect(names(element)).toEqual(["Field A", "Field B"]);
@@ -437,7 +472,7 @@ describe("c-shoresh-editable-table", () => {
       element.addEventListener("save", handler);
       allValid(element);
       button(element, "Save changes").click();
-      const records = handler.mock.calls[0][0].detail.records;
+      const records = detailOf(handler).records;
       expect(records[0]).toEqual({
         sobjectType: "Location__c",
         Id: "l1",
@@ -508,7 +543,7 @@ describe("c-shoresh-editable-table", () => {
       element.addEventListener("save", handler);
       allValid(element);
       button(element, "Save changes").click();
-      return handler.mock.calls[0][0].detail;
+      return detailOf(handler);
     }
 
     it("ticks every week a row runs in, under the heading", async () => {
@@ -572,17 +607,21 @@ describe("c-shoresh-editable-table", () => {
       const element = renderGroups();
       await flush();
       change(tick(element, 0, 0), false);
-      element.rows = [...GROUPS];
-      element.weekExceptions = [...EXCEPTIONS];
+      element.rows = packaged({ rows: [...GROUPS] }).rows;
+      element.weekExceptions = packaged({
+        weekExceptions: [...EXCEPTIONS]
+      }).weekExceptions;
       await flush();
       expect(ticks(element, 0)).toEqual([false, true, true]);
 
       save(element);
-      element.rows = [...GROUPS];
-      element.weekExceptions = [
-        ...EXCEPTIONS,
-        { Id: "x3", Week__c: "w1", Group__c: "g1" }
-      ];
+      element.rows = packaged({ rows: [...GROUPS] }).rows;
+      element.weekExceptions = packaged({
+        weekExceptions: [
+          ...EXCEPTIONS,
+          { Id: "x3", Week__c: "w1", Group__c: "g1" }
+        ]
+      }).weekExceptions;
       await flush();
       expect(ticks(element, 0)).toEqual([false, true, true]);
       expect(button(element, "Save changes").disabled).toBe(true);
@@ -596,6 +635,30 @@ describe("c-shoresh-editable-table", () => {
       button(element, "Cancel changes").click();
       await flush();
       expect(ticks(element, 1)).toEqual([true, true, false]);
+    });
+
+    it("each kind of item reads its own weeks off", async () => {
+      const kinds = [
+        "Activity__c",
+        "Location__c",
+        "FixedActivity__c",
+        "RecurringActivity__c"
+      ];
+      // The week exception's field naming each kind of item has the kind's own name.
+      const tables = kinds.map((kind) =>
+        render({
+          objectApiName: kind,
+          columns: GROUP_COLUMNS,
+          rows: [{ Id: "i1", Name: "Item" }],
+          weeks: WEEKS,
+          weekExceptions: [{ Id: "x9", Week__c: "w2", [kind]: "i1" }],
+          weeksHeading: "Runs in"
+        })
+      );
+      await flush();
+      expect(tables.map((element) => ticks(element, 0))).toEqual(
+        kinds.map(() => [true, false, true])
+      );
     });
 
     it("sends rows and week ticks together", async () => {
@@ -666,7 +729,7 @@ describe("c-shoresh-editable-table", () => {
       element.addEventListener("save", handler);
       allValid(element);
       button(element, "Save changes").click();
-      return handler.mock.calls[0][0].detail;
+      return detailOf(handler);
     }
 
     it("shows who each row covers, everyone when it names nobody", async () => {
@@ -677,6 +740,30 @@ describe("c-shoresh-editable-table", () => {
         "Everyone in Main"
       ]);
       expect(picker(element)).toBeNull();
+    });
+
+    it("an activity's who can do it: its own rows, by division or group", async () => {
+      const element = render({
+        objectApiName: "Activity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          { ...WHO, fieldName: "Eligibilities__r", everyone: "Everyone" }
+        ],
+        rows: [
+          {
+            Id: "a1",
+            Name: "Swim",
+            Eligibilities__r: [{ Id: "e1", Division__c: "d1" }]
+          },
+          {
+            Id: "a2",
+            Name: "Art",
+            Eligibilities__r: [{ Id: "e2", Group__c: "g2" }]
+          }
+        ]
+      });
+      await flush();
+      expect(summaries(element)).toEqual(["Unit: Juniors", "Bunk 2 (Juniors)"]);
     });
 
     it("opens the picker under the row and sends the new choice with the save", async () => {
@@ -733,7 +820,7 @@ describe("c-shoresh-editable-table", () => {
         new CustomEvent("change", { detail: { value: ["g1", "g2"] } })
       );
       await flush();
-      element.rows = SWIM.map((row) => ({ ...row }));
+      element.rows = packaged({ rows: SWIM.map((row) => ({ ...row })) }).rows;
       await flush();
       expect(summaries(element)[0]).toBe("Bunk 1 (Juniors), Bunk 2 (Juniors)");
       expect(picker(element)).not.toBeNull();
@@ -744,20 +831,22 @@ describe("c-shoresh-editable-table", () => {
 
     it("a fix offered in a row's note saves just its changes to that row", async () => {
       const element = renderRecurring();
-      element.rowActions = {
-        r2: [
-          {
-            key: "keep",
-            label: "Keep Period 2 – Snack",
-            changes: { LastTimeBlock__c: "b9" }
-          },
-          {
-            key: "stretch",
-            label: "Stretch to Period 2 – Period 3",
-            changes: { Length__c: 3 }
-          }
-        ]
-      };
+      element.rowActions = packaged({
+        rowActions: {
+          r2: [
+            {
+              key: "keep",
+              label: "Keep Period 2 – Snack",
+              changes: { LastTimeBlock__c: "b9" }
+            },
+            {
+              key: "stretch",
+              label: "Stretch to Period 2 – Period 3",
+              changes: { Length__c: 3 }
+            }
+          ]
+        }
+      }).rowActions;
       await flush();
       const buttons = element.shadowRoot.querySelectorAll(
         '[data-id="row-action"]'
@@ -769,7 +858,7 @@ describe("c-shoresh-editable-table", () => {
       const handler = jest.fn();
       element.addEventListener("save", handler);
       buttons[1].click();
-      expect(handler.mock.calls[0][0].detail.records).toEqual([
+      expect(detailOf(handler).records).toEqual([
         { sobjectType: "RecurringActivity__c", Id: "r2", Length__c: 3 }
       ]);
     });
@@ -789,8 +878,11 @@ describe("c-shoresh-editable-table", () => {
       columns: COLUMNS,
       rows: ROWS,
       draftNoteHeading: "Moving",
-      draftNote: (values, original) =>
-        (values.Name !== original.Name ? `Renamed to ${values.Name}` : null)
+      draftNote: (values, original) => {
+        return values.Name !== original.Name
+          ? `Renamed to ${values.Name}`
+          : null;
+      }
     });
     await flush();
     expect(element.shadowRoot.querySelector('[data-id="note"]')).toBe(null);
@@ -823,9 +915,9 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     button(element, "Add Time block").click();
     await flush();
-    expect(element.shadowRoot.querySelectorAll("lightning-combobox").length).toBe(
-      1
-    );
+    expect(
+      element.shadowRoot.querySelectorAll("lightning-combobox").length
+    ).toBe(1);
     expect(
       element.shadowRoot.querySelector('[data-id="fixed"]').textContent
     ).toBe("Juniors");

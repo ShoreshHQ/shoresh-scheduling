@@ -1,13 +1,17 @@
 import { LightningElement, api } from "lwc";
 import LightningConfirm from "lightning/confirm";
+import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const RULE_FIELDS = [
-  "SameDivisionOnly__c",
-  "EarlyWeekCount__c",
-  "EarlyWeekByDay__c",
-  "Notes__c"
-];
+const ACTIVITY = FIELD.Activity;
+const WHO = FIELD.ActivityEligibility;
+// Each rule's input (its data-field) and the activity field it saves.
+const RULE_FIELDS = {
+  sameDivision: ACTIVITY.SameDivisionOnly,
+  earlyCount: ACTIVITY.EarlyWeekCount,
+  earlyDay: ACTIVITY.EarlyWeekByDay,
+  notes: ACTIVITY.Notes
+};
 
 /**
  * One activity's details: who can do it (every group, or only chosen divisions and groups) and
@@ -67,11 +71,11 @@ export default class ShoreshActivityDetails extends LightningElement {
       return null;
     }
     const rules = {};
-    RULE_FIELDS.forEach((field) => {
+    Object.values(RULE_FIELDS).forEach((field) => {
       rules[field] = activity[field] === undefined ? null : activity[field];
     });
-    const whoCanDoIt = (activity.Eligibilities__r || []).map(
-      (row) => row.Division__c || row.Group__c
+    const whoCanDoIt = (activity[CHILDREN.Activity.Eligibilities] || []).map(
+      (row) => row[WHO.Division] || row[WHO.Group]
     );
     return { rules, whoCanDoIt };
   }
@@ -117,7 +121,19 @@ export default class ShoreshActivityDetails extends LightningElement {
   }
 
   get earlyDay() {
-    return this.rules.EarlyWeekByDay__c || "";
+    return this.rules[ACTIVITY.EarlyWeekByDay] || "";
+  }
+
+  get sameDivision() {
+    return this.rules[ACTIVITY.SameDivisionOnly];
+  }
+
+  get earlyCount() {
+    return this.rules[ACTIVITY.EarlyWeekCount];
+  }
+
+  get notes() {
+    return this.rules[ACTIVITY.Notes];
   }
 
   get everyoneNote() {
@@ -175,12 +191,12 @@ export default class ShoreshActivityDetails extends LightningElement {
   }
 
   handleRule(event) {
-    const field = event.target.dataset.field;
+    const field = RULE_FIELDS[event.target.dataset.field];
     let value =
       event.target.type === "checkbox"
         ? event.target.checked
         : event.detail.value;
-    if (field === "EarlyWeekCount__c") {
+    if (field === ACTIVITY.EarlyWeekCount) {
       value = value === "" || value === null ? null : Number(value);
     }
     if (value === "") {
@@ -214,7 +230,7 @@ export default class ShoreshActivityDetails extends LightningElement {
       new CustomEvent("save", {
         detail: {
           rules: {
-            sobjectType: "Activity__c",
+            sobjectType: OBJECT.Activity,
             Id: this.activityId,
             ...this.draft.rules
           },

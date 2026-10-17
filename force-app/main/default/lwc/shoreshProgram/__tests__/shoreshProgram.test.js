@@ -1,6 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshProgram from "c/shoreshProgram";
 import { buildTerms } from "c/shoreshTerms";
+import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -51,11 +52,13 @@ const flush = () => Promise.resolve();
 
 async function render(show = "program", entry = ENTRY) {
   const element = createElement("c-shoresh-program", { is: ShoreshProgram });
-  element.entry = entry;
+  element.entry = nsRecord(entry);
   element.terms = terms;
   element.show = show;
   element.weeks = [{ Id: "w1", Name: "Week 1" }];
-  element.weekExceptions = [{ Id: "x1", Week__c: "w1", Group__c: "g1" }];
+  element.weekExceptions = nsRecord([
+    { Id: "x1", Week__c: "w1", Group__c: "g1" }
+  ]);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -99,14 +102,16 @@ describe("c-shoresh-program", () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
     expect(groups.addLabel).toBe("Add Bunk");
-    expect(groups.newRowDefaults).toEqual({
+    expect(bareName(groups.objectApiName)).toBe("Group__c");
+    expect(bareName(groups.sameNameScope)).toBe("Division__c");
+    expect(bareRecord(groups.newRowDefaults)).toEqual({
       Division__c: "d1",
       Availability__c: "AllDay"
     });
-    expect(groups.rows).toEqual(ENTRY.divisions[0].groups);
+    expect(bareRecord(groups.rows)).toEqual(ENTRY.divisions[0].groups);
     expect(groups.weeksHeading).toBe("Runs in");
     expect(groups.weeks).toEqual([{ Id: "w1", Name: "Week 1" }]);
-    expect(groups.weekExceptions).toEqual([
+    expect(bareRecord(groups.weekExceptions)).toEqual([
       { Id: "x1", Week__c: "w1", Group__c: "g1" }
     ]);
   });
@@ -121,25 +126,27 @@ describe("c-shoresh-program", () => {
       recurringActivities: []
     };
     const element = createElement("c-shoresh-program", { is: ShoreshProgram });
-    element.entry = twoUnits;
+    element.entry = nsRecord(twoUnits);
     element.terms = terms;
     element.show = "groups";
-    element.activities = [
+    element.activities = nsRecord([
       { Id: "a2", Name: "Archery", Eligibilities__r: [{ Division__c: "d2" }] }
-    ];
+    ]);
     document.body.appendChild(element);
     await flush();
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
-    const unit = groups.columns.find((c) => c.fieldName === "Division__c");
+    const unit = groups.columns.find(
+      (c) => c.fieldName === nsName("Division__c")
+    );
     expect(unit.label).toBe("Unit");
     expect(unit.options).toEqual([
       { label: "Juniors", value: "d1" },
       { label: "Seniors", value: "d2" }
     ]);
     const bunk = { Id: "g1", Name: "Bunk 1", Division__c: "d1" };
-    expect(groups.draftNote({ ...bunk, Division__c: "d2" }, bunk)).toBe(
-      "Moves to Seniors: Bunk 1 is now in Archery (for Seniors)."
-    );
+    expect(
+      groups.draftNote(nsRecord({ ...bunk, Division__c: "d2" }), nsRecord(bunk))
+    ).toBe("Moves to Seniors: Bunk 1 is now in Archery (for Seniors).");
   });
 
   it("flags same names within the program's tables and each unit's bunks", async () => {
@@ -173,7 +180,9 @@ describe("c-shoresh-program", () => {
     const flagged = (table) =>
       !!table.shadowRoot.querySelector('[data-id="same-name"]');
     const moveFirstRow = async (table, to) => {
-      const unit = table.shadowRoot.querySelector('[data-field="Division__c"]');
+      const unit = table.shadowRoot.querySelector(
+        `[data-field="${nsName("Division__c")}"]`
+      );
       unit.value = to;
       unit.dispatchEvent(new CustomEvent("change", { detail: { value: to } }));
       await flush();
@@ -183,10 +192,10 @@ describe("c-shoresh-program", () => {
       const element = createElement("c-shoresh-program", {
         is: ShoreshProgram
       });
-      element.entry = entry;
+      element.entry = nsRecord(entry);
       element.terms = terms;
       element.show = "groups";
-      element.activities = [];
+      element.activities = nsRecord([]);
       document.body.appendChild(element);
       await flush();
       const tables = [
@@ -224,18 +233,22 @@ describe("c-shoresh-program", () => {
       !!table.shadowRoot.querySelector('[data-id="same-name"]');
 
     async function movedJuniorsBunk() {
-      const element = createElement("c-shoresh-program", { is: ShoreshProgram });
-      element.entry = twoUnits;
+      const element = createElement("c-shoresh-program", {
+        is: ShoreshProgram
+      });
+      element.entry = nsRecord(twoUnits);
       element.terms = terms;
       element.show = "groups";
-      element.activities = [];
+      element.activities = nsRecord([]);
       document.body.appendChild(element);
       await flush();
       const unit = tablesOf(element)[0].shadowRoot.querySelector(
-        '[data-field="Division__c"]'
+        `[data-field="${nsName("Division__c")}"]`
       );
       unit.value = "d2";
-      unit.dispatchEvent(new CustomEvent("change", { detail: { value: "d2" } }));
+      unit.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "d2" } })
+      );
       await flush();
       await flush();
       expect(tablesOf(element).map(flagged)).toEqual([true, true]);
@@ -255,17 +268,42 @@ describe("c-shoresh-program", () => {
 
     it("forgets the move when its unit is deleted", async () => {
       const element = await movedJuniorsBunk();
-      element.entry = { ...twoUnits, divisions: [twoUnits.divisions[1]] };
+      element.entry = nsRecord({
+        ...twoUnits,
+        divisions: [twoUnits.divisions[1]]
+      });
       await flush();
       await flush();
       expect(tablesOf(element).map(flagged)).toEqual([false]);
     });
   });
 
+  it("gives time blocks and divisions their own columns and new-row values", async () => {
+    const blocks = (await render("timeBlocks")).shadowRoot.querySelector(
+      "c-shoresh-editable-table"
+    );
+    expect(blocks.columns.map((c) => bareName(c.fieldName))).toEqual([
+      "Name",
+      "StartTime__c",
+      "EndTime__c",
+      "PartOfDay__c"
+    ]);
+    expect(bareRecord(blocks.newRowDefaults)).toEqual({
+      Program__c: "p1",
+      PartOfDay__c: "Morning"
+    });
+    expect(bareName(blocks.objectApiName)).toBe("TimeBlock__c");
+    const divisions = (await render("divisions")).shadowRoot.querySelector(
+      "c-shoresh-editable-table"
+    );
+    expect(bareRecord(divisions.newRowDefaults)).toEqual({ Program__c: "p1" });
+    expect(bareName(divisions.objectApiName)).toBe("Division__c");
+  });
+
   it("offers no division choice when the program has one", async () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
-    expect(groups.columns.map((c) => c.fieldName)).toEqual([
+    expect(groups.columns.map((c) => bareName(c.fieldName))).toEqual([
       "Name",
       "Availability__c"
     ]);
@@ -301,7 +339,7 @@ describe("c-shoresh-program", () => {
       .find((b) => b.label === "Save")
       .click();
 
-    expect(handler.mock.calls[0][0].detail.records).toEqual([
+    expect(bareRecord(handler.mock.calls[0][0].detail).records).toEqual([
       {
         sobjectType: "Program__c",
         Id: "p1",
@@ -330,8 +368,10 @@ describe("c-shoresh-program", () => {
         detail: { recordId: "t1", name: "Period 1" }
       })
     );
-    expect(saves.mock.calls[0][0].detail).toEqual({ records: [{ Id: "t1" }] });
-    expect(deletes.mock.calls[0][0].detail).toEqual({
+    expect(bareRecord(saves.mock.calls[0][0].detail)).toEqual({
+      records: [{ Id: "t1" }]
+    });
+    expect(bareRecord(deletes.mock.calls[0][0].detail)).toEqual({
       recordId: "t1",
       name: "Period 1"
     });
@@ -344,7 +384,7 @@ describe("c-shoresh-program", () => {
     [...element.shadowRoot.querySelectorAll("lightning-button")]
       .find((b) => b.label === "Delete this program")
       .click();
-    expect(deletes.mock.calls[0][0].detail).toEqual({
+    expect(bareRecord(deletes.mock.calls[0][0].detail)).toEqual({
       recordId: "p1",
       name: "Main"
     });
@@ -358,7 +398,7 @@ describe("c-shoresh-program", () => {
     name.dispatchEvent(
       new CustomEvent("change", { detail: { value: "Typed" } })
     );
-    element.entry = { ...ENTRY, timeBlocks: [] };
+    element.entry = nsRecord({ ...ENTRY, timeBlocks: [] });
     await flush();
     expect(
       element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
@@ -378,7 +418,10 @@ describe("c-shoresh-program", () => {
     [...element.shadowRoot.querySelectorAll("lightning-button")]
       .find((b) => b.label === "Save")
       .click();
-    element.entry = { ...ENTRY, program: { ...ENTRY.program, Name: "Saved" } };
+    element.entry = nsRecord({
+      ...ENTRY,
+      program: { ...ENTRY.program, Name: "Saved" }
+    });
     await flush();
     expect(
       element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
@@ -414,7 +457,7 @@ describe("c-shoresh-program", () => {
     element.busy = true;
     await flush();
     expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
-    saves.mock.calls[0][0].detail.onFailure();
+    bareRecord(saves.mock.calls[0][0].detail).onFailure();
     element.busy = false;
     await flush();
     expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
@@ -458,11 +501,12 @@ describe("c-shoresh-program", () => {
 
     it("lists fixed activities with their time block, length, location, weeks, and who is left out", async () => {
       const element = await render("fixedActivities", SET_TIME);
-      element.locations = [{ Id: "l1", Name: "Pool" }];
+      element.locations = nsRecord([{ Id: "l1", Name: "Pool" }]);
       await flush();
       const fixed = table(element);
       expect(fixed.dataset.id).toBe("fixed-activities");
-      expect(fixed.columns.map((c) => c.fieldName)).toEqual([
+      expect(bareName(fixed.objectApiName)).toBe("FixedActivity__c");
+      expect(fixed.columns.map((c) => bareName(c.fieldName))).toEqual([
         "Name",
         "TimeBlock__c",
         "Length__c",
@@ -476,7 +520,7 @@ describe("c-shoresh-program", () => {
         { label: "Pool", value: "l1" }
       ]);
       expect(fixed.weeksHeading).toBe("Runs in");
-      expect(fixed.newRowDefaults).toEqual({
+      expect(bareRecord(fixed.newRowDefaults)).toEqual({
         Program__c: "p1",
         Name: "Fixed activity {n}",
         Length__c: 1
@@ -484,9 +528,9 @@ describe("c-shoresh-program", () => {
       expect(fixed.rowNotes).toEqual({
         f1: "Bunk 2 is afternoon only and is left out."
       });
-      expect(fixed.rowActions).toEqual({});
+      expect(bareRecord(fixed.rowActions)).toEqual({});
       // Saved as ending in a block since deleted: noted, with the fixes on the row.
-      element.entry = {
+      element.entry = nsRecord({
         ...SET_TIME,
         fixedActivities: [
           {
@@ -499,7 +543,7 @@ describe("c-shoresh-program", () => {
           ...SET_TIME.timeBlocks,
           { Id: "t2", Name: "Period 2", PartOfDay__c: "Morning" }
         ]
-      };
+      });
       await flush();
       expect(
         table(element).rowActions.f1.map((action) => action.label)
@@ -512,7 +556,8 @@ describe("c-shoresh-program", () => {
     it("gives recurring activities a tick for each day the program runs and who they cover", async () => {
       const element = await render("recurringActivities", SET_TIME);
       const recurring = table(element);
-      expect(recurring.columns.map((c) => c.fieldName)).toEqual([
+      expect(bareName(recurring.objectApiName)).toBe("RecurringActivity__c");
+      expect(recurring.columns.map((c) => bareName(c.fieldName))).toEqual([
         "Name",
         "TimeBlock__c",
         "Length__c",
@@ -531,7 +576,7 @@ describe("c-shoresh-program", () => {
         { label: "Bunk 1 (Juniors)", value: "g1" },
         { label: "Bunk 2 (Juniors)", value: "g2" }
       ]);
-      expect(recurring.newRowDefaults).toEqual({
+      expect(bareRecord(recurring.newRowDefaults)).toEqual({
         Program__c: "p1",
         Name: "Recurring activity {n}",
         Length__c: 1,

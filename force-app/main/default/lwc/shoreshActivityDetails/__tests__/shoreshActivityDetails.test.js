@@ -2,6 +2,7 @@ import { createElement } from "lwc";
 import ShoreshActivityDetails from "c/shoreshActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
 import LightningConfirm from "lightning/confirm";
+import { bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
   "lightning/confirm",
@@ -67,7 +68,7 @@ async function render(setup = SETUP) {
     is: ShoreshActivityDetails
   });
   element.terms = terms;
-  element.setup = setup;
+  element.setup = nsRecord(setup);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -129,9 +130,32 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-id="who-note"]').textContent).toContain(
       "every Bunk can do it"
     );
-    expect(q(element, '[data-field="EarlyWeekByDay__c"]').value).toBe(
-      "Tuesday"
-    );
+    expect(q(element, '[data-field="earlyDay"]').value).toBe("Tuesday");
+  });
+
+  it("shows each saved rule and who can do it, by division or group", async () => {
+    const element = await render({
+      ...SETUP,
+      activities: [
+        {
+          Id: "a3",
+          Name: "Canoe",
+          SameDivisionOnly__c: true,
+          EarlyWeekCount__c: 2,
+          EarlyWeekByDay__c: "Wednesday",
+          Notes__c: "Life jackets",
+          Eligibilities__r: [
+            { Id: "e2", Division__c: "d1" },
+            { Id: "e3", Group__c: "g2" }
+          ]
+        }
+      ]
+    });
+    expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["d1", "g2"]);
+    expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
+    expect(q(element, '[data-field="earlyCount"]').value).toBe(2);
+    expect(q(element, '[data-field="earlyDay"]').value).toBe("Wednesday");
+    expect(q(element, '[data-field="notes"]').value).toBe("Life jackets");
   });
 
   it("saves the rules and the new list together", async () => {
@@ -139,13 +163,15 @@ describe("c-shoresh-activity-details", () => {
     const handler = jest.fn();
     element.addEventListener("save", handler);
     change(q(element, '[data-id="who-can-do-it"]'), ["d1"]);
-    change(q(element, '[data-field="SameDivisionOnly__c"]'), true);
-    change(q(element, '[data-field="EarlyWeekCount__c"]'), "2");
-    change(q(element, '[data-field="EarlyWeekByDay__c"]'), "Wednesday");
+    change(q(element, '[data-field="sameDivision"]'), true);
+    change(q(element, '[data-field="earlyCount"]'), "2");
+    change(q(element, '[data-field="earlyDay"]'), "Wednesday");
     await flush();
     allValid(element);
     button(element, "Save changes").click();
-    const { rules, whoCanDoIt, onFailure } = handler.mock.calls[0][0].detail;
+    const { rules, whoCanDoIt, onFailure } = bareRecord(
+      handler.mock.calls[0][0].detail
+    );
     expect(whoCanDoIt).toEqual(["d1"]);
     expect(rules).toEqual({
       sobjectType: "Activity__c",
@@ -162,14 +188,14 @@ describe("c-shoresh-activity-details", () => {
     const element = await render();
     change(q(element, '[data-id="activity-picker"]'), "a2");
     await flush();
-    change(q(element, '[data-field="EarlyWeekCount__c"]'), "");
-    change(q(element, '[data-field="EarlyWeekByDay__c"]'), "");
+    change(q(element, '[data-field="earlyCount"]'), "");
+    change(q(element, '[data-field="earlyDay"]'), "");
     await flush();
     const handler = jest.fn();
     element.addEventListener("save", handler);
     allValid(element);
     button(element, "Save changes").click();
-    const { rules } = handler.mock.calls[0][0].detail;
+    const { rules } = bareRecord(handler.mock.calls[0][0].detail);
     expect(rules.EarlyWeekCount__c).toBeNull();
     expect(rules.EarlyWeekByDay__c).toBeNull();
   });
@@ -178,7 +204,7 @@ describe("c-shoresh-activity-details", () => {
     const element = await render();
     change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
     await flush();
-    element.setup = { ...SETUP };
+    element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
     expect(button(element, "Save changes").disabled).toBe(false);

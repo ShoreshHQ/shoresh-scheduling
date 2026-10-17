@@ -5,18 +5,22 @@
  * record, not name: two recurring activities can share a name (staggered lunches, one per
  * division, ADR 0006).
  */
+import { CHILDREN, FIELD } from "c/shoreshSchema";
 
 /** The lists (record Id -> name) that name this division and not the group itself. */
 function namingDivision(divisionId, groupId, activities, recurringActivities) {
-  const counts = (rows) =>
-    (rows || []).some((r) => r.Division__c === divisionId) &&
-    !(rows || []).some((r) => r.Group__c === groupId);
+  // who: the rows' own fields (who can do an activity, or who a recurring activity covers).
+  const counts = (rows, who) =>
+    (rows || []).some((r) => r[who.Division] === divisionId) &&
+    !(rows || []).some((r) => r[who.Group] === groupId);
   const lists = new Map();
   (activities || [])
-    .filter((a) => counts(a.Eligibilities__r))
+    .filter((a) =>
+      counts(a[CHILDREN.Activity.Eligibilities], FIELD.ActivityEligibility)
+    )
     .forEach((a) => lists.set(a.Id, a.Name));
   (recurringActivities || [])
-    .filter((r) => counts(r.Coverages__r))
+    .filter((r) => counts(r[CHILDREN.RecurringActivity.Coverages], FIELD.Coverage))
     .forEach((r) => lists.set(r.Id, r.Name));
   return lists;
 }
@@ -37,21 +41,22 @@ function nameList(names) {
 
 /** The note for a group whose division was changed on screen, or null when nothing changes. */
 export function moveNote(values, original, context) {
-  if (!original.Id || values.Division__c === original.Division__c) {
+  const division = FIELD.Group.Division;
+  if (!original.Id || values[division] === original[division]) {
     return null;
   }
   const divisions = new Map(context.divisions.map((d) => [d.Id, d.Name]));
-  const from = divisions.get(original.Division__c);
-  const to = divisions.get(values.Division__c);
+  const from = divisions.get(original[division]);
+  const to = divisions.get(values[division]);
   const name = values.Name || original.Name;
   const before = namingDivision(
-    original.Division__c,
+    original[division],
     original.Id,
     context.activities,
     context.recurringActivities
   );
   const after = namingDivision(
-    values.Division__c,
+    values[division],
     original.Id,
     context.activities,
     context.recurringActivities

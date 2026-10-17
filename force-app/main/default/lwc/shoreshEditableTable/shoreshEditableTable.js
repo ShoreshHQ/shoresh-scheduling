@@ -1,5 +1,19 @@
 import { LightningElement, api } from "lwc";
 import { looseKey } from "c/shoreshImportEngine";
+import { FIELD, OBJECT } from "c/shoreshSchema";
+
+// Each object's fields, by the object's name as the package has it (a week's name gives
+// the week fields).
+const FIELDS_OF = Object.fromEntries(
+  Object.keys(OBJECT).map((kind) => [OBJECT[kind], FIELD[kind]])
+);
+// Who an item is for: who can do an activity, or who a recurring activity covers.
+const WHO_FIELDS = {
+  [OBJECT.Activity]: FIELD.ActivityEligibility,
+  [OBJECT.RecurringActivity]: FIELD.Coverage
+};
+const OFF = FIELD.WeekException;
+const WEEK = FIELD.Week;
 
 /**
  * A small table of records edited in place. Changes stay on screen until the scheduler
@@ -187,8 +201,9 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!column) {
       return [];
     }
+    const who = WHO_FIELDS[this.objectApiName];
     return (record[column.fieldName] || []).map(
-      (row) => row.Division__c || row.Group__c
+      (row) => row[who.Division] || row[who.Group]
     );
   }
 
@@ -270,13 +285,14 @@ export default class ShoreshEditableTable extends LightningElement {
     const result = new Map();
     this._weekExceptions.forEach((mark) => {
       const target =
-        mark.Group__c ||
-        mark.Activity__c ||
-        mark.Location__c ||
-        mark.FixedActivity__c ||
-        mark.RecurringActivity__c;
+        mark[OFF.Group] ||
+        mark[OFF.Activity] ||
+        mark[OFF.Location] ||
+        mark[OFF.FixedActivity] ||
+        mark[OFF.RecurringActivity];
       const weeks = result.get(target) || new Map();
-      weeks.set(mark.Week__c, [...(weeks.get(mark.Week__c) || []), mark.Id]);
+      const week = mark[OFF.Week];
+      weeks.set(week, [...(weeks.get(week) || []), mark.Id]);
       result.set(target, weeks);
     });
     return result;
@@ -393,17 +409,13 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!this.overlapLabel) {
       return keys;
     }
-    const dated = this.drafts.filter(
-      (d) => d.values.StartDate__c && d.values.EndDate__c
-    );
+    // Only weeks are told apart by their dates.
+    const start = (d) => d.values[WEEK.StartDate];
+    const end = (d) => d.values[WEEK.EndDate];
+    const dated = this.drafts.filter((d) => start(d) && end(d));
     dated.forEach((a) => {
       if (
-        dated.some(
-          (b) =>
-            b !== a &&
-            a.values.StartDate__c <= b.values.EndDate__c &&
-            b.values.StartDate__c <= a.values.EndDate__c
-        )
+        dated.some((b) => b !== a && start(a) <= end(b) && start(b) <= end(a))
       ) {
         keys.add(a.key);
       }
@@ -587,7 +599,7 @@ export default class ShoreshEditableTable extends LightningElement {
     const defaults =
       typeof this.newRowDefaults === "object" ? this.newRowDefaults : {};
     const position = this.drafts.length + 1;
-    const record = { SortOrder__c: position };
+    const record = { [FIELDS_OF[this.objectApiName].SortOrder]: position };
     Object.keys(defaults).forEach((field) => {
       const value = defaults[field];
       record[field] =
