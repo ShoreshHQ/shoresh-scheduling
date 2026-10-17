@@ -20,6 +20,26 @@ pull requests never deploy over each other. Tests run one class at a time (see b
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
 
+## Namespace-safety checks (in "LWC Jest and Code Analyzer")
+
+Once the package has its `shoresh` namespace, Salesforce names every custom field
+`shoresh__Field__c`, so code that writes `StartDate__c` as text finds nothing (blank cells, failed
+saves). Two checks guard the retrofit:
+
+- **Ratchet** (`npm run check:namespace`, `scripts/namespace-safety.js`): counts names written as
+  text per file (LWC JavaScript and templates, Apex string literals and `getName()`; tests,
+  comments, `c/shoreshSchema` and `ShoreshSchema.cls` don't count) against
+  `scripts/namespace-safety-baseline.json`. It fails if a file goes above its number, and if a file
+  goes below it until the lower number is written with `node scripts/namespace-safety.js --update`
+  (which never raises one). On a pull request it also fails if any number was raised above the
+  base branch's.
+- **Namespaced Jest run** (`npm run test:unit:namespaced`): the suites listed in
+  `jest.namespaced.config.js` run with every `@salesforce/schema` import named `shoresh__...`.
+  A suite joins the list once its component uses `c/shoreshSchema` and its fixtures go through
+  `nsRecord()` (`jest/namespace.js`).
+
+Neither proves the namespaced org works; that is checked after the namespace is registered.
+
 ## Running Apex tests: one class at a time
 
 Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the
