@@ -80,7 +80,8 @@ function existingGroup(group, current, divisions, answers, asks) {
   ) {
     return record;
   }
-  // A group cannot change division (Salesforce does not move it): keep it, or leave it out.
+  // Groups are not moved between divisions for now (Group__c.Division__c is set as not
+  // reparentable; whether to allow it is Greg's call): keep it, or leave it out.
   const id = `change|group|${group.name}|${group.division}`;
   asks.push({
     id,

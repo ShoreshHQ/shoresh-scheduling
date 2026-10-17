@@ -90,7 +90,9 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
    have. Where the file disagrees, the director is asked: a program's missing days, a time
    block's times, a fixed or recurring activity's time block, length, or days, an activity's
    length. A group set up in another division than the file shows can only be kept where it is
-   (or left out): Salesforce does not move a group to another division. Nothing set up is ever
+   (or left out): Shoresh does not currently allow moving a group between divisions
+   (`Group__c.Division__c` is set as not reparentable, our setting; whether to allow it is
+   with Greg). Nothing set up is ever
    changed without the director choosing "Change". Not compared (the file is one sample week, and
    these are the director's rules): times a week, groups at once, who can do it, who a
    recurring activity covers, locations.

@@ -265,7 +265,7 @@ function groupCard(ask, t) {
     lane: "standard",
     title: `${ask.group} is in ${ask.current}. The file puts it in ${ask.file}.`,
     subject: ask.group,
-    subtitle: `${capital(article(t.sIn("Group")))} cannot move to another ${t.sIn("Division")} once set up. Its schedule from the file is added where it is.`,
+    subtitle: `Shoresh does not move ${article(t.sIn("Group"))} to another ${t.sIn("Division")} for now. Its schedule from the file is added where it is.`,
     options: [
       { value: "keep", label: `Keep it in ${ask.current}` },
       leaveOut(`${ask.group} and its schedule are not added.`)
