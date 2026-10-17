@@ -29,12 +29,17 @@ export function blockAddKey(program, name) {
 
 /** Asked per block (its program and name), as Import last year does (ADR 0006 §15). */
 /** One question per dash as written ("M-W", "Tu-Th"), per item. */
+/** One part of a question key: a "|" in a name can't run into the next part. */
+function keyPart(value) {
+  return looseKey(value).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+}
+
 export function dashKey(program, name, dash) {
-  return `dash|${looseKey(program)}|${looseKey(name)}|${dash}`;
+  return `dash|${keyPart(program)}|${keyPart(name)}|${keyPart(dash)}`;
 }
 
 export function tueThuKey(program, name) {
-  return `tueThu|${looseKey(program)}|${looseKey(name)}`;
+  return `tueThu|${keyPart(program)}|${keyPart(name)}`;
 }
 
 export function ampmKey(program, name) {

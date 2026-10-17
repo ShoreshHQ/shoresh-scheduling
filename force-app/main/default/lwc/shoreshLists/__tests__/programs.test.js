@@ -8,6 +8,7 @@ import {
   questionCards,
   waitingFor
 } from "c/shoreshLists";
+import { dashKey, tueThuKey } from "../adds";
 
 const terms = buildTerms([]);
 const MS = 60000;
@@ -257,6 +258,13 @@ describe("a lone T in a days cell", () => {
     expect(row(done, "Flag").values.days).toEqual(["Monday", "Thursday"]);
     const out = read("recurringActivities", rows, { [card.id]: LEAVE_OUT });
     expect(row(out, "Flag").status).toBe("leftOut");
+  });
+});
+
+describe("question keys (coordinator, #20 round 4)", () => {
+  it("a | in a name never runs into the next part", () => {
+    expect(dashKey("Main", "a|b", "c")).not.toBe(dashKey("Main", "a", "b|c"));
+    expect(tueThuKey("a|b", "c")).not.toBe(tueThuKey("a", "b|c"));
   });
 });
 

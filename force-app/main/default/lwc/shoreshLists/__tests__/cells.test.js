@@ -129,6 +129,21 @@ describe("days", () => {
     expect(readCell(DAYS, text)).toEqual({ problem });
   });
 
+  // Coordinator, #20 round 4: only periods are dropped from a day word.
+  it.each(["M~F", "M?", "M1", "Wed*", "m|w"])(
+    "can't read %s rather than drop a character",
+    (text) => {
+      expect(readCell(DAYS, text).problem).toBeTruthy();
+    }
+  );
+
+  it.each([
+    ["Wed.", ["Wednesday"]],
+    ["M.W.F", ["Monday", "Wednesday", "Friday"]]
+  ])("still reads %s", (text, expected) => {
+    expect(readCell(DAYS, text)).toEqual({ value: expected });
+  });
+
   it("asks about an em-dash two-day dash too", () => {
     expect(readCell(DAYS, "Tu\u2014Th")).toEqual({
       ask: "dash",
@@ -201,7 +216,12 @@ describe("odd times are shown, never guessed (#20 round 3 probe)", () => {
     "0930",
     "9:5",
     "9:60",
-    "\uff11\uff10:\uff10\uff10"
+    "\uff11\uff10:\uff10\uff10",
+    // Coordinator, #20 round 4.
+    "9:00-",
+    "9:00 p",
+    "9:00 a",
+    "9:00 AM-"
   ])("can't read %s", (text) => {
     expect(readCell(TIME, text).problem).toBeTruthy();
   });
@@ -210,7 +230,9 @@ describe("odd times are shown, never guessed (#20 round 3 probe)", () => {
     ["9.30am", 570],
     ["9:30 a.m.", 570],
     ["9:00\u00a0AM", 540],
-    ["8 PM", 1200]
+    ["8 PM", 1200],
+    ["9:00 pm", 21 * 60],
+    ["9:00", 540]
   ])("reads %s", (text, value) => {
     expect(readCell(TIME, text)).toEqual({ value });
   });

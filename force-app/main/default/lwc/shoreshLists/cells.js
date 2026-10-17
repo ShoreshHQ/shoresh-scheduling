@@ -127,7 +127,11 @@ const TUE_OR_THU = "T";
 
 /** The days one word names: ["Monday"], ["Monday", "Wednesday", "Friday"] for "MWF", or null. */
 function dayWord(word) {
-  const w = word.toLowerCase().replace(/[^a-z]/g, "");
+  // Periods only ("Wed.", "M.W.F"): any other character can't be read, never dropped.
+  const w = word.toLowerCase().replace(/\./g, "");
+  if (!/^[a-z]+$/.test(w)) {
+    return null;
+  }
   if (w === "t") {
     return [TUE_OR_THU];
   }
@@ -322,8 +326,11 @@ function time(text) {
   if (/^\d{1,2}$/.test(text)) {
     return bareHour(Number(text), text);
   }
-  const range = timeRange(text);
-  if (!range || range.end !== null || !/\d/.test(text)) {
+  // One time and nothing else: "9:00", "9.30am", "9:30 a.m.". A stray "-" or a lone "p" can't
+  // be read (coordinator, #20 round 4).
+  const single = /^\d{1,2}(?:[:.]\d{2})?\s*(?:[ap]\.?\s*m\.?)?$/i.test(text);
+  const range = single && timeRange(text);
+  if (!range || range.end !== null) {
     return { problem: `"${text}" isn't a time` };
   }
   const hour = Number((text.match(/\d{1,2}/) || ["0"])[0]);
