@@ -12,18 +12,11 @@ public with sharing class ManualBuildActivities {
     String name
   ) {
     String trimmed = checkedName(name);
+    // The season first, then the draft, the order imports lock in: two people adding the same
+    // new name at once (from any week or program of the season) get one activity, the second
+    // finding the first one's.
+    Id seasonId = lockedSeasonOf(scheduleId);
     Schedule__c schedule = ManualDrafts.locked(scheduleId);
-    Id seasonId = schedule.Program__r.Season__c;
-    // The season locked, so two people adding the same new name at once (from any week or
-    // program of it) get one activity: the second waits, then finds the first one's.
-    if (
-      [SELECT Id FROM Season__c WHERE Id = :seasonId WITH USER_MODE FOR UPDATE]
-        .isEmpty()
-    ) {
-      throw new ShoreshException(
-        'That season was not found, or you do not have access to it.'
-      );
-    }
     Id activityId = sameName(seasonId, trimmed);
     if (activityId == null) {
       activityId = create(seasonId, trimmed);
@@ -39,6 +32,31 @@ public with sharing class ManualBuildActivities {
       }
     }
     throw new ShoreshException('Couldn\'t add it. Try again.');
+  }
+
+  private static Id lockedSeasonOf(Id scheduleId) {
+    List<Schedule__c> found = [
+      SELECT Program__r.Season__c
+      FROM Schedule__c
+      WHERE Id = :scheduleId
+      WITH USER_MODE
+    ];
+    if (
+      found.isEmpty() ||
+      [
+        SELECT Id
+        FROM Season__c
+        WHERE Id = :found[0].Program__r.Season__c
+        WITH USER_MODE
+        FOR UPDATE
+      ]
+      .isEmpty()
+    ) {
+      throw new ShoreshException(
+        'That schedule was not found, or you do not have access to it.'
+      );
+    }
+    return found[0].Program__r.Season__c;
   }
 
   private static String checkedName(String name) {

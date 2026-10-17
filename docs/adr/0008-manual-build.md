@@ -90,8 +90,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      length);
    - change a day that can't be read (refused with ADR 0005's "This day could not be read: …",
      not offered as a conflict).
-   Slots are compared exactly (Apex `==` ignores capitals, so `equals` is used).
-   Items no slot uses any more are dropped from the day's list (`ScheduleGrid.dropUnusedItems`).
+     Slots are compared exactly (Apex `==` ignores capitals, so `equals` is used).
+     Items no slot uses any more are dropped from the day's list (`ScheduleGrid.dropUnusedItems`).
 6. **Typing a name** (desktop `CellInlineEditor`). Double-click, Enter, or F2 on a slot opens a
    small box under it, named for the slot (_Bunk 1 · Monday · Period 2_). It lists, filtered as
    you type (spaces and capitals aside):
@@ -103,11 +103,11 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      a dot). The desktop lists only eligible activities; here typing must be able to do what
      dragging can;
    - then **Add "<name>" to activities** (Greg, Q2), when no activity has that name.
-   **Add** creates an activity with the Activities screen's hand-add starting values (length 1,
-   once a week, low priority, one group at a time). A name the season already has gives that
-   activity instead. Add needs a Manual Build draft and locks its season, so two people adding
-   the same new name at once, from any week or program of the season, get one activity. Electives, special events, and special days are not offered: they are not
-   set up in Salesforce yet. The wording avoids an article built from a camp word (design guide).
+     **Add** creates an activity with the Activities screen's hand-add starting values (length 1,
+     once a week, low priority, one group at a time). A name the season already has gives that
+     activity instead. Add needs a Manual Build draft and locks its season, so two people adding
+     the same new name at once, from any week or program of the season, get one activity. Electives, special events, and special days are not offered: they are not
+     set up in Salesforce yet. The wording avoids an article built from a camp word (design guide).
 7. **Multi-block activities fill their length** (Greg #7). From the slot's first block, an
    activity runs for its length over Open slots. It stops at a filled slot, a block where the
    group isn't at camp, or the end of the day. Replacing or clearing part of a multi-block
@@ -125,7 +125,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
      Period 2_) and each conflict, and says the same words again when repeated. The conflict
      dialog is modal and keeps Tab on its two buttons. It starts on **Keep theirs**, and Escape
      keeps theirs.
-   The read-only grid (Schedules page) is unchanged: a table, not focusable.
+     The read-only grid (Schedules page) is unchanged: a table, not focusable.
 9. **Saving feels instant.** An edit shows on the grid at once, slightly faded until the server
    has it. Edits made meanwhile are queued and sent one at a time, in order, each on top of the
    server's latest answer. A refused save shows its sentence (plus how many waiting changes
@@ -148,8 +148,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - `SetTimeAccess`: the read check before the system-mode set-time reader;
     - LWC `shoreshManualBuild` (with `slotEdits.js`); an `editable` mode on
       `shoreshScheduleGrid`.
-    All new code reads object and field names through `ShoreshSchema`, typed references, and
-    `c/shoreshSchema`. The LWC suite runs in the namespaced Jest run.
+      All new code reads object and field names through `ShoreshSchema`, typed references, and
+      `c/shoreshSchema`. The LWC suite runs in the namespaced Jest run.
 
 ## Choices that are hard to undo after release
 

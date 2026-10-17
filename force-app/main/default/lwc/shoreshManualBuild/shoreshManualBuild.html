@@ -40,6 +40,10 @@
       </template>
     </div>
 
+    <template lwc:if={notice}>
+      <p class="notice" role="status" data-id="notice">{notice}</p>
+    </template>
+
     <template lwc:if={loading}>
       <lightning-spinner
         alternative-text="Loading"

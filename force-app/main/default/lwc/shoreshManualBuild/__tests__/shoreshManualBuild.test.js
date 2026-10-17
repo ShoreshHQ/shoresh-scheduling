@@ -507,6 +507,73 @@ describe("c-shoresh-manual-build", () => {
     expect(optionLabels(element)).toEqual(["Open"]);
   });
 
+  it("when someone made the activity longer, the question names the cell that changed", async () => {
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    // I clear the one-block Swim I see; someone had made it run on into Lunch.
+    saveSlots.mockResolvedValueOnce(answer(WITH_SWIM, ["1,2,^", "1,,"], [0]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Delete");
+    expect(q(element, '[data-id="conflict"]').textContent).toContain(
+      "Bunk 1 · Monday · Lunch"
+    );
+    expect(q(element, '[data-id="theirs"]').textContent).toBe("Swim");
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Bunk 1 · Monday · Lunch changed since you opened it."
+    );
+  });
+
+  it("Use yours on a cell no longer in the week says so, and the rest still save", async () => {
+    getDraft.mockResolvedValue(draft());
+    const shorter = schedule(WITH_SOCCER, ["1,2", "1,"]);
+    shorter.days[0] = {
+      ...shorter.days[0],
+      blocks: shorter.days[0].blocks.slice(0, 2)
+    };
+    saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: shorter });
+    saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,2,", "1,2,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "boat"), "Enter");
+    await press(cell(element, "1-1"), "Enter");
+    await press(await type(element, "soccer"), "Enter");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Not placed: that cell isn't in the week any more."
+    );
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0].groupId).toBe("g2");
+  });
+
+  it("Use yours when theirs already matches yours says so instead of saving", async () => {
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValueOnce(answer(WITH_SWIM, ["1,2,", "1,,"], [0]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Already as you had it."
+    );
+  });
+
+  it("an activity that starts where a bunk isn't at camp can only be cleared", async () => {
+    const start = draft(
+      [WITH_SOCCER[0], { kind: "A", id: "a2", name: "Boating", gone: false }],
+      ["1,,", "1,2,^"]
+    );
+    getDraft.mockResolvedValue({
+      ...start,
+      away: [{ groupId: "g2", blockIds: ["t2"] }]
+    });
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    await type(element, "sw");
+    expect(optionLabels(element)).toEqual(["Open"]);
+  });
+
   it("an error goes away once a save works", async () => {
     getDraft.mockResolvedValue(draft());
     addActivity.mockRejectedValueOnce({

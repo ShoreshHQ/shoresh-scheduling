@@ -41,46 +41,53 @@ public with sharing class BlankDay {
     if (span.isEmpty()) {
       return;
     }
-    Integer first = blockIndex.get(item.program.blocks[span[0]].Id);
     String position = null;
-    for (Group__c grp : item.groupsIn(span[0])) {
-      List<String> row = groupIndex.containsKey(grp.Id)
-        ? grid.rows[groupIndex.get(grp.Id)]
-        : null;
-      if (row == null) {
+    for (Group__c grp : item.program.groups) {
+      List<String> row = rowFor(item, grp);
+      // A group at camp for only part of the item's length (a morning-only or afternoon-only
+      // group, an item that crosses midday) takes the part it is there for, as the clash
+      // checks count it (SetTimeGroupClashes).
+      List<Integer> part = row == null
+        ? new List<Integer>()
+        : atCampPart(item, grp, span);
+      if (part.isEmpty()) {
         continue;
       }
-      // A group at camp for only part of the item's length (a morning-only group, a block
-      // that crosses into the afternoon) takes the part it is there for.
-      Integer length = atCampFor(item, grp, span);
-      if (!free(row, first, length)) {
+      Integer first = blockIndex.get(item.program.blocks[part[0]].Id);
+      if (!free(row, first, part.size())) {
         notPlaced.add(item.name + ' · ' + grp.Name);
         continue;
       }
-      if (position == null) {
-        position = add(item);
-      }
+      position = position == null ? add(item) : position;
       row[first] = position;
-      for (Integer b = first + 1; b < first + length; b++) {
+      for (Integer b = first + 1; b < first + part.size(); b++) {
         row[b] = ScheduleGrid.CARRIES_ON;
       }
     }
   }
 
-  /** How many of the item's blocks, from its first, the group is at camp for. */
-  private static Integer atCampFor(
+  /** The group's row of this day, when the item takes the group and the group is on it. */
+  private List<String> rowFor(SetTimePlan.Item item, Group__c grp) {
+    return item.groupIds.contains(grp.Id) && groupIndex.containsKey(grp.Id)
+      ? grid.rows[groupIndex.get(grp.Id)]
+      : null;
+  }
+
+  /** The item's blocks the group is at camp for: from the first such block, unbroken. */
+  private static List<Integer> atCampPart(
     SetTimePlan.Item item,
     Group__c grp,
     List<Integer> span
   ) {
-    Integer length = 0;
-    while (
-      length < span.size() &&
-      SetTimePlan.atCamp(grp, item.program.blocks[span[length]])
-    ) {
-      length++;
+    List<Integer> part = new List<Integer>();
+    for (Integer b : span) {
+      if (SetTimePlan.atCamp(grp, item.program.blocks[b])) {
+        part.add(b);
+      } else if (!part.isEmpty()) {
+        break;
+      }
     }
-    return length;
+    return part;
   }
 
   private String add(SetTimePlan.Item item) {

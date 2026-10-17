@@ -132,4 +132,8 @@ describe("slot edits", () => {
       after: [BOATING, `^${BOATING}`]
     });
   });
+
+  it("use yours on a run past the day's end changes nothing", () => {
+    expect(rebaseRun([FLAGPOLE, OPEN], 1, [BOATING, `^${BOATING}`])).toBeNull();
+  });
 });

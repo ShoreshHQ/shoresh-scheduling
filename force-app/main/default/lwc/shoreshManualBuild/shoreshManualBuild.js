@@ -68,6 +68,8 @@ export default class ShoreshManualBuild extends LightningElement {
   // An edit someone else's change got in the way of: { edit, where, theirs, yours }.
   conflict;
   announcement = "";
+  // A short line under the toolbar when something the director chose couldn't be made.
+  notice;
   // Edits waiting for the server, oldest first; each { edit, key, label }.
   queue = [];
   saving = false;
@@ -173,6 +175,7 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!again) {
       this.draft = null;
       this.loading = true;
+      this.notice = null;
       this.closeEditor();
     }
     try {
@@ -584,12 +587,15 @@ export default class ShoreshManualBuild extends LightningElement {
     const forGroup = matches.filter((a) => !a.notFor.includes(grp.id));
     const notForGroup = matches.filter((a) => a.notFor.includes(grp.id));
     const options = [];
-    const filled = placement(day, slot.group, slot.block).slot !== OPEN;
-    if (filled && (!typed || this.isAwaySlot(slot))) {
+    const here = placement(day, slot.group, slot.block);
+    const filled = here.slot !== OPEN;
+    // Left there from an earlier setup where the group isn't at camp (where the placement
+    // starts): it can only be cleared.
+    const awayHere = this.isAwaySlot({ ...slot, block: here.first });
+    if (filled && (!typed || awayHere)) {
       options.push({ key: "open", kind: "open", label: "Open" });
     }
-    // Left there from an earlier setup where the group isn't at camp: it can only be cleared.
-    if (this.isAwaySlot(slot)) {
+    if (awayHere) {
       return this.marked(options);
     }
     forGroup.forEach((a) =>
@@ -766,6 +772,7 @@ export default class ShoreshManualBuild extends LightningElement {
       next === OPEN
         ? `Cleared ${this.slotName(slot, run.first)}`
         : `Placed ${this.nameOf(next, day)} · ${this.slotName(slot, run.first)}`;
+    this.notice = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
     this.loading = false;
@@ -897,15 +904,21 @@ export default class ShoreshManualBuild extends LightningElement {
         return;
       }
     }
-    // Every slot as seen, but the day around them had changed (a longer placement next door).
+    // Every slot as seen, but a placement next to them had changed: someone made it longer,
+    // so it now carries on into the cell after the run (or the run would cut it). Name that cell.
     const [run] = entry.edit.runs;
     const at = this.locate(run);
+    const row = slots(at.day, at.g);
+    const after = at.first + run.after.length;
+    const changed =
+      after < row.length && row[after].startsWith("^") ? after : at.first;
     this.conflict = {
       entry,
-      where: this.slotName({ day: at.dayIndex, group: at.g }, at.first),
-      theirs: this.nameOf(slots(at.day, at.g)[at.first], at.day),
+      where: this.slotName({ day: at.dayIndex, group: at.g }, changed),
+      theirs: this.nameOf(row[changed], at.day),
       yours: this.nameOf(run.after[0], at.day)
     };
+    this.announce(`${this.conflict.where} changed since you opened it.`);
   }
 
   handleKeepTheirs() {
@@ -927,9 +940,16 @@ export default class ShoreshManualBuild extends LightningElement {
     const { entry } = this.conflict;
     this.conflict = null;
     const runs = [];
+    let gone = false;
     for (const run of entry.edit.runs) {
       const at = this.locate(run);
-      const rebased = at && rebaseRun(slots(at.day, at.g), at.first, run.after);
+      const row = at ? slots(at.day, at.g) : [];
+      if (!at || at.first + run.after.length > row.length) {
+        // The day no longer has those time blocks.
+        gone = true;
+        break;
+      }
+      const rebased = rebaseRun(row, at.first, run.after);
       if (rebased) {
         runs.push({
           ...run,
@@ -939,7 +959,11 @@ export default class ShoreshManualBuild extends LightningElement {
         });
       }
     }
-    if (runs.length) {
+    if (gone) {
+      this.say("Not placed: that cell isn't in the week any more.");
+    } else if (!runs.length) {
+      this.say("Already as you had it.");
+    } else {
       this.queue = [{ ...entry, edit: { runs } }, ...this.queue];
       this.showServerAndWaiting();
     }
@@ -971,6 +995,12 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   // ---------- helpers ----------
+
+  /** A short note under the toolbar, said by screen readers too. */
+  say(text) {
+    this.notice = text;
+    this.announce(text);
+  }
 
   /** Said by screen readers; the same words twice in a row are still said again. */
   announce(text) {
