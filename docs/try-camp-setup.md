@@ -612,36 +612,42 @@ comes in the next pieces of Manual Build.
 
 ## 21. Manual Build: counters and the bronze dots
 
-This uses the made-up camp's Week 1 from sections 19 and 20 (every activity runs one to three
-times a week; Swim is at the Pool, which fits 3 bunks, and takes 3 bunks at once).
+This uses the made-up camp's Week 1 from sections 19 and 20. Every activity runs one to three
+times a week and takes 3 bunks at once; each place fits 3 bunks (the Dining hall and Library 6).
+Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
 
-1. Open **Manual Build**, Week 1. Under the toolbar, **Placed** shows how many cells are filled
-   out of the cells to fill (Lunch, Morning meeting, Library time, and cells where a bunk isn't
-   at camp aren't counted). Place something and the number goes up at once.
-2. **Still needed** has a number beside it. Click it: a list opens under the counters, one line
-   for each activity and bunk short of its weekly minimum (_Swim · Bunk 1: 1 still needed_).
-   Click **Still needed** again to close it. Nothing on the grid is highlighted.
-3. **Overlapping.** In Daily View, Monday, place Swim in Period 2 for Bunks 1, 2, 3 and 4. Each
-   of the four gets a small bronze dot in its top corner, with no words beside it. Hold the
-   pointer on a dot: _Over its limit of 3 bunks at once · More bunks at Pool than fit_. An
-   **Overlapping** counter appears. Click it: _Swim · Monday · Period 2: Over its limit of 3
-   bunks at once_ and _Pool · Monday · Period 2: More bunks at Pool than fit_.
-4. Drag Bunk 4's Swim to Period 3. The dots and the **Overlapping** counter go at once (a
+1. **First, put back what sections 19 and 20 changed in setup.** On **Activities**, open Swim and
+   set **Who can do it** back to everyone. On **Bunks**, set Bunk 6 back to all day. Dots left on
+   the grid from section 20 (a Swim over its weekly limit, say) are expected: hold the pointer on
+   one to see why.
+2. Open **Manual Build**, Week 1. Under the toolbar, **Filled** shows how many cells hold
+   something, out of the cells to fill (Lunch, Morning meeting, Library time, and cells where a
+   bunk isn't at camp aren't counted). Place something and the number goes up at once.
+3. **Still needed** has a number beside it: how many activity-and-bunk pairs are short of their
+   weekly minimum. Click it: a list opens under the counters (_Bunk 1_'s lines first, then
+   _Bunk 2_'s, and so on, such as _Swim · Bunk 1: 1 still needed_). Click **Still needed** again
+   to close it. Nothing on the grid is highlighted.
+4. **Overlapping.** In Daily View, Thursday, place Soccer in Period 3 for Bunks 1, 2, 3 and 4
+   (pick Open cells). Each of the four gets a small bronze dot in its top corner, with no words
+   beside it. Hold the pointer on a dot: _Over its limit of 3 bunks at once · More bunks at Field
+   than fit_. An **Overlapping** counter appears. Click it: _Soccer · Thursday · Period 3: Over its
+   limit of 3 bunks at once_ and _Field · Thursday · Period 3: More bunks at Field than fit_.
+5. Drag Bunk 4's Soccer to Period 5. The dots and the **Overlapping** counter go at once (a
    counter at zero isn't shown).
-5. **Twice in a day.** Place Art in Bunk 1's Period 5 and Period 6. Both get the dot: _Twice in a
-   day_. Undo one.
-6. **Over its weekly limit.** Place Soccer for Bunk 5 on Monday, Tuesday, Wednesday and
-   Thursday (its limit is 3). All four get the dot: _Over its weekly limit_. Nothing stops you.
-7. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
-   words show beside the dot while the cell has focus. Escape hides them. A screen reader reads
-   them as part of the cell.
-8. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
+6. **Twice in a day.** Place Art in Bunk 1's Thursday Period 5 and Period 6. Both get the dot:
+   _Twice in a day_. Undo one.
+7. **Over its weekly limit.** Give Bunk 5 Gym games on Monday, Tuesday, Wednesday and Thursday
+   (its limit is 3). All four get the dot: _Over its weekly limit_. Nothing stops you.
+8. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
+   words show beside the dot while the cell has focus. Escape hides them (and, if you picked
+   something up with Space, lets go of it too). A screen reader reads them as part of the cell.
+9. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
    Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
    Bunk 1_. Set Boating back to everyone afterwards.
-9. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
-   the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
-   counter lists each bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by
-   Tuesday_). Clear those two settings afterwards.
+10. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
+    the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
+    counter lists each bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by
+    Tuesday_). Clear those two settings afterwards.
 
 ## What is not here yet
 

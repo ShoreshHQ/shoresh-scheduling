@@ -167,12 +167,12 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(q(element, '[data-id="counter-list"]')).toBeNull();
   });
 
-  it("Placed counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
+  it("Filled counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     // Two days; Bunk 1 has Period 2 and Lunch to fill, Bunk 2 only Period 2 (away at Lunch).
     expect(
-      q(element, '[data-id="placed"]').textContent.replace(/\s+/g, " ")
-    ).toBe("Placed 2 of 6");
+      q(element, '[data-id="filled"]').textContent.replace(/\s+/g, " ")
+    ).toBe("Filled 2 of 6");
   });
 
   it("a placement for a bunk it isn't set up for gets the dot", async () => {
@@ -206,7 +206,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     const element = await render(
       draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
     );
-    // Nothing overlaps and no activity has an early-week goal: only Placed and Still needed.
+    // Nothing overlaps and no activity has an early-week goal: only Filled and Still needed.
     expect(counters(element)).toEqual(["Still needed 2"]);
     expect(q(element, '[data-counter="overlapping"]')).toBeNull();
     expect(q(element, '[data-counter="spread"]')).toBeNull();

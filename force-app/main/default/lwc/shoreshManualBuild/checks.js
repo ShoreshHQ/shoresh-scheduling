@@ -11,7 +11,7 @@
  * - Still needed: each activity and group short of its weekly minimum ("Swim · Bunk 3: 2 still
  *   needed"). Spread across the week: short of its early-week goal ("… still needed by
  *   Wednesday"). Overlapping: each clash once (a place in a time block, an activity in a time
- *   block, a group in two overlapping time blocks). Placed: cells filled, of the cells to fill.
+ *   block, a group in two overlapping time blocks). Filled: cells filled, of the cells to fill.
  *
  * A placement counts once, however many time blocks it runs. A day that can't be read is left out.
  */
@@ -45,6 +45,23 @@ export function weekdayOf(date) {
     Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
   ).getUTCDay();
   return day === 0 ? 7 : day;
+}
+
+/** Text compared by character code, never by locale (the engine's order). */
+function compareText(a, b) {
+  const x = String(a == null ? "" : a);
+  const y = String(b == null ? "" : b);
+  if (x < y) {
+    return -1;
+  }
+  return x > y ? 1 : 0;
+}
+
+/** An activity's SortOrder; none goes last. */
+function sortValue(act) {
+  return typeof act.sortOrder === "number" && Number.isFinite(act.sortOrder)
+    ? act.sortOrder
+    : Number.POSITIVE_INFINITY;
 }
 
 const DAY_NAMES = [
@@ -319,16 +336,18 @@ function busy(ctx) {
             .filter(isActivity)
             .forEach((p) => flags.push({ p, rule: "busy", reason }));
           if (isActivity(p1) || isActivity(p2)) {
-            clashes.push(
-              ctx.clash(
+            // One clash per two placements, however many of their blocks overlap.
+            clashes.push({
+              ...ctx.clash(
                 "busy",
-                `grp:${grp.id}|${b2}`,
+                "",
                 `${d}|${b1}`,
                 grp.name,
                 reason,
                 day.blocks[b2].name
-              )
-            );
+              ),
+              key: `busy|${p1.key}|${p2.key}`
+            });
           }
         }
       }
@@ -361,8 +380,12 @@ function stillToPlace(ctx) {
     ctx.placements.filter(isActivity),
     (p) => `${p.groupId}|${p.id}`
   );
-  ctx.activities.forEach((act) => {
-    groups.forEach((groupName, groupId) => {
+  // As the engine lists them: group by group, then activity by SortOrder and Id.
+  const activities = [...ctx.activities.values()].sort(
+    (a, b) => sortValue(a) - sortValue(b) || compareText(a.id, b.id)
+  );
+  groups.forEach((groupName, groupId) => {
+    activities.forEach((act) => {
       if (ctx.notFor(act.id).has(groupId)) {
         return;
       }
@@ -393,7 +416,7 @@ function stillToPlace(ctx) {
 }
 
 /** Cells filled, of the cells to fill (at camp, and not a fixed or recurring activity). */
-function placedCount(ctx) {
+function filledCount(ctx) {
   let filled = 0;
   let total = 0;
   ctx.days.forEach((day) => {
@@ -424,7 +447,7 @@ function placedCount(ctx) {
  * isAway(groupId, blockId) }. words: { t (camp terms), dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"),
- * overlapping, stillNeeded, spread (lines of text), placed: { filled, total } }.
+ * overlapping, stillNeeded, spread (lines of text), cells: { filled, total } }.
  */
 export function checkWeek(days, model, words) {
   const placements = placementsOf(days);
@@ -482,7 +505,14 @@ export function checkWeek(days, model, words) {
   );
 
   const clashes = new Map();
-  marks.flatMap((m) => m.clashes).forEach((c) => clashes.set(c.key, c));
+  // The first time a clash is met names it (its earliest blocks).
+  marks
+    .flatMap((m) => m.clashes)
+    .forEach((c) => {
+      if (!clashes.has(c.key)) {
+        clashes.set(c.key, c);
+      }
+    });
   const overlapping = [...clashes.values()]
     .sort(
       (a, b) =>
@@ -497,6 +527,6 @@ export function checkWeek(days, model, words) {
     flags,
     overlapping,
     ...stillToPlace(ctx),
-    placed: placedCount(ctx)
+    cells: filledCount(ctx)
   };
 }

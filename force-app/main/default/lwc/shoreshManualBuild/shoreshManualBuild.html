@@ -70,8 +70,8 @@
     </div>
     <template lwc:if={showCounters}>
       <div class="counters" data-id="counters">
-        <span class="counter counter_plain" data-id="placed"
-          >Placed <span class="count">{placedText}</span></span
+        <span class="counter counter_plain" data-id="filled"
+          >Filled <span class="count">{filledText}</span></span
         >
         <template for:each={counterButtons} for:item="counter">
           <button

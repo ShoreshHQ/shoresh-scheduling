@@ -13,7 +13,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    name into a slot (and adding a new activity that way), the keyboard grid.
 2. Activity list on the left, drag and drop (place, move, swap, remove), multi-block shortening,
    Undo/Redo (50 steps per visit).
-3. Counters (Placed, Still needed, Spread across the week, Overlapping) and the bronze dots (over
+3. Counters (Filled, Still needed, Spread across the week, Overlapping) and the bronze dots (over
    its weekly limit, not set up for a bunk, twice in a day).
 4. Clear day, Clear week, Copy day to…; Versions on this screen; Save version; any version opens
    in Manual Build.
@@ -357,19 +357,21 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - **The grid** (`c-shoresh-schedule-grid`) takes a `dot` (its words) on any cell and knows
       nothing about why, so Generated Schedule reuses it. The words show on hover, on a tap,
       and while the cell has keyboard focus, and are in the cell's assistive text.
-    - **Counters** under the toolbar (desktop): **Placed** _34 of 120_ (cells filled, of the
-      cells to fill: at camp, not fixed or recurring; neutral). **Still needed** (activity and
+    - **Counters** under the toolbar (desktop): **Filled** _34 of 120_ (cells filled, of the
+      cells to fill: at camp, not fixed or recurring; neutral; the desktop's "Placed", renamed
+      because the activity list's "2 placed" counts placements, not cells). **Still needed** (activity and
       bunk pairs short of the weekly minimum), **Spread across the week** (short of the
       early-week goal, by that day inclusive, only when the week has a day by then), and
-      **Overlapping** (each clash once: a place in a block, an activity in a block, a bunk in two
-      overlapping blocks). Each shows its count as a separate numeral and is left out at zero
+      **Overlapping** (each clash once: a place in a block, an activity in a block, two of a
+      bunk's placements whose blocks overlap). Still needed and Spread list group by group, then
+      activity by SortOrder and Id, as the engine does. Each shows its count as a separate numeral and is left out at zero
       (design guide). A click opens the list of its lines, in the engine's words (_Swim · Bunk 3:
       2 still needed_, _… by Wednesday_, _Swim · Monday · Period 2: Over its limit of 3 bunks at
       once_); a second click closes it. The grid isn't highlighted by the list (desktop).
     - **Waits for part 6:** an activity, place or bunk closed that week (a week exception).
     - **Checked by** 16 scenario tests, a 2,000-week seeded property test against an
       independent placement-by-placement oracle (every dot's words, both lists, the overlap
-      count, Placed), mutations of each rule, and screen tests for the counters, the list, the
+      count's lines, Filled), mutations of each rule, and screen tests for the counters, the list, the
       dots and their focus.
 
 ## Choices that are hard to undo after release

@@ -20,7 +20,9 @@ function wholeNumber(value, fallback) {
     : fallback;
 }
 
-/** Each activity by Id: { id, name, locationId, min, max, atOnce, sameDivision, early }. */
+/**
+ * Each activity by Id: { id, name, locationId, min, max, atOnce, sameDivision, sortOrder, early }.
+ */
 export function readActivities(records) {
   const byId = new Map();
   (records || []).forEach((r) => {
@@ -38,6 +40,10 @@ export function readActivities(records) {
         ? null
         : Math.max(1, wholeNumber(r[ACTIVITY.GroupsAtOnce], 1)),
       sameDivision: Boolean(r[ACTIVITY.SameDivisionOnly]),
+      sortOrder:
+        typeof r[ACTIVITY.SortOrder] === "number"
+          ? r[ACTIVITY.SortOrder]
+          : null,
       early: count && count > 0 && byDay ? { count, byDay } : null
     });
   });

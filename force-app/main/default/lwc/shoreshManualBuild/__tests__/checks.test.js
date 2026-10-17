@@ -340,7 +340,7 @@ describe("checks: still to place and the counters", () => {
     expect(result.spread).toEqual([]);
   });
 
-  it("placed: cells filled of the cells to fill, leaving out fixed activities and not at camp", () => {
+  it("filled: cells filled of the cells to fill, leaving out fixed activities and not at camp", () => {
     const days = weekOf({
       [MON]: [
         ["F:flag", "A:hike", "^A:hike"],
@@ -354,7 +354,7 @@ describe("checks: still to place and the counters", () => {
       }),
       words
     );
-    expect(result.placed).toEqual({ filled: 3, total: 3 });
+    expect(result.cells).toEqual({ filled: 3, total: 3 });
   });
 });
 
@@ -369,6 +369,6 @@ describe("checks: nothing to say", () => {
     const result = checkWeek(days, model([activity("swim")]), words);
     expect(result.flags.size).toBe(0);
     expect(result.overlapping).toEqual([]);
-    expect(result.placed).toEqual({ filled: 0, total: 6 });
+    expect(result.cells).toEqual({ filled: 0, total: 6 });
   });
 });

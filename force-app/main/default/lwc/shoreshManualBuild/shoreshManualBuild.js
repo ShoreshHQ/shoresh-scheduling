@@ -88,7 +88,9 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // The counter whose list is open (stillNeeded, spread, overlapping), if any.
   openCounter = null;
-  checkCache = null;
+  // The last check and what it was worked out from. Changed in place, so updating it while the
+  // page renders doesn't ask for another render.
+  checkMemo = { inputs: null, result: null };
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -304,10 +306,17 @@ export default class ShoreshManualBuild extends LightningElement {
   /** The week checked (checks.js), worked out again only when the week or setup changes. */
   get checked() {
     const schedule = this.schedule;
-    const inputs = [schedule, this._setup, this.draft && this.draft.activities];
-    const cache = this.checkCache;
-    if (cache && cache.inputs.every((input, i) => input === inputs[i])) {
-      return cache.result;
+    const inputs = [
+      schedule,
+      this._setup,
+      this.draft && this.draft.activities,
+      this.draft && this.draft.away,
+      this.programId,
+      this.t
+    ];
+    const memo = this.checkMemo;
+    if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
+      return memo.result;
     }
     const setup = this._setup || {};
     const entry = (setup.programs || []).find(
@@ -333,7 +342,8 @@ export default class ShoreshManualBuild extends LightningElement {
       },
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );
-    this.checkCache = { inputs, result };
+    memo.inputs = inputs;
+    memo.result = result;
     return result;
   }
 
@@ -341,8 +351,8 @@ export default class ShoreshManualBuild extends LightningElement {
     return !!this.draft && !this.hasNoDays;
   }
 
-  get placedText() {
-    const { filled, total } = this.checked.placed;
+  get filledText() {
+    const { filled, total } = this.checked.cells;
     return `${filled} of ${total}`;
   }
 
