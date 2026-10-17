@@ -790,7 +790,7 @@ describe("c-shoresh-editable-table", () => {
       rows: ROWS,
       draftNoteHeading: "Moving",
       draftNote: (values, original) =>
-        values.Name !== original.Name ? `Renamed to ${values.Name}` : null
+        (values.Name !== original.Name ? `Renamed to ${values.Name}` : null)
     });
     await flush();
     expect(element.shadowRoot.querySelector('[data-id="note"]')).toBe(null);
@@ -823,9 +823,9 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     button(element, "Add Time block").click();
     await flush();
-    expect(
-      element.shadowRoot.querySelectorAll("lightning-combobox").length
-    ).toBe(1);
+    expect(element.shadowRoot.querySelectorAll("lightning-combobox").length).toBe(
+      1
+    );
     expect(
       element.shadowRoot.querySelector('[data-id="fixed"]').textContent
     ).toBe("Juniors");

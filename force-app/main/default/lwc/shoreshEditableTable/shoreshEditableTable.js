@@ -364,7 +364,7 @@ export default class ShoreshEditableTable extends LightningElement {
       return same;
     }
     const scopeOf = (draft) =>
-      this.sameNameScope ? draft.values[this.sameNameScope] || "" : "";
+      (this.sameNameScope ? draft.values[this.sameNameScope] || "" : "");
     const elsewhere = this.sameNamesElsewhere || {};
     const byName = new Map();
     this.drafts.forEach((draft) => {
