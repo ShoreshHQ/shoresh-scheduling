@@ -4,10 +4,28 @@ import { join } from "path";
 import * as XLSX from "xlsx";
 import ShoreshImport from "c/shoreshImport";
 import saveSetup from "@salesforce/apex/ImportController.saveSetup";
+import getAnswers from "@salesforce/apex/ImportController.getAnswers";
+import undoImport from "@salesforce/apex/ImportController.undoImport";
+import LightningConfirm from "lightning/confirm";
 import { buildTerms } from "c/shoreshTerms";
 
 jest.mock(
   "@salesforce/apex/ImportController.saveSetup",
+  () => ({ default: jest.fn() }),
+  {
+    virtual: true
+  }
+);
+
+jest.mock(
+  "@salesforce/apex/ImportController.getAnswers",
+  () => ({ default: jest.fn() }),
+  {
+    virtual: true
+  }
+);
+jest.mock(
+  "@salesforce/apex/ImportController.undoImport",
   () => ({ default: jest.fn() }),
   {
     virtual: true
@@ -311,5 +329,91 @@ describe("c-shoresh-import", () => {
     await flush();
     const save = $(element, 'lightning-button[data-id="save"]');
     expect(save === null || save.disabled).toBe(true);
+  });
+
+  describe("part 2: version, remembered answers, undo", () => {
+    const WITH_WEEK = {
+      ...SETUP,
+      season: { Id: "se1", Name: "Summer 2027", Camp__c: "c1" },
+      weeks: [
+        {
+          Id: "w1",
+          Name: "Week 1",
+          StartDate__c: "2027-06-28",
+          EndDate__c: "2027-07-02"
+        }
+      ]
+    };
+
+    async function renderWith(setup) {
+      const element = createElement("c-shoresh-import", { is: ShoreshImport });
+      element.setup = setup;
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      await flush();
+      return element;
+    }
+
+    it("answers from an earlier import are filled in, marked remembered, and can be changed", async () => {
+      getAnswers.mockResolvedValue([
+        { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
+        { key: "kind|Library time", answer: "recurring" }
+      ]);
+      const element = await renderWith(WITH_WEEK);
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
+      expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(
+        false
+      );
+      $(element, 'lightning-button[data-id="review"]').click();
+      await flush();
+      expect($(element, '[data-id="remembered"]').textContent).toBe(
+        "2 answers remembered from an earlier import. Change any of them below."
+      );
+      expect(
+        $(element, '[data-card="kind|Library time"]').textContent
+      ).toContain("remembered");
+      expect($(element, 'lightning-button[data-id="save"]').label).toBe(
+        "Use this setup"
+      );
+    });
+
+    it("the summary says where last year's schedule went, and the import can be undone", async () => {
+      getAnswers.mockResolvedValue([
+        { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
+        { key: "kind|Library time", answer: "recurring" }
+      ]);
+      saveSetup.mockResolvedValue({
+        added: { Version: 1 },
+        changed: {},
+        importId: "im1"
+      });
+      undoImport.mockResolvedValue({
+        removed: 30,
+        restored: 0,
+        keptEdited: [],
+        keptInUse: []
+      });
+      LightningConfirm.open = jest.fn().mockResolvedValue(true);
+      const element = await renderWith(WITH_WEEK);
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      $(element, 'lightning-button[data-id="review"]').click();
+      await flush();
+      $(element, 'lightning-button[data-id="save"]').click();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.versions).toHaveLength(1);
+      expect(plan.remember.map((r) => r.key)).toContain("kind|Library time");
+      expect($(element, '[data-id="version"]').textContent).toContain(
+        "Imported from maple-grove-2026-all-camp.xlsx, for Week 1 (Main): open it on Schedules."
+      );
+      $(element, 'lightning-button[data-id="undo"]').click();
+      await flush();
+      expect(undoImport).toHaveBeenCalledWith({ importId: "im1" });
+      expect($(element, '[data-id="undone"]').textContent).toBe(
+        "Import undone. Removed 30 things it added."
+      );
+      expect($(element, 'lightning-button[data-id="undo"]')).toBeNull();
+    });
   });
 });

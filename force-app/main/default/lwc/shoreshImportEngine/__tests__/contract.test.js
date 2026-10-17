@@ -17,9 +17,13 @@ import {
 findSamplesFrom(__dirname);
 
 const CLASSES = join(__dirname, "..", "..", "..", "classes");
-const apex = ["ImportStructureWrites", "ImportItemWrites"].map((name) =>
-  readFileSync(join(CLASSES, `${name}.cls`), "utf8")
-);
+const apex = [
+  "ImportStructureWrites",
+  "ImportItemWrites",
+  "ImportVersionWrites",
+  "ImportAnswers",
+  "ImportSetupSaves"
+].map((name) => readFileSync(join(CLASSES, `${name}.cls`), "utf8"));
 
 function readByApex(pattern) {
   return new Set(
@@ -41,7 +45,15 @@ function fullPlan() {
         fixed: [{ Id: "f1", Name: "Lunch", TimeBlock__c: "tb1", Length__c: 1 }]
       })
     ],
-    activities: [{ Id: "a1", Name: "Boating", Length__c: 1 }]
+    activities: [{ Id: "a1", Name: "Boating", Length__c: 1 }],
+    weeks: [
+      {
+        Id: "w1",
+        Name: "Week 1",
+        StartDate__c: "2027-06-28",
+        EndDate__c: "2027-07-02"
+      }
+    ]
   });
   existing.programs[0].timeBlocks.forEach((b) => {
     b.StartTime__c = at(9);
@@ -59,7 +71,11 @@ function fullPlan() {
   return planFor(
     buildProposal({ files, existing, terms, answers }),
     existing,
-    "season1"
+    "season1",
+    {
+      answers,
+      fileNames: files.map((f) => f.name)
+    }
   );
 }
 
@@ -93,6 +109,14 @@ describe("the save request matches what the server reads", () => {
     )
   );
 
+  it("every top-level value the server reads is in the plan", () => {
+    for (const name of readByApex(/plan\.texts?\('(\w+)'\)/g)) {
+      expect(Object.keys(plan)).toContain(name);
+    }
+    expect(plan.versions.length).toBeGreaterThan(0);
+    expect(plan.remember.length).toBeGreaterThan(0);
+  });
+
   it("every list the server reads is in the plan", () => {
     for (const list of readByApex(/plan\.entries\('(\w+)'\)/g)) {
       expect(Object.keys(plan)).toContain(list);
@@ -110,10 +134,18 @@ describe("the save request matches what the server reads", () => {
   });
 
   it("new entries carry a key, changes an id", () => {
-    for (const [name, list] of Object.entries(plan).filter(([, v]) =>
-      Array.isArray(v)
-    )) {
-      for (const entry of list) {
+    const setupLists = [
+      "programs",
+      "timeBlocks",
+      "divisions",
+      "groups",
+      "locations",
+      "activities",
+      "fixedActivities",
+      "recurringActivities"
+    ];
+    for (const name of setupLists) {
+      for (const entry of plan[name]) {
         // ImportPlan.Entry.isNew() is "no id": every entry says, one way or the other.
         expect(`${name}:${"id" in entry}`).toBe(`${name}:true`);
         const needsKey = entry.id === null && !/Activities$/.test(name);

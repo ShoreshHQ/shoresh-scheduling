@@ -411,9 +411,9 @@ function ampmCard(ask) {
       { value: "morning", label: `In the morning (${range(12 * 60)} AM)` },
       { value: "evening", label: `In the evening (${range(0)} PM)` },
       leaveOut("This time block and what is in it are not added.")
-      ]
-    };
-  }
+    ]
+  };
+}
 
 function weekCard(ask, t) {
   return {

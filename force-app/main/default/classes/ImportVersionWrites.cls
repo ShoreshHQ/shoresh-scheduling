@@ -37,7 +37,7 @@ public with sharing class ImportVersionWrites {
 
   private List<ScheduleDaySaves.DaySave> days(ImportPlan.Entry entry) {
     List<ScheduleDaySaves.DaySave> result = new List<ScheduleDaySaves.DaySave>();
-    for (Object item : entry.list('days')) {
+    for (Object item : entry.objects('days')) {
       Map<String, Object> day = (Map<String, Object>) item;
       result.add(
         new ScheduleDaySaves.DaySave(

@@ -71,11 +71,12 @@ export function byGroupFiles(groups, cell, blocks = BLOCKS) {
 export function existingSetup({
   programs = [],
   activities = [],
-  locations = []
+  locations = [],
+  weeks = []
 } = {}) {
   return {
     season: { Id: "a00000000000001AAA", Name: "Summer" },
-    weeks: [],
+    weeks,
     weekExceptions: [],
     programs,
     activities,

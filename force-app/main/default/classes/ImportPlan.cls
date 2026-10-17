@@ -82,9 +82,11 @@ public with sharing class ImportPlan {
     }
 
     /** A list inside an entry, as given (a version's days). */
-    public List<Object> list(String name) {
+    public List<Object> objects(String name) {
       Object value = values.get(name);
-      return value instanceof List<Object> ? (List<Object>) value : new List<Object>();
+      return value instanceof List<Object>
+        ? (List<Object>) value
+        : new List<Object>();
     }
 
     public List<String> texts(String name) {
