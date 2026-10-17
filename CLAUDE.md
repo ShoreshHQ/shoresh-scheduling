@@ -21,6 +21,11 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   not with sessions. Before deploying or running tests there, check
   `gh run list --repo ShoreshHQ/shoresh-scheduling --status in_progress` (and `--status queued`), and
   wait until no "Scratch org deploy and Apex tests" job is running.
+- **No field or object names written as text** (`"StartDate__c"`, `record.StartDate__c`, `'Week__c'`,
+  `day + '__c'`): once the package has its `shoresh` namespace they find nothing. LWC takes names
+  from `c/shoreshSchema` (generated: `node scripts/generate-shoresh-schema.js`); Apex uses typed
+  references and `ShoreshSchema`. `scripts/namespace-safety.js` fails CI if any file gains one; when
+  a file loses some, lower its baseline with `--update` (see `docs/ci-setup.md`).
 - **Salesforce skills** in `.claude/skills/` are a vetted copy of Salesforce's sf-skills
   (`.claude/skills/SOURCES.md`). Each starts with "Shoresh overrides (these win)": those lines and
   this file beat the skill text. Never install sf-skills plugins.

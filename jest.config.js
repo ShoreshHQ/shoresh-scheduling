@@ -7,7 +7,9 @@ module.exports = {
     moduleNameMapper: {
         ...(jestConfig.moduleNameMapper || {}),
         '^c/shoreshTokens$':
-            '<rootDir>/force-app/main/default/lwc/shoreshTokens/shoreshTokens.css'
+            '<rootDir>/force-app/main/default/lwc/shoreshTokens/shoreshTokens.css',
+        // Test helpers shared by suites (jest/namespace.js: namespace-safe fixtures).
+        '^shoresh-jest/(.*)$': '<rootDir>/jest/$1.js'
     },
     // Shared made-up data for tests, not tests themselves.
     testPathIgnorePatterns: [

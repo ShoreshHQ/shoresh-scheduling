@@ -29,6 +29,26 @@ jobs:
       - run: npm ci
       - name: LWC Jest
         run: npm run test:unit
+      - name: LWC Jest, as if the package had its namespace
+        # The suites listed in jest.namespaced.config.js, with every schema import named
+        # shoresh__...: a component that spells a field name as text fails here.
+        run: npm run test:unit:namespaced
+      - name: Namespace-safety ratchet
+        # No file may gain a field or object name written as text (scripts/namespace-safety.js).
+        # On a pull request, no file's baseline may be raised above the base branch's either.
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          BASELINE=scripts/namespace-safety-baseline.json
+          if [ -n "$BASE_REF" ]; then
+            git fetch --quiet --depth=1 origin "$BASE_REF"
+            if git cat-file -e "FETCH_HEAD:$BASELINE" 2>/dev/null; then
+              git show "FETCH_HEAD:$BASELINE" > "$RUNNER_TEMP/base-baseline.json"
+              exec node scripts/namespace-safety.js --base "$RUNNER_TEMP/base-baseline.json"
+            fi
+            echo "::notice::The base branch has no namespace-safety baseline yet; this one starts it."
+          fi
+          node scripts/namespace-safety.js
       - name: Install Salesforce CLI and Code Analyzer
         run: |
           npm install --global @salesforce/cli@2.154.4
