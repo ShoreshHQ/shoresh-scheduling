@@ -10,6 +10,10 @@ import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
+import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
+
+/** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
+const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
@@ -159,7 +163,7 @@ const validAll = (element) =>
 
 describe("c-shoresh-camp-setup", () => {
   beforeEach(() => {
-    getLabels.mockResolvedValue(LABELS);
+    getLabels.mockResolvedValue(nsRecord(LABELS));
   });
 
   afterEach(() => {
@@ -170,9 +174,11 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("asks a first-time director to name their camp", async () => {
-    getCamps.mockResolvedValueOnce([]).mockResolvedValueOnce([CAMP]);
-    getSeasons.mockResolvedValue([]);
-    saveRecords.mockResolvedValue(["c1"]);
+    getCamps
+      .mockResolvedValueOnce(nsRecord([]))
+      .mockResolvedValueOnce(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([]));
+    saveRecords.mockResolvedValue(nsRecord(["c1"]));
     const element = await render();
     expect(element.shadowRoot.textContent).toContain(
       "Start by naming your camp."
@@ -186,17 +192,19 @@ describe("c-shoresh-camp-setup", () => {
     button(element, "Create camp").click();
     await flush();
     await flush();
-    expect(saveRecords).toHaveBeenCalledWith({
+    expect(sentTo(saveRecords)).toContainEqual({
       records: [{ sobjectType: "Camp__c", Name: "Camp Willow" }]
     });
     expect(element.shadowRoot.textContent).toContain("Start a new season");
   });
 
   it("creates a season for the camp", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValueOnce([]).mockResolvedValue([SEASON]);
-    saveRecords.mockResolvedValue(["s1"]);
-    getSeasonSetup.mockResolvedValue(setupWith({ weeks: [] }));
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons
+      .mockResolvedValueOnce(nsRecord([]))
+      .mockResolvedValue(nsRecord([SEASON]));
+    saveRecords.mockResolvedValue(nsRecord(["s1"]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({ weeks: [] })));
     const element = await render();
 
     const fields = element.shadowRoot.querySelectorAll(
@@ -211,12 +219,21 @@ describe("c-shoresh-camp-setup", () => {
     fields[2].dispatchEvent(
       new CustomEvent("change", { detail: { value: "2026-08-07" } })
     );
+    await flush();
+    // The form shows what was typed.
+    expect(
+      [
+        ...element.shadowRoot.querySelectorAll(
+          'lightning-input[data-form="new-season"]'
+        )
+      ].map((f) => f.value)
+    ).toEqual(["Summer 2026", "2026-06-29", "2026-08-07"]);
     validAll(element);
     button(element, "Create season").click();
     await flush();
     await flush();
 
-    expect(saveRecords).toHaveBeenCalledWith({
+    expect(sentTo(saveRecords)).toContainEqual({
       records: [
         {
           sobjectType: "Season__c",
@@ -236,9 +253,9 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("shows the season in the camp words, with its problems on the screen that fixes them", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
 
     expect(q(element, '[data-id="camp-name-heading"]').textContent).toBe(
@@ -260,16 +277,19 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="problems"]')).toBeNull();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
     expect(weeks.addLabel).toBe("Add Week");
-    expect(weeks.newRowDefaults).toEqual({ Season__c: "s1", Name: "Week {n}" });
+    expect(bareRecord(weeks.newRowDefaults)).toEqual({
+      Season__c: "s1",
+      Name: "Week {n}"
+    });
     // Overlapping weeks get a heads-up, in the camp's word.
     expect(weeks.overlapLabel).toBe("Overlaps another week");
     expect(button(element, "Copy this season")).toBeDefined();
   });
 
   it("fills in weeks from the season dates", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith({ weeks: [] }));
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({ weeks: [] })));
     addWeeksFromSeasonDates.mockResolvedValue();
     const element = await render();
     q(element, '[data-id="fill-weeks"]').click();
@@ -279,9 +299,9 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("saves what a table sends and shows a server refusal", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     saveRecords.mockRejectedValueOnce({
       body: { message: '"Week 1" already starts on 6/29/2026.' }
     });
@@ -289,11 +309,13 @@ describe("c-shoresh-camp-setup", () => {
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
     weeks.dispatchEvent(
       new CustomEvent("save", {
-        detail: { records: [{ sobjectType: "Week__c", Name: "Extra" }] }
+        detail: nsRecord({
+          records: [{ sobjectType: "Week__c", Name: "Extra" }]
+        })
       })
     );
     await flush();
-    expect(saveRecords).toHaveBeenCalledWith({
+    expect(sentTo(saveRecords)).toContainEqual({
       records: [{ sobjectType: "Week__c", Name: "Extra" }]
     });
     expect(q(element, '[data-id="error"]').textContent).toContain(
@@ -302,14 +324,14 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("adds a program", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith({ programs: [] }));
-    saveRecords.mockResolvedValue(["p1"]);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({ programs: [] })));
+    saveRecords.mockResolvedValue(nsRecord(["p1"]));
     const element = await render();
     q(element, '[data-id="add-program"]').click();
     await flush();
-    expect(saveRecords).toHaveBeenCalledWith({
+    expect(sentTo(saveRecords)).toContainEqual({
       records: [
         {
           sobjectType: "Program__c",
@@ -322,21 +344,21 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("deletes only after the director confirms", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     deleteRecord.mockResolvedValue();
     const element = await render();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
 
-    LightningConfirm.open.mockResolvedValueOnce(false);
+    LightningConfirm.open.mockResolvedValueOnce(nsRecord(false));
     weeks.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
     );
     await flush();
     expect(deleteRecord).not.toHaveBeenCalled();
 
-    LightningConfirm.open.mockResolvedValueOnce(true);
+    LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
     weeks.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
     );
@@ -345,19 +367,26 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("deleting a week says which saved versions go with it", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(
-      setupWith({
-        schedules: [
-          { Id: "s1", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
-          { Id: "s2", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
-          { Id: "s3", Week__c: "w1", Program__c: "p1", Status__c: "Published" }
-        ]
-      })
+      nsRecord(
+        setupWith({
+          schedules: [
+            { Id: "s1", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
+            { Id: "s2", Week__c: "w1", Program__c: "p1", Status__c: "Version" },
+            {
+              Id: "s3",
+              Week__c: "w1",
+              Program__c: "p1",
+              Status__c: "Published"
+            }
+          ]
+        })
+      )
     );
     const element = await render();
-    LightningConfirm.open.mockResolvedValue(false);
+    LightningConfirm.open.mockResolvedValue(nsRecord(false));
     q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "w1", name: "Week 1" } })
     );
@@ -368,10 +397,10 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("deleting a season names everything that goes with it", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
-    LightningConfirm.open.mockResolvedValue(true);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    LightningConfirm.open.mockResolvedValue(nsRecord(true));
     deleteRecord.mockResolvedValue();
     const element = await render();
     button(element, "Delete season").click();
@@ -381,14 +410,14 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("edits the season dates and saves only the season", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
-    saveRecords.mockResolvedValue(["s1"]);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRecords.mockResolvedValue(nsRecord(["s1"]));
     const element = await render();
     expect(button(element, "Save season").disabled).toBe(true);
     const end = element.shadowRoot.querySelector(
-      'lightning-input[data-form="season"][data-field="EndDate__c"]'
+      'lightning-input[data-form="season"][data-field="end"]'
     );
     end.dispatchEvent(
       new CustomEvent("change", { detail: { value: "2026-08-14" } })
@@ -397,17 +426,173 @@ describe("c-shoresh-camp-setup", () => {
     validAll(element);
     button(element, "Save season").click();
     await flush();
-    expect(saveRecords.mock.calls[0][0].records[0]).toMatchObject({
+    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toEqual({
       sobjectType: "Season__c",
       Id: "s1",
-      EndDate__c: "2026-08-14"
+      Name: "Summer 2026",
+      StartDate__c: "2026-06-29",
+      EndDate__c: "2026-08-14",
+      Status__c: "Planning"
+    });
+  });
+
+  it("shows the saved season in its form, and a changed status is saved", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRecords.mockResolvedValue(nsRecord(["s1"]));
+    const element = await render();
+    const input = (field) =>
+      element.shadowRoot.querySelector(
+        `[data-form="season"][data-field="${field}"]`
+      );
+    expect(
+      ["name", "start", "end", "status"].map((field) => input(field).value)
+    ).toEqual(["Summer 2026", "2026-06-29", "2026-08-07", "Planning"]);
+    input("status").dispatchEvent(
+      new CustomEvent("change", { detail: { value: "Active" } })
+    );
+    await flush();
+    validAll(element);
+    button(element, "Save season").click();
+    await flush();
+    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toMatchObject({
+      Status__c: "Active"
+    });
+  });
+
+  it("renames a season and saves the new name with its dates", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRecords.mockResolvedValue(nsRecord(["s1"]));
+    const element = await render();
+    element.shadowRoot
+      .querySelector('[data-form="season"][data-field="name"]')
+      .dispatchEvent(
+        new CustomEvent("change", {
+          detail: { value: "Summer 2026 (day camp)" }
+        })
+      );
+    await flush();
+    validAll(element);
+    button(element, "Save season").click();
+    await flush();
+    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toEqual({
+      sobjectType: "Season__c",
+      Id: "s1",
+      Name: "Summer 2026 (day camp)",
+      StartDate__c: "2026-06-29",
+      EndDate__c: "2026-08-07",
+      Status__c: "Planning"
+    });
+  });
+
+  it("says which season a copy came from", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          season: { ...SEASON, CopiedFrom__r: { Name: "Summer 2025" } }
+        })
+      )
+    );
+    const element = await render();
+    expect(q(element, '[data-id="copied-from"]').textContent).toContain(
+      "Summer 2025"
+    );
+  });
+
+  it("deleting a program says which saved versions go with it", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(
+        setupWith({
+          schedules: [
+            { Id: "v1", Week__c: "w9", Program__c: "p1", Status__c: "Version" }
+          ]
+        })
+      )
+    );
+    const element = await render();
+    await openScreen(element, "programs");
+    LightningConfirm.open.mockResolvedValue(false);
+    q(element, "c-shoresh-program").dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "p1", name: "Main" } })
+    );
+    await flush();
+    expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
+      "That includes 1 saved version."
+    );
+  });
+
+  it("gives each table its own object, columns, and new-row values", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(
+      nsRecord(setupWith({ locationTypes: [], locations: [], activities: [] }))
+    );
+    const element = await render();
+    const table = (id) =>
+      q(element, `c-shoresh-editable-table[data-id="${id}"]`);
+    const shape = (t) => ({
+      object: bareName(t.objectApiName),
+      columns: t.columns.map((c) => bareName(c.fieldName)),
+      defaults: bareRecord(t.newRowDefaults)
+    });
+    expect(shape(table("weeks"))).toEqual({
+      object: "Week__c",
+      columns: ["Name", "StartDate__c", "EndDate__c"],
+      defaults: { Season__c: "s1", Name: "Week {n}" }
+    });
+    await openScreen(element, "locations");
+    expect(shape(table("location-types"))).toMatchObject({
+      object: "LocationType__c",
+      defaults: { Season__c: "s1" }
+    });
+    expect(shape(table("locations"))).toMatchObject({
+      object: "Location__c",
+      columns: ["Name", "LocationType__c", "GroupsThatFit__c", "Notes__c"],
+      defaults: { Season__c: "s1", GroupsThatFit__c: 1 }
+    });
+    expect(bareName(table("locations").filterField)).toBe("LocationType__c");
+    await openScreen(element, "activities");
+    expect(shape(table("activities"))).toEqual({
+      object: "Activity__c",
+      columns: [
+        "Name",
+        "Location__c",
+        "Length__c",
+        "TimesPerWeekMin__c",
+        "TimesPerWeekMax__c",
+        "NoWeeklyMax__c",
+        "Priority__c",
+        "Outdoor__c",
+        "RainPlan__c",
+        "GroupsAtOnce__c",
+        "NoGroupLimit__c"
+      ],
+      defaults: {
+        Season__c: "s1",
+        Name: "Activity {n}",
+        Length__c: 1,
+        TimesPerWeekMin__c: 1,
+        TimesPerWeekMax__c: 1,
+        Priority__c: "Low",
+        Outdoor__c: false,
+        GroupsAtOnce__c: 1,
+        NoWeeklyMax__c: false,
+        NoGroupLimit__c: false
+      }
     });
   });
 
   it("opens the copy panel, and camp words from the menu", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
     button(element, "Copy this season").click();
     await flush();
@@ -425,12 +610,11 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("goes to the new season after a copy", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([
-      SEASON,
-      { ...SEASON, Id: "s2", Name: "Summer 2027" }
-    ]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(
+      nsRecord([SEASON, { ...SEASON, Id: "s2", Name: "Summer 2027" }])
+    );
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
     button(element, "Copy this season").click();
     await flush();
@@ -456,15 +640,15 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("tells the table its save failed, so its typing is not lost", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     saveRecords.mockRejectedValueOnce({ body: { message: "No." } });
     const element = await render();
     const onFailure = jest.fn();
     q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
       new CustomEvent("save", {
-        detail: { records: [{ Name: "x" }], onFailure }
+        detail: nsRecord({ records: [{ Name: "x" }], onFailure })
       })
     );
     await flush();
@@ -472,9 +656,9 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("flags same names on the season's location types, locations, and activities only", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith({}));
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({})));
     const element = await render();
     const flagged = (id) =>
       q(element, `c-shoresh-editable-table[data-id="${id}"]`).flagSameNames;
@@ -485,14 +669,16 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("saves a table's rows with its Runs in weeks, and reloads", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(
-      setupWith({
-        weekExceptions: [{ Id: "x1", Week__c: "w1", Location__c: "l1" }]
-      })
+      nsRecord(
+        setupWith({
+          weekExceptions: [{ Id: "x1", Week__c: "w1", Location__c: "l1" }]
+        })
+      )
     );
-    saveRowsAndWeeks.mockResolvedValue([]);
+    saveRowsAndWeeks.mockResolvedValue(nsRecord([]));
     const element = await render();
     const locations = q(
       element,
@@ -506,15 +692,15 @@ describe("c-shoresh-camp-setup", () => {
     ).toBe("Runs in");
     locations.dispatchEvent(
       new CustomEvent("save", {
-        detail: {
+        detail: nsRecord({
           records: [{ sobjectType: "Location__c", Name: "Pool" }],
           weeksOff: [{ row: 0, week: "w1" }],
           weeksBackOn: ["x1"]
-        }
+        })
       })
     );
     await flush();
-    expect(saveRowsAndWeeks).toHaveBeenCalledWith({
+    expect(sentTo(saveRowsAndWeeks)).toContainEqual({
       records: [{ sobjectType: "Location__c", Name: "Pool" }],
       weeksOff: [{ row: 0, week: "w1" }],
       weeksBackOn: ["x1"]
@@ -524,10 +710,10 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("saves recurring activities with their weeks and who each covers, and shows a refusal", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
-    saveRowsWeeksAndWho.mockResolvedValue([]);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRowsWeeksAndWho.mockResolvedValue(nsRecord([]));
     const element = await render();
     const recurring = q(
       element,
@@ -540,9 +726,13 @@ describe("c-shoresh-camp-setup", () => {
       weeksBackOn: [],
       who: [{ row: 0, targets: ["d1"] }]
     };
-    recurring.dispatchEvent(new CustomEvent("save", { detail }));
+    recurring.dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord(detail)
+      })
+    );
     await flush();
-    expect(saveRowsWeeksAndWho).toHaveBeenCalledWith({
+    expect(sentTo(saveRowsWeeksAndWho)).toContainEqual({
       records: detail.records,
       extras: { weeksOff: [], weeksBackOn: [], who: detail.who }
     });
@@ -553,7 +743,9 @@ describe("c-shoresh-camp-setup", () => {
     saveRowsWeeksAndWho.mockRejectedValue({ body: { message: refusal } });
     const onFailure = jest.fn();
     recurring.dispatchEvent(
-      new CustomEvent("save", { detail: { ...detail, onFailure } })
+      new CustomEvent("save", {
+        detail: nsRecord({ ...detail, onFailure })
+      })
     );
     await flush();
     expect(onFailure).toHaveBeenCalled();
@@ -561,33 +753,35 @@ describe("c-shoresh-camp-setup", () => {
   });
 
   it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(
-      setupWith({
-        programs: [
-          {
-            program: { Id: "p1", Name: "Main", Monday__c: true },
-            timeBlocks: [
-              { Id: "t1", Name: "Period 1" },
-              { Id: "t9", Name: "Snack" },
-              { Id: "t2", Name: "Period 2" }
-            ],
-            divisions: [],
-            fixedActivities: [
-              {
-                Id: "f1",
-                Name: "Rest",
-                TimeBlock__c: "t1",
-                Length__c: 2,
-                LastTimeBlock__c: "t2"
-              }
-            ]
-          }
-        ]
-      })
+      nsRecord(
+        setupWith({
+          programs: [
+            {
+              program: { Id: "p1", Name: "Main", Monday__c: true },
+              timeBlocks: [
+                { Id: "t1", Name: "Period 1" },
+                { Id: "t9", Name: "Snack" },
+                { Id: "t2", Name: "Period 2" }
+              ],
+              divisions: [],
+              fixedActivities: [
+                {
+                  Id: "f1",
+                  Name: "Rest",
+                  TimeBlock__c: "t1",
+                  Length__c: 2,
+                  LastTimeBlock__c: "t2"
+                }
+              ]
+            }
+          ]
+        })
+      )
     );
-    saveRecords.mockResolvedValue(["f1"]);
+    saveRecords.mockResolvedValue(nsRecord(["f1"]));
     const element = await render();
     await openScreen(element, "fixedActivities");
     const buttons = [
@@ -599,21 +793,26 @@ describe("c-shoresh-camp-setup", () => {
     ]);
     buttons[1].click();
     await flush();
-    expect(saveRecords).toHaveBeenCalledWith({
+    expect(sentTo(saveRecords)).toContainEqual({
       records: [{ sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }]
     });
   });
 
   it("tells a table with weeks when its save failed", async () => {
-    getCamps.mockResolvedValue([CAMP]);
-    getSeasons.mockResolvedValue([SEASON]);
-    getSeasonSetup.mockResolvedValue(setupWith());
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     saveRowsAndWeeks.mockRejectedValue({ body: { message: "No." } });
     const element = await render();
     const onFailure = jest.fn();
     q(element, 'c-shoresh-editable-table[data-id="activities"]').dispatchEvent(
       new CustomEvent("save", {
-        detail: { records: [], weeksOff: [], weeksBackOn: ["x1"], onFailure }
+        detail: nsRecord({
+          records: [],
+          weeksOff: [],
+          weeksBackOn: ["x1"],
+          onFailure
+        })
       })
     );
     await flush();
@@ -623,9 +822,9 @@ describe("c-shoresh-camp-setup", () => {
 
   describe("the menu", () => {
     it("lands on Roots and shows one screen at a time", async () => {
-      getCamps.mockResolvedValue([CAMP]);
-      getSeasons.mockResolvedValue([SEASON]);
-      getSeasonSetup.mockResolvedValue(setupWith());
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();
       expect(shownScreens(element)).toEqual(["roots"]);
       const screens = [
@@ -655,9 +854,9 @@ describe("c-shoresh-camp-setup", () => {
     });
 
     it("uses the camp's words and lists what is coming", async () => {
-      getCamps.mockResolvedValue([CAMP]);
-      getSeasons.mockResolvedValue([SEASON]);
-      getSeasonSetup.mockResolvedValue(setupWith());
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();
       const items = q(element, "c-shoresh-menu").sections.flatMap((section) =>
         section.items.map((item) => [item.label, item.coming])
@@ -670,9 +869,9 @@ describe("c-shoresh-camp-setup", () => {
     });
 
     it("opens the screen a Roots card or attention item points to", async () => {
-      getCamps.mockResolvedValue([CAMP]);
-      getSeasons.mockResolvedValue([SEASON]);
-      getSeasonSetup.mockResolvedValue(setupWith());
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();
       q(element, "c-shoresh-roots").dispatchEvent(
         new CustomEvent("navigate", { detail: { screen: "groups" } })
@@ -688,9 +887,9 @@ describe("c-shoresh-camp-setup", () => {
     });
 
     it("keeps unsaved typing when the director goes to another screen and back", async () => {
-      getCamps.mockResolvedValue([CAMP]);
-      getSeasons.mockResolvedValue([SEASON]);
-      getSeasonSetup.mockResolvedValue(setupWith());
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();
       await openScreen(element, "weeks");
       const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
@@ -714,8 +913,8 @@ describe("c-shoresh-camp-setup", () => {
     });
 
     it("before the first season, only camp words opens", async () => {
-      getCamps.mockResolvedValue([CAMP]);
-      getSeasons.mockResolvedValue([]);
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([]));
       const element = await render();
       expect(element.shadowRoot.textContent).toContain("Start a new season");
       const menu = q(element, "c-shoresh-menu");

@@ -16,7 +16,9 @@ const NAMESPACED_SUITES = [
     'shoreshImport',
     'shoreshListImport',
     'shoreshSchedules',
-    'shoreshManualBuild'
+    'shoreshManualBuild',
+    'shoreshCampSetup',
+    'shoreshRoots'
 ];
 
 module.exports = {

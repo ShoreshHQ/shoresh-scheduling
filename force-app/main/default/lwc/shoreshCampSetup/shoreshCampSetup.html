@@ -115,7 +115,7 @@
               <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
                 <lightning-input
                   data-form="new-season"
-                  data-field="Name"
+                  data-field="name"
                   label={labels.seasonName}
                   value={newSeason.Name}
                   required
@@ -125,10 +125,10 @@
               <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
                 <lightning-input
                   data-form="new-season"
-                  data-field="StartDate__c"
+                  data-field="start"
                   type="date"
                   label="First day"
-                  value={newSeason.StartDate__c}
+                  value={newSeasonStart}
                   required
                   onchange={handleNewSeasonField}
                 ></lightning-input>
@@ -136,10 +136,10 @@
               <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
                 <lightning-input
                   data-form="new-season"
-                  data-field="EndDate__c"
+                  data-field="end"
                   type="date"
                   label="Last day"
-                  value={newSeason.EndDate__c}
+                  value={newSeasonEnd}
                   required
                   onchange={handleNewSeasonField}
                 ></lightning-input>
@@ -244,7 +244,7 @@
                   >
                     <lightning-input
                       data-form="season"
-                      data-field="Name"
+                      data-field="name"
                       label={labels.seasonName}
                       value={seasonForm.Name}
                       required
@@ -256,10 +256,10 @@
                   >
                     <lightning-input
                       data-form="season"
-                      data-field="StartDate__c"
+                      data-field="start"
                       type="date"
                       label="First day"
-                      value={seasonForm.StartDate__c}
+                      value={seasonStart}
                       required
                       onchange={handleSeasonField}
                     ></lightning-input>
@@ -269,10 +269,10 @@
                   >
                     <lightning-input
                       data-form="season"
-                      data-field="EndDate__c"
+                      data-field="end"
                       type="date"
                       label="Last day"
-                      value={seasonForm.EndDate__c}
+                      value={seasonEnd}
                       required
                       onchange={handleSeasonField}
                     ></lightning-input>
@@ -282,9 +282,9 @@
                   >
                     <lightning-combobox
                       data-form="season"
-                      data-field="Status__c"
+                      data-field="status"
                       label="Status"
-                      value={seasonForm.Status__c}
+                      value={seasonStatus}
                       options={statusOptions}
                       required
                       onchange={handleSeasonField}
@@ -329,7 +329,7 @@
               <c-shoresh-editable-table
                 data-id="weeks"
                 title={labels.screens.weeks}
-                object-api-name="Week__c"
+                object-api-name={objects.Week}
                 columns={weekColumns}
                 rows={setup.weeks}
                 add-label={labels.addWeek}
@@ -495,7 +495,7 @@
               <c-shoresh-editable-table
                 data-id="location-types"
                 title={labels.locationTypes}
-                object-api-name="LocationType__c"
+                object-api-name={objects.LocationType}
                 flag-same-names
                 columns={locationTypeColumns}
                 rows={setup.locationTypes}
@@ -521,10 +521,10 @@
               </template>
               <c-shoresh-editable-table
                 data-id="locations"
-                filter-field="LocationType__c"
+                filter-field={locationTypeField}
                 filter-value={locationTableFilter}
                 title={labels.screens.locations}
-                object-api-name="Location__c"
+                object-api-name={objects.Location}
                 flag-same-names
                 columns={locationColumns}
                 rows={setup.locations}
@@ -558,7 +558,7 @@
               <c-shoresh-editable-table
                 data-id="activities"
                 title={labels.catalogue}
-                object-api-name="Activity__c"
+                object-api-name={objects.Activity}
                 flag-same-names
                 columns={activityColumns}
                 rows={setup.activities}

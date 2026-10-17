@@ -17,6 +17,20 @@ import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
+import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
+
+// Names as the package has them (c/shoreshSchema).
+const SEASON = FIELD.Season;
+const WEEK = FIELD.Week;
+const LOCATION = FIELD.Location;
+const ACTIVITY = FIELD.Activity;
+// The season forms' inputs (their data-field) and the season fields they hold.
+const SEASON_INPUTS = {
+  name: "Name",
+  start: SEASON.StartDate,
+  end: SEASON.EndDate,
+  status: SEASON.Status
+};
 
 const SCREENS = [
   "roots",
@@ -235,21 +249,52 @@ export default class ShoreshCampSetup extends LightningElement {
   get seasonSaveDisabled() {
     return this.busy || !this.seasonChanged;
   }
+  /** Object and field names for the template's tables, as the package has them. */
+  get objects() {
+    return OBJECT;
+  }
+
+  get locationTypeField() {
+    return LOCATION.LocationType;
+  }
+
+  /** The season forms' dates and status, by the season's fields. */
+  get newSeasonStart() {
+    return this.newSeason[SEASON.StartDate];
+  }
+
+  get newSeasonEnd() {
+    return this.newSeason[SEASON.EndDate];
+  }
+
+  get seasonStart() {
+    return this.seasonForm[SEASON.StartDate];
+  }
+
+  get seasonEnd() {
+    return this.seasonForm[SEASON.EndDate];
+  }
+
+  get seasonStatus() {
+    return this.seasonForm[SEASON.Status];
+  }
+
   get copiedFromName() {
     const season = this.setup && this.setup.season;
-    return season && season.CopiedFrom__r ? season.CopiedFrom__r.Name : null;
+    const from = season && season[PARENT.Season.CopiedFrom];
+    return from ? from.Name : null;
   }
   get weekColumns() {
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       {
-        fieldName: "StartDate__c",
+        fieldName: WEEK.StartDate,
         label: "Start date",
         type: "date",
         required: true
       },
       {
-        fieldName: "EndDate__c",
+        fieldName: WEEK.EndDate,
         label: "End date",
         type: "date",
         required: true
@@ -258,7 +303,10 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get weekDefaults() {
     // The table puts each new row's position in place of {n}.
-    return { Season__c: this.seasonId, Name: `${this.terms.s("Week")} {n}` };
+    return {
+      [WEEK.Season]: this.seasonId,
+      Name: `${this.terms.s("Week")} {n}`
+    };
   }
   get programs() {
     return ((this.setup && this.setup.programs) || []).map((entry) => ({
@@ -274,14 +322,14 @@ export default class ShoreshCampSetup extends LightningElement {
     return [{ fieldName: "Name", label: "Name", type: "text", required: true }];
   }
   get locationTypeDefaults() {
-    return { Season__c: this.seasonId };
+    return { [FIELD.LocationType.Season]: this.seasonId };
   }
   get locationColumns() {
     const t = this.terms;
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       {
-        fieldName: "LocationType__c",
+        fieldName: LOCATION.LocationType,
         label: t.s("LocationType"),
         type: "picklist",
         options: [
@@ -293,13 +341,13 @@ export default class ShoreshCampSetup extends LightningElement {
         ]
       },
       {
-        fieldName: "GroupsThatFit__c",
+        fieldName: LOCATION.GroupsThatFit,
         label: t.s("GroupsThatFit"),
         type: "number",
         min: 1,
         required: true
       },
-      { fieldName: "Notes__c", label: "Notes", type: "text" }
+      { fieldName: LOCATION.Notes, label: "Notes", type: "text" }
     ];
   }
   get hasLocationTypes() {
@@ -333,9 +381,9 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get locationDefaults() {
     return {
-      Season__c: this.seasonId,
+      [LOCATION.Season]: this.seasonId,
       Name: `${this.terms.s("Location")} {n}`,
-      GroupsThatFit__c: 1
+      [LOCATION.GroupsThatFit]: 1
     };
   }
   get activityColumns() {
@@ -345,7 +393,7 @@ export default class ShoreshCampSetup extends LightningElement {
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       {
-        fieldName: "Location__c",
+        fieldName: ACTIVITY.Location,
         label: t.s("Location"),
         type: "picklist",
         options: [
@@ -357,32 +405,32 @@ export default class ShoreshCampSetup extends LightningElement {
         ]
       },
       {
-        fieldName: "Length__c",
+        fieldName: ACTIVITY.Length,
         label: t.s("Length"),
         type: "number",
         min: 1,
         required: true
       },
       {
-        fieldName: "TimesPerWeekMin__c",
+        fieldName: ACTIVITY.TimesPerWeekMin,
         label: `${t.s("TimesPerWeek")}: at least`,
         type: "number",
         min: 0,
         required: true
       },
       {
-        fieldName: "TimesPerWeekMax__c",
+        fieldName: ACTIVITY.TimesPerWeekMax,
         label: `${t.s("TimesPerWeek")}: at most`,
         type: "number",
         min: 0
       },
       {
-        fieldName: "NoWeeklyMax__c",
+        fieldName: ACTIVITY.NoWeeklyMax,
         label: "No weekly maximum",
         type: "checkbox"
       },
       {
-        fieldName: "Priority__c",
+        fieldName: ACTIVITY.Priority,
         label: "Priority",
         type: "picklist",
         options: [
@@ -390,9 +438,9 @@ export default class ShoreshCampSetup extends LightningElement {
           { label: "Low", value: "Low" }
         ]
       },
-      { fieldName: "Outdoor__c", label: "Outdoors", type: "checkbox" },
+      { fieldName: ACTIVITY.Outdoor, label: "Outdoors", type: "checkbox" },
       {
-        fieldName: "RainPlan__c",
+        fieldName: ACTIVITY.RainPlan,
         label: t.s("RainPlan"),
         type: "picklist",
         excludeSelf: true,
@@ -402,27 +450,31 @@ export default class ShoreshCampSetup extends LightningElement {
         ]
       },
       {
-        fieldName: "GroupsAtOnce__c",
+        fieldName: ACTIVITY.GroupsAtOnce,
         label: t.s("GroupsAtOnce"),
         type: "number",
         min: 1
       },
-      { fieldName: "NoGroupLimit__c", label: "No limit", type: "checkbox" }
+      {
+        fieldName: ACTIVITY.NoGroupLimit,
+        label: "No limit",
+        type: "checkbox"
+      }
     ];
   }
   get activityDefaults() {
     // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
     return {
-      Season__c: this.seasonId,
+      [ACTIVITY.Season]: this.seasonId,
       Name: `${this.terms.s("Activity")} {n}`,
-      Length__c: 1,
-      TimesPerWeekMin__c: 1,
-      TimesPerWeekMax__c: 1,
-      Priority__c: "Low",
-      Outdoor__c: false,
-      GroupsAtOnce__c: 1,
-      NoWeeklyMax__c: false,
-      NoGroupLimit__c: false
+      [ACTIVITY.Length]: 1,
+      [ACTIVITY.TimesPerWeekMin]: 1,
+      [ACTIVITY.TimesPerWeekMax]: 1,
+      [ACTIVITY.Priority]: "Low",
+      [ACTIVITY.Outdoor]: false,
+      [ACTIVITY.GroupsAtOnce]: 1,
+      [ACTIVITY.NoWeeklyMax]: false,
+      [ACTIVITY.NoGroupLimit]: false
     };
   }
 
@@ -478,7 +530,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       const [campId] = await saveRecords({
-        records: [{ sobjectType: "Camp__c", Name: this.newCamp.Name }]
+        records: [{ sobjectType: OBJECT.Camp, Name: this.newCamp.Name }]
       });
       await this.loadCamps(campId);
     });
@@ -507,10 +559,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleSeasonField(event) {
-    this.seasonForm = {
-      ...this.seasonForm,
-      [event.target.dataset.field]: event.detail.value
-    };
+    const field = SEASON_INPUTS[event.target.dataset.field];
+    if (!field) {
+      return;
+    }
+    this.seasonForm = { ...this.seasonForm, [field]: event.detail.value };
     this.seasonChanged = true;
   }
 
@@ -522,12 +575,12 @@ export default class ShoreshCampSetup extends LightningElement {
     this.seasonSubmitted = true;
     const records = [
       {
-        sobjectType: "Season__c",
+        sobjectType: OBJECT.Season,
         Id: f.Id,
         Name: f.Name,
-        StartDate__c: f.StartDate__c,
-        EndDate__c: f.EndDate__c,
-        Status__c: f.Status__c
+        [SEASON.StartDate]: f[SEASON.StartDate],
+        [SEASON.EndDate]: f[SEASON.EndDate],
+        [SEASON.Status]: f[SEASON.Status]
       }
     ];
     await this.saveAndReload(
@@ -568,10 +621,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleNewSeasonField(event) {
-    this.newSeason = {
-      ...this.newSeason,
-      [event.target.dataset.field]: event.detail.value
-    };
+    const field = SEASON_INPUTS[event.target.dataset.field];
+    if (!field) {
+      return;
+    }
+    this.newSeason = { ...this.newSeason, [field]: event.detail.value };
   }
 
   async handleCreateSeason() {
@@ -582,9 +636,9 @@ export default class ShoreshCampSetup extends LightningElement {
       const [seasonId] = await saveRecords({
         records: [
           {
-            sobjectType: "Season__c",
-            Camp__c: this.campId,
-            Status__c: "Planning",
+            sobjectType: OBJECT.Season,
+            [SEASON.Camp]: this.campId,
+            [SEASON.Status]: "Planning",
             ...this.newSeason
           }
         ]
@@ -662,10 +716,10 @@ export default class ShoreshCampSetup extends LightningElement {
     const count = this.programs.length;
     const records = [
       {
-        sobjectType: "Program__c",
-        Season__c: this.seasonId,
+        sobjectType: OBJECT.Program,
+        [FIELD.Program.Season]: this.seasonId,
         Name: count ? `${this.terms.s("Program")} ${count + 1}` : "Main",
-        SortOrder__c: count + 1
+        [FIELD.Program.SortOrder]: count + 1
       }
     ];
     await this.saveAndReload(() => saveRecords({ records }));
@@ -708,8 +762,9 @@ export default class ShoreshCampSetup extends LightningElement {
   savedSchedulesNote(recordId) {
     const count = ((this.setup && this.setup.schedules) || []).filter(
       (s) =>
-        s.Status__c === "Version" &&
-        (s.Week__c === recordId || s.Program__c === recordId)
+        s[FIELD.Schedule.Status] === "Version" &&
+        (s[FIELD.Schedule.Week] === recordId ||
+          s[FIELD.Schedule.Program] === recordId)
     ).length;
     if (!count) {
       return "";
