@@ -56,7 +56,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
    time blocks, activities, who-it's-set-up-for rows, locations, fixed and recurring activities
    (for their places), and week exceptions. Every field name comes from `c/shoreshSchema` (ADR
    0009); fixed and recurring activities are each read with their own field set. Also: the
-   program, week and option (the seed), the mode, locks, other programs' occupancy, and the
+   program, week and option (the seed; the option may come as a number or as text), the mode, locks, other programs' occupancy, and the
    camp's words for the reasons.
 3. **What is kept.**
    - A full build keeps locked placements, fixed and recurring activities, things not set up yet
@@ -68,7 +68,10 @@ cells) and 0009 (names through `c/shoreshSchema`).
    - A not-at-camp cell (Availability against the block's part of day, the same rule as
      `SetTimePlan.atCamp` and Manual Build's hatching) is never filled. A full build clears an
      unlocked activity left in one; Fill the open cells keeps it.
-   - Kept activities count toward weekly counts, once a day, places and groups at once.
+   - Kept activities count toward weekly counts, once a day, places and groups at once. A kept
+     activity setup no longer has (deleted, or closed this week) stays where it is but counts
+     toward none of these: its place and rules are unknown. A kept activity setup still has is
+     shown by its name in setup now (a rename shows the new name, as in Manual Build).
 4. **Hard rules** (never broken unless a flag names the rule):
    - who it's set up for (ActivityEligibility: none means every group; a division row covers its
      groups);
@@ -92,7 +95,8 @@ cells) and 0009 (names through `c/shoreshSchema`).
    `EarlyWeekByDay__c`); high priority before low (blank priority is low). **"By Wednesday"
    counts Wednesday** (the plain reading of the Activities screen's "By"). The desktop counted
    only days before its target day. This is Greg's to confirm; it is one comparison in
-   `week.js` (`earlyEnd`).
+   `week.js` (`earlyEnd`). Only sessions on the days that count meet the goal: a locked Friday
+   session doesn't meet a goal "by Tuesday" (the desktop counted every session of the week).
 6. **Fill order, ported:** kept cells first; multi-block activities first in each priority round;
    the tight-week capped matching (desktop T380); greedy fewest-choices, high then low; then the
    three repair passes, each step undone unless it ends whole: a reshuffle per stranded cell, the
@@ -116,7 +120,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
    order Greg approved doesn't name it. Each cell of the placement returns a flag with the rules
    it bends and a reason in camp words for the hover: "Over its weekly limit", "Twice in a day",
    "Not set up for Bunk 3", "Over its limit of 2 bunks at once", "Shares Pool with another
-   division", "More bunks at Pool than fit". Only a cell nothing can go in at all (the group is
+   division" (or "With another division at the same time" for an activity with no place),
+   "More bunks at Pool than fit". Group, division, week and gap are the camp's own words
+   (`c/shoreshTerms`). Only a cell nothing can go in at all (the group is
    busy at an overlapping time, or no activity is short enough for the gap) stays Open, listed
    in `openCells` with its reason. No activities at all, or none running this week, returns an
    error result ("No activities are set up yet." / "No activities run this week.") instead of a
@@ -130,7 +136,8 @@ cells) and 0009 (names through `c/shoreshSchema`).
    arrive in, and another week, program or option gives another pattern.
 9. **Other programs (G5 fills it).** `otherPrograms`: groups per place and per activity at a
    date and clock time. An entry counts against each of this program's blocks whose time
-   overlaps it, on places' groups that fit and activities' groups at once. Default: none.
+   overlaps it, on places' groups that fit and activities' groups at once. No count means one
+   group; a count of 0 takes no room. Default: none.
 10. **Output.** The days in the same shape Manual Build uses (frame unchanged; items listed in the
     order cells use them; items no cell uses are dropped), `flags` per cell, `stillToPlace`
     (weekly minimums not met, early-week goals missed, each with a line like "Swim · Bunk 3:
@@ -156,7 +163,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
   orders, shuffled grid group order, no `Math.random`, different options, weeks and programs.
 - Performance (`performance.test.js`): 12 groups × 5 days × 8 blocks, a week that fits and one
   that can't, each well under 2 seconds in Jest (about 15 ms and 350 ms on a laptop).
-- Mutation check of the key guards (review practice, see the PR).
+- Mutation check of the key guards (review practice): 27 deliberate breakages of the rules,
+  kept cells, never-blank, the seed and input ordering; every one makes a test fail (one, taking
+  out the repair rollback, makes the build loop forever).
 - Known limit, pinned: in the desktop's "one spare cell" sweep (8 groups, 9 cells, 8 activities
   once a week, one group at a time), options 80 and 82 of 1..100 leave one session short (6 in
   1,000). The desktop's own 100 seeds all passed; the repairs are the same, the tie-breaks

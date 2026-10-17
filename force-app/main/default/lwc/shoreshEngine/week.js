@@ -461,7 +461,12 @@ export function scheduleWeek(model) {
     if (!act.early || earlyEnd.get(act.id) < 0) {
       return 0;
     }
-    if (getCount(g, act.id) >= act.early.count) {
+    // Only sessions on the days that count: a locked Friday session doesn't meet a Tuesday goal.
+    let early = 0;
+    for (let day = 0; day <= earlyEnd.get(act.id); day++) {
+      early += dailyUsage.get(`${g}|${day}|${act.id}`) || 0;
+    }
+    if (early >= act.early.count) {
       return 0;
     }
     return d <= earlyEnd.get(act.id) ? -1 : 1;
@@ -1221,8 +1226,12 @@ export function scheduleWeek(model) {
           );
         }
       } else {
-        const overlap = acts.some(
-          (a) => blockedBy(a, u.groupId, u.dayIndex, u.blockId) === OVERLAP
+        // The group already holds something at an overlapping time, or no activity fits the gap.
+        const overlap = (peersByDay[u.dayIndex].get(u.blockId) || []).some(
+          (peer) => {
+            const pk = cellKey(u.groupId, u.dayIndex, peer);
+            return assigned.has(pk) || keptKeys.has(pk);
+          }
         );
         openCells.push({ key: k, why: overlap ? OVERLAP : LENGTH });
       }

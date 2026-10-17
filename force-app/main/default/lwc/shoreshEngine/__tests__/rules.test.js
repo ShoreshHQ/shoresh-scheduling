@@ -144,6 +144,22 @@ describe("never blank (Greg, 2026-10-17)", () => {
     ]);
   });
 
+  it("names the overlap as the reason even when another rule would also stop the activity", () => {
+    const result = run({
+      blocks: [
+        block(0),
+        block(1, { id: "bx", startTime: "08:30", endTime: "09:15" })
+      ],
+      activities: [activity("swim", { max: 1 })]
+    });
+    expect(result.openCells).toEqual([
+      expect.objectContaining({
+        blockId: "bx",
+        reason: "Bunk g1 is busy at an overlapping time"
+      })
+    ]);
+  });
+
   it("says so clearly when there are no activities at all, and returns no grid", () => {
     expect(run({ activities: [] })).toEqual({
       ok: false,
@@ -160,6 +176,21 @@ describe("never blank (Greg, 2026-10-17)", () => {
       ok: false,
       error: "No activities run this week."
     });
+    const inCampWords = generateWeek({
+      ...camp({
+        activities: [activity("swim")],
+        weekExceptions: [{ Id: "we1", Week__c: "week1", Activity__c: "swim" }]
+      }),
+      terms: buildTerms([
+        {
+          term: "Week",
+          singular: "Session",
+          plural: "Sessions",
+          isCustom: true
+        }
+      ])
+    });
+    expect(inCampWords.error).toBe("No activities run this Session.");
   });
 });
 
@@ -183,6 +214,34 @@ describe("what is never touched", () => {
       head: true
     });
     expect(problems(spec, input, result)).toEqual([]);
+  });
+
+  it("a recurring activity's place counts against its capacity, read from its own field", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "pool", fit: 1 }],
+      recurring: [
+        {
+          id: "swimtest",
+          name: "Swim test",
+          block: "b0",
+          location: "pool",
+          groups: ["g1"]
+        }
+      ],
+      activities: [
+        activity("swim", { atOnce: null, location: "pool", min: 1, max: 1 }),
+        activity("arts", { atOnce: null })
+      ]
+    });
+    expect(cellsOf(result.days)[0].g1[0]).toEqual({
+      kind: "R",
+      id: "swimtest",
+      head: true
+    });
+    expect(at(result, 0, "g2", 0)).toBe("arts");
+    expect(at(result, 0, "g2", 1)).toBe("swim");
   });
 
   it("a fixed activity filling a place keeps another activity out of it at that time", () => {
@@ -510,6 +569,22 @@ describe("other programs count against capacity (G5 supplies them)", () => {
     expect(at(result, 0, "g1", 1)).toBe("archery");
   });
 
+  it("a count of 0 groups from another program takes no room", () => {
+    const result = run({
+      activities: [activity("archery", { atOnce: 1 })],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "08:45",
+          activityId: "archery",
+          groups: 0
+        }
+      ]
+    });
+    expect(result.flags).toEqual([]);
+  });
+
   it("only overlapping clock times count: a touching time doesn't", () => {
     const result = run({
       locations: [{ id: "pool", fit: 1 }],
@@ -549,6 +624,30 @@ describe("soft goals and what is still to place", () => {
       at(result, 1, "g1", 0) === "climb" || at(result, 1, "g1", 1) === "climb"
     ).toBe(true);
     expect(result.stillToPlace).toEqual([]);
+  });
+
+  it("a session later in the week doesn't count toward an early goal", () => {
+    const misses = [];
+    for (let option = 1; option <= 20; option++) {
+      const result = run({
+        option,
+        days: 5,
+        activities: [
+          activity("swim", { max: 2, early: { count: 1, day: "Tuesday" } }),
+          activity("art"),
+          activity("arch")
+        ],
+        cells: [{ day: 4, group: "g1", block: "b0", act: "swim" }],
+        locks: [{ date: dateAt(4), groupId: "g1", blockId: "b0" }]
+      });
+      if (
+        at(result, 0, "g1", 0) !== "swim" &&
+        at(result, 1, "g1", 0) !== "swim"
+      ) {
+        misses.push(option);
+      }
+    }
+    expect(misses).toEqual([]);
   });
 
   it("lists weekly minimums not met and early goals missed, in camp words", () => {
@@ -620,6 +719,19 @@ describe("soft goals and what is still to place", () => {
   });
 });
 
+describe("Try another", () => {
+  it("takes the option as a number or as text", () => {
+    const spec = {
+      days: 3,
+      blocks: [block(0), block(1)],
+      activities: ["a", "b", "c", "d"].map((id) => activity(id))
+    };
+    expect(generateWeek({ ...camp(spec), option: "2" })).toEqual(
+      generateWeek(camp({ ...spec, option: 2 }))
+    );
+  });
+});
+
 describe("the grid it returns", () => {
   it("is Manual Build's day shape: the same frame, items in the order cells use them", () => {
     const input = camp({
@@ -637,5 +749,17 @@ describe("the grid it returns", () => {
     // The cleared "gone" item is dropped from the list; no number points past it.
     expect(day.items.map((i) => i.id)).toEqual(["swim", "lunch"]);
     expect(day.rows).toEqual(["1,2", "1,2"]);
+  });
+
+  it("shows a kept activity by its name in setup now", () => {
+    const input = camp({
+      mode: "fillOpen",
+      blocks: [block(0), block(1)],
+      activities: [activity("swim", { name: "Swimming" }), activity("arts")],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "swim" }]
+    });
+    input.days[0].items[0].name = "Swim (old name)";
+    const items = generateWeek(input).days[0].items;
+    expect(items.find((i) => i.id === "swim").name).toBe("Swimming");
   });
 });

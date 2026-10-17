@@ -58,7 +58,7 @@ export function activity(id, over = {}) {
 
 /**
  * spec: { groups, days (count or dates), blocks, activities, locations: [{ id, name, fit }],
- *   fixed: [{ id, name, block, length, location, groups? }], cells: [{ day, group, block, act }]
+ *   fixed and recurring: [{ id, name, block, length, location, groups? }], cells: [{ day, group, block, act }]
  *   (activities already in the grid), away: { groupId: [day indexes] } (not in that day's grid),
  *   locks, mode, option, programId, weekId, otherPrograms, weekExceptions }
  */
@@ -119,6 +119,11 @@ export function camp(spec) {
     GroupsThatFit__c: l.fit,
     SortOrder__c: 1
   }));
+  const recurringRecords = (spec.recurring || []).map((f) => ({
+    Id: f.id,
+    Name: f.name || f.id,
+    Location__c: f.location || null
+  }));
   const fixedRecords = (spec.fixed || []).map((f) => ({
     Id: f.id,
     Name: f.name || f.id,
@@ -140,12 +145,16 @@ export function camp(spec) {
     };
     const rows = inGrid.map((g) => {
       const row = blocks.map(() => "");
-      for (const f of spec.fixed || []) {
+      const setTime = [
+        ...(spec.fixed || []).map((f) => ({ ...f, kind: "F" })),
+        ...(spec.recurring || []).map((f) => ({ ...f, kind: "R" }))
+      ];
+      for (const f of setTime) {
         if (f.groups && !f.groups.includes(g.id)) {
           continue;
         }
         const first = blocks.findIndex((b) => b.id === f.block);
-        row[first] = itemNo({ kind: "F", id: f.id, name: f.name || f.id });
+        row[first] = itemNo({ kind: f.kind, id: f.id, name: f.name || f.id });
         for (let i = 1; i < (f.length || 1); i++) {
           row[first + i] = "^";
         }
@@ -195,7 +204,7 @@ export function camp(spec) {
     eligibilities: nsRecord(eligibilityRecords),
     locations: nsRecord(locationRecords),
     fixedActivities: nsRecord(fixedRecords),
-    recurringActivities: [],
+    recurringActivities: nsRecord(recurringRecords),
     weekExceptions: nsRecord(spec.weekExceptions || []),
     locks: spec.locks || [],
     otherPrograms: spec.otherPrograms || []

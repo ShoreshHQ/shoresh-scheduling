@@ -37,7 +37,12 @@ export function problems(spec, input, result) {
   const groups = new Map(spec.groups.map((g) => [g.id, g]));
   const acts = new Map(spec.activities.map((a) => [a.id, a]));
   const fit = new Map((spec.locations || []).map((l) => [l.id, l.fit]));
-  const fixedAt = new Map((spec.fixed || []).map((f) => [f.id, f.location]));
+  const fixedAt = new Map(
+    [...(spec.fixed || []), ...(spec.recurring || [])].map((f) => [
+      f.id,
+      f.location
+    ])
+  );
   const before = cellsOf(input.days);
   const after = cellsOf(result.days);
   const lock = new Set(
@@ -95,6 +100,21 @@ export function problems(spec, input, result) {
     keys.every((k) => kept.has(k)) ||
     keys.some((k) => !kept.has(k) && (flagged.get(k) || []).includes(rule));
 
+  // Every clash (a strict occupant and another division, or another program) is either
+  // between kept cells only, or named by a flag on a generated cell in it.
+  const sameDivisionHolds = (list, extra, strict) =>
+    list.every(
+      (x) =>
+        !strict(x) ||
+        ((extra === 0 || covered([x.k], "sameDivision")) &&
+          list.every(
+            (y) =>
+              y === x ||
+              y.group.division === x.group.division ||
+              covered([x.k, y.k], "sameDivision")
+          ))
+    );
+
   const counts = new Map();
   const daily = new Map();
   const place = new Map();
@@ -135,6 +155,15 @@ export function problems(spec, input, result) {
         if (here && !cell && !lock.has(k) && !openCells.has(k)) {
           out.push(`blank: ${k}`);
         }
+        // A cell listed as impossible really is: the group is busy at an overlapping time, or
+        // no activity is one block long.
+        if (
+          openCells.has(k) &&
+          !(cell === null && peers[b].some((j) => row[j])) &&
+          spec.activities.some((a) => a.span === 1)
+        ) {
+          out.push(`listed as impossible but isn't: ${k}`);
+        }
         if (!cell) {
           return;
         }
@@ -158,7 +187,7 @@ export function problems(spec, input, result) {
           }
           place.get(lk).push({ k, group, act: acts.get(cell.id) || null });
         };
-        if (cell.kind === "F" && fixedAt.get(cell.id)) {
+        if ((cell.kind === "F" || cell.kind === "R") && fixedAt.get(cell.id)) {
           occupant(fixedAt.get(cell.id));
         }
         const act = cell.kind === "A" ? acts.get(cell.id) : null;
@@ -240,13 +269,11 @@ export function problems(spec, input, result) {
     ) {
       out.push(`over groups that fit, unflagged: ${lk}`);
     }
-    const strict = list.some((o) => o.act && o.act.sameDivision);
-    const divisions = new Set(list.map((o) => o.group.division));
+    // Same division only, pair by pair: a group doing a same-division-only activity shares
+    // its place with no other division (and with no other program's group).
     if (
       fit.has(loc) &&
-      strict &&
-      (divisions.size > 1 || extra > 0) &&
-      !covered(keys, "sameDivision")
+      !sameDivisionHolds(list, extra, (o) => o.act && o.act.sameDivision)
     ) {
       out.push(`two divisions share a place, unflagged: ${lk}`);
     }
@@ -263,11 +290,7 @@ export function problems(spec, input, result) {
     ) {
       out.push(`over groups at once, unflagged: ${dk}`);
     }
-    if (
-      act.sameDivision &&
-      (new Set(list.map((o) => o.group.division)).size > 1 || extra > 0) &&
-      !covered(keys, "sameDivision")
-    ) {
+    if (act.sameDivision && !sameDivisionHolds(list, extra, () => true)) {
       out.push(`two divisions at one activity, unflagged: ${dk}`);
     }
   }

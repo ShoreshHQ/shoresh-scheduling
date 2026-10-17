@@ -65,18 +65,22 @@ export function generateWeek(input) {
     return {
       ok: false,
       error: activities.total
-        ? `No ${t.pIn("Activity")} run this week.`
+        ? `No ${t.pIn("Activity")} run this ${t.sIn("Week")}.`
         : `No ${t.pIn("Activity")} are set up yet.`
     };
   }
   const groups = readGroups(input.groups);
   const days = readDays(input.days, readPartsOfDay(input.timeBlocks));
   if (!days.length) {
-    return { ok: false, error: "This week has no days to build." };
+    return {
+      ok: false,
+      error: `This ${t.sIn("Week")} has no days to build.`
+    };
   }
   const { fit, names: locationNames } = readLocations(input.locations);
-  const option =
-    Number.isInteger(input.option) && input.option > 0 ? input.option : 1;
+  // "Try another" may send the option as text ("2").
+  const asNumber = Number(input.option);
+  const option = Number.isInteger(asNumber) && asNumber > 0 ? asNumber : 1;
   const model = {
     days,
     groups,
@@ -116,7 +120,7 @@ export function generateWeek(input) {
         reason:
           why === OVERLAP
             ? `${group.name} is busy at an overlapping time`
-            : `No ${t.sIn("Activity")} is short enough for this gap`
+            : `No ${t.sIn("Activity")} is short enough for this ${t.sIn("Gap")}`
       };
     })
   };
@@ -149,9 +153,9 @@ function otherPrograms(entries, days) {
   for (const entry of ordered) {
     const start = minutes(entry.startTime);
     const end = minutes(entry.endTime);
-    const n =
-      Number.isInteger(entry.groups) && entry.groups > 0 ? entry.groups : 1;
-    if (start == null || end == null || end <= start) {
+    // No count means one group; a count of 0 means none.
+    const n = entry.groups == null ? 1 : Number(entry.groups);
+    if (!(n > 0) || start == null || end == null || end <= start) {
       continue;
     }
     for (const day of days) {
@@ -174,6 +178,10 @@ function otherPrograms(entries, days) {
     }
   }
   return { otherPlace, otherActivity };
+}
+
+function activityItem(act) {
+  return { kind: "A", id: act.id, name: act.name, gone: false };
 }
 
 function identity(item) {
@@ -199,7 +207,12 @@ function writeDays(model, state) {
           const k = state.cellKey(group.id, day.index, block.id);
           const kept = state.keptCells.get(k);
           if (kept) {
-            return kept.head ? numberOf(kept.item) : "^";
+            // A kept activity shows its name as setup has it now (a rename shows the new name).
+            const current =
+              kept.item.kind === "A" && state.actById.get(kept.item.id);
+            return kept.head
+              ? numberOf(current ? activityItem(current) : kept.item)
+              : "^";
           }
           const actId = state.assigned.get(k);
           if (!actId) {
@@ -208,13 +221,7 @@ function writeDays(model, state) {
           if (state.spanTails.has(k)) {
             return "^";
           }
-          const act = state.actById.get(actId);
-          return numberOf({
-            kind: "A",
-            id: act.id,
-            name: act.name,
-            gone: false
-          });
+          return numberOf(activityItem(state.actById.get(actId)));
         })
         .join(",")
     );

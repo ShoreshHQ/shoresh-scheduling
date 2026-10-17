@@ -59,6 +59,20 @@ export function randomCamp(seed) {
           }
         ]
       : [];
+  // A recurring activity for some groups, at a block the fixed one doesn't use.
+  const free = blocks.filter((b) => !fixed.length || b.id !== fixed[0].block);
+  const recurring =
+    free.length && r() < 0.3
+      ? [
+          {
+            id: "rec1",
+            name: "Swim test",
+            block: pick(free).id,
+            groups: groups.filter(() => r() < 0.5).map((g) => g.id),
+            location: locations.length && r() < 0.5 ? pick(locations).id : null
+          }
+        ]
+      : [];
   const days = int(1, 5);
   const otherPrograms =
     locations.length && r() < 0.3
@@ -79,6 +93,7 @@ export function randomCamp(seed) {
     activities,
     locations,
     fixed,
+    recurring,
     otherPrograms,
     programId: `p${seed % 7}`,
     weekId: `w${seed % 5}`,
