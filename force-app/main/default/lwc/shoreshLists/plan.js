@@ -331,14 +331,17 @@ function refTargets(proposal) {
     if (!name) {
       return null;
     }
+    // A rain plan naming a row of the list is that row (its record, or the one it adds).
+    if (ref === "activity" && own.has(name)) {
+      return own.get(name);
+    }
     const records = setup[ref] || [];
     const found = records.find((r) => r.Name === name);
     if (found) {
       return found.Id;
     }
     if (ref === "activity") {
-      // By the exact name: similar spellings were settled by the questions.
-      return own.get(name) || `Activity:${name}`;
+      return `Activity:${name}`;
     }
     return `${{ location: "Location", locationType: "LocationType" }[ref]}:${name}`;
   };

@@ -151,7 +151,7 @@ describe("c-shoresh-list-import", () => {
     await flush();
     const save = $(element, 'lightning-button[data-id="save"]');
     expect(save.disabled).toBe(false);
-    expect(save.label).toBe("Add 1");
+    expect(save.label).toBe("Add 2");
     save.click();
     await flush();
     const plan = JSON.parse(saveList.mock.calls[0][0].plan);

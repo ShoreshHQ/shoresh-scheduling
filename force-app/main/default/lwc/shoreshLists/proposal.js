@@ -93,6 +93,14 @@ function readRows(rows, start, used) {
       problems.push("No name");
     }
     if (
+      values.rainPlan &&
+      looseKey(values.rainPlan) === looseKey(values.name)
+    ) {
+      problems.push(
+        `${used.find((u) => u.column.key === "rainPlan").column.heading}: can't be itself`
+      );
+    }
+    if (
       typeof values.min === "number" &&
       typeof values.max === "number" &&
       values.max < values.min
@@ -313,23 +321,23 @@ function matchRefs(rows, column, records, answers) {
  */
 function rainPlans(read, column, setup, answers) {
   const camp = new Set((setup.activities || []).map((a) => a.Name));
-  read.forEach((r) => {
-    const plan = r.values[column.key];
-    if (plan && looseKey(plan) === looseKey(r.name) && !r.problems.length) {
-      r.problems.push(`${column.heading}: can't be itself`);
-    }
-  });
   const rows = read.filter(usable);
+  // The row a plan names: the first usable one of that name (capitals and spacing aside), as
+  // repeats are; the plan then takes that row's spelling, so the link finds what is saved.
   const rowOf = new Map();
   rows.forEach((row) => {
-    if (!rowOf.has(row.name)) {
-      rowOf.set(row.name, row);
+    const key = looseKey(row.name);
+    if (!rowOf.has(key)) {
+      rowOf.set(key, row);
     }
   });
   const missing = new Set();
   rows.forEach((r) => {
     const plan = r.values[column.key];
-    if (plan && !camp.has(plan) && !rowOf.has(plan)) {
+    const target = plan && rowOf.get(looseKey(plan));
+    if (target) {
+      r.values[column.key] = target.name;
+    } else if (plan && !camp.has(plan)) {
       missing.add(plan);
     }
   });
@@ -337,7 +345,7 @@ function rainPlans(read, column, setup, answers) {
   for (let pass = 0; pass < rows.length; pass++) {
     const before = rows.filter((r) => r.open).length;
     rows.forEach((r) => {
-      const target = rowOf.get(r.values[column.key]);
+      const target = rowOf.get(looseKey(r.values[column.key] || ""));
       if (target && target.open) {
         r.open = true;
       }
@@ -369,7 +377,7 @@ function checkNewLimits(read, screen) {
     return;
   }
   read
-    .filter((r) => !r.existing && !r.problems.length)
+    .filter((r) => !r.existing && !r.problems.length && !r.open)
     .forEach((r) => {
       const atLeast =
         typeof r.values.min === "number" ? r.values.min : min.newValue;
@@ -453,6 +461,17 @@ export function listProposal(input) {
   const ownNames = read
     .filter((r) => !r.problems.length && !r.leftOut)
     .map((r) => r.name);
+  // A rain plan naming a row of the list (capitals and spacing aside, as repeats are) takes
+  // that row's spelling: it is that row, not a similar name to ask about.
+  const ownKeys = new Map(
+    read.filter(usable).map((r) => [looseKey(r.name), r.name])
+  );
+  read.forEach((r) => {
+    const plan = r.values.rainPlan;
+    if (plan && ownKeys.has(looseKey(plan))) {
+      r.values.rainPlan = ownKeys.get(looseKey(plan));
+    }
+  });
   used
     .filter(({ column }) => column.ref)
     .forEach(({ column }) => {
@@ -477,8 +496,17 @@ export function listProposal(input) {
       });
       // Two set up with the name a row gives: the file can't say which, so it isn't guessed.
       const campRecords = refRecords(column, setup, []);
+      // A rain plan naming a row of the list means that row, whatever the camp has.
+      const ownRows = new Set(
+        column.ref === "activity"
+          ? read.filter(usable).map((r) => looseKey(r.name))
+          : []
+      );
       read.filter(usable).forEach((r) => {
         const name = r.values[column.key];
+        if (name && ownRows.has(looseKey(name))) {
+          return;
+        }
         const count = campRecords.filter((rec) => rec.Name === name).length;
         if (name && count > 1) {
           r.problems.push(`${column.heading}: ${count} are called “${name}”`);

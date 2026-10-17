@@ -777,25 +777,17 @@ describe("review findings (PR A)", () => {
     expect(rowNamed(p, "Golf").values.who).toEqual(["d2", "g9"]);
   });
 
-  it("a rain plan answered Different links to the new activity, not the similar row", () => {
+  it("a rain plan naming a row in other capitals is that row", () => {
     const rows = [
       ["Activity", "Rain plan"],
       ["Swim", ""],
       ["Arts", "swim"]
     ];
     const p = read("activities", rows);
-    const pair = similarCards(p, terms, {}).find((c) =>
-      c.title.includes("“swim”")
-    );
-    const answers = { [pair.id]: "different" };
-    const plan = listPlan(
-      read("activities", rows, answers),
-      answers,
-      "s1",
-      "f"
-    );
+    expect(questionCards(p, terms, {})).toEqual([]);
+    const plan = listPlan(p, {}, "s1", "f");
     const arts = plan.records.find((r) => r.key === "Activity:Arts");
-    expect(arts.refs.RainPlan__c).toBe("Activity:swim");
+    expect(arts.refs.RainPlan__c).toBe("Activity:Swim");
   });
 
   it("a new activity with only at most, below the at least it starts with, can't be read", () => {
@@ -1020,5 +1012,75 @@ describe("PR 19 review", () => {
       ["golf", "Juniors"]
     ]);
     expect(p.rows[1].problems).toEqual(["Same as row 2, which can't be read"]);
+  });
+});
+
+describe("PR 19 review, round 3", () => {
+  /** Every link in the plan names a record in the season or one the same plan adds. */
+  function linksResolve(plan) {
+    const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+    plan.records.forEach((r) => {
+      Object.values(r.refs || {})
+        .filter((v) => v && v.includes(":"))
+        .forEach((v) =>
+          expect([r.key || r.id, keys.has(v)]).toEqual([r.key || r.id, true])
+        );
+    });
+  }
+
+  it("A: a rain plan naming a repeated row links to the row that is saved", () => {
+    const p = read("activities", [
+      ["Activity", "Rain plan"],
+      ["Pottery", ""],
+      ["pottery", ""],
+      ["Swim", "pottery"]
+    ]);
+    expect(p.rows.map((r) => r.status)).toEqual(["new", "unreadable", "new"]);
+    linksResolve(listPlan(p, {}, "s1", "f"));
+  });
+
+  it("B: a rain plan naming a row that can't be read adds it as by hand", () => {
+    const p = read("activities", [
+      ["Activity", "Rain plan"],
+      ["Pottery", "Pottery"],
+      ["Pottery", ""],
+      ["Swim", "Pottery"]
+    ]);
+    const plan = listPlan(p, {}, "s1", "f");
+    linksResolve(plan);
+    expect(
+      plan.records.filter((r) => r.key === "Activity:Pottery")
+    ).toHaveLength(1);
+  });
+
+  it("C: a rain plan naming a row whose name two set-up activities share follows the answer", () => {
+    const s = setup();
+    s.activities.push({ ...s.activities[1], Id: "a8" });
+    const rows = [
+      ["Activity", "Rain plan", "Times a week: at least"],
+      ["Music", "", "1"],
+      ["Swim", "Music", "1"]
+    ];
+    const p = read("activities", rows, {}, terms, s);
+    expect(rowNamed(p, "Swim").status).toBe("asked");
+    const which = questionCards(p, terms, {})[0];
+    const answers = { [which.id]: "a8" };
+    const done = read("activities", rows, answers, terms, s);
+    expect(rowNamed(done, "Swim").status).toBe("new");
+    const swim = listPlan(done, answers, "s1", "f").records.find(
+      (r) => r.key === "Activity:Swim"
+    );
+    expect(swim.refs.RainPlan__c).toBe("a8");
+  });
+
+  it("F: a row waiting on a question is not also said to be unreadable", () => {
+    const p = read("activities", [
+      ["Activity", "Times a week: at most"],
+      ["Musik", "0"]
+    ]);
+    expect(rowNamed(p, "Musik")).toMatchObject({
+      status: "asked",
+      problems: []
+    });
   });
 });

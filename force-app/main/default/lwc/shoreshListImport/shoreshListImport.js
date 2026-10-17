@@ -188,6 +188,11 @@ export default class ShoreshListImport extends LightningElement {
   get showSheetChoice() {
     return this.sheetOptions.length > 1;
   }
+  /** The sheet read: the one Shoresh picked, or the one the director chose. */
+  get currentSheet() {
+    return this.proposal ? this.proposal.sheet : null;
+  }
+
   handleSheet(event) {
     this.sheet = event.detail.value;
     this.recompute();
@@ -216,7 +221,7 @@ export default class ShoreshListImport extends LightningElement {
       if (h.how === "unknown") {
         note = "Not used";
       } else if (h.how === "clash") {
-        note = "Choose";
+        note = "Not sure";
       } else if (remembered) {
         note = "Remembered";
       }
@@ -258,6 +263,10 @@ export default class ShoreshListImport extends LightningElement {
         };
       }
     );
+  }
+  /** Questions still to answer (the heading never shows an attention zero: answered cards fold). */
+  get openCount() {
+    return this.cards.filter((c) => !c.answered).length;
   }
   get hasCards() {
     return this.cards.length > 0;
@@ -336,7 +345,7 @@ export default class ShoreshListImport extends LightningElement {
       )
       .map((r) => ({
         key: `dropped-${r.rowNumber}`,
-        text: `${r.name} · no ${this.terms.sIn("RainPlan")}`
+        text: `${r.name} · ${r.status === "new" ? "no" : "unchanged"} ${this.terms.sIn("RainPlan")}`
       }));
   }
 
@@ -438,7 +447,10 @@ export default class ShoreshListImport extends LightningElement {
     if (this.hasWaiting || !this.proposal || !this.proposal.rows) {
       return "Save";
     }
-    const added = this.rowsWith("new").length;
+    // Everything saving adds, the ticked extras with it.
+    const added =
+      this.rowsWith("new").length +
+      this.alsoAdd.filter((item) => item.checked).length;
     const changed = this.rowsWith("changed").filter((r) =>
       r.differences.some((d) => d.answer === CHANGE)
     ).length;
