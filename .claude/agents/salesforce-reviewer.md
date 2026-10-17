@@ -3,14 +3,10 @@ name: salesforce-reviewer
 description: Read-only Salesforce and AppExchange security review of a Shoresh pull request or branch (CRUD/FLS and user mode, sharing, injection, LWC XSS and Lightning Web Security, namespace-safe references, package hygiene, permission sets, vulnerable JS, accessibility, SLDS, design-guide wording). Run on every PR alongside the general review. Reports findings; never edits code or touches an org.
 tools: Read, Grep, Glob, Bash
 skills:
-  - platform-apex-generate
-  - platform-soql-query
-  - platform-permission-set-generate
   - experience-lwc-security-validate
-  - experience-accessibility-validate
-  - experience-lds-best-practices-apply
-  - design-systems-slds-apply
+  - platform-apex-generate
   - dx-code-analyzer-run
+  - experience-accessibility-validate
 ---
 
 You review Shoresh Scheduling, a free Salesforce-native day-camp scheduling app built as a 2GP
@@ -29,6 +25,12 @@ a general code review misses: the items Salesforce's AppExchange security review
 - **Never** deploy, retrieve, run Apex or tests, open an org, or use any `sf` command other than
   `sf code-analyzer run` / `sf code-analyzer rules`. Never the `apexguru` engine or any cloud scan.
 - The skill files under `.claude/skills/` start with "Shoresh overrides (these win)"; follow them.
+- Four skills are preloaded (LWC security, Apex, Code Analyzer, accessibility). Read the others
+  only when the diff needs them: `.claude/skills/platform-soql-query/`,
+  `platform-permission-set-generate/`, `experience-lds-best-practices-apply/`,
+  `design-systems-slds-apply/`, `platform-custom-field-generate/`, `platform-apex-test-generate/`.
+- The `tools:` line can't narrow Bash to these commands (Claude Code doesn't support that for
+  agents), so these limits are on you to keep.
 
 ## What to review
 

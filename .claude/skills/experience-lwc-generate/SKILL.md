@@ -30,6 +30,7 @@ metadata:
 Where this skill disagrees with these lines, these lines win.
 
 - Ignore the `SECURITY_ENFORCED` / `stripInaccessible` / plain `insert`/`update` Apex examples (the `LwcController.cls` asset was removed). Data access is user mode: SOQL `WITH USER_MODE`, DML `insert as user` / `Database.*(…, AccessLevel.USER_MODE)`, dynamic SOQL `Database.queryWithBinds(…, AccessLevel.USER_MODE)`. `WITH SYSTEM_MODE` / `without sharing` only for the trigger integrity checks described in `docs/adr/0001-calendar-and-structure-build-choices.md` (point 6); anything else needs an ADR line.
+- Never run `sf project deploy start`; CI deploys. Follow `CLAUDE.md`'s test-org rules.
 - Run Jest with `npm run test:unit`. No `sf lightning dev`; the `scripts/` folder was removed (it downloaded linters from npm).
 - Wording on screens follows the design guide in the wiki (`projects/shoresh-design-guide.md`).
 - Project rules in the repo's `CLAUDE.md` override this skill; where they disagree, they win.

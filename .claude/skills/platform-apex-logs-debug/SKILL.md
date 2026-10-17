@@ -22,8 +22,10 @@ metadata:
 
 Where this skill disagrees with these lines, these lines win.
 
-- Trace flags and log reads only in `shoresh-test`, never while CI is running. Don't delete ApexLog records in bulk; don't install extensions.
-- Never run anonymous Apex or tests to reproduce an issue except as `CLAUDE.md` allows (synchronous, one class).
+- Trace flags and log reads only in `shoresh-test`, never while CI is running. Don't install extensions.
+- Never run anonymous Apex (`sf apex run` / `sf apex run --file`; this is not `sf apex run test`), including the benchmarking template and the "Execute Anonymous" examples.
+- Never delete ApexLog records, single or bulk: ignore the delete examples in `references/cli-commands.md` and `references/debug-log-reference.md`.
+- Apex tests only as `CLAUDE.md` says: `--synchronous`, one class at a time.
 - Project rules in the repo's `CLAUDE.md` override this skill; where they disagree, they win.
 - The only org is `shoresh-test` (plus the Dev Hub). Never create, delete or switch orgs. Don't use `shoresh-test` while a CI "Scratch org deploy and Apex tests" job is running (`gh run list --repo ShoreshHQ/shoresh-scheduling --status in_progress`, and `--status queued`).
 - API version comes from `sfdx-project.json` (67.0), not the version this skill names.
