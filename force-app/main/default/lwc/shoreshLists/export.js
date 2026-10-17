@@ -76,10 +76,11 @@ function runsInRows(setup, t) {
     })
   );
   const rows = [];
-  const add = (kind, program, item) => {
+  const add = (kind, program, item, division = "") => {
     rows.push([
       t.s(kind),
       program,
+      division,
       item.Name,
       ...weeks.map((w) => (off.has(`${item.Id}|${w.Id}`) ? "No" : "Yes"))
     ]);
@@ -87,7 +88,7 @@ function runsInRows(setup, t) {
   (setup.programs || []).forEach((entry) => {
     const program = entry.program.Name;
     (entry.divisions || []).forEach((d) =>
-      (d.groups || []).forEach((g) => add("Group", program, g))
+      (d.groups || []).forEach((g) => add("Group", program, g, d.division.Name))
     );
     (entry.fixedActivities || []).forEach((f) =>
       add("FixedActivity", program, f)
@@ -99,7 +100,13 @@ function runsInRows(setup, t) {
   (setup.locations || []).forEach((l) => add("Location", "", l));
   (setup.activities || []).forEach((a) => add("Activity", "", a));
   return [
-    ["Kind", t.s("Program"), "Name", ...weeks.map((w) => w.Name)],
+    [
+      "Kind",
+      t.s("Program"),
+      t.s("Division"),
+      "Name",
+      ...weeks.map((w) => w.Name)
+    ],
     ...rows
   ].map(safe);
 }
@@ -110,7 +117,7 @@ function runsInRows(setup, t) {
  */
 export function campWorkbookSheets(setup, t) {
   const labels = screenLabels(t);
-  return [
+  return uniqueNames([
     ...LIST_SCREENS.map((key) => ({
       name: labels[key],
       rows: listRows(key, setup, t)
@@ -119,7 +126,23 @@ export function campWorkbookSheets(setup, t) {
     { name: "Camp words", rows: campWordRows(setup) },
     { name: t.p("Week"), rows: weekRows(setup, t) },
     { name: "Runs in", rows: runsInRows(setup, t) }
-  ];
+  ]);
+}
+
+/**
+ * Sheet names as Excel takes them, never two alike (capitals aside): camp words can make two
+ * screens' names the same ("Cabins" for units and bunks); the second gets " (2)".
+ */
+function uniqueNames(sheets) {
+  const taken = new Set();
+  return sheets.map((sheet) => {
+    let name = sheetName(sheet.name);
+    for (let n = 2; taken.has(name.toLowerCase()); n++) {
+      name = `${sheetName(sheet.name).slice(0, 26)} (${n})`;
+    }
+    taken.add(name.toLowerCase());
+    return { ...sheet, name };
+  });
 }
 
 /** Excel's sheet names: at most 31 characters, none of : \ / ? * [ ]. */

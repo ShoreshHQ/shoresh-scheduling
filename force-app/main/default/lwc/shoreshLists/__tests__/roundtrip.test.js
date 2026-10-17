@@ -262,12 +262,22 @@ describe("round trip", () => {
     expect(sheets["Runs in"][0]).toEqual([
       "Kind",
       "Program",
+      "Unit",
       "Name",
       "Week 1",
       "Week 2"
     ]);
     expect(sheets["Runs in"]).toContainEqual([
+      "Bunk",
+      "Main",
+      "Juniors",
+      "Bunk 1",
+      "Yes",
+      "Yes"
+    ]);
+    expect(sheets["Runs in"]).toContainEqual([
       "Activity",
+      "",
       "",
       "Board games",
       "Yes",
@@ -282,5 +292,105 @@ describe("an empty list is the template", () => {
     expect(listRows("groups", empty, terms)).toEqual([
       ["Program", "Unit", "Bunk", "Availability"]
     ]);
+  });
+});
+
+describe("PR C review: harder values still read back unchanged", () => {
+  function roundTripOf(screenKey, setup) {
+    const file = roundTrip([
+      { name: "List", rows: listRows(screenKey, setup, terms) }
+    ]);
+    return listProposal({ screenKey, file, setup, terms, answers: {} });
+  }
+
+  it("notes with line breaks, double spaces, leading spaces, and an apostrophe before =", () => {
+    const s = camp();
+    s.locations[1].Notes__c = "Line one\nLine two";
+    s.locations.push({
+      Id: "l3",
+      Name: "Barn",
+      GroupsThatFit__c: 1,
+      Notes__c: "  a  b"
+    });
+    s.locations.push({
+      Id: "l4",
+      Name: "Shed",
+      GroupsThatFit__c: 1,
+      Notes__c: "'=x"
+    });
+    const p = roundTripOf("locations", s);
+    expect(p.rows.filter((r) => r.status !== "unchanged")).toEqual([]);
+  });
+
+  it("two activities whose names differ only in capitals stay two", () => {
+    const s = camp();
+    s.activities.push({ ...s.activities[1], Id: "a9", Name: "board games" });
+    const p = roundTripOf("activities", s);
+    expect(p.rows.map((r) => [r.name, r.status, r.id])).toEqual([
+      ["Swim", "unchanged", "a1"],
+      ["Board games", "unchanged", "a2"],
+      ["board games", "unchanged", "a9"]
+    ]);
+  });
+
+  it("a bunk named with a comma, or named Everyone, reads back in a who list", () => {
+    const s = camp();
+    s.programs[0].divisions[1].groups.push({
+      Id: "g7",
+      Name: "Bunk 3, Boys",
+      Availability__c: "AllDay"
+    });
+    s.programs[0].divisions[1].groups.push({
+      Id: "g8",
+      Name: "Everyone",
+      Availability__c: "AllDay"
+    });
+    s.activities[1].Eligibilities__r = [{ Group__c: "g7" }, { Group__c: "g8" }];
+    const p = roundTripOf("activities", s);
+    expect(p.rows.filter((r) => r.status !== "unchanged")).toEqual([]);
+    expect(questionCards(p, terms, {})).toEqual([]);
+  });
+
+  it("a name with a double space matches the item set up", () => {
+    const s = camp();
+    s.activities[1].Name = "Board  games";
+    const p = roundTripOf("activities", s);
+    expect(p.rows.map((r) => r.status)).toEqual(["unchanged", "unchanged"]);
+  });
+
+  it("camp words that make two sheets alike: names stay unique, each screen finds its own", () => {
+    const words = buildTerms([
+      {
+        term: "Group",
+        modelSingular: "Group",
+        singular: "Cabin",
+        plural: "Cabins",
+        isCustom: true
+      },
+      {
+        term: "Division",
+        modelSingular: "Division",
+        singular: "Cabin",
+        plural: "Cabins",
+        isCustom: true
+      }
+    ]);
+    const sheets = campWorkbookSheets(camp(), words);
+    const names = sheets.map((x) => x.name.toLowerCase());
+    expect(new Set(names).size).toBe(names.length);
+    const file = roundTrip(sheets);
+    ["divisions", "groups"].forEach((screenKey) => {
+      const p = listProposal({
+        screenKey,
+        file,
+        setup: camp(),
+        terms: words,
+        answers: {}
+      });
+      expect([
+        screenKey,
+        p.rows.filter((r) => r.status !== "unchanged")
+      ]).toEqual([screenKey, []]);
+    });
   });
 });

@@ -35,5 +35,5 @@ export function fileNameOf(title) {
     .replace(/[\\/:*?"<>|]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return `${clean}.xlsx`;
+  return `${clean || "Shoresh"}.xlsx`;
 }

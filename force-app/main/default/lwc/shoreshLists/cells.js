@@ -13,18 +13,27 @@ const FORMULA_START = /^[=+\-@\t\r\n]/;
 
 /** A text cell made safe to open in a spreadsheet program (numbers are left alone). */
 export function sanitizeCell(value) {
-  return typeof value === "string" && FORMULA_START.test(value)
-    ? `'${value}`
-    : value;
+  if (typeof value !== "string") {
+    return value;
+  }
+  // Text already starting with an apostrophe before such a character keeps it: one more, which
+  // reading takes off again ("'=x" stays "'=x").
+  const guarded =
+    FORMULA_START.test(value) ||
+    (value.startsWith("'") && FORMULA_START.test(value.slice(1)));
+  return guarded ? `'${value}` : value;
 }
 
 /** The apostrophe sanitizeCell added, taken off; "'Round the campfire" stays as it is. */
 export function unescapeCell(value) {
-  return typeof value === "string" &&
-    value.startsWith("'") &&
-    FORMULA_START.test(value.slice(1))
-    ? value.slice(1)
-    : value;
+  if (typeof value !== "string" || !value.startsWith("'")) {
+    return value;
+  }
+  const rest = value.slice(1);
+  const guarded =
+    FORMULA_START.test(rest) ||
+    (rest.startsWith("'") && FORMULA_START.test(rest.slice(1)));
+  return guarded ? rest : value;
 }
 
 /** "No maximum", "No limit": a number column that can also say there is none. */
@@ -56,20 +65,25 @@ function whole(text, min) {
 }
 
 /**
- * Names in a list cell: split on commas, semicolons, and line breaks, but not inside brackets,
- * so "Bunk 1 (Juniors, Main)" stays one name.
+ * Names in a list cell: split on commas, semicolons, and line breaks, but not inside brackets
+ * ("Bunk 1 (Juniors, Main)") or double quotes (a name with a comma: "\"Bunk 3, Boys\"").
  */
 export function splitList(text) {
   const parts = [];
   let current = "";
   let depth = 0;
+  let inQuotes = false;
   for (const ch of String(text)) {
-    if (ch === "(") {
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (!inQuotes && ch === "(") {
       depth++;
-    } else if (ch === ")") {
+    } else if (!inQuotes && ch === ")") {
       depth = Math.max(0, depth - 1);
     }
-    if (depth === 0 && /[,;\n]/.test(ch)) {
+    if (!inQuotes && depth === 0 && /[,;\n]/.test(ch)) {
       parts.push(current);
       current = "";
     } else {
@@ -78,6 +92,11 @@ export function splitList(text) {
   }
   parts.push(current);
   return parts.map((part) => tidy(part)).filter((part) => part);
+}
+
+/** A name as a list cell writes it: in double quotes when it holds a comma or semicolon. */
+export function listName(name) {
+  return /[,;\n"]/.test(name) ? `"${String(name).replace(/"/g, "")}"` : name;
 }
 
 /** "2 by Wednesday", "2 by Wed": how many early in the week, by which day. */
@@ -370,6 +389,11 @@ function bareHour(hour, text) {
  */
 export function readCell(column, raw) {
   const text = tidy(unescapeCell(raw));
+  if (column.keepSpacing) {
+    // Notes keep their line breaks and spaces, as written.
+    const kept = String(unescapeCell(raw ?? "")).replace(/\r\n?/g, "\n");
+    return text ? { value: kept } : { blank: true };
+  }
   if (column.type === "yesNo") {
     // A blank tick column is No, as an unticked box is.
     const word = text.toLowerCase();

@@ -7,6 +7,8 @@
  */
 import { looseKey } from "c/shoreshImportEngine";
 
+const EVERYONE = new Set(["everyone", "everybody", "all", "all groups"]);
+
 /** Every division and group in the season, with the spellings that can name each. */
 export function whoTargets(setup) {
   const targets = [];
@@ -44,9 +46,12 @@ export function whoTargets(setup) {
   const byId = new Map();
   targets.forEach((target) => {
     // The shortest spelling that names only this record.
+    // Never a word a list reads as everyone ("All", "Everyone"): the longer name then.
     target.name =
-      target.spellings.find((s) => bySpelling.get(looseKey(s)).length === 1) ||
-      target.spellings[target.spellings.length - 1];
+      target.spellings.find(
+        (s) =>
+          bySpelling.get(looseKey(s)).length === 1 && !EVERYONE.has(looseKey(s))
+      ) || target.spellings[target.spellings.length - 1];
     byId.set(target.id, target);
   });
   return { bySpelling, byId };
