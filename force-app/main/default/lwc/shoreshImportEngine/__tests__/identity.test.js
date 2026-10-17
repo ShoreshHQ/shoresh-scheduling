@@ -694,6 +694,23 @@ describe("PR 16 round 4", () => {
     );
   });
 
+  it("leaving a bare time out leaves its block out, not merged into a stated one", () => {
+    const card = cards(propose([pickup, wake])).find((c) =>
+      c.id.startsWith("ampm|")
+    );
+    const p = propose([pickup, wake], null, { [card.id]: LEAVE_OUT });
+    expect(
+      p.reading.placements.some(
+        (x) =>
+          x.text === "Wake up" &&
+          blockOf(p, "Wake up") &&
+          !blockOf(p, "Wake up").leftOut
+      )
+    ).toBe(false);
+    expect(p.activities.map((a) => a.name)).not.toContain("Wake up");
+    expect(blockOf(p, "Pickup").leftOut).toBeFalsy();
+  });
+
   it("the block kept is the one whose label states AM or PM", () => {
     const bare = csv("A Monday.csv", [
       ["Time", "Bunk 1"],

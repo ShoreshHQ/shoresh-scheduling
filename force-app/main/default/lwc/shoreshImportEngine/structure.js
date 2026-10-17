@@ -143,7 +143,8 @@ function orderedBlocks(blocks, context) {
   // morning): keep one, and send the other's placements to it.
   const aliases = new Map();
   const seen = new Map();
-  for (const b of timed.filter((x) => !x.pending)) {
+  // Unanswered or left out, a bare time is never merged into another block.
+  for (const b of timed.filter((x) => !x.pending && !x.leftOutByAnswer)) {
     const at = `${b.start}-${b.end}`;
     const first = seen.get(at);
     if (!first) {
