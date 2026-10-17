@@ -170,3 +170,32 @@
   letter-spacing: 0;
   color: var(--shoresh-text-secondary);
 }
+
+/* Manual Build: the cell keyboard focus is on. */
+.cell:focus {
+  outline: none;
+}
+
+.cell:focus-visible .cell-inner {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: 1px;
+}
+
+/* A group not at camp in this block (morning or afternoon only): hatched, nothing to place. */
+.cell_away .cell-inner {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--slds-g-color-neutral-base-95, #f3f3f3) 0 6px,
+    var(--slds-g-color-neutral-base-100, #fff) 6px 12px
+  );
+}
+
+.cell_away .cell-name {
+  color: var(--shoresh-text-secondary);
+  font-weight: 400;
+}
+
+/* Saving: the edit shows at once, a little quieter until the server has it. */
+.cell_saving .cell-inner {
+  opacity: 0.6;
+}

@@ -154,11 +154,15 @@ describe("c-shoresh-roots", () => {
     );
   });
 
-  it("shows areas not built yet as coming, and they open nothing", async () => {
+  it("the schedule door opens Manual Build", async () => {
     const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
     const door = element.shadowRoot.querySelector('[data-id="schedule-door"]');
     expect(door.textContent).toContain("Build or generate the schedule");
-    expect(door.textContent).toContain("Coming");
+    expect(door.textContent).not.toContain("Coming");
+    door.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "manualBuild" });
   });
 
   it("Import last year opens the import screen", async () => {

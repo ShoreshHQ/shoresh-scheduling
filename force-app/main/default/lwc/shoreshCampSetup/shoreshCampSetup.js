@@ -30,6 +30,7 @@ const SCREENS = [
   "activities",
   "fixedActivities",
   "recurringActivities",
+  "manualBuild",
   "schedules",
   "import"
 ];

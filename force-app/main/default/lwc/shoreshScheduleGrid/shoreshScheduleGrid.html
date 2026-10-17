@@ -2,12 +2,15 @@
   <div class="frame-scroll">
     <div
       class="frame"
-      role="table"
+      role={frameRole}
       aria-label={label}
       aria-rowcount={rowCount}
       aria-colcount={colCount}
       style={frameStyle}
       data-id="schedule-grid"
+      onfocusin={handleFocusIn}
+      onkeydown={handleKeyDown}
+      ondblclick={handleDoubleClick}
     >
       <div class="grid grid_header" role="rowgroup" style={columnTemplate}>
         <div role="row" class="row" aria-rowindex="1">
@@ -64,7 +67,9 @@
             <template for:each={row.cells} for:item="cell">
               <div
                 key={cell.key}
-                role="cell"
+                role={cell.role}
+                tabindex={cell.tabIndex}
+                aria-readonly={cell.ariaReadOnly}
                 aria-colindex={cell.colIndex}
                 aria-rowspan={cell.rowSpan}
                 class={cell.className}

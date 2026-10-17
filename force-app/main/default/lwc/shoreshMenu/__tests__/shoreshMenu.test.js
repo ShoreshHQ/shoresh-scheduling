@@ -78,6 +78,8 @@ describe("c-shoresh-menu", () => {
       "Anchors",
       "Recurring activities",
       "Special events (Coming)",
+      "Manual Build",
+      "Generated Schedule (Coming)",
       "Schedules"
     ]);
   });

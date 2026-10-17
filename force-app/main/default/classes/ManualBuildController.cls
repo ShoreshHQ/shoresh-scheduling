@@ -1,0 +1,62 @@
+/**
+ * Server side of Manual Build (desktop: the Manual schedule screen): open a program's draft for a
+ * week, start a blank week, save slot edits (each made only if its slots still hold what the
+ * director saw), and add an activity typed into a slot. Every query runs in user mode and every
+ * write uses user-mode DML.
+ */
+public with sharing class ManualBuildController {
+  /** The program's Manual Build draft for the week, or null when it has not been started. */
+  @AuraEnabled
+  public static ManualBuildViews.DraftView getDraft(Id programId, Id weekId) {
+    try {
+      Schedule__c draft = ManualDrafts.find(programId, weekId);
+      return draft == null ? null : ManualBuildViews.open(draft.Id);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
+  /** "Start a blank week": fixed and recurring activities placed, everything else Open. */
+  @AuraEnabled
+  public static ManualBuildViews.DraftView startBlankWeek(
+    Id programId,
+    Id weekId
+  ) {
+    try {
+      ManualDrafts.Started started = ManualDrafts.start(programId, weekId);
+      ManualBuildViews.DraftView view = ManualBuildViews.open(started.draftId);
+      view.notPlaced = started.notPlaced;
+      return view;
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  @AuraEnabled
+  public static SlotEdits.Result saveSlots(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits
+  ) {
+    try {
+      return SlotSaves.save(
+        scheduleId,
+        edits == null ? new List<SlotEdits.Edit>() : edits
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** "Add <name>" from a slot: a new activity (or the one with that name already). */
+  @AuraEnabled
+  public static ManualBuildViews.ActivityOption addActivity(
+    Id scheduleId,
+    String name
+  ) {
+    try {
+      return ManualBuildActivities.add(scheduleId, name);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+}
