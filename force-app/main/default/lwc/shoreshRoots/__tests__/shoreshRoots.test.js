@@ -224,4 +224,36 @@ describe("c-shoresh-roots", () => {
       element.shadowRoot.querySelector('[data-id="all-clear"]').textContent
     ).toContain("All clear");
   });
+
+  it("shows the last import with Undo last import, which asks the page to undo it", async () => {
+    const element = await render({
+      ...SETUP,
+      lastImport: {
+        Id: "im1",
+        Files__c: "maple-grove.xlsx",
+        CreatedDate: "2027-06-20T14:00:00.000Z"
+      }
+    });
+    const line = element.shadowRoot.querySelector('[data-id="last-import"]');
+    expect(line.textContent).toContain("Last import: maple-grove.xlsx");
+    expect(line.textContent).toContain(
+      "Anything you have edited since stays as it is."
+    );
+    const handler = jest.fn();
+    element.addEventListener("undoimport", handler);
+    element.shadowRoot
+      .querySelector('lightning-button[data-id="undo-import"]')
+      .click();
+    expect(handler.mock.calls[0][0].detail).toEqual({
+      importId: "im1",
+      files: "maple-grove.xlsx"
+    });
+  });
+
+  it("shows no last import when there is none", async () => {
+    const element = await render();
+    expect(
+      element.shadowRoot.querySelector('[data-id="last-import"]')
+    ).toBeNull();
+  });
 });

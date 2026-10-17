@@ -17,21 +17,17 @@ public with sharing class ImportUndoDeletes {
     'TimeBlock',
     'Program'
   };
-  // Records inside each kind (master-detail): anything left there keeps it.
-  private static final Map<String, List<List<String>>> INSIDE = new Map<String, List<List<String>>>{
-    'Program' => new List<List<String>>{
-      new List<String>{ 'Division__c', 'Program__c' },
-      new List<String>{ 'TimeBlock__c', 'Program__c' },
-      new List<String>{ 'FixedActivity__c', 'Program__c' },
-      new List<String>{ 'RecurringActivity__c', 'Program__c' },
-      new List<String>{ 'Schedule__c', 'Program__c' }
+  // Records inside each kind (master-detail child relationships): anything left there keeps it.
+  private static final Map<String, List<String>> INSIDE = new Map<String, List<String>>{
+    'Program' => new List<String>{
+      'Divisions__r',
+      'TimeBlocks__r',
+      'FixedActivities__r',
+      'RecurringActivities__r',
+      'Schedules__r'
     },
-    'Division' => new List<List<String>>{
-      new List<String>{ 'Group__c', 'Division__c' }
-    },
-    'Activity' => new List<List<String>>{
-      new List<String>{ 'ActivityEligibility__c', 'Activity__c' }
-    }
+    'Division' => new List<String>{ 'Groups__r' },
+    'Activity' => new List<String>{ 'Eligibilities__r' }
   };
 
   private ImportUndo.Result result;
@@ -83,29 +79,36 @@ public with sharing class ImportUndoDeletes {
     deleteAll(toDelete);
   }
 
-  /** Records with something inside them the import did not make (one query per kind inside). */
+  /** Records with something inside them the import did not make (one query, with sub-queries). */
   private Set<Id> holdingOthers(String term, Set<Id> ids) {
     Set<Id> result = new Set<Id>();
+    if (!INSIDE.containsKey(term)) {
+      return result;
+    }
+    List<String> inside = new List<String>();
+    for (String relationship : INSIDE.get(term)) {
+      inside.add(
+        '(SELECT Id FROM ' +
+          relationship +
+          ' WHERE Id NOT IN :createdIds LIMIT 1)'
+      );
+    }
+    // Object and relationship names are the constants above.
     for (
-      List<String> child : INSIDE.containsKey(term)
-        ? INSIDE.get(term)
-        : new List<List<String>>()
+      SObject record : Database.queryWithBinds(
+        'SELECT Id, ' +
+          String.join(inside, ', ') +
+          ' FROM ' +
+          term +
+          '__c WHERE Id IN :ids',
+        new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
+        AccessLevel.USER_MODE
+      )
     ) {
-      // Object and field names are the constants above.
-      for (
-        SObject inside : Database.queryWithBinds(
-          'SELECT ' +
-            child[1] +
-            ' FROM ' +
-            child[0] +
-            ' WHERE ' +
-            child[1] +
-            ' IN :ids AND Id NOT IN :createdIds',
-          new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
-          AccessLevel.USER_MODE
-        )
-      ) {
-        result.add((Id) inside.get(child[1]));
+      for (String relationship : INSIDE.get(term)) {
+        if (!record.getSObjects(relationship).isEmpty()) {
+          result.add(record.Id);
+        }
       }
     }
     return result;
