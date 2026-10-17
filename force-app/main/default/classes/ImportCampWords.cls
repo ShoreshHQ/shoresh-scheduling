@@ -92,17 +92,46 @@ public with sharing class ImportCampWords {
     Set<String> seen = new Set<String>();
     for (ImportPlan.Entry entry : entries) {
       String term = entry.text('term');
-      Map<String, Object> fields = entry.valuesOf('fields');
+      Map<Schema.SObjectField, Object> fields = wordsOf(entry);
       if (!terms.contains(term) || !seen.add(term) || fields.size() != 2) {
         throw ImportListSaves.unreadable();
       }
       result.add(
         new CampLabel__c(
           ModelTerm__c = term,
-          Singular__c = ImportWorkbookExtras.word(fields.get('Singular__c')),
-          Plural__c = ImportWorkbookExtras.word(fields.get('Plural__c'))
+          Singular__c = ImportWorkbookExtras.word(
+            fields.get(CampLabel__c.Singular__c)
+          ),
+          Plural__c = ImportWorkbookExtras.word(
+            fields.get(CampLabel__c.Plural__c)
+          )
         )
       );
+    }
+    return result;
+  }
+
+  /**
+   * An entry's singular and plural, by field: the screen names them as fields (with the
+   * package's prefix once it has one). Anything else is refused.
+   */
+  private static Map<Schema.SObjectField, Object> wordsOf(
+    ImportPlan.Entry entry
+  ) {
+    Map<String, Object> given = entry.valuesOf('fields');
+    Map<Schema.SObjectField, Object> result = new Map<Schema.SObjectField, Object>();
+    for (String name : given.keySet()) {
+      Schema.SObjectField field = ShoreshSchema.field(
+        CampLabel__c.SObjectType,
+        name
+      );
+      if (
+        field != CampLabel__c.Singular__c &&
+        field != CampLabel__c.Plural__c
+      ) {
+        throw ImportListSaves.unreadable();
+      }
+      result.put(field, given.get(name));
     }
     return result;
   }

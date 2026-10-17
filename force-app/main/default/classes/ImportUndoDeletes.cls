@@ -33,29 +33,38 @@ public with sharing class ImportUndoDeletes {
   // Records inside each kind (master-detail children), or pointing at it through a link that
   // would quietly clear (a time block an item ends at, an activity used as a rain plan):
   // anything there not made by the import, or kept by this Undo, keeps it.
-  private static final Map<String, List<String>> INSIDE = new Map<String, List<String>>{
-    'Program' => new List<String>{
-      'Divisions__r',
-      'TimeBlocks__r',
-      'FixedActivities__r',
-      'RecurringActivities__r',
-      'Schedules__r'
+  // Each is the child's field pointing at the kind; the parent's list of them is looked up.
+  private static final Map<String, List<Schema.SObjectField>> INSIDE = new Map<String, List<Schema.SObjectField>>{
+    'Program' => new List<Schema.SObjectField>{
+      Division__c.Program__c,
+      TimeBlock__c.Program__c,
+      FixedActivity__c.Program__c,
+      RecurringActivity__c.Program__c,
+      Schedule__c.Program__c
     },
-    'Division' => new List<String>{ 'Groups__r' },
+    'Division' => new List<Schema.SObjectField>{ Group__c.Division__c },
     // A week added by a workbook that anything else now uses (a version, a week off) stays.
-    'Week' => new List<String>{ 'WeekExceptions__r', 'Schedules__r' },
-    'TimeBlock' => new List<String>{
-      'EndingFixedActivities__r',
-      'EndingRecurringActivities__r'
+    'Week' => new List<Schema.SObjectField>{
+      WeekException__c.Week__c,
+      Schedule__c.Week__c
     },
-    'Activity' => new List<String>{ 'Eligibilities__r', 'RainPlanFor__r' },
+    'TimeBlock' => new List<Schema.SObjectField>{
+      FixedActivity__c.LastTimeBlock__c,
+      RecurringActivity__c.LastTimeBlock__c
+    },
+    'Activity' => new List<Schema.SObjectField>{
+      ActivityEligibility__c.Activity__c,
+      Activity__c.RainPlan__c
+    },
     // Who it covers or weeks it is off that the import didn't make: kept, with what it made.
-    'RecurringActivity' => new List<String>{
-      'Coverages__r',
-      'WeekExceptions__r'
+    'RecurringActivity' => new List<Schema.SObjectField>{
+      Coverage__c.RecurringActivity__c,
+      WeekException__c.RecurringActivity__c
     },
     // A type's locations would quietly lose it: one the import didn't add keeps it.
-    'LocationType' => new List<String>{ 'Locations__r' }
+    'LocationType' => new List<Schema.SObjectField>{
+      Location__c.LocationType__c
+    }
   };
 
   private ImportUndo.Result result;
@@ -206,27 +215,31 @@ public with sharing class ImportUndoDeletes {
     if (!INSIDE.containsKey(term)) {
       return result;
     }
+    Schema.SObjectType type = ImportFields.ofTerm(term);
+    List<String> relationships = new List<String>();
     List<String> subqueries = new List<String>();
-    for (String relationship : INSIDE.get(term)) {
+    for (Schema.SObjectField child : INSIDE.get(term)) {
+      String relationship = ShoreshSchema.childRelationship(type, child);
+      relationships.add(relationship);
       subqueries.add(
         '(SELECT Id FROM ' +
           relationship +
           ' WHERE Id NOT IN :createdIds LIMIT 1)'
       );
     }
-    // Object and relationship names are the constants above.
+    // Object and relationship names come from the platform, for the fields above.
     for (
       SObject record : Database.queryWithBinds(
         'SELECT Id, ' +
           String.join(subqueries, ', ') +
           ' FROM ' +
-          ImportFields.ofTerm(term).getDescribe().getName() +
+          ShoreshSchema.queryName(type) +
           ' WHERE Id IN :ids',
         new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
         AccessLevel.USER_MODE
       )
     ) {
-      for (String relationship : INSIDE.get(term)) {
+      for (String relationship : relationships) {
         // An empty sub-query reads as null, not an empty list.
         List<SObject> inside = record.getSObjects(relationship);
         if (inside != null && !inside.isEmpty()) {

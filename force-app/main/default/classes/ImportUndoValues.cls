@@ -17,10 +17,13 @@ public with sharing class ImportUndoValues {
       value instanceof Double;
   }
 
-  /** Whether every field the import wrote still holds what it wrote. */
+  /** Whether every field the import wrote still holds what it wrote (names from the log). */
   public static Boolean unchanged(SObject record, Map<String, Object> written) {
-    for (String field : written.keySet()) {
-      if (!same(record.get(field), written.get(field))) {
+    Schema.SObjectType kind = record.getSObjectType();
+    for (String name : written.keySet()) {
+      if (
+        !same(record.get(ImportFields.field(kind, name)), written.get(name))
+      ) {
         return false;
       }
     }
@@ -28,16 +31,8 @@ public with sharing class ImportUndoValues {
   }
 
   /** A kept value as the field takes it: "09:00" back to a time. */
-  public static Object asField(
-    Schema.SObjectType kind,
-    String field,
-    Object value
-  ) {
-    Schema.DisplayType type = kind.getDescribe()
-      .fields.getMap()
-      .get(field)
-      .getDescribe()
-      .getType();
+  public static Object asField(Schema.SObjectField field, Object value) {
+    Schema.DisplayType type = field.getDescribe().getType();
     if (type == Schema.DisplayType.TIME && value != null) {
       List<String> parts = String.valueOf(value).split(':');
       return Time.newInstance(
@@ -58,27 +53,29 @@ public with sharing class ImportUndoValues {
 
   /**
    * The records, with the given fields and their names, in user mode. The names come from an
-   * import's record, so only those ImportFields lists are ever put into the query.
+   * import's record, so only fields ImportFields lists are ever put into the query.
    */
   public static Map<Id, SObject> read(
     Schema.SObjectType type,
     Set<String> fields,
     Set<Id> ids
   ) {
-    Set<String> wanted = new Set<String>(fields);
-    wanted.remove('Id');
-    ImportFields.check(type, wanted);
-    wanted.add('Name');
+    Set<String> columns = new Set<String>{ 'Name' };
+    for (String name : fields) {
+      if (name != 'Id') {
+        columns.add(ShoreshSchema.queryName(ImportFields.field(type, name)));
+      }
+    }
     // A camp word is named by the word itself.
     if (type == CampLabel__c.SObjectType) {
-      wanted.add('Singular__c');
+      columns.add(ShoreshSchema.queryName(CampLabel__c.Singular__c));
     }
     return new Map<Id, SObject>(
       Database.queryWithBinds(
         'SELECT Id, ' +
-          String.join(new List<String>(wanted), ', ') +
+          String.join(new List<String>(columns), ', ') +
           ' FROM ' +
-          type.getDescribe().getName() +
+          ShoreshSchema.queryName(type) +
           ' WHERE Id IN :ids',
         new Map<String, Object>{ 'ids' => ids },
         AccessLevel.USER_MODE

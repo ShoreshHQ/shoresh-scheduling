@@ -740,4 +740,108 @@ private class ImportListSavesTest {
       Test.stopTest();
     }
   }
+
+  /**
+   * Namespace safety: a list whose screen names fields with the package's prefix changes the
+   * same fields and who; its log, spelled with the prefix (fields, the who rows' object), is
+   * undone exactly as one without; and a new activity added that way is removed.
+   */
+  @IsTest
+  static void aListAndLogSpelledWithTheNamespaceAreReadTheSame() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ShoreshSchema.simulatedPrefix = 'shoresh__';
+      Camp c = camp();
+      Map<String, Object> sent = plan(
+        c.season.Id,
+        new List<Object>{
+          new Map<String, Object>{
+            'kind' => 'Activity',
+            'id' => c.archery.Id,
+            'fields' => new Map<String, Object>{
+              'TimesPerWeekMin__c' => 2,
+              'NoWeeklyMax__c' => true,
+              'TimesPerWeekMax__c' => null
+            },
+            'refs' => new Map<String, Object>{ 'Location__c' => null },
+            'who' => new List<Object>{ c.seniors, c.bunk1 }
+          },
+          newActivity(
+            'Climbing',
+            new Map<String, Object>{
+              'Location__c' => c.gym.Id,
+              'RainPlan__c' => c.archery.Id
+            },
+            new List<Object>{ c.juniors }
+          )
+        }
+      );
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(ImportTestPlans.packaged(sent))
+      );
+      Assert.areEqual(1, result.changed.get('Activity'));
+      Assert.areEqual(1, result.added.get('Activity'));
+      Activity__c changed = [
+        SELECT
+          TimesPerWeekMin__c,
+          NoWeeklyMax__c,
+          Location__c,
+          (SELECT Division__c, Group__c FROM Eligibilities__r)
+        FROM Activity__c
+        WHERE Id = :c.archery.Id
+      ];
+      Assert.areEqual(2, changed.TimesPerWeekMin__c);
+      Assert.isTrue(changed.NoWeeklyMax__c);
+      Assert.isNull(changed.Location__c);
+      Assert.areEqual(2, changed.Eligibilities__r.size());
+      Activity__c climbing = [
+        SELECT Length__c, RainPlan__c, Location__c
+        FROM Activity__c
+        WHERE Name = 'Climbing'
+      ];
+      Assert.areEqual(1, climbing.Length__c);
+      Assert.areEqual(c.archery.Id, climbing.RainPlan__c);
+      Assert.areEqual(c.gym.Id, climbing.Location__c);
+
+      Import__c packaged = ImportTestPlans.packageLog(result.importId);
+      Assert.isTrue(
+        packaged.Changed__c.contains(
+          '"type":"shoresh__ActivityEligibility__c"'
+        ),
+        packaged.Changed__c
+      );
+      Assert.isTrue(
+        packaged.Changed__c.contains('"shoresh__TimesPerWeekMin__c"'),
+        packaged.Changed__c
+      );
+
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Activity__c back = [
+        SELECT
+          TimesPerWeekMin__c,
+          TimesPerWeekMax__c,
+          NoWeeklyMax__c,
+          Location__c,
+          (SELECT Division__c FROM Eligibilities__r)
+        FROM Activity__c
+        WHERE Id = :c.archery.Id
+      ];
+      Assert.areEqual(1, back.TimesPerWeekMin__c);
+      Assert.areEqual(2, back.TimesPerWeekMax__c);
+      Assert.isFalse(back.NoWeeklyMax__c);
+      Assert.areEqual(c.gym.Id, back.Location__c);
+      Assert.areEqual(1, back.Eligibilities__r.size());
+      Assert.areEqual(c.juniors, back.Eligibilities__r[0].Division__c);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Activity__c WHERE Name = 'Climbing']
+      );
+      Assert.areEqual(
+        0,
+        undone.keptEdited.size(),
+        String.valueOf(undone.keptEdited)
+      );
+    }
+  }
 }

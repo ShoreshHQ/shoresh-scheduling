@@ -77,16 +77,21 @@ public with sharing class ImportUndoWeeksOff {
 
   /** A week off from the log, every name and Id checked against what an import writes. */
   private static WeekException__c checked(Map<String, Object> entry) {
-    String field = (String) entry.get('field');
-    ImportFields.check(WeekException__c.SObjectType, new Set<String>{ field });
+    Schema.SObjectField field = ImportFields.field(
+      WeekException__c.SObjectType,
+      entry.get('field')
+    );
     if (
-      field == 'Week__c' ||
+      field == WeekException__c.Week__c ||
       ImportFields.ofRecord(entry.get('week')) != Week__c.SObjectType
     ) {
       throw ImportFields.unreadableLog();
     }
     // Checked before it is read as an Id, so text that isn't one is refused the same way.
-    if (ImportFields.ofRecord(entry.get('target')) != fieldType(field)) {
+    if (
+      ImportFields.ofRecord(entry.get('target')) !=
+      field.getDescribe().getReferenceTo()[0]
+    ) {
       throw ImportFields.unreadableLog();
     }
     Id target = (Id) (String) entry.get('target');
@@ -117,10 +122,6 @@ public with sharing class ImportUndoWeeksOff {
       result.addAll(new Map<Id, SObject>(found).keySet());
     }
     return result;
-  }
-
-  private static Schema.SObjectType fieldType(String field) {
-    return ImportFields.ofTerm(field.removeEnd('__c'));
   }
 
   private static Id targetOf(WeekException__c off) {

@@ -45,12 +45,23 @@ public with sharing class ShoreshSchema {
     if (type == null || String.isBlank(name)) {
       return null;
     }
-    String key = name.toLowerCase();
-    String own = prefix().toLowerCase();
-    if (own != '' && key.startsWith(own)) {
-      key = key.removeStart(own);
+    return localFields(type).get(withoutPrefix(name).toLowerCase());
+  }
+
+  /**
+   * A name with this package's prefix taken off, if it has it (any case): how a name read from
+   * a log or the screen is compared with a local name. Other text comes back as it is.
+   */
+  public static String withoutPrefix(String name) {
+    String own = prefix();
+    if (
+      name != null &&
+      own != '' &&
+      name.toLowerCase().startsWith(own.toLowerCase())
+    ) {
+      return name.substring(own.length());
     }
-    return localFields(type).get(key);
+    return name;
   }
 
   /** The field's name without the prefix ("StartDate__c"): how stored names are kept. */

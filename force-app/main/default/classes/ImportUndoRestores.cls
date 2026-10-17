@@ -79,11 +79,9 @@ public with sharing class ImportUndoRestores {
       names.put(current.Id, ImportFields.nameOf(current));
       SObject row = kind.newSObject(current.Id);
       Map<String, Object> before = (Map<String, Object>) entry.get('before');
-      for (String field : before.keySet()) {
-        row.put(
-          field,
-          ImportUndoValues.asField(kind, field, before.get(field))
-        );
+      for (String name : before.keySet()) {
+        Schema.SObjectField field = ImportFields.field(kind, name);
+        row.put(field, ImportUndoValues.asField(field, before.get(name)));
       }
       rows.add(row);
     }

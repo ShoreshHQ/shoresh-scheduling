@@ -1,68 +1,85 @@
 /**
  * The two kinds of who list a list import writes and Undo puts back (slice 4c): who can do an
  * activity (ActivityEligibility__c rows) and who a recurring activity covers (Coverage__c rows,
- * which also belong to the season). Object, field, and relationship names are these constants,
- * never from the screen.
+ * which also belong to the season). Objects, fields, and relationships are the platform's own
+ * references here, never names from the screen or a log.
  */
 public with sharing class ImportWhoKinds {
   private static final Map<String, Kind> BY_OWNER = new Map<String, Kind>{
     'Activity' => new Kind(
-      new List<String>{
-        'Activity__c',
-        'ActivityEligibility__c',
-        'Activity__c',
-        'Eligibilities__r',
-        'ActivityEligibility'
+      'ActivityEligibility',
+      new List<Schema.SObjectField>{
+        ActivityEligibility__c.Activity__c,
+        ActivityEligibility__c.Division__c,
+        ActivityEligibility__c.Group__c
       }
     ),
     'RecurringActivity' => new Kind(
-      new List<String>{
-        'RecurringActivity__c',
-        'Coverage__c',
-        'RecurringActivity__c',
-        'Coverages__r',
-        'Coverage'
+      'Coverage',
+      new List<Schema.SObjectField>{
+        Coverage__c.RecurringActivity__c,
+        Coverage__c.Division__c,
+        Coverage__c.Group__c
       }
     )
   };
 
   /** One kind of who list. */
   public with sharing class Kind {
-    public String ownerObject { get; private set; }
-    public String childType { get; private set; }
-    public String ownerField { get; private set; }
+    public Schema.SObjectType ownerObject { get; private set; }
+    /** The rows' object. Logs name it by its local name ("Coverage__c"). */
+    public Schema.SObjectType childType { get; private set; }
+    public Schema.SObjectField ownerField { get; private set; }
+    public Schema.SObjectField divisionField { get; private set; }
+    public Schema.SObjectField groupField { get; private set; }
+    /** The owner's list of rows, for a subquery and getSObjects ("Coverages__r"). */
     public String relationship { get; private set; }
     /** ImportWriter's name for the created rows (Undo removes them in this order). */
     public String term { get; private set; }
 
-    /** names: owner object, rows' object, owner field, relationship, ImportWriter term. */
-    Kind(List<String> names) {
-      this.ownerObject = names[0];
-      this.childType = names[1];
-      this.ownerField = names[2];
-      this.relationship = names[3];
-      this.term = names[4];
+    /** fields: the rows' fields naming the owner, a division, and a group. */
+    Kind(String term, List<Schema.SObjectField> fields) {
+      this.term = term;
+      this.ownerField = fields[0];
+      this.divisionField = fields[1];
+      this.groupField = fields[2];
+      this.childType = ImportFields.ofTerm(term);
+      this.ownerObject = ownerField.getDescribe().getReferenceTo()[0];
+      this.relationship = ShoreshSchema.childRelationship(
+        ownerObject,
+        ownerField
+      );
     }
 
     /** A row saying the owner is for a division or group. */
     public SObject row(Id ownerId, Id targetId, Id seasonId) {
-      // The object from ImportFields' constant map, never looked up by a name.
-      SObject row = ImportFields.ofTerm(term).newSObject();
+      SObject row = childType.newSObject();
       row.put(ownerField, ownerId);
-      row.put(ImportItemWrites.targetField(targetId), targetId);
-      if (childType == 'Coverage__c') {
-        row.put('Season__c', seasonId);
+      row.put(targetField(targetId), targetId);
+      if (childType == Coverage__c.SObjectType) {
+        row.put(Coverage__c.Season__c, seasonId);
       }
       return row;
+    }
+
+    /** The field a row names this division or group in. */
+    public Schema.SObjectField targetField(Id targetId) {
+      return targetId.getSObjectType() == Division__c.SObjectType
+        ? divisionField
+        : groupField;
     }
 
     /** The owners, each with its who rows, read in user mode. */
     public List<SObject> ownersWithRows(Set<Id> ownerIds) {
       return Database.queryWithBinds(
-        'SELECT Id, Name, (SELECT Id, Division__c, Group__c FROM ' +
+        'SELECT Id, Name, (SELECT Id, ' +
+          ShoreshSchema.queryName(divisionField) +
+          ', ' +
+          ShoreshSchema.queryName(groupField) +
+          ' FROM ' +
           relationship +
           ') FROM ' +
-          ownerObject +
+          ShoreshSchema.queryName(ownerObject) +
           ' WHERE Id IN :ownerIds',
         new Map<String, Object>{ 'ownerIds' => ownerIds },
         AccessLevel.USER_MODE
@@ -75,10 +92,19 @@ public with sharing class ImportWhoKinds {
     return BY_OWNER.get(ownerKind);
   }
 
-  /** By the who rows' object ("ActivityEligibility__c", "Coverage__c"), as Undo's log has it. */
-  public static Kind forChild(String childType) {
+  /**
+   * By the who rows' object as Undo's log names it: "ActivityEligibility__c" or "Coverage__c"
+   * (with the package's prefix too, which logs never write but are read the same).
+   */
+  public static Kind forChild(Object childType) {
+    String name = childType instanceof String
+      ? ShoreshSchema.withoutPrefix((String) childType)
+      : null;
     for (Kind kind : BY_OWNER.values()) {
-      if (kind.childType == childType) {
+      if (
+        name != null &&
+        name.equalsIgnoreCase(ShoreshSchema.localName(kind.childType))
+      ) {
         return kind;
       }
     }
@@ -88,7 +114,12 @@ public with sharing class ImportWhoKinds {
 
   /** The division or group a who row names. */
   public static String targetOf(SObject row) {
-    Object division = row.get('Division__c');
-    return division != null ? (String) division : (String) row.get('Group__c');
+    Kind kind = row.getSObjectType() == Coverage__c.SObjectType
+      ? BY_OWNER.get('RecurringActivity')
+      : BY_OWNER.get('Activity');
+    Object division = row.get(kind.divisionField);
+    return division != null
+      ? (String) division
+      : (String) row.get(kind.groupField);
   }
 }

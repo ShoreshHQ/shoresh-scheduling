@@ -188,4 +188,30 @@ private class ShoreshSchemaTest {
       'Coverage rows don\'t point at activities'
     );
   }
+
+  @IsTest
+  static void takesOffOnlyThisPackagesPrefix() {
+    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    Assert.areEqual(
+      'Coverage__c',
+      ShoreshSchema.withoutPrefix('shoresh__Coverage__c'),
+      'Own prefix'
+    );
+    Assert.areEqual(
+      'Coverage__c',
+      ShoreshSchema.withoutPrefix('SHORESH__Coverage__c'),
+      'Any case'
+    );
+    Assert.areEqual(
+      'Coverage__c',
+      ShoreshSchema.withoutPrefix('Coverage__c'),
+      'Already local'
+    );
+    Assert.areEqual(
+      'other__Coverage__c',
+      ShoreshSchema.withoutPrefix('other__Coverage__c'),
+      'Another namespace'
+    );
+    Assert.isNull(ShoreshSchema.withoutPrefix(null), 'Nothing');
+  }
 }

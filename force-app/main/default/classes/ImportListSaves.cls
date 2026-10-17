@@ -177,7 +177,7 @@ public with sharing class ImportListSaves {
     List<SObject> linked = new List<SObject>();
     for (List<Object> link : later) {
       SObject row = type.newSObject(rows[(Integer) link[0]].Id);
-      row.put((String) link[1], keys.of((String) link[2]));
+      row.put((Schema.SObjectField) link[1], keys.of((String) link[2]));
       linked.add(row);
     }
     writer.amend(linked);
