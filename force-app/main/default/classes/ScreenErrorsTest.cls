@@ -8,12 +8,10 @@ private class ScreenErrorsTest {
       Database.delete(camp, AccessLevel.SYSTEM_MODE);
       Assert.fail('A camp with seasons is kept');
     } catch (DmlException e) {
-      Assert.isTrue(
-        ScreenErrors.of(e)
-          .getMessage()
-          .startsWith(
-            'This can\'t be deleted while other records still use it.'
-          )
+      Assert.areEqual(
+        'This can\'t be deleted while something else still uses it. Change that first.',
+        ScreenErrors.of(e).getMessage(),
+        'The platform\'s own wording, which names objects, is not shown'
       );
     }
   }
@@ -23,6 +21,48 @@ private class ScreenErrorsTest {
     Assert.areEqual(
       'Plain words.',
       ScreenErrors.of(new ShoreshException('Plain words.')).getMessage()
+    );
+  }
+
+  @IsTest
+  static void aCheckOnSaveKeepsItsOwnMessage() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Week__c first = ShoreshTestData.weeks(season.Id, 1)[0];
+    try {
+      Database.insert(
+        new Week__c(
+          Season__c = season.Id,
+          Name = 'Again',
+          StartDate__c = first.StartDate__c,
+          EndDate__c = first.EndDate__c
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Assert.fail('Two weeks never start on the same day');
+    } catch (DmlException e) {
+      String shown = ScreenErrors.of(e).getMessage();
+      Assert.areEqual(e.getDmlMessage(0), shown);
+      Assert.areNotEqual('Couldn\'t save. Try again.', shown);
+    }
+  }
+
+  @IsTest
+  static void anythingElseShowsAShortTryAgain() {
+    Exception unexpected;
+    try {
+      List<Integer> none = new List<Integer>();
+      Assert.fail('Not reached: ' + none[3]);
+    } catch (Exception e) {
+      unexpected = e;
+    }
+    Assert.areEqual(
+      'Couldn\'t save. Try again.',
+      ScreenErrors.of(unexpected).getMessage()
+    );
+    Assert.areEqual(
+      'Couldn\'t open this. Try again.',
+      ScreenErrors.ofLoading(unexpected).getMessage()
     );
   }
 }

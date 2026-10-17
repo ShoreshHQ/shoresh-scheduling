@@ -118,7 +118,7 @@ public with sharing class CampLabels {
       !labels.isUpdateable() ||
       !labels.isDeletable()
     ) {
-      return 'You don\'t have access to change camp words. A Salesforce admin can give you the Shoresh Scheduler permission set.';
+      return 'You don\'t have access to change camp words. A Salesforce admin can give you Shoresh Scheduler access.';
     }
     List<UserRecordAccess> access = [
       SELECT RecordId, HasEditAccess
@@ -137,6 +137,7 @@ public with sharing class CampLabels {
    * or with exactly the model term's words, goes back to the model term.
    */
   public static void save(Id campId, List<TermLabel> rows) {
+    refuseOtherLabels(campId, rows);
     List<CampLabel__c> toSave = new List<CampLabel__c>();
     List<Id> toDelete = new List<Id>();
     for (TermLabel row : rows) {
@@ -154,6 +155,32 @@ public with sharing class CampLabels {
     } catch (DmlException e) {
       Database.rollback(beforeSave);
       throw e;
+    }
+  }
+
+  /** Only this camp's own labels are changed or removed, whatever Id the screen sends. */
+  private static void refuseOtherLabels(Id campId, List<TermLabel> rows) {
+    Set<Id> sent = new Set<Id>();
+    for (TermLabel row : rows) {
+      if (row.labelId != null) {
+        sent.add(row.labelId);
+      }
+    }
+    if (sent.isEmpty()) {
+      return;
+    }
+    Map<Id, CampLabel__c> own = new Map<Id, CampLabel__c>(
+      [
+        SELECT Id
+        FROM CampLabel__c
+        WHERE Id IN :sent AND Camp__c = :campId
+        WITH USER_MODE
+      ]
+    );
+    if (!own.keySet().containsAll(sent)) {
+      throw new LabelException(
+        'Some of these words were changed somewhere else. Reload the page and try again.'
+      );
     }
   }
 

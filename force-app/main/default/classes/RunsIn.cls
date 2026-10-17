@@ -73,7 +73,7 @@ public with sharing class RunsIn {
     }
     if (target == null || !TARGET_FIELD.containsKey(target.getSObjectType())) {
       throw new ShoreshException(
-        'These screens cannot save that week for that kind of record.'
+        'These screens can\'t save week ticks for that.'
       );
     }
     return target;

@@ -20,30 +20,42 @@ public with sharing class SeasonSetupController {
 
   @AuraEnabled
   public static List<Camp__c> getCamps() {
-    return [
-      SELECT Id, Name, TimeZone__c
-      FROM Camp__c
-      WITH USER_MODE
-      ORDER BY Name
-      LIMIT 1000
-    ];
+    try {
+      return [
+        SELECT Id, Name, TimeZone__c
+        FROM Camp__c
+        WITH USER_MODE
+        ORDER BY Name
+        LIMIT 1000
+      ];
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
   }
 
   @AuraEnabled
   public static List<Season__c> getSeasons(Id campId) {
-    return [
-      SELECT Id, Name, StartDate__c, EndDate__c, Status__c
-      FROM Season__c
-      WHERE Camp__c = :campId
-      WITH USER_MODE
-      ORDER BY StartDate__c DESC
-      LIMIT 1000
-    ];
+    try {
+      return [
+        SELECT Id, Name, StartDate__c, EndDate__c, Status__c
+        FROM Season__c
+        WHERE Camp__c = :campId
+        WITH USER_MODE
+        ORDER BY StartDate__c DESC
+        LIMIT 1000
+      ];
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
   }
 
   @AuraEnabled
   public static List<CampLabels.TermLabel> getLabels(Id campId) {
-    return CampLabels.forCamp(campId).all();
+    try {
+      return CampLabels.forCamp(campId).all();
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
   }
 
   /** Why this person cannot change the camp's own words, or null when they can. */
@@ -54,7 +66,12 @@ public with sharing class SeasonSetupController {
 
   @AuraEnabled
   public static SeasonSetupReader.SeasonSetup getSeasonSetup(Id seasonId) {
-    SeasonSetupReader.SeasonSetup setup = SeasonSetupReader.read(seasonId);
+    SeasonSetupReader.SeasonSetup setup;
+    try {
+      setup = SeasonSetupReader.read(seasonId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
     if (setup == null) {
       throw ScreenErrors.of(
         'That ' +
@@ -101,7 +118,7 @@ public with sharing class SeasonSetupController {
     if (
       recordId == null || !DELETABLE_TYPES.contains(recordId.getSObjectType())
     ) {
-      throw ScreenErrors.of('These screens cannot delete that kind of record.');
+      throw ScreenErrors.of('These screens can\'t delete that.');
     }
     String inUse = InUse.reason(recordId);
     if (inUse != null) {

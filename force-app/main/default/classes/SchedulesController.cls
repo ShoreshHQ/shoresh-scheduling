@@ -11,12 +11,21 @@ public with sharing class SchedulesController {
     Id programId,
     Id weekId
   ) {
-    return ScheduleViews.versions(programId, weekId);
+    try {
+      return ScheduleViews.versions(programId, weekId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
   }
 
   @AuraEnabled
   public static ScheduleViews.ScheduleView openSchedule(Id scheduleId) {
-    ScheduleViews.ScheduleView view = ScheduleViews.open(scheduleId);
+    ScheduleViews.ScheduleView view;
+    try {
+      view = ScheduleViews.open(scheduleId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
     if (view == null) {
       throw ScreenErrors.of(
         'That schedule was not found, or you do not have access to it.'

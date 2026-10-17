@@ -21,7 +21,7 @@ public with sharing class WeekExceptions {
       }
       if (rowId.getSObjectType() != WeekException__c.SObjectType) {
         throw new ShoreshException(
-          'These screens cannot delete that kind of record.'
+          'These screens can\'t delete that.'
         );
       }
       removeIds.add(rowId);

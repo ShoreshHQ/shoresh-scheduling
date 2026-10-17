@@ -111,7 +111,7 @@ private class WeekExceptionsTest {
         Assert.fail('A season is not a week exception');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'These screens cannot delete that kind of record.',
+          'These screens can\'t delete that.',
           e.getMessage()
         );
       }
