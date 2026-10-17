@@ -25,10 +25,33 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    which weekdays change; nothing is adjusted silently. Copies start in Planning.
 5. **Camp labels apply to every Shoresh message**, including trigger and validation messages
    built in Apex. Validation rules (static text) avoid model terms. Salesforce's own messages
-   (for example, a restrict-delete refusal) still name objects by their packaged labels.
+   name objects and fields, so screens never show them (`ScreenErrors`, audit 2026-10-17):
+   common ones (in use elsewhere, no access, already used, required, too long) get a plain
+   sentence, anything else "Couldn't save. Try again." with the detail in the debug log. Once packaged,
+   only Shoresh support (subscriber login) can read that log, not the camp's own admin. (The import's
+   undo refusal still adds the platform's text; it is changed with the import code.)
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
-   of objects; reads are `WITH USER_MODE`. Trigger checks read in system mode on purpose
-   (duplicate keys must be found even in records the user cannot see).
+   of objects and, per object, of the fields the screens send (a parent field only on a new
+   row); reads are `WITH USER_MODE`. **Trigger and save-time checks read in system mode** on
+   purpose, so a check never depends on the saver's object and field access: duplicate checks,
+   season matches, delete protection, and the fixed and recurring activity clash check
+   (`SetTimeGuard`, `SetTimePlanReader`), which also runs at the end of screen saves. Their
+   refusal messages can include values read this way (for example a location's "groups that
+   fit"), even from a field an admin has hidden from that person. (Audit, 2026-10-17.)
+   - **Record sharing still applies.** Every class is `with sharing`, and with that keyword system
+     mode skips object and field permissions but not sharing. So these checks see only records
+     the person can see, not "records the user cannot see" as this point first said. Nothing is
+     lost within a season: everything in it is controlled by the season, so anyone saving into
+     a season sees all of it. Duplicate checks are also held by unique `Key__c` fields, which
+     ignore sharing. Checks across two seasons (a lookup pointing into another season) are left
+     as they are.
+   - **One system-mode write:** deleting a season first deletes its week exceptions, coverage,
+     fixed and recurring activities, schedules, and activities in system mode
+     (`SeasonTriggerHandler`), after the published-history refusal (point 3). All of them sit
+     under the season through master-detail links (some through a week or program), so the season delete would
+     remove them anyway; system mode only skips the person's delete permission on those child objects, never their record
+     access. It is needed because restrict-delete lookups between the children would otherwise
+     block the season delete (point 2).
 7. **Anyone with Shoresh access can change camp labels** (Greg, 2026-10-15). "Shoresh access"
    means the Shoresh Scheduler permission set. Camp records are readable and editable by
    everyone with access (org-wide Read/Write), and camp labels follow their camp. This replaces
@@ -37,6 +60,8 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    other camps. If an admin narrows access to camp records, the label editor is read-only for
    people without edit access and says so; someone without the permission set is told to ask
    for it.
+   Whether the person can edit the camp is read from `UserRecordAccess` in system mode
+   (`CampLabels.whyCannotEdit`); it reads only that person's own access to that one camp.
 8. **Choices that are hard to undo after release:** `Camp__c.TimeZone__c` is text (a standard
    time-zone name such as America/New_York) rather than a picklist, so any zone fits; nothing
    uses it yet. `TimeBlock__c.PartOfDay__c` is Morning or Afternoon only (day camps;

@@ -225,7 +225,7 @@ private class SeasonSetupControllerTest {
         Assert.fail('Other objects are refused');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'These screens cannot save that kind of record.',
+          'These screens can\'t save that.',
           errorOf(e)
         );
       }
@@ -235,7 +235,7 @@ private class SeasonSetupControllerTest {
         Assert.fail('Camps are not deleted from these screens');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'These screens cannot delete that kind of record.',
+          'These screens can\'t delete that.',
           errorOf(e)
         );
       }
@@ -421,7 +421,7 @@ private class SeasonSetupControllerTest {
     List<CampLabels.TermLabel> labels = CampLabels.forCamp(camp.Id).all();
     setWords(labels, 'Group', 'Bunk/Bunks');
     System.runAs(ShoreshTestData.outsider()) {
-      String expected = 'You don\'t have access to change camp words. A Salesforce admin can give you the Shoresh Scheduler permission set.';
+      String expected = 'You don\'t have access to change camp words. A Salesforce admin can give you Shoresh Scheduler access.';
       Assert.areEqual(
         expected,
         SeasonSetupController.campWordsBlockedReason(camp.Id)
@@ -455,7 +455,7 @@ private class SeasonSetupControllerTest {
         Assert.fail('Edit access is not delete access');
       } catch (AuraHandledException e) {
         Assert.areEqual(
-          'You don\'t have permission to change this. Ask the person who set it up, or a Salesforce admin.',
+          'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
           errorOf(e)
         );
       }

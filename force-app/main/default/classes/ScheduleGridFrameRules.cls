@@ -14,7 +14,7 @@ public with sharing class ScheduleGridFrameRules {
     for (Integer g = 0; g < grid.groups.size(); g++) {
       if (!isNamedRecord(grid.groups[g].id, grid.groups[g].name)) {
         throw new ScheduleGridRules.GridException(
-          'group ' + (g + 1) + ' is missing its record or name'
+          'group ' + (g + 1) + ' is missing or has no name'
         );
       }
     }
@@ -23,7 +23,7 @@ public with sharing class ScheduleGridFrameRules {
   private static void checkBlock(ScheduleGrid.Block block, Integer position) {
     if (!isNamedRecord(block.id, block.name)) {
       throw new ScheduleGridRules.GridException(
-        'time block ' + position + ' is missing its record or name'
+        'time block ' + position + ' is missing or has no name'
       );
     }
     if (!isClock(block.startTime) || !isClock(block.endTime)) {

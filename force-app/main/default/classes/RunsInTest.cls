@@ -151,7 +151,7 @@ private class RunsInTest {
           Assert.fail('Refused');
         } catch (AuraHandledException e) {
           Assert.areEqual(
-            'These screens cannot save that week for that kind of record.',
+            'These screens can\'t save week ticks for that.',
             e.getMessage()
           );
         }

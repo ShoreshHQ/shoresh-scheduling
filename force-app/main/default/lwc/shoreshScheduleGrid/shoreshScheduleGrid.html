@@ -1,6 +1,6 @@
 <template>
   <div class="frame-scroll">
-    <div class="frame" role="grid" style={frameStyle} data-id="schedule-grid">
+    <div class="frame" role="table" style={frameStyle} data-id="schedule-grid">
       <div class="grid grid_header" role="rowgroup" style={columnTemplate}>
         <div role="row" class="row">
           <div
@@ -44,7 +44,7 @@
             <template for:each={row.cells} for:item="cell">
               <div
                 key={cell.key}
-                role="gridcell"
+                role="cell"
                 class={cell.className}
                 style={cell.style}
                 title={cell.title}

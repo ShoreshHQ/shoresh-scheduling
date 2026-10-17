@@ -141,4 +141,53 @@ private class CampLabelsTest {
     );
     Assert.isFalse(results[0].isSuccess() && results[1].isSuccess());
   }
+
+  @IsTest
+  static void onlyThisCampsOwnLabelsAreChangedOrRemoved() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c willow = ShoreshTestData.camp('Camp Willow');
+      Camp__c cedar = ShoreshTestData.camp('Camp Cedar');
+      Season__c season = ShoreshTestData.season(willow.Id, 'Summer 2026');
+      Program__c main = ShoreshTestData.program(season.Id, 'Main');
+      CampLabel__c cedars = new CampLabel__c(
+        Camp__c = cedar.Id,
+        ModelTerm__c = 'Group',
+        Singular__c = 'Cabin',
+        Plural__c = 'Cabins'
+      );
+      Database.insert(cedars, AccessLevel.SYSTEM_MODE);
+      // Blank words with a program's Id would delete the program; words with another camp's
+      // label Id would change that camp's label.
+      Map<Id, String> sent = new Map<Id, String>{
+        main.Id => '/',
+        cedars.Id => 'Bunk/Bunks'
+      };
+      for (Id labelId : sent.keySet()) {
+        List<CampLabels.TermLabel> labels = SeasonSetupController.getLabels(
+          willow.Id
+        );
+        for (CampLabels.TermLabel row : labels) {
+          if (row.term == 'Group') {
+            row.singular = sent.get(labelId).substringBefore('/');
+            row.plural = sent.get(labelId).substringAfter('/');
+            row.labelId = labelId;
+          }
+        }
+        try {
+          SeasonSetupController.saveCampLabels(willow.Id, labels);
+          Assert.fail('Refused: ' + labelId);
+        } catch (AuraHandledException e) {
+          Assert.areEqual(
+            'Some of these words were changed somewhere else. Reload the page and try again.',
+            e.getMessage()
+          );
+        }
+      }
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Program__c WHERE Id = :main.Id WITH SYSTEM_MODE]
+      );
+      Assert.areEqual('Cabin', CampLabels.forCamp(cedar.Id).singular('Group'));
+    }
+  }
 }

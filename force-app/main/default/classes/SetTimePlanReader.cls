@@ -1,7 +1,8 @@
 /**
  * Builds a SetTimePlan for each season that has fixed or recurring activities. System mode on
- * purpose: the clash check is a backstop that must see every record in the season, including
- * any the person saving cannot see.
+ * purpose: the clash check is a backstop that must not depend on the saver's object and field
+ * access. Record sharing still applies (with sharing), which loses nothing: everything in a
+ * season is controlled by the season, so whoever saves into it sees all of it (ADR 0001 point 6).
  */
 public with sharing class SetTimePlanReader {
   private final Map<Id, SetTimePlan> plans = new Map<Id, SetTimePlan>();

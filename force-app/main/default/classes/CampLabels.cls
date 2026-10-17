@@ -118,7 +118,7 @@ public with sharing class CampLabels {
       !labels.isUpdateable() ||
       !labels.isDeletable()
     ) {
-      return 'You don\'t have access to change camp words. A Salesforce admin can give you the Shoresh Scheduler permission set.';
+      return 'You don\'t have access to change camp words. A Salesforce admin can give you Shoresh Scheduler access.';
     }
     List<UserRecordAccess> access = [
       SELECT RecordId, HasEditAccess
@@ -137,6 +137,7 @@ public with sharing class CampLabels {
    * or with exactly the model term's words, goes back to the model term.
    */
   public static void save(Id campId, List<TermLabel> rows) {
+    CampLabelIds.refuseOthers(campId, rows);
     List<CampLabel__c> toSave = new List<CampLabel__c>();
     List<Id> toDelete = new List<Id>();
     for (TermLabel row : rows) {

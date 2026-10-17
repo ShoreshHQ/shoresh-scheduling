@@ -31,6 +31,15 @@ private class ActivitiesAndLocationsTest {
     return null;
   }
 
+  private static String detailsError(Activity__c rules) {
+    try {
+      ActivitiesController.saveActivityDetails(rules, new List<Id>());
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    return null;
+  }
+
   @IsTest
   static void aSchedulerSetsUpPlacesAndActivities() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -216,7 +225,15 @@ private class ActivitiesAndLocationsTest {
 
     Activity__c halfEarly = base.clone();
     halfEarly.EarlyWeekCount__c = 1;
-    Assert.isTrue(saveError(halfEarly).contains('both'));
+    Assert.areEqual(
+      'These screens can\'t change that.',
+      saveError(halfEarly),
+      'The early-week rule is saved from the details panel, not the table'
+    );
+    Assert.isTrue(
+      detailsError(new Activity__c(Id = ids.get('Swim'), EarlyWeekCount__c = 1))
+        .contains('both')
+    );
 
     Assert.isTrue(
       saveError(
