@@ -426,3 +426,152 @@ describe("in any row order", () => {
     ]);
   });
 });
+
+describe("the walkthrough's sample lists for a program (docs/samples/lists)", () => {
+  const { readFileSync } = require("fs");
+  const { join } = require("path");
+  const SAMPLES = join(
+    __dirname,
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "docs",
+    "samples",
+    "lists"
+  );
+  const sample = (name) =>
+    csvFile(name, readFileSync(join(SAMPLES, name), "utf8"));
+  const at = (h, m) => (h * 60 + m) * MS;
+
+  // Maple Grove after "Import last year" (walkthrough section 14).
+  function mapleGrove() {
+    const blocks = [
+      ["Period 1", 9, 0, 9, 45],
+      ["Period 2", 9, 50, 10, 35],
+      ["Period 3", 10, 40, 11, 25],
+      ["Lunch", 11, 30, 12, 15],
+      ["Period 4", 12, 20, 13, 5],
+      ["Period 5", 13, 10, 13, 55],
+      ["Period 6", 14, 0, 14, 45]
+    ].map(([name, h1, m1, h2, m2], i) => ({
+      Id: `tb${i + 1}`,
+      Name: name,
+      StartTime__c: at(h1, m1),
+      EndTime__c: at(h2, m2),
+      PartOfDay__c: h1 < 12 ? "Morning" : "Afternoon"
+    }));
+    const division = (id, name, bunks) => ({
+      division: { Id: id, Name: name },
+      groups: bunks.map((n) => ({
+        Id: `g${n}`,
+        Name: `Bunk ${n}`,
+        Availability__c: "AllDay"
+      }))
+    });
+    return {
+      season: { Id: "s1", Camp__c: "c1" },
+      locationTypes: [],
+      locations: [],
+      activities: [],
+      programs: [
+        program("p1", "Main", DAYS, {
+          timeBlocks: blocks,
+          divisions: [
+            division("d1", "Juniors", [1, 2, 3]),
+            division("d2", "Seniors", [4, 5, 6])
+          ],
+          fixedActivities: [
+            { Id: "f1", Name: "Lunch", TimeBlock__c: "tb4", Length__c: 1 }
+          ],
+          recurringActivities: [
+            {
+              Id: "r1",
+              Name: "Morning meeting",
+              TimeBlock__c: "tb1",
+              Length__c: 1,
+              Monday__c: true,
+              Coverages__r: []
+            }
+          ]
+        })
+      ]
+    };
+  }
+  const readSample = (screenKey, name) =>
+    listProposal({
+      screenKey,
+      file: sample(name),
+      setup: mapleGrove(),
+      terms,
+      answers: {}
+    });
+  const statuses = (p) => p.rows.map((r) => [r.name, r.status]);
+
+  it("program days", () => {
+    const p = readSample("programs", "maple-grove-program-days.csv");
+    expect(statuses(p)).toEqual([
+      ["Main", "unchanged"],
+      ["Teens", "new"],
+      ["Weekend", "unreadable"]
+    ]);
+  });
+
+  it("units", () => {
+    const p = readSample("divisions", "maple-grove-units.csv");
+    expect(statuses(p)).toEqual([
+      ["Juniors", "unchanged"],
+      ["Middlers", "new"],
+      ["Hikers", "asked"]
+    ]);
+    expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
+      "“Explorers” is a new program. Which days?"
+    ]);
+  });
+
+  it("bunks", () => {
+    const p = readSample("groups", "maple-grove-bunks.csv");
+    expect(statuses(p)).toEqual([
+      ["Bunk 1", "unchanged"],
+      ["Bunk 3", "changed"],
+      ["Bunk 7", "new"],
+      ["Bunk 8", "unreadable"]
+    ]);
+    expect(p.alsoAdd.division).toEqual([{ programId: "p1", name: "Middlers" }]);
+  });
+
+  it("time blocks", () => {
+    const p = readSample("timeBlocks", "maple-grove-time-blocks.csv");
+    expect(statuses(p)).toEqual([
+      ["Period 1", "unchanged"],
+      ["Period 2", "changed"],
+      ["Late pickup", "asked"],
+      ["Swim time", "unreadable"]
+    ]);
+  });
+
+  it("fixed activities", () => {
+    const p = readSample("fixedActivities", "maple-grove-fixed.csv");
+    expect(statuses(p)).toEqual([
+      ["Lunch", "changed"],
+      ["Snack", "asked"]
+    ]);
+    expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
+      "“Snack break” is a new time block in Main. When is it?"
+    ]);
+  });
+
+  it("recurring activities", () => {
+    const p = readSample("recurringActivities", "maple-grove-recurring.csv");
+    expect(statuses(p)).toEqual([
+      ["Morning meeting", "changed"],
+      ["Rest hour", "asked"],
+      ["Campfire", "unreadable"]
+    ]);
+    expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
+      "“Middlers” is new in Main. What is it?"
+    ]);
+  });
+});

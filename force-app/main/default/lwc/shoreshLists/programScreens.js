@@ -169,7 +169,9 @@ export function groupsScreen(t) {
         required: true,
         requiredValue: true,
         refField: "Division__c",
-        fromRecord: (r) => r._divisionName
+        fromRecord: (r) => r._divisionName,
+        // The screen's groups carry their division under the program's entry.
+        fromId: (r) => r._divisionId
       },
       nameColumn(t.s("Group"), ["group", "bunk", "cabin", "group name"]),
       {

@@ -779,7 +779,10 @@ function differs(column, r, from, to) {
   const target = column.refField && (r.targets || {})[column.key];
   if (target && to) {
     // Only an item set up can be the one the record already points at.
-    return !target.id || target.id !== r.existing[column.refField];
+    const now = column.fromId
+      ? column.fromId(r.existing)
+      : r.existing[column.refField];
+    return !target.id || target.id !== now;
   }
   return !same(normal(column, from), normal(column, to));
 }
