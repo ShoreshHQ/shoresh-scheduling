@@ -861,6 +861,28 @@ describe("import security hardening", () => {
   });
 });
 
+describe("a week set up with no end", () => {
+  it("is a difference the workbook shows with Keep or Change, never a crash", () => {
+    const s = camp();
+    // The workbook as written before the end went missing: Week 1 ends Jul 2.
+    const workbook = file(campWorkbookSheets(camp(), buildTerms(s.labels)));
+    delete s.weeks[0].EndDate__c;
+    const p = propose(s, workbook);
+    const week1 = p.sections.find((x) => x.key === "weeks").rows[0];
+    expect(week1.status).toBe("changed");
+    expect(week1.differences.map((d) => [d.heading, d.from, d.to])).toEqual([
+      ["End", "none", "Jul 2 2027"]
+    ]);
+    const answers = { [week1.differences[0].id]: "change" };
+    expect(
+      workbookPlan(propose(s, workbook, answers), answers).records
+    ).toEqual([
+      { kind: "Week", id: "w1", fields: { EndDate__c: "2027-07-02" } }
+    ]);
+    expect(workbookPlan(p, {}).records).toEqual([]);
+  });
+});
+
 describe("namespace safety: what the workbook reads and writes", () => {
   it("a week's new end is a Keep or Change, remembered by the field's own name", () => {
     const s = camp();

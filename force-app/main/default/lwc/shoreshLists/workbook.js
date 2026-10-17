@@ -340,7 +340,11 @@ function columnOrder(texts) {
   return orders.size === 1 ? [...orders][0] : null;
 }
 
+/** "Jul 3 2027"; "none" for a date not set (a week set up with no end). */
 function shortDate(isoDate) {
+  if (!isoDate) {
+    return "none";
+  }
   const [y, m, d] = isoDate.split("-").map(Number);
   return `${MONTHS[m - 1].charAt(0).toUpperCase()}${MONTHS[m - 1].slice(1)} ${d} ${y}`;
 }
