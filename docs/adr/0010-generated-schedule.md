@@ -29,9 +29,11 @@ cells) and 0009 (names through `c/shoreshSchema`).
 7. **Never a blank cell.** Every at-camp cell gets an activity. When the rules can't all be met,
    the least-bad choice goes in with the bronze dot, and hover says which rule it bends. Rules
    give way in this order (coordinator): weekly max, then once a day, then who it's set up for,
-   then groups at once, then the place's capacity last. Locks, fixed and recurring activities and
+   then groups at once, then the place's capacity last. **Same division only gives way just
+   before the place's capacity** (Greg, 2026-10-17). Locks, fixed and recurring activities and
    not-at-camp cells never give way. Not-at-camp cells stay hatched.
 8. **Anyone with Shoresh Scheduler access** can generate.
+9. **"Early in the week: N by Wednesday" counts Wednesday** (Greg, 2026-10-17).
 
 ## The five parts
 
@@ -94,7 +96,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
 5. **Soft goals.** Weekly minimum; early in the week (`EarlyWeekCount__c` by
    `EarlyWeekByDay__c`); high priority before low (blank priority is low). **"By Wednesday"
    counts Wednesday** (the plain reading of the Activities screen's "By"). The desktop counted
-   only days before its target day. This is Greg's to confirm; it is one comparison in
+   only days before its target day; Greg chose to count it (decision 9). It is one comparison in
    `week.js` (`earlyEnd`). Only sessions on the days that count meet the goal: a locked Friday
    session doesn't meet a goal "by Tuesday" (the desktop counted every session of the week).
 6. **Fill order, ported:** kept cells first; multi-block activities first in each priority round;
@@ -115,14 +117,16 @@ cells) and 0009 (names through `c/shoreshSchema`).
 7. **Never blank.** After the repairs, each Open cell still empty gets the activity whose most
    serious bend is the least serious, comparing bends in the order rules give way (weekly max,
    once a day, who it's set up for, groups at once, same division only, the place's capacity);
-   then high priority; then the one the group has had least; then the key. **Same division only
-   gives way just before the place's capacity**: it is a rule about sharing the place, and the
-   order Greg approved doesn't name it. Each cell of the placement returns a flag with the rules
+   then high priority; then the one the group has had least; then the key. Same division only
+   gives way just before the place's capacity (decision 7): it is a rule about sharing the
+   place. Each cell of the placement returns a flag with the rules
    it bends and a reason in camp words for the hover: "Over its weekly limit", "Twice in a day",
    "Not set up for Bunk 3", "Over its limit of 2 bunks at once", "Shares Pool with another
    division" (or "With another division at the same time" for an activity with no place),
    "More bunks at Pool than fit". Group, division, week and gap are the camp's own words
-   (`c/shoreshTerms`). Only a cell nothing can go in at all (the group is
+   (`c/shoreshTerms`). The reasons are written in one place (`reasonFor` in `shoreshEngine.js`)
+   and Manual Build part 3 reuses them, so the dots say the same words on both schedules: change
+   them there, deliberately, and for both. Only a cell nothing can go in at all (the group is
    busy at an overlapping time, or no activity is short enough for the gap) stays Open, listed
    in `openCells` with its reason. No activities at all, or none running this week, returns an
    error result ("No activities are set up yet." / "No activities run this week.") instead of a

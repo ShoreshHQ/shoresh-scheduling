@@ -27,8 +27,7 @@ export const RULE = Object.freeze({
 /**
  * The order rules give way when nothing fits (Greg and the coordinator, 2026-10-17): weekly max
  * first, then once a day, then who it's set up for, then groups at once, then the place last.
- * Same division only is a rule about sharing the place, so it gives way just before the place's
- * capacity. Locks, fixed and recurring activities and not-at-camp cells never give way.
+ * Same division only gives way just before the place's capacity (Greg, 2026-10-17). Locks, fixed and recurring activities and not-at-camp cells never give way.
  */
 export const RELAX_ORDER = Object.freeze([
   RULE.WEEKLY_MAX,

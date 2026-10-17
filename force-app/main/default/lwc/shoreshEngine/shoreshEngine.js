@@ -229,6 +229,10 @@ function writeDays(model, state) {
   });
 }
 
+/**
+ * The hover reason for each rule a placement bends. Manual Build reuses these words for its dots
+ * (ADR 0010), so both schedules say the same thing: keep them here, and change them for both.
+ */
 function reasonFor(rule, act, groupId, words) {
   const { t, groups, locationNames, fit } = words;
   const atPlace = act.locationId && fit.has(act.locationId);
