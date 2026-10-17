@@ -4,6 +4,7 @@
  * one program can leave it out. Columns as in screens.js; required means the heading must be in
  * the file, requiredValue that a cell can't be blank (the item can't be without it).
  */
+import { CHILDREN, FIELD } from "c/shoreshSchema";
 import { WEEKDAYS, clock } from "c/shoreshImportEngine";
 
 const MS_PER_MINUTE = 60000;
@@ -63,7 +64,8 @@ function nameColumn(heading, words) {
   };
 }
 
-function daysColumn(words) {
+/** fields: the object's own fields (a program's or a recurring activity's days). */
+function daysColumn(fields, words) {
   return {
     key: "days",
     heading: "Runs on",
@@ -71,18 +73,19 @@ function daysColumn(words) {
     type: "days",
     required: true,
     requiredValue: true,
-    fromRecord: (r) => WEEKDAYS.filter((d) => r[`${d}__c`]),
+    fromRecord: (r) => WEEKDAYS.filter((d) => r[fields[d]]),
     write: (v) => {
-      const fields = {};
+      const values = {};
       WEEKDAYS.forEach((d) => {
-        fields[`${d}__c`] = v.includes(d);
+        values[fields[d]] = v.includes(d);
       });
-      return fields;
+      return values;
     }
   };
 }
 
-function lengthColumn(t) {
+/** fields: a fixed or a recurring activity's own fields. */
+function lengthColumn(t, fields) {
   return {
     key: "length",
     heading: t.s("Length"),
@@ -91,12 +94,12 @@ function lengthColumn(t) {
     min: 1,
     requiredValue: true,
     newValue: 1,
-    fromRecord: (r) => r.Length__c,
-    write: (v) => ({ Length__c: v })
+    fromRecord: (r) => r[fields.Length],
+    write: (v) => ({ [fields.Length]: v })
   };
 }
 
-function blockColumn(t) {
+function blockColumn(t, fields) {
   return {
     key: "timeBlock",
     heading: t.s("TimeBlock"),
@@ -105,20 +108,20 @@ function blockColumn(t) {
     ref: "timeBlock",
     required: true,
     requiredValue: true,
-    refField: "TimeBlock__c",
-    fromRecord: (r, setup) => blockName(setup, r.TimeBlock__c)
+    refField: fields.TimeBlock,
+    fromRecord: (r, setup) => blockName(setup, r[fields.TimeBlock])
   };
 }
 
-function locationColumn(t) {
+function locationColumn(t, fields) {
   return {
     key: "location",
     heading: t.s("Location"),
     words: ["location", "place", "where", "room"],
     type: "ref",
     ref: "location",
-    refField: "Location__c",
-    fromRecord: (r, setup) => nameOf(setup.locations, r.Location__c)
+    refField: fields.Location,
+    fromRecord: (r, setup) => nameOf(setup.locations, r[fields.Location])
   };
 }
 
@@ -129,7 +132,12 @@ export function programsScreen(t) {
     term: "Program",
     columns: [
       nameColumn(t.s("Program"), ["program", "program name", "cohort"]),
-      daysColumn(["days of operation", "operating days", "day", "day_label"])
+      daysColumn(FIELD.Program, [
+        "days of operation",
+        "operating days",
+        "day",
+        "day_label"
+      ])
     ],
     records: (setup) => (setup.programs || []).map((entry) => entry.program)
   };
@@ -168,7 +176,7 @@ export function groupsScreen(t) {
         ref: "division",
         required: true,
         requiredValue: true,
-        refField: "Division__c",
+        refField: FIELD.Group.Division,
         fromRecord: (r) => r._divisionName,
         // The screen's groups carry their division under the program's entry.
         fromId: (r) => r._divisionId
@@ -190,8 +198,8 @@ export function groupsScreen(t) {
         ],
         requiredValue: true,
         newValue: "AllDay",
-        fromRecord: (r) => r.Availability__c || "AllDay",
-        write: (v) => ({ Availability__c: v })
+        fromRecord: (r) => r[FIELD.Group.Availability] || "AllDay",
+        write: (v) => ({ [FIELD.Group.Availability]: v })
       }
     ],
     records: (setup) =>
@@ -233,13 +241,13 @@ export function timeBlocksScreen(t) {
         "start",
         "Start",
         ["start time", "start_time", "from", "begins"],
-        "StartTime__c"
+        FIELD.TimeBlock.StartTime
       ),
       timeColumn(
         "end",
         "End",
         ["end time", "end_time", "to", "ends"],
-        "EndTime__c"
+        FIELD.TimeBlock.EndTime
       ),
       {
         key: "partOfDay",
@@ -257,8 +265,8 @@ export function timeBlocksScreen(t) {
             ? "Afternoon"
             : "Morning";
         },
-        fromRecord: (r) => r.PartOfDay__c,
-        write: (v) => ({ PartOfDay__c: v })
+        fromRecord: (r) => r[FIELD.TimeBlock.PartOfDay],
+        write: (v) => ({ [FIELD.TimeBlock.PartOfDay]: v })
       }
     ],
     records: (setup) => inPrograms(setup, (entry) => entry.timeBlocks || [])
@@ -274,9 +282,9 @@ export function fixedScreen(t) {
     columns: [
       programColumn(t),
       nameColumn(t.s("FixedActivity"), ["fixed activity", "event"]),
-      blockColumn(t),
-      lengthColumn(t),
-      locationColumn(t)
+      blockColumn(t, FIELD.FixedActivity),
+      lengthColumn(t, FIELD.FixedActivity),
+      locationColumn(t, FIELD.FixedActivity)
     ],
     records: (setup) =>
       inPrograms(setup, (entry) => entry.fixedActivities || [])
@@ -292,18 +300,20 @@ export function recurringScreen(t) {
     columns: [
       programColumn(t),
       nameColumn(t.s("RecurringActivity"), ["recurring activity"]),
-      blockColumn(t),
-      lengthColumn(t),
-      locationColumn(t),
-      daysColumn(["day_label"]),
+      blockColumn(t, FIELD.RecurringActivity),
+      lengthColumn(t, FIELD.RecurringActivity),
+      locationColumn(t, FIELD.RecurringActivity),
+      daysColumn(FIELD.RecurringActivity, ["day_label"]),
       {
         key: "who",
         heading: "Who",
         words: ["who", "covers", "for", "tier_names"],
         type: "list",
         fromRecord: (r) =>
-          (r.Coverages__r || [])
-            .map((row) => row.Division__c || row.Group__c)
+          (r[CHILDREN.RecurringActivity.Coverages] || [])
+            .map(
+              (row) => row[FIELD.Coverage.Division] || row[FIELD.Coverage.Group]
+            )
             .sort()
       }
     ],

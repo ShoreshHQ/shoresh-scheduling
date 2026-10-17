@@ -11,7 +11,7 @@ import {
   listPlan,
   listProposal,
   listScreen
-} from "c/shoreshLists";
+} from "./data/lists";
 
 const apex = ["ImportListSaves", "ImportListRows", "ImportListWho"]
   .map((name) =>

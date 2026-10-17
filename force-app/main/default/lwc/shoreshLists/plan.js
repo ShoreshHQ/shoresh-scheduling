@@ -4,6 +4,7 @@
  * (ImportController.saveList). Nothing is saved until every question and every difference has
  * an answer, and the save is all or none.
  */
+import { FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT, WEEKDAYS, clock } from "c/shoreshImportEngine";
 import { answeredTimes } from "./adds";
 import { answeredDays } from "./scope";
@@ -150,11 +151,14 @@ function conflicts(proposal) {
       if (!record) {
         return;
       }
-      const min = finalValue(row, "min") ?? record.TimesPerWeekMin__c;
+      const activity = FIELD.Activity;
+      const min = finalValue(row, "min") ?? record[activity.TimesPerWeekMin];
       const maxChanged = finalValue(row, "max");
       const max =
         maxChanged ??
-        (record.NoWeeklyMax__c ? NONE : record.TimesPerWeekMax__c);
+        (record[activity.NoWeeklyMax]
+          ? NONE
+          : record[activity.TimesPerWeekMax]);
       if (max !== NONE && max !== null && min !== null && max < min) {
         messages.push(
           `${row.existingName}: at most ${max} would be below at least ${min}`
@@ -168,9 +172,10 @@ function conflicts(proposal) {
     )
     .forEach((row) => {
       const minutes = (ms) => Math.round(ms / 60000);
+      const block = FIELD.TimeBlock;
       const start =
-        finalValue(row, "start") ?? minutes(row.record.StartTime__c);
-      const end = finalValue(row, "end") ?? minutes(row.record.EndTime__c);
+        finalValue(row, "start") ?? minutes(row.record[block.StartTime]);
+      const end = finalValue(row, "end") ?? minutes(row.record[block.EndTime]);
       if (end <= start) {
         messages.push(`${row.existingName}: End would be before Start`);
       }
@@ -265,7 +270,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       const fields = { Name: name };
       if (ref === "location") {
         // As a location added by hand starts: one group at a time.
-        fields.GroupsThatFit__c = 1;
+        fields[FIELD.Location.GroupsThatFit] = 1;
       }
       records.push({
         kind: addKind[ref],
@@ -280,7 +285,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       kind: "Division",
       key: `Division:${add.programId}:${add.name}`,
       fields: { Name: add.name },
-      refs: { Program__c: add.programId }
+      refs: { [FIELD.Division.Program]: add.programId }
     });
   });
   ((proposal.alsoAdd || {}).timeBlock || []).forEach((add) => {
@@ -289,11 +294,12 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       key: `TimeBlock:${add.programId}:${add.name}`,
       fields: {
         Name: add.name,
-        StartTime__c: clock(add.start),
-        EndTime__c: clock(add.end),
-        PartOfDay__c: add.start >= 12 * 60 ? "Afternoon" : "Morning"
+        [FIELD.TimeBlock.StartTime]: clock(add.start),
+        [FIELD.TimeBlock.EndTime]: clock(add.end),
+        [FIELD.TimeBlock.PartOfDay]:
+          add.start >= 12 * 60 ? "Afternoon" : "Morning"
       },
-      refs: { Program__c: add.programId }
+      refs: { [FIELD.TimeBlock.Program]: add.programId }
     });
   });
   ((proposal.alsoAdd || {}).who || []).forEach((add) => {
@@ -302,12 +308,12 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       key: add.key,
       fields:
         add.kind === "Group"
-          ? { Name: add.name, Availability__c: "AllDay" }
+          ? { Name: add.name, [FIELD.Group.Availability]: "AllDay" }
           : { Name: add.name },
       refs:
         add.kind === "Group"
-          ? { Division__c: add.parentId }
-          : { Program__c: add.parentId }
+          ? { [FIELD.Group.Division]: add.parentId }
+          : { [FIELD.Division.Program]: add.parentId }
     });
   });
   ((proposal.alsoAdd || {}).activity || [])
@@ -434,14 +440,14 @@ function programRecords(proposal) {
       }
       byId.set(programId, {
         record: { kind: "Program", id: programId, fields: {} },
-        days: new Set(WEEKDAYS.filter((d) => entry.program[`${d}__c`]))
+        days: new Set(WEEKDAYS.filter((d) => entry.program[FIELD.Program[d]]))
       });
     }
     days.forEach((d) => byId.get(programId).days.add(d));
   });
   return [...byId.values()].map(({ record, days }) => {
     WEEKDAYS.forEach((d) => {
-      record.fields[`${d}__c`] = days.has(d);
+      record.fields[FIELD.Program[d]] = days.has(d);
     });
     return record;
   });
@@ -469,7 +475,8 @@ function recordFor(screen, row, columnKeys) {
       };
   if (!row.id && screen.scope === "program" && screen.kind !== "Group") {
     // A group is in its division; everything else of a program's list is in the program.
-    record.refs.Program__c = row.programId;
+    // Each kind's own link to its program (FIELD keys objects by their kind's name).
+    record.refs[FIELD[screen.kind].Program] = row.programId;
   }
   columnKeys.forEach((key) => {
     const column = screen.columns.find((c) => c.key === key);

@@ -10,8 +10,11 @@ import {
   workbookPlan,
   workbookProposal,
   workbookWaiting
-} from "c/shoreshLists";
+} from "./data/lists";
 import { camp } from "./data/camp";
+import { CHILDREN, FIELD } from "c/shoreshSchema";
+import { nsRecord } from "shoresh-jest/namespace";
+import { withRecords } from "../workbook";
 
 function file(sheets) {
   const wb = XLSX.utils.book_new();
@@ -172,7 +175,8 @@ describe("rebuilding a camp in a fresh season", () => {
       FixedActivity: 2,
       RecurringActivity: 1,
       Week: 0,
-      WeekException: 1
+      // A week off of each kind of item.
+      WeekException: 5
     });
     expect(plan.campWords).toEqual([
       {
@@ -186,8 +190,11 @@ describe("rebuilding a camp in a fresh season", () => {
         fields: { Singular__c: "Unit", Plural__c: "Units" }
       }
     ]);
-    // Board games is off in week 2, as it was.
-    expect(plan.records.find((r) => r.kind === "WeekException").refs).toEqual({
+    // Board games is off in week 2, as it was (and each other item off its week).
+    expect(
+      plan.records.find((r) => r.kind === "WeekException" && r.refs.Activity__c)
+        .refs
+    ).toEqual({
       Week__c: "w2-new",
       Activity__c: "Activity:Board games"
     });
@@ -422,11 +429,20 @@ describe("a workbook from another season", () => {
     expect(weeks.rows.map((r) => r.status)).toEqual(["unchanged", "unchanged"]);
     const plan = workbookPlan(p, answers);
     expect(plan.records.filter((r) => r.kind === "Week")).toEqual([]);
-    // Board games was off last year's week 2: this year's week 2.
-    expect(plan.records.find((r) => r.kind === "WeekException").refs).toEqual({
-      Week__c: "n2",
-      Activity__c: "Activity:Board games"
-    });
+    // Each item off last year's week 1 or 2 is off this year's week 1 or 2 (Board games was
+    // off week 2; a bunk, the gym, the Teens' lunch and the meeting are off one week each).
+    expect(
+      plan.records.filter((r) => r.kind === "WeekException").map((r) => r.refs)
+    ).toEqual([
+      { Group__c: "Group:Program:Main:Juniors:Bunk 2", Week__c: "n1" },
+      {
+        RecurringActivity__c: "RecurringActivity:Program:Main:Meeting",
+        Week__c: "n2"
+      },
+      { FixedActivity__c: "FixedActivity:Program:Teens:Lunch", Week__c: "n1" },
+      { Location__c: "Location:Gym", Week__c: "n2" },
+      { Activity__c: "Activity:Board games", Week__c: "n2" }
+    ]);
   });
 
   it("a workbook week past the season's last is left out, and its ticks aren't read", () => {
@@ -440,9 +456,15 @@ describe("a workbook from another season", () => {
       ["Week 2", "leftOut", "no week of this season left for it"]
     ]);
     expect(workbookWaiting(p, answers)).toEqual([]);
+    // Only week 1's ticks are read: the bunk and the Teens' lunch off week 1, nothing off week 2.
     expect(
-      workbookPlan(p, answers).records.filter((r) => r.kind === "WeekException")
-    ).toEqual([]);
+      workbookPlan(p, answers)
+        .records.filter((r) => r.kind === "WeekException")
+        .map((r) => r.refs)
+    ).toEqual([
+      { Group__c: "Group:Program:Main:Juniors:Bunk 2", Week__c: "n1" },
+      { FixedActivity__c: "FixedActivity:Program:Teens:Lunch", Week__c: "n1" }
+    ]);
   });
 
   it("a workbook week inside the season's dates: matched by start date as before", () => {
@@ -835,6 +857,237 @@ describe("import security hardening", () => {
     expect(p.weeks.rows.map((r) => r.reason)).toEqual([
       "this season needs its first and last day",
       "this season needs its first and last day"
+    ]);
+  });
+});
+
+describe("namespace safety: what the workbook reads and writes", () => {
+  it("a week's new end is a Keep or Change, remembered by the field's own name", () => {
+    const s = camp();
+    const workbook = (x) =>
+      edited(x, (sheets) => {
+        sheets.Weeks[1][2] = "2027-07-01";
+      });
+    const p = propose(s, workbook(s));
+    const [end] = p.sections.find((x) => x.key === "weeks").rows[0].differences;
+    // The same answer key before and after the package has its namespace.
+    expect(end.id).toBe("change|weeks|w1|EndDate__c|2027-07-01");
+    expect([end.heading, end.from, end.to]).toEqual([
+      "End",
+      "Jul 2 2027",
+      "Jul 1 2027"
+    ]);
+    const answers = { [end.id]: "change" };
+    expect(
+      workbookPlan(propose(s, workbook(s), answers), answers).records
+    ).toEqual([
+      { kind: "Week", id: "w1", fields: { EndDate__c: "2027-07-01" } }
+    ]);
+  });
+
+  it("a week the workbook adds is saved with its dates", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Weeks.push(["Week 3", "2027-07-12", "2027-07-16"]);
+      })
+    );
+    expect(
+      workbookPlan(p, {}).records.filter((r) => r.kind === "Week")
+    ).toEqual([
+      {
+        kind: "Week",
+        key: "Week:2027-07-12",
+        fields: {
+          Name: "Week 3",
+          StartDate__c: "2027-07-12",
+          EndDate__c: "2027-07-16"
+        }
+      }
+    ]);
+  });
+
+  it("another season's weeks pair in date order, whatever order the season lists them in", () => {
+    const from = camp();
+    const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
+    const s = freshSeason();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-08-11"
+    };
+    s.weeks = [
+      {
+        Id: "n2",
+        Name: "Second",
+        StartDate__c: "2028-07-03",
+        EndDate__c: "2028-07-07",
+        SortOrder__c: 3
+      },
+      // Two weeks starting the same day (never saved so, but read in a set order): by place.
+      {
+        Id: "n1b",
+        Name: "First b",
+        StartDate__c: "2028-06-26",
+        EndDate__c: "2028-06-30",
+        SortOrder__c: 2
+      },
+      {
+        Id: "n1",
+        Name: "First",
+        StartDate__c: "2028-06-26",
+        EndDate__c: "2028-06-30",
+        SortOrder__c: 1
+      }
+    ];
+    const p = propose(s, workbook);
+    expect(
+      p.sections
+        .find((x) => x.key === "weeks")
+        .lists.find((l) => l.key === "paired")
+        .lines.map((x) => x.pairing)
+    ).toEqual([
+      "Week 1 (Jun 28 2027) → First (Jun 26 2028)",
+      "Week 2 (Jul 5 2027) → First b (Jun 26 2028)"
+    ]);
+  });
+
+  it("each sheet sees what the sheets before it add: who can do it, and block times", () => {
+    const from = camp();
+    const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
+    const p = propose(freshSeason(), workbook);
+    const seen = p.sections.find((x) => x.key === "recurringActivities")
+      .proposal.setup;
+    const swim = seen.activities.find((a) => a.Name === "Swim");
+    const who = FIELD.ActivityEligibility;
+    expect(
+      swim[CHILDREN.Activity.Eligibilities].map(
+        (r) => r[who.Division] || r[who.Group]
+      )
+    ).toEqual([
+      "Division:Program:Main:Juniors",
+      "Group:Program:Main:Seniors:Bunk 3"
+    ]);
+    const block = seen.programs
+      .find((e) => e.program.Name === "Main")
+      .timeBlocks.find((b) => b.Name === "Period 1");
+    expect([
+      block[FIELD.TimeBlock.StartTime],
+      block[FIELD.TimeBlock.EndTime]
+    ]).toEqual([9 * 60 * 60000, (9 * 60 + 45) * 60000]);
+  });
+
+  it("a new week over the day a week with no end starts is said, never added on top", () => {
+    const s = camp();
+    delete s.weeks[1].EndDate__c;
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Weeks.splice(2, 1);
+        // Not Week 2's start: a week to add, running over the day Week 2 starts.
+        sheets.Weeks.push(["Week 2b", "2027-07-04", "2027-07-08"]);
+      })
+    );
+    const weeks = p.sections.find((x) => x.key === "weeks").rows;
+    expect(weeks.map((r) => [r.name, r.problems])).toEqual([
+      ["Week 1", []],
+      ["Week 2b", ["Overlaps Week 2 (Jul 5 2027)"]]
+    ]);
+  });
+
+  it("weeks sharing a start day keep their places in order", () => {
+    const from = camp();
+    const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
+    const s = freshSeason();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-08-11"
+    };
+    const week = (Id, Name, StartDate__c, SortOrder__c) => ({
+      Id,
+      Name,
+      StartDate__c,
+      EndDate__c: "2028-06-30",
+      SortOrder__c
+    });
+    s.weeks = [
+      week("c", "Third", "2028-06-26", 3),
+      week("a", "First", "2028-06-26", 1),
+      week("late", "Later", "2028-07-03", 4),
+      week("b", "Second", "2028-06-26", 2)
+    ];
+    const lists = propose(s, workbook).sections.find(
+      (x) => x.key === "weeks"
+    ).lists;
+    expect(lists.map((l) => [l.key, l.lines.map((x) => x.pairing)])).toEqual([
+      [
+        "paired",
+        [
+          "Week 1 (Jun 28 2027) → First (Jun 26 2028)",
+          "Week 2 (Jul 5 2027) → Second (Jun 26 2028)"
+        ]
+      ],
+      ["untouched", ["Third (Jun 26 2028)", "Later (Jul 3 2028)"]]
+    ]);
+  });
+
+  it("the season the next sheets see: who rows, covered by, and block times", () => {
+    const setup = nsRecord(camp());
+    const seen = withRecords(setup, [
+      {
+        kind: "TimeBlock",
+        id: "tb1",
+        fields: {
+          [FIELD.TimeBlock.StartTime]: "08:30",
+          [FIELD.TimeBlock.EndTime]: "09:15"
+        }
+      },
+      { kind: "Activity", id: "a2", fields: {}, who: ["d2", "g1"] },
+      { kind: "RecurringActivity", id: "r1", fields: {}, who: ["g3"] }
+    ]);
+    const main = seen.programs.find((e) => e.program.Id === "p1");
+    const block = main.timeBlocks.find((b) => b.Id === "tb1");
+    expect([
+      block[FIELD.TimeBlock.StartTime],
+      block[FIELD.TimeBlock.EndTime]
+    ]).toEqual([(8 * 60 + 30) * 60000, (9 * 60 + 15) * 60000]);
+    const games = seen.activities.find((a) => a.Id === "a2");
+    expect(games[CHILDREN.Activity.Eligibilities]).toEqual([
+      { [FIELD.ActivityEligibility.Division]: "d2" },
+      { [FIELD.ActivityEligibility.Group]: "g1" }
+    ]);
+    const meeting = main.recurringActivities.find((r) => r.Id === "r1");
+    expect(meeting[CHILDREN.RecurringActivity.Coverages]).toEqual([
+      { [FIELD.Coverage.Group]: "g3" }
+    ]);
+  });
+
+  it("the weeks filled in from the season's dates are what the later sheets see", () => {
+    const from = camp();
+    const s = freshSeason();
+    s.weeks = [];
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-07-12"
+    };
+    const p = propose(
+      s,
+      file(campWorkbookSheets(from, buildTerms(from.labels)))
+    );
+    const seen = p.sections.find((x) => x.key === "programs").proposal.setup;
+    expect(
+      seen.weeks.map((w) => [
+        w.Name,
+        w[FIELD.Week.StartDate],
+        w[FIELD.Week.EndDate]
+      ])
+    ).toEqual([
+      ["Week 1", "2028-06-26", "2028-06-30"],
+      ["Week 2", "2028-07-03", "2028-07-07"],
+      ["Week 3", "2028-07-10", "2028-07-12"]
     ]);
   });
 });

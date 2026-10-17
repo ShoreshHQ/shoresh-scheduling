@@ -7,7 +7,7 @@ import {
   listProposal,
   questionCards,
   waitingFor
-} from "c/shoreshLists";
+} from "./data/lists";
 import { dashKey, tueThuKey } from "../adds";
 
 const terms = buildTerms([]);
@@ -732,6 +732,19 @@ describe("PR B review", () => {
     const p = read("timeBlocks", rows);
     const [start, end] = row(p, "Period 1").differences;
     const answers = { [start.id]: CHANGE, [end.id]: "keep" };
+    expect(
+      waitingFor(read("timeBlocks", rows, answers), terms, answers)
+    ).toEqual(["Period 1: End would be before Start"]);
+  });
+
+  it("a new end before the start kept as it is waits too", () => {
+    const rows = [
+      ["Time block", "Start", "End"],
+      ["Period 1", "8:00", "8:30"]
+    ];
+    const p = read("timeBlocks", rows);
+    const [start, end] = row(p, "Period 1").differences;
+    const answers = { [start.id]: "keep", [end.id]: CHANGE };
     expect(
       waitingFor(read("timeBlocks", rows, answers), terms, answers)
     ).toEqual(["Period 1: End would be before Start"]);

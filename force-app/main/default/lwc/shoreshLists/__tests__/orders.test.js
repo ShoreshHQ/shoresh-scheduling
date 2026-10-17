@@ -7,7 +7,7 @@ import {
   listProposal,
   questionCards,
   waitingFor
-} from "c/shoreshLists";
+} from "./data/lists";
 
 const terms = buildTerms([]);
 

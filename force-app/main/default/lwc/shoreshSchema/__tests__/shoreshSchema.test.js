@@ -3,7 +3,8 @@ import {
   FIELD,
   NAMESPACE_PREFIX,
   OBJECT,
-  PARENT
+  PARENT,
+  localName
 } from "c/shoreshSchema";
 import { nsName, nsRecord } from "shoresh-jest/namespace";
 
@@ -56,6 +57,12 @@ describe("c/shoreshSchema", () => {
       expect(name.startsWith(NAMESPACE_PREFIX)).toBe(true);
       expect(name.slice(NAMESPACE_PREFIX.length)).not.toContain("shoresh__");
     }
+  });
+
+  it("gives a name's local form, the same with or without the namespace", () => {
+    expect(localName(FIELD.Week.EndDate)).toBe("EndDate__c");
+    expect(localName(OBJECT.Week)).toBe("Week__c");
+    expect(localName("Name")).toBe("Name");
   });
 
   it("cannot be changed by a screen", () => {

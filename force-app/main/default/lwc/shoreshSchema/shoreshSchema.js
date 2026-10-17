@@ -155,6 +155,16 @@ export const NAMESPACE_PREFIX = activityEligibilityObject.objectApiName.slice(
   -"ActivityEligibility__c".length
 );
 
+/**
+ * A name without the package's prefix ("EndDate__c" before and after the namespace): for
+ * keys that are kept, such as a remembered answer's, so they mean the same either way.
+ */
+export function localName(name) {
+  return name.startsWith(NAMESPACE_PREFIX)
+    ? name.slice(NAMESPACE_PREFIX.length)
+    : name;
+}
+
 /** Object names: OBJECT.Week. */
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,
