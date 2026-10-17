@@ -197,9 +197,17 @@ describe("Import last year, as the walkthrough tells it", () => {
       existing,
       "season1"
     );
-    const added = Object.entries(plan)
-      .filter(([key]) => key !== "seasonId")
-      .flatMap(([, list]) => list);
+    const setupLists = [
+      "programs",
+      "timeBlocks",
+      "divisions",
+      "groups",
+      "locations",
+      "activities",
+      "fixedActivities",
+      "recurringActivities"
+    ];
+    const added = setupLists.flatMap((key) => plan[key]);
     expect(added).toEqual([]);
   });
 });

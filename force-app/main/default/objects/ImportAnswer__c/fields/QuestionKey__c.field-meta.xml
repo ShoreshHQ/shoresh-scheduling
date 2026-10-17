@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>QuestionKey__c</fullName>
+    <description
+  >The question, keyed by names (for example kind|Library time). Cut at 255 characters; Key__c is what is matched.</description>
+    <externalId>false</externalId>
+    <label>Question Key</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>

@@ -72,6 +72,7 @@ describe("adding to a season that has setup already", () => {
     ]);
     expect(plan.fixedActivities).toEqual([
       {
+        key: "F|p1|Lunch",
         id: null,
         programKey: "p1",
         name: "Lunch",
@@ -331,6 +332,7 @@ describe("what the save sends", () => {
     ]);
     expect(plan.fixedActivities).toEqual([
       {
+        key: "F|P0|Lunch",
         id: null,
         programKey: "P0",
         name: "Lunch",

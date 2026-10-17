@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >An answer a camp gave to an import question, so a later import of a similar file does not ask again. Questions are keyed by names, never record Ids (repo docs/adr/0006).</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Import Answer</label>
+    <nameField>
+        <displayFormat>IA-{000000}</displayFormat>
+        <label>Import Answer Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Import Answers</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

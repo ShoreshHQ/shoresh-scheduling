@@ -141,6 +141,7 @@ function activityRecords(proposal, existing) {
 
 function setTimeRecords(records, updates, withDays) {
   const added = records.map((r) => ({
+    key: r.key,
     id: null,
     programKey: r.programKey,
     name: r.name,
@@ -159,12 +160,43 @@ function setTimeRecords(records, updates, withDays) {
 }
 
 /**
+ * The answers to remember for this camp (Greg: exact answers, so a similar file does not ask
+ * again), and those to forget: "Leave it out for now" means the next import asks again.
+ */
+export function answersToKeep(proposal, answers) {
+  const ids = new Set([
+    ...proposal.reading.pairs.map((x) => x.id),
+    ...proposal.reading.disagreements.map((x) => x.id),
+    ...proposal.asks.map((x) => x.id),
+    ...proposal.offeredPlaces.map((x) => x.id)
+  ]);
+  const remember = [];
+  const forget = [];
+  for (const id of [...ids].sort()) {
+    if (answers[id] === "leaveOut") {
+      forget.push(id);
+    } else if (answers[id]) {
+      remember.push({ key: id, answer: String(answers[id]) });
+    }
+  }
+  return { remember, forget };
+}
+
+/**
  * The save, for ImportController.saveSetup: every record to add or change, in the order they
  * depend on each other. New records point at each other by key; existing ones by Id.
  */
-export function planFor(proposal, existing, seasonId) {
+export function planFor(proposal, existing, seasonId, extra = {}) {
   return {
     seasonId,
+    files: (extra.fileNames || []).join(", ").slice(0, 255),
+    ...answersToKeep(proposal, extra.answers || {}),
+    versions: proposal.versions.map((v) => ({
+      programKey: v.programKey,
+      weekId: v.weekId,
+      name: v.name,
+      days: v.days
+    })),
     programs: programRecords(proposal, existing),
     timeBlocks: blockRecords(proposal),
     divisions: divisionRecords(proposal, existing),
@@ -342,6 +374,47 @@ export function foundLists(proposal, t) {
   return lists.filter((list) => list.items.length > 0);
 }
 
+const UNPLACED_WHY = {
+  leftOut: () => "left out for now",
+  programLeftOut: (t) => `its ${t.sIn("Program")} is left out`,
+  groupLeftOut: (t) => `its ${t.sIn("Group")} is left out`,
+  blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,
+  dayNotRun: (t) => `its ${t.sIn("Program")} does not run that day`,
+  weekend: () => "Shoresh plans Monday to Friday",
+  dayNotInWeek: (t) => `that ${t.sIn("Week")} has no such day`,
+  weekLeftOut: (t) => `no ${t.sIn("Week")} was chosen for it`,
+  noWeeks: (t) => `the ${t.sIn("Season")} has no ${t.pIn("Week")} yet`,
+  twoAtOnce: () => "something else is already in that cell"
+};
+
+/**
+ * Placements not in last year's version, by name and reason: [{ key, name, count, where, why }],
+ * "where" naming up to three of them ("Bunk 3, Tuesday, Period 2").
+ */
+export function unplacedLines(proposal, t) {
+  const groups = new Map();
+  for (const p of proposal.unmatched) {
+    const key = `${p.text}|${p.why}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        name: p.text,
+        count: 0,
+        where: [],
+        why: UNPLACED_WHY[p.why](t)
+      });
+    }
+    const entry = groups.get(key);
+    entry.count++;
+    if (entry.where.length < 3) {
+      entry.where.push(`${p.group}, ${p.day}, ${p.block}`);
+    }
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.name.localeCompare(b.name) || a.why.localeCompare(b.why)
+  );
+}
+
 /** Things the director should know that are not questions: [{ key, text }]. */
 export function importNotes(proposal, t) {
   const notes = [];
@@ -429,6 +502,12 @@ export function importNotes(proposal, t) {
         text: `${n.name} is ${n.places.map((x) => `${article(kindWords[x.kind])} in ${x.program}`).join(" and ")}. Each is set up where it is.`
       })
     );
+  if (proposal.noWeeks && proposal.usable.length) {
+    notes.push({
+      key: "noWeeks",
+      text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so last year's schedule is not kept as a version. Add ${t.pIn("Week")} on the ${t.p("Week")} screen first to keep it.`
+    });
+  }
   if (proposal.activities.length) {
     notes.push({
       key: "rules",
