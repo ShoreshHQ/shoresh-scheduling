@@ -183,12 +183,15 @@ export function identifyGroups(placements, noted, context) {
     const division =
       divisionOfIdentity(g.name, g.identity) ||
       (g.weakDivision ? hinted : g.division);
+    // A hint not taken is still offered as a choice, never preselected (round 3).
+    const hint = g.weakDivision && !hinted ? g.division : null;
     return {
       ...g,
       recordName: g.name,
       base: g.identity,
       name: scheduled(g.identity, g.page),
       division,
+      hint,
       weakDivision: false
     };
   });

@@ -180,7 +180,10 @@ function movedGroup(group, other, here, ctx) {
 function unitChoice(group, here, fileDivisions, ctx) {
   const id = `division|${group.name}`;
   const noUnits = here.known.length === 0 && fileDivisions.length === 0;
-  const preselected = group.division || (noUnits ? DEFAULT_DIVISION : null);
+  // A division only a lone file's name suggests is offered, never preselected; and Main is not
+  // preselected over it (round 3): the director picks.
+  const preselected =
+    group.division || (noUnits && !group.hint ? DEFAULT_DIVISION : null);
   // A division that already has a group of this name is not offered: choosing it would make a
   // second one (Bunk 1 in Seniors when Seniors has its own Bunk 1).
   // Only this program's groups count: another program's Juniors is another division.
@@ -201,6 +204,7 @@ function unitChoice(group, here, fileDivisions, ctx) {
     ...new Set([
       ...here.known.map((d) => d.name),
       ...fileDivisions,
+      ...(group.hint ? [group.hint] : []),
       ...(preselected ? [preselected] : [])
     ])
   ].filter((d) => !taken.has(looseKey(d)));

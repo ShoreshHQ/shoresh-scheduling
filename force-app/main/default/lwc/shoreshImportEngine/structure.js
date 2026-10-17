@@ -94,9 +94,10 @@ function median(values) {
  */
 function morningOrEvening(blocks, context) {
   for (const b of blocks.filter((x) => x.guessedPm && x.start >= 17 * 60)) {
-    const id = `ampm|${b.label}`;
     // A block that is only a time is named by what it holds.
     const name = /[A-Za-z]/.test(b.name) ? b.name : b.holds || "This block";
+    // Per time and what it holds: two programs' "6:00-6:30" rows are separate questions.
+    const id = `ampm|${b.label}|${name}`;
     context.asks.push({
       id,
       type: "ampm",
@@ -126,6 +127,21 @@ function orderedBlocks(blocks, context) {
   const timed = [...byKey.values()].filter((b) => b.start !== null);
   const untimed = [...byKey.values()].filter((b) => b.start === null);
   morningOrEvening(timed, context);
+  // An answer can make two blocks the same ("6:00 AM-6:30 AM" and "6:00-6:30" read as
+  // morning): keep one, and send the other's placements to it.
+  const aliases = new Map();
+  const seen = new Map();
+  for (const b of timed) {
+    const at = `${b.start}-${b.end}`;
+    if (seen.has(at)) {
+      aliases.set(b.key, seen.get(at).key);
+    } else {
+      seen.set(at, b);
+    }
+  }
+  const kept = timed.filter((b) => !aliases.has(b.key));
+  timed.length = 0;
+  timed.push(...kept);
   timed.sort((a, b) => a.start - b.start || (a.end || 0) - (b.end || 0));
   const usual = median(
     timed.filter((b) => b.end !== null).map((b) => b.end - b.start)
@@ -137,7 +153,9 @@ function orderedBlocks(blocks, context) {
       block.guessedEnd = !next;
     }
   });
-  return [...timed, ...untimed];
+  const result = [...timed, ...untimed];
+  result.aliases = aliases;
+  return result;
 }
 
 /**
@@ -165,6 +183,14 @@ export function buildTimetables(pages, placements, answers = {}) {
   });
   timetables.forEach((t) => {
     t.blocks = orderedBlocks(t.raw, context);
+    for (const [key, value] of blockAt) {
+      if (
+        t.blocks.aliases.has(value) &&
+        t.pages.includes(Number(key.split("|")[0]))
+      ) {
+        blockAt.set(key, t.blocks.aliases.get(value));
+      }
+    }
     delete t.raw;
   });
   return { timetables, blockAt, timetableOfPage, asks: context.asks };
@@ -186,6 +212,7 @@ export function collectGroups(noted, timetableOfPage) {
         name,
         recordName: entry.recordName || name,
         base: entry.base || name,
+        hint: entry.hint || null,
         votes: new Map(),
         timetable: timetableOfPage.get(entry.page),
         order: byName.size,
@@ -221,6 +248,7 @@ export function collectGroups(noted, timetableOfPage) {
       name: group.name,
       recordName: group.recordName,
       base: group.base,
+      hint: group.hint,
       division,
       timetable: group.timetable,
       order

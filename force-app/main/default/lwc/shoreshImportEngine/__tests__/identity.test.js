@@ -498,7 +498,11 @@ describe("PR 16 reviews", () => {
     const b = DAYS.map((day, d) =>
       csv(`B ${day}.csv`, [
         ["Time", "Bunk 1", "Juniors - Bunk 3"],
-        ...laterTimes.map((t, bi) => [t, rotation(0, d, bi), rotation(1, d, bi)])
+        ...laterTimes.map((t, bi) => [
+          t,
+          rotation(0, d, bi),
+          rotation(1, d, bi)
+        ])
       ])
     );
     const p = propose([...a, ...b]);
@@ -557,5 +561,81 @@ describe("PR 16 reviews", () => {
     expect(timeRange("Grades 3-5")).toBeNull();
     expect(timeRange("Ages 6-8")).toBeNull();
     expect(timeRange("Friday 9-10")).toMatchObject({ start: at(9) });
+  });
+});
+
+describe("PR 16 round 3", () => {
+  const lone = (name, d0 = 0) =>
+    csv(name, [
+      ["Time", ...DAYS],
+      ...BLOCKS.map((b, bi) => [b, ...DAYS.map((_, d) => rotation(d0, d, bi))])
+    ]);
+
+  it("a lone file's unit is offered but not chosen, in a new camp", () => {
+    const p = propose([lone("Juniors - Bunk 1.csv")]);
+    const unit = cards(p).find((c) => c.select === "division");
+    expect(unit.answer).toBeNull();
+    expect(unit.options.map((o) => o.value)).toEqual(["Juniors", LEAVE_OUT]);
+  });
+
+  it("a lone file's unit is offered beside the camp's own", () => {
+    const existing = existingSetup({
+      programs: [program("p1", "Main", { divisions: [["d2", "Seniors", []]] })]
+    });
+    const unit = cards(propose([lone("Juniors - Bunk 1.csv")], existing)).find(
+      (c) => c.select === "division"
+    );
+    expect(unit.answer).toBeNull();
+    expect(unit.options.map((o) => o.value)).toEqual([
+      "Seniors",
+      "Juniors",
+      LEAVE_OUT
+    ]);
+  });
+
+  it("answering morning merges two pages' versions of the same block", () => {
+    const monday = csv("Monday.csv", [
+      ["Time", "Bunk 1"],
+      ["6:00 AM-6:30 AM", "Wake up"],
+      ["9:00-9:45", "Swim"]
+    ]);
+    const tuesday = csv("Tuesday.csv", [
+      ["Time", "Bunk 1"],
+      ["6:00-6:30", "Wake up"],
+      ["9:00-9:45", "Art"]
+    ]);
+    const first = propose([monday, tuesday]);
+    const card = cards(first).find((c) => c.id.startsWith("ampm|"));
+    const p = propose([monday, tuesday], null, { [card.id]: "morning" });
+    expect(p.timetables[0].blocks.map((b) => [b.start, b.end])).toEqual([
+      [at(6), at(6, 30)],
+      [at(9), at(9, 45)]
+    ]);
+    const wake = p.reading.placements.filter((x) => x.text === "Wake up");
+    expect(new Set(wake.map((x) => x.blockKey)).size).toBe(1);
+  });
+
+  it("two programs' 6:00-6:30 rows holding different things are separate questions", () => {
+    const a = DAYS.map((day) =>
+      csv(`A ${day}.csv`, [
+        ["Time", "Bunk 1"],
+        ["6:00-6:30", "Breakfast"],
+        ["9:00-9:45", "Swim"]
+      ])
+    );
+    const b = DAYS.map((day) =>
+      csv(`B ${day}.csv`, [
+        ["Time", "Tent 1"],
+        ["6:00-6:30", "Pickup"],
+        ["9:10-9:50", "Art"]
+      ])
+    );
+    const ids = cards(propose([...a, ...b]))
+      .filter((c) => c.id.startsWith("ampm|"))
+      .map((c) => c.title);
+    expect(ids).toEqual([
+      "Is Breakfast 6:00–6:30 in the morning or the evening?",
+      "Is Pickup 6:00–6:30 in the morning or the evening?"
+    ]);
   });
 });
