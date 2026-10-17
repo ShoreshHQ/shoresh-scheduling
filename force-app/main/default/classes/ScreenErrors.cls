@@ -7,13 +7,15 @@
 public with sharing class ScreenErrors {
   private static final String COULD_NOT_SAVE = 'Couldn\'t save. Try again.';
   private static final String COULD_NOT_OPEN = 'Couldn\'t open this. Try again.';
-  private static final Set<StatusCode> NO_ACCESS = new Set<StatusCode>{
-    StatusCode.INSUFFICIENT_ACCESS_OR_READONLY,
-    StatusCode.INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
-  };
-  // Shoresh's own words: trigger checks (addError) and validation rules.
-  private static final Set<StatusCode> OWN_MESSAGE = new Set<StatusCode>{
-    StatusCode.FIELD_CUSTOM_VALIDATION_EXCEPTION
+  // Plain words for the platform's refusals that are not Shoresh's own.
+  private static final Map<StatusCode, String> PLAIN = new Map<StatusCode, String>{
+    StatusCode.DELETE_FAILED => 'This can\'t be deleted while something else still uses it. Change that first.',
+    StatusCode.INSUFFICIENT_ACCESS_OR_READONLY => 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
+    StatusCode.INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY => 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
+    StatusCode.INVALID_FIELD_FOR_INSERT_UPDATE => 'You don\'t have access to change that.',
+    StatusCode.ENTITY_IS_DELETED => 'That was removed. Reload the page.',
+    StatusCode.REQUIRED_FIELD_MISSING => 'Something required is blank. Fill it in and save again.',
+    StatusCode.STRING_TOO_LONG => 'Something typed is too long. Shorten it and save again.'
   };
 
   /** For a save or delete that went wrong. */
@@ -38,10 +40,13 @@ public with sharing class ScreenErrors {
     }
     if (e instanceof UserModeWrites.SaveException) {
       UserModeWrites.SaveException failed = (UserModeWrites.SaveException) e;
-      return withName(failed.recordName, dmlMessage(failed.failure, fallback));
+      return withName(
+        failed.recordName,
+        dmlMessage(failed.failure, failed.kind, fallback)
+      );
     }
     if (e instanceof DmlException) {
-      return dmlMessage((DmlException) e, fallback);
+      return dmlMessage((DmlException) e, null, fallback);
     }
     logged(e);
     return fallback;
@@ -55,28 +60,37 @@ public with sharing class ScreenErrors {
     return '"' + name + '": ' + message;
   }
 
-  private static String dmlMessage(DmlException e, String fallback) {
+  private static String dmlMessage(
+    DmlException e,
+    Schema.SObjectType kind,
+    String fallback
+  ) {
     StatusCode code = e.getDmlType(0);
-    if (OWN_MESSAGE.contains(code)) {
+    // Shoresh's own words: trigger checks (addError) and validation rules.
+    if (code == StatusCode.FIELD_CUSTOM_VALIDATION_EXCEPTION) {
       return e.getDmlMessage(0);
     }
-    if (code == StatusCode.DELETE_FAILED) {
-      return 'This can\'t be deleted while something else still uses it. Change that first.';
-    }
-    if (NO_ACCESS.contains(code)) {
-      return 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.';
-    }
     if (code == StatusCode.DUPLICATE_VALUE) {
-      return 'That name is already used. Pick another.';
+      return duplicateMessage(kind);
     }
-    if (code == StatusCode.REQUIRED_FIELD_MISSING) {
-      return 'Something required is blank. Fill it in and save again.';
-    }
-    if (code == StatusCode.STRING_TOO_LONG) {
-      return 'Something typed is too long. Shorten it and save again.';
+    if (PLAIN.containsKey(code)) {
+      return PLAIN.get(code);
     }
     logged(e);
     return fallback;
+  }
+
+  /** Shoresh's own checks catch duplicates first; this is for two saves at the same moment. */
+  private static String duplicateMessage(Schema.SObjectType kind) {
+    if (kind == Week__c.SObjectType) {
+      return 'A ' +
+        CampLabels.modelTermsOnly().singularInSentence('Week') +
+        ' already starts on that date.';
+    }
+    if (kind == CampLabel__c.SObjectType) {
+      return 'That word is already set.';
+    }
+    return 'That name is already used. Pick another.';
   }
 
   private static void logged(Exception e) {

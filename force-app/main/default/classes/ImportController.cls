@@ -32,7 +32,7 @@ public with sharing class ImportController {
     try {
       return ImportAnswers.forCamp(campId);
     } catch (Exception e) {
-      throw ScreenErrors.of(e);
+      throw ScreenErrors.ofLoading(e);
     }
   }
 

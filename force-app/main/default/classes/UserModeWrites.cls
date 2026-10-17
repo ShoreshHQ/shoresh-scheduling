@@ -18,7 +18,8 @@ public with sharing class UserModeWrites {
       Database.update(toUpdate, AccessLevel.USER_MODE);
     } catch (DmlException e) {
       Database.rollback(beforeSave);
-      throw new SaveException(e, nameOf(current[e.getDmlIndex(0)]));
+      SObject refused = current[e.getDmlIndex(0)];
+      throw new SaveException(e, nameOf(refused), refused.getSObjectType());
     }
   }
 
@@ -45,11 +46,17 @@ public with sharing class UserModeWrites {
   public class SaveException extends Exception {
     public DmlException failure;
     public String recordName;
+    public Schema.SObjectType kind;
 
-    public SaveException(DmlException failure, String recordName) {
+    public SaveException(
+      DmlException failure,
+      String recordName,
+      Schema.SObjectType kind
+    ) {
       this(failure.getMessage());
       this.failure = failure;
       this.recordName = recordName;
+      this.kind = kind;
     }
   }
 }

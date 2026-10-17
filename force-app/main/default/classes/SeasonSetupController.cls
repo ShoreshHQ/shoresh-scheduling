@@ -66,20 +66,11 @@ public with sharing class SeasonSetupController {
 
   @AuraEnabled
   public static SeasonSetupReader.SeasonSetup getSeasonSetup(Id seasonId) {
-    SeasonSetupReader.SeasonSetup setup;
     try {
-      setup = SeasonSetupReader.read(seasonId);
+      return SeasonSetupReader.readForScreen(seasonId);
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }
-    if (setup == null) {
-      throw ScreenErrors.of(
-        'That ' +
-          CampLabels.modelTermsOnly().singularInSentence('Season') +
-          ' was not found, or you do not have access to it.'
-      );
-    }
-    return setup;
   }
 
   /** Creates new records and updates existing ones, all or none. Returns the Ids in order. */
@@ -174,7 +165,7 @@ public with sharing class SeasonSetupController {
     try {
       return new SeasonCopier(seasonId, newStartDate).preview();
     } catch (Exception e) {
-      throw ScreenErrors.of(e);
+      throw ScreenErrors.ofLoading(e);
     }
   }
 

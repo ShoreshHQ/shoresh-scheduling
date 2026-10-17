@@ -7,6 +7,19 @@
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
+  /** The season for the setup screen; refused when it is gone or out of reach. */
+  public static SeasonSetup readForScreen(Id seasonId) {
+    SeasonSetup setup = read(seasonId);
+    if (setup == null) {
+      throw new ShoreshException(
+        'That ' +
+          CampLabels.modelTermsOnly().singularInSentence('Season') +
+          ' was not found, or you do not have access to it.'
+      );
+    }
+    return setup;
+  }
+
   public static SeasonSetup read(Id seasonId) {
     List<Season__c> seasons = [
       SELECT

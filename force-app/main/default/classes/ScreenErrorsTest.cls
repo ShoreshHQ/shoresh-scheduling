@@ -65,4 +65,23 @@ private class ScreenErrorsTest {
       ScreenErrors.ofLoading(unexpected).getMessage()
     );
   }
+
+  @IsTest
+  static void somethingRemovedMeanwhileSaysToReload() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Program__c gone = ShoreshTestData.program(season.Id, 'Main');
+    Database.delete(gone, AccessLevel.SYSTEM_MODE);
+    try {
+      UserModeWrites.save(
+        new List<SObject>{ new Program__c(Id = gone.Id, Name = 'Renamed') }
+      );
+      Assert.fail('A removed row is not saved');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.areEqual(
+        '"Renamed": That was removed. Reload the page.',
+        ScreenErrors.of(e).getMessage()
+      );
+    }
+  }
 }

@@ -158,26 +158,33 @@ public with sharing class ScreenSaves {
 
   private static void refuseWhatCannotBeSaved(List<SObject> records) {
     for (SObject record : records) {
-      Schema.SObjectType kind = record.getSObjectType();
-      Set<Schema.SObjectField> allowed = SAVABLE_FIELDS.get(kind);
-      if (allowed == null) {
-        throw ScreenErrors.of('These screens can\'t save that.');
-      }
-      Map<String, Schema.SObjectField> fields = kind.getDescribe()
-        .fields.getMap();
-      for (String name : record.getPopulatedFieldsAsMap().keySet()) {
-        Schema.SObjectField field = fields.get(name);
-        Boolean newRowParent = record.Id == null &&
-          field != null &&
-          field == PARENT_FIELD.get(kind);
-        if (name != 'Id' && !newRowParent && !allowed.contains(field)) {
-          throw ScreenErrors.of('These screens can\'t change that.');
-        }
-      }
+      refuseFieldsNotShown(record);
     }
     String ownRainPlan = ActivityDetails.ownRainPlanProblem(records);
     if (ownRainPlan != null) {
       throw ScreenErrors.of(ownRainPlan);
+    }
+  }
+
+  /** Each kind's own fields only; its parent only on a new row. */
+  private static void refuseFieldsNotShown(SObject record) {
+    Schema.SObjectType kind = record.getSObjectType();
+    Set<Schema.SObjectField> allowed = SAVABLE_FIELDS.get(kind);
+    if (allowed == null) {
+      throw ScreenErrors.of('These screens can\'t save that.');
+    }
+    Map<String, Schema.SObjectField> fields = kind.getDescribe()
+      .fields.getMap();
+    Schema.SObjectField parent = record.Id == null
+      ? PARENT_FIELD.get(kind)
+      : null;
+    for (String name : record.getPopulatedFieldsAsMap().keySet()) {
+      Schema.SObjectField field = fields.get(name);
+      Boolean shown = allowed.contains(field) ||
+        (parent != null && field == parent);
+      if (name != 'Id' && !shown) {
+        throw ScreenErrors.of('These screens can\'t change that.');
+      }
     }
   }
 }
