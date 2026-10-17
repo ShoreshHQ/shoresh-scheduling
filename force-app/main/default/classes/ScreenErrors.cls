@@ -2,7 +2,8 @@
  * Turns anything that went wrong into a plain message the scheduler sees on screen. Shoresh's own
  * messages (ShoreshException, trigger and validation messages) are shown as they are; the
  * platform's own wording never is: it names objects and fields. Unknown problems get a short
- * "try again", and the detail goes to the debug log for an admin.
+ * "try again", and the detail goes to the debug log (once packaged, readable only through
+ * subscriber support login, not by the camp's own admin).
  */
 public with sharing class ScreenErrors {
   private static final String COULD_NOT_SAVE = 'Couldn\'t save. Try again.';

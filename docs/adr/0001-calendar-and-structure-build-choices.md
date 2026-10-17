@@ -27,7 +27,8 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    built in Apex. Validation rules (static text) avoid model terms. Salesforce's own messages
    name objects and fields, so screens never show them (`ScreenErrors`, audit 2026-10-17):
    common ones (in use elsewhere, no access, already used, required, too long) get a plain
-   sentence, anything else "Couldn't save. Try again." with the detail in the debug log. (The import's
+   sentence, anything else "Couldn't save. Try again." with the detail in the debug log. Once packaged,
+   only Shoresh support (subscriber login) can read that log, not the camp's own admin. (The import's
    undo refusal still adds the platform's text; it is changed with the import code.)
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
    of objects and, per object, of the fields the screens send (a parent field only on a new
