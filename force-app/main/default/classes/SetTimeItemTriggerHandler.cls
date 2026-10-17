@@ -28,9 +28,10 @@ public with sharing class SetTimeItemTriggerHandler {
     Set<Id> blockIds = new Set<Id>();
     Set<Id> locationIds = new Set<Id>();
     for (SObject item : items) {
-      programIds.add((Id) item.get('Program__c'));
-      blockIds.add((Id) item.get('TimeBlock__c'));
-      locationIds.add((Id) item.get('Location__c'));
+      SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
+      programIds.add((Id) item.get(f.program));
+      blockIds.add((Id) item.get(f.timeBlock));
+      locationIds.add((Id) item.get(f.location));
     }
     // Ids are unique across objects: one map of what each block and location belongs to.
     Map<Id, Id> ownerOf = new Map<Id, Id>();
@@ -65,7 +66,12 @@ public with sharing class SetTimeItemTriggerHandler {
     handler.ownerOf = ownerOf;
     handler.term = term;
     for (SObject item : items) {
-      handler.check(item, programs.get((Id) item.get('Program__c')));
+      handler.check(
+        item,
+        programs.get(
+          (Id) item.get(SetTimePlan.fieldsOf(item.getSObjectType()).program)
+        )
+      );
     }
     rememberLastBlocks(items, blocks);
   }
@@ -77,10 +83,11 @@ public with sharing class SetTimeItemTriggerHandler {
    * kept (the screens send the last block it now covers).
    */
   private static Boolean blocksTouched(SObject item, SObject was) {
+    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
     return was == null ||
-      (Id) item.get('TimeBlock__c') != (Id) was.get('TimeBlock__c') ||
-      (Decimal) item.get('Length__c') != (Decimal) was.get('Length__c') ||
-      (Id) item.get('LastTimeBlock__c') != (Id) was.get('LastTimeBlock__c');
+      (Id) item.get(f.timeBlock) != (Id) was.get(f.timeBlock) ||
+      (Decimal) item.get(f.length) != (Decimal) was.get(f.length) ||
+      (Id) item.get(f.lastTimeBlock) != (Id) was.get(f.lastTimeBlock);
   }
 
   private static void rememberLastBlocks(
@@ -103,20 +110,22 @@ public with sharing class SetTimeItemTriggerHandler {
       if (before != null && !blocksTouched(item, before.get(item.Id))) {
         continue;
       }
+      SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
       item.put(
-        'LastTimeBlock__c',
-        lastBlockOf(item, blocksByProgram.get((Id) item.get('Program__c')))
+        f.lastTimeBlock,
+        lastBlockOf(item, blocksByProgram.get((Id) item.get(f.program)))
       );
     }
   }
 
   /** The last block it covers, given its program's blocks in order; null if it has none. */
   private static Id lastBlockOf(SObject item, List<Id> blocks) {
+    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
     Integer start = blocks == null
       ? -1
-      : blocks.indexOf((Id) item.get('TimeBlock__c'));
+      : blocks.indexOf((Id) item.get(f.timeBlock));
     // A blank length counts as 1, as on the screens and in the clash check.
-    Decimal given = (Decimal) item.get('Length__c');
+    Decimal given = (Decimal) item.get(f.length);
     Integer length = given == null ? 1 : given.intValue();
     return start < 0 ||
       length < 1
@@ -128,8 +137,9 @@ public with sharing class SetTimeItemTriggerHandler {
     if (program == null) {
       return;
     }
-    Id blockProgram = ownerOf.get((Id) item.get('TimeBlock__c'));
-    Id locationSeason = ownerOf.get((Id) item.get('Location__c'));
+    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
+    Id blockProgram = ownerOf.get((Id) item.get(f.timeBlock));
+    Id locationSeason = ownerOf.get((Id) item.get(f.location));
     Boolean otherBlock = blockProgram != null && blockProgram != program.Id;
     Boolean otherLocation =
       locationSeason != null &&
@@ -144,7 +154,7 @@ public with sharing class SetTimeItemTriggerHandler {
       .get(program.Season__c);
     if (otherBlock) {
       item.addError(
-        'TimeBlock__c',
+        f.timeBlock,
         'This ' +
           labels.singularInSentence('TimeBlock') +
           ' belongs to a different ' +
@@ -156,7 +166,7 @@ public with sharing class SetTimeItemTriggerHandler {
     }
     if (otherLocation) {
       item.addError(
-        'Location__c',
+        f.location,
         SetupSeasons.otherSeason(labels, 'Location', term)
       );
     }

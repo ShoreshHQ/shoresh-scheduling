@@ -7,9 +7,7 @@
 public with sharing class ScreenSaves {
   // The only records these screens may save, and the fields each screen sends (Id aside).
   private static final Map<Schema.SObjectType, Set<Schema.SObjectField>> SAVABLE_FIELDS = new Map<Schema.SObjectType, Set<Schema.SObjectField>>{
-    Camp__c.SObjectType => new Set<Schema.SObjectField>{
-      Camp__c.Name
-    },
+    Camp__c.SObjectType => new Set<Schema.SObjectField>{ Camp__c.Name },
     Season__c.SObjectType => new Set<Schema.SObjectField>{
       Season__c.Name,
       Season__c.StartDate__c,
@@ -176,15 +174,14 @@ public with sharing class ScreenSaves {
     if (allowed == null) {
       throw ScreenErrors.of('These screens can\'t save that.');
     }
-    Map<String, Schema.SObjectField> fields = kind.getDescribe()
-      .fields.getMap();
     Schema.SObjectField parent = record.Id == null
       ? PARENT_FIELD.get(kind)
       : null;
+    // The screen's names (with the package's prefix once it has one) are turned into fields.
     for (String name : record.getPopulatedFieldsAsMap().keySet()) {
-      Schema.SObjectField field = fields.get(name);
-      Boolean shown = allowed.contains(field) ||
-        (parent != null && field == parent);
+      Schema.SObjectField field = ShoreshSchema.field(kind, name);
+      Boolean shown =
+        allowed.contains(field) || (parent != null && field == parent);
       if (name != 'Id' && !shown) {
         throw ScreenErrors.of('These screens can\'t change that.');
       }

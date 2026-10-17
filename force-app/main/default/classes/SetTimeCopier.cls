@@ -65,12 +65,13 @@ public with sharing class SetTimeCopier {
   }
 
   private SObject copyOf(SObject item) {
+    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(item.getSObjectType());
     SObject copy = item.clone(false, true, false, false);
-    copy.put('Program__c', copies.get((Id) item.get('Program__c')));
-    copy.put('TimeBlock__c', copies.get((Id) item.get('TimeBlock__c')));
-    Id location = (Id) item.get('Location__c');
-    copy.put('Location__c', location == null ? null : copies.get(location));
-    copy.put('CopiedFrom__c', item.Id);
+    copy.put(f.program, copies.get((Id) item.get(f.program)));
+    copy.put(f.timeBlock, copies.get((Id) item.get(f.timeBlock)));
+    Id location = (Id) item.get(f.location);
+    copy.put(f.location, location == null ? null : copies.get(location));
+    copy.put(f.copiedFrom, item.Id);
     return copy;
   }
 

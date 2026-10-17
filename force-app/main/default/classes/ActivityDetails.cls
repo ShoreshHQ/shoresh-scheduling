@@ -5,11 +5,11 @@
  */
 public with sharing class ActivityDetails {
   // The only activity fields this save may change.
-  private static final Set<String> RULE_FIELDS = new Set<String>{
-    'SameDivisionOnly__c',
-    'EarlyWeekCount__c',
-    'EarlyWeekByDay__c',
-    'Notes__c'
+  private static final Set<Schema.SObjectField> RULE_FIELDS = new Set<Schema.SObjectField>{
+    Activity__c.SameDivisionOnly__c,
+    Activity__c.EarlyWeekCount__c,
+    Activity__c.EarlyWeekByDay__c,
+    Activity__c.Notes__c
   };
 
   public static void save(Activity__c rules, List<Id> whoCanDoIt) {
@@ -49,7 +49,7 @@ public with sharing class ActivityDetails {
       if (
         record instanceof Activity__c &&
         record.Id != null &&
-        record.get('RainPlan__c') == record.Id
+        record.get(Activity__c.RainPlan__c) == record.Id
       ) {
         CampLabels labels = labelsFor(record.Id);
         return 'Choose a different ' +
@@ -79,10 +79,10 @@ public with sharing class ActivityDetails {
 
   private static Activity__c ruleChanges(Activity__c rules) {
     Activity__c changes = new Activity__c(Id = rules.Id);
-    Map<String, Object> given = rules.getPopulatedFieldsAsMap();
-    for (String field : RULE_FIELDS) {
-      if (given.containsKey(field)) {
-        changes.put(field, given.get(field));
+    // Only the rule fields the screen sent (a field left out stays as it is).
+    for (Schema.SObjectField field : ShoreshSchema.populatedFields(rules)) {
+      if (RULE_FIELDS.contains(field)) {
+        changes.put(field, rules.get(field));
       }
     }
     return changes;
@@ -114,7 +114,9 @@ public with sharing class ActivityDetails {
         Activity__c = activityId
       );
       row.put(
-        kind == Division__c.SObjectType ? 'Division__c' : 'Group__c',
+        kind == Division__c.SObjectType
+          ? ActivityEligibility__c.Division__c
+          : ActivityEligibility__c.Group__c,
         target
       );
       rows.add(row);

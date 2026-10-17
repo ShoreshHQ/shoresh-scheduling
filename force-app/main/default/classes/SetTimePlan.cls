@@ -15,6 +15,24 @@ public with sharing class SetTimePlan {
     'Thursday',
     'Friday'
   };
+  // The field for each day, on the objects that have days (a program, a recurring activity).
+  private static final Map<Schema.SObjectType, Map<String, Schema.SObjectField>> DAY_FIELDS = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>{
+    Program__c.SObjectType => new Map<String, Schema.SObjectField>{
+      'Monday' => Program__c.Monday__c,
+      'Tuesday' => Program__c.Tuesday__c,
+      'Wednesday' => Program__c.Wednesday__c,
+      'Thursday' => Program__c.Thursday__c,
+      'Friday' => Program__c.Friday__c
+    },
+    RecurringActivity__c.SObjectType => new Map<String, Schema.SObjectField>{
+      'Monday' => RecurringActivity__c.Monday__c,
+      'Tuesday' => RecurringActivity__c.Tuesday__c,
+      'Wednesday' => RecurringActivity__c.Wednesday__c,
+      'Thursday' => RecurringActivity__c.Thursday__c,
+      'Friday' => RecurringActivity__c.Friday__c
+    }
+  };
+  private static Map<Schema.SObjectType, ItemFields> itemFields;
 
   public Id campId;
   // In date order. A season with no weeks yet has one stand-in week (the season's own Id, with
@@ -37,7 +55,9 @@ public with sharing class SetTimePlan {
     public ProgramPlan(Program__c program) {
       this.program = program;
       for (String day : WEEKDAYS) {
-        if ((Boolean) program.get(day + '__c') == true) {
+        if (
+          (Boolean) program.get(dayField(Program__c.SObjectType, day)) == true
+        ) {
           days.add(day);
         }
       }
@@ -127,5 +147,60 @@ public with sharing class SetTimePlan {
       }
     }
     return null;
+  }
+
+  /** Whether a record ticks a day ("Monday"): a program or a recurring activity. */
+  public static Schema.SObjectField dayField(
+    Schema.SObjectType type,
+    String day
+  ) {
+    return DAY_FIELDS.get(type).get(day);
+  }
+
+  /**
+   * The fields a fixed or a recurring activity shares (same names, different objects), so the
+   * set-time code reads either through the platform's own references.
+   */
+  public class ItemFields {
+    public Schema.SObjectField program;
+    public Schema.SObjectField timeBlock;
+    public Schema.SObjectField length;
+    public Schema.SObjectField location;
+    public Schema.SObjectField lastTimeBlock;
+    public Schema.SObjectField copiedFrom;
+    /** The item's list of weeks it is off (week exceptions), for a subquery or getSObjects. */
+    public String weeksOff;
+  }
+
+  /** A fixed or recurring activity's shared fields. */
+  public static ItemFields fieldsOf(Schema.SObjectType type) {
+    if (itemFields == null) {
+      itemFields = new Map<Schema.SObjectType, ItemFields>();
+      ItemFields fixed = new ItemFields();
+      fixed.program = FixedActivity__c.Program__c;
+      fixed.timeBlock = FixedActivity__c.TimeBlock__c;
+      fixed.length = FixedActivity__c.Length__c;
+      fixed.location = FixedActivity__c.Location__c;
+      fixed.lastTimeBlock = FixedActivity__c.LastTimeBlock__c;
+      fixed.copiedFrom = FixedActivity__c.CopiedFrom__c;
+      fixed.weeksOff = ShoreshSchema.childRelationship(
+        FixedActivity__c.SObjectType,
+        WeekException__c.FixedActivity__c
+      );
+      itemFields.put(FixedActivity__c.SObjectType, fixed);
+      ItemFields recurring = new ItemFields();
+      recurring.program = RecurringActivity__c.Program__c;
+      recurring.timeBlock = RecurringActivity__c.TimeBlock__c;
+      recurring.length = RecurringActivity__c.Length__c;
+      recurring.location = RecurringActivity__c.Location__c;
+      recurring.lastTimeBlock = RecurringActivity__c.LastTimeBlock__c;
+      recurring.copiedFrom = RecurringActivity__c.CopiedFrom__c;
+      recurring.weeksOff = ShoreshSchema.childRelationship(
+        RecurringActivity__c.SObjectType,
+        WeekException__c.RecurringActivity__c
+      );
+      itemFields.put(RecurringActivity__c.SObjectType, recurring);
+    }
+    return itemFields.get(type);
   }
 }

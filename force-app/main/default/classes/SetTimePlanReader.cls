@@ -177,22 +177,23 @@ public with sharing class SetTimePlanReader {
   }
 
   private SetTimePlan.Item itemFor(SObject record, String term) {
-    Id programId = (Id) record.get('Program__c');
+    SetTimePlan.ItemFields f = SetTimePlan.fieldsOf(record.getSObjectType());
+    Id programId = (Id) record.get(f.program);
     SetTimePlan plan = plans.get(seasonByProgram.get(programId));
     SetTimePlan.Item item = new SetTimePlan.Item();
     item.record = record;
     item.term = term;
     item.name = (String) record.get('Name');
     item.program = programs.get(programId);
-    item.start = item.program.blockIndex.get((Id) record.get('TimeBlock__c'));
-    Decimal length = (Decimal) record.get('Length__c');
+    item.start = item.program.blockIndex.get((Id) record.get(f.timeBlock));
+    Decimal length = (Decimal) record.get(f.length);
     item.length = length == null ? 1 : length.intValue();
-    item.locationId = (Id) record.get('Location__c');
+    item.locationId = (Id) record.get(f.location);
     Set<Id> weeksOff = new Set<Id>();
     for (
-      WeekException__c mark : record.getSObjects('WeekExceptions__r') == null
+      WeekException__c mark : record.getSObjects(f.weeksOff) == null
         ? new List<WeekException__c>()
-        : (List<WeekException__c>) record.getSObjects('WeekExceptions__r')
+        : (List<WeekException__c>) record.getSObjects(f.weeksOff)
     ) {
       weeksOff.add(mark.Week__c);
     }
@@ -220,7 +221,11 @@ public with sharing class SetTimePlanReader {
   private void addRecurring(RecurringActivity__c record) {
     SetTimePlan.Item item = itemFor(record, 'RecurringActivity');
     for (String day : SetTimePlan.WEEKDAYS) {
-      if ((Boolean) record.get(day + '__c') == true) {
+      if (
+        (Boolean) record.get(
+          SetTimePlan.dayField(RecurringActivity__c.SObjectType, day)
+        ) == true
+      ) {
         item.days.add(day);
       }
     }

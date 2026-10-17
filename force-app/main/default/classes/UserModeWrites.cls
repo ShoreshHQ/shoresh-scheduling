@@ -29,10 +29,7 @@ public with sharing class UserModeWrites {
    */
   private static String nameOf(SObject record) {
     if (
-      record.getSObjectType()
-        .getDescribe()
-        .fields.getMap()
-        .get('Name')
+      ShoreshSchema.field(record.getSObjectType(), 'Name')
         .getDescribe()
         .isAutoNumber()
     ) {
@@ -47,7 +44,7 @@ public with sharing class UserModeWrites {
     }
     List<SObject> saved = Database.queryWithBinds(
       'SELECT Name FROM ' +
-        record.getSObjectType().getDescribe().getName() +
+        ShoreshSchema.queryName(record.getSObjectType()) +
         ' WHERE Id = :recordId',
       new Map<String, Object>{ 'recordId' => record.Id },
       AccessLevel.USER_MODE

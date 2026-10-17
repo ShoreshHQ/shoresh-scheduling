@@ -91,7 +91,9 @@ public with sharing class SetTimeWho {
         RecurringActivity__c = item.Id
       );
       row.put(
-        kind == Division__c.SObjectType ? 'Division__c' : 'Group__c',
+        kind == Division__c.SObjectType
+          ? Coverage__c.Division__c
+          : Coverage__c.Group__c,
         target
       );
       result.add(row);
