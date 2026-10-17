@@ -109,6 +109,28 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     question and its answer buttons; messages say what happened or what is needed ("Length is
     blank", "Same as row 4").
 
+## Part B: a program's lists (2026-10-17)
+
+12. **Program days, Units (divisions), Bunks (groups), Time blocks, Fixed and Recurring
+    activities** use the same engine. Each row's program comes from a **Program** column; with
+    one program it can be left out, with several a blank is "Program is blank". Rows are
+    settled within their program (a "Lunch" in two programs is two items), and the names they
+    refer to (a division, a time block) are resolved within that program by `refs.js`.
+13. **What a program list names that doesn't exist** is added, asking only what Shoresh can't
+    create it without (Greg, Q2): a new program's days (Monday to Friday ticks; Save waits), a
+    new time block's start and end, and a 5 or 6 o'clock time's morning or evening (ADR 0006).
+    A division is added as it is. A recurring activity on a day its program doesn't run asks:
+    add the day to the program, leave the day out of the row, or leave the row out.
+14. **Days** read "Monday, Wednesday", "Mon-Fri", "Tue/Thu", "weekdays"; Saturday and Sunday
+    can't be read. **Times** read "9:00", "9:00 AM", "13:30"; Shoresh writes "9:00 AM". A part
+    of day left blank starts as the time says (before noon: morning).
+15. **A group in another division** of its program is a difference ("Unit: Juniors →
+    Seniors"); Change moves it (GroupMoves refuses another program's). A list never changes
+    which program anything is in, and only adds divisions (never renames them).
+16. **Who a recurring activity covers** (Coverage rows) is written and undone like who can do
+    an activity (`ImportWhoKinds`): replaced only on Change, put back by Undo unless edited
+    since.
+
 ## Choices that are hard to undo after release
 
 - `ImportController.saveList` and the plan's shape (records with kind, key or id, fields,
