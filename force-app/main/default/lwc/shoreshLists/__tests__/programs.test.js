@@ -885,3 +885,67 @@ describe("PR B review, third pass: one outcome in any order", () => {
     results.forEach((r) => expect(r).toEqual(results[0]));
   });
 });
+
+describe("blank cells on new rows start as by hand (Greg, 2026-10-17)", () => {
+  it("program lists: a new row's blank required values take the starting values, tagged", () => {
+    const groups = read("groups", [
+      ["Division", "Group", "Availability"],
+      ["Juniors", "Bunk 7", ""],
+      ["Juniors", "Bunk 1", ""]
+    ]);
+    expect(row(groups, "Bunk 7")).toMatchObject({
+      status: "new",
+      startingValues: ["Availability"]
+    });
+    expect(row(groups, "Bunk 7").values.availability).toBe("AllDay");
+    // One set up can't be cleared.
+    expect(row(groups, "Bunk 1").problems).toEqual(["Availability is blank"]);
+
+    const blocks = read("timeBlocks", [
+      ["Time block", "Start", "End", "Part of day"],
+      ["Rest", "1:00 PM", "1:30 PM", ""]
+    ]);
+    expect(row(blocks, "Rest").values.partOfDay).toBe("Afternoon");
+    expect(row(blocks, "Rest").startingValues).toEqual(["Part of day"]);
+
+    const fixed = read("fixedActivities", [
+      ["Fixed activity", "Time block", "Length"],
+      ["Snack", "Period 1", ""]
+    ]);
+    expect(row(fixed, "Snack").values.length).toBe(1);
+  });
+
+  it("activities and locations too", () => {
+    const activities = read("activities", [
+      ["Activity", "Length", "Times a week: at least", "Priority"],
+      ["Golf", "", "", ""]
+    ]);
+    expect(row(activities, "Golf")).toMatchObject({
+      status: "new",
+      startingValues: ["Length", "Times per week: at least", "Priority"]
+    });
+    expect(row(activities, "Golf").values).toMatchObject({
+      length: 1,
+      min: 1,
+      priority: "Low"
+    });
+    const locations = read("locations", [
+      ["Location", "Groups that fit"],
+      ["Barn", ""],
+      ["Gym", ""]
+    ]);
+    expect(row(locations, "Barn").values.fit).toBe(1);
+    expect(row(locations, "Barn").status).toBe("new");
+    expect(row(locations, "Gym").problems).toEqual([
+      "Groups that fit is blank"
+    ]);
+  });
+
+  it("a blank with nothing to start from still can't be read: a new row's days or times", () => {
+    const p = read("timeBlocks", [
+      ["Time block", "Start", "End"],
+      ["Rest", "", "1:30 PM"]
+    ]);
+    expect(row(p, "Rest").problems).toEqual(["Start is blank"]);
+  });
+});

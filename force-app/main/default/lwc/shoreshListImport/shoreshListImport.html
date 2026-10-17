@@ -191,7 +191,14 @@
           <h4 class="list-section">New ({newRows.length})</h4>
           <ul class="list-names" data-id="new">
             <template for:each={newRows} for:item="row">
-              <li key={row.key}>{row.name}</li>
+              <li key={row.key}>
+                {row.name}
+                <template lwc:if={row.starting}>
+                  <span class="list-tag slds-m-left_x-small"
+                    >{row.starting}</span
+                  >
+                </template>
+              </li>
             </template>
           </ul>
         </template>

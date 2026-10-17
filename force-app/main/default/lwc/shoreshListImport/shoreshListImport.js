@@ -459,7 +459,11 @@ export default class ShoreshListImport extends LightningElement {
   get newRows() {
     return this.rowsWith("new").map((r) => ({
       key: `row-${r.rowNumber}`,
-      name: r.name
+      name: r.name,
+      // Blank cells it can't be without start as when added by hand.
+      starting: (r.startingValues || []).length
+        ? `starting value: ${r.startingValues.join(", ")}`
+        : ""
     }));
   }
   get unchangedCount() {

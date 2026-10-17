@@ -297,4 +297,11 @@ describe("c-shoresh-list-import", () => {
     ]);
     expect($(element, 'lightning-button[data-id="save"]').label).toBe("Add 3");
   });
+
+  it("a new row's blank required cell shows its starting value", async () => {
+    const element = await openWith(["Activity,Length", "Canoeing,"].join("\n"));
+    expect($(element, '[data-id="new"]').textContent).toContain(
+      "starting value: Length"
+    );
+  });
 });

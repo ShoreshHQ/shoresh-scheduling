@@ -35,9 +35,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    `ImportAnswer__c` (key `columns|<screen>|<heading>`, per camp like every answer); 4b never
    asks those keys. Similar-name answers share 4b's keys (`similar|activity|...`), so a camp
    that said Music and Musik are the same is not asked again.
-3. **Nothing defaults quietly.** A name written several ways (capitals and spacing aside) is
-   spelled one way whatever the row order: as an item set up spells it, else as written most
-   often, then the first alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
+3. **Nothing defaults quietly.** Rows of one name (capitals and spacing aside) are one item:
+   its identity and values come from the first row; its spelling, whatever the row order, is
+   as an item set up spells it, else as written most often, then the first alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
    in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
    Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
    inside a cell (Alt+Enter) separates names in a list, as a comma does. Rows are settled
@@ -53,8 +53,11 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    it" to everyone, each shown as a difference tagged "clears". **A new item starts as one
    added by hand** wherever its cell is blank (at most = at least, or 1; one group at a time;
    everyone). A value an item can't be without (length,
-   times a week at least, groups that fit, priority) can't be cleared: a blank there makes
-   the row unreadable ("Length is blank"), never skipped. "Change all from this file" answers
+   times a week at least, groups that fit, priority, availability, part of day) can't be
+   cleared: on an item set up, a blank there makes the row unreadable ("Length is blank"). **A
+   new item starts as one added by hand does** (Greg, 2026-10-17): a blank there takes the
+   starting value (part of day from the start time), tagged "starting value". A blank with
+   nothing to start from (a name, days, a time) can't be read on any row. "Change all from this file" answers
    only the differences not answered yet (a Keep the director chose stays), and its label says
    how many it changes and how many of those clear a value ("Change the other 8: 1 clears a
    value"). Names are never changed by a list. Two items set up with the name a row gives

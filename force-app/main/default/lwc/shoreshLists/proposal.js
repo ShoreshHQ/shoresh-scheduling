@@ -95,12 +95,20 @@ function readRows(rows, start, used) {
     const blanks = new Set();
     const unsure = {};
     const problems = [];
+    const requiredBlanks = [];
     used.forEach(({ column, index }) => {
       const read = readCell(column, row[index]);
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
+      } else if (
+        read.blank &&
+        column.requiredValue &&
+        column.newValue !== undefined
+      ) {
+        // Settled once it is known whether the row is new (settleBlanks).
+        requiredBlanks.push(column);
       } else if (read.blank && column.requiredValue) {
-        // It can't be cleared, and a blank is never quietly skipped.
+        // Nothing to start from (a name, a day, a time): never quietly skipped.
         problems.push(`${column.heading} is blank`);
       } else if (read.blank) {
         blanks.add(column.key);
@@ -127,6 +135,7 @@ function readRows(rows, start, used) {
       values,
       blanks,
       unsure,
+      requiredBlanks,
       problems
     });
   }
@@ -588,6 +597,25 @@ function resolveAllWho(leads, used, screen, setup, answers, t, allTargets) {
 }
 
 /**
+ * A blank cell for a value an item can't be without (Greg, 2026-10-17): a new item starts as one
+ * added by hand does, tagged "starting value"; an item set up can't be cleared, so its row can't
+ * be read ("Length is blank").
+ */
+function settleBlanks(rows) {
+  rows
+    .filter((r) => usable(r) && !r.open && r.requiredBlanks.length)
+    .forEach((r) => {
+      if (r.existing) {
+        r.requiredBlanks.forEach((column) => {
+          r.problems.push(`${column.heading} is blank`);
+        });
+      } else {
+        r.startingValues = r.requiredBlanks.map((column) => column.heading);
+      }
+    });
+}
+
+/**
  * The first row of each name (capitals and spacing aside) leads, even if it can't be read; the
  * rows after it with that name repeat it and follow it, never saved on their own.
  */
@@ -783,6 +811,7 @@ export function listProposal(input) {
       ? resolveProgramDays(leads, answers)
       : { cards: [], added: new Map() };
   result.cards.push(...days.cards);
+  settleBlanks(leads);
   checkNewLimits(leads, screen);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainPlans = rain
@@ -918,6 +947,7 @@ function describeRow(r, used, screen, setup, answers) {
     problems: r.problems,
     sameAs: r.sameAs || null,
     droppedPlan: r.droppedPlan || null,
+    startingValues: r.startingValues || [],
     targets: r.targets || {},
     programId: r.program ? r.program.id : null,
     programName: r.program ? r.program.name : null
