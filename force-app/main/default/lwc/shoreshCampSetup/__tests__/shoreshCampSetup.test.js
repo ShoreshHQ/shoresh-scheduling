@@ -261,6 +261,8 @@ describe("c-shoresh-camp-setup", () => {
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
     expect(weeks.addLabel).toBe("Add Week");
     expect(weeks.newRowDefaults).toEqual({ Season__c: "s1", Name: "Week {n}" });
+    // Overlapping weeks get a heads-up, in the camp's word.
+    expect(weeks.overlapLabel).toBe("Overlaps another week");
     expect(button(element, "Copy this season")).toBeDefined();
   });
 

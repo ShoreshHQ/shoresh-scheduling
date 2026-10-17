@@ -360,15 +360,12 @@ function bySeasonOrder(weeks) {
  *   the season's last is left out; a season week past the workbook's is left as it is.
  *   A this-season workbook's week starting outside the season's dates is left out too.
  * Returns { byOrder, pairs: [{ row, week (set up) | null, leftOut ("noneLeft", "outside", or null) }] }.
+ * byOrder, when given, is the way already decided for the whole sheet (weeksByOrder).
  */
-export function matchWeeks(fileWeeks, setupWeeks, season) {
-  const from = (season && season.StartDate__c) || null;
-  const to = (season && season.EndDate__c) || null;
-  const inSeason = (start) => (!from || start >= from) && (!to || start <= to);
+export function matchWeeks(fileWeeks, setupWeeks, season, decided) {
+  const inSeason = seasonHas(season);
   const byOrder =
-    !!(from || to) &&
-    fileWeeks.length > 0 &&
-    !fileWeeks.some((r) => inSeason(r.start));
+    decided === undefined ? weeksByOrder(fileWeeks, season) : decided;
   if (byOrder) {
     const ordered = bySeasonOrder(setupWeeks);
     const rows = [...fileWeeks].sort((a, b) => a.start.localeCompare(b.start));
@@ -395,11 +392,78 @@ export function matchWeeks(fileWeeks, setupWeeks, season) {
   };
 }
 
-/** Why a week is left out, in the camp's word for a week. */
+function seasonHas(season) {
+  const from = (season && season.StartDate__c) || null;
+  const to = (season && season.EndDate__c) || null;
+  return (start) => (!from || start >= from) && (!to || start <= to);
+}
+
+/** Another season's workbook (no week starting within this season's dates): paired by order. */
+export function weeksByOrder(fileWeeks, season) {
+  const dated = !!(season && (season.StartDate__c || season.EndDate__c));
+  const inSeason = seasonHas(season);
+  return (
+    dated && fileWeeks.length > 0 && !fileWeeks.some((r) => inSeason(r.start))
+  );
+}
+
+const DAY_MS = 86400000;
+
+function isoDay(time) {
+  return new Date(time).toISOString().slice(0, 10);
+}
+
+/**
+ * Monday-to-Friday weeks covering the season's dates, as "Fill in weeks" makes them
+ * (WeekCalendar.weekdayWeeks, which the save uses): short first and last weeks are kept.
+ */
+export function weekdayWeeks(startDate, endDate) {
+  const result = [];
+  const end = Date.parse(`${endDate}T00:00:00Z`);
+  let cursor = Date.parse(`${startDate}T00:00:00Z`);
+  while (cursor <= end) {
+    // 0 = Monday ... 6 = Sunday.
+    const day = (new Date(cursor).getUTCDay() + 6) % 7;
+    if (day >= 5) {
+      cursor += (7 - day) * DAY_MS;
+      continue;
+    }
+    const friday = cursor + (4 - day) * DAY_MS;
+    result.push({ start: isoDay(cursor), end: isoDay(Math.min(friday, end)) });
+    cursor = friday + 3 * DAY_MS;
+  }
+  return result;
+}
+
+/**
+ * Another season's workbook into a season with dates but no weeks yet (coordinator, following
+ * Greg's "copy the weeks, update the dates"): the season's weeks are filled from its dates in
+ * the same save, then paired by order. Keyed as weeks this save adds.
+ */
+function weeksToFill(setup, t) {
+  const season = setup.season || {};
+  if (
+    (setup.weeks || []).length ||
+    !season.StartDate__c ||
+    !season.EndDate__c
+  ) {
+    return [];
+  }
+  return weekdayWeeks(season.StartDate__c, season.EndDate__c).map((w, i) => ({
+    Id: `Week:${w.start}`,
+    Name: `${t.s("Week")} ${i + 1}`,
+    StartDate__c: w.start,
+    EndDate__c: w.end,
+    SortOrder__c: i + 1,
+    filled: true
+  }));
+}
+
+/** Why a week is left out, in the camp's words. */
 function leftOutReason(why, t) {
   return why === "noneLeft"
-    ? `no ${t.sIn("Week")} of this season left for it`
-    : "starts outside this season's dates";
+    ? `no ${t.sIn("Week")} of this ${t.sIn("Season")} left for it`
+    : `starts outside this ${t.sIn("Season")}'s dates`;
 }
 
 /**
@@ -486,30 +550,35 @@ function readWeeks(sheet, setup, answers, t) {
       read.push(entry);
     }
   });
+  // Date matching or pairing by order is decided once, on every row whose dates can be read,
+  // before any row is set aside (an overlap, a twin start), so setting one aside can't flip it.
+  const byOrder = weeksByOrder(read, setup.season);
+  const toFill = byOrder ? weeksToFill(setup, t) : [];
+  const seasonWeeks = toFill.length ? toFill : setup.weeks || [];
   // Two weeks starting the same day: both are said, never the first row kept.
   const starts = new Map();
   read.forEach((r) => starts.set(r.start, (starts.get(r.start) || 0) + 1));
   read
     .filter((r) => starts.get(r.start) > 1)
     .forEach((r) => {
-      r.problems.push(`Another week starts ${shortDate(r.start)}`);
+      r.problems.push(`Another ${t.sIn("Week")} starts ${shortDate(r.start)}`);
     });
-  const dated = matchWeeks(
-    read.filter((r) => !r.problems.length),
-    setup.weeks,
-    setup.season
-  );
-  if (!dated.byOrder) {
-    sayOverlaps(dated.pairs, setup.weeks);
+  if (!byOrder) {
+    sayOverlaps(
+      matchWeeks(
+        read.filter((r) => !r.problems.length),
+        seasonWeeks,
+        setup.season,
+        false
+      ).pairs,
+      seasonWeeks
+    );
   }
   // By order, a week that can't be read would move every week after it onto the wrong week of
   // this season: none is paired until each can be read.
   const unreadable = result.rows.filter((r) => r.problems.length);
   const usable = read.filter((r) => !r.problems.length);
-  if (
-    unreadable.length &&
-    matchWeeks(usable, setup.weeks, setup.season).byOrder
-  ) {
+  if (unreadable.length && byOrder) {
     usable.forEach((r) => {
       r.problems.push(
         `Matched by order once row ${unreadable.map((u) => u.rowNumber).join(", ")} can be read`
@@ -517,32 +586,19 @@ function readWeeks(sheet, setup, answers, t) {
     });
   }
   read.splice(0, read.length, ...read.filter((r) => !r.problems.length));
-  const matched = matchWeeks(read, setup.weeks, setup.season);
-  result.byOrder = matched.byOrder;
-  if (matched.byOrder) {
-    const paired = new Set(matched.pairs.map((p) => p.week && p.week.Id));
-    result.lists = [
-      {
-        key: "paired",
-        heading: "Matched by order",
-        lines: matched.pairs.filter((p) => p.week).map((p) => p.row)
-      },
-      {
-        key: "untouched",
-        heading: "Not in the workbook",
-        lines: bySeasonOrder(setup.weeks)
-          .filter((w) => !paired.has(w.Id))
-          .map((w) => ({ pairing: `${w.Name} (${shortDate(w.StartDate__c)})` }))
-      }
-    ];
-  }
+  const matched = matchWeeks(read, seasonWeeks, setup.season, byOrder);
+  result.byOrder = byOrder;
   matched.pairs.forEach(({ row, week, leftOut }) => {
+    const named = read.filter((r) => looseKey(r.name) === looseKey(row.name));
     if (leftOut) {
-      // Another season's week past this season's last: its Runs in ticks aren't read.
+      // Another season's week past this season's last: its Runs in ticks aren't read. Its bare
+      // name only when no other week has it, so a week read under that name is never skipped.
       row.status = "leftOut";
       row.reason = leftOutReason(leftOut, t);
       result.refs.set(foldName(`${row.name} (${row.start})`), SKIP_WEEK);
-      result.refs.set(foldName(row.name), SKIP_WEEK);
+      if (named.length === 1) {
+        result.refs.set(foldName(row.name), SKIP_WEEK);
+      }
       return;
     }
     if (!week) {
@@ -590,7 +646,10 @@ function readWeeks(sheet, setup, answers, t) {
         value: field === "Name" ? row.name : row.end
       }));
       const chosen = row.differences.filter((d) => d.answer === CHANGE);
-      if (chosen.length) {
+      if (week.filled) {
+        // A week this save fills in takes the workbook's name on Change.
+        week.saveName = chosen.length ? row.name : week.Name;
+      } else if (chosen.length) {
         result.records.push({
           kind: "Week",
           id: week.Id,
@@ -600,11 +659,54 @@ function readWeeks(sheet, setup, answers, t) {
     }
     // A Runs in column is headed by the week's name, or "Name (start date)" when two share it.
     result.refs.set(foldName(`${row.name} (${row.start})`), row.ref);
-    const named = read.filter((r) => looseKey(r.name) === looseKey(row.name));
-    if (named.length === 1 && !result.refs.has(foldName(row.name))) {
+    if (named.length === 1) {
       result.refs.set(foldName(row.name), row.ref);
     }
   });
+  const nameOf = (w) => w.saveName || w.Name;
+  if (byOrder) {
+    const paired = new Set(matched.pairs.map((p) => p.week && p.week.Id));
+    result.lists = [
+      ...(toFill.length
+        ? [
+            {
+              key: "filled",
+              heading: "Will also add",
+              lines: toFill.map((w) => ({
+                pairing: `${nameOf(w)} (${shortDate(w.StartDate__c)})`
+              }))
+            }
+          ]
+        : []),
+      {
+        key: "paired",
+        heading: "Matched by order",
+        lines: matched.pairs.filter((p) => p.week).map((p) => p.row)
+      },
+      {
+        key: "untouched",
+        heading: "Not in the workbook",
+        lines: bySeasonOrder(setup.weeks)
+          .filter((w) => !paired.has(w.Id))
+          .map((w) => ({ pairing: `${w.Name} (${shortDate(w.StartDate__c)})` }))
+      }
+    ];
+  }
+  // The weeks to fill, as the save makes them (start dates checked again there), and as records
+  // for the lists and Runs in read after.
+  result.fillWeeks = toFill.map((w) => ({
+    start: w.StartDate__c,
+    name: nameOf(w)
+  }));
+  result.fillRecords = toFill.map((w) => ({
+    kind: "Week",
+    key: w.Id,
+    fields: {
+      Name: nameOf(w),
+      StartDate__c: w.StartDate__c,
+      EndDate__c: w.EndDate__c
+    }
+  }));
   return result;
 }
 
@@ -881,7 +983,8 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       name: "",
       problems: [
         ...unknown.map(
-          (c) => `"${c.heading}" isn't a week of the workbook that can be read`
+          (c) =>
+            `"${c.heading}" isn't a ${t.sIn("Week")} of the workbook that can be read`
         ),
         ...twins.map(
           (list) =>
@@ -1059,7 +1162,10 @@ export function workbookProposal(input) {
   const sheetsFound =
     words.rows.length || found.campWords ? findSheets(input.file, t) : found;
   const weeks = readWeeks(sheetOf(sheetsFound.weeks), input.setup, answers, t);
-  let setup = withRecords(input.setup, weeks.records);
+  let setup = withRecords(input.setup, [
+    ...(weeks.fillRecords || []),
+    ...weeks.records
+  ]);
   const sections = [];
   if (sheetsFound.campWords) {
     sections.push(extraSection("campWords", "Camp words", words));
@@ -1076,7 +1182,11 @@ export function workbookProposal(input) {
       setup,
       terms: t,
       answers,
-      knownKeys: combineRecords([weeks.records, ...lists.map((l) => l.records)])
+      knownKeys: combineRecords([
+        weeks.fillRecords || [],
+        weeks.records,
+        ...lists.map((l) => l.records)
+      ])
         .map((r) => r.key)
         .filter((k) => k)
     });
@@ -1160,7 +1270,12 @@ export function workbookWaiting(proposal, answers) {
       .forEach((w) => waiting.push(`${s.label}: ${w}`));
   });
   const plan = workbookPlan(proposal, answers);
-  if (!waiting.length && !plan.records.length && !plan.campWords.length) {
+  if (
+    !waiting.length &&
+    !plan.records.length &&
+    !plan.campWords.length &&
+    !plan.fillWeeks
+  ) {
     waiting.push("Nothing to change");
   }
   return waiting;
@@ -1187,7 +1302,10 @@ export function workbookPlan(proposal, answers, seasonId) {
     records,
     campWords: words,
     remember: proposal.lists.flatMap((p) => p.remember || []),
-    forget: proposal.lists.flatMap((p) => p.forget || [])
+    forget: proposal.lists.flatMap((p) => p.forget || []),
+    ...((proposal.weeks.fillWeeks || []).length
+      ? { fillWeeks: proposal.weeks.fillWeeks }
+      : {})
   };
 }
 

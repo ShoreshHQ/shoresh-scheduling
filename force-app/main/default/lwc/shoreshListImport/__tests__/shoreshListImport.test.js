@@ -93,6 +93,13 @@ function buttonNamed(element, label, within = element.shadowRoot) {
   );
 }
 
+/** A Keep or Change button (a plain button that says whether it is chosen). */
+function choice(label, within) {
+  return [...within.querySelectorAll("button")].find(
+    (b) => b.textContent.trim() === label
+  );
+}
+
 describe("c-shoresh-list-import", () => {
   beforeEach(() => {
     getAnswers.mockResolvedValue([]);
@@ -153,7 +160,7 @@ describe("c-shoresh-list-import", () => {
     const element = await openWith(
       ["Activity,Location,Notes", "Archery,Gym,", "Canoeing,Lake,"].join("\n")
     );
-    buttonNamed(element, "Keep", $(element, '[data-row="Archery"]')).click();
+    choice("Keep", $(element, '[data-row="Archery"]')).click();
     await flush();
     const save = $(element, 'lightning-button[data-id="save"]');
     expect(save.disabled).toBe(false);
@@ -231,7 +238,7 @@ describe("c-shoresh-list-import", () => {
       ["Activity,Location,Notes", "Archery,Field,x"].join("\n")
     );
     const archery = $(element, '[data-row="Archery"]');
-    buttonNamed(element, "Keep", archery).click();
+    choice("Keep", archery).click();
     await flush();
     const all = $(element, 'lightning-button[data-id="change-all"]');
     expect(all.label).toBe("Change the other 1");
@@ -484,8 +491,19 @@ describe("Import camp workbook (Roots)", () => {
     );
     const weeks = $(element, '[data-section="section-weeks"]');
     expect(weeks.textContent).toContain("Name: Week 1 → Opening week");
-    buttonNamed(element, "Change", weeks).click();
+    expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("false");
+    expect(choice("Change", weeks).getAttribute("aria-label")).toBe(
+      "Change, Opening week: Name: Week 1 → Opening week"
+    );
+    // Under the sheet's title (h4), its own headings are one level down.
+    expect(weeks.querySelector("h4").textContent).toBe("Weeks");
+    expect(
+      weeks.querySelector('[role="heading"]').getAttribute("aria-level")
+    ).toBe("5");
+    choice("Change", weeks).click();
     await flush();
+    expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("true");
+    expect(choice("Keep", weeks).getAttribute("aria-pressed")).toBe("false");
     const save = $(element, 'lightning-button[data-id="save"]');
     expect(save.label).toBe("Change 1");
     saveWorkbook.mockResolvedValue({

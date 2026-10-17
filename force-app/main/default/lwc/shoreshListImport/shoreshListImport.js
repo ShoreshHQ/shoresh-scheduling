@@ -37,10 +37,10 @@ import { errorMessage } from "c/shoreshErrors";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 
-// What a camp workbook saves that has no camp word of its own (part D).
+// What a camp workbook saves that has no camp word of its own (part D), in the camp's words.
 const OWN_WORDS = {
-  CampLabel: ["camp word", "camp words"],
-  WeekException: ["week off", "weeks off"]
+  CampLabel: () => ["camp word", "camp words"],
+  WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
 };
 
 /** Minutes after midnight as "9:00 AM". */
@@ -343,6 +343,8 @@ export default class ShoreshListImport extends LightningElement {
       key: `section-${key}`,
       label,
       showLabel: !!label,
+      // Under a workbook's sheet title (h4), a sheet's own headings are one level down.
+      level: label ? "5" : "4",
       hasMapping: !!p.mapping,
       headings: p.mapping ? this.headingsOf(p) : [],
       columnOptions: p.mapping ? this.columnOptionsOf(p) : [],
@@ -658,20 +660,36 @@ export default class ShoreshListImport extends LightningElement {
    * workbook's extra sheets give their own words (camp words, weeks, Runs in).
    */
   changedRowsOf(p) {
-    return this.rowsOf(p, "changed").map((r) => ({
-      key: `row-${r.rowNumber}`,
-      name: r.existingName || r.name,
-      differences: r.differences.map((d) => ({
-        id: d.id,
-        text: p.screen
-          ? `${d.heading}: ${shownValue(p, d.column, d.from)} → ${shownValue(p, d.column, d.to)}`
-          : d.text || `${d.heading}: ${d.from} → ${d.to}`,
-        clears: d.clears,
-        keepVariant: d.answer === KEEP ? "brand" : "neutral",
-        changeVariant: d.answer === CHANGE ? "brand" : "neutral",
-        className: d.clears ? "list-diff list-diff_clears" : "list-diff"
-      }))
-    }));
+    const button = (on) => {
+      return on
+        ? "slds-button slds-button_brand"
+        : "slds-button slds-button_neutral";
+    };
+    return this.rowsOf(p, "changed").map((r) => {
+      const name = r.existingName || r.name;
+      return {
+        key: `row-${r.rowNumber}`,
+        name,
+        differences: r.differences.map((d) => {
+          const text = p.screen
+            ? `${d.heading}: ${shownValue(p, d.column, d.from)} → ${shownValue(p, d.column, d.to)}`
+            : d.text || `${d.heading}: ${d.from} → ${d.to}`;
+          // Each Keep and Change names its item and difference, and says which is chosen.
+          return {
+            id: d.id,
+            text,
+            clears: d.clears,
+            keepClass: button(d.answer === KEEP),
+            changeClass: button(d.answer === CHANGE),
+            keepPressed: String(d.answer === KEEP),
+            changePressed: String(d.answer === CHANGE),
+            keepLabel: `Keep, ${name}: ${text}`,
+            changeLabel: `Change, ${name}: ${text}`,
+            className: d.clears ? "list-diff list-diff_clears" : "list-diff"
+          };
+        })
+      };
+    });
   }
 
   /** Every difference not yet answered, across the whole file. */
@@ -792,7 +810,7 @@ export default class ShoreshListImport extends LightningElement {
         .sort()
         .forEach((term) => {
           const n = counts[term];
-          const own = OWN_WORDS[term];
+          const own = OWN_WORDS[term] && OWN_WORDS[term](t);
           const word = own
             ? own[n === 1 ? 0 : 1]
             : n === 1

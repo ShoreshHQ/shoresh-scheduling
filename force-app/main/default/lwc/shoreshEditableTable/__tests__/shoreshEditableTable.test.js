@@ -790,7 +790,7 @@ describe("c-shoresh-editable-table", () => {
       rows: ROWS,
       draftNoteHeading: "Moving",
       draftNote: (values, original) =>
-        (values.Name !== original.Name ? `Renamed to ${values.Name}` : null)
+        values.Name !== original.Name ? `Renamed to ${values.Name}` : null
     });
     await flush();
     expect(element.shadowRoot.querySelector('[data-id="note"]')).toBe(null);
@@ -823,9 +823,9 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     button(element, "Add Time block").click();
     await flush();
-    expect(element.shadowRoot.querySelectorAll("lightning-combobox").length).toBe(
-      1
-    );
+    expect(
+      element.shadowRoot.querySelectorAll("lightning-combobox").length
+    ).toBe(1);
     expect(
       element.shadowRoot.querySelector('[data-id="fixed"]').textContent
     ).toBe("Juniors");
@@ -909,6 +909,72 @@ describe("c-shoresh-editable-table", () => {
         const same = looseKey(pair[0]) === looseKey(pair[1]);
         expect(tags(elements[i])).toEqual([same, same]);
       });
+    });
+  });
+
+  describe("overlapping weeks", () => {
+    const WEEK_COLUMNS = [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      { fieldName: "StartDate__c", label: "Start date", type: "date" },
+      { fieldName: "EndDate__c", label: "End date", type: "date" }
+    ];
+    const weeks = [
+      {
+        Id: "w1",
+        Name: "Week 1",
+        StartDate__c: "2027-06-28",
+        EndDate__c: "2027-07-02"
+      },
+      {
+        Id: "w2",
+        Name: "Week 2",
+        StartDate__c: "2027-07-01",
+        EndDate__c: "2027-07-09"
+      },
+      {
+        Id: "w3",
+        Name: "Week 3",
+        StartDate__c: "2027-07-12",
+        EndDate__c: "2027-07-16"
+      }
+    ];
+    const tags = (element) =>
+      [...element.shadowRoot.querySelectorAll("tbody tr")].map((tr) => {
+        const tag = tr.querySelector('[data-id="overlaps"]');
+        return tag ? tag.textContent.trim() : null;
+      });
+
+    it("tags each week whose dates overlap another's, without blocking Save", async () => {
+      const element = render({
+        title: "Weeks",
+        objectApiName: "Week__c",
+        columns: WEEK_COLUMNS,
+        rows: weeks,
+        overlapLabel: "Overlaps another session"
+      });
+      await flush();
+      expect(tags(element)).toEqual([
+        "Overlaps another session",
+        "Overlaps another session",
+        null
+      ]);
+      change(field(element, 1, "StartDate__c"), "2027-07-05");
+      await flush();
+      expect(tags(element)).toEqual([null, null, null]);
+      change(field(element, 2, "StartDate__c"), "2027-07-09");
+      await flush();
+      expect(tags(element)).toEqual([
+        null,
+        "Overlaps another session",
+        "Overlaps another session"
+      ]);
+      expect(button(element, "Save changes").disabled).toBeFalsy();
+    });
+
+    it("stays off unless asked for", async () => {
+      const element = render({ columns: WEEK_COLUMNS, rows: weeks });
+      await flush();
+      expect(tags(element)).toEqual([null, null, null]);
     });
   });
 });

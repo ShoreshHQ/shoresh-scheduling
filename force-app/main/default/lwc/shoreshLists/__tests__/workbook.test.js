@@ -104,7 +104,10 @@ function freshSeason() {
 
 /** Every link in the request names a record in it, or one set up. */
 function linksResolve(plan) {
-  const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+  const keys = new Set([
+    ...plan.records.map((r) => r.key).filter((k) => k),
+    ...(plan.fillWeeks || []).map((w) => `Week:${w.start}`)
+  ]);
   const bad = [];
   plan.records.forEach((r) => {
     const links = [...Object.values(r.refs || {}), ...(r.who || [])];
@@ -640,5 +643,167 @@ describe("independent review of PR D", () => {
       '"Week 1" and "Week 1 (2027-06-28)" are the same week'
     ]);
     expect(runsIn.rows.some((r) => r.differences.length)).toBe(false);
+  });
+});
+
+describe("coordinator's review of PR D", () => {
+  /** Another season's workbook into a season with dates and no weeks yet. */
+  function emptySeason() {
+    const s = freshSeason();
+    s.weeks = [];
+    // Monday Jun 26 to Wednesday Jul 12 2028: two full weeks and a short third.
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-07-12"
+    };
+    return s;
+  }
+
+  it("fills the season's weeks from its dates, pairs by order, and says so", () => {
+    const from = camp();
+    const p = propose(
+      emptySeason(),
+      file(campWorkbookSheets(from, buildTerms(from.labels)))
+    );
+    expect(p.weeks.byOrder).toBe(true);
+    const lists = Object.fromEntries(
+      p.weeks.lists.map((l) => [l.key, l.lines.map((x) => x.pairing)])
+    );
+    expect(lists.filled).toEqual([
+      "Week 1 (Jun 26 2028)",
+      "Week 2 (Jul 3 2028)",
+      "Week 3 (Jul 10 2028)"
+    ]);
+    expect(lists.paired).toEqual([
+      "Week 1 (Jun 28 2027) → Week 1 (Jun 26 2028)",
+      "Week 2 (Jul 5 2027) → Week 2 (Jul 3 2028)"
+    ]);
+    expect(lists.untouched).toEqual([]);
+    const plan = workbookPlan(p, {});
+    expect(plan.fillWeeks).toEqual([
+      { start: "2028-06-26", name: "Week 1" },
+      { start: "2028-07-03", name: "Week 2" },
+      { start: "2028-07-10", name: "Week 3" }
+    ]);
+    expect(plan.records.filter((r) => r.kind === "Week")).toEqual([]);
+    expect(linksResolve(plan)).toEqual([]);
+    // Runs in ticks follow the pairing onto the weeks filled in.
+    const weeksOff = plan.records
+      .filter((r) => r.kind === "WeekException")
+      .map((r) => r.refs.Week__c);
+    expect(weeksOff.length).toBeGreaterThan(0);
+    weeksOff.forEach((w) =>
+      expect(["Week:2028-06-26", "Week:2028-07-03"]).toContain(w)
+    );
+  });
+
+  it("a week filled in takes the workbook's name on Change", () => {
+    const from = camp();
+    const sheets = campWorkbookSheets(from, buildTerms(from.labels));
+    const weeksSheet = sheets.find((x) => x.name === "Weeks");
+    weeksSheet.rows[1][0] = "Opening week";
+    sheets.find((x) => x.name === "Runs in").rows[0][4] = "Opening week";
+    const s = emptySeason();
+    const first = propose(s, file(sheets));
+    const row = first.weeks.rows[0];
+    expect(
+      row.differences.map((d) => d.text || `${d.from} → ${d.to}`)
+    ).toHaveLength(1);
+    const answers = { [row.differences[0].id]: "change" };
+    const p = propose(s, file(sheets), answers);
+    expect(workbookPlan(p, answers).fillWeeks[0]).toEqual({
+      start: "2028-06-26",
+      name: "Opening week"
+    });
+    expect(p.weeks.lists[0].lines[0].pairing).toBe(
+      "Opening week (Jun 26 2028)"
+    );
+  });
+
+  it("the way weeks are matched is decided once: setting an overlap aside can't flip it", () => {
+    const s = camp();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2027-06-28",
+      EndDate__c: "2027-07-09"
+    };
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Weeks.splice(
+          1,
+          2,
+          ["Pre-camp", "2027-06-21", "2027-06-25"],
+          ["Week X", "2027-07-07", "2027-07-13"]
+        );
+      })
+    );
+    expect(p.weeks.byOrder).toBe(false);
+    expect(
+      p.weeks.rows.map((r) => [r.name, r.status, r.reason || r.problems])
+    ).toEqual([
+      ["Pre-camp", "leftOut", "starts outside this season's dates"],
+      ["Week X", "unreadable", ["Overlaps Week 2 (Jul 5 2027)"]]
+    ]);
+  });
+
+  it("a left-out week's bare name never skips a week read under the same name", () => {
+    const from = camp();
+    const sheets = campWorkbookSheets(from, buildTerms(from.labels));
+    const weeksSheet = sheets.find((x) => x.name === "Weeks");
+    weeksSheet.rows.push(["Week 1", "2027-07-12", "2027-07-16"]);
+    const s = freshSeason();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-07-14"
+    };
+    const p = propose(s, file(sheets));
+    expect(p.weeks.rows.map((r) => r.status)).toEqual([
+      "unchanged",
+      "unchanged",
+      "leftOut"
+    ]);
+    // "Week 1" heads a column but two weeks have that name: said, never skipped quietly.
+    expect(p.runsIn.rows[0].problems).toEqual([
+      '"Week 1" isn\'t a week of the workbook that can be read'
+    ]);
+  });
+
+  it("says weeks and seasons in the camp's words", () => {
+    const s = camp();
+    s.labels = [
+      ...s.labels,
+      {
+        term: "Week",
+        modelSingular: "Week",
+        singular: "Session",
+        plural: "Sessions",
+        isCustom: true
+      },
+      {
+        term: "Season",
+        modelSingular: "Season",
+        singular: "Summer",
+        plural: "Summers",
+        isCustom: true
+      }
+    ];
+    s.season = {
+      ...s.season,
+      StartDate__c: "2027-06-28",
+      EndDate__c: "2027-07-09"
+    };
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Sessions.push(["Late", "2027-08-23", "2027-08-27"]);
+        sheets.Sessions.push(["Twin", "2027-06-28", "2027-07-02"]);
+      })
+    );
+    const rows = Object.fromEntries(p.weeks.rows.map((r) => [r.name, r]));
+    expect(rows.Late.reason).toBe("starts outside this Summer's dates");
+    expect(rows.Twin.problems).toEqual(["Another Session starts Jun 28 2027"]);
   });
 });
