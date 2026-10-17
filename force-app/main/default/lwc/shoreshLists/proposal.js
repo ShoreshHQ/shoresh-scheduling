@@ -9,13 +9,7 @@
  * - the same file and answers always give the same result.
  * Pure JavaScript: the screen calls listProposal again on every answer.
  */
-import {
-  LEAVE_OUT,
-  looseKey,
-  mergesFrom,
-  similarPairs,
-  tidy
-} from "c/shoreshImportEngine";
+import { LEAVE_OUT, looseKey, similarPairs, tidy } from "c/shoreshImportEngine";
 import { NONE, readCell } from "./cells";
 import {
   headingRowIndex,
@@ -26,6 +20,7 @@ import {
 import { cellText, listScreen } from "./screens";
 import { resolveWho, whoTargets } from "./who";
 import { unknownRainPlans, unknownWho } from "./adds";
+import { resolveColumn } from "./refs";
 
 /** Keep or Change, for one difference. */
 export const KEEP = "keep";
@@ -120,70 +115,8 @@ function usable(row) {
   return !row.problems.length && !row.leftOut;
 }
 
-/**
- * Rows that would save the same item twice: a later row with the same name as an earlier one,
- * or standing for the same item set up. Checked last, among rows that will be saved, so the
- * row it points to is always one that is used.
- */
-/**
- * A row repeating an earlier one's name follows it: left out with it, or unreadable when it
- * can't be read. Done before rain plans are matched, so a plan never names a row not saved.
- */
-function settleRepeats(rows) {
-  rows
-    .filter((r) => r.repeatOf && usable(r))
-    .forEach((r) => {
-      if (r.repeatOf.leftOut) {
-        r.leftOut = true;
-        r.sameAs = r.repeatOf.name;
-      } else if (r.repeatOf.problems.length) {
-        r.problems.push(
-          `Same as row ${r.repeatOf.rowNumber}, which can't be read`
-        );
-      }
-    });
-}
-
-function markRepeats(rows) {
-  const first = new Map();
-  rows
-    .filter((r) => r.repeatOf && usable(r))
-    .forEach((r) => {
-      if (!usable(r.repeatOf)) {
-        r.problems.push(
-          `Same as row ${r.repeatOf.rowNumber}, which can't be read`
-        );
-      }
-    });
-  rows
-    .filter((r) => usable(r) && !r.open)
-    .forEach((r) => {
-      const keys = [`name|${looseKey(r.name)}`];
-      if (r.existing) {
-        keys.push(`id|${r.existing.Id}`);
-      }
-      const earlier = keys.map((k) => first.get(k)).find((n) => n);
-      if (earlier) {
-        r.problems.push(`Same as row ${earlier}`);
-      } else {
-        keys.forEach((k) => first.set(k, r.rowNumber));
-      }
-    });
-}
-
-/** Similar names among the rows and against the camp's: the question, and what each answer did. */
-function matchNames(rows, records, kind, answers) {
-  // A name written again (capitals and spacing aside) is a repeat, not a similar name to ask.
-  const seen = new Map();
-  rows.filter(usable).forEach((r) => {
-    const key = looseKey(r.name);
-    if (seen.has(key)) {
-      r.repeatOf = seen.get(key);
-    } else {
-      seen.set(key, r);
-    }
-  });
-  const readable = rows.filter((r) => usable(r) && !r.repeatOf);
+function matchNames(leads, records, kind, answers) {
+  const readable = leads.filter(usable);
   const campNames = records.map((r) => r.Name);
   const pairs = similarPairs(
     PAIR_KIND[kind],
@@ -288,107 +221,6 @@ function describe(screen, record, setup) {
     .join(", ");
 }
 
-/**
- * Names of other records (a location, a location type): the season's, asked about when only
- * similar, or added with the list. Returns { pairs, merged (name -> name kept), leftOut
- * (names answered "leave it out"), open (names still asked about) }.
- */
-function matchRefs(rows, column, records, answers) {
-  const counts = new Map();
-  rows
-    .filter((r) => !r.problems.length && !r.leftOut)
-    .forEach((r) => {
-      const name = r.values[column.key];
-      if (name) {
-        counts.set(name, (counts.get(name) || 0) + 1);
-      }
-    });
-  const campNames = records.map((r) => r.Name);
-  const pairs = similarPairs(
-    PAIR_KIND[column.ref],
-    [...counts.entries()].map(([name, count]) => ({ name, count })),
-    campNames
-  );
-  const merged = mergesFrom(pairs, answers);
-  const leftOut = new Set();
-  const open = new Set();
-  pairs.forEach((pair) => {
-    const answer = answers[pair.id];
-    if (answer === LEAVE_OUT) {
-      leftOut.add(pair.a);
-      if (!pair.existing) {
-        leftOut.add(pair.b);
-      }
-    } else if (answer === undefined) {
-      open.add(pair.a);
-      if (!pair.existing) {
-        open.add(pair.b);
-      }
-    }
-  });
-  return { pairs, merged, leftOut, open };
-}
-
-/**
- * Rain plans (Greg, 2026-10-17): a plan naming an activity that is neither set up nor a row that
- * will be saved is added as an activity added by hand is, with its starting values, no questions
- * asked. It is shown ticked under "Will also add"; unticked (answer "skip"), the rows naming it
- * are saved without that rain plan, and the summary says so. A row whose plan is a row still
- * asked about waits with it.
- */
-function rainPlans(read, column, setup, answers) {
-  const camp = new Set((setup.activities || []).map((a) => a.Name));
-  // Repeats are settled first: a plan never names a row that won't be saved.
-  const rows = read.filter((r) => usable(r) && !r.repeatOf);
-  // The row a plan names: the first usable one of that name (capitals and spacing aside), as
-  // repeats are; the plan then takes that row's spelling, so the link finds what is saved.
-  const rowOf = new Map();
-  rows.forEach((row) => {
-    const key = looseKey(row.name);
-    if (!rowOf.has(key)) {
-      rowOf.set(key, row);
-    }
-  });
-  const missing = new Set();
-  rows.forEach((r) => {
-    const plan = r.values[column.key];
-    const target = plan && rowOf.get(looseKey(plan));
-    if (target) {
-      r.values[column.key] = target.name;
-    } else if (plan && !camp.has(plan)) {
-      missing.add(plan);
-    }
-  });
-  // Waiting spreads along plans that name rows still asked about (each pass can only add).
-  for (let pass = 0; pass < rows.length; pass++) {
-    const before = rows.filter((r) => r.open).length;
-    rows.forEach((r) => {
-      const target = rowOf.get(looseKey(r.values[column.key] || ""));
-      if (target && target.open) {
-        r.open = true;
-      }
-    });
-    if (rows.filter((r) => r.open).length === before) {
-      break;
-    }
-  }
-  const adds = unknownRainPlans(missing, answers);
-  rows.forEach((r) => {
-    const plan = r.values[column.key];
-    if (plan && adds.skipped.has(plan)) {
-      // Saved without it: as if the file said nothing about its rain plan.
-      delete r.values[column.key];
-      r.droppedPlan = plan;
-    }
-  });
-  return adds;
-}
-
-/**
- * A new item with at most written below the at least it starts with (none written: 1) can't be
- * read: Salesforce would refuse the whole save. Checked before rain plans are matched, so no
- * plan points at a row that won't be saved.
- */
 function checkNewLimits(read, screen) {
   const min = screen.columns.find((c) => c.key === "min");
   if (!min) {
@@ -405,49 +237,103 @@ function checkNewLimits(read, screen) {
     });
 }
 
-/** Whether a row will save its value for a column: a new row, or a difference answered Change. */
-function usesValue(row, key) {
-  return (
-    row.status === "new" ||
-    (row.status === "changed" &&
-      row.differences.some((d) => d.column === key && d.answer === CHANGE))
-  );
+/**
+ * The first row of each name (capitals and spacing aside) leads, even if it can't be read; the
+ * rows after it with that name repeat it and follow it, never saved on their own.
+ */
+function settleLeads(read) {
+  const first = new Map();
+  read
+    .filter((r) => r.name)
+    .forEach((r) => {
+      const key = looseKey(r.name);
+      if (first.has(key)) {
+        r.repeatOf = first.get(key);
+      } else {
+        first.set(key, r);
+      }
+    });
+  return read.filter((r) => r.name && !r.repeatOf);
 }
 
-/** What a reference column's names are matched against: the season's, and for a rain plan the list's own. */
-function refRecords(column, setup, ownNames) {
-  if (column.ref === "activity") {
-    return [
-      ...(setup.activities || []),
-      ...ownNames.map((name) => ({ Name: name }))
-    ];
-  }
-  return (
-    (column.ref === "location" ? setup.locations : setup.locationTypes) || []
-  );
+/**
+ * Last, every repeat takes its lead's outcome: waiting with it, left out with it, or not saved
+ * ("Same as row 2"); and two rows standing for one item set up keep only the first.
+ */
+function finishRepeats(read) {
+  read
+    .filter((r) => r.repeatOf && !r.problems.length)
+    .forEach((r) => {
+      const lead = r.repeatOf;
+      if (lead.problems.length) {
+        r.problems.push(`Same as row ${lead.rowNumber}, which can't be read`);
+      } else if (lead.leftOut) {
+        r.leftOut = true;
+        r.sameAs = lead.sameAs || lead.name;
+      } else if (lead.open) {
+        r.open = true;
+      } else {
+        r.problems.push(`Same as row ${lead.rowNumber}`);
+      }
+    });
+  const taken = new Map();
+  read
+    .filter((r) => !r.repeatOf && usable(r) && !r.open && r.existing)
+    .forEach((r) => {
+      if (taken.has(r.existing.Id)) {
+        r.problems.push(`Same as row ${taken.get(r.existing.Id)}`);
+      } else {
+        taken.set(r.existing.Id, r.rowNumber);
+      }
+    });
 }
 
-/** The value a column has for a new item: the file's, or what a new item starts with. */
-export function newValueOf(column, row) {
-  if (column.key in row.values) {
-    return row.values[column.key];
+/**
+ * Rain plans: resolved after everything else about the rows is settled (so a plan never names
+ * a row that won't be saved), and again until nothing changes (a row waiting on a question
+ * makes the rows naming it wait too). A plan naming nothing is added as by hand; untick it
+ * (answer "skip") and the rows naming it are saved without it (Greg, 2026-10-17).
+ */
+function resolveRainPlans(read, leads, column, setup, answers) {
+  let pairs = [];
+  for (let pass = 0; pass <= leads.length; pass++) {
+    const before = leads.filter((r) => r.open || !usable(r)).length;
+    pairs = resolveColumn(
+      leads,
+      column,
+      setup.activities || [],
+      leads,
+      answers,
+      "activity"
+    );
+    if (leads.filter((r) => r.open || !usable(r)).length === before) {
+      break;
+    }
   }
-  if (column.newValue === undefined) {
-    return blankValue(column);
-  }
-  return typeof column.newValue === "function"
-    ? column.newValue(row.values)
-    : column.newValue;
-}
-
-function same(a, b) {
-  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const added = new Set();
+  leads.filter(usable).forEach((r) => {
+    const target = (r.targets || {})[column.key];
+    if (target && target.add) {
+      added.add(target.add);
+    }
+  });
+  const adds = unknownRainPlans(added, answers);
+  leads.filter(usable).forEach((r) => {
+    const target = (r.targets || {})[column.key];
+    if (target && target.add && adds.skipped.has(target.add)) {
+      // Saved without it: as if the file said nothing about its rain plan.
+      delete r.values[column.key];
+      r.droppedPlan = target.add;
+    }
+  });
+  return { pairs, adds: adds.adds };
 }
 
 /**
  * Reads one list for one screen. input: { screenKey, file, sheet (chosen, optional), setup,
- * terms, answers }. Returns the sheet used (or the sheets to choose from), the headings and
- * their columns, every row with what happens to it, the questions, and what will also be added.
+ * terms, answers }. Returns the sheet used, the headings and their columns, every row with what
+ * happens to it, the questions, and what will also be added. Rows are settled first (cells,
+ * repeats, names, questions), then the names they refer to (refs.js), rain plans last.
  */
 export function listProposal(input) {
   const t = input.terms;
@@ -466,79 +352,52 @@ export function listProposal(input) {
     return { ...base, empty: true };
   }
   const mapping = mapHeadings(rows[at], screen, answers);
-  const result = { ...base, mapping, rows: [], pairs: [], alsoAdd: {} };
+  const result = {
+    ...base,
+    mapping,
+    rows: [],
+    pairs: [],
+    cards: [],
+    alsoAdd: {}
+  };
   if (mapping.missing.length || mapping.doubled.length) {
     return { ...result, blocked: true };
   }
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
-  const records = screen.records(setup);
-  result.pairs.push(...matchNames(read, records, screen.kind, answers));
-  result.cards = whichOne(read, screen, setup, answers);
-  const targets = whoTargets(setup);
-  // The list's own names, first spelling of each (repeats follow the row they repeat).
-  const ownNames = read
-    .filter((r) => usable(r) && !r.repeatOf)
-    .map((r) => r.name);
-  // A rain plan naming a row of the list (capitals and spacing aside, as repeats are) takes
-  // that row's spelling: it is that row, not a similar name to ask about.
-  const ownKeys = new Map(ownNames.map((name) => [looseKey(name), name]));
-  // Every row's name, left out or unreadable too: a rain plan naming one is that row, never a
-  // similar name to ask about (it is added as by hand if the row isn't saved: ADR 0007 §5).
-  const rowNames = read.filter((r) => !r.repeatOf).map((r) => r.name);
-  read.forEach((r) => {
-    const plan = r.values.rainPlan;
-    if (plan && ownKeys.has(looseKey(plan))) {
-      r.values.rainPlan = ownKeys.get(looseKey(plan));
-    }
-  });
+  const leads = settleLeads(read);
+  result.pairs.push(
+    ...matchNames(leads, screen.records(setup), screen.kind, answers)
+  );
+  result.cards.push(...whichOne(leads, screen, setup, answers));
   used
-    .filter(({ column }) => column.ref)
+    .filter(
+      ({ column }) => column.ref === "location" || column.ref === "locationType"
+    )
     .forEach(({ column }) => {
-      const refs = matchRefs(
-        read,
-        column,
-        refRecords(column, setup, rowNames),
-        answers
+      result.pairs.push(
+        ...resolveColumn(
+          leads,
+          column,
+          (column.ref === "location" ? setup.locations : setup.locationTypes) ||
+            [],
+          null,
+          answers,
+          PAIR_KIND[column.ref]
+        )
       );
-      result.pairs.push(...refs.pairs);
-      read.forEach((r) => {
-        const name = r.values[column.key];
-        if (!name) {
-          return;
-        }
-        if (refs.leftOut.has(name)) {
-          r.leftOut = true;
-        } else if (refs.open.has(name)) {
-          r.open = true;
-        }
-        r.values[column.key] = refs.merged.get(name) || name;
-      });
-      // Two set up with the name a row gives: the file can't say which, so it isn't guessed.
-      const campRecords = refRecords(column, setup, []);
-      // A rain plan naming a row of the list means that row, whatever the camp has.
-      const ownRows = new Set(
-        column.ref === "activity"
-          ? read.filter(usable).map((r) => looseKey(r.name))
-          : []
-      );
-      read.filter(usable).forEach((r) => {
-        const name = r.values[column.key];
-        if (name && ownRows.has(looseKey(name))) {
-          return;
-        }
-        const count = campRecords.filter((rec) => rec.Name === name).length;
-        if (name && count > 1) {
-          r.problems.push(`${column.heading}: ${count} are called “${name}”`);
-        }
-      });
     });
-  const whoAdds = unknownWho(read.filter(usable), targets, setup, answers, t);
+  const targets = whoTargets(setup);
+  const whoAdds = unknownWho(leads.filter(usable), targets, setup, answers, t);
   result.cards.push(...whoAdds.cards);
-  result.whoAdds = whoAdds.adds;
-  read.forEach((r) => {
+  leads.forEach((r) => {
     const who = used.find(({ column }) => column.type === "list");
-    if (!who || !Array.isArray(r.values.who) || !r.values.who.length) {
+    if (
+      !who ||
+      !usable(r) ||
+      !Array.isArray(r.values.who) ||
+      !r.values.who.length
+    ) {
       return;
     }
     const keys = r.values.who.map(looseKey);
@@ -555,79 +414,84 @@ export function listProposal(input) {
       }
     }
   });
-  checkNewLimits(read, screen);
-  settleRepeats(read);
+  checkNewLimits(leads, screen);
   const rain = used.find(({ column }) => column.ref === "activity");
-  const rainAdds = rain
-    ? rainPlans(read, rain.column, setup, answers)
-    : { adds: [] };
-  markRepeats(read);
+  const rainPlans = rain
+    ? resolveRainPlans(read, leads, rain.column, setup, answers)
+    : { pairs: [], adds: [] };
+  result.pairs.push(...rainPlans.pairs);
+  finishRepeats(read);
   result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
   result.targets = targets;
-  // What the save request points at by name.
-  result.setupRefs = {
-    location: setup.locations || [],
-    locationType: setup.locationTypes || [],
-    activity: setup.activities || []
-  };
   result.setupActivities = setup.activities || [];
-  result.alsoAdd = alsoAdded(result.rows, used, setup);
-  const counted = (row, key) => usesValue(row, key);
-  // Rain plans to add, ticked (or unticked: skipped), for the rows that will be saved.
-  result.alsoAdd.activity = rainAdds.adds.filter((add) =>
-    result.rows.some(
-      (row) =>
-        (counted(row, "rainPlan") && row.values.rainPlan === add.name) ||
-        (row.droppedPlan === add.name &&
-          ["new", "changed", "unchanged"].includes(row.status))
-    )
-  );
-  result.alsoAdd.who = whoAdds.adds.filter((add) =>
-    result.rows.some(
-      (row) =>
-        counted(row, "who") &&
-        Array.isArray(row.values.who) &&
-        row.values.who.includes(add.key)
-    )
-  );
+  result.alsoAdd = alsoAdded(result.rows, used, rainPlans.adds, whoAdds.adds);
   return result;
 }
 
 /**
- * The locations and location types rows name that the season doesn't have: added with the list
- * (Greg, #4: shown ticked, and can't be unticked). Only for rows that are added, or changed in
- * that column.
+ * What saving would add because rows name it (Greg, #4): only what a row that will be saved
+ * uses (a new row, or a difference answered Change).
  */
-function alsoAdded(rows, used, setup) {
-  const result = {};
+function alsoAdded(rows, used, rainAdds, whoAdds) {
+  const alsoAdd = {};
+  const uses = (key) => rows.filter((row) => usesValue(row, key));
   used
-    .filter(({ column }) => column.ref && column.ref !== "activity")
+    .filter(
+      ({ column }) => column.ref === "location" || column.ref === "locationType"
+    )
     .forEach(({ column }) => {
-      const known = new Set(
-        (
-          (column.ref === "location" ? setup.locations : setup.locationTypes) ||
-          []
-        ).map((r) => r.Name)
-      );
-      const names = new Set();
-      rows.forEach((row) => {
-        const name = row.values[column.key];
-        const counts =
-          row.status === "new" ||
-          (row.status === "changed" &&
-            row.differences.some(
-              (d) => d.column === column.key && d.answer === CHANGE
-            ));
-        if (name && counts && !known.has(name)) {
-          names.add(name);
-        }
-      });
-      result[column.ref] = [...names].sort((x, y) => x.localeCompare(y));
+      alsoAdd[column.ref] = [
+        ...new Set(
+          uses(column.key)
+            .map((row) => (row.targets || {})[column.key])
+            .filter((target) => target && target.add)
+            .map((target) => target.add)
+        )
+      ].sort((x, y) => x.localeCompare(y));
     });
-  return result;
+  // Rain plans to add, ticked (or unticked: skipped), for the rows that will be saved.
+  alsoAdd.activity = rainAdds.filter((add) =>
+    rows.some(
+      (row) =>
+        (usesValue(row, "rainPlan") &&
+          ((row.targets || {}).rainPlan || {}).add === add.name) ||
+        (row.droppedPlan === add.name &&
+          ["new", "changed", "unchanged"].includes(row.status))
+    )
+  );
+  alsoAdd.who = whoAdds.filter((add) =>
+    uses("who").some(
+      (row) => Array.isArray(row.values.who) && row.values.who.includes(add.key)
+    )
+  );
+  return alsoAdd;
 }
 
-/** What happens to one row: unreadable, left out, waiting on a question, new, unchanged, or changed. */
+/** Whether a row will save its value for a column: a new row, or a difference answered Change. */
+function usesValue(row, key) {
+  return (
+    row.status === "new" ||
+    (row.status === "changed" &&
+      row.differences.some((d) => d.column === key && d.answer === CHANGE))
+  );
+}
+
+export function newValueOf(column, row) {
+  if (column.key in row.values) {
+    return row.values[column.key];
+  }
+  if (column.newValue === undefined) {
+    return blankValue(column);
+  }
+  return typeof column.newValue === "function"
+    ? column.newValue(row.values)
+    : column.newValue;
+}
+
+function same(a, b) {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
 function describeRow(r, used, screen, setup, answers) {
   const row = {
     rowNumber: r.rowNumber,
@@ -635,7 +499,8 @@ function describeRow(r, used, screen, setup, answers) {
     values: r.values,
     problems: r.problems,
     sameAs: r.sameAs || null,
-    droppedPlan: r.droppedPlan || null
+    droppedPlan: r.droppedPlan || null,
+    targets: r.targets || {}
   };
   if (r.problems.length) {
     return { ...row, status: "unreadable" };

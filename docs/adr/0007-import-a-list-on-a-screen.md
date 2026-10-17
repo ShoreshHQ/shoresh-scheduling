@@ -38,9 +38,12 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
 3. **Nothing defaults quietly.** A cell that can't be read (a Yes/No cell saying "maybe", "two"
    in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
    Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
-   inside a cell (Alt+Enter) separates names in a list, as a comma does. Two rows that would
-   save the same item: the later one is left out ("Same as row 4"), checked last, among rows
-   that will be saved, so the row it points to is one that is used.
+   inside a cell (Alt+Enter) separates names in a list, as a comma does. Rows are settled
+   before anything they name is resolved: the first row of each name (capitals and spacing
+   aside) leads, even one that can't be read, and the rows after it with that name follow it:
+   not saved ("Same as row 2", or "Same as row 2, which can't be read"), left out with it, or
+   waiting with it while it is asked about. Two rows answered to be one item set up keep the
+   first.
 4. **Only the columns the file has are compared** (Greg, #2). A row naming something set up
    shows every difference ("Times per week: at least: 3 → 2") with Keep or Change, and every
    one must be answered. **A blank cell clears the value** of an item set up (Greg, Q1): an
@@ -65,7 +68,13 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    it is shown ticked under "Also adding" and can be unticked, and then the rows naming it are
    saved without that rain plan and the summary says so. Every question can be answered
    "Leave it out for now", which leaves out the rows that need it. Only what will be saved
-   counts: a place named in a difference answered Keep is not added. The last guard before saving: every
+   counts: a place named in a difference answered Keep is not added. **Every name a row refers to
+   (a location, a location type, a rain plan) is resolved by one function** (`refs.js`), with
+   the same folding as rows: a name the list's own rows give follows that row as settled (to
+   the row it was answered to be the same as, to the item it matched, to the row itself, or,
+   when that row isn't saved, to an item added as by hand); otherwise the season's item; two of
+   one name are never guessed; only a name matching nothing is asked about as similar. The
+   result is the same in any row order (tested reversed and shuffled). The last guard before saving: every
    link in the save request names a record set up or one the same request adds; one that
    doesn't is shown under "Review here", never sent to fail.
 6. **Columns that are not a screen's fields** follow the screen: "Times a week: at most" and

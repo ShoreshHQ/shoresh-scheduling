@@ -230,7 +230,6 @@ export function waitingFor(proposal, t, answers) {
 export function listPlan(proposal, answers, seasonId, fileName) {
   const screen = proposal.screen;
   const records = [];
-  const refTarget = refTargets(proposal);
   const addKind = { location: "Location", locationType: "LocationType" };
   ["locationType", "location"].forEach((ref) => {
     ((proposal.alsoAdd || {})[ref] || []).forEach((name) => {
@@ -274,8 +273,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         recordFor(
           screen,
           { name: add.name, values },
-          screen.columns.map((c) => c.key),
-          refTarget
+          screen.columns.map((c) => c.key)
         )
       );
     });
@@ -285,8 +283,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         recordFor(
           screen,
           row,
-          screen.columns.map((c) => c.key),
-          refTarget
+          screen.columns.map((c) => c.key)
         )
       );
     } else if (row.status === "changed") {
@@ -294,7 +291,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         .filter((d) => d.answer === CHANGE)
         .map((d) => d.column);
       if (chosen.length) {
-        records.push(recordFor(screen, row, chosen, refTarget));
+        records.push(recordFor(screen, row, chosen));
       }
     }
   });
@@ -330,39 +327,24 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   };
 }
 
-/** Where a name points: an item set up (its Id), or one this list adds (its key). */
-function refTargets(proposal) {
-  const setup = proposal.setupRefs || {};
-  const own = new Map();
-  proposal.rows
-    .filter(
-      (r) =>
-        r.status === "new" || r.status === "changed" || r.status === "unchanged"
-    )
-    .forEach((r) => {
-      own.set(r.name, r.id || `${proposal.screen.kind}:${r.name}`);
-    });
-  return (ref, name) => {
-    if (!name) {
-      return null;
-    }
-    // A rain plan naming a row of the list is that row (its record, or the one it adds).
-    if (ref === "activity" && own.has(name)) {
-      return own.get(name);
-    }
-    const records = setup[ref] || [];
-    const found = records.find((r) => r.Name === name);
-    if (found) {
-      return found.Id;
-    }
-    if (ref === "activity") {
-      return `Activity:${name}`;
-    }
-    return `${{ location: "Location", locationType: "LocationType" }[ref]}:${name}`;
-  };
+const ADDED_KIND = {
+  location: "Location",
+  locationType: "LocationType",
+  activity: "Activity"
+};
+
+/** Where a resolved name points (refs.js): an item set up, a row saved, or one added with it. */
+function linkOf(column, target) {
+  if (!target) {
+    return null;
+  }
+  if (target.id) {
+    return target.id;
+  }
+  return target.key || `${ADDED_KIND[column.ref]}:${target.add}`;
 }
 
-function recordFor(screen, row, columnKeys, refTarget) {
+function recordFor(screen, row, columnKeys) {
   const record = row.id
     ? { kind: screen.kind, id: row.id, fields: {}, refs: {} }
     : {
@@ -377,7 +359,10 @@ function recordFor(screen, row, columnKeys, refTarget) {
       ? row.differences.find((d) => d.column === key).to
       : row.values[key];
     if (column.refField) {
-      record.refs[column.refField] = refTarget(column.ref, value);
+      // A cleared value has no target; a value kept has the target refs.js resolved.
+      record.refs[column.refField] = value
+        ? linkOf(column, (row.targets || {})[key])
+        : null;
     } else if (column.type === "list") {
       record.who = value || [];
     } else if (column.write) {

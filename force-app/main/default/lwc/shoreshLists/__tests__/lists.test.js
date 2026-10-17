@@ -226,7 +226,8 @@ describe("rows", () => {
       [3, "unreadable", ['Length: "two" is not a whole number']],
       [4, "unreadable", ["At most 2 is below at least 3"]],
       [5, "unreadable", ["No name"]],
-      [6, "new", []]
+      // Row 6 repeats row 2, which can't be read (review round 3: never saved as new).
+      [6, "unreadable", ["Same as row 2, which can't be read"]]
     ]);
   });
 
@@ -996,13 +997,16 @@ describe("PR 19 review", () => {
     expect(questionCards(p, terms, {})).toEqual([]);
   });
 
-  it("5c. a name repeated after a row that can't be read: the readable row is used", () => {
+  it("5c. a name repeated after a row that can't be read is not saved either", () => {
     const p = read("activities", [
       ["Activity", "Outdoors"],
       ["Golf", "maybe"],
       ["golf", "Yes"]
     ]);
-    expect(p.rows.map((r) => r.status)).toEqual(["unreadable", "new"]);
+    expect(p.rows.map((r) => [r.status, r.problems])).toEqual([
+      ["unreadable", ['Outdoors: "maybe" isn\'t Yes or No']],
+      ["unreadable", ["Same as row 2, which can't be read"]]
+    ]);
   });
 
   it("5c. a repeat of a row found unusable later says so, never 'row 2 is used'", () => {
@@ -1155,6 +1159,7 @@ describe("the last guard before saving", () => {
     // As if a rule above had missed one: a rain plan to an activity nobody adds.
     const swim = p.rows.find((r) => r.name === "Swim");
     swim.values.rainPlan = "Ghost";
+    swim.targets = { rainPlan: { key: "Activity:Ghost", name: "Ghost" } };
     expect(waitingFor(p, terms, {})).toEqual(["Review here: Swim"]);
   });
 });
