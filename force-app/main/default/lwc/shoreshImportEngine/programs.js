@@ -142,7 +142,14 @@ function matchBlock(block, program, context) {
     const byName =
       program &&
       program.blocks.find((b) => looseKey(b.name) === looseKey(block.name));
-    return byName ? { id: byName.id, name: byName.name } : { untimed: true };
+    return byName
+      ? {
+          id: byName.id,
+          name: byName.name,
+          start: byName.start,
+          end: byName.end
+        }
+      : { untimed: true };
   }
   const same =
     program &&
@@ -168,9 +175,12 @@ function matchBlock(block, program, context) {
   if (answer === LEAVE_OUT) {
     return { leftOut: true };
   }
+  const changed = answer === "change" && !noChange;
   return {
     id: current.id,
     name: current.name,
+    // Kept: the camp's times are the block's times from now on.
+    ...(changed ? {} : { start: current.start, end: current.end }),
     change:
       answer === "change" && !noChange
         ? { start: block.start, end: block.end }

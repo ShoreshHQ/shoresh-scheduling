@@ -2,6 +2,9 @@ import { LightningElement, api } from "lwc";
 import { loadScript } from "lightning/platformResourceLoader";
 import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import saveSetup from "@salesforce/apex/ImportController.saveSetup";
+import getAnswers from "@salesforce/apex/ImportController.getAnswers";
+import undoImport from "@salesforce/apex/ImportController.undoImport";
+import LightningConfirm from "lightning/confirm";
 import {
   LAYOUTS,
   LEAVE_OUT,
@@ -13,6 +16,8 @@ import {
   isReadable,
   planFor,
   questionCards,
+  undoMessage,
+  unplacedLines,
   workbookFile
 } from "c/shoreshImportEngine";
 import { errorMessage } from "c/shoreshErrors";
@@ -47,6 +52,9 @@ export default class ShoreshImport extends LightningElement {
   proposal;
   error;
   result;
+  undone;
+  undoing = false;
+  remembered = {};
   dragging = false;
   sheetJsLoaded = false;
 
@@ -89,7 +97,7 @@ export default class ShoreshImport extends LightningElement {
     this.stage = "reading";
     try {
       this.files = await Promise.all(chosen.map((f) => this.readOne(f)));
-      this.answers = {};
+      this.answers = await this.rememberedAnswers();
       this.layouts = {};
       this.recompute();
       this.stage = this.foundNothing ? "pick" : "preview";
@@ -100,6 +108,24 @@ export default class ShoreshImport extends LightningElement {
       this.stage = "pick";
       this.error = `That file could not be read. ${errorMessage(e)}`;
     }
+  }
+
+  /** The camp's answers from earlier imports (Greg: a similar file does not ask again). */
+  async rememberedAnswers() {
+    const campId = this.setup && this.setup.season && this.setup.season.Camp__c;
+    let saved = [];
+    try {
+      saved = campId ? await getAnswers({ campId }) : [];
+    } catch {
+      // Without remembered answers the import still works: everything is asked.
+      saved = [];
+    }
+    const answers = {};
+    (saved || []).forEach((row) => {
+      answers[row.key] = row.answer;
+    });
+    this.remembered = { ...answers };
+    return answers;
   }
 
   handleFileInput(event) {
@@ -157,6 +183,7 @@ export default class ShoreshImport extends LightningElement {
       answered: !!chosen,
       answerLabel: chosen ? chosen.label : "",
       className: `import-card import-card_${card.lane}${chosen ? " import-card_answered" : ""}`,
+      fromMemory: !!chosen && this.remembered[card.id] === card.answer,
       options: card.options.map((o) => ({
         ...o,
         key: `${card.id}::${o.value}`,
@@ -302,7 +329,8 @@ export default class ShoreshImport extends LightningElement {
     return this.proposal
       ? this.proposal.offeredPlaces.map((p) => ({
           ...p,
-          usedByText: `Named with ${p.usedBy.join(", ")}`
+          usedByText: `Named with ${p.usedBy.join(", ")}`,
+          fromMemory: p.ticked && this.remembered[p.id] === "add"
         }))
       : [];
   }
@@ -396,6 +424,7 @@ export default class ShoreshImport extends LightningElement {
 
   handleStartAgain() {
     this.stage = "pick";
+    this.undone = null;
     this.files = [];
     this.proposal = null;
     this.answers = {};
@@ -415,7 +444,10 @@ export default class ShoreshImport extends LightningElement {
     this.stage = "saving";
     this.error = null;
     try {
-      const plan = planFor(this.proposal, this.setup, this.setup.season.Id);
+      const plan = planFor(this.proposal, this.setup, this.setup.season.Id, {
+        answers: this.answers,
+        fileNames: this.files.map((f) => f.name)
+      });
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.stage = "done";
       this.dispatchEvent(new CustomEvent("imported"));
@@ -425,7 +457,67 @@ export default class ShoreshImport extends LightningElement {
     }
   }
 
+  get rememberedCount() {
+    return this.reviewCards
+      .concat(this.previewCards)
+      .filter((c) => c.fromMemory).length;
+  }
+  get rememberedText() {
+    const n = this.rememberedCount;
+    return n
+      ? `${n} ${n === 1 ? "answer" : "answers"} remembered from an earlier import. Change any of them below.`
+      : "";
+  }
+
   // ---------- after saving ----------
+
+  get versionLines() {
+    return (this.proposal ? this.proposal.versions : []).map((v) => ({
+      key: v.key,
+      text: `${v.name}, for ${v.weekName}${v.programName ? ` (${v.programName})` : ""}: open it on Schedules. It is not changed by later edits.`
+    }));
+  }
+  get hasVersions() {
+    return this.versionLines.length > 0;
+  }
+  get unplaced() {
+    return this.proposal ? unplacedLines(this.proposal, this.terms) : [];
+  }
+  get unplacedTitle() {
+    const n = this.unplaced.reduce((sum, line) => sum + line.count, 0);
+    return `${n} ${n === 1 ? "placement is" : "placements are"} not in last year's version`;
+  }
+  get hasUnplaced() {
+    return this.unplaced.length > 0;
+  }
+  get canUndo() {
+    return (
+      !!(this.result && this.result.importId) && !this.undone && !this.undoing
+    );
+  }
+
+  async handleUndo() {
+    const ok = await LightningConfirm.open({
+      label: `Undo the import of ${this.fileNames}?`,
+      message:
+        "What this import added is removed, and what it changed goes back to how it was. Anything you have edited since the import stays as it is.",
+      variant: "header",
+      theme: "warning"
+    });
+    if (!ok || this.undoing) {
+      return;
+    }
+    this.undoing = true;
+    try {
+      const result = await undoImport({ importId: this.result.importId });
+      this.undone = undoMessage(result);
+      this.dispatchEvent(new CustomEvent("imported"));
+    } catch (e) {
+      this.error = `That import could not be undone. ${errorMessage(e)}`;
+    } finally {
+      this.undoing = false;
+    }
+  }
 
   countLines(counts) {
     const t = this.terms;

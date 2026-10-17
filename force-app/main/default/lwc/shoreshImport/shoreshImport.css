@@ -133,6 +133,12 @@
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
 
+.import-place {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .import-tag_new {
   color: #2f6b58;
 }

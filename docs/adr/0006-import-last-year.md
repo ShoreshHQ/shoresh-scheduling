@@ -205,6 +205,63 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     clash check still runs); and schedules already built may show a moved group in an activity
     it is no longer eligible for, with nothing pointing it out.
 
+## Part 2: the imported version, Undo last import, remembered answers
+
+17. **Last year's week is saved as a version** (Greg, 2026-10-16), in the same all-or-none save:
+    one `Schedule__c` per program and week in the files (Status Version, Origin Imported,
+    VersionReason Imported), named **"Imported from <file>"** (or "<file> and N more"; at most
+    80 characters), with a `ScheduleDay__c` per day the program runs, in grid format v1 (ADR
+    0005). The screen builds each grid with the keys of the records it names; the server puts in
+    their Ids once everything else is saved (`ImportVersionWrites`), so a version always points
+    at the records this import created or matched. It is not changed by later edits (ADR 0005).
+    - **Which week**: a week the files name ("Week 2" in a title, sheet, or file name) goes to
+      the season's week of that name; one week in the files and one in the season match;
+      otherwise the review asks "Which week is last year's schedule?" (by name; "Leave it out"
+      keeps the setup without a version). A season with no weeks keeps no version, and "Good to
+      know" says to add weeks first.
+    - **Cells**: a fixed, recurring, or activity item set up (or matched) by the import, by its
+      record; an elective, special day, special event, or trip as written, with no record (shown
+      as "not set up yet" on the schedule page, ADR 0005); a two-block placement as `^` below it.
+    - **Placements that cannot be placed are listed, never dropped** (Greg): on Saturday or
+      Sunday, a group, time block, program, or name left out, a day the program does not run, a
+      week not chosen or missing, a day the season's week does not have, or two things in one
+      cell. The summary lists them by name, with how many, why, and up to three examples.
+18. **Undo last import** (Greg): on the import summary ("Undo this import") and on Roots ("Last
+    import: <files>, <when>" with **Undo last import**, as on the desktop), confirmed first
+    ("Undo the import of <files>?" / "What this import added is removed, and what it changed
+    goes back to how it was. Anything you have edited since the import stays as it is.").
+    - Each import is recorded in `Import__c` (detail of the season): its files, every record it
+      created with the values it wrote, and every record it changed with the values before and
+      after (`ImportWriter`, `ImportUndoLog`).
+    - Undo (`ImportUndo`) removes what the import created, children first, and puts back what it
+      changed, but **keeps anything edited since** (a field no longer holds what the import
+      wrote) **or still in use** (something not made by the import is inside it, or Salesforce
+      refuses the delete because something points at it), and names them: "Import undone.
+      Removed 31 things it added. Kept, because they were changed since: Swim. Kept, because
+      something else still uses them: Bunk 1, Juniors, Main." The version goes too, unless it was
+      renamed. Comparing values, not dates, keeps this exact (and testable).
+    - A record the import changed that was deleted since is named ("Not put back, because they
+      were deleted since: Period 2.").
+    - **Any other refusal stops the whole Undo** (PR 17 review): only "something still points at
+      it" counts as in use. A rule, trigger, or permission refusal rolls everything back and says
+      which record and why ("Nothing was undone. Swim: couldn't put back what it was before.
+      <reason>"), and the import stays undoable, so the director can fix it and try again.
+      Rolling back was chosen over a partial Undo because "nothing changed" is simpler to explain.
+    - Only a season's **last** import that stands can be undone, once (imports in the same second
+      go by their number); the clash check runs at the end, and a clash undoes the Undo.
+    - **Imports and Undos in one season take turns:** both lock the season row first
+      (`ImportUndo.lockSeason`, `FOR UPDATE`), and Undo re-reads the import and "last" under the
+      lock, so two Undos, or an Undo and an import saving, can't interleave.
+19. **Remembered answers** (Greg: exact answers per camp, pattern learning later):
+    `ImportAnswer__c` (detail of the camp) holds each question's key and answer. Keys and
+    answers are names and choices, never record Ids (the program question is answered by the
+    program's name), so they still work after a season is copied. The save remembers every answer
+    given and forgets any answered "Leave it out for now" (the next import asks again). The next
+    import fills in remembered answers; their cards (and ticked places) show "remembered" and can
+    be changed. One
+    answer per camp and question (`Key__c`, unique: the camp and a SHA-256 digest of the key; the
+    full key is in `QuestionKey__c`).
+
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 
 - **Layout can be changed per file** (the desktop only displayed it): kept.
@@ -214,6 +271,9 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
 
 ## Choices that are hard to undo after release
 
-- The static resource name `SheetJS` and the Apex class `ImportController` (`saveSetup`) are
-  part of the package's surface once released. No new objects or fields in part 1.
+- The static resource name `SheetJS` and the Apex class `ImportController` (`saveSetup`,
+  `getAnswers`, `undoImport`) are part of the package's surface once released.
+- Part 2 objects: `ImportAnswer__c` (detail of Camp: `QuestionKey__c` long text, `Answer__c`,
+  `Key__c` unique) and `Import__c` (detail of Season: `Files__c`, `Created__c`, `Changed__c`,
+  `UndoneAt__c`), both auto-numbered and not reportable.
 - `Group__c.Division__c` is reparentable (groups can move between divisions of a program).

@@ -16,6 +16,7 @@ import { mapGroups } from "./people";
 import { mapPrograms } from "./programs";
 import { LEAVE_OUT, readImport } from "./reading";
 import { WEEKDAYS } from "./text";
+import { versionsFor } from "./version";
 
 const MS_PER_MINUTE = 60000;
 
@@ -379,8 +380,11 @@ export function buildProposal(input) {
     answers,
     usable
   );
-  return {
+  const proposal = {
     reading,
+    usable,
+    camp: ctx.camp,
+    notedKinds: noted.kinds,
     timetables: programs.timetables,
     groups: people.groups,
     divisions: people.divisions,
@@ -396,6 +400,14 @@ export function buildProposal(input) {
     notes: ctx.notes,
     asks: [...programs.asks, ...people.asks, ...ctx.asks],
     decisions
+  };
+  const last = versionsFor(proposal, input);
+  return {
+    ...proposal,
+    versions: last.versions,
+    unmatched: last.unmatched,
+    noWeeks: last.noWeeks,
+    asks: [...proposal.asks, ...last.asks]
   };
 }
 

@@ -20,59 +20,66 @@ public with sharing class ScheduleDaySaves {
 
   /** Saves the days, all or none. Refuses a day saved by someone else since it was opened. */
   public static void write(Id scheduleId, List<DaySave> saves) {
-    Schedule__c schedule = [
-      SELECT
-        Id,
-        Week__r.Name,
-        Week__r.StartDate__c,
-        Week__r.EndDate__c,
-        Program__r.Season__r.Camp__c
-      FROM Schedule__c
-      WHERE Id = :scheduleId
-      WITH USER_MODE
-      FOR UPDATE
-    ];
-    // The schedule is locked until this save ends, so two saves of the same schedule (even of a
-    // day that has no records yet) run one after the other and the second sees the first.
+    writeAll(new Map<Id, List<DaySave>>{ scheduleId => saves });
+  }
+
+  /**
+   * Saves several schedules' days at once (an import's versions), all or none: one lock, one
+   * read of the days already saved, one write.
+   */
+  public static void writeAll(Map<Id, List<DaySave>> savesBySchedule) {
+    Map<Id, Schedule__c> schedules = new Map<Id, Schedule__c>(
+      [
+        SELECT
+          Id,
+          Week__r.Name,
+          Week__r.StartDate__c,
+          Week__r.EndDate__c,
+          Program__r.Season__r.Camp__c
+        FROM Schedule__c
+        WHERE Id IN :savesBySchedule.keySet()
+        WITH USER_MODE
+        FOR UPDATE
+      ]
+    );
+    // Each schedule is locked until this save ends, so two saves of the same schedule (even of
+    // a day that has no records yet) run one after the other and the second sees the first.
     Set<Date> days = new Set<Date>();
-    for (DaySave save : saves) {
-      checkDate(schedule, save.day);
-      if (!days.add(save.day)) {
-        throw new ShoreshException('A save named the same day twice.');
-      }
+    for (Id scheduleId : savesBySchedule.keySet()) {
+      days.addAll(
+        ScheduleDayReads.checkedDays(
+          schedules.get(scheduleId),
+          savesBySchedule.get(scheduleId)
+        )
+      );
     }
-    Batch batch = new Batch(scheduleId, existingParts(scheduleId, days));
-    for (DaySave save : saves) {
-      batch.add(save);
+    Map<Id, Map<Date, List<ScheduleDay__c>>> existing = ScheduleDayReads.existingParts(
+      savesBySchedule.keySet(),
+      days
+    );
+    List<ScheduleDay__c> toSave = new List<ScheduleDay__c>();
+    List<ScheduleDay__c> toDelete = new List<ScheduleDay__c>();
+    for (Id scheduleId : savesBySchedule.keySet()) {
+      Batch batch = new Batch(
+        scheduleId,
+        existing.containsKey(scheduleId)
+          ? existing.get(scheduleId)
+          : new Map<Date, List<ScheduleDay__c>>()
+      );
+      for (DaySave save : savesBySchedule.get(scheduleId)) {
+        batch.add(save);
+      }
+      toSave.addAll(batch.toSave);
+      toDelete.addAll(batch.toDelete);
     }
     Savepoint beforeSave = Database.setSavepoint();
     try {
-      Database.upsert(batch.toSave, true, AccessLevel.USER_MODE);
-      Database.delete(batch.toDelete, true, AccessLevel.USER_MODE);
+      Database.upsert(toSave, true, AccessLevel.USER_MODE);
+      Database.delete(toDelete, true, AccessLevel.USER_MODE);
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;
     }
-  }
-
-  private static Map<Date, List<ScheduleDay__c>> existingParts(
-    Id scheduleId,
-    Set<Date> days
-  ) {
-    Map<Date, List<ScheduleDay__c>> result = new Map<Date, List<ScheduleDay__c>>();
-    for (ScheduleDay__c part : [
-      SELECT Id, Date__c, Part__c, Revision__c
-      FROM ScheduleDay__c
-      WHERE Schedule__c = :scheduleId AND Date__c IN :days
-      WITH USER_MODE
-      ORDER BY Date__c, Part__c
-    ]) {
-      if (!result.containsKey(part.Date__c)) {
-        result.put(part.Date__c, new List<ScheduleDay__c>());
-      }
-      result.get(part.Date__c).add(part);
-    }
-    return result;
   }
 
   private static Integer nextRevision(
@@ -88,25 +95,6 @@ public with sharing class ScheduleDaySaves {
       );
     }
     return current == null ? 1 : current + 1;
-  }
-
-  private static void checkDate(Schedule__c schedule, Date day) {
-    if (
-      day == null ||
-      day < schedule.Week__r.StartDate__c ||
-      day > schedule.Week__r.EndDate__c
-    ) {
-      CampLabels labels = CampLabels.forCamp(
-        schedule.Program__r.Season__r.Camp__c
-      );
-      throw new ShoreshException(
-        'A day of this schedule is not in ' +
-          schedule.Week__r.Name +
-          ', the ' +
-          labels.singularInSentence('Week') +
-          ' it is for.'
-      );
-    }
   }
 
   /** The parts a save writes and the parts it no longer needs. */

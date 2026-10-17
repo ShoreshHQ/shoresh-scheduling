@@ -415,7 +415,25 @@ function ampmCard(ask) {
   };
 }
 
+function weekCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "standard",
+    title: ask.label
+      ? `Which ${t.sIn("Week")} is ${ask.label} of the files?`
+      : `Which ${t.sIn("Week")} is last year's schedule?`,
+    subject: `Last year's schedule${ask.label ? ` (${ask.label})` : ""} as a version`,
+    subtitle: `It is saved as a version for that ${t.sIn("Week")}, to look at on Schedules.`,
+    options: [
+      ...ask.options.map((name) => ({ value: name, label: name })),
+      leaveOut("Last year's schedule is not saved as a version this time.")
+    ]
+  };
+}
+
 const CARDS = {
+  week: weekCard,
   kind: kindCard,
   program: programCard,
   move: moveCard,
