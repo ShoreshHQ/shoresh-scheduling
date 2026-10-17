@@ -47,19 +47,21 @@ import "can't be read").
    spellings, is refused plainly. The editable table refuses an object it doesn't know with an
    error card rather than editing or saving half-right.
 
-## The guards (all in CI's "LWC Jest and Code Analyzer" job)
+## The guards
 
-- **`scripts/namespace-safety.js`** (`npm run check:namespace`): fails on any field or object
+- **`scripts/namespace-safety.js`** (`npm run check:namespace`, CI's "LWC Jest and Code Analyzer"
+  job): fails on any field or object
   name written as text in LWC JavaScript, LWC templates, or Apex string literals, plus Apex
   `getName()`. It catches every suffix the namespace goes in front of (`__c`, `__r`, `__mdt`,
   `__e`, `__Share`, `__History`, `__x`, `__b`). Tests and the two schema homes aren't scanned.
   It allows none.
-- **The namespaced Jest run** (`npm run test:unit:namespaced`): every component's tests run with
+- **The namespaced Jest run** (`npm run test:unit:namespaced`, the same CI job): every component's tests run with
   every schema import named `shoresh__…`. Tests hand records in through `nsRecord()` and check
   what a component sends through `bareRecord()` (`jest/namespace.js`), which fails on a bare or
   undefined name. New components are covered automatically; an exclusion needs a reason in
   `jest.namespaced.config.js`.
-- **Apex tests with the prefix simulated:** `ShoreshSchema.simulatedPrefix = 'shoresh__'` makes
+- **Apex tests with the prefix simulated** (CI's "Scratch org deploy and Apex tests" job, on pull
+  requests): `ShoreshSchema.simulatedPrefix = 'shoresh__'` makes
   Shoresh read names as the namespaced package will. Import and Undo are tested with plans and
   logs spelled with the prefix.
 - **Mutation checks when converting code (review practice):** swap each converted name back to

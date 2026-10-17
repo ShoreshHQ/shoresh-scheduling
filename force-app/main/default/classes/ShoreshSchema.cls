@@ -8,8 +8,8 @@
  * - Keep names that are stored (an import's log) as localName(): the same before and after.
  * - Build dynamic SOQL with queryName() and childRelationship(), never with written names.
  *
- * scripts/namespace-safety.js counts names written as text elsewhere; CI fails if any file
- * gains one.
+ * Names written as text anywhere else fail CI (scripts/namespace-safety.js allows none; see
+ * docs/adr/0009-namespace-safe-names.md).
  */
 public with sharing class ShoreshSchema {
   /** Tests set this to 'shoresh__' to see names the way the namespaced package will. */

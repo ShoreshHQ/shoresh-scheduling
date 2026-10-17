@@ -135,7 +135,9 @@ describe("namespace-safety check", () => {
       [`${src}/classes/ThingTest.cls`]:
         "@IsTest\nprivate class ThingTest { String s = 'Week__c'; }"
     });
-    expect(Object.keys(scan(root)).sort()).toEqual([
+    const found = Object.keys(scan(root)).sort();
+    fs.rmSync(root, { recursive: true, force: true });
+    expect(found).toEqual([
       `${src}/classes/Thing.cls`,
       `${src}/lwc/thing/thing.html`,
       `${src}/lwc/thing/thing.js`
