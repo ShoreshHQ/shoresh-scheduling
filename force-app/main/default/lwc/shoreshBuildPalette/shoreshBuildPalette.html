@@ -30,10 +30,14 @@
             data-id={chip.id}
             onclick={handlePick}
             ondragstart={handleDragStart}
+            onfocus={handleChipFocus}
+            onblur={handleChipBlur}
           >
             <span class="chip-name">{chip.name}</span>
             <span class="chip-count">
-              <template lwc:if={chip.over}><span class="dot"></span></template>
+              <template lwc:if={chip.over}
+                ><c-shoresh-dot label={overLabel} open={chip.focused}></c-shoresh-dot
+              ></template>
               {chip.label}
             </span>
           </button>
@@ -54,10 +58,14 @@
             data-id={chip.id}
             onclick={handlePick}
             ondragstart={handleDragStart}
+            onfocus={handleChipFocus}
+            onblur={handleChipBlur}
           >
             <span class="chip-name">{chip.name}</span>
             <span class="chip-count">
-              <template lwc:if={chip.over}><span class="dot"></span></template>
+              <template lwc:if={chip.over}
+                ><c-shoresh-dot label={overLabel} open={chip.focused}></c-shoresh-dot
+              ></template>
               {chip.label}
             </span>
           </button>

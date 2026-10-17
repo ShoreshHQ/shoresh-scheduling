@@ -1,0 +1,45 @@
+@import "c/shoreshTokens";
+
+.wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* A touch target bigger than the 6px dot itself. */
+  padding: 4px;
+  margin: -4px;
+  cursor: help;
+}
+
+.wrap:focus-visible {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: 0;
+  border-radius: 50%;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-caution);
+  flex: none;
+}
+
+/* The words: a small quiet box above the dot. Never bronze text (too light to read). */
+.tip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9100;
+  padding: 4px 8px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--slds-g-font-family, inherit);
+  color: var(--slds-g-color-neutral-base-10, #181818);
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+}

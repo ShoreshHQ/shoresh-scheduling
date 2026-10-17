@@ -94,9 +94,11 @@
 
     <template lwc:if={notPlaced}>
       <div class="not-placed" role="status" data-id="not-placed">
-        <span class="not-placed-head"
-          ><span class="dot"></span>Not placed: the cell was taken</span
-        >
+        <c-shoresh-dot
+          label="Not placed: the cell was taken"
+          focusable
+          data-id="not-placed-dot"
+        ></c-shoresh-dot>
         <ul>
           <template for:each={notPlaced} for:item="line">
             <li key={line}>{line}</li>
@@ -327,7 +329,10 @@
             >
               <span>{option.label}</span>
               <template lwc:if={option.tag}>
-                <span class="tag"><span class="dot"></span>{option.tag}</span>
+                <c-shoresh-dot
+                  label={option.tag}
+                  open={option.highlighted}
+                ></c-shoresh-dot>
               </template>
             </li>
           </template>

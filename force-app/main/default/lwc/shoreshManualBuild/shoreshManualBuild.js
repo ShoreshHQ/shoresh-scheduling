@@ -675,6 +675,7 @@ export default class ShoreshManualBuild extends LightningElement {
       ...option,
       id: `slot-option-${i}`,
       selected: String(i === highlight),
+      highlighted: i === highlight,
       className: i === highlight ? "option option_on" : "option"
     }));
   }

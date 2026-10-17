@@ -62,13 +62,6 @@
   font-family: var(--slds-g-font-family-monospace, monospace);
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--shoresh-caution);
-  flex: none;
-}
 
 .zone-line {
   margin: 4px 0;

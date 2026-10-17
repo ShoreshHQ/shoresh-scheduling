@@ -20,10 +20,25 @@ export default class ShoreshBuildPalette extends LightningElement {
     return `Filter ${String(this.heading || "").toLowerCase()}`;
   }
 
+  // The chip with keyboard focus: its dot shows its words.
+  focusedId;
+
+  get overLabel() {
+    return "Over its weekly limit";
+  }
+
+  handleChipFocus(event) {
+    this.focusedId = event.currentTarget.dataset.id;
+  }
+  handleChipBlur() {
+    this.focusedId = null;
+  }
+
   chip(c) {
     const picked = c.id === this.pickedId;
     return {
       ...c,
+      focused: c.id === this.focusedId,
       pressed: String(picked),
       className: picked ? "chip chip_picked" : "chip"
     };

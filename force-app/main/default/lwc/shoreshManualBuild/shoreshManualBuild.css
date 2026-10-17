@@ -283,22 +283,7 @@
   background: var(--slds-g-color-brand-base-95, #eef4ff);
 }
 
-.tag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--shoresh-text-secondary);
-}
 
-/* The bronze "needs a look" dot (design guide: one colour, one meaning). */
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--shoresh-caution);
-  flex: none;
-}
 
 .conflict-where {
   font-weight: 600;
@@ -329,12 +314,6 @@
   font-size: 13px;
 }
 
-.not-placed-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
 
 /* The activity list on the left of the grid, as on the desktop. */
 .build-layout {
