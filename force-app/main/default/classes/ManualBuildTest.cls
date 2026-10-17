@@ -8,6 +8,8 @@
  */
 @IsTest
 private class ManualBuildTest {
+  private static final Date MONDAY = Date.newInstance(2026, 6, 29);
+
   private static Map<String, Id> camp() {
     Map<String, Id> ids = SetTimeTestData.camp();
     FixedActivity__c flagpole = SetTimeTestData.fixed(
@@ -43,10 +45,7 @@ private class ManualBuildTest {
   }
 
   /** What a group's slots hold on a day, as identities ('' Open, 'A:<Id>', '^A:<Id>'). */
-  private static List<String> slots(
-    ScheduleViews.DayView day,
-    Integer g
-  ) {
+  private static List<String> slots(ScheduleViews.DayView day, Integer g) {
     List<String> result = new List<String>();
     String carrying = '';
     for (String token : day.rows[g].split(',', -1)) {
@@ -64,32 +63,35 @@ private class ManualBuildTest {
     return result;
   }
 
-  private static SlotSaves.SlotEdit edit(
-    Date day,
-    Id groupId,
-    Id firstBlockId,
-    List<String> before,
-    List<String> after
-  ) {
-    SlotSaves.SlotRun run = new SlotSaves.SlotRun();
+  /** Where a run starts: a day, a group, and its first time block. */
+  private static SlotEdits.Run at(Date day, Id groupId, Id firstBlockId) {
+    SlotEdits.Run run = new SlotEdits.Run();
     run.day = day;
     run.groupId = groupId;
     run.firstBlockId = firstBlockId;
+    return run;
+  }
+
+  private static SlotEdits.Edit edit(
+    SlotEdits.Run run,
+    List<String> before,
+    List<String> after
+  ) {
     run.before = before;
     run.after = after;
-    SlotSaves.SlotEdit edit = new SlotSaves.SlotEdit();
-    edit.runs = new List<SlotSaves.SlotRun>{ run };
+    SlotEdits.Edit edit = new SlotEdits.Edit();
+    edit.runs = new List<SlotEdits.Run>{ run };
     return edit;
   }
 
-  private static SlotSaves.Result save(Id scheduleId, SlotSaves.SlotEdit edit) {
+  private static SlotEdits.Result save(Id scheduleId, SlotEdits.Edit edit) {
     return ManualBuildController.saveSlots(
       scheduleId,
-      new List<SlotSaves.SlotEdit>{ edit }
+      new List<SlotEdits.Edit>{ edit }
     );
   }
 
-  private static String refusal(Id scheduleId, SlotSaves.SlotEdit edit) {
+  private static String refusal(Id scheduleId, SlotEdits.Edit edit) {
     try {
       save(scheduleId, edit);
     } catch (AuraHandledException e) {
@@ -111,10 +113,7 @@ private class ManualBuildTest {
 
       // Main runs Monday to Thursday.
       Assert.areEqual(4, view.schedule.days.size());
-      Assert.areEqual(
-        Date.newInstance(2026, 6, 29),
-        view.schedule.days[0].dateValue
-      );
+      Assert.areEqual(MONDAY, view.schedule.days[0].dateValue);
       Assert.areEqual('Draft', view.schedule.status);
       ScheduleViews.DayView mon = monday(view.schedule);
       Assert.areEqual(3, mon.groups.size());
@@ -124,14 +123,8 @@ private class ManualBuildTest {
       String flagpole = 'F:' + ids.get('Flagpole');
       String rest = 'R:' + ids.get('Rest');
       // Flagpole for everyone in Period 1; Rest for the Seniors at Monday's lunch.
-      Assert.areEqual(
-        new List<String>{ flagpole, '', '' },
-        slots(mon, 0)
-      );
-      Assert.areEqual(
-        new List<String>{ flagpole, '', rest },
-        slots(mon, 2)
-      );
+      Assert.areEqual(new List<String>{ flagpole, '', '' }, slots(mon, 0));
+      Assert.areEqual(new List<String>{ flagpole, '', rest }, slots(mon, 2));
       // Rest is on Mondays only.
       Assert.areEqual(
         new List<String>{ flagpole, '', '' },
@@ -213,10 +206,7 @@ private class ManualBuildTest {
       Assert.isTrue(byName.get('Soccer').notFor.isEmpty());
       Assert.areEqual(1, view.away.size());
       Assert.areEqual(ids.get('Group C'), view.away[0].groupId);
-      Assert.areEqual(
-        new List<Id>{ ids.get('Lunch') },
-        view.away[0].blockIds
-      );
+      Assert.areEqual(new List<Id>{ ids.get('Lunch') }, view.away[0].blockIds);
     }
   }
 
@@ -229,22 +219,18 @@ private class ManualBuildTest {
       Id draftId = view.schedule.schedule.id;
       Date mon = monday(view.schedule).dateValue;
       // Both opened the week before either saved: each names the slot as it was then.
-      SlotSaves.Result first = save(
+      SlotEdits.Result first = save(
         draftId,
         edit(
-          mon,
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Swim') }
         )
       );
-      SlotSaves.Result second = save(
+      SlotEdits.Result second = save(
         draftId,
         edit(
-          mon,
-          ids.get('Group B'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
@@ -268,20 +254,16 @@ private class ManualBuildTest {
       save(
         draftId,
         edit(
-          mon,
-          ids.get('Group B'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
       );
       // Someone who saw the slot Open now puts Gym games there.
-      SlotSaves.Result late = save(
+      SlotEdits.Result late = save(
         draftId,
         edit(
-          mon,
-          ids.get('Group B'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Gym games') }
         )
@@ -290,12 +272,10 @@ private class ManualBuildTest {
       // Theirs is kept, and sent back for "keep theirs or use yours".
       Assert.areEqual(a(ids, 'Soccer'), slots(monday(late.schedule), 1)[1]);
       // "Use yours": the same edit, naming what is there now.
-      SlotSaves.Result mine = save(
+      SlotEdits.Result mine = save(
         draftId,
         edit(
-          mon,
-          ids.get('Group B'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ a(ids, 'Soccer') },
           new List<String>{ a(ids, 'Gym games') }
         )
@@ -318,22 +298,28 @@ private class ManualBuildTest {
       // I place Soccer; someone else then changes it to Gym games.
       save(
         draftId,
-        edit(mon, groupB, period2, new List<String>{ '' }, new List<String>{ a(ids, 'Soccer') })
+        edit(
+          at(mon, groupB, period2),
+          new List<String>{ '' },
+          new List<String>{ a(ids, 'Soccer') }
+        )
       );
       save(
         draftId,
         edit(
-          mon,
-          groupB,
-          period2,
+          at(mon, groupB, period2),
           new List<String>{ a(ids, 'Soccer') },
           new List<String>{ a(ids, 'Gym games') }
         )
       );
       // My undo puts back Open where I left Soccer: their Gym games is not overwritten.
-      SlotSaves.Result undo = save(
+      SlotEdits.Result undo = save(
         draftId,
-        edit(mon, groupB, period2, new List<String>{ a(ids, 'Soccer') }, new List<String>{ '' })
+        edit(
+          at(mon, groupB, period2),
+          new List<String>{ a(ids, 'Soccer') },
+          new List<String>{ '' }
+        )
       );
       Assert.areEqual(new List<Integer>{ 0 }, undo.conflicts);
       Assert.areEqual(a(ids, 'Gym games'), slots(monday(undo.schedule), 1)[1]);
@@ -349,12 +335,10 @@ private class ManualBuildTest {
       Id draftId = view.schedule.schedule.id;
       Date mon = monday(view.schedule).dateValue;
       String soccer = a(ids, 'Soccer');
-      SlotSaves.Result placed = save(
+      SlotEdits.Result placed = save(
         draftId,
         edit(
-          mon,
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '', '' },
           new List<String>{ soccer, '^' + soccer }
         )
@@ -366,20 +350,16 @@ private class ManualBuildTest {
       String cut = refusal(
         draftId,
         edit(
-          mon,
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ soccer },
           new List<String>{ a(ids, 'Swim') }
         )
       );
       Assert.isTrue(cut.contains('cut into'), cut);
-      SlotSaves.Result removed = save(
+      SlotEdits.Result removed = save(
         draftId,
         edit(
-          mon,
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ soccer, '^' + soccer },
           new List<String>{ '', '' }
         )
@@ -408,31 +388,31 @@ private class ManualBuildTest {
       String overFlagpole = refusal(
         draftId,
         edit(
-          mon,
-          ids.get('Group A'),
-          ids.get('Period 1'),
+          at(mon, ids.get('Group A'), ids.get('Period 1')),
           new List<String>{ 'F:' + ids.get('Flagpole') },
           new List<String>{ a(ids, 'Swim') }
         )
       );
-      Assert.isTrue(overFlagpole.contains('stay where they are set up'), overFlagpole);
+      Assert.isTrue(
+        overFlagpole.contains('stay where they are set up'),
+        overFlagpole
+      );
       String placingFixed = refusal(
         draftId,
         edit(
-          mon,
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ 'F:' + ids.get('Flagpole') }
         )
       );
-      Assert.isTrue(placingFixed.contains('stay where they are set up'), placingFixed);
+      Assert.isTrue(
+        placingFixed.contains('stay where they are set up'),
+        placingFixed
+      );
       String away = refusal(
         draftId,
         edit(
-          mon,
-          ids.get('Group B'),
-          ids.get('Lunch'),
+          at(mon, ids.get('Group B'), ids.get('Lunch')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
@@ -454,9 +434,7 @@ private class ManualBuildTest {
       String refused = refusal(
         version.Id,
         edit(
-          Date.newInstance(2026, 6, 29),
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Swim') }
         )
@@ -472,14 +450,20 @@ private class ManualBuildTest {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
-      Activity__c stranger = ShoreshTestData.activity(other.Id, 'Archery', null);
+      Activity__c stranger = ShoreshTestData.activity(
+        other.Id,
+        'Archery',
+        null
+      );
       Database.insert(stranger, AccessLevel.SYSTEM_MODE);
       String refused = refusal(
         view.schedule.schedule.id,
         edit(
-          monday(view.schedule).dateValue,
-          ids.get('Group A'),
-          ids.get('Period 2'),
+          at(
+            monday(view.schedule).dateValue,
+            ids.get('Group A'),
+            ids.get('Period 2')
+          ),
           new List<String>{ '' },
           new List<String>{ 'A:' + stranger.Id }
         )
@@ -500,7 +484,12 @@ private class ManualBuildTest {
         '  Arts   and crafts '
       );
       Activity__c saved = [
-        SELECT Name, Length__c, TimesPerWeekMin__c, TimesPerWeekMax__c, Season__c
+        SELECT
+          Name,
+          Length__c,
+          TimesPerWeekMin__c,
+          TimesPerWeekMax__c,
+          Season__c
         FROM Activity__c
         WHERE Id = :added.id
         WITH SYSTEM_MODE
@@ -519,6 +508,36 @@ private class ManualBuildTest {
         ids.get('Swim'),
         ManualBuildController.addActivity(draftId, 'SWIM').id
       );
+    }
+  }
+
+  private static String startRefusal(Id programId, Id weekId) {
+    try {
+      ManualBuildController.startBlankWeek(programId, weekId);
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    return null;
+  }
+
+  @IsTest
+  static void aWeekFromAnotherSeasonOrAProgramWithoutTimeBlocksIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
+      Week__c otherWeek = ShoreshTestData.weeks(other.Id, 1)[0];
+      Program__c empty = ShoreshTestData.program(ids.get('Season'), 'Evenings');
+      Test.startTest();
+      Assert.areEqual(
+        'That week is not in Main\'s season.',
+        startRefusal(ids.get('Main'), otherWeek.Id)
+      );
+      Assert.areEqual(
+        'Add time blocks to Evenings first.',
+        startRefusal(empty.Id, ids.get('Week 1'))
+      );
+      Test.stopTest();
+      Assert.isNull(ManualDrafts.find(empty.Id, ids.get('Week 1')));
     }
   }
 

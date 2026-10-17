@@ -2,10 +2,16 @@
   <div class="roots" data-id="roots">
     <h2 class="roots-title">Roots</h2>
 
-    <div class="roots-door" data-id="schedule-door">
+    <button
+      type="button"
+      class="roots-door roots-door_live"
+      data-id="schedule-door"
+      data-screen="manualBuild"
+      onclick={handleOpen}
+    >
       <span>Build or generate the schedule</span>
-      <span class="slds-badge">Coming</span>
-    </div>
+      <span aria-hidden="true">→</span>
+    </button>
 
     <div class="roots-layout">
       <div class="roots-main">

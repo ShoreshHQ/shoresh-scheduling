@@ -25,6 +25,17 @@
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
 
+.roots-door_live {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: var(--slds-g-color-brand-base-30, #014486);
+}
+
+.roots-door_live:hover {
+  border-color: var(--slds-g-color-brand-base-50, #0176d3);
+}
+
 /* Cards beside the attention list; stacked (attention first) on a narrow screen. */
 .roots-layout {
   display: flex;

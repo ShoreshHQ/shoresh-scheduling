@@ -44,9 +44,9 @@ public with sharing class ManualBuildViews {
     ];
     DraftView view = new DraftView();
     view.schedule = ScheduleViews.open(scheduleId);
-    List<Group__c> groups = BlankWeek.groupsOf(schedule.Program__c);
+    List<Group__c> groups = ProgramReads.groupsOf(schedule.Program__c);
     view.activities = options(schedule.Program__r.Season__c, groups);
-    view.away = away(groups, BlankWeek.blocksOf(schedule.Program__c));
+    view.away = away(groups, ProgramReads.blocksOf(schedule.Program__c));
     return view;
   }
 

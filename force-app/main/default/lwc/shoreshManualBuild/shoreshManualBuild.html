@@ -1,0 +1,308 @@
+<template>
+  <div class="schedules" data-id="manual-build">
+    <!-- Toolbar, as on the desktop: the week, then how to look at it. -->
+    <div class="toolbar">
+      <template lwc:if={hasSeveralPrograms}>
+        <lightning-combobox
+          class="picker"
+          label={programLabel}
+          value={programId}
+          options={programOptions}
+          onchange={handleProgram}
+          data-id="program"
+        ></lightning-combobox>
+      </template>
+      <template lwc:if={canChoose}>
+        <lightning-combobox
+          class="picker"
+          label={weekLabel}
+          value={weekId}
+          options={weekOptions}
+          onchange={handleWeek}
+          data-id="week"
+        ></lightning-combobox>
+      </template>
+      <template lwc:if={draft}>
+        <div class="view-toggle" role="group" aria-label="View">
+          <template for:each={viewButtons} for:item="button">
+            <button
+              key={button.key}
+              type="button"
+              class={button.className}
+              aria-pressed={button.pressed}
+              data-view={button.key}
+              onclick={handleView}
+            >
+              {button.label}
+            </button>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <template lwc:if={loading}>
+      <lightning-spinner
+        alternative-text="Loading"
+        size="small"
+      ></lightning-spinner>
+    </template>
+    <template lwc:if={error}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+        role="alert"
+        data-id="build-error"
+      >
+        {error}
+      </div>
+    </template>
+
+    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+      {announcement}
+    </div>
+
+    <template lwc:if={draft}>
+      <template lwc:if={hasNoDays}>
+        <p class="empty">{noDaysMessage}</p>
+      </template>
+      <template lwc:else>
+        <template lwc:if={isDaily}>
+          <div class="pills" data-id="day-pills">
+            <template for:each={dayPills} for:item="day">
+              <button
+                key={day.key}
+                type="button"
+                class={day.className}
+                data-index={day.index}
+                onclick={handleDay}
+              >
+                {day.label} <span class="pill-sub">{day.sub}</span>
+              </button>
+            </template>
+          </div>
+          <template lwc:if={dayProblem}>
+            <div
+              class="slds-notify slds-notify_alert slds-alert_warning"
+              role="alert"
+            >
+              {dayProblem}
+            </div>
+          </template>
+          <template lwc:else>
+            <c-shoresh-schedule-grid
+              data-id="edit-grid"
+              grid={editGrid}
+              corner={corner}
+              label={dailyGridLabel}
+              editable
+              oneditcell={handleEditCell}
+              onclearcell={handleClearCell}
+            ></c-shoresh-schedule-grid>
+          </template>
+        </template>
+
+        <template lwc:if={isGroup}>
+          <div class="pills" data-id="group-pills">
+            <template for:each={groupPills} for:item="grp">
+              <button
+                key={grp.key}
+                type="button"
+                class={grp.className}
+                data-key={grp.key}
+                onclick={handleGroup}
+              >
+                {grp.name}
+              </button>
+            </template>
+          </div>
+          <template lwc:if={editGrid}>
+            <c-shoresh-schedule-grid
+              data-id="edit-grid"
+              grid={editGrid}
+              corner={corner}
+              label={groupGridLabel}
+              editable
+              oneditcell={handleEditCell}
+              onclearcell={handleClearCell}
+            ></c-shoresh-schedule-grid>
+          </template>
+        </template>
+
+        <template lwc:if={isActivity}>
+          <template lwc:if={selectedActivity}>
+            <div class="drill-head">
+              <button
+                type="button"
+                class="back"
+                onclick={handleAllActivities}
+                data-id="all-activities"
+              >
+                {allActivitiesLabel}
+              </button>
+              <span class="drill-name">{selectedActivity.name}</span>
+              <template lwc:if={selectedActivity.location}>
+                <span class="drill-place">{selectedActivity.location}</span>
+              </template>
+            </div>
+            <c-shoresh-schedule-grid
+              data-id="activity-grid"
+              grid={activityGrid}
+              corner={corner}
+              label={selectedActivity.name}
+            ></c-shoresh-schedule-grid>
+          </template>
+          <template lwc:else>
+            <div class="cards" data-id="activity-cards">
+              <template for:each={activityCards} for:item="card">
+                <button
+                  key={card.key}
+                  type="button"
+                  class="card"
+                  data-key={card.key}
+                  onclick={handleActivity}
+                >
+                  <span class="card-name">{card.name}</span>
+                  <template lwc:if={card.location}>
+                    <span class="card-place">{card.location}</span>
+                  </template>
+                  <template lwc:if={card.gone}>
+                    <span class="note">deleted since</span>
+                  </template>
+                  <span class="card-summary">{card.summary}</span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </template>
+
+        <template lwc:if={showLegend}>
+          <div class="legend">
+            <template for:each={legend} for:item="entry">
+              <span key={entry.key} class="legend-entry">
+                <span class={entry.className}></span>
+                {entry.label}
+              </span>
+            </template>
+          </div>
+        </template>
+      </template>
+    </template>
+
+    <template lwc:elseif={showStart}>
+      <div class="start" data-id="start">
+        <lightning-button
+          variant="brand"
+          label={startLabel}
+          disabled={starting}
+          onclick={handleStart}
+          data-id="start-week"
+        ></lightning-button>
+      </div>
+    </template>
+    <template lwc:elseif={cannotChoose}>
+      <div class="empty-state" data-id="nothing-to-build">
+        <p>{chooseMessage}</p>
+      </div>
+    </template>
+
+    <!-- Typing a name into a slot -->
+    <template lwc:if={editor}>
+      <div
+        class="editor"
+        style={editorStyle}
+        role="dialog"
+        aria-label={editorLabel}
+        data-id="slot-editor"
+        onfocusout={handleEditorFocusOut}
+      >
+        <div class="editor-where">{editorLabel}</div>
+        <input
+          class="slds-input"
+          type="text"
+          role="combobox"
+          aria-label={editorLabel}
+          aria-autocomplete="list"
+          aria-expanded={hasEditorOptions}
+          aria-controls="slot-options"
+          aria-activedescendant={activeOptionId}
+          autocomplete="off"
+          value={editor.text}
+          oninput={handleEditorInput}
+          onkeydown={handleEditorKeyDown}
+          data-id="slot-input"
+        />
+        <ul
+          class="options"
+          role="listbox"
+          id="slot-options"
+          aria-label={editorLabel}
+        >
+          <template for:each={editorOptions} for:item="option">
+            <li
+              key={option.key}
+              id={option.id}
+              role="option"
+              aria-selected={option.selected}
+              class={option.className}
+              data-option={option.id}
+              onmousedown={handleOptionMouseDown}
+              onclick={handleOptionClick}
+            >
+              <span>{option.label}</span>
+              <template lwc:if={option.tag}>
+                <span class="tag"><span class="dot"></span>{option.tag}</span>
+              </template>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
+
+    <!-- Someone else changed the slot since it was opened -->
+    <template lwc:if={conflict}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="conflict-title"
+        class="slds-modal slds-fade-in-open"
+        data-id="conflict"
+        onkeydown={handleConflictKeyDown}
+      >
+        <div class="slds-modal__container">
+          <div class="slds-modal__header">
+            <h2 id="conflict-title" class="slds-modal__title">
+              Changed by someone else
+            </h2>
+          </div>
+          <div class="slds-modal__content slds-p-around_medium">
+            <p class="conflict-where">{conflict.where}</p>
+            <dl class="conflict-choices">
+              <dt>Theirs</dt>
+              <dd data-id="theirs">{conflict.theirs}</dd>
+              <dt>Yours</dt>
+              <dd data-id="yours">{conflict.yours}</dd>
+            </dl>
+          </div>
+          <div class="slds-modal__footer">
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              onclick={handleKeepTheirs}
+              data-id="keep-theirs"
+            >
+              Keep theirs
+            </button>
+            <button
+              type="button"
+              class="slds-button slds-button_brand"
+              onclick={handleUseYours}
+              data-id="use-yours"
+            >
+              Use yours
+            </button>
+          </div>
+        </div>
+      </section>
+      <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+  </div>
+</template>

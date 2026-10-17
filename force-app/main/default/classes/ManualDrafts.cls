@@ -62,4 +62,39 @@ public with sharing class ManualDrafts {
       throw e;
     }
   }
+
+  /**
+   * A draft, locked until this save ends, so saves of one schedule take turns. A version (or a
+   * published schedule) can't be changed.
+   */
+  public static Schedule__c locked(Id scheduleId) {
+    List<Schedule__c> found = [
+      SELECT
+        Id,
+        Status__c,
+        Program__c,
+        Program__r.Season__c,
+        Program__r.Season__r.Camp__c
+      FROM Schedule__c
+      WHERE Id = :scheduleId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    if (found.isEmpty()) {
+      throw new ShoreshException(
+        'That schedule was not found, or you do not have access to it.'
+      );
+    }
+    if (found[0].Status__c != DRAFT) {
+      CampLabels labels = CampLabels.forCamp(
+        found[0].Program__r.Season__r.Camp__c
+      );
+      throw new ShoreshException(
+        'A saved ' +
+          labels.singularInSentence('Version') +
+          ' can\'t be changed.'
+      );
+    }
+    return found[0];
+  }
 }

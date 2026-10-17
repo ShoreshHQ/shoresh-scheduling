@@ -652,6 +652,17 @@
               </template>
             </div>
 
+            <!-- Manual Build: a program's week built by hand -->
+            <div class={shown.manualBuild} data-screen="manualBuild">
+              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                {labels.screens.manualBuild}
+              </h2>
+              <c-shoresh-manual-build
+                setup={setup}
+                terms={terms}
+              ></c-shoresh-manual-build>
+            </div>
+
             <!-- The schedule page: versions of a program's week, in three views -->
             <div class={shown.schedules} data-screen="schedules">
               <h2 class="slds-text-heading_medium slds-m-bottom_small">

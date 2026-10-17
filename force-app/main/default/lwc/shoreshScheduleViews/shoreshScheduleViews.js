@@ -184,12 +184,14 @@ function cellView(item, t) {
   };
 }
 
+/** at.slot: the day, group, and time block (positions in the day) the cell starts at. */
 function cell(key, at, item, t) {
   return {
     key,
     row: at.row,
     column: at.column,
     length: at.length,
+    slot: at.slot,
     style: place(at.row, at.column, at.length),
     ...cellView(item, t)
   };
@@ -226,7 +228,12 @@ export function dailyGrid(view, dayIndex, t) {
       cells.push(
         cell(
           `${g}-${c.blockIndex}`,
-          { row: c.blockIndex, column: g, length: c.length },
+          {
+            row: c.blockIndex,
+            column: g,
+            length: c.length,
+            slot: { day: dayIndex, group: g, block: c.blockIndex }
+          },
           c.item,
           t
         )
@@ -263,7 +270,12 @@ export function groupGrid(view, groupKey, t) {
       cells.push(
         cell(
           `${dayIndex}-${first}`,
-          { row: first, column: dayIndex, length: last - first + 1 },
+          {
+            row: first,
+            column: dayIndex,
+            length: last - first + 1,
+            slot: { day: dayIndex, group: g, block: c.blockIndex }
+          },
           c.item,
           t
         )

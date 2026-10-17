@@ -5,8 +5,6 @@
  * write uses user-mode DML.
  */
 public with sharing class ManualBuildController {
-  private static final Integer NAME_LIMIT = 80;
-
   /** The program's Manual Build draft for the week, or null when it has not been started. */
   @AuraEnabled
   public static ManualBuildViews.DraftView getDraft(Id programId, Id weekId) {
@@ -32,97 +30,30 @@ public with sharing class ManualBuildController {
   }
 
   @AuraEnabled
-  public static SlotSaves.Result saveSlots(
+  public static SlotEdits.Result saveSlots(
     Id scheduleId,
-    List<SlotSaves.SlotEdit> edits
+    List<SlotEdits.Edit> edits
   ) {
     try {
       return SlotSaves.save(
         scheduleId,
-        edits == null ? new List<SlotSaves.SlotEdit>() : edits
+        edits == null ? new List<SlotEdits.Edit>() : edits
       );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
   }
 
-  /**
-   * "Add <name> as an activity" from a slot: a new activity with the starting values an activity
-   * added by hand gets (Activities screen). A name the season already has (ignoring spaces and
-   * capitals) gives that activity instead.
-   */
+  /** "Add <name>" from a slot: a new activity (or the one with that name already). */
   @AuraEnabled
   public static ManualBuildViews.ActivityOption addActivity(
     Id scheduleId,
     String name
   ) {
-    String trimmed = name == null ? '' : name.normalizeSpace();
-    if (trimmed.length() == 0) {
-      throw ScreenErrors.of('Type a name first.');
-    }
-    if (trimmed.length() > NAME_LIMIT) {
-      throw ScreenErrors.of(
-        'Keep the name to ' + NAME_LIMIT + ' characters or fewer.'
-      );
-    }
     try {
-      Schedule__c schedule = [
-        SELECT Program__c, Program__r.Season__c
-        FROM Schedule__c
-        WHERE Id = :scheduleId
-        WITH USER_MODE
-      ];
-      Id seasonId = schedule.Program__r.Season__c;
-      Id activityId = sameName(seasonId, trimmed);
-      if (activityId == null) {
-        Activity__c activity = new Activity__c(
-          Season__c = seasonId,
-          Name = trimmed,
-          Length__c = 1,
-          TimesPerWeekMin__c = 1,
-          TimesPerWeekMax__c = 1,
-          Priority__c = 'Low',
-          Outdoor__c = false,
-          GroupsAtOnce__c = 1,
-          NoWeeklyMax__c = false,
-          NoGroupLimit__c = false
-        );
-        UserModeWrites.save(new List<SObject>{ activity });
-        activityId = activity.Id;
-      }
-      for (
-        ManualBuildViews.ActivityOption option : ManualBuildViews.options(
-          seasonId,
-          BlankWeek.groupsOf(schedule.Program__c)
-        )
-      ) {
-        if (option.id == activityId) {
-          return option;
-        }
-      }
-      throw new ShoreshException('Couldn\'t add it. Try again.');
+      return ManualBuildActivities.add(scheduleId, name);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
-  }
-
-  private static Id sameName(Id seasonId, String name) {
-    String key = looseName(name);
-    for (Activity__c activity : [
-      SELECT Id, Name
-      FROM Activity__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ]) {
-      if (looseName(activity.Name) == key) {
-        return activity.Id;
-      }
-    }
-    return null;
-  }
-
-  private static String looseName(String name) {
-    return name == null ? '' : name.deleteWhitespace().toLowerCase();
   }
 }

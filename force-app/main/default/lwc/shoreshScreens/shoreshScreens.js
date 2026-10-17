@@ -1,11 +1,12 @@
 /**
  * The screens of the Shoresh page and the left-hand menu that reaches them, following Shoresh
- * desktop's sidebar: Roots (home), then Camp, then Activities, then Schedules. Every label is in
+ * desktop's sidebar: Roots (home), then Camp, then Activities, then
+ * the schedules: Manual Build, Generated Schedule, and Schedules (saved versions). Every label is in
  * the camp's own words. Screens not built yet are listed as coming, not hidden.
  */
 
 // Built in a later slice: listed, not reachable yet.
-const COMING = new Set(["specialEvents"]);
+const COMING = new Set(["specialEvents", "generatedSchedule"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -24,6 +25,8 @@ export function screenLabels(t) {
     fixedActivities: t.p("FixedActivity"),
     recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
+    manualBuild: "Manual Build",
+    generatedSchedule: "Generated Schedule",
     schedules: "Schedules",
     import: "Import last year"
   };
@@ -54,7 +57,10 @@ const SECTIONS = [
       "specialEvents"
     ]
   },
-  { key: "schedules", screens: ["schedules"] }
+  {
+    key: "schedules",
+    screens: ["manualBuild", "generatedSchedule", "schedules"]
+  }
 ];
 
 export function isComing(screen) {

@@ -66,6 +66,48 @@ public with sharing class ScheduleGrid {
     }
   }
 
+  /** The groups' record Ids, in order. */
+  public List<String> groupIds() {
+    List<String> ids = new List<String>();
+    for (GroupRef grp : groups) {
+      ids.add(grp.id);
+    }
+    return ids;
+  }
+
+  /** The time blocks' record Ids, in order. */
+  public List<String> blockIds() {
+    List<String> ids = new List<String>();
+    for (Block block : blocks) {
+      ids.add(block.id);
+    }
+    return ids;
+  }
+
+  /** Drops items no cell uses and numbers the rest again, in the same order. */
+  public void dropUnusedItems() {
+    Set<String> used = new Set<String>();
+    for (List<String> row : rows) {
+      used.addAll(row);
+    }
+    Map<String, String> renumbered = new Map<String, String>();
+    List<Item> kept = new List<Item>();
+    for (Integer i = 0; i < items.size(); i++) {
+      if (used.contains(String.valueOf(i + 1))) {
+        kept.add(items[i]);
+        renumbered.put(String.valueOf(i + 1), String.valueOf(kept.size()));
+      }
+    }
+    items = kept;
+    for (List<String> row : rows) {
+      for (Integer b = 0; b < row.size(); b++) {
+        if (renumbered.containsKey(row[b])) {
+          row[b] = renumbered.get(row[b]);
+        }
+      }
+    }
+  }
+
   /** The grid as stored text. Refuses a grid that breaks the format. */
   public String toText() {
     ScheduleGridRules.check(this);
