@@ -985,7 +985,7 @@ export default class ShoreshManualBuild extends LightningElement {
         // A note that came with this change (Redo skipped.) is added to the line. Anything
         // already there (an earlier change that couldn't be made) stays until the director's
         // next change, and is said again with this one.
-        if (entry.note) {
+        if (entry.note && !(this.notice || "").includes(entry.note)) {
           this.notice = this.notice
             ? `${this.notice} ${entry.note}`
             : entry.note;
@@ -1473,7 +1473,11 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     if (!made.runs.length) {
-      this.say("Already as you had it.");
+      this.say(
+        entry.note
+          ? `Already as you had it. ${entry.note}`
+          : "Already as you had it."
+      );
       return;
     }
     if (!made.rows.length) {

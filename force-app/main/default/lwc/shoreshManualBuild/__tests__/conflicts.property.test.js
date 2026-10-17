@@ -539,5 +539,6 @@ describe("keep theirs or use yours: what is shown is what is sent", () => {
     expect(counts.changed + counts.gone).toBeGreaterThan(5);
     expect(counts.fixed).toBeGreaterThan(5);
     expect(counts.refreshed).toBeGreaterThan(20);
+    expect(counts.missing).toBeGreaterThan(5);
   });
 });

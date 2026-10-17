@@ -257,8 +257,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       be cleared) is replaced without being shown. With nothing to list there is no question;
       with nothing to change, _Already as you had it._ After Use yours, what the question
       showed counts as seen, for a further question. One thing Use yours does without asking:
-      when theirs is the same activity, shorter, it is made the director's length again; no
-      one's activity is lost.
+      when theirs is the same activity, shorter, and the cells it no longer covers were Open
+      when the director made the edit, it is made the director's length again; no one's
+      activity is lost. (If someone shortened the director's own activity, those cells are
+      listed.)
     - **When the plan can't be made** nothing is sent; the edit, Undo, or Redo leaves the Undo
       and Redo lists (an edit never saved; an Undo or Redo can't be made), and a waiting Undo
       or Redo of it goes. The quiet line says why:
@@ -281,9 +283,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       across days and bunks, length, Undo, half of them pressed after the screen refreshed to
       someone else's change), random changes by others (cells, cleared placements, longer or
       shorter activities, new fixed or recurring activities, time blocks added anywhere
-      including inside a placement, or removed), and up to three questions in a row. The test keeps its own record of what the
-      director saw and checks the rule strictly each time, and that no fixed activity is ever
-      changed. Breaking the rule, or the record of what was seen, fails it. On the screen,
+      including inside a placement, or removed), and up to three questions in a row. The test
+      keeps its own record of what the director saw and checks the rule strictly each time,
+      and that no fixed or recurring activity is ever changed. Breaking the rule, or the record of what was seen, fails it. On the screen,
       every test that clicks Use yours checks the same rule by time block Id against the
       server's week at question time (`useYoursSendsWhatWasShown`), carrying the director's
       own cells and what they have seen through a further question.
