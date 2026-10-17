@@ -420,11 +420,41 @@ section 14 are in `docs/samples/lists` (do section 14 first, in the _Import test
     it changed go back to how they were, including who can do them. Anything you edited in the
     meantime stays, and the message names it.
 
+## 16. Import a list on a program's screens
+
+Program days, Units, Bunks, Time blocks, Fixed activities, and Recurring activities each have
+**Import a list** too. Each row says its program in a **Program** column; a camp with one
+program can leave the column out. Made-up lists are in `docs/samples/lists` (after section 14,
+in the _Import test_ season, in this order).
+
+1. **Program days** (`maple-grove-program-days.csv`): _Main_ is unchanged; _Teens_ is **New**
+   (Monday, Wednesday, Friday); _Review here_ shows _Weekend · Runs on: Saturday isn't a camp
+   day_. Click **Add 1**.
+2. **Units** (`maple-grove-units.csv`): _Middlers_ is new. _“Explorers” is a new program.
+   Which days?_ Monday to Friday start ticked; untick Tuesday and Thursday and click **Use
+   these days**; _Explorers_ then shows under **Also adding**,
+   with its days. Click **Add 3**.
+3. **Bunks** (`maple-grove-bunks.csv`): _Bunk 3 · Unit: Juniors → Seniors_ (Keep or Change;
+   Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Review here**
+   ("sometimes" isn't an availability).
+4. **Time blocks** (`maple-grove-time-blocks.csv`): _Period 2 · Start: 9:50 AM → 9:55 AM_.
+   _“Late pickup” at 6:00–6:30: morning or evening?_ (answer **Evening**). _Swim time_ is
+   under **Review here** (_End is before Start_).
+5. **Fixed activities** (`maple-grove-fixed.csv`): _Lunch_ gets a location, _Dining hall_,
+   under **Also adding**. _“Snack break” is a new time block in Main. When is it?_ Fill in
+   Start and End and click **Use these times**.
+6. **Recurring activities** (`maple-grove-recurring.csv`): _Morning meeting · Runs on:
+   Monday → Monday, Wednesday_. _Rest hour_ is for Juniors and Middlers. _Campfire_ is under
+   **Review here** (Saturday). A day a program doesn't run is asked, not refused: _Main doesn't
+   run on Friday: …_ with **Add Friday to Main**, **Without Friday**, or **Leave it out for
+   now**.
+7. Each screen's import is undone on its own by **Undo this import**, or Roots' **Undo last
+   import**, including a bunk moved and who a recurring activity covers.
+
 ## What is not here yet
 
-- Importing a list on the other screens (Program days, Units, Bunks, Time blocks, Fixed and
-  Recurring activities), **Download this list**, and the full camp workbook (export, and
-  import on Roots) are the next pieces. Moving a bunk to another unit on the Bunks screen
+- **Download this list**, and the full camp workbook (export, and import on Roots), are the
+  next pieces. Moving a bunk to another unit on the Bunks screen
   comes after them.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version

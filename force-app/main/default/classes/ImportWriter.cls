@@ -120,20 +120,26 @@ public with sharing class ImportWriter {
     }
   }
 
-  /** A who list replaced on an existing item: what it was, and what the import wrote. */
-  public void logWho(
-    Activity__c owner,
-    List<String> before,
-    List<String> after
-  ) {
-    countChange('Activity', owner.Id);
+  /** A who list an import replaced: whose, which rows' object, and the targets before and after. */
+  public class WhoChange {
+    public SObject owner;
+    public String type;
+    public List<String> before;
+    public List<String> after;
+  }
+
+  public void logWho(WhoChange change) {
+    countChange(
+      change.owner.getSObjectType().getDescribe().getName().removeEnd('__c'),
+      change.owner.Id
+    );
     changed.add(
       new Map<String, Object>{
-        'who' => owner.Id,
-        'type' => 'ActivityEligibility__c',
-        'name' => owner.Name,
-        'before' => before,
-        'after' => after
+        'who' => change.owner.Id,
+        'type' => change.type,
+        'name' => change.owner.get('Name'),
+        'before' => change.before,
+        'after' => change.after
       }
     );
   }

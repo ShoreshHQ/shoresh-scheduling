@@ -104,6 +104,50 @@
               <template lwc:else>
                 <div class="list-card-title">{card.title}</div>
                 <div class="list-options">
+                  <template lwc:if={card.daysQuestion}>
+                    <lightning-checkbox-group
+                      label="Days"
+                      variant="label-hidden"
+                      options={dayOptions}
+                      value={card.draftDays}
+                      data-id={card.id}
+                      data-part="days"
+                      onchange={handleDraft}
+                    ></lightning-checkbox-group>
+                    <lightning-button
+                      label="Use these days"
+                      data-id={card.id}
+                      data-kind="days"
+                      onclick={handleDraftDone}
+                    ></lightning-button>
+                  </template>
+                  <template lwc:if={card.timesQuestion}>
+                    <lightning-input
+                      type="time"
+                      label="Start"
+                      data-id={card.id}
+                      data-part="start"
+                      onchange={handleDraft}
+                    ></lightning-input>
+                    <lightning-input
+                      type="time"
+                      label="End"
+                      data-id={card.id}
+                      data-part="end"
+                      onchange={handleDraft}
+                    ></lightning-input>
+                    <lightning-button
+                      label="Use these times"
+                      data-id={card.id}
+                      data-kind="times"
+                      onclick={handleDraftDone}
+                    ></lightning-button>
+                  </template>
+                  <template lwc:if={card.draftProblem}>
+                    <span class="list-tag list-tag_attention"
+                      >{card.draftProblem}</span
+                    >
+                  </template>
                   <template for:each={card.options} for:item="option">
                     <lightning-button
                       key={option.key}
@@ -149,7 +193,14 @@
           <h4 class="list-section">New ({newRows.length})</h4>
           <ul class="list-names" data-id="new">
             <template for:each={newRows} for:item="row">
-              <li key={row.key}>{row.name}</li>
+              <li key={row.key}>
+                {row.name}
+                <template lwc:if={row.starting}>
+                  <span class="list-tag slds-m-left_x-small"
+                    >{row.starting}</span
+                  >
+                </template>
+              </li>
             </template>
           </ul>
         </template>

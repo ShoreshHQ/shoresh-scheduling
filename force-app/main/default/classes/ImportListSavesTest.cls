@@ -581,10 +581,11 @@ private class ImportListSavesTest {
           'id' => c.archery.Id,
           'fields' => new Map<String, Object>{ 'Name' => 'Renamed' }
         },
+        // A division is only ever added by a list (part B moves groups, within a program).
         new Map<String, Object>{
-          'kind' => 'Group',
-          'id' => c.bunk1,
-          'refs' => new Map<String, Object>{ 'Division__c' => c.seniors }
+          'kind' => 'Division',
+          'id' => c.juniors,
+          'fields' => new Map<String, Object>()
         }
       };
       for (Map<String, Object> attempt : attempts) {

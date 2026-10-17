@@ -35,12 +35,18 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    `ImportAnswer__c` (key `columns|<screen>|<heading>`, per camp like every answer); 4b never
    asks those keys. Similar-name answers share 4b's keys (`similar|activity|...`), so a camp
    that said Music and Musik are the same is not asked again.
-3. **Nothing defaults quietly.** A cell that can't be read (a Yes/No cell saying "maybe", "two"
+3. **Nothing defaults quietly.** Rows of one name (capitals and spacing aside) are one item:
+   when its rows say the same thing, the first row leads; when they differ in any column the
+   file has (coordinator, #20 review), a question shows each version ("Row 3: 9:30 AM ·
+   10:00 AM") with Leave it out, and the chosen row leads. Its spelling, whatever the row
+   order, is as an item set up spells it, else as written most often, then the first
+   alphabetically. A cell that can't be read (a Yes/No cell saying "maybe", "two"
    in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
    Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
    inside a cell (Alt+Enter) separates names in a list, as a comma does. Rows are settled
    before anything they name is resolved: the first row of each name (capitals and spacing
-   aside) leads, even one that can't be read, and the rows after it with that name follow it:
+   aside) leads (or the row chosen when they differ), even one that can't be read, and the
+   other rows with that name follow it:
    not saved ("Same as row 2", or "Same as row 2, which can't be read"), left out with it, or
    waiting with it while it is asked about. Two rows answered to be one item set up keep the
    first.
@@ -51,8 +57,11 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    it" to everyone, each shown as a difference tagged "clears". **A new item starts as one
    added by hand** wherever its cell is blank (at most = at least, or 1; one group at a time;
    everyone). A value an item can't be without (length,
-   times a week at least, groups that fit, priority) can't be cleared: a blank there makes
-   the row unreadable ("Length is blank"), never skipped. "Change all from this file" answers
+   times a week at least, groups that fit, priority, availability, part of day) can't be
+   cleared: on an item set up, a blank there makes the row unreadable ("Length is blank"). **A
+   new item starts as one added by hand does** (Greg, 2026-10-17): a blank there takes the
+   starting value (part of day from the start time), tagged "starting value". A blank with
+   nothing to start from (a name, days, a time) can't be read on any row. "Change all from this file" answers
    only the differences not answered yet (a Keep the director chose stays), and its label says
    how many it changes and how many of those clear a value ("Change the other 8: 1 clears a
    value"). Names are never changed by a list. Two items set up with the name a row gives
@@ -108,6 +117,52 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     ("Not used", "Remembered", "clears"), before → after values, and ticks; a card is its
     question and its answer buttons; messages say what happened or what is needed ("Length is
     blank", "Same as row 4").
+
+## Part B: a program's lists (2026-10-17)
+
+12. **Program days, Units (divisions), Bunks (groups), Time blocks, Fixed and Recurring
+    activities** use the same engine. Each row's program comes from a **Program** column; with
+    one program it can be left out, with several a blank is "Program is blank". Rows are
+    settled within their program (a "Lunch" in two programs is two items), and the names they
+    refer to (a division, a time block) are resolved within that program by `refs.js`.
+13. **What a program list names that doesn't exist** is added, asking only what Shoresh can't
+    create it without (Greg, Q2): a new program's days (Monday to Friday ticks; Save waits), a
+    new time block's start and end, and a 5 or 6 o'clock time's morning or evening (ADR 0006).
+    A division is added as it is. A recurring activity on a day its program doesn't run asks:
+    add the day to the program, leave the day out of the row, or leave the row out.
+14. **Days** read "Monday, Wednesday", "Mon-Fri", "Mon thru Fri", "Tue/Thu", "Mon Wed Fri",
+    "Wednesdays", "weekdays", and letters (coordinator, #20 review): "M/W/F", "M-F", "MWF",
+    "Tu", "Th", "W", "F". A lone T is Tuesday when the cell writes Thursday another way ("T/Th"),
+    Thursday when it writes Tuesday another way, and otherwise asked ("is T Tuesday or
+    Thursday?"); two ("MTWTF") are Tuesday, then Thursday. Two or more dashes are a list
+    ("Mon-Wed-Fri" is three days; coordinator, #20 round 2). One dash is a range when its days
+    are next to each other ("Mon-Tue") or span the week ("M-F"); any other ("T-Th") is asked:
+    "Tue to Thu, or just Tue and Thu?" Asked only when it matters (Greg, 2026-10-17;
+    `TWO_DAY_DASH = "ask"` in cells.js). Each such dash is its own question, by how it is written ("M-W",
+    "Tu-Th"), and a dash next to run-together letters ("MW-F") is no surer than one between
+    single days (coordinator, #20 round 3). Every dash-like character (em dash, minus,
+    Unicode hyphens) is a dash. Two-letter days ("Mo We Fr") are read; anything else odd
+    ("Mon~Fri", "MonWedFri") can't be read rather than be guessed. "thru", "through" and "to"
+    are always ranges. Saturday and Sunday
+    can't be read. **Times** read "9:00", "9:00 AM", "13:30",
+    and a bare hour by the camp-day rule (ADR 0006): "9" is 9:00 AM, 7 to 11 the morning, 12 to 4
+    the afternoon, 5 and 6 asked; a bare 13 to 23 can't be read ("8 PM" written out can). Shoresh writes "9:00 AM"; a time
+    outside a camp day ("15:00 AM", before 5 in the morning) can't be read. A new block whose
+    list has no Part of day column starts as the time says (before noon: morning); a blank
+    cell in a column the file has can't be read, as for every value an item can't be without
+    (§4), as are a blank Length or Availability.
+15. **A group is its program, division, and name** (ADR 0006 §14), by the division the row
+    resolves to, so "Bunk 1" in Juniors and in Seniors are two groups. **A group in another
+    division** of its program is a difference ("Unit: Juniors →
+    Seniors"); Change moves it (GroupMoves refuses another program's). It is not a move when the file
+    also names the group in the division it is in, or when two rows would move the same group
+    (never picked by order): those rows are new groups. A list never changes
+    which program anything is in, and only adds divisions (never renames them).
+16. **Who a recurring activity covers** (Coverage rows) is written and undone like who can do
+    an activity (`ImportWhoKinds`): replaced only on Change, put back by Undo unless edited
+    since. Undo decides whether to keep a recurring activity it added (edited since, or in use)
+    before it removes the Coverage rows it added, and keeps those of one it keeps: an edited
+    activity never quietly becomes "everyone".
 
 ## Choices that are hard to undo after release
 

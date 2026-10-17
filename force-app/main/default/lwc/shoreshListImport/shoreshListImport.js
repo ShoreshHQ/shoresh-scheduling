@@ -10,6 +10,7 @@ import {
   isCsv,
   isReadable,
   undoMessage,
+  WEEKDAYS,
   workbookFile
 } from "c/shoreshImportEngine";
 import {
@@ -27,6 +28,12 @@ import {
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { errorMessage } from "c/shoreshErrors";
+
+/** Minutes after midnight as "9:00 AM". */
+function timeText(minutes) {
+  const hours = Math.floor(minutes / 60);
+  return `${hours % 12 || 12}:${String(minutes % 60).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
+}
 
 /**
  * "Import a list" on a setup screen (slice 4c): choose an Excel or CSV file, see which column is
@@ -249,12 +256,24 @@ export default class ShoreshListImport extends LightningElement {
   get cards() {
     return questionCards(this.proposal, this.terms, this.answers).map(
       (card) => {
-        const chosen = card.options.find((o) => o.value === card.answer);
+        let chosen = card.options.find((o) => o.value === card.answer);
+        if (!chosen && card.answer && card.daysQuestion) {
+          chosen = { label: card.answer.split(",").join(", ") };
+        } else if (!chosen && card.answer && card.timesQuestion) {
+          const [start, end] = card.answer.split("-").map((hm) => {
+            const [h, m] = hm.split(":").map(Number);
+            return timeText(h * 60 + m);
+          });
+          chosen = { label: `${start}–${end}` };
+        }
         return {
           ...card,
           answered: !!chosen,
           answerLabel: chosen ? chosen.label : "",
           fromMemory: !!chosen && this.remembered[card.id] === card.answer,
+          // A new program starts as Monday to Friday, ticked (coordinator, #20 review).
+          draftDays: this.draftDays(card.id),
+          draftProblem: (this.drafts[card.id] || {}).problem || "",
           options: card.options.map((o) => ({
             ...o,
             key: `${card.id}::${o.value}`
@@ -300,6 +319,38 @@ export default class ShoreshListImport extends LightningElement {
         });
       });
     });
+    (add.program || []).forEach((item) => {
+      lines.push({
+        key: `program:${item.name}`,
+        label: `${item.name} · ${t.sIn("Program")} · ${item.days.join(", ")}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.programDays || []).forEach((item) => {
+      lines.push({
+        key: `days:${item.programId}`,
+        label: `${item.days.join(", ")} → ${this.programName(item.programId)}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.division || []).forEach((item) => {
+      lines.push({
+        key: `division:${item.programId}:${item.name}`,
+        label: `${item.name} · ${t.sIn("Division")} · ${this.programName(item.programId)}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.timeBlock || []).forEach((item) => {
+      lines.push({
+        key: `block:${item.programId}:${item.name}`,
+        label: `${item.name} · ${t.sIn("TimeBlock")} · ${timeText(item.start)}–${timeText(item.end)}`,
+        checked: true,
+        canUntick: false
+      });
+    });
     (add.who || []).forEach((item) => {
       lines.push({
         key: item.key,
@@ -318,6 +369,64 @@ export default class ShoreshListImport extends LightningElement {
       });
     });
     return lines;
+  }
+
+  programName(programId) {
+    const entry = ((this.setup && this.setup.programs) || []).find(
+      (e) => e.program.Id === programId
+    );
+    return entry
+      ? entry.program.Name
+      : String(programId).replace(/^Program:/, "");
+  }
+
+  // ---------- questions that need more than a button: days, and times ----------
+
+  drafts = {};
+
+  get dayOptions() {
+    return WEEKDAYS.map((d) => ({ label: d, value: d }));
+  }
+
+  draftDays(id) {
+    const days = (this.drafts[id] || {}).days;
+    return days === undefined ? [...WEEKDAYS] : days;
+  }
+
+  handleDraft(event) {
+    const { id, part } = event.target.dataset;
+    const value = event.detail.value;
+    this.drafts = {
+      ...this.drafts,
+      [id]: { ...(this.drafts[id] || {}), [part]: value, problem: "" }
+    };
+  }
+
+  /** Days: "Monday,Wednesday"; times: "09:00-10:00" (the time inputs give "09:00:00.000"). */
+  handleDraftDone(event) {
+    const { id, kind } = event.currentTarget.dataset;
+    const draft = this.drafts[id] || {};
+    const days = this.draftDays(id);
+    if (kind === "days" && days.length) {
+      this.answer(id, days.join(","));
+    } else if (
+      kind === "times" &&
+      draft.start &&
+      draft.end &&
+      draft.end > draft.start
+    ) {
+      this.answer(id, `${draft.start.slice(0, 5)}-${draft.end.slice(0, 5)}`);
+    } else {
+      // Said on the card, never a click that does nothing.
+      this.drafts = {
+        ...this.drafts,
+        [id]: {
+          ...draft,
+          problem:
+            kind === "days" ? "No days" : "End is before Start, or missing"
+        }
+      };
+    }
   }
 
   /**
@@ -362,7 +471,11 @@ export default class ShoreshListImport extends LightningElement {
   get newRows() {
     return this.rowsWith("new").map((r) => ({
       key: `row-${r.rowNumber}`,
-      name: r.name
+      name: r.name,
+      // Blank cells it can't be without start as when added by hand.
+      starting: (r.startingValues || []).length
+        ? `starting value: ${r.startingValues.join(", ")}`
+        : ""
     }));
   }
   get unchangedCount() {
@@ -377,9 +490,11 @@ export default class ShoreshListImport extends LightningElement {
   get leftOutRows() {
     return this.rowsWith("leftOut").map((r) => ({
       key: `row-${r.rowNumber}`,
-      text: r.sameAs
-        ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
-        : `Row ${r.rowNumber} · ${r.name}`
+      text: r.usedRow
+        ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
+        : r.sameAs
+          ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
+          : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
   get askedCount() {

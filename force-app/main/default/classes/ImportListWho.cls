@@ -1,16 +1,22 @@
 /**
- * Who can do each activity in an imported list (slice 4c): a new activity's list is added; an
- * existing one's is replaced only when the director chose Change (the list is sent only then),
- * and what it was is logged so Undo last import can put it back (ImportUndoWho).
+ * Who each item of an imported list is for (slice 4c): who can do an activity
+ * (ActivityEligibility__c) or who a recurring activity covers (Coverage__c). A new item's list is
+ * added; an existing one's is replaced only when the director chose Change (the list is sent
+ * only then), and what it was is logged so Undo last import can put it back (ImportUndoWho).
  */
 public with sharing class ImportListWho {
   private ImportWriter writer;
+  private ImportWhoKinds.Kind who;
+  private Id seasonId;
   private List<SObject> added = new List<SObject>();
   private List<SObject> replacing = new List<SObject>();
   private Map<Id, List<String>> after = new Map<Id, List<String>>();
 
-  public ImportListWho(ImportWriter writer) {
+  /** ownerKind: "Activity" or "RecurringActivity". */
+  public ImportListWho(ImportWriter writer, String ownerKind, Id seasonId) {
     this.writer = writer;
+    this.who = ImportWhoKinds.forOwner(ownerKind);
+    this.seasonId = seasonId;
   }
 
   /** entries and rows in the same order, the rows saved. */
@@ -20,50 +26,47 @@ public with sharing class ImportListWho {
         collect(entries[i], rows[i].Id);
       }
     }
-    writer.saveTracked('ActivityEligibility', added);
+    writer.saveTracked(who.term, added);
     if (!after.isEmpty()) {
       replace();
     }
   }
 
-  private void collect(ImportPlan.Entry entry, Id activityId) {
-    List<SObject> who = new List<SObject>();
+  private void collect(ImportPlan.Entry entry, Id ownerId) {
+    List<SObject> rows = new List<SObject>();
     List<String> targets = new List<String>();
     for (String target : entry.texts('who')) {
       Id targetId = writer.keys.of(target);
-      ActivityEligibility__c row = new ActivityEligibility__c(
-        Activity__c = activityId
-      );
-      row.put(ImportItemWrites.targetField(targetId), targetId);
-      who.add(row);
+      rows.add(who.row(ownerId, targetId, seasonId));
       targets.add(targetId);
     }
     if (entry.isNew()) {
-      added.addAll(who);
+      added.addAll(rows);
     } else {
-      replacing.addAll(who);
+      replacing.addAll(rows);
       targets.sort();
-      after.put(activityId, targets);
+      after.put(ownerId, targets);
     }
   }
 
-  /** Existing activities' lists: the old rows go, the new ones come, and both are logged. */
+  /** Existing items' lists: the old rows go, the new ones come, and both are logged. */
   private void replace() {
-    Set<Id> owners = after.keySet();
-    List<ActivityEligibility__c> old = new List<ActivityEligibility__c>();
-    for (Activity__c activity : [
-      SELECT Id, Name, (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
-      FROM Activity__c
-      WHERE Id IN :owners
-      WITH USER_MODE
-    ]) {
+    List<SObject> old = new List<SObject>();
+    for (SObject owner : who.ownersWithRows(after.keySet())) {
       List<String> before = new List<String>();
-      for (ActivityEligibility__c row : activity.Eligibilities__r) {
-        before.add(row.Division__c != null ? row.Division__c : row.Group__c);
+      for (
+        SObject row : owner.getSObjects(who.relationship) ?? new List<SObject>()
+      ) {
+        before.add(ImportWhoKinds.targetOf(row));
         old.add(row);
       }
       before.sort();
-      writer.logWho(activity, before, after.get(activity.Id));
+      ImportWriter.WhoChange change = new ImportWriter.WhoChange();
+      change.owner = owner;
+      change.type = who.childType;
+      change.before = before;
+      change.after = after.get(owner.Id);
+      writer.logWho(change);
     }
     Database.delete(old, AccessLevel.USER_MODE);
     UserModeWrites.save(replacing);

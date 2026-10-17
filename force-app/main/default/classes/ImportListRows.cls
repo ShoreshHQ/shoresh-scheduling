@@ -6,14 +6,39 @@
 public with sharing class ImportListRows {
   // Kinds that are children of the season itself (the others are inside a program).
   private static final Set<String> IN_SEASON = new Set<String>{
+    'Program',
     'LocationType',
     'Location',
     'Activity'
   };
   // What a list may write, per kind: plain fields...
   private static final Map<String, Set<String>> PLAIN_FIELDS = new Map<String, Set<String>>{
+    'Program' => new Set<String>{
+      'Name',
+      'Monday__c',
+      'Tuesday__c',
+      'Wednesday__c',
+      'Thursday__c',
+      'Friday__c'
+    },
     'LocationType' => new Set<String>{ 'Name' },
     'Location' => new Set<String>{ 'Name', 'GroupsThatFit__c', 'Notes__c' },
+    'TimeBlock' => new Set<String>{
+      'Name',
+      'StartTime__c',
+      'EndTime__c',
+      'PartOfDay__c'
+    },
+    'FixedActivity' => new Set<String>{ 'Name', 'Length__c' },
+    'RecurringActivity' => new Set<String>{
+      'Name',
+      'Length__c',
+      'Monday__c',
+      'Tuesday__c',
+      'Wednesday__c',
+      'Thursday__c',
+      'Friday__c'
+    },
     'Division' => new Set<String>{ 'Name' },
     'Group' => new Set<String>{ 'Name', 'Availability__c' },
     'Activity' => new Set<String>{
@@ -34,16 +59,38 @@ public with sharing class ImportListRows {
   };
   // ...and fields naming another record.
   private static final Map<String, Set<String>> LINK_FIELDS = new Map<String, Set<String>>{
+    'Program' => new Set<String>(),
     'LocationType' => new Set<String>(),
     'Location' => new Set<String>{ 'LocationType__c' },
+    'TimeBlock' => new Set<String>{ 'Program__c' },
+    'FixedActivity' => new Set<String>{
+      'Program__c',
+      'TimeBlock__c',
+      'Location__c'
+    },
+    'RecurringActivity' => new Set<String>{
+      'Program__c',
+      'TimeBlock__c',
+      'Location__c'
+    },
     'Division' => new Set<String>{ 'Program__c' },
     'Group' => new Set<String>{ 'Division__c' },
     'Activity' => new Set<String>{ 'Location__c', 'RainPlan__c' }
   };
-  // Kinds a list can change once set up; the others it only adds (part A).
+  // Kinds a list can change once set up (divisions and location types it only adds).
   private static final Set<String> CHANGEABLE = new Set<String>{
+    'Program',
     'Location',
-    'Activity'
+    'Group',
+    'TimeBlock',
+    'Activity',
+    'FixedActivity',
+    'RecurringActivity'
+  };
+  // Links set only on a new record: what program it is in (a group moves with Division__c,
+  // within its program: GroupMoves).
+  private static final Set<String> NEW_ONLY_LINKS = new Set<String>{
+    'Program__c'
   };
   private Id seasonId;
   private ImportKeys keys;
@@ -101,7 +148,8 @@ public with sharing class ImportListRows {
     List<List<Object>> waiting = new List<List<Object>>();
     Map<String, Object> links = entry.valuesOf('refs');
     for (String field : links.keySet()) {
-      if (!LINK_FIELDS.get(kind).contains(field)) {
+      Boolean moving = NEW_ONLY_LINKS.contains(field) && !entry.isNew();
+      if (!LINK_FIELDS.get(kind).contains(field) || moving) {
         throw ImportListSaves.unreadable();
       }
       String target = (String) links.get(field);

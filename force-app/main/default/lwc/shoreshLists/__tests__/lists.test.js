@@ -231,16 +231,46 @@ describe("rows", () => {
     ]);
   });
 
-  it("a name written twice: the first row is used and the second says so", () => {
+  it("a name written twice with the same details: the second says so", () => {
     const p = read("locations", [
       ["Location", "Groups that fit"],
       ["Barn", "1"],
-      ["barn", "2"]
+      ["barn", "1"]
     ]);
     expect(p.rows[1]).toMatchObject({
       status: "unreadable",
       problems: ["Same as row 2"]
     });
+  });
+
+  it("a name written twice with different details: asked which row is right", () => {
+    const rows = [
+      ["Location", "Groups that fit"],
+      ["Barn", "1"],
+      ["barn", "2"]
+    ];
+    const p = read("locations", rows);
+    expect(p.rows.map((r) => r.status)).toEqual(["asked", "asked"]);
+    const [card] = questionCards(p, terms, {});
+    // The spelling rule's: most written, then first alphabetically.
+    expect(card.title).toBe("Rows for “barn” differ");
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Row 2: 1",
+      "Row 3: 2",
+      "Leave it out for now"
+    ]);
+    const answers = { [card.id]: "row:3" };
+    const done = read("locations", rows, answers);
+    expect(done.rows.map((r) => [r.status, r.values.fit])).toEqual([
+      ["leftOut", 1],
+      ["new", 2]
+    ]);
+    expect(done.rows[0].usedRow).toBe(3);
+    expect(waitingFor(done, terms, answers)).toEqual([]);
+    // A row number means nothing in the next file: never remembered (review of the fixes).
+    expect(
+      listPlan(done, answers, "s1", "f").remember.map((r) => r.key)
+    ).not.toContain(card.id);
   });
 
   it("reads yes/no words and takes the formula guard off", () => {
@@ -1009,11 +1039,23 @@ describe("PR 19 review", () => {
     ]);
   });
 
+  it("5c. in either order, a row that can't be read keeps its name from being saved", () => {
+    const body = [
+      ["Golf", "maybe"],
+      ["golf", "Yes"]
+    ];
+    [body, [...body].reverse()].forEach((b) => {
+      const p = read("activities", [["Activity", "Outdoors"], ...b]);
+      expect(p.rows.map((r) => r.status)).toEqual(["unreadable", "unreadable"]);
+      expect(listPlan(p, {}, "s1", "f").records).toEqual([]);
+    });
+  });
+
   it("5c. a repeat of a row found unusable later says so, never 'row 2 is used'", () => {
     const p = read("activities", [
       ["Activity", "Who can do it"],
       ["Golf", "Bunk 1"],
-      ["golf", "Juniors"]
+      ["golf", "Bunk 1"]
     ]);
     expect(p.rows[1].problems).toEqual(["Same as row 2, which can't be read"]);
   });
@@ -1047,7 +1089,7 @@ describe("PR 19 review, round 3", () => {
     const p = read("activities", [
       ["Activity", "Rain plan"],
       ["Pottery", "Pottery"],
-      ["Pottery", ""],
+      ["Pottery", "Pottery"],
       ["Swim", "Pottery"]
     ]);
     const plan = listPlan(p, {}, "s1", "f");
@@ -1099,7 +1141,8 @@ describe("PR 19 review, coordinator round 2", () => {
     ];
     const p = read("activities", rows);
     const [card] = similarCards(p, terms, {});
-    expect(card.title).toBe("Are “Archry” and “Archery” the same activity?");
+    // One spelling whatever the order: most written, then alphabetical ("archry").
+    expect(card.title).toBe("Are “archry” and “Archery” the same activity?");
     const answers = { [card.id]: LEAVE_OUT };
     const done = read("activities", rows, answers);
     expect(done.rows.map((r) => r.status)).toEqual([
@@ -1107,7 +1150,7 @@ describe("PR 19 review, coordinator round 2", () => {
       "leftOut",
       "new"
     ]);
-    expect(done.alsoAdd.activity).toEqual([{ name: "Archry", skipped: false }]);
+    expect(done.alsoAdd.activity).toEqual([{ name: "archry", skipped: false }]);
     expect(waitingFor(done, terms, answers)).toEqual([]);
     const plan = listPlan(done, answers, "s1", "f");
     const keys = new Set(plan.records.map((r) => r.key));

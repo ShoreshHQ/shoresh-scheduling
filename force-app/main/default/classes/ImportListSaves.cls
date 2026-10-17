@@ -13,9 +13,13 @@ public with sharing class ImportListSaves {
   private static final List<String> ORDER = new List<String>{
     'LocationType',
     'Location',
+    'Program',
     'Division',
     'Group',
-    'Activity'
+    'TimeBlock',
+    'Activity',
+    'FixedActivity',
+    'RecurringActivity'
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
@@ -104,8 +108,8 @@ public with sharing class ImportListSaves {
     }
     writeChanged(kind, entries, rows);
     writeLater(type, rows, later);
-    if (kind == 'Activity') {
-      new ImportListWho(writer).save(entries, rows);
+    if (kind == 'Activity' || kind == 'RecurringActivity') {
+      new ImportListWho(writer, kind, plan.seasonId).save(entries, rows);
     }
   }
 
