@@ -98,13 +98,16 @@ private class ShoreshSchemaTest {
         );
         Assert.areEqual(
           each,
-          ShoreshSchema.field(type, ShoreshSchema.packagedName(each)),
+          ShoreshSchema.field(type, ShoreshTestData.packagedName(each)),
           'Packaged name of ' + each
         );
         checked++;
       }
     }
-    Assert.isTrue(checked > 117, 'Every object\'s fields were checked');
+    Assert.isTrue(
+      checked > OWN_OBJECTS.size(),
+      'Every object\'s fields were checked'
+    );
   }
 
   @IsTest
@@ -112,12 +115,12 @@ private class ShoreshSchemaTest {
     ShoreshSchema.simulatedPrefix = 'shoresh__';
     Assert.areEqual(
       'shoresh__StartDate__c',
-      ShoreshSchema.packagedName(Week__c.StartDate__c),
+      ShoreshTestData.packagedName(Week__c.StartDate__c),
       'Custom field'
     );
     Assert.areEqual(
       'Name',
-      ShoreshSchema.packagedName(Week__c.Name),
+      ShoreshTestData.packagedName(Week__c.Name),
       'Standard field'
     );
   }

@@ -19,17 +19,20 @@ const CACHE = path.resolve(
   "../node_modules/.cache/shoresh-namespaced-schema"
 );
 
-/** A custom name (ends in __c) as it is in the namespaced package; standard names stay. */
+/** A custom name (ends in __c or __r) as it is in the namespaced package; standard names stay. */
 function namespaced(name) {
-  return /__c$/.test(name) && !name.startsWith(PREFIX) ? PREFIX + name : name;
+  return /__(c|r)$/.test(name) && !name.startsWith(PREFIX)
+    ? PREFIX + name
+    : name;
 }
 
 /** A module file for one schema import, written on first use. */
 function schemaModule(resource) {
-  const [object, field] = resource.split(".");
+  // "Week__c.StartDate__c", or a path across lookups: "Week__c.Season__r.Name".
+  const [object, ...fieldPath] = resource.split(".");
   const value = { objectApiName: namespaced(object) };
-  if (field !== undefined) {
-    value.fieldApiName = namespaced(field);
+  if (fieldPath.length) {
+    value.fieldApiName = fieldPath.map(namespaced).join(".");
   }
   const file = path.join(CACHE, `${resource}.js`);
   const text = `module.exports = { default: ${JSON.stringify(value)} };\n`;

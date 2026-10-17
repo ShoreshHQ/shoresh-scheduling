@@ -313,4 +313,16 @@ public class ShoreshTestData {
     }
     return user;
   }
+
+  /**
+   * The name the namespaced package will report for a field (getPopulatedFieldsAsMap() keys,
+   * an import's log): custom fields get ShoreshSchema's prefix, standard ones don't. Set
+   * ShoreshSchema.simulatedPrefix = 'shoresh__' first to build what the namespaced org will see.
+   */
+  public static String packagedName(Schema.SObjectField field) {
+    Schema.DescribeFieldResult described = field.getDescribe();
+    return described.isCustom()
+      ? ShoreshSchema.prefix() + described.getLocalName()
+      : described.getLocalName();
+  }
 }

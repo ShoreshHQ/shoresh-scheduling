@@ -13,7 +13,7 @@ const {
 const texts = (hits) => hits.map((h) => h.text);
 
 describe("namespace-safety scanner", () => {
-  it("counts names, strings and template text in LWC JavaScript, not comments", () => {
+  it("counts names, strings, template text and regexes in LWC JavaScript, not comments", () => {
     const hits = scanJs(`
       // StartDate__c in a comment
       /* EndDate__c too */
@@ -25,7 +25,7 @@ describe("namespace-safety scanner", () => {
       }
       const re = /Fake__c/;
     `);
-    expect(texts(hits)).toEqual(["StartDate__c", "Week__c", "__c"]);
+    expect(texts(hits)).toEqual(["StartDate__c", "Week__c", "__c", "Fake__c"]);
     expect(hits[0].line).toBe(7);
   });
 
@@ -59,7 +59,18 @@ describe("namespace-safety scanner", () => {
     expect(hits.map((h) => h.line)).toEqual([5, 6, 10]);
   });
 
+  it("counts Apex names in any case, as Apex and SOQL read them", () => {
+    expect(texts(scanApex("String q = 'SELECT Id FROM week__C';"))).toEqual([
+      "'SELECT Id FROM week__C'"
+    ]);
+  });
+
   it("skips Apex test classes", () => {
+    expect(
+      scanApex(
+        `@SuppressWarnings('PMD.ApexDoc')\n@IsTest\nprivate class YTest { String s = 'Week__c'; }`
+      )
+    ).toBeNull();
     expect(
       scanApex(
         `/** doc */\n@IsTest\nprivate class XTest { String s = 'Week__c'; }`

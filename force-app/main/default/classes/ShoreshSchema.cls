@@ -15,17 +15,23 @@ public with sharing class ShoreshSchema {
   /** Tests set this to 'shoresh__' to see names the way the namespaced package will. */
   @TestVisible
   private static String simulatedPrefix;
+  private static String realPrefix;
   private static Map<Schema.SObjectType, Map<String, Schema.SObjectField>> fieldsByLocalName = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>();
 
   /** What Salesforce puts before this package's names: '' today, 'shoresh__' once it has one. */
   public static String prefix() {
-    if (simulatedPrefix != null) {
-      return simulatedPrefix;
+    return simulatedPrefix != null ? simulatedPrefix : realPrefix();
+  }
+
+  /** The org's real prefix for this package (simulating never changes what the org has). */
+  private static String realPrefix() {
+    if (realPrefix == null) {
+      Schema.DescribeSObjectResult camp = Camp__c.SObjectType.getDescribe(
+        SObjectDescribeOptions.DEFERRED
+      );
+      realPrefix = camp.getName().removeEnd(camp.getLocalName());
     }
-    Schema.DescribeSObjectResult camp = Camp__c.SObjectType.getDescribe(
-      SObjectDescribeOptions.DEFERRED
-    );
-    return camp.getName().removeEnd(camp.getLocalName());
+    return realPrefix;
   }
 
   /**
@@ -88,18 +94,6 @@ public with sharing class ShoreshSchema {
     return null;
   }
 
-  /**
-   * The name the namespaced package will report for a field (getPopulatedFieldsAsMap() keys):
-   * custom fields get the prefix, standard ones don't. For tests, with simulatedPrefix set.
-   */
-  @TestVisible
-  private static String packagedName(Schema.SObjectField field) {
-    Schema.DescribeFieldResult described = field.getDescribe();
-    return described.isCustom()
-      ? prefix() + described.getLocalName()
-      : described.getLocalName();
-  }
-
   private static Map<String, Schema.SObjectField> localFields(
     Schema.SObjectType type
   ) {
@@ -113,7 +107,15 @@ public with sharing class ShoreshSchema {
           .fields.getMap()
           .values()
       ) {
-        byName.put(each.getDescribe().getLocalName().toLowerCase(), each);
+        // Only this package's own custom fields and standard fields: in a customer's org, a
+        // field they (or another package) add can share a local name with ours.
+        Schema.DescribeFieldResult described = each.getDescribe();
+        if (
+          !described.isCustom() ||
+          described.getName() == realPrefix() + described.getLocalName()
+        ) {
+          byName.put(described.getLocalName().toLowerCase(), each);
+        }
       }
       fieldsByLocalName.put(type, byName);
     }

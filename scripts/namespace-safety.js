@@ -13,6 +13,8 @@
  * - Apex classes and triggers: string literals containing `__c` / `__r`, and `.getName()` calls
  *   (describe names carry the namespace; use ShoreshSchema instead). Typed references such as
  *   `Week__c.StartDate__c` are compiled and namespace-safe, so they don't count.
+ * Not caught: a typed reference turned into text (`String.valueOf(Week__c.StartDate__c)`, `'' + token`);
+ * reviewers watch for those.
  * Not scanned: tests (`__tests__`, `@IsTest` classes) and the two files that are the one home for
  * these names: `lwc/shoreshSchema` and `classes/ShoreshSchema.cls`.
  *
@@ -20,6 +22,10 @@
  *   node scripts/namespace-safety.js                  check against the baseline
  *   node scripts/namespace-safety.js --base <file>    also refuse a baseline raised above <file>
  *   node scripts/namespace-safety.js --update         lower the baseline to today's counts
+ *
+ * Moving or renaming a file that has a count fails on a pull request (its new path has no count
+ * on the base branch): move it in a pull request of its own after its count reaches zero, or
+ * have the reviewer accept the one failed run.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -29,6 +35,8 @@ const ROOT = path.resolve(__dirname, "..");
 const SOURCE = "force-app/main/default";
 const BASELINE = "scripts/namespace-safety-baseline.json";
 const NAME = /__(c|r)\b/g;
+// Apex and SOQL ignore case, so `week__C` is the same name there.
+const APEX_NAME = /__(c|r)\b/gi;
 const ALLOWED = [
   `${SOURCE}/lwc/shoreshSchema/`,
   `${SOURCE}/classes/ShoreshSchema.cls`
@@ -50,10 +58,15 @@ function scanJs(source) {
     // Babel lists comments among the tokens too (type "CommentLine" / "CommentBlock").
     const comment =
       typeof token.type === "string" && token.type.startsWith("Comment");
-    if (!comment && typeof token.value === "string") {
-      const n = count(token.value, NAME);
+    // Regular expressions (/__c$/) count too: their token value is { pattern, flags }.
+    const text =
+      token.value && typeof token.value.pattern === "string"
+        ? token.value.pattern
+        : token.value;
+    if (!comment && typeof text === "string") {
+      const n = count(text, NAME);
       for (let i = 0; i < n; i++) {
-        hits.push({ line: token.loc.start.line, text: token.value });
+        hits.push({ line: token.loc.start.line, text });
       }
     }
   }
@@ -127,7 +140,8 @@ function lexApex(source) {
 }
 
 function isApexTest(code) {
-  return /^\s*@istest\b/i.test(code);
+  // @IsTest among the class's annotations (others, such as @SuppressWarnings, may come first).
+  return /^\s*(@\w+(\s*\([^)]*\))?\s*)*@istest\b/i.test(code);
 }
 
 /** Hits in an Apex file, or null when it is a test class. */
@@ -136,7 +150,7 @@ function scanApex(source) {
   if (isApexTest(code)) return null;
   const hits = [];
   for (const s of strings) {
-    const n = count(s.text, NAME);
+    const n = count(s.text, APEX_NAME);
     for (let i = 0; i < n; i++)
       hits.push({ line: s.line, text: `'${s.text}'` });
   }
