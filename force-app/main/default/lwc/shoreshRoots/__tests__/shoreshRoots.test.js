@@ -159,10 +159,16 @@ describe("c-shoresh-roots", () => {
     const door = element.shadowRoot.querySelector('[data-id="schedule-door"]');
     expect(door.textContent).toContain("Build or generate the schedule");
     expect(door.textContent).toContain("Coming");
-    expect(
-      element.shadowRoot.querySelector('lightning-button[data-id="import"]')
-        .disabled
-    ).toBe(true);
+  });
+
+  it("Import last year opens the import screen", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    element.shadowRoot
+      .querySelector('lightning-button[data-id="import"]')
+      .click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "import" });
   });
 
   it("each card opens its screen", async () => {

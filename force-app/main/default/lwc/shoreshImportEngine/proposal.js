@@ -1,0 +1,388 @@
+/*
+ * The whole proposal: what would be added, what would change (only where the director said so),
+ * what is left out and why, what is noted but not set up, and every question still to answer.
+ * Pure: the same files and answers always give the same proposal.
+ */
+import {
+  activityRecord,
+  blockRecordKey,
+  campItems,
+  decideKinds,
+  notedNames,
+  setTimeRecords,
+  usablePlacements
+} from "./items";
+import { mapGroups } from "./people";
+import { mapPrograms } from "./programs";
+import { LEAVE_OUT, readImport } from "./reading";
+import { WEEKDAYS } from "./text";
+
+const MS_PER_MINUTE = 60000;
+
+/** The camp's group names in each of its divisions and programs, by record Id. */
+function campMembers(existing) {
+  const members = new Map();
+  for (const entry of (existing && existing.programs) || []) {
+    const all = [];
+    for (const d of entry.divisions || []) {
+      const names = (d.groups || []).map((g) => g.Name);
+      members.set(d.division.Id, names);
+      all.push(...names);
+    }
+    members.set(entry.program.Id, all);
+  }
+  return members;
+}
+
+/**
+ * Keys of the records a "who" names, and whether a division or program as a whole means only
+ * the groups the file names: a division (or program) the camp already has may hold groups the
+ * file does not mention, and "Juniors only" would then reach them too.
+ */
+function keysFor(groups, existing) {
+  const byName = new Map(
+    groups.filter((g) => !g.leftOut).map((g) => [g.name, g])
+  );
+  const members = campMembers(existing);
+  const coveredBy = (recordKey, names) =>
+    (members.get(recordKey) || []).every((n) => names.includes(n));
+  return {
+    group: (name) => (byName.get(name) || {}).key,
+    divisionOf: (name) => (byName.get(name) || {}).divisionKey,
+    coveredBy
+  };
+}
+
+// ---------- names the camp already has: asked only where the file disagrees ----------
+
+function compareFixed(decision, record, ctx) {
+  const t = decision.timetable;
+  const p =
+    decision.fixedShaped && decision.patterns.length === 1
+      ? decision.patterns[0]
+      : null;
+  if (!p) {
+    ctx.notes.push({
+      type: "kindDiffers",
+      name: decision.name,
+      kind: "fixed",
+      program: t.name
+    });
+    return;
+  }
+  const blockId = t.blocks[p.block].id;
+  if (blockId === record.TimeBlock__c && p.length === record.Length__c) {
+    return;
+  }
+  const id = `change|fixed|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}`;
+  ctx.asks.push({
+    id,
+    type: "fixed",
+    name: decision.name,
+    program: t.name,
+    record,
+    block: t.blocks[p.block],
+    length: p.length,
+    timetable: t
+  });
+  if (ctx.answers[id] === "change") {
+    ctx.updates.fixed.push({
+      id: record.Id,
+      blockKey: blockRecordKey(t, p.block),
+      length: p.length,
+      name: decision.name
+    });
+  }
+}
+
+function sameDays(record, days) {
+  return WEEKDAYS.every((d) => !!record[`${d}__c`] === days.includes(d));
+}
+
+function compareRecurring(decision, record, ctx) {
+  const t = decision.timetable;
+  if (decision.patterns.length !== 1 || decision.strays.length > 0) {
+    ctx.notes.push({
+      type: "kindDiffers",
+      name: decision.name,
+      kind: "recurring",
+      program: t.name
+    });
+    return;
+  }
+  const p = decision.patterns[0];
+  const blockId = t.blocks[p.block].id;
+  if (
+    blockId === record.TimeBlock__c &&
+    p.length === record.Length__c &&
+    sameDays(record, p.days)
+  ) {
+    return;
+  }
+  const days = WEEKDAYS.filter((d) => p.days.includes(d));
+  const id = `change|recurring|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}|${days.join(",")}`;
+  ctx.asks.push({
+    id,
+    type: "recurring",
+    name: decision.name,
+    program: t.name,
+    record,
+    block: t.blocks[p.block],
+    length: p.length,
+    days,
+    timetable: t
+  });
+  if (ctx.answers[id] === "change") {
+    ctx.updates.recurring.push({
+      id: record.Id,
+      blockKey: blockRecordKey(t, p.block),
+      length: p.length,
+      days,
+      name: decision.name
+    });
+  }
+}
+
+function compareActivity(name, cells, record, ctx) {
+  const lengths = cells.map((c) => c.span);
+  const length = lengths.sort(
+    (a, b) =>
+      lengths.filter((x) => x === b).length -
+        lengths.filter((x) => x === a).length || a - b
+  )[0];
+  if (length === record.Length__c) {
+    return;
+  }
+  const id = `change|activity|${name}|${length}`;
+  ctx.asks.push({ id, type: "activity", name, record, length });
+  if (ctx.answers[id] === "change") {
+    ctx.updates.activities.push({ id: record.Id, length, name });
+  }
+}
+
+// ---------- building the records ----------
+
+function setTimeFrom(decisions, ctx, keyOf) {
+  const added = [];
+  for (const d of decisions) {
+    if (d.leftOut || d.kind === "activity") {
+      continue;
+    }
+    if (d.existing) {
+      const key = `${d.timetable.program.id}|${d.name}`;
+      if (d.kind === "fixed") {
+        compareFixed(d, ctx.camp.fixed.get(key), ctx);
+      } else {
+        compareRecurring(d, ctx.camp.recurring.get(key), ctx);
+      }
+      continue;
+    }
+    added.push(...setTimeRecords(d, keyOf));
+  }
+  return added;
+}
+
+/** Where a name is something other than an activity in another program, say so. */
+function noteMixedKinds(name, decisions, ctx) {
+  const kinds = decisions.filter((d) => d.name === name && !d.leftOut);
+  if (new Set(kinds.map((d) => d.kind)).size > 1) {
+    ctx.notes.push({
+      type: "mixedKinds",
+      name,
+      places: kinds.map((d) => ({ kind: d.kind, program: d.timetable.name }))
+    });
+  }
+}
+
+/**
+ * Activities, each from its placements in the programs where it is an activity (not where it
+ * is fixed, recurring, or left out), counting the groups of those programs.
+ */
+function activitiesFrom(decisions, usable, groups, ctx, keyOf) {
+  const asActivity = decisions.filter(
+    (d) => d.kind === "activity" && !d.leftOut
+  );
+  const names = [...new Set(asActivity.map((d) => d.name))].sort();
+  const divisionOf = new Map(groups.map((g) => [g.name, g.division]));
+  const added = [];
+  for (const name of names) {
+    const where = new Set(
+      asActivity.filter((d) => d.name === name).map((d) => d.timetable.index)
+    );
+    const cells = usable.filter(
+      (p) => p.text === name && where.has(p.timetable)
+    );
+    const pool = groups
+      .filter((g) => !g.leftOut && where.has(g.timetable))
+      .map((g) => g.name);
+    noteMixedKinds(name, decisions, ctx);
+    const existing = ctx.camp.activities.get(name);
+    if (existing) {
+      compareActivity(name, cells, existing, ctx);
+    } else {
+      added.push(activityRecord(name, cells, pool, divisionOf, keyOf));
+    }
+  }
+  return added;
+}
+
+/** Places named in the file: the camp's (matched by name), or new ones only if ticked. */
+/** The most groups the file has at a place at once: how many must fit there. */
+function groupsAtOncePer(usable) {
+  const counts = new Map();
+  for (const p of usable.filter((x) => x.place)) {
+    const key = `${p.place}|${p.week}|${p.day}|${p.timetable}|${p.blockIndex}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const most = new Map();
+  for (const [key, n] of counts) {
+    const place = key.split("|")[0];
+    most.set(place, Math.max(most.get(place) || 1, n));
+  }
+  return most;
+}
+
+function placesFor(records, existing, answers, usable) {
+  const fits = groupsAtOncePer(usable);
+  const camp = new Map(
+    ((existing && existing.locations) || []).map((l) => [l.Name, l.Id])
+  );
+  const offered = [];
+  const locations = [];
+  for (const name of [
+    ...new Set(records.map((r) => r.place).filter(Boolean))
+  ].sort()) {
+    if (camp.has(name)) {
+      locations.push({
+        name,
+        key: camp.get(name),
+        id: camp.get(name),
+        isNew: false
+      });
+      continue;
+    }
+    const id = `place|${name}`;
+    const ticked = answers[id] === "add";
+    offered.push({
+      id,
+      name,
+      ticked,
+      usedBy: records.filter((r) => r.place === name).map((r) => r.name)
+    });
+    if (ticked) {
+      locations.push({
+        name,
+        key: `L|${name}`,
+        id: null,
+        isNew: true,
+        groupsThatFit: fits.get(name) || 1
+      });
+    }
+  }
+  const keyOfPlace = new Map(locations.map((l) => [l.name, l.key]));
+  records.forEach((r) => {
+    r.locationKey = keyOfPlace.get(r.place) || null;
+  });
+  return { offered, locations };
+}
+
+function leftOutNames(decisions) {
+  return [
+    ...new Set(decisions.filter((d) => d.leftOut).map((d) => d.name))
+  ].sort();
+}
+
+function notedList(usable, kinds) {
+  const result = new Map();
+  for (const p of usable) {
+    const kind = kinds.get(p.text);
+    if (kind) {
+      const entry = result.get(p.text) || {
+        name: p.text,
+        kind,
+        days: new Set(),
+        groups: new Set()
+      };
+      entry.days.add(p.day);
+      entry.groups.add(p.group);
+      result.set(p.text, entry);
+    }
+  }
+  return [...result.values()]
+    .map((e) => ({
+      name: e.name,
+      kind: e.kind,
+      days: WEEKDAYS.filter((d) => e.days.has(d)),
+      groups: e.groups.size
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Everything about one import, with the answers given so far.
+ * input: { files, existing, terms, answers, layouts }.
+ */
+export function buildProposal(input) {
+  const answers = input.answers || {};
+  const reading = readImport(input);
+  const programs = mapPrograms(reading, input.existing, answers);
+  const people = mapGroups(
+    reading,
+    programs.timetables,
+    input.existing,
+    answers
+  );
+  const { usable, leftOut } = usablePlacements(
+    reading,
+    programs.timetables,
+    people.groups
+  );
+  const noted = notedNames(usable, programs.timetables, input.terms);
+  const ctx = {
+    camp: campItems(input.existing),
+    timetables: programs.timetables,
+    answers,
+    asks: [],
+    notes: [...people.notes],
+    updates: { fixed: [], recurring: [], activities: [] },
+    specialDays: noted.specialDays,
+    divisionOf: people.divisionOf,
+    noted: noted.kinds
+  };
+  const decisions = decideKinds(usable, ctx);
+  const keyOf = keysFor(people.groups, input.existing);
+  const setTime = setTimeFrom(decisions, ctx, keyOf);
+  const activities = activitiesFrom(
+    decisions,
+    usable,
+    people.groups,
+    ctx,
+    keyOf
+  );
+  const places = placesFor(
+    [...setTime, ...activities],
+    input.existing,
+    answers,
+    usable
+  );
+  return {
+    reading,
+    timetables: programs.timetables,
+    groups: people.groups,
+    divisions: people.divisions,
+    fixed: setTime.filter((r) => r.kind === "fixed"),
+    recurring: setTime.filter((r) => r.kind === "recurring"),
+    activities,
+    locations: places.locations,
+    offeredPlaces: places.offered,
+    updates: ctx.updates,
+    noted: notedList(usable, noted.kinds),
+    leftOutNames: leftOutNames(decisions),
+    leftOutCells: leftOut,
+    notes: ctx.notes,
+    asks: [...programs.asks, ...people.asks, ...ctx.asks],
+    decisions
+  };
+}
+
+export { MS_PER_MINUTE, LEAVE_OUT };

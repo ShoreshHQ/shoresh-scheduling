@@ -583,6 +583,16 @@
                 terms={terms}
               ></c-shoresh-schedules>
             </div>
+
+            <!-- Import last year, opened from Roots -->
+            <div class={shown.import} data-screen="import">
+              <c-shoresh-import
+                setup={setup}
+                terms={terms}
+                onimported={handleImported}
+                onclose={handleImportClosed}
+              ></c-shoresh-import>
+            </div>
           </template>
         </div>
       </div>
