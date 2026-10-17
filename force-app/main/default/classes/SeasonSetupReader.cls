@@ -52,7 +52,7 @@ public with sharing class SeasonSetupReader {
       FROM Week__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
-      ORDER BY StartDate__c, SortOrder__c
+      ORDER BY StartDate__c, SortOrder__c, Id
     ];
     result.programs = readPrograms(seasonId);
     result.locationTypes = [

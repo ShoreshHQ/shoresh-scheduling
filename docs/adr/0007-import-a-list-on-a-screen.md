@@ -193,6 +193,11 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     a quote inside written twice. Two weeks of one name head their "Runs in" columns with
     their start dates. Two items of exactly one name are asked which is which on the way
     back (shown, never guessed): a known limit of names that aren't unique.
+22. **Spacing is tidied on both sides** before names are compared: "Board  games" (two
+    spaces) in a file matches "Board games" set up, and a name set up with two spaces matches
+    the file's one, without a question. Capitals are not: "gym" against "Gym" is asked.
+23. **Files are saved from a Blob** (`URL.createObjectURL`, let go a second later), not a
+    data: link, so a large camp's workbook isn't cut off by a browser's link length.
 
 ## Choices that are hard to undo after release
 

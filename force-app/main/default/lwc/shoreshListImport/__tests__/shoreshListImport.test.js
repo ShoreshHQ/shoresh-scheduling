@@ -328,6 +328,8 @@ describe("Download this list", () => {
 
   it("saves this screen's list as a file", async () => {
     window.XLSX = require("xlsx");
+    URL.createObjectURL = () => "blob:test";
+    URL.revokeObjectURL = () => undefined;
     const saved = [];
     const spy = jest
       .spyOn(HTMLAnchorElement.prototype, "click")
@@ -342,6 +344,8 @@ describe("Download this list", () => {
     ]);
     spy.mockRestore();
     delete window.XLSX;
+    delete URL.createObjectURL;
+    delete URL.revokeObjectURL;
   });
 
   it("says so in a message when the list can't be written, naming the item", async () => {

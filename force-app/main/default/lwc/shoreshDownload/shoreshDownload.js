@@ -22,11 +22,19 @@ export async function downloadWorkbook(component, sheets, fileName) {
       sheetName(name)
     );
   });
-  const base64 = XLSX.write(workbook, { type: "base64", bookType: "xlsx" });
+  // A Blob, not a data: link, so a large camp's file isn't cut off by the browser's link limit.
+  const data = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  const url = URL.createObjectURL(new Blob([data], { type: XLSX_TYPE }));
   const link = document.createElement("a");
-  link.href = `data:${XLSX_TYPE};base64,${base64}`;
+  link.href = url;
   link.download = fileName;
-  link.click();
+  try {
+    link.click();
+  } finally {
+    // After the browser has taken the file: let go at once and some browsers cancel it.
+    // eslint-disable-next-line @lwc/lwc/no-async-operation
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 /** A file name from a title: no characters a computer's file names refuse. */

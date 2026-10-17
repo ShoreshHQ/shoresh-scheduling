@@ -262,6 +262,12 @@ describe("Download camp workbook", () => {
   it("saves every list and the extra sheets in one file", async () => {
     const XLSX = require("xlsx");
     window.XLSX = XLSX;
+    const blobs = new Map();
+    URL.createObjectURL = (blob) => {
+      blobs.set("blob:test", blob);
+      return "blob:test";
+    };
+    URL.revokeObjectURL = () => undefined;
     const saved = [];
     const spy = jest
       .spyOn(HTMLAnchorElement.prototype, "click")
@@ -280,9 +286,16 @@ describe("Download camp workbook", () => {
     await Promise.resolve();
     expect(saved).toHaveLength(1);
     expect(saved[0].download).toBe("Summer 2027 - camp workbook.xlsx");
-    const wb = XLSX.read(saved[0].href.split("base64,")[1], { type: "base64" });
+    const bytes = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result));
+      reader.readAsArrayBuffer(blobs.get(saved[0].href));
+    });
+    const wb = XLSX.read(bytes, { type: "array" });
     expect(wb.SheetNames).toContain("Runs in");
     spy.mockRestore();
     delete window.XLSX;
+    delete URL.createObjectURL;
+    delete URL.revokeObjectURL;
   });
 });
