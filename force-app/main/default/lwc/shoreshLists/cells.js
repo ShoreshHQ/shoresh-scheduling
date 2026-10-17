@@ -73,7 +73,15 @@ export function splitList(text) {
   let current = "";
   let depth = 0;
   let inQuotes = false;
-  for (const ch of String(text)) {
+  const chars = [...String(text)];
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (ch === '"' && inQuotes && chars[i + 1] === '"') {
+      // A quote inside a quoted name is written twice, as spreadsheets do.
+      current += '"';
+      i++;
+      continue;
+    }
     if (ch === '"') {
       inQuotes = !inQuotes;
       continue;
@@ -94,9 +102,12 @@ export function splitList(text) {
   return parts.map((part) => tidy(part)).filter((part) => part);
 }
 
-/** A name as a list cell writes it: in double quotes when it holds a comma or semicolon. */
+/**
+ * A name as a list cell writes it: in double quotes when it holds a comma, semicolon, line break,
+ * or quote; a quote inside is written twice ("@Bunk ""3""").
+ */
 export function listName(name) {
-  return /[,;\n"]/.test(name) ? `"${String(name).replace(/"/g, "")}"` : name;
+  return /[,;\n"]/.test(name) ? `"${String(name).replace(/"/g, '""')}"` : name;
 }
 
 /** "2 by Wednesday", "2 by Wed": how many early in the week, by which day. */

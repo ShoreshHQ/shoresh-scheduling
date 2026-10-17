@@ -4,6 +4,7 @@
 import * as XLSX from "xlsx";
 import { buildTerms } from "c/shoreshTerms";
 import { workbookFile } from "c/shoreshImportEngine";
+import { listName, splitList } from "../cells";
 import {
   LIST_SCREENS,
   campWorkbookSheets,
@@ -391,6 +392,186 @@ describe("PR C review: harder values still read back unchanged", () => {
         screenKey,
         p.rows.filter((r) => r.status !== "unchanged")
       ]).toEqual([screenKey, []]);
+    });
+  });
+});
+
+// Coordinator, before opening PR C: odd names, the camp's own words for everything, and empty
+// lists against full ones. Every download reads back with no changes and no questions.
+describe("adversarial downloads read back with nothing to do", () => {
+  const word = (term, singular, plural) => ({
+    term,
+    modelSingular: term,
+    singular,
+    plural,
+    isCustom: true
+  });
+  const oddTerms = buildTerms([
+    word("Program", "Session", "Sessions"),
+    word("Division", "Village", "Villages"),
+    word("Group", "Cabin", "Cabins"),
+    word("TimeBlock", "Period", "Periods"),
+    word("Location", "Spot", "Spots"),
+    word("LocationType", "Area", "Areas"),
+    word("Activity", "Elective", "Electives"),
+    word("FixedActivity", "Anchor", "Anchors"),
+    word("RecurringActivity", "Routine", "Routines"),
+    word("Week", "Session week", "Session weeks")
+  ]);
+
+  function oddCamp() {
+    const s = camp();
+    const [main, teens] = s.programs;
+    main.program.Name = 'Main, "East"';
+    teens.program.Name = "Teens|Late";
+    teens.program.Thursday__c = true;
+    main.divisions[0].division.Name = "=Juniors";
+    main.divisions[1].division.Name = "Seniors, Boys";
+    main.divisions[0].groups[0].Name = "+Bunk 1";
+    main.divisions[0].groups[1].Name = "Bunk|2";
+    main.divisions[1].groups[0].Name = '@Bunk "3"';
+    teens.divisions[0].division.Name = "-Juniors";
+    main.timeBlocks[0].Name = "@Period 1";
+    main.timeBlocks[1].Name = "Lunch, hot";
+    // A 5 o'clock block: written with PM, never asked on the way back.
+    main.timeBlocks.push({
+      Id: "tb9",
+      Name: "Late, pickup",
+      StartTime__c: at(17, 0),
+      EndTime__c: at(17, 30),
+      PartOfDay__c: "Afternoon"
+    });
+    s.locationTypes[0].Name = "Water, front";
+    s.locations[0].Name = "-Pool";
+    s.locations[1].Name = 'Gym "B"';
+    s.activities[0].Name = "Swim|Laps";
+    s.activities[1].Name = "=Board games";
+    main.fixedActivities[0].Name = "+Lunch";
+    teens.fixedActivities[0].Name = "Lunch, Teens";
+    // Days that would be asked if written with a dash: written as names.
+    main.recurringActivities[0].Name = '"Meeting", all';
+    main.recurringActivities[0].Monday__c = false;
+    main.recurringActivities[0].Wednesday__c = false;
+    main.recurringActivities[0].Tuesday__c = true;
+    main.recurringActivities[0].Thursday__c = true;
+    return s;
+  }
+
+  function readBack(screenKey, file, setup, t) {
+    const p = listProposal({ screenKey, file, setup, terms: t, answers: {} });
+    return {
+      changed: p.rows
+        .filter((r) => r.status !== "unchanged")
+        .map((r) => [r.rowNumber, r.name, r.status, r.problems]),
+      questions: questionCards(p, t, {}).map((c) => c.title),
+      rows: p.rows.length
+    };
+  }
+
+  [
+    ["the default words", terms],
+    ["the camp's own words", oddTerms]
+  ].forEach(([label, t]) => {
+    LIST_SCREENS.forEach((screenKey) => {
+      it(`${screenKey}, odd names, ${label}: this list`, () => {
+        const s = oddCamp();
+        const file = roundTrip([
+          { name: "List", rows: listRows(screenKey, s, t) }
+        ]);
+        const back = readBack(screenKey, file, s, t);
+        expect([screenKey, back.changed, back.questions]).toEqual([
+          screenKey,
+          [],
+          []
+        ]);
+        expect(back.rows).toBeGreaterThan(0);
+      });
+    });
+
+    it(`the camp workbook, odd names, ${label}`, () => {
+      const s = oddCamp();
+      const file = roundTrip(campWorkbookSheets(s, t));
+      LIST_SCREENS.forEach((screenKey) => {
+        const back = readBack(screenKey, file, s, t);
+        expect([screenKey, back.changed, back.questions]).toEqual([
+          screenKey,
+          [],
+          []
+        ]);
+      });
+    });
+  });
+
+  it("camp words a sheet name can't hold (a slash, past 31 letters): each screen still finds its sheet", () => {
+    const t = buildTerms([
+      word("Activity", "Art/Craft", "Arts/Crafts"),
+      word(
+        "RecurringActivity",
+        "Every-single-week happening",
+        "Every-single-week happenings at camp"
+      ),
+      word("FixedActivity", "Anchor", "Anchors")
+    ]);
+    const s = oddCamp();
+    const file = roundTrip(campWorkbookSheets(s, t));
+    LIST_SCREENS.forEach((screenKey) => {
+      const back = readBack(screenKey, file, s, t);
+      expect([screenKey, back.changed, back.questions]).toEqual([
+        screenKey,
+        [],
+        []
+      ]);
+    });
+  });
+
+  it("a quote inside a quoted list name is written twice and read back once", () => {
+    expect(listName('@Bunk "3"')).toBe('"@Bunk ""3"""');
+    expect(splitList('"@Bunk ""3""", Bunk 1')).toEqual(['@Bunk "3"', "Bunk 1"]);
+  });
+
+  it("formula-like names are written with an apostrophe and read back without", () => {
+    const rows = listRows("activities", oddCamp(), terms);
+    expect(rows.map((r) => r[0])).toContain("'=Board games");
+  });
+
+  LIST_SCREENS.forEach((screenKey) => {
+    it(`${screenKey}: an empty camp's list reads back as nothing, asking nothing`, () => {
+      const empty = {
+        ...camp(),
+        locationTypes: [],
+        locations: [],
+        activities: [],
+        programs: []
+      };
+      const rows = listRows(screenKey, empty, oddTerms);
+      expect(rows.length).toBe(1);
+      const back = readBack(
+        screenKey,
+        roundTrip([{ name: "List", rows }]),
+        empty,
+        oddTerms
+      );
+      expect([back.rows, back.questions]).toEqual([0, []]);
+    });
+
+    it(`${screenKey}: a full list read into an empty camp adds, and asks only what it must`, () => {
+      const empty = {
+        ...camp(),
+        locationTypes: [],
+        locations: [],
+        activities: [],
+        programs: []
+      };
+      const rows = listRows(screenKey, oddCamp(), oddTerms);
+      const back = readBack(
+        screenKey,
+        roundTrip([{ name: "List", rows }]),
+        empty,
+        oddTerms
+      );
+      expect(back.changed.length).toBe(rows.length - 1);
+      // Nothing can't be read: odd names are names.
+      expect(back.changed.filter((c) => c[3].length)).toEqual([]);
     });
   });
 });
