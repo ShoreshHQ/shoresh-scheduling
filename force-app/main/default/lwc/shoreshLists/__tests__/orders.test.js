@@ -414,10 +414,11 @@ describe("own review of round 3, second pass", () => {
     ["Archry", "Kayak"],
     ["Kayak", "Archry"]
   ];
-  const sameThen = (whichAnswer) => (card) =>
-    card.title.startsWith("Which")
+  const sameThen = (whichAnswer) => (card) => {
+    return card.title.startsWith("Which")
       ? whichAnswer
       : card.options.find((o) => o.label.includes("“Archery”")).value;
+  };
 
   it("A: answered the same as Archery, then a new Archery: one new Archery, linked", () => {
     const { p, answers } = run(rows, sameThen("new"), twoArcheries());
