@@ -1,0 +1,261 @@
+/* Shoresh desktop's import and review screens (ImportScreen.jsx, ReconciliationScreen.jsx,
+   reconciliationCards.jsx), in Salesforce's design tokens. */
+.import {
+  max-width: 1000px;
+  padding-bottom: 5rem;
+}
+
+.import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.import-weak {
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  font-size: 0.8125rem;
+}
+
+.import-error {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--slds-g-color-error-base-50, #ea001e);
+  border-radius: 0.25rem;
+  background: var(--slds-g-color-error-base-90, #fef1ee);
+  color: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.import-panel {
+  padding: 1rem;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 0.5rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+}
+
+/* The drop area: dashed, tinted while a file is dragged over it. */
+.import-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  border: 2px dashed var(--slds-g-color-border-base-2, #c9c9c9);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.import-drop_over {
+  border-color: var(--slds-g-color-accent-2, #0176d3);
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+}
+
+.import-drop-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.import-drop-hint {
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  font-size: 0.75rem;
+}
+
+/* "Found in the file. Nothing added yet." */
+.import-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-left: 3px solid var(--slds-g-color-accent-2, #0176d3);
+  border-radius: 0.25rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  font-weight: 600;
+}
+
+.import-banner_done {
+  border-left-color: #2f6b58;
+}
+
+.import-section {
+  margin-bottom: 1.25rem;
+}
+
+.import-section-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  margin-bottom: 0.5rem;
+}
+
+.import-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.import-file-name {
+  font-weight: 600;
+  min-width: 16rem;
+}
+
+.import-layout {
+  min-width: 26rem;
+}
+
+/* Read-only chips, as the desktop's preview shows what was found. */
+.import-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.import-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 1rem;
+  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.import-chip-name {
+  font-weight: 600;
+}
+
+.import-tag {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.import-tag_new {
+  color: #2f6b58;
+}
+
+.import-tag_changes {
+  color: #173b63;
+}
+
+.import-tag_left-out {
+  color: #b8833a;
+}
+
+/* Question cards: the desktop's lanes. Hold cards (amber) come first. */
+.import-card {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-left: 4px solid var(--slds-g-color-border-base-2, #c9c9c9);
+  border-radius: 0.25rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+}
+
+.import-card_hold {
+  padding: 1rem;
+  border-left-color: #b8833a;
+}
+
+.import-card_answered {
+  opacity: 0.7;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.import-card-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.import-card_hold .import-card-title {
+  font-size: 0.9375rem;
+}
+
+.import-card-subtitle {
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  font-size: 0.8125rem;
+  margin-top: 0.25rem;
+}
+
+.import-card-done {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.import-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+
+.import-option {
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 18rem;
+}
+
+.import-option-why {
+  font-size: 0.75rem;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  margin-top: 0.125rem;
+}
+
+.import-review-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  margin-bottom: 0.75rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.import-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.import-progress-bar {
+  display: inline-block;
+  width: 8rem;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--slds-g-color-border-base-1, #e5e5e5);
+  overflow: hidden;
+}
+
+.import-progress-bar span {
+  display: block;
+  height: 100%;
+  background: #2f6b58;
+}
+
+/* The bottom bar stays in view while the list scrolls, as on the desktop. */
+.import-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  margin-top: 1rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.import-footer .import-weak {
+  margin-right: auto;
+}

@@ -1,0 +1,7 @@
+# Salesforce Code Analyzer settings (picked up from the folder it runs in; CI runs it at the
+# repository root).
+ignores:
+  files:
+    # Third-party libraries shipped as static resources (SheetJS, minified) are not our code.
+    # Their versions and licences are recorded in docs/adr and NOTICE.
+    - "**/staticresources/**"

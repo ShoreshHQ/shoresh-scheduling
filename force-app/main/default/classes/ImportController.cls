@@ -1,0 +1,15 @@
+/** Server side of Import last year (slice 4b): saving the setup the director reviewed. */
+public with sharing class ImportController {
+  /**
+   * Adds the reviewed setup, all or none. plan: the JSON the import screen builds
+   * (c/shoreshImportEngine planFor). Returns how many of each thing were added and changed.
+   */
+  @AuraEnabled
+  public static ImportSetupSaves.Result saveSetup(String plan) {
+    try {
+      return ImportSetupSaves.save(plan);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+}

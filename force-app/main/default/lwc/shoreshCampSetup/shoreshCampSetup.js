@@ -28,7 +28,8 @@ const SCREENS = [
   "activities",
   "fixedActivities",
   "recurringActivities",
-  "schedules"
+  "schedules",
+  "import"
 ];
 
 const STATUS_OPTIONS = [
@@ -603,6 +604,18 @@ export default class ShoreshCampSetup extends LightningElement {
     this.mode = "screens";
     this.screen = "roots";
     await this.run(() => this.loadCamp(event.detail.seasonId));
+  }
+
+  /** After an import is saved: the season again, with what it added (the summary stays up). */
+  async handleImported() {
+    await this.run(async () => {
+      await this.loadSeason();
+      this.seasons = await getSeasons({ campId: this.campId });
+    });
+  }
+
+  handleImportClosed() {
+    this.screen = "roots";
   }
 
   handleCancelCopy() {

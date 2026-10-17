@@ -1,0 +1,333 @@
+<template>
+  <div class="import" data-id="import">
+    <div class="import-header">
+      <h2 class="slds-text-heading_medium">Import last year</h2>
+      <lightning-button
+        variant="base"
+        label="Back to Roots"
+        onclick={handleClose}
+        data-id="close"
+      ></lightning-button>
+    </div>
+
+    <template lwc:if={error}>
+      <div class="import-error" role="alert" data-id="error">{error}</div>
+    </template>
+
+    <!-- 1. Choose the files -->
+    <template lwc:if={isPick}>
+      <div class="import-panel">
+        <p class="slds-m-bottom_small">
+          Bring in last year's schedule. Shoresh reads it here and shows what it
+          found; nothing is added until you say so.
+        </p>
+        <div
+          class={dropClass}
+          data-id="drop"
+          ondragover={handleDragOver}
+          ondragleave={handleDragLeave}
+          ondrop={handleDrop}
+        >
+          <template lwc:if={isReading}>
+            <lightning-spinner
+              alternative-text="Reading the files"
+              size="small"
+            ></lightning-spinner>
+            <div class="import-drop-title">Reading…</div>
+          </template>
+          <template lwc:else>
+            <div class="import-drop-title">Drop schedule here</div>
+            <lightning-button
+              label="Choose files"
+              onclick={handleChoose}
+              data-id="choose"
+            ></lightning-button>
+            <input
+              class="slds-assistive-text"
+              type="file"
+              multiple
+              accept=".xlsx,.xlsm,.xls,.csv"
+              data-id="files"
+              onchange={handleFileInput}
+            />
+            <div class="import-drop-hint">
+              .xlsx · .xls · .csv — several at once
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- 2. What was found -->
+    <template lwc:if={isPreview}>
+      <div class="import-banner" data-id="found">
+        Found in the file. Nothing added yet.
+      </div>
+
+      <section class="import-section">
+        <div class="import-section-label">Files</div>
+        <template for:each={fileRows} for:item="row">
+          <div key={row.file} class="import-file" data-file={row.file}>
+            <div class="import-file-name">
+              {row.file} <span class="import-weak">· {row.pageCount}</span>
+            </div>
+            <lightning-combobox
+              class="import-layout"
+              label="Layout"
+              variant="label-inline"
+              value={row.layout}
+              options={row.options}
+              data-file={row.file}
+              onchange={handleLayout}
+            ></lightning-combobox>
+            <template lwc:if={row.unsure}>
+              <div class="import-weak">
+                Layout unclear — check the lists below.
+              </div>
+            </template>
+          </div>
+        </template>
+      </section>
+
+      <template lwc:if={hasPreviewCards}>
+        <section class="import-section" data-id="similar">
+          <div class="import-section-label">Similar names</div>
+          <p class="import-weak slds-m-bottom_x-small">
+            Not merged unless you say so.
+          </p>
+          <template for:each={previewCards} for:item="card">
+            <div key={card.id} class={card.className} data-card={card.id}>
+              <template lwc:if={card.answered}>
+                <div class="import-card-done">
+                  <span>✓ {card.answerLabel}</span>
+                  <span class="import-weak">{card.title}</span>
+                  <lightning-button
+                    variant="base"
+                    label="Change"
+                    data-id={card.id}
+                    onclick={handleChangeAnswer}
+                  ></lightning-button>
+                </div>
+              </template>
+              <template lwc:else>
+                <div class="import-card-title">{card.title}</div>
+                <div class="import-card-subtitle">{card.subtitle}</div>
+                <div class="import-card-subtitle">{card.detail}</div>
+                <div class="import-options">
+                  <template for:each={card.options} for:item="option">
+                    <lightning-button
+                      key={option.key}
+                      label={option.label}
+                      title={option.description}
+                      variant={option.variant}
+                      data-key={option.key}
+                      onclick={handleAnswer}
+                    ></lightning-button>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </section>
+      </template>
+
+      <template lwc:if={hasPlaces}>
+        <section class="import-section" data-id="places">
+          <div class="import-section-label">Places</div>
+          <p class="import-weak slds-m-bottom_x-small">
+            Is this a place at your camp? Tick to add it.
+          </p>
+          <template for:each={places} for:item="place">
+            <lightning-input
+              key={place.id}
+              type="checkbox"
+              label={place.name}
+              field-level-help={place.usedByText}
+              checked={place.ticked}
+              data-id={place.id}
+              onchange={handlePlace}
+            ></lightning-input>
+          </template>
+        </section>
+      </template>
+
+      <template for:each={lists} for:item="list">
+        <section key={list.key} class="import-section" data-list={list.key}>
+          <div class="import-section-label">{list.title}</div>
+          <div class="import-chips">
+            <template for:each={list.items} for:item="item">
+              <span key={item.key} class="import-chip" data-item={item.key}>
+                <span class="import-chip-name">{item.name}</span>
+                <span class="import-weak">{item.detail}</span>
+                <span class={item.tagClass}>{item.tag}</span>
+              </span>
+            </template>
+          </div>
+        </section>
+      </template>
+
+      <template lwc:if={hasNotes}>
+        <section class="import-section" data-id="notes">
+          <div class="import-section-label">Good to know</div>
+          <ul class="slds-list_dotted">
+            <template for:each={notes} for:item="note">
+              <li key={note.key}>{note.text}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+
+      <div class="import-footer">
+        <lightning-button
+          label="Start again"
+          onclick={handleStartAgain}
+        ></lightning-button>
+        <lightning-button
+          variant="brand"
+          label={reviewLabel}
+          disabled={reviewDisabled}
+          onclick={handleReview}
+          data-id="review"
+        ></lightning-button>
+      </div>
+    </template>
+
+    <!-- 3. Questions -->
+    <template lwc:if={isReview}>
+      <div class="import-review-header">
+        <div>Reconciling <strong>{fileNames}</strong></div>
+        <div class="import-progress" data-id="progress">
+          <span>{progressText}</span>
+          <span class="import-progress-bar"
+            ><span style={progressStyle}></span
+          ></span>
+        </div>
+      </div>
+
+      <template for:each={reviewCards} for:item="card">
+        <div key={card.id} class={card.className} data-card={card.id}>
+          <template lwc:if={card.answered}>
+            <div class="import-card-done">
+              <span>✓ {card.answerLabel}</span>
+              <span class="import-weak">{card.title}</span>
+              <lightning-button
+                variant="base"
+                label="Change"
+                data-id={card.id}
+                onclick={handleChangeAnswer}
+              ></lightning-button>
+            </div>
+          </template>
+          <template lwc:else>
+            <div class="import-card-title">{card.title}</div>
+            <div class="import-card-subtitle">{card.subtitle}</div>
+            <div class="import-options">
+              <template for:each={card.options} for:item="option">
+                <span key={option.key} class="import-option">
+                  <lightning-button
+                    label={option.label}
+                    variant={option.variant}
+                    data-key={option.key}
+                    onclick={handleAnswer}
+                  ></lightning-button>
+                  <span class="import-option-why">{option.description}</span>
+                </span>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template lwc:if={isSaving}>
+        <lightning-spinner
+          alternative-text="Saving"
+          size="small"
+        ></lightning-spinner>
+      </template>
+
+      <div class="import-footer">
+        <span class="import-weak">{saveHint}</span>
+        <lightning-button
+          label="Back"
+          onclick={handleBackToPreview}
+        ></lightning-button>
+        <lightning-button
+          variant="brand"
+          label={saveLabel}
+          disabled={saveDisabled}
+          onclick={handleSave}
+          data-id="save"
+        ></lightning-button>
+      </div>
+    </template>
+
+    <!-- 4. Done -->
+    <template lwc:if={isDone}>
+      <div class="import-banner import-banner_done" data-id="done">
+        Imported from {fileNames}.
+      </div>
+      <section class="import-section" data-id="added">
+        <div class="import-section-label">Added</div>
+        <ul class="slds-list_dotted">
+          <template for:each={addedLines} for:item="line">
+            <li key={line.key}>{line.text}</li>
+          </template>
+        </ul>
+      </section>
+      <template lwc:if={hasChanged}>
+        <section class="import-section" data-id="changed">
+          <div class="import-section-label">Changed, as you chose</div>
+          <ul class="slds-list_dotted">
+            <template for:each={changedLines} for:item="line">
+              <li key={line.key}>{line.text}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <template lwc:if={hasLeftOut}>
+        <section class="import-section" data-id="left-out">
+          <div class="import-section-label">Left out for now</div>
+          <p class="import-weak">
+            Not added. The next import asks about them again.
+          </p>
+          <ul class="slds-list_dotted">
+            <template for:each={leftOutLines} for:item="line">
+              <li key={line.key}>{line.text}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <template lwc:if={hasNoted}>
+        <section class="import-section" data-id="noted">
+          <div class="import-section-label">Not set up yet</div>
+          <p class="import-weak">
+            In the file, but Shoresh does not set these up yet. Nothing was
+            added for them.
+          </p>
+          <ul class="slds-list_dotted">
+            <template for:each={notedList} for:item="item">
+              <li key={item.key}>{item.name}: {item.detail}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <template lwc:if={hasNotes}>
+        <section class="import-section">
+          <div class="import-section-label">Good to know</div>
+          <ul class="slds-list_dotted">
+            <template for:each={notes} for:item="note">
+              <li key={note.key}>{note.text}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <div class="import-footer">
+        <lightning-button
+          variant="brand"
+          label="Continue"
+          onclick={handleClose}
+          data-id="continue"
+        ></lightning-button>
+      </div>
+    </template>
+  </div>
+</template>

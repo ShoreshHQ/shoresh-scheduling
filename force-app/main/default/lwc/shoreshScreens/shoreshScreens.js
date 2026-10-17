@@ -24,7 +24,8 @@ export function screenLabels(t) {
     fixedActivities: t.p("FixedActivity"),
     recurringActivities: t.p("RecurringActivity"),
     specialEvents: t.p("SpecialEvent"),
-    schedules: "Schedules"
+    schedules: "Schedules",
+    import: "Import last year"
   };
 }
 
