@@ -1,4 +1,4 @@
-import { buildProposal, questionCards } from "c/shoreshImportEngine";
+import { buildProposal, questionCards } from "./data/engine";
 import {
   cellName,
   dayOf,

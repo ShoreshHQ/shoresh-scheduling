@@ -3,11 +3,15 @@
  * show: what was found, what is new, what changes, what is left out and why, and what is noted
  * but not set up.
  */
+import { FIELD } from "c/shoreshSchema";
 import { clock, shortClock } from "./text";
 import { dayList, nameList } from "./questions";
 
+// Every kind names its place in order the same way.
+const SORT_ORDER = FIELD.Program.SortOrder;
+
 function maxSort(records) {
-  return Math.max(0, ...(records || []).map((r) => r.SortOrder__c || 0));
+  return Math.max(0, ...(records || []).map((r) => r[SORT_ORDER] || 0));
 }
 
 function article(word) {

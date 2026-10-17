@@ -4,7 +4,7 @@
 // rename on either side fails here.
 import { readFileSync } from "fs";
 import { join } from "path";
-import { buildProposal, planFor } from "c/shoreshImportEngine";
+import { buildProposal, planFor } from "./data/engine";
 import {
   csv,
   existingSetup,

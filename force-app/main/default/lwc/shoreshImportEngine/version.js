@@ -12,6 +12,7 @@
  * The grid names records by the keys the save uses (new records) or their Ids (records the camp
  * has); the server puts in the Ids once everything is saved.
  */
+import { FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 
@@ -23,17 +24,18 @@ const DAY_NUMBER = {
   Friday: 5
 };
 const MAX_NAME = 80;
+const WEEK = FIELD.Week;
 
 function seasonWeeks(existing) {
   return [...((existing && existing.weeks) || [])].sort((a, b) =>
-    String(a.StartDate__c).localeCompare(String(b.StartDate__c))
+    String(a[WEEK.StartDate]).localeCompare(String(b[WEEK.StartDate]))
   );
 }
 
 /** The date ("YYYY-MM-DD") of a weekday within a week's dates, or null. */
 export function dateIn(week, day) {
-  const [y, m, d] = String(week.StartDate__c).split("-").map(Number);
-  const end = String(week.EndDate__c);
+  const [y, m, d] = String(week[WEEK.StartDate]).split("-").map(Number);
+  const end = String(week[WEEK.EndDate]);
   for (let i = 0; i < 7; i++) {
     const date = new Date(Date.UTC(y, m - 1, d + i));
     const text = date.toISOString().slice(0, 10);

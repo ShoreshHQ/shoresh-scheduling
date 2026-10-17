@@ -5,7 +5,7 @@ import {
   LEAVE_OUT,
   planFor,
   questionCards
-} from "c/shoreshImportEngine";
+} from "./data/engine";
 import { existingSetup, samples, terms, findSamplesFrom } from "./data/samples";
 
 findSamplesFrom(__dirname);

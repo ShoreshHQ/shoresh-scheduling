@@ -3,6 +3,7 @@
  * what is left out and why, what is noted but not set up, and every question still to answer.
  * Pure: the same files and answers always give the same proposal.
  */
+import { FIELD } from "c/shoreshSchema";
 import {
   activityRecord,
   blockRecordKey,
@@ -86,7 +87,11 @@ function compareFixed(decision, record, ctx) {
     return;
   }
   const blockId = t.blocks[p.block].id;
-  if (blockId === record.TimeBlock__c && p.length === record.Length__c) {
+  const fixed = FIELD.FixedActivity;
+  if (
+    blockId === record[fixed.TimeBlock] &&
+    p.length === record[fixed.Length]
+  ) {
     return;
   }
   const id = `change|fixed|${t.name}|${decision.name}|${t.blocks[p.block].name}|${p.length}`;
@@ -111,7 +116,9 @@ function compareFixed(decision, record, ctx) {
 }
 
 function sameDays(record, days) {
-  return WEEKDAYS.every((d) => !!record[`${d}__c`] === days.includes(d));
+  return WEEKDAYS.every(
+    (d) => !!record[FIELD.RecurringActivity[d]] === days.includes(d)
+  );
 }
 
 function compareRecurring(decision, record, ctx) {
@@ -128,8 +135,8 @@ function compareRecurring(decision, record, ctx) {
   const p = decision.patterns[0];
   const blockId = t.blocks[p.block].id;
   if (
-    blockId === record.TimeBlock__c &&
-    p.length === record.Length__c &&
+    blockId === record[FIELD.RecurringActivity.TimeBlock] &&
+    p.length === record[FIELD.RecurringActivity.Length] &&
     sameDays(record, p.days)
   ) {
     return;
@@ -165,7 +172,7 @@ function compareActivity(name, cells, record, ctx) {
       lengths.filter((x) => x === b).length -
         lengths.filter((x) => x === a).length || a - b
   )[0];
-  if (length === record.Length__c) {
+  if (length === record[FIELD.Activity.Length]) {
     return;
   }
   const id = `change|activity|${name}|${length}`;

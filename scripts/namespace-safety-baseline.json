@@ -6,12 +6,6 @@
   "force-app/main/default/lwc/shoreshCopySeason/shoreshCopySeason.js": 2,
   "force-app/main/default/lwc/shoreshEditableTable/shoreshEditableTable.js": 16,
   "force-app/main/default/lwc/shoreshImport/shoreshImport.js": 1,
-  "force-app/main/default/lwc/shoreshImportEngine/people.js": 5,
-  "force-app/main/default/lwc/shoreshImportEngine/plan.js": 1,
-  "force-app/main/default/lwc/shoreshImportEngine/programs.js": 4,
-  "force-app/main/default/lwc/shoreshImportEngine/proposal.js": 6,
-  "force-app/main/default/lwc/shoreshImportEngine/questions.js": 5,
-  "force-app/main/default/lwc/shoreshImportEngine/version.js": 4,
   "force-app/main/default/lwc/shoreshListImport/shoreshListImport.js": 1,
   "force-app/main/default/lwc/shoreshLists/export.js": 9,
   "force-app/main/default/lwc/shoreshLists/plan.js": 17,
@@ -23,6 +17,5 @@
   "force-app/main/default/lwc/shoreshProgram/shoreshProgram.html": 6,
   "force-app/main/default/lwc/shoreshProgram/shoreshProgram.js": 24,
   "force-app/main/default/lwc/shoreshRoots/shoreshRoots.js": 2,
-  "force-app/main/default/lwc/shoreshSchedules/shoreshSchedules.js": 1,
-  "force-app/main/default/lwc/shoreshSetupRules/shoreshSetupRules.js": 44
+  "force-app/main/default/lwc/shoreshSchedules/shoreshSchedules.js": 1
 }

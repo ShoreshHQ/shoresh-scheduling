@@ -1,11 +1,16 @@
-import {
-  spanChange,
-  setTimeNote,
-  setupProblems,
-  suggestedCopyName,
-  suggestedCopyStart
-} from "c/shoreshSetupRules";
+import * as rules from "c/shoreshSetupRules";
 import { buildTerms } from "c/shoreshTerms";
+import { nsName, nsRecord } from "shoresh-jest/namespace";
+
+const { suggestedCopyName, suggestedCopyStart } = rules;
+// Fixtures are written with bare names and given to the rules as the package would send them
+// (nsRecord: unchanged normally, shoresh__-prefixed in the namespaced run). Expected records go
+// through nsRecord too.
+const setupProblems = (setup, t) => rules.setupProblems(nsRecord(setup), t);
+const setTimeNote = (entry, item) =>
+  rules.setTimeNote(nsRecord(entry), nsRecord(item));
+const spanChange = (entry, item, t) =>
+  rules.spanChange(nsRecord(entry), nsRecord(item), t);
 
 const terms = buildTerms([
   { term: "Week", singular: "Session", plural: "Sessions", isCustom: true },
@@ -377,18 +382,20 @@ describe("fixed and recurring activities", () => {
       expect(moved.why).toBe(
         "Time blocks changed since it was saved: it covered Period 2 – Period 3 and now covers Period 2 – Snack."
       );
-      expect(moved.actions).toEqual([
-        {
-          key: "keep",
-          label: "Keep Period 2 – Snack",
-          changes: { LastTimeBlock__c: "b9" }
-        },
-        {
-          key: "stretch",
-          label: "Stretch to Period 2 – Period 3",
-          changes: { Length__c: 3 }
-        }
-      ]);
+      expect(moved.actions).toEqual(
+        nsRecord([
+          {
+            key: "keep",
+            label: "Keep Period 2 – Snack",
+            changes: { LastTimeBlock__c: "b9" }
+          },
+          {
+            key: "stretch",
+            label: "Stretch to Period 2 – Period 3",
+            changes: { Length__c: 3 }
+          }
+        ])
+      );
     });
 
     it("a block inside it removed: keep the shorter coverage, or extend into the next block", () => {
@@ -398,18 +405,20 @@ describe("fixed and recurring activities", () => {
       expect(moved.why).toBe(
         "Time blocks changed since it was saved: the time block it ended in was deleted, and it now covers Period 1 – Period 3."
       );
-      expect(moved.actions).toEqual([
-        {
-          key: "shorter",
-          label: "Keep the shorter Period 1",
-          changes: { Length__c: 1 }
-        },
-        {
-          key: "extend",
-          label: "Extend to Period 3",
-          changes: { LastTimeBlock__c: "b3" }
-        }
-      ]);
+      expect(moved.actions).toEqual(
+        nsRecord([
+          {
+            key: "shorter",
+            label: "Keep the shorter Period 1",
+            changes: { Length__c: 1 }
+          },
+          {
+            key: "extend",
+            label: "Extend to Period 3",
+            changes: { LastTimeBlock__c: "b3" }
+          }
+        ])
+      );
       // Saved as Period 1 – Period 2 (length 3 before Snack was removed from the middle).
       const longer = {
         TimeBlock__c: "b1",
@@ -421,7 +430,7 @@ describe("fixed and recurring activities", () => {
         "Keep the shorter Period 1 – Period 2",
         "Extend to Period 3"
       ]);
-      expect(shorter.actions[0].changes).toEqual({ Length__c: 2 });
+      expect(shorter.actions[0].changes).toEqual(nsRecord({ Length__c: 2 }));
     });
 
     it("at the end of the day, with its last block gone, only keeping makes sense", () => {
@@ -435,9 +444,9 @@ describe("fixed and recurring activities", () => {
         "Time blocks changed since it was saved: it now covers Period 3. " +
           "It now runs to the end of the day, so it can only be kept as it is."
       );
-      expect(atEnd.actions.map((a) => [a.label, a.changes])).toEqual([
-        ["Keep Period 3", { LastTimeBlock__c: "b3" }]
-      ]);
+      expect(atEnd.actions.map((a) => [a.label, a.changes])).toEqual(
+        nsRecord([["Keep Period 3", { LastTimeBlock__c: "b3" }]])
+      );
       // Rest: Period 2, length 3 (Period 2 – Period 4); Period 4 deleted.
       const shorterDay = spanChange(
         withBlocks([P1, P2, P3]),
@@ -451,7 +460,8 @@ describe("fixed and recurring activities", () => {
       [atEnd, shorterDay].forEach((moved) =>
         moved.actions.forEach((a) =>
           expect(
-            a.changes.Length__c === undefined || a.changes.Length__c >= 1
+            a.changes[nsName("Length__c")] === undefined ||
+              a.changes[nsName("Length__c")] >= 1
           ).toBe(true)
         )
       );
@@ -465,10 +475,12 @@ describe("fixed and recurring activities", () => {
       expect(moved.why).toBe(
         "Time blocks changed since it was saved: it covered Period 3 – Period 4 and now covers Period 3 – Period 1."
       );
-      expect(moved.actions.map((a) => [a.label, a.changes])).toEqual([
-        ["Keep Period 3 – Period 1", { LastTimeBlock__c: "b1" }],
-        ["Stretch to Period 3 – Period 4", { Length__c: 4 }]
-      ]);
+      expect(moved.actions.map((a) => [a.label, a.changes])).toEqual(
+        nsRecord([
+          ["Keep Period 3 – Period 1", { LastTimeBlock__c: "b1" }],
+          ["Stretch to Period 3 – Period 4", { Length__c: 4 }]
+        ])
+      );
     });
 
     it("with no saved end and nothing else to offer, says so plainly", () => {
@@ -522,16 +534,22 @@ describe("fixed and recurring activities", () => {
       };
       const item = setupProblems(setup, terms).find((p) => p.name === "Rest");
       expect(item.screen).toBe("fixedActivities");
-      expect(item.actions.map((a) => [a.label, a.record])).toEqual([
-        [
-          "Keep Period 2 – Snack",
-          { sobjectType: "FixedActivity__c", Id: "f1", LastTimeBlock__c: "b9" }
-        ],
-        [
-          "Stretch to Period 2 – Period 3",
-          { sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }
-        ]
-      ]);
+      expect(item.actions.map((a) => [a.label, a.record])).toEqual(
+        nsRecord([
+          [
+            "Keep Period 2 – Snack",
+            {
+              sobjectType: "FixedActivity__c",
+              Id: "f1",
+              LastTimeBlock__c: "b9"
+            }
+          ],
+          [
+            "Stretch to Period 2 – Period 3",
+            { sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }
+          ]
+        ])
+      );
     });
   });
 });

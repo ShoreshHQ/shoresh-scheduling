@@ -5,7 +5,7 @@ import {
   questionCards,
   foundLists,
   importNotes
-} from "c/shoreshImportEngine";
+} from "./data/engine";
 import {
   csv,
   existingSetup,
@@ -199,6 +199,9 @@ describe("adding to a season that has setup already", () => {
       "“Lunch” is set up at Period 4. The file has it at Lunch."
     );
     const boating = cardsOf(p).find((c) => c.id.startsWith("change|activity"));
+    expect(boating.title).toBe(
+      "“Boating” is set up as 1 time block long. In the file it runs 2 time blocks."
+    );
     expect(boating.options.map((o) => o.label)).toEqual([
       "Keep 1 time block",
       "Change it to 2 time blocks",

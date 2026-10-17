@@ -1,4 +1,4 @@
-import { buildProposal, LEAVE_OUT, questionCards } from "c/shoreshImportEngine";
+import { buildProposal, LEAVE_OUT, questionCards } from "./data/engine";
 import { mergesFrom, similarity, similarPairs } from "../names";
 import {
   byGroupFiles,
