@@ -18,3 +18,10 @@ This product includes SheetJS Community Edition 0.20.3
 Copyright (C) 2013-present SheetJS, licensed under the Apache License,
 Version 2.0, shipped unchanged as force-app/main/default/staticresources/SheetJS.js.
 Its licence text: docs/licenses/SheetJS-LICENSE.txt.
+
+This repository includes development-assistant skills (not part of the packaged app) from
+Salesforce sf-skills (https://github.com/forcedotcom/sf-skills, commit 625863f),
+Copyright (c) 2026 Salesforce, Inc., licensed under the Apache License, Version 2.0, in
+.claude/skills/. Changes: a "Shoresh overrides" section added to each SKILL.md, some
+descriptions shortened, and some scripts and one example removed (listed in
+.claude/skills/SOURCES.md). Its licence text: .claude/skills/LICENSE.txt.
