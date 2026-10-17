@@ -230,30 +230,38 @@ function writeDays(model, state) {
 }
 
 /**
- * The hover reason for each rule a placement bends. Manual Build reuses these words for its dots
- * (ADR 0010), so both schedules say the same thing: keep them here, and change them for both.
+ * The hover reason for one rule a placement bends, in camp words. Manual Build reuses these words
+ * for its dots (ADR 0010), so both schedules say the same thing: keep them here, and change them
+ * for both.
+ *
+ * rule: a RULE value. groupName: the group the cell belongs to. placeName: the activity's place
+ * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
+ * camp's words (c/shoreshTerms); model words when left out.
  */
-function reasonFor(rule, act, groupId, words) {
-  const { t, groups, locationNames, fit } = words;
-  const atPlace = act.locationId && fit.has(act.locationId);
-  const place = atPlace ? locationNames.get(act.locationId) : "";
+export function reasonFor(
+  rule,
+  { groupName, placeName, groupsAtOnce, terms } = {}
+) {
+  const t = terms || buildTerms([]);
   switch (rule) {
     case RULE.WEEKLY_MAX:
       return "Over its weekly limit";
     case RULE.ONCE_A_DAY:
       return "Twice in a day";
     case RULE.ELIGIBILITY:
-      return `Not set up for ${groups.get(groupId).name}`;
+      return `Not set up for ${groupName}`;
     case RULE.GROUPS_AT_ONCE:
-      return `Over its limit of ${act.atOnce} ${
-        act.atOnce === 1 ? t.sIn("Group") : t.pIn("Group")
+      return `Over its limit of ${groupsAtOnce} ${
+        groupsAtOnce === 1 ? t.sIn("Group") : t.pIn("Group")
       } at once`;
     case RULE.SAME_DIVISION:
-      return atPlace
-        ? `Shares ${place} with another ${t.sIn("Division")}`
+      return placeName
+        ? `Shares ${placeName} with another ${t.sIn("Division")}`
         : `With another ${t.sIn("Division")} at the same time`;
+    case RULE.PLACE_CAPACITY:
+      return `More ${t.pIn("Group")} at ${placeName} than fit`;
     default:
-      return `More ${t.pIn("Group")} at ${place} than fit`;
+      return "";
   }
 }
 
@@ -265,7 +273,17 @@ function flagList(model, state, words) {
     const act = state.actById.get(state.assigned.get(head));
     const day = model.days[d];
     const reason = bends
-      .map((rule) => reasonFor(rule, act, groupId, words))
+      .map((rule) =>
+        reasonFor(rule, {
+          groupName: words.groups.get(groupId).name,
+          placeName:
+            act.locationId && words.fit.has(act.locationId)
+              ? words.locationNames.get(act.locationId)
+              : null,
+          groupsAtOnce: act.atOnce,
+          terms: words.t
+        })
+      )
       .join(" · ");
     const first = day.blockIndex.get(blockId);
     for (let i = 0; i < act.span; i++) {

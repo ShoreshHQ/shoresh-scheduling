@@ -2,7 +2,7 @@
  * The rules one at a time: what Generated Schedule keeps, what it never touches, what it bends
  * (and in which order) when nothing fits, and what it reports as still to place.
  */
-import { generateWeek, RELAX_ORDER, RULE } from "c/shoreshEngine";
+import { generateWeek, reasonFor, RELAX_ORDER, RULE } from "c/shoreshEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
 import { problems } from "./data/check";
@@ -761,5 +761,63 @@ describe("the grid it returns", () => {
     input.days[0].items[0].name = "Swim (old name)";
     const items = generateWeek(input).days[0].items;
     expect(items.find((i) => i.id === "swim").name).toBe("Swimming");
+  });
+});
+
+// Manual Build's dots reuse these words (ADR 0010): pinned here so a change is deliberate.
+describe("the hover reasons, shared with Manual Build", () => {
+  const terms = buildTerms([
+    { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
+    { term: "Division", singular: "Edah", plural: "Edot", isCustom: true }
+  ]);
+  const cell = {
+    groupName: "Bunk 3",
+    placeName: "Pool",
+    groupsAtOnce: 2,
+    terms
+  };
+
+  it.each([
+    [RULE.WEEKLY_MAX, cell, "Over its weekly limit"],
+    [RULE.ONCE_A_DAY, cell, "Twice in a day"],
+    [RULE.ELIGIBILITY, cell, "Not set up for Bunk 3"],
+    [RULE.GROUPS_AT_ONCE, cell, "Over its limit of 2 Bunks at once"],
+    [
+      RULE.GROUPS_AT_ONCE,
+      { ...cell, groupsAtOnce: 1 },
+      "Over its limit of 1 Bunk at once"
+    ],
+    [RULE.SAME_DIVISION, cell, "Shares Pool with another Edah"],
+    [
+      RULE.SAME_DIVISION,
+      { ...cell, placeName: null },
+      "With another Edah at the same time"
+    ],
+    [RULE.PLACE_CAPACITY, cell, "More Bunks at Pool than fit"]
+  ])("%s: %j", (rule, details, words) => {
+    expect(reasonFor(rule, details)).toBe(words);
+  });
+
+  it("uses the model's words when the camp has none", () => {
+    expect(reasonFor(RULE.PLACE_CAPACITY, { placeName: "Pool" })).toBe(
+      "More groups at Pool than fit"
+    );
+  });
+
+  it("has words for every rule that can give way", () => {
+    for (const rule of RELAX_ORDER) {
+      expect(reasonFor(rule, cell)).not.toBe("");
+    }
+  });
+
+  it("is what the engine puts on a flagged cell", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      locations: [{ id: "pool", name: "Pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })]
+    });
+    expect(result.flags[0].reason).toBe(
+      reasonFor(RULE.PLACE_CAPACITY, { placeName: "Pool" })
+    );
   });
 });
