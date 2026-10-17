@@ -510,7 +510,7 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
    headed _Bunk 1 · Monday · Period 2_. Type `sw`: the list shows _Swim_. Press Return. Swim
    is in the cell at once, and it is saved. Reload the page and it is still there.
 5. **Multi-block activities fill their length.** Double-click Bunk 2's Period 2, type `boat`, and
-   press Return. Boating fills Period 2 and Period 3 (it runs two blocks). Now put Boating in
+   press Return. Boating fills Period 2 and Period 3 (it runs two blocks). Now place Boating in
    Bunk 3's Period 3: it takes only Period 3, because Lunch is next.
 6. **Clear a cell.** Click Bunk 1's Swim, then press Delete (or Backspace). It says **Open**
    again. Typing into a filled cell also offers **Open** first in the list.
@@ -531,8 +531,8 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
 11. **Group View.** Click **Group View** and pick _Bunk 2_. The columns are the days, and
     everything above works the same way here.
 12. **Two people at once.** Open the Shoresh tab in a second browser window (or have someone
-    else open it), both on Manual Build, Week 1. In window A, put Soccer in Bunk 4's Period 5.
-    In window B, which still shows that cell as Open, put Art in the same cell. Window B asks
+    else open it), both on Manual Build, Week 1. In window A, place Soccer in Bunk 4's Period 5.
+    In window B, which still shows that cell as Open, place Art in the same cell. Window B asks
     **Changed by someone else** and shows _Bunk 4 · Monday · Period 5_, _Theirs: Soccer_,
     _Yours: Art_.
     - **Keep theirs** leaves Soccer.
@@ -543,7 +543,7 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
     when you click back into it.
 
 13. **A morning-only bunk.** On the **Bunks** screen, set Bunk 6 to come in the morning only.
-    Back in Manual Build, Bunk 6's empty afternoon cells are hatched and say _Not at camp_, and
+    Back in Manual Build, Bunk 6's afternoon cells are hatched and say _Not at camp_, and
     nothing can be placed there.
 
 ## 20. Manual Build: drag, move, and undo
@@ -571,7 +571,7 @@ Same made-up camp, Manual Build, Week 1.
      nothing changes.
    - Drag Boating to a spot with only one block free: _Boating doesn't fit there._
    - Drag anything onto Lunch: _Lunch stays where it is set up._
-5. **Take one out.** Drag a placement back onto the list on the left: that cell is Open again.
+5. **Clear by dragging.** Drag a placement back onto the list on the left: that cell is Open again.
 6. **Longer or shorter.** A placed activity has a small bar at its bottom. Drag the bar down
    onto the next Open cell to make it run longer, or onto its own top to make it one block.
    Without dragging: click the bar once, then click the cell where it should end. From the
@@ -584,7 +584,7 @@ Same made-up camp, Manual Build, Week 1.
    - Undo keeps the last 50 changes of this visit. Choosing another week starts afresh.
 8. **Everything from the keyboard.** Click a placed cell once, then:
    - press Space to pick it up;
-   - move with the arrow keys and press Space to put it down there (a move, or a swap);
+   - move with the arrow keys and press Space to place it there (a move, or a swap);
    - Escape puts it back where it was.
 
    For a list activity, press Enter or Space on it in the list, then move to a cell and press

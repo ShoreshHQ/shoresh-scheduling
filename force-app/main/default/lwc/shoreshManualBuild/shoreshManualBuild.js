@@ -1369,7 +1369,7 @@ export default class ShoreshManualBuild extends LightningElement {
     if (result) {
       this.commit(
         result.runs,
-        `Took out ${name} · ${this.slotName(slot)}`,
+        `Cleared ${name} · ${this.slotName(slot)}`,
         null
       );
     }

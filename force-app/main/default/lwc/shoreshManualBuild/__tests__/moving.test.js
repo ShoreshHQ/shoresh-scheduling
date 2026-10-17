@@ -897,4 +897,25 @@ describe("c-shoresh-manual-build: moving things", () => {
     );
     expect(q(element, '[data-id="redo"]').disabled).toBe(true);
   });
+
+  it("a placement dragged back onto the list is cleared, in the same word as Delete", async () => {
+    const element = await render();
+    await fire(cell(element, "0-1"), "dragstart");
+    await fire(
+      palette(element).shadowRoot.querySelector('[data-id="palette"]'),
+      "drop"
+    );
+    expect(sentRuns()).toEqual([
+      {
+        day: "2026-06-29",
+        groupId: "g1",
+        firstBlockId: "t2",
+        before: ["A:a1"],
+        after: [""]
+      }
+    ]);
+    expect(q(element, '[data-id="undo"]').title).toBe(
+      "Undo: Cleared Swim · Bunk 1 · Monday · Period 2"
+    );
+  });
 });
