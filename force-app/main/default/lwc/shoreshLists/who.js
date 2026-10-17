@@ -45,9 +45,8 @@ export function whoTargets(setup) {
   targets.forEach((target) => {
     // The shortest spelling that names only this record.
     target.name =
-      target.spellings.find(
-        (s) => bySpelling.get(looseKey(s)).length === 1
-      ) || target.spellings[target.spellings.length - 1];
+      target.spellings.find((s) => bySpelling.get(looseKey(s)).length === 1) ||
+      target.spellings[target.spellings.length - 1];
     byId.set(target.id, target);
   });
   return { bySpelling, byId };

@@ -15,7 +15,7 @@ public with sharing class ImportListSaves {
     'Activity'
   };
   // What a list may write, per kind: plain fields...
-  private static final Map<String, Set<String>> FIELDS = new Map<String, Set<String>>{
+  private static final Map<String, Set<String>> PLAIN_FIELDS = new Map<String, Set<String>>{
     'LocationType' => new Set<String>{ 'Name' },
     'Location' => new Set<String>{ 'Name', 'GroupsThatFit__c', 'Notes__c' },
     'Activity' => new Set<String>{
@@ -35,7 +35,7 @@ public with sharing class ImportListSaves {
     }
   };
   // ...and fields naming another record.
-  private static final Map<String, Set<String>> REFS = new Map<String, Set<String>>{
+  private static final Map<String, Set<String>> LINK_FIELDS = new Map<String, Set<String>>{
     'LocationType' => new Set<String>(),
     'Location' => new Set<String>{ 'LocationType__c' },
     'Activity' => new Set<String>{ 'Location__c', 'RainPlan__c' }
@@ -71,7 +71,10 @@ public with sharing class ImportListSaves {
           ' was not found, or you do not have access to it.'
       );
     }
-    keys = new ImportKeys(plan.seasonId, CampLabels.forCamp(seasons[0].Camp__c));
+    keys = new ImportKeys(
+      plan.seasonId,
+      CampLabels.forCamp(seasons[0].Camp__c)
+    );
     writer = new ImportWriter(keys);
     Map<String, List<ImportPlan.Entry>> byKind = byKind();
     SetTimeGuard.defer();
@@ -98,7 +101,7 @@ public with sharing class ImportListSaves {
     Map<String, List<ImportPlan.Entry>> result = new Map<String, List<ImportPlan.Entry>>();
     for (ImportPlan.Entry entry : plan.entries('records')) {
       String kind = entry.text('kind');
-      if (!FIELDS.containsKey(kind)) {
+      if (!PLAIN_FIELDS.containsKey(kind)) {
         throw unreadable();
       }
       if (!result.containsKey(kind)) {
@@ -124,14 +127,17 @@ public with sharing class ImportListSaves {
       }
       Map<String, Object> fields = entry.valuesOf('fields');
       for (String field : fields.keySet()) {
-        if (!FIELDS.get(kind).contains(field)) {
+        if (!PLAIN_FIELDS.get(kind).contains(field)) {
           throw unreadable();
         }
-        row.put(field, ImportUndoValues.asField(type, field, fields.get(field)));
+        row.put(
+          field,
+          ImportUndoValues.asField(type, field, fields.get(field))
+        );
       }
       Map<String, Object> refs = entry.valuesOf('refs');
       for (String field : refs.keySet()) {
-        if (!REFS.get(kind).contains(field)) {
+        if (!LINK_FIELDS.get(kind).contains(field)) {
           throw unreadable();
         }
         String target = (String) refs.get(field);
@@ -200,10 +206,7 @@ public with sharing class ImportListSaves {
     Set<Id> owners = after.keySet();
     List<ActivityEligibility__c> old = new List<ActivityEligibility__c>();
     for (Activity__c activity : [
-      SELECT
-        Id,
-        Name,
-        (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
+      SELECT Id, Name, (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
       FROM Activity__c
       WHERE Id IN :owners
       WITH USER_MODE
@@ -248,6 +251,8 @@ public with sharing class ImportListSaves {
   }
 
   private static ShoreshException unreadable() {
-    return new ShoreshException('The import could not be read. Start it again.');
+    return new ShoreshException(
+      'The import could not be read. Start it again.'
+    );
   }
 }

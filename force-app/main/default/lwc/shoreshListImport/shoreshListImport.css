@@ -1,0 +1,112 @@
+/* Import a list (slice 4c), in the look of Import last year (c/shoreshImport). */
+.list-import {
+  max-width: 1000px;
+  padding: 1rem;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 0.5rem;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+}
+
+.list-header,
+.list-changes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.list-section {
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
+}
+
+.list-weak {
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  font-size: 0.8125rem;
+}
+
+.list-error {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--slds-g-color-error-base-50, #ea001e);
+  border-radius: 0.25rem;
+  background: var(--slds-g-color-error-base-90, #fef1ee);
+  color: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.list-heading {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 1fr) 2fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.list-heading_attention .list-heading-text {
+  color: var(--slds-g-color-warning-base-30, #8c4b02);
+  font-weight: 600;
+}
+
+.list-card,
+.list-changed {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-left: 4px solid var(--slds-g-color-warning-base-60, #fe9339);
+  border-radius: 0.25rem;
+}
+
+.list-card_done {
+  border-left-color: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.list-card-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.list-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.list-diff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+/* A change that empties a field stands out, so it never hides in "Change all". */
+.list-clears {
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  background: var(--slds-g-color-warning-base-90, #fef1cd);
+  color: var(--slds-g-color-warning-base-30, #8c4b02);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.list-names {
+  margin-left: 1.25rem;
+  list-style: disc;
+}
+
+.list-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.list-waiting {
+  flex: 1;
+  margin-left: 1.25rem;
+  list-style: disc;
+  color: var(--slds-g-color-warning-base-30, #8c4b02);
+}

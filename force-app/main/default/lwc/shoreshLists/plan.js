@@ -96,7 +96,9 @@ function finalValue(row, key) {
 function conflicts(proposal) {
   const messages = [];
   (proposal.rows || [])
-    .filter((r) => r.status === "changed" && proposal.screen.kind === "Activity")
+    .filter(
+      (r) => r.status === "changed" && proposal.screen.kind === "Activity"
+    )
     .forEach((row) => {
       const record = (proposal.setupActivities || []).find(
         (a) => a.Id === row.id
@@ -107,7 +109,8 @@ function conflicts(proposal) {
       const min = finalValue(row, "min") ?? record.TimesPerWeekMin__c;
       const maxChanged = finalValue(row, "max");
       const max =
-        maxChanged ?? (record.NoWeeklyMax__c ? NONE : record.TimesPerWeekMax__c);
+        maxChanged ??
+        (record.NoWeeklyMax__c ? NONE : record.TimesPerWeekMax__c);
       if (max !== NONE && max !== null && min !== null && max < min) {
         messages.push(
           `${row.existingName}: at most ${max} would be less than at least ${min} times a week. Change both, or keep both.`
@@ -186,13 +189,22 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         // As a location added by hand starts: one group at a time.
         fields.GroupsThatFit__c = 1;
       }
-      records.push({ kind: addKind[ref], key: `${addKind[ref]}:${name}`, fields });
+      records.push({
+        kind: addKind[ref],
+        key: `${addKind[ref]}:${name}`,
+        fields
+      });
     });
   });
   proposal.rows.forEach((row) => {
     if (row.status === "new") {
       records.push(
-        recordFor(screen, row, screen.columns.map((c) => c.key), refTarget)
+        recordFor(
+          screen,
+          row,
+          screen.columns.map((c) => c.key),
+          refTarget
+        )
       );
     } else if (row.status === "changed") {
       const chosen = row.differences
@@ -231,7 +243,10 @@ function refTargets(proposal) {
   const setup = proposal.setupRefs || {};
   const own = new Map();
   proposal.rows
-    .filter((r) => r.status === "new" || r.status === "changed" || r.status === "unchanged")
+    .filter(
+      (r) =>
+        r.status === "new" || r.status === "changed" || r.status === "unchanged"
+    )
     .forEach((r) => {
       own.set(looseKey(r.name), r.id || `${proposal.screen.kind}:${r.name}`);
     });

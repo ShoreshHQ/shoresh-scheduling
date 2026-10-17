@@ -1,0 +1,260 @@
+<template>
+  <template lwc:if={open}>
+    <div class="list-import slds-m-bottom_medium" data-id="list-import">
+      <div class="list-header">
+        <h3 class="slds-text-heading_small">Import a list of {screenName}</h3>
+        <lightning-button
+          data-id="close"
+          variant="base"
+          label="Close"
+          onclick={handleClose}
+        ></lightning-button>
+      </div>
+
+      <template lwc:if={error}>
+        <div class="list-error" role="alert" data-id="error">{error}</div>
+      </template>
+
+      <!-- Choosing the file -->
+      <template lwc:if={isPick}>
+        <p class="slds-m-bottom_small">
+          An Excel or CSV file with one {screenName} row each and headings in
+          the first row. Nothing is saved until you choose Save.
+        </p>
+        <input
+          type="file"
+          class="slds-hide"
+          data-id="file"
+          accept=".xlsx,.xlsm,.xls,.csv"
+          onchange={handleFileInput}
+        />
+        <lightning-button
+          data-id="choose"
+          label="Choose a file"
+          icon-name="utility:upload"
+          onclick={handleChoose}
+          disabled={isReading}
+        ></lightning-button>
+        <template lwc:if={isReading}>
+          <span class="list-weak slds-m-left_small">Reading…</span>
+        </template>
+      </template>
+
+      <!-- Reviewing it -->
+      <template lwc:if={isReview}>
+        <p class="list-weak slds-m-bottom_small">
+          {fileName}. Found in the file. Nothing saved yet.
+        </p>
+
+        <template lwc:if={showSheetChoice}>
+          <div
+            class="slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_small"
+          >
+            <lightning-combobox
+              data-id="sheet"
+              label="Sheet"
+              value={sheet}
+              placeholder="Choose the sheet the list is on"
+              options={sheetOptions}
+              onchange={handleSheet}
+            ></lightning-combobox>
+          </div>
+        </template>
+
+        <template lwc:if={hasMapping}>
+          <h4 class="list-section">Columns</h4>
+          <div class="list-headings" data-id="headings">
+            <template for:each={headings} for:item="heading">
+              <div key={heading.key} class={heading.className}>
+                <span class="list-heading-text">“{heading.text}”</span>
+                <lightning-combobox
+                  data-id={heading.key}
+                  label={heading.text}
+                  variant="label-hidden"
+                  value={heading.value}
+                  options={columnOptions}
+                  onchange={handleColumn}
+                ></lightning-combobox>
+                <span class="list-weak">{heading.note}</span>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <template lwc:if={hasCards}>
+          <h4 class="list-section">Similar names</h4>
+          <template for:each={cards} for:item="card">
+            <div key={card.id} class={card.className} data-card={card.id}>
+              <template lwc:if={card.answered}>
+                <span>✓ {card.answerLabel}</span>
+                <template lwc:if={card.fromMemory}>
+                  <span class="list-weak"> (remembered)</span>
+                </template>
+                <span class="list-weak"> {card.title}</span>
+                <lightning-button
+                  variant="base"
+                  label="Change"
+                  data-id={card.id}
+                  onclick={handleCardChange}
+                ></lightning-button>
+              </template>
+              <template lwc:else>
+                <div class="list-card-title">{card.title}</div>
+                <div class="list-weak">{card.subtitle} {card.detail}</div>
+                <div class="list-options">
+                  <template for:each={card.options} for:item="option">
+                    <lightning-button
+                      key={option.key}
+                      label={option.label}
+                      data-key={option.key}
+                      onclick={handleCardAnswer}
+                    ></lightning-button>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </template>
+
+        <template lwc:if={hasAlsoAdd}>
+          <h4 class="list-section">Will also add</h4>
+          <div data-id="also-add">
+            <template for:each={alsoAdd} for:item="item">
+              <lightning-input
+                key={item.key}
+                type="checkbox"
+                label={item.label}
+                checked
+                disabled
+              ></lightning-input>
+            </template>
+          </div>
+        </template>
+
+        <template lwc:if={newRows.length}>
+          <h4 class="list-section">New ({newRows.length})</h4>
+          <ul class="list-names" data-id="new">
+            <template for:each={newRows} for:item="row">
+              <li key={row.key}>{row.name}</li>
+            </template>
+          </ul>
+        </template>
+
+        <template lwc:if={hasChanges}>
+          <div class="list-changes-header">
+            <h4 class="list-section">Already set up, with differences</h4>
+            <lightning-button
+              data-id="change-all"
+              label={changeAllLabel}
+              onclick={handleChangeAll}
+            ></lightning-button>
+          </div>
+          <template for:each={changedRows} for:item="row">
+            <div key={row.key} class="list-changed" data-row={row.name}>
+              <div class="list-card-title">{row.name}</div>
+              <template for:each={row.differences} for:item="d">
+                <div key={d.id} class={d.className}>
+                  <span>{d.text}</span>
+                  <template lwc:if={d.clears}>
+                    <span class="list-clears">clears a value</span>
+                  </template>
+                  <lightning-button
+                    label="Keep"
+                    variant={d.keepVariant}
+                    data-id={d.id}
+                    onclick={handleKeep}
+                  ></lightning-button>
+                  <lightning-button
+                    label="Change"
+                    variant={d.changeVariant}
+                    data-id={d.id}
+                    onclick={handleChange}
+                  ></lightning-button>
+                </div>
+              </template>
+            </div>
+          </template>
+        </template>
+
+        <template lwc:if={unchangedCount}>
+          <p class="list-weak slds-m-top_small" data-id="unchanged">
+            {unchangedCount} already set up just as the file says.
+          </p>
+        </template>
+
+        <template lwc:if={unreadableRows.length}>
+          <h4 class="list-section">Can't be read, left out</h4>
+          <ul class="list-names" data-id="unreadable">
+            <template for:each={unreadableRows} for:item="row">
+              <li key={row.key}>{row.text}</li>
+            </template>
+          </ul>
+        </template>
+
+        <template lwc:if={leftOutRows.length}>
+          <h4 class="list-section">Left out</h4>
+          <ul class="list-names" data-id="left-out">
+            <template for:each={leftOutRows} for:item="row">
+              <li key={row.key}>{row.text}</li>
+            </template>
+          </ul>
+        </template>
+
+        <div class="list-footer">
+          <template lwc:if={hasWaiting}>
+            <ul class="list-waiting" data-id="waiting">
+              <template for:each={waitingLines} for:item="line">
+                <li key={line.key}>{line.text}</li>
+              </template>
+            </ul>
+          </template>
+          <lightning-button
+            data-id="save"
+            variant="brand"
+            label="Save"
+            onclick={handleSave}
+            disabled={saveDisabled}
+          ></lightning-button>
+        </div>
+      </template>
+
+      <!-- Saved -->
+      <template lwc:if={isDone}>
+        <p class="slds-m-bottom_small" data-id="saved">Saved {fileName}.</p>
+        <ul class="list-names" data-id="summary">
+          <template for:each={summaryLines} for:item="line">
+            <li key={line.key}>{line.text}</li>
+          </template>
+        </ul>
+        <template lwc:if={undone}>
+          <p class="slds-m-top_small" data-id="undone">{undone}</p>
+        </template>
+        <div class="slds-m-top_small">
+          <template lwc:if={canUndo}>
+            <lightning-button
+              data-id="undo"
+              label="Undo this import"
+              onclick={handleUndo}
+              disabled={undoing}
+            ></lightning-button>
+          </template>
+          <lightning-button
+            class="slds-m-left_x-small"
+            data-id="done"
+            variant="brand"
+            label="Done"
+            onclick={handleClose}
+          ></lightning-button>
+        </div>
+      </template>
+    </div>
+  </template>
+  <template lwc:else>
+    <lightning-button
+      data-id="open"
+      label="Import a list"
+      icon-name="utility:upload"
+      onclick={handleOpen}
+    ></lightning-button>
+  </template>
+</template>

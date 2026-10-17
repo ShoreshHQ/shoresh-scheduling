@@ -17,7 +17,12 @@ import {
   tidy
 } from "c/shoreshImportEngine";
 import { NONE, readCell } from "./cells";
-import { headingRowIndex, mapHeadings, pickSheet, sheetChoices } from "./headings";
+import {
+  headingRowIndex,
+  mapHeadings,
+  pickSheet,
+  sheetChoices
+} from "./headings";
 import { cellText, listScreen } from "./screens";
 import { resolveWho, whoTargets } from "./who";
 
@@ -331,8 +336,10 @@ function alsoAdded(rows, used, setup) {
     .filter(({ column }) => column.ref && column.ref !== "activity")
     .forEach(({ column }) => {
       const known = new Set(
-        ((column.ref === "location" ? setup.locations : setup.locationTypes) ||
-          []).map((r) => r.Name)
+        (
+          (column.ref === "location" ? setup.locations : setup.locationTypes) ||
+          []
+        ).map((r) => r.Name)
       );
       const names = new Set();
       rows.forEach((row) => {
@@ -413,7 +420,9 @@ function isEmpty(column, value) {
     // Everyone (no list) is a value, not a blank: nothing is cleared.
     return false;
   }
-  return value === null || value === undefined || value === "" || value === false;
+  return (
+    value === null || value === undefined || value === "" || value === false
+  );
 }
 
 function normal(column, value) {
@@ -431,7 +440,7 @@ function normal(column, value) {
   }
   if (column.type === "wholeOrNone") {
     return value === NONE || value === null || value === undefined
-      ? value ?? null
+      ? (value ?? null)
       : Number(value);
   }
   return value === "" ? null : (value ?? null);

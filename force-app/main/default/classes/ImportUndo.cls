@@ -1,7 +1,9 @@
 /**
  * Undo last import (Greg, 2026-10-16): removes what the import created, its version included,
  * and puts back what it changed, but keeps anything edited since or still in use, and says
- * which. Only a season's last import that has not been undone can be undone.
+ * which. Only the season's most recent import can be undone, and only once (Greg, 2026-10-17):
+ * once it is undone, no earlier import can be undone until the next import. Setup lists
+ * imported on a screen (slice 4c) are imports too.
  */
 public with sharing class ImportUndo {
   /** What Undo did, for the screen. */

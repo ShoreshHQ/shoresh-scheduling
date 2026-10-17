@@ -64,7 +64,8 @@ function locationsScreen(t) {
         words: ["type", "kind", "location type", "category"],
         type: "ref",
         ref: "locationType",
-        fromRecord: (r, setup) => nameOf(setup.locationTypes, r.LocationType__c),
+        fromRecord: (r, setup) =>
+          nameOf(setup.locationTypes, r.LocationType__c),
         refField: "LocationType__c"
       },
       {
@@ -149,10 +150,11 @@ function activitiesScreen(t) {
         // A new activity done at least 3 times a week is done at most 3 times, not 1.
         newValue: (values) => Math.max(1, values.min || 0),
         fromRecord: (r) => (r.NoWeeklyMax__c ? NONE : r.TimesPerWeekMax__c),
-        write: (v) =>
-          v === NONE
+        write: (v) => {
+          return v === NONE
             ? { NoWeeklyMax__c: true, TimesPerWeekMax__c: null }
-            : { NoWeeklyMax__c: false, TimesPerWeekMax__c: v }
+            : { NoWeeklyMax__c: false, TimesPerWeekMax__c: v };
+        }
       },
       {
         key: "priority",
@@ -202,10 +204,11 @@ function activitiesScreen(t) {
         keepWhenBlank: true,
         newValue: 1,
         fromRecord: (r) => (r.NoGroupLimit__c ? NONE : r.GroupsAtOnce__c),
-        write: (v) =>
-          v === NONE
+        write: (v) => {
+          return v === NONE
             ? { NoGroupLimit__c: true, GroupsAtOnce__c: null }
-            : { NoGroupLimit__c: false, GroupsAtOnce__c: v }
+            : { NoGroupLimit__c: false, GroupsAtOnce__c: v };
+        }
       },
       {
         key: "sameDivision",
@@ -225,10 +228,11 @@ function activitiesScreen(t) {
         heading: "Early in the week",
         words: ["early", "early in week", "prefer before day"],
         type: "early",
-        fromRecord: (r) =>
-          r.EarlyWeekCount__c && r.EarlyWeekByDay__c
+        fromRecord: (r) => {
+          return r.EarlyWeekCount__c && r.EarlyWeekByDay__c
             ? { count: r.EarlyWeekCount__c, day: r.EarlyWeekByDay__c }
-            : null,
+            : null;
+        },
         write: (v) => ({
           EarlyWeekCount__c: v ? v.count : null,
           EarlyWeekByDay__c: v ? v.day : null

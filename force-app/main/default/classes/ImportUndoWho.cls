@@ -111,7 +111,12 @@ public with sharing class ImportUndoWho {
     ]) {
       result.add(row.Id);
     }
-    for (Group__c row : [SELECT Id FROM Group__c WHERE Id IN :ids WITH USER_MODE]) {
+    for (Group__c row : [
+      SELECT Id
+      FROM Group__c
+      WHERE Id IN :ids
+      WITH USER_MODE
+    ]) {
       result.add(row.Id);
     }
     return result;

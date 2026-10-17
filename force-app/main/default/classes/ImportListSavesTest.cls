@@ -163,9 +163,17 @@ private class ImportListSavesTest {
       Test.stopTest();
       Assert.areEqual(
         0,
-        [SELECT COUNT() FROM Activity__c WHERE Name IN ('Canoeing', 'Board games')]
+        [
+          SELECT COUNT()
+          FROM Activity__c
+          WHERE Name IN ('Canoeing', 'Board games')
+        ]
       );
-      Assert.areEqual(0, undone.keptEdited.size(), 'the rain plan is the import\'s own');
+      Assert.areEqual(
+        0,
+        undone.keptEdited.size(),
+        'the rain plan is the import\'s own'
+      );
     }
   }
 
@@ -259,7 +267,11 @@ private class ImportListSavesTest {
       Assert.areEqual(new List<String>{ 'Archery' }, undone.keptEdited);
       Assert.areEqual(
         2,
-        [SELECT COUNT() FROM ActivityEligibility__c WHERE Activity__c = :c.archery.Id]
+        [
+          SELECT COUNT()
+          FROM ActivityEligibility__c
+          WHERE Activity__c = :c.archery.Id
+        ]
       );
     }
   }
@@ -293,8 +305,7 @@ private class ImportListSavesTest {
         }
       );
       Id indoors = [SELECT Id FROM LocationType__c WHERE Name = 'Indoors'].Id;
-      c.gym.LocationType__c = indoors;
-      update as user c.gym;
+      update as user new Location__c(Id = c.gym.Id, LocationType__c = indoors);
       Test.startTest();
       ImportUndo.Result undone = ImportController.undoImport(result.importId);
       Test.stopTest();
@@ -319,7 +330,11 @@ private class ImportListSavesTest {
           plan(
             c.season.Id,
             new List<Object>{
-              newActivity('Hiking', new Map<String, Object>(), new List<Object>()),
+              newActivity(
+                'Hiking',
+                new Map<String, Object>(),
+                new List<Object>()
+              ),
               bad
             }
           )
@@ -329,7 +344,10 @@ private class ImportListSavesTest {
         Assert.isTrue(e.getMessage().contains('Canoeing'), e.getMessage());
       }
       Test.stopTest();
-      Assert.areEqual(0, [SELECT COUNT() FROM Activity__c WHERE Name = 'Hiking']);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Activity__c WHERE Name = 'Hiking']
+      );
       Assert.areEqual(0, [SELECT COUNT() FROM Import__c]);
     }
   }
@@ -367,11 +385,17 @@ private class ImportListSavesTest {
           save(plan(c.season.Id, new List<Object>{ attempt }));
           Assert.fail('refused: ' + JSON.serialize(attempt));
         } catch (AuraHandledException e) {
-          Assert.isTrue(e.getMessage().contains('Start it again'), e.getMessage());
+          Assert.isTrue(
+            e.getMessage().contains('Start it again'),
+            e.getMessage()
+          );
         }
       }
       Test.stopTest();
-      Assert.areEqual(1, [SELECT Length__c FROM Activity__c WHERE Id = :theirs.Id].Length__c);
+      Assert.areEqual(
+        1,
+        [SELECT Length__c FROM Activity__c WHERE Id = :theirs.Id].Length__c
+      );
     }
   }
 
@@ -436,7 +460,11 @@ private class ImportListSavesTest {
       }
       Assert.areEqual(
         300,
-        [SELECT COUNT() FROM ActivityEligibility__c WHERE Group__c IN :firstFive],
+        [
+          SELECT COUNT()
+          FROM ActivityEligibility__c
+          WHERE Group__c IN :firstFive
+        ],
         'every list is back as it was'
       );
     }

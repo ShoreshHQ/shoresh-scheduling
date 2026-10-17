@@ -26,7 +26,13 @@ const bunkTerms = buildTerms([
 function csv(rows) {
   return csvFile(
     "list.csv",
-    rows.map((r) => r.map((c) => (/[,"\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(",")).join("\n")
+    rows
+      .map((r) =>
+        r
+          .map((c) => (/[,"\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c))
+          .join(",")
+      )
+      .join("\n")
   );
 }
 
@@ -38,7 +44,13 @@ function setup() {
     locationTypes: [{ Id: "lt1", Name: "Field" }],
     locations: [
       { Id: "l1", Name: "Gym", GroupsThatFit__c: 2, LocationType__c: null },
-      { Id: "l2", Name: "Pool", GroupsThatFit__c: 1, LocationType__c: "lt1", Notes__c: "Shallow end" }
+      {
+        Id: "l2",
+        Name: "Pool",
+        GroupsThatFit__c: 1,
+        LocationType__c: "lt1",
+        Notes__c: "Shallow end"
+      }
     ],
     activities: [
       {
@@ -95,7 +107,13 @@ function setup() {
 }
 
 function read(screenKey, rows, answers = {}, t = terms, s = setup()) {
-  return listProposal({ screenKey, file: csv(rows), setup: s, terms: t, answers });
+  return listProposal({
+    screenKey,
+    file: csv(rows),
+    setup: s,
+    terms: t,
+    answers
+  });
 }
 
 function rowNamed(p, name) {
@@ -117,11 +135,24 @@ describe("columns", () => {
   });
 
   it("matches headings in the camp's words and the usual other words, whatever the capitals", () => {
-    const p = read("activities", [
-      ["ACTIVITY", "place", "Times a week: at least", "Same unit only", "Colour"],
-      ["Archery", "Gym", "3", "no", "red"]
-    ], {}, bunkTerms);
-    const byText = Object.fromEntries(p.mapping.headings.map((h) => [h.text, h.column]));
+    const p = read(
+      "activities",
+      [
+        [
+          "ACTIVITY",
+          "place",
+          "Times a week: at least",
+          "Same unit only",
+          "Colour"
+        ],
+        ["Archery", "Gym", "3", "no", "red"]
+      ],
+      {},
+      bunkTerms
+    );
+    const byText = Object.fromEntries(
+      p.mapping.headings.map((h) => [h.text, h.column])
+    );
     expect(byText).toEqual({
       ACTIVITY: "name",
       place: "location",
@@ -129,7 +160,9 @@ describe("columns", () => {
       "Same unit only": "sameDivision",
       Colour: null
     });
-    expect(p.mapping.headings.find((h) => h.text === "Colour").how).toBe("unknown");
+    expect(p.mapping.headings.find((h) => h.text === "Colour").how).toBe(
+      "unknown"
+    );
   });
 
   it("an unknown column can be pointed at a column, and the choice is remembered", () => {
@@ -139,7 +172,10 @@ describe("columns", () => {
     ];
     const key = columnKey("activities", "Colour");
     const p = read("activities", rows, { [key]: "location" });
-    expect(p.mapping.headings[1]).toMatchObject({ column: "location", how: "chosen" });
+    expect(p.mapping.headings[1]).toMatchObject({
+      column: "location",
+      how: "chosen"
+    });
     const plan = listPlan(p, { [key]: "location" }, "s1", "list.csv");
     expect(plan.remember).toContainEqual({ key, answer: "location" });
     const unused = read("activities", rows, { [key]: UNUSED });
@@ -152,11 +188,16 @@ describe("columns", () => {
       ["Gym", "2", "3"]
     ]);
     expect(p.mapping.headings.filter((h) => h.how === "clash")).toHaveLength(2);
-    expect(waitingFor(p, terms, {})).toEqual(["Nothing to add or change: the list matches what is set up."]);
+    expect(waitingFor(p, terms, {})).toEqual([
+      "Nothing to add or change: the list matches what is set up."
+    ]);
   });
 
   it("a list with no name column waits for one", () => {
-    const p = read("locations", [["Where", "Capacity"], ["Gym", "2"]]);
+    const p = read("locations", [
+      ["Where", "Capacity"],
+      ["Gym", "2"]
+    ]);
     expect(p.blocked).toBe(true);
     expect(waitingFor(p, terms, {})[0]).toMatch(/No column is “Location”/);
   });
@@ -165,7 +206,13 @@ describe("columns", () => {
 describe("rows", () => {
   it("lists unreadable rows with their reason and leaves them out", () => {
     const p = read("activities", [
-      ["Activity", "Outdoors", "Length", "Times a week: at least", "Times a week: at most"],
+      [
+        "Activity",
+        "Outdoors",
+        "Length",
+        "Times a week: at least",
+        "Times a week: at most"
+      ],
       ["Canoeing", "maybe", "1", "1", "1"],
       ["Hiking", "Yes", "two", "1", "1"],
       ["Drama", "No", "1", "3", "2"],
@@ -199,20 +246,33 @@ describe("rows", () => {
       ["Hiking", "Y", "'=bring water"],
       ["Chess", "", "'Round the table"]
     ]);
-    expect(rowNamed(p, "Hiking").values).toMatchObject({ outdoors: true, notes: "=bring water" });
-    expect(rowNamed(p, "Chess").values).toMatchObject({ outdoors: false, notes: "'Round the table" });
+    expect(rowNamed(p, "Hiking").values).toMatchObject({
+      outdoors: true,
+      notes: "=bring water"
+    });
+    expect(rowNamed(p, "Chess").values).toMatchObject({
+      outdoors: false,
+      notes: "'Round the table"
+    });
   });
 });
 
 describe("matching what is set up", () => {
   it("shows every difference, only for columns the file has", () => {
     const p = read("activities", [
-      ["Activity", "Times a week: at least", "Times a week: at most", "Location"],
+      [
+        "Activity",
+        "Times a week: at least",
+        "Times a week: at most",
+        "Location"
+      ],
       ["Archery", "2", "2", ""]
     ]);
     const archery = rowNamed(p, "Archery");
     expect(archery.status).toBe("changed");
-    expect(archery.differences.map((d) => [d.column, d.from, d.to, d.clears])).toEqual([
+    expect(
+      archery.differences.map((d) => [d.column, d.from, d.to, d.clears])
+    ).toEqual([
       ["location", "Gym", null, true],
       ["min", 3, 2, false],
       ["max", 3, 2, false]
@@ -225,17 +285,26 @@ describe("matching what is set up", () => {
       ["Archery", "3", "Juniors"]
     ]);
     expect(rowNamed(p, "Archery").status).toBe("unchanged");
-    expect(waitingFor(p, terms, {})).toEqual(["Nothing to add or change: the list matches what is set up."]);
+    expect(waitingFor(p, terms, {})).toEqual([
+      "Nothing to add or change: the list matches what is set up."
+    ]);
   });
 
   it("Keep or Change for each difference; only the changes are sent", () => {
     const rows = [
-      ["Activity", "Times a week: at least", "Times a week: at most", "Priority"],
+      [
+        "Activity",
+        "Times a week: at least",
+        "Times a week: at most",
+        "Priority"
+      ],
       ["Music", "1", "3", "Low"]
     ];
     const p = read("activities", rows);
     const [max, priority] = rowNamed(p, "Music").differences;
-    expect(waitingFor(p, terms, {})).toEqual(["2 differences to Keep or Change."]);
+    expect(waitingFor(p, terms, {})).toEqual([
+      "2 differences to Keep or Change."
+    ]);
     const answers = { [max.id]: CHANGE, [priority.id]: KEEP };
     const done = read("activities", rows, answers);
     expect(waitingFor(done, terms, answers)).toEqual([]);
@@ -266,7 +335,9 @@ describe("matching what is set up", () => {
     const p = read("activities", rows);
     const [min, max] = rowNamed(p, "Archery").differences;
     const answers = { [min.id]: CHANGE, [max.id]: KEEP };
-    expect(waitingFor(read("activities", rows, answers), terms, answers)).toEqual([
+    expect(
+      waitingFor(read("activities", rows, answers), terms, answers)
+    ).toEqual([
       "Archery: at most 3 would be less than at least 4 times a week. Change both, or keep both."
     ]);
   });
@@ -280,13 +351,18 @@ describe("matching what is set up", () => {
       ["Golf", "Everyone"],
       ["Pottery", "Middlers"]
     ]);
-    expect(rowNamed(p, "Archery").differences[0]).toMatchObject({ from: ["d1"], to: ["d2", "g2"] });
+    expect(rowNamed(p, "Archery").differences[0]).toMatchObject({
+      from: ["d1"],
+      to: ["d2", "g2"]
+    });
     expect(rowNamed(p, "Drama").problems[0]).toBe(
       'Who can do it: "Bunk 1" could be 2 different ones: write "Bunk 1 (Juniors)" or "Bunk 1 (Seniors)"'
     );
     expect(rowNamed(p, "Chess").values.who).toEqual(["g3"]);
     expect(rowNamed(p, "Golf").values.who).toEqual([]);
-    expect(rowNamed(p, "Pottery").problems[0]).toMatch(/nothing called "Middlers"/);
+    expect(rowNamed(p, "Pottery").problems[0]).toMatch(
+      /nothing called "Middlers"/
+    );
   });
 });
 
@@ -301,12 +377,17 @@ describe("similar names and what will also be added", () => {
     const [card] = similarCards(p, terms, {});
     expect(card.title).toBe("Are “Musik” and “Music” the same activity?");
     const same = read("activities", rows, { [card.id]: "b" });
-    expect(rowNamed(same, "Musik")).toMatchObject({ status: "changed", id: "a2" });
+    expect(rowNamed(same, "Musik")).toMatchObject({
+      status: "changed",
+      id: "a2"
+    });
     const different = read("activities", rows, { [card.id]: "different" });
     expect(rowNamed(different, "Musik").status).toBe("new");
     const out = read("activities", rows, { [card.id]: LEAVE_OUT });
     expect(rowNamed(out, "Musik").status).toBe("leftOut");
-    expect(listPlan(out, { [card.id]: LEAVE_OUT }, "s1", "f").forget).toEqual([card.id]);
+    expect(listPlan(out, { [card.id]: LEAVE_OUT }, "s1", "f").forget).toEqual([
+      card.id
+    ]);
   });
 
   it("a location the season doesn't have will also be added; a similar one is asked", () => {
@@ -317,11 +398,19 @@ describe("similar names and what will also be added", () => {
     ];
     const p = read("activities", rows);
     expect(p.alsoAdd.location).toEqual(["Lake"]);
-    const card = similarCards(p, terms, {}).find((c) => c.title.includes("Poool"));
+    const card = similarCards(p, terms, {}).find((c) =>
+      c.title.includes("Poool")
+    );
     const answers = { [card.id]: "b" };
     const done = read("activities", rows, answers);
     const plan = listPlan(done, answers, "s1", "f");
-    expect(plan.records.map((r) => [r.kind, r.key || r.id, (r.refs || {}).Location__c])).toEqual([
+    expect(
+      plan.records.map((r) => [
+        r.kind,
+        r.key || r.id,
+        (r.refs || {}).Location__c
+      ])
+    ).toEqual([
       ["Location", "Location:Lake", undefined],
       ["Activity", "Activity:Canoeing", "Location:Lake"],
       ["Activity", "Activity:Hockey", "l2"]
@@ -364,8 +453,12 @@ describe("similar names and what will also be added", () => {
       ["Board games", "Board games"],
       ["Hiking", "Movies"]
     ]);
-    expect(rowNamed(p, "Board games").problems).toEqual(["Rain plan: can't be itself"]);
-    expect(rowNamed(p, "Hiking").problems[0]).toMatch(/no activity called "Movies"/);
+    expect(rowNamed(p, "Board games").problems).toEqual([
+      "Rain plan: can't be itself"
+    ]);
+    expect(rowNamed(p, "Hiking").problems[0]).toMatch(
+      /no activity called "Movies"/
+    );
     expect(rowNamed(p, "Canoeing").status).toBe("new");
   });
 
