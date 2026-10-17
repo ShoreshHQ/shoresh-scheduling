@@ -254,3 +254,129 @@ describe("a rain plan follows the rows as the director settled them, in any orde
     );
   });
 });
+
+describe("own review of round 3", () => {
+  const read = (rows, answers = {}, s = setup()) =>
+    listProposal({
+      screenKey: "activities",
+      file: file(rows[0], rows.slice(1)),
+      setup: s,
+      terms,
+      answers
+    });
+
+  it("HIGH 1: a plan that turns out to be its own row can't be read, in any order", () => {
+    orders([
+      ["Tennis", "Tenis"],
+      ["Tenis", ""]
+    ]).forEach((rows) => {
+      const { p, answers } = settle(
+        "activities",
+        ["Activity", "Rain plan"],
+        rows,
+        pick("Tennis")
+      );
+      const tennis = p.rows.find((r) => r.name === "Tennis");
+      expect(tennis.problems).toEqual(["Rain plan: can't be itself"]);
+      // Nothing is left to ask: Tenis is Tennis, and Tennis can't be read.
+      expect(questionCards(p, terms, answers).filter((c) => !c.answer)).toEqual(
+        []
+      );
+    });
+    const [card] = questionCards(
+      read([
+        ["Activity", "Rain plan"],
+        ["Musik", "Music"]
+      ]),
+      terms,
+      {}
+    );
+    const p = read(
+      [
+        ["Activity", "Rain plan"],
+        ["Musik", "Music"]
+      ],
+      { [card.id]: "b" }
+    );
+    expect(p.rows[0].problems).toEqual(["Rain plan: can't be itself"]);
+  });
+
+  it("HIGH 2: a rain-plan question answered Leave out stays, and can be changed", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Kayak", "Archry"],
+      ["Golf", ""]
+    ];
+    const [card] = questionCards(read(rows), terms, {});
+    const answers = { [card.id]: LEAVE_OUT };
+    const p = read(rows, answers);
+    expect(p.rows[0].status).toBe("leftOut");
+    expect(questionCards(p, terms, answers).map((c) => c.id)).toEqual([
+      card.id
+    ]);
+  });
+
+  it("MEDIUM 3: answers that go round in a circle keep one row, never none", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Golf", ""],
+      ["Golfes", ""],
+      ["Golfs", ""],
+      ["Swim", "Golf"]
+    ];
+    const cards = questionCards(read(rows), terms, {});
+    const answers = {};
+    cards.forEach((c) => {
+      const [x, y] = c.options.filter(
+        (o) => o.value === "a" || o.value === "b"
+      );
+      // Golf/Golfes -> Golfes; Golfes/Golfs -> Golfs; Golf/Golfs -> Golf.
+      const wants = {
+        "Golf|Golfes": "Golfes",
+        "Golfes|Golfs": "Golfs",
+        "Golf|Golfs": "Golf"
+      };
+      const names = c.title.match(/“([^”]+)”/g).map((n) => n.slice(1, -1));
+      const want = wants[names.join("|")];
+      answers[c.id] = x.label.includes(`“${want}”`) ? x.value : y.value;
+    });
+    const p = read(rows, answers);
+    const saved = p.rows.filter((r) => r.status === "new").map((r) => r.name);
+    expect(saved).toHaveLength(2);
+    expect(saved).toContain("Swim");
+    expect(waitingFor(p, terms, answers)).toEqual([]);
+  });
+
+  it("LOW 4: an added name is spelled the same whatever the row order", () => {
+    const spellings = orders([
+      ["Barn", "indoors", "1"],
+      ["Hall", "INDOORS", "1"],
+      ["Shed", "Indoors", "1"]
+    ]).map((rows) => {
+      const p = listProposal({
+        screenKey: "locations",
+        file: file(["Location", "Location type", "Groups that fit"], rows),
+        setup: setup(),
+        terms,
+        answers: {}
+      });
+      return p.alsoAdd.locationType;
+    });
+    expect(spellings[0]).toHaveLength(1);
+    spellings.forEach((s) => expect(s).toEqual(spellings[0]));
+  });
+
+  it("LOW 5: a plan naming a new item of the same name as one set up is a difference", () => {
+    const s = setup();
+    s.activities.push({ ...s.activities[0], Id: "a3" });
+    s.activities[1].RainPlan__c = "a1";
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Archery", ""],
+      ["Music", "Archery"]
+    ];
+    const which = questionCards(read(rows, {}, s), terms, {})[0];
+    const p = read(rows, { [which.id]: "new" }, s);
+    expect(p.rows.find((r) => r.name === "Music").status).toBe("changed");
+  });
+});

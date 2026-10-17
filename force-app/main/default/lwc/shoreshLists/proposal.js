@@ -9,7 +9,13 @@
  * - the same file and answers always give the same result.
  * Pure JavaScript: the screen calls listProposal again on every answer.
  */
-import { LEAVE_OUT, looseKey, similarPairs, tidy } from "c/shoreshImportEngine";
+import {
+  LEAVE_OUT,
+  looseKey,
+  mergesFrom,
+  similarPairs,
+  tidy
+} from "c/shoreshImportEngine";
 import { NONE, readCell } from "./cells";
 import {
   headingRowIndex,
@@ -150,11 +156,19 @@ function matchNames(leads, records, kind, answers) {
       if (b) {
         b.open = true;
       }
-    } else if (!pair.existing && sameThing) {
-      // The same thing written twice: the row with the spelling kept is used.
-      const [kept, dropped] = answer === "a" ? [a, b] : [b, a];
+    }
+  });
+  // Rows answered to be one thing form one set (even with answers that go round in a circle),
+  // which keeps one spelling (names.js mergesFrom, as Import last year does): the row with it
+  // is used, the others are the same as it.
+  mergesFrom(
+    pairs.filter((p) => !p.existing),
+    answers
+  ).forEach((kept, name) => {
+    const dropped = rowOf.get(name);
+    if (dropped && rowOf.has(kept)) {
       dropped.leftOut = true;
-      dropped.sameAs = kept.name;
+      dropped.sameAs = kept;
     }
   });
   readable.forEach((r) => {
@@ -295,17 +309,28 @@ function finishRepeats(read) {
  * (answer "skip") and the rows naming it are saved without it (Greg, 2026-10-17).
  */
 function resolveRainPlans(read, leads, column, setup, answers) {
-  let pairs = [];
+  // Questions from every pass: an answer that leaves its row out still shows (and can change).
+  const pairs = new Map();
   for (let pass = 0; pass <= leads.length; pass++) {
     const before = leads.filter((r) => r.open || !usable(r)).length;
-    pairs = resolveColumn(
+    resolveColumn(
       leads,
       column,
       setup.activities || [],
       leads,
       answers,
       "activity"
-    );
+    ).forEach((pair) => pairs.set(pair.id, pair));
+    // Resolved, a plan may turn out to be its own row ("Tenis" answered the same as "Tennis").
+    leads.filter(usable).forEach((r) => {
+      const target = (r.targets || {})[column.key];
+      const own = r.existing
+        ? target && target.id === r.existing.Id
+        : target && target.key === `Activity:${r.name}`;
+      if (own) {
+        r.problems.push(`${column.heading}: can't be itself`);
+      }
+    });
     if (leads.filter((r) => r.open || !usable(r)).length === before) {
       break;
     }
@@ -326,7 +351,10 @@ function resolveRainPlans(read, leads, column, setup, answers) {
       r.droppedPlan = target.add;
     }
   });
-  return { pairs, adds: adds.adds };
+  return {
+    pairs: [...pairs.values()].sort((x, y) => x.id.localeCompare(y.id)),
+    adds: adds.adds
+  };
 }
 
 /**
@@ -492,6 +520,19 @@ function same(a, b) {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
+/**
+ * Whether a row's value differs from the item's. A name of another record is compared by what
+ * it points at, not its spelling: a new "Archery" is not the "Archery" set up.
+ */
+function differs(column, r, from, to) {
+  const target = column.refField && (r.targets || {})[column.key];
+  if (target && to) {
+    // Only an item set up can be the one the record already points at.
+    return !target.id || target.id !== r.existing[column.refField];
+  }
+  return !same(normal(column, from), normal(column, to));
+}
+
 function describeRow(r, used, screen, setup, answers) {
   const row = {
     rowNumber: r.rowNumber,
@@ -533,18 +574,19 @@ function describeRow(r, used, screen, setup, answers) {
       ? (column.blankMeans ?? blankValue(column))
       : r.values[column.key];
     const from = column.fromRecord(r.existing, setup);
-    if (!same(normal(column, from), normal(column, to))) {
-      const id = changeKey(screen.key, r.existing.Name, column.key, to);
-      differences.push({
-        id,
-        column: column.key,
-        heading: column.heading,
-        from,
-        to,
-        clears: isEmpty(column, to) && !isEmpty(column, from),
-        answer: answers[id] || null
-      });
+    if (!differs(column, r, from, to)) {
+      return;
     }
+    const id = changeKey(screen.key, r.existing.Name, column.key, to);
+    differences.push({
+      id,
+      column: column.key,
+      heading: column.heading,
+      from,
+      to,
+      clears: isEmpty(column, to) && !isEmpty(column, from),
+      answer: answers[id] || null
+    });
   });
   return {
     ...row,

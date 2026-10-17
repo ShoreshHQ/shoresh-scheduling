@@ -85,19 +85,29 @@ export function resolveColumn(rows, column, records, leads, answers, pairKind) {
   const key = column.key;
   const lookup = resolver(records, leads);
   const named = rows.filter((r) => usable(r) && r.values[key]);
-  // Names that match nothing, by fold, first spelling kept (so "lake" and "Lake" are one).
-  const spelling = new Map();
-  const counts = new Map();
+  // Names that match nothing, by fold, one spelling kept whatever the row order: the one
+  // written most often, then the first alphabetically (so "lake" and "Lake" are one).
+  const spellings = new Map();
   named.forEach((r) => {
     if (lookup(r.values[key])) {
       return;
     }
     const fold = looseKey(r.values[key]);
-    if (!spelling.has(fold)) {
-      spelling.set(fold, r.values[key]);
-    }
-    const name = spelling.get(fold);
-    counts.set(name, (counts.get(name) || 0) + 1);
+    const seen = spellings.get(fold) || new Map();
+    seen.set(r.values[key], (seen.get(r.values[key]) || 0) + 1);
+    spellings.set(fold, seen);
+  });
+  const spelling = new Map();
+  const counts = new Map();
+  spellings.forEach((seen, fold) => {
+    const [name] = [...seen.entries()].sort(
+      (x, y) => y[1] - x[1] || x[0].localeCompare(y[0])
+    )[0];
+    spelling.set(fold, name);
+    counts.set(
+      name,
+      [...seen.values()].reduce((a, b) => a + b, 0)
+    );
   });
   const known = [
     ...new Set([
