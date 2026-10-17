@@ -280,6 +280,29 @@ function rainPass(read, column, camp, answers, t) {
   return { adds, changed };
 }
 
+/**
+ * A new item with at most written below the at least it starts with (none written: 1) can't be
+ * read: Salesforce would refuse the whole save. Checked before rain plans are matched, so no
+ * plan points at a row that won't be saved.
+ */
+function checkNewLimits(read, screen) {
+  const min = screen.columns.find((c) => c.key === "min");
+  if (!min) {
+    return;
+  }
+  read
+    .filter((r) => !r.existing && !r.problems.length)
+    .forEach((r) => {
+      const atLeast =
+        typeof r.values.min === "number" ? r.values.min : min.newValue;
+      if (typeof r.values.max === "number" && r.values.max < atLeast) {
+        r.problems.push(
+          `At most ${r.values.max} is less than at least ${atLeast} times a week`
+        );
+      }
+    });
+}
+
 /** Whether a row will save its value for a column: a new row, or a difference answered Change. */
 function usesValue(row, key) {
   return (
@@ -399,6 +422,7 @@ export function listProposal(input) {
       }
     }
   });
+  checkNewLimits(read, screen);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainAdds = rain
     ? rainPlans(read, rain.column, setup, answers, t)
@@ -489,20 +513,6 @@ function describeRow(r, used, screen, setup, answers) {
     screen.columns.forEach((column) => {
       values[column.key] = newValueOf(column, r);
     });
-    if (
-      "max" in values &&
-      typeof values.max === "number" &&
-      values.max < values.min
-    ) {
-      // At most written, at least left to start at 1: Salesforce would refuse the whole save.
-      return {
-        ...row,
-        status: "unreadable",
-        problems: [
-          `At most ${values.max} is less than at least ${values.min} times a week`
-        ]
-      };
-    }
     return { ...row, status: "new", values };
   }
   const differences = [];

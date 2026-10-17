@@ -866,3 +866,16 @@ describe("Excel", () => {
     ]);
   });
 });
+
+describe("review findings, second pass", () => {
+  it("a rain plan naming a new row whose at most can't be saved is asked, not linked to nothing", () => {
+    const p = read("activities", [
+      ["Activity", "Times a week: at most", "Rain plan"],
+      ["Swim", "0", ""],
+      ["Arts", "1", "Swim"]
+    ]);
+    expect(rowNamed(p, "Swim").status).toBe("unreadable");
+    expect(rowNamed(p, "Arts").status).toBe("asked");
+    expect(waitingFor(p, terms, {})).toEqual(["1 question to answer."]);
+  });
+});
