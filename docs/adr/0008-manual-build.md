@@ -36,8 +36,13 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    the program runs (its Monday to Friday ticks). Each day has the program's time blocks and its
    groups that are not away that week (a week exception on the group). Fixed and recurring
    activities go where slice 3b's `SetTimePlan` puts them (their weeks, days, who, and length).
-   A group that isn't at camp for part of the item's length (a morning-only group, and an item
-   that crosses into the afternoon) gets only the part it is there for. Everything else is Open. The same setup
+   A group that isn't at camp for part of the item's length gets the part it is there for: a
+   morning-only group the earlier part of an item that crosses into the afternoon, an
+   afternoon-only group the later part. The part starts at the group's first at-camp block
+   in the item and runs through its unbroken at-camp blocks. An item with at camp, away, then
+   at camp again inside it is placed for the first stretch only. Setup's clash checks count
+   the group at every block it is at camp for, so they reserve more than the blank week
+   places, which is the safe side. Everything else is Open. The same setup
    always gives the same grids. A program with no time blocks, no groups at camp, or no days
    that week is refused with a sentence naming it. A fixed or recurring activity whose slot is
    already taken (only possible with setup saved around the clash check) is not placed, and the

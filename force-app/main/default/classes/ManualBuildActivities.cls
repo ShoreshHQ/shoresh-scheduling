@@ -36,24 +36,33 @@ public with sharing class ManualBuildActivities {
 
   private static Id lockedSeasonOf(Id scheduleId) {
     List<Schedule__c> found = [
-      SELECT Program__r.Season__c
+      SELECT Program__r.Season__c, Program__r.Season__r.Camp__c
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
     ];
-    if (
-      found.isEmpty() ||
-      [
-        SELECT Id
-        FROM Season__c
-        WHERE Id = :found[0].Program__r.Season__c
-        WITH USER_MODE
-        FOR UPDATE
-      ]
-      .isEmpty()
-    ) {
+    if (found.isEmpty()) {
       throw new ShoreshException(
         'That schedule was not found, or you do not have access to it.'
+      );
+    }
+    if (
+      [
+          SELECT Id
+          FROM Season__c
+          WHERE Id = :found[0].Program__r.Season__c
+          WITH USER_MODE
+          FOR UPDATE
+        ]
+        .isEmpty()
+    ) {
+      CampLabels labels = CampLabels.forCamp(
+        found[0].Program__r.Season__r.Camp__c
+      );
+      throw new ShoreshException(
+        'You don\'t have access to change this ' +
+          labels.singularInSentence('Season') +
+          '.'
       );
     }
     return found[0].Program__r.Season__c;

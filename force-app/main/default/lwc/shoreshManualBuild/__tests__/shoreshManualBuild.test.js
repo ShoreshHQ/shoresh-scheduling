@@ -522,27 +522,36 @@ describe("c-shoresh-manual-build", () => {
     );
   });
 
-  it("Use yours on a cell no longer in the week says so, and the rest still save", async () => {
+  it("a cell the day no longer has is named, not asked about, and the rest still save", async () => {
     getDraft.mockResolvedValue(draft());
+    // Lunch was taken out of the program's day while I typed two-block Boating into Period 2.
     const shorter = schedule(WITH_SOCCER, ["1,2", "1,"]);
     shorter.days[0] = {
       ...shorter.days[0],
       blocks: shorter.days[0].blocks.slice(0, 2)
     };
     saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: shorter });
-    saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,2,", "1,2,"]));
+    const rest = later();
+    saveSlots.mockReturnValueOnce(rest.promise);
     const element = await render();
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "boat"), "Enter");
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Bunk 1 · Monday · Lunch isn't in the week any more."
+    );
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Bunk 1 · Monday · Lunch isn't in the week any more."
+    );
+    // The next change still saves.
     await press(cell(element, "1-1"), "Enter");
     await press(await type(element, "soccer"), "Enter");
-    q(element, '[data-id="use-yours"]').click();
-    await flush();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Not placed: that cell isn't in the week any more."
-    );
     expect(saveSlots).toHaveBeenCalledTimes(2);
     expect(saveSlots.mock.calls[1][0].edits[0].runs[0].groupId).toBe("g2");
+    // Once the rest have saved, the line goes.
+    rest.answer(answer(WITH_SOCCER, ["1,2", "1,2"]));
+    await flush();
+    expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 
   it("Use yours when theirs already matches yours says so instead of saving", async () => {
@@ -557,6 +566,24 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Already as you had it."
     );
+  });
+
+  it("an activity that starts where the bunk is at camp offers the full list", async () => {
+    // Boating starts in Period 2 (at camp) and carries on into Lunch (away): the start decides.
+    getDraft.mockResolvedValue(
+      draft(
+        [WITH_SOCCER[0], { kind: "A", id: "a2", name: "Boating", gone: false }],
+        ["1,,", "1,2,^"]
+      )
+    );
+    const element = await render();
+    await press(cell(element, "1-1"), "Enter");
+    expect(optionLabels(element)).toEqual([
+      "Open",
+      "Boating",
+      "Soccer",
+      "SwimNot set up for Bunk 2"
+    ]);
   });
 
   it("an activity that starts where a bunk isn't at camp can only be cleared", async () => {

@@ -785,7 +785,9 @@ export default class ShoreshManualBuild extends LightningElement {
         slot,
         next,
         length,
-        slotKey: slotKey({ ...slot, block: run.first })
+        slotKey: slotKey({ ...slot, block: run.first }),
+        // Each cell of the run by name, to say which one is gone if the day loses a block.
+        cells: run.after.map((_, i) => this.slotName(slot, run.first + i))
       }
     ];
     this.applyLocally(edit);
@@ -844,6 +846,7 @@ export default class ShoreshManualBuild extends LightningElement {
         this.askAboutConflict(entry);
       } else {
         this.error = null;
+        this.notice = null;
         this.announce(entry.label);
       }
     } catch (e) {
@@ -881,6 +884,13 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   askAboutConflict(entry) {
+    // A cell the day no longer has (its time block was removed): nothing to ask, say which.
+    const gone = this.goneCell(entry);
+    if (gone) {
+      this.say(`${gone} isn't in the week any more.`);
+      return;
+    }
+    this.notice = null;
     // The first run, and in it the first slot, that isn't what the director saw.
     for (const run of entry.edit.runs) {
       const at = this.locate(run);
@@ -919,6 +929,22 @@ export default class ShoreshManualBuild extends LightningElement {
       yours: this.nameOf(run.after[0], at.day)
     };
     this.announce(`${this.conflict.where} changed since you opened it.`);
+  }
+
+  /** The name of the first cell of an edit the server's week no longer has, or null. */
+  goneCell(entry) {
+    const cells = entry.cells || [];
+    for (const run of entry.edit.runs) {
+      const at = this.locate(run);
+      if (!at) {
+        return cells[0] || this.weekName;
+      }
+      const blocks = at.day.blocks.length;
+      if (at.first + run.after.length > blocks) {
+        return cells[blocks - at.first] || cells[0] || this.weekName;
+      }
+    }
+    return null;
   }
 
   handleKeepTheirs() {
@@ -960,7 +986,8 @@ export default class ShoreshManualBuild extends LightningElement {
       }
     }
     if (gone) {
-      this.say("Not placed: that cell isn't in the week any more.");
+      const cell = this.goneCell(entry);
+      this.say(`${cell || this.weekName} isn't in the week any more.`);
     } else if (!runs.length) {
       this.say("Already as you had it.");
     } else {
