@@ -3,8 +3,8 @@
  * whatever details it needs; never make the director add it by hand first"):
  * - a name in "Who can do it" that is no division or group: asked whether to add it as a
  *   division (in which program) or a group (in which division);
- * - a rain plan naming an activity neither set up nor in the file: added, asking its length; the
- *   rest starts as an activity added by hand does.
+ * - a rain plan naming an activity neither set up nor in the file: added with an activity's
+ *   starting values, no question (Greg, 2026-10-17); its tick can be taken off.
  * Answers are names, never record Ids, so they still work in a copied season.
  */
 import { LEAVE_OUT, looseKey } from "c/shoreshImportEngine";
@@ -23,13 +23,13 @@ function whoOptions(setup, t) {
   const several = programs.length > 1;
   const options = programs.map((entry) => ({
     value: `division|${entry.program.Name}`,
-    label: `Add it as ${t.sIn("Division")} in ${entry.program.Name}`
+    label: `${t.s("Division")} in ${entry.program.Name}`
   }));
   programs.forEach((entry) => {
     (entry.divisions || []).forEach((d) => {
       options.push({
         value: `group|${entry.program.Name}|${d.division.Name}`,
-        label: `Add it as ${t.sIn("Group")} in ${d.division.Name}${several ? ` (${entry.program.Name})` : ""}`
+        label: `${t.s("Group")} in ${d.division.Name}${several ? ` (${entry.program.Name})` : ""}`
       });
     });
   });
@@ -92,8 +92,7 @@ export function unknownWho(rows, targets, setup, answers, t) {
       const answer = answers[id];
       result.cards.push({
         id,
-        title: `“${name}” isn't set up. What is it?`,
-        subtitle: `It is named in “Who can do it”. Shoresh adds it as you choose.`,
+        title: `“${name}” is new. What is it?`,
         options: [
           ...options,
           { value: LEAVE_OUT, label: "Leave it out for now" }
@@ -123,30 +122,19 @@ export function unknownWho(rows, targets, setup, answers, t) {
 }
 
 /**
- * Rain plans naming an activity that is nowhere: the question for each one's length, and, once
- * answered, the activities to add ({ name, length }).
+ * Rain plans naming an activity that is nowhere: each is added with an activity's starting
+ * values (as when added by hand), unless its tick was taken off (answer "skip"). Returns
+ * { adds: [{ name, skipped }], skipped: Set }.
  */
-export function unknownRainPlans(names, answers, t) {
-  const result = { cards: [], adds: [], leftOut: new Set(), open: new Set() };
+export function unknownRainPlans(names, answers) {
+  const result = { adds: [], skipped: new Set() };
   [...names]
     .sort((a, b) => a.localeCompare(b))
     .forEach((name) => {
-      const id = rainAddKey(name);
-      const answer = answers[id];
-      result.cards.push({
-        id,
-        title: `“${name}” isn't set up. It will be added as ${t.sIn("Activity")}: how long is it?`,
-        subtitle: `It is named as a ${t.sIn("RainPlan")}. It starts like ${t.sIn("Activity")} added by hand: once a week, 1 ${t.sIn("Group")} at a time, Low priority. You can change those on ${t.p("Activity")} afterwards.`,
-        lengthQuestion: true,
-        options: [{ value: LEAVE_OUT, label: "Leave it out for now" }],
-        answer: answer || null
-      });
-      if (answer === LEAVE_OUT) {
-        result.leftOut.add(name);
-      } else if (/^[1-9]\d*$/.test(String(answer || ""))) {
-        result.adds.push({ name, length: Number(answer) });
-      } else {
-        result.open.add(name);
+      const skipped = answers[rainAddKey(name)] === "skip";
+      result.adds.push({ name, skipped });
+      if (skipped) {
+        result.skipped.add(name);
       }
     });
   return result;

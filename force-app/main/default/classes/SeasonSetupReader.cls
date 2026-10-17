@@ -40,7 +40,7 @@ public with sharing class SeasonSetupReader {
       FROM LocationType__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ];
     result.locations = [
       SELECT Id, Name, GroupsThatFit__c, LocationType__c, Notes__c, SortOrder__c
@@ -51,7 +51,8 @@ public with sharing class SeasonSetupReader {
         LocationType__r.SortOrder__c NULLS LAST,
         LocationType__r.Name NULLS LAST,
         SortOrder__c NULLS LAST,
-        Name
+        Name,
+        Id
     ];
     result.activities = [
       SELECT
@@ -76,7 +77,7 @@ public with sharing class SeasonSetupReader {
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ];
     result.weekExceptions = [
       SELECT
@@ -130,7 +131,7 @@ public with sharing class SeasonSetupReader {
       FROM Program__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ]) {
       programs.put(program.Id, new ProgramSetup(program));
     }
@@ -156,7 +157,7 @@ public with sharing class SeasonSetupReader {
       FROM Division__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ]) {
       DivisionSetup setup = new DivisionSetup(division);
       divisions.put(division.Id, setup);
@@ -167,7 +168,7 @@ public with sharing class SeasonSetupReader {
       FROM Group__c
       WHERE Division__c IN :divisions.keySet()
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ]) {
       divisions.get(grp.Division__c).groups.add(grp);
     }
@@ -189,7 +190,7 @@ public with sharing class SeasonSetupReader {
       FROM FixedActivity__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ]) {
       programs.get(item.Program__c).fixedActivities.add(item);
     }
@@ -212,7 +213,7 @@ public with sharing class SeasonSetupReader {
       FROM RecurringActivity__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
     ]) {
       programs.get(item.Program__c).recurringActivities.add(item);
     }

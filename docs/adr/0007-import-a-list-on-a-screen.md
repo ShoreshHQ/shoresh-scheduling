@@ -37,24 +37,33 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    that said Music and Musik are the same is not asked again.
 3. **Nothing defaults quietly.** A cell that can't be read (a Yes/No cell saying "maybe", "two"
    in a number column, Saturday) makes its row unreadable: listed with the reason, left out.
-   Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A name
-   written twice: the first row is used and the second says so.
+   Yes/No reads Yes, Y, True, 1, x and No, N, False, 0; a blank tick column is No. A line break
+   inside a cell (Alt+Enter) separates names in a list, as a comma does. Two rows that would
+   save the same item: the later one is left out ("Same as row 4"), checked last, among rows
+   that will be saved, so the row it points to is one that is used.
 4. **Only the columns the file has are compared** (Greg, #2). A row naming something set up
-   shows every difference ("Times a week: at least: 3 → 2") with Keep or Change, and every one
-   must be answered; "Change all from this file" answers them all and its label says how many
-   values it clears. **A blank cell clears the value** (Greg, Q1), shown as a difference tagged
-   "clears a value". For a number a record can't be without (length, times a week at least,
-   groups that fit, priority) a blank cell changes nothing, and a new item takes what an item
-   added by hand starts with. Names are never changed by a list.
-5. **What a row names that doesn't exist is added, after asking for what it needs** (Greg, Q2,
-   for every import from now on): a location or location type is added ("Will also add",
-   ticked and greyed out); a name in "Who can do it" that is no unit or bunk asks whether to
-   add it as a unit (which program) or a bunk (which unit); a rain plan naming an activity
-   that is nowhere asks its length, and the rest starts as an activity added by hand. Every
-   question can be answered "Leave it out for now", which leaves out the rows that name it. Only
-   what will be saved counts: a place named in a difference answered Keep is not added. A rain
-   plan naming a row that can't be read or is left out is asked about the same way, never
-   linked to nothing.
+   shows every difference ("Times per week: at least: 3 → 2") with Keep or Change, and every
+   one must be answered. **A blank cell clears the value** (Greg, Q1): an optional value to
+   none, "at most" to no maximum, "groups at once" to no limit, "who can do it" to everyone,
+   each shown as a difference tagged "clears". A value an item can't be without (length,
+   times a week at least, groups that fit, priority) can't be cleared: a blank there makes
+   the row unreadable ("Length is blank"), never skipped. "Change all from this file" answers
+   only the differences not answered yet (a Keep the director chose stays), and its label says
+   how many it changes and how many of those clear a value ("Change the other 8: 1 clears a
+   value"). Names are never changed by a list. Two items set up with the name a row gives
+   are never picked by order: the director is asked which one (or a new one); two set up with
+   a name a row refers to (a location, a rain plan) make the row unreadable.
+5. **What a row names that doesn't exist is added** (Greg, Q2, for every import from now on).
+   Shoresh asks only where it can't create the item without an answer: a name in "Who can do
+   it" that is no unit or bunk (add it as a unit in which program, or a bunk in which unit),
+   and, in part B, a new program's days. Locations and location types are added as they are
+   (shown under "Also adding", ticked and greyed out). **A rain plan naming an activity that
+   isn't set up** (nor a row that will be saved, including one left out) **is added exactly as
+   an activity added by hand, with its starting values and no question** (Greg, 2026-10-17);
+   it is shown ticked under "Also adding" and can be unticked, and then the rows naming it are
+   saved without that rain plan and the summary says so. Every question can be answered
+   "Leave it out for now", which leaves out the rows that need it. Only what will be saved
+   counts: a place named in a difference answered Keep is not added.
 6. **Columns that are not a screen's fields** follow the screen: "Times a week: at most" and
    "Groups at once" take a number or "No maximum" / "No limit" (one column instead of the
    screen's number and tick); "Early in the week" reads "2 by Wednesday"; "Who can do it" lists
@@ -80,6 +89,12 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
 10. **The formula guard** (desktop `exportSanitize.js`): a text cell starting with = + - @ or a
     tab or line break is written with an apostrophe in front, which reading takes off again.
     Used by part C's downloads; reading already takes it off.
+
+11. **Words on screen** (Greg, 2026-10-17: "if we have to explain it in words, then we did not
+    do our job visually"): no explanatory sentences in the panel; state is shown with tags
+    ("Not used", "Remembered", "clears"), before → after values, and ticks; a card is its
+    question and its answer buttons; messages say what happened or what is needed ("Length is
+    blank", "Same as row 4").
 
 ## Choices that are hard to undo after release
 

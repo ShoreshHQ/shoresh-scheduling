@@ -110,3 +110,18 @@
   list-style: disc;
   color: var(--slds-g-color-warning-base-30, #8c4b02);
 }
+
+/* Small state tags: "Not used", "Remembered", "clears". */
+.list-tag {
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+  color: var(--slds-g-color-neutral-base-30, #444);
+  font-size: 0.75rem;
+}
+
+.list-tag_attention {
+  background: var(--slds-g-color-warning-base-90, #fef1cd);
+  color: var(--slds-g-color-warning-base-30, #8c4b02);
+  font-weight: 600;
+}

@@ -78,6 +78,11 @@ function readRows(rows, start, used) {
       const read = readCell(column, row[index]);
       if (read.problem) {
         problems.push(`${column.heading}: ${read.problem}`);
+      } else if (read.blank && column.requiredValue) {
+        // It can't be cleared, and a blank is never quietly skipped.
+        problems.push(`${column.heading} is blank`);
+      } else if (read.blank && column.blankMeans !== undefined) {
+        values[column.key] = column.blankMeans;
       } else if (read.blank) {
         blanks.add(column.key);
       } else {
@@ -92,9 +97,7 @@ function readRows(rows, start, used) {
       typeof values.max === "number" &&
       values.max < values.min
     ) {
-      problems.push(
-        `At most ${values.max} is less than at least ${values.min} times a week`
-      );
+      problems.push(`At most ${values.max} is below at least ${values.min}`);
     }
     result.push({
       rowNumber: i + 1,
@@ -107,36 +110,68 @@ function readRows(rows, start, used) {
   return result;
 }
 
-/** A later row with the same name as an earlier one is left out, and says which row is used. */
+function usable(row) {
+  return !row.problems.length && !row.leftOut;
+}
+
+/**
+ * Rows that would save the same item twice: a later row with the same name as an earlier one,
+ * or standing for the same item set up. Checked last, among rows that will be saved, so the
+ * row it points to is always one that is used.
+ */
 function markRepeats(rows) {
   const first = new Map();
   rows
-    .filter((r) => !r.problems.length)
+    .filter((r) => r.repeatOf && usable(r))
     .forEach((r) => {
-      const key = looseKey(r.name);
-      if (first.has(key)) {
+      if (!usable(r.repeatOf)) {
         r.problems.push(
-          `${r.name} is also on row ${first.get(key)}; only row ${first.get(key)} is used`
+          `Same as row ${r.repeatOf.rowNumber}, which can't be read`
         );
+      }
+    });
+  rows
+    .filter((r) => usable(r) && !r.open)
+    .forEach((r) => {
+      const keys = [`name|${looseKey(r.name)}`];
+      if (r.existing) {
+        keys.push(`id|${r.existing.Id}`);
+      }
+      const earlier = keys.map((k) => first.get(k)).find((n) => n);
+      if (earlier) {
+        r.problems.push(`Same as row ${earlier}`);
       } else {
-        first.set(key, r.rowNumber);
+        keys.forEach((k) => first.set(k, r.rowNumber));
       }
     });
 }
 
 /** Similar names among the rows and against the camp's: the question, and what each answer did. */
 function matchNames(rows, records, kind, answers) {
-  const readable = rows.filter((r) => !r.problems.length);
+  // A name written again (capitals and spacing aside) is a repeat, not a similar name to ask.
+  const seen = new Map();
+  rows.filter(usable).forEach((r) => {
+    const key = looseKey(r.name);
+    if (seen.has(key)) {
+      r.repeatOf = seen.get(key);
+    } else {
+      seen.set(key, r);
+    }
+  });
+  const readable = rows.filter((r) => usable(r) && !r.repeatOf);
   const campNames = records.map((r) => r.Name);
   const pairs = similarPairs(
     PAIR_KIND[kind],
     readable.map((r) => ({ name: r.name, count: 1 })),
     campNames
   );
-  const byName = new Map(records.map((r) => [r.Name, r]));
+  const byName = new Map();
+  records.forEach((r) =>
+    byName.set(r.Name, [...(byName.get(r.Name) || []), r])
+  );
   const rowOf = new Map(readable.map((r) => [r.name, r]));
   readable.forEach((r) => {
-    r.existing = byName.get(r.name) || null;
+    r.found = byName.get(r.name) || [];
   });
   pairs.forEach((pair) => {
     const answer = answers[pair.id];
@@ -150,7 +185,7 @@ function matchNames(rows, records, kind, answers) {
       }
     } else if (pair.existing && sameThing) {
       // Either spelling chosen (Import last year asks with both): the camp's item is used.
-      a.existing = byName.get(pair.existing);
+      a.found = byName.get(pair.existing) || [];
     } else if (answer !== "different" && !sameThing) {
       // Not answered (or an answer this question doesn't offer).
       a.open = true;
@@ -164,20 +199,68 @@ function matchNames(rows, records, kind, answers) {
       dropped.sameAs = kept.name;
     }
   });
-  // Two rows that now stand for the same item: the second is a repeat.
-  const taken = new Map();
-  readable
-    .filter((r) => r.existing && !r.leftOut && !r.open)
+  readable.forEach((r) => {
+    r.existing = r.found.length === 1 ? r.found[0] : null;
+  });
+  return pairs;
+}
+
+export function whichKey(screenKey, name) {
+  return `which|${screenKey}|${looseKey(name)}`;
+}
+
+/**
+ * Two items set up with the name a row gives: never picked by order. The director says which
+ * one the row means (or that it is a new one, or to leave it out).
+ */
+function whichOne(read, screen, setup, answers) {
+  const cards = [];
+  const asked = new Map();
+  read
+    .filter((r) => usable(r) && !r.open && r.found && r.found.length > 1)
     .forEach((r) => {
-      if (taken.has(r.existing.Id)) {
-        r.problems.push(
-          `${r.name} is the same as row ${taken.get(r.existing.Id)}; only row ${taken.get(r.existing.Id)} is used`
-        );
-      } else {
-        taken.set(r.existing.Id, r.rowNumber);
+      const name = r.found[0].Name;
+      const id = whichKey(screen.key, name);
+      const answer = answers[id];
+      if (!asked.has(id)) {
+        asked.set(id, true);
+        cards.push({
+          id,
+          title: `Which “${name}”?`,
+          options: [
+            ...r.found.map((rec) => ({
+              value: rec.Id,
+              label: describe(screen, rec, setup)
+            })),
+            { value: "new", label: `A new “${name}”` },
+            { value: LEAVE_OUT, label: "Leave it out for now" }
+          ],
+          answer: answer || null,
+          noMemory: true
+        });
+      }
+      const chosen = r.found.find((rec) => rec.Id === answer);
+      if (chosen) {
+        r.existing = chosen;
+      } else if (answer === LEAVE_OUT) {
+        r.leftOut = true;
+      } else if (answer !== "new") {
+        r.open = true;
       }
     });
-  return pairs;
+  return cards;
+}
+
+/** A few of a record's values, to tell two of the same name apart. */
+function describe(screen, record, setup) {
+  return screen.columns
+    .filter((c) => c.key !== "name" && c.fromRecord)
+    .slice(0, 3)
+    .map(
+      (c) =>
+        `${c.heading}: ${cellText(c, c.fromRecord(record, setup), null) || "none"}`
+    )
+    .join(", ");
 }
 
 /**
@@ -222,13 +305,13 @@ function matchRefs(rows, column, records, answers) {
 }
 
 /**
- * Rain plans: a plan naming the camp's activity, or a row of the list that will be saved, is
- * fine; one naming a row that can't be read or is left out, or nothing at all, is added after
- * asking its length (Greg, Q2). A row whose plan is still asked about waits with it, and one
- * whose plan is left out is left out too, which can leave out further rows: repeated until
- * nothing changes, so the order of the rows never matters.
+ * Rain plans (Greg, 2026-10-17): a plan naming an activity that is neither set up nor a row that
+ * will be saved is added as an activity added by hand is, with its starting values, no questions
+ * asked. It is shown ticked under "Will also add"; unticked (answer "skip"), the rows naming it
+ * are saved without that rain plan, and the summary says so. A row whose plan is a row still
+ * asked about waits with it.
  */
-function rainPlans(read, column, setup, answers, t) {
+function rainPlans(read, column, setup, answers) {
   const camp = new Set((setup.activities || []).map((a) => a.Name));
   read.forEach((r) => {
     const plan = r.values[column.key];
@@ -236,20 +319,6 @@ function rainPlans(read, column, setup, answers, t) {
       r.problems.push(`${column.heading}: can't be itself`);
     }
   });
-  let pass = rainPass(read, column, camp, answers, t);
-  // Each pass can only leave out or hold more rows, so this ends.
-  for (let i = 0; pass.changed && i < read.length; i++) {
-    pass = rainPass(read, column, camp, answers, t);
-  }
-  return pass.adds;
-}
-
-function usable(row) {
-  return !row.problems.length && !row.leftOut;
-}
-
-/** One pass of rainPlans: what is missing now, and the rows that wait or are left out with it. */
-function rainPass(read, column, camp, answers, t) {
   const rows = read.filter(usable);
   const rowOf = new Map();
   rows.forEach((row) => {
@@ -264,20 +333,29 @@ function rainPass(read, column, camp, answers, t) {
       missing.add(plan);
     }
   });
-  const adds = unknownRainPlans(missing, answers, t);
-  let changed = false;
+  // Waiting spreads along plans that name rows still asked about (each pass can only add).
+  for (let pass = 0; pass < rows.length; pass++) {
+    const before = rows.filter((r) => r.open).length;
+    rows.forEach((r) => {
+      const target = rowOf.get(r.values[column.key]);
+      if (target && target.open) {
+        r.open = true;
+      }
+    });
+    if (rows.filter((r) => r.open).length === before) {
+      break;
+    }
+  }
+  const adds = unknownRainPlans(missing, answers);
   rows.forEach((r) => {
     const plan = r.values[column.key];
-    const target = plan && rowOf.get(plan);
-    if (plan && adds.leftOut.has(plan)) {
-      r.leftOut = true;
-      changed = true;
-    } else if ((plan && adds.open.has(plan)) || (target && target.open)) {
-      changed = changed || !r.open;
-      r.open = true;
+    if (plan && adds.skipped.has(plan)) {
+      // Saved without it: as if the file said nothing about its rain plan.
+      delete r.values[column.key];
+      r.droppedPlan = plan;
     }
   });
-  return { adds, changed };
+  return adds;
 }
 
 /**
@@ -296,9 +374,7 @@ function checkNewLimits(read, screen) {
       const atLeast =
         typeof r.values.min === "number" ? r.values.min : min.newValue;
       if (typeof r.values.max === "number" && r.values.max < atLeast) {
-        r.problems.push(
-          `At most ${r.values.max} is less than at least ${atLeast} times a week`
-        );
+        r.problems.push(`At most ${r.values.max} is below at least ${atLeast}`);
       }
     });
 }
@@ -330,7 +406,7 @@ export function newValueOf(column, row) {
   if (column.key in row.values) {
     return row.values[column.key];
   }
-  if (!column.keepWhenBlank) {
+  if (column.newValue === undefined) {
     return blankValue(column);
   }
   return typeof column.newValue === "function"
@@ -355,7 +431,7 @@ export function listProposal(input) {
   const sheetName = input.sheet || pickSheet(input.file, screen, t);
   const base = { screen, sheets: sheetChoices(input.file), sheet: sheetName };
   if (!sheetName) {
-    return { ...base, needsSheet: true };
+    return { ...base, empty: true };
   }
   const sheet = input.file.sheets.find((s) => s.name === sheetName);
   const rows = (sheet && sheet.rows) || [];
@@ -370,9 +446,9 @@ export function listProposal(input) {
   }
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
-  markRepeats(read);
   const records = screen.records(setup);
   result.pairs.push(...matchNames(read, records, screen.kind, answers));
+  result.cards = whichOne(read, screen, setup, answers);
   const targets = whoTargets(setup);
   const ownNames = read
     .filter((r) => !r.problems.length && !r.leftOut)
@@ -399,9 +475,18 @@ export function listProposal(input) {
         }
         r.values[column.key] = refs.merged.get(name) || name;
       });
+      // Two set up with the name a row gives: the file can't say which, so it isn't guessed.
+      const campRecords = refRecords(column, setup, []);
+      read.filter(usable).forEach((r) => {
+        const name = r.values[column.key];
+        const count = campRecords.filter((rec) => rec.Name === name).length;
+        if (name && count > 1) {
+          r.problems.push(`${column.heading}: ${count} are called “${name}”`);
+        }
+      });
     });
-  const whoAdds = unknownWho(read, targets, setup, answers, t);
-  result.cards = [...whoAdds.cards];
+  const whoAdds = unknownWho(read.filter(usable), targets, setup, answers, t);
+  result.cards.push(...whoAdds.cards);
   result.whoAdds = whoAdds.adds;
   read.forEach((r) => {
     const who = used.find(({ column }) => column.type === "list");
@@ -425,10 +510,9 @@ export function listProposal(input) {
   checkNewLimits(read, screen);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainAdds = rain
-    ? rainPlans(read, rain.column, setup, answers, t)
-    : { cards: [], adds: [] };
-  result.cards.push(...rainAdds.cards);
-  result.rainAdds = rainAdds.adds;
+    ? rainPlans(read, rain.column, setup, answers)
+    : { adds: [] };
+  markRepeats(read);
   result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
   result.targets = targets;
   // What the save request points at by name.
@@ -440,9 +524,13 @@ export function listProposal(input) {
   result.setupActivities = setup.activities || [];
   result.alsoAdd = alsoAdded(result.rows, used, setup);
   const counted = (row, key) => usesValue(row, key);
+  // Rain plans to add, ticked (or unticked: skipped), for the rows that will be saved.
   result.alsoAdd.activity = rainAdds.adds.filter((add) =>
     result.rows.some(
-      (row) => counted(row, "rainPlan") && row.values.rainPlan === add.name
+      (row) =>
+        (counted(row, "rainPlan") && row.values.rainPlan === add.name) ||
+        (row.droppedPlan === add.name &&
+          ["new", "changed", "unchanged"].includes(row.status))
     )
   );
   result.alsoAdd.who = whoAdds.adds.filter((add) =>
@@ -497,7 +585,8 @@ function describeRow(r, used, screen, setup, answers) {
     name: r.name,
     values: r.values,
     problems: r.problems,
-    sameAs: r.sameAs || null
+    sameAs: r.sameAs || null,
+    droppedPlan: r.droppedPlan || null
   };
   if (r.problems.length) {
     return { ...row, status: "unreadable" };
@@ -521,7 +610,8 @@ function describeRow(r, used, screen, setup, answers) {
       return;
     }
     const blank = r.blanks.has(column.key);
-    if (blank && column.keepWhenBlank) {
+    if (!blank && !(column.key in r.values)) {
+      // Not in this row (a rain plan left unticked): nothing to compare.
       return;
     }
     const to = blank ? blankValue(column) : r.values[column.key];
@@ -548,13 +638,17 @@ function describeRow(r, used, screen, setup, answers) {
   };
 }
 
+/** Whether a value is "nothing": none, No, no maximum or limit, or everyone (no list). */
 function isEmpty(column, value) {
   if (column.type === "list") {
-    // Everyone (no list) is a value, not a blank: nothing is cleared.
-    return false;
+    return !value || value.length === 0;
   }
   return (
-    value === null || value === undefined || value === "" || value === false
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    value === false ||
+    value === NONE
   );
 }
 

@@ -51,7 +51,7 @@ function whole(text, min) {
   }
   const value = Number(text);
   return value < min
-    ? { problem: `${quoted(text)}: must be ${min} or more` }
+    ? { problem: `${quoted(text)} is below ${min}` }
     : { value };
 }
 
@@ -86,11 +86,11 @@ function early(text) {
   const day = match ? dayOf(match[2]) : null;
   if (!match || !day) {
     return {
-      problem: `${quoted(text)}: write it as a number and a day, like "2 by Wednesday"`
+      problem: `${quoted(text)} isn't like "2 by Wednesday"`
     };
   }
   if (!WEEKDAYS.includes(day)) {
-    return { problem: `${quoted(text)}: ${day} is not a camp day` };
+    return { problem: `${day} isn't a camp day` };
   }
   const count = whole(match[1], 1);
   return count.problem ? count : { value: { count: count.value, day } };
@@ -110,7 +110,7 @@ export function readCell(column, raw) {
     }
     return YES.has(word)
       ? { value: true }
-      : { problem: `${quoted(text)}: write Yes or No` };
+      : { problem: `${quoted(text)} isn't Yes or No` };
   }
   if (!text) {
     return { blank: true };
@@ -131,15 +131,16 @@ export function readCell(column, raw) {
       return found
         ? { value: found.value }
         : {
-            problem: `${quoted(text)}: write ${column.options
+            problem: `${quoted(text)} isn't ${column.options
               .map((o) => o.label)
               .join(" or ")}`
           };
     }
     case "list":
+      // Split before tidying: a line break inside the cell (Alt+Enter) separates names too.
       return EVERYONE.has(text.toLowerCase())
         ? { value: [] }
-        : { value: splitList(text) };
+        : { value: splitList(String(unescapeCell(raw))) };
     case "early":
       return early(text);
     default:

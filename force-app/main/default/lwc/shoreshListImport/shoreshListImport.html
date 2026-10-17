@@ -2,7 +2,7 @@
   <template lwc:if={open}>
     <div class="list-import slds-m-bottom_medium" data-id="list-import">
       <div class="list-header">
-        <h3 class="slds-text-heading_small">Import a list of {screenName}</h3>
+        <h3 class="slds-text-heading_small">Import {screenName}</h3>
         <lightning-button
           data-id="close"
           variant="base"
@@ -17,10 +17,6 @@
 
       <!-- Choosing the file -->
       <template lwc:if={isPick}>
-        <p class="slds-m-bottom_small">
-          An Excel or CSV file with one {screenName} row each and headings in
-          the first row. Nothing is saved until you choose Save.
-        </p>
         <input
           type="file"
           class="slds-hide"
@@ -35,16 +31,22 @@
           onclick={handleChoose}
           disabled={isReading}
         ></lightning-button>
+        <span class="list-weak slds-m-left_small">.xlsx · .xls · .csv</span>
         <template lwc:if={isReading}>
-          <span class="list-weak slds-m-left_small">Reading…</span>
+          <lightning-spinner
+            alternative-text="Reading"
+            size="small"
+          ></lightning-spinner>
         </template>
       </template>
 
       <!-- Reviewing it -->
       <template lwc:if={isReview}>
-        <p class="list-weak slds-m-bottom_small">
-          {fileName}. Found in the file. Nothing saved yet.
-        </p>
+        <lightning-badge
+          class="slds-m-bottom_small"
+          label={fileName}
+          icon-name="utility:file"
+        ></lightning-badge>
 
         <template lwc:if={showSheetChoice}>
           <div
@@ -75,7 +77,9 @@
                   options={columnOptions}
                   onchange={handleColumn}
                 ></lightning-combobox>
-                <span class="list-weak">{heading.note}</span>
+                <template lwc:if={heading.note}>
+                  <span class={heading.tagClass}>{heading.note}</span>
+                </template>
               </div>
             </template>
           </div>
@@ -88,7 +92,7 @@
               <template lwc:if={card.answered}>
                 <span>✓ {card.answerLabel}</span>
                 <template lwc:if={card.fromMemory}>
-                  <span class="list-weak"> (remembered)</span>
+                  <span class="list-tag">Remembered</span>
                 </template>
                 <span class="list-weak"> {card.title}</span>
                 <lightning-button
@@ -102,16 +106,6 @@
                 <div class="list-card-title">{card.title}</div>
                 <div class="list-weak">{card.subtitle} {card.detail}</div>
                 <div class="list-options">
-                  <template lwc:if={card.lengthQuestion}>
-                    <lightning-input
-                      type="number"
-                      min="1"
-                      step="1"
-                      label={lengthLabel}
-                      data-id={card.id}
-                      onchange={handleLength}
-                    ></lightning-input>
-                  </template>
                   <template for:each={card.options} for:item="option">
                     <lightning-button
                       key={option.key}
@@ -127,16 +121,28 @@
         </template>
 
         <template lwc:if={hasAlsoAdd}>
-          <h4 class="list-section">Will also add</h4>
+          <h4 class="list-section">Also adding</h4>
           <div data-id="also-add">
             <template for:each={alsoAdd} for:item="item">
-              <lightning-input
-                key={item.key}
-                type="checkbox"
-                label={item.label}
-                checked
-                disabled
-              ></lightning-input>
+              <template lwc:if={item.canUntick}>
+                <lightning-input
+                  key={item.key}
+                  type="checkbox"
+                  label={item.label}
+                  checked={item.checked}
+                  data-rain-plan={item.rainPlan}
+                  onchange={handleAlsoAdd}
+                ></lightning-input>
+              </template>
+              <template lwc:else>
+                <lightning-input
+                  key={item.key}
+                  type="checkbox"
+                  label={item.label}
+                  checked
+                  disabled
+                ></lightning-input>
+              </template>
             </template>
           </div>
         </template>
@@ -152,12 +158,14 @@
 
         <template lwc:if={hasChanges}>
           <div class="list-changes-header">
-            <h4 class="list-section">Already set up, with differences</h4>
-            <lightning-button
-              data-id="change-all"
-              label={changeAllLabel}
-              onclick={handleChangeAll}
-            ></lightning-button>
+            <h4 class="list-section">Changes</h4>
+            <template lwc:if={hasUnanswered}>
+              <lightning-button
+                data-id="change-all"
+                label={changeAllLabel}
+                onclick={handleChangeAll}
+              ></lightning-button>
+            </template>
           </div>
           <template for:each={changedRows} for:item="row">
             <div key={row.key} class="list-changed" data-row={row.name}>
@@ -166,7 +174,7 @@
                 <div key={d.id} class={d.className}>
                   <span>{d.text}</span>
                   <template lwc:if={d.clears}>
-                    <span class="list-clears">clears a value</span>
+                    <span class="list-clears">clears</span>
                   </template>
                   <lightning-button
                     label="Keep"
@@ -188,12 +196,12 @@
 
         <template lwc:if={unchangedCount}>
           <p class="list-weak slds-m-top_small" data-id="unchanged">
-            {unchangedCount} already set up just as the file says.
+            Unchanged ({unchangedCount})
           </p>
         </template>
 
         <template lwc:if={unreadableRows.length}>
-          <h4 class="list-section">Can't be read, left out</h4>
+          <h4 class="list-section">Can't read</h4>
           <ul class="list-names" data-id="unreadable">
             <template for:each={unreadableRows} for:item="row">
               <li key={row.key}>{row.text}</li>
@@ -221,7 +229,7 @@
           <lightning-button
             data-id="save"
             variant="brand"
-            label="Save"
+            label={saveLabel}
             onclick={handleSave}
             disabled={saveDisabled}
           ></lightning-button>
@@ -230,9 +238,12 @@
 
       <!-- Saved -->
       <template lwc:if={isDone}>
-        <p class="slds-m-bottom_small" data-id="saved">Saved {fileName}.</p>
+        <p class="slds-m-bottom_small" data-id="saved">Saved</p>
         <ul class="list-names" data-id="summary">
           <template for:each={summaryLines} for:item="line">
+            <li key={line.key}>{line.text}</li>
+          </template>
+          <template for:each={droppedPlans} for:item="line">
             <li key={line.key}>{line.text}</li>
           </template>
         </ul>

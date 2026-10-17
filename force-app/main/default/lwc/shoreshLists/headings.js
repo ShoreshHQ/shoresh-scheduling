@@ -26,13 +26,16 @@ function hasContent(sheet) {
 }
 
 /**
- * The sheet the list is on: the only one with something in it, or the one named for the
- * screen (the camp's word or Shoresh's: "Bunks" or "Groups"). Null when the director must say.
+ * The sheet the list is on, never asked (the director's data is read, its format never
+ * questioned): the only one with something in it; else the one named for the screen (the
+ * camp's word or Shoresh's: "Bunks" or "Groups"); else the first whose headings give the
+ * screen's name column; else the first with anything in it. The screen shows which was read,
+ * and it can be changed.
  */
 export function pickSheet(file, screen, t) {
   const sheets = (file.sheets || []).filter(hasContent);
-  if (sheets.length === 1) {
-    return sheets[0].name;
+  if (sheets.length <= 1) {
+    return sheets.length ? sheets[0].name : null;
   }
   const names = new Set(
     [
@@ -42,8 +45,16 @@ export function pickSheet(file, screen, t) {
       SHOWN_TERMS.s(screen.term)
     ].map(foldName)
   );
-  const named = sheets.filter((s) => names.has(foldName(s.name)));
-  return named.length === 1 ? named[0].name : null;
+  const named = sheets.find((s) => names.has(foldName(s.name)));
+  if (named) {
+    return named.name;
+  }
+  const fits = sheets.find((s) => {
+    const rows = s.rows || [];
+    const at = headingRowIndex(rows);
+    return at >= 0 && mapHeadings(rows[at], screen, {}).missing.length === 0;
+  });
+  return (fits || sheets[0]).name;
 }
 
 /** The names of the sheets with something in them, to choose from. */

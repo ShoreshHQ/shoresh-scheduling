@@ -61,12 +61,12 @@ export function resolveWho(names, targets) {
   for (const name of names) {
     const found = targets.bySpelling.get(looseKey(name)) || [];
     if (found.length === 0) {
-      return { problem: `nothing called "${name}" to say who it is for` };
+      return { problem: `no “${name}”` };
     }
     if (found.length > 1) {
       return {
-        problem: `"${name}" could be ${found.length} different ones: write ${found
-          .map((t) => `"${t.name}"`)
+        problem: `“${name}”: write ${found
+          .map((t) => `“${t.name}”`)
           .join(" or ")}`
       };
     }

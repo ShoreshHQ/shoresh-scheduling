@@ -609,4 +609,134 @@ private class ImportListSavesTest {
       );
     }
   }
+
+  @IsTest
+  static void aListTooLongToUndoIsRefusedBeforeAnythingIsSaved() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      List<Location__c> places = new List<Location__c>();
+      for (Integer i = 0; i < 5; i++) {
+        places.add(
+          new Location__c(
+            Season__c = c.season.Id,
+            Name = 'Field ' + i,
+            GroupsThatFit__c = 1
+          )
+        );
+      }
+      insert as user places;
+      // Five notes of 30,000 characters each: what Undo would keep is over 131,072.
+      String longNote = 'x'.repeat(30000);
+      List<Object> records = new List<Object>();
+      for (Location__c place : places) {
+        records.add(
+          new Map<String, Object>{
+            'kind' => 'Location',
+            'id' => place.Id,
+            'fields' => new Map<String, Object>{ 'Notes__c' => longNote }
+          }
+        );
+      }
+      Test.startTest();
+      try {
+        save(plan(c.season.Id, records));
+        Assert.fail('too long to undo');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('too long'), e.getMessage());
+      }
+      Test.stopTest();
+      for (Location__c place : [SELECT Notes__c FROM Location__c]) {
+        Assert.isNull(place.Notes__c, 'nothing was saved');
+      }
+      Assert.areEqual(0, [SELECT COUNT() FROM Import__c]);
+    }
+  }
+
+  @IsTest
+  static void refusesAnotherSeasonsRecordInALinkOrWhoList() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Season__c other = ShoreshTestData.season(
+        ShoreshTestData.camp('Other (made up)').Id,
+        'Elsewhere'
+      );
+      Location__c theirPlace = new Location__c(
+        Season__c = other.Id,
+        Name = 'Their gym',
+        GroupsThatFit__c = 1
+      );
+      insert as user theirPlace;
+      Activity__c theirActivity = ShoreshTestData.activity(
+        other.Id,
+        'Theirs',
+        null
+      );
+      insert as user theirActivity;
+      Program__c theirProgram = ShoreshTestData.program(other.Id, 'Theirs');
+      Id theirDivision = ShoreshTestData.division(theirProgram.Id, 'Theirs').Id;
+      List<Map<String, Object>> attempts = new List<Map<String, Object>>{
+        newActivity(
+          'A',
+          new Map<String, Object>{ 'Location__c' => theirPlace.Id },
+          new List<Object>()
+        ),
+        newActivity(
+          'B',
+          new Map<String, Object>{ 'RainPlan__c' => theirActivity.Id },
+          new List<Object>()
+        ),
+        newActivity(
+          'C',
+          new Map<String, Object>(),
+          new List<Object>{ theirDivision }
+        )
+      };
+      Test.startTest();
+      for (Map<String, Object> attempt : attempts) {
+        try {
+          save(plan(c.season.Id, new List<Object>{ attempt }));
+          Assert.fail('refused: ' + JSON.serialize(attempt));
+        } catch (AuraHandledException e) {
+          Assert.isTrue(
+            e.getMessage().contains('Start it again'),
+            e.getMessage()
+          );
+        }
+      }
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Activity__c WHERE Name IN ('A', 'B', 'C')]
+      );
+    }
+  }
+
+  @IsTest
+  static void refusesARecordSentAsAnotherKind() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Test.startTest();
+      try {
+        save(
+          plan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'Location',
+                'id' => c.archery.Id,
+                'fields' => new Map<String, Object>{ 'Notes__c' => 'x' }
+              }
+            }
+          )
+        );
+        Assert.fail('an activity sent as a location');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(
+          e.getMessage().contains('Start it again'),
+          e.getMessage()
+        );
+      }
+      Test.stopTest();
+    }
+  }
 }

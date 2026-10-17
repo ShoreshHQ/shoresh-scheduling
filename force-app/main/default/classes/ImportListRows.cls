@@ -86,7 +86,8 @@ public with sharing class ImportListRows {
   }
 
   private SObject existingRow(Id recordId) {
-    if (!CHANGEABLE.contains(kind)) {
+    // Only kinds a list changes, and only a record of that kind.
+    if (!CHANGEABLE.contains(kind) || recordId.getSObjectType() != type) {
       throw ImportListSaves.unreadable();
     }
     return type.newSObject(keys.existing(recordId));

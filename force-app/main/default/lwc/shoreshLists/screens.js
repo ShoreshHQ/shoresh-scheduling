@@ -6,9 +6,11 @@
  * src/ingest/entityColumnMapping.js synonyms among them, Apache-2.0, see NOTICE).
  *
  * A column: key; heading (the camp's words); words (other headings it answers to); type (see
- * cells.js); required (the row can't be read without it); keepWhenBlank (a blank cell changes
- * nothing, and a new item takes newValue); ref (a name of another record: location,
- * locationType, activity); fromRecord (the value a saved record has, as a cell would give it).
+ * cells.js); required (the heading must be in the file); requiredValue (a blank cell can't be
+ * read: the item can't be without it); blankMeans (what a blank cell clears it to); newValue
+ * (what a new item starts with when the file has no such column); ref (a name of another
+ * record: location, locationType, activity); fromRecord (the value a saved record has, as a
+ * cell would give it).
  */
 import { NONE } from "./cells";
 import { whoNames } from "./who";
@@ -74,7 +76,7 @@ function locationsScreen(t) {
         words: ["groups that fit", "capacity", "fits"],
         type: "whole",
         min: 1,
-        keepWhenBlank: true,
+        requiredValue: true,
         newValue: 1,
         fromRecord: (r) => r.GroupsThatFit__c,
         write: (v) => ({ GroupsThatFit__c: v })
@@ -107,7 +109,7 @@ function activitiesScreen(t) {
         words: ["length", "length (blocks)", "blocks", "how long"],
         type: "whole",
         min: 1,
-        keepWhenBlank: true,
+        requiredValue: true,
         newValue: 1,
         fromRecord: (r) => r.Length__c,
         write: (v) => ({ Length__c: v })
@@ -126,7 +128,7 @@ function activitiesScreen(t) {
         ],
         type: "whole",
         min: 0,
-        keepWhenBlank: true,
+        requiredValue: true,
         newValue: 1,
         fromRecord: (r) => r.TimesPerWeekMin__c,
         write: (v) => ({ TimesPerWeekMin__c: v })
@@ -146,7 +148,8 @@ function activitiesScreen(t) {
         type: "wholeOrNone",
         none: "No maximum",
         min: 0,
-        keepWhenBlank: true,
+        // A blank cell clears it: no maximum.
+        blankMeans: NONE,
         // A new activity done at least 3 times a week is done at most 3 times, not 1.
         newValue: (values) => Math.max(1, values.min || 0),
         fromRecord: (r) => (r.NoWeeklyMax__c ? NONE : r.TimesPerWeekMax__c),
@@ -162,7 +165,7 @@ function activitiesScreen(t) {
         words: [],
         type: "choice",
         options: PRIORITIES,
-        keepWhenBlank: true,
+        requiredValue: true,
         newValue: "Low",
         fromRecord: (r) => r.Priority__c || "Low",
         write: (v) => ({ Priority__c: v })
@@ -201,7 +204,8 @@ function activitiesScreen(t) {
         type: "wholeOrNone",
         none: "No limit",
         min: 1,
-        keepWhenBlank: true,
+        // A blank cell clears it: no limit.
+        blankMeans: NONE,
         newValue: 1,
         fromRecord: (r) => (r.NoGroupLimit__c ? NONE : r.GroupsAtOnce__c),
         write: (v) => {

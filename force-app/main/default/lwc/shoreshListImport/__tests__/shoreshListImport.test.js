@@ -118,7 +118,7 @@ describe("c-shoresh-list-import", () => {
       "“Activity”",
       "“Location”",
       "“Notes”",
-      "“Colour”Not used: no column has this heading. Choose one to use it."
+      "“Colour”Not used"
     ]);
     expect(
       $$(element, '[data-id="also-add"] lightning-input').map((box) => [
@@ -127,19 +127,19 @@ describe("c-shoresh-list-import", () => {
         box.disabled
       ])
     ).toEqual([
-      ["Field (new location)", true, true],
-      ["Lake (new location)", true, true]
+      ["Field · location", true, true],
+      ["Lake · location", true, true]
     ]);
     expect($(element, '[data-id="new"]').textContent).toContain("Canoeing");
     const archery = $(element, '[data-row="Archery"]');
     expect(archery.textContent).toContain("Notes: Bring arm guards → none");
-    expect(archery.textContent).toContain("clears a value");
+    expect(archery.textContent).toContain("clears");
     expect(buttonNamed(element, "Change all from this file").label).toBe(
       "Change all from this file: 1 change, 1 of them clears a value"
     );
     expect($(element, 'lightning-button[data-id="save"]').disabled).toBe(true);
     expect($(element, '[data-id="waiting"]').textContent).toContain(
-      "1 difference to Keep or Change."
+      "1 difference to Keep or Change"
     );
   });
 
@@ -151,6 +151,7 @@ describe("c-shoresh-list-import", () => {
     await flush();
     const save = $(element, 'lightning-button[data-id="save"]');
     expect(save.disabled).toBe(false);
+    expect(save.label).toBe("Add 1");
     save.click();
     await flush();
     const plan = JSON.parse(saveList.mock.calls[0][0].plan);
@@ -186,5 +187,49 @@ describe("c-shoresh-list-import", () => {
     expect($(element, '[data-id="error"]').textContent).toBe(
       "Nothing was saved. Canoeing: Must be 1 or more."
     );
+  });
+
+  it("a rain plan to add can be unticked: the row is saved without it", async () => {
+    const element = await openWith(
+      ["Activity,Rain plan", "Hiking,Movies"].join("\n")
+    );
+    const box = $(element, '[data-id="also-add"] lightning-input');
+    expect([box.label, box.checked, box.disabled]).toEqual([
+      "Movies · activity",
+      true,
+      undefined
+    ]);
+    box.dispatchEvent(
+      new CustomEvent("change", { detail: { checked: false } })
+    );
+    await flush();
+    $(element, 'lightning-button[data-id="save"]').click();
+    await flush();
+    const plan = JSON.parse(saveList.mock.calls[0][0].plan);
+    expect(plan.records.map((r) => [r.key, r.refs.RainPlan__c])).toEqual([
+      ["Activity:Hiking", null]
+    ]);
+    expect($(element, '[data-id="summary"]').textContent).toContain(
+      "Hiking · no rain plan"
+    );
+  });
+
+  it("Change all leaves a Keep already chosen", async () => {
+    const element = await openWith(
+      ["Activity,Location,Notes", "Archery,Field,x"].join("\n")
+    );
+    const archery = $(element, '[data-row="Archery"]');
+    buttonNamed(element, "Keep", archery).click();
+    await flush();
+    const all = $(element, 'lightning-button[data-id="change-all"]');
+    expect(all.label).toBe("Change the other 1");
+    all.click();
+    await flush();
+    $(element, 'lightning-button[data-id="save"]').click();
+    await flush();
+    const plan = JSON.parse(saveList.mock.calls[0][0].plan);
+    expect(plan.records).toEqual([
+      { kind: "Activity", id: "a1", fields: { Notes__c: "x" }, refs: {} }
+    ]);
   });
 });

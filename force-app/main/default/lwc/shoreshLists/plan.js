@@ -48,9 +48,8 @@ export function similarCards(proposal, t, answers) {
     if (pair.existing) {
       return {
         ...card,
-        subtitle: `${quoted(pair.b)} is already set up. ${quoted(pair.a)} is in the file.`,
         options: [
-          { value: "b", label: `Same: use ${quoted(pair.b)}` },
+          { value: "b", label: `Same: ${quoted(pair.b)}` },
           { value: "different", label: `Different: add ${quoted(pair.a)}` },
           leaveOut
         ]
@@ -58,10 +57,9 @@ export function similarCards(proposal, t, answers) {
     }
     return {
       ...card,
-      subtitle: `Both are in the file.`,
       options: [
-        { value: "a", label: `Same: use ${quoted(pair.a)}` },
-        { value: "b", label: `Same: use ${quoted(pair.b)}` },
+        { value: "a", label: `Same: ${quoted(pair.a)}` },
+        { value: "b", label: `Same: ${quoted(pair.b)}` },
         { value: "different", label: "Different: keep both" },
         leaveOut
       ]
@@ -82,9 +80,7 @@ export function questionCards(proposal, t, answers) {
     }))
   ].map((card) => {
     // An answer the card doesn't offer (an older question's) counts as not answered.
-    const offered =
-      card.options.some((o) => o.value === card.answer) ||
-      (card.lengthQuestion && /^[1-9]\d*$/.test(card.answer || ""));
+    const offered = card.options.some((o) => o.value === card.answer);
     return offered ? card : { ...card, answer: null };
   });
 }
@@ -96,16 +92,36 @@ export function shownValue(proposal, columnKey, value) {
   return text === "" ? "none" : String(text);
 }
 
-/** "Change all from this file": how many changes, and how many of them clear a value. */
+/**
+ * "Change all from this file": the differences not answered yet (a Keep or Change already chosen
+ * is the director's and stays), how many there are, and how many of them clear a value.
+ */
 export function changeAllCounts(proposal) {
   const differences = (proposal.rows || [])
     .filter((r) => r.status === "changed")
     .flatMap((r) => r.differences);
+  const open = differences.filter((d) => !d.answer);
   return {
-    changes: differences.length,
-    clears: differences.filter((d) => d.clears).length,
-    ids: differences.map((d) => d.id)
+    changes: open.length,
+    clears: open.filter((d) => d.clears).length,
+    answered: differences.length - open.length,
+    ids: open.map((d) => d.id)
   };
+}
+
+/** The button's words: "Change all from this file: 12 changes, 3 of them clear a value". */
+export function changeAllLabel(counts) {
+  const { changes, clears, answered } = counts;
+  const what = answered
+    ? `Change the other ${changes}`
+    : `Change all from this file: ${changes} ${changes === 1 ? "change" : "changes"}`;
+  if (!clears) {
+    return what;
+  }
+  const clearing = `${clears} ${clears === 1 ? "clears" : "clear"} a value`;
+  return answered
+    ? `${what}: ${clearing}`
+    : `${what}, ${clears} of them ${clears === 1 ? "clears" : "clear"} a value`;
 }
 
 function finalValue(row, key) {
@@ -137,7 +153,7 @@ function conflicts(proposal) {
         (record.NoWeeklyMax__c ? NONE : record.TimesPerWeekMax__c);
       if (max !== NONE && max !== null && min !== null && max < min) {
         messages.push(
-          `${row.existingName}: at most ${max} would be less than at least ${min} times a week. Change both, or keep both.`
+          `${row.existingName}: at most ${max} would be below at least ${min}`
         );
       }
     });
@@ -146,11 +162,8 @@ function conflicts(proposal) {
 
 /** What still needs an answer (or a fix in the file) before the list can be saved. */
 export function waitingFor(proposal, t, answers) {
-  if (proposal.needsSheet) {
-    return ["Choose the sheet the list is on."];
-  }
   if (proposal.empty) {
-    return ["The sheet is empty."];
+    return ["The file is empty"];
   }
   const waiting = [];
   const mapping = proposal.mapping;
@@ -158,13 +171,11 @@ export function waitingFor(proposal, t, answers) {
     proposal.screen.columns.find((c) => c.key === key).heading;
   if (mapping.missing.length) {
     waiting.push(
-      `No column is ${mapping.missing.map((k) => quoted(heading(k))).join(" or ")}. Choose which column it is.`
+      `Which column is ${mapping.missing.map((k) => quoted(heading(k))).join(" or ")}?`
     );
   }
   mapping.doubled.forEach((key) => {
-    waiting.push(
-      `Two columns are both ${quoted(heading(key))}. Choose one, and set the other to "Not used".`
-    );
+    waiting.push(`Two columns are ${quoted(heading(key))}`);
   });
   if (proposal.blocked) {
     return waiting;
@@ -172,7 +183,7 @@ export function waitingFor(proposal, t, answers) {
   const open = questionCards(proposal, t, answers).filter((c) => !c.answer);
   if (open.length) {
     waiting.push(
-      `${open.length} ${open.length === 1 ? "question" : "questions"} to answer.`
+      `${open.length} ${open.length === 1 ? "question" : "questions"} to answer`
     );
   }
   const undecided = proposal.rows
@@ -181,7 +192,7 @@ export function waitingFor(proposal, t, answers) {
     .filter((d) => !d.answer).length;
   if (undecided) {
     waiting.push(
-      `${undecided} ${undecided === 1 ? "difference" : "differences"} to Keep or Change.`
+      `${undecided} ${undecided === 1 ? "difference" : "differences"} to Keep or Change`
     );
   }
   waiting.push(...conflicts(proposal));
@@ -191,7 +202,7 @@ export function waitingFor(proposal, t, answers) {
       (r.status === "changed" && r.differences.some((d) => d.answer === CHANGE))
   ).length;
   if (!waiting.length && !count) {
-    waiting.push("Nothing to add or change: the list matches what is set up.");
+    waiting.push("Nothing to change");
   }
   return waiting;
 }
@@ -234,23 +245,25 @@ export function listPlan(proposal, answers, seasonId, fileName) {
           : { Program__c: add.parentId }
     });
   });
-  ((proposal.alsoAdd || {}).activity || []).forEach((add) => {
-    // A rain plan added with the list: its length as answered, the rest as added by hand.
-    const values = { name: add.name, length: add.length };
-    screen.columns.forEach((column) => {
-      if (!(column.key in values)) {
-        values[column.key] = newValueOf(column, { values });
-      }
+  ((proposal.alsoAdd || {}).activity || [])
+    .filter((add) => !add.skipped)
+    .forEach((add) => {
+      // A rain plan added with the list, as an activity added by hand starts.
+      const values = { name: add.name };
+      screen.columns.forEach((column) => {
+        if (!(column.key in values)) {
+          values[column.key] = newValueOf(column, { values });
+        }
+      });
+      records.push(
+        recordFor(
+          screen,
+          { name: add.name, values },
+          screen.columns.map((c) => c.key),
+          refTarget
+        )
+      );
     });
-    records.push(
-      recordFor(
-        screen,
-        { name: add.name, values },
-        screen.columns.map((c) => c.key),
-        refTarget
-      )
-    );
-  });
   proposal.rows.forEach((row) => {
     if (row.status === "new") {
       records.push(
@@ -275,7 +288,8 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   proposal.mapping.headings
     .filter((h) => h.how === "chosen")
     .forEach((h) => remember.push({ key: h.key, answer: answers[h.key] }));
-  // Similar names and what a new who name is: remembered. A new rain plan's length is not.
+  // Similar names and what a new who name is: remembered. A new rain plan's length, and which
+  // of two items of one name (an Id), are not.
   [
     ...(proposal.pairs || []).map((pair) => pair.id),
     ...(proposal.cards || []).map((card) => card.id)
@@ -283,7 +297,11 @@ export function listPlan(proposal, answers, seasonId, fileName) {
     const answer = answers[id];
     if (answer === LEAVE_OUT) {
       forget.push(id);
-    } else if (answer && !id.startsWith("rainAdd|")) {
+    } else if (
+      answer &&
+      !id.startsWith("rainAdd|") &&
+      !id.startsWith("which|")
+    ) {
       remember.push({ key: id, answer });
     }
   });

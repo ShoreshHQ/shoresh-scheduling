@@ -17,9 +17,11 @@ import {
   KEEP,
   UNUSED,
   changeAllCounts,
+  changeAllLabel,
   listPlan,
   listProposal,
   questionCards,
+  rainAddKey,
   shownValue,
   waitingFor
 } from "c/shoreshLists";
@@ -177,9 +179,6 @@ export default class ShoreshListImport extends LightningElement {
     return this.file ? this.file.name : "";
   }
 
-  get needsSheet() {
-    return !!(this.proposal && this.proposal.needsSheet);
-  }
   get sheetOptions() {
     return ((this.proposal && this.proposal.sheets) || []).map((name) => ({
       label: name,
@@ -215,16 +214,19 @@ export default class ShoreshListImport extends LightningElement {
         h.how === "chosen" && this.remembered[h.key] === this.answers[h.key];
       let note = "";
       if (h.how === "unknown") {
-        note = "Not used: no column has this heading. Choose one to use it.";
+        note = "Not used";
       } else if (h.how === "clash") {
-        note =
-          "Another heading matches the same column. Choose which is which.";
+        note = "Choose";
       } else if (remembered) {
-        note = "remembered";
+        note = "Remembered";
       }
       return {
         key: h.key,
         text: h.text,
+        tagClass:
+          h.how === "unknown" || h.how === "clash"
+            ? "list-tag list-tag_attention"
+            : "list-tag",
         value: h.column || UNUSED,
         note,
         className:
@@ -242,14 +244,7 @@ export default class ShoreshListImport extends LightningElement {
   get cards() {
     return questionCards(this.proposal, this.terms, this.answers).map(
       (card) => {
-        let chosen = card.options.find((o) => o.value === card.answer);
-        if (
-          !chosen &&
-          card.lengthQuestion &&
-          /^[1-9]\d*$/.test(card.answer || "")
-        ) {
-          chosen = { label: `${this.terms.s("Length")}: ${card.answer}` };
-        }
+        const chosen = card.options.find((o) => o.value === card.answer);
         return {
           ...card,
           answered: !!chosen,
@@ -271,16 +266,6 @@ export default class ShoreshListImport extends LightningElement {
     const [id, value] = event.currentTarget.dataset.key.split("::");
     this.answer(id, value);
   }
-  /** A new rain plan's length: taken once it is a whole number of 1 or more. */
-  handleLength(event) {
-    const value = String(event.detail.value || "").trim();
-    if (/^[1-9]\d*$/.test(value)) {
-      this.answer(event.target.dataset.id, value);
-    }
-  }
-  get lengthLabel() {
-    return this.terms.s("Length");
-  }
   handleCardChange(event) {
     const answers = { ...this.answers };
     delete answers[event.currentTarget.dataset.id];
@@ -300,24 +285,61 @@ export default class ShoreshListImport extends LightningElement {
       (add[ref] || []).forEach((name) => {
         lines.push({
           key: `${ref}:${name}`,
-          label: `${name} (new ${t.sIn(words[ref])})`
+          label: `${name} · ${t.sIn(words[ref])}`,
+          checked: true,
+          canUntick: false
         });
       });
     });
     (add.who || []).forEach((item) => {
       lines.push({
         key: item.key,
-        label: `${item.name} (new ${t.sIn(item.kind)})`
+        label: `${item.name} · ${t.sIn(item.kind)}`,
+        checked: true,
+        canUntick: false
       });
     });
     (add.activity || []).forEach((item) => {
       lines.push({
         key: `activity:${item.name}`,
-        label: `${item.name} (new ${t.sIn("Activity")}, ${t.sIn("Length")} ${item.length}; once a week, 1 ${t.sIn("Group")} at a time, Low priority)`
+        label: `${item.name} · ${t.sIn("Activity")}`,
+        rainPlan: item.name,
+        checked: !item.skipped,
+        canUntick: true
       });
     });
     return lines;
   }
+
+  /**
+   * A rain plan's tick (Greg, 2026-10-17): taken off, the rows naming it are saved without it.
+   * The other ticks can't be taken off: the rows need what they name.
+   */
+  handleAlsoAdd(event) {
+    const name = event.target.dataset.rainPlan;
+    const answers = { ...this.answers };
+    if (event.detail.checked) {
+      delete answers[rainAddKey(name)];
+    } else {
+      answers[rainAddKey(name)] = "skip";
+    }
+    this.answers = answers;
+    this.recompute();
+  }
+
+  /** Rows saved without the rain plan the file gave them, for the summary. */
+  get droppedPlans() {
+    return ((this.proposal && this.proposal.rows) || [])
+      .filter(
+        (r) =>
+          r.droppedPlan && ["new", "changed", "unchanged"].includes(r.status)
+      )
+      .map((r) => ({
+        key: `dropped-${r.rowNumber}`,
+        text: `${r.name} · no ${this.terms.sIn("RainPlan")}`
+      }));
+  }
+
   get hasAlsoAdd() {
     return this.alsoAdd.length > 0;
   }
@@ -340,15 +362,15 @@ export default class ShoreshListImport extends LightningElement {
   get unreadableRows() {
     return this.rowsWith("unreadable").map((r) => ({
       key: `row-${r.rowNumber}`,
-      text: `Row ${r.rowNumber}${r.name ? ` (${r.name})` : ""}: ${r.problems.join("; ")}`
+      text: `Row ${r.rowNumber}${r.name ? ` · ${r.name}` : ""} · ${r.problems.join("; ")}`
     }));
   }
   get leftOutRows() {
     return this.rowsWith("leftOut").map((r) => ({
       key: `row-${r.rowNumber}`,
       text: r.sameAs
-        ? `Row ${r.rowNumber} (${r.name}): the same as ${r.sameAs}`
-        : `Row ${r.rowNumber} (${r.name}): left out for now`
+        ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
+        : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
   get askedCount() {
@@ -375,15 +397,14 @@ export default class ShoreshListImport extends LightningElement {
     return changeAllCounts(this.proposal);
   }
   get hasChanges() {
+    return this.changedRows.length > 0;
+  }
+  /** Only differences not answered yet; clearing a value never hides inside it (it says how many). */
+  get hasUnanswered() {
     return this.changeAll.changes > 0;
   }
-  /** Clearing a value never hides inside the bulk button: it says how many. */
   get changeAllLabel() {
-    const { changes, clears } = this.changeAll;
-    const what = `${changes} ${changes === 1 ? "change" : "changes"}`;
-    return clears
-      ? `Change all from this file: ${what}, ${clears} of them ${clears === 1 ? "clears a value" : "clear a value"}`
-      : `Change all from this file: ${what}`;
+    return changeAllLabel(this.changeAll);
   }
 
   handleKeep(event) {
@@ -412,6 +433,25 @@ export default class ShoreshListImport extends LightningElement {
   get hasWaiting() {
     return this.waiting.length > 0;
   }
+  /** The exit says what it does: "Add 3, change 2". */
+  get saveLabel() {
+    if (this.hasWaiting || !this.proposal || !this.proposal.rows) {
+      return "Save";
+    }
+    const added = this.rowsWith("new").length;
+    const changed = this.rowsWith("changed").filter((r) =>
+      r.differences.some((d) => d.answer === CHANGE)
+    ).length;
+    const parts = [];
+    if (added) {
+      parts.push(`Add ${added}`);
+    }
+    if (changed) {
+      parts.push(`${parts.length ? "change" : "Change"} ${changed}`);
+    }
+    return parts.join(", ") || "Save";
+  }
+
   get saveDisabled() {
     return this.hasWaiting || this.stage === "saving";
   }

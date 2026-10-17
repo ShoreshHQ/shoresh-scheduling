@@ -11,8 +11,10 @@ export {
   questionCards,
   shownValue,
   changeAllCounts,
+  changeAllLabel,
   waitingFor,
   listPlan
 } from "./plan";
 export { UNUSED, columnKey } from "./headings";
 export { sanitizeCell, unescapeCell } from "./cells";
+export { rainAddKey } from "./adds";
