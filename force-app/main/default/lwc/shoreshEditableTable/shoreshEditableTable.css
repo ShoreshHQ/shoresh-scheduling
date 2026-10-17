@@ -1,4 +1,6 @@
-/* "Needs a look": the caution dot used across the setup screens, with a short tag in ordinary text. */
+@import "c/shoreshTokens";
+
+/* "Needs a look": the bronze caution dot, with a short tag in ordinary text. */
 .same-name {
   display: inline-flex;
   align-items: center;
@@ -12,5 +14,5 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--slds-g-color-warning-base-60, #dd7a01);
+  background: var(--shoresh-caution);
 }

@@ -6,22 +6,24 @@ const CONTEXT = {
     { Id: "d2", Name: "Seniors" }
   ],
   activities: [
-    { Name: "Swim", Eligibilities__r: [{ Division__c: "d1" }] },
-    { Name: "Archery", Eligibilities__r: [{ Division__c: "d2" }] },
+    { Id: "a1", Name: "Swim", Eligibilities__r: [{ Division__c: "d1" }] },
+    { Id: "a2", Name: "Archery", Eligibilities__r: [{ Division__c: "d2" }] },
     // Named for the bunk itself, so the move changes nothing here.
     {
+      Id: "a3",
       Name: "Climbing",
       Eligibilities__r: [{ Division__c: "d1" }, { Group__c: "g1" }]
     },
-    { Name: "Art" },
+    { Id: "a4", Name: "Art" },
     // Open to both: the group keeps it either way.
     {
+      Id: "a5",
       Name: "Canoe",
       Eligibilities__r: [{ Division__c: "d1" }, { Division__c: "d2" }]
     }
   ],
   recurringActivities: [
-    { Name: "Morning circle", Coverages__r: [{ Division__c: "d2" }] }
+    { Id: "r1", Name: "Morning circle", Coverages__r: [{ Division__c: "d2" }] }
   ]
 };
 
@@ -38,15 +40,27 @@ describe("moveNote", () => {
     );
   });
 
-  it("says when nothing else changes", () => {
+  it("shows no note when the move changes nothing else", () => {
     expect(
       moveNote({ ...BUNK, Division__c: "d2" }, BUNK, {
         ...CONTEXT,
         activities: [],
         recurringActivities: []
       })
-    ).toBe(
-      "Moves to Seniors. Nothing set up is for Juniors or Seniors by name, so moving changes nothing else."
+    ).toBe(null);
+  });
+
+  it("tells two lists with the same name apart (staggered lunches)", () => {
+    const lunches = {
+      ...CONTEXT,
+      activities: [],
+      recurringActivities: [
+        { Id: "r1", Name: "Lunch", Coverages__r: [{ Division__c: "d1" }] },
+        { Id: "r2", Name: "Lunch", Coverages__r: [{ Division__c: "d2" }] }
+      ]
+    };
+    expect(moveNote({ ...BUNK, Division__c: "d2" }, BUNK, lunches)).toBe(
+      "Moves to Seniors: Bunk 3 is no longer in Lunch (for Juniors) and is now in Lunch (for Seniors)."
     );
   });
 });

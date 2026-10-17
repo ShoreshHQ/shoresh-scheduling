@@ -29,6 +29,9 @@ import { looseKey } from "c/shoreshImportEngine";
  * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
  *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
  *   "Same name as another" tag. Every row counts, hidden or unsaved. A heads-up only.
+ *   sameNameScope / sameNamesElsewhere: when rows can move to another scope (a group's
+ *   division), a row is compared within the scope its values now name, and against
+ *   sameNamesElsewhere[scope] (names saved in other scopes' tables).
  *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
  * draftNote / draftNoteHeading: a note worked out from a saved row's unsaved values,
@@ -62,6 +65,8 @@ export default class ShoreshEditableTable extends LightningElement {
   @api notesHeading;
   @api rowNotes = {};
   @api flagSameNames = false;
+  @api sameNameScope;
+  @api sameNamesElsewhere = {};
   @api draftNote;
   @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
@@ -322,17 +327,26 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.visibleDrafts.length > 0;
   }
 
-  /** Keys of the rows whose name another row also has. */
+  /** Keys of the rows whose name another row also has, in the same scope. */
   get sameNameKeys() {
     const same = new Set();
     if (!this.flagSameNames) {
       return same;
     }
+    const scopeOf = (draft) =>
+      (this.sameNameScope ? draft.values[this.sameNameScope] || "" : "");
+    const elsewhere = this.sameNamesElsewhere || {};
     const byName = new Map();
     this.drafts.forEach((draft) => {
       const name = looseKey(draft.values.Name);
-      if (name) {
-        byName.set(name, [...(byName.get(name) || []), draft.key]);
+      if (!name) {
+        return;
+      }
+      const scope = scopeOf(draft);
+      const key = `${scope}|${name}`;
+      byName.set(key, [...(byName.get(key) || []), draft.key]);
+      if ((elsewhere[scope] || []).some((other) => looseKey(other) === name)) {
+        same.add(draft.key);
       }
     });
     byName.forEach((keys) => {

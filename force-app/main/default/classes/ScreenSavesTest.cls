@@ -85,6 +85,15 @@ private class ScreenSavesTest {
         [SELECT Division__c FROM Group__c WHERE Id = :bunk.Id WITH SYSTEM_MODE]
         .Division__c
       );
+
+      try {
+        SeasonSetupController.saveRecords(
+          new List<SObject>{ new Group__c(Id = bunk.Id, Division__c = null) }
+        );
+        Assert.fail('A bunk without a division is refused');
+      } catch (AuraHandledException e) {
+        Assert.areEqual('Bunk 3 needs a division.', e.getMessage());
+      }
     }
   }
 }

@@ -99,6 +99,8 @@
           title={division.title}
           object-api-name="Group__c"
           flag-same-names
+          same-name-scope="Division__c"
+          same-names-elsewhere={division.namesElsewhere}
           columns={groupColumns}
           rows={division.groups}
           add-label={labels.addGroup}

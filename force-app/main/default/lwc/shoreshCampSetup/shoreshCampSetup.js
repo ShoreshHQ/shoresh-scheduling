@@ -4,7 +4,7 @@ import LightningConfirm from "lightning/confirm";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
-import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetup";
+import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
@@ -119,7 +119,10 @@ export default class ShoreshCampSetup extends LightningElement {
       // Another season: start its tables fresh rather than carrying unsaved rows across.
       this.setup = null;
     }
-    const setup = await getSeasonSetup({ seasonId: this.seasonId });
+    const setup = await getSeasonSetup({
+      campId: this.campId,
+      seasonId: this.seasonId
+    });
     // Keep typed but unsaved season details when something else was saved.
     const keepForm =
       this.seasonChanged &&

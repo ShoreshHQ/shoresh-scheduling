@@ -329,7 +329,16 @@ export default class ShoreshProgram extends LightningElement {
       id: d.division.Id,
       title: `${this.terms.p("Group")} in ${d.division.Name}`,
       groups: d.groups,
-      defaults: { Division__c: d.division.Id, Availability__c: "AllDay" }
+      defaults: { Division__c: d.division.Id, Availability__c: "AllDay" },
+      // A bunk moved here on screen is compared with this unit's saved bunks.
+      namesElsewhere: Object.fromEntries(
+        (this.entry.divisions || [])
+          .filter((other) => other.division.Id !== d.division.Id)
+          .map((other) => [
+            other.division.Id,
+            (other.groups || []).map((g) => g.Name)
+          ])
+      )
     }));
   }
 

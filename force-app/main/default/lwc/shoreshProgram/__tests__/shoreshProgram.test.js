@@ -125,7 +125,7 @@ describe("c-shoresh-program", () => {
     element.terms = terms;
     element.show = "groups";
     element.activities = [
-      { Name: "Archery", Eligibilities__r: [{ Division__c: "d2" }] }
+      { Id: "a2", Name: "Archery", Eligibilities__r: [{ Division__c: "d2" }] }
     ];
     document.body.appendChild(element);
     await flush();

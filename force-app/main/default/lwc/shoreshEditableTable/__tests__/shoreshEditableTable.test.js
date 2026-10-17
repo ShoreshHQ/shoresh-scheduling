@@ -867,6 +867,33 @@ describe("c-shoresh-editable-table", () => {
       expect(tags(plain)).toEqual([false, false]);
     });
 
+    it("compares a row moved to another scope with that scope's names", async () => {
+      const unit = {
+        fieldName: "Division__c",
+        label: "Unit",
+        type: "picklist",
+        options: [
+          { label: "Juniors", value: "d1" },
+          { label: "Seniors", value: "d2" }
+        ]
+      };
+      const element = render({
+        columns: [COLUMNS[0], unit],
+        rows: [
+          { Id: "g1", Name: "Bunk 1", Division__c: "d1" },
+          { Id: "g2", Name: "Bunk 2", Division__c: "d1" }
+        ],
+        flagSameNames: true,
+        sameNameScope: "Division__c",
+        sameNamesElsewhere: { d2: ["Bunk 2", "Bunk 9"] }
+      });
+      await flush();
+      expect(tags(element)).toEqual([false, false]);
+      change(field(element, 1, "Division__c"), "d2");
+      await flush();
+      expect(tags(element)).toEqual([false, true]);
+    });
+
     it("matches names exactly as the import's looseKey does", async () => {
       const pairs = [
         ["Bunk  3", "bunk 3"],

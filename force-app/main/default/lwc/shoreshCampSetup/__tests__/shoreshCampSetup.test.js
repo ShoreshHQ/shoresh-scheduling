@@ -4,7 +4,7 @@ import LightningConfirm from "lightning/confirm";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
-import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetup";
+import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp";
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
@@ -22,7 +22,7 @@ jest.mock("@salesforce/apex/SeasonSetupController.getLabels", () => apex(), {
   virtual: true
 });
 jest.mock(
-  "@salesforce/apex/SeasonSetupController.getSeasonSetup",
+  "@salesforce/apex/SeasonSetupController.getSeasonSetupInCamp",
   () => apex(),
   { virtual: true }
 );
@@ -228,7 +228,10 @@ describe("c-shoresh-camp-setup", () => {
         }
       ]
     });
-    expect(getSeasonSetup).toHaveBeenCalledWith({ seasonId: "s1" });
+    expect(getSeasonSetup).toHaveBeenCalledWith({
+      campId: "c1",
+      seasonId: "s1"
+    });
     expect(q(element, '[data-id="fill-weeks"]')).not.toBeNull();
   });
 
@@ -434,7 +437,10 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     await flush();
-    expect(getSeasonSetup).toHaveBeenLastCalledWith({ seasonId: "s2" });
+    expect(getSeasonSetup).toHaveBeenLastCalledWith({
+      campId: "c1",
+      seasonId: "s2"
+    });
   });
 
   it("shows a loading failure instead of a blank screen", async () => {

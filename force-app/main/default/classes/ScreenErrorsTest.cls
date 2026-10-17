@@ -140,4 +140,29 @@ private class ScreenErrorsTest {
       'Unknown camp: the standard word'
     );
   }
+
+  @IsTest
+  static void aMissingSeasonIsNamedInTheCampsOwnWord() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = camp.Id,
+        ModelTerm__c = 'Season',
+        Singular__c = 'Session',
+        Plural__c = 'Sessions'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Season__c gone = ShoreshTestData.season(camp.Id, 'Summer 2025');
+    Database.delete(gone, AccessLevel.SYSTEM_MODE);
+    try {
+      SeasonSetupController.getSeasonSetupInCamp(camp.Id, gone.Id);
+      Assert.fail('A removed season is not shown');
+    } catch (AuraHandledException e) {
+      Assert.areEqual(
+        'That Session wasn\'t found. Reload the page.',
+        e.getMessage()
+      );
+    }
+  }
 }
