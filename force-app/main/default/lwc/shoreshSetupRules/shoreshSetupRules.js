@@ -171,6 +171,7 @@ function whoIsThere(entry, item, fields) {
     : -1;
   const span =
     start < 0 ? [] : blocks.slice(start, start + (item[fields.Length] || 1));
+  // Only a recurring activity has a who list: a fixed one has none, so it takes everyone.
   const named = new Set(
     (item[CHILDREN.RecurringActivity.Coverages] || []).map(
       (row) => row[COVERS.Division] || row[COVERS.Group]

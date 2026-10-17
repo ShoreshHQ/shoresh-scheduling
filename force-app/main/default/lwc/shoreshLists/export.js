@@ -8,6 +8,7 @@
  * Every text cell goes through the spreadsheet-formula guard (cells.js sanitizeCell). Pure
  * JavaScript: the screen turns the sheets into a file with SheetJS.
  */
+import { FIELD } from "c/shoreshSchema";
 import { screenLabels } from "c/shoreshScreens";
 import { sanitizeCell } from "./cells";
 import { LIST_SCREENS, cellText, listScreen } from "./screens";
@@ -72,7 +73,11 @@ function campWordRows(setup) {
 function weekRows(setup, t) {
   return [
     [t.s("Week"), "Start", "End"],
-    ...(setup.weeks || []).map((w) => [w.Name, w.StartDate__c, w.EndDate__c])
+    ...(setup.weeks || []).map((w) => [
+      w.Name,
+      w[FIELD.Week.StartDate],
+      w[FIELD.Week.EndDate]
+    ])
   ].map(safe);
 }
 
@@ -87,17 +92,18 @@ function runsInRows(setup, t) {
   const heading = (w) => {
     const twice =
       named.filter((n) => n === String(w.Name).toLowerCase()).length > 1;
-    return twice ? `${w.Name} (${w.StartDate__c})` : w.Name;
+    return twice ? `${w.Name} (${w[FIELD.Week.StartDate]})` : w.Name;
   };
   const off = new Set(
     (setup.weekExceptions || []).map((x) => {
+      const mark = FIELD.WeekException;
       const item =
-        x.Group__c ||
-        x.Activity__c ||
-        x.Location__c ||
-        x.FixedActivity__c ||
-        x.RecurringActivity__c;
-      return `${item}|${x.Week__c}`;
+        x[mark.Group] ||
+        x[mark.Activity] ||
+        x[mark.Location] ||
+        x[mark.FixedActivity] ||
+        x[mark.RecurringActivity];
+      return `${item}|${x[mark.Week]}`;
     })
   );
   const rows = [];

@@ -13,7 +13,7 @@ import {
   questionCards,
   sheetName,
   waitingFor
-} from "c/shoreshLists";
+} from "./data/lists";
 
 import { at, camp } from "./data/camp";
 
@@ -534,5 +534,158 @@ describe("PR C own review: what the probes found", () => {
     const s = camp();
     s.activities.push({ ...s.activities[1], Id: "a8" });
     expect(back("activities", s).questions).toContain("Which “Board games”?");
+  });
+});
+
+// What each download says for the made-up camp, cell by cell: every field read from the season
+// as the package sends it (a round trip alone would read a misnamed field the same way twice).
+const DOWNLOADS = {
+  programs: [
+    ["Program", "Runs on"],
+    ["Main", "Monday, Tuesday, Wednesday, Thursday, Friday"],
+    ["Teens", "Monday, Tuesday"]
+  ],
+  divisions: [
+    ["Program", "Unit"],
+    ["Main", "Juniors"],
+    ["Main", "Seniors"],
+    ["Teens", "Juniors"]
+  ],
+  groups: [
+    ["Program", "Unit", "Bunk", "Availability"],
+    ["Main", "Juniors", "Bunk 1", "All day"],
+    ["Main", "Juniors", "Bunk 2", "Morning only"],
+    ["Main", "Seniors", "Bunk 3", "All day"],
+    ["Teens", "Juniors", "Bunk 1", "Afternoon only"]
+  ],
+  timeBlocks: [
+    ["Program", "Time block", "Start", "End", "Part of day"],
+    ["Main", "Period 1", "9:00 AM", "9:45 AM", "Morning"],
+    ["Main", "Lunch", "12:00 PM", "12:45 PM", "Afternoon"],
+    ["Teens", "Period 1", "10:00 AM", "10:50 AM", "Morning"]
+  ],
+  locations: [
+    ["Location", "Location type", "Groups that fit", "Notes"],
+    ["Pool", "Waterfront", 2, "'=Shallow end"],
+    ["Gym", "", 1, ""]
+  ],
+  activities: [
+    [
+      "Activity",
+      "Location",
+      "Length",
+      "Times per week: at least",
+      "Times per week: at most",
+      "Priority",
+      "Outdoors",
+      "Rain plan",
+      "Groups at once",
+      "Same Unit only",
+      "Early in the week",
+      "Who can do it",
+      "Notes"
+    ],
+    [
+      "Swim",
+      "Pool",
+      2,
+      2,
+      3,
+      "High",
+      "Yes",
+      "Board games",
+      2,
+      "Yes",
+      "1 by Wednesday",
+      "Bunk 3, Juniors (Main)",
+      "'+Bring towels"
+    ],
+    [
+      "Board games",
+      "",
+      1,
+      0,
+      "No maximum",
+      "Low",
+      "No",
+      "",
+      "No limit",
+      "No",
+      "",
+      "Everyone",
+      ""
+    ]
+  ],
+  fixedActivities: [
+    ["Program", "Fixed activity", "Time block", "Length", "Location"],
+    ["Main", "Lunch", "Lunch", 1, "Gym"],
+    ["Teens", "Lunch", "Period 1", 1, ""]
+  ],
+  recurringActivities: [
+    [
+      "Program",
+      "Recurring activity",
+      "Time block",
+      "Length",
+      "Location",
+      "Runs on",
+      "Who"
+    ],
+    [
+      "Main",
+      "Meeting",
+      "Period 1",
+      1,
+      "",
+      "Monday, Wednesday",
+      '"Bunk 1 (Juniors, Main)", Seniors'
+    ]
+  ]
+};
+
+const WORKBOOK_WEEKS = [
+  {
+    name: "Weeks",
+    rows: [
+      ["Week", "Start", "End"],
+      ["Week 1", "2027-06-28", "2027-07-02"],
+      ["Week 2", "2027-07-05", "2027-07-09"]
+    ]
+  },
+  {
+    name: "Runs in",
+    rows: [
+      ["Kind", "Program", "Unit", "Name", "Week 1", "Week 2"],
+      ["Bunk", "Main", "Juniors", "Bunk 1", "Yes", "Yes"],
+      ["Bunk", "Main", "Juniors", "Bunk 2", "No", "Yes"],
+      ["Bunk", "Main", "Seniors", "Bunk 3", "Yes", "Yes"],
+      ["Fixed activity", "Main", "", "Lunch", "Yes", "Yes"],
+      ["Recurring activity", "Main", "", "Meeting", "Yes", "No"],
+      ["Bunk", "Teens", "Juniors", "Bunk 1", "Yes", "Yes"],
+      ["Fixed activity", "Teens", "", "Lunch", "No", "Yes"],
+      ["Location", "", "", "Pool", "Yes", "Yes"],
+      ["Location", "", "", "Gym", "Yes", "No"],
+      ["Activity", "", "", "Swim", "Yes", "Yes"],
+      ["Activity", "", "", "Board games", "Yes", "No"]
+    ]
+  }
+];
+
+describe("the downloads say the season as it is", () => {
+  it("every screen's list", () => {
+    LIST_SCREENS.forEach((screenKey) => {
+      expect([screenKey, listRows(screenKey, camp(), terms)]).toEqual([
+        screenKey,
+        DOWNLOADS[screenKey]
+      ]);
+    });
+  });
+
+  it("the workbook's weeks and the weeks each item runs in", () => {
+    expect(
+      campWorkbookSheets(camp(), terms).filter((sheet) =>
+        ["Weeks", "Runs in"].includes(sheet.name)
+      )
+    ).toEqual(WORKBOOK_WEEKS);
   });
 });

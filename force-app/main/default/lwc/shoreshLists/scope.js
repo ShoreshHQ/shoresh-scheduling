@@ -4,6 +4,7 @@
  * have is asked about like any similar name, and otherwise added, asking which days it runs
  * (Greg, 2026-10-17: add it and ask for what it needs).
  */
+import { FIELD } from "c/shoreshSchema";
 import {
   LEAVE_OUT,
   WEEKDAYS,
@@ -44,7 +45,7 @@ function programCard(name, answer, t) {
 export function resolvePrograms(read, screen, setup, answers, t) {
   const result = { pairs: [], cards: [], adds: [] };
   const programs = (setup.programs || []).map((entry) => entry.program);
-  const daysOf = (p) => WEEKDAYS.filter((d) => p[`${d}__c`]);
+  const daysOf = (p) => WEEKDAYS.filter((d) => p[FIELD.Program[d]]);
   const rows = read.filter((r) => !r.problems.length);
   if (screen.scope !== "program") {
     return result;

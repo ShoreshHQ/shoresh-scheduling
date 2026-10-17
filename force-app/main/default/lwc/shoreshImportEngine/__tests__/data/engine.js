@@ -39,6 +39,9 @@ export function customKeys(value) {
 export function planFor(proposal, existing, ...rest) {
   const plan = engine.planFor(proposal, nsRecord(existing), ...rest);
   const bare = customKeys(plan).filter((k) => !k.startsWith(NAMESPACE_PREFIX));
+  if (JSON.stringify(plan).includes('"undefined":')) {
+    throw new Error("The plan names a field that doesn't exist");
+  }
   if (NAMESPACE_PREFIX && bare.length) {
     throw new Error(`The plan writes bare names: ${bare.join(", ")}`);
   }

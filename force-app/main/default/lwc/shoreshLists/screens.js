@@ -12,6 +12,7 @@
  * record: location, locationType, activity); fromRecord (the value a saved record has, as a
  * cell would give it).
  */
+import { CHILDREN, FIELD } from "c/shoreshSchema";
 import { NONE, listName } from "./cells";
 import { whoNames } from "./who";
 import {
@@ -22,6 +23,11 @@ import {
   recurringScreen,
   timeBlocksScreen
 } from "./programScreens";
+
+// Each screen's fields, as the package names them (c/shoreshSchema).
+const LOCATION = FIELD.Location;
+const ACTIVITY = FIELD.Activity;
+const WHO = FIELD.ActivityEligibility;
 
 const PRIORITIES = [
   { value: "High", label: "High" },
@@ -40,7 +46,8 @@ function nameColumn(heading, words) {
   };
 }
 
-function notesColumn() {
+/** fields: the object's own fields (its Notes). */
+function notesColumn(fields) {
   return {
     key: "notes",
     heading: "Notes",
@@ -49,10 +56,10 @@ function notesColumn() {
     keepSpacing: true,
     // As a list reads them back: one kind of line break, and spaces alone are no notes.
     fromRecord: (r) => {
-      const notes = String(r.Notes__c || "").replace(/\r\n?/g, "\n");
+      const notes = String(r[fields.Notes] || "").replace(/\r\n?/g, "\n");
       return notes.trim() ? notes : null;
     },
-    write: (v) => ({ Notes__c: v || null })
+    write: (v) => ({ [fields.Notes]: v || null })
   };
 }
 
@@ -80,8 +87,8 @@ function locationsScreen(t) {
         type: "ref",
         ref: "locationType",
         fromRecord: (r, setup) =>
-          nameOf(setup.locationTypes, r.LocationType__c),
-        refField: "LocationType__c"
+          nameOf(setup.locationTypes, r[LOCATION.LocationType]),
+        refField: LOCATION.LocationType
       },
       {
         key: "fit",
@@ -91,10 +98,10 @@ function locationsScreen(t) {
         min: 1,
         requiredValue: true,
         newValue: 1,
-        fromRecord: (r) => r.GroupsThatFit__c,
-        write: (v) => ({ GroupsThatFit__c: v })
+        fromRecord: (r) => r[LOCATION.GroupsThatFit],
+        write: (v) => ({ [LOCATION.GroupsThatFit]: v })
       },
-      notesColumn()
+      notesColumn(LOCATION)
     ],
     records: (setup) => setup.locations || []
   };
@@ -113,8 +120,8 @@ function activitiesScreen(t) {
         words: ["location", "place", "where", "room"],
         type: "ref",
         ref: "location",
-        fromRecord: (r, setup) => nameOf(setup.locations, r.Location__c),
-        refField: "Location__c"
+        fromRecord: (r, setup) => nameOf(setup.locations, r[ACTIVITY.Location]),
+        refField: ACTIVITY.Location
       },
       {
         key: "length",
@@ -124,8 +131,8 @@ function activitiesScreen(t) {
         min: 1,
         requiredValue: true,
         newValue: 1,
-        fromRecord: (r) => r.Length__c,
-        write: (v) => ({ Length__c: v })
+        fromRecord: (r) => r[ACTIVITY.Length],
+        write: (v) => ({ [ACTIVITY.Length]: v })
       },
       {
         key: "min",
@@ -143,8 +150,8 @@ function activitiesScreen(t) {
         min: 0,
         requiredValue: true,
         newValue: 1,
-        fromRecord: (r) => r.TimesPerWeekMin__c,
-        write: (v) => ({ TimesPerWeekMin__c: v })
+        fromRecord: (r) => r[ACTIVITY.TimesPerWeekMin],
+        write: (v) => ({ [ACTIVITY.TimesPerWeekMin]: v })
       },
       {
         key: "max",
@@ -165,11 +172,13 @@ function activitiesScreen(t) {
         blankMeans: NONE,
         // A new activity done at least 3 times a week is done at most 3 times, not 1.
         newValue: (values) => Math.max(1, values.min || 0),
-        fromRecord: (r) => (r.NoWeeklyMax__c ? NONE : r.TimesPerWeekMax__c),
+        fromRecord: (r) => {
+          return r[ACTIVITY.NoWeeklyMax] ? NONE : r[ACTIVITY.TimesPerWeekMax];
+        },
         write: (v) => {
           return v === NONE
-            ? { NoWeeklyMax__c: true, TimesPerWeekMax__c: null }
-            : { NoWeeklyMax__c: false, TimesPerWeekMax__c: v };
+            ? { [ACTIVITY.NoWeeklyMax]: true, [ACTIVITY.TimesPerWeekMax]: null }
+            : { [ACTIVITY.NoWeeklyMax]: false, [ACTIVITY.TimesPerWeekMax]: v };
         }
       },
       {
@@ -180,16 +189,16 @@ function activitiesScreen(t) {
         options: PRIORITIES,
         requiredValue: true,
         newValue: "Low",
-        fromRecord: (r) => r.Priority__c || "Low",
-        write: (v) => ({ Priority__c: v })
+        fromRecord: (r) => r[ACTIVITY.Priority] || "Low",
+        write: (v) => ({ [ACTIVITY.Priority]: v })
       },
       {
         key: "outdoors",
         heading: "Outdoors",
         words: ["outdoor", "outside", "is_outdoor"],
         type: "yesNo",
-        fromRecord: (r) => !!r.Outdoor__c,
-        write: (v) => ({ Outdoor__c: v })
+        fromRecord: (r) => !!r[ACTIVITY.Outdoor],
+        write: (v) => ({ [ACTIVITY.Outdoor]: v })
       },
       {
         key: "rainPlan",
@@ -202,8 +211,9 @@ function activitiesScreen(t) {
         ],
         type: "ref",
         ref: "activity",
-        fromRecord: (r, setup) => nameOf(setup.activities, r.RainPlan__c),
-        refField: "RainPlan__c"
+        fromRecord: (r, setup) =>
+          nameOf(setup.activities, r[ACTIVITY.RainPlan]),
+        refField: ACTIVITY.RainPlan
       },
       {
         key: "groupsAtOnce",
@@ -220,11 +230,13 @@ function activitiesScreen(t) {
         // A blank cell clears it on an item set up: no limit. A new one starts as by hand.
         blankMeans: NONE,
         newValue: 1,
-        fromRecord: (r) => (r.NoGroupLimit__c ? NONE : r.GroupsAtOnce__c),
+        fromRecord: (r) => {
+          return r[ACTIVITY.NoGroupLimit] ? NONE : r[ACTIVITY.GroupsAtOnce];
+        },
         write: (v) => {
           return v === NONE
-            ? { NoGroupLimit__c: true, GroupsAtOnce__c: null }
-            : { NoGroupLimit__c: false, GroupsAtOnce__c: v };
+            ? { [ACTIVITY.NoGroupLimit]: true, [ACTIVITY.GroupsAtOnce]: null }
+            : { [ACTIVITY.NoGroupLimit]: false, [ACTIVITY.GroupsAtOnce]: v };
         }
       },
       {
@@ -237,8 +249,8 @@ function activitiesScreen(t) {
           "same_tier_only"
         ],
         type: "yesNo",
-        fromRecord: (r) => !!r.SameDivisionOnly__c,
-        write: (v) => ({ SameDivisionOnly__c: v })
+        fromRecord: (r) => !!r[ACTIVITY.SameDivisionOnly],
+        write: (v) => ({ [ACTIVITY.SameDivisionOnly]: v })
       },
       {
         key: "early",
@@ -246,13 +258,13 @@ function activitiesScreen(t) {
         words: ["early", "early in week", "prefer before day"],
         type: "early",
         fromRecord: (r) => {
-          return r.EarlyWeekCount__c && r.EarlyWeekByDay__c
-            ? { count: r.EarlyWeekCount__c, day: r.EarlyWeekByDay__c }
-            : null;
+          const count = r[ACTIVITY.EarlyWeekCount];
+          const day = r[ACTIVITY.EarlyWeekByDay];
+          return count && day ? { count, day } : null;
         },
         write: (v) => ({
-          EarlyWeekCount__c: v ? v.count : null,
-          EarlyWeekByDay__c: v ? v.day : null
+          [ACTIVITY.EarlyWeekCount]: v ? v.count : null,
+          [ACTIVITY.EarlyWeekByDay]: v ? v.day : null
         })
       },
       {
@@ -268,11 +280,11 @@ function activitiesScreen(t) {
         ],
         type: "list",
         fromRecord: (r) =>
-          (r.Eligibilities__r || [])
-            .map((row) => row.Division__c || row.Group__c)
+          (r[CHILDREN.Activity.Eligibilities] || [])
+            .map((row) => row[WHO.Division] || row[WHO.Group])
             .sort()
       },
-      notesColumn()
+      notesColumn(ACTIVITY)
     ],
     records: (setup) => setup.activities || []
   };

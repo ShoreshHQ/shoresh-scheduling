@@ -7,7 +7,8 @@ const base = require('./jest.config');
 const NAMESPACED_SUITES = [
     'shoreshSchema',
     'shoreshSetupRules',
-    'shoreshImportEngine'
+    'shoreshImportEngine',
+    'shoreshLists'
 ];
 
 module.exports = {
