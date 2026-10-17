@@ -104,6 +104,42 @@
               <template lwc:else>
                 <div class="list-card-title">{card.title}</div>
                 <div class="list-options">
+                  <template lwc:if={card.daysQuestion}>
+                    <lightning-checkbox-group
+                      label="Days"
+                      variant="label-hidden"
+                      options={dayOptions}
+                      data-id={card.id}
+                      data-part="days"
+                      onchange={handleDraft}
+                    ></lightning-checkbox-group>
+                    <lightning-button
+                      label="OK"
+                      data-id={card.id}
+                      onclick={handleDraftDone}
+                    ></lightning-button>
+                  </template>
+                  <template lwc:if={card.timesQuestion}>
+                    <lightning-input
+                      type="time"
+                      label="Start"
+                      data-id={card.id}
+                      data-part="start"
+                      onchange={handleDraft}
+                    ></lightning-input>
+                    <lightning-input
+                      type="time"
+                      label="End"
+                      data-id={card.id}
+                      data-part="end"
+                      onchange={handleDraft}
+                    ></lightning-input>
+                    <lightning-button
+                      label="OK"
+                      data-id={card.id}
+                      onclick={handleDraftDone}
+                    ></lightning-button>
+                  </template>
                   <template for:each={card.options} for:item="option">
                     <lightning-button
                       key={option.key}

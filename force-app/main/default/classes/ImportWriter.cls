@@ -122,16 +122,20 @@ public with sharing class ImportWriter {
 
   /** A who list replaced on an existing item: what it was, and what the import wrote. */
   public void logWho(
-    Activity__c owner,
+    SObject owner,
+    String type,
     List<String> before,
     List<String> after
   ) {
-    countChange('Activity', owner.Id);
+    countChange(
+      owner.getSObjectType().getDescribe().getName().removeEnd('__c'),
+      owner.Id
+    );
     changed.add(
       new Map<String, Object>{
         'who' => owner.Id,
-        'type' => 'ActivityEligibility__c',
-        'name' => owner.Name,
+        'type' => type,
+        'name' => owner.get('Name'),
         'before' => before,
         'after' => after
       }

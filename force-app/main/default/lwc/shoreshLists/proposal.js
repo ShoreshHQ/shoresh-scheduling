@@ -25,7 +25,15 @@ import {
 } from "./headings";
 import { cellText, listScreen } from "./screens";
 import { resolveWho, whoTargets } from "./who";
-import { unknownRainPlans, unknownWho } from "./adds";
+import {
+  ampmCards,
+  ampmKey,
+  blockAddKey,
+  unknownBlocks,
+  unknownRainPlans,
+  unknownWho
+} from "./adds";
+import { resolveProgramDays, resolvePrograms } from "./scope";
 import { resolveColumn } from "./refs";
 
 /** Keep or Change, for one difference. */
@@ -39,8 +47,19 @@ const PAIR_KIND = {
   activity: "activity",
   Location: "location",
   location: "location",
-  locationType: "locationType"
+  LocationType: "locationType",
+  locationType: "locationType",
+  Program: "program",
+  Division: "division",
+  division: "division",
+  Group: "group",
+  TimeBlock: "timeBlock",
+  timeBlock: "timeBlock",
+  FixedActivity: "fixed",
+  RecurringActivity: "recurring"
 };
+
+const HALF_DAY = 12 * 60;
 
 /** A difference's answer key: the item, the column, and the new value (a new value asks again). */
 export function changeKey(screenKey, name, columnKey, to) {
@@ -48,7 +67,7 @@ export function changeKey(screenKey, name, columnKey, to) {
 }
 
 function blankValue(column) {
-  if (column.type === "list") {
+  if (column.type === "list" || column.type === "days") {
     return [];
   }
   return column.type === "yesNo" ? false : null;
@@ -74,6 +93,7 @@ function readRows(rows, start, used) {
     }
     const values = {};
     const blanks = new Set();
+    const unsure = {};
     const problems = [];
     used.forEach(({ column, index }) => {
       const read = readCell(column, row[index]);
@@ -86,6 +106,9 @@ function readRows(rows, start, used) {
         blanks.add(column.key);
       } else {
         values[column.key] = read.value;
+        if (read.unsure) {
+          unsure[column.key] = tidy(row[index]);
+        }
       }
     });
     if (!values.name && !problems.length) {
@@ -103,6 +126,7 @@ function readRows(rows, start, used) {
       name: values.name || "",
       values,
       blanks,
+      unsure,
       problems
     });
   }
@@ -113,7 +137,26 @@ function usable(row) {
   return !row.problems.length && !row.leftOut;
 }
 
-function matchNames(leads, records, kind, answers) {
+/** Similar names among the rows and against the camp's, scope by scope (season or program). */
+function matchNames(leads, screen, setup, answers) {
+  const scoped = screen.scope === "program";
+  const rows = leads.filter((r) => usable(r) && (!scoped || r.program));
+  const records = screen.records(setup);
+  const pairs = [];
+  [...new Set(rows.map(scopeOf))].sort().forEach((scope) => {
+    pairs.push(
+      ...matchScope(
+        rows.filter((r) => scopeOf(r) === scope),
+        scoped ? records.filter((rec) => rec._programId === scope) : records,
+        screen.kind,
+        answers
+      )
+    );
+  });
+  return pairs;
+}
+
+function matchScope(leads, records, kind, answers) {
   const readable = leads.filter(usable);
   const campNames = records.map((r) => r.Name);
   const pairs = similarPairs(
@@ -168,6 +211,15 @@ function matchNames(leads, records, kind, answers) {
     }
   });
   readable.forEach((r) => {
+    // A group of one name in two divisions: the one in the division the row names.
+    if (r.found.length > 1 && r.values.division) {
+      const inDivision = r.found.filter(
+        (rec) => rec._divisionName === r.values.division
+      );
+      if (inDivision.length === 1) {
+        r.found = inDivision;
+      }
+    }
     r.existing = r.found.length === 1 ? r.found[0] : null;
   });
   return pairs;
@@ -188,7 +240,10 @@ function whichOne(read, screen, setup, answers) {
     .filter((r) => usable(r) && !r.open && r.found && r.found.length > 1)
     .forEach((r) => {
       const name = r.found[0].Name;
-      const id = whichKey(screen.key, name);
+      const id = whichKey(
+        screen.key,
+        r.program ? `${r.program.name}/${name}` : name
+      );
       const answer = answers[id];
       if (!asked.has(id)) {
         asked.set(id, true);
@@ -252,6 +307,174 @@ function checkNewLimits(read, screen) {
     });
 }
 
+/** What a row's name is matched within: its program for a program's list, else the season. */
+function scopeOf(row) {
+  return row.program ? row.program.id : "season";
+}
+
+/**
+ * 5 and 6 o'clock without AM or PM: asked; "morning" moves the time to the morning. Then a
+ * block that ends before it starts can't be read.
+ */
+function resolveAmpm(read, answers) {
+  const texts = new Set();
+  read.filter(usable).forEach((r) => {
+    Object.entries(r.unsure).forEach(([key, text]) => {
+      texts.add(text);
+      const answer = answers[ampmKey(text)];
+      if (answer === "morning" && r.values[key] >= HALF_DAY) {
+        r.values[key] -= HALF_DAY;
+      } else if (answer === LEAVE_OUT) {
+        r.leftOut = true;
+      } else if (answer !== "morning" && answer !== "evening") {
+        r.open = true;
+      }
+    });
+  });
+  read.filter(usable).forEach((r) => {
+    const { start, end } = r.values;
+    if (typeof start === "number" && typeof end === "number" && end <= start) {
+      r.problems.push("End is before Start");
+    }
+  });
+  return ampmCards(texts, answers);
+}
+
+function programEntry(setup, programId) {
+  return (setup.programs || []).find((e) => e.program.Id === programId);
+}
+
+/**
+ * A program's divisions or time blocks a row names, resolved within the row's program
+ * (refs.js); a division it doesn't have is added; a time block is added once the director says
+ * when it is (adds.js). Returns { pairs, cards, blocks: [{ programId, name, start, end }] }.
+ */
+function resolveProgramRefs(leads, used, setup, answers, t) {
+  const result = { pairs: [], cards: [], blocks: [] };
+  used
+    .filter(
+      ({ column }) => column.ref === "division" || column.ref === "timeBlock"
+    )
+    .forEach(({ column }) => {
+      const rows = leads.filter((r) => usable(r) && r.program);
+      [...new Set(rows.map(scopeOf))].sort().forEach((scope) => {
+        const entry = programEntry(setup, scope);
+        const records = !entry
+          ? []
+          : column.ref === "division"
+            ? (entry.divisions || []).map((d) => d.division)
+            : entry.timeBlocks || [];
+        result.pairs.push(
+          ...resolveColumn(
+            rows.filter((r) => scopeOf(r) === scope),
+            column,
+            records,
+            null,
+            answers,
+            PAIR_KIND[column.ref]
+          )
+        );
+      });
+      if (column.ref !== "timeBlock") {
+        return;
+      }
+      const asks = new Map();
+      const rowsOf = new Map();
+      rows.filter(usable).forEach((r) => {
+        const target = (r.targets || {})[column.key];
+        if (target && target.add) {
+          const id = blockAddKey(r.program.name, target.add);
+          asks.set(id, { program: r.program, name: target.add });
+          rowsOf.set(id, [...(rowsOf.get(id) || []), r]);
+        }
+      });
+      const blocks = unknownBlocks(asks, answers, t);
+      result.cards.push(...blocks.cards);
+      result.blocks.push(...blocks.adds);
+      rowsOf.forEach((waiting, id) => {
+        waiting.forEach((r) => {
+          if (blocks.leftOut.has(id)) {
+            r.leftOut = true;
+          } else if (blocks.open.has(id)) {
+            r.open = true;
+          }
+        });
+      });
+    });
+  return result;
+}
+
+/** The programs a who list can name: all of them, or the given ones. */
+function whoPrograms(setup, programIds) {
+  return (setup.programs || [])
+    .filter((e) => !programIds || programIds.includes(e.program.Id))
+    .map((e) => ({
+      id: e.program.Id,
+      name: e.program.Name,
+      divisions: (e.divisions || []).map((d) => ({
+        id: d.division.Id,
+        name: d.division.Name
+      }))
+    }));
+}
+
+/**
+ * Who lists: "Who can do it" names any division or group of the season; a recurring activity's
+ * "Who" only its own program's. Names that are nothing are asked about, then resolved.
+ */
+function resolveAllWho(leads, used, screen, setup, answers, t, allTargets) {
+  const found = used.find(({ column }) => column.type === "list");
+  if (!found) {
+    return { cards: [], adds: [] };
+  }
+  const rows = leads.filter(
+    (r) => usable(r) && Array.isArray(r.values.who) && r.values.who.length
+  );
+  let buckets;
+  if (screen.scope === "program") {
+    const withProgram = rows.filter((r) => r.program);
+    buckets = [...new Set(withProgram.map(scopeOf))].sort().map((scope) => {
+      const inScope = withProgram.filter((r) => scopeOf(r) === scope);
+      const program = inScope[0].program;
+      const entry = programEntry(setup, scope);
+      return {
+        rows: inScope,
+        targets: whoTargets({ programs: entry ? [entry] : [] }),
+        programs: entry
+          ? whoPrograms(setup, [scope])
+          : [{ id: program.id, name: program.name, divisions: [] }],
+        program: program.name
+      };
+    });
+  } else {
+    buckets = [
+      { rows, targets: whoTargets(setup), programs: whoPrograms(setup, null) }
+    ];
+  }
+  const adds = unknownWho(buckets, answers, t);
+  buckets.forEach((bucket, index) => {
+    bucket.rows.forEach((r) => {
+      const marks = r.values.who.map((name) => `${index}|${looseKey(name)}`);
+      if (marks.some((m) => adds.leftOut.has(m))) {
+        r.leftOut = true;
+      } else if (marks.some((m) => adds.open.has(m))) {
+        r.open = true;
+      } else {
+        const resolved = resolveWho(r.values.who, bucket.targets);
+        if (resolved.problem) {
+          r.problems.push(`${found.column.heading}: ${resolved.problem}`);
+        } else {
+          r.values.who = resolved.ids;
+        }
+      }
+    });
+    bucket.targets.byId.forEach((target, id) =>
+      allTargets.byId.set(id, target)
+    );
+  });
+  return adds;
+}
+
 /**
  * The first row of each name (capitals and spacing aside) leads, even if it can't be read; the
  * rows after it with that name repeat it and follow it, never saved on their own.
@@ -261,7 +484,7 @@ function settleLeads(read) {
   read
     .filter((r) => r.name)
     .forEach((r) => {
-      const key = looseKey(r.name);
+      const key = `${scopeOf(r)}|${looseKey(r.name)}`;
       if (first.has(key)) {
         r.repeatOf = first.get(key);
       } else {
@@ -394,10 +617,12 @@ export function listProposal(input) {
   }
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
+  result.cards.push(...resolveAmpm(read, answers));
+  const programs = resolvePrograms(read, screen, setup, answers, t);
+  result.pairs.push(...programs.pairs);
+  result.cards.push(...programs.cards);
   const leads = settleLeads(read);
-  result.pairs.push(
-    ...matchNames(leads, screen.records(setup), screen.kind, answers)
-  );
+  result.pairs.push(...matchNames(leads, screen, setup, answers));
   result.cards.push(...whichOne(leads, screen, setup, answers));
   used
     .filter(
@@ -416,33 +641,25 @@ export function listProposal(input) {
         )
       );
     });
+  const programRefs = resolveProgramRefs(leads, used, setup, answers, t);
+  result.pairs.push(...programRefs.pairs);
+  result.cards.push(...programRefs.cards);
   const targets = whoTargets(setup);
-  const whoAdds = unknownWho(leads.filter(usable), targets, setup, answers, t);
+  const whoAdds = resolveAllWho(
+    leads,
+    used,
+    screen,
+    setup,
+    answers,
+    t,
+    targets
+  );
   result.cards.push(...whoAdds.cards);
-  leads.forEach((r) => {
-    const who = used.find(({ column }) => column.type === "list");
-    if (
-      !who ||
-      !usable(r) ||
-      !Array.isArray(r.values.who) ||
-      !r.values.who.length
-    ) {
-      return;
-    }
-    const keys = r.values.who.map(looseKey);
-    if (keys.some((k) => whoAdds.leftOut.has(k))) {
-      r.leftOut = true;
-    } else if (keys.some((k) => whoAdds.open.has(k))) {
-      r.open = true;
-    } else {
-      const found = resolveWho(r.values.who, targets);
-      if (found.problem) {
-        r.problems.push(`${who.column.heading}: ${found.problem}`);
-      } else {
-        r.values.who = found.ids;
-      }
-    }
-  });
+  const days =
+    screen.kind === "RecurringActivity"
+      ? resolveProgramDays(leads, answers)
+      : { cards: [], added: new Map() };
+  result.cards.push(...days.cards);
   checkNewLimits(leads, screen);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainPlans = rain
@@ -453,7 +670,14 @@ export function listProposal(input) {
   result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
   result.targets = targets;
   result.setupActivities = setup.activities || [];
-  result.alsoAdd = alsoAdded(result.rows, used, rainPlans.adds, whoAdds.adds);
+  result.setup = setup;
+  result.alsoAdd = alsoAdded(result.rows, used, {
+    rain: rainPlans.adds,
+    who: whoAdds.adds,
+    programs: programs.adds,
+    blocks: programRefs.blocks,
+    days: days.added
+  });
   return result;
 }
 
@@ -461,25 +685,51 @@ export function listProposal(input) {
  * What saving would add because rows name it (Greg, #4): only what a row that will be saved
  * uses (a new row, or a difference answered Change).
  */
-function alsoAdded(rows, used, rainAdds, whoAdds) {
+function alsoAdded(rows, used, asked) {
   const alsoAdd = {};
   const uses = (key) => rows.filter((row) => usesValue(row, key));
+  const addedNames = (key) => {
+    return uses(key)
+      .map((row) => ({ row, target: (row.targets || {})[key] }))
+      .filter(({ target }) => target && target.add);
+  };
   used
     .filter(
       ({ column }) => column.ref === "location" || column.ref === "locationType"
     )
     .forEach(({ column }) => {
       alsoAdd[column.ref] = [
-        ...new Set(
-          uses(column.key)
-            .map((row) => (row.targets || {})[column.key])
-            .filter((target) => target && target.add)
-            .map((target) => target.add)
-        )
+        ...new Set(addedNames(column.key).map(({ target }) => target.add))
       ].sort((x, y) => x.localeCompare(y));
     });
+  // A program's divisions and time blocks: per program.
+  const perProgram = (key) => {
+    const seen = new Map();
+    addedNames(key).forEach(({ row, target }) => {
+      seen.set(`${row.programId}|${target.add}`, {
+        programId: row.programId,
+        name: target.add
+      });
+    });
+    return [...seen.values()];
+  };
+  alsoAdd.division = perProgram("division");
+  alsoAdd.timeBlock = asked.blocks.filter((b) =>
+    perProgram("timeBlock").some(
+      (u) => u.programId === b.programId && u.name === b.name
+    )
+  );
+  const saving = rows.filter(
+    (r) => r.status === "new" || r.status === "changed"
+  );
+  alsoAdd.program = asked.programs.filter((p) =>
+    saving.some((r) => r.programId === `Program:${p.name}`)
+  );
+  alsoAdd.programDays = [...asked.days.entries()]
+    .map(([programId, added]) => ({ programId, days: added }))
+    .filter((d) => uses("days").some((row) => row.programId === d.programId));
   // Rain plans to add, ticked (or unticked: skipped), for the rows that will be saved.
-  alsoAdd.activity = rainAdds.filter((add) =>
+  alsoAdd.activity = asked.rain.filter((add) =>
     rows.some(
       (row) =>
         (usesValue(row, "rainPlan") &&
@@ -488,7 +738,7 @@ function alsoAdded(rows, used, rainAdds, whoAdds) {
           ["new", "changed", "unchanged"].includes(row.status))
     )
   );
-  alsoAdd.who = whoAdds.filter((add) =>
+  alsoAdd.who = asked.who.filter((add) =>
     uses("who").some(
       (row) => Array.isArray(row.values.who) && row.values.who.includes(add.key)
     )
@@ -542,7 +792,9 @@ function describeRow(r, used, screen, setup, answers) {
     problems: r.problems,
     sameAs: r.sameAs || null,
     droppedPlan: r.droppedPlan || null,
-    targets: r.targets || {}
+    targets: r.targets || {},
+    programId: r.program ? r.program.id : null,
+    programName: r.program ? r.program.name : null
   };
   if (r.problems.length) {
     return { ...row, status: "unreadable" };
@@ -562,7 +814,7 @@ function describeRow(r, used, screen, setup, answers) {
   }
   const differences = [];
   used.forEach(({ column }) => {
-    if (column.key === "name") {
+    if (column.key === "name" || column.scope) {
       return;
     }
     const blank = r.blanks.has(column.key);
@@ -578,7 +830,12 @@ function describeRow(r, used, screen, setup, answers) {
     if (!differs(column, r, from, to)) {
       return;
     }
-    const id = changeKey(screen.key, r.existing.Name, column.key, to);
+    const id = changeKey(
+      screen.key,
+      r.program ? `${r.program.name}/${r.existing.Name}` : r.existing.Name,
+      column.key,
+      to
+    );
     differences.push({
       id,
       column: column.key,
@@ -613,7 +870,7 @@ function isEmpty(column, value) {
 }
 
 function normal(column, value) {
-  if (column.type === "list") {
+  if (column.type === "list" || column.type === "days") {
     return [...(value || [])].sort();
   }
   if (column.type === "yesNo") {

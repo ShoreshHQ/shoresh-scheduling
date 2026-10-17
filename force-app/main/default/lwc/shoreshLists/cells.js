@@ -7,7 +7,7 @@
  * see NOTICE): a text cell that starts with = + - @ or a tab or line break is written with an
  * apostrophe in front, and the apostrophe is taken off again when the file is read back.
  */
-import { WEEKDAYS, dayOf, tidy } from "c/shoreshImportEngine";
+import { WEEKDAYS, dayOf, tidy, timeRange } from "c/shoreshImportEngine";
 
 const FORMULA_START = /^[=+\-@\t\r\n]/;
 
@@ -96,9 +96,72 @@ function early(text) {
   return count.problem ? count : { value: { count: count.value, day } };
 }
 
+const EVERY_DAY = new Set([
+  "weekdays",
+  "every day",
+  "everyday",
+  "daily",
+  "all",
+  "all week",
+  "mon-fri",
+  "monday-friday",
+  "monday to friday"
+]);
+
+/**
+ * Days a cell names, Monday to Friday in order: "Monday, Wednesday", "Mon-Wed", "Tue/Thu",
+ * "weekdays". Saturday and Sunday can't be read: Shoresh camps run Monday to Friday.
+ */
+function days(text) {
+  if (EVERY_DAY.has(text.toLowerCase().replace(/\s*([-–])\s*/g, "-"))) {
+    return { value: [...WEEKDAYS] };
+  }
+  const found = new Set();
+  for (const part of text
+    .split(/[,;/&+\n]|\band\b/i)
+    .map(tidy)
+    .filter((p) => p)) {
+    const range = part.split(/\s*(?:-|–|\bto\b)\s*/i);
+    const ends = range.map(dayOf);
+    if (ends.some((d) => !d) || ends.length > 2) {
+      return { problem: `"${part}" isn't a day` };
+    }
+    const weekend = ends.find((d) => !WEEKDAYS.includes(d));
+    if (weekend) {
+      return {
+        problem: `${weekend} isn't a camp day`
+      };
+    }
+    const from = WEEKDAYS.indexOf(ends[0]);
+    const to = WEEKDAYS.indexOf(ends[ends.length - 1]);
+    if (to < from) {
+      return { problem: `"${part}" goes backwards` };
+    }
+    WEEKDAYS.slice(from, to + 1).forEach((d) => found.add(d));
+  }
+  return { value: WEEKDAYS.filter((d) => found.has(d)) };
+}
+
+/**
+ * A clock time: minutes after midnight. Without AM or PM, 7 to 11 is the morning and 12 to 4 the
+ * afternoon (Shoresh is for day camps); 5 and 6 o'clock are asked, never guessed (ADR 0006).
+ */
+function time(text) {
+  const range = timeRange(text);
+  if (!range || range.end !== null || !/\d/.test(text)) {
+    return { problem: `"${text}" isn't a time` };
+  }
+  const hour = Number((text.match(/\d{1,2}/) || ["0"])[0]);
+  const marked = /[ap]\.?\s*m\.?/i.test(text) || hour >= 13 || hour === 0;
+  return !marked && (hour === 5 || hour === 6)
+    ? { value: range.start, unsure: true }
+    : { value: range.start };
+}
+
 /**
  * One cell, read for its column: { value }, { blank: true }, or { problem } (the reason, shown
- * with the row). column.type: text, ref, whole, wholeOrNone, yesNo, choice, list, early.
+ * with the row). column.type: text, ref, whole, wholeOrNone, yesNo, choice, list, early, days,
+ * time ({ value, unsure } for a 5 or 6 o'clock time without AM or PM).
  */
 export function readCell(column, raw) {
   const text = tidy(unescapeCell(raw));
@@ -143,6 +206,10 @@ export function readCell(column, raw) {
         : { value: splitList(String(unescapeCell(raw))) };
     case "early":
       return early(text);
+    case "days":
+      return days(text);
+    case "time":
+      return time(text);
     default:
       return { value: text };
   }

@@ -14,6 +14,14 @@
  */
 import { NONE } from "./cells";
 import { whoNames } from "./who";
+import {
+  divisionsScreen,
+  fixedScreen,
+  groupsScreen,
+  programsScreen,
+  recurringScreen,
+  timeBlocksScreen
+} from "./programScreens";
 
 const PRIORITIES = [
   { value: "High", label: "High" },
@@ -265,9 +273,16 @@ function activitiesScreen(t) {
   };
 }
 
+// In menu order (c/shoreshScreens): Camp, then Activities.
 const BUILDERS = {
+  programs: programsScreen,
+  divisions: divisionsScreen,
+  groups: groupsScreen,
+  timeBlocks: timeBlocksScreen,
   locations: locationsScreen,
-  activities: activitiesScreen
+  activities: activitiesScreen,
+  fixedActivities: fixedScreen,
+  recurringActivities: recurringScreen
 };
 
 /** The screens that have a list to import, in menu order. */
@@ -301,6 +316,14 @@ export function cellText(column, value, targets) {
       return value.length ? whoNames(value, targets).join(", ") : "Everyone";
     case "early":
       return `${value.count} by ${value.day}`;
+    case "days":
+      return value.join(", ");
+    case "time": {
+      // 12-hour with AM or PM, so it reads back the same.
+      const hours = Math.floor(value / 60);
+      const minutes = String(value % 60).padStart(2, "0");
+      return `${hours % 12 || 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
+    }
     default:
       return value;
   }

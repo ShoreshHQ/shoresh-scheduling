@@ -45,7 +45,16 @@ function setup() {
     activities: [],
     programs: [
       {
-        program: { Id: "p1", Name: "Main" },
+        program: {
+          Id: "p1",
+          Name: "Main",
+          Monday__c: true,
+          Tuesday__c: true,
+          Wednesday__c: true,
+          Thursday__c: true,
+          Friday__c: true
+        },
+        timeBlocks: [{ Id: "tb1", Name: "Period 1" }],
         divisions: [{ division: { Id: "d1", Name: "Juniors" }, groups: [] }]
       }
     ]
@@ -69,11 +78,25 @@ function fullList(screen) {
     groupsAtOnce: "No limit",
     sameDivision: "Yes",
     early: "2 by Wednesday",
-    who: "Juniors"
+    who: "Juniors",
+    program: "Main",
+    days: "Monday; Wednesday",
+    division: "Juniors",
+    availability: "All day",
+    start: "9:00 AM",
+    end: "9:45 AM",
+    partOfDay: "Morning",
+    timeBlock: "Period 1"
   };
   const columns = screen.columns;
   const row = columns.map((c) => values[c.key]);
-  const other = columns.map((c) => (c.key === "name" ? "Other" : ""));
+  // A second row, like the first but its own name and no rain plan.
+  const other = columns.map((c) => {
+    if (c.key === "name") {
+      return "Other";
+    }
+    return c.key === "rainPlan" ? "" : values[c.key];
+  });
   return csvFile(
     "list.csv",
     [

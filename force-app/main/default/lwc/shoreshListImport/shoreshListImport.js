@@ -28,6 +28,12 @@ import {
 import { screenLabels } from "c/shoreshScreens";
 import { errorMessage } from "c/shoreshErrors";
 
+/** Minutes after midnight as "9:00 AM". */
+function timeText(minutes) {
+  const hours = Math.floor(minutes / 60);
+  return `${hours % 12 || 12}:${String(minutes % 60).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
+}
+
 /**
  * "Import a list" on a setup screen (slice 4c): choose an Excel or CSV file, see which column is
  * which, answer the questions, Keep or Change each difference, then save it all at once. Nothing
@@ -249,7 +255,16 @@ export default class ShoreshListImport extends LightningElement {
   get cards() {
     return questionCards(this.proposal, this.terms, this.answers).map(
       (card) => {
-        const chosen = card.options.find((o) => o.value === card.answer);
+        let chosen = card.options.find((o) => o.value === card.answer);
+        if (!chosen && card.answer && card.daysQuestion) {
+          chosen = { label: card.answer.split(",").join(", ") };
+        } else if (!chosen && card.answer && card.timesQuestion) {
+          const [start, end] = card.answer.split("-").map((hm) => {
+            const [h, m] = hm.split(":").map(Number);
+            return timeText(h * 60 + m);
+          });
+          chosen = { label: `${start}–${end}` };
+        }
         return {
           ...card,
           answered: !!chosen,
@@ -300,6 +315,38 @@ export default class ShoreshListImport extends LightningElement {
         });
       });
     });
+    (add.program || []).forEach((item) => {
+      lines.push({
+        key: `program:${item.name}`,
+        label: `${item.name} · ${t.sIn("Program")} · ${item.days.join(", ")}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.programDays || []).forEach((item) => {
+      lines.push({
+        key: `days:${item.programId}`,
+        label: `${item.days.join(", ")} → ${this.programName(item.programId)}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.division || []).forEach((item) => {
+      lines.push({
+        key: `division:${item.programId}:${item.name}`,
+        label: `${item.name} · ${t.sIn("Division")}`,
+        checked: true,
+        canUntick: false
+      });
+    });
+    (add.timeBlock || []).forEach((item) => {
+      lines.push({
+        key: `block:${item.programId}:${item.name}`,
+        label: `${item.name} · ${t.sIn("TimeBlock")} · ${timeText(item.start)}–${timeText(item.end)}`,
+        checked: true,
+        canUntick: false
+      });
+    });
     (add.who || []).forEach((item) => {
       lines.push({
         key: item.key,
@@ -318,6 +365,45 @@ export default class ShoreshListImport extends LightningElement {
       });
     });
     return lines;
+  }
+
+  programName(programId) {
+    const entry = ((this.setup && this.setup.programs) || []).find(
+      (e) => e.program.Id === programId
+    );
+    return entry
+      ? entry.program.Name
+      : String(programId).replace(/^Program:/, "");
+  }
+
+  // ---------- questions that need more than a button: days, and times ----------
+
+  drafts = {};
+
+  get dayOptions() {
+    return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(
+      (d) => ({ label: d, value: d })
+    );
+  }
+
+  handleDraft(event) {
+    const { id, part } = event.target.dataset;
+    const value = event.detail.value;
+    this.drafts = {
+      ...this.drafts,
+      [id]: { ...(this.drafts[id] || {}), [part]: value }
+    };
+  }
+
+  /** Days: "Monday,Wednesday"; times: "09:00-10:00" (the time inputs give "09:00:00.000"). */
+  handleDraftDone(event) {
+    const id = event.currentTarget.dataset.id;
+    const draft = this.drafts[id] || {};
+    if (draft.days && draft.days.length) {
+      this.answer(id, draft.days.join(","));
+    } else if (draft.start && draft.end) {
+      this.answer(id, `${draft.start.slice(0, 5)}-${draft.end.slice(0, 5)}`);
+    }
   }
 
   /**

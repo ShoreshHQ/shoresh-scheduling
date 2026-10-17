@@ -4,7 +4,9 @@
  * (ImportController.saveList). Nothing is saved until every question and every difference has
  * an answer, and the save is all or none.
  */
-import { LEAVE_OUT } from "c/shoreshImportEngine";
+import { LEAVE_OUT, WEEKDAYS, clock } from "c/shoreshImportEngine";
+import { answeredTimes } from "./adds";
+import { answeredDays } from "./scope";
 import { NONE } from "./cells";
 import { CHANGE, newValueOf } from "./proposal";
 import { cellText } from "./screens";
@@ -73,7 +75,10 @@ export function questionCards(proposal, t, answers) {
     }))
   ].map((card) => {
     // An answer the card doesn't offer (an older question's) counts as not answered.
-    const offered = card.options.some((o) => o.value === card.answer);
+    const offered =
+      card.options.some((o) => o.value === card.answer) ||
+      (card.daysQuestion && !!answeredDays(card.answer)) ||
+      (card.timesQuestion && !!answeredTimes(card.answer));
     return offered ? card : { ...card, answer: null };
   });
 }
@@ -245,6 +250,28 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       });
     });
   });
+  programRecords(proposal).forEach((record) => records.push(record));
+  ((proposal.alsoAdd || {}).division || []).forEach((add) => {
+    records.push({
+      kind: "Division",
+      key: `Division:${add.programId}:${add.name}`,
+      fields: { Name: add.name },
+      refs: { Program__c: add.programId }
+    });
+  });
+  ((proposal.alsoAdd || {}).timeBlock || []).forEach((add) => {
+    records.push({
+      kind: "TimeBlock",
+      key: `TimeBlock:${add.programId}:${add.name}`,
+      fields: {
+        Name: add.name,
+        StartTime__c: clock(add.start),
+        EndTime__c: clock(add.end),
+        PartOfDay__c: add.start >= 12 * 60 ? "Afternoon" : "Morning"
+      },
+      refs: { Program__c: add.programId }
+    });
+  });
   ((proposal.alsoAdd || {}).who || []).forEach((add) => {
     records.push({
       kind: add.kind,
@@ -327,6 +354,8 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   };
 }
 
+const PROGRAM_KIND = { division: "Division", timeBlock: "TimeBlock" };
+
 const ADDED_KIND = {
   location: "Location",
   locationType: "LocationType",
@@ -334,14 +363,67 @@ const ADDED_KIND = {
 };
 
 /** Where a resolved name points (refs.js): an item set up, a row saved, or one added with it. */
-function linkOf(column, target) {
+function linkOf(column, target, programId) {
   if (!target) {
     return null;
   }
   if (target.id) {
     return target.id;
   }
-  return target.key || `${ADDED_KIND[column.ref]}:${target.add}`;
+  if (target.key) {
+    return target.key;
+  }
+  // A division or time block added with the list is its program's.
+  return PROGRAM_KIND[column.ref]
+    ? `${PROGRAM_KIND[column.ref]}:${programId}:${target.add}`
+    : `${ADDED_KIND[column.ref]}:${target.add}`;
+}
+
+/**
+ * Programs this list adds (asked days), and days added to programs for recurring activities
+ * (answered "Add Friday to Main"): one record per program.
+ */
+function programRecords(proposal) {
+  const add = proposal.alsoAdd || {};
+  const byId = new Map();
+  (add.program || []).forEach((p) => {
+    byId.set(`Program:${p.name}`, {
+      record: {
+        kind: "Program",
+        key: `Program:${p.name}`,
+        fields: { Name: p.name }
+      },
+      days: new Set(p.days)
+    });
+  });
+  (add.programDays || []).forEach(({ programId, days }) => {
+    if (!byId.has(programId)) {
+      const entry = ((proposal.setup || {}).programs || []).find(
+        (e) => e.program.Id === programId
+      );
+      if (!entry) {
+        return;
+      }
+      byId.set(programId, {
+        record: { kind: "Program", id: programId, fields: {} },
+        days: new Set(WEEKDAYS.filter((d) => entry.program[`${d}__c`]))
+      });
+    }
+    days.forEach((d) => byId.get(programId).days.add(d));
+  });
+  return [...byId.values()].map(({ record, days }) => {
+    WEEKDAYS.forEach((d) => {
+      record.fields[`${d}__c`] = days.has(d);
+    });
+    return record;
+  });
+}
+
+/** A new record's key: its kind and name, and its program for a program's list. */
+export function newKey(screen, row) {
+  return screen.scope === "program"
+    ? `${screen.kind}:${row.programId}:${row.name}`
+    : `${screen.kind}:${row.name}`;
 }
 
 function recordFor(screen, row, columnKeys) {
@@ -349,19 +431,26 @@ function recordFor(screen, row, columnKeys) {
     ? { kind: screen.kind, id: row.id, fields: {}, refs: {} }
     : {
         kind: screen.kind,
-        key: `${screen.kind}:${row.name}`,
+        key: newKey(screen, row),
         fields: {},
         refs: {}
       };
+  if (!row.id && screen.scope === "program" && screen.kind !== "Group") {
+    // A group is in its division; everything else of a program's list is in the program.
+    record.refs.Program__c = row.programId;
+  }
   columnKeys.forEach((key) => {
     const column = screen.columns.find((c) => c.key === key);
     const value = row.id
       ? row.differences.find((d) => d.column === key).to
       : row.values[key];
+    if (column.scope) {
+      return;
+    }
     if (column.refField) {
       // A cleared value has no target; a value kept has the target refs.js resolved.
       record.refs[column.refField] = value
-        ? linkOf(column, (row.targets || {})[key])
+        ? linkOf(column, (row.targets || {})[key], row.programId)
         : null;
     } else if (column.type === "list") {
       record.who = value || [];
