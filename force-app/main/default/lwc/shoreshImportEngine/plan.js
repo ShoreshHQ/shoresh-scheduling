@@ -216,6 +216,19 @@ function fixedText(r) {
   return `${block.name}${span}, every day`;
 }
 
+/** Names in the file the camp already has as this kind (each once): "already set up". */
+function matched(proposal, kind) {
+  const names = proposal.decisions
+    .filter((d) => d.existing && d.kind === kind && !d.leftOut)
+    .map((d) => d.name);
+  return [...new Set(names)].map((name) => ({
+    key: `matched|${name}`,
+    name,
+    detail: "",
+    tag: "already set up"
+  }));
+}
+
 const NOTED_KINDS = {
   E: "Elective",
   D: "SpecialDay",
@@ -271,32 +284,41 @@ export function foundLists(proposal, t) {
     {
       key: "fixedActivities",
       title: t.p("FixedActivity"),
-      items: proposal.fixed.map((r) => ({
-        key: `${r.programKey}|${r.name}`,
-        name: r.name,
-        detail: fixedText(r),
-        tag: "new"
-      }))
+      items: [
+        ...proposal.fixed.map((r) => ({
+          key: `${r.programKey}|${r.name}`,
+          name: r.name,
+          detail: fixedText(r),
+          tag: "new"
+        })),
+        ...matched(proposal, "fixed")
+      ]
     },
     {
       key: "recurringActivities",
       title: t.p("RecurringActivity"),
-      items: proposal.recurring.map((r, i) => ({
-        key: `${r.programKey}|${r.name}|${i}`,
-        name: r.name,
-        detail: `${r.timetable.blocks[r.block].name} on ${dayList(r.days)}, ${r.who.names.length ? nameList(r.who.names) : "everyone"}`,
-        tag: "new"
-      }))
+      items: [
+        ...proposal.recurring.map((r, i) => ({
+          key: `${r.programKey}|${r.name}|${i}`,
+          name: r.name,
+          detail: `${r.timetable.blocks[r.block].name} on ${dayList(r.days)}, ${r.who.names.length ? nameList(r.who.names) : "everyone"}`,
+          tag: "new"
+        })),
+        ...matched(proposal, "recurring")
+      ]
     },
     {
       key: "activities",
       title: t.p("Activity"),
-      items: proposal.activities.map((a) => ({
-        key: a.name,
-        name: a.name,
-        detail: timesAWeek(a, t),
-        tag: "new"
-      }))
+      items: [
+        ...proposal.activities.map((a) => ({
+          key: a.name,
+          name: a.name,
+          detail: timesAWeek(a, t),
+          tag: "new"
+        })),
+        ...matched(proposal, "activity")
+      ]
     },
     {
       key: "noted",
