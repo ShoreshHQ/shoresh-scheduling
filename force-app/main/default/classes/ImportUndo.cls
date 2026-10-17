@@ -112,12 +112,15 @@ public with sharing class ImportUndo {
     }
   }
 
-  /** The season's last import that stands. */
+  /**
+   * The season's most recent import, undone or not (Greg, 2026-10-17): Undo is offered for it
+   * only, once. After it is undone no earlier import can be undone, until the next import.
+   */
   public static Id latest(Id seasonId) {
     List<Import__c> imports = [
       SELECT Id
       FROM Import__c
-      WHERE Season__c = :seasonId AND UndoneAt__c = NULL
+      WHERE Season__c = :seasonId
       WITH USER_MODE
       ORDER BY CreatedDate DESC, Name DESC
       LIMIT 1
