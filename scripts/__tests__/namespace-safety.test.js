@@ -1,14 +1,7 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
-const {
-  scan,
-  scanJs,
-  scanHtml,
-  scanApex,
-  counts,
-  compare,
-  lowered
-} = require("../namespace-safety");
+const { scan, scanJs, scanHtml, scanApex } = require("../namespace-safety");
 
 const texts = (hits) => hits.map((h) => h.text);
 
@@ -112,52 +105,40 @@ describe("namespace-safety scanner", () => {
   });
 });
 
-describe("namespace-safety ratchet", () => {
-  it("passes at the baseline", () => {
-    expect(compare({ a: 2 }, { a: 2 })).toEqual([]);
+describe("namespace-safety check", () => {
+  it("holds for the repository: no field or object name written as text", () => {
+    expect(scan()).toEqual({});
   });
 
-  it("fails when a file gains a name, including a new file", () => {
-    expect(compare({ a: 3 }, { a: 2 })).toHaveLength(1);
-    expect(compare({ b: 1 }, {})[0]).toContain("baseline allows 0");
-  });
+  /** A made-up source tree: { "relative/path": "contents" }. */
+  function tree(files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "namespace-safety-"));
+    for (const [rel, text] of Object.entries(files)) {
+      const full = path.join(root, rel);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, text);
+    }
+    return root;
+  }
 
-  it("asks for the baseline to be lowered when a file improves", () => {
-    expect(compare({ a: 1 }, { a: 2 })[0]).toContain("--update");
-    expect(compare({}, { a: 2 })[0]).toContain("down to 0");
-  });
-
-  it("refuses a baseline raised above the base branch's", () => {
-    expect(compare({ a: 3 }, { a: 3 }, { a: 2 })[0]).toContain(
-      "only goes down"
-    );
-    expect(compare({ new: 1 }, { new: 1 }, {})[0]).toContain("only goes down");
-    expect(compare({ a: 2 }, { a: 2 }, { a: 2 })).toEqual([]);
-  });
-
-  it("only ever lowers the baseline when updating", () => {
-    expect(lowered({ a: 1, b: 5, c: 2 }, { a: 2, b: 3 })).toEqual({
-      a: 1,
-      b: 3,
-      c: 0
+  it("finds a name in any component or class, and never scans the schema homes or tests", () => {
+    const src = "force-app/main/default";
+    const root = tree({
+      [`${src}/lwc/thing/thing.js`]: "const a = r.Length__c;",
+      [`${src}/lwc/thing/thing.html`]: "<p>{r.Notes__c}</p>",
+      [`${src}/classes/Thing.cls`]:
+        "public class Thing { String s = 'Week__c'; }",
+      [`${src}/lwc/thing/__tests__/thing.test.js`]: 'const a = "Week__c";',
+      [`${src}/lwc/shoreshSchema/shoreshSchema.js`]: 'const a = "Week__c";',
+      [`${src}/classes/ShoreshSchema.cls`]:
+        "public class ShoreshSchema { String s = 'Week__c'; }",
+      [`${src}/classes/ThingTest.cls`]:
+        "@IsTest\nprivate class ThingTest { String s = 'Week__c'; }"
     });
-  });
-
-  it("holds for the repository: no file is above or below its committed baseline", () => {
-    const baseline = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, "../namespace-safety-baseline.json"),
-        "utf8"
-      )
-    );
-    expect(compare(counts(scan()), baseline)).toEqual([]);
-  });
-
-  it("never scans the schema homes or tests", () => {
-    const files = Object.keys(scan());
-    expect(files.some((f) => f.includes("/shoreshSchema/"))).toBe(false);
-    expect(files.some((f) => f.endsWith("ShoreshSchema.cls"))).toBe(false);
-    expect(files.some((f) => f.includes("__tests__"))).toBe(false);
-    expect(files.some((f) => /Test\.cls$/.test(f))).toBe(false);
+    expect(Object.keys(scan(root)).sort()).toEqual([
+      `${src}/classes/Thing.cls`,
+      `${src}/lwc/thing/thing.html`,
+      `${src}/lwc/thing/thing.js`
+    ]);
   });
 });

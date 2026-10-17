@@ -24,8 +24,9 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
 - **No field or object names written as text** (`"StartDate__c"`, `record.StartDate__c`, `'Week__c'`,
   `day + '__c'`): once the package has its `shoresh` namespace they find nothing. LWC takes names
   from `c/shoreshSchema` (generated: `node scripts/generate-shoresh-schema.js`); Apex uses typed
-  references and `ShoreshSchema`. `scripts/namespace-safety.js` fails CI if any file gains one; when
-  a file loses some, lower its baseline with `--update` (see `docs/ci-setup.md`).
+  references and `ShoreshSchema`; stored names (import logs, answer keys) are bare local names.
+  `npm run check:namespace` fails on any one, and every component's tests also run namespaced
+  (`npm run test:unit:namespaced`). Rules and guards: `docs/adr/0009-namespace-safe-names.md`.
 - **Salesforce skills** in `.claude/skills/` are a vetted copy of Salesforce's sf-skills
   (`.claude/skills/SOURCES.md`). Each starts with "Shoresh overrides (these win)": those lines and
   this file beat the skill text. Never install sf-skills plugins.

@@ -1,32 +1,20 @@
-// The namespaced Jest run: the suites below run as if the package already had its `shoresh`
-// namespace (jest/namespaced-resolver.js). A suite joins this list once its component reads and
-// writes every record through c/shoreshSchema and its fixtures go through nsRecord()
-// (jest/namespace.js); from then on a bare `__c` name in that component fails its tests here.
+// The namespaced Jest run: every component's tests run as if the package already had its
+// `shoresh` namespace (jest/namespaced-resolver.js names every schema import shoresh__...), so a
+// bare `__c` name in a component fails its tests here (docs/adr/0009-namespace-safe-names.md).
+// New components are covered automatically. A component's tests hand records in through
+// nsRecord() and check what it sends through bareRecord() (jest/namespace.js).
 const base = require('./jest.config');
 
-const NAMESPACED_SUITES = [
-    'shoreshSchema',
-    'shoreshSetupRules',
-    'shoreshImportEngine',
-    'shoreshLists',
-    'shoreshEditableTable',
-    'shoreshProgram',
-    'shoreshActivityDetails',
-    'shoreshCopySeason',
-    'shoreshImport',
-    'shoreshListImport',
-    'shoreshSchedules',
-    'shoreshManualBuild',
-    'shoreshCampSetup',
-    'shoreshRoots'
-];
+// Components whose tests can't run this way, each with the reason. Keep it empty if you can.
+const EXCLUDED_SUITES = [];
 
 module.exports = {
     ...base,
     resolver: '<rootDir>/jest/namespaced-resolver.js',
     globals: { ...(base.globals || {}), SHORESH_JEST_NAMESPACED: true },
-    testMatch: NAMESPACED_SUITES.map(
-        (name) =>
-            `<rootDir>/force-app/main/default/lwc/${name}/__tests__/**/*.test.js`
-    )
+    testMatch: ['<rootDir>/force-app/main/default/lwc/*/__tests__/**/*.test.js'],
+    testPathIgnorePatterns: [
+        ...(base.testPathIgnorePatterns || []),
+        ...EXCLUDED_SUITES.map((name) => `/lwc/${name}/`)
+    ]
 };

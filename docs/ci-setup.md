@@ -24,20 +24,17 @@ deploy ignores change-tracking conflicts: the repository is always what should e
 
 Once the package has its `shoresh` namespace, Salesforce names every custom field
 `shoresh__Field__c`, so code that writes `StartDate__c` as text finds nothing (blank cells, failed
-saves). Two checks guard the retrofit:
+saves). Every such spelling has been replaced; two checks keep it that way
+(`docs/adr/0009-namespace-safe-names.md`):
 
-- **Ratchet** (`npm run check:namespace`, `scripts/namespace-safety.js`): counts names written as
-  text per file (any name ending `__c`, `__r`, `__mdt`, `__e`, `__Share`, `__History`, `__x` or
-  `__b`, in LWC JavaScript and templates and Apex string literals, plus Apex `getName()`; tests,
-  comments, `c/shoreshSchema` and `ShoreshSchema.cls` don't count) against
-  `scripts/namespace-safety-baseline.json`. It fails if a file goes above its number, and if a file
-  goes below it until the lower number is written with `node scripts/namespace-safety.js --update`
-  (which never raises one). On a pull request it also fails if any number was raised above the
-  base branch's.
-- **Namespaced Jest run** (`npm run test:unit:namespaced`): the suites listed in
-  `jest.namespaced.config.js` run with every `@salesforce/schema` import named `shoresh__...`.
-  A suite joins the list once its component uses `c/shoreshSchema` and its fixtures go through
-  `nsRecord()` (`jest/namespace.js`).
+- **No names written as text** (`npm run check:namespace`, `scripts/namespace-safety.js`): fails
+  on any name ending `__c`, `__r`, `__mdt`, `__e`, `__Share`, `__History`, `__x` or `__b` written
+  as text in LWC JavaScript or templates, or in an Apex string literal, and on Apex `getName()`.
+  Tests, comments, `c/shoreshSchema` and `ShoreshSchema.cls` don't count. It allows none.
+- **Namespaced Jest run** (`npm run test:unit:namespaced`): every component's tests run with every
+  `@salesforce/schema` import named `shoresh__...`; new components are included automatically.
+  Tests hand records in through `nsRecord()` and check what is sent through `bareRecord()`
+  (`jest/namespace.js`).
 
 Neither proves the namespaced org works; that is checked after the namespace is registered.
 
