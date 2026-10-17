@@ -151,7 +151,7 @@ public with sharing class ImportItemWrites {
   }
 
   /** Division__c or Group__c, for who an item is for. */
-  private static String targetField(Id target) {
+  public static String targetField(Id target) {
     return target.getSObjectType() == Division__c.SObjectType
       ? 'Division__c'
       : 'Group__c';

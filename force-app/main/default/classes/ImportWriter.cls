@@ -10,8 +10,13 @@ public with sharing class ImportWriter {
   // Created records by kind: { fieldsets: [[field, ...]], rows: [[id, fieldset, fingerprint]] }:
   // the values written, as a fingerprint, so Undo can tell whether anyone edited them since.
   public Map<String, Map<String, Object>> created { get; private set; }
-  // Changed records: [{ id, type, before, after }].
+  // Changed records: [{ id, type, before, after }]; who lists replaced (slice 4c):
+  // [{ who: owner id, type, name, before: [target ids], after: [target ids] }].
   public List<Map<String, Object>> changed { get; private set; }
+  // Each created record as written, and its entry in created, so a later step can amend it.
+  private Map<Id, SObject> createdRows = new Map<Id, SObject>();
+  private Map<Id, List<Object>> createdEntries = new Map<Id, List<Object>>();
+  private Map<Id, String> createdTerms = new Map<Id, String>();
 
   public ImportWriter(ImportKeys keys) {
     this.keys = keys;
@@ -48,6 +53,64 @@ public with sharing class ImportWriter {
     }
   }
 
+  /**
+   * A second write to records this import just saved (slice 4c: a rain plan naming an activity
+   * added in the same list). Created records are fingerprinted again with the new values;
+   * existing ones are logged for Undo like any change.
+   */
+  public void amend(List<SObject> rows) {
+    List<SObject> existing = new List<SObject>();
+    for (SObject row : rows) {
+      if (!createdRows.containsKey(row.Id)) {
+        existing.add(row);
+      }
+    }
+    List<Map<String, Object>> before = ImportUndoLog.before(existing);
+    UserModeWrites.save(rows);
+    changed.addAll(ImportUndoLog.withAfter(before, existing));
+    for (SObject row : rows) {
+      if (createdRows.containsKey(row.Id)) {
+        SObject written = createdRows.get(row.Id);
+        for (String field : row.getPopulatedFieldsAsMap().keySet()) {
+          written.put(field, row.get(field));
+        }
+        List<String> fields = ImportUndoLog.fieldsOf(written);
+        List<Object> entry = createdEntries.get(row.Id);
+        entry[1] = fieldsetOf(createdTerms.get(row.Id), fields);
+        entry[2] = ImportUndoLog.digest(written, fields);
+      }
+    }
+  }
+
+  /** A who list replaced on an existing item: what it was, and what the import wrote. */
+  public void logWho(
+    String type,
+    Id ownerId,
+    String name,
+    List<String> before,
+    List<String> after
+  ) {
+    changed.add(
+      new Map<String, Object>{
+        'who' => ownerId,
+        'type' => type,
+        'name' => name,
+        'before' => before,
+        'after' => after
+      }
+    );
+  }
+
+  private Integer fieldsetOf(String term, List<String> fields) {
+    List<Object> fieldsets = (List<Object>) created.get(term).get('fieldsets');
+    Integer fieldset = fieldsets.indexOf(fields);
+    if (fieldset < 0) {
+      fieldsets.add(fields);
+      fieldset = fieldsets.size() - 1;
+    }
+    return fieldset;
+  }
+
   private void track(String term, SObject row) {
     if (!created.containsKey(term)) {
       created.put(
@@ -58,17 +121,15 @@ public with sharing class ImportWriter {
         }
       );
     }
-    Map<String, Object> kind = created.get(term);
-    List<Object> fieldsets = (List<Object>) kind.get('fieldsets');
     List<String> fields = ImportUndoLog.fieldsOf(row);
-    Integer fieldset = fieldsets.indexOf(fields);
-    if (fieldset < 0) {
-      fieldsets.add(fields);
-      fieldset = fieldsets.size() - 1;
-    }
-    ((List<Object>) kind.get('rows'))
-      .add(
-        new List<Object>{ row.Id, fieldset, ImportUndoLog.digest(row, fields) }
-      );
+    List<Object> entry = new List<Object>{
+      row.Id,
+      fieldsetOf(term, fields),
+      ImportUndoLog.digest(row, fields)
+    };
+    ((List<Object>) created.get(term).get('rows')).add(entry);
+    createdRows.put(row.Id, row);
+    createdEntries.put(row.Id, entry);
+    createdTerms.put(row.Id, term);
   }
 }

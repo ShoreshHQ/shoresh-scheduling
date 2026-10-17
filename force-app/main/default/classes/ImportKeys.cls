@@ -33,6 +33,12 @@ public with sharing class ImportKeys {
         WHERE Division__r.Program__r.Season__c = :seasonId
         WITH USER_MODE
       ],
+      [
+        SELECT Id
+        FROM LocationType__c
+        WHERE Season__c = :seasonId
+        WITH USER_MODE
+      ],
       [SELECT Id FROM Location__c WHERE Season__c = :seasonId WITH USER_MODE],
       [SELECT Id FROM Activity__c WHERE Season__c = :seasonId WITH USER_MODE],
       [
@@ -58,6 +64,15 @@ public with sharing class ImportKeys {
 
   public void put(String key, Id recordId) {
     saved.put(key, recordId);
+  }
+
+  /** Whether a key names a record saved so far, or one in the season. */
+  public Boolean knows(String key) {
+    if (saved.containsKey(key)) {
+      return true;
+    }
+    Id existing = asId(key);
+    return existing != null && inSeason.contains(existing);
   }
 
   /** The record a key names, or null for none (an empty key). */
