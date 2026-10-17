@@ -386,6 +386,40 @@ private class ImportListProgramsTest {
     }
   }
 
+  // Review of the #20 fixes: one kept because the director added to who it covers keeps the
+  // who rows the import made too.
+  @IsTest
+  static void undoKeepsARecurringActivityInUseWithWhoItCovers() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Id hikers = ShoreshTestData.division(c.main.Id, 'Hikers').Id;
+      ImportSetupSaves.Result result = save(
+        plan(
+          c.season.Id,
+          new List<Object>{ newRecurring(c, 'Flag', c.seniors) }
+        )
+      );
+      Id flag = [SELECT Id FROM RecurringActivity__c WHERE Name = 'Flag'].Id;
+      insert as user new Coverage__c(
+        Season__c = c.season.Id,
+        RecurringActivity__c = flag,
+        Division__c = hikers
+      );
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.isTrue(
+        undone.keptInUse.contains('Flag'),
+        String.valueOf(undone.keptInUse)
+      );
+      Assert.areEqual(
+        2,
+        [SELECT COUNT() FROM Coverage__c WHERE RecurringActivity__c = :flag],
+        'Seniors and Hikers'
+      );
+    }
+  }
+
   // Coordinator, #20 review: an import that would make a clash is refused whole, naming both.
   @IsTest
   static void anImportThatMakesAClashIsRefusedWholeNamingBoth() {

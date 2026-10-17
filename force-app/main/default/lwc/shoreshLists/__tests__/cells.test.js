@@ -30,7 +30,12 @@ describe("days", () => {
     ["TTh", ["Tuesday", "Thursday"]],
     ["MTWThF", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
     ["M Tu W T F", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
-    ["Mon Wed-Fri", ["Monday", "Wednesday", "Thursday", "Friday"]]
+    ["Mon Wed-Fri", ["Monday", "Wednesday", "Thursday", "Friday"]],
+    // Two lone Ts: Tuesday, then Thursday.
+    ["MTWTF", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
+    ["M T W T F", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]],
+    ["TT", ["Tuesday", "Thursday"]],
+    ["T/T", ["Tuesday", "Thursday"]]
   ])("%s", (text, expected) => {
     expect(readCell(DAYS, text)).toEqual({ value: expected });
   });
@@ -42,7 +47,9 @@ describe("days", () => {
     ["Sun", "Sunday isn't a camp day"],
     ["Saturdays", "Saturday isn't a camp day"],
     ["S", '"S" isn\'t a day'],
-    ["M-", '"M-" isn\'t a day']
+    ["M-", '"M-" isn\'t a day'],
+    ["Mon to", '"Mon to" isn\'t a day'],
+    ["T T T", '"T T T": which T is which?']
   ])("can't read %s", (text, problem) => {
     expect(readCell(DAYS, text)).toEqual({ problem });
   });

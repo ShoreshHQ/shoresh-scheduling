@@ -490,9 +490,11 @@ export default class ShoreshListImport extends LightningElement {
   get leftOutRows() {
     return this.rowsWith("leftOut").map((r) => ({
       key: `row-${r.rowNumber}`,
-      text: r.sameAs
-        ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
-        : `Row ${r.rowNumber} · ${r.name}`
+      text: r.usedRow
+        ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
+        : r.sameAs
+          ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
+          : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
   get askedCount() {

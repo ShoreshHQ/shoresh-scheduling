@@ -347,8 +347,11 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   proposal.mapping.headings
     .filter((h) => h.how === "chosen")
     .forEach((h) => remember.push({ key: h.key, answer: answers[h.key] }));
-  // Similar names and what a new who name is: remembered. A new rain plan's length, and which
-  // of two items of one name (an Id), are not.
+  // Similar names and what a new who name is: remembered. A new rain plan's length, which of
+  // two items of one name (an Id), and which row of several that differ (a row number), are not.
+  const once = new Set(
+    (proposal.cards || []).filter((card) => card.noMemory).map((c) => c.id)
+  );
   [
     ...(proposal.pairs || []).map((pair) => pair.id),
     ...(proposal.cards || []).map((card) => card.id)
@@ -358,6 +361,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       forget.push(id);
     } else if (
       answer &&
+      !once.has(id) &&
       !id.startsWith("rainAdd|") &&
       !id.startsWith("which|")
     ) {

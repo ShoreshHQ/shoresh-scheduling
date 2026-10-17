@@ -252,7 +252,8 @@ describe("rows", () => {
     const p = read("locations", rows);
     expect(p.rows.map((r) => r.status)).toEqual(["asked", "asked"]);
     const [card] = questionCards(p, terms, {});
-    expect(card.title).toBe("Rows for “Barn” differ");
+    // The spelling rule's: most written, then first alphabetically.
+    expect(card.title).toBe("Rows for “barn” differ");
     expect(card.options.map((o) => o.label)).toEqual([
       "Row 2: 1",
       "Row 3: 2",
@@ -264,7 +265,12 @@ describe("rows", () => {
       ["leftOut", 1],
       ["new", 2]
     ]);
+    expect(done.rows[0].usedRow).toBe(3);
     expect(waitingFor(done, terms, answers)).toEqual([]);
+    // A row number means nothing in the next file: never remembered (review of the fixes).
+    expect(
+      listPlan(done, answers, "s1", "f").remember.map((r) => r.key)
+    ).not.toContain(card.id);
   });
 
   it("reads yes/no words and takes the formula guard off", () => {
@@ -1031,6 +1037,18 @@ describe("PR 19 review", () => {
       ["unreadable", ['Outdoors: "maybe" isn\'t Yes or No']],
       ["unreadable", ["Same as row 2, which can't be read"]]
     ]);
+  });
+
+  it("5c. in either order, a row that can't be read keeps its name from being saved", () => {
+    const body = [
+      ["Golf", "maybe"],
+      ["golf", "Yes"]
+    ];
+    [body, [...body].reverse()].forEach((b) => {
+      const p = read("activities", [["Activity", "Outdoors"], ...b]);
+      expect(p.rows.map((r) => r.status)).toEqual(["unreadable", "unreadable"]);
+      expect(listPlan(p, {}, "s1", "f").records).toEqual([]);
+    });
   });
 
   it("5c. a repeat of a row found unusable later says so, never 'row 2 is used'", () => {

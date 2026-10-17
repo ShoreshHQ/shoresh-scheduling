@@ -238,6 +238,15 @@ function groupMoves(rows, records, allRows) {
  * order: as an item set up spells it, if one does; else the way written most often, then the
  * first alphabetically.
  */
+/** The way a name is written most often, then the first alphabetically. */
+function mostWritten(spellings) {
+  const counts = new Map();
+  spellings.forEach((n) => counts.set(n, (counts.get(n) || 0) + 1));
+  return [...counts.entries()].sort(
+    (x, y) => y[1] - x[1] || x[0].localeCompare(y[0])
+  )[0][0];
+}
+
 function settleSpelling(readable, records) {
   const names = new Set(records.map((rec) => rec.Name));
   readable.forEach((r) => {
@@ -475,7 +484,11 @@ function resolveTueThu(read, answers) {
   read.filter(usable).forEach((r) => {
     Object.entries(r.tueOrThu).forEach(([key, text]) => {
       const id = tueThuKey(r.values.program || "", r.name);
-      asks.set(id, { name: r.name, text });
+      const ask = asks.get(id) || { names: [], texts: [] };
+      asks.set(id, {
+        names: [...ask.names, r.name],
+        texts: [...new Set([...ask.texts, text])].sort()
+      });
       const answer = answers[id];
       if (answer === LEAVE_OUT) {
         r.leftOut = true;
@@ -490,6 +503,10 @@ function resolveTueThu(read, answers) {
         r.open = true;
       }
     });
+  });
+  asks.forEach((ask) => {
+    ask.name = mostWritten(ask.names);
+    ask.text = ask.texts.join(", ");
   });
   return tueThuCards(asks, answers);
 }
@@ -661,14 +678,17 @@ function settleLeads(read, screen, used, answers) {
   const cards = [];
   groups.forEach((rows, key) => {
     const spellings = rows.map((r) => r.name);
-    let lead = rows[0];
-    const differ = differingRows(rows, used);
+    // A row that can't be read leads, whatever the order: the item waits on it, never saved
+    // from the other rows (PR 19 review, 5c).
+    const broken = rows.find((r) => r.problems.length);
+    let lead = broken || rows[0];
+    const differ = broken ? null : differingRows(rows, used);
     if (differ) {
       const id = `rowsDiffer|${screen.key}|${key}`;
       const answer = answers[id];
       cards.push({
         id,
-        title: `Rows for “${lead.name}” differ`,
+        title: `Rows for “${mostWritten(spellings)}” differ`,
         options: [
           ...differ.map((variant) => ({
             value: `row:${variant.row.rowNumber}`,
@@ -788,7 +808,7 @@ function finishRepeats(read) {
       if (r.notChosen) {
         // The director chose another row for this item.
         r.leftOut = true;
-        r.sameAs = `row ${lead.rowNumber}`;
+        r.usedRow = lead.rowNumber;
       } else if (lead.problems.length) {
         r.problems.push(`Same as row ${lead.rowNumber}, which can't be read`);
       } else if (lead.leftOut) {
@@ -1093,6 +1113,7 @@ function describeRow(r, used, screen, setup, answers) {
     values: r.values,
     problems: r.problems,
     sameAs: r.sameAs || null,
+    usedRow: r.usedRow || null,
     droppedPlan: r.droppedPlan || null,
     startingValues: r.startingValues || [],
     targets: r.targets || {},

@@ -154,11 +154,12 @@ export function days(text, tIs) {
   }
   const parts = [];
   for (const part of text
-    .replace(/\b(?:thru|through|to|until|till)\b/gi, "-")
     .split(/[,;/&+\n]|\band\b/i)
     .map(tidy)
     .filter((p) => p)) {
-    const words = part.match(/[–-]|[^\s–-]+/g);
+    const words = part
+      .replace(/\b(?:thru|through|to|until|till)\b/gi, "-")
+      .match(/[–-]|[^\s–-]+/g);
     const read = words.map((w) => (/^[–-]$/.test(w) ? "-" : dayWord(w)));
     const bad = read.findIndex((d) => !d);
     if (bad >= 0) {
@@ -173,19 +174,30 @@ export function days(text, tIs) {
   if (weekend) {
     return { problem: `${weekend} isn't a camp day` };
   }
-  let t = tIs;
-  if (written.includes(TUE_OR_THU) && !t) {
-    const tue = written.includes("Tuesday");
-    const thu = written.includes("Thursday");
-    if (tue === thu) {
+  // Each lone T in turn: two are Tuesday then Thursday ("MTWTF"); one follows the day the cell
+  // writes another way, else the answer.
+  const lone = written.filter((d) => d === TUE_OR_THU).length;
+  const tue = written.includes("Tuesday");
+  const thu = written.includes("Thursday");
+  let meanings = [];
+  if (lone === 2 && !tue && !thu) {
+    meanings = ["Tuesday", "Thursday"];
+  } else if (lone === 1) {
+    const t = tue === thu ? tIs : tue ? "Thursday" : "Tuesday";
+    if (!t) {
       return { ask: true };
     }
-    t = tue ? "Thursday" : "Tuesday";
+    meanings = [t];
+  } else if (lone) {
+    return { problem: `"${text}": which T is which?` };
   }
+  const queue = [...meanings];
   const found = new Set();
   for (const { part, read } of parts) {
     const words = read.map((d) => {
-      return Array.isArray(d) ? d.map((x) => (x === TUE_OR_THU ? t : x)) : d;
+      return Array.isArray(d)
+        ? d.map((x) => (x === TUE_OR_THU ? queue.shift() : x))
+        : d;
     });
     for (let i = 0; i < words.length; i++) {
       if (words[i] !== "-") {

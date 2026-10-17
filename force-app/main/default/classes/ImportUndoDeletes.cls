@@ -35,6 +35,11 @@ public with sharing class ImportUndoDeletes {
       'EndingRecurringActivities__r'
     },
     'Activity' => new List<String>{ 'Eligibilities__r', 'RainPlanFor__r' },
+    // Who it covers or weeks it is off that the import didn't make: kept, with what it made.
+    'RecurringActivity' => new List<String>{
+      'Coverages__r',
+      'WeekExceptions__r'
+    },
     // A type's locations would quietly lose it: one the import didn't add keeps it.
     'LocationType' => new List<String>{ 'Locations__r' }
   };
