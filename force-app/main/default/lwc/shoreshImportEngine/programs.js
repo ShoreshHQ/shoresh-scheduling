@@ -261,7 +261,9 @@ export function mapPrograms(reading, existing, answers) {
       end: block.end,
       guessedEnd: !!block.guessedEnd,
       readAsMorning: !!block.readAsMorning,
-      ...matchBlock(block, program, context)
+      ...(block.leftOutByAnswer
+        ? { leftOut: true }
+        : matchBlock(block, program, context))
     }));
     return {
       index: timetable.index,

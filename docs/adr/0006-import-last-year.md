@@ -152,9 +152,8 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       not show.
     - **The same files give the same result in any order** (files sorted by name, then sheet
       order).
-    - **Times**: ranges of bare hours ("9-10", "12-1") are read; a block written without AM or
-      PM that the camp-day rule would put in the evening is read as morning when it ends before
-      the rest of the day starts ("6:30-7:15" before "7:30"), and "Good to know" says so.
+    - **Times**: ranges of bare hours ("9-10", "12-1") are read; a 5 or 6 o'clock block without
+      AM or PM is asked about (item 15).
     - **Divisions and programs are chosen on the preview** (Greg: the desktop's dropdown per
       group). Every new group shows its division: the file's preselected; none preselected when
       the file is silent and the program has divisions (the import waits); Main only for a
@@ -182,9 +181,12 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       Seniors).").
     - A division that already has a group of that name is not offered in that group's
       dropdown, so the dropdown cannot quietly make a duplicate.
-    - Early-morning reading needs a block with a sure time and ends at most half an hour before
-      it (an aftercare block at 5:00-6:00 stays in the afternoon). "Grades 3-5", "Ages 6-8",
-      "Periods 1-2" are not times.
+    - A block written without AM or PM at 5 or 6 o'clock ("6:00-6:30") is never guessed: the
+      preview asks "Is Late pickup 6:00–6:30 in the morning or the evening?" (morning, evening,
+      or leave it out; until answered it reads as evening). "Grades 3-5", "Ages 6-8", "Periods
+      1-2", "Period 1-2" are not times.
+    - The division dropdown hides only divisions of the same program that already have a group
+      of that name.
     - Two files with the same name are ordered by what is in them; "Use this setup" also waits
       for the preview's choices; `GroupMoves` reads camp words once per camp.
 16. **Deferred by Greg (2026-10-16)** to the Groups-screen move PR and Manual Build: a group

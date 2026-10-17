@@ -59,9 +59,26 @@ function pageBlocks(page, pageIndex, placements) {
     if (short && !used.has(r)) {
       return;
     }
-    blocks.push({ ...block, row: r, key: blockKey(block) });
+    blocks.push({
+      ...block,
+      row: r,
+      key: blockKey(block),
+      holds: mostSeen(placements, pageIndex, r)
+    });
   });
   return blocks;
+}
+
+/** What a row holds most often ("Late pickup"), to name a block that is only a time. */
+function mostSeen(placements, pageIndex, row) {
+  const counts = new Map();
+  placements
+    .filter((p) => p.page === pageIndex && p.row === row)
+    .forEach((p) => counts.set(p.text, (counts.get(p.text) || 0) + 1));
+  const [top] = [...counts].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  );
+  return top ? top[0] : null;
 }
 
 function median(values) {
@@ -70,38 +87,36 @@ function median(values) {
 }
 
 /**
- * A block written without AM or PM that the camp-day rule put in the evening ("6:30-7:15" read
- * as 6:30 PM) is early morning when, read that way, it ends at most half an hour before the day's
- * first block with a sure time (7:30), or before an early block already moved that way. An
- * afternoon block (aftercare at 5:00-6:00) never qualifies; nor does anything when no block's
- * time is sure.
+ * A block written without AM or PM at 5 or 6 o'clock ("6:00-6:30") could be early morning
+ * (before the day) or evening (aftercare): nothing in the file settles it, so the director is
+ * asked (coordinator review, 2026-10-16), never guessed. Until answered it stays in the evening,
+ * as the camp-day rule reads it; "Leave it out" leaves the block out with what is in it.
  */
-const EARLY_GAP_MINUTES = 30;
-
-function earlyMorning(blocks) {
-  const sure = blocks.filter((b) => !b.guessedPm);
-  if (sure.length === 0) {
-    return;
-  }
-  let boundary = Math.min(...sure.map((b) => b.start));
-  const evening = blocks
-    .filter((b) => b.guessedPm && b.start >= 17 * 60)
-    .sort((x, y) => y.start - x.start);
-  for (const b of evening) {
-    const end = (b.end === null ? b.start + 1 : b.end) - 12 * 60;
-    const gap = boundary - end;
-    if (gap < 0 || gap > EARLY_GAP_MINUTES) {
-      continue;
+function morningOrEvening(blocks, context) {
+  for (const b of blocks.filter((x) => x.guessedPm && x.start >= 17 * 60)) {
+    const id = `ampm|${b.label}`;
+    // A block that is only a time is named by what it holds.
+    const name = /[A-Za-z]/.test(b.name) ? b.name : b.holds || "This block";
+    context.asks.push({
+      id,
+      type: "ampm",
+      name,
+      start: b.start,
+      end: b.end
+    });
+    const answer = context.answers[id];
+    if (answer === "morning") {
+      b.start -= 12 * 60;
+      b.end = b.end === null ? null : b.end - 12 * 60;
+      b.readAsMorning = true;
+    } else if (answer === "leaveOut") {
+      b.leftOutByAnswer = true;
     }
-    b.start -= 12 * 60;
-    b.end = b.end === null ? null : b.end - 12 * 60;
-    b.readAsMorning = true;
-    boundary = b.start;
   }
 }
 
 /** One timetable's blocks: each once, in time order, every end filled in (or marked guessed). */
-function orderedBlocks(blocks) {
+function orderedBlocks(blocks, context) {
   const byKey = new Map();
   for (const block of blocks) {
     if (!byKey.has(block.key)) {
@@ -110,7 +125,7 @@ function orderedBlocks(blocks) {
   }
   const timed = [...byKey.values()].filter((b) => b.start !== null);
   const untimed = [...byKey.values()].filter((b) => b.start === null);
-  earlyMorning(timed);
+  morningOrEvening(timed, context);
   timed.sort((a, b) => a.start - b.start || (a.end || 0) - (b.end || 0));
   const usual = median(
     timed.filter((b) => b.end !== null).map((b) => b.end - b.start)
@@ -131,7 +146,8 @@ function orderedBlocks(blocks) {
  * { timetables: [{ index, pages, blocks }], blockAt: Map("page|row" -> block key),
  *   timetableOfPage: Map(page -> index) }.
  */
-export function buildTimetables(pages, placements) {
+export function buildTimetables(pages, placements, answers = {}) {
+  const context = { answers, asks: [] };
   const timetables = [];
   const timetableOfPage = new Map();
   const blockAt = new Map();
@@ -148,10 +164,10 @@ export function buildTimetables(pages, placements) {
     timetableOfPage.set(pageIndex, target.index);
   });
   timetables.forEach((t) => {
-    t.blocks = orderedBlocks(t.raw);
+    t.blocks = orderedBlocks(t.raw, context);
     delete t.raw;
   });
-  return { timetables, blockAt, timetableOfPage };
+  return { timetables, blockAt, timetableOfPage, asks: context.asks };
 }
 
 /**

@@ -271,4 +271,45 @@ describe("c-shoresh-import", () => {
       true
     );
   });
+
+  it("Use this setup waits for the choices on the preview too", async () => {
+    const element = createElement("c-shoresh-import", { is: ShoreshImport });
+    element.setup = {
+      ...SETUP,
+      programs: [
+        {
+          program: {
+            Id: "p1",
+            Name: "Main",
+            Monday__c: true,
+            Tuesday__c: true,
+            Wednesday__c: true,
+            Thursday__c: true,
+            Friday__c: true
+          },
+          timeBlocks: [],
+          divisions: [
+            { division: { Id: "d1", Name: "Juniors" }, groups: [] },
+            { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+          ],
+          fixedActivities: [],
+          recurringActivities: []
+        }
+      ]
+    };
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    await flush();
+    await choose(element, ["Maple Grove 2026 - Bunk 1.csv"]);
+    const choice = $(element, 'lightning-combobox[data-id="division|Bunk 1"]');
+    expect(choice.value).toBeNull();
+    expect($(element, 'lightning-button[data-id="review"]').disabled).toBe(
+      true
+    );
+    // Even if the review were reached, the save waits.
+    $(element, 'lightning-button[data-id="review"]').click();
+    await flush();
+    const save = $(element, 'lightning-button[data-id="save"]');
+    expect(save === null || save.disabled).toBe(true);
+  });
 });

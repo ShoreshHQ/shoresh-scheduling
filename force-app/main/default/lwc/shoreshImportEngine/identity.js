@@ -21,6 +21,13 @@ export function campGroupList(existing) {
   return list;
 }
 
+/** Every division name the camp has, groups or not. */
+function campDivisionNames(existing) {
+  return ((existing && existing.programs) || []).flatMap((entry) =>
+    (entry.divisions || []).map((d) => d.division.Name)
+  );
+}
+
 /** "Bunk 1 (Seniors)": how a group whose name is used in several divisions is shown. */
 export function qualified(name, division) {
   return `${name} (${division})`;
@@ -46,9 +53,21 @@ export function groupIdentities(noted, existing) {
   };
   noted.filter((g) => !g.weakDivision).forEach((g) => add(g.name, g.division));
   campGroupList(existing).forEach((g) => add(g.name, g.division));
-  // A division only hinted at by a file name counts when nothing states another.
+  // A division only hinted at by a file name ("Camp 2026 - Bunk 3") counts only when it is a
+  // division the camp has or a page states, and nothing states another for that group.
+  const stated = new Set([
+    ...noted
+      .filter((g) => !g.weakDivision && g.division)
+      .map((g) => looseKey(g.division)),
+    ...campDivisionNames(existing).map(looseKey)
+  ]);
   noted
-    .filter((g) => g.weakDivision && !divisionsOf.has(g.name))
+    .filter(
+      (g) =>
+        g.weakDivision &&
+        !divisionsOf.has(g.name) &&
+        stated.has(looseKey(g.division))
+    )
     .forEach((g) => add(g.name, g.division));
   const ambiguous = (name) => (divisionsOf.get(name) || new Map()).size > 1;
   return {

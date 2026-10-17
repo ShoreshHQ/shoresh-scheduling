@@ -68,7 +68,12 @@ function nameFromFiles(pages, found) {
       return page;
     }
     const file = distinctName(base(page), prefix) || page.names.file;
-    return { ...page, names: { ...page.names, file } };
+    // With nothing shared between file names, the whole name is used, camp name and all: a
+    // division read from it is only a hint.
+    return {
+      ...page,
+      names: { ...page.names, file, fileIsWholeName: !prefix }
+    };
   });
 }
 
@@ -220,10 +225,12 @@ export function readImport(input) {
   // A group is its division and its name (Bunk 1 in Juniors is not Bunk 1 in Seniors).
   // Timetables first (they do not depend on which group is which), then each group's
   // identity: its division and name, and its schedule when two programs share both.
-  const { timetables, blockAt, timetableOfPage } = buildTimetables(
-    read.pages,
-    named.kept
-  );
+  const {
+    timetables,
+    blockAt,
+    timetableOfPage,
+    asks: timeAsks
+  } = buildTimetables(read.pages, named.kept, answers);
   const identified = identifyGroups(named.kept, named.groups, {
     existing: input.existing,
     answers,
@@ -254,6 +261,7 @@ export function readImport(input) {
     placements: settleCells(byCell, answers, disagreements),
     groups: collectGroups(identified.groups, timetableOfPage),
     groupAsks: identified.asks,
+    timeAsks,
     identities: identified.rules
   };
 }

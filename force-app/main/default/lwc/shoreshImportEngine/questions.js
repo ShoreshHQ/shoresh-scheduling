@@ -396,6 +396,25 @@ function activityChangeCard(ask, t) {
   };
 }
 
+/** A 5 or 6 o'clock block without AM or PM: morning or evening? */
+function ampmCard(ask) {
+  const range = (offset) =>
+    `${shortClock(ask.start - offset)}\u2013${shortClock(ask.end - offset)}`;
+  return {
+    id: ask.id,
+    stage: "preview",
+    lane: "hold",
+    title: `Is ${ask.name} ${range(0)} in the morning or the evening?`,
+    subject: `${ask.name} ${range(0)}`,
+    subtitle: "The file gives no AM or PM.",
+    options: [
+      { value: "morning", label: `In the morning (${range(12 * 60)} AM)` },
+      { value: "evening", label: `In the evening (${range(0)} PM)` },
+      leaveOut("This time block and what is in it are not added.")
+    ]
+  };
+}
+
 const CARDS = {
   kind: kindCard,
   program: programCard,
@@ -413,6 +432,7 @@ const CARDS = {
 export function questionCards(proposal, t, answers) {
   const cards = [
     ...proposal.reading.pairs.map((pair) => similarCard(pair, t)),
+    ...proposal.reading.timeAsks.map(ampmCard),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
     ...proposal.reading.disagreements.map(crossCard),
     ...proposal.asks.map((ask) => CARDS[ask.type](ask, t))

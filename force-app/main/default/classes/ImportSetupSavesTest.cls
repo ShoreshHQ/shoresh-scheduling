@@ -1004,4 +1004,48 @@ private class ImportSetupSavesTest {
       );
     }
   }
+
+  /** A bulk update moving 150 groups into another program: each refused, within the limits. */
+  @IsTest
+  static void manyMovesToAnotherProgramAreRefusedWithinLimits() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Big Pines (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Program__c first = ShoreshTestData.program(season.Id, 'Mornings');
+      Program__c second = ShoreshTestData.program(season.Id, 'Afternoons');
+      Division__c origin = ShoreshTestData.division(first.Id, 'Juniors');
+      Division__c elsewhere = ShoreshTestData.division(second.Id, 'Juniors');
+      List<Group__c> groups = new List<Group__c>();
+      for (Integer i = 0; i < 150; i++) {
+        groups.add(
+          new Group__c(
+            Division__c = origin.Id,
+            Name = 'Bunk ' + i,
+            Availability__c = 'AllDay',
+            SortOrder__c = i
+          )
+        );
+      }
+      Database.insert(groups, AccessLevel.SYSTEM_MODE);
+      for (Group__c grp : groups) {
+        grp.Division__c = elsewhere.Id;
+      }
+      Test.startTest();
+      List<Database.SaveResult> results = Database.update(
+        groups,
+        false,
+        AccessLevel.USER_MODE
+      );
+      Integer queries = Limits.getQueries();
+      Test.stopTest();
+      for (Database.SaveResult result : results) {
+        Assert.isFalse(result.isSuccess());
+      }
+      Assert.isTrue(queries < 20, 'queries: ' + queries);
+      Assert.areEqual(
+        150,
+        [SELECT COUNT() FROM Group__c WHERE Division__c = :origin.Id]
+      );
+    }
+  }
 }

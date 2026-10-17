@@ -183,10 +183,16 @@ function unitChoice(group, here, fileDivisions, ctx) {
   const preselected = group.division || (noUnits ? DEFAULT_DIVISION : null);
   // A division that already has a group of this name is not offered: choosing it would make a
   // second one (Bunk 1 in Seniors when Seniors has its own Bunk 1).
+  // Only this program's groups count: another program's Juniors is another division.
+  const programId = here.timetable.program ? here.timetable.program.id : null;
   const taken = new Set(
     [
-      ...(ctx.camp.byName.get(group.recordName) || []).map((o) => o.division),
-      ...(ctx.fileDivisionsOf.get(group.recordName) || [])
+      ...(ctx.camp.byName.get(group.recordName) || [])
+        .filter((o) => o.programId === programId)
+        .map((o) => o.division),
+      ...(ctx.fileDivisionsOf.get(
+        `${here.timetable.index}|${group.recordName}`
+      ) || [])
     ]
       .filter((d) => d && looseKey(d) !== looseKey(group.division || ""))
       .map(looseKey)
@@ -267,7 +273,8 @@ export function mapGroups(reading, timetables, existing, answers) {
     camp: campGroups(existing, reading.identities),
     fileIdentities: new Set(reading.groups.map((g) => g.base)),
     fileDivisionsOf: reading.groups.reduce((map, g) => {
-      map.set(g.recordName, [...(map.get(g.recordName) || []), g.division]);
+      const key = `${g.timetable}|${g.recordName}`;
+      map.set(key, [...(map.get(key) || []), g.division]);
       return map;
     }, new Map())
   };

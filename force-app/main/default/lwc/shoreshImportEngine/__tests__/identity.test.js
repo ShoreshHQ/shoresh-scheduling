@@ -471,29 +471,69 @@ describe("PR 16 reviews", () => {
   });
 
   it("a division that already has a group of that name is not offered for it", () => {
+    const files = campWeek(
+      ["Juniors", "Seniors"],
+      ["Bunk 1", "Bunk 1"],
+      rotation
+    );
+    const p = propose(files);
+    const units = cards(p).filter((c) => c.select === "division");
+    expect(
+      units.map((c) => [c.subject, c.answer, c.options.map((o) => o.value)])
+    ).toEqual([
+      ["Bunk 1 (Juniors)", "Juniors", ["Juniors", LEAVE_OUT]],
+      ["Bunk 1 (Seniors)", "Seniors", ["Seniors", LEAVE_OUT]]
+    ]);
+  });
+
+  it("another program's divisions do not hide this program's (round 2 repro)", () => {
+    const a = DAYS.map((day, d) =>
+      csv(`A ${day}.csv`, [
+        ["", "Juniors"],
+        ["Time", "Bunk 1"],
+        ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi)])
+      ])
+    );
+    const laterTimes = ["9:15-10:00", "10:05-10:50", "12:15-1:00"];
+    const b = DAYS.map((day, d) =>
+      csv(`B ${day}.csv`, [
+        ["Time", "Bunk 1", "Juniors - Bunk 3"],
+        ...laterTimes.map((t, bi) => [t, rotation(0, d, bi), rotation(1, d, bi)])
+      ])
+    );
+    const p = propose([...a, ...b]);
+    const unit = cards(p).find((c) => c.id === "division|Bunk 1 (schedule 2)");
+    expect(unit.options.map((o) => o.value)).toEqual(["Juniors", LEAVE_OUT]);
+  });
+
+  it("a group of another program cannot be kept, only added anew or left out", () => {
     const existing = existingSetup({
       programs: [
-        program("p1", "Main", {
-          divisions: [
-            ["d1", "Juniors", [["g1", "Bunk 1"]]],
-            ["d2", "Seniors", [["g9", "Bunk 9"]]]
-          ]
+        program("pa", "Afternoon", {
+          divisions: [["da", "Juniors", [["g3", "Bunk 3"]]]]
+        }),
+        program("pm", "Morning", {
+          blocks: [
+            ["b1", "P1", at(9), at(9, 45)],
+            ["b2", "P2", at(9, 50), at(10, 35)],
+            ["b3", "Lunch", at(12), at(12, 45)]
+          ],
+          divisions: [["ds", "Seniors", [["g4", "Bunk 4"]]]]
         })
       ]
     });
-    const files = DAYS.map((day, d) =>
-      csv(`Camp ${day}.csv`, [
-        ["Time", "Bunk 9", "Bunk 5"],
-        ...BLOCKS.map((b, bi) => [b, rotation(0, d, bi), rotation(1, d, bi)])
-      ])
+    const files = campWeek(
+      ["Seniors", "Seniors"],
+      ["Bunk 3", "Bunk 4"],
+      rotation
     );
-    const p = propose(files, existing);
-    const unit = cards(p).find((c) => c.id === "division|Bunk 5");
-    expect(unit.options.map((o) => o.value)).toEqual([
-      "Juniors",
-      "Seniors",
-      LEAVE_OUT
-    ]);
+    const card = cards(propose(files, existing)).find((c) =>
+      c.id.startsWith("move|")
+    );
+    expect(card.title).toBe(
+      "Bunk 3 is in Juniors, in Afternoon. The file puts it in Seniors."
+    );
+    expect(card.options.map((o) => o.value)).toEqual(["new", LEAVE_OUT]);
   });
 
   it("two files of the same name give the same result either way round", () => {

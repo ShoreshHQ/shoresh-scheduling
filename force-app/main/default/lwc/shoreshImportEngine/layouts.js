@@ -237,7 +237,8 @@ function readGroupPage(reader, page) {
   const split = divisionInTitle(name);
   // A division read from a file's name ("Camp 2026 - Bunk 3") is only a hint: the camp's name
   // or a year looks just like one. A division any page states outright wins over it.
-  const fromFileName = name === (page.names || {}).file;
+  const names = page.names || {};
+  const fromFileName = name === names.file && !!names.fileIsWholeName;
   reader.noteGroup(split.group, split.division, false, fromFileName);
   page.columns.forEach((heading, c) => {
     const day = dayOf(heading);

@@ -1,4 +1,4 @@
-import { buildProposal } from "c/shoreshImportEngine";
+import { buildProposal, questionCards } from "c/shoreshImportEngine";
 import {
   cellName,
   dayOf,
@@ -342,16 +342,61 @@ describe("times the review found misread (PR 15 review, finding 4)", () => {
     expect(timeRange("Bunk 3-4")).toBeNull();
   });
 
-  it("an early block without AM or PM, before the morning, is read as morning", () => {
+  it("a 5 or 6 o'clock block without AM or PM is asked about, never guessed (round 2)", () => {
     const rows = [
       ["Time", "Bunk 1", "Bunk 2"],
-      ["6:30-7:15", "Breakfast", "Breakfast"],
-      ["7:30-8:15", "Swim", "Art"],
-      ["8:20-9:05", "Art", "Swim"]
+      ["7:00-8:00", "Early care", "Early care"],
+      ["9:00-9:45", "Swim", "Art"],
+      ["6:00-6:30", "Late pickup", "Late pickup"]
     ];
     const files = ["Monday", "Tuesday"].map((d) => csv(`${d}.csv`, rows));
-    const p = buildProposal({ files, existing: null, terms, answers: {} });
-    const [first] = p.timetables[0].blocks;
-    expect([first.start, first.end]).toEqual([at(6, 30), at(7, 15)]);
+    const first = buildProposal({ files, existing: null, terms, answers: {} });
+    const card = questionCards(first, terms, {}).find((c) =>
+      c.id.startsWith("ampm|")
+    );
+    expect(card.title).toBe(
+      "Is Late pickup 6:00\u20136:30 in the morning or the evening?"
+    );
+    expect(card.stage).toBe("preview");
+    expect(card.answer).toBeNull();
+    expect(card.options.map((o) => o.label)).toEqual([
+      "In the morning (6:00\u20136:30 AM)",
+      "In the evening (6:00\u20136:30 PM)",
+      "Leave it out for now"
+    ]);
+    const evening = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { [card.id]: "evening" }
+    });
+    expect(evening.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(7),
+      at(9),
+      at(18)
+    ]);
+    const morning = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { [card.id]: "morning" }
+    });
+    expect(morning.timetables[0].blocks.map((b) => b.start)).toEqual([
+      at(6),
+      at(7),
+      at(9)
+    ]);
+    const left = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: { [card.id]: "leaveOut" }
+    });
+    expect(left.activities.map((x) => x.name)).not.toContain("Late pickup");
+  });
+
+  it("Periods 1-2 and Period 1-2 are not times", () => {
+    expect(timeRange("Periods 1-2")).toBeNull();
+    expect(timeRange("Period 1-2")).toBeNull();
   });
 });
