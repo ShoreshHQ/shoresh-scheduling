@@ -27,7 +27,8 @@ Once the package has its `shoresh` namespace, Salesforce names every custom fiel
 saves). Two checks guard the retrofit:
 
 - **Ratchet** (`npm run check:namespace`, `scripts/namespace-safety.js`): counts names written as
-  text per file (LWC JavaScript and templates, Apex string literals and `getName()`; tests,
+  text per file (any name ending `__c`, `__r`, `__mdt`, `__e`, `__Share`, `__History`, `__x` or
+  `__b`, in LWC JavaScript and templates and Apex string literals, plus Apex `getName()`; tests,
   comments, `c/shoreshSchema` and `ShoreshSchema.cls` don't count) against
   `scripts/namespace-safety-baseline.json`. It fails if a file goes above its number, and if a file
   goes below it until the lower number is written with `node scripts/namespace-safety.js --update`

@@ -4,12 +4,13 @@
  * mode, one list per kind, and their keys recorded for what comes after.
  */
 public with sharing class ImportStructureWrites {
-  private static final List<String> WEEKDAYS = new List<String>{
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday'
+  // The plan's day names, with the program field each one sets.
+  private static final Map<String, Schema.SObjectField> DAY_FIELDS = new Map<String, Schema.SObjectField>{
+    'Monday' => Program__c.Monday__c,
+    'Tuesday' => Program__c.Tuesday__c,
+    'Wednesday' => Program__c.Wednesday__c,
+    'Thursday' => Program__c.Thursday__c,
+    'Friday' => Program__c.Friday__c
   };
 
   private ImportPlan plan;
@@ -41,8 +42,8 @@ public with sharing class ImportStructureWrites {
           )
         : new Program__c(Id = keys.existing(entry.id()));
       Set<String> days = new Set<String>(entry.texts('days'));
-      for (String day : WEEKDAYS) {
-        program.put(day + '__c', days.contains(day));
+      for (String day : DAY_FIELDS.keySet()) {
+        program.put(DAY_FIELDS.get(day), days.contains(day));
       }
       rows.add(program);
     }

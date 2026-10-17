@@ -22,15 +22,22 @@ const apex = ["ImportListSaves", "ImportListRows", "ImportListWho"]
   )
   .join("\n");
 
-/** kind -> fields, from one of the Apex maps (PLAIN_FIELDS or LINK_FIELDS). */
+/**
+ * kind -> fields, from one of the Apex maps (PLAIN_FIELDS or LINK_FIELDS). The Apex lists field
+ * references (Activity__c.Length__c); the field's name is the part after the dot.
+ */
 function apexMap(name) {
   const body = apex.slice(apex.indexOf(`${name} =`));
   const end = body.indexOf("};");
   const result = {};
   for (const match of body
     .slice(0, end)
-    .matchAll(/'(\w+)' => new Set<String>\{([^}]*)\}/g)) {
-    result[match[1]] = [...match[2].matchAll(/'(\w+)'/g)].map((m) => m[1]);
+    .matchAll(
+      /'(\w+)' => new Set<Schema\.SObjectField>(?:\{([^}]*)\}|\(\))/g
+    )) {
+    result[match[1]] = [...(match[2] || "").matchAll(/\w+\.(\w+)/g)].map(
+      (m) => m[1]
+    );
   }
   return result;
 }
@@ -110,6 +117,15 @@ function fullList(screen) {
 describe("the save request and ImportListSaves agree", () => {
   const plain = apexMap("PLAIN_FIELDS");
   const links = apexMap("LINK_FIELDS");
+
+  it("reads the server's lists (not an empty match)", () => {
+    expect(Object.keys(plain)).toHaveLength(11);
+    expect(plain.Activity).toEqual(
+      expect.arrayContaining(["Name", "Length__c", "Notes__c"])
+    );
+    expect(plain.WeekException).toEqual([]);
+    expect(links.Activity).toEqual(["Location__c", "RainPlan__c"]);
+  });
 
   LIST_SCREENS.forEach((key) => {
     it(`${key}: every field sent is one the server writes`, () => {

@@ -4,12 +4,13 @@
  * where the director said so (a new length, time block, or days).
  */
 public with sharing class ImportItemWrites {
-  private static final List<String> WEEKDAYS = new List<String>{
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday'
+  // The plan's day names, with the recurring activity field each one sets.
+  private static final Map<String, Schema.SObjectField> DAY_FIELDS = new Map<String, Schema.SObjectField>{
+    'Monday' => RecurringActivity__c.Monday__c,
+    'Tuesday' => RecurringActivity__c.Tuesday__c,
+    'Wednesday' => RecurringActivity__c.Wednesday__c,
+    'Thursday' => RecurringActivity__c.Thursday__c,
+    'Friday' => RecurringActivity__c.Friday__c
   };
 
   private ImportPlan plan;
@@ -52,13 +53,14 @@ public with sharing class ImportItemWrites {
     }
     writer.write('Activity', entries, rows);
     List<SObject> who = new List<SObject>();
+    ImportWhoKinds.Kind canDo = ImportWhoKinds.forOwner('Activity');
     for (ImportPlan.Entry entry : entries) {
       Id activityId = entry.isNew() ? keys.of(entry.key()) : null;
       for (String target : entry.texts('who')) {
         ActivityEligibility__c row = new ActivityEligibility__c(
           Activity__c = activityId
         );
-        row.put(targetField(keys.of(target)), keys.of(target));
+        row.put(canDo.targetField(keys.of(target)), keys.of(target));
         who.add(row);
       }
     }
@@ -119,8 +121,8 @@ public with sharing class ImportItemWrites {
       item.TimeBlock__c = keys.of(entry.text('blockKey'));
       item.Length__c = entry.whole('length');
       Set<String> days = new Set<String>(entry.texts('days'));
-      for (String day : WEEKDAYS) {
-        item.put(day + '__c', days.contains(day));
+      for (String day : DAY_FIELDS.keySet()) {
+        item.put(DAY_FIELDS.get(day), days.contains(day));
       }
       rows.add(item);
     }
@@ -134,6 +136,7 @@ public with sharing class ImportItemWrites {
     List<SObject> rows
   ) {
     List<SObject> coverage = new List<SObject>();
+    ImportWhoKinds.Kind covers = ImportWhoKinds.forOwner('RecurringActivity');
     for (Integer i = 0; i < entries.size(); i++) {
       if (!entries[i].isNew()) {
         continue;
@@ -143,17 +146,10 @@ public with sharing class ImportItemWrites {
           Season__c = plan.seasonId,
           RecurringActivity__c = rows[i].Id
         );
-        row.put(targetField(keys.of(target)), keys.of(target));
+        row.put(covers.targetField(keys.of(target)), keys.of(target));
         coverage.add(row);
       }
     }
     writer.saveTracked('Coverage', coverage);
-  }
-
-  /** Division__c or Group__c, for who an item is for. */
-  public static String targetField(Id target) {
-    return target.getSObjectType() == Division__c.SObjectType
-      ? 'Division__c'
-      : 'Group__c';
   }
 }

@@ -7,10 +7,12 @@
  * down: a file that improved must have its baseline lowered (`--update`), and in CI a pull request
  * may not raise any file's baseline above the base branch's.
  *
- * What counts (comments never count):
- * - LWC JavaScript: any name, string or template text containing `__c` or `__r`.
- * - LWC HTML: any `__c` / `__r` outside comments.
- * - Apex classes and triggers: string literals containing `__c` / `__r`, and `.getName()` calls
+ * What counts (comments never count). A "custom name" ends in one of the suffixes the namespace
+ * goes in front of: `__c`, `__r`, `__mdt` (custom metadata), `__e` (platform events), `__Share`,
+ * `__History`, `__x` (external objects), `__b` (big objects).
+ * - LWC JavaScript: any name, string, template text or regex containing a custom name.
+ * - LWC HTML: any custom name outside comments.
+ * - Apex classes and triggers: string literals containing a custom name, and `.getName()` calls
  *   (describe names carry the namespace; use ShoreshSchema instead). Typed references such as
  *   `Week__c.StartDate__c` are compiled and namespace-safe, so they don't count.
  * Not caught: a typed reference turned into text (`String.valueOf(Week__c.StartDate__c)`, `'' + token`);
@@ -34,9 +36,10 @@ const { parse } = require("@babel/parser");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = "force-app/main/default";
 const BASELINE = "scripts/namespace-safety-baseline.json";
-const NAME = /__(c|r)\b/g;
+const SUFFIXES = "c|r|mdt|e|Share|History|x|b";
+const NAME = new RegExp(`__(${SUFFIXES})\\b`, "g");
 // Apex and SOQL ignore case, so `week__C` is the same name there.
-const APEX_NAME = /__(c|r)\b/gi;
+const APEX_NAME = new RegExp(`__(${SUFFIXES})\\b`, "gi");
 const ALLOWED = [
   `${SOURCE}/lwc/shoreshSchema/`,
   `${SOURCE}/classes/ShoreshSchema.cls`
@@ -78,7 +81,7 @@ function scanHtml(source) {
   const text = source.replace(/<!--[\s\S]*?-->/g, (c) =>
     c.replace(/[^\n]/g, " ")
   );
-  return hitsByLine(text, /[A-Za-z0-9_]*__(c|r)\b/g);
+  return hitsByLine(text, new RegExp(`[A-Za-z0-9_]*__(${SUFFIXES})\\b`, "g"));
 }
 
 function hitsByLine(text, pattern) {

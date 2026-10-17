@@ -112,16 +112,16 @@ public with sharing class ImportWorkbookExtras {
       throw ImportListSaves.unreadable();
     }
     for (WeekException__c off : found) {
-      String field = targetField(off);
+      Schema.SObjectField field = targetField(off);
       Id target = (Id) off.get(field);
       writer.logWeekBackOn(
         new Map<String, Object>{
           'weekOn' => off.Id,
           'week' => off.Week__c,
-          'field' => field,
+          'field' => ShoreshSchema.localName(field),
           'target' => target,
           'name' => off.Week__r.Name,
-          'item' => off.getSObject(field.replace('__c', '__r')).get('Name')
+          'item' => off.getSObject(field).get('Name')
         },
         target
       );
@@ -129,14 +129,14 @@ public with sharing class ImportWorkbookExtras {
     Database.delete(found, AccessLevel.USER_MODE);
   }
 
-  private static String targetField(WeekException__c off) {
+  private static Schema.SObjectField targetField(WeekException__c off) {
     for (
-      String field : new List<String>{
-        'Group__c',
-        'Location__c',
-        'Activity__c',
-        'FixedActivity__c',
-        'RecurringActivity__c'
+      Schema.SObjectField field : new List<Schema.SObjectField>{
+        WeekException__c.Group__c,
+        WeekException__c.Location__c,
+        WeekException__c.Activity__c,
+        WeekException__c.FixedActivity__c,
+        WeekException__c.RecurringActivity__c
       }
     ) {
       if (off.get(field) != null) {

@@ -73,7 +73,7 @@ public with sharing class ImportWriter {
     for (SObject row : rows) {
       if (createdRows.containsKey(row.Id)) {
         SObject written = createdRows.get(row.Id);
-        for (String field : row.getPopulatedFieldsAsMap().keySet()) {
+        for (Schema.SObjectField field : ImportUndoLog.written(row).values()) {
           written.put(field, row.get(field));
         }
         List<String> fields = ImportUndoLog.fieldsOf(written);
@@ -100,13 +100,7 @@ public with sharing class ImportWriter {
       if (first == null) {
         changed.add(entry);
         Id recordId = (Id) entry.get('id');
-        countChange(
-          recordId.getSObjectType()
-            .getDescribe()
-            .getLocalName()
-            .removeEnd('__c'),
-          recordId
-        );
+        countChange(ImportFields.termOf(recordId.getSObjectType()), recordId);
         continue;
       }
       Map<String, Object> before = (Map<String, Object>) first.get('before');
@@ -164,10 +158,7 @@ public with sharing class ImportWriter {
   /** A week an item was off that a workbook ticked back on (removed): logged for Undo. */
   public void logWeekBackOn(Map<String, Object> entry, Id target) {
     changed.add(entry);
-    countChange(
-      target.getSObjectType().getDescribe().getLocalName().removeEnd('__c'),
-      target
-    );
+    countChange(ImportFields.termOf(target.getSObjectType()), target);
   }
 
   /** A who list an import replaced: whose, which rows' object, and the targets before and after. */
@@ -180,10 +171,7 @@ public with sharing class ImportWriter {
 
   public void logWho(WhoChange change) {
     countChange(
-      change.owner.getSObjectType()
-        .getDescribe()
-        .getLocalName()
-        .removeEnd('__c'),
+      ImportFields.termOf(change.owner.getSObjectType()),
       change.owner.Id
     );
     changed.add(

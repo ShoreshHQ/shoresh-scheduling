@@ -29,6 +29,34 @@ describe("namespace-safety scanner", () => {
     expect(hits[0].line).toBe(7);
   });
 
+  it("counts every suffix the namespace goes in front of", () => {
+    expect(
+      texts(
+        scanJs(
+          'const a = ["Setting__mdt", "Order__e", "Big__b", "Ext__x"]; const s = r.Season__Share; const h = r.Week__History;'
+        )
+      )
+    ).toEqual([
+      "Setting__mdt",
+      "Order__e",
+      "Big__b",
+      "Ext__x",
+      "Season__Share",
+      "Week__History"
+    ]);
+    expect(texts(scanHtml("<p>{a.Thing__x} Big__b</p>"))).toEqual([
+      "Thing__x",
+      "Big__b"
+    ]);
+    expect(
+      texts(scanApex("String s = 'SELECT Id FROM setting__MDT';"))
+    ).toEqual(["'SELECT Id FROM setting__MDT'"]);
+  });
+
+  it("does not count look-alikes", () => {
+    expect(scanJs("const m = mod.__esModule; const b = a__bc;")).toEqual([]);
+  });
+
   it("counts relationship names", () => {
     expect(scanJs("const rows = a.Coverages__r || [];")).toHaveLength(1);
   });

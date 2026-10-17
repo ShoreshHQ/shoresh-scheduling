@@ -3,15 +3,12 @@
  * only names Undo takes from an import's record. Import__c's Created__c and Changed__c are text a
  * scheduler can edit, so Undo never puts an object or field name from them into a query or a
  * write unless it is listed here.
+ *
+ * Fields are the platform's own references, never names: a name read from a log (bare, as logs
+ * keep them, or with the package's namespace prefix) is turned into its field first
+ * (ShoreshSchema), then checked against these lists.
  */
 public with sharing class ImportFields {
-  private static final Set<String> DAYS = new Set<String>{
-    'Monday__c',
-    'Tuesday__c',
-    'Wednesday__c',
-    'Thursday__c',
-    'Friday__c'
-  };
   // ImportWriter's names for what it creates, with their objects.
   private static final Map<String, Schema.SObjectType> TERMS = new Map<String, Schema.SObjectType>{
     'Program' => Program__c.SObjectType,
@@ -32,119 +29,126 @@ public with sharing class ImportFields {
   };
   // Every field any import writes, per object (ImportListRows, ImportItemWrites,
   // ImportStructureWrites, ImportVersionWrites, ImportWhoKinds, and the workbook's kinds).
-  private static final Map<Schema.SObjectType, Set<String>> WRITTEN = new Map<Schema.SObjectType, Set<String>>{
-    Program__c.SObjectType => withDays(
-      new Set<String>{ 'Name', 'Season__c', 'SortOrder__c' }
-    ),
-    Division__c.SObjectType => new Set<String>{
-      'Name',
-      'Program__c',
-      'SortOrder__c'
+  private static final Map<Schema.SObjectType, Set<Schema.SObjectField>> WRITTEN = new Map<Schema.SObjectType, Set<Schema.SObjectField>>{
+    Program__c.SObjectType => new Set<Schema.SObjectField>{
+      Program__c.Name,
+      Program__c.Season__c,
+      Program__c.SortOrder__c,
+      Program__c.Monday__c,
+      Program__c.Tuesday__c,
+      Program__c.Wednesday__c,
+      Program__c.Thursday__c,
+      Program__c.Friday__c
     },
-    Group__c.SObjectType => new Set<String>{
-      'Name',
-      'Division__c',
-      'Availability__c',
-      'SortOrder__c'
+    Division__c.SObjectType => new Set<Schema.SObjectField>{
+      Division__c.Name,
+      Division__c.Program__c,
+      Division__c.SortOrder__c
     },
-    TimeBlock__c.SObjectType => new Set<String>{
-      'Name',
-      'Program__c',
-      'SortOrder__c',
-      'StartTime__c',
-      'EndTime__c',
-      'PartOfDay__c'
+    Group__c.SObjectType => new Set<Schema.SObjectField>{
+      Group__c.Name,
+      Group__c.Division__c,
+      Group__c.Availability__c,
+      Group__c.SortOrder__c
     },
-    LocationType__c.SObjectType => new Set<String>{ 'Name', 'Season__c' },
-    Location__c.SObjectType => new Set<String>{
-      'Name',
-      'Season__c',
-      'GroupsThatFit__c',
-      'LocationType__c',
-      'Notes__c'
+    TimeBlock__c.SObjectType => new Set<Schema.SObjectField>{
+      TimeBlock__c.Name,
+      TimeBlock__c.Program__c,
+      TimeBlock__c.SortOrder__c,
+      TimeBlock__c.StartTime__c,
+      TimeBlock__c.EndTime__c,
+      TimeBlock__c.PartOfDay__c
     },
-    Activity__c.SObjectType => new Set<String>{
-      'Name',
-      'Season__c',
-      'Location__c',
-      'RainPlan__c',
-      'SortOrder__c',
-      'Length__c',
-      'TimesPerWeekMin__c',
-      'TimesPerWeekMax__c',
-      'NoWeeklyMax__c',
-      'Priority__c',
-      'Outdoor__c',
-      'GroupsAtOnce__c',
-      'NoGroupLimit__c',
-      'SameDivisionOnly__c',
-      'EarlyWeekCount__c',
-      'EarlyWeekByDay__c',
-      'Notes__c'
+    LocationType__c.SObjectType => new Set<Schema.SObjectField>{
+      LocationType__c.Name,
+      LocationType__c.Season__c
     },
-    ActivityEligibility__c.SObjectType => new Set<String>{
-      'Activity__c',
-      'Division__c',
-      'Group__c',
-      'Season__c'
+    Location__c.SObjectType => new Set<Schema.SObjectField>{
+      Location__c.Name,
+      Location__c.Season__c,
+      Location__c.GroupsThatFit__c,
+      Location__c.LocationType__c,
+      Location__c.Notes__c
     },
-    FixedActivity__c.SObjectType => new Set<String>{
-      'Name',
-      'Program__c',
-      'TimeBlock__c',
-      'Location__c',
-      'Length__c'
+    Activity__c.SObjectType => new Set<Schema.SObjectField>{
+      Activity__c.Name,
+      Activity__c.Season__c,
+      Activity__c.Location__c,
+      Activity__c.RainPlan__c,
+      Activity__c.SortOrder__c,
+      Activity__c.Length__c,
+      Activity__c.TimesPerWeekMin__c,
+      Activity__c.TimesPerWeekMax__c,
+      Activity__c.NoWeeklyMax__c,
+      Activity__c.Priority__c,
+      Activity__c.Outdoor__c,
+      Activity__c.GroupsAtOnce__c,
+      Activity__c.NoGroupLimit__c,
+      Activity__c.SameDivisionOnly__c,
+      Activity__c.EarlyWeekCount__c,
+      Activity__c.EarlyWeekByDay__c,
+      Activity__c.Notes__c
     },
-    RecurringActivity__c.SObjectType => withDays(
-      new Set<String>{
-        'Name',
-        'Program__c',
-        'TimeBlock__c',
-        'Location__c',
-        'Length__c'
-      }
-    ),
-    Coverage__c.SObjectType => new Set<String>{
-      'Season__c',
-      'RecurringActivity__c',
-      'Division__c',
-      'Group__c'
+    ActivityEligibility__c.SObjectType => new Set<Schema.SObjectField>{
+      ActivityEligibility__c.Activity__c,
+      ActivityEligibility__c.Division__c,
+      ActivityEligibility__c.Group__c
     },
-    Schedule__c.SObjectType => new Set<String>{
-      'Name',
-      'Program__c',
-      'Week__c',
-      'Status__c',
-      'Origin__c',
-      'VersionReason__c'
+    FixedActivity__c.SObjectType => new Set<Schema.SObjectField>{
+      FixedActivity__c.Name,
+      FixedActivity__c.Program__c,
+      FixedActivity__c.TimeBlock__c,
+      FixedActivity__c.Location__c,
+      FixedActivity__c.Length__c
     },
-    Week__c.SObjectType => new Set<String>{
-      'Name',
-      'Season__c',
-      'StartDate__c',
-      'EndDate__c',
-      'SortOrder__c'
+    RecurringActivity__c.SObjectType => new Set<Schema.SObjectField>{
+      RecurringActivity__c.Name,
+      RecurringActivity__c.Program__c,
+      RecurringActivity__c.TimeBlock__c,
+      RecurringActivity__c.Location__c,
+      RecurringActivity__c.Length__c,
+      RecurringActivity__c.Monday__c,
+      RecurringActivity__c.Tuesday__c,
+      RecurringActivity__c.Wednesday__c,
+      RecurringActivity__c.Thursday__c,
+      RecurringActivity__c.Friday__c
     },
-    WeekException__c.SObjectType => new Set<String>{
-      'Week__c',
-      'Group__c',
-      'Location__c',
-      'Activity__c',
-      'FixedActivity__c',
-      'RecurringActivity__c'
+    Coverage__c.SObjectType => new Set<Schema.SObjectField>{
+      Coverage__c.Season__c,
+      Coverage__c.RecurringActivity__c,
+      Coverage__c.Division__c,
+      Coverage__c.Group__c
     },
-    CampLabel__c.SObjectType => new Set<String>{
-      'Camp__c',
-      'ModelTerm__c',
-      'Singular__c',
-      'Plural__c'
+    Schedule__c.SObjectType => new Set<Schema.SObjectField>{
+      Schedule__c.Name,
+      Schedule__c.Program__c,
+      Schedule__c.Week__c,
+      Schedule__c.Status__c,
+      Schedule__c.Origin__c,
+      Schedule__c.VersionReason__c
+    },
+    Week__c.SObjectType => new Set<Schema.SObjectField>{
+      Week__c.Name,
+      Week__c.Season__c,
+      Week__c.StartDate__c,
+      Week__c.EndDate__c,
+      Week__c.SortOrder__c
+    },
+    WeekException__c.SObjectType => new Set<Schema.SObjectField>{
+      WeekException__c.Week__c,
+      WeekException__c.Group__c,
+      WeekException__c.Location__c,
+      WeekException__c.Activity__c,
+      WeekException__c.FixedActivity__c,
+      WeekException__c.RecurringActivity__c
+    },
+    CampLabel__c.SObjectType => new Set<Schema.SObjectField>{
+      CampLabel__c.Camp__c,
+      CampLabel__c.ModelTerm__c,
+      CampLabel__c.Singular__c,
+      CampLabel__c.Plural__c
     }
   };
-
-  private static Set<String> withDays(Set<String> fields) {
-    fields.addAll(DAYS);
-    return fields;
-  }
 
   /** The object an import's term names ("Group"), or the refusal. */
   public static Schema.SObjectType ofTerm(String term) {
@@ -153,6 +157,17 @@ public with sharing class ImportFields {
       throw unreadableLog();
     }
     return type;
+  }
+
+  /** An object's term ("Group" for Group__c), as ImportWriter counts and logs it. */
+  public static String termOf(Schema.SObjectType type) {
+    for (String term : TERMS.keySet()) {
+      if (TERMS.get(term) == type) {
+        return term;
+      }
+    }
+    // Only objects imports write are counted: anything else is Shoresh's own mistake.
+    throw new IllegalArgumentException('Not a kind imports write: ' + type);
   }
 
   /** The object of a record an import wrote, or the refusal: never one an import doesn't write. */
@@ -170,21 +185,36 @@ public with sharing class ImportFields {
     return type;
   }
 
-  /** Refuses any field an import doesn't write on this object. */
-  public static void check(Schema.SObjectType type, Set<String> names) {
-    Set<String> allowed = WRITTEN.get(type);
-    if (allowed == null || !allowed.containsAll(names)) {
+  /** The field a name from an import's record means, or the refusal: only fields imports write. */
+  public static Schema.SObjectField field(
+    Schema.SObjectType type,
+    Object name
+  ) {
+    Set<Schema.SObjectField> allowed = WRITTEN.get(type);
+    Schema.SObjectField found = name instanceof String
+      ? ShoreshSchema.field(type, (String) name)
+      : null;
+    if (allowed == null || found == null || !allowed.contains(found)) {
       throw unreadableLog();
+    }
+    return found;
+  }
+
+  /** Refuses any field an import doesn't write on this object, or one named twice. */
+  public static void check(Schema.SObjectType type, Set<String> names) {
+    Set<Schema.SObjectField> seen = new Set<Schema.SObjectField>();
+    for (String name : names) {
+      if (!seen.add(field(type, name))) {
+        throw unreadableLog();
+      }
     }
   }
 
   /** How Undo names a record it kept: a camp word by the word, anything else by its name. */
   public static String nameOf(SObject record) {
-    return (String) record.get(
-      record.getSObjectType() == CampLabel__c.SObjectType
-        ? 'Singular__c'
-        : 'Name'
-    );
+    return record.getSObjectType() == CampLabel__c.SObjectType
+      ? (String) record.get(CampLabel__c.Singular__c)
+      : (String) record.get('Name');
   }
 
   public static ShoreshException unreadableLog() {

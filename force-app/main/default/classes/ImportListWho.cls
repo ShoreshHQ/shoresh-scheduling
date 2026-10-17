@@ -63,7 +63,7 @@ public with sharing class ImportListWho {
       before.sort();
       ImportWriter.WhoChange change = new ImportWriter.WhoChange();
       change.owner = owner;
-      change.type = who.childType;
+      change.type = ShoreshSchema.localName(who.childType);
       change.before = before;
       change.after = after.get(owner.Id);
       writer.logWho(change);

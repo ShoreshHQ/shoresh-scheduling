@@ -290,4 +290,61 @@ public class ImportTestPlans {
       )
     );
   }
+
+  /**
+   * A plan or an import's log as the namespaced package will spell it: every custom name (a key,
+   * or text such as a log's object or field, ending in __c) given ShoreshSchema's prefix. Set
+   * ShoreshSchema.simulatedPrefix = 'shoresh__' first.
+   */
+  public static Object packaged(Object value) {
+    return packagedValue(JSON.deserializeUntyped(JSON.serialize(value)));
+  }
+
+  private static Object packagedValue(Object value) {
+    if (value instanceof Map<String, Object>) {
+      return packagedMap((Map<String, Object>) value);
+    }
+    if (value instanceof List<Object>) {
+      List<Object> result = new List<Object>();
+      for (Object item : (List<Object>) value) {
+        result.add(packagedValue(item));
+      }
+      return result;
+    }
+    return value instanceof String ? packagedText((String) value) : value;
+  }
+
+  private static Map<String, Object> packagedMap(Map<String, Object> given) {
+    Map<String, Object> result = new Map<String, Object>();
+    for (String key : given.keySet()) {
+      result.put(packagedText(key), packagedValue(given.get(key)));
+    }
+    return result;
+  }
+
+  private static String packagedText(String text) {
+    String prefix = ShoreshSchema.prefix();
+    Boolean customName = Pattern.matches('[A-Za-z][A-Za-z0-9_]*__c', text);
+    return customName && !text.startsWith(prefix) ? prefix + text : text;
+  }
+
+  /**
+   * Rewrites an import's log (in system mode: schedulers can't edit it) as the namespaced package
+   * would report its fields, so Undo can be shown to read it the same.
+   */
+  public static Import__c packageLog(Id importId) {
+    Import__c done = [
+      SELECT Id, Created__c, Changed__c
+      FROM Import__c
+      WHERE Id = :importId
+    ];
+    done.Created__c = JSON.serialize(
+      packaged(JSON.deserializeUntyped(done.Created__c))
+    );
+    done.Changed__c = JSON.serialize(
+      packaged(JSON.deserializeUntyped(done.Changed__c))
+    );
+    Database.update(done, AccessLevel.SYSTEM_MODE);
+    return done;
+  }
 }
