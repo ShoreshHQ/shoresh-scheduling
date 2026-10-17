@@ -168,8 +168,23 @@ public with sharing class SetTimePlan {
     public Schema.SObjectField location;
     public Schema.SObjectField lastTimeBlock;
     public Schema.SObjectField copiedFrom;
-    /** The item's list of weeks it is off (week exceptions), for a subquery or getSObjects. */
-    public String weeksOff;
+    // The week exception field pointing at this kind of item.
+    public Schema.SObjectField weekOffField;
+    private String weeksOff;
+
+    /**
+     * The item's list of weeks it is off (week exceptions), for getSObjects. Read from describe
+     * on first use: only SetTimePlanReader needs it, and never in a trigger.
+     */
+    public String weeksOff() {
+      if (weeksOff == null) {
+        weeksOff = ShoreshSchema.childRelationship(
+          weekOffField.getDescribe().getReferenceTo()[0],
+          weekOffField
+        );
+      }
+      return weeksOff;
+    }
   }
 
   /** A fixed or recurring activity's shared fields. */
@@ -183,10 +198,7 @@ public with sharing class SetTimePlan {
       fixed.location = FixedActivity__c.Location__c;
       fixed.lastTimeBlock = FixedActivity__c.LastTimeBlock__c;
       fixed.copiedFrom = FixedActivity__c.CopiedFrom__c;
-      fixed.weeksOff = ShoreshSchema.childRelationship(
-        FixedActivity__c.SObjectType,
-        WeekException__c.FixedActivity__c
-      );
+      fixed.weekOffField = WeekException__c.FixedActivity__c;
       itemFields.put(FixedActivity__c.SObjectType, fixed);
       ItemFields recurring = new ItemFields();
       recurring.program = RecurringActivity__c.Program__c;
@@ -195,10 +207,7 @@ public with sharing class SetTimePlan {
       recurring.location = RecurringActivity__c.Location__c;
       recurring.lastTimeBlock = RecurringActivity__c.LastTimeBlock__c;
       recurring.copiedFrom = RecurringActivity__c.CopiedFrom__c;
-      recurring.weeksOff = ShoreshSchema.childRelationship(
-        RecurringActivity__c.SObjectType,
-        WeekException__c.RecurringActivity__c
-      );
+      recurring.weekOffField = WeekException__c.RecurringActivity__c;
       itemFields.put(RecurringActivity__c.SObjectType, recurring);
     }
     return itemFields.get(type);

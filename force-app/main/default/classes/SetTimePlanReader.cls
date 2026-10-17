@@ -191,9 +191,9 @@ public with sharing class SetTimePlanReader {
     item.locationId = (Id) record.get(f.location);
     Set<Id> weeksOff = new Set<Id>();
     for (
-      WeekException__c mark : record.getSObjects(f.weeksOff) == null
+      WeekException__c mark : record.getSObjects(f.weeksOff()) == null
         ? new List<WeekException__c>()
-        : (List<WeekException__c>) record.getSObjects(f.weeksOff)
+        : (List<WeekException__c>) record.getSObjects(f.weeksOff())
     ) {
       weeksOff.add(mark.Week__c);
     }

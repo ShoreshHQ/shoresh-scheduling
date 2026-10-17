@@ -150,7 +150,10 @@ public with sharing class ImportUndoWho {
    */
   private static ImportWhoKinds.Kind kindOf(Map<String, Object> entry) {
     ImportWhoKinds.Kind kind = ImportWhoKinds.forChild(entry.get('type'));
-    if (ImportFields.ofRecord(entry.get('who')) != kind.ownerObject) {
+    if (
+      ImportFields.ofRecord(entry.get('who')) != kind.ownerObject ||
+      !(entry.get('name') instanceof String)
+    ) {
       throw ImportFields.unreadableLog();
     }
     return kind;

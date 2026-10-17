@@ -244,4 +244,31 @@ private class ShoreshSchemaTest {
     );
     Assert.isNull(ShoreshSchema.withoutPrefix(null), 'Nothing');
   }
+
+  @IsTest
+  static void populatedFieldsAreTheFieldsSentWithoutIdOrParents() {
+    Id fakeId = Id.valueOf(
+      Activity__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
+        .getKeyPrefix() + '000000000001'
+    );
+    Activity__c sent = new Activity__c(
+      Id = fakeId,
+      Notes__c = 'Bring water',
+      Location__r = new Location__c(Name = 'Lake')
+    );
+    Set<Schema.SObjectField> expected = new Set<Schema.SObjectField>{
+      Activity__c.Notes__c
+    };
+    Assert.areEqual(
+      expected,
+      ShoreshSchema.populatedFields(sent),
+      'Notes only: no Id, no parent record'
+    );
+    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    Assert.areEqual(
+      expected,
+      ShoreshSchema.populatedFields(sent),
+      'The same with the prefix simulated'
+    );
+  }
 }
