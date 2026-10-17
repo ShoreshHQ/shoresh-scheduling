@@ -70,11 +70,7 @@ public with sharing class ImportUndo {
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
-      // Only the field that changes: the season it is in can't be sent back in user mode.
-      Database.update(
-        new Import__c(Id = done.Id, UndoneAt__c = Datetime.now()),
-        AccessLevel.USER_MODE
-      );
+      ImportLog.markUndone(done.Id);
     } catch (Exception e) {
       Database.rollback(beforeUndo);
       throw e;
@@ -84,14 +80,22 @@ public with sharing class ImportUndo {
     return result;
   }
 
-  /** Why Undo stopped, with the record and Salesforce's reason: nothing was undone. */
+  /**
+   * Why Undo stopped, with the record and the reason in Shoresh's words (ScreenErrors: never the
+   * platform's own wording): nothing was undone.
+   */
   public static ShoreshException refused(
     String name,
     String what,
     Database.Error error
   ) {
     return new ShoreshException(
-      'Nothing was undone. ' + name + ': ' + what + '. ' + error.getMessage()
+      'Nothing was undone. ' +
+        name +
+        ': ' +
+        what +
+        '. ' +
+        ScreenErrors.messageOf(error)
     );
   }
 

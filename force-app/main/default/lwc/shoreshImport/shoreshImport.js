@@ -196,7 +196,8 @@ export default class ShoreshImport extends LightningElement {
     const t = this.terms;
     return {
       programs: `${t.p("Program")} for these ${t.pIn("Group")}`,
-      units: `${t.s("Division")} for each new ${t.sIn("Group")}`
+      units: `${t.s("Division")} for each new ${t.sIn("Group")}`,
+      locations: t.p("Location")
     };
   }
 
@@ -329,7 +330,7 @@ export default class ShoreshImport extends LightningElement {
     return this.proposal
       ? this.proposal.offeredPlaces.map((p) => ({
           ...p,
-          usedByText: `Named with ${p.usedBy.join(", ")}`,
+          usedByText: p.usedBy.join(", "),
           fromMemory: p.ticked && this.remembered[p.id] === "add"
         }))
       : [];

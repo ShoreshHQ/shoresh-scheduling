@@ -17,10 +17,6 @@
     <!-- 1. Choose the files -->
     <template lwc:if={isPick}>
       <div class="import-panel">
-        <p class="slds-m-bottom_small">
-          Bring in last year's schedule. Shoresh reads it here and shows what it
-          found; nothing is added until you say so.
-        </p>
         <div
           class={dropClass}
           data-id="drop"
@@ -42,9 +38,12 @@
               onclick={handleChoose}
               data-id="choose"
             ></lightning-button>
+            <!-- Opened by "Choose files": named, and out of the tab order. -->
             <input
               class="slds-assistive-text"
               type="file"
+              tabindex="-1"
+              aria-label="Choose files"
               multiple
               accept=".xlsx,.xlsm,.xls,.csv"
               data-id="files"
@@ -132,9 +131,6 @@
       <template lwc:if={hasPreviewCards}>
         <section class="import-section" data-id="similar">
           <div class="import-section-label">Check these first</div>
-          <p class="import-weak slds-m-bottom_x-small">
-            Similar names are not merged unless you say so.
-          </p>
           <template for:each={previewCards} for:item="card">
             <div key={card.id} class={card.className} data-card={card.id}>
               <template lwc:if={card.answered}>
@@ -176,20 +172,17 @@
 
       <template lwc:if={hasPlaces}>
         <section class="import-section" data-id="places">
-          <div class="import-section-label">Places</div>
-          <p class="import-weak slds-m-bottom_x-small">
-            Is this a place at your camp? Tick to add it.
-          </p>
+          <div class="import-section-label">{labels.locations}</div>
           <template for:each={places} for:item="place">
             <div key={place.id} class="import-place" data-place={place.id}>
               <lightning-input
                 type="checkbox"
                 label={place.name}
-                field-level-help={place.usedByText}
                 checked={place.ticked}
                 data-id={place.id}
                 onchange={handlePlace}
               ></lightning-input>
+              <span class="import-weak">{place.usedByText}</span>
               <template lwc:if={place.fromMemory}>
                 <span class="import-tag">remembered</span>
               </template>
@@ -365,9 +358,6 @@
       <template lwc:if={hasLeftOut}>
         <section class="import-section" data-id="left-out">
           <div class="import-section-label">Left out for now</div>
-          <p class="import-weak">
-            Not added. The next import asks about them again.
-          </p>
           <ul class="slds-list_dotted">
             <template for:each={leftOutLines} for:item="line">
               <li key={line.key}>{line.text}</li>
@@ -378,10 +368,6 @@
       <template lwc:if={hasNoted}>
         <section class="import-section" data-id="noted">
           <div class="import-section-label">Not set up yet</div>
-          <p class="import-weak">
-            In the file, but Shoresh does not set these up yet. Nothing was
-            added for them.
-          </p>
           <ul class="slds-list_dotted">
             <template for:each={notedList} for:item="item">
               <li key={item.key}>{item.name}: {item.detail}</li>
@@ -404,9 +390,6 @@
       </template>
       <div class="import-footer">
         <template lwc:if={canUndo}>
-          <span class="import-weak"
-            >Undo this import here, or later from Roots.</span
-          >
           <lightning-button
             label="Undo this import"
             onclick={handleUndo}

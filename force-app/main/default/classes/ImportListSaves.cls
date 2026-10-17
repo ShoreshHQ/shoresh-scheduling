@@ -194,16 +194,7 @@ public with sharing class ImportListSaves {
           : 'This list is too long to be undone later, so nothing was saved. Split it into two files and import each one.'
       );
     }
-    Import__c done = new Import__c(
-      Season__c = plan.seasonId,
-      Files__c = String.isBlank(plan.text('files'))
-        ? null
-        : plan.text('files').left(255),
-      Created__c = created,
-      Changed__c = changed
-    );
-    Database.insert(done, AccessLevel.USER_MODE);
-    return done.Id;
+    return ImportLog.record(plan, created, changed);
   }
 
   public static ShoreshException unreadable() {

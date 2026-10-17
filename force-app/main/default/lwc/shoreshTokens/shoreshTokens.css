@@ -2,9 +2,12 @@
  * Shoresh's own colours from the design guide (wiki projects/shoresh-design-guide.md, Tokens),
  * for what SLDS has no hook for. Import with @import "c/shoreshTokens"; then use the variables.
  * Bronze is the caution hue (needs a look, unfinished). It is for dots and borders, never text:
- * on white it is too light to read.
+ * on white it is too light to read. Navy (primary) is the brand; forest (secondary) a
+ * structural accent, never a status.
  */
 :host {
+  --shoresh-primary: #173b63;
+  --shoresh-secondary: #2f6b58;
   --shoresh-caution: #b8833a;
   --shoresh-caution-tint: #f6efe4;
   --shoresh-text-secondary: #5c6670;

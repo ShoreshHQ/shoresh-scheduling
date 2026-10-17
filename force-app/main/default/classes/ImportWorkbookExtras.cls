@@ -24,7 +24,7 @@ public with sharing class ImportWorkbookExtras {
     if (entries.isEmpty()) {
       return;
     }
-    List<Week__c> weeks = SeasonWeeks.toFill(seasonId);
+    List<Week__c> weeks = weeksToFill();
     if (weeks.size() != entries.size()) {
       throw datesChanged();
     }
@@ -37,6 +37,20 @@ public with sharing class ImportWorkbookExtras {
     writer.writeTracked('Week', weeks, new List<SObject>());
     for (Week__c week : weeks) {
       writer.keys.put('Week:' + String.valueOf(week.StartDate__c), week.Id);
+    }
+  }
+
+  /** The weeks "Fill in weeks" would add now; weeks added since the preview are said plainly. */
+  private List<Week__c> weeksToFill() {
+    try {
+      return SeasonWeeks.toFill(seasonId);
+    } catch (SeasonWeeks.WeeksException e) {
+      // Not "add one at a time": the person chose a file, not a weeks screen action.
+      throw new ShoreshException(
+        'The ' +
+          CampLabels.forCamp(campId).pluralInSentence('Week') +
+          ' changed since you chose the file. Choose it again.'
+      );
     }
   }
 

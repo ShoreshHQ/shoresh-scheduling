@@ -555,6 +555,13 @@ function readWeeks(sheet, setup, answers, t) {
   const byOrder = weeksByOrder(read, setup.season);
   const toFill = byOrder ? weeksToFill(setup, t) : [];
   const seasonWeeks = toFill.length ? toFill : setup.weeks || [];
+  // Nothing to pair with and no weeks to fill: a season with only a first or a last day says
+  // so, rather than leaving every week out as having no week left.
+  const season = setup.season || {};
+  const needsDates =
+    byOrder &&
+    !seasonWeeks.length &&
+    !season.StartDate__c !== !season.EndDate__c;
   // Two weeks starting the same day: both are said, never the first row kept.
   const starts = new Map();
   read.forEach((r) => starts.set(r.start, (starts.get(r.start) || 0) + 1));
@@ -594,7 +601,9 @@ function readWeeks(sheet, setup, answers, t) {
       // Another season's week past this season's last: its Runs in ticks aren't read. Its bare
       // name only when no other week has it, so a week read under that name is never skipped.
       row.status = "leftOut";
-      row.reason = leftOutReason(leftOut, t);
+      row.reason = needsDates
+        ? `this ${t.sIn("Season")} needs its first and last day`
+        : leftOutReason(leftOut, t);
       result.refs.set(foldName(`${row.name} (${row.start})`), SKIP_WEEK);
       if (named.length === 1) {
         result.refs.set(foldName(row.name), SKIP_WEEK);

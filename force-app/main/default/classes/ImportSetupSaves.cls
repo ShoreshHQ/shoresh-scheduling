@@ -74,15 +74,10 @@ public with sharing class ImportSetupSaves {
 
   /** The import's own record: its files, and what it created and changed (for Undo). */
   private static Id record(ImportPlan plan, ImportWriter writer) {
-    Import__c done = new Import__c(
-      Season__c = plan.seasonId,
-      Files__c = String.isBlank(plan.text('files'))
-        ? null
-        : plan.text('files').left(255),
-      Created__c = JSON.serialize(writer.created),
-      Changed__c = JSON.serialize(writer.changed)
+    return ImportLog.record(
+      plan,
+      JSON.serialize(writer.created),
+      JSON.serialize(writer.changed)
     );
-    Database.insert(done, AccessLevel.USER_MODE);
-    return done.Id;
   }
 }

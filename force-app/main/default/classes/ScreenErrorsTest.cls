@@ -210,4 +210,21 @@ private class ScreenErrorsTest {
       );
     }
   }
+
+  /** A refusal from a partial delete (as Undo meets one) is in the same plain words. */
+  @IsTest
+  static void aRefusalFromAPartialDeleteIsInPlainWords() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Database.DeleteResult outcome = Database.delete(
+      camp,
+      false,
+      AccessLevel.SYSTEM_MODE
+    );
+    Assert.isFalse(outcome.isSuccess());
+    Assert.areEqual(
+      'This can\'t be deleted while something else still uses it. Change that first.',
+      ScreenErrors.messageOf(outcome.getErrors()[0])
+    );
+  }
 }
