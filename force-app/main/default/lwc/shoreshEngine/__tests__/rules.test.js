@@ -1,0 +1,641 @@
+/**
+ * The rules one at a time: what Generated Schedule keeps, what it never touches, what it bends
+ * (and in which order) when nothing fits, and what it reports as still to place.
+ */
+import { generateWeek, RELAX_ORDER, RULE } from "c/shoreshEngine";
+import { buildTerms } from "c/shoreshTerms";
+import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
+import { problems } from "./data/check";
+
+const run = (spec) => generateWeek(camp(spec));
+const flagAt = (result, d, groupId, blockId) =>
+  result.flags.find(
+    (f) =>
+      f.date === dateAt(d) && f.groupId === groupId && f.blockId === blockId
+  );
+
+describe("never blank (Greg, 2026-10-17)", () => {
+  it("fills a cell no activity is set up for, flagged with who it's set up for", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      activities: [activity("swim", { eligible: ["g2"], atOnce: null })]
+    });
+    expect(at(result, 0, "g1", 0)).toBe("swim");
+    expect(flagAt(result, 0, "g1", "b0")).toMatchObject({
+      bends: [RULE.ELIGIBILITY],
+      reason: "Not set up for Bunk g1"
+    });
+  });
+
+  it("goes over a weekly limit before leaving a cell blank", () => {
+    const result = run({ days: 2, activities: [activity("swim", { max: 1 })] });
+    expect([at(result, 0, "g1", 0), at(result, 1, "g1", 0)]).toEqual([
+      "swim",
+      "swim"
+    ]);
+    expect(result.flags).toHaveLength(1);
+    expect(result.flags[0]).toMatchObject({
+      bends: [RULE.WEEKLY_MAX],
+      reason: "Over its weekly limit"
+    });
+  });
+
+  it("repeats an activity in a day before leaving a cell blank", () => {
+    const result = run({
+      blocks: [block(0), block(1)],
+      activities: [activity("swim")]
+    });
+    expect(result.flags.map((f) => f.bends)).toEqual([[RULE.ONCE_A_DAY]]);
+    expect(result.flags[0].reason).toBe("Twice in a day");
+  });
+
+  it("puts one group too many at an activity before leaving a cell blank, in camp words", () => {
+    const result = generateWeek({
+      ...camp({
+        groups: [group("g1"), group("g2")],
+        activities: [activity("swim", { atOnce: 1 })]
+      }),
+      terms: buildTerms([
+        { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
+      ])
+    });
+    expect(result.flags).toHaveLength(1);
+    expect(result.flags[0]).toMatchObject({
+      bends: [RULE.GROUPS_AT_ONCE],
+      reason: "Over its limit of 1 Bunk at once"
+    });
+  });
+
+  it("over-fills a place last, naming the place", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      locations: [{ id: "pool", name: "Pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })]
+    });
+    expect(result.flags.map((f) => f.bends)).toEqual([[RULE.PLACE_CAPACITY]]);
+    expect(result.flags[0].reason).toBe("More groups at Pool than fit");
+  });
+
+  // One open cell (Bunk g1, first block) and one activity per rule, each of which would bend
+  // exactly that rule there. Taking them away one at a time walks the order rules give way in.
+  describe("rules give way in order: weekly max, once a day, who it's set up for, groups at once, same division, the place", () => {
+    const candidates = {
+      [RULE.WEEKLY_MAX]: activity("x", { max: 0, atOnce: null }),
+      [RULE.ONCE_A_DAY]: activity("y", { max: null, atOnce: null }),
+      [RULE.ELIGIBILITY]: activity("z", { atOnce: null, eligible: ["g2"] }),
+      [RULE.GROUPS_AT_ONCE]: activity("w", { atOnce: 1 }),
+      [RULE.SAME_DIVISION]: activity("v", { atOnce: null, sameDivision: true }),
+      [RULE.PLACE_CAPACITY]: activity("u", { atOnce: null, location: "hut" })
+    };
+    const spec = (rules) => ({
+      mode: "fillOpen",
+      groups: [
+        group("g1"),
+        group("g2"),
+        group("g3", { division: "div2" }),
+        group("g4")
+      ],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "hut", name: "Hut", fit: 1 }],
+      activities: rules.map((rule) => candidates[rule]),
+      // Kept cells that make each candidate bend its one rule at Bunk g1's first block. The
+      // other groups' second block is locked Open so nothing else moves.
+      cells: [
+        { day: 0, group: "g1", block: "b1", act: "y" },
+        { day: 0, group: "g2", block: "b0", act: "w" },
+        { day: 0, group: "g3", block: "b0", act: "v" },
+        { day: 0, group: "g4", block: "b0", act: "u" }
+      ],
+      locks: ["g2", "g3", "g4"].map((g) => ({
+        date: dateAt(0),
+        groupId: g,
+        blockId: "b1"
+      }))
+    });
+
+    it.each(RELAX_ORDER.map((rule, i) => [rule, RELAX_ORDER.slice(i)]))(
+      "%s gives way when it is the least serious left",
+      (rule, rules) => {
+        // Activities the kept cells name must exist even when they aren't candidates any more;
+        // they are kept as they are.
+        const s = spec(rules);
+        const result = run(s);
+        const flag = flagAt(result, 0, "g1", "b0");
+        expect(flag.bends).toEqual([rule]);
+        expect(flag.activityId).toBe(candidates[rule].id);
+      }
+    );
+  });
+
+  it("leaves Open only a cell nothing can go in: the group is busy at an overlapping time", () => {
+    const result = run({
+      blocks: [block(0), block(1, { startTime: "08:30", endTime: "09:15" })],
+      activities: [activity("swim"), activity("arts")]
+    });
+    const filled = [at(result, 0, "g1", 0), at(result, 0, "g1", 1)].filter(
+      Boolean
+    );
+    expect(filled).toHaveLength(1);
+    expect(result.openCells).toEqual([
+      expect.objectContaining({
+        groupId: "g1",
+        reason: "Bunk g1 is busy at an overlapping time"
+      })
+    ]);
+  });
+
+  it("says so clearly when there are no activities at all, and returns no grid", () => {
+    expect(run({ activities: [] })).toEqual({
+      ok: false,
+      error: "No activities are set up yet."
+    });
+  });
+
+  it("says so when every activity is closed this week", () => {
+    const result = run({
+      activities: [activity("swim")],
+      weekExceptions: [{ Id: "we1", Week__c: "week1", Activity__c: "swim" }]
+    });
+    expect(result).toEqual({
+      ok: false,
+      error: "No activities run this week."
+    });
+  });
+});
+
+describe("what is never touched", () => {
+  it("keeps fixed activities, and counts a fixed activity's place against its capacity", () => {
+    const spec = {
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "hall", fit: 2 }],
+      fixed: [{ id: "lunch", name: "Lunch", block: "b1", location: "hall" }],
+      activities: [
+        activity("assembly", { atOnce: null, location: "hall" }),
+        activity("swim", { atOnce: null })
+      ]
+    };
+    const input = camp(spec);
+    const result = generateWeek(input);
+    expect(cellsOf(result.days)[0].g1[1]).toEqual({
+      kind: "F",
+      id: "lunch",
+      head: true
+    });
+    expect(problems(spec, input, result)).toEqual([]);
+  });
+
+  it("a fixed activity filling a place keeps another activity out of it at that time", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0)],
+      locations: [{ id: "hall", fit: 1 }],
+      fixed: [{ id: "show", block: "b0", location: "hall", groups: ["g1"] }],
+      activities: [
+        activity("assembly", { atOnce: null, location: "hall" }),
+        activity("swim", { atOnce: null })
+      ]
+    });
+    expect(at(result, 0, "g2", 0)).toBe("swim");
+  });
+
+  it("leaves a not-at-camp cell Open, even though nothing else is blank", () => {
+    const result = run({
+      groups: [group("g1", { availability: "MorningOnly" })],
+      blocks: [block(0), block(5)],
+      activities: [activity("swim"), activity("arts")]
+    });
+    expect(at(result, 0, "g1", 0)).not.toBeNull();
+    expect(at(result, 0, "g1", 1)).toBeNull();
+    expect(result.openCells).toEqual([]);
+  });
+
+  it("a full build clears an unlocked activity left where the group isn't at camp; fill the open cells keeps it", () => {
+    const spec = {
+      groups: [group("g1", { availability: "AfternoonOnly" })],
+      blocks: [block(0), block(5)],
+      activities: [activity("swim"), activity("arts")],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "arts" }]
+    };
+    expect(at(run(spec), 0, "g1", 0)).toBeNull();
+    expect(at(run({ ...spec, mode: "fillOpen" }), 0, "g1", 0)).toBe("arts");
+  });
+
+  it("keeps a locked cell in a full build and replaces an unlocked one", () => {
+    const spec = {
+      days: 1,
+      blocks: [block(0), block(1)],
+      activities: [activity("swim"), activity("arts"), activity("hike")],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "hike" },
+        { day: 0, group: "g1", block: "b1", act: "hike" }
+      ],
+      locks: [{ date: dateAt(0), groupId: "g1", blockId: "b0" }]
+    };
+    const result = run(spec);
+    expect(at(result, 0, "g1", 0)).toBe("hike");
+    // The second hike was not locked: rebuilt, it isn't the same activity twice in a day.
+    expect(at(result, 0, "g1", 1)).not.toBe("hike");
+    expect(result.flags).toEqual([]);
+  });
+
+  it("a lock on any cell of a multi-block placement keeps all of it", () => {
+    const spec = {
+      blocks: [block(0), block(1), block(2)],
+      activities: [
+        activity("hike", { span: 2 }),
+        activity("swim"),
+        activity("arts")
+      ],
+      cells: [{ day: 0, group: "g1", block: "b1", act: "hike" }],
+      locks: [{ date: dateAt(0), groupId: "g1", blockId: "b2" }]
+    };
+    const cells = cellsOf(run(spec).days)[0].g1;
+    expect(cells[1]).toEqual({ kind: "A", id: "hike", head: true });
+    expect(cells[2]).toEqual({ kind: "A", id: "hike", head: false });
+  });
+
+  it("a locked Open cell stays Open", () => {
+    const result = run({
+      blocks: [block(0), block(1)],
+      activities: [activity("swim"), activity("arts")],
+      locks: [{ date: dateAt(0), groupId: "g1", blockId: "b1" }]
+    });
+    expect(at(result, 0, "g1", 1)).toBeNull();
+    expect(at(result, 0, "g1", 0)).not.toBeNull();
+  });
+
+  it("fill the open cells keeps every filled cell and fills only the Open ones", () => {
+    const spec = {
+      mode: "fillOpen",
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1), block(2)],
+      activities: [activity("swim"), activity("arts"), activity("hike")],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "hike" },
+        { day: 0, group: "g2", block: "b2", act: "swim" }
+      ]
+    };
+    const input = camp(spec);
+    const result = generateWeek(input);
+    expect(at(result, 0, "g1", 0)).toBe("hike");
+    expect(at(result, 0, "g2", 2)).toBe("swim");
+    expect(problems(spec, input, result)).toEqual([]);
+    // Kept cells count: hike is already on Bunk g1's day.
+    expect([at(result, 0, "g1", 1), at(result, 0, "g1", 2)]).not.toContain(
+      "hike"
+    );
+  });
+
+  it("keeps the row of a group setup no longer has, exactly as it was", () => {
+    const input = camp({
+      groups: [group("g1"), group("gone")],
+      blocks: [block(0), block(1)],
+      activities: [activity("swim"), activity("arts")],
+      cells: [{ day: 0, group: "gone", block: "b0", act: "swim" }]
+    });
+    input.groups = input.groups.filter((g) => g.Id !== "gone");
+    const result = generateWeek(input);
+    expect(cellsOf(result.days)[0].gone).toEqual(cellsOf(input.days)[0].gone);
+    expect(at(result, 0, "g1", 0)).not.toBeNull();
+  });
+
+  it("keeps not-set-up items from an import (an elective, a trip) where they are", () => {
+    const spec = {
+      blocks: [block(0), block(1)],
+      activities: [activity("swim")],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "Zoo trip", kind: "T" }]
+    };
+    const result = run(spec);
+    expect(cellsOf(result.days)[0].g1[0]).toEqual({
+      kind: "T",
+      id: "Zoo trip",
+      head: true
+    });
+    expect(at(result, 0, "g1", 1)).toBe("swim");
+  });
+});
+
+describe("the hard rules", () => {
+  it("multi-block activities fill consecutive at-camp blocks, as one session", () => {
+    const result = run({
+      blocks: [block(0), block(1), block(2)],
+      activities: [
+        activity("hike", { span: 2, min: 1, max: 1 }),
+        activity("swim", { max: 1 })
+      ]
+    });
+    const cells = cellsOf(result.days)[0].g1;
+    const hike = cells.filter((c) => c && c.id === "hike");
+    expect(hike.map((c) => c.head)).toEqual([true, false]);
+  });
+
+  it("a multi-block activity never runs into a block where the group isn't at camp", () => {
+    const result = run({
+      groups: [group("g1", { availability: "MorningOnly" })],
+      blocks: [block(3), block(4)],
+      activities: [activity("hike", { span: 2, min: 1 }), activity("swim")]
+    });
+    expect(cellsOf(result.days)[0].g1).toEqual([
+      { kind: "A", id: "swim", head: true },
+      null
+    ]);
+  });
+
+  it("an activity with no weekly maximum is placed (NoWeeklyMax)", () => {
+    const result = run({
+      days: 3,
+      activities: [activity("archery", { max: null })]
+    });
+    expect(result.flags).toEqual([]);
+    expect([0, 1, 2].map((d) => at(result, d, "g1", 0))).toEqual([
+      "archery",
+      "archery",
+      "archery"
+    ]);
+  });
+
+  it("a place shared by two activities holds its groups that fit in total, not per activity", () => {
+    const result = run({
+      groups: ["g1", "g2", "g3", "g4"].map((id) => group(id)),
+      locations: [{ id: "field", fit: 3 }],
+      activities: [
+        activity("soccer", { atOnce: null, location: "field" }),
+        activity("frisbee", { atOnce: null, location: "field" }),
+        activity("arts", { atOnce: null, priority: "Low" })
+      ]
+    });
+    const atField = ["g1", "g2", "g3", "g4"].filter((g) =>
+      ["soccer", "frisbee"].includes(at(result, 0, g, 0))
+    );
+    expect(atField).toHaveLength(3);
+    expect(result.flags).toEqual([]);
+  });
+
+  it("a multi-block activity's later block counts against the place too", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "pool", fit: 1 }],
+      activities: [
+        activity("swim", { span: 2, atOnce: null, location: "pool", min: 1 }),
+        activity("dive", { atOnce: null, location: "pool" }),
+        activity("arts", { atOnce: null }),
+        activity("music", { atOnce: null })
+      ]
+    });
+    const cells = cellsOf(result.days)[0];
+    const atPool = (b) =>
+      ["g1", "g2"].filter(
+        (g) => cells[g][b] && ["swim", "dive"].includes(cells[g][b].id)
+      ).length;
+    expect([atPool(0), atPool(1)]).toEqual([1, 1]);
+    expect(result.flags).toEqual([]);
+  });
+
+  it("a place nobody set up (a location not in the list) has no limit", () => {
+    const result = run({
+      groups: [group("g1"), group("g2")],
+      locations: [],
+      activities: [activity("swim", { atOnce: null, location: "gone" })]
+    });
+    expect([at(result, 0, "g1", 0), at(result, 0, "g2", 0)]).toEqual([
+      "swim",
+      "swim"
+    ]);
+    expect(result.flags).toEqual([]);
+  });
+
+  it("same division only: two divisions never share the activity or its place unflagged", () => {
+    const spec = {
+      groups: [group("g1"), group("g2", { division: "div2" }), group("g3")],
+      blocks: [block(0)],
+      locations: [{ id: "court", fit: 3 }],
+      activities: [
+        activity("tennis", {
+          atOnce: null,
+          sameDivision: true,
+          location: "court",
+          min: 1
+        }),
+        activity("arts", { atOnce: null, priority: "Low" })
+      ]
+    };
+    const input = camp(spec);
+    const result = generateWeek(input);
+    const divisions = new Set(
+      ["g1", "g2", "g3"]
+        .filter((g) => at(result, 0, g, 0) === "tennis")
+        .map((g) => spec.groups.find((x) => x.id === g).division)
+    );
+    expect(divisions.size).toBe(1);
+    expect(problems(spec, input, result)).toEqual([]);
+  });
+
+  it("same division only holds whoever arrived first: another activity can't bring a second division into the place", () => {
+    const result = run({
+      mode: "fillOpen",
+      groups: [group("g1"), group("g2", { division: "div2" })],
+      locations: [{ id: "court", fit: 3 }],
+      activities: [
+        activity("tennis", {
+          atOnce: null,
+          sameDivision: true,
+          location: "court"
+        }),
+        activity("squash", { atOnce: null, location: "court" }),
+        activity("arts", { atOnce: null, priority: "Low" })
+      ],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "tennis" }]
+    });
+    expect(at(result, 0, "g2", 0)).toBe("arts");
+  });
+
+  it("weekly maximum and once a day hold in a week that fits", () => {
+    const spec = {
+      groups: [group("g1"), group("g2")],
+      days: 3,
+      blocks: [block(0), block(1), block(2)],
+      activities: ["a", "b", "c", "d"].map((id) =>
+        activity(id, { max: 3, atOnce: 1 })
+      )
+    };
+    const input = camp(spec);
+    const result = generateWeek(input);
+    expect(result.flags).toEqual([]);
+    expect(problems(spec, input, result)).toEqual([]);
+  });
+});
+
+describe("other programs count against capacity (G5 supplies them)", () => {
+  it("a place another program fills at that clock time is full for this one", () => {
+    const result = run({
+      blocks: [block(0), block(1)],
+      locations: [{ id: "pool", fit: 1 }],
+      activities: [
+        activity("swim", { atOnce: null, location: "pool", min: 1, max: 1 }),
+        activity("arts", { atOnce: null })
+      ],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "07:30",
+          endTime: "08:30",
+          locationId: "pool",
+          groups: 1
+        }
+      ]
+    });
+    expect(at(result, 0, "g1", 0)).toBe("arts");
+    expect(at(result, 0, "g1", 1)).toBe("swim");
+  });
+
+  it("another program's groups at an activity count against its groups at once", () => {
+    const result = run({
+      blocks: [block(0), block(1)],
+      activities: [
+        activity("archery", { atOnce: 2, min: 1, max: 1 }),
+        activity("arts")
+      ],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "08:45",
+          activityId: "archery",
+          groups: 2
+        }
+      ]
+    });
+    expect(at(result, 0, "g1", 1)).toBe("archery");
+  });
+
+  it("only overlapping clock times count: a touching time doesn't", () => {
+    const result = run({
+      locations: [{ id: "pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "07:00",
+          endTime: "08:00",
+          locationId: "pool"
+        }
+      ]
+    });
+    expect(result.flags).toEqual([]);
+  });
+});
+
+describe("soft goals and what is still to place", () => {
+  it("places an early-in-the-week goal by its day (by Tuesday counts Tuesday)", () => {
+    const result = run({
+      days: 5,
+      blocks: [block(0), block(1)],
+      activities: [
+        activity("climb", {
+          min: 2,
+          max: 2,
+          early: { count: 2, day: "Tuesday" }
+        }),
+        activity("swim", { max: null }),
+        activity("arts", { max: null })
+      ]
+    });
+    expect(
+      at(result, 0, "g1", 0) === "climb" || at(result, 0, "g1", 1) === "climb"
+    ).toBe(true);
+    expect(
+      at(result, 1, "g1", 0) === "climb" || at(result, 1, "g1", 1) === "climb"
+    ).toBe(true);
+    expect(result.stillToPlace).toEqual([]);
+  });
+
+  it("lists weekly minimums not met and early goals missed, in camp words", () => {
+    const result = run({
+      days: 2,
+      groups: [group("g1"), group("g2")],
+      activities: [
+        activity("climb", {
+          min: 2,
+          max: 2,
+          atOnce: 1,
+          early: { count: 1, day: "Monday" },
+          location: "wall"
+        })
+      ],
+      locations: [{ id: "wall", fit: 1 }],
+      fixed: [{ id: "lunch", block: "b0", groups: ["g2"] }]
+    });
+    expect(result.stillToPlace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "weeklyMin",
+          groupId: "g2",
+          activityId: "climb",
+          placed: 0,
+          wanted: 2,
+          text: "climb · Bunk g2: 2 still needed"
+        }),
+        expect.objectContaining({
+          kind: "earlyWeek",
+          groupId: "g2",
+          byDay: "Monday",
+          text: "climb · Bunk g2: 1 still needed by Monday"
+        })
+      ])
+    );
+  });
+
+  it("high priority is placed before low when there isn't room for both", () => {
+    const result = run({
+      days: 1,
+      activities: [
+        activity("low", { priority: "Low", atOnce: null }),
+        activity("high", { priority: "High", atOnce: null })
+      ]
+    });
+    expect(at(result, 0, "g1", 0)).toBe("high");
+  });
+
+  it("an activity closed this week, or at a place closed this week, isn't placed", () => {
+    const result = run({
+      days: 2,
+      activities: [
+        activity("swim", { location: "pool", atOnce: null }),
+        activity("arts", { atOnce: null }),
+        activity("drama", { atOnce: null })
+      ],
+      locations: [{ id: "pool", fit: 4 }],
+      weekExceptions: [
+        { Id: "we1", Week__c: "week1", Location__c: "pool" },
+        { Id: "we2", Week__c: "week1", Activity__c: "arts" },
+        { Id: "we3", Week__c: "other week", Activity__c: "drama" }
+      ]
+    });
+    expect([at(result, 0, "g1", 0), at(result, 1, "g1", 0)]).toEqual([
+      "drama",
+      "drama"
+    ]);
+  });
+});
+
+describe("the grid it returns", () => {
+  it("is Manual Build's day shape: the same frame, items in the order cells use them", () => {
+    const input = camp({
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      fixed: [{ id: "lunch", name: "Lunch", block: "b1" }],
+      activities: [activity("swim", { atOnce: null })],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "gone" }]
+    });
+    const result = generateWeek(input);
+    const day = result.days[0];
+    expect(day.dateValue).toBe(input.days[0].dateValue);
+    expect(day.blocks).toEqual(input.days[0].blocks);
+    expect(day.groups).toEqual(input.days[0].groups);
+    // The cleared "gone" item is dropped from the list; no number points past it.
+    expect(day.items.map((i) => i.id)).toEqual(["swim", "lunch"]);
+    expect(day.rows).toEqual(["1,2", "1,2"]);
+  });
+});
