@@ -312,19 +312,57 @@ function shortDate(isoDate) {
   return `${MONTHS[m - 1].charAt(0).toUpperCase()}${MONTHS[m - 1].slice(1)} ${d} ${y}`;
 }
 
+/** A Runs in column of a week left out: its ticks are not read. */
+export const SKIP_WEEK = "skip";
+
+function bySeasonOrder(weeks) {
+  return [...(weeks || [])].sort(
+    (a, b) =>
+      String(a.StartDate__c).localeCompare(String(b.StartDate__c)) ||
+      (a.SortOrder__c || 0) - (b.SortOrder__c || 0) ||
+      String(a.Id).localeCompare(String(b.Id))
+  );
+}
+
 /**
- * Which week of the season each of the workbook's weeks is. Kept behind this one function: the
- * rule for a workbook from another season is Greg's to settle (coordinator, PR D). For now a
- * week is its start date (a season can't have two weeks starting the same day): one set up
- * that starts that day, else one to add.
- * Returns [{ row, week (set up) | null }].
+ * Which week of the season each of the workbook's weeks is (Greg, 2026-10-17):
+ * - a workbook from this season (a week starting within the season's dates): by start date (a
+ *   season can't have two weeks starting the same day); one starting a day nothing set up starts
+ *   is a week to add;
+ * - a workbook from another season (no week starting within them): by order, as opening a new
+ *   season copies weeks ("you'd copy the weeks but need to update the dates"): its first week
+ *   is the season's first, and so on, the season keeping its own dates. A workbook week past
+ *   the season's last is left out; a season week past the workbook's is left as it is.
+ * Returns { byOrder, pairs: [{ row, week (set up) | null, leftOut }] }.
  */
-export function matchWeeks(fileWeeks, setupWeeks) {
+export function matchWeeks(fileWeeks, setupWeeks, season) {
+  const from = (season && season.StartDate__c) || null;
+  const to = (season && season.EndDate__c) || null;
+  const inSeason = (start) => (!from || start >= from) && (!to || start <= to);
+  const byOrder =
+    !!(from || to) &&
+    fileWeeks.length > 0 &&
+    !fileWeeks.some((r) => inSeason(r.start));
+  if (byOrder) {
+    const ordered = bySeasonOrder(setupWeeks);
+    const rows = [...fileWeeks].sort((a, b) => a.start.localeCompare(b.start));
+    return {
+      byOrder,
+      pairs: rows.map((row, i) => ({
+        row,
+        week: ordered[i] || null,
+        leftOut: !ordered[i]
+      }))
+    };
+  }
   const byStart = new Map((setupWeeks || []).map((w) => [w.StartDate__c, w]));
-  return fileWeeks.map((row) => ({
-    row,
-    week: byStart.get(row.start) || null
-  }));
+  return {
+    byOrder,
+    pairs: fileWeeks.map((row) => ({
+      row,
+      week: byStart.get(row.start) || null
+    }))
+  };
 }
 
 function readWeeks(sheet, setup, answers) {
@@ -381,7 +419,34 @@ function readWeeks(sheet, setup, answers) {
       read.push(entry);
     }
   });
-  matchWeeks(read, setup.weeks).forEach(({ row, week }) => {
+  const matched = matchWeeks(read, setup.weeks, setup.season);
+  result.byOrder = matched.byOrder;
+  if (matched.byOrder) {
+    const paired = new Set(matched.pairs.map((p) => p.week && p.week.Id));
+    result.lists = [
+      {
+        key: "paired",
+        heading: "Matched by order",
+        lines: matched.pairs.filter((p) => p.week).map((p) => p.row)
+      },
+      {
+        key: "untouched",
+        heading: "Not in the workbook",
+        lines: bySeasonOrder(setup.weeks)
+          .filter((w) => !paired.has(w.Id))
+          .map((w) => ({ pairing: `${w.Name} (${shortDate(w.StartDate__c)})` }))
+      }
+    ];
+  }
+  matched.pairs.forEach(({ row, week, leftOut }) => {
+    if (leftOut) {
+      // Another season's week past this season's last: its Runs in ticks aren't read.
+      row.status = "leftOut";
+      row.reason = "no week of this season left for it";
+      result.refs.set(foldName(`${row.name} (${row.start})`), SKIP_WEEK);
+      result.refs.set(foldName(row.name), SKIP_WEEK);
+      return;
+    }
     if (!week) {
       row.status = "new";
       row.ref = `Week:${row.start}`;
@@ -397,11 +462,16 @@ function readWeeks(sheet, setup, answers) {
     } else {
       row.ref = week.Id;
       row.week = week;
+      if (matched.byOrder) {
+        // Shown: "Week 1 (Jun 30 2026) → Week 1 (Jun 28 2027)".
+        row.pairing = `${row.name} (${shortDate(row.start)}) → ${week.Name} (${shortDate(week.StartDate__c)})`;
+      }
       const changes = [];
       if (row.name !== week.Name) {
         changes.push(["Name", "Name", week.Name, row.name]);
       }
-      if (row.end !== week.EndDate__c) {
+      // By order the season keeps its own dates.
+      if (!matched.byOrder && row.end !== week.EndDate__c) {
         changes.push([
           "EndDate__c",
           "End",
@@ -433,7 +503,7 @@ function readWeeks(sheet, setup, answers) {
     // A Runs in column is headed by the week's name, or "Name (start date)" when two share it.
     result.refs.set(foldName(`${row.name} (${row.start})`), row.ref);
     const named = read.filter((r) => looseKey(r.name) === looseKey(row.name));
-    if (named.length === 1) {
+    if (named.length === 1 && !result.refs.has(foldName(row.name))) {
       result.refs.set(foldName(row.name), row.ref);
     }
   });
@@ -674,11 +744,15 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
   RUNS_IN_KINDS.forEach((kind) =>
     wordsOf(t, kind).forEach((w) => kinds.set(w, kind))
   );
-  const columns = headings.slice(4).map((h, i) => ({
-    index: i + 4,
-    heading: h,
-    week: h ? weeks.refs.get(foldName(h)) || null : null
-  }));
+  const columns = headings
+    .slice(4)
+    .map((h, i) => ({
+      index: i + 4,
+      heading: h,
+      week: h ? weeks.refs.get(foldName(h)) || null : null
+    }))
+    // A week left out (another season's, past this season's last): not read.
+    .filter((c) => c.week !== SKIP_WEEK);
   const unknown = columns.filter((c) => c.heading && !c.week);
   const weekName = new Map(
     weeks.rows.filter((r) => r.ref).map((r) => [r.ref, r.name])
@@ -801,7 +875,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
 // The whole workbook.
 
 function extraSection(key, label, part) {
-  return { key, label, extra: true, rows: part.rows };
+  return { key, label, extra: true, rows: part.rows, lists: part.lists || [] };
 }
 
 /**

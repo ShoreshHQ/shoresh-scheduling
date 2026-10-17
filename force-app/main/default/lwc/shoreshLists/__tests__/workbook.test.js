@@ -352,3 +352,97 @@ describe("a camp's workbook, edited", () => {
     ]);
   });
 });
+
+// Greg, 2026-10-17: a workbook from another season is paired with this season's weeks by
+// order, as opening a new season copies weeks; the season keeps its own dates.
+describe("a workbook from another season", () => {
+  function nextYear(count) {
+    const s = freshSeason();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-08-11"
+    };
+    const mondays = ["2028-06-26", "2028-07-03", "2028-07-10", "2028-07-17"];
+    s.weeks = mondays.slice(0, count).map((start, i) => ({
+      Id: `n${i + 1}`,
+      Name: `Week ${i + 1}`,
+      StartDate__c: start,
+      EndDate__c: start.replace(
+        /-(\d\d)$/,
+        (m, d) => `-${String(+d + 4).padStart(2, "0")}`
+      ),
+      SortOrder__c: i + 1
+    }));
+    return s;
+  }
+
+  function approveWords(s, workbook) {
+    const p = propose(s, workbook);
+    const answers = {};
+    p.sections
+      .find((x) => x.key === "campWords")
+      .rows.forEach((r) =>
+        r.differences.forEach((d) => {
+          answers[d.id] = "change";
+        })
+      );
+    return { p: propose(s, workbook, answers), answers };
+  }
+
+  it("pairs weeks by order, shows the pairing, and Runs in follows it", () => {
+    const from = camp();
+    const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
+    const s = nextYear(3);
+    const { p, answers } = approveWords(s, workbook);
+    const weeks = p.sections.find((x) => x.key === "weeks");
+    expect(
+      weeks.lists.map((l) => [l.heading, l.lines.map((x) => x.pairing)])
+    ).toEqual([
+      [
+        "Matched by order",
+        [
+          "Week 1 (Jun 28 2027) → Week 1 (Jun 26 2028)",
+          "Week 2 (Jul 5 2027) → Week 2 (Jul 3 2028)"
+        ]
+      ],
+      ["Not in the workbook", ["Week 3 (Jul 10 2028)"]]
+    ]);
+    expect(weeks.rows.map((r) => r.status)).toEqual(["unchanged", "unchanged"]);
+    const plan = workbookPlan(p, answers);
+    expect(plan.records.filter((r) => r.kind === "Week")).toEqual([]);
+    // Board games was off last year's week 2: this year's week 2.
+    expect(plan.records.find((r) => r.kind === "WeekException").refs).toEqual({
+      Week__c: "n2",
+      Activity__c: "Activity:Board games"
+    });
+  });
+
+  it("a workbook week past the season's last is left out, and its ticks aren't read", () => {
+    const from = camp();
+    const workbook = file(campWorkbookSheets(from, buildTerms(from.labels)));
+    const s = nextYear(1);
+    const { p, answers } = approveWords(s, workbook);
+    const weeks = p.sections.find((x) => x.key === "weeks");
+    expect(weeks.rows.map((r) => [r.name, r.status, r.reason])).toEqual([
+      ["Week 1", "unchanged", undefined],
+      ["Week 2", "leftOut", "no week of this season left for it"]
+    ]);
+    expect(workbookWaiting(p, answers)).toEqual([]);
+    expect(
+      workbookPlan(p, answers).records.filter((r) => r.kind === "WeekException")
+    ).toEqual([]);
+  });
+
+  it("a workbook week inside the season's dates: matched by start date as before", () => {
+    const s = camp();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2027-06-28",
+      EndDate__c: "2027-08-06"
+    };
+    const p = propose(s, file(campWorkbookSheets(s, buildTerms(s.labels))));
+    expect(p.weeks.byOrder).toBe(false);
+    expect(workbookWaiting(p, {})).toEqual(["Nothing to change"]);
+  });
+});

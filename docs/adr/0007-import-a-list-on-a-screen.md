@@ -215,9 +215,15 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     types, locations, activities, fixed, recurring), each read as its screen reads it against
     the season as the sheets before would leave it (`withRecords`), so nothing is added or asked
     twice. A later sheet's change to something an earlier one adds is folded into the add.
-27. **Weeks** are found by start date (`matchWeeks`, kept in one function: how a workbook from
-    another season maps onto this one is Greg's call). A new name or end date is a Keep or
-    Change; a new start date is a week to add. Dates are read only when certain: 2027-06-28,
+27. **Weeks** (Greg, 2026-10-17, in `matchWeeks`): a workbook from this season (a week starting
+    within the season's dates) is matched by start date: a new name or end date is a Keep or
+    Change, a new start date a week to add. A workbook from another season (no week starting
+    within them) is paired by order, as opening a new season copies weeks ("you'd copy the
+    weeks but need to update the dates"): its first week is the season's first, and so on; the
+    season keeps its own dates (a new name is still a Keep or Change); the preview shows each
+    pairing ("Week 1 (Jun 28 2027) → Week 1 (Jun 26 2028)") and Runs in follows it. A workbook
+    week past the season's last is left out (its ticks aren't read); a season week past the
+    workbook's is listed as not in the workbook and left as it is. Dates are read only when certain: 2027-06-28,
     "Jun 28, 2027", "28-Jun-27", or numbers whose day and month order another date in the
     column settles; "7/5/2027" alone could be read two ways and can't be read.
 28. **Runs in**: each row finds its item by kind, program, unit, and name; each week column its

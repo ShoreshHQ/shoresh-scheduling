@@ -491,8 +491,8 @@ in the _Import test_ season, in this order).
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
-- A workbook from another season: its weeks are matched by their start dates for now; how
-  last year's weeks map onto a new season is Greg's to settle.
+- A workbook from last year is paired with this season's weeks by order (_Matched by
+  order_ in the _Weeks_ section): this season keeps its own dates.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
   into a working schedule, saving and deleting versions, and publishing. Roots' **Build or

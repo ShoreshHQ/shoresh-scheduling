@@ -155,6 +155,17 @@
               <h4 class="list-sheet-title">{section.label}</h4>
             </template>
 
+            <template for:each={section.lists} for:item="list">
+              <div key={list.key} data-list={list.key}>
+                <h4 class="list-section">{list.heading}</h4>
+                <ul class="list-names">
+                  <template for:each={list.lines} for:item="line">
+                    <li key={line.key}>{line.text}</li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+
             <template lwc:if={section.hasMapping}>
               <h4 class="list-section">Columns</h4>
               <div class="list-headings" data-id="headings">

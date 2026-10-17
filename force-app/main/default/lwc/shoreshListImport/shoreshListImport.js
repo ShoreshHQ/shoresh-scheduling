@@ -279,9 +279,25 @@ export default class ShoreshListImport extends LightningElement {
     if (!this.workbook) {
       return [this.sectionOf(this.screenKey, "", this.proposal)];
     }
-    const sections = this.proposal.sections.map((s) =>
-      this.sectionOf(s.key, s.label, s.extra ? { rows: s.rows } : s.proposal)
-    );
+    const sections = this.proposal.sections.map((s) => {
+      const section = this.sectionOf(
+        s.key,
+        s.label,
+        s.extra ? { rows: s.rows } : s.proposal
+      );
+      // A workbook from another season: its weeks paired with this season's, by order.
+      section.lists = (s.lists || [])
+        .filter((list) => list.lines.length)
+        .map((list) => ({
+          key: `${s.key}-${list.key}`,
+          heading: `${list.heading} (${list.lines.length})`,
+          lines: list.lines.map((line, i) => ({
+            key: `${list.key}-${i}`,
+            text: line.pairing
+          }))
+        }));
+      return section;
+    });
     if (this.proposal.unused.length) {
       sections.push({
         ...this.sectionOf("unused", "Not read", { rows: [] }),
@@ -337,7 +353,8 @@ export default class ShoreshListImport extends LightningElement {
       unreadableHeading: `Review here (${unreadableRows.length})`,
       leftOutRows,
       hasLeftOut: leftOutRows.length > 0,
-      leftOutHeading: `Left out (${leftOutRows.length})`
+      leftOutHeading: `Left out (${leftOutRows.length})`,
+      lists: []
     };
   }
 
@@ -617,11 +634,13 @@ export default class ShoreshListImport extends LightningElement {
   leftOutRowsOf(p) {
     return this.rowsOf(p, "leftOut").map((r) => ({
       key: `row-${r.rowNumber}`,
-      text: r.usedRow
-        ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
-        : r.sameAs
-          ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
-          : `Row ${r.rowNumber} · ${r.name}`
+      text: r.reason
+        ? `Row ${r.rowNumber} · ${r.name} · ${r.reason}`
+        : r.usedRow
+          ? `Row ${r.rowNumber} · ${r.name} · row ${r.usedRow} used`
+          : r.sameAs
+            ? `Row ${r.rowNumber} · ${r.name} · same as ${r.sameAs}`
+            : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
   get askedCount() {
