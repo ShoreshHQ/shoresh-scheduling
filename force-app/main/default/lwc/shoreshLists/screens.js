@@ -293,9 +293,25 @@ const BUILDERS = {
 /** The screens that have a list to import, in menu order. */
 export const LIST_SCREENS = Object.keys(BUILDERS);
 
+/**
+ * Location types: no screen of their own, but a sheet of the camp workbook (part D), read the
+ * way a screen's list is (names only; a type is only ever added).
+ */
+function locationTypesScreen(t) {
+  return {
+    key: "locationTypes",
+    kind: "LocationType",
+    term: "LocationType",
+    columns: [nameColumn(t.s("LocationType"), ["location type", "type"])],
+    records: (setup) => setup.locationTypes || []
+  };
+}
+
+const WORKBOOK_ONLY = { locationTypes: locationTypesScreen };
+
 /** One screen's list layout, in the camp's words. */
 export function listScreen(key, t) {
-  const screen = BUILDERS[key](t);
+  const screen = (BUILDERS[key] || WORKBOOK_ONLY[key])(t);
   // The heading itself always counts, in the camp's words and Shoresh's.
   screen.columns.forEach((column) => {
     column.words = [column.heading, ...column.words];

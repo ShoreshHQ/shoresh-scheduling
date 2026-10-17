@@ -6,6 +6,7 @@
 public with sharing class ImportListRows {
   // Kinds that are children of the season itself (the others are inside a program).
   private static final Set<String> IN_SEASON = new Set<String>{
+    'Week',
     'Program',
     'LocationType',
     'Location',
@@ -22,6 +23,9 @@ public with sharing class ImportListRows {
       'Friday__c'
     },
     'LocationType' => new Set<String>{ 'Name' },
+    // Only a camp workbook (part D): weeks, and the weeks an item is off.
+    'Week' => new Set<String>{ 'Name', 'StartDate__c', 'EndDate__c' },
+    'WeekException' => new Set<String>(),
     'Location' => new Set<String>{ 'Name', 'GroupsThatFit__c', 'Notes__c' },
     'TimeBlock' => new Set<String>{
       'Name',
@@ -61,6 +65,15 @@ public with sharing class ImportListRows {
   private static final Map<String, Set<String>> LINK_FIELDS = new Map<String, Set<String>>{
     'Program' => new Set<String>(),
     'LocationType' => new Set<String>(),
+    'Week' => new Set<String>(),
+    'WeekException' => new Set<String>{
+      'Week__c',
+      'Group__c',
+      'Location__c',
+      'Activity__c',
+      'FixedActivity__c',
+      'RecurringActivity__c'
+    },
     'Location' => new Set<String>{ 'LocationType__c' },
     'TimeBlock' => new Set<String>{ 'Program__c' },
     'FixedActivity' => new Set<String>{
@@ -79,6 +92,7 @@ public with sharing class ImportListRows {
   };
   // Kinds a list can change once set up (divisions and location types it only adds).
   private static final Set<String> CHANGEABLE = new Set<String>{
+    'Week',
     'Program',
     'Location',
     'Group',
@@ -92,6 +106,10 @@ public with sharing class ImportListRows {
   private static final Set<String> NEW_ONLY_LINKS = new Set<String>{
     'Program__c'
   };
+  private static final Set<String> WORKBOOK_ONLY = new Set<String>{
+    'Week',
+    'WeekException'
+  };
   private Id seasonId;
   private ImportKeys keys;
   private String kind;
@@ -101,12 +119,13 @@ public with sharing class ImportListRows {
     this.seasonId = seasonId;
     this.keys = keys;
     this.kind = kind;
-    this.type = Schema.getGlobalDescribe().get(kind + '__c');
+    this.type = ImportFields.ofTerm(kind);
   }
 
-  /** Whether a list can write this kind at all. */
-  public static Boolean isKind(String kind) {
-    return PLAIN_FIELDS.containsKey(kind);
+  /** Whether a list (or, with workbook, a camp workbook) can write this kind at all. */
+  public static Boolean isKind(String kind, Boolean workbook) {
+    return PLAIN_FIELDS.containsKey(kind) &&
+      (workbook || !WORKBOOK_ONLY.contains(kind));
   }
 
   /** A new record (in the season, where its kind is) or an existing one, with its plain fields. */
@@ -114,9 +133,11 @@ public with sharing class ImportListRows {
     SObject row = entry.isNew() ? newRow() : existingRow(entry.id());
     Map<String, Object> values = entry.valuesOf('fields');
     for (String field : values.keySet()) {
-      // A list never renames anything (names are how rows find what is set up).
-      Boolean renaming = field == 'Name' && !entry.isNew();
-      if (!PLAIN_FIELDS.get(kind).contains(field) || renaming) {
+      // A list never renames anything (names are how rows find what is set up); a week is
+      // found by the day it starts, so its name can change and its start can't.
+      Boolean renaming = field == 'Name' && !entry.isNew() && kind != 'Week';
+      Boolean moving = field == 'StartDate__c' && !entry.isNew();
+      if (!PLAIN_FIELDS.get(kind).contains(field) || renaming || moving) {
         throw ImportListSaves.unreadable();
       }
       row.put(field, ImportUndoValues.asField(type, field, values.get(field)));

@@ -6,6 +6,8 @@
 public with sharing class ImportUndoDeletes {
   // Children first. Who-can-do-it rows go with their activity.
   private static final List<String> ORDER = new List<String>{
+    // Weeks items are off (a workbook's Runs in, slice 4c part D), before the items and weeks.
+    'WeekException',
     'Schedule',
     'Coverage',
     'RecurringActivity',
@@ -16,7 +18,9 @@ public with sharing class ImportUndoDeletes {
     'Group',
     'Division',
     'TimeBlock',
-    'Program'
+    'Program',
+    'Week',
+    'CampLabel'
   };
   // Records inside each kind (master-detail children), or pointing at it through a link that
   // would quietly clear (a time block an item ends at, an activity used as a rain plan):
@@ -30,6 +34,8 @@ public with sharing class ImportUndoDeletes {
       'Schedules__r'
     },
     'Division' => new List<String>{ 'Groups__r' },
+    // A week added by a workbook that anything else now uses (a version, a week off) stays.
+    'Week' => new List<String>{ 'WeekExceptions__r', 'Schedules__r' },
     'TimeBlock' => new List<String>{
       'EndingFixedActivities__r',
       'EndingRecurringActivities__r'
@@ -126,7 +132,7 @@ public with sharing class ImportUndoDeletes {
       rows.put((Id) (String) ((List<Object>) row)[0], (List<Object>) row);
     }
     Map<Id, SObject> now = ImportUndoValues.read(
-      term + '__c',
+      ImportFields.ofTerm(term),
       fields,
       rows.keySet()
     );
@@ -150,7 +156,7 @@ public with sharing class ImportUndoDeletes {
   private void keep(SObject record, List<String> names) {
     createdIds.remove(record.Id);
     keptIds.add(record.Id);
-    names.add((String) record.get('Name'));
+    names.add(ImportFields.nameOf(record));
   }
 
   /** Records with something inside them the import did not make (one query, with sub-queries). */
@@ -173,8 +179,8 @@ public with sharing class ImportUndoDeletes {
         'SELECT Id, ' +
           String.join(subqueries, ', ') +
           ' FROM ' +
-          term +
-          '__c WHERE Id IN :ids',
+          ImportFields.ofTerm(term).getDescribe().getName() +
+          ' WHERE Id IN :ids',
         new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
         AccessLevel.USER_MODE
       )
@@ -208,7 +214,7 @@ public with sharing class ImportUndoDeletes {
       Database.Error error = outcomes[i].getErrors()[0];
       if (error.getStatusCode() != StatusCode.DELETE_FAILED) {
         throw ImportUndo.refused(
-          (String) records[i].get('Name'),
+          ImportFields.nameOf(records[i]),
           'couldn\'t remove it',
           error
         );

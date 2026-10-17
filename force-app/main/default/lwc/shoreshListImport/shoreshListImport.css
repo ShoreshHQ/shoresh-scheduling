@@ -125,3 +125,20 @@
   color: var(--slds-g-color-warning-base-30, #8c4b02);
   font-weight: 600;
 }
+
+/* A workbook's sheets, one section each (slice 4c part D). */
+.list-sheet + .list-sheet {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.list-sheet-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.list-change-all {
+  display: block;
+  margin-top: 0.75rem;
+}

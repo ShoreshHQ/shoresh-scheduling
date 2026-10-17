@@ -26,6 +26,19 @@ public with sharing class ImportController {
     }
   }
 
+  /**
+   * Imports a camp workbook on Roots (slice 4c part D): every list, the weeks, the weeks items
+   * run, and the camp's words, all or none, undone together. plan: c/shoreshLists workbookPlan.
+   */
+  @AuraEnabled
+  public static ImportSetupSaves.Result saveWorkbook(String plan) {
+    try {
+      return ImportListSaves.saveWorkbook(plan);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** The answers this camp gave before, so a similar file does not ask again. */
   @AuraEnabled
   public static List<ImportAnswers.Answer> getAnswers(Id campId) {

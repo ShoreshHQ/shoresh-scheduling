@@ -81,7 +81,8 @@ public with sharing class ImportWhoKinds {
         return kind;
       }
     }
-    return null;
+    // From an import's record: only the two kinds of who rows an import writes.
+    throw ImportFields.unreadableLog();
   }
 
   /** The division or group a who row names. */

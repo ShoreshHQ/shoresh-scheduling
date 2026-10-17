@@ -93,11 +93,15 @@ public with sharing class ImportUndoLog {
     return result;
   }
 
-  /** How a value is kept and compared: times as "HH:mm", everything else as it is. */
+  /** How a value is kept and compared: times as "HH:mm", dates as "yyyy-MM-dd", else as is. */
   public static Object plain(Object value) {
-    return value instanceof Time
-      ? (Object) String.valueOf(value).left(5)
-      : value;
+    if (value instanceof Time) {
+      return String.valueOf(value).left(5);
+    }
+    if (value instanceof Date) {
+      return String.valueOf(value).left(10);
+    }
+    return value;
   }
 
   /** One text for comparing values: numbers without trailing zeros, times as "HH:mm". */

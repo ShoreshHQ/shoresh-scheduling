@@ -11,6 +11,8 @@
 public with sharing class ImportListSaves {
   // Kinds in the order they depend on each other.
   private static final List<String> ORDER = new List<String>{
+    // A camp workbook's weeks first, and the weeks items are off last (part D).
+    'Week',
     'LocationType',
     'Location',
     'Program',
@@ -19,7 +21,8 @@ public with sharing class ImportListSaves {
     'TimeBlock',
     'Activity',
     'FixedActivity',
-    'RecurringActivity'
+    'RecurringActivity',
+    'WeekException'
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
@@ -27,13 +30,22 @@ public with sharing class ImportListSaves {
   private ImportPlan plan;
   private ImportKeys keys;
   private ImportWriter writer;
+  private Boolean workbook;
+  private List<ImportPlan.Entry> weeksBackOn = new List<ImportPlan.Entry>();
 
+  /** One screen's list. */
   public static ImportSetupSaves.Result save(String planText) {
-    return new ImportListSaves(new ImportPlan(planText)).run();
+    return new ImportListSaves(new ImportPlan(planText), false).run();
   }
 
-  private ImportListSaves(ImportPlan plan) {
+  /** A camp workbook (part D): every list, the weeks, the weeks items run, the camp's words. */
+  public static ImportSetupSaves.Result saveWorkbook(String planText) {
+    return new ImportListSaves(new ImportPlan(planText), true).run();
+  }
+
+  private ImportListSaves(ImportPlan plan, Boolean workbook) {
     this.plan = plan;
+    this.workbook = workbook;
   }
 
   private ImportSetupSaves.Result run() {
@@ -66,6 +78,15 @@ public with sharing class ImportListSaves {
           saveKind(kind, byKind.get(kind));
         }
       }
+      if (workbook) {
+        ImportWorkbookExtras extras = new ImportWorkbookExtras(
+          writer,
+          plan.seasonId,
+          seasons[0].Camp__c
+        );
+        extras.weeksBackOn(weeksBackOn);
+        extras.campWords(plan.entries('campWords'));
+      }
       SetTimeGuard.checkPending();
       ImportAnswers.save(seasons[0].Camp__c, plan);
       writer.result.importId = record();
@@ -82,8 +103,13 @@ public with sharing class ImportListSaves {
     Map<String, List<ImportPlan.Entry>> result = new Map<String, List<ImportPlan.Entry>>();
     for (ImportPlan.Entry entry : plan.entries('records')) {
       String kind = entry.text('kind');
-      if (!ImportListRows.isKind(kind)) {
+      if (!ImportListRows.isKind(kind, workbook)) {
         throw unreadable();
+      }
+      // A week an item is off no longer (a workbook's Runs in): removed after the rest.
+      if (kind == 'WeekException' && entry.has('remove')) {
+        weeksBackOn.add(entry);
+        continue;
       }
       if (!result.containsKey(kind)) {
         result.put(kind, new List<ImportPlan.Entry>());
@@ -94,7 +120,7 @@ public with sharing class ImportListSaves {
   }
 
   private void saveKind(String kind, List<ImportPlan.Entry> entries) {
-    Schema.SObjectType type = Schema.getGlobalDescribe().get(kind + '__c');
+    Schema.SObjectType type = ImportFields.ofTerm(kind);
     List<SObject> rows = new List<SObject>();
     // Links to records of the same kind added in this save: written once those exist.
     List<List<Object>> later = new List<List<Object>>();

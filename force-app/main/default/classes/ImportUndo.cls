@@ -38,18 +38,24 @@ public with sharing class ImportUndo {
       // Put back first (a group moved into a division the import made goes home), then remove.
       List<Object> changes = new List<Object>();
       List<Object> whoLists = new List<Object>();
+      List<Object> weeksBackOn = new List<Object>();
       for (
         Object entry : (List<Object>) JSON.deserializeUntyped(done.Changed__c)
       ) {
-        // Who lists a list import replaced (slice 4c) are put back on their own.
-        if (((Map<String, Object>) entry).containsKey('who')) {
+        // Who lists a list import replaced (slice 4c), and weeks off a workbook removed (part
+        // D), are put back on their own.
+        Map<String, Object> values = (Map<String, Object>) entry;
+        if (values.containsKey('who')) {
           whoLists.add(entry);
+        } else if (values.containsKey('weekOn')) {
+          weeksBackOn.add(entry);
         } else {
           changes.add(entry);
         }
       }
       new ImportUndoRestores(result).run(changes);
       new ImportUndoWho(result).run(whoLists);
+      new ImportUndoWeeksOff(result).run(weeksBackOn);
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();

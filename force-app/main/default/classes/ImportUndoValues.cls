@@ -50,25 +50,35 @@ public with sharing class ImportUndoValues {
     if (type == Schema.DisplayType.DOUBLE && value != null) {
       return Decimal.valueOf(String.valueOf(value));
     }
+    if (type == Schema.DisplayType.DATE && value != null) {
+      return Date.valueOf(String.valueOf(value));
+    }
     return value;
   }
 
-  /** The records, with the given fields and their names, in user mode. */
+  /**
+   * The records, with the given fields and their names, in user mode. The names come from an
+   * import's record, so only those ImportFields lists are ever put into the query.
+   */
   public static Map<Id, SObject> read(
-    String objectName,
+    Schema.SObjectType type,
     Set<String> fields,
     Set<Id> ids
   ) {
     Set<String> wanted = new Set<String>(fields);
-    wanted.add('Name');
     wanted.remove('Id');
-    // Field and object names come from Shoresh's own records, never from the screen.
+    ImportFields.check(type, wanted);
+    wanted.add('Name');
+    // A camp word is named by the word itself.
+    if (type == CampLabel__c.SObjectType) {
+      wanted.add('Singular__c');
+    }
     return new Map<Id, SObject>(
       Database.queryWithBinds(
         'SELECT Id, ' +
           String.join(new List<String>(wanted), ', ') +
           ' FROM ' +
-          objectName +
+          type.getDescribe().getName() +
           ' WHERE Id IN :ids',
         new Map<String, Object>{ 'ids' => ids },
         AccessLevel.USER_MODE
