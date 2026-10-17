@@ -199,3 +199,44 @@
 .cell_saving .cell-inner {
   opacity: 0.6;
 }
+
+/* Manual Build: a placement that can be dragged, its bottom handle for a longer or shorter run,
+   and a slot picked up from the keyboard. */
+.cell[draggable="true"] {
+  cursor: grab;
+}
+
+.cell-inner {
+  position: relative;
+}
+
+/* The handle: a slim bar to see and drag, in a 48 x 24 px area to click (WCAG 2.5.8). */
+.handle {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 48px;
+  height: 24px;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.handle-bar {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 6px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--slds-g-color-brand-base-50, #0176d3);
+  cursor: ns-resize;
+}
+
+.cell_picked .cell-inner {
+  outline: 2px dashed var(--shoresh-primary);
+  outline-offset: 1px;
+}
+
+.cell_target .cell-inner {
+  box-shadow: inset 0 0 0 2px var(--shoresh-primary);
+}

@@ -1,6 +1,11 @@
 import { LightningElement, api } from "lwc";
 
 const EDIT_KEYS = new Set(["Enter", "F2"]);
+
+/** What a drag carried as text, if anything. */
+function dragData(event) {
+  return event.dataTransfer ? event.dataTransfer.getData("text/plain") : "";
+}
 const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
 
 /**
@@ -17,7 +22,11 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  *
  * Editable, it is a grid with one cell in the tab order: arrow keys move between cells; Enter, F2,
  * or a double-click asks to change the cell ("editcell", with the cell's key and where it is on
- * screen); Delete or Backspace asks to clear it ("clearcell"). The page decides what may change.
+ * screen); Delete or Backspace asks to clear it ("clearcell"); Space picks it up or puts down
+ * what was picked ("cellspace"); Escape lets go ("cellescape"); Shift with Up or Down makes it a
+ * block shorter or longer ("cellresize"). A click is "cellclick". Cells marked draggable can be
+ * dragged ("celldragstart"), a resizable one by its bottom handle ("resizestart"), and anything
+ * dropped on a cell is "celldrop". The page decides what may change.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
@@ -35,11 +44,27 @@ export default class ShoreshScheduleGrid extends LightningElement {
     }
 
     Promise.resolve().then(() => {
-      const cell = this.cellElement(this.activeKey);
+      const cell = this.cellElement(this.currentKey);
       if (cell) {
         cell.focus();
       }
     });
+  }
+
+  /** Where a cell is on screen now, or null when it isn't shown. */
+  @api
+  cellRect(key) {
+    const cell = this.cellElement(key);
+    if (!cell) {
+      return null;
+    }
+    const rect = cell.getBoundingClientRect();
+    return {
+      top: rect.top,
+      left: rect.left,
+      bottom: rect.bottom,
+      width: rect.width
+    };
   }
 
   get frameRole() {
@@ -81,6 +106,9 @@ export default class ShoreshScheduleGrid extends LightningElement {
           tabIndex: this.editable ? (cell.key === current ? "0" : "-1") : null,
           // A slot that can't change here (a fixed activity, a group not at camp).
           ariaReadOnly: this.editable && cell.readOnly ? "true" : null,
+          draggable: this.editable && cell.movable ? "true" : null,
+          ariaSelected: this.editable && cell.selected ? "true" : null,
+          handle: this.editable && cell.movable,
           colIndex: cell.column + 2,
           rowSpan: cell.length || 1
         }))
@@ -141,6 +169,22 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (!cell) {
       return;
     }
+    if (
+      event.shiftKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
+      event.preventDefault();
+      this.send("cellresize", {
+        key,
+        delta: event.key === "ArrowDown" ? 1 : -1
+      });
+      return;
+    }
+    if (event.key === " " || event.key === "Escape") {
+      event.preventDefault();
+      this.send(event.key === " " ? "cellspace" : "cellescape", { key });
+      return;
+    }
     let next;
     switch (event.key) {
       case "ArrowUp":
@@ -177,6 +221,65 @@ export default class ShoreshScheduleGrid extends LightningElement {
       this.activeKey = target.dataset.cell;
       this.ask("editcell", target.dataset.cell, target);
     }
+  }
+
+  send(name, detail) {
+    this.dispatchEvent(new CustomEvent(name, { detail }));
+  }
+
+  cellKeyOf(event) {
+    const target = event.target.closest && event.target.closest("[data-cell]");
+    return this.editable && target ? target.dataset.cell : null;
+  }
+
+  handleClick(event) {
+    const key = this.cellKeyOf(event);
+    if (key) {
+      this.activeKey = key;
+      const onHandle = !!event.target.closest("[data-handle]");
+      this.send(onHandle ? "handleclick" : "cellclick", { key });
+    }
+  }
+
+  handleDragStart(event) {
+    const key = this.cellKeyOf(event);
+    if (!key) {
+      return;
+    }
+    // Only a drag that starts on the visible bar changes the length; one that starts elsewhere
+    // in the handle's larger click area moves the placement, as anywhere else in the cell.
+    const resizing = !!event.target.closest("[data-handle-bar]");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      // The name shown, so a drop somewhere else (a text box) writes a word, not machinery.
+      const cell = this.allCells.find((c) => c.key === key);
+      event.dataTransfer.setData("text/plain", cell ? cell.text : "");
+    }
+    this.send(resizing ? "resizestart" : "celldragstart", { key });
+  }
+
+  handleDragOver(event) {
+    if (this.cellKeyOf(event)) {
+      event.preventDefault();
+    }
+  }
+
+  /**
+   * A drop on a cell: its key, what the drag carried (to tell it from other things dropped), and
+   * how far down the cell it landed (0 top to 1 bottom).
+   */
+  handleDrop(event) {
+    const key = this.cellKeyOf(event);
+    if (!key) {
+      return;
+    }
+    event.preventDefault();
+    const rect = this.cellElement(key).getBoundingClientRect();
+    const at =
+      rect.height > 0
+        ? Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+        : 0;
+    this.send("celldrop", { key, data: dragData(event), at });
   }
 
   ask(name, key, element) {

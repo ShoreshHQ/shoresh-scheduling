@@ -93,6 +93,23 @@ public with sharing class SlotIds {
     return -1;
   }
 
+  /** Whether a day's time blocks from first are the wanted ones, in order. */
+  public static Boolean sameBlocks(
+    List<String> dayIds,
+    Integer first,
+    List<String> wanted
+  ) {
+    if (first + wanted.size() > dayIds.size()) {
+      return false;
+    }
+    for (Integer i = 0; i < wanted.size(); i++) {
+      if (!sameId(dayIds[first + i], wanted[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private static Boolean sameId(String a, String b) {
     try {
       return Id.valueOf(a) == Id.valueOf(b);

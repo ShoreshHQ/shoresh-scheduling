@@ -25,6 +25,12 @@ public with sharing class ManualBuildViews {
     // How many time blocks one session runs.
     @AuraEnabled
     public Integer length;
+    // Times a week each group should have it: at least minPerWeek (0 when not set), at most
+    // maxPerWeek (null when it has no weekly limit).
+    @AuraEnabled
+    public Integer minPerWeek;
+    @AuraEnabled
+    public Integer maxPerWeek;
     // Groups it is not set up for (its "who can do it" leaves them out).
     @AuraEnabled
     public List<Id> notFor = new List<Id>();
@@ -65,6 +71,28 @@ public with sharing class ManualBuildViews {
     Id seasonId,
     List<Group__c> groups
   ) {
+    Map<Id, Set<Id>> whoByActivity = whoCanDoIt(seasonId);
+    List<ActivityOption> result = new List<ActivityOption>();
+    for (Activity__c activity : [
+      SELECT
+        Id,
+        Name,
+        Length__c,
+        TimesPerWeekMin__c,
+        TimesPerWeekMax__c,
+        NoWeeklyMax__c
+      FROM Activity__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
+    ]) {
+      result.add(option(activity, whoByActivity.get(activity.Id), groups));
+    }
+    return result;
+  }
+
+  /** Each activity's "who can do it": the divisions and groups named. */
+  private static Map<Id, Set<Id>> whoCanDoIt(Id seasonId) {
     Map<Id, Set<Id>> whoByActivity = new Map<Id, Set<Id>>();
     for (ActivityEligibility__c row : [
       SELECT Activity__c, Division__c, Group__c
@@ -78,34 +106,34 @@ public with sharing class ManualBuildViews {
       whoByActivity.get(row.Activity__c).add(row.Division__c);
       whoByActivity.get(row.Activity__c).add(row.Group__c);
     }
-    List<ActivityOption> result = new List<ActivityOption>();
-    for (Activity__c activity : [
-      SELECT Id, Name, Length__c
-      FROM Activity__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ]) {
-      ActivityOption option = new ActivityOption();
-      option.id = activity.Id;
-      option.name = activity.Name;
-      option.length = activity.Length__c == null
-        ? 1
-        : Math.max(1, activity.Length__c.intValue());
-      // No one named means everyone can do it.
-      Set<Id> who = whoByActivity.get(activity.Id);
-      for (Group__c grp : groups) {
-        if (
-          who != null &&
-          !who.contains(grp.Id) &&
-          !who.contains(grp.Division__c)
-        ) {
-          option.notFor.add(grp.Id);
-        }
+    return whoByActivity;
+  }
+
+  /** One activity as Manual Build offers it. who: the "who can do it" names, or null for everyone. */
+  private static ActivityOption option(
+    Activity__c activity,
+    Set<Id> who,
+    List<Group__c> groups
+  ) {
+    ActivityOption option = new ActivityOption();
+    option.id = activity.Id;
+    option.name = activity.Name;
+    option.length = activity.Length__c == null
+      ? 1
+      : Math.max(1, activity.Length__c.intValue());
+    option.minPerWeek = activity.TimesPerWeekMin__c == null
+      ? 0
+      : activity.TimesPerWeekMin__c.intValue();
+    option.maxPerWeek = activity.NoWeeklyMax__c ||
+      activity.TimesPerWeekMax__c == null
+      ? null
+      : activity.TimesPerWeekMax__c.intValue();
+    for (Group__c grp : who == null ? new List<Group__c>() : groups) {
+      if (!who.contains(grp.Id) && !who.contains(grp.Division__c)) {
+        option.notFor.add(grp.Id);
       }
-      result.add(option);
     }
-    return result;
+    return option;
   }
 
   private static List<AwaySlots> away(

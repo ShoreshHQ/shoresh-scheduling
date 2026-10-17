@@ -12,6 +12,9 @@ private class ManualBuildTest {
 
   private static Map<String, Id> camp() {
     Map<String, Id> ids = SetTimeTestData.camp();
+    SlotRunsTestData.useBlocks(
+      new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
+    );
     FixedActivity__c flagpole = SetTimeTestData.fixed(
       ids,
       'Flagpole',
@@ -69,11 +72,7 @@ private class ManualBuildTest {
     String groupId,
     String firstBlockId
   ) {
-    SlotEdits.Run run = new SlotEdits.Run();
-    run.day = day;
-    run.groupId = groupId;
-    run.firstBlockId = firstBlockId;
-    return run;
+    return SlotRunsTestData.at(day, groupId, firstBlockId);
   }
 
   private static SlotEdits.Edit edit(
@@ -81,11 +80,7 @@ private class ManualBuildTest {
     List<String> before,
     List<String> after
   ) {
-    run.before = before;
-    run.after = after;
-    SlotEdits.Edit edit = new SlotEdits.Edit();
-    edit.runs = new List<SlotEdits.Run>{ run };
-    return edit;
+    return SlotRunsTestData.edit(run, before, after);
   }
 
   private static SlotEdits.Result save(Id scheduleId, SlotEdits.Edit edit) {
@@ -194,6 +189,10 @@ private class ManualBuildTest {
         new Group__c(Id = ids.get('Group C'), Availability__c = 'MorningOnly'),
         AccessLevel.SYSTEM_MODE
       );
+      Database.update(
+        new Activity__c(Id = ids.get('Soccer'), NoWeeklyMax__c = true),
+        AccessLevel.SYSTEM_MODE
+      );
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Map<String, ManualBuildViews.ActivityOption> byName = new Map<String, ManualBuildViews.ActivityOption>();
       for (ManualBuildViews.ActivityOption option : view.activities) {
@@ -208,6 +207,11 @@ private class ManualBuildTest {
         byName.get('Gym games').notFor
       );
       Assert.isTrue(byName.get('Soccer').notFor.isEmpty());
+      // ShoreshTestData's activities: once or twice a week.
+      Assert.areEqual(1, byName.get('Swim').minPerWeek);
+      Assert.areEqual(2, byName.get('Swim').maxPerWeek);
+      // No weekly limit: none sent.
+      Assert.isNull(byName.get('Soccer').maxPerWeek);
       Assert.areEqual(1, view.away.size());
       Assert.areEqual(ids.get('Group C'), view.away[0].groupId);
       Assert.areEqual(new List<Id>{ ids.get('Lunch') }, view.away[0].blockIds);
@@ -376,6 +380,83 @@ private class ManualBuildTest {
       for (ScheduleViews.Ref item : after.items) {
         Assert.areNotEqual('Soccer', item.name);
       }
+    }
+  }
+
+  @IsTest
+  static void aRunIsMadeOnlyOnTheTimeBlocksItWasMadeOn() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      ManualBuildViews.DraftView view = start(ids, 'Week 1');
+      Id draftId = view.schedule.schedule.id;
+      Date mon = monday(view.schedule).dateValue;
+      String soccer = a(ids, 'Soccer');
+      // The screen placed Soccer in Period 2 and a block it knew as next to it: since then, the
+      // block after Period 2 is Lunch, not that one. A conflict, and nothing is written.
+      SlotEdits.Run moved = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      moved.blockIds = new List<String>{
+        ids.get('Period 2'),
+        ids.get('Period 1')
+      };
+      SlotEdits.Result shifted = save(
+        draftId,
+        edit(
+          moved,
+          new List<String>{ '', '' },
+          new List<String>{ soccer, '^' + soccer }
+        )
+      );
+      Assert.areEqual(new List<Integer>{ 0 }, shifted.conflicts);
+      Assert.areEqual(
+        new List<String>{ '', '' },
+        new List<String>{
+          slots(monday(shifted.schedule), 0)[1],
+          slots(monday(shifted.schedule), 0)[2]
+        }
+      );
+      // Naming fewer blocks than it changes is a conflict too.
+      SlotEdits.Run fewer = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      fewer.blockIds = new List<String>{ ids.get('Period 2') };
+      Assert.areEqual(
+        new List<Integer>{ 0 },
+        save(
+            draftId,
+            edit(
+              fewer,
+              new List<String>{ '', '' },
+              new List<String>{ soccer, '^' + soccer }
+            )
+          )
+          .conflicts
+      );
+      // On the blocks it names (15-character Ids match 18-character ones), it is made.
+      SlotEdits.Run same = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      same.blockIds = new List<String>{
+        String.valueOf(ids.get('Period 2')).left(15),
+        ids.get('Lunch')
+      };
+      SlotEdits.Result made = save(
+        draftId,
+        edit(
+          same,
+          new List<String>{ '', '' },
+          new List<String>{ soccer, '^' + soccer }
+        )
+      );
+      Assert.areEqual(0, made.conflicts.size());
+      Assert.areEqual(soccer, slots(monday(made.schedule), 0)[1]);
+      Assert.areEqual('^' + soccer, slots(monday(made.schedule), 0)[2]);
+      // A run that names no blocks wasn't sent by the screen as it is: refused, not guessed.
+      SlotEdits.Run unnamed = at(mon, ids.get('Group B'), ids.get('Period 2'));
+      unnamed.blockIds = new List<String>();
+      Assert.areEqual(
+        'That change could not be read. Reload the page and try again.',
+        refusal(
+          draftId,
+          edit(unnamed, new List<String>{ '' }, new List<String>{ soccer })
+        )
+      );
     }
   }
 

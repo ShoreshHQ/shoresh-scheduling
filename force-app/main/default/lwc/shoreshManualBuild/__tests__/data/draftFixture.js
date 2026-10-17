@@ -27,9 +27,30 @@ export const GROUPS = [
 ];
 
 export const ACTIVITIES = [
-  { id: "a1", name: "Swim", length: 1, notFor: ["g2"] },
-  { id: "a2", name: "Boating", length: 2, notFor: [] },
-  { id: "a3", name: "Soccer", length: 1, notFor: [] }
+  {
+    id: "a1",
+    name: "Swim",
+    length: 1,
+    notFor: ["g2"],
+    minPerWeek: 1,
+    maxPerWeek: 2
+  },
+  {
+    id: "a2",
+    name: "Boating",
+    length: 2,
+    notFor: [],
+    minPerWeek: 0,
+    maxPerWeek: null
+  },
+  {
+    id: "a3",
+    name: "Soccer",
+    length: 1,
+    notFor: [],
+    minPerWeek: 2,
+    maxPerWeek: 3
+  }
 ];
 
 export function day(dateValue, items, rows) {

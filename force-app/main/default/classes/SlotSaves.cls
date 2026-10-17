@@ -1,6 +1,6 @@
 /**
  * Manual Build's saves: each edit changes a run of slots (one group, one day, one or more time
- * blocks next to each other) and says what those slots held when the director saw them (SlotIds).
+ * blocks next to each other, and only the blocks the screen made it on, which it names) and says what those slots held when the director saw them (SlotIds).
  * An edit is made only if its slots still hold that, so two people can work on the same day at
  * once and nobody's change is overwritten unseen: an edit whose slots someone else changed since
  * comes back as a conflict, for the screen to ask "keep theirs or use yours" (Greg, 2026-10-17).
@@ -88,7 +88,11 @@ public with sharing class SlotSaves {
   private Boolean applyRun(SlotEdits.Run run, ScheduleGrid grid) {
     Integer g = SlotIds.indexOf(grid.groupIds(), run.groupId);
     Integer first = SlotIds.indexOf(grid.blockIds(), run.firstBlockId);
-    if (g < 0 || !run.fits(first, grid.blocks.size())) {
+    if (
+      g < 0 ||
+      !run.fits(first, grid.blocks.size()) ||
+      !run.onBlocks(grid.blockIds(), first)
+    ) {
       return false;
     }
     List<String> was = SlotIds.ofRow(grid, g);
