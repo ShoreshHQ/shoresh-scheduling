@@ -238,15 +238,11 @@ describe("checks: the bronze dots", () => {
       model([activity("swim"), activity("arts"), activity("hike")]),
       words
     );
-    expect(result.flags.get(`${MON}|g1|t1`)).toBe(
-      "Busy at an overlapping time"
-    );
-    expect(result.flags.get(`${MON}|g1|t2`)).toBe(
-      "Busy at an overlapping time"
-    );
+    expect(result.flags.get(`${MON}|g1|t1`)).toBe("Already busy then");
+    expect(result.flags.get(`${MON}|g1|t2`)).toBe("Already busy then");
     expect(result.flags.has(`${MON}|g1|t3`)).toBe(false);
     expect(result.overlapping).toEqual([
-      "Bunk 1 · Monday · Period 1 · Snack: Busy at an overlapping time"
+      "Bunk 1 · Monday · Period 1 · Snack: Already busy then"
     ]);
   });
 

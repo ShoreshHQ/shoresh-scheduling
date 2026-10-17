@@ -281,7 +281,7 @@ function placeCapacity(ctx) {
 function busy(ctx) {
   const flags = [];
   const clashes = [];
-  const reason = "Busy at an overlapping time";
+  const reason = "Already busy then";
   ctx.days.forEach((day, d) => {
     if (day.problem) {
       return;

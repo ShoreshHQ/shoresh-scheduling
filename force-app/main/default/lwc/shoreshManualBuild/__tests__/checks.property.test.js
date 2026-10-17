@@ -245,7 +245,7 @@ function oracle(days, model) {
           q.blocks.some((b2) => p.blocks.some((b1) => overlaps(b1, b2)))
       )
     ) {
-      reasons.push("Busy at an overlapping time");
+      reasons.push("Already busy then");
     }
     // In the order rules give way (the engine's), each once.
     const ORDER = [
@@ -255,7 +255,7 @@ function oracle(days, model) {
       "at once",
       "division",
       "than fit",
-      "Busy"
+      "busy then"
     ];
     const rank = (r) => ORDER.findIndex((w) => r.includes(w));
     const unique = reasons
@@ -430,7 +430,7 @@ describe("checks over generated weeks", () => {
       seen.stillNeeded += want.stillNeeded.length;
       seen.spread += want.spread.length;
       seen.busy += [...want.flags.values()].filter((r) =>
-        r.includes("Busy")
+        r.includes("busy then")
       ).length;
       seen.divided += [...want.flags.values()].filter((r) =>
         r.includes("division")
