@@ -3,6 +3,7 @@ import ShoreshCopySeason from "c/shoreshCopySeason";
 import previewCopy from "@salesforce/apex/SeasonSetupController.previewCopy";
 import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
   "@salesforce/apex/SeasonSetupController.previewCopy",
@@ -53,7 +54,7 @@ async function render() {
   const element = createElement("c-shoresh-copy-season", {
     is: ShoreshCopySeason
   });
-  element.season = SEASON;
+  element.season = nsRecord(SEASON);
   element.terms = terms;
   document.body.appendChild(element);
   await flush();

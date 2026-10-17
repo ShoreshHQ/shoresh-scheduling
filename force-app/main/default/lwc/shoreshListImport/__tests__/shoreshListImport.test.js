@@ -6,6 +6,7 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import LightningConfirm from "lightning/confirm";
 import { buildTerms } from "c/shoreshTerms";
+import { bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
   "@salesforce/apex/ImportController.saveList",
@@ -73,7 +74,7 @@ async function openWith(text) {
     is: ShoreshListImport
   });
   element.screenKey = "activities";
-  element.setup = SETUP;
+  element.setup = nsRecord(SETUP);
   element.terms = buildTerms([]);
   document.body.appendChild(element);
   $(element, 'lightning-button[data-id="open"]').click();
@@ -126,6 +127,8 @@ describe("c-shoresh-list-import", () => {
         "Hiking,Field,maybe,green"
       ].join("\n")
     );
+    // The camp's earlier answers are asked for by the season's camp.
+    expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
     const headings = $$(element, ".list-heading");
     expect(headings.map((h) => h.textContent)).toEqual([
       "“Activity”",
@@ -167,7 +170,7 @@ describe("c-shoresh-list-import", () => {
     expect(save.label).toBe("Add 2");
     save.click();
     await flush();
-    const plan = JSON.parse(saveList.mock.calls[0][0].plan);
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
     expect(plan.files).toBe("activities.csv (Activities)");
     expect(plan.records.map((r) => r.key || r.id)).toEqual([
       "Location:Lake",
@@ -224,7 +227,7 @@ describe("c-shoresh-list-import", () => {
     await flush();
     $(element, 'lightning-button[data-id="save"]').click();
     await flush();
-    const plan = JSON.parse(saveList.mock.calls[0][0].plan);
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
     expect(plan.records.map((r) => [r.key, r.refs.RainPlan__c])).toEqual([
       ["Activity:Hiking", null]
     ]);
@@ -246,7 +249,7 @@ describe("c-shoresh-list-import", () => {
     await flush();
     $(element, 'lightning-button[data-id="save"]').click();
     await flush();
-    const plan = JSON.parse(saveList.mock.calls[0][0].plan);
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
     expect(plan.records).toEqual([
       { kind: "Activity", id: "a1", fields: { Notes__c: "x" }, refs: {} }
     ]);
@@ -257,7 +260,7 @@ describe("c-shoresh-list-import", () => {
       is: ShoreshListImport
     });
     element.screenKey = "fixedActivities";
-    element.setup = {
+    element.setup = nsRecord({
       ...SETUP,
       programs: [
         {
@@ -268,7 +271,7 @@ describe("c-shoresh-list-import", () => {
           recurringActivities: []
         }
       ]
-    };
+    });
     element.terms = buildTerms([]);
     document.body.appendChild(element);
     $(element, 'lightning-button[data-id="open"]').click();
@@ -333,7 +336,7 @@ describe("Download this list", () => {
       is: ShoreshListImport
     });
     element.screenKey = "activities";
-    element.setup = setup;
+    element.setup = nsRecord(setup);
     element.terms = buildTerms([]);
     document.body.appendChild(element);
     return element;
@@ -391,7 +394,10 @@ describe("Import camp workbook (Roots)", () => {
   const { campWorkbookSheets, sheetName } = require("c/shoreshLists");
 
   function workbookBytes(setup, edit) {
-    const sheets = campWorkbookSheets(setup, buildTerms(setup.labels));
+    const sheets = campWorkbookSheets(
+      nsRecord(setup),
+      buildTerms(setup.labels)
+    );
     const wb = XLSX.utils.book_new();
     sheets.forEach(({ name, rows }) => {
       if (edit) {
@@ -413,10 +419,10 @@ describe("Import camp workbook (Roots)", () => {
       is: ShoreshListImport
     });
     element.workbook = true;
-    element.setup = {
+    element.setup = nsRecord({
       ...setup,
       season: { ...setup.season, Name: "Summer 2027" }
-    };
+    });
     element.terms = buildTerms(setup.labels);
     document.body.appendChild(element);
     $(element, 'lightning-button[data-id="open"]').click();
@@ -445,7 +451,7 @@ describe("Import camp workbook (Roots)", () => {
       is: ShoreshListImport
     });
     element.workbook = true;
-    element.setup = camp();
+    element.setup = nsRecord(camp());
     element.terms = buildTerms(camp().labels);
     document.body.appendChild(element);
     expect($(element, 'lightning-button[data-id="open"]').label).toBe(
@@ -517,7 +523,7 @@ describe("Import camp workbook (Roots)", () => {
     expect(
       $$(element, '[data-id="summary"] li').map((li) => li.textContent)
     ).toEqual(["Added 1 camp word", "Added 2 weeks off", "Changed 1 week"]);
-    const plan = JSON.parse(saveWorkbook.mock.calls[0][0].plan);
+    const plan = bareRecord(JSON.parse(saveWorkbook.mock.calls[0][0].plan));
     expect(plan.records).toEqual([
       { kind: "Week", id: "w1", fields: { Name: "Opening week" } }
     ]);

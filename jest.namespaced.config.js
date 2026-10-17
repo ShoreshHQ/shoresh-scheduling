@@ -8,7 +8,14 @@ const NAMESPACED_SUITES = [
     'shoreshSchema',
     'shoreshSetupRules',
     'shoreshImportEngine',
-    'shoreshLists'
+    'shoreshLists',
+    'shoreshEditableTable',
+    'shoreshProgram',
+    'shoreshActivityDetails',
+    'shoreshCopySeason',
+    'shoreshImport',
+    'shoreshListImport',
+    'shoreshSchedules'
 ];
 
 module.exports = {

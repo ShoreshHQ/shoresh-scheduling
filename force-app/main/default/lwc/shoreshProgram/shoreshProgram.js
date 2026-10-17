@@ -1,9 +1,15 @@
 import { LightningElement, api } from "lwc";
-import { FIELD } from "c/shoreshSchema";
+import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
 import { moveNote } from "./groupMoves";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+// Names as the package has them (c/shoreshSchema).
+const PROGRAM = FIELD.Program;
+const BLOCK = FIELD.TimeBlock;
+const FIXED = FIELD.FixedActivity;
+const RECURRING = FIELD.RecurringActivity;
+const GROUP = FIELD.Group;
 
 /**
  * One part of one program, for the screen showing it (show): "program" (its name and operating
@@ -62,7 +68,7 @@ export default class ShoreshProgram extends LightningElement {
     this.name = program.Name;
     this.days = {};
     DAYS.forEach((day) => {
-      this.days[day] = !!program[`${day}__c`];
+      this.days[day] = !!program[PROGRAM[day]];
     });
     this.changed = false;
     this.submitted = false;
@@ -97,6 +103,15 @@ export default class ShoreshProgram extends LightningElement {
     return this.entry.program.Id;
   }
 
+  /** Object and field names for the tables, as the package has them. */
+  get objects() {
+    return OBJECT;
+  }
+
+  get groupDivisionField() {
+    return GROUP.Division;
+  }
+
   get dayOptions() {
     return DAYS.map((day) => ({ day, label: day, checked: this.days[day] }));
   }
@@ -109,14 +124,14 @@ export default class ShoreshProgram extends LightningElement {
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       {
-        fieldName: "StartTime__c",
+        fieldName: BLOCK.StartTime,
         label: "Start",
         type: "time",
         required: true
       },
-      { fieldName: "EndTime__c", label: "End", type: "time", required: true },
+      { fieldName: BLOCK.EndTime, label: "End", type: "time", required: true },
       {
-        fieldName: "PartOfDay__c",
+        fieldName: BLOCK.PartOfDay,
         label: "Part of day",
         type: "picklist",
         required: true,
@@ -128,13 +143,16 @@ export default class ShoreshProgram extends LightningElement {
     ];
   }
 
-  /** Name, time block, length, and location: what fixed and recurring activities share. */
-  get setTimeColumns() {
+  /**
+   * Name, time block, length, and location: what fixed and recurring activities share, each in
+   * its own object's fields.
+   */
+  setTimeColumns(fields) {
     const t = this.terms;
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
       {
-        fieldName: "TimeBlock__c",
+        fieldName: fields.TimeBlock,
         label: t.s("TimeBlock"),
         type: "picklist",
         required: true,
@@ -144,14 +162,14 @@ export default class ShoreshProgram extends LightningElement {
         }))
       },
       {
-        fieldName: "Length__c",
+        fieldName: fields.Length,
         label: t.s("Length"),
         type: "number",
         min: 1,
         required: true
       },
       {
-        fieldName: "Location__c",
+        fieldName: fields.Location,
         label: t.s("Location"),
         type: "picklist",
         options: [
@@ -163,23 +181,23 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   get fixedColumns() {
-    return this.setTimeColumns;
+    return this.setTimeColumns(FIXED);
   }
 
   /** Plus a tick for each day the program runs, and who it covers. */
   get recurringColumns() {
     const t = this.terms;
     const program = this.entry.program;
-    const days = DAYS.filter((day) => program[`${day}__c`]).map((day) => ({
-      fieldName: `${day}__c`,
+    const days = DAYS.filter((day) => program[PROGRAM[day]]).map((day) => ({
+      fieldName: RECURRING[day],
       label: day,
       type: "checkbox"
     }));
     return [
-      ...this.setTimeColumns,
+      ...this.setTimeColumns(RECURRING),
       ...days,
       {
-        fieldName: "Coverages__r",
+        fieldName: CHILDREN.RecurringActivity.Coverages,
         label: "Who",
         type: "who",
         everyone: `Everyone in ${program.Name}`,
@@ -212,21 +230,21 @@ export default class ShoreshProgram extends LightningElement {
 
   get fixedDefaults() {
     return {
-      Program__c: this.programId,
+      [FIXED.Program]: this.programId,
       Name: `${this.terms.s("FixedActivity")} {n}`,
-      Length__c: 1
+      [FIXED.Length]: 1
     };
   }
 
   get recurringDefaults() {
     // No day ticked: the scheduler ticks at least one (Greg, 2026-10-16).
     const defaults = {
-      Program__c: this.programId,
+      [RECURRING.Program]: this.programId,
       Name: `${this.terms.s("RecurringActivity")} {n}`,
-      Length__c: 1
+      [RECURRING.Length]: 1
     };
     DAYS.forEach((day) => {
-      defaults[`${day}__c`] = false;
+      defaults[RECURRING[day]] = false;
     });
     return defaults;
   }
@@ -293,7 +311,7 @@ export default class ShoreshProgram extends LightningElement {
       this.divisionRecords.length > 1
         ? [
             {
-              fieldName: "Division__c",
+              fieldName: GROUP.Division,
               label: this.terms.s("Division"),
               type: "picklist",
               required: true,
@@ -310,7 +328,7 @@ export default class ShoreshProgram extends LightningElement {
       { fieldName: "Name", label: "Name", type: "text", required: true },
       ...move,
       {
-        fieldName: "Availability__c",
+        fieldName: GROUP.Availability,
         label: this.terms.s("Availability"),
         type: "picklist",
         required: true,
@@ -335,13 +353,13 @@ export default class ShoreshProgram extends LightningElement {
 
   get blockDefaults() {
     return {
-      Program__c: this.programId,
-      PartOfDay__c: "Morning"
+      [BLOCK.Program]: this.programId,
+      [BLOCK.PartOfDay]: "Morning"
     };
   }
 
   get divisionDefaults() {
-    return { Program__c: this.programId };
+    return { [FIELD.Division.Program]: this.programId };
   }
 
   get divisions() {
@@ -349,7 +367,10 @@ export default class ShoreshProgram extends LightningElement {
       id: d.division.Id,
       title: `${this.terms.p("Group")} in ${d.division.Name}`,
       groups: d.groups,
-      defaults: { Division__c: d.division.Id, Availability__c: "AllDay" },
+      defaults: {
+        [GROUP.Division]: d.division.Id,
+        [GROUP.Availability]: "AllDay"
+      },
       namesElsewhere: this.namesElsewhere(d.division.Id)
     }));
   }
@@ -428,12 +449,12 @@ export default class ShoreshProgram extends LightningElement {
       return;
     }
     const record = {
-      sobjectType: "Program__c",
+      sobjectType: OBJECT.Program,
       Id: this.programId,
       Name: this.name
     };
     DAYS.forEach((day) => {
-      record[`${day}__c`] = this.days[day];
+      record[PROGRAM[day]] = this.days[day];
     });
     this.submitted = true;
     const onFailure = () => {
