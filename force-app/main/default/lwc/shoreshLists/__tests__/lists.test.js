@@ -807,3 +807,62 @@ describe("review findings (PR A)", () => {
     expect(new Set(keys).size).toBe(3);
   });
 });
+
+describe("Excel", () => {
+  it("a workbook with several sheets: the one named for the screen is read", () => {
+    const XLSX = require("xlsx");
+    const { workbookFile } = require("c/shoreshImportEngine");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([
+        ["Location", "Groups that fit"],
+        ["Barn", 2]
+      ]),
+      "Locations"
+    );
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([
+        ["Activity", "Outdoors"],
+        ["Hiking", true]
+      ]),
+      "Activities"
+    );
+    const data = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const file = workbookFile(XLSX, "camp.xlsx", new Uint8Array(data));
+    const p = listProposal({
+      screenKey: "activities",
+      file,
+      setup: setup(),
+      terms,
+      answers: {}
+    });
+    expect(p.sheet).toBe("Activities");
+    expect(rowNamed(p, "Hiking")).toMatchObject({ status: "new" });
+    expect(rowNamed(p, "Hiking").values.outdoors).toBe(true);
+    const unnamed = XLSX.utils.book_new();
+    ["Sheet1", "Sheet2"].forEach((name) =>
+      XLSX.utils.book_append_sheet(
+        unnamed,
+        XLSX.utils.aoa_to_sheet([["Activity"], ["Golf"]]),
+        name
+      )
+    );
+    const asked = listProposal({
+      screenKey: "activities",
+      file: workbookFile(
+        XLSX,
+        "two.xlsx",
+        new Uint8Array(XLSX.write(unnamed, { type: "array", bookType: "xlsx" }))
+      ),
+      setup: setup(),
+      terms,
+      answers: {}
+    });
+    expect(asked.needsSheet).toBe(true);
+    expect(waitingFor(asked, terms, {})).toEqual([
+      "Choose the sheet the list is on."
+    ]);
+  });
+});
