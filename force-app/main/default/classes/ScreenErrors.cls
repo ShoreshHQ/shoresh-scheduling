@@ -55,11 +55,7 @@ public with sharing class ScreenErrors {
 
   /** '"Archery": Must be 1 or more.' unless the message already names the row. */
   private static String withName(String name, String message) {
-    if (
-      String.isBlank(name) ||
-      message.contains('"' + name + '"') ||
-      message.startsWith(name + ' ')
-    ) {
+    if (String.isBlank(name) || message.contains('"' + name + '"')) {
       return message;
     }
     return '"' + name + '": ' + message;

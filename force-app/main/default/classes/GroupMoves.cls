@@ -43,7 +43,10 @@ public with sharing class GroupMoves {
       }
       CampLabels labels = labelsByCamp.get(campId);
       if (target == null) {
-        grp.addError(needsDivision(grp.Name, labels));
+        // No name here: the screen puts the row's name in front ("Bunk 3": Pick its unit.).
+        grp.addError(
+          'Pick its ' + labels.singularInSentence('Division') + '.'
+        );
       } else if (target.Program__c != origin.Program__c) {
         grp.addError(
           labels.plural('Group') +
@@ -55,12 +58,5 @@ public with sharing class GroupMoves {
         );
       }
     }
-  }
-
-  /** "Bunk 3 needs a unit." / "Bunk 3 needs an age group." */
-  private static String needsDivision(String name, CampLabels labels) {
-    String word = labels.singularInSentence('Division');
-    String article = 'aeiouAEIOU'.contains(word.left(1)) ? 'an ' : 'a ';
-    return name + ' needs ' + article + word + '.';
   }
 }

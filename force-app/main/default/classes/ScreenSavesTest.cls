@@ -87,12 +87,21 @@ private class ScreenSavesTest {
       );
 
       try {
+        Database.insert(
+          new CampLabel__c(
+            Camp__c = camp.Id,
+            ModelTerm__c = 'Division',
+            Singular__c = 'unit',
+            Plural__c = 'units'
+          ),
+          AccessLevel.SYSTEM_MODE
+        );
         SeasonSetupController.saveRecords(
           new List<SObject>{ new Group__c(Id = bunk.Id, Division__c = null) }
         );
         Assert.fail('A bunk without a division is refused');
       } catch (AuraHandledException e) {
-        Assert.areEqual('Bunk 3 needs a division.', e.getMessage());
+        Assert.areEqual('"Bunk 3": Pick its unit.', e.getMessage());
       }
     }
   }

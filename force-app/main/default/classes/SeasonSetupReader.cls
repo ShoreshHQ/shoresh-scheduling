@@ -13,7 +13,8 @@ public with sharing class SeasonSetupReader {
    */
   public static SeasonSetup readForScreen(Id seasonId, Id campId) {
     SeasonSetup setup = read(seasonId);
-    if (setup == null) {
+    // A season from another camp is not this screen's, whatever the person may see.
+    if (setup == null || (campId != null && setup.season.Camp__c != campId)) {
       CampLabels labels = campId == null
         ? CampLabels.modelTermsOnly()
         : CampLabels.forCamp(campId);

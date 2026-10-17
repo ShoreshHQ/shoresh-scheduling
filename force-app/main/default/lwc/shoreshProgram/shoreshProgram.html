@@ -101,6 +101,8 @@
           flag-same-names
           same-name-scope="Division__c"
           same-names-elsewhere={division.namesElsewhere}
+          data-division={division.id}
+          onpendingnames={handlePendingNames}
           columns={groupColumns}
           rows={division.groups}
           add-label={labels.addGroup}

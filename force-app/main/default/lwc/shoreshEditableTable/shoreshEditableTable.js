@@ -31,7 +31,7 @@ import { looseKey } from "c/shoreshImportEngine";
  *   "Same name as another" tag. Every row counts, hidden or unsaved. A heads-up only.
  *   sameNameScope / sameNamesElsewhere: when rows can move to another scope (a group's
  *   division), a row is compared within the scope its values now name, and against
- *   sameNamesElsewhere[scope] (names saved in other scopes' tables).
+ *   sameNamesElsewhere[scope] (names in other scopes' tables, and names moving in from them).
  *
  * rowNotes / notesHeading: a read-only note per saved row (record Id -> text), in a last column.
  * draftNote / draftNoteHeading: a note worked out from a saved row's unsaved values,
@@ -40,6 +40,9 @@ import { looseKey } from "c/shoreshImportEngine";
  * rowActions: fixes offered in a saved row's note; each saves just its changes to that row.
  *
  * Fires:
+ *   pendingnames { moved: { scope: [names] } } - with sameNameScope, whenever the saved rows
+ *          switched to another scope (and not saved yet) change, so the screen can show those
+ *          names to the other scopes' tables
  *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
  *          fields only; call onFailure() if the save did not go through. With weeks, also
  *          weeksOff [{ target, week }, or { row, week } for a new row: its place in records]
@@ -325,6 +328,25 @@ export default class ShoreshEditableTable extends LightningElement {
 
   get hasVisibleRows() {
     return this.visibleDrafts.length > 0;
+  }
+
+  renderedCallback() {
+    if (!this.sameNameScope) {
+      return;
+    }
+    const field = this.sameNameScope;
+    const moved = {};
+    this.drafts.forEach((draft) => {
+      const to = draft.values[field];
+      if (!draft.isNew && to && to !== draft.original[field] && draft.values.Name) {
+        moved[to] = [...(moved[to] || []), draft.values.Name];
+      }
+    });
+    const signature = JSON.stringify(moved);
+    if (signature !== this._movedSignature) {
+      this._movedSignature = signature;
+      this.dispatchEvent(new CustomEvent("pendingnames", { detail: { moved } }));
+    }
   }
 
   /** Keys of the rows whose name another row also has, in the same scope. */

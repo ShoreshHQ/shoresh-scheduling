@@ -26,6 +26,8 @@ export default class ShoreshProgram extends LightningElement {
   days = {};
   changed = false;
   divisionRecords = [];
+  // Bunks switched to another unit on screen and not saved yet: table's unit -> { unit: [names] }.
+  pendingMoves = {};
   // True from this form's Save until the screen reloads (or reports the save failed).
   submitted = false;
   _entry;
@@ -330,16 +332,34 @@ export default class ShoreshProgram extends LightningElement {
       title: `${this.terms.p("Group")} in ${d.division.Name}`,
       groups: d.groups,
       defaults: { Division__c: d.division.Id, Availability__c: "AllDay" },
-      // A bunk moved here on screen is compared with this unit's saved bunks.
-      namesElsewhere: Object.fromEntries(
-        (this.entry.divisions || [])
-          .filter((other) => other.division.Id !== d.division.Id)
-          .map((other) => [
-            other.division.Id,
-            (other.groups || []).map((g) => g.Name)
-          ])
-      )
+      namesElsewhere: this.namesElsewhere(d.division.Id)
     }));
+  }
+
+  /**
+   * For one unit's table: each other unit's bunks (saved, and moving there from other tables),
+   * and the bunks moving into this unit from other tables, so a clash shows on both rows.
+   */
+  namesElsewhere(divisionId) {
+    const movingInto = (target) =>
+      Object.entries(this.pendingMoves)
+        .filter(([from]) => from !== divisionId)
+        .flatMap(([, moved]) => moved[target] || []);
+    return Object.fromEntries(
+      (this.entry.divisions || []).map((other) => {
+        const id = other.division.Id;
+        const saved =
+          id === divisionId ? [] : (other.groups || []).map((g) => g.Name);
+        return [id, [...saved, ...movingInto(id)]];
+      })
+    );
+  }
+
+  handlePendingNames(event) {
+    this.pendingMoves = {
+      ...this.pendingMoves,
+      [event.currentTarget.dataset.division]: event.detail.moved
+    };
   }
 
   get labels() {

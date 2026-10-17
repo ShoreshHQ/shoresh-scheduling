@@ -155,6 +155,53 @@ describe("c-shoresh-program", () => {
     });
   });
 
+  it("flags a clash between units on both rows while a bunk move is unsaved", async () => {
+    const entry = {
+      ...ENTRY,
+      divisions: [
+        {
+          division: { Id: "d1", Name: "Juniors" },
+          groups: [{ Id: "g1", Name: "Bunk 7", Division__c: "d1" }]
+        },
+        {
+          division: { Id: "d2", Name: "Seniors" },
+          groups: [{ Id: "g2", Name: "bunk 7", Division__c: "d2" }]
+        }
+      ],
+      recurringActivities: []
+    };
+    const flagged = (table) =>
+      !!table.shadowRoot.querySelector('[data-id="same-name"]');
+    const moveFirstRow = async (table, to) => {
+      const unit = table.shadowRoot.querySelector('[data-field="Division__c"]');
+      unit.value = to;
+      unit.dispatchEvent(new CustomEvent("change", { detail: { value: to } }));
+      await flush();
+      await flush();
+    };
+    const check = async (from, to) => {
+      const element = createElement("c-shoresh-program", {
+        is: ShoreshProgram
+      });
+      element.entry = entry;
+      element.terms = terms;
+      element.show = "groups";
+      element.activities = [];
+      document.body.appendChild(element);
+      await flush();
+      const tables = [
+        ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+      ];
+      expect(tables.map(flagged)).toEqual([false, false]);
+      await moveFirstRow(tables[from], to);
+      expect(tables.map(flagged)).toEqual([true, true]);
+      document.body.removeChild(element);
+    };
+    // Juniors' bunk moved into Seniors, then Seniors' bunk moved into Juniors.
+    await check(0, "d2");
+    await check(1, "d1");
+  });
+
   it("offers no division choice when the program has one", async () => {
     const element = await render("groups");
     const groups = element.shadowRoot.querySelector("c-shoresh-editable-table");
