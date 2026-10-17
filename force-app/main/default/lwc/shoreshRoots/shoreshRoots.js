@@ -129,15 +129,15 @@ export default class ShoreshRoots extends LightningElement {
     );
   }
 
-  /**
-   * The whole camp in one workbook (slice 4c part C): a sheet per setup list, in the layout each
-   * screen imports, plus location types, camp words, weeks, and the weeks each item runs in.
-   */
   /** A camp workbook was imported or undone: the page reloads the season. */
   handleImported() {
     this.dispatchEvent(new CustomEvent("imported"));
   }
 
+  /**
+   * The whole camp in one workbook (slice 4c part C): a sheet per setup list, in the layout each
+   * screen imports, plus location types, camp words, weeks, and the weeks each item runs in.
+   */
   async handleDownloadWorkbook() {
     if (this.downloading) {
       return;

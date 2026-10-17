@@ -110,7 +110,7 @@ public with sharing class ImportListSaves {
         throw unreadable();
       }
       // A week an item is off no longer (a workbook's Runs in): removed after the rest.
-      if (kind == 'WeekException' && entry.has('remove')) {
+      if (kind == 'WeekException' && entry.text('remove') == 'true') {
         weeksBackOn.add(entry);
         continue;
       }

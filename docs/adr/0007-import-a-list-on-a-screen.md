@@ -236,7 +236,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     WeekException kinds (weeks are added or renamed, never moved to another start date; a week
     off removed is checked to be in the season) and camp words (with the camp's edit access).
     Undo removes added weeks and weeks off unless used, puts removed weeks off back, and
-    restores changed weeks and words. A screen's list can't write these kinds.
+    restores changed weeks and words. An item Undo keeps (edited since, or in use) keeps the
+    weeks off the workbook gave it, as a recurring item keeps who it covers. A screen's list
+    can't write these kinds.
 31. **Undo trusts nothing in an import's record** (security review): Import__c's Created__c and
     Changed__c are text a scheduler can edit, so every object and field name Undo takes from
     them must be one an import writes (`ImportFields`); anything else refuses the Undo with
@@ -246,6 +248,9 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     starting the same day are both unreadable; one item on two Runs in rows with different
     ticks makes both unreadable (the same ticks: one is "same as row N"); and, by order, a week
     row that can't be read leaves every week unpaired until it can, rather than shift the rest.
+    Matched by start date, a week the workbook adds or gives a new end that would overlap
+    another week of the season is unreadable ("Overlaps Week 2 (Jul 5 2027)"), never added on
+    top; two Runs in columns for one week are neither read, both said (independent review).
     Camp words are the camp's, not the season's: undoing one season's workbook puts them back
     for every season of the camp (a product call left open for Greg).
 

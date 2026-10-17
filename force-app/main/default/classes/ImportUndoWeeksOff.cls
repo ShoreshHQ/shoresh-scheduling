@@ -59,10 +59,11 @@ public with sharing class ImportUndoWeeksOff {
     ) {
       throw ImportFields.unreadableLog();
     }
-    Id target = (Id) (String) entry.get('target');
-    if (ImportFields.ofRecord(target) != fieldType(field)) {
+    // Checked before it is read as an Id, so text that isn't one is refused the same way.
+    if (ImportFields.ofRecord(entry.get('target')) != fieldType(field)) {
       throw ImportFields.unreadableLog();
     }
+    Id target = (Id) (String) entry.get('target');
     WeekException__c off = new WeekException__c(
       Week__c = (Id) (String) entry.get('week')
     );

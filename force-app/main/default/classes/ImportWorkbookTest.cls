@@ -196,6 +196,31 @@ private class ImportWorkbookTest {
     }
   }
 
+  /** An item edited since keeps the weeks it is off, and so does the week they are in. */
+  @IsTest
+  static void anItemEditedSinceKeepsItsWeeksOff() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result result = importWorkbook(c);
+      Activity__c archery = [SELECT Id FROM Activity__c WHERE Name = 'Archery'];
+      archery.Name = 'Archery range';
+      update as user archery;
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Archery range' }, undone.keptEdited);
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM WeekException__c WHERE Activity__c = :archery.Id]
+      );
+      Assert.areEqual(1, [SELECT COUNT() FROM Week__c WHERE Name = 'Week 4']);
+      Assert.isTrue(
+        undone.keptInUse.contains('Week 4'),
+        String.valueOf(undone.keptInUse)
+      );
+    }
+  }
+
   @IsTest
   static void aCampWordEditedSinceIsKeptAndNamed() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -441,6 +466,36 @@ private class ImportWorkbookTest {
         term => new Map<String, Object>{
           'fieldsets' => new List<Object>{ new List<Object>{ 'Name' } },
           'rows' => new List<Object>{ new List<Object>{ recordId, 0, 'x' } }
+        }
+      }
+    );
+  }
+
+  /** A week to put back with a target that isn't an Id, or that names the week as the item. */
+  @IsTest
+  static void aTamperedWeekToPutBackIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result result = importWorkbook(c);
+      Assert.isNotNull(result.importId);
+      expectTamperedRefused(
+        result,
+        weekOn(c, 'Activity__c', 'not an id'),
+        null
+      );
+      expectTamperedRefused(result, weekOn(c, 'Week__c', c.weeks[0].Id), null);
+    }
+  }
+
+  private static String weekOn(Camp c, String field, Object target) {
+    return JSON.serialize(
+      new List<Object>{
+        new Map<String, Object>{
+          'weekOn' => c.swimOffWeek2.Id,
+          'week' => c.weeks[1].Id,
+          'field' => field,
+          'target' => target,
+          'name' => 'Week 2'
         }
       }
     );

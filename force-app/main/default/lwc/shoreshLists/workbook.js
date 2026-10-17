@@ -359,7 +359,7 @@ function bySeasonOrder(weeks) {
  *   is the season's first, and so on, the season keeping its own dates. A workbook week past
  *   the season's last is left out; a season week past the workbook's is left as it is.
  *   A this-season workbook's week starting outside the season's dates is left out too.
- * Returns { byOrder, pairs: [{ row, week (set up) | null, leftOut (why, or null) }] }.
+ * Returns { byOrder, pairs: [{ row, week (set up) | null, leftOut ("noneLeft", "outside", or null) }] }.
  */
 export function matchWeeks(fileWeeks, setupWeeks, season) {
   const from = (season && season.StartDate__c) || null;
@@ -377,7 +377,7 @@ export function matchWeeks(fileWeeks, setupWeeks, season) {
       pairs: rows.map((row, i) => ({
         row,
         week: ordered[i] || null,
-        leftOut: ordered[i] ? null : "no week of this season left for it"
+        leftOut: ordered[i] ? null : "noneLeft"
       }))
     };
   }
@@ -390,14 +390,55 @@ export function matchWeeks(fileWeeks, setupWeeks, season) {
       row,
       week: byStart.get(row.start) || null,
       leftOut:
-        !byStart.has(row.start) && !inSeason(row.start)
-          ? "starts outside this season's dates"
-          : null
+        !byStart.has(row.start) && !inSeason(row.start) ? "outside" : null
     }))
   };
 }
 
-function readWeeks(sheet, setup, answers) {
+/** Why a week is left out, in the camp's word for a week. */
+function leftOutReason(why, t) {
+  return why === "noneLeft"
+    ? `no ${t.sIn("Week")} of this season left for it`
+    : "starts outside this season's dates";
+}
+
+/**
+ * By start date, a week the workbook adds, or gives a new end, must not overlap another of the
+ * season's weeks as they would be after the import: that row is said, never added on top.
+ */
+function sayOverlaps(pairs, setupWeeks) {
+  const matchedIds = new Set(pairs.map((p) => p.week && p.week.Id));
+  const after = [
+    ...pairs
+      .filter((p) => !p.leftOut)
+      .map((p) => ({
+        row: p.row,
+        // Only a week added, or given a new end, is the workbook's to say.
+        moves: !p.week || p.week.EndDate__c !== p.row.end,
+        name: p.row.name,
+        start: p.row.start,
+        end: p.row.end
+      })),
+    ...(setupWeeks || [])
+      .filter((w) => !matchedIds.has(w.Id))
+      .map((w) => ({
+        name: w.Name,
+        start: w.StartDate__c,
+        end: w.EndDate__c || w.StartDate__c
+      }))
+  ];
+  after
+    .filter((a) => a.moves)
+    .forEach((a) => {
+      after
+        .filter((b) => b !== a && a.start <= b.end && b.start <= a.end)
+        .forEach((b) => {
+          a.row.problems.push(`Overlaps ${b.name} (${shortDate(b.start)})`);
+        });
+    });
+}
+
+function readWeeks(sheet, setup, answers, t) {
   const result = { rows: [], records: [], refs: new Map() };
   if (!sheet) {
     return result;
@@ -453,6 +494,14 @@ function readWeeks(sheet, setup, answers) {
     .forEach((r) => {
       r.problems.push(`Another week starts ${shortDate(r.start)}`);
     });
+  const dated = matchWeeks(
+    read.filter((r) => !r.problems.length),
+    setup.weeks,
+    setup.season
+  );
+  if (!dated.byOrder) {
+    sayOverlaps(dated.pairs, setup.weeks);
+  }
   // By order, a week that can't be read would move every week after it onto the wrong week of
   // this season: none is paired until each can be read.
   const unreadable = result.rows.filter((r) => r.problems.length);
@@ -491,7 +540,7 @@ function readWeeks(sheet, setup, answers) {
     if (leftOut) {
       // Another season's week past this season's last: its Runs in ticks aren't read.
       row.status = "leftOut";
-      row.reason = leftOut;
+      row.reason = leftOutReason(leftOut, t);
       result.refs.set(foldName(`${row.name} (${row.start})`), SKIP_WEEK);
       result.refs.set(foldName(row.name), SKIP_WEEK);
       return;
@@ -793,7 +842,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
   RUNS_IN_KINDS.forEach((kind) =>
     wordsOf(t, kind).forEach((w) => kinds.set(w, kind))
   );
-  const columns = headings
+  const headed = headings
     .slice(4)
     .map((h, i) => ({
       index: i + 4,
@@ -802,6 +851,15 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
     }))
     // A week left out (another season's, past this season's last): not read.
     .filter((c) => c.week !== SKIP_WEEK);
+  // Two columns for one week ("Week 1" and "Week 1 (2027-06-28)"): neither is read, both said.
+  const perWeek = new Map();
+  headed
+    .filter((c) => c.week)
+    .forEach((c) => perWeek.set(c.week, [...(perWeek.get(c.week) || []), c]));
+  const twins = [...perWeek.values()].filter((list) => list.length > 1);
+  const columns = headed.filter(
+    (c) => !c.week || perWeek.get(c.week).length === 1
+  );
   const unknown = columns.filter((c) => c.heading && !c.week);
   const weekName = new Map(
     weeks.rows.filter((r) => r.ref).map((r) => [r.ref, r.name])
@@ -817,13 +875,19 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
   });
   // A column whose week isn't in the workbook (or can't be read) is said once; the other
   // columns are still read.
-  if (unknown.length) {
+  if (unknown.length || twins.length) {
     result.rows.push({
       rowNumber: at + 1,
       name: "",
-      problems: unknown.map(
-        (c) => `"${c.heading}" isn't a week of the workbook that can be read`
-      ),
+      problems: [
+        ...unknown.map(
+          (c) => `"${c.heading}" isn't a week of the workbook that can be read`
+        ),
+        ...twins.map(
+          (list) =>
+            `"${list.map((c) => c.heading).join('" and "')}" are the same ${t.sIn("Week")}`
+        )
+      ],
       differences: []
     });
   }
@@ -994,7 +1058,7 @@ export function workbookProposal(input) {
   const t = buildTerms(words.labels);
   const sheetsFound =
     words.rows.length || found.campWords ? findSheets(input.file, t) : found;
-  const weeks = readWeeks(sheetOf(sheetsFound.weeks), input.setup, answers);
+  const weeks = readWeeks(sheetOf(sheetsFound.weeks), input.setup, answers, t);
   let setup = withRecords(input.setup, weeks.records);
   const sections = [];
   if (sheetsFound.campWords) {

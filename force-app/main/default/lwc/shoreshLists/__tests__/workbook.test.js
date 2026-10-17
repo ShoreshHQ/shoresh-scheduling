@@ -590,3 +590,55 @@ describe("own review of PR D", () => {
     });
   });
 });
+
+describe("independent review of PR D", () => {
+  it("a new week overlapping a week already set up is said, never added on top", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Weeks.push(["Week 2b", "2027-07-07", "2027-07-13"]);
+      })
+    );
+    const weeks = p.sections.find((x) => x.key === "weeks").rows;
+    expect(weeks.map((r) => [r.name, r.status, r.problems])).toEqual([
+      ["Week 1", "unchanged", []],
+      ["Week 2", "unchanged", []],
+      ["Week 2b", "unreadable", ["Overlaps Week 2 (Jul 5 2027)"]]
+    ]);
+    expect(
+      workbookPlan(p, {}).records.filter((r) => r.kind === "Week")
+    ).toEqual([]);
+  });
+
+  it("a week's new end running into the next week is said on that row", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets.Weeks[1][2] = "2027-07-06";
+      })
+    );
+    const weeks = p.sections.find((x) => x.key === "weeks").rows;
+    expect(weeks.map((r) => [r.name, r.status, r.problems])).toEqual([
+      ["Week 1", "unreadable", ["Overlaps Week 2 (Jul 5 2027)"]],
+      ["Week 2", "unchanged", []]
+    ]);
+  });
+  it("two Runs in columns for one week: neither is read, both are said", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        const rows = sheets["Runs in"];
+        rows[0].push("Week 1 (2027-06-28)");
+        rows.slice(1).forEach((r) => r.push(r[4] === "Yes" ? "No" : "Yes"));
+      })
+    );
+    const runsIn = p.sections.find((x) => x.key === "runsIn");
+    expect(runsIn.rows[0].problems).toEqual([
+      '"Week 1" and "Week 1 (2027-06-28)" are the same week'
+    ]);
+    expect(runsIn.rows.some((r) => r.differences.length)).toBe(false);
+  });
+});
