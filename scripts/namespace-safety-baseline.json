@@ -2,7 +2,7 @@
   "force-app/main/default/lwc/shoreshActivityDetails/shoreshActivityDetails.html": 7,
   "force-app/main/default/lwc/shoreshActivityDetails/shoreshActivityDetails.js": 10,
   "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.html": 15,
-  "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.js": 47,
+  "force-app/main/default/lwc/shoreshCampSetup/shoreshCampSetup.js": 44,
   "force-app/main/default/lwc/shoreshCopySeason/shoreshCopySeason.js": 2,
   "force-app/main/default/lwc/shoreshEditableTable/shoreshEditableTable.js": 16,
   "force-app/main/default/lwc/shoreshImport/shoreshImport.js": 1,

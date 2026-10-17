@@ -208,6 +208,9 @@ private class ManualBuildTest {
         byName.get('Gym games').notFor
       );
       Assert.isTrue(byName.get('Soccer').notFor.isEmpty());
+      // ShoreshTestData's activities: once or twice a week.
+      Assert.areEqual(1, byName.get('Swim').minPerWeek);
+      Assert.areEqual(2, byName.get('Swim').maxPerWeek);
       Assert.areEqual(1, view.away.size());
       Assert.areEqual(ids.get('Group C'), view.away[0].groupId);
       Assert.areEqual(new List<Id>{ ids.get('Lunch') }, view.away[0].blockIds);

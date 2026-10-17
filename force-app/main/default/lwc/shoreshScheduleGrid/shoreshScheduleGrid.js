@@ -17,7 +17,11 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  *
  * Editable, it is a grid with one cell in the tab order: arrow keys move between cells; Enter, F2,
  * or a double-click asks to change the cell ("editcell", with the cell's key and where it is on
- * screen); Delete or Backspace asks to clear it ("clearcell"). The page decides what may change.
+ * screen); Delete or Backspace asks to clear it ("clearcell"); Space picks it up or puts down
+ * what was picked ("cellspace"); Escape lets go ("cellescape"); Shift with Up or Down makes it a
+ * block shorter or longer ("cellresize"). A click is "cellclick". Cells marked draggable can be
+ * dragged ("celldragstart"), a resizable one by its bottom handle ("resizestart"), and anything
+ * dropped on a cell is "celldrop". The page decides what may change.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
@@ -81,6 +85,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
           tabIndex: this.editable ? (cell.key === current ? "0" : "-1") : null,
           // A slot that can't change here (a fixed activity, a group not at camp).
           ariaReadOnly: this.editable && cell.readOnly ? "true" : null,
+          draggable: this.editable && cell.movable ? "true" : null,
+          handle: this.editable && cell.movable,
           colIndex: cell.column + 2,
           rowSpan: cell.length || 1
         }))
@@ -141,6 +147,19 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (!cell) {
       return;
     }
+    if (event.shiftKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      this.send("cellresize", {
+        key,
+        delta: event.key === "ArrowDown" ? 1 : -1
+      });
+      return;
+    }
+    if (event.key === " " || event.key === "Escape") {
+      event.preventDefault();
+      this.send(event.key === " " ? "cellspace" : "cellescape", { key });
+      return;
+    }
     let next;
     switch (event.key) {
       case "ArrowUp":
@@ -176,6 +195,50 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (this.editable && target) {
       this.activeKey = target.dataset.cell;
       this.ask("editcell", target.dataset.cell, target);
+    }
+  }
+
+  send(name, detail) {
+    this.dispatchEvent(new CustomEvent(name, { detail }));
+  }
+
+  cellKeyOf(event) {
+    const target = event.target.closest && event.target.closest("[data-cell]");
+    return this.editable && target ? target.dataset.cell : null;
+  }
+
+  handleClick(event) {
+    const key = this.cellKeyOf(event);
+    if (key) {
+      this.activeKey = key;
+      this.send("cellclick", { key });
+    }
+  }
+
+  handleDragStart(event) {
+    const key = this.cellKeyOf(event);
+    if (!key) {
+      return;
+    }
+    const resizing = !!event.target.closest("[data-handle]");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", key);
+    }
+    this.send(resizing ? "resizestart" : "celldragstart", { key });
+  }
+
+  handleDragOver(event) {
+    if (this.cellKeyOf(event)) {
+      event.preventDefault();
+    }
+  }
+
+  handleDrop(event) {
+    const key = this.cellKeyOf(event);
+    if (key) {
+      event.preventDefault();
+      this.send("celldrop", { key });
     }
   }
 

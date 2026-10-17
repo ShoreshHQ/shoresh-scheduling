@@ -1,0 +1,238 @@
+/**
+ * Manual Build's moves, swaps, and length changes (desktop dragHandlers.js, useSpanExtendDrag.js),
+ * worked out on rows of slot identities (slotEdits.js) and turned into the runs the server checks:
+ * each change is made on a copy of the rows it touches, then compared with the original, so a run
+ * covers exactly the slots that changed, widened to whole placements so it never cuts into one
+ * (SlotSaves refuses that). A swap is refused when either side runs several blocks, as on the
+ * desktop. A position is { day, group, block }: indexes into the schedule's days, that day's
+ * groups, and its time blocks.
+ */
+import { OPEN, isSetTime, slots } from "./slotEdits";
+
+const CARRIES_ON = "^";
+
+/** Why a move can't be made (the page puts it into words). */
+export const REFUSED = Object.freeze({
+  SET_TIME: "setTime",
+  AWAY: "away",
+  SWAP_LONG: "swapLong",
+  NO_ROOM: "noRoom"
+});
+
+function carries(slot) {
+  return slot.startsWith(CARRIES_ON);
+}
+
+/** The placement a slot of a row is part of: first block, length, and what starts there. */
+export function placementIn(row, b) {
+  if (row[b] === OPEN) {
+    return { first: b, length: 1, slot: OPEN };
+  }
+  let first = b;
+  while (first > 0 && carries(row[first])) {
+    first -= 1;
+  }
+  let length = 1;
+  while (
+    first + length < row.length &&
+    row[first + length] === CARRIES_ON + row[first]
+  ) {
+    length += 1;
+  }
+  return { first, length, slot: row[first] };
+}
+
+/**
+ * The run that turns one row into another: the slots that differ, widened so it starts and ends
+ * on whole placements. Null when nothing differs.
+ */
+export function diffRun(before, after) {
+  let first = before.findIndex((slot, i) => slot !== after[i]);
+  if (first < 0) {
+    return null;
+  }
+  let last = before.length - 1;
+  while (before[last] === after[last]) {
+    last -= 1;
+  }
+  while (first > 0 && (carries(before[first]) || carries(after[first]))) {
+    first -= 1;
+  }
+  while (
+    last + 1 < before.length &&
+    (carries(before[last + 1]) || carries(after[last + 1]))
+  ) {
+    last += 1;
+  }
+  return {
+    first,
+    before: before.slice(first, last + 1),
+    after: after.slice(first, last + 1)
+  };
+}
+
+/** Puts an item at a block for up to `length` blocks over Open, at-camp slots. Returns how many. */
+function fill(row, start, slot, length, isAway) {
+  let take = 0;
+  while (
+    take < length &&
+    start + take < row.length &&
+    row[start + take] === OPEN &&
+    !isAway(start + take)
+  ) {
+    row[start + take] = take === 0 ? slot : CARRIES_ON + slot;
+    take += 1;
+  }
+  return take;
+}
+
+/** Rows of the schedule by "day|group", copied when first touched, with their originals. */
+class Rows {
+  constructor(days) {
+    this.days = days;
+    this.original = new Map();
+    this.changed = new Map();
+  }
+
+  get(day, group) {
+    const key = `${day}|${group}`;
+    if (!this.changed.has(key)) {
+      const row = slots(this.days[day], group);
+      this.original.set(key, row);
+      this.changed.set(key, [...row]);
+    }
+    return this.changed.get(key);
+  }
+
+  /** The runs that make the changes: { day, group, first, before, after }. */
+  runs() {
+    const result = [];
+    this.changed.forEach((row, key) => {
+      const run = diffRun(this.original.get(key), row);
+      if (run) {
+        const [day, group] = key.split("|").map(Number);
+        result.push({ day, group, ...run });
+      }
+    });
+    return result;
+  }
+}
+
+/**
+ * Moves the placement at `from` to `to`: onto Open slots it moves, keeping its length (refused
+ * where it doesn't fit), onto a filled slot the two swap. isAway(position) says a group isn't at camp in a block.
+ * Returns { runs } or { refused } (one of REFUSED), or null when there is nothing to do.
+ */
+export function moveEdit(days, from, to, isAway) {
+  const rows = new Rows(days);
+  const source = rows.get(from.day, from.group);
+  const p = placementIn(source, from.block);
+  if (!p.slot.startsWith("A:")) {
+    return null;
+  }
+  const target = rows.get(to.day, to.group);
+  const sameRow = target === source;
+  if (sameRow && to.block >= p.first && to.block < p.first + p.length) {
+    return null;
+  }
+  const q = placementIn(target, to.block);
+  if (isSetTime(q.slot)) {
+    return { refused: REFUSED.SET_TIME };
+  }
+  if (q.slot === OPEN) {
+    if (isAway({ ...to, block: to.block })) {
+      return { refused: REFUSED.AWAY };
+    }
+    for (let b = p.first; b < p.first + p.length; b++) {
+      source[b] = OPEN;
+    }
+    // A move keeps the placement's length; somewhere too short for it is refused, not cut.
+    const placed = fill(target, to.block, p.slot, p.length, (b) =>
+      isAway({ ...to, block: b })
+    );
+    if (placed < p.length) {
+      return { refused: REFUSED.NO_ROOM };
+    }
+    return { runs: rows.runs() };
+  }
+  if (p.length > 1 || q.length > 1 || !q.slot.startsWith("A:")) {
+    return { refused: REFUSED.SWAP_LONG };
+  }
+  source[p.first] = q.slot;
+  target[q.first] = p.slot;
+  return { runs: rows.runs() };
+}
+
+/** Takes the placement at `from` out of the week (dragged back to the list). */
+export function removeEdit(days, from) {
+  const rows = new Rows(days);
+  const row = rows.get(from.day, from.group);
+  const p = placementIn(row, from.block);
+  if (!p.slot.startsWith("A:")) {
+    return null;
+  }
+  for (let b = p.first; b < p.first + p.length; b++) {
+    row[b] = OPEN;
+  }
+  return { runs: rows.runs() };
+}
+
+/**
+ * Makes the placement at `at` end at `lastBlock` (shorter, or longer over Open, at-camp slots).
+ * Returns { runs }, { refused: NO_ROOM } when it can't reach, or null when nothing changes.
+ */
+export function resizeEdit(days, at, lastBlock, isAway) {
+  const rows = new Rows(days);
+  const row = rows.get(at.day, at.group);
+  const p = placementIn(row, at.block);
+  if (!p.slot.startsWith("A:") || lastBlock < p.first) {
+    return null;
+  }
+  const length = lastBlock - p.first + 1;
+  for (let b = p.first + 1; b < p.first + p.length; b++) {
+    row[b] = OPEN;
+  }
+  let reached = 1;
+  while (
+    reached < length &&
+    p.first + reached < row.length &&
+    row[p.first + reached] === OPEN &&
+    !isAway({ ...at, block: p.first + reached })
+  ) {
+    row[p.first + reached] = CARRIES_ON + p.slot;
+    reached += 1;
+  }
+  if (reached < length) {
+    return { refused: REFUSED.NO_ROOM };
+  }
+  const runs = rows.runs();
+  return runs.length ? { runs } : null;
+}
+
+/** The runs that undo runs: in reverse order, each back to what it held. */
+export function inverse(runs) {
+  return [...runs]
+    .reverse()
+    .map((run) => ({ ...run, before: run.after, after: run.before }));
+}
+
+/**
+ * "Use yours" for a run someone else's change got in the way of: the run's slots set as yours on
+ * the row as it is now, widened again to whole placements.
+ */
+export function rebase(currentRow, run) {
+  const after = [...currentRow];
+  run.after.forEach((slot, i) => {
+    after[run.first + i] = slot;
+  });
+  // A carry-on left without its start (theirs was longer) is Open now.
+  for (let b = 0; b < after.length; b++) {
+    if (
+      carries(after[b]) &&
+      (b === 0 || (after[b - 1] !== after[b].slice(1) && after[b - 1] !== after[b]))
+    ) {
+      after[b] = OPEN;
+    }
+  }
+  return diffRun(currentRow, after);
+}

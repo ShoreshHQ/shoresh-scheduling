@@ -11,6 +11,10 @@
       onfocusin={handleFocusIn}
       onkeydown={handleKeyDown}
       ondblclick={handleDoubleClick}
+      onclick={handleClick}
+      ondragstart={handleDragStart}
+      ondragover={handleDragOver}
+      ondrop={handleDrop}
     >
       <div class="grid grid_header" role="rowgroup" style={columnTemplate}>
         <div role="row" class="row" aria-rowindex="1">
@@ -70,6 +74,7 @@
                 role={cell.role}
                 tabindex={cell.tabIndex}
                 aria-readonly={cell.ariaReadOnly}
+                draggable={cell.draggable}
                 aria-colindex={cell.colIndex}
                 aria-rowspan={cell.rowSpan}
                 class={cell.className}
@@ -88,6 +93,14 @@
                     <template lwc:if={cell.note}>
                       <span class="note">{cell.note}</span>
                     </template>
+                  </template>
+                  <template lwc:if={cell.handle}>
+                    <span
+                      class="handle"
+                      draggable="true"
+                      data-handle="true"
+                      aria-hidden="true"
+                    ></span>
                   </template>
                 </div>
               </div>

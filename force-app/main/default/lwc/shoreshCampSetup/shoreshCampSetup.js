@@ -16,6 +16,7 @@ import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
+import { FIELD } from "c/shoreshSchema";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 
 const SCREENS = [
@@ -704,19 +705,29 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.saveAndReload(save, onFailure);
   }
 
-  /** For a week or program: its saved versions, which a delete takes with it. */
+  /**
+   * For a week or program: its saved versions and Manual Build weeks, which a delete takes with
+   * it (ADR 0005 §10, ADR 0008).
+   */
   savedSchedulesNote(recordId) {
-    const count = ((this.setup && this.setup.schedules) || []).filter(
-      (s) =>
-        s.Status__c === "Version" &&
-        (s.Week__c === recordId || s.Program__c === recordId)
+    const S = FIELD.Schedule;
+    const mine = ((this.setup && this.setup.schedules) || []).filter(
+      (s) => s[S.Week] === recordId || s[S.Program] === recordId
+    );
+    const versions = mine.filter((s) => s[S.Status] === "Version").length;
+    const builds = mine.filter(
+      (s) => s[S.Status] === "Draft" && s[S.Origin] === "Manual"
     ).length;
-    if (!count) {
-      return "";
-    }
     const t = this.terms;
-    const word = count === 1 ? t.sIn("Version") : t.pIn("Version");
-    return ` That includes ${count} saved ${word}.`;
+    const parts = [];
+    if (builds) {
+      parts.push(builds === 1 ? "its Manual Build" : `${builds} Manual Builds`);
+    }
+    if (versions) {
+      const word = versions === 1 ? t.sIn("Version") : t.pIn("Version");
+      parts.push(`${versions} saved ${word}`);
+    }
+    return parts.length ? ` That includes ${parts.join(" and ")}.` : "";
   }
 
   async handleDeleteRecord(event) {

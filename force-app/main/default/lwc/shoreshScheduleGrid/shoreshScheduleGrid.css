@@ -199,3 +199,33 @@
 .cell_saving .cell-inner {
   opacity: 0.6;
 }
+
+/* Manual Build: a placement that can be dragged, its bottom handle for a longer or shorter run,
+   and a slot picked up from the keyboard. */
+.cell[draggable="true"] {
+  cursor: grab;
+}
+
+.cell-inner {
+  position: relative;
+}
+
+.handle {
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 2px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--slds-g-color-brand-base-80, #aacbff);
+  cursor: ns-resize;
+}
+
+.cell_picked .cell-inner {
+  outline: 2px dashed var(--shoresh-primary);
+  outline-offset: 1px;
+}
+
+.cell_target .cell-inner {
+  box-shadow: inset 0 0 0 2px var(--shoresh-primary);
+}

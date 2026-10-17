@@ -1,0 +1,68 @@
+<template>
+  <section
+    class="palette"
+    aria-label={heading}
+    data-id="palette"
+    ondragover={handleDragOver}
+    ondrop={handleDrop}
+  >
+    <div class="palette-title">{heading}</div>
+    <input
+      class="slds-input filter"
+      type="search"
+      placeholder="Filter…"
+      aria-label={filterLabel}
+      value={filter}
+      oninput={handleFilter}
+      data-id="palette-filter"
+    />
+    <template lwc:if={noMatches}>
+      <p class="no-matches">No matches</p>
+    </template>
+    <ul class="chips" data-id="palette-needed">
+      <template for:each={neededChips} for:item="chip">
+        <li key={chip.id}>
+          <button
+            type="button"
+            class={chip.className}
+            draggable="true"
+            aria-pressed={chip.pressed}
+            data-id={chip.id}
+            onclick={handlePick}
+            ondragstart={handleDragStart}
+          >
+            <span class="chip-name">{chip.name}</span>
+            <span class="chip-count">
+              <template lwc:if={chip.over}><span class="dot"></span></template>
+              {chip.label}
+            </span>
+          </button>
+        </li>
+      </template>
+    </ul>
+    <template lwc:if={hasBoth}>
+      <hr class="zone-line" />
+    </template>
+    <ul class="chips" data-id="palette-placed">
+      <template for:each={placedChips} for:item="chip">
+        <li key={chip.id}>
+          <button
+            type="button"
+            class={chip.className}
+            draggable="true"
+            aria-pressed={chip.pressed}
+            data-id={chip.id}
+            onclick={handlePick}
+            ondragstart={handleDragStart}
+          >
+            <span class="chip-name">{chip.name}</span>
+            <span class="chip-count">
+              <template lwc:if={chip.over}><span class="dot"></span></template>
+              {chip.label}
+            </span>
+          </button>
+        </li>
+      </template>
+    </ul>
+  </section>
+</template>

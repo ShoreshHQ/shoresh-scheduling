@@ -1,0 +1,84 @@
+@import "c/shoreshTokens";
+
+/* Desktop ActivityPalette: a narrow rail, name above, count below. */
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 13rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 12px;
+}
+
+.palette-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--shoresh-text-secondary);
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chip {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 10px;
+  text-align: left;
+  cursor: grab;
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
+  border-radius: 8px;
+}
+
+.chip_picked {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: 1px;
+}
+
+.chip-name {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.chip-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--shoresh-text-secondary);
+  font-family: var(--slds-g-font-family-monospace, monospace);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-caution);
+  flex: none;
+}
+
+.zone-line {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.no-matches {
+  font-size: 11px;
+  text-align: center;
+  color: var(--shoresh-text-secondary);
+  padding-top: 12px;
+}

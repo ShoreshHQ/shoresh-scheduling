@@ -25,6 +25,12 @@ public with sharing class ManualBuildViews {
     // How many time blocks one session runs.
     @AuraEnabled
     public Integer length;
+    // Times a week each group should have it: at least minPerWeek (0 when not set), at most
+    // maxPerWeek (null when it has no weekly limit).
+    @AuraEnabled
+    public Integer minPerWeek;
+    @AuraEnabled
+    public Integer maxPerWeek;
     // Groups it is not set up for (its "who can do it" leaves them out).
     @AuraEnabled
     public List<Id> notFor = new List<Id>();
@@ -80,7 +86,13 @@ public with sharing class ManualBuildViews {
     }
     List<ActivityOption> result = new List<ActivityOption>();
     for (Activity__c activity : [
-      SELECT Id, Name, Length__c
+      SELECT
+        Id,
+        Name,
+        Length__c,
+        TimesPerWeekMin__c,
+        TimesPerWeekMax__c,
+        NoWeeklyMax__c
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
@@ -92,6 +104,13 @@ public with sharing class ManualBuildViews {
       option.length = activity.Length__c == null
         ? 1
         : Math.max(1, activity.Length__c.intValue());
+      option.minPerWeek = activity.TimesPerWeekMin__c == null
+        ? 0
+        : activity.TimesPerWeekMin__c.intValue();
+      option.maxPerWeek = activity.NoWeeklyMax__c ||
+        activity.TimesPerWeekMax__c == null
+        ? null
+        : activity.TimesPerWeekMax__c.intValue();
       // No one named means everyone can do it.
       Set<Id> who = whoByActivity.get(activity.Id);
       for (Group__c grp : groups) {
