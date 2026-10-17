@@ -37,6 +37,12 @@ import { errorMessage } from "c/shoreshErrors";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 
+// What a camp workbook saves that has no camp word of its own (part D).
+const OWN_WORDS = {
+  CampLabel: ["camp word", "camp words"],
+  WeekException: ["week off", "weeks off"]
+};
+
 /** Minutes after midnight as "9:00 AM". */
 function timeText(minutes) {
   const hours = Math.floor(minutes / 60);
@@ -301,9 +307,9 @@ export default class ShoreshListImport extends LightningElement {
     if (this.proposal.unused.length) {
       sections.push({
         ...this.sectionOf("unused", "Not read", { rows: [] }),
-        unreadableRows: this.proposal.unused.map((name) => ({
+        unreadableRows: this.proposal.unused.map(({ name, why }) => ({
           key: `unused-${name}`,
-          text: `“${name}”`
+          text: why ? `“${name}” · ${why}` : `“${name}”`
         })),
         hasUnreadable: true,
         unreadableHeading: `Sheets not read (${this.proposal.unused.length})`
@@ -725,8 +731,9 @@ export default class ShoreshListImport extends LightningElement {
       return "Save";
     }
     // Everything saving adds, the ticked extras with it.
+    // Weeks an added item runs are counted with the item.
     const added =
-      this.rowsWith("new").length +
+      this.rowsWith("new").filter((r) => !r.withItem).length +
       this.proposals
         .flatMap((p) => this.alsoAddOf(p))
         .filter((item) => item.checked).length;
@@ -785,9 +792,15 @@ export default class ShoreshListImport extends LightningElement {
         .sort()
         .forEach((term) => {
           const n = counts[term];
+          const own = OWN_WORDS[term];
+          const word = own
+            ? own[n === 1 ? 0 : 1]
+            : n === 1
+              ? t.sIn(term)
+              : t.pIn(term);
           lines.push({
             key: `${verb}-${term}`,
-            text: `${verb} ${n} ${n === 1 ? t.sIn(term) : t.pIn(term)}`
+            text: `${verb} ${n} ${word}`
           });
         });
     };

@@ -150,15 +150,40 @@ export function findSheets(file, t) {
         });
       });
     });
+  const why = new Map();
+  const doubled = new Set();
   fits
     .sort((a, b) => b.score - a.score || a.order - b.order || a.rank - b.rank)
     .forEach((fit) => {
-      if (!taken.has(fit.sheet) && !found.lists[fit.key]) {
-        found.lists[fit.key] = fit.sheet;
-        taken.add(fit.sheet);
+      if (
+        taken.has(fit.sheet) ||
+        found.lists[fit.key] ||
+        doubled.has(fit.key)
+      ) {
+        return;
       }
+      // Two sheets fitting one list as well as each other (a copy kept beside it): neither is
+      // read, and both are said, never one picked by where it sits in the workbook.
+      const twins = fits.filter(
+        (f) => f.key === fit.key && f.score === fit.score && !taken.has(f.sheet)
+      );
+      if (twins.length > 1) {
+        doubled.add(fit.key);
+        twins.forEach((f) => {
+          why.set(
+            f.sheet,
+            `${twins.map((x) => `“${x.sheet}”`).join(" and ")} could both be ${labelOf(f.key, t)}`
+          );
+        });
+        return;
+      }
+      found.lists[fit.key] = fit.sheet;
+      taken.add(fit.sheet);
     });
-  found.unused = sheets.map((s) => s.name).filter((n) => !taken.has(n));
+  found.unused = sheets
+    .map((s) => s.name)
+    .filter((n) => !taken.has(n))
+    .map((name) => ({ name, why: why.get(name) || "" }));
   return found;
 }
 
@@ -416,16 +441,33 @@ function readWeeks(sheet, setup, answers) {
     if (entry.start && entry.end && entry.end < entry.start) {
       entry.problems.push("End is before Start");
     }
-    if (
-      entry.start &&
-      read.some((r) => r.start === entry.start && !r.problems.length)
-    ) {
-      entry.problems.push(`Another week starts ${shortDate(entry.start)}`);
-    }
     if (!entry.problems.length) {
       read.push(entry);
     }
   });
+  // Two weeks starting the same day: both are said, never the first row kept.
+  const starts = new Map();
+  read.forEach((r) => starts.set(r.start, (starts.get(r.start) || 0) + 1));
+  read
+    .filter((r) => starts.get(r.start) > 1)
+    .forEach((r) => {
+      r.problems.push(`Another week starts ${shortDate(r.start)}`);
+    });
+  // By order, a week that can't be read would move every week after it onto the wrong week of
+  // this season: none is paired until each can be read.
+  const unreadable = result.rows.filter((r) => r.problems.length);
+  const usable = read.filter((r) => !r.problems.length);
+  if (
+    unreadable.length &&
+    matchWeeks(usable, setup.weeks, setup.season).byOrder
+  ) {
+    usable.forEach((r) => {
+      r.problems.push(
+        `Matched by order once row ${unreadable.map((u) => u.rowNumber).join(", ")} can be read`
+      );
+    });
+  }
+  read.splice(0, read.length, ...read.filter((r) => !r.problems.length));
   const matched = matchWeeks(read, setup.weeks, setup.season);
   result.byOrder = matched.byOrder;
   if (matched.byOrder) {
@@ -773,6 +815,19 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
     const target = RUNS_IN_KINDS.map((k) => x[TARGET_FIELD[k]]).find((v) => v);
     offNow.set(`${target}|${x.Week__c}`, x);
   });
+  // A column whose week isn't in the workbook (or can't be read) is said once; the other
+  // columns are still read.
+  if (unknown.length) {
+    result.rows.push({
+      rowNumber: at + 1,
+      name: "",
+      problems: unknown.map(
+        (c) => `"${c.heading}" isn't a week of the workbook that can be read`
+      ),
+      differences: []
+    });
+  }
+  const seenItems = new Map();
   body.forEach((row, i) => {
     const [kindWord, program, division, name] = row
       .slice(0, 4)
@@ -787,9 +842,6 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       differences: []
     };
     result.rows.push(entry);
-    unknown.forEach((c) =>
-      entry.problems.push(`"${c.heading}" isn't a week in the workbook`)
-    );
     const kind = kinds.get(foldName(kindWord));
     if (!kind) {
       entry.problems.push(`"${kindWord}" isn't a kind of item with weeks`);
@@ -804,6 +856,35 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       entry.problems.push(`Two of “${name}”`);
       return;
     }
+    // One item on two rows: the same ticks are one row; different ticks are both said.
+    const ticksText = columns
+      .filter((c) => c.week)
+      .map((c) => tidy(row[c.index]).toLowerCase())
+      .join("|");
+    const earlier = seenItems.get(item.id);
+    if (earlier) {
+      if (earlier.ticks === ticksText) {
+        entry.status = "leftOut";
+        entry.reason = `same as row ${earlier.entry.rowNumber}`;
+      } else {
+        const both = `Rows ${earlier.entry.rowNumber} and ${entry.rowNumber} differ`;
+        entry.problems.push(both);
+        if (!earlier.entry.problems.includes(both)) {
+          earlier.entry.problems.push(both);
+          earlier.entry.differences = [];
+          earlier.entry.status = undefined;
+          earlier.records.forEach((r) => {
+            const at2 = result.records.indexOf(r);
+            if (at2 >= 0) {
+              result.records.splice(at2, 1);
+            }
+          });
+        }
+      }
+      return;
+    }
+    const seen = { ticks: ticksText, entry, records: [] };
+    seenItems.set(item.id, seen);
     const off = [];
     const on = [];
     columns
@@ -846,9 +927,12 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       entry.status = "unchanged";
       return;
     }
+    seen.records = records;
     if (isNew) {
-      // An item this workbook adds runs the weeks it says, as a new row's values.
+      // An item this workbook adds runs the weeks it says, as a new row's values (counted with
+      // the item, not again).
       entry.status = "new";
+      entry.withItem = true;
       result.records.push(...records);
       return;
     }
@@ -882,6 +966,11 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
 // The whole workbook.
 
 function extraSection(key, label, part) {
+  part.rows.forEach((r) => {
+    if (r.problems.length) {
+      r.status = "unreadable";
+    }
+  });
   return { key, label, extra: true, rows: part.rows, lists: part.lists || [] };
 }
 
@@ -1006,7 +1095,8 @@ export function workbookWaiting(proposal, answers) {
       .filter((w) => w !== "Nothing to change")
       .forEach((w) => waiting.push(`${s.label}: ${w}`));
   });
-  if (!waiting.length && !workbookPlan(proposal, answers).records.length) {
+  const plan = workbookPlan(proposal, answers);
+  if (!waiting.length && !plan.records.length && !plan.campWords.length) {
     waiting.push("Nothing to change");
   }
   return waiting;

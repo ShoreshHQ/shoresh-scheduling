@@ -490,11 +490,15 @@ describe("Import camp workbook (Roots)", () => {
     expect(save.label).toBe("Change 1");
     saveWorkbook.mockResolvedValue({
       importId: "i1",
-      added: {},
+      added: { CampLabel: 1, WeekException: 2 },
       changed: { Week: 1 }
     });
     save.click();
     await flush();
+    // What has no camp word of its own is said plainly.
+    expect(
+      $$(element, '[data-id="summary"] li').map((li) => li.textContent)
+    ).toEqual(["Added 1 camp word", "Added 2 weeks off", "Changed 1 week"]);
     const plan = JSON.parse(saveWorkbook.mock.calls[0][0].plan);
     expect(plan.records).toEqual([
       { kind: "Week", id: "w1", fields: { Name: "Opening week" } }

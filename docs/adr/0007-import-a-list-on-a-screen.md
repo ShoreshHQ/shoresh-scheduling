@@ -241,6 +241,13 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     Changed__c are text a scheduler can edit, so every object and field name Undo takes from
     them must be one an import writes (`ImportFields`); anything else refuses the Undo with
     "this import's record can't be read", and nothing is undone.
+32. **What is never picked by position** (own review): two sheets fitting one list equally
+    (a copy kept beside it) are neither read, both listed under "Sheets not read"; two weeks
+    starting the same day are both unreadable; one item on two Runs in rows with different
+    ticks makes both unreadable (the same ticks: one is "same as row N"); and, by order, a week
+    row that can't be read leaves every week unpaired until it can, rather than shift the rest.
+    Camp words are the camp's, not the season's: undoing one season's workbook puts them back
+    for every season of the camp (a product call left open for Greg).
 
 ## Choices that are hard to undo after release
 

@@ -297,7 +297,7 @@ describe("a camp's workbook, edited", () => {
       { name: "Notes", rows: [["Remember"], ["Bring sunscreen"]] }
     ]);
     const p = propose(s, workbook);
-    expect(p.unused).toEqual(["Notes"]);
+    expect(p.unused).toEqual([{ name: "Notes", why: "" }]);
     expect(workbookWaiting(p, {})).toEqual(["Nothing to change"]);
   });
 
@@ -346,10 +346,18 @@ describe("a camp's workbook, edited", () => {
       })
     );
     const rows = p.sections.find((x) => x.key === "runsIn").rows;
+    // The unknown week is said once; the other columns are still read.
+    expect(rows[0]).toMatchObject({
+      rowNumber: 1,
+      status: "unreadable",
+      problems: ['"Week 9" isn\'t a week of the workbook that can be read']
+    });
     expect(rows.find((r) => r.name === "Kayak").problems).toEqual([
-      '"Week 9" isn\'t a week in the workbook',
       "No activity “Kayak”"
     ]);
+    expect(rows.filter((r) => r.status === "unchanged").length).toBeGreaterThan(
+      0
+    );
   });
 });
 
@@ -469,5 +477,116 @@ describe("a workbook from another season", () => {
     ]);
     // Its ticks (all No) aren't read: nothing changes.
     expect(workbookWaiting(p, {})).toEqual(["Nothing to change"]);
+  });
+});
+
+describe("own review of PR D", () => {
+  it("H1: by order, a week row that can't be read pairs nothing, rather than shift the rest", () => {
+    const from = camp();
+    const sheets = campWorkbookSheets(from, buildTerms(from.labels));
+    sheets.find((x) => x.name === "Weeks").rows[1][1] = "2027-13-40";
+    const s = freshSeason();
+    s.season = {
+      ...s.season,
+      StartDate__c: "2028-06-26",
+      EndDate__c: "2028-08-11"
+    };
+    s.weeks = [
+      {
+        Id: "n1",
+        Name: "Week 1",
+        StartDate__c: "2028-06-26",
+        EndDate__c: "2028-06-30"
+      },
+      {
+        Id: "n2",
+        Name: "Week 2",
+        StartDate__c: "2028-07-03",
+        EndDate__c: "2028-07-07"
+      }
+    ];
+    const p = propose(s, file(sheets));
+    const weeks = p.sections.find((x) => x.key === "weeks").rows;
+    expect(weeks.map((r) => [r.name, r.status, r.problems])).toEqual([
+      ["Week 1", "unreadable", ['Start: "2027-13-40" isn\'t a date']],
+      ["Week 2", "unreadable", ["Matched by order once row 2 can be read"]]
+    ]);
+    expect(weeks.some((r) => r.differences.length)).toBe(false);
+  });
+
+  it("H2: a workbook that only changes camp words can be saved", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        sheets["Camp words"][1] = ["Group", "Cabin", "Cabins"];
+      })
+    );
+    const id = p.sections.find((x) => x.key === "campWords").rows[0]
+      .differences[0].id;
+    const answers = { [id]: "change" };
+    expect(
+      workbookWaiting(propose(s, workbookOf(s), answers), answers)
+    ).toEqual([]);
+    function workbookOf(x) {
+      return edited(x, (sheets) => {
+        sheets["Camp words"][1] = ["Group", "Cabin", "Cabins"];
+      });
+    }
+  });
+
+  it("M1: one item on two Runs in rows: the same ticks are one row; different ticks are both said", () => {
+    const s = camp();
+    const p = propose(
+      s,
+      edited(s, (sheets) => {
+        const rows = sheets["Runs in"];
+        const games = rows.find((r) => r[3] === "Board games");
+        rows.push([...games]);
+        const swim = rows.find((r) => r[3] === "Swim");
+        rows.push([...swim.slice(0, 4), "Yes", "No"]);
+      })
+    );
+    const rows = p.sections.find((x) => x.key === "runsIn").rows;
+    const games = rows.filter((r) => r.name === "Board games");
+    expect(games.map((r) => r.status)).toEqual(["unchanged", "leftOut"]);
+    const swims = rows.filter((r) => r.name === "Swim");
+    expect(swims.map((r) => [r.status, r.problems.length])).toEqual([
+      ["unreadable", 1],
+      ["unreadable", 1]
+    ]);
+    expect(workbookPlan(p, {}).records).toEqual([]);
+  });
+
+  it("M2: two sheets fitting one list as well as each other: neither read, both said", () => {
+    const s = camp();
+    const sheets = campWorkbookSheets(s, buildTerms(s.labels));
+    const bunks = sheets.find((x) => x.name === "Bunks");
+    const p = propose(
+      s,
+      file([...sheets, { name: "Bunks old", rows: bunks.rows }])
+    );
+    expect(p.sections.some((x) => x.key === "groups")).toBe(false);
+    expect(p.unused.map((u) => u.name).sort()).toEqual(["Bunks", "Bunks old"]);
+    expect(p.unused[0].why).toContain("could both be Bunks");
+  });
+
+  it("M3: two weeks starting the same day are both said, whatever their order", () => {
+    const s = camp();
+    [false, true].forEach((reverse) => {
+      const p = propose(
+        s,
+        edited(s, (sheets) => {
+          const extra = [
+            ["Week 3", "2027-07-12", "2027-07-16"],
+            ["Week 3b", "2027-07-12", "2027-07-16"]
+          ];
+          sheets.Weeks.push(...(reverse ? extra.reverse() : extra));
+        })
+      );
+      const rows = p.sections.find((x) => x.key === "weeks").rows.slice(2);
+      expect(rows.map((r) => r.status)).toEqual(["unreadable", "unreadable"]);
+      expect(workbookPlan(p, {}).records).toEqual([]);
+    });
   });
 });

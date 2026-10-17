@@ -182,7 +182,9 @@ public with sharing class ImportListSaves {
     String changed = JSON.serialize(writer.changed);
     if (created.length() > LOG_LIMIT || changed.length() > LOG_LIMIT) {
       throw new ShoreshException(
-        'This list is too long to be undone later, so nothing was saved. Split it into two files and import each one.'
+        workbook
+          ? 'This workbook is too big to be undone later, so nothing was saved. Import its sheets on their own screens.'
+          : 'This list is too long to be undone later, so nothing was saved. Split it into two files and import each one.'
       );
     }
     Import__c done = new Import__c(
