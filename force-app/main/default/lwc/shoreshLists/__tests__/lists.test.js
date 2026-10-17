@@ -456,7 +456,8 @@ describe("similar names and what will also be added", () => {
       "Rain plan: can't be itself"
     ]);
     expect(rowNamed(p, "Hiking").status).toBe("asked");
-    expect(rowNamed(p, "Canoeing").status).toBe("new");
+    // Its plan is a row that can't be read: asked as a new activity, never linked to nothing.
+    expect(rowNamed(p, "Canoeing").status).toBe("asked");
   });
 
   it("locations: a new location type will also be added", () => {
@@ -669,16 +670,140 @@ describe("the walkthrough's sample lists (docs/samples/lists)", () => {
       ["Gaga", "new"],
       ["Hiking", "unreadable"]
     ]);
-    expect(done.alsoAdd.location).toEqual([
+    // Only what will be saved is added: the new Gaga row's place, until Changes are chosen.
+    expect(done.alsoAdd.location).toEqual(["Gaga pit"]);
+    const all = { ...answers };
+    changeAllCounts(done).ids.forEach((id) => {
+      all[id] = CHANGE;
+    });
+    const changed = listProposal({
+      screenKey: "activities",
+      file: sample("maple-grove-activities.csv"),
+      setup: mapleGrove(),
+      terms,
+      answers: all
+    });
+    expect(changed.alsoAdd.location).toEqual([
       "Field",
       "Gaga pit",
       "Lake",
       "Music room",
       "Pool"
     ]);
-    expect(done.alsoAdd.activity).toEqual([{ name: "Movies", length: 1 }]);
+    expect(changed.alsoAdd.activity).toEqual([{ name: "Movies", length: 1 }]);
+    expect(waitingFor(changed, terms, all)).toEqual([]);
+    expect(done.alsoAdd.activity).toEqual([]);
     expect(done.alsoAdd.who.map((w) => [w.kind, w.name])).toEqual([
       ["Division", "Middlers"]
     ]);
+  });
+});
+
+describe("review findings (PR A)", () => {
+  it("Keep on a new place does not add the place", () => {
+    const rows = [
+      ["Activity", "Location", "Notes"],
+      ["Archery", "Lake", "x"]
+    ];
+    const p = read("activities", rows);
+    const [location, notes] = rowNamed(p, "Archery").differences;
+    const answers = { [location.id]: KEEP, [notes.id]: CHANGE };
+    const done = read("activities", rows, answers);
+    expect(done.alsoAdd.location).toEqual([]);
+    expect(listPlan(done, answers, "s1", "f").records).toEqual([
+      { kind: "Activity", id: "a1", fields: { Notes__c: "x" }, refs: {} }
+    ]);
+  });
+
+  it("an answer Import last year gave with the other spelling still means the camp's item", () => {
+    const rows = [["Activity"], ["Musik"]];
+    const [card] = similarCards(read("activities", rows), terms, {});
+    const answers = { [card.id]: "a" };
+    const p = read("activities", rows, answers);
+    expect(rowNamed(p, "Musik")).toMatchObject({
+      status: "unchanged",
+      id: "a2"
+    });
+    expect(similarCards(p, terms, answers)[0].answer).toBe("b");
+  });
+
+  it("an answer the question doesn't offer is not taken as an answer", () => {
+    const rows = [["Activity"], ["Musik"]];
+    const [card] = similarCards(read("activities", rows), terms, {});
+    const answers = { [card.id]: "nonsense" };
+    const p = read("activities", rows, answers);
+    expect(rowNamed(p, "Musik").status).toBe("asked");
+    expect(waitingFor(p, terms, answers)).toEqual(["1 question to answer."]);
+  });
+
+  it("a who name with a comma inside brackets is one name, and reads back", () => {
+    const s = setup();
+    s.programs.push({
+      program: { Id: "p2", Name: "Teens" },
+      divisions: [
+        {
+          division: { Id: "d9", Name: "Juniors" },
+          groups: [{ Id: "g9", Name: "Bunk 1" }]
+        }
+      ]
+    });
+    const p = read(
+      "activities",
+      [
+        ["Activity", "Who can do it"],
+        ["Golf", "Bunk 1 (Juniors, Teens), Seniors"]
+      ],
+      {},
+      terms,
+      s
+    );
+    expect(rowNamed(p, "Golf").values.who).toEqual(["d2", "g9"]);
+  });
+
+  it("a rain plan answered Different links to the new activity, not the similar row", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Swim", ""],
+      ["Arts", "swim"]
+    ];
+    const p = read("activities", rows);
+    const pair = similarCards(p, terms, {}).find((c) =>
+      c.title.includes("“swim”")
+    );
+    const answers = { [pair.id]: "different" };
+    const length = questionCards(
+      read("activities", rows, answers),
+      terms,
+      answers
+    ).find((c) => c.lengthQuestion);
+    answers[length.id] = "1";
+    const plan = listPlan(
+      read("activities", rows, answers),
+      answers,
+      "s1",
+      "f"
+    );
+    const arts = plan.records.find((r) => r.key === "Activity:Arts");
+    expect(arts.refs.RainPlan__c).toBe("Activity:swim");
+  });
+
+  it("a new activity with only at most, below the at least it starts with, can't be read", () => {
+    const p = read("activities", [
+      ["Activity", "Times a week: at most"],
+      ["Golf", "0"]
+    ]);
+    expect(rowNamed(p, "Golf")).toMatchObject({
+      status: "unreadable",
+      problems: ["At most 0 is less than at least 1 times a week"]
+    });
+  });
+
+  it("two headings written alike each get their own choice", () => {
+    const p = read("locations", [
+      ["Location", "Notes", "Notes"],
+      ["Barn", "a", "b"]
+    ]);
+    const keys = p.mapping.headings.map((h) => h.key);
+    expect(new Set(keys).size).toBe(3);
   });
 });

@@ -4,7 +4,7 @@
  * (ImportController.saveList). Nothing is saved until every question and every difference has
  * an answer, and the save is all or none.
  */
-import { LEAVE_OUT, looseKey } from "c/shoreshImportEngine";
+import { LEAVE_OUT } from "c/shoreshImportEngine";
 import { NONE } from "./cells";
 import { CHANGE, newValueOf } from "./proposal";
 import { cellText } from "./screens";
@@ -35,7 +35,11 @@ export function similarCards(proposal, t, answers) {
       id: pair.id,
       title: `Are ${quoted(pair.a)} and ${quoted(pair.b)} the same ${word}?`,
       detail: SIMILAR_WHY[pair.reason],
-      answer: answers[pair.id] || null
+      // Import last year asks this with both spellings; either "same" answer means the camp's.
+      answer:
+        pair.existing && answers[pair.id] === "a"
+          ? "b"
+          : answers[pair.id] || null
     };
     const leaveOut = {
       value: LEAVE_OUT,
@@ -76,7 +80,13 @@ export function questionCards(proposal, t, answers) {
       ...card,
       answer: answers[card.id] || null
     }))
-  ];
+  ].map((card) => {
+    // An answer the card doesn't offer (an older question's) counts as not answered.
+    const offered =
+      card.options.some((o) => o.value === card.answer) ||
+      (card.lengthQuestion && /^[1-9]\d*$/.test(card.answer || ""));
+    return offered ? card : { ...card, answer: null };
+  });
 }
 
 /** A value as the screen shows it in a difference ("none" for a cleared one). */
@@ -159,13 +169,7 @@ export function waitingFor(proposal, t, answers) {
   if (proposal.blocked) {
     return waiting;
   }
-  const open = questionCards(proposal, t, answers).filter(
-    (c) =>
-      !c.answer ||
-      (c.lengthQuestion &&
-        c.answer !== LEAVE_OUT &&
-        !/^[1-9]\d*$/.test(c.answer))
-  );
+  const open = questionCards(proposal, t, answers).filter((c) => !c.answer);
   if (open.length) {
     waiting.push(
       `${open.length} ${open.length === 1 ? "question" : "questions"} to answer.`
@@ -303,7 +307,7 @@ function refTargets(proposal) {
         r.status === "new" || r.status === "changed" || r.status === "unchanged"
     )
     .forEach((r) => {
-      own.set(looseKey(r.name), r.id || `${proposal.screen.kind}:${r.name}`);
+      own.set(r.name, r.id || `${proposal.screen.kind}:${r.name}`);
     });
   return (ref, name) => {
     if (!name) {
@@ -315,7 +319,8 @@ function refTargets(proposal) {
       return found.Id;
     }
     if (ref === "activity") {
-      return own.get(looseKey(name)) || `Activity:${name}`;
+      // By the exact name: similar spellings were settled by the questions.
+      return own.get(name) || `Activity:${name}`;
     }
     return `${{ location: "Location", locationType: "LocationType" }[ref]}:${name}`;
   };

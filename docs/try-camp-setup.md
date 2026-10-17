@@ -407,9 +407,11 @@ section 14 are in `docs/samples/lists` (do section 14 first, in the _Import test
      **Add it as unit in Main**, or a bunk in one of the units.
    - _“Movies” isn't set up. It will be added as activity: how long is it?_ (Boating's rain
      plan). Type **1** in Length.
-8. **Will also add** now lists the new locations the rows name (_Gaga pit_, _Music room_),
-   _Middlers (new unit)_, and _Movies (new activity, length 1; once a week, 1 bunk at a time,
-   Low priority)_.
+8. **Will also add** lists what saving would add because rows name it: _Gaga pit (new
+   location)_ and _Middlers (new unit)_ for the new Gaga row. A place or rain plan that only
+   an item already set up names joins the list once you choose **Change** for it (step 10):
+   for example _Movies (new activity, length 1; once a week, 1 bunk at a time, Low priority)_
+   when you change Boating's rain plan. Choosing **Keep** never adds it.
 9. **New**: _Gaga_. **Can't be read, left out**: _Row 7 (Hiking): Outdoors: "maybe": write Yes
    or No_.
 10. **Already set up, with differences**: Swim, Boating, Music, and Archery, each difference on

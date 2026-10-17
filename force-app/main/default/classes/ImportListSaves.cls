@@ -5,7 +5,8 @@
  * like Import last year so "Undo last import" covers it.
  *
  * The screen sends records by kind, each with plain fields and fields naming another record (by
- * the key of one added in the same save, or an Id); only the fields listed here are written.
+ * the key of one added in the same save, or an Id); only the fields ImportListRows lists are
+ * written.
  */
 public with sharing class ImportListSaves {
   // Kinds in the order they depend on each other.
@@ -15,42 +16,6 @@ public with sharing class ImportListSaves {
     'Division',
     'Group',
     'Activity'
-  };
-  // Kinds that are children of the season itself (the others are inside a program).
-  private static final Set<String> IN_SEASON = new Set<String>{
-    'LocationType',
-    'Location',
-    'Activity'
-  };
-  // What a list may write, per kind: plain fields...
-  private static final Map<String, Set<String>> PLAIN_FIELDS = new Map<String, Set<String>>{
-    'LocationType' => new Set<String>{ 'Name' },
-    'Location' => new Set<String>{ 'Name', 'GroupsThatFit__c', 'Notes__c' },
-    'Division' => new Set<String>{ 'Name' },
-    'Group' => new Set<String>{ 'Name', 'Availability__c' },
-    'Activity' => new Set<String>{
-      'Name',
-      'Length__c',
-      'TimesPerWeekMin__c',
-      'TimesPerWeekMax__c',
-      'NoWeeklyMax__c',
-      'Priority__c',
-      'Outdoor__c',
-      'GroupsAtOnce__c',
-      'NoGroupLimit__c',
-      'SameDivisionOnly__c',
-      'EarlyWeekCount__c',
-      'EarlyWeekByDay__c',
-      'Notes__c'
-    }
-  };
-  // ...and fields naming another record.
-  private static final Map<String, Set<String>> LINK_FIELDS = new Map<String, Set<String>>{
-    'LocationType' => new Set<String>(),
-    'Location' => new Set<String>{ 'LocationType__c' },
-    'Division' => new Set<String>{ 'Program__c' },
-    'Group' => new Set<String>{ 'Division__c' },
-    'Activity' => new Set<String>{ 'Location__c', 'RainPlan__c' }
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
@@ -113,7 +78,7 @@ public with sharing class ImportListSaves {
     Map<String, List<ImportPlan.Entry>> result = new Map<String, List<ImportPlan.Entry>>();
     for (ImportPlan.Entry entry : plan.entries('records')) {
       String kind = entry.text('kind');
-      if (!PLAIN_FIELDS.containsKey(kind)) {
+      if (!ImportListRows.isKind(kind)) {
         throw unreadable();
       }
       if (!result.containsKey(kind)) {
@@ -129,69 +94,39 @@ public with sharing class ImportListSaves {
     List<SObject> rows = new List<SObject>();
     // Links to records of the same kind added in this save: written once those exist.
     List<List<Object>> later = new List<List<Object>>();
+    ImportListRows build = new ImportListRows(plan.seasonId, keys, kind);
     for (Integer i = 0; i < entries.size(); i++) {
-      SObject row = rowFor(kind, type, entries[i]);
-      for (List<Object> link : putLinks(kind, row, entries[i])) {
+      SObject row = build.rowFor(entries[i]);
+      for (List<Object> link : build.putLinks(row, entries[i])) {
         later.add(new List<Object>{ i, link[0], link[1] });
       }
       rows.add(row);
     }
-    writer.write(kind, entries, rows);
+    writeChanged(kind, entries, rows);
     writeLater(type, rows, later);
     if (kind == 'Activity') {
       new ImportListWho(writer).save(entries, rows);
     }
   }
 
-  /** A new record (in the season, where its kind is) or an existing one, with its plain fields. */
-  private SObject rowFor(
-    String kind,
-    Schema.SObjectType type,
-    ImportPlan.Entry entry
-  ) {
-    SObject row = entry.isNew()
-      ? type.newSObject()
-      : type.newSObject(keys.existing(entry.id()));
-    if (entry.isNew() && IN_SEASON.contains(kind)) {
-      row.put('Season__c', plan.seasonId);
-    }
-    Map<String, Object> values = entry.valuesOf('fields');
-    for (String field : values.keySet()) {
-      if (!PLAIN_FIELDS.get(kind).contains(field)) {
-        throw unreadable();
-      }
-      row.put(field, ImportUndoValues.asField(type, field, values.get(field)));
-    }
-    return row;
-  }
-
   /**
-   * Puts in the links to other records; returns the ones to a record of the same kind not saved
-   * yet ([field, key]), to be written after.
+   * Saves the new records and the existing ones with something to change; an existing activity
+   * changed only in who can do it is not written (nor counted as changed) here.
    */
-  private List<List<Object>> putLinks(
+  private void writeChanged(
     String kind,
-    SObject row,
-    ImportPlan.Entry entry
+    List<ImportPlan.Entry> entries,
+    List<SObject> rows
   ) {
-    List<List<Object>> waiting = new List<List<Object>>();
-    Map<String, Object> links = entry.valuesOf('refs');
-    for (String field : links.keySet()) {
-      if (!LINK_FIELDS.get(kind).contains(field)) {
-        throw unreadable();
-      }
-      String target = (String) links.get(field);
-      Boolean sameKindNotYet =
-        target != null &&
-        target.startsWith(kind + ':') &&
-        !keys.knows(target);
-      if (sameKindNotYet) {
-        waiting.add(new List<Object>{ field, target });
-      } else {
-        row.put(field, keys.of(target));
+    List<ImportPlan.Entry> writing = new List<ImportPlan.Entry>();
+    List<SObject> written = new List<SObject>();
+    for (Integer i = 0; i < entries.size(); i++) {
+      if (entries[i].isNew() || rows[i].getPopulatedFieldsAsMap().size() > 1) {
+        writing.add(entries[i]);
+        written.add(rows[i]);
       }
     }
-    return waiting;
+    writer.write(kind, writing, written);
   }
 
   private void writeLater(
@@ -232,7 +167,7 @@ public with sharing class ImportListSaves {
     return done.Id;
   }
 
-  private static ShoreshException unreadable() {
+  public static ShoreshException unreadable() {
     return new ShoreshException(
       'The import could not be read. Start it again.'
     );

@@ -520,4 +520,93 @@ private class ImportListSavesTest {
       );
     }
   }
+
+  @IsTest
+  static void aRainPlanChangedToAnActivityTheListAddsIsUndone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      ImportSetupSaves.Result result = save(
+        plan(
+          c.season.Id,
+          new List<Object>{
+            new Map<String, Object>{
+              'kind' => 'Activity',
+              'id' => c.archery.Id,
+              'fields' => new Map<String, Object>{ 'Notes__c' => 'Arm guards' },
+              'refs' => new Map<String, Object>{
+                'RainPlan__c' => 'Activity:Board games'
+              }
+            },
+            newActivity(
+              'Board games',
+              new Map<String, Object>(),
+              new List<Object>()
+            )
+          }
+        )
+      );
+      Assert.areEqual(1, result.changed.get('Activity'), 'counted once');
+      Activity__c changed = [
+        SELECT RainPlan__r.Name, Notes__c
+        FROM Activity__c
+        WHERE Id = :c.archery.Id
+      ];
+      Assert.areEqual('Board games', changed.RainPlan__r.Name);
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Activity__c back = [
+        SELECT RainPlan__c, Notes__c
+        FROM Activity__c
+        WHERE Id = :c.archery.Id
+      ];
+      Assert.isNull(back.RainPlan__c);
+      Assert.isNull(back.Notes__c);
+      Assert.areEqual(1, undone.restored);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Activity__c WHERE Name = 'Board games']
+      );
+    }
+  }
+
+  @IsTest
+  static void aListNeverRenamesNorChangesWhatItCanOnlyAdd() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Test.startTest();
+      List<Map<String, Object>> attempts = new List<Map<String, Object>>{
+        new Map<String, Object>{
+          'kind' => 'Activity',
+          'id' => c.archery.Id,
+          'fields' => new Map<String, Object>{ 'Name' => 'Renamed' }
+        },
+        new Map<String, Object>{
+          'kind' => 'Group',
+          'id' => c.bunk1,
+          'refs' => new Map<String, Object>{ 'Division__c' => c.seniors }
+        }
+      };
+      for (Map<String, Object> attempt : attempts) {
+        try {
+          save(plan(c.season.Id, new List<Object>{ attempt }));
+          Assert.fail('refused: ' + JSON.serialize(attempt));
+        } catch (AuraHandledException e) {
+          Assert.isTrue(
+            e.getMessage().contains('Start it again'),
+            e.getMessage()
+          );
+        }
+      }
+      Test.stopTest();
+      Assert.areEqual(
+        'Archery',
+        [SELECT Name FROM Activity__c WHERE Id = :c.archery.Id].Name
+      );
+      Assert.areEqual(
+        c.juniors,
+        [SELECT Division__c FROM Group__c WHERE Id = :c.bunk1].Division__c
+      );
+    }
+  }
 }

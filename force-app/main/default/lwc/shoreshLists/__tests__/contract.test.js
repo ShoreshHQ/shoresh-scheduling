@@ -1,5 +1,5 @@
 // The save request the screen builds (listPlan) against what the server accepts
-// (ImportListSaves): every kind and field the plan can send must be one the Apex lets a list
+// (ImportListSaves, ImportListRows): every kind and field the plan can send must be one the Apex lets a list
 // write, or the save would be refused. Reads the Apex source itself, so a rename on either
 // side fails here.
 import { readFileSync } from "fs";
@@ -13,7 +13,7 @@ import {
   listScreen
 } from "c/shoreshLists";
 
-const apex = ["ImportListSaves", "ImportListWho"]
+const apex = ["ImportListSaves", "ImportListRows", "ImportListWho"]
   .map((name) =>
     readFileSync(
       join(__dirname, "..", "..", "..", "classes", `${name}.cls`),

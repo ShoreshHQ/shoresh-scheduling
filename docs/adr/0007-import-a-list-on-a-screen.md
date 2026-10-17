@@ -51,7 +51,10 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
    ticked and greyed out); a name in "Who can do it" that is no unit or bunk asks whether to
    add it as a unit (which program) or a bunk (which unit); a rain plan naming an activity
    that is nowhere asks its length, and the rest starts as an activity added by hand. Every
-   question can be answered "Leave it out for now", which leaves out the rows that name it.
+   question can be answered "Leave it out for now", which leaves out the rows that name it. Only
+   what will be saved counts: a place named in a difference answered Keep is not added. A rain
+   plan naming a row that can't be read or is left out is asked about the same way, never
+   linked to nothing.
 6. **Columns that are not a screen's fields** follow the screen: "Times a week: at most" and
    "Groups at once" take a number or "No maximum" / "No limit" (one column instead of the
    screen's number and tick); "Early in the week" reads "2 by Wednesday"; "Who can do it" lists

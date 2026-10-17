@@ -68,11 +68,17 @@ export function mapHeadings(headings, screen, answers) {
     column.words.forEach((word) => byWord.set(foldName(word), column.key));
   });
   const found = [];
+  const seen = new Map();
   headings.forEach((text, index) => {
     if (!tidy(text)) {
       return;
     }
-    const key = columnKey(screen.key, text);
+    // A heading written twice gets its own key the second time ("Notes", "Notes#2").
+    const folded = foldName(text);
+    seen.set(folded, (seen.get(folded) || 0) + 1);
+    const key =
+      columnKey(screen.key, text) +
+      (seen.get(folded) > 1 ? `#${seen.get(folded)}` : "");
     const chosen = answers[key];
     if (chosen !== undefined) {
       found.push({

@@ -41,8 +41,9 @@ const PAIR_KIND = {
   locationType: "locationType"
 };
 
-export function changeKey(screenKey, name, columnKey) {
-  return `change|${screenKey}|${looseKey(name)}|${columnKey}`;
+/** A difference's answer key: the item, the column, and the new value (a new value asks again). */
+export function changeKey(screenKey, name, columnKey, to) {
+  return `change|${screenKey}|${looseKey(name)}|${columnKey}|${JSON.stringify(to ?? null)}`;
 }
 
 function blankValue(column) {
@@ -141,19 +142,22 @@ function matchNames(rows, records, kind, answers) {
     const answer = answers[pair.id];
     const a = rowOf.get(pair.a);
     const b = pair.existing ? null : rowOf.get(pair.b);
-    if (answer === undefined) {
-      a.open = true;
-      if (b) {
-        b.open = true;
-      }
-    } else if (answer === LEAVE_OUT) {
+    const sameThing = answer === "a" || answer === "b";
+    if (answer === LEAVE_OUT) {
       a.leftOut = true;
       if (b) {
         b.leftOut = true;
       }
-    } else if (pair.existing && answer === "b") {
+    } else if (pair.existing && sameThing) {
+      // Either spelling chosen (Import last year asks with both): the camp's item is used.
       a.existing = byName.get(pair.existing);
-    } else if (!pair.existing && (answer === "a" || answer === "b")) {
+    } else if (answer !== "different" && !sameThing) {
+      // Not answered (or an answer this question doesn't offer).
+      a.open = true;
+      if (b) {
+        b.open = true;
+      }
+    } else if (!pair.existing && sameThing) {
       // The same thing written twice: the row with the spelling kept is used.
       const [kept, dropped] = answer === "a" ? [a, b] : [b, a];
       dropped.leftOut = true;
@@ -215,6 +219,74 @@ function matchRefs(rows, column, records, answers) {
     }
   });
   return { pairs, merged, leftOut, open };
+}
+
+/**
+ * Rain plans: a plan naming the camp's activity, or a row of the list that will be saved, is
+ * fine; one naming a row that can't be read or is left out, or nothing at all, is added after
+ * asking its length (Greg, Q2). A row whose plan is still asked about waits with it, and one
+ * whose plan is left out is left out too, which can leave out further rows: repeated until
+ * nothing changes, so the order of the rows never matters.
+ */
+function rainPlans(read, column, setup, answers, t) {
+  const camp = new Set((setup.activities || []).map((a) => a.Name));
+  read.forEach((r) => {
+    const plan = r.values[column.key];
+    if (plan && looseKey(plan) === looseKey(r.name) && !r.problems.length) {
+      r.problems.push(`${column.heading}: can't be itself`);
+    }
+  });
+  let pass = rainPass(read, column, camp, answers, t);
+  // Each pass can only leave out or hold more rows, so this ends.
+  for (let i = 0; pass.changed && i < read.length; i++) {
+    pass = rainPass(read, column, camp, answers, t);
+  }
+  return pass.adds;
+}
+
+function usable(row) {
+  return !row.problems.length && !row.leftOut;
+}
+
+/** One pass of rainPlans: what is missing now, and the rows that wait or are left out with it. */
+function rainPass(read, column, camp, answers, t) {
+  const rows = read.filter(usable);
+  const rowOf = new Map();
+  rows.forEach((row) => {
+    if (!rowOf.has(row.name)) {
+      rowOf.set(row.name, row);
+    }
+  });
+  const missing = new Set();
+  rows.forEach((r) => {
+    const plan = r.values[column.key];
+    if (plan && !camp.has(plan) && !rowOf.has(plan)) {
+      missing.add(plan);
+    }
+  });
+  const adds = unknownRainPlans(missing, answers, t);
+  let changed = false;
+  rows.forEach((r) => {
+    const plan = r.values[column.key];
+    const target = plan && rowOf.get(plan);
+    if (plan && adds.leftOut.has(plan)) {
+      r.leftOut = true;
+      changed = true;
+    } else if ((plan && adds.open.has(plan)) || (target && target.open)) {
+      changed = changed || !r.open;
+      r.open = true;
+    }
+  });
+  return { adds, changed };
+}
+
+/** Whether a row will save its value for a column: a new row, or a difference answered Change. */
+function usesValue(row, key) {
+  return (
+    row.status === "new" ||
+    (row.status === "changed" &&
+      row.differences.some((d) => d.column === key && d.answer === CHANGE))
+  );
 }
 
 /** What a reference column's names are matched against: the season's, and for a rain plan the list's own. */
@@ -308,47 +380,31 @@ export function listProposal(input) {
   const whoAdds = unknownWho(read, targets, setup, answers, t);
   result.cards = [...whoAdds.cards];
   result.whoAdds = whoAdds.adds;
-  const rain = used.find(({ column }) => column.ref === "activity");
-  const known = new Set([
-    ...ownNames,
-    ...(setup.activities || []).map((a) => a.Name)
-  ]);
-  const missingPlans = new Set();
   read.forEach((r) => {
     const who = used.find(({ column }) => column.type === "list");
-    if (who && Array.isArray(r.values.who) && r.values.who.length) {
-      const keys = r.values.who.map(looseKey);
-      if (keys.some((k) => whoAdds.leftOut.has(k))) {
-        r.leftOut = true;
-      } else if (keys.some((k) => whoAdds.open.has(k))) {
-        r.open = true;
+    if (!who || !Array.isArray(r.values.who) || !r.values.who.length) {
+      return;
+    }
+    const keys = r.values.who.map(looseKey);
+    if (keys.some((k) => whoAdds.leftOut.has(k))) {
+      r.leftOut = true;
+    } else if (keys.some((k) => whoAdds.open.has(k))) {
+      r.open = true;
+    } else {
+      const found = resolveWho(r.values.who, targets);
+      if (found.problem) {
+        r.problems.push(`${who.column.heading}: ${found.problem}`);
       } else {
-        const found = resolveWho(r.values.who, targets);
-        if (found.problem) {
-          r.problems.push(`${who.column.heading}: ${found.problem}`);
-        } else {
-          r.values.who = found.ids;
-        }
+        r.values.who = found.ids;
       }
     }
-    const plan = rain && r.values[rain.column.key];
-    if (plan && looseKey(plan) === looseKey(r.name)) {
-      r.problems.push(`${rain.column.heading}: can't be itself`);
-    } else if (plan && !known.has(plan) && !r.problems.length) {
-      missingPlans.add(plan);
-    }
   });
-  const rainAdds = unknownRainPlans(missingPlans, answers, t);
+  const rain = used.find(({ column }) => column.ref === "activity");
+  const rainAdds = rain
+    ? rainPlans(read, rain.column, setup, answers, t)
+    : { cards: [], adds: [] };
   result.cards.push(...rainAdds.cards);
   result.rainAdds = rainAdds.adds;
-  read.forEach((r) => {
-    const plan = rain && r.values[rain.column.key];
-    if (plan && rainAdds.leftOut.has(plan)) {
-      r.leftOut = true;
-    } else if (plan && rainAdds.open.has(plan)) {
-      r.open = true;
-    }
-  });
   result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
   result.targets = targets;
   // What the save request points at by name.
@@ -359,9 +415,7 @@ export function listProposal(input) {
   };
   result.setupActivities = setup.activities || [];
   result.alsoAdd = alsoAdded(result.rows, used, setup);
-  const counted = (row, key) =>
-    row.status === "new" ||
-    (row.status === "changed" && row.differences.some((d) => d.column === key));
+  const counted = (row, key) => usesValue(row, key);
   result.alsoAdd.activity = rainAdds.adds.filter((add) =>
     result.rows.some(
       (row) => counted(row, "rainPlan") && row.values.rainPlan === add.name
@@ -400,7 +454,9 @@ function alsoAdded(rows, used, setup) {
         const counts =
           row.status === "new" ||
           (row.status === "changed" &&
-            row.differences.some((d) => d.column === column.key));
+            row.differences.some(
+              (d) => d.column === column.key && d.answer === CHANGE
+            ));
         if (name && counts && !known.has(name)) {
           names.add(name);
         }
@@ -433,6 +489,20 @@ function describeRow(r, used, screen, setup, answers) {
     screen.columns.forEach((column) => {
       values[column.key] = newValueOf(column, r);
     });
+    if (
+      "max" in values &&
+      typeof values.max === "number" &&
+      values.max < values.min
+    ) {
+      // At most written, at least left to start at 1: Salesforce would refuse the whole save.
+      return {
+        ...row,
+        status: "unreadable",
+        problems: [
+          `At most ${values.max} is less than at least ${values.min} times a week`
+        ]
+      };
+    }
     return { ...row, status: "new", values };
   }
   const differences = [];
@@ -447,7 +517,7 @@ function describeRow(r, used, screen, setup, answers) {
     const to = blank ? blankValue(column) : r.values[column.key];
     const from = column.fromRecord(r.existing, setup);
     if (!same(normal(column, from), normal(column, to))) {
-      const id = changeKey(screen.key, r.existing.Name, column.key);
+      const id = changeKey(screen.key, r.existing.Name, column.key, to);
       differences.push({
         id,
         column: column.key,

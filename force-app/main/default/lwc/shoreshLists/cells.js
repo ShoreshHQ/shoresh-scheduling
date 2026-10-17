@@ -55,12 +55,29 @@ function whole(text, min) {
     : { value };
 }
 
-/** Names in a list cell: split on commas, semicolons, and line breaks. */
+/**
+ * Names in a list cell: split on commas, semicolons, and line breaks, but not inside brackets,
+ * so "Bunk 1 (Juniors, Main)" stays one name.
+ */
 export function splitList(text) {
-  return String(text)
-    .split(/[,;\n]+/)
-    .map((part) => tidy(part))
-    .filter((part) => part);
+  const parts = [];
+  let current = "";
+  let depth = 0;
+  for (const ch of String(text)) {
+    if (ch === "(") {
+      depth++;
+    } else if (ch === ")") {
+      depth = Math.max(0, depth - 1);
+    }
+    if (depth === 0 && /[,;\n]/.test(ch)) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  parts.push(current);
+  return parts.map((part) => tidy(part)).filter((part) => part);
 }
 
 /** "2 by Wednesday", "2 by Wed": how many early in the week, by which day. */
