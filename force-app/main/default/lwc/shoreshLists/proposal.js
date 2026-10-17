@@ -222,6 +222,26 @@ function matchScope(leads, records, kind, answers) {
     }
     r.existing = r.found.length === 1 ? r.found[0] : null;
   });
+  // A group the file names in another division is a move, unless the file also names it in
+  // the division it is in: then that row is it, and this one is a new group of the same name.
+  readable.forEach((r) => {
+    const rec = r.existing;
+    if (!rec || !rec._divisionName || r.values.division === undefined) {
+      return;
+    }
+    const elsewhere =
+      looseKey(rec._divisionName) !== looseKey(r.values.division);
+    const listedAtHome = readable.some(
+      (other) =>
+        other !== r &&
+        looseKey(other.name) === looseKey(r.name) &&
+        looseKey(other.values.division || "") === looseKey(rec._divisionName)
+    );
+    if (elsewhere && listedAtHome) {
+      r.existing = null;
+      r.found = [];
+    }
+  });
   return pairs;
 }
 
@@ -309,7 +329,23 @@ function checkNewLimits(read, screen) {
 
 /** What a row's name is matched within: its program for a program's list, else the season. */
 function scopeOf(row) {
-  return row.program ? row.program.id : "season";
+  if (row.program) {
+    return row.program.id;
+  }
+  // A row whose program is still asked about is matched with nothing until it is answered.
+  return row.values.program ? `waiting|${row.rowNumber}` : "season";
+}
+
+/**
+ * What makes two rows the same item: their scope and name, and for a group its division too
+ * (a group is its program, division, and name: ADR 0006 §14).
+ */
+function itemKey(row) {
+  const division =
+    row.values.division !== undefined
+      ? `|${looseKey(row.values.division)}`
+      : "";
+  return `${scopeOf(row)}${division}|${looseKey(row.name)}`;
 }
 
 /**
@@ -317,27 +353,41 @@ function scopeOf(row) {
  * block that ends before it starts can't be read.
  */
 function resolveAmpm(read, answers) {
-  const texts = new Set();
+  const asks = new Map();
   read.filter(usable).forEach((r) => {
-    Object.entries(r.unsure).forEach(([key, text]) => {
-      texts.add(text);
-      const answer = answers[ampmKey(text)];
-      if (answer === "morning" && r.values[key] >= HALF_DAY) {
-        r.values[key] -= HALF_DAY;
-      } else if (answer === LEAVE_OUT) {
-        r.leftOut = true;
-      } else if (answer !== "morning" && answer !== "evening") {
-        r.open = true;
-      }
-    });
-  });
-  read.filter(usable).forEach((r) => {
-    const { start, end } = r.values;
-    if (typeof start === "number" && typeof end === "number" && end <= start) {
-      r.problems.push("End is before Start");
+    const unsure = Object.entries(r.unsure);
+    if (!unsure.length) {
+      return;
+    }
+    const id = ampmKey(r.values.program || "", r.name);
+    asks.set(id, { name: r.name, texts: unsure.map(([, text]) => text) });
+    const answer = answers[id];
+    if (answer === LEAVE_OUT) {
+      r.leftOut = true;
+    } else if (answer === "morning") {
+      unsure.forEach(([key]) => {
+        if (r.values[key] >= HALF_DAY) {
+          r.values[key] -= HALF_DAY;
+        }
+      });
+    } else if (answer !== "evening") {
+      r.open = true;
     }
   });
-  return ampmCards(texts, answers);
+  // Not while it is asked: until then the time reads as evening.
+  read
+    .filter((r) => usable(r) && !r.open)
+    .forEach((r) => {
+      const { start, end } = r.values;
+      if (
+        typeof start === "number" &&
+        typeof end === "number" &&
+        end <= start
+      ) {
+        r.problems.push("End is before Start");
+      }
+    });
+  return ampmCards(asks, answers);
 }
 
 function programEntry(setup, programId) {
@@ -484,7 +534,7 @@ function settleLeads(read) {
   read
     .filter((r) => r.name)
     .forEach((r) => {
-      const key = `${scopeOf(r)}|${looseKey(r.name)}`;
+      const key = itemKey(r);
       if (first.has(key)) {
         r.repeatOf = first.get(key);
       } else {
@@ -853,6 +903,7 @@ function describeRow(r, used, screen, setup, answers) {
     ...row,
     id: r.existing.Id,
     existingName: r.existing.Name,
+    record: r.existing,
     status: differences.length ? "changed" : "unchanged",
     differences
   };

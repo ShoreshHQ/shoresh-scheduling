@@ -19,7 +19,13 @@ function kindWord(kind, t) {
   return {
     activity: t.sIn("Activity"),
     location: t.sIn("Location"),
-    locationType: t.sIn("LocationType")
+    locationType: t.sIn("LocationType"),
+    program: t.sIn("Program"),
+    division: t.sIn("Division"),
+    group: t.sIn("Group"),
+    timeBlock: t.sIn("TimeBlock"),
+    fixed: t.sIn("FixedActivity"),
+    recurring: t.sIn("RecurringActivity")
   }[kind];
 }
 
@@ -153,6 +159,20 @@ function conflicts(proposal) {
         messages.push(
           `${row.existingName}: at most ${max} would be below at least ${min}`
         );
+      }
+    });
+  // A time block: Keep one time and Change the other, and the end may come first.
+  (proposal.rows || [])
+    .filter(
+      (r) => r.status === "changed" && proposal.screen.kind === "TimeBlock"
+    )
+    .forEach((row) => {
+      const minutes = (ms) => Math.round(ms / 60000);
+      const start =
+        finalValue(row, "start") ?? minutes(row.record.StartTime__c);
+      const end = finalValue(row, "end") ?? minutes(row.record.EndTime__c);
+      if (end <= start) {
+        messages.push(`${row.existingName}: End would be before Start`);
       }
     });
   return messages;
@@ -421,6 +441,10 @@ function programRecords(proposal) {
 
 /** A new record's key: its kind and name, and its program for a program's list. */
 export function newKey(screen, row) {
+  if (screen.kind === "Group") {
+    // Two new groups of one name in two divisions are two groups.
+    return `Group:${row.programId}:${row.values.division}:${row.name}`;
+  }
   return screen.scope === "program"
     ? `${screen.kind}:${row.programId}:${row.name}`
     : `${screen.kind}:${row.name}`;

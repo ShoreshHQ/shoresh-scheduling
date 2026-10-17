@@ -270,6 +270,8 @@ export default class ShoreshListImport extends LightningElement {
           answered: !!chosen,
           answerLabel: chosen ? chosen.label : "",
           fromMemory: !!chosen && this.remembered[card.id] === card.answer,
+          draftDays: (this.drafts[card.id] || {}).days || [],
+          draftProblem: (this.drafts[card.id] || {}).problem || "",
           options: card.options.map((o) => ({
             ...o,
             key: `${card.id}::${o.value}`
@@ -334,7 +336,7 @@ export default class ShoreshListImport extends LightningElement {
     (add.division || []).forEach((item) => {
       lines.push({
         key: `division:${item.programId}:${item.name}`,
-        label: `${item.name} · ${t.sIn("Division")}`,
+        label: `${item.name} · ${t.sIn("Division")} · ${this.programName(item.programId)}`,
         checked: true,
         canUntick: false
       });
@@ -391,7 +393,7 @@ export default class ShoreshListImport extends LightningElement {
     const value = event.detail.value;
     this.drafts = {
       ...this.drafts,
-      [id]: { ...(this.drafts[id] || {}), [part]: value }
+      [id]: { ...(this.drafts[id] || {}), [part]: value, problem: "" }
     };
   }
 
@@ -401,8 +403,17 @@ export default class ShoreshListImport extends LightningElement {
     const draft = this.drafts[id] || {};
     if (draft.days && draft.days.length) {
       this.answer(id, draft.days.join(","));
-    } else if (draft.start && draft.end) {
+    } else if (draft.start && draft.end && draft.end > draft.start) {
       this.answer(id, `${draft.start.slice(0, 5)}-${draft.end.slice(0, 5)}`);
+    } else {
+      // Said on the card, never a click that does nothing.
+      this.drafts = {
+        ...this.drafts,
+        [id]: {
+          ...draft,
+          problem: draft.days ? "No days" : "End is before Start, or missing"
+        }
+      };
     }
   }
 

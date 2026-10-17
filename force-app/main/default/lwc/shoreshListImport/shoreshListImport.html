@@ -109,6 +109,7 @@
                       label="Days"
                       variant="label-hidden"
                       options={dayOptions}
+                      value={card.draftDays}
                       data-id={card.id}
                       data-part="days"
                       onchange={handleDraft}
@@ -139,6 +140,11 @@
                       data-id={card.id}
                       onclick={handleDraftDone}
                     ></lightning-button>
+                  </template>
+                  <template lwc:if={card.draftProblem}>
+                    <span class="list-tag list-tag_attention"
+                      >{card.draftProblem}</span
+                    >
                   </template>
                   <template for:each={card.options} for:item="option">
                     <lightning-button

@@ -89,7 +89,7 @@ function lengthColumn(t) {
     words: ["length", "length (blocks)", "blocks", "how long"],
     type: "whole",
     min: 1,
-    keepWhenBlank: true,
+    requiredValue: true,
     newValue: 1,
     fromRecord: (r) => r.Length__c,
     write: (v) => ({ Length__c: v })
@@ -188,7 +188,7 @@ export function groupsScreen(t) {
             words: ["afternoon"]
           }
         ],
-        keepWhenBlank: true,
+        requiredValue: true,
         newValue: "AllDay",
         fromRecord: (r) => r.Availability__c || "AllDay",
         write: (v) => ({ Availability__c: v })
@@ -250,7 +250,7 @@ export function timeBlocksScreen(t) {
           { value: "Morning", label: "Morning", words: ["am"] },
           { value: "Afternoon", label: "Afternoon", words: ["pm"] }
         ],
-        keepWhenBlank: true,
+        requiredValue: true,
         // Not written: from its start, as a block added by hand would be told.
         newValue: (values) => {
           return typeof values.start === "number" && values.start >= 12 * 60

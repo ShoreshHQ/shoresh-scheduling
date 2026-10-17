@@ -167,7 +167,7 @@ describe("groups", () => {
     const p = read("groups", [
       ["Division", "Group", "Availability"],
       ["Seniors", "Bunk 1", "morning"],
-      ["Middlers", "Bunk 9", ""]
+      ["Middlers", "Bunk 9", "All day"]
     ]);
     expect(
       row(p, "Bunk 1").differences.map((d) => [d.column, d.from, d.to])
@@ -186,7 +186,7 @@ describe("groups", () => {
         [
           ["Division", "Group", "Availability"],
           ["Seniors", "Bunk 1", "morning"],
-          ["Middlers", "Bunk 9", ""]
+          ["Middlers", "Bunk 9", "All day"]
         ],
         answers
       ),
@@ -209,7 +209,7 @@ describe("groups", () => {
       },
       {
         kind: "Group",
-        key: "Group:p1:Bunk 9",
+        key: "Group:p1:Middlers:Bunk 9",
         fields: { Name: "Bunk 9", Availability__c: "AllDay" },
         refs: { Division__c: "Division:p1:Middlers" }
       }
@@ -235,7 +235,7 @@ describe("time blocks", () => {
     expect(row(p, "Late pickup").status).toBe("asked");
     expect(row(p, "Backwards").problems).toEqual(["End is before Start"]);
     const [card] = questionCards(p, terms, {});
-    expect(card.title).toBe("“6:00”: morning or evening?");
+    expect(card.title).toBe("“Late pickup” at 6:00–6:30: morning or evening?");
     const answers = {};
     questionCards(p, terms, {}).forEach((c) => {
       answers[c.id] = "evening";
@@ -419,9 +419,9 @@ describe("in any row order", () => {
       "Division division:p1:middlers",
       "Division division:program:teens:hikers",
       "Group g1",
-      "Group group:p1:bunk 9",
-      "Group group:program:teens:tent 1",
-      "Group group:program:teens:tent 2",
+      "Group group:p1:middlers:bunk 9",
+      "Group group:program:teens:hikers:tent 1",
+      "Group group:program:teens:hikers:tent 2",
       "Program program:teens"
     ]);
   });
@@ -573,5 +573,145 @@ describe("the walkthrough's sample lists for a program (docs/samples/lists)", ()
     expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
       "“Middlers” is new in Main. What is it?"
     ]);
+  });
+});
+
+describe("PR B review", () => {
+  it("H1: a blank length, availability, or part of day can't be read (never sent empty)", () => {
+    const fixed = read("fixedActivities", [
+      ["Fixed activity", "Time block", "Length"],
+      ["Lunch", "Period 1", ""]
+    ]);
+    expect(row(fixed, "Lunch").problems).toEqual(["Length is blank"]);
+    const groups = read("groups", [
+      ["Division", "Group", "Availability"],
+      ["Juniors", "Bunk 1", ""]
+    ]);
+    expect(row(groups, "Bunk 1").problems).toEqual(["Availability is blank"]);
+  });
+
+  it("H2: Keep one time and Change the other: waits when the end would come first", () => {
+    const rows = [
+      ["Time block", "Start", "End"],
+      ["Period 1", "10:00", "10:30"]
+    ];
+    const p = read("timeBlocks", rows);
+    const [start, end] = row(p, "Period 1").differences;
+    const answers = { [start.id]: CHANGE, [end.id]: "keep" };
+    expect(
+      waitingFor(read("timeBlocks", rows, answers), terms, answers)
+    ).toEqual(["Period 1: End would be before Start"]);
+  });
+
+  it("H3: a Runs on cell with no days in it is blank", () => {
+    const p = read("programs", [
+      ["Program", "Runs on"],
+      ["Main", "/"]
+    ]);
+    expect(row(p, "Main").problems).toEqual(["Runs on is blank"]);
+  });
+
+  it("H4: one group name in two divisions is two groups, never one moved", () => {
+    const s = setup();
+    s.programs[0].divisions[1].groups.push({
+      Id: "g9",
+      Name: "Bunk 1",
+      Availability__c: "AllDay"
+    });
+    const p = read(
+      "groups",
+      [
+        ["Division", "Group"],
+        ["Juniors", "Bunk 1"],
+        ["Seniors", "Bunk 1"],
+        ["Juniors", "Bunk 7"],
+        ["Seniors", "Bunk 7"]
+      ],
+      {},
+      s
+    );
+    expect(p.rows.map((r) => [r.name, r.status, r.id || null])).toEqual([
+      ["Bunk 1", "unchanged", "g1"],
+      ["Bunk 1", "unchanged", "g9"],
+      ["Bunk 7", "new", null],
+      ["Bunk 7", "new", null]
+    ]);
+    const keys = listPlan(p, {}, "s1", "f").records.map((r) => r.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("H4: a group the file also lists where it is: the other row is a new group", () => {
+    const p = read("groups", [
+      ["Division", "Group"],
+      ["Juniors", "Bunk 1"],
+      ["Seniors", "Bunk 1"]
+    ]);
+    expect(p.rows.map((r) => [r.status, r.id || null])).toEqual([
+      ["unchanged", "g1"],
+      ["new", null]
+    ]);
+  });
+
+  it("H5 and M2: the 5/6 o'clock question is per block, and no end-before-start while asked", () => {
+    const s = setup();
+    s.programs.push(program("p2", "Teens", DAYS));
+    const p = read(
+      "timeBlocks",
+      [
+        ["Program", "Time block", "Start", "End"],
+        ["Main", "Early care", "6:00", "7:00"],
+        ["Teens", "Dinner", "6:00", "6:45 PM"]
+      ],
+      {},
+      s
+    );
+    expect(p.rows.map((r) => [r.name, r.status, r.problems])).toEqual([
+      ["Early care", "asked", []],
+      ["Dinner", "asked", []]
+    ]);
+    expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
+      "“Early care” at 6:00: morning or evening?",
+      "“Dinner” at 6:00: morning or evening?"
+    ]);
+  });
+
+  it("M1: similar-name questions name the kind", () => {
+    const p = read("fixedActivities", [
+      ["Fixed activity", "Time block"],
+      ["Lunchh", "Period 1"]
+    ]);
+    expect(questionCards(p, terms, {})[0].title).toBe(
+      "Are “Lunchh” and “Lunch” the same fixed activity?"
+    );
+  });
+
+  it("M3: times outside a camp day can't be read", () => {
+    const p = read("timeBlocks", [
+      ["Time block", "Start", "End"],
+      ["A", "15:00 AM", "16:00"],
+      ["B", "12:30 AM", "1:00"],
+      ["C", "0:30", "9:00"]
+    ]);
+    expect(p.rows.map((r) => r.problems[0])).toEqual([
+      'Start: "15:00 AM" isn\'t a camp-day time',
+      'Start: "12:30 AM" isn\'t a camp-day time',
+      'Start: "0:30" isn\'t a camp-day time'
+    ]);
+  });
+
+  it("M4: rows waiting on their program are kept apart, in any order", () => {
+    const s = setup();
+    s.programs.push(program("p2", "Teens", DAYS));
+    const forward = read(
+      "fixedActivities",
+      [
+        ["Program", "Fixed activity", "Time block"],
+        ["Main", "Snack", "Period 1"],
+        ["Nope", "Snack", "Period 1"]
+      ],
+      {},
+      s
+    );
+    expect(forward.rows.map((r) => r.status)).toEqual(["new", "asked"]);
   });
 });

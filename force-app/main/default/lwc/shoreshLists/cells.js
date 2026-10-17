@@ -139,7 +139,10 @@ function days(text) {
     }
     WEEKDAYS.slice(from, to + 1).forEach((d) => found.add(d));
   }
-  return { value: WEEKDAYS.filter((d) => found.has(d)) };
+  // Only separators ("/", "and"): no days written, as if blank.
+  return found.size
+    ? { value: WEEKDAYS.filter((d) => found.has(d)) }
+    : { blank: true };
 }
 
 /**
@@ -152,7 +155,12 @@ function time(text) {
     return { problem: `"${text}" isn't a time` };
   }
   const hour = Number((text.match(/\d{1,2}/) || ["0"])[0]);
-  const marked = /[ap]\.?\s*m\.?/i.test(text) || hour >= 13 || hour === 0;
+  const meridiem = /[ap]\.?\s*m\.?/i.test(text);
+  // A camp day: never "15:00 AM", and nothing between midnight and 5 in the morning.
+  if ((meridiem && (hour > 12 || hour === 0)) || range.start < 5 * 60) {
+    return { problem: `"${text}" isn't a camp-day time` };
+  }
+  const marked = meridiem || hour >= 13;
   return !marked && (hour === 5 || hour === 6)
     ? { value: range.start, unsure: true }
     : { value: range.start };

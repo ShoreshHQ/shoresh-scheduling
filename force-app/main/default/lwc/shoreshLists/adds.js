@@ -10,7 +10,7 @@
  * activity's starting values (Greg, 2026-10-17); its tick can be taken off.
  * Answers are names and choices, never record Ids, so they still work in a copied season.
  */
-import { LEAVE_OUT, clock, looseKey, tidy } from "c/shoreshImportEngine";
+import { LEAVE_OUT, clock, looseKey } from "c/shoreshImportEngine";
 
 export function whoAddKey(name, program) {
   return program
@@ -26,8 +26,9 @@ export function blockAddKey(program, name) {
   return `blockAdd|${looseKey(program)}|${looseKey(name)}`;
 }
 
-export function ampmKey(text) {
-  return `ampm|${tidy(text).toLowerCase()}`;
+/** Asked per block (its program and name), as Import last year does (ADR 0006 §15). */
+export function ampmKey(program, name) {
+  return `ampm|${looseKey(program)}|${looseKey(name)}`;
 }
 
 const LEAVE_OUT_OPTION = { value: LEAVE_OUT, label: "Leave it out for now" };
@@ -222,16 +223,20 @@ export function unknownBlocks(asks, answers, t) {
   return result;
 }
 
-/** 5 or 6 o'clock without AM or PM: one question per way it is written. */
-export function ampmCards(texts, answers) {
-  return [...texts].sort().map((text) => ({
-    id: ampmKey(text),
-    title: `“${text}”: morning or evening?`,
-    options: [
-      { value: "morning", label: "Morning" },
-      { value: "evening", label: "Evening" },
-      LEAVE_OUT_OPTION
-    ],
-    answer: answers[ampmKey(text)] || null
-  }));
+/**
+ * 5 or 6 o'clock without AM or PM: one question per block. asks: Map(key -> { name, texts }).
+ */
+export function ampmCards(asks, answers) {
+  return [...asks.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([id, ask]) => ({
+      id,
+      title: `“${ask.name}” at ${ask.texts.join("–")}: morning or evening?`,
+      options: [
+        { value: "morning", label: "Morning" },
+        { value: "evening", label: "Evening" },
+        LEAVE_OUT_OPTION
+      ],
+      answer: answers[id] || null
+    }));
 }

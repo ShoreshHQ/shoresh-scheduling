@@ -120,7 +120,6 @@ public with sharing class ImportWriter {
     }
   }
 
-  /** A who list replaced on an existing item: what it was, and what the import wrote. */
   /** A who list an import replaced: whose, which rows' object, and the targets before and after. */
   public class WhoChange {
     public SObject owner;

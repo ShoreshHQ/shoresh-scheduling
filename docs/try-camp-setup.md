@@ -437,7 +437,7 @@ in the _Import test_ season, in this order).
    Change moves it, within its program). _Bunk 7_ is new. _Bunk 8_ is under **Review here**
    ("sometimes" isn't an availability).
 4. **Time blocks** (`maple-grove-time-blocks.csv`): _Period 2 · Start: 9:50 AM → 9:55 AM_.
-   _“6:00”: morning or evening?_ and the same for 6:30 (answer **Evening**). _Swim time_ is
+   _“Late pickup” at 6:00–6:30: morning or evening?_ (answer **Evening**). _Swim time_ is
    under **Review here** (_End is before Start_).
 5. **Fixed activities** (`maple-grove-fixed.csv`): _Lunch_ gets a location, _Dining hall_,
    under **Also adding**. _“Snack break” is a new time block in Main. When is it?_ Fill in
