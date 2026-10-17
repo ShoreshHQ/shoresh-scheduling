@@ -124,4 +124,10 @@ describe("moves", () => {
       { day: 0, group: 0, first: 1, before: [""], after: [SWIM] }
     ]);
   });
+
+  it("never swaps something into a block where the bunk isn't at camp", () => {
+    expect(
+      moveEdit(week(), at(0, 0, 1), at(1, 1, 1), (p) => p.group === 1)
+    ).toEqual({ refused: REFUSED.AWAY });
+  });
 });

@@ -16,9 +16,9 @@ export const REFUSED = Object.freeze({
   SET_TIME: "setTime",
   AWAY: "away",
   SWAP_LONG: "swapLong",
+  FIXED_HERE: "fixedHere",
   NO_ROOM: "noRoom"
 });
-
 
 /** Puts an item at a block for up to `length` blocks over Open, at-camp slots. Returns how many. */
 function fill(row, start, slot, length, isAway) {
@@ -104,7 +104,14 @@ export function moveEdit(days, from, to, isAway) {
     }
     return { runs: rows.runs() };
   }
-  if (p.length > 1 || q.length > 1 || !q.slot.startsWith("A:")) {
+  if (isAway({ ...to, block: q.first })) {
+    return { refused: REFUSED.AWAY };
+  }
+  if (!q.slot.startsWith("A:")) {
+    // Something noted from a file but not set up yet: it stays where it is.
+    return { refused: REFUSED.FIXED_HERE };
+  }
+  if (p.length > 1 || q.length > 1) {
     return { refused: REFUSED.SWAP_LONG };
   }
   source[p.first] = q.slot;

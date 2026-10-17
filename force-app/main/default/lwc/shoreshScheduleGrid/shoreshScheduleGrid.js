@@ -1,6 +1,11 @@
 import { LightningElement, api } from "lwc";
 
 const EDIT_KEYS = new Set(["Enter", "F2"]);
+
+/** What a drag carried as text, if anything. */
+function dragData(event) {
+  return event.dataTransfer ? event.dataTransfer.getData("text/plain") : "";
+}
 const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
 
 /**
@@ -102,6 +107,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
           // A slot that can't change here (a fixed activity, a group not at camp).
           ariaReadOnly: this.editable && cell.readOnly ? "true" : null,
           draggable: this.editable && cell.movable ? "true" : null,
+          ariaSelected: this.editable && cell.selected ? "true" : null,
           handle: this.editable && cell.movable,
           colIndex: cell.column + 2,
           rowSpan: cell.length || 1
@@ -230,7 +236,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
     const key = this.cellKeyOf(event);
     if (key) {
       this.activeKey = key;
-      this.send("cellclick", { key });
+      const onHandle = !!event.target.closest("[data-handle]");
+      this.send(onHandle ? "handleclick" : "cellclick", { key });
     }
   }
 
@@ -242,7 +249,9 @@ export default class ShoreshScheduleGrid extends LightningElement {
     const resizing = !!event.target.closest("[data-handle]");
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", key);
+      // The name shown, so a drop somewhere else (a text box) writes a word, not machinery.
+      const cell = this.allCells.find((c) => c.key === key);
+      event.dataTransfer.setData("text/plain", cell ? cell.text : "");
     }
     this.send(resizing ? "resizestart" : "celldragstart", { key });
   }
@@ -253,12 +262,22 @@ export default class ShoreshScheduleGrid extends LightningElement {
     }
   }
 
+  /**
+   * A drop on a cell: its key, what the drag carried (to tell it from other things dropped), and
+   * how far down the cell it landed (0 top to 1 bottom).
+   */
   handleDrop(event) {
     const key = this.cellKeyOf(event);
-    if (key) {
-      event.preventDefault();
-      this.send("celldrop", { key });
+    if (!key) {
+      return;
     }
+    event.preventDefault();
+    const rect = this.cellElement(key).getBoundingClientRect();
+    const at =
+      rect.height > 0
+        ? Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+        : 0;
+    this.send("celldrop", { key, data: dragData(event), at });
   }
 
   ask(name, key, element) {

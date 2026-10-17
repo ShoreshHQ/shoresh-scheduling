@@ -85,7 +85,10 @@ describe("c-shoresh-build-palette", () => {
   });
 
   it("says No matches when the filter finds nothing", () => {
-    const element = render({ stillNeeded: [], placed: [] });
+    const element = render({ stillNeeded: [], placed: [], filter: "zz" });
     expect(q(element, ".no-matches").textContent).toBe("No matches");
+    // A camp with no activities and nothing typed says nothing.
+    const empty = render({ stillNeeded: [], placed: [] });
+    expect(q(empty, ".no-matches")).toBeNull();
   });
 });

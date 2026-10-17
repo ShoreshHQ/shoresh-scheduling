@@ -163,6 +163,9 @@ export function diffRun(before, after) {
  * it is now. Anything of theirs overlapping it goes in full, so nothing is left cut short.
  */
 export function rebaseRun(row, first, after) {
+  if (first < 0 || first + after.length > row.length) {
+    return null;
+  }
   const next = [...row];
   for (let b = first; b < first + after.length; b++) {
     if (row[b] !== OPEN) {

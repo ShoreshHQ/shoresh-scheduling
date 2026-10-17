@@ -51,4 +51,15 @@ describe("activity list counts", () => {
     );
     expect([...stillNeeded, ...placed].map((c) => c.name)).toEqual(["Boating"]);
   });
+
+  it("in Group View, a bunk an activity isn't set up for needs none of it", () => {
+    const { stillNeeded, placed } = paletteChips(
+      schedule(),
+      ACTIVITIES,
+      "g2",
+      ""
+    );
+    expect(stillNeeded.map((c) => c.name)).toEqual(["Soccer"]);
+    expect(placed.find((c) => c.name === "Swim").label).toBe("0 placed");
+  });
 });

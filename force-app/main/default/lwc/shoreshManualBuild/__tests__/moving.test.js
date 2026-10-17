@@ -185,7 +185,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     await fire(cell(element, "1-1"), "drop");
     expect(saveSlots).not.toHaveBeenCalled();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Only single-block activities swap."
+      "Only activities one Period long swap."
     );
   });
 
@@ -312,5 +312,95 @@ describe("c-shoresh-manual-build: moving things", () => {
     await flush();
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
     expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+  });
+
+  it("Ctrl+Z typed in the Filter box doesn't undo a schedule change", async () => {
+    const element = await render();
+    await press(cell(element, "0-1"), "Delete");
+    const filter = palette(element).shadowRoot.querySelector(
+      '[data-id="palette-filter"]'
+    );
+    await press(filter, "z", { ctrlKey: true });
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+  });
+
+  it("a drag that ended without a drop can't act later", async () => {
+    const element = await render();
+    await fire(cell(element, "0-1"), "dragstart");
+    await fire(cell(element, "0-1"), "dragend");
+    palette(element)
+      .shadowRoot.querySelector('[data-id="palette"]')
+      .dispatchEvent(new CustomEvent("drop"));
+    await flush();
+    await fire(cell(element, "0-2"), "drop");
+    expect(saveSlots).not.toHaveBeenCalled();
+  });
+
+  it("after Use yours, Undo takes back what was really saved", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    // I place Swim in Bunk 1's Period 2; someone had put two-block Boating there.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,^", "1,2,"])
+    });
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(sentRuns(1)[0]).toMatchObject({
+      before: ["A:a2", "^A:a2"],
+      after: ["A:a1", ""]
+    });
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    // Boating comes back, all of it.
+    expect(sentRuns(2)[0]).toMatchObject({
+      before: ["A:a1", ""],
+      after: ["A:a2", "^A:a2"]
+    });
+  });
+
+  it("what was picked up is let go when the day, view, or bunk changes", async () => {
+    const element = await render();
+    await press(cell(element, "0-1"), " ");
+    q(element, '[data-id="day-pills"] button:nth-child(2)').click();
+    await flush();
+    expect(cell(element, "0-1").className).not.toContain("cell_picked");
+    await press(cell(element, "0-2"), " ");
+    expect(saveSlots).not.toHaveBeenCalled();
+  });
+
+  it("a picked slot is selected for screen readers too", async () => {
+    const element = await render();
+    await press(cell(element, "0-1"), " ");
+    expect(cell(element, "0-1").getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("the handle dropped low on a multi-block cell keeps the blocks above", async () => {
+    const element = await render(draft([FLAGPOLE, BOATING], ["1,2,^", "1,,"]));
+    await fire(
+      cell(element, "0-1").querySelector("[data-handle]"),
+      "dragstart"
+    );
+    // The drop lands on Boating's own cell: near the top means Period 2 only.
+    grid(element)
+      .shadowRoot.querySelector('[data-cell="0-1"]')
+      .dispatchEvent(
+        new CustomEvent("drop", { bubbles: true, composed: true })
+      );
+    await flush();
+    expect(sentRuns()[0].after).toEqual(["A:a2", ""]);
+  });
+
+  it("a click on the handle, then a click on a slot below, sets where it ends", async () => {
+    const element = await render();
+    cell(element, "0-1").querySelector("[data-handle]").click();
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Swim: choose where it ends."
+    );
+    cell(element, "0-2").click();
+    await flush();
+    expect(sentRuns()[0].after).toEqual(["A:a1", "^A:a1"]);
   });
 });

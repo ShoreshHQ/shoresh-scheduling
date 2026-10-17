@@ -75,6 +75,8 @@ export default class ShoreshManualBuild extends LightningElement {
   // An edit someone else's change got in the way of: { edit, where, theirs, yours }.
   conflict;
   announcement = "";
+  // A short line under the toolbar when something the director chose couldn't be made.
+  notice;
   // Edits waiting for the server, oldest first; each { edit, key, label }.
   queue = [];
   saving = false;
@@ -85,8 +87,6 @@ export default class ShoreshManualBuild extends LightningElement {
   // { kind: "cell" | "resize", slot, key }.
   picked;
   dragging;
-  // A refused move, said in a few words ("Swim doesn't fit there.").
-  notice;
   history = new History();
   // Bumped whenever history changes, so Undo and Redo show what they would do.
   historyVersion = 0;
@@ -188,12 +188,12 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!again) {
       this.draft = null;
       this.loading = true;
+      this.notice = null;
       this.closeEditor();
       // Undo is for this visit to this week (Greg #10).
       this.history.clear();
       this.historyVersion += 1;
       this.picked = null;
-      this.notice = null;
     }
     try {
       const draft = await getDraft({
@@ -234,6 +234,8 @@ export default class ShoreshManualBuild extends LightningElement {
 
   show(draft, fresh) {
     this.draft = draft;
+    // What was picked up was a position in the old copy of the week: let it go.
+    this.picked = null;
     // The week as the server last sent it, without edits still waiting to save.
     this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
@@ -322,6 +324,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleView(event) {
     this.view = event.currentTarget.dataset.view;
     this.closeEditor();
+    this.picked = null;
     if (this.view !== "activity") {
       this.activityId = null;
     }
@@ -349,6 +352,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleDay(event) {
     this.dayIndex = Number(event.currentTarget.dataset.index);
     this.closeEditor();
+    this.picked = null;
   }
 
   get groupPills() {
@@ -364,6 +368,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleGroup(event) {
     this.groupKey = event.currentTarget.dataset.key;
     this.closeEditor();
+    this.picked = null;
   }
 
   /** The grid on screen (Daily or Group View), with away and saving slots marked. */
@@ -399,6 +404,7 @@ export default class ShoreshManualBuild extends LightningElement {
       };
       if (this.picked && this.picked.key === cell.key) {
         result.className = `${result.className} cell_picked`;
+        result.selected = true;
       }
     }
     if (cell.slot && cell.open && this.isAwaySlot(cell.slot)) {
@@ -621,12 +627,15 @@ export default class ShoreshManualBuild extends LightningElement {
     const forGroup = matches.filter((a) => !a.notFor.includes(grp.id));
     const notForGroup = matches.filter((a) => a.notFor.includes(grp.id));
     const options = [];
-    const filled = placement(day, slot.group, slot.block).slot !== OPEN;
-    if (filled && (!typed || this.isAwaySlot(slot))) {
+    const here = placement(day, slot.group, slot.block);
+    const filled = here.slot !== OPEN;
+    // Left there from an earlier setup where the group isn't at camp (where the placement
+    // starts): it can only be cleared.
+    const awayHere = this.isAwaySlot({ ...slot, block: here.first });
+    if (filled && (!typed || awayHere)) {
       options.push({ key: "open", kind: "open", label: "Open" });
     }
-    // Left there from an earlier setup where the group isn't at camp: it can only be cleared.
-    if (this.isAwaySlot(slot)) {
+    if (awayHere) {
       return this.marked(options);
     }
     forGroup.forEach((a) =>
@@ -800,6 +809,10 @@ export default class ShoreshManualBuild extends LightningElement {
       this.awayIn(slot)
     );
     if (!run) {
+      const head = placement(day, slot.group, slot.block).first;
+      if (next !== OPEN && this.isAwaySlot({ ...slot, block: head })) {
+        this.say(`${day.groups[slot.group].name} isn't at camp then.`);
+      }
       return;
     }
     let label =
@@ -836,6 +849,28 @@ export default class ShoreshManualBuild extends LightningElement {
     this.send(serverRuns, label, key, step.id, runs[0]);
   }
 
+  /** Where an edit starts, for the "saving" shade: from its own run, or found from the server's. */
+  slotKeyOf(firstRun, serverRun) {
+    if (firstRun) {
+      return slotKey({
+        day: firstRun.day,
+        group: firstRun.group,
+        block: firstRun.first
+      });
+    }
+    const weekDays = this.schedule ? this.schedule.days : [];
+    const dayIndex = weekDays.findIndex((d) => d.dateValue === serverRun.day);
+    const day = weekDays[dayIndex];
+    if (!day) {
+      return null;
+    }
+    return slotKey({
+      day: dayIndex,
+      group: day.groups.findIndex((grp) => grp.id === serverRun.groupId),
+      block: day.blocks.findIndex((b) => b.id === serverRun.firstBlockId)
+    });
+  }
+
   /** Shows runs on the grid at once and queues them for the server. */
   send(serverRuns, label, key, stepId, firstRun) {
     this.notice = null;
@@ -850,13 +885,7 @@ export default class ShoreshManualBuild extends LightningElement {
         key,
         label,
         stepId,
-        slotKey: firstRun
-          ? slotKey({
-              day: firstRun.day,
-              group: firstRun.group,
-              block: firstRun.first
-            })
-          : null
+        slotKey: this.slotKeyOf(firstRun, serverRuns[0])
       }
     ];
     this.applyLocally(edit);
@@ -973,8 +1002,18 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** Ctrl or Cmd with Z undoes, with Shift (or Ctrl+Y) redoes; typing boxes keep their own. */
   handleKeyDown(event) {
-    const tag = event.target && event.target.tagName;
-    if (!(event.ctrlKey || event.metaKey) || tag === "INPUT") {
+    // The key's real target, inside the activity list's shadow if need be; never while the
+    // typing box or the "keep theirs or use yours" question is open.
+    const path = event.composedPath ? event.composedPath() : [];
+    const target = path.length ? path[0] : event.target;
+    const tag = target && target.tagName;
+    if (
+      !(event.ctrlKey || event.metaKey) ||
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      this.editor ||
+      this.conflict
+    ) {
       return;
     }
     const key = String(event.key).toLowerCase();
@@ -1035,13 +1074,32 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleActivityDragStart(event) {
-    this.dragging = { kind: "activity", id: event.detail.id };
+    const { id } = event.detail;
+    this.dragging = { kind: "activity", id, name: this.activityName(id) };
+  }
+
+  /** A drag that ended anywhere (dropped, or cancelled with Escape) is over. */
+  handleDragEnd() {
+    this.dragging = null;
+  }
+
+  /**
+   * What is being dragged, if the drop carries it: something else dropped here (text from
+   * another window, say) is not taken for an earlier, cancelled drag. The drag carries the
+   * name shown, never a record Id.
+   */
+  draggedFor(data) {
+    const dragged = this.dragging;
+    this.dragging = null;
+    if (!dragged || (data && data !== dragged.name)) {
+      return null;
+    }
+    return dragged;
   }
 
   /** A placement dragged back onto the list is taken out of the week. */
-  handleRemoveDrop() {
-    const dragged = this.dragging;
-    this.dragging = null;
+  handleRemoveDrop(event) {
+    const dragged = this.draggedFor(event.detail && event.detail.data);
     if (dragged && dragged.kind === "cell") {
       this.removeAt(dragged.slot);
     }
@@ -1061,6 +1119,15 @@ export default class ShoreshManualBuild extends LightningElement {
 
   handleCellDragStart(event) {
     const cell = this.cellByKey(event.detail.key);
+    if (cell && cell.movable) {
+      this.dragging = {
+        kind: "cell",
+        slot: cell.slot,
+        key: cell.key,
+        name: cell.text
+      };
+      return;
+    }
     this.dragging =
       cell && cell.movable
         ? { kind: "cell", slot: cell.slot, key: cell.key }
@@ -1069,6 +1136,15 @@ export default class ShoreshManualBuild extends LightningElement {
 
   handleResizeStart(event) {
     const cell = this.cellByKey(event.detail.key);
+    if (cell && cell.movable) {
+      this.dragging = {
+        kind: "resize",
+        slot: cell.slot,
+        key: cell.key,
+        name: cell.text
+      };
+      return;
+    }
     this.dragging =
       cell && cell.movable
         ? { kind: "resize", slot: cell.slot, key: cell.key }
@@ -1076,9 +1152,8 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleCellDrop(event) {
-    const dragged = this.dragging;
-    this.dragging = null;
-    this.putDown(dragged, this.cellByKey(event.detail.key));
+    const dragged = this.draggedFor(event.detail.data);
+    this.putDown(dragged, this.cellByKey(event.detail.key), event.detail.at);
   }
 
   /** Space: puts down what is picked up, or picks up the placement in the slot. */
@@ -1105,6 +1180,19 @@ export default class ShoreshManualBuild extends LightningElement {
     if (this.picked) {
       this.handleCellSpace(event);
     }
+  }
+
+  /**
+   * A click on a placement's bottom handle picks up its end (a way that needs no dragging,
+   * WCAG 2.5.7); a click on another cell of the same bunk and day then makes it end there.
+   */
+  handleHandleClick(event) {
+    const cell = this.cellByKey(event.detail.key);
+    if (!cell || !cell.movable) {
+      return;
+    }
+    this.picked = { kind: "resize", slot: cell.slot, key: cell.key };
+    this.announce(`${cell.text}: choose where it ends.`);
   }
 
   handleCellEscape() {
@@ -1137,7 +1225,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /** What was dragged or picked up, put down on a cell. */
-  putDown(what, cell) {
+  putDown(what, cell, at = 0) {
     if (!what || !cell || !cell.slot) {
       return;
     }
@@ -1160,7 +1248,11 @@ export default class ShoreshManualBuild extends LightningElement {
       what.slot.day === cell.slot.day &&
       what.slot.group === cell.slot.group
     ) {
-      this.resizeTo(what.slot, what.key, cell.slot.block);
+      // How far down a multi-block cell the handle landed picks the block within it.
+      const length = cell.length || 1;
+      const block =
+        cell.slot.block + Math.min(length - 1, Math.floor(at * length));
+      this.resizeTo(what.slot, what.key, block);
     }
   }
 
@@ -1174,6 +1266,8 @@ export default class ShoreshManualBuild extends LightningElement {
       this.isAwaySlot(p)
     );
     if (!result) {
+      // Put down where it already is.
+      this.announce("Put back.");
       return;
     }
     if (result.refused) {
@@ -1235,15 +1329,16 @@ export default class ShoreshManualBuild extends LightningElement {
       case REFUSED.AWAY:
         return `${day.groups[slot.group].name} isn't at camp then.`;
       case REFUSED.SWAP_LONG:
-        return "Only single-block activities swap.";
+        return `Only ${this.t.pIn("Activity")} one ${this.t.sIn("TimeBlock")} long swap.`;
+      case REFUSED.FIXED_HERE:
+        return `${this.nameOf(placement(day, slot.group, slot.block).slot, day)} stays where it is.`;
       default:
         return `${name} doesn't fit there.`;
     }
   }
 
   refuse(text) {
-    this.notice = text;
-    this.announce(text);
+    this.say(text);
   }
 
   // ---------- someone else changed it ----------
@@ -1289,25 +1384,34 @@ export default class ShoreshManualBuild extends LightningElement {
         return;
       }
     }
-    // Every slot as seen, but the day around them had changed (a longer placement next door).
+    // Every slot as seen, but a placement next to them had changed: someone made it longer,
+    // so it now carries on into the cell after the run (or the run would cut it). Name that cell.
     const [run] = entry.edit.runs;
     const at = this.locate(run);
+    const row = slots(at.day, at.g);
+    const after = at.first + run.after.length;
+    const changed =
+      after < row.length && row[after].startsWith("^") ? after : at.first;
     this.conflict = {
       entry,
-      where: this.slotName({ day: at.dayIndex, group: at.g }, at.first),
-      theirs: this.nameOf(slots(at.day, at.g)[at.first], at.day),
+      where: this.slotName({ day: at.dayIndex, group: at.g }, changed),
+      theirs: this.nameOf(row[changed], at.day),
       yours: this.nameOf(run.after[0], at.day)
     };
+    this.announce(`${this.conflict.where} changed since you opened it.`);
   }
 
   handleKeepTheirs() {
     const { key, stepId } = this.conflict.entry;
     this.conflict = null;
-    // Their change stands, so this step never happened: nothing to undo or redo.
+    // Their change stands, so this step never happened: nothing to undo or redo, and an Undo or
+    // Redo of it still waiting is dropped too.
     this.history.forget(stepId);
     this.historyVersion += 1;
+    this.queue = this.queue.filter((waiting) => waiting.stepId !== stepId);
+    this.showServerAndWaiting();
     const grid = this.template.querySelector('[data-id="edit-grid"]');
-    if (grid) {
+    if (grid && key) {
       grid.focusCell(key);
     }
     this.saveNext();
@@ -1322,9 +1426,16 @@ export default class ShoreshManualBuild extends LightningElement {
     const { entry } = this.conflict;
     this.conflict = null;
     const runs = [];
+    let gone = false;
     for (const run of entry.edit.runs) {
       const at = this.locate(run);
-      const rebased = at && rebaseRun(slots(at.day, at.g), at.first, run.after);
+      const row = at ? slots(at.day, at.g) : [];
+      if (!at || at.first + run.after.length > row.length) {
+        // The day no longer has those time blocks.
+        gone = true;
+        break;
+      }
+      const rebased = rebaseRun(row, at.first, run.after);
       if (rebased) {
         runs.push({
           ...run,
@@ -1334,8 +1445,21 @@ export default class ShoreshManualBuild extends LightningElement {
         });
       }
     }
-    if (runs.length) {
-      this.queue = [{ ...entry, edit: { runs } }, ...this.queue];
+    if (gone) {
+      this.say("Not placed: that cell isn't in the week any more.");
+    } else if (!runs.length) {
+      this.say("Already as you had it.");
+    } else {
+      // What is saved now is this, not the step as first made: Undo must take back this.
+      this.history.forget(entry.stepId);
+      this.stepSeq += 1;
+      const step = { id: this.stepSeq, runs, label: entry.label };
+      this.history.record(step);
+      this.historyVersion += 1;
+      this.queue = [
+        { ...entry, stepId: step.id, edit: { runs } },
+        ...this.queue
+      ];
       this.showServerAndWaiting();
     }
     this.saveNext();
@@ -1366,6 +1490,12 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   // ---------- helpers ----------
+
+  /** A short note under the toolbar, said by screen readers too. */
+  say(text) {
+    this.notice = text;
+    this.announce(text);
+  }
 
   /** Said by screen readers; the same words twice in a row are still said again. */
   announce(text) {

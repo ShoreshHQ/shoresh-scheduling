@@ -17,7 +17,7 @@ export function countLabel(count, target, cap) {
     } else {
       needs = target === cap ? `needs ${target}` : `needs ${target}–${cap}`;
     }
-  } else if (cap !== null) {
+  } else if (cap !== null && cap > 0) {
     needs = `up to ${cap}`;
   }
   return `${count} placed${needs ? ` (${needs})` : ""}`;
@@ -65,9 +65,11 @@ export function paletteChips(schedule, activities, groupId, filter) {
       (a) => !typed || a.name.replace(/\s+/g, "").toLowerCase().includes(typed)
     )
     .map((a) => {
+      const notFor = a.notFor || [];
+      // A bunk an activity isn't set up for needs none of it.
       const scale = groupId
-        ? 1
-        : groupIds.filter((id) => !(a.notFor || []).includes(id)).length;
+        ? Number(!notFor.includes(groupId))
+        : groupIds.filter((id) => !notFor.includes(id)).length;
       const target = (a.minPerWeek || 0) * scale;
       const cap =
         a.maxPerWeek === null || a.maxPerWeek === undefined

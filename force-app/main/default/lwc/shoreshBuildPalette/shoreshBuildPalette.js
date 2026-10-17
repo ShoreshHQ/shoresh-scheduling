@@ -41,7 +41,7 @@ export default class ShoreshBuildPalette extends LightningElement {
     return this.hasNeeded && this.placedChips.length > 0;
   }
   get noMatches() {
-    return !this.hasNeeded && this.placedChips.length === 0;
+    return !!this.filter && !this.hasNeeded && this.placedChips.length === 0;
   }
 
   handleFilter(event) {
@@ -62,7 +62,11 @@ export default class ShoreshBuildPalette extends LightningElement {
     const { id } = event.currentTarget.dataset;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "copy";
-      event.dataTransfer.setData("text/plain", id);
+      // The name shown, so a drop somewhere else (a text box) writes a word, not a record Id.
+      const chip = [...(this.stillNeeded || []), ...(this.placed || [])].find(
+        (c) => c.id === id
+      );
+      event.dataTransfer.setData("text/plain", chip ? chip.name : "");
     }
     this.dispatchEvent(
       new CustomEvent("activitydragstart", { detail: { id } })
@@ -75,6 +79,9 @@ export default class ShoreshBuildPalette extends LightningElement {
 
   handleDrop(event) {
     event.preventDefault();
-    this.dispatchEvent(new CustomEvent("removedrop"));
+    const data = event.dataTransfer
+      ? event.dataTransfer.getData("text/plain")
+      : "";
+    this.dispatchEvent(new CustomEvent("removedrop", { detail: { data } }));
   }
 }
