@@ -599,7 +599,8 @@ Same made-up camp, Manual Build, Week 1.
      is listed too (_Bunk 1 · Monday · Lunch · Theirs: Boating · Yours: Open_). Every cell B
      changed is shown before anything of B's is replaced;
    - **Keep theirs** leaves all of B's changes, and that step drops out of Undo;
-   - **Use yours** makes your change over the cells listed. Undo then brings B's back.
+   - **Use yours** makes your change; every cell of B's it replaces is listed. Undo then brings
+     B's back.
 10. **Deleting a week with a Manual Build.** On the **Weeks** screen, click delete on Week 1.
     The confirmation now says _That includes its Manual Build and 1 saved version._ (or
     however many there are). Click **Cancel**.

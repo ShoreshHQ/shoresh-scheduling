@@ -873,6 +873,23 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** Shows runs on the grid at once and queues them for the server. */
   send(serverRuns, label, key, stepId, firstRun, kind = "edit", baseLabel) {
+    // What the director chose and saw, by time block (conflicts.js): what a question compares.
+    const intent = intentOf(
+      this.schedule.days,
+      serverRuns,
+      (at) => this.slotName({ day: at.dayIndex, group: at.g }, at.block),
+      (at) => this.dayGroupName({ day: at.dayIndex, group: at.g })
+    );
+    if (intent.missing) {
+      // An Undo or Redo of a change whose day, bunk, or time block has since gone: it can't be
+      // made, so it is said, and the step leaves Undo and Redo.
+      this.history.forget(stepId);
+      this.historyVersion += 1;
+      this.say(
+        `Can't ${kind === "redo" ? "redo" : "undo"} ${baseLabel || label}: the week has changed.`
+      );
+      return;
+    }
     this.notice = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
@@ -888,9 +905,7 @@ export default class ShoreshManualBuild extends LightningElement {
         kind,
         baseLabel: baseLabel || label,
         // What the director chose and saw, by time block (conflicts.js): what a question compares.
-        intent: intentOf(this.schedule.days, serverRuns, (at) =>
-          this.slotName({ day: at.dayIndex, group: at.g }, at.block)
-        ),
+        intent,
         slotKey: this.slotKeyOf(firstRun, serverRuns[0])
       }
     ];
@@ -1412,10 +1427,23 @@ export default class ShoreshManualBuild extends LightningElement {
 
   askAboutConflict(entry) {
     const made = plan(this.server.days, entry.intent);
-    if (made.gone) {
-      this.say(
-        `${made.gone.name || this.weekName} isn't in the week any more.`
-      );
+    if (made.gone || made.changed || made.fixed) {
+      // Nothing of this edit was saved: it leaves Undo, and a waiting Undo or Redo of it goes.
+      this.abandon(entry);
+      if (made.gone) {
+        this.say(
+          `${made.gone.name || this.weekName} isn't in the week any more.`
+        );
+      } else if (made.changed) {
+        this.say(
+          `${made.changed.rowName} changed since you opened it. Try again.`
+        );
+      } else {
+        const day = this.server.days.find(
+          (d) => d.dateValue === made.fixed.day
+        );
+        this.say(`${this.nameOf(made.slot, day)} stays where it is set up.`);
+      }
       return;
     }
     this.notice = null;
@@ -1444,6 +1472,14 @@ export default class ShoreshManualBuild extends LightningElement {
         ? `${rows[0].where} changed since you opened it.`
         : `${rows.length} cells changed since you opened it.`
     );
+  }
+
+  /** An edit that didn't save: out of Undo and Redo, with any waiting Undo or Redo of it. */
+  abandon(entry) {
+    this.history.forget(entry.stepId);
+    this.historyVersion += 1;
+    this.queue = this.queue.filter((w) => w.stepId !== entry.stepId);
+    this.showServerAndWaiting();
   }
 
   /** The grid cell a run starts in, in the view on screen, or null. */
@@ -1512,9 +1548,10 @@ export default class ShoreshManualBuild extends LightningElement {
       }
     }
     this.historyVersion += 1;
+    // A note from an earlier question (a second question about the same edit) is kept.
     const note = dropped.some((w) => w.kind === "redo")
       ? "Redo skipped."
-      : null;
+      : entry.note || null;
     this.queue = [
       {
         ...entry,

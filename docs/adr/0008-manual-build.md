@@ -243,26 +243,38 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       its intent: the director's cells, each named by day, group, and **time block Id** (never
       by position, which moves when a block is added), with what it should hold, and the
       director's view of every row it touches, also by time block Id. The intent travels with
-      the edit through questions, Use yours, and second questions. When a question opens,
+      the edit through questions, Use yours, and further questions. When a question opens,
       `plan()` makes the intent on the server's week as it is now: the director's cells, and
-      anything of theirs those cells overlap cleared in full. Its rows are the cells that would
-      change from what is there now while what is there now isn't what the director saw; its
-      runs are exactly what Use yours sends. One comparison makes both, so every cell someone
-      else changed is shown before anything of theirs is replaced, and nothing is replaced
-      that wasn't shown. Cells the director changed that nobody else touched are sent but not
-      listed. With nothing of theirs to replace there is no question; with nothing to change,
-      _Already as you had it._ After Use yours, what the question showed counts as seen, for a
-      second question. A cell that left the week, or whose blocks are no longer next to each
-      other (a block was added inside it), is named and nothing is sent.
+      anything of theirs those cells overlap cleared in full. Its runs are exactly what Use
+      yours sends, and its rows come from the same comparison. **The rule: every cell Use yours
+      would change is listed, except the director's own cells that still hold what the
+      director saw there.** So nothing anyone else put anywhere (in the director's cells, or in
+      a placement of theirs that would be cleared) is replaced without being shown. With
+      nothing to list there is no question; with nothing to change, _Already as you had it._
+      After Use yours, what the question showed counts as seen, for a further question.
+    - **When the plan can't be made** nothing is sent, the edit leaves Undo (it never saved),
+      and a waiting Undo or Redo of it goes; the quiet line says why:
+      - a cell's day, bunk, or time block left the week: _Bunk 1 · Monday · Lunch isn't in the
+        week any more._;
+      - a time block was added inside the director's cells: _Bunk 1 · Monday changed since you
+        opened it. Try again._;
+      - a fixed or recurring activity is now where the director's cells are (they are never
+        cleared): _Flagpole stays where it is set up._
+        An Undo or Redo whose block has since gone isn't sent: _Can't undo Placed Swim · …: the
+        week has changed._
     - **A run never includes a cell the edit doesn't change** (`diffRuns`): changed stretches
       are widened only as far as their own placements. A swap of Period 2 and Period 4 is two
       runs, and Period 3 is never part of the edit, whatever someone puts there.
-    - **Checked by a seeded property test** (`conflicts.test.js`): 1,000 generated weeks, each
-      with a random edit (place, multi-block, clear, move, swap, length, Undo), random changes
-      by others (cells, cleared placements, an added time block), and sometimes a further
-      change after the question opened. Every time, the cells sent that differ from what the
-      director saw equal the rows listed. On the screen, every test that clicks Use yours runs
-      the same check (`useYoursSendsWhatWasShown`).
+    - **Checked by a seeded property test** (`conflicts.property.test.js`): 3,000 generated
+      weeks (two days, three bunks, fixed activities, activities one to three blocks long),
+      each with a random edit (place, multi-block, clear, move or swap within or across days
+      and bunks, length, Undo), random changes by others (cells, cleared placements, longer or
+      shorter activities, time blocks added anywhere including inside a placement, or
+      removed), and up to three questions in a row. The test keeps its own record of what the
+      director saw and checks the rule strictly each time, and that no fixed activity is ever
+      changed. Breaking the rule, or the record of what was seen, fails it. On the screen,
+      every test that clicks Use yours checks the same rule by time block Id against the
+      server's week at question time (`useYoursSendsWhatWasShown`).
     - **Use yours and Undo:** a waiting Undo or Redo of the same step is dropped (it was worked
       out from what the director saw); a dropped Undo puts the step back on top of Undo, and a
       dropped Redo is said with the save (_Placed Swim · …. Redo skipped._) and stays on the

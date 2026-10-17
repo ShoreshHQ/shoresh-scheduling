@@ -683,4 +683,110 @@ describe("c-shoresh-manual-build: moving things", () => {
       "Placed Swim · Bunk 1 · Monday · Period 2. Redo skipped."
     );
   });
+
+  it("after a cell left the week, Undo doesn't offer the change that never saved, and doesn't break", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const shorter = schedule([FLAGPOLE, SOCCER], ["1,", "1,2"]);
+    shorter.days[0] = {
+      ...shorter.days[0],
+      blocks: shorter.days[0].blocks.slice(0, 2)
+    };
+    saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: shorter });
+    // Two-block Boating dropped on Bunk 1's Period 2; Lunch was taken out of the day meanwhile.
+    await fire(chip(element, "a2"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Bunk 1 · Monday · Lunch isn't in the week any more."
+    );
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true, shiftKey: true });
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+  });
+
+  it("an Undo of a change whose block has gone says it can't, instead of breaking", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const shorter = schedule([FLAGPOLE, SWIM, SOCCER], ["1,", "1,3"]);
+    shorter.days[0] = {
+      ...shorter.days[0],
+      blocks: shorter.days[0].blocks.slice(0, 2)
+    };
+    // Swim placed in Lunch and saved; the server's answer no longer has Lunch.
+    saveSlots.mockResolvedValueOnce({ conflicts: [], schedule: shorter });
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-2"), "drop");
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Can't undo Placed Swim · Bunk 1 · Monday · Lunch: the week has changed."
+    );
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+  });
+
+  it("a time block added inside the change says the bunk's day changed, and nothing saves", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const wider = schedule([FLAGPOLE, SOCCER], ["1,,,", "1,2,,"]);
+    const blocks = wider.days[0].blocks;
+    wider.days[0] = {
+      ...wider.days[0],
+      blocks: [
+        blocks[0],
+        blocks[1],
+        {
+          id: "t9",
+          name: "Rest",
+          startTime: "11:00",
+          endTime: "11:30",
+          gone: false
+        },
+        blocks[2]
+      ]
+    };
+    saveSlots.mockResolvedValueOnce({ conflicts: [0], schedule: wider });
+    await fire(chip(element, "a2"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Bunk 1 · Monday changed since you opened it. Try again."
+    );
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+  });
+
+  it("a fixed activity now where the change goes stays, and says so", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,1,", "1,2,"])
+    });
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Flagpole stays where it is set up."
+    );
+  });
+
+  it("Redo skipped is kept through a second question", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
+    const placing = later();
+    saveSlots.mockReturnValueOnce(placing.promise);
+    await fire(chip(element, "a1"), "dragstart");
+    await fire(cell(element, "0-1"), "drop");
+    await press(cell(element, "0-1"), "z", { ctrlKey: true });
+    await press(cell(element, "0-1"), "z", { ctrlKey: true, shiftKey: true });
+    placing.answer({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER, BOATING], ["1,3,", "1,2,"])
+    });
+    await flush();
+    // Use yours meets yet another change (Soccer there now).
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    await useYoursSendsWhatWasShown(element);
+    await useYoursSendsWhatWasShown(element);
+    expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+  });
 });

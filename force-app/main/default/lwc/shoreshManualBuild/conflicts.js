@@ -32,18 +32,24 @@ function locateRow(days, dateValue, groupId) {
 
 /**
  * The intent of runs (as the server takes them) made on `days` (the week on screen when the edit
- * was made). nameOf({ dayIndex, g, block }) names a cell ("Bunk 1 · Monday · Lunch"), kept so a
- * cell that later leaves the week can still be named.
+ * was made). nameOf({ dayIndex, g, block }) names a cell ("Bunk 1 · Monday · Lunch") and
+ * rowNameOf({ dayIndex, g }) its row ("Bunk 1 · Monday"), kept so a cell that later leaves the
+ * week can still be named. missing: a run names a day, group, or block the week doesn't have
+ * (an Undo of a change whose block has since gone): nothing can be sent.
  */
-export function intentOf(days, runs, nameOf) {
+export function intentOf(days, runs, nameOf, rowNameOf) {
   const cells = [];
   const seen = {};
+  let missing = false;
   runs.forEach((run, r) => {
     const at = locateRow(days, run.day, run.groupId);
-    if (!at) {
+    const first = at
+      ? at.day.blocks.findIndex((b) => b.id === run.firstBlockId)
+      : -1;
+    if (!at || first < 0 || first + run.after.length > at.day.blocks.length) {
+      missing = true;
       return;
     }
-    const first = at.day.blocks.findIndex((b) => b.id === run.firstBlockId);
     const key = rowKey(run.day, run.groupId);
     if (!seen[key]) {
       const row = slots(at.day, at.g);
@@ -53,20 +59,20 @@ export function intentOf(days, runs, nameOf) {
       });
     }
     run.after.forEach((after, i) => {
-      const block = at.day.blocks[first + i];
       cells.push({
         run: r,
         day: run.day,
         groupId: run.groupId,
-        blockId: block.id,
+        blockId: at.day.blocks[first + i].id,
         after,
         name: nameOf
           ? nameOf({ dayIndex: at.dayIndex, g: at.g, block: first + i })
-          : ""
+          : "",
+        rowName: rowNameOf ? rowNameOf({ dayIndex: at.dayIndex, g: at.g }) : ""
       });
     });
   });
-  return { cells, seen };
+  return { cells, seen, missing };
 }
 
 /**
@@ -82,28 +88,32 @@ export function withSeen(intent, rows) {
     const key = rowKey(row.day, row.groupId);
     seen[key] = { ...(seen[key] || {}), [row.blockId]: row.theirs };
   });
-  return { cells: intent.cells, seen };
+  return { cells: intent.cells, seen, missing: intent.missing };
 }
 
-/** Clears a carry-on left without what it carries on (its start was cleared). */
-function dropOrphans(row) {
-  for (let b = 0; b < row.length; b++) {
-    if (
-      row[b].startsWith(CARRIES_ON) &&
-      (b === 0 || (row[b - 1] !== row[b].slice(1) && row[b - 1] !== row[b]))
-    ) {
-      row[b] = OPEN;
-    }
-  }
+function isSetTime(slot) {
+  const item = slot.startsWith(CARRIES_ON) ? slot.slice(1) : slot;
+  return item.startsWith("F:") || item.startsWith("R:");
 }
 
 /**
- * The intent made on `days` (the server's week now): { runs, rows } or { gone } (the first cell
- * that left the week, or whose blocks are no longer next to each other: a time block was added
- * inside it). runs: as the server takes them. rows: { day, groupId, blockId, block, dayIndex, g,
- * theirs, yours }, slot identities.
+ * The intent made on `days` (the server's week now). One of:
+ * - { runs, rows }: runs as the server takes them; rows { day, groupId, blockId, block,
+ *   dayIndex, g, theirs, yours } (slot identities);
+ * - { gone: cell }: a cell's day, group, or time block left the week;
+ * - { changed: cell }: a time block was added inside the director's cells (they are no longer
+ *   next to each other);
+ * - { fixed: cell }: a fixed or recurring activity is now where the director's cells are, and
+ *   those stay where setup puts them.
+ *
+ * The rule for rows: every cell that would change is listed, except the director's own cells
+ * still holding what the director saw there. So nothing anyone else put anywhere is replaced
+ * without being shown.
  */
 export function plan(days, intent) {
+  if (intent.missing) {
+    return { gone: intent.cells[0] || { name: "" } };
+  }
   const byRow = new Map();
   intent.cells.forEach((cell) => {
     const key = rowKey(cell.day, cell.groupId);
@@ -132,24 +142,29 @@ export function plan(days, intent) {
         cells[i].run === cells[i - 1].run &&
         positions[i] !== positions[i - 1] + 1
       ) {
-        return { gone: cells[i] };
+        return { changed: cells[i] };
       }
     }
     const now = slots(at.day, at.g);
     const next = [...now];
-    positions.forEach((p) => {
-      if (now[p] !== OPEN) {
-        const theirs = placementIn(now, p);
-        for (let b = theirs.first; b < theirs.first + theirs.length; b++) {
-          next[b] = OPEN;
-        }
+    for (let i = 0; i < positions.length; i++) {
+      const p = positions[i];
+      if (now[p] === OPEN) {
+        continue;
       }
-    });
+      if (isSetTime(now[p])) {
+        return { fixed: cells[i], slot: now[p] };
+      }
+      const theirs = placementIn(now, p);
+      for (let b = theirs.first; b < theirs.first + theirs.length; b++) {
+        next[b] = OPEN;
+      }
+    }
     cells.forEach((cell, i) => {
       next[positions[i]] = cell.after;
     });
-    dropOrphans(next);
     const seen = intent.seen[key] || {};
+    const own = new Set(cells.map((cell) => cell.blockId));
     diffRuns(now, next).forEach((run) => {
       runs.push({
         day: cells[0].day,
@@ -161,7 +176,8 @@ export function plan(days, intent) {
       run.before.forEach((theirs, i) => {
         const block = run.first + i;
         const blockId = at.day.blocks[block].id;
-        if (theirs !== run.after[i] && seen[blockId] !== theirs) {
+        const unlisted = own.has(blockId) && seen[blockId] === theirs;
+        if (theirs !== run.after[i] && !unlisted) {
           rows.push({
             day: cells[0].day,
             groupId: cells[0].groupId,
