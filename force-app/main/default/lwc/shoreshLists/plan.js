@@ -6,7 +6,7 @@
  */
 import { LEAVE_OUT, looseKey } from "c/shoreshImportEngine";
 import { NONE } from "./cells";
-import { CHANGE } from "./proposal";
+import { CHANGE, newValueOf } from "./proposal";
 import { cellText } from "./screens";
 
 function quoted(name) {
@@ -63,6 +63,20 @@ export function similarCards(proposal, t, answers) {
       ]
     };
   });
+}
+
+/**
+ * Every question, in a fixed order: similar names, then names that aren't set up (who to add
+ * them as, how long a new rain plan is). Each with the answer given, if any.
+ */
+export function questionCards(proposal, t, answers) {
+  return [
+    ...similarCards(proposal, t, answers),
+    ...(proposal.cards || []).map((card) => ({
+      ...card,
+      answer: answers[card.id] || null
+    }))
+  ];
 }
 
 /** A value as the screen shows it in a difference ("none" for a cleared one). */
@@ -145,10 +159,16 @@ export function waitingFor(proposal, t, answers) {
   if (proposal.blocked) {
     return waiting;
   }
-  const open = similarCards(proposal, t, answers).filter((c) => !c.answer);
+  const open = questionCards(proposal, t, answers).filter(
+    (c) =>
+      !c.answer ||
+      (c.lengthQuestion &&
+        c.answer !== LEAVE_OUT &&
+        !/^[1-9]\d*$/.test(c.answer))
+  );
   if (open.length) {
     waiting.push(
-      `${open.length} ${open.length === 1 ? "question" : "questions"} about similar names.`
+      `${open.length} ${open.length === 1 ? "question" : "questions"} to answer.`
     );
   }
   const undecided = proposal.rows
@@ -182,8 +202,8 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   const records = [];
   const refTarget = refTargets(proposal);
   const addKind = { location: "Location", locationType: "LocationType" };
-  Object.entries(proposal.alsoAdd || {}).forEach(([ref, names]) => {
-    names.forEach((name) => {
+  ["locationType", "location"].forEach((ref) => {
+    ((proposal.alsoAdd || {})[ref] || []).forEach((name) => {
       const fields = { Name: name };
       if (ref === "location") {
         // As a location added by hand starts: one group at a time.
@@ -195,6 +215,37 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         fields
       });
     });
+  });
+  ((proposal.alsoAdd || {}).who || []).forEach((add) => {
+    records.push({
+      kind: add.kind,
+      key: add.key,
+      fields:
+        add.kind === "Group"
+          ? { Name: add.name, Availability__c: "AllDay" }
+          : { Name: add.name },
+      refs:
+        add.kind === "Group"
+          ? { Division__c: add.parentId }
+          : { Program__c: add.parentId }
+    });
+  });
+  ((proposal.alsoAdd || {}).activity || []).forEach((add) => {
+    // A rain plan added with the list: its length as answered, the rest as added by hand.
+    const values = { name: add.name, length: add.length };
+    screen.columns.forEach((column) => {
+      if (!(column.key in values)) {
+        values[column.key] = newValueOf(column, { values });
+      }
+    });
+    records.push(
+      recordFor(
+        screen,
+        { name: add.name, values },
+        screen.columns.map((c) => c.key),
+        refTarget
+      )
+    );
   });
   proposal.rows.forEach((row) => {
     if (row.status === "new") {
@@ -220,12 +271,16 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   proposal.mapping.headings
     .filter((h) => h.how === "chosen")
     .forEach((h) => remember.push({ key: h.key, answer: answers[h.key] }));
-  (proposal.pairs || []).forEach((pair) => {
-    const answer = answers[pair.id];
+  // Similar names and what a new who name is: remembered. A new rain plan's length is not.
+  [
+    ...(proposal.pairs || []).map((pair) => pair.id),
+    ...(proposal.cards || []).map((card) => card.id)
+  ].forEach((id) => {
+    const answer = answers[id];
     if (answer === LEAVE_OUT) {
-      forget.push(pair.id);
-    } else if (answer) {
-      remember.push({ key: pair.id, answer });
+      forget.push(id);
+    } else if (answer && !id.startsWith("rainAdd|")) {
+      remember.push({ key: id, answer });
     }
   });
   return {
@@ -260,7 +315,7 @@ function refTargets(proposal) {
       return found.Id;
     }
     if (ref === "activity") {
-      return own.get(looseKey(name)) || null;
+      return own.get(looseKey(name)) || `Activity:${name}`;
     }
     return `${{ location: "Location", locationType: "LocationType" }[ref]}:${name}`;
   };

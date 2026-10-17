@@ -84,17 +84,15 @@ public with sharing class ImportWriter {
 
   /** A who list replaced on an existing item: what it was, and what the import wrote. */
   public void logWho(
-    String type,
-    Id ownerId,
-    String name,
+    Activity__c owner,
     List<String> before,
     List<String> after
   ) {
     changed.add(
       new Map<String, Object>{
-        'who' => ownerId,
-        'type' => type,
-        'name' => name,
+        'who' => owner.Id,
+        'type' => 'ActivityEligibility__c',
+        'name' => owner.Name,
         'before' => before,
         'after' => after
       }

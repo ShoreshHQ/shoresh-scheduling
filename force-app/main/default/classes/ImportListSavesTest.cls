@@ -469,4 +469,55 @@ private class ImportListSavesTest {
       );
     }
   }
+
+  @IsTest
+  static void addsAGroupNamedInWhoCanDoItAndUndoRemovesIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      String key = 'Group:' + c.seniors + ':Middlers';
+      ImportSetupSaves.Result result = save(
+        plan(
+          c.season.Id,
+          new List<Object>{
+            new Map<String, Object>{
+              'kind' => 'Group',
+              'key' => key,
+              'fields' => new Map<String, Object>{
+                'Name' => 'Middlers',
+                'Availability__c' => 'AllDay'
+              },
+              'refs' => new Map<String, Object>{ 'Division__c' => c.seniors }
+            },
+            newActivity(
+              'Pottery',
+              new Map<String, Object>(),
+              new List<Object>{ key }
+            )
+          }
+        )
+      );
+      Group__c middlers = [
+        SELECT Id, Division__c
+        FROM Group__c
+        WHERE Name = 'Middlers'
+      ];
+      Assert.areEqual(c.seniors, middlers.Division__c);
+      Assert.areEqual(
+        middlers.Id,
+        [
+          SELECT Group__c
+          FROM ActivityEligibility__c
+          WHERE Activity__r.Name = 'Pottery'
+        ]
+        .Group__c
+      );
+      Test.startTest();
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Group__c WHERE Name = 'Middlers']
+      );
+    }
+  }
 }

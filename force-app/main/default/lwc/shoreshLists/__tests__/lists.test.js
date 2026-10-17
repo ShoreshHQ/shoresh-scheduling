@@ -11,6 +11,7 @@ import {
   listProposal,
   sanitizeCell,
   similarCards,
+  questionCards,
   unescapeCell,
   waitingFor,
   listScreen,
@@ -360,9 +361,7 @@ describe("matching what is set up", () => {
     );
     expect(rowNamed(p, "Chess").values.who).toEqual(["g3"]);
     expect(rowNamed(p, "Golf").values.who).toEqual([]);
-    expect(rowNamed(p, "Pottery").problems[0]).toMatch(
-      /nothing called "Middlers"/
-    );
+    expect(rowNamed(p, "Pottery").status).toBe("asked");
   });
 });
 
@@ -456,9 +455,7 @@ describe("similar names and what will also be added", () => {
     expect(rowNamed(p, "Board games").problems).toEqual([
       "Rain plan: can't be itself"
     ]);
-    expect(rowNamed(p, "Hiking").problems[0]).toMatch(
-      /no activity called "Movies"/
-    );
+    expect(rowNamed(p, "Hiking").status).toBe("asked");
     expect(rowNamed(p, "Canoeing").status).toBe("new");
   });
 
@@ -481,5 +478,79 @@ describe("the formula guard", () => {
     });
     expect(sanitizeCell("Gym")).toBe("Gym");
     expect(sanitizeCell(-3)).toBe(-3);
+  });
+});
+
+describe("names that aren't set up are added, after asking (Greg, 2026-10-17)", () => {
+  it("a who name is asked about, then added as the director says", () => {
+    const rows = [
+      ["Activity", "Who can do it"],
+      ["Pottery", "Middlers, Bunk 2"]
+    ];
+    const p = read("activities", rows);
+    const card = questionCards(p, terms, {}).find((c) =>
+      c.id.startsWith("whoAdd|")
+    );
+    expect(card.title).toBe("“Middlers” isn't set up. What is it?");
+    expect(card.options.map((o) => o.value)).toEqual([
+      "division|Main",
+      "group|Main|Juniors",
+      "group|Main|Seniors",
+      LEAVE_OUT
+    ]);
+    const answers = { [card.id]: "group|Main|Seniors" };
+    const done = read("activities", rows, answers);
+    expect(rowNamed(done, "Pottery").status).toBe("new");
+    expect(done.alsoAdd.who).toEqual([
+      {
+        kind: "Group",
+        key: "Group:d2:Middlers",
+        name: "Middlers",
+        parentId: "d2"
+      }
+    ]);
+    const plan = listPlan(done, answers, "s1", "f");
+    expect(plan.records[0]).toEqual({
+      kind: "Group",
+      key: "Group:d2:Middlers",
+      fields: { Name: "Middlers", Availability__c: "AllDay" },
+      refs: { Division__c: "d2" }
+    });
+    expect(plan.records[1].who).toEqual(["Group:d2:Middlers", "g2"]);
+    expect(plan.remember).toContainEqual({
+      key: card.id,
+      answer: "group|Main|Seniors"
+    });
+    const out = read("activities", rows, { [card.id]: LEAVE_OUT });
+    expect(rowNamed(out, "Pottery").status).toBe("leftOut");
+  });
+
+  it("a rain plan that is nowhere is added, asking only its length", () => {
+    const rows = [
+      ["Activity", "Rain plan"],
+      ["Hiking", "Movies"]
+    ];
+    const p = read("activities", rows);
+    const card = questionCards(p, terms, {}).find((c) => c.lengthQuestion);
+    expect(card.title).toBe(
+      "“Movies” isn't set up. It will be added as activity: how long is it?"
+    );
+    expect(waitingFor(p, terms, {})).toEqual(["1 question to answer."]);
+    const answers = { [card.id]: "2" };
+    const done = read("activities", rows, answers);
+    expect(done.alsoAdd.activity).toEqual([{ name: "Movies", length: 2 }]);
+    const plan = listPlan(done, answers, "s1", "f");
+    expect(
+      plan.records.map((r) => [
+        r.key,
+        r.fields.Length__c,
+        r.fields.TimesPerWeekMin__c,
+        r.refs.RainPlan__c
+      ])
+    ).toEqual([
+      ["Activity:Movies", 2, 1, null],
+      ["Activity:Hiking", 1, 1, "Activity:Movies"]
+    ]);
+    expect(plan.remember).toEqual([]);
   });
 });

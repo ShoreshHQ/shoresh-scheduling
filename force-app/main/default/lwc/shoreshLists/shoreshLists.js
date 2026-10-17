@@ -8,6 +8,7 @@ export { LIST_SCREENS, listScreen, cellText } from "./screens";
 export { listProposal, KEEP, CHANGE, changeKey } from "./proposal";
 export {
   similarCards,
+  questionCards,
   shownValue,
   changeAllCounts,
   waitingFor,

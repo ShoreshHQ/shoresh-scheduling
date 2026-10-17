@@ -5,6 +5,10 @@
  */
 public with sharing class ImportUndoWho {
   private ImportUndo.Result result;
+  private Map<Id, Activity__c> now;
+  private Set<Id> stillThere;
+  private List<SObject> remove = new List<SObject>();
+  private List<SObject> putBack = new List<SObject>();
 
   public ImportUndoWho(ImportUndo.Result result) {
     this.result = result;
@@ -15,64 +19,9 @@ public with sharing class ImportUndoWho {
     if (entries.isEmpty()) {
       return;
     }
-    Set<Id> owners = new Set<Id>();
-    Set<Id> targets = new Set<Id>();
+    read(entries);
     for (Object item : entries) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      owners.add((Id) (String) entry.get('who'));
-      for (Object target : (List<Object>) entry.get('before')) {
-        targets.add((Id) (String) target);
-      }
-    }
-    Map<Id, Activity__c> now = new Map<Id, Activity__c>(
-      [
-        SELECT
-          Id,
-          Name,
-          (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
-        FROM Activity__c
-        WHERE Id IN :owners
-        WITH USER_MODE
-      ]
-    );
-    Set<Id> stillThere = stillThere(targets);
-    List<SObject> remove = new List<SObject>();
-    List<SObject> putBack = new List<SObject>();
-    for (Object item : entries) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      Activity__c activity = now.get((Id) (String) entry.get('who'));
-      if (activity == null) {
-        result.gone.add((String) entry.get('name'));
-        continue;
-      }
-      List<String> current = new List<String>();
-      for (ActivityEligibility__c row : activity.Eligibilities__r) {
-        current.add(row.Division__c != null ? row.Division__c : row.Group__c);
-      }
-      current.sort();
-      if (current != texts((List<Object>) entry.get('after'))) {
-        result.keptEdited.add(activity.Name);
-        continue;
-      }
-      remove.addAll(activity.Eligibilities__r);
-      Boolean missing = false;
-      for (Object target : (List<Object>) entry.get('before')) {
-        Id targetId = (Id) (String) target;
-        if (!stillThere.contains(targetId)) {
-          // A division or group deleted since can't be put back in the list.
-          missing = true;
-          continue;
-        }
-        ActivityEligibility__c row = new ActivityEligibility__c(
-          Activity__c = activity.Id
-        );
-        row.put(ImportItemWrites.targetField(targetId), targetId);
-        putBack.add(row);
-      }
-      if (missing) {
-        result.gone.add(activity.Name);
-      }
-      result.restored++;
+      undoOne((Map<String, Object>) item);
     }
     Database.delete(remove, AccessLevel.USER_MODE);
     List<Database.SaveResult> outcomes = Database.insert(
@@ -91,34 +40,88 @@ public with sharing class ImportUndoWho {
     }
   }
 
+  /** The activities as they are now, and which divisions and groups still exist. */
+  private void read(List<Object> entries) {
+    Set<Id> owners = new Set<Id>();
+    Set<Id> targets = new Set<Id>();
+    for (Object item : entries) {
+      Map<String, Object> entry = (Map<String, Object>) item;
+      owners.add((Id) (String) entry.get('who'));
+      for (String target : texts((List<Object>) entry.get('before'))) {
+        targets.add((Id) target);
+      }
+    }
+    now = new Map<Id, Activity__c>(
+      [
+        SELECT
+          Id,
+          Name,
+          (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
+        FROM Activity__c
+        WHERE Id IN :owners
+        WITH USER_MODE
+      ]
+    );
+    stillThere = new Set<Id>();
+    for (Division__c row : [
+      SELECT Id
+      FROM Division__c
+      WHERE Id IN :targets
+      WITH USER_MODE
+    ]) {
+      stillThere.add(row.Id);
+    }
+    for (Group__c row : [
+      SELECT Id
+      FROM Group__c
+      WHERE Id IN :targets
+      WITH USER_MODE
+    ]) {
+      stillThere.add(row.Id);
+    }
+  }
+
+  private void undoOne(Map<String, Object> entry) {
+    Activity__c activity = now.get((Id) (String) entry.get('who'));
+    if (activity == null) {
+      result.gone.add((String) entry.get('name'));
+      return;
+    }
+    List<String> current = new List<String>();
+    for (ActivityEligibility__c row : activity.Eligibilities__r) {
+      current.add(row.Division__c != null ? row.Division__c : row.Group__c);
+    }
+    current.sort();
+    if (current != texts((List<Object>) entry.get('after'))) {
+      result.keptEdited.add(activity.Name);
+      return;
+    }
+    remove.addAll(activity.Eligibilities__r);
+    Boolean missing = false;
+    for (String target : texts((List<Object>) entry.get('before'))) {
+      if (!stillThere.contains((Id) target)) {
+        // A division or group deleted since can't be put back in the list.
+        missing = true;
+        continue;
+      }
+      ActivityEligibility__c row = new ActivityEligibility__c(
+        Activity__c = activity.Id
+      );
+      row.put(ImportItemWrites.targetField((Id) target), (Id) target);
+      putBack.add(row);
+    }
+    if (missing) {
+      result.gone.add(activity.Name);
+    }
+    result.restored++;
+  }
+
   private static List<String> texts(List<Object> values) {
     List<String> result = new List<String>();
     for (Object value : values) {
       result.add((String) value);
     }
     result.sort();
-    return result;
-  }
-
-  /** The divisions and groups among these that still exist. */
-  private static Set<Id> stillThere(Set<Id> ids) {
-    Set<Id> result = new Set<Id>();
-    for (Division__c row : [
-      SELECT Id
-      FROM Division__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      result.add(row.Id);
-    }
-    for (Group__c row : [
-      SELECT Id
-      FROM Group__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      result.add(row.Id);
-    }
     return result;
   }
 }

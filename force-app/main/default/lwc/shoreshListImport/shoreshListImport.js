@@ -19,8 +19,8 @@ import {
   changeAllCounts,
   listPlan,
   listProposal,
+  questionCards,
   shownValue,
-  similarCards,
   waitingFor
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
@@ -240,20 +240,29 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   get cards() {
-    return similarCards(this.proposal, this.terms, this.answers).map((card) => {
-      const chosen = card.options.find((o) => o.value === card.answer);
-      return {
-        ...card,
-        answered: !!chosen,
-        answerLabel: chosen ? chosen.label : "",
-        fromMemory: !!chosen && this.remembered[card.id] === card.answer,
-        options: card.options.map((o) => ({
-          ...o,
-          key: `${card.id}::${o.value}`
-        })),
-        className: chosen ? "list-card list-card_done" : "list-card"
-      };
-    });
+    return questionCards(this.proposal, this.terms, this.answers).map(
+      (card) => {
+        let chosen = card.options.find((o) => o.value === card.answer);
+        if (
+          !chosen &&
+          card.lengthQuestion &&
+          /^[1-9]\d*$/.test(card.answer || "")
+        ) {
+          chosen = { label: `${this.terms.s("Length")}: ${card.answer}` };
+        }
+        return {
+          ...card,
+          answered: !!chosen,
+          answerLabel: chosen ? chosen.label : "",
+          fromMemory: !!chosen && this.remembered[card.id] === card.answer,
+          options: card.options.map((o) => ({
+            ...o,
+            key: `${card.id}::${o.value}`
+          })),
+          className: chosen ? "list-card list-card_done" : "list-card"
+        };
+      }
+    );
   }
   get hasCards() {
     return this.cards.length > 0;
@@ -262,6 +271,16 @@ export default class ShoreshListImport extends LightningElement {
     const [id, value] = event.currentTarget.dataset.key.split("::");
     this.answer(id, value);
   }
+  /** A new rain plan's length: taken once it is a whole number of 1 or more. */
+  handleLength(event) {
+    const value = String(event.detail.value || "").trim();
+    if (/^[1-9]\d*$/.test(value)) {
+      this.answer(event.target.dataset.id, value);
+    }
+  }
+  get lengthLabel() {
+    return this.terms.s("Length");
+  }
   handleCardChange(event) {
     const answers = { ...this.answers };
     delete answers[event.currentTarget.dataset.id];
@@ -269,18 +288,35 @@ export default class ShoreshListImport extends LightningElement {
     this.recompute();
   }
 
-  /** Locations and location types added with the list: ticked, and can't be unticked (Greg, #4). */
+  /**
+   * What is added with the list because rows name it: ticked, and can't be unticked (Greg, #4).
+   */
   get alsoAdd() {
     const t = this.terms;
+    const add = (this.proposal && this.proposal.alsoAdd) || {};
     const words = { location: "Location", locationType: "LocationType" };
-    return Object.entries((this.proposal && this.proposal.alsoAdd) || {})
-      .filter(([, names]) => names.length)
-      .flatMap(([ref, names]) =>
-        names.map((name) => ({
+    const lines = [];
+    ["locationType", "location"].forEach((ref) => {
+      (add[ref] || []).forEach((name) => {
+        lines.push({
           key: `${ref}:${name}`,
           label: `${name} (new ${t.sIn(words[ref])})`
-        }))
-      );
+        });
+      });
+    });
+    (add.who || []).forEach((item) => {
+      lines.push({
+        key: item.key,
+        label: `${item.name} (new ${t.sIn(item.kind)})`
+      });
+    });
+    (add.activity || []).forEach((item) => {
+      lines.push({
+        key: `activity:${item.name}`,
+        label: `${item.name} (new ${t.sIn("Activity")}, ${t.sIn("Length")} ${item.length}; once a week, 1 ${t.sIn("Group")} at a time, Low priority)`
+      });
+    });
+    return lines;
   }
   get hasAlsoAdd() {
     return this.alsoAdd.length > 0;

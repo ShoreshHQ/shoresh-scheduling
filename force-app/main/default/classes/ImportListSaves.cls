@@ -12,12 +12,22 @@ public with sharing class ImportListSaves {
   private static final List<String> ORDER = new List<String>{
     'LocationType',
     'Location',
+    'Division',
+    'Group',
+    'Activity'
+  };
+  // Kinds that are children of the season itself (the others are inside a program).
+  private static final Set<String> IN_SEASON = new Set<String>{
+    'LocationType',
+    'Location',
     'Activity'
   };
   // What a list may write, per kind: plain fields...
   private static final Map<String, Set<String>> PLAIN_FIELDS = new Map<String, Set<String>>{
     'LocationType' => new Set<String>{ 'Name' },
     'Location' => new Set<String>{ 'Name', 'GroupsThatFit__c', 'Notes__c' },
+    'Division' => new Set<String>{ 'Name' },
+    'Group' => new Set<String>{ 'Name', 'Availability__c' },
     'Activity' => new Set<String>{
       'Name',
       'Length__c',
@@ -38,6 +48,8 @@ public with sharing class ImportListSaves {
   private static final Map<String, Set<String>> LINK_FIELDS = new Map<String, Set<String>>{
     'LocationType' => new Set<String>(),
     'Location' => new Set<String>{ 'LocationType__c' },
+    'Division' => new Set<String>{ 'Program__c' },
+    'Group' => new Set<String>{ 'Division__c' },
     'Activity' => new Set<String>{ 'Location__c', 'RainPlan__c' }
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
@@ -118,115 +130,85 @@ public with sharing class ImportListSaves {
     // Links to records of the same kind added in this save: written once those exist.
     List<List<Object>> later = new List<List<Object>>();
     for (Integer i = 0; i < entries.size(); i++) {
-      ImportPlan.Entry entry = entries[i];
-      SObject row = entry.isNew()
-        ? type.newSObject()
-        : type.newSObject(keys.existing(entry.id()));
-      if (entry.isNew()) {
-        row.put('Season__c', plan.seasonId);
-      }
-      Map<String, Object> fields = entry.valuesOf('fields');
-      for (String field : fields.keySet()) {
-        if (!PLAIN_FIELDS.get(kind).contains(field)) {
-          throw unreadable();
-        }
-        row.put(
-          field,
-          ImportUndoValues.asField(type, field, fields.get(field))
-        );
-      }
-      Map<String, Object> refs = entry.valuesOf('refs');
-      for (String field : refs.keySet()) {
-        if (!LINK_FIELDS.get(kind).contains(field)) {
-          throw unreadable();
-        }
-        String target = (String) refs.get(field);
-        if (
-          target != null &&
-          target.startsWith(kind + ':') &&
-          !keys.knows(target)
-        ) {
-          later.add(new List<Object>{ i, field, target });
-        } else {
-          row.put(field, keys.of(target));
-        }
+      SObject row = rowFor(kind, type, entries[i]);
+      for (List<Object> link : putLinks(kind, row, entries[i])) {
+        later.add(new List<Object>{ i, link[0], link[1] });
       }
       rows.add(row);
     }
     writer.write(kind, entries, rows);
-    if (!later.isEmpty()) {
-      List<SObject> links = new List<SObject>();
-      for (List<Object> link : later) {
-        SObject row = type.newSObject(rows[(Integer) link[0]].Id);
-        row.put((String) link[1], keys.of((String) link[2]));
-        links.add(row);
-      }
-      writer.amend(links);
-    }
+    writeLater(type, rows, later);
     if (kind == 'Activity') {
-      saveWho(entries, rows);
+      new ImportListWho(writer).save(entries, rows);
     }
   }
 
+  /** A new record (in the season, where its kind is) or an existing one, with its plain fields. */
+  private SObject rowFor(
+    String kind,
+    Schema.SObjectType type,
+    ImportPlan.Entry entry
+  ) {
+    SObject row = entry.isNew()
+      ? type.newSObject()
+      : type.newSObject(keys.existing(entry.id()));
+    if (entry.isNew() && IN_SEASON.contains(kind)) {
+      row.put('Season__c', plan.seasonId);
+    }
+    Map<String, Object> values = entry.valuesOf('fields');
+    for (String field : values.keySet()) {
+      if (!PLAIN_FIELDS.get(kind).contains(field)) {
+        throw unreadable();
+      }
+      row.put(field, ImportUndoValues.asField(type, field, values.get(field)));
+    }
+    return row;
+  }
+
   /**
-   * Who can do each activity: a new one's list is added; an existing one's is replaced only when
-   * the director chose Change (the list is sent only then), and Undo can put the old one back.
+   * Puts in the links to other records; returns the ones to a record of the same kind not saved
+   * yet ([field, key]), to be written after.
    */
-  private void saveWho(List<ImportPlan.Entry> entries, List<SObject> rows) {
-    List<SObject> added = new List<SObject>();
-    List<SObject> replacing = new List<SObject>();
-    Map<Id, List<String>> after = new Map<Id, List<String>>();
-    for (Integer i = 0; i < entries.size(); i++) {
-      if (!entries[i].has('who')) {
-        continue;
+  private List<List<Object>> putLinks(
+    String kind,
+    SObject row,
+    ImportPlan.Entry entry
+  ) {
+    List<List<Object>> waiting = new List<List<Object>>();
+    Map<String, Object> links = entry.valuesOf('refs');
+    for (String field : links.keySet()) {
+      if (!LINK_FIELDS.get(kind).contains(field)) {
+        throw unreadable();
       }
-      List<SObject> who = new List<SObject>();
-      List<String> targets = new List<String>();
-      for (String target : entries[i].texts('who')) {
-        Id targetId = keys.of(target);
-        ActivityEligibility__c row = new ActivityEligibility__c(
-          Activity__c = rows[i].Id
-        );
-        row.put(ImportItemWrites.targetField(targetId), targetId);
-        who.add(row);
-        targets.add(targetId);
-      }
-      if (entries[i].isNew()) {
-        added.addAll(who);
+      String target = (String) links.get(field);
+      Boolean sameKindNotYet =
+        target != null &&
+        target.startsWith(kind + ':') &&
+        !keys.knows(target);
+      if (sameKindNotYet) {
+        waiting.add(new List<Object>{ field, target });
       } else {
-        replacing.addAll(who);
-        targets.sort();
-        after.put(rows[i].Id, targets);
+        row.put(field, keys.of(target));
       }
     }
-    writer.saveTracked('ActivityEligibility', added);
-    if (after.isEmpty()) {
+    return waiting;
+  }
+
+  private void writeLater(
+    Schema.SObjectType type,
+    List<SObject> rows,
+    List<List<Object>> later
+  ) {
+    if (later.isEmpty()) {
       return;
     }
-    Set<Id> owners = after.keySet();
-    List<ActivityEligibility__c> old = new List<ActivityEligibility__c>();
-    for (Activity__c activity : [
-      SELECT Id, Name, (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
-      FROM Activity__c
-      WHERE Id IN :owners
-      WITH USER_MODE
-    ]) {
-      List<String> before = new List<String>();
-      for (ActivityEligibility__c row : activity.Eligibilities__r) {
-        before.add(row.Division__c != null ? row.Division__c : row.Group__c);
-        old.add(row);
-      }
-      before.sort();
-      writer.logWho(
-        'ActivityEligibility__c',
-        activity.Id,
-        activity.Name,
-        before,
-        after.get(activity.Id)
-      );
+    List<SObject> linked = new List<SObject>();
+    for (List<Object> link : later) {
+      SObject row = type.newSObject(rows[(Integer) link[0]].Id);
+      row.put((String) link[1], keys.of((String) link[2]));
+      linked.add(row);
     }
-    Database.delete(old, AccessLevel.USER_MODE);
-    UserModeWrites.save(replacing);
+    writer.amend(linked);
   }
 
   /** The import's own record: its file, and what it created and changed (for Undo). */

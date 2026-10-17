@@ -25,6 +25,7 @@ import {
 } from "./headings";
 import { cellText, listScreen } from "./screens";
 import { resolveWho, whoTargets } from "./who";
+import { unknownRainPlans, unknownWho } from "./adds";
 
 /** Keep or Change, for one difference. */
 export const KEEP = "keep";
@@ -34,6 +35,7 @@ export const CHANGE = "change";
 // year, so an answer given there ("Music" and "Musik" are the same) is not asked again here.
 const PAIR_KIND = {
   Activity: "activity",
+  activity: "activity",
   Location: "location",
   location: "location",
   locationType: "locationType"
@@ -215,8 +217,21 @@ function matchRefs(rows, column, records, answers) {
   return { pairs, merged, leftOut, open };
 }
 
+/** What a reference column's names are matched against: the season's, and for a rain plan the list's own. */
+function refRecords(column, setup, ownNames) {
+  if (column.ref === "activity") {
+    return [
+      ...(setup.activities || []),
+      ...ownNames.map((name) => ({ Name: name }))
+    ];
+  }
+  return (
+    (column.ref === "location" ? setup.locations : setup.locationTypes) || []
+  );
+}
+
 /** The value a column has for a new item: the file's, or what a new item starts with. */
-function newValueOf(column, row) {
+export function newValueOf(column, row) {
   if (column.key in row.values) {
     return row.values[column.key];
   }
@@ -264,15 +279,18 @@ export function listProposal(input) {
   const records = screen.records(setup);
   result.pairs.push(...matchNames(read, records, screen.kind, answers));
   const targets = whoTargets(setup);
-  const ownNames = new Set(
-    read.filter((r) => !r.problems.length && !r.leftOut).map((r) => r.name)
-  );
+  const ownNames = read
+    .filter((r) => !r.problems.length && !r.leftOut)
+    .map((r) => r.name);
   used
-    .filter(({ column }) => column.ref && column.ref !== "activity")
+    .filter(({ column }) => column.ref)
     .forEach(({ column }) => {
-      const refRecords =
-        column.ref === "location" ? setup.locations : setup.locationTypes;
-      const refs = matchRefs(read, column, refRecords || [], answers);
+      const refs = matchRefs(
+        read,
+        column,
+        refRecords(column, setup, ownNames),
+        answers
+      );
       result.pairs.push(...refs.pairs);
       read.forEach((r) => {
         const name = r.values[column.key];
@@ -287,29 +305,48 @@ export function listProposal(input) {
         r.values[column.key] = refs.merged.get(name) || name;
       });
     });
+  const whoAdds = unknownWho(read, targets, setup, answers, t);
+  result.cards = [...whoAdds.cards];
+  result.whoAdds = whoAdds.adds;
+  const rain = used.find(({ column }) => column.ref === "activity");
+  const known = new Set([
+    ...ownNames,
+    ...(setup.activities || []).map((a) => a.Name)
+  ]);
+  const missingPlans = new Set();
   read.forEach((r) => {
     const who = used.find(({ column }) => column.type === "list");
     if (who && Array.isArray(r.values.who) && r.values.who.length) {
-      const found = resolveWho(r.values.who, targets);
-      if (found.problem) {
-        r.problems.push(`${who.column.heading}: ${found.problem}`);
+      const keys = r.values.who.map(looseKey);
+      if (keys.some((k) => whoAdds.leftOut.has(k))) {
+        r.leftOut = true;
+      } else if (keys.some((k) => whoAdds.open.has(k))) {
+        r.open = true;
       } else {
-        r.values.who = found.ids;
+        const found = resolveWho(r.values.who, targets);
+        if (found.problem) {
+          r.problems.push(`${who.column.heading}: ${found.problem}`);
+        } else {
+          r.values.who = found.ids;
+        }
       }
     }
-    const rain = used.find(({ column }) => column.ref === "activity");
     const plan = rain && r.values[rain.column.key];
-    if (plan) {
-      if (looseKey(plan) === looseKey(r.name)) {
-        r.problems.push(`${rain.column.heading}: can't be itself`);
-      } else if (
-        !ownNames.has(plan) &&
-        !(setup.activities || []).some((a) => a.Name === plan)
-      ) {
-        r.problems.push(
-          `${rain.column.heading}: there is no ${t.sIn("Activity")} called "${plan}", in the file or set up`
-        );
-      }
+    if (plan && looseKey(plan) === looseKey(r.name)) {
+      r.problems.push(`${rain.column.heading}: can't be itself`);
+    } else if (plan && !known.has(plan) && !r.problems.length) {
+      missingPlans.add(plan);
+    }
+  });
+  const rainAdds = unknownRainPlans(missingPlans, answers, t);
+  result.cards.push(...rainAdds.cards);
+  result.rainAdds = rainAdds.adds;
+  read.forEach((r) => {
+    const plan = rain && r.values[rain.column.key];
+    if (plan && rainAdds.leftOut.has(plan)) {
+      r.leftOut = true;
+    } else if (plan && rainAdds.open.has(plan)) {
+      r.open = true;
     }
   });
   result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
@@ -322,6 +359,22 @@ export function listProposal(input) {
   };
   result.setupActivities = setup.activities || [];
   result.alsoAdd = alsoAdded(result.rows, used, setup);
+  const counted = (row, key) =>
+    row.status === "new" ||
+    (row.status === "changed" && row.differences.some((d) => d.column === key));
+  result.alsoAdd.activity = rainAdds.adds.filter((add) =>
+    result.rows.some(
+      (row) => counted(row, "rainPlan") && row.values.rainPlan === add.name
+    )
+  );
+  result.alsoAdd.who = whoAdds.adds.filter((add) =>
+    result.rows.some(
+      (row) =>
+        counted(row, "who") &&
+        Array.isArray(row.values.who) &&
+        row.values.who.includes(add.key)
+    )
+  );
   return result;
 }
 
