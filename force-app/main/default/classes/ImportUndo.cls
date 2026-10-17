@@ -35,8 +35,11 @@ public with sharing class ImportUndo {
       new ImportUndoDeletes(result)
         .run((Map<String, Object>) JSON.deserializeUntyped(done.Created__c));
       SetTimeGuard.checkPending();
-      done.UndoneAt__c = Datetime.now();
-      Database.update(done, AccessLevel.USER_MODE);
+      // Only the field that changes: the season it is in can't be sent back in user mode.
+      Database.update(
+        new Import__c(Id = done.Id, UndoneAt__c = Datetime.now()),
+        AccessLevel.USER_MODE
+      );
     } catch (Exception e) {
       Database.rollback(beforeUndo);
       throw e;

@@ -128,7 +128,9 @@ public with sharing class ImportUndoDeletes {
       )
     ) {
       for (String relationship : INSIDE.get(term)) {
-        if (!record.getSObjects(relationship).isEmpty()) {
+        // An empty sub-query reads as null, not an empty list.
+        List<SObject> inside = record.getSObjects(relationship);
+        if (inside != null && !inside.isEmpty()) {
           result.add(record.Id);
         }
       }

@@ -274,7 +274,8 @@ private class ImportUndoTest {
       ImportSetupSaves.Result later = ImportController.saveSetup(
         JSON.serialize(second)
       );
-      Test.setCreatedDate(later.importId, Datetime.now().addMinutes(1));
+      // The earlier import is dated before: an undone record can't be dated after its change.
+      Test.setCreatedDate(first.importId, Datetime.now().addMinutes(-1));
       try {
         ImportController.undoImport(first.importId);
         Assert.fail('only the last import can be undone');
@@ -575,7 +576,7 @@ private class ImportUndoTest {
       ImportSetupSaves.Result later = ImportController.saveSetup(
         JSON.serialize(versionOnly)
       );
-      Test.setCreatedDate(later.importId, Datetime.now().addMinutes(1));
+      Test.setCreatedDate(built.importId, Datetime.now().addMinutes(-1));
       Test.startTest();
       ImportController.undoImport(later.importId);
       Test.stopTest();
