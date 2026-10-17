@@ -352,3 +352,77 @@ describe("fixed and recurring activities", () => {
     ]);
   });
 });
+
+describe("in any row order", () => {
+  /** Rows in file order, reversed, and three seeded shuffles. */
+  function orders(rows) {
+    const result = [rows, [...rows].reverse()];
+    for (let seed = 1; seed <= 3; seed++) {
+      let x = seed * 7919;
+      const shuffled = [...rows];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        x = (x * 9301 + 49297) % 233280;
+        const j = Math.floor((x / 233280) * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      result.push(shuffled);
+    }
+    return result;
+  }
+
+  it("groups with new divisions and programs settle to the same save", () => {
+    const heading = ["Program", "Division", "Group"];
+    const body = [
+      ["Main", "Middlers", "Bunk 9"],
+      ["main", "middlers", "bunk 9"],
+      ["Teens", "Hikers", "Tent 1"],
+      ["Teens", "hikers", "Tent 2"],
+      ["Main", "Seniors", "Bunk 1"]
+    ];
+    const outcomes = orders(body).map((rows) => {
+      const answers = {};
+      let p;
+      for (let round = 0; round < 5; round++) {
+        p = read("groups", [heading, ...rows], answers);
+        const open = questionCards(p, terms, answers).filter((c) => !c.answer);
+        if (!open.length) {
+          break;
+        }
+        open.forEach((c) => {
+          answers[c.id] = c.daysQuestion
+            ? "Monday,Tuesday"
+            : c.options[0].value;
+        });
+      }
+      p.rows
+        .filter((r) => r.status === "changed")
+        .forEach((r) =>
+          r.differences.forEach((d) => {
+            answers[d.id] = CHANGE;
+          })
+        );
+      p = read("groups", [heading, ...rows], answers);
+      expect(waitingFor(p, terms, answers)).toEqual([]);
+      const plan = listPlan(p, answers, "s1", "f");
+      const keys = new Set(plan.records.map((r) => r.key).filter((k) => k));
+      plan.records.forEach((r) =>
+        Object.values(r.refs || {})
+          .filter((v) => v && v.includes(":"))
+          .forEach((v) => expect(keys.has(v)).toBe(true))
+      );
+      return plan.records
+        .map((r) => `${r.kind} ${(r.id || r.key).toLowerCase()}`)
+        .sort();
+    });
+    outcomes.forEach((o) => expect(o).toEqual(outcomes[0]));
+    expect(outcomes[0]).toEqual([
+      "Division division:p1:middlers",
+      "Division division:program:teens:hikers",
+      "Group g1",
+      "Group group:p1:bunk 9",
+      "Group group:program:teens:tent 1",
+      "Group group:program:teens:tent 2",
+      "Program program:teens"
+    ]);
+  });
+});

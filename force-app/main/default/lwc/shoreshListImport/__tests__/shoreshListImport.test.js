@@ -238,4 +238,63 @@ describe("c-shoresh-list-import", () => {
       { kind: "Activity", id: "a1", fields: { Notes__c: "x" }, refs: {} }
     ]);
   });
+
+  it("a new program's days and a new time block's times are answered in the card", async () => {
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.screenKey = "fixedActivities";
+    element.setup = {
+      ...SETUP,
+      programs: [
+        {
+          program: { Id: "p1", Name: "Main", Monday__c: true },
+          timeBlocks: [],
+          divisions: [],
+          fixedActivities: [],
+          recurringActivities: []
+        }
+      ]
+    };
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    $(element, 'lightning-button[data-id="open"]').click();
+    await flush();
+    const input = $(element, 'input[data-id="file"]');
+    Object.defineProperty(input, "files", {
+      value: [
+        file(
+          "fixed.csv",
+          ["Program,Fixed activity,Time block", "Teens,Snack,Break"].join("\n")
+        )
+      ]
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    const days = $(element, "lightning-checkbox-group");
+    days.dispatchEvent(
+      new CustomEvent("change", { detail: { value: ["Monday", "Friday"] } })
+    );
+    buttonNamed(element, "OK").click();
+    await flush();
+    const [start, end] = $$(element, "lightning-input").filter(
+      (box) => box.type === "time"
+    );
+    start.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "10:00:00.000" } })
+    );
+    end.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "10:30:00.000" } })
+    );
+    buttonNamed(element, "OK").click();
+    await flush();
+    const labels = $$(element, '[data-id="also-add"] lightning-input').map(
+      (box) => box.label
+    );
+    expect(labels).toEqual([
+      "Teens · program · Monday, Friday",
+      "Break · time block · 10:00 AM–10:30 AM"
+    ]);
+    expect($(element, 'lightning-button[data-id="save"]').label).toBe("Add 3");
+  });
 });
