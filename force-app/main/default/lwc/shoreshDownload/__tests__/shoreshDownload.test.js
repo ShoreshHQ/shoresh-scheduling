@@ -7,7 +7,6 @@ describe("c-shoresh-download", () => {
   let blobs;
   let revoked;
   beforeEach(() => {
-    jest.useFakeTimers();
     window.XLSX = XLSX;
     clicked = [];
     blobs = new Map();
@@ -26,7 +25,6 @@ describe("c-shoresh-download", () => {
       });
   });
   afterEach(() => {
-    jest.useRealTimers();
     jest.restoreAllMocks();
     delete window.XLSX;
     delete URL.createObjectURL;
@@ -65,9 +63,9 @@ describe("c-shoresh-download", () => {
     expect(type).toBe(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    // Let go of once the browser has the file.
+    // Kept while the browser takes the file; let go at the next download.
     expect(revoked).toEqual([]);
-    jest.runAllTimers();
+    await downloadWorkbook({}, [{ name: "Two", rows: [["A"]] }], "two.xlsx");
     expect(revoked).toEqual([clicked[0].href]);
     expect(wb.SheetNames).toEqual(["Activities", "Runs in  weeks"]);
     expect(

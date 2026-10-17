@@ -43,16 +43,23 @@ private class ImportWorkbookTest {
     };
   }
 
+  private static Map<String, Object> linked(
+    Map<String, Object> record,
+    Map<String, Object> refs
+  ) {
+    record.put('refs', refs);
+    return record;
+  }
+
   private static Map<String, Object> rec(
     String kind,
     String keyOrId,
-    Map<String, Object> fields,
-    Map<String, Object> refs
+    Map<String, Object> fields
   ) {
     Map<String, Object> r = new Map<String, Object>{
       'kind' => kind,
       'fields' => fields,
-      'refs' => refs
+      'refs' => new Map<String, Object>()
     };
     r.put(keyOrId.contains(':') ? 'key' : 'id', keyOrId);
     return r;
@@ -85,8 +92,7 @@ private class ImportWorkbookTest {
         'TimesPerWeekMax__c' => 2,
         'Priority__c' => 'Low',
         'GroupsAtOnce__c' => 1
-      },
-      new Map<String, Object>()
+      }
     );
     archery.put('who', new List<Object>());
     Map<String, Object> backOn = new Map<String, Object>{
@@ -107,8 +113,7 @@ private class ImportWorkbookTest {
                 'Name' => 'Week 4',
                 'StartDate__c' => '2026-07-20',
                 'EndDate__c' => '2026-07-24'
-              },
-              new Map<String, Object>()
+              }
             ),
             rec(
               'Week',
@@ -116,14 +121,15 @@ private class ImportWorkbookTest {
               new Map<String, Object>{
                 'Name' => 'Opening week',
                 'EndDate__c' => '2026-07-02'
-              },
-              new Map<String, Object>()
+              }
             ),
             archery,
-            rec(
-              'WeekException',
-              'WeekException:Activity:Archery:Week:2026-07-20',
-              new Map<String, Object>(),
+            linked(
+              rec(
+                'WeekException',
+                'WeekException:Activity:Archery:Week:2026-07-20',
+                new Map<String, Object>()
+              ),
               new Map<String, Object>{
                 'Week__c' => 'Week:2026-07-20',
                 'Activity__c' => 'Activity:Archery'
@@ -240,13 +246,10 @@ private class ImportWorkbookTest {
               'Name' => 'Week 4',
               'StartDate__c' => '2026-07-20',
               'EndDate__c' => '2026-07-24'
-            },
-            new Map<String, Object>()
+            }
           ),
-          rec(
-            'WeekException',
-            'WeekException:x',
-            new Map<String, Object>(),
+          linked(
+            rec('WeekException', 'WeekException:x', new Map<String, Object>()),
             new Map<String, Object>{
               'Week__c' => c.weeks[0].Id,
               'Activity__c' => c.swim.Id
@@ -286,8 +289,7 @@ private class ImportWorkbookTest {
         rec(
           'Week',
           c.weeks[0].Id,
-          new Map<String, Object>{ 'StartDate__c' => '2026-06-30' },
-          new Map<String, Object>()
+          new Map<String, Object>{ 'StartDate__c' => '2026-06-30' }
         ),
         new Map<String, Object>{
           'kind' => 'WeekException',
@@ -364,6 +366,7 @@ private class ImportWorkbookTest {
       ImportSetupSaves.Result result = importWorkbook(c);
       Contact someone = new Contact(LastName = 'Made Up');
       Database.insert(someone, AccessLevel.SYSTEM_MODE);
+      Assert.isNotNull(result.importId);
       expectTamperedRefused(
         result,
         changedEntry(someone.Id, 'Title', 'x'),
@@ -377,6 +380,7 @@ private class ImportWorkbookTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
       ImportSetupSaves.Result result = importWorkbook(c);
+      Assert.isNotNull(result.importId);
       expectTamperedRefused(
         result,
         changedEntry(c.swim.Id, 'OwnerId', UserInfo.getUserId()),
@@ -391,6 +395,7 @@ private class ImportWorkbookTest {
       Camp c = camp();
       ImportSetupSaves.Result result = importWorkbook(c);
       Id added = [SELECT Id FROM Week__c WHERE Name = 'Week 4'].Id;
+      Assert.isNotNull(result.importId);
       expectTamperedRefused(
         result,
         JSON.serialize(new List<Object>()),

@@ -122,10 +122,14 @@ public with sharing class ImportListRows {
     this.type = ImportFields.ofTerm(kind);
   }
 
-  /** Whether a list (or, with workbook, a camp workbook) can write this kind at all. */
-  public static Boolean isKind(String kind, Boolean workbook) {
-    return PLAIN_FIELDS.containsKey(kind) &&
-      (workbook || !WORKBOOK_ONLY.contains(kind));
+  /** Whether a screen's list can write this kind at all. */
+  public static Boolean isListKind(String kind) {
+    return PLAIN_FIELDS.containsKey(kind) && !WORKBOOK_ONLY.contains(kind);
+  }
+
+  /** Whether a camp workbook can write this kind at all (weeks and weeks off too). */
+  public static Boolean isWorkbookKind(String kind) {
+    return PLAIN_FIELDS.containsKey(kind);
   }
 
   /** A new record (in the season, where its kind is) or an existing one, with its plain fields. */

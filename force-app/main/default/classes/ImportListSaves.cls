@@ -103,7 +103,10 @@ public with sharing class ImportListSaves {
     Map<String, List<ImportPlan.Entry>> result = new Map<String, List<ImportPlan.Entry>>();
     for (ImportPlan.Entry entry : plan.entries('records')) {
       String kind = entry.text('kind');
-      if (!ImportListRows.isKind(kind, workbook)) {
+      Boolean allowed = workbook
+        ? ImportListRows.isWorkbookKind(kind)
+        : ImportListRows.isListKind(kind);
+      if (!allowed) {
         throw unreadable();
       }
       // A week an item is off no longer (a workbook's Runs in): removed after the rest.

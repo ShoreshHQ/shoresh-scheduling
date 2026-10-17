@@ -7,6 +7,8 @@ import { loadScript } from "lightning/platformResourceLoader";
 import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import { sheetName } from "c/shoreshLists";
 
+let lastUrl = null;
+
 const XLSX_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -28,13 +30,12 @@ export async function downloadWorkbook(component, sheets, fileName) {
   const link = document.createElement("a");
   link.href = url;
   link.download = fileName;
-  try {
-    link.click();
-  } finally {
-    // After the browser has taken the file: let go at once and some browsers cancel it.
-    // eslint-disable-next-line @lwc/lwc/no-async-operation
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // The last file's link is let go at the next download: at once, some browsers cancel it.
+  if (lastUrl) {
+    URL.revokeObjectURL(lastUrl);
   }
+  lastUrl = url;
+  link.click();
 }
 
 /** A file name from a title: no characters a computer's file names refuse. */

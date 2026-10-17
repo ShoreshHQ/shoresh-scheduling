@@ -93,10 +93,6 @@ public with sharing class ImportWorkbookExtras {
     if (why != null) {
       throw new ShoreshException(why);
     }
-    Set<String> terms = new Set<String>();
-    for (CampLabels.TermLabel label : CampLabels.modelTermsOnly().all()) {
-      terms.add(label.term);
-    }
     Map<String, CampLabel__c> current = new Map<String, CampLabel__c>();
     for (CampLabel__c label : [
       SELECT Id, ModelTerm__c
@@ -108,35 +104,46 @@ public with sharing class ImportWorkbookExtras {
     }
     List<SObject> added = new List<SObject>();
     List<SObject> changed = new List<SObject>();
+    for (CampLabel__c label : labelsOf(entries)) {
+      if (current.containsKey(label.ModelTerm__c)) {
+        changed.add(
+          new CampLabel__c(
+            Id = current.get(label.ModelTerm__c).Id,
+            Singular__c = label.Singular__c,
+            Plural__c = label.Plural__c
+          )
+        );
+      } else {
+        label.Camp__c = campId;
+        added.add(label);
+      }
+    }
+    writer.writeTracked('CampLabel', added, changed);
+  }
+
+  /** Each entry as a word for one of Shoresh's terms, once each, never blank. */
+  private static List<CampLabel__c> labelsOf(List<ImportPlan.Entry> entries) {
+    Set<String> terms = new Set<String>();
+    for (CampLabels.TermLabel label : CampLabels.modelTermsOnly().all()) {
+      terms.add(label.term);
+    }
+    List<CampLabel__c> result = new List<CampLabel__c>();
     Set<String> seen = new Set<String>();
     for (ImportPlan.Entry entry : entries) {
       String term = entry.text('term');
       Map<String, Object> fields = entry.valuesOf('fields');
-      String singular = word(fields.get('Singular__c'));
-      String plural = word(fields.get('Plural__c'));
       if (!terms.contains(term) || !seen.add(term) || fields.size() != 2) {
         throw ImportListSaves.unreadable();
       }
-      if (current.containsKey(term)) {
-        changed.add(
-          new CampLabel__c(
-            Id = current.get(term).Id,
-            Singular__c = singular,
-            Plural__c = plural
-          )
-        );
-      } else {
-        added.add(
-          new CampLabel__c(
-            Camp__c = campId,
-            ModelTerm__c = term,
-            Singular__c = singular,
-            Plural__c = plural
-          )
-        );
-      }
+      result.add(
+        new CampLabel__c(
+          ModelTerm__c = term,
+          Singular__c = word(fields.get('Singular__c')),
+          Plural__c = word(fields.get('Plural__c'))
+        )
+      );
     }
-    writer.writeTracked('CampLabel', added, changed);
+    return result;
   }
 
   private static String word(Object value) {

@@ -21,29 +21,11 @@ public with sharing class ImportUndoWeeksOff {
     List<String> names = new List<String>();
     for (Object item : entries) {
       Map<String, Object> entry = (Map<String, Object>) item;
-      String field = (String) entry.get('field');
-      ImportFields.check(
-        WeekException__c.SObjectType,
-        new Set<String>{ field }
-      );
-      if (
-        field == 'Week__c' ||
-        ImportFields.ofRecord(entry.get('week')) != Week__c.SObjectType
-      ) {
-        throw ImportFields.unreadableLog();
-      }
-      Id target = (Id) (String) entry.get('target');
-      if (ImportFields.ofRecord(target) != fieldType(field)) {
-        throw ImportFields.unreadableLog();
-      }
-      WeekException__c off = new WeekException__c(
-        Week__c = (Id) (String) entry.get('week')
-      );
-      off.put(field, target);
+      WeekException__c off = checked(entry);
       wanted.add(off);
       names.add((String) entry.get('name'));
       weeks.add(off.Week__c);
-      targets.add(target);
+      targets.add(targetOf(off));
     }
     Set<String> there = existing(weeks, targets);
     Set<Id> still = stillThere(targets);
@@ -67,30 +49,45 @@ public with sharing class ImportUndoWeeksOff {
     insertAll(toAdd);
   }
 
+  /** A week off from the log, every name and Id checked against what an import writes. */
+  private static WeekException__c checked(Map<String, Object> entry) {
+    String field = (String) entry.get('field');
+    ImportFields.check(WeekException__c.SObjectType, new Set<String>{ field });
+    if (
+      field == 'Week__c' ||
+      ImportFields.ofRecord(entry.get('week')) != Week__c.SObjectType
+    ) {
+      throw ImportFields.unreadableLog();
+    }
+    Id target = (Id) (String) entry.get('target');
+    if (ImportFields.ofRecord(target) != fieldType(field)) {
+      throw ImportFields.unreadableLog();
+    }
+    WeekException__c off = new WeekException__c(
+      Week__c = (Id) (String) entry.get('week')
+    );
+    off.put(field, target);
+    return off;
+  }
+
   /** The items still there, read by their objects (only those ImportFields lists). */
   private static Set<Id> stillThere(Set<Id> targets) {
-    Map<Schema.SObjectType, Set<Id>> byType = new Map<Schema.SObjectType, Set<Id>>();
-    for (Id target : targets) {
-      Schema.SObjectType type = ImportFields.ofRecord(target);
-      if (!byType.containsKey(type)) {
-        byType.put(type, new Set<Id>());
-      }
-      byType.get(type).add(target);
-    }
     Set<Id> result = new Set<Id>();
-    for (Schema.SObjectType type : byType.keySet()) {
-      Set<Id> ids = byType.get(type);
-      for (
-        SObject row : Database.queryWithBinds(
-          'SELECT Id FROM ' +
-            type.getDescribe().getName() +
-            ' WHERE Id IN :ids',
-          new Map<String, Object>{ 'ids' => ids },
-          AccessLevel.USER_MODE
-        )
-      ) {
-        result.add(row.Id);
+    for (
+      List<SObject> found : new List<List<SObject>>{
+        [SELECT Id FROM Group__c WHERE Id IN :targets WITH USER_MODE],
+        [SELECT Id FROM Location__c WHERE Id IN :targets WITH USER_MODE],
+        [SELECT Id FROM Activity__c WHERE Id IN :targets WITH USER_MODE],
+        [SELECT Id FROM FixedActivity__c WHERE Id IN :targets WITH USER_MODE],
+        [
+          SELECT Id
+          FROM RecurringActivity__c
+          WHERE Id IN :targets
+          WITH USER_MODE
+        ]
       }
+    ) {
+      result.addAll(new Map<Id, SObject>(found).keySet());
     }
     return result;
   }
