@@ -14,12 +14,16 @@ public with sharing class ImportUndo {
     public List<String> keptEdited { get; set; }
     @AuraEnabled
     public List<String> keptInUse { get; set; }
+    /** Records the import changed that were deleted since: nothing to put back. */
+    @AuraEnabled
+    public List<String> gone { get; set; }
 
     public Result() {
       removed = 0;
       restored = 0;
       keptEdited = new List<String>();
       keptInUse = new List<String>();
+      gone = new List<String>();
     }
   }
 
@@ -49,20 +53,34 @@ public with sharing class ImportUndo {
     return result;
   }
 
+  /** Why Undo stopped, with the record and Salesforce's reason: nothing was undone. */
+  public static ShoreshException refused(
+    String name,
+    String what,
+    Database.Error error
+  ) {
+    return new ShoreshException(
+      'Nothing was undone. ' + name + ': ' + what + '. ' + error.getMessage()
+    );
+  }
+
   private static Import__c load(Id importId) {
     List<Import__c> found = [
-      SELECT
-        Id,
-        Season__c,
-        Season__r.Camp__c,
-        Created__c,
-        Changed__c,
-        UndoneAt__c,
-        CreatedDate
+      SELECT Season__c
       FROM Import__c
       WHERE Id = :importId
       WITH USER_MODE
     ];
+    if (!found.isEmpty()) {
+      // A second Undo, or an import saving, in the same season waits here; read again after.
+      lockSeason(found[0].Season__c);
+      found = [
+        SELECT Id, Season__c, Created__c, Changed__c, UndoneAt__c
+        FROM Import__c
+        WHERE Id = :importId
+        WITH USER_MODE
+      ];
+    }
     if (found.isEmpty() || found[0].UndoneAt__c != null) {
       throw new ShoreshException(
         'That import was already undone, or it was not found.'
@@ -73,6 +91,25 @@ public with sharing class ImportUndo {
       throw new ShoreshException('Only the last import can be undone.');
     }
     return done;
+  }
+
+  /**
+   * Holds the season until this save or Undo is done, so imports and Undos in one season take
+   * turns: Undo can't run while an import saves, or twice at once.
+   */
+  public static void lockSeason(Id seasonId) {
+    List<Season__c> locked = [
+      SELECT Id
+      FROM Season__c
+      WHERE Id = :seasonId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    if (locked.isEmpty()) {
+      throw new ShoreshException(
+        'That import was already undone, or it was not found.'
+      );
+    }
   }
 
   /** The season's last import that stands. */

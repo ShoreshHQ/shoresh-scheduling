@@ -592,4 +592,130 @@ private class ImportUndoTest {
       Assert.isNotNull(built.importId);
     }
   }
+
+  /** An import that changes Swim's length to 2 and adds a place, Barn. */
+  private static ImportSetupSaves.Result swimLengthImport(
+    Season__c season,
+    Activity__c swim
+  ) {
+    Map<String, Object> plan = ImportTestPlans.emptyPlan(season.Id);
+    ImportTestPlans.add(
+      plan,
+      'activities',
+      ImportTestPlans.entry(
+        new List<Object>{ 'key', swim.Id, 'id', swim.Id, 'length', 2 }
+      )
+    );
+    ImportTestPlans.add(
+      plan,
+      'locations',
+      ImportTestPlans.entry(
+        new List<Object>{ 'key', 'L|Barn', 'name', 'Barn', 'groupsThatFit', 1 }
+      )
+    );
+    return ImportController.saveSetup(JSON.serialize(plan));
+  }
+
+  @IsTest
+  static void aRefusalStopsTheWholeUndoAndSaysWhy() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Activity__c swim = ShoreshTestData.activity(season.Id, 'Swim', null);
+      Database.insert(swim, AccessLevel.SYSTEM_MODE);
+      ImportSetupSaves.Result result = swimLengthImport(season, swim);
+      // What Undo would put back is now refused by a rule (length at least 1).
+      Import__c done = [
+        SELECT Id, Changed__c
+        FROM Import__c
+        WHERE Id = :result.importId
+      ];
+      List<Object> changed = (List<Object>) JSON.deserializeUntyped(
+        done.Changed__c
+      );
+      ((Map<String, Object>) ((Map<String, Object>) changed[0]).get('before'))
+        .put('Length__c', 0);
+      done.Changed__c = JSON.serialize(changed);
+      Database.update(done, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      try {
+        ImportController.undoImport(result.importId);
+        Assert.fail('a refusal stops the Undo');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(
+          e.getMessage()
+            .startsWith(
+              'Nothing was undone. Swim: couldn\'t put back what it was before. '
+            ),
+          e.getMessage()
+        );
+      }
+      Test.stopTest();
+      // Nothing half undone: Barn is still there, Swim still 2, and the import can be retried.
+      Assert.areEqual(1, [SELECT COUNT() FROM Location__c WHERE Name = 'Barn']);
+      Assert.areEqual(
+        2,
+        [SELECT Length__c FROM Activity__c WHERE Id = :swim.Id].Length__c
+      );
+      Assert.areEqual(result.importId, ImportUndo.latest(season.Id));
+    }
+  }
+
+  @IsTest
+  static void aChangedRecordDeletedSinceIsNamed() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Activity__c swim = ShoreshTestData.activity(season.Id, 'Swim', null);
+      Database.insert(swim, AccessLevel.SYSTEM_MODE);
+      ImportSetupSaves.Result result = swimLengthImport(season, swim);
+      Database.delete(swim, AccessLevel.USER_MODE);
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Swim' }, undone.gone);
+      Assert.areEqual(0, undone.restored);
+      Assert.areEqual(1, undone.removed);
+    }
+  }
+
+  @IsTest
+  static void importsInTheSameSecondGoByTheirNumber() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = seasonWithWeek();
+      ImportSetupSaves.Result first = ImportController.saveSetup(
+        JSON.serialize(ImportTestPlans.newCamp(season.Id))
+      );
+      Map<String, Object> second = ImportTestPlans.emptyPlan(season.Id);
+      ImportTestPlans.add(
+        second,
+        'locations',
+        ImportTestPlans.entry(
+          new List<Object>{
+            'key',
+            'L|Barn',
+            'name',
+            'Barn',
+            'groupsThatFit',
+            1
+          }
+        )
+      );
+      ImportSetupSaves.Result later = ImportController.saveSetup(
+        JSON.serialize(second)
+      );
+      Datetime sameSecond = Datetime.now().addMinutes(-1);
+      Test.setCreatedDate(first.importId, sameSecond);
+      Test.setCreatedDate(later.importId, sameSecond);
+      Assert.areEqual(later.importId, ImportUndo.latest(season.Id));
+      try {
+        ImportController.undoImport(first.importId);
+        Assert.fail('the later number is the last import');
+      } catch (AuraHandledException e) {
+        Assert.areEqual('Only the last import can be undone.', e.getMessage());
+      }
+      ImportController.undoImport(later.importId);
+      Assert.areEqual(0, [SELECT COUNT() FROM Location__c WHERE Name = 'Barn']);
+    }
+  }
 }

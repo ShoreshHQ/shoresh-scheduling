@@ -52,9 +52,12 @@ const SETUP = {
   locations: []
 };
 
-/** A file as the browser hands it over. */
-function file(name) {
-  const bytes = readFileSync(join(SAMPLES, name));
+/** A file as the browser hands it over (from the samples, or the text given). */
+function file(name, text) {
+  const bytes =
+    text === undefined
+      ? readFileSync(join(SAMPLES, name))
+      : Buffer.from(text, "utf8");
   return {
     name,
     text: () => Promise.resolve(bytes.toString("utf8")),
@@ -89,10 +92,10 @@ const $$ = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)
 ];
 
-async function choose(element, names) {
+async function choose(element, names, texts = {}) {
   const input = $(element, 'input[data-id="files"]');
   Object.defineProperty(input, "files", {
-    value: names.map(file),
+    value: names.map((name) => file(name, texts[name])),
     configurable: true
   });
   input.dispatchEvent(new CustomEvent("change"));
@@ -376,6 +379,26 @@ describe("c-shoresh-import", () => {
       expect($(element, 'lightning-button[data-id="save"]').label).toBe(
         "Use this setup"
       );
+    });
+
+    it("a place ticked at an earlier import is ticked again and marked remembered", async () => {
+      getAnswers.mockResolvedValue([{ key: "place|Pool", answer: "add" }]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim (Pool),Art (Art room)",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      const pool = $(element, '[data-place="place|Pool"]');
+      expect(pool.querySelector("lightning-input").checked).toBe(true);
+      expect(pool.textContent).toContain("remembered");
+      const artRoom = $(element, '[data-place="place|Art room"]');
+      expect(artRoom.querySelector("lightning-input").checked).toBe(false);
+      expect(artRoom.textContent).not.toContain("remembered");
     });
 
     it("the summary says where last year's schedule went, and the import can be undone", async () => {

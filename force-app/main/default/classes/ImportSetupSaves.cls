@@ -34,11 +34,13 @@ public with sharing class ImportSetupSaves {
 
   public static Result save(String planText) {
     ImportPlan plan = new ImportPlan(planText);
+    // Locked: imports and Undos in one season take turns (ImportUndo.lockSeason).
     List<Season__c> seasons = [
       SELECT Id, Camp__c
       FROM Season__c
       WHERE Id = :plan.seasonId
       WITH USER_MODE
+      FOR UPDATE
     ];
     if (seasons.isEmpty()) {
       throw new ShoreshException(

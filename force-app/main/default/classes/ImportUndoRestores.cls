@@ -1,6 +1,7 @@
 /**
  * Undo, part two: puts back what an import changed (a program's days, a time block's times, a
- * length, a time block, a group's division), unless it was edited since.
+ * length, a time block, a group's division), unless it was edited since. Records deleted since
+ * are named; any other refusal stops the whole Undo.
  */
 public with sharing class ImportUndoRestores {
   private ImportUndo.Result result;
@@ -31,11 +32,15 @@ public with sharing class ImportUndoRestores {
       AccessLevel.USER_MODE
     );
     for (Integer i = 0; i < outcomes.size(); i++) {
-      if (outcomes[i].isSuccess()) {
-        result.restored++;
-      } else {
-        result.keptInUse.add(names.get(rows[i].Id));
+      if (!outcomes[i].isSuccess()) {
+        // Any refusal (a rule, a permission) stops the whole Undo with its reason.
+        throw ImportUndo.refused(
+          names.get(rows[i].Id),
+          'couldn\'t put back what it was before',
+          outcomes[i].getErrors()[0]
+        );
       }
+      result.restored++;
     }
   }
 
@@ -59,6 +64,8 @@ public with sharing class ImportUndoRestores {
     for (Map<String, Object> entry : entries) {
       SObject current = now.get((Id) (String) entry.get('id'));
       if (current == null) {
+        // Deleted since: nothing to put back, and the summary says so.
+        result.gone.add((String) entry.get('name'));
         continue;
       }
       if (

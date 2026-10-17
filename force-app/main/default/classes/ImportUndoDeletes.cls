@@ -138,7 +138,10 @@ public with sharing class ImportUndoDeletes {
     return result;
   }
 
-  /** Deletes what it can; what Salesforce refuses (still pointed at) is kept, by name. */
+  /**
+   * Deletes what it can. A record something still points at is kept, by name; any other refusal
+   * (a rule, a permission) stops the whole Undo with its reason, so nothing is half undone.
+   */
   private void deleteAll(List<SObject> records) {
     List<Database.DeleteResult> outcomes = Database.delete(
       records,
@@ -148,9 +151,17 @@ public with sharing class ImportUndoDeletes {
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (outcomes[i].isSuccess()) {
         result.removed++;
-      } else {
-        keep(records[i], result.keptInUse);
+        continue;
       }
+      Database.Error error = outcomes[i].getErrors()[0];
+      if (error.getStatusCode() != StatusCode.DELETE_FAILED) {
+        throw ImportUndo.refused(
+          (String) records[i].get('Name'),
+          'couldn\'t remove it',
+          error
+        );
+      }
+      keep(records[i], result.keptInUse);
     }
   }
 }

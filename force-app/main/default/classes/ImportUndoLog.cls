@@ -3,7 +3,7 @@
  * for each existing record the import updates, the values of the fields it updates.
  */
 public with sharing class ImportUndoLog {
-  /** [{ id, type, before: { field: value } }] for the rows that update existing records. */
+  /** [{ id, type, name, before: { field: value } }] for the rows that update existing records. */
   public static List<Map<String, Object>> before(List<SObject> rows) {
     Map<Schema.SObjectType, Map<Id, Set<String>>> byType = new Map<Schema.SObjectType, Map<Id, Set<String>>>();
     for (SObject row : rows) {
@@ -31,7 +31,8 @@ public with sharing class ImportUndoLog {
     Schema.SObjectType kind,
     Map<Id, Set<String>> fieldsById
   ) {
-    Set<String> all = new Set<String>();
+    // Name too, so Undo can say which record was deleted since.
+    Set<String> all = new Set<String>{ 'Name' };
     for (Set<String> fields : fieldsById.values()) {
       all.addAll(fields);
     }
@@ -56,6 +57,7 @@ public with sharing class ImportUndoLog {
         new Map<String, Object>{
           'id' => record.Id,
           'type' => kind.getDescribe().getName(),
+          'name' => record.get('Name'),
           'before' => values
         }
       );

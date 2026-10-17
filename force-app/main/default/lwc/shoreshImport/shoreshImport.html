@@ -181,15 +181,19 @@
             Is this a place at your camp? Tick to add it.
           </p>
           <template for:each={places} for:item="place">
-            <lightning-input
-              key={place.id}
-              type="checkbox"
-              label={place.name}
-              field-level-help={place.usedByText}
-              checked={place.ticked}
-              data-id={place.id}
-              onchange={handlePlace}
-            ></lightning-input>
+            <div key={place.id} class="import-place" data-place={place.id}>
+              <lightning-input
+                type="checkbox"
+                label={place.name}
+                field-level-help={place.usedByText}
+                checked={place.ticked}
+                data-id={place.id}
+                onchange={handlePlace}
+              ></lightning-input>
+              <template lwc:if={place.fromMemory}>
+                <span class="import-tag">remembered</span>
+              </template>
+            </div>
           </template>
         </section>
       </template>

@@ -329,7 +329,8 @@ export default class ShoreshImport extends LightningElement {
     return this.proposal
       ? this.proposal.offeredPlaces.map((p) => ({
           ...p,
-          usedByText: `Named with ${p.usedBy.join(", ")}`
+          usedByText: `Named with ${p.usedBy.join(", ")}`,
+          fromMemory: p.ticked && this.remembered[p.id] === "add"
         }))
       : [];
   }

@@ -240,14 +240,25 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       Removed 31 things it added. Kept, because they were changed since: Swim. Kept, because
       something else still uses them: Bunk 1, Juniors, Main." The version goes too, unless it was
       renamed. Comparing values, not dates, keeps this exact (and testable).
-    - Only a season's **last** import that stands can be undone, once; the clash check runs at
-      the end, and a clash undoes the Undo.
+    - A record the import changed that was deleted since is named ("Not put back, because they
+      were deleted since: Period 2.").
+    - **Any other refusal stops the whole Undo** (PR 17 review): only "something still points at
+      it" counts as in use. A rule, trigger, or permission refusal rolls everything back and says
+      which record and why ("Nothing was undone. Swim: couldn't put back what it was before.
+      <reason>"), and the import stays undoable, so the director can fix it and try again.
+      Rolling back was chosen over a partial Undo because "nothing changed" is simpler to explain.
+    - Only a season's **last** import that stands can be undone, once (imports in the same second
+      go by their number); the clash check runs at the end, and a clash undoes the Undo.
+    - **Imports and Undos in one season take turns:** both lock the season row first
+      (`ImportUndo.lockSeason`, `FOR UPDATE`), and Undo re-reads the import and "last" under the
+      lock, so two Undos, or an Undo and an import saving, can't interleave.
 19. **Remembered answers** (Greg: exact answers per camp, pattern learning later):
     `ImportAnswer__c` (detail of the camp) holds each question's key and answer. Keys and
     answers are names and choices, never record Ids (the program question is answered by the
     program's name), so they still work after a season is copied. The save remembers every answer
     given and forgets any answered "Leave it out for now" (the next import asks again). The next
-    import fills in remembered answers; their cards show "remembered" and can be changed. One
+    import fills in remembered answers; their cards (and ticked places) show "remembered" and can
+    be changed. One
     answer per camp and question (`Key__c`, unique: the camp and a SHA-256 digest of the key; the
     full key is in `QuestionKey__c`).
 

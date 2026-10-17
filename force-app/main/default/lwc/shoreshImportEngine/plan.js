@@ -540,5 +540,10 @@ export function undoMessage(result) {
       `Kept, because something else still uses them: ${nameList(result.keptInUse, 6)}.`
     );
   }
+  if (result.gone && result.gone.length) {
+    parts.push(
+      `Not put back, because they were deleted since: ${nameList(result.gone, 6)}.`
+    );
+  }
   return parts.join(" ");
 }

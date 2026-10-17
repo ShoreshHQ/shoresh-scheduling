@@ -5,6 +5,7 @@ import {
   LEAVE_OUT,
   planFor,
   questionCards,
+  undoMessage,
   unplacedLines
 } from "c/shoreshImportEngine";
 import {
@@ -306,5 +307,24 @@ describe("part 2 review", () => {
       answers: given
     });
     expect(plan.remember).toEqual([{ key: id, answer: "morning" }]);
+  });
+});
+
+describe("what Undo says", () => {
+  it("names what it kept, and what was deleted since and so not put back", () => {
+    expect(
+      undoMessage({
+        removed: 3,
+        restored: 1,
+        keptEdited: ["Swim"],
+        keptInUse: ["Juniors"],
+        gone: ["Period 2"]
+      })
+    ).toBe(
+      "Import undone. Removed 3 things it added and put back 1 it changed. " +
+        "Kept, because they were changed since: Swim. " +
+        "Kept, because something else still uses them: Juniors. " +
+        "Not put back, because they were deleted since: Period 2."
+    );
   });
 });
