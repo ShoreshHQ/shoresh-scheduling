@@ -367,6 +367,8 @@
 }
 
 .counter_plain {
+  border-color: transparent;
+  background: transparent;
   cursor: default;
 }
 

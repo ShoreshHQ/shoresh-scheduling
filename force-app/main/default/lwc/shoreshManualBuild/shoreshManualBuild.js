@@ -1707,6 +1707,10 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   renderedCallback() {
+    // A list whose counter went to zero is closed, so it doesn't open again by itself later.
+    if (this.openCounter && !this.checked[this.openCounter].length) {
+      this.openCounter = null;
+    }
     if (this.conflict && !this.conflictFocused) {
       const button = this.template.querySelector('[data-id="keep-theirs"]');
       if (button) {

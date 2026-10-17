@@ -105,9 +105,14 @@ const counters = (element) =>
     b.textContent.replace(/\s+/g, " ").trim()
   );
 
-async function press(target, key) {
+async function press(target, key, extra = {}) {
   target.dispatchEvent(
-    new KeyboardEvent("keydown", { key, bubbles: true, composed: true })
+    new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      composed: true,
+      ...extra
+    })
   );
   await flush();
 }
@@ -205,5 +210,37 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(counters(element)).toEqual(["Still needed 2"]);
     expect(q(element, '[data-counter="overlapping"]')).toBeNull();
     expect(q(element, '[data-counter="spread"]')).toBeNull();
+  });
+
+  it("one Escape on a cell with a dot hides the words and lets go of what was picked up", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+    cell(element, "0-1").dispatchEvent(
+      new CustomEvent("focusin", { bubbles: true, composed: true })
+    );
+    await press(cell(element, "0-1"), " ");
+    expect(cell(element, "0-1").className).toContain("cell_picked");
+    await press(cell(element, "0-1"), "Escape");
+    expect(cell(element, "0-1").className).not.toContain("cell_picked");
+  });
+
+  it("a list whose counter went to zero doesn't open again by itself", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+    q(element, '[data-counter="overlapping"]').click();
+    await flush();
+    expect(q(element, '[data-id="counter-list"]')).not.toBeNull();
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
+    });
+    await press(cell(element, "1-1"), "Delete");
+    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    // The clash comes back (Undo): its counter does, its list stays closed.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    await press(cell(element, "1-1"), "z", { ctrlKey: true });
+    expect(q(element, '[data-counter="overlapping"]')).not.toBeNull();
+    expect(q(element, '[data-id="counter-list"]')).toBeNull();
   });
 });
