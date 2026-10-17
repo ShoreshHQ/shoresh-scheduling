@@ -13,10 +13,14 @@ import {
   listScreen
 } from "c/shoreshLists";
 
-const apex = readFileSync(
-  join(__dirname, "..", "..", "..", "classes", "ImportListSaves.cls"),
-  "utf8"
-);
+const apex = ["ImportListSaves", "ImportListWho"]
+  .map((name) =>
+    readFileSync(
+      join(__dirname, "..", "..", "..", "classes", `${name}.cls`),
+      "utf8"
+    )
+  )
+  .join("\n");
 
 /** kind -> fields, from one of the Apex maps (PLAIN_FIELDS or LINK_FIELDS). */
 function apexMap(name) {
@@ -132,6 +136,6 @@ describe("the save request and ImportListSaves agree", () => {
     expect(apex).toContain("plan.entries('records')");
     expect(apex).toContain("entry.valuesOf('fields')");
     expect(apex).toContain("entry.valuesOf('refs')");
-    expect(apex).toContain("texts('who')");
+    expect(apex).toContain("entry.texts('who')");
   });
 });

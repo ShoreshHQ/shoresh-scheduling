@@ -554,3 +554,131 @@ describe("names that aren't set up are added, after asking (Greg, 2026-10-17)", 
     expect(plan.remember).toEqual([]);
   });
 });
+
+describe("the walkthrough's sample lists (docs/samples/lists)", () => {
+  const { readFileSync } = require("fs");
+  const { join } = require("path");
+  const SAMPLES = join(
+    __dirname,
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "..",
+    "docs",
+    "samples",
+    "lists"
+  );
+  const sample = (name) =>
+    csvFile(name, readFileSync(join(SAMPLES, name), "utf8"));
+
+  // Maple Grove after "Import last year" (walkthrough section 14): no locations yet.
+  function mapleGrove() {
+    const s = setup();
+    s.locations = [];
+    s.locationTypes = [];
+    s.activities = [
+      "Swim",
+      "Art",
+      "Soccer",
+      "Gym games",
+      "Music",
+      "Archery",
+      "Boating"
+    ].map((name, i) => ({
+      Id: `a${i}`,
+      Name: name,
+      Length__c: name === "Boating" ? 2 : 1,
+      TimesPerWeekMin__c: 1,
+      TimesPerWeekMax__c: 2,
+      Priority__c: "Low",
+      GroupsAtOnce__c: 1,
+      Eligibilities__r: name === "Boating" ? [{ Division__c: "d2" }] : []
+    }));
+    return s;
+  }
+
+  it("locations: three new types, Gym can't be read", () => {
+    const p = listProposal({
+      screenKey: "locations",
+      file: sample("maple-grove-locations.csv"),
+      setup: mapleGrove(),
+      terms,
+      answers: {}
+    });
+    expect(p.alsoAdd.locationType).toEqual([
+      "Indoors",
+      "Outdoors",
+      "Waterfront"
+    ]);
+    expect(p.rows.map((r) => [r.name, r.status])).toEqual([
+      ["Pool", "new"],
+      ["Lake", "new"],
+      ["Art room", "new"],
+      ["Field", "new"],
+      ["Gym", "unreadable"]
+    ]);
+    expect(rowNamed(p, "Gym").problems).toEqual([
+      'Groups that fit: "two" is not a whole number'
+    ]);
+  });
+
+  it("activities: the questions the walkthrough answers, and what each row becomes", () => {
+    const p = listProposal({
+      screenKey: "activities",
+      file: sample("maple-grove-activities.csv"),
+      setup: mapleGrove(),
+      terms,
+      answers: {}
+    });
+    expect(
+      p.mapping.headings.find((h) => h.text === "Colour").column
+    ).toBeNull();
+    expect(questionCards(p, terms, {}).map((c) => c.title)).toEqual([
+      "Are “Musik” and “Music” the same activity?",
+      "“Middlers” isn't set up. What is it?",
+      "“Movies” isn't set up. It will be added as activity: how long is it?"
+    ]);
+    expect(p.rows.map((r) => [r.name, r.status])).toEqual([
+      ["Swim", "changed"],
+      ["Boating", "asked"],
+      ["Musik", "asked"],
+      ["Archery", "changed"],
+      ["Gaga", "asked"],
+      ["Hiking", "unreadable"]
+    ]);
+    const cards = questionCards(p, terms, {});
+    const answers = {
+      [cards[0].id]: "b",
+      [cards[1].id]: "division|Main",
+      [cards[2].id]: "1"
+    };
+    const done = listProposal({
+      screenKey: "activities",
+      file: sample("maple-grove-activities.csv"),
+      setup: mapleGrove(),
+      terms,
+      answers
+    });
+    expect(done.rows.map((r) => [r.name, r.status])).toEqual([
+      ["Swim", "changed"],
+      ["Boating", "changed"],
+      ["Musik", "changed"],
+      ["Archery", "changed"],
+      ["Gaga", "new"],
+      ["Hiking", "unreadable"]
+    ]);
+    expect(done.alsoAdd.location).toEqual([
+      "Field",
+      "Gaga pit",
+      "Lake",
+      "Music room",
+      "Pool"
+    ]);
+    expect(done.alsoAdd.activity).toEqual([{ name: "Movies", length: 1 }]);
+    expect(done.alsoAdd.who.map((w) => [w.kind, w.name])).toEqual([
+      ["Division", "Middlers"]
+    ]);
+  });
+});

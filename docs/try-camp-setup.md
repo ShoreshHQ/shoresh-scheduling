@@ -370,10 +370,66 @@ per bunk, bunks across with one sheet per day, or activities across with the bun
 cells. Anything Shoresh is not sure about becomes a question; nothing is saved until **Use this
 setup**.
 
+## 15. Import a list on a screen
+
+The Locations and Activities screens can each read a list from Excel or CSV: one row per
+location or activity, headings in the first row. Made-up lists for the _Maple Grove_ camp of
+section 14 are in `docs/samples/lists` (do section 14 first, in the _Import test_ season).
+
+**Locations**
+
+1. Open **Locations** in the menu. Under the heading is an **Import a list** button. Click it.
+   A box opens: _Import a list of Locations_, with **Choose a file**.
+2. Click **Choose a file** and pick `docs/samples/lists/maple-grove-locations.csv`.
+3. The box says _maple-grove-locations.csv. Found in the file. Nothing saved yet._ and shows:
+   - **Columns**: each heading in the file and the column it fills (_Location_, _Location
+     type_, _Groups that fit_, _Notes_). A heading Shoresh doesn't know shows _Not used_, and
+     you can pick a column for it from its dropdown. Shoresh remembers that choice for your
+     camp next time.
+   - **Will also add**: _Indoors_, _Outdoors_, _Waterfront_ (new location types), ticked and
+     greyed out. The list names them, so they come with it.
+   - **New (4)**: Pool, Lake, Art room, Field.
+   - **Can't be read, left out**: _Row 6 (Gym): Groups that fit: "two" is not a whole
+     number_. Fix the file and import it again to add Gym.
+4. Click **Save**. The box says what was added: 3 location types and 4 locations. The
+   Locations table now lists them. **Undo this import** would take them away again, and so
+   would Roots' **Undo last import**. Click **Done**.
+
+**Activities**
+
+5. Open **Activities**, click **Import a list**, and pick
+   `docs/samples/lists/maple-grove-activities.csv`.
+6. **Columns**: _Colour_ shows _Not used: no column has this heading_. Leave it.
+7. **Questions** (each must be answered before Save):
+   - _Are “Musik” and “Music” the same activity?_ Click **Same: use “Music”**. The card
+     folds to _✓ Same: use “Music”_, and **Change** reopens it.
+   - _“Middlers” isn't set up. What is it?_ (the Gaga row says only Middlers can do it). Pick
+     **Add it as unit in Main**, or a bunk in one of the units.
+   - _“Movies” isn't set up. It will be added as activity: how long is it?_ (Boating's rain
+     plan). Type **1** in Length.
+8. **Will also add** now lists the new locations the rows name (_Gaga pit_, _Music room_),
+   _Middlers (new unit)_, and _Movies (new activity, length 1; once a week, 1 bunk at a time,
+   Low priority)_.
+9. **New**: _Gaga_. **Can't be read, left out**: _Row 7 (Hiking): Outdoors: "maybe": write Yes
+   or No_.
+10. **Already set up, with differences**: Swim, Boating, Music, and Archery, each difference on
+    its own line, like _Times a week: at least: 1 → 2_, with **Keep** and **Change**. Only the
+    columns the file has are compared. A blank cell clears a value: such a line is tagged
+    _clears a value_. Click **Keep** on one line, then **Change all from this file** (its label
+    says how many changes, and how many of them clear a value).
+11. The list under the differences says what is still waiting. When nothing is left, click
+    **Save**. The summary says what was added and changed. Open Archery's details below the
+    table: _Who can do it_ now shows what the file said.
+12. Click **Undo this import** and confirm. Everything the list added is removed, and the
+    activities it changed go back to how they were, including who can do them. Anything you
+    edited in the meantime stays as you left it, and the message names it.
+
 ## What is not here yet
 
-- Importing lists of bunks, activities, or locations on each screen is the next piece of the
-  import. Moving a bunk to another unit on the Bunks screen comes after it.
+- Importing a list on the other screens (Program days, Units, Bunks, Time blocks, Fixed and
+  Recurring activities), **Download this list**, and the full camp workbook (export, and
+  import on Roots) are the next pieces. Moving a bunk to another unit on the Bunks screen
+  comes after them.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
   into a working schedule, saving and deleting versions, and publishing. Roots' **Build or
