@@ -346,6 +346,25 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
     Click **Leave it out for now**, then **Use this setup**. The summary lists it under **Left
     out for now**: not added; the next import asks again.
 
+**Last year's week as a version, and undoing an import**
+
+12. Start a fresh season for this: **New season**, _Import test 2_, first day Jun 28, 2027,
+    last day Jul 9, 2027, **Create season**. On **Weeks**, click **Fill in weeks from the
+    season dates** (two weeks). Then, from Roots, import `maple-grove-2026-all-camp.xlsx` again.
+    The answers you gave last time are filled in already and marked _remembered_ (the review
+    says how many); any can be changed.
+13. If the season has several weeks, the review asks _Which week is last year's schedule?_
+    Pick _Week 1_.
+14. The summary now has **Last year's schedule**: _Imported from maple-grove-2026-all-camp.xlsx,
+    for Week 1 (Main): open it on Schedules._ Click **Continue**, then **Schedules**: the version
+    opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim, the Zoo
+    trip, and Field day marked _not set up yet_.
+15. Back on Roots, under **Import last year**: _Last import: maple-grove-2026-all-camp.xlsx,
+    <date and time>_ and **Undo last import**. Change something the import added first (for
+    example, on **Activities**, make _Swim_ two blocks long and save). Then click **Undo last
+    import** and confirm. The message says what was removed, and that _Swim_ was kept because
+    it was changed since. Everything else the import added, the version included, is gone.
+
 **Try it yourself**: a CSV or Excel file of your own invented camp. Days across with one file
 per bunk, bunks across with one sheet per day, or activities across with the bunks in the
 cells. Anything Shoresh is not sure about becomes a question; nothing is saved until **Use this
@@ -353,9 +372,8 @@ setup**.
 
 ## What is not here yet
 
-- From the import (next piece): last year's week saved as a version on the schedule page,
-  **Undo last import**, and remembering your answers so the next import does not ask again.
-  Importing lists of bunks, activities, or locations on each screen comes after that.
+- Importing lists of bunks, activities, or locations on each screen is the next piece of the
+  import. Moving a bunk to another unit on the Bunks screen comes after it.
 - Special events are in the menu, marked Coming.
 - On the schedule page: Manual Build, Generated Schedule, changing cells, restoring a version
   into a working schedule, saving and deleting versions, and publishing. Roots' **Build or
