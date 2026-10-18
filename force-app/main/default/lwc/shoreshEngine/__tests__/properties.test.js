@@ -137,6 +137,25 @@ describe("generateWeek on random small camps", () => {
       ) {
         bad.push(`seed ${seed}: the engine's dots aren't checkWeek's`);
       }
+      // Each data entry says what its line says: the activity, the bunk and the number.
+      const name = (id) => spec.activities.find((a) => a.id === id).name;
+      const bunk = (id) => spec.groups.find((g) => g.id === id).name;
+      const lines = [
+        ...result.stillNeededBy.map(
+          (e) =>
+            `${name(e.activityId)} · ${bunk(e.groupId)}: ${e.missing} still needed`
+        ),
+        ...result.spreadBy.map(
+          (e) =>
+            `${name(e.activityId)} · ${bunk(e.groupId)}: ${e.missing} still needed by ${e.byDay}`
+        )
+      ];
+      if (
+        JSON.stringify(lines) !==
+        JSON.stringify([...result.stillNeeded, ...result.spread])
+      ) {
+        bad.push(`seed ${seed}: the still-needed data doesn't match its lines`);
+      }
       if (
         JSON.stringify([apart.stillNeeded, apart.spread]) !==
         JSON.stringify([result.stillNeeded, result.spread])
