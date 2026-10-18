@@ -289,9 +289,9 @@ describe("c-shoresh-editable-table", () => {
 
     it("a time block can be added with no name: the server names it by its times", async () => {
       // As shoreshProgram.blockColumns: Name not required (TimeBlockTriggerHandler fills it).
-      const columns = COLUMNS.map((c) =>
-        c.fieldName === "Name" ? { ...c, required: false } : c
-      );
+      const columns = COLUMNS.map((c) => {
+        return c.fieldName === "Name" ? { ...c, required: false } : c;
+      });
       const element = render({ columns, rows: ROWS });
       const sent = listen(element);
       await flush();
@@ -793,7 +793,9 @@ describe("c-shoresh-editable-table", () => {
             options: all,
             // Hike only where it is already held.
             optionsFor: (saved) =>
-              all.filter((o) => o.value !== "a2" || saved.RainPlan__c === "a2")
+              all.filter(
+                (o) => o.value !== "a2" || saved[nsName("RainPlan__c")] === "a2"
+              )
           }
         ],
         rows: [
