@@ -93,14 +93,7 @@ public with sharing class ManualWeekStart {
   /** Setup as it is for this week: what decides where a copied activity may go. */
   private ManualWeekStart(GeneratedSetup setup) {
     this.setup = setup;
-    activities = new Map<Id, Activity__c>(
-      [
-        SELECT Id, Location__c
-        FROM Activity__c
-        WHERE Season__c = :setup.program.Season__c
-        WITH USER_MODE
-      ]
-    );
+    activities = new Map<Id, Activity__c>(setup.activityRecords());
     readClosures(setup.exceptions);
     groups = new Map<Id, Group__c>(setup.groups);
     blocks = new Map<Id, TimeBlock__c>(setup.blocks);

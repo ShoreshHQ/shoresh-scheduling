@@ -122,19 +122,53 @@ public with sharing class ManualBuildViews {
     public List<Id> blockIds = new List<Id>();
   }
 
+  /** What a draft's view is built from: read once per request. */
+  private class Read {
+    private Id scheduleId;
+    // Id, Season__c and Season__r.Camp__c.
+    private Program__c program;
+    // Id, StartDate__c and EndDate__c.
+    private Week__c week;
+    private List<Group__c> groups;
+    private List<TimeBlock__c> blocks;
+    private List<WeekException__c> exceptions;
+    private List<Activity__c> activities;
+  }
+
   /** The draft opened for Manual Build. */
   public static DraftView open(Id scheduleId) {
     Schedule__c schedule = draftOf(scheduleId);
-    return viewOf(
-      schedule,
-      ProgramReads.groupsOf(schedule.Program__c),
-      ProgramReads.blocksOf(schedule.Program__c)
+    Read read = new Read();
+    read.scheduleId = scheduleId;
+    read.program = schedule.Program__r;
+    read.week = new Week__c(
+      Id = schedule.Week__c,
+      StartDate__c = schedule.Week__r.StartDate__c,
+      EndDate__c = schedule.Week__r.EndDate__c
     );
+    read.groups = ProgramReads.groupsOf(schedule.Program__c);
+    read.blocks = ProgramReads.blocksOf(schedule.Program__c);
+    read.exceptions = OtherProgramUse.exceptionsOf(schedule.Week__c);
+    read.activities = SeasonSetupReader.activitiesOf(
+      schedule.Program__r.Season__c
+    );
+    return viewOf(read);
   }
 
-  /** The same, on the program's groups and time blocks already read in this request. */
+  /**
+   * The same, for the draft of the program and week the setup was read for (a start just made
+   * or found it): nothing the setup has read is read again.
+   */
   public static DraftView openWith(Id scheduleId, GeneratedSetup setup) {
-    return viewOf(draftOf(scheduleId), setup.groups, setup.blocks);
+    Read read = new Read();
+    read.scheduleId = scheduleId;
+    read.program = setup.program;
+    read.week = setup.week;
+    read.groups = setup.groups;
+    read.blocks = setup.blocks;
+    read.exceptions = setup.exceptions;
+    read.activities = setup.activityRecords();
+    return viewOf(read);
   }
 
   private static Schedule__c draftOf(Id scheduleId) {
@@ -158,45 +192,32 @@ public with sharing class ManualBuildViews {
     return found[0];
   }
 
-  private static DraftView viewOf(
-    Schedule__c schedule,
-    List<Group__c> groups,
-    List<TimeBlock__c> blocks
-  ) {
+  private static DraftView viewOf(Read read) {
     DraftView view = new DraftView();
-    view.schedule = ScheduleViews.open(schedule.Id);
-    view.activities = options(schedule.Program__r.Season__c, groups);
-    view.activityRecords = SeasonSetupReader.activitiesOf(
-      schedule.Program__r.Season__c
-    );
+    view.schedule = ScheduleViews.open(read.scheduleId);
+    view.activities = options(read.program.Season__c, read.groups);
+    view.activityRecords = read.activities;
     view.locationRecords = SeasonSetupReader.locationsOf(
-      schedule.Program__r.Season__c
+      read.program.Season__c
     );
-    view.groupRecords = groups;
+    view.groupRecords = read.groups;
     view.fixedActivityRecords = [
       SELECT Id, Location__c
       FROM FixedActivity__c
-      WHERE Program__c = :schedule.Program__c
+      WHERE Program__c = :read.program.Id
       WITH USER_MODE
       ORDER BY Id
     ];
     view.recurringActivityRecords = [
       SELECT Id, Location__c
       FROM RecurringActivity__c
-      WHERE Program__c = :schedule.Program__c
+      WHERE Program__c = :read.program.Id
       WITH USER_MODE
       ORDER BY Id
     ];
-    view.away = away(groups, blocks);
-    view.otherPrograms = new OtherProgramUse(
-        new Week__c(
-          Id = schedule.Week__c,
-          StartDate__c = schedule.Week__r.StartDate__c,
-          EndDate__c = schedule.Week__r.EndDate__c
-        ),
-        OtherProgramUse.exceptionsOf(schedule.Week__c)
-      )
-      .read(schedule.Program__r, view.activityRecords);
+    view.away = away(read.groups, read.blocks);
+    view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
+      .read(read.program, read.activities);
     return view;
   }
 

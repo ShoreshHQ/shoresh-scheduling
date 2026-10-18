@@ -142,8 +142,8 @@ private class ManualWeekStartTest {
         ),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Test.startTest();
       // Group A is away in Week 3.
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
@@ -169,8 +169,8 @@ private class ManualWeekStartTest {
         ),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
@@ -189,8 +189,8 @@ private class ManualWeekStartTest {
   static void aVersionCanBeTheStartAndTheListShowsWhatCanBe() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id draftId = weekOneWithSwim(ids);
+      Test.startTest();
       Id versionId = ManualBuildController.saveVersion(draftId, 'Week 1 plan');
       List<ManualBuildViews.WeekSource> sources = ManualBuildController.getWeekSources(
         ids.get('Main'),
@@ -216,8 +216,8 @@ private class ManualWeekStartTest {
   static void aWeekAlreadyStartedIsLeftAsItIs() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Test.startTest();
       Id weekTwo = ManualBuildController.startBlankWeek(
           ids.get('Main'),
           ids.get('Week 2')
@@ -304,8 +304,8 @@ private class ManualWeekStartTest {
         ),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       Id weekOne = weekOneWithSwim(ids);
+      Test.startTest();
       Id weekTwo = ManualBuildController.startBlankWeek(
           ids.get('Main'),
           ids.get('Week 2')
@@ -439,8 +439,8 @@ private class ManualWeekStartTest {
   static void aDayThatCantBeReadIsListed() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Test.startTest();
       Database.update(
         new ScheduleDay__c(
           Id = [
@@ -526,8 +526,8 @@ private class ManualWeekStartTest {
         new Week__c(Id = weekTwo.Id, StartDate__c = weekTwo.StartDate__c + 1),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
