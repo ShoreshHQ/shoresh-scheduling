@@ -37,9 +37,24 @@ When in doubt it picks `full`: a path not in the first two rows, or a failure to
 changed files, runs everything. The org check still reports under the same name, and passes,
 in every category; its log and summary say which category it chose and why.
 
-**Every merge to main runs the full check.** That is the safety net: whatever a `docs` or
-`screen` pull request skipped is tested as soon as it lands. Merges never cancel each other's
-run; each one waits its turn for the test org.
+### The nightly full run on main (the safety net)
+
+Merges to main run only the quick check ("LWC Jest and Code Analyzer"). Every night at 07:15 UTC
+(03:15 New York time in summer, 02:15 in winter) the full check runs on main: deploy and every
+Apex test. Whatever a `docs` or `screen` pull request skipped is tested by the next morning. It
+waits its turn for the test org like any pull request.
+
+A failed nightly run shows as a red run in the repository's **Actions** tab (filter by event
+"schedule"); GitHub also emails whoever last changed the schedule. The coordinator session
+checks the latest nightly run each morning:
+`gh run list --repo ShoreshHQ/shoresh-scheduling --workflow CI --event schedule --limit 1`.
+
+To start a full run by hand (for example right after a risky merge): **Actions** tab → **CI** →
+**Run workflow** → branch `main` → **Run workflow**, or
+`gh workflow run CI --repo ShoreshHQ/shoresh-scheduling --ref main`.
+
+GitHub turns scheduled runs off after 60 days with no commits to the repository; the Actions tab
+then offers to turn it back on.
 
 ### Waiting in line for the test org
 

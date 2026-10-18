@@ -4,12 +4,17 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Nightly full Apex run on main: the safety net for pull requests that skipped Apex tests.
+  # 07:15 UTC is 03:15 New York time in summer, 02:15 in winter (docs/ci-setup.md).
+  schedule:
+    - cron: "15 7 * * *"
+  workflow_dispatch:
 
 concurrency:
-  # A new push to a pull request cancels its older run. Each push to main is its own group, so
-  # one merge never cancels another's full Apex run: every merge is checked (docs/ci-setup.md).
-  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A new push cancels the older run of the same pull request, or of main. The nightly and
+  # by-hand full runs have their own group and are never cancelled by a merge.
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 permissions:
   contents: read
@@ -55,6 +60,7 @@ jobs:
   pr-category:
     name: Which org checks this change needs
     runs-on: ubuntu-24.04
+    if: github.event_name != 'push'
     outputs:
       category: ${{ steps.decide.outputs.category }}
       reason: ${{ steps.decide.outputs.reason }}
@@ -65,7 +71,7 @@ jobs:
           fetch-depth: 0
       - name: Decide from the changed files
         # docs: no org check needed; screen: deploy only; full: deploy and every Apex test.
-        # scripts/ci-pr-category.js says full whenever in doubt. Main always gets full.
+        # scripts/ci-pr-category.js says full whenever in doubt. Nightly and by-hand runs: full.
         id: decide
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -74,13 +80,15 @@ jobs:
             node scripts/ci-pr-category.js "$BASE_REF" | tee -a "$GITHUB_OUTPUT"
           else
             echo "category=full" | tee -a "$GITHUB_OUTPUT"
-            echo "reason=push to main: every merge runs the full Apex suite" | tee -a "$GITHUB_OUTPUT"
+            echo "reason=$GITHUB_EVENT_NAME run: the full Apex suite on $GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
           fi
 
   scratch-org:
     name: Scratch org deploy and Apex tests
     runs-on: ubuntu-24.04
     needs: pr-category
+    # Pushes to main run only the quick checks; main's full Apex run is the nightly one.
+    if: github.event_name != 'push'
     # Every pull request deploys to the one test org (scripts/renew-test-org.sh makes it).
     # Greg's rule: exactly two orgs, the Dev Hub and this test org; CI never creates one.
     # One run at a time, so two pull requests never deploy over each other. The others wait
