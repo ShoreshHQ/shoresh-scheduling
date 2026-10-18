@@ -108,7 +108,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api saveRuns;
   // True while the host is restoring or saving a version: edits wait (Restore would paint over them).
   @api restoring = false;
-  // Pass false (a host that owns its toolbar, Generated Schedule): no tools slot.
+  // Pass false for no tools slot.
   @api tools;
   // The host's check of the week: (days, locks) => checkWeek's answer, plus openReasons. Left out,
   // the editor checks the week itself (Manual Build).

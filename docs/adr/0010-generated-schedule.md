@@ -816,9 +816,12 @@ refused; `saveWeek`'s locks after a save (none after Start over); `inputFor`.
 38. **The week is drawn and edited in the shared week editor** (`c-shoresh-week-editor`, ADR
     0008 "The week editor"), the same as Manual Build's: the activity list, typing a name, drag
     and drop, Space to pick up, Shift+Up/Down for length, Undo and Redo, _Keep theirs / Use
-    yours_. The screen keeps its own toolbar (pickers, Rebuild, Fill the open cells, Try another,
-    Option, Lock, Start over; the editor's tools slot is left out, `tools` false), its counters
-    below the grid, its confirms and its conflict box. What it hands the editor:
+    yours_. The toolbar stays one row, as on the desktop: the screen's pickers go in the editor's
+    `pickers` slot and its Rebuild, Fill the open cells, Try another, Option, Lock and Start over
+    in its `tools` slot, so Rebuild sits right after Undo and Redo (desktop ScheduleScreen.jsx,
+    "Sits with undo/redo", owner 2026-09-12); before the week is drawn the screen shows the
+    pickers in a toolbar of its own. The screen keeps its counters below the grid, its confirms
+    and its conflict box. What it hands the editor:
     - **its saver**: each hand edit goes through `saveEdits` (`GeneratedScheduleController.
 saveSlots`, §33), so every cell it changes is locked (decision 2). A run keeps the locks the
       editor names as seen when the director made it (`locksBefore`; the data module fills them

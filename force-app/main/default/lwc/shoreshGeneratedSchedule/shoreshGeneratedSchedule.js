@@ -177,6 +177,15 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const target = selector && this.template.querySelector(selector);
     if (target) {
       target.focus();
+    } else if (selector && editor) {
+      // The build actions sit in the editor's toolbar, drawn once the editor has drawn the week
+      // it was just told of: its render runs first, then this.
+      Promise.resolve().then(() => {
+        const later = this.template.querySelector(selector);
+        if (later) {
+          later.focus();
+        }
+      });
     }
   }
 
@@ -970,9 +979,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get groupPills() {
     return groups(this.schedule);
   }
-  // Generated owns its toolbar: the editor leaves out its tools slot.
-  get editorTools() {
-    return false;
+  // The screen's own toolbar (the pickers alone) until the week is drawn; then the editor's.
+  get showToolbar() {
+    return !this.showWeek;
   }
   // Edits wait while a build or a Lock is saved (the week is about to be replaced).
   get editsWait() {

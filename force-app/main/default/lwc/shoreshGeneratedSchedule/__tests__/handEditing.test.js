@@ -184,13 +184,43 @@ describe("hand editing on the Generated Schedule screen", () => {
     jest.resetAllMocks();
   });
 
-  it("draws the week in the shared editor, without its tools, with Undo and the activity list", async () => {
+  it("draws the week in the shared editor, with Undo and the activity list", async () => {
     const element = await render();
     expect(editor(element)).not.toBeNull();
-    expect(editor(element).tools).toBe(false);
     expect(textAt(element, "0-1")).toBe("Swim");
     expect(q(element, '[data-id="undo"]')).not.toBeNull();
     expect(q(element, "c-shoresh-build-palette")).not.toBeNull();
+  });
+
+  it("keeps one toolbar, as on the desktop: the pickers, the views, Undo and Redo, then Rebuild", async () => {
+    const element = await render();
+    // No second row of the screen's own: the editor's toolbar holds it all.
+    expect(element.shadowRoot.querySelector(".toolbar")).toBeNull();
+    const toolbar = editorRoot(element).querySelector(".toolbar");
+    const slotOf = (node) => node.assignedSlot;
+    const pickers = slotOf(q(element, '[data-id="week"]'));
+    const tools = slotOf(action(element, "Rebuild").parentElement);
+    expect(pickers.name).toBe("pickers");
+    expect(tools.name).toBe("tools");
+    expect(slotOf(action(element, "StartOver"))).toBe(tools);
+    expect(slotOf(q(element, '[data-id="lock-menu"]').parentElement)).toBe(
+      tools
+    );
+    // In this order: the week, the views, Undo, Redo, then Rebuild (desktop: "Sits with undo/redo").
+    const inOrder = [
+      pickers,
+      toolbar.querySelector(".view-toggle"),
+      q(element, '[data-id="undo"]'),
+      q(element, '[data-id="redo"]'),
+      tools
+    ];
+    inOrder.forEach((node) => expect(toolbar.contains(node)).toBe(true));
+    inOrder.reduce((before, after) => {
+      expect(
+        before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      return after;
+    });
   });
 
   it("a hand edit is saved through Generated's slot save, naming the locks seen, and locks what it changes at once", async () => {
@@ -610,6 +640,20 @@ describe("hand editing on the Generated Schedule screen", () => {
     await flush();
     await clearSwim(element);
     expect(saveSlots).not.toHaveBeenCalled();
+    expect(notice(element)).toBe(
+      "One moment: the week is being saved or restored."
+    );
+  });
+
+  it("an edit waits while a build is saved", async () => {
+    const element = await render();
+    saveWeekOnServer.mockReturnValue(new Promise(() => {}));
+    action(element, "TryAnother").click();
+    await flush();
+    expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
+    await clearSwim(element);
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(textAt(element, "0-1")).toBe("Swim");
     expect(notice(element)).toBe(
       "One moment: the week is being saved or restored."
     );

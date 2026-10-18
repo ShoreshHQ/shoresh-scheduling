@@ -1,100 +1,33 @@
 <template>
   <div class="schedules" data-id="generated-schedule">
-    <!-- Toolbar, as on the desktop: the week, how to look at it, then what to do with it. -->
-    <div class="toolbar">
-      <template lwc:if={hasSeveralPrograms}>
-        <lightning-combobox
-          class="picker"
-          label={programLabel}
-          value={programId}
-          options={programOptions}
-          disabled={pickerDisabled}
-          onchange={handleProgram}
-          data-id="program"
-        ></lightning-combobox>
-      </template>
-      <template lwc:if={canChoose}>
-        <lightning-combobox
-          class="picker"
-          label={weekLabel}
-          value={weekId}
-          options={weekOptions}
-          disabled={pickerDisabled}
-          onchange={handleWeek}
-          data-id="week"
-        ></lightning-combobox>
-      </template>
-      <template lwc:if={showWeek}>
-        <div class="actions" role="group" aria-label="Build">
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
-            disabled={actionsDisabled}
-            onclick={handleRebuild}
-            data-action="Rebuild"
-          >
-            Rebuild
-          </button>
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
-            disabled={cannotFill}
-            onclick={handleFillOpen}
-            data-action="FillOpen"
-          >
-            Fill the open cells
-          </button>
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
-            disabled={actionsDisabled}
-            onclick={handleTryAnother}
-            data-action="TryAnother"
-          >
-            Try another
-          </button>
+    <!-- Before the week is drawn, the toolbar holds only the pickers; once it is, they sit in the
+         editor's toolbar (below), so the screen keeps one row as on the desktop. -->
+    <template lwc:if={showToolbar}>
+      <div class="toolbar">
+        <template lwc:if={hasSeveralPrograms}>
           <lightning-combobox
-            class="option"
-            label={optionLabel}
-            value={optionValue}
-            options={optionChoices}
-            disabled={actionsDisabled}
-            onchange={handleOption}
-            data-id="option"
+            class="picker"
+            label={programLabel}
+            value={programId}
+            options={programOptions}
+            disabled={pickerDisabled}
+            onchange={handleProgram}
+            data-id="program"
           ></lightning-combobox>
-        </div>
-        <div class="actions">
-          <lightning-button-menu
-            class="lock-menu"
-            label="Lock"
-            icon-name="utility:lock"
-            alternative-text="Lock"
-            disabled={lockDisabled}
-            onselect={handleLockSelect}
-            data-id="lock-menu"
-          >
-            <template for:each={lockMenu} for:item="choice">
-              <lightning-menu-item
-                key={choice.value}
-                value={choice.value}
-                label={choice.label}
-                data-value={choice.value}
-              ></lightning-menu-item>
-            </template>
-          </lightning-button-menu>
-        </div>
-        <span class="spacer"></span>
-        <button
-          type="button"
-          class="slds-button slds-button_neutral"
-          disabled={actionsDisabled}
-          onclick={handleStartOver}
-          data-action="StartOver"
-        >
-          Start over
-        </button>
-      </template>
-    </div>
+        </template>
+        <template lwc:if={canChoose}>
+          <lightning-combobox
+            class="picker"
+            label={weekLabel}
+            value={weekId}
+            options={weekOptions}
+            disabled={pickerDisabled}
+            onchange={handleWeek}
+            data-id="week"
+          ></lightning-combobox>
+        </template>
+      </div>
+    </template>
 
     <!-- While the week is built: a thin bar that follows the build, and the desktop's words. -->
     <template lwc:if={busy}>
@@ -220,7 +153,6 @@
         program-name={programName}
         save-runs={saveRuns}
         restoring={editsWait}
-        tools={editorTools}
         locks={editorLocks}
         check-with={checkWith}
         lit={lit}
@@ -233,7 +165,104 @@
         onreload={handleEditorReload}
         onunlockrequest={handleUnlockRequest}
         oncellfocus={handleCellFocus}
-      ></c-shoresh-week-editor>
+      >
+        <!-- One toolbar, as on the desktop: the week, how to look at it (the editor's views), then
+             what changes it: Undo and Redo (the editor's), with Rebuild beside them (desktop
+             ScheduleScreen.jsx: "Sits with undo/redo", owner 2026-09-12). -->
+        <template lwc:if={hasSeveralPrograms}>
+          <lightning-combobox
+            slot="pickers"
+            class="picker"
+            label={programLabel}
+            value={programId}
+            options={programOptions}
+            disabled={pickerDisabled}
+            onchange={handleProgram}
+            data-id="program"
+          ></lightning-combobox>
+        </template>
+        <template lwc:if={canChoose}>
+          <lightning-combobox
+            slot="pickers"
+            class="picker"
+            label={weekLabel}
+            value={weekId}
+            options={weekOptions}
+            disabled={pickerDisabled}
+            onchange={handleWeek}
+            data-id="week"
+          ></lightning-combobox>
+        </template>
+        <div class="actions" slot="tools" role="group" aria-label="Build">
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={actionsDisabled}
+            onclick={handleRebuild}
+            data-action="Rebuild"
+          >
+            Rebuild
+          </button>
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={cannotFill}
+            onclick={handleFillOpen}
+            data-action="FillOpen"
+          >
+            Fill the open cells
+          </button>
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={actionsDisabled}
+            onclick={handleTryAnother}
+            data-action="TryAnother"
+          >
+            Try another
+          </button>
+          <lightning-combobox
+            class="option"
+            label={optionLabel}
+            value={optionValue}
+            options={optionChoices}
+            disabled={actionsDisabled}
+            onchange={handleOption}
+            data-id="option"
+          ></lightning-combobox>
+        </div>
+        <div class="actions" slot="tools">
+          <lightning-button-menu
+            class="lock-menu"
+            label="Lock"
+            icon-name="utility:lock"
+            alternative-text="Lock"
+            disabled={lockDisabled}
+            onselect={handleLockSelect}
+            data-id="lock-menu"
+          >
+            <template for:each={lockMenu} for:item="choice">
+              <lightning-menu-item
+                key={choice.value}
+                value={choice.value}
+                label={choice.label}
+                data-value={choice.value}
+              ></lightning-menu-item>
+            </template>
+          </lightning-button-menu>
+        </div>
+        <span class="spacer" slot="tools"></span>
+        <button
+          slot="tools"
+          type="button"
+          class="slds-button slds-button_neutral"
+          disabled={actionsDisabled}
+          onclick={handleStartOver}
+          data-action="StartOver"
+        >
+          Start over
+        </button>
+      </c-shoresh-week-editor>
 
       <!-- The counts sit below the grid on the generated schedule (design guide). -->
       <div class="checks">

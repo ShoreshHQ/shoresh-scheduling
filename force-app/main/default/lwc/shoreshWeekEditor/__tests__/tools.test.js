@@ -224,6 +224,18 @@ describe("worked out again after someone else's change (replan)", () => {
     expect(result.missed).toBe(1);
   });
 
+  it("a copy keeps the whole of a target placement one of whose cells it keeps, for the next round too", () => {
+    // The director copied Monday (Swim, Soccer) to Tuesday, where Bunk 1 has Boating over
+    // Period 2 and Lunch. Someone else made Monday's Lunch Swim, so Tuesday's Lunch is kept,
+    // and with it all of Boating: nothing is cleared for a copy that can't come.
+    const seen = week(["1,2,4", "1,,"], ["1,3,^", "1,,"]);
+    const saved = week(["1,2,2", "1,,"], ["1,3,^", "1,,"]);
+    const result = replan(COPY, seen, saved, new Set(), () => false);
+    expect(after(saved, result.runs)[1][0]).toEqual(["F:f1", "A:a2", "^A:a2"]);
+    expect(result.kept.has("2026-06-30|g1|t3")).toBe(true);
+    expect(result.kept.has("2026-06-30|g1|t2")).toBe(true);
+  });
+
   it("a placement made shorter is someone else's in every cell it covered", () => {
     // Bunk 1's Boating ran Period 2 and Lunch; someone else shortened it to Period 2.
     const seen = week(["1,3,^", "1,,"], ["1,,", "1,,"]);
