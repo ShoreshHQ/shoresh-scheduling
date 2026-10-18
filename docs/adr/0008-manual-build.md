@@ -368,7 +368,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - **Counters** under the toolbar (desktop): **Filled** _34 of 120_ (cells filled, of the
       cells to fill: at camp, not fixed or recurring; neutral; the desktop's "Placed", renamed
       because the activity list's "2 placed" counts placements, not cells). **Still needed** (activity and
-      bunk pairs short of the weekly minimum), **Spread across the week** (short of the
+      bunk pairs short of the weekly minimum: one per line of its list, like the desktop's
+      badges; Greg, 2026-10-17), **Spread across the week** (short of the
       early-week goal, by that day inclusive, only when the week has a day by then), and
       **Overlapping** (each clash once: a place in a block, an activity in a block, two of a
       bunk's placements whose blocks overlap). Still needed and Spread list group by group, then
