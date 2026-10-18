@@ -109,7 +109,7 @@ private class ManualWeekStartTest {
       Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
       Assert.isTrue(
-        queries <= 70,
+        queries <= 40,
         'Start from another week used ' + queries + ' queries'
       );
       Assert.areEqual('Swim', mondayPeriod2(view, 'Group A'));
