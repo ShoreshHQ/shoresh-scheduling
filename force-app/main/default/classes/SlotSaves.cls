@@ -5,6 +5,10 @@
  * once and nobody's change is overwritten unseen: an edit whose slots someone else changed since
  * comes back as a conflict, for the screen to ask "keep theirs or use yours" (Greg, 2026-10-17).
  *
+ * Generated Schedule's hand edits are saved the same way (saveOnGenerated), and each cell an edit
+ * fills is locked, so building the week again keeps it (Greg, 2026-10-17: hand edits are locks);
+ * a cell an edit leaves Open is unlocked, for the next build to fill.
+ *
  * Only a draft can be changed, and only as SlotRules allows. Runs in user mode; the days are
  * written by ScheduleDaySaves under the schedule's lock.
  */
@@ -12,14 +16,33 @@ public with sharing class SlotSaves {
   private SlotRules rules;
   private Map<Date, ScheduleDays.DayGrid> days = new Map<Date, ScheduleDays.DayGrid>();
   private Set<Date> changed = new Set<Date>();
+  // Generated Schedule: what an edit fills is locked.
+  private Boolean lockEdits = false;
 
   /** Makes the edits that still fit, in order, and returns the schedule as it now is. */
   public static SlotEdits.Result save(
     Id scheduleId,
     List<SlotEdits.Edit> edits
   ) {
-    Schedule__c schedule = ManualDrafts.locked(scheduleId);
+    return saveOn(ManualDrafts.locked(scheduleId), edits, false);
+  }
+
+  /** The same, on a Generated draft: what each edit fills is locked. */
+  public static SlotEdits.Result saveOnGenerated(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits
+  ) {
+    return saveOn(GeneratedDrafts.lockedToEdit(scheduleId), edits, true);
+  }
+
+  private static SlotEdits.Result saveOn(
+    Schedule__c schedule,
+    List<SlotEdits.Edit> edits,
+    Boolean lockEdits
+  ) {
+    Id scheduleId = schedule.Id;
     SlotSaves saves = new SlotSaves();
+    saves.lockEdits = lockEdits;
     saves.rules = new SlotRules(
       setupOf(schedule.Program__r),
       SlotRules.activityIdsIn(edits)
@@ -35,6 +58,11 @@ public with sharing class SlotSaves {
     }
     saves.write(scheduleId);
     result.schedule = ScheduleViews.open(scheduleId);
+    if (lockEdits) {
+      result.revision = GeneratedDrafts.revisionOf(
+        ScheduleDays.read(scheduleId)
+      );
+    }
     return result;
   }
 
@@ -55,6 +83,7 @@ public with sharing class SlotSaves {
     for (Date day : ordered) {
       ScheduleDays.DayGrid read = days.get(day);
       read.grid.dropUnusedItems();
+      ScheduleGridLocks.tidy(read.grid);
       toSave.add(new ScheduleDaySaves.DaySave(day, read.grid, read.revision));
     }
     if (!toSave.isEmpty()) {
@@ -118,8 +147,12 @@ public with sharing class SlotSaves {
     SlotRules.checkStartsClean(was[first]);
     Set<Integer> inRun = new Set<Integer>();
     for (Integer i = 0; i < run.after.size(); i++) {
-      writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
+      List<Integer> cell = new List<Integer>{ g, first + i };
+      writeSlot(grid, cell, run.after[i]);
       inRun.add(first + i);
+      if (lockEdits) {
+        ScheduleGridLocks.lockIfFilled(grid, cell);
+      }
     }
     return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }

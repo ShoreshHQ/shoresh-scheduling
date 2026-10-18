@@ -301,8 +301,8 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       mode and is checked first by `SetTimeAccess` (ADR 0008 §3). Opening the screen saves nothing;
     - the season's records as records (field names carry the package's prefix once it has one):
       the program's groups at camp that week (division, availability, sort order) and time
-      blocks (part of day, sort order); the season's activities with every rule field the engine reads; who each is set
-      up for (`ActivityEligibility__c`); locations with groups that fit; the program's fixed and
+      blocks (part of day, sort order); the season's activities with every rule field the
+      engine reads; who each is set up for (`ActivityEligibility__c`); locations with groups that fit; the program's fixed and
       recurring activities (for their places); this week's exceptions. Who a recurring activity
       covers (`Coverage__c`) is already applied in the days, where it is placed, so it isn't sent
       again;
@@ -318,8 +318,9 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       blocks, groups, fixed and recurring activities and the season's activities. Unlike the
       Schedules page (`ScheduleRefs`, which looks for the record anywhere it can be seen), a
       record of another season or program counts as gone here; a Generated draft never holds one,
-      since a save refuses another season's activity. Locks come in G4 (grid format v2); until then the data module sends none, and other
-      programs (G5) none.
+      since a save refuses another season's activity;
+    - each day's locked cells (G4, §22), which the data module turns into the engine's locks.
+      Other programs (G5): none yet.
 14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status
     Draft, Origin Generated, named "Generated Schedule", beside Manual Build's (decision 1: two
     separate schedules). It is made by the week's **first save** (Generate), not by opening the
@@ -351,8 +352,8 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
     Rebuild", "Before Try another" or "Before Start over", with the draft's days and option.
     Greg's decision 2 names Start over; Rebuild and Try another follow the desktop, which keeps
     an Auto-save before every build that replaces a week (`useGeneration.js`). Try another
-    can't count on building the old option again: setup may have changed since. **One new `VersionReason__c`
-    value: `AutoSaved` (label "Auto-saved")**, the desktop's word for a version the app keeps by
+    can't count on building the old option again: setup may have changed since. **One new
+    `VersionReason__c` value: `AutoSaved` (label "Auto-saved")**, the desktop's word for a version the app keeps by
     itself; neither Imported nor Saved by hand is true of it. Fill the open cells keeps no
     version: it only adds (§18). A conflict or refusal keeps nothing.
 17. **The option is stored** (decision 4): **one new field, `Schedule__c.EngineOption__c`**
@@ -437,6 +438,64 @@ what it loads to the real `generateWeek` and sends what it built.
 - An away group's row keeps whatever it held, and those leftovers still count toward places
   and groups at once in the engine. G3 shows the row; clearing it is the director's choice.
 
+## Choices (G4: locks, server side)
+
+22. **Locks are stored in grid format version 2** (ADR 0005 §6 planned it; `ScheduleGridLocks`).
+    A day with a locked cell gets one more list, `"l"`, after `"r"`: one row per group in the
+    same order, one cell per time block, `1` locked or empty (`"l":[",1,",",,"]`), and is saved
+    with `GridFormatVersion__c` 2. A day with no lock is stored as version 1, exactly as before,
+    so the same day always gives the same text and every day saved so far reads unchanged. Lock
+    rows are refused when they don't match the groups or time blocks or hold anything but `1`. A
+    day split into parts (ADR 0005 §8) keeps each group's lock row with it; a part with no lock
+    has no `"l"`, and joining gives every group a lock row or none. Versions copy a day as it is,
+    locks included.
+23. **Hand edits are locks** (decision 2). A hand edit on the Generated draft is Manual Build's
+    slot save (`GeneratedScheduleController.saveSlots` → `SlotSaves.saveOnGenerated`: the same
+    runs, the same compare-and-set and _keep theirs or use yours_ conflicts, the same rules).
+    Every cell an edit fills is locked; a cell an edit leaves Open is unlocked, so the next build
+    fills it. This is G4's build call, for Greg to confirm: clearing a cell by hand reads as
+    "not this" rather than "keep this empty"; **Lock** an Open cell to keep it empty. The answer
+    also gives the new `revision`, for the
+    next whole-week save. Manual Build's own saves never lock.
+24. **Lock and Unlock** (decision 3; `GeneratedScheduleController.setLocks` → `GeneratedLocks`):
+    a cell (date, group and time block), a whole day (date only) or a whole group (group only,
+    or with a date for its day). A lock covers the whole placement: locking or unlocking any
+    block of a multi-block activity does all of it, as the engine keeps it. Fixed and recurring
+    activities are never locked: they always stay where setup puts them. A change that names no
+    cell of the week, or isn't `Lock` or `Unlock`, is refused; so is a change to a version or to
+    Manual Build's draft. The days are written at their revisions under the draft's lock, so a
+    build made from the week before the change is a conflict.
+25. **Builds keep locks; the server enforces them.** Rebuild, Try another and Fill the open
+    cells keep every locked cell (the engine gets them as `locks`). On save the server keeps the
+    stored locks whatever the screen sends, and refuses a build that changes a locked cell:
+    _Group A · Monday · Period 2 is locked._ (group, day, time block in the camp's words).
+    **Start over** clears every lock, after keeping its "Before Start over" version, which keeps
+    them.
+26. **The data module** (`c/shoreshGeneratedWeek`): `loadWeek` gives the engine the stored locks
+    (`locksOf`: `{ date, groupId, blockId }` from each day's `locks` rows); `saveEdits(loaded,
+edits)` and `setLocks(loaded, changes)` resolve to `saved` (with the week and its new
+    revision) or `refused`. `LOCK` and `UNLOCK` name the two changes. One word, **Lock**,
+    everywhere (decision 3).
+27. **Not in this part: the screen.** G3 (#49) owns the Generated Schedule screen; whichever of
+    the two merges second wires it: hand edits with Manual Build's editing (place, move, swap,
+    clear, length, typing, undo), the lock icon on a locked cell (and as the action), Lock and
+    Unlock for a cell, the day and the group, Rebuild's _Locked cells stay as they are._ and
+    Start over's _locked ones too_ (ADR 0010 G3). Following the desktop (`SlotCell.jsx`): a
+    locked cell isn't dragged or dropped on, and pressing it offers Unlock.
+
+## Tests (G4)
+
+`ScheduleGridLocksTest`: a lock stored as version 2 and read back, the same text again once
+unlocked (version 1), a filled cell locked and an Open one not, unclear lock rows refused, locks
+split and joined with their groups. `GeneratedLocksTest` (as a scheduler): a hand edit locks
+what it fills and unlocks what it leaves Open, and the answer carries the locks and the new
+revision; a day, a group and unlock; a lock on one block of a two-block activity locks both; a
+fixed or recurring activity is never locked; a build that changes a locked cell is refused, one
+around it is saved and keeps the lock, and the inputs carry it; Start over clears the locks and
+its version keeps them (version 2); changes that name nothing, an unknown action and a version
+are refused. Jest: `locksOf`, the locks reaching the real `generateWeek`, which keeps the locked
+cell in five options (and fails without them), `saveEdits` and `setLocks`.
+
 ## Choices that are hard to undo after release
 
 None in G1: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -447,3 +506,9 @@ G2:
 - The picklist value `VersionReason__c` `AutoSaved` ("Auto-saved").
 - The Generated draft's name "Generated Schedule" and the versions' names "Before Rebuild",
   "Before Try another", "Before Start over" (stored text; versions can be renamed).
+
+G4:
+
+- Grid format version 2: the `"l"` list and `GridFormatVersion__c` 2 (every reader must keep
+  reading versions 1 and 2).
+- `GeneratedWeek.LockChange` actions `Lock` and `Unlock` (sent by the screen, not stored).

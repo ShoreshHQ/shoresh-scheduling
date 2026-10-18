@@ -288,7 +288,9 @@ private class GeneratedRefusalsTest {
       Map<String, Id> ids = GeneratedTestData.camp();
       generated();
       Test.startTest();
-      // The screen still has Group B; the save reads this week's exceptions as they are now.
+      // A stale screen: it still has Group B, and the save checks this week's exceptions as they
+      // are now. (An Apex test runs in one transaction, so it can't show that the save reads them
+      // only after taking its lock; that order is in GeneratedSaves.save.)
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       groupBAwayNow(ids);
       GeneratedWeek.Save stale = request(read, GeneratedSaves.FILL_OPEN);

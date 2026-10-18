@@ -57,5 +57,8 @@ public with sharing class SlotEdits {
     // The schedule as it is now, everyone's changes included.
     @AuraEnabled
     public ScheduleViews.ScheduleView schedule;
+    // Generated Schedule only: what the days are saved at now, for its next whole-week save.
+    @AuraEnabled
+    public String revision;
   }
 }

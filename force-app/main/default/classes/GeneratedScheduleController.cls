@@ -22,4 +22,36 @@ public with sharing class GeneratedScheduleController {
       throw ScreenErrors.of(e);
     }
   }
+
+  /**
+   * A hand edit on the Generated draft (Manual Build's slot saves, the same conflicts): every cell
+   * an edit fills is locked (decision 2).
+   */
+  @AuraEnabled
+  public static SlotEdits.Result saveSlots(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits
+  ) {
+    try {
+      return SlotSaves.saveOnGenerated(
+        scheduleId,
+        edits == null ? new List<SlotEdits.Edit>() : edits
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Lock or unlock a cell, a day or a group (decision 3). */
+  @AuraEnabled
+  public static GeneratedWeek.Locked setLocks(
+    Id scheduleId,
+    List<GeneratedWeek.LockChange> changes
+  ) {
+    try {
+      return GeneratedLocks.apply(scheduleId, changes);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
 }

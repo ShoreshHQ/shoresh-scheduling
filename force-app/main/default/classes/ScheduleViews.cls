@@ -42,6 +42,10 @@ public with sharing class ScheduleViews {
     // One row per group: its cells separated by commas (the stored format's rows).
     @AuraEnabled
     public List<String> rows = new List<String>();
+    // Locked cells (Generated Schedule): one row per group like rows, each cell '1' or empty;
+    // no rows when nothing is locked.
+    @AuraEnabled
+    public List<String> locks = new List<String>();
   }
 
   /** A time block, group, or item as saved, and whether it has been deleted since. */
@@ -152,6 +156,11 @@ public with sharing class ScheduleViews {
     }
     for (List<String> cells : day.grid.rows) {
       view.rows.add(String.join(cells, ','));
+    }
+    if (ScheduleGridLocks.hasAny(day.grid)) {
+      for (List<String> cells : day.grid.locks) {
+        view.locks.add(String.join(cells, ','));
+      }
     }
     return view;
   }

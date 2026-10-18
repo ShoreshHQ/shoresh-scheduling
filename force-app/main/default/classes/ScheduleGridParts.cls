@@ -38,6 +38,9 @@ public with sharing class ScheduleGridParts {
       }
       part.groups.add(grid.groups[g]);
       part.rows.add(grid.rows[g]);
+      if (!grid.locks.isEmpty()) {
+        part.locks.add(grid.locks[g]);
+      }
       partLength += cost;
     }
     parts.add(part.toText());
@@ -47,29 +50,42 @@ public with sharing class ScheduleGridParts {
   /** About how many characters one group adds to a part (a little over, never under). */
   private static Integer rowLength(ScheduleGrid grid, Integer g) {
     ScheduleGrid.GroupRef grp = grid.groups[g];
+    Integer locks = grid.locks.isEmpty()
+      ? 0
+      : JSON.serialize(String.join(grid.locks[g], ',')).length() + 1;
     return JSON.serialize(new List<String>{ grp.id, grp.name }).length() +
       JSON.serialize(String.join(grid.rows[g], ',')).length() +
+      locks +
       2;
   }
 
   /** Joins a day's parts, in part order, into one grid. */
   public static ScheduleGrid join(List<String> partTexts) {
-    ScheduleGrid whole;
+    List<ScheduleGrid> parts = new List<ScheduleGrid>();
     String frame;
+    Boolean anyLocks = false;
     for (String text : partTexts) {
       ScheduleGrid part = ScheduleGrid.fromText(text);
       String partFrame = emptyPart(part).toText();
-      if (whole == null) {
-        whole = part;
-        frame = partFrame;
-      } else if (partFrame != frame) {
+      if (frame != null && partFrame != frame) {
         throw new ScheduleGridRules.GridException(
           'its parts do not have the same time blocks and items'
         );
-      } else {
-        whole.groups.addAll(part.groups);
-        whole.rows.addAll(part.rows);
       }
+      frame = partFrame;
+      anyLocks = anyLocks || !part.locks.isEmpty();
+      parts.add(part);
+    }
+    // A part with no lock is stored without lock rows: joined to one that has some, it gets
+    // empty ones, so the whole day has a lock row for every group or none at all.
+    for (ScheduleGrid part : anyLocks ? parts : new List<ScheduleGrid>()) {
+      ScheduleGridLocks.withRows(part);
+    }
+    ScheduleGrid whole = parts[0];
+    for (Integer i = 1; i < parts.size(); i++) {
+      whole.groups.addAll(parts[i].groups);
+      whole.rows.addAll(parts[i].rows);
+      whole.locks.addAll(parts[i].locks);
     }
     return whole;
   }

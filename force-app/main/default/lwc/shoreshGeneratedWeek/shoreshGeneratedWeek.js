@@ -1,5 +1,7 @@
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
+import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
+import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import { errorMessage } from "c/shoreshErrors";
 
 /** What a save is for (GeneratedSaves). Rebuild and Start over keep the week as a version first. */
@@ -10,6 +12,10 @@ export const ACTION = Object.freeze({
   FILL_OPEN: "FillOpen",
   START_OVER: "StartOver"
 });
+
+/** What a lock change does (setLocks). */
+export const LOCK = "Lock";
+export const UNLOCK = "Unlock";
 
 /** How a save ended: saved; someone else saved the week since it was loaded; or refused. */
 export const SAVED = "saved";
@@ -51,8 +57,8 @@ export async function loadWeek(programId, weekId) {
       fixedActivities: r.fixedActivities || [],
       recurringActivities: r.recurringActivities || [],
       weekExceptions: r.weekExceptions || [],
-      // Locks are stored from G4 (grid format v2); other programs come in G5.
-      locks: [],
+      // Locked cells, as the server stored them (grid format v2); other programs come in G5.
+      locks: locksOf(r.days || []),
       otherPrograms: []
     }
   };
@@ -106,4 +112,71 @@ function dayToSave(day) {
     })),
     rows: day.rows || []
   };
+}
+
+/**
+ * The engine's locks ({ date, groupId, blockId }) from the days as the server sends them: each
+ * day's lock rows, one per group like its rows, each cell "1" (locked) or empty.
+ */
+export function locksOf(days) {
+  const locks = [];
+  for (const day of days) {
+    (day.locks || []).forEach((row, g) => {
+      String(row)
+        .split(",")
+        .forEach((cell, b) => {
+          if (cell === "1" && day.groups[g] && day.blocks[b]) {
+            locks.push({
+              date: day.dateValue,
+              groupId: day.groups[g].id,
+              blockId: day.blocks[b].id
+            });
+          }
+        });
+    });
+  }
+  return locks;
+}
+
+/**
+ * Hand edits on the Generated draft, as Manual Build sends them (c/shoreshManualBuild
+ * slotEdits.js runs). Every cell an edit fills is locked. Resolves to
+ *   { status: SAVED, conflicts, schedule, revision }: conflicts as Manual Build's saveSlots
+ *     (edits someone else's change got to first); revision for the next whole-week save
+ *   { status: REFUSED, message }
+ */
+export async function saveEdits(loaded, edits) {
+  try {
+    const result = await saveSlots({ scheduleId: loaded.scheduleId, edits });
+    return {
+      status: SAVED,
+      conflicts: result.conflicts || [],
+      schedule: result.schedule,
+      revision: result.revision
+    };
+  } catch (e) {
+    return { status: REFUSED, message: errorMessage(e) };
+  }
+}
+
+/**
+ * Lock or unlock (decision 3): changes are [{ action: LOCK | UNLOCK, dateValue, groupId,
+ * blockId }]: all three for a cell, dateValue alone for a day, groupId alone for a group. A lock
+ * covers a whole placement; fixed and recurring activities are never locked. Resolves to
+ *   { status: SAVED, schedule, revision } or { status: REFUSED, message }
+ */
+export async function setLocks(loaded, changes) {
+  try {
+    const result = await setLocksOnServer({
+      scheduleId: loaded.scheduleId,
+      changes
+    });
+    return {
+      status: SAVED,
+      schedule: result.schedule,
+      revision: result.revision
+    };
+  } catch (e) {
+    return { status: REFUSED, message: errorMessage(e) };
+  }
 }

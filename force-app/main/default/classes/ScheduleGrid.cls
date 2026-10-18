@@ -10,6 +10,8 @@
  *   "r": one row per group (same order as "g"), its cells separated by commas, one per time
  *        block (same order as "b"). A cell is empty (nothing placed), a number (an item in
  *        "i", counting from 1), or ^ (the item in the cell above carries on into this block).
+ *   "l": version 2 only, when a cell is locked (ScheduleGridLocks): one row per group, like "r",
+ *        each cell '1' (locked) or empty.
  *
  * Names are copied as they were when the day was saved, so a saved version keeps saying what it
  * said after the setup changes. Written with a fixed key order, so the same day always gives the
@@ -24,6 +26,8 @@ public with sharing class ScheduleGrid {
   public List<Item> items = new List<Item>();
   // rows[group][block]: '' (nothing), '1'.. (an item), or '^' (carries on from above).
   public List<List<String>> rows = new List<List<String>>();
+  // locks[group][block]: '1' (locked) or ''; empty when nothing is locked (ScheduleGridLocks).
+  public List<List<String>> locks = new List<List<String>>();
 
   public class Block {
     public String id;
@@ -140,6 +144,7 @@ public with sharing class ScheduleGrid {
       out.writeString(String.join(row, ','));
     }
     out.writeEndArray();
+    ScheduleGridLocks.write(out, this);
     out.writeEndObject();
     return out.getAsString();
   }
@@ -173,6 +178,7 @@ public with sharing class ScheduleGrid {
     for (Object row : listAt(raw, 'r')) {
       grid.rows.add(String.valueOf(row).split(',', -1));
     }
+    ScheduleGridLocks.read(raw.get('l'), grid);
     ScheduleGridRules.check(grid);
     return grid;
   }

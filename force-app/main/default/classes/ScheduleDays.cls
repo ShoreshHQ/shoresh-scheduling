@@ -60,7 +60,11 @@ public with sharing class ScheduleDays {
     Integer index,
     Integer revision
   ) {
-    if (part.GridFormatVersion__c != ScheduleGrid.FORMAT_VERSION) {
+    if (
+      !ScheduleGridLocks.READABLE.contains(
+        part.GridFormatVersion__c?.intValue()
+      )
+    ) {
       throw new ScheduleGridRules.GridException(
         'it was saved by a newer version of Shoresh'
       );

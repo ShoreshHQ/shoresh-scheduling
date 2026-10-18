@@ -121,7 +121,7 @@ public with sharing class ScheduleDaySaves {
           : new ScheduleDay__c(Schedule__c = scheduleId, Date__c = save.day);
         part.Part__c = i + 1;
         part.Grid__c = texts[i];
-        part.GridFormatVersion__c = ScheduleGrid.FORMAT_VERSION;
+        part.GridFormatVersion__c = ScheduleGridLocks.formatOf(save.grid);
         part.Revision__c = revision;
         toSave.add(part);
       }

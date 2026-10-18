@@ -48,6 +48,15 @@ public with sharing class GeneratedDrafts {
    * schedule, or Manual Build's draft can't be changed here.
    */
   public static Schedule__c locked(Id scheduleId, Id programId, Id weekId) {
+    Schedule__c draft = lockedToEdit(scheduleId);
+    if (draft.Program__c != programId || draft.Week__c != weekId) {
+      throw notHere(draft);
+    }
+    return draft;
+  }
+
+  /** A Generated draft, locked until this save ends (a hand edit or a lock names only it). */
+  public static Schedule__c lockedToEdit(Id scheduleId) {
     List<Schedule__c> found = [
       SELECT
         Id,
@@ -57,6 +66,8 @@ public with sharing class GeneratedDrafts {
         EngineOption__c,
         Program__c,
         Week__c,
+        Program__r.Id,
+        Program__r.Season__c,
         Program__r.Season__r.Camp__c
       FROM Schedule__c
       WHERE Id = :scheduleId
@@ -80,21 +91,19 @@ public with sharing class GeneratedDrafts {
           ' can\'t be changed.'
       );
     }
-    if (
-      draft.Origin__c != GENERATED ||
-      draft.Program__c != programId ||
-      draft.Week__c != weekId
-    ) {
-      CampLabels labels = CampLabels.forCamp(
-        draft.Program__r.Season__r.Camp__c
-      );
-      throw new ShoreshException(
-        'Only this ' +
-          labels.singularInSentence('Week') +
-          '\'s Generated Schedule can be saved here. Reload the page.'
-      );
+    if (draft.Origin__c != GENERATED) {
+      throw notHere(draft);
     }
     return draft;
+  }
+
+  private static ShoreshException notHere(Schedule__c draft) {
+    CampLabels labels = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c);
+    return new ShoreshException(
+      'Only this ' +
+        labels.singularInSentence('Week') +
+        '\'s Generated Schedule can be saved here. Reload the page.'
+    );
   }
 
   /**
