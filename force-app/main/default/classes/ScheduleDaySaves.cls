@@ -5,6 +5,8 @@
  * of them or none. Runs in user mode.
  */
 public with sharing class ScheduleDaySaves {
+  public static final String CHANGED_SINCE = 'Someone else changed this schedule since you opened it. Open it again to see their changes, then make yours.';
+
   /** One day to save. expectedRevision: the revision it was opened at, or null for a new day. */
   public class DaySave {
     public Date day;
@@ -90,9 +92,7 @@ public with sharing class ScheduleDaySaves {
       ? null
       : before[0].Revision__c.intValue();
     if (current != expectedRevision) {
-      throw new ShoreshException(
-        'Someone else changed this schedule since you opened it. Open it again to see their changes, then make yours.'
-      );
+      throw new ShoreshException(CHANGED_SINCE);
     }
     return current == null ? 1 : current + 1;
   }
