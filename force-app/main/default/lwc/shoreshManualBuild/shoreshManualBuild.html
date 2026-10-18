@@ -231,7 +231,10 @@
 
     <template lwc:if={draft}>
       <template lwc:if={hasNoDays}>
-        <p class="empty">{noDaysMessage}</p>
+        <c-shoresh-empty-state
+          title={noDaysMessage}
+          data-id="no-days"
+        ></c-shoresh-empty-state>
       </template>
       <template lwc:else>
         <div class="build-layout">
@@ -417,9 +420,31 @@
         </template>
       </div>
     </template>
-    <template lwc:elseif={cannotChoose}>
-      <div class="empty-state" data-id="nothing-to-build">
-        <p>{chooseMessage}</p>
+    <template lwc:elseif={showStillNeeded}>
+      <div class="still-needed-box" data-id="still-needed-box">
+        <p class="still-needed" data-id="still-needed">
+          <template for:each={stillNeededParts} for:item="part">
+            <template lwc:if={part.link}>
+              <a
+                key={part.key}
+                href="#"
+                data-screen={part.screen}
+                onclick={handleStillNeeded}
+                >{part.text}</a
+              >
+            </template>
+            <template lwc:else>
+              <span key={part.key}>{part.text}</span>
+            </template>
+          </template>
+        </p>
+        <lightning-button
+          variant="brand"
+          label={setUpFirstLabel}
+          data-screen={setUpFirstScreen}
+          onclick={handleStillNeeded}
+          data-id="set-up-first"
+        ></lightning-button>
       </div>
     </template>
 

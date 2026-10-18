@@ -158,4 +158,201 @@ describe("c-shoresh-week-checks", () => {
     expect(q(element, '[data-id="list-empty"]').textContent).toBe("6 open");
     expect(q(element, '[data-id="close-list"]')).not.toBeNull();
   });
+
+  describe("the generated route", () => {
+    const GENERATED = {
+      ...CHECKED,
+      openCells: [
+        {
+          dateValue: "2026-06-29",
+          groupId: "g2",
+          blockId: "t3",
+          text: "Bunk 2 · Monday · Period 3: Already busy then"
+        }
+      ]
+    };
+    const generated = (props = {}) =>
+      render({ checked: GENERATED, route: "generated", ...props });
+
+    it("counts Open instead of Overlapping, lists Open cells first, and still lists overlaps", async () => {
+      const element = generated();
+      await flush();
+      expect(q(element, '[data-counter="open"]')).not.toBeNull();
+      expect(q(element, '[data-counter="overlapping"]')).toBeNull();
+      q(element, '[data-id="review-all"]').click();
+      await flush();
+      expect(lines(element)).toEqual([
+        "Bunk 2 · Monday · Period 3: Already busy then",
+        "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
+        "Swim · Bunk 1: 1 still needed"
+      ]);
+      expect(q(element, '[data-id="review-all"]').textContent.trim()).toBe(
+        "Hide list"
+      );
+    });
+
+    it("a counter shows only its lines and lights up their cells; again, it turns them off", async () => {
+      const element = generated();
+      const lit = jest.fn();
+      element.addEventListener("highlight", lit);
+      await flush();
+      q(element, '[data-counter="stillNeeded"]').click();
+      await flush();
+      expect(lines(element)).toEqual(["Swim · Bunk 1: 1 still needed"]);
+      const last = () => lit.mock.calls[lit.mock.calls.length - 1][0].detail;
+      expect(last().kind).toBe("stillNeeded");
+      expect(last().lines).toEqual([
+        expect.objectContaining({ groupId: "g1", activityId: "a1" })
+      ]);
+      expect(
+        q(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
+      ).toBe("true");
+      expect(
+        q(element, '[data-counter="open"]').getAttribute("aria-expanded")
+      ).toBe("false");
+
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      expect(lines(element)).toEqual([
+        "Bunk 2 · Monday · Period 3: Already busy then"
+      ]);
+      expect(last()).toMatchObject({ kind: "open" });
+
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      expect(q(element, '[data-id="counter-list"]')).toBeNull();
+      expect(last()).toEqual({ kind: null, lines: [] });
+    });
+
+    it("clicking a line, Close, or a new week turns the lit cells off", async () => {
+      const element = generated();
+      const lit = jest.fn();
+      element.addEventListener("highlight", lit);
+      const last = () => lit.mock.calls[lit.mock.calls.length - 1][0].detail;
+      await flush();
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      element.shadowRoot.querySelector(".line-text").click();
+      await flush();
+      expect(last().kind).toBeNull();
+
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      q(element, '[data-id="close-list"]').click();
+      await flush();
+      expect(last().kind).toBeNull();
+
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      element.resetKey = 9;
+      await flush();
+      expect(last().kind).toBeNull();
+    });
+
+    it("lit cells follow the lines when the week is read again", async () => {
+      const element = generated();
+      const lit = jest.fn();
+      element.addEventListener("highlight", lit);
+      await flush();
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      element.checked = {
+        ...GENERATED,
+        openCells: [
+          ...GENERATED.openCells,
+          {
+            dateValue: "2026-06-30",
+            groupId: "g1",
+            blockId: "t1",
+            text: "Bunk 1 · Tuesday · Period 1"
+          }
+        ]
+      };
+      await flush();
+      const last = lit.mock.calls[lit.mock.calls.length - 1][0].detail;
+      expect(last.kind).toBe("open");
+      expect(last.lines.map((l) => l.blockId)).toEqual(["t3", "t1"]);
+    });
+
+    it("Close puts focus back on the counter that opened the list, or on Review all", async () => {
+      const element = generated();
+      await flush();
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      q(element, '[data-id="close-list"]').click();
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-counter="open"]')
+      );
+      q(element, '[data-id="review-all"]').click();
+      await flush();
+      q(element, '[data-id="close-list"]').click();
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-id="review-all"]')
+      );
+    });
+
+    it("Review all says whether the list is open; Accept under a counter takes its own line", async () => {
+      const element = generated({
+        checked: {
+          ...GENERATED,
+          stillNeeded: [
+            "Swim · Bunk 1: 1 still needed",
+            "Art · Bunk 2: 1 still needed"
+          ],
+          stillNeededBy: [
+            { activityId: "a1", groupId: "g1", missing: 1 },
+            { activityId: "a2", groupId: "g2", missing: 1 }
+          ]
+        }
+      });
+      const accepted = jest.fn();
+      element.addEventListener("accept", accepted);
+      await flush();
+      const all = q(element, '[data-id="review-all"]');
+      expect(all.getAttribute("aria-expanded")).toBe("false");
+      all.click();
+      await flush();
+      expect(
+        q(element, '[data-id="review-all"]').getAttribute("aria-expanded")
+      ).toBe("true");
+      // Under Still needed, the second line's Accept is Art's, not the second line of all.
+      q(element, '[data-counter="stillNeeded"]').click();
+      await flush();
+      element.shadowRoot.querySelectorAll(".line-accept")[1].click();
+      await flush();
+      expect(accepted.mock.calls[0][0].detail.activityId).toBe("a2");
+      expect(lines(element)).toEqual(["Swim · Bunk 1: 1 still needed"]);
+    });
+
+    it("Accept takes the line's cells out of the lit ones", async () => {
+      const element = generated();
+      const lit = jest.fn();
+      element.addEventListener("highlight", lit);
+      await flush();
+      q(element, '[data-counter="stillNeeded"]').click();
+      await flush();
+      q(element, ".line-accept").click();
+      await flush();
+      const last = lit.mock.calls[lit.mock.calls.length - 1][0].detail;
+      expect(last.lines).toEqual([]);
+    });
+
+    it("the manual route is unchanged: no Open counter, no Review all, no highlight", async () => {
+      const element = render({ checked: GENERATED });
+      const lit = jest.fn();
+      element.addEventListener("highlight", lit);
+      await flush();
+      expect(q(element, '[data-counter="open"]')).toBeNull();
+      expect(q(element, '[data-id="review-all"]')).toBeNull();
+      q(element, '[data-counter="stillNeeded"]').click();
+      await flush();
+      expect(lines(element)).toEqual([
+        "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
+        "Swim · Bunk 1: 1 still needed"
+      ]);
+      expect(lit).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -5,6 +5,7 @@ import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWee
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
 import { useYoursSendsWhatWasShown } from "./data/shownIsSent";
 
@@ -31,6 +32,20 @@ const SETUP = {
   activities: [],
   locations: []
 };
+// Everything building needs (desktop readiness.js), so Start a blank week is offered.
+const READY = {
+  ...SETUP,
+  programs: [
+    {
+      program: { Id: "p1", Name: "Main", Monday__c: true },
+      divisions: [
+        { division: { Id: "d1", Name: "Juniors" }, groups: [{ Id: "g1" }] }
+      ],
+      timeBlocks: [{ Id: "t1", Name: "Period 1" }]
+    }
+  ],
+  activities: [{ Id: "a1", Name: "Swim" }]
+};
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
@@ -49,12 +64,12 @@ function later() {
   return { promise, answer };
 }
 
-async function render() {
+async function render(setup = SETUP) {
   const element = createElement("c-shoresh-manual-build", {
     is: ShoreshManualBuild
   });
   element.terms = buildTerms(LABELS);
-  element.setup = SETUP;
+  element.setup = nsRecord(setup);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -105,7 +120,7 @@ describe("c-shoresh-manual-build", () => {
   it("a week not started offers Start a blank week, which opens it", async () => {
     getDraft.mockResolvedValue(null);
     startBlankWeek.mockResolvedValue(draft());
-    const element = await render();
+    const element = await render(READY);
     expect(getDraft).toHaveBeenCalledWith({ programId: "p1", weekId: "w1" });
     expect(grid(element)).toBeNull();
     const start = q(element, '[data-id="start-week"]');
@@ -121,13 +136,81 @@ describe("c-shoresh-manual-build", () => {
     expect(cellText(element, "0-1")).toBe("Open");
   });
 
+  it("waits for the basics: everything still needed in one sentence, each a link", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({
+      ...SETUP,
+      programs: [{ program: { Id: "p1", Name: "Main" } }]
+    });
+    expect(q(element, '[data-id="start-week"]')).toBeNull();
+    const needed = q(element, '[data-id="still-needed"]');
+    expect(needed.textContent).toBe(
+      "5 things still needed before you can build the schedule: Divisions, Bunks, Days, Time blocks and Activities."
+    );
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const links = [...needed.querySelectorAll("a")];
+    expect(links.map((a) => [a.textContent, a.dataset.screen])).toEqual([
+      ["Divisions", "divisions"],
+      ["Bunks", "groups"],
+      ["Days", "programs"],
+      ["Time blocks", "timeBlocks"],
+      ["Activities", "activities"]
+    ]);
+    links[2].click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "programs" });
+  });
+
+  it("offers the desktop's main action, Set up the first thing missing", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({ ...READY, activities: [] });
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const button = q(element, '[data-id="set-up-first"]');
+    expect(button.label).toBe("Set up Activities");
+    button.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "activities" });
+  });
+
+  it("a link to a screen doesn't also follow its # address", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({ ...READY, activities: [] });
+    const link = q(element, '[data-id="still-needed"] a');
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+  });
+
+  it("a week already started opens even with basics missing since", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render({ ...READY, activities: [] });
+    expect(q(element, '[data-id="still-needed"]')).toBeNull();
+    expect(grid(element)).not.toBeNull();
+  });
+
+  it("one thing missing reads as one thing", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({ ...READY, activities: [] });
+    expect(q(element, '[data-id="still-needed"]').textContent).toBe(
+      "One thing still needed before you can build the schedule: Activities."
+    );
+  });
+
+  it("with no weeks or programs, says so instead of a week to choose", async () => {
+    const element = await render({ ...READY, weeks: [], programs: [] });
+    expect(getDraft).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="still-needed"]').textContent).toBe(
+      "2 things still needed before you can build the schedule: Weeks and Programs."
+    );
+  });
+
   it("Start a blank week names any fixed or recurring activity whose slot was taken", async () => {
     getDraft.mockResolvedValue(null);
     startBlankWeek.mockResolvedValue({
       ...draft(),
       notPlaced: ["Rest · Bunk 2 · Monday"]
     });
-    const element = await render();
+    const element = await render(READY);
     q(element, '[data-id="start-week"]').click();
     await flush();
     const note = q(element, '[data-id="not-placed"]');
@@ -385,13 +468,14 @@ describe("c-shoresh-manual-build", () => {
   it("a refused save says why and reloads the week", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockRejectedValue({
-      body: { message: "Couldn't save. Try again." }
+      body: { message: "Shoresh couldn't tell why. Try again." }
     });
     const element = await render();
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Couldn't save. Try again."
+    // What wasn't saved, then why (desktop error shape).
+    expect(q(element, '[data-id="build-error"]').textContent).toMatch(
+      /^Not saved: Placed Swim · .*\. Shoresh couldn't tell why\. Try again\.$/
     );
     expect(getDraft).toHaveBeenCalledTimes(2);
     expect(cellText(element, "0-1")).toBe("Open");

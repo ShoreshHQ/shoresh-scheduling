@@ -299,3 +299,11 @@
     opacity: 0;
   }
 }
+
+/* Generated Schedule: the cells a counter is about, lit while it is chosen (desktop
+   findingHighlight, one caution colour here: bronze is the caution hue). */
+.cell_lit .cell-inner {
+  outline: 2px solid var(--shoresh-caution);
+  outline-offset: 1px;
+  background: var(--shoresh-caution-tint);
+}

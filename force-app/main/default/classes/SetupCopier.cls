@@ -120,7 +120,13 @@ public with sharing class SetupCopier {
         )
       );
     }
-    Database.update(withRainPlans, AccessLevel.USER_MODE);
+    // The copy keeps each rain plan as the season had it, even one made outdoors since.
+    ActivityTriggerHandler.checkRainPlans = false;
+    try {
+      Database.update(withRainPlans, AccessLevel.USER_MODE);
+    } finally {
+      ActivityTriggerHandler.checkRainPlans = true;
+    }
     return copies;
   }
 

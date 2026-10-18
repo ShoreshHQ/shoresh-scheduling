@@ -10,6 +10,7 @@ import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek"
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { WITH_SOCCER, WITH_SWIM, draft } from "./data/draftFixture";
 
 // Versions on Manual Build (Save version, Restore, rename, delete) and Start from another week.
@@ -66,8 +67,17 @@ const SETUP = {
     { Id: "w1", Name: "Week 1" },
     { Id: "w2", Name: "Week 2" }
   ],
-  programs: [{ program: { Id: "p1", Name: "Main" } }],
-  activities: [],
+  // Everything building needs (desktop readiness.js), so the start buttons are offered.
+  programs: [
+    {
+      program: { Id: "p1", Name: "Main", Monday__c: true },
+      divisions: [
+        { division: { Id: "d1", Name: "Juniors" }, groups: [{ Id: "g1" }] }
+      ],
+      timeBlocks: [{ Id: "t1", Name: "Period 1" }]
+    }
+  ],
+  activities: [{ Id: "a1", Name: "Swim" }],
   locations: []
 };
 const LABELS = [
@@ -96,7 +106,7 @@ async function render(first) {
     is: ShoreshManualBuild
   });
   element.terms = buildTerms(LABELS);
-  element.setup = SETUP;
+  element.setup = nsRecord(SETUP);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -331,7 +341,7 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       is: ShoreshManualBuild
     });
     element.terms = buildTerms(LABELS);
-    element.setup = SETUP;
+    element.setup = nsRecord(SETUP);
     document.body.appendChild(element);
     await flush();
     getVersions.mockResolvedValue([]);

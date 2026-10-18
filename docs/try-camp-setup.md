@@ -24,7 +24,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. The camp name now shows at the top left, with a **New season** button. On the left is the
    Shoresh menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
    Camp words; **Activities**: Activities, Fixed activities, Recurring activities, and
-   Special events marked **Coming**; and **Schedules**). Until there is a season, only
+   Special events marked **Coming**; then **Generated Schedule**, **Manual Build** and
+   **Schedules**). Until there is a season, only
    **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
 
 ## 3. Use your camp's own words
@@ -45,13 +46,19 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. Click **Create season**. (If a calendar was still open, the first click only closes it;
    click again.)
 3. You land on **Roots**, the home screen. It has:
-   - a **Build or generate the schedule** bar, marked **Coming**;
+   - **Build or generate the schedule**, with two buttons side by side, **Generated
+     Schedule →** and **Manual Build →** (sections 19 to 23);
    - **What has taken root**: a card each for Activities, Bunks, Units, Locations,
      Time blocks, and Weeks, with how many there are (all 0 for now), and a wide
      **Fixed activities** card;
    - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
      activities yet;
    - **Import last year** at the bottom (section 14).
+   - In the menu, a small **!** beside Weeks, Programs, Units, Bunks, Time blocks, and
+     Activities: each is still empty, and building a schedule needs it. As each gets its
+     first rows it turns to a green **✓** (Locations, Fixed and Recurring activities get the
+     ✓ too once they have rows, but never the !). A screen reader reads them as _Needed_ and
+     _Done_.
 4. Click the **Summer 2026 / No weeks yet** item. Shoresh opens the **Weeks** screen, where
    it is fixed. Every card and every attention item works this way.
 
@@ -68,13 +75,15 @@ it or press **Escape**.
 
 1. On **Weeks**, the season's own name, dates, and status are at the top (**Save season**,
    **Delete season**). Below, click **Fill in weeks from the season dates**. Six weeks
-   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday.
+   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday. The **!** beside Weeks in the menu
+   is now a **✓**.
 2. Try editing: change Week 6's end date and press **Enter**. It is saved. In the blank row,
    type _Week 7_, its dates, and press **Enter**: it is added, and the blank row is ready for
    the next one.
 3. Try a mistake: give a week a start date another week already has and press **Enter**.
-   Shoresh refuses and says which week already starts that day. Your typing stays; fix it or
-   press **Escape**.
+   Shoresh refuses: _Weeks not saved. Your changes are still here._ and then which week already
+   starts that day. Every refusal reads this way: what didn't happen, whether anything was
+   lost, then why. Your typing stays; fix it or press **Escape**.
 4. Change a week's name and, without pressing anything, click another week's row: the change
    is saved as you leave the row.
 5. **Two people at once.** Open the Shoresh tab in a second browser window. In the first,
@@ -89,9 +98,14 @@ it or press **Escape**.
 1. **Programs**: click **Add Program**. A program called _Main_ appears. Untick **Friday**
    (it runs Monday to Thursday) and click **Save**.
 2. **Time blocks**: the table is called _Time blocks in Main_. In its blank row type
-   _Period 1_, start 9:00 AM, end 9:45 AM, part of day Morning, then press **Enter**. Add
-   _Period 2_ 10:00 AM – 10:45 AM, Morning, and _Lunch_ 12:00 PM – 12:45 PM, Afternoon, the
-   same way.
+   _Period 1_, start 9:00 AM, end 9:45 AM, leave **Part of day** as **From start time**, and
+   press **Enter**. It saves as Morning. Add _Period 2_ 10:00 AM – 10:45 AM and _Lunch_
+   12:00 PM – 12:45 PM the same way: Lunch comes up as Afternoon, because it starts at noon.
+   (Choosing Morning or Afternoon yourself always wins.)
+   Try leaving a name blank: add a block 1:00 PM – 1:45 PM with no name and press **Enter**. It
+   is saved and shown as _1:00 PM – 1:45 PM_, Afternoon. Change its end to 1:50 PM and press
+   **Enter**: the name follows (_1:00 PM – 1:50 PM_). A name you typed never changes. Delete
+   that block (trash can) before going on.
 3. **Units**: type _Juniors_ in the blank row and press **Enter**.
 4. **Bunks**: a table **Bunks in Juniors** is there. Add _Bunk 1_ and _Bunk 2_ in its blank
    row, then set Bunk 2's **Availability** to _Morning only_ and click elsewhere. To the
@@ -127,6 +141,12 @@ it or press **Escape**.
 3. A yellow **Needs attention** box at the top of the screen says
    _Soccer: Outdoors and has no rain plan._ (Roots lists it too.) Set Soccer's **Rain plan**
    to _Gym games_ and click elsewhere; it goes away. (Soccer's own name is not offered as its rain plan.)
+   The **Rain plan** list offers only indoor activities: Soccer, being outdoors, is never
+   offered as anyone's rain plan. Try it: tick **Outdoors** on Gym games and click elsewhere
+   (allowed). Soccer's **Rain plan** now reads _Gym games (outdoor, choose another)_, shown on
+   Soccer's row only, and Soccer can't be saved until it gets an indoor rain plan or None:
+   _"Soccer": The rain plan has to be indoors. Pick an indoor one, or choose None._ Untick
+   **Outdoors** on Gym games again.
 4. Set Gym games' **Groups at once** to 5 and press **Enter**. Needs attention now says the Gym fits 3, so
    scheduling will use 3. Put it back to 1.
 5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
@@ -143,7 +163,8 @@ it or press **Escape**.
 There is no separate grid any more: each row says which weeks it runs in.
 
 1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week). It is
-   saved as you click.
+   saved as you click. Nothing is placed in Week 3 yet, so it just switches off (section 19
+   shows what happens when something is).
 2. Leave it unticked; the copy below carries it over. (Deleting a bunk, activity, or location
    simply takes its unticked weeks with it; you try that in step 11.)
 3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs).
@@ -368,12 +389,14 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 **Last year's week as a version, and undoing an import**
 
 12. Start a fresh season for this: **New season**, _Import test 2_, first day Jun 28, 2027,
-    last day Jul 9, 2027, **Create season**. On **Weeks**, click **Fill in weeks from the
-    season dates** (two weeks). Then, from Roots, import `maple-grove-2026-all-camp.xlsx` again.
-    The answers you gave last time are filled in already and marked _remembered_ (the review
-    says how many); any can be changed.
-13. If the season has several weeks, the review asks _Which week is last year's schedule?_
-    Pick _Week 1_.
+    last day Jul 9, 2027, **Create season**. Don't add weeks: from Roots, import
+    `maple-grove-2026-all-camp.xlsx` again. The answers you gave last time are filled in
+    already and marked _remembered_ (the review says how many); any can be changed.
+13. The season has no weeks yet, so Shoresh adds them from its dates, as **Fill in weeks**
+    would (two weeks), and asks only which one last year's schedule is: _Which week is last
+    year's schedule?_ with _Week 1 (starts Jun 28)_ and _Week 2 (starts Jul 5)_. Pick
+    _Week 1_. **Good to know** says the season's 2 weeks are added from its dates, and the
+    summary's **Added** includes 2 weeks. (Undo in step 15 removes them too.)
 14. The summary now has **Last year's schedule**: _Imported from maple-grove-2026-all-camp.xlsx,
     for Week 1 (Main): open it on Schedules._ Click **Continue**, then **Schedules**: the version
     opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim, the Zoo
@@ -516,10 +539,15 @@ in the _Import test_ season, in this order).
 This uses the made-up camp from section 13. If you haven't run that script yet, run it first.
 
 1. Reload the Shoresh tab and choose _Sample Camp (made up)_ in the **Camp** picker. The menu's
-   last section now reads **Manual Build**, **Generated Schedule** (marked _Coming_), and
-   **Schedules**. On Roots, **Build or generate the schedule** is now a button (no _Coming_).
-2. Click **Build or generate the schedule** (or **Manual Build** in the menu). The **Week** picker
+   last section reads **Generated Schedule**, **Manual Build** and **Schedules**. On Roots,
+   **Build or generate the schedule** holds two buttons, one for each schedule.
+2. Click **Manual Build →** on Roots (or **Manual Build** in the menu). The **Week** picker
    shows _Week 1_, and there is one button: **Start a blank week**. Click it.
+   (Building waits for the basics, as on the desktop. In a season still missing some, there is
+   no Start button; one sentence lists everything missing, each a link to its screen, for
+   example _3 things still needed before you can build the schedule: Units, Time blocks and
+   Activities._ Try it with the _Import test_ season from section 14 before its import, or any
+   new season.)
 3. The week opens in **Daily View** on Monday, as on the desktop. Lunch is in every bunk's Lunch
    row, and Morning meeting is in every bunk's Period 1. Both have the grey bar down the left.
    Every other cell says **Open**. Click **Wednesday**: Library time is in Period 4 for Bunks 1
@@ -564,6 +592,14 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
 13. **A morning-only bunk.** On the **Bunks** screen, set Bunk 6 to come in the morning only.
     Back in Manual Build, Bunk 6's afternoon cells are hatched and say _Not at camp_, and
     nothing can be placed there.
+14. **Turning a bunk off for a week it is placed in.** On the **Bunks** screen, untick
+    **Week 1** under **Runs in** on Bunk 1. Because Bunk 1 already has things placed in
+    Week 1, Shoresh asks before saving: _Turn off "Bunk 1" for Week 1?_,
+    _Placed in N cells in Week 1._ and _They stay until you change them._, with **Cancel**
+    (where the keyboard starts) and **Turn off anyway**. Cancel saves nothing and puts the
+    tick back, with the keyboard back on it. The same question comes for an
+    activity or a location placed that week. A bunk, activity, or location with nothing placed
+    that week switches off without asking.
 
 ## 20. Manual Build: drag, move, and undo
 
@@ -705,7 +741,78 @@ This uses the made-up camp's Week 1 from sections 19 to 21.
    brings the whole week back. (Ctrl+Z works too.)
 7. **Activity View** has none of these (it is read-only).
 
-## 23. Manual Build: versions, and Start from another week
+## 23. Generated Schedule: generate, rebuild, try another
+
+This uses the made-up camp's Week 1 from sections 19 to 22. Generated Schedule is a second,
+separate schedule for the same week: nothing here changes Manual Build, and Manual Build's week
+doesn't change this one.
+
+1. **The menu and Roots.** Reload the Shoresh tab. The menu's last section reads **Generated
+   Schedule**, **Manual Build**, **Schedules**, with no _Coming_ (the two schedules are listed by
+   name, as on the desktop: the order means nothing). On Roots, **Build or generate the
+   schedule** now holds two buttons side by side, **Generated Schedule →** and **Manual
+   Build →**. Click **Generated Schedule →**.
+2. **A week not generated yet.** The **Week** picker shows _Week 1_. In the middle of the page:
+   _Let the app propose one_ and one button, **Generate a schedule**. Nothing else yet.
+3. **Generate.** Click it. A thin bar under the toolbar shows a short stripe moving along it,
+   with _Generating…_ beside it, and the buttons are greyed out until it is saved. For the
+   made-up camp that takes about a second. A camp with 40 bunks can take several seconds: then
+   the bar fills from left to right as the week is built, and the page keeps responding all the
+   while (scroll, or open the menu, while it runs). Then the week shows in **Daily View**, Monday:
+   every cell where a bunk is at camp holds an activity. Lunch, Morning meeting and Library time
+   are where setup puts them, and cells where a bunk isn't at camp are hatched, as in Manual Build.
+4. **The toolbar** now has **Rebuild**, **Fill the open cells**, **Try another**, an **Option**
+   picker showing 1, and on the right **Start over**.
+5. **The dots.** A cell that had to bend a rule (Shoresh never leaves a cell empty when something
+   can go there) has the small bronze dot. Hold the pointer on it, or tap it, to see which rule,
+   for example _Over its weekly limit_ or _Twice in a day_. If no cell has a dot, every rule was
+   met.
+6. **Under the grid** (on this schedule the counts sit below the grid) are the tiles: **Filled**
+   (_N of N_ when every cell is filled), **Open**, **Still needed**, and **Spread across the
+   week** if an activity has an early-week goal. **Open** counts cells nothing could go in
+   (expected to be 0 here); one that no activity is short enough for has the dot, _No activity
+   fits this gap_. A tile above 0 has a bronze border: click it to see only its lines
+   in **Still to place**, and the cells they are about get a bronze outline on the grid. Click
+   the tile again to turn that off. **Review all** shows every line. Click a line: the grid
+   shows that bunk's week (Group View) and the outlines go.
+7. **Try another.** Click it: a new week is built and saved straight away, with no question,
+   and **Option** shows 2. Click **Try another** again: option 3. Now open **Option** and pick
+   1: the very first week comes back, exactly as it was (the same week, option and setup always
+   give the same schedule).
+8. **Rebuild.** Click it. A box asks _Rebuild this schedule?_, _Builds Week 1 again from your
+   setup._ and _Saved to Versions first._ **Cancel** has the focus; press Escape or click it and
+   nothing changes. Click **Rebuild** again, then **Rebuild it**: the week is built again with
+   the same option. With no setup change since, it is the same week. (Locks come in the next
+   part, and with them a line saying locked cells stay.)
+9. **A setup change.** On **Activities**, open Swim and lower its most times a week by one. Back on
+   Generated Schedule, **Rebuild** → **Rebuild it**: Swim now runs fewer times. Put Swim back
+   afterwards.
+10. **Start over.** Click it. The box says _Clears the N activity cells in Week 1. Fixed
+    activities and recurring activities stay._ and _Saved to Versions first._ Click **Start
+    over** (_Starting over…_ shows while it saves): every activity cell says **Open** again; Lunch, Morning meeting and Library time stay.
+    **Open** now counts those cells.
+11. **Fill the open cells.** It is greyed out while nothing is Open. After step 10, click it: only
+    the Open cells are filled; anything already in a cell stays where it is.
+12. **Someone else saved first.** Open the Shoresh tab in a second browser window, on Generated
+    Schedule, Week 1, and put the two windows side by side.
+    1. In the **first** window, click **Rebuild**. Leave its box (_Rebuild this schedule?_)
+       open.
+    2. In the **second** window, click **Try another**. It saves.
+    3. Back in the first window, click **Rebuild it**. A bronze-bordered box says _Someone else
+       changed this schedule since you opened it._ with a **Reload** button, and nothing of
+       yours was saved. (While its box is open the first window doesn't read the week again,
+       which is why this shows the clash; without a box open, coming back to a window reads the
+       week first, so the buttons work on what the other window saved.)
+    4. Click **Reload**: the week shows as the second window saved it, with **Option** on its
+       option.
+13. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). Cells can be
+    reached with the arrow keys so a dot's words show, but they can't be changed: a hand edit
+    will lock the cell, and locks come in the next part. Use Manual Build for a week built by hand.
+14. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
+    version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
+    **Versions**). Fill the open cells keeps none: it only adds.
+
+## 24. Manual Build: versions, and Start from another week
 
 This uses the made-up camp's Week 1 from sections 19 to 22.
 
@@ -733,7 +840,8 @@ This uses the made-up camp's Week 1 from sections 19 to 22.
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule (marked Coming in the menu). In Manual Build: publishing.
+- Generated Schedule: locks and changing cells by hand (next part), other programs sharing a
+  place, Versions on that screen, and publishing. In Manual Build: publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

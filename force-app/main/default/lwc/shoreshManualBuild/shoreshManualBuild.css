@@ -220,12 +220,22 @@
   color: var(--shoresh-text-secondary);
 }
 
-.empty-state {
-  padding: 60px 16px;
-  text-align: center;
-  color: var(--slds-g-color-neutral-base-30, #444);
+/*
+ * What building still needs: the desktop's bronze-tinted box (ScheduleScreen.jsx), its one
+ * sentence with links, and "Set up <first>". Bronze only as the tint and border, never text.
+ */
+.still-needed-box {
   max-width: 40rem;
-  margin: 0 auto;
+  margin: 2rem auto;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  color: var(--shoresh-text);
+}
+
+.still-needed {
+  margin-bottom: 0.75rem;
 }
 
 .swatch_away {

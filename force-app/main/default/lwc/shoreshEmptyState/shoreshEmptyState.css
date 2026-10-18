@@ -1,0 +1,38 @@
+@import "c/shoreshTokens";
+
+/* Desktop DESIGN_STANDARD.md §5a: centred, no card, shadow or border; icon ~40px, stroke 1.5. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.empty-icon {
+  color: var(--shoresh-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--shoresh-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .empty-state {
+    animation: empty-in 220ms ease-out;
+  }
+}
+
+@keyframes empty-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

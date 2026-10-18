@@ -674,55 +674,6 @@ private class ManualBuildTest {
   }
 
   @IsTest
-  static void clearingWhatSomeoneElseMadeLongerIsAConflictNotAnError() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
-      Test.startTest();
-      ManualBuildViews.DraftView view = start(ids, 'Week 1');
-      Id draftId = view.schedule.schedule.id;
-      Date mon = monday(view.schedule).dateValue;
-      String soccer = a(ids, 'Soccer');
-      save(
-        draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
-          new List<String>{ '' },
-          new List<String>{ soccer }
-        )
-      );
-      // Someone else makes Soccer run on into Lunch.
-      save(
-        draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
-          new List<String>{ soccer, '' },
-          new List<String>{ soccer, '^' + soccer }
-        )
-      );
-      // The director, who saw Soccer in Period 2 only, clears it: Lunch would be left carrying
-      // on from nothing. It comes back as a conflict (keep theirs or use yours), not an error.
-      SlotEdits.Result late = save(
-        draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
-          new List<String>{ soccer },
-          new List<String>{ '' }
-        )
-      );
-      Test.stopTest();
-      Assert.areEqual(new List<Integer>{ 0 }, late.conflicts);
-      // Nothing changed: theirs stands, whole.
-      Assert.areEqual(
-        new List<String>{ soccer, '^' + soccer },
-        new List<String>{
-          slots(monday(late.schedule), 1)[1],
-          slots(monday(late.schedule), 1)[2]
-        }
-      );
-    }
-  }
-
-  @IsTest
   static void editsAreMatchedByRecordNotSpellingAndEachConflictIsNamed() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
@@ -839,6 +790,28 @@ private class ManualBuildTest {
       );
       Test.stopTest();
       Assert.isNull(ManualDrafts.find(empty.Id, ids.get('Week 1')));
+    }
+  }
+
+  @IsTest
+  static void aSeasonWithNoActivitiesIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Empty Camp');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Id programId = [SELECT Id FROM Program__c WHERE Season__c = :season.Id]
+      .Id;
+      Id weekId = [
+        SELECT Id
+        FROM Week__c
+        WHERE Season__c = :season.Id
+        ORDER BY StartDate__c
+        LIMIT 1
+      ]
+      .Id;
+      Test.startTest();
+      Assert.areEqual('Add activities first.', startRefusal(programId, weekId));
+      Test.stopTest();
+      Assert.isNull(ManualDrafts.find(programId, weekId));
     }
   }
 

@@ -456,7 +456,7 @@ export default class ShoreshImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = errorMessage(e);
+      this.error = `Nothing was saved, and your answers are still here. ${errorMessage(e)}`;
     }
   }
 

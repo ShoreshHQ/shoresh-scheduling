@@ -10,7 +10,7 @@ import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSource
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
-import { errorMessage } from "c/shoreshErrors";
+import { errorMessage, failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -35,6 +35,7 @@ import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
+import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   RULE,
   checkWeek,
@@ -193,14 +194,33 @@ export default class ShoreshManualBuild extends LightningElement {
   get canChoose() {
     return !!this.programId && !!this.weekId;
   }
-  get cannotChoose() {
-    return !this.canChoose;
+  /** What building still needs (desktop readiness.js): Start waits for all of it. */
+  get stillNeeded() {
+    return stillNeeded(this._setup, this.t, this.programId);
   }
-  get chooseMessage() {
-    const t = this.t;
-    return this.programId
-      ? `No ${t.pIn("Week")} yet. Add them on the ${t.p("Week")} screen first.`
-      : `No ${t.pIn("Program")} yet. Add one on the ${t.p("Program")} screen first.`;
+  /** The desktop's one sentence, each missing thing a link to its screen. */
+  get stillNeededParts() {
+    return stillNeededSentence(this.stillNeeded);
+  }
+  /** The desktop's main action: "Set up <the first thing missing>". */
+  get setUpFirstLabel() {
+    const [first] = this.stillNeeded;
+    return first ? `Set up ${first.label}` : "";
+  }
+  get setUpFirstScreen() {
+    const [first] = this.stillNeeded;
+    return first ? first.screen : null;
+  }
+  get showStillNeeded() {
+    return !this.loading && !this.draft && this.stillNeeded.length > 0;
+  }
+  handleStillNeeded(event) {
+    event.preventDefault();
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: event.currentTarget.dataset.screen }
+      })
+    );
   }
 
   handleProgram(event) {
@@ -267,7 +287,10 @@ export default class ShoreshManualBuild extends LightningElement {
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `${this.weekName} couldn't be opened. Nothing was changed.`,
+          e
+        );
         this.loadedFor = again ? key : null;
       }
     } finally {
@@ -325,7 +348,13 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   get showStart() {
-    return this.canChoose && !this.loading && !this.draft && !this.error;
+    return (
+      this.canChoose &&
+      !this.loading &&
+      !this.draft &&
+      !this.error &&
+      this.stillNeeded.length === 0
+    );
   }
 
   /** The week and program can't change while a start or a Restore is on its way. */
@@ -352,7 +381,10 @@ export default class ShoreshManualBuild extends LightningElement {
       return draft;
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `${this.weekName} not started. Nothing was saved.`,
+          e
+        );
       }
       return null;
     } finally {
@@ -1170,7 +1202,10 @@ export default class ShoreshManualBuild extends LightningElement {
           name: option.name
         });
       } catch (e) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `"${option.name}" not added. Nothing was saved.`,
+          e
+        );
         return;
       }
       // Its record joins the draft's, so the checks know it before the week is read again.
@@ -1447,7 +1482,7 @@ export default class ShoreshManualBuild extends LightningElement {
     } catch (e) {
       const dropped = this.queue.length - 1;
       this.error =
-        errorMessage(e) +
+        failed(`Not saved: ${entry.label}.`, e) +
         (dropped > 0
           ? ` ${dropped} more ${dropped === 1 ? "change was" : "changes were"} not saved.`
           : "");

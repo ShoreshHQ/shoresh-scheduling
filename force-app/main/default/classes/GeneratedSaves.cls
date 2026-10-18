@@ -4,9 +4,13 @@
  * check (ADR 0005 §9). If someone else saved the week since it was read, nothing is written and
  * the answer is a conflict, for the screen to say so; nothing is overwritten unseen. Rebuild and
  * Start over save the draft as a version first (Greg, 2026-10-17), and so does Try another (as on
- * the desktop, which keeps one before every build that replaces a week). The days are checked by
- * GeneratedFrames and GeneratedChecks. Runs in user mode; the days are written by
- * ScheduleDaySaves under the lock.
+ * the desktop, which keeps one before every build that replaces a week). The save takes its lock
+ * (the program's for a first save, the draft's after) before it reads anything it checks, so a
+ * save that waited sees what the one before it left. What it checks against is GeneratedSetup,
+ * read once; the days are checked by GeneratedFrames, GeneratedChecks (with GeneratedClosures for
+ * this week's exceptions) and, before a first save, GeneratedSetupChanges against a blank week
+ * built again (BlankWeek). Runs in user mode; the days are written by ScheduleDaySaves under the
+ * lock.
  */
 public with sharing class GeneratedSaves {
   public static final String GENERATE = 'Generate';
@@ -43,20 +47,29 @@ public with sharing class GeneratedSaves {
     }
     Boolean isFirst = request.scheduleId == null;
     request.check(isFirst ? new Set<String>{ GENERATE } : ON_A_DRAFT);
-    GeneratedSaves saves = new GeneratedSaves(
-      request,
-      new GeneratedSetup(request.programId, request.weekId)
+    if (isFirst) {
+      if (String.isNotEmpty(request.revision)) {
+        throw GeneratedFrames.unreadable();
+      }
+      GeneratedDrafts.lockProgram(request.programId);
+      return new GeneratedSaves(request, setupNow(request)).first();
+    }
+    Schedule__c draft = GeneratedDrafts.locked(
+      request.scheduleId,
+      request.programId,
+      request.weekId
     );
-    return isFirst ? saves.first() : saves.again();
+    return new GeneratedSaves(request, setupNow(request)).again(draft);
+  }
+
+  /** Setup as it is now: read after the lock is taken, never before. */
+  private static GeneratedSetup setupNow(GeneratedWeek.Save request) {
+    return new GeneratedSetup(request.programId, request.weekId);
   }
 
   /** The week's first save makes its Generated draft, from a blank week as it is now. */
   private GeneratedWeek.Result first() {
-    if (String.isNotEmpty(request.revision)) {
-      throw GeneratedFrames.unreadable();
-    }
     // Looked for again under the lock: a save that waited sees the one before it.
-    GeneratedDrafts.lockProgram(program.Id);
     if (GeneratedDrafts.find(program.Id, request.weekId) != null) {
       return conflict(ScheduleDaySaves.CHANGED_SINCE);
     }
@@ -89,12 +102,7 @@ public with sharing class GeneratedSaves {
   }
 
   /** A later save replaces the draft's days, if no one has saved them since they were read. */
-  private GeneratedWeek.Result again() {
-    Schedule__c draft = GeneratedDrafts.locked(
-      request.scheduleId,
-      program.Id,
-      request.weekId
-    );
+  private GeneratedWeek.Result again(Schedule__c draft) {
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
     if (!GeneratedDrafts.revisionOf(days).equals(request.revision ?? '')) {
       return conflict(ScheduleDaySaves.CHANGED_SINCE);
