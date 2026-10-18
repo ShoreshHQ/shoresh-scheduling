@@ -50,6 +50,9 @@ jobs:
         # scripts/apex-name-clash.js: Apex ignores case, so a local `scheduleUses` beside class
         # ScheduleUses fails only in the org (#46, #48).
         run: npm run check:name-clash
+      - name: No Apex name that is a reserved word
+        # scripts/apex-reserved-words.js: `Integer number` fails only in the org's compiler (#46).
+        run: npm run check:reserved-words
       - name: Install Salesforce CLI and Code Analyzer
         run: |
           npm install --global @salesforce/cli@2.154.4

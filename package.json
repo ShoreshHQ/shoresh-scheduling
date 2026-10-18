@@ -14,6 +14,7 @@
     "check:namespace": "node scripts/namespace-safety.js",
     "check:meta": "node scripts/apex-meta-files.js",
     "check:name-clash": "node scripts/apex-name-clash.js",
+    "check:reserved-words": "node scripts/apex-reserved-words.js",
     "prettier": "prettier --write \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\"",
     "prettier:verify": "prettier --check \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\""
   },

@@ -113,13 +113,18 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
   (#46; also a local `targets` before `TARGETS.keySet()`, #48). Only uses with a dot count, and only
   under a different spelling. Opt out on the declaration's line, with a reason:
   `// apex-name-clash-ok: <why>`.
+- **No Apex name that is a reserved word** (`npm run check:reserved-words`,
+  `scripts/apex-reserved-words.js`): a local, parameter, field, class, interface or enum named
+  with one of Salesforce's Apex reserved keywords, ignoring case (`Integer number`, #46;
+  `List<String> into`). The list is the Apex Developer Guide's "Reserved Keywords" page; its
+  special keywords that can be names (`count`, `first`, `order`, ...) are allowed.
 - **Accessibility in Jest** (`@sa11y/jest`, axe-core rules): the main screens' render tests
   (Manual Build, Generated, Schedules, Versions, the setup screen and its tables) end with
   `await expect(element).toBeAccessible()`. jsdom has no layout, so focus loss, contrast and
   tap-target size are still review items.
 
-Not covered: anything only the org's compiler knows besides these (reserved words such as
-`number`, types), sharing and query limits at run time.
+Not covered: anything else only the org's compiler knows (types, method signatures), and
+sharing and query limits at run time.
 
 ## Running Apex tests: one class at a time
 

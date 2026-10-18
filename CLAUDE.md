@@ -48,8 +48,9 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   its test must assert the bound with `Limits.getQueries()` for a realistic camp.
 - **Read camp words, labels and describe data once per request**, never per row or in a loop (#60).
 - **Every new Apex class or trigger ships with its `-meta.xml`** (#55). `npm run check:meta` fails
-  without one, and `npm run check:name-clash` fails on a variable named like a class or static
-  under another spelling (Apex ignores case; #46, #48). Both run in CI; see `docs/ci-setup.md`.
+  without one, `npm run check:name-clash` fails on a variable named like a class or static under
+  another spelling (Apex ignores case; #46, #48), and `npm run check:reserved-words` on a name that
+  is an Apex reserved word (`number`, #46). All run in CI; see `docs/ci-setup.md`.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.
