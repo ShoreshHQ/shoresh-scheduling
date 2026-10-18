@@ -1,7 +1,8 @@
 /**
  * The program's setup for one week, read once per request and shared by everything Generated
- * Schedule does in it (GeneratedInputs, GeneratedSaves, GeneratedChecks): the program and week,
- * the time blocks, every group, and this week's exceptions. Reading it once keeps a request to a
+ * Schedule does in it (GeneratedInputs, GeneratedSaves, GeneratedChecks, GeneratedClosures,
+ * GeneratedSetupChanges, and BlankWeek for a blank week): the program and week, the time blocks,
+ * every group, and this week's exceptions. A save reads it only once it holds its lock. Reading it once keeps a request to a
  * fixed, small number of queries, whatever the size of the week. Runs in user mode.
  */
 public with sharing class GeneratedSetup {
