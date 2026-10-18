@@ -650,8 +650,9 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
    (its limit is 3). Only Thursday's gets the dot, _Over its weekly limit_: the one past the
    limit, the latest in the week. Nothing stops you. Clear Monday's: Thursday's dot goes.
 9. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
-   words show beside the dot while the cell has focus. Escape hides them (and, if you picked
-   something up with Space, lets go of it too). A screen reader reads them as part of the cell.
+   words show above the dot while the cell has focus. Escape hides them (and, if you picked
+   something up with Space, puts it back where it was). A screen reader reads them as part of
+   the cell, and when you place or move something, says the first dot it brought or took away.
 10. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
     Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
     Bunk 1_. Set Boating back to everyone afterwards.

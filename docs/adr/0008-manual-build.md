@@ -336,24 +336,26 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
 23. **Part 3: checks and counters** (Greg's decisions 2 to 4; desktop `computeFindings`,
     `computeOverlaps.js`; coordinator's answers 2026-10-17). Worked out live from the grid by
     `checkWeek` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
-    clears as soon as its cause moves. A day that can't be read is left out. Inputs come from
-    the setup records every screen already gets (`readActivities`, `readLocations`,
-    `readProgram`, field names from `c/shoreshSchema`). The one exception is an activity added
-    from a slot ("Add <name>"): the setup the page was given doesn't have it, so the server sends
-    its setup record back with it (`ActivityOption.record`, read by
-    `SeasonSetupReader.activitiesOf`, the setup screen's own query), and the checks read it until
-    the setup is read again.
+    clears as soon as its cause moves. A day that can't be read is left out. **One source:** the
+    activity and location records the checks read come with the draft (`DraftView`
+    `activityRecords`, `locationRecords`, read by `SeasonSetupReader.activitiesOf` and
+    `locationsOf`, the setup screen's own queries), so they are read again whenever the week is
+    (window focus, reload), and an activity or limit changed elsewhere shows at once; the
+    activity list's words come from the same draft. An activity added from a slot ("Add
+    <name>") brings its record back with it (`ActivityOption.record`) and joins the draft's.
+    The program's divisions and where its fixed and recurring activities are come from the
+    setup (`readProgram`). Field names come from `c/shoreshSchema`.
     - **One rules module with Generated Schedule.** Written here, then moved into
       `c/shoreshEngine` (#38, ADR 0010 §10) as the exported `checkWeek` (coordinator's call).
       Manual Build imports `checkWeek`, its readers and `reasonFor` from there and keeps no copy
       of any rule or its words (the activity list's and the typing box's words come from
       `reasonFor` too). The rule order is the order the engine's rules give way.
-    - **The activity list follows the same check** (`counts.js`): what is placed comes from
-      checkWeek's `placements`, its bronze dot from `bends` (any placement in view over its
-      weekly limit), and "still needed" from `stillNeededBy` (any group in view short). So in
-      Daily View an activity gets the dot when any bunk is over, as the grid's dots do, not
-      when the camp's total passes its limit times the bunks (coordinator, 2026-10-17). Only the
-      "2 placed (needs 3–5)" words are worked out here, from the setup numbers.
+    - **The activity list counts as the desktop does** (`counts.js`, `ActivityPalette.jsx`;
+      Greg's round 2 decision 8, "palette counts work as on the desktop"): what is placed comes
+      from checkWeek's `placements`; which group a chip sits in and its bronze dot follow the
+      numbers its own words show ("4 placed (needs 4–6)"). In Daily View that is the camp's
+      total against the targets times the bunks it is set up for, in Group View the one bunk
+      against its own targets, so the chip never says one thing and sits or marks another.
     - **The bronze dot** (`c-shoresh-dot`, no visible words) goes on a placement, never on a
       fixed or recurring activity or a not-set-up item. One dot per placement, its reasons
       joined by " · ", in this order: _Over its weekly limit_ (only on the sessions past the
@@ -367,13 +369,24 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       only touch don't). A placement running several blocks counts once toward weekly and daily
       counts, and in each block it covers for at-once, division and place checks.
     - **The grid** (`c-shoresh-schedule-grid`) takes a `dot` (its words) on any cell and knows
-      nothing about why, so Generated Schedule reuses it. The words show on hover, on a tap,
-      and while the cell has keyboard focus, and are in the cell's assistive text.
+      nothing about why, so Generated Schedule reuses it. The words show on hover and while the
+      cell has keyboard focus (a tap on the cell gives it focus), and are in the cell's
+      assistive text. The dot is `in-cell`: it never takes a tap meant for the cell; its words
+      open toward the cell from its right edge and wrap, so the grid's edge never cuts them
+      off; and Escape reaches the cell only while the cell's focus brought the words up (one
+      press hides them and puts back what was picked up). Shown by hovering, Escape stops at
+      the words, as item 21 says.
+    - **Screen readers hear what an edit did to the dots**, once, with its save: the first dot
+      it brought (_Placed Soccer · Bunk 2 · Monday · Period 2. Soccer · Bunk 1: Over its limit
+      of 1 Bunk at once, and 1 more_), or else the first it took away (_Soccer · Bunk 1: fine
+      now_). A sighted director sees the dot appear (WCAG 4.1.3).
     - **Counters** under the toolbar, as the desktop's manual route shows them (ScheduleScreen.jsx,
       StatBadge; the desktop is the spec, coordinator 2026-10-17). Each is a tile, its number
       above its words. **Filled** _34 of 120_ (cells filled, of the cells to fill: at camp, not
-      fixed or recurring; neutral; the desktop's "Placed", renamed because the activity list's
-      "2 placed" counts placements, not cells). **Overlapping** (always shown): one per cell
+      fixed or recurring; neutral). The desktop says "Placed"; it is **Filled** here by the
+      coordinator's call under Greg's one-word-per-idea rule, because the activity list's
+      "2 placed" counts placements, and "Placed" would mean cells in one place and placements
+      in the other (coordinator, 2026-10-17). **Overlapping** (always shown): one per cell
       that overlaps, a bunk in a time block where its placement breaks groups at once, one
       division at a time, place capacity, or is booked at an overlapping time, as the desktop's
       `computeOverlaps` flags slots (checkWeek's `overlapping`). **Still needed** (activity and
@@ -381,8 +394,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       `hasCoverageTargets`) and **Spread across the week** (short of the early-week goal, by
       that day inclusive, only when the week has a day by then; shown only when some activity
       has one, `hasSpreadTargets`). Each number is the number of its lines (Greg, 2026-10-17:
-      like the desktop's badges). A zero shows grey and opens nothing; above zero the tile has a
-      bronze border. The number stays in the text colour (the design guide keeps bronze off
+      like the desktop's badges). A zero shows grey and opens nothing, as on the desktop, which
+      here wins over the design guide's "leave a zero out" (the desktop is the spec); it stays
+      in the tab order (`aria-disabled`), so a counter that drops to zero while it has focus
+      keeps it. Above zero the tile has a bronze border. The number stays in the text colour (the design guide keeps bronze off
       text; the desktop colours it).
     - **One list, "Still to place"** (the desktop's findings rail on the manual route): any
       counter above zero opens it under the counters, with every overlap first, then still
@@ -404,7 +419,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - **Checked by** `checkWeek`'s own tests in `c/shoreshEngine` (scenario tests and a seeded
       property test against an independent placement-by-placement oracle: every dot's words,
       both lists, the overlap count's lines, Filled), and screen tests here for the counters, the
-      list, the dots and their focus, and decision 12 (only the extra session is dotted).
+      list, Accept, a line's jump, the announcement, the dots and their focus, decision 12
+      (only the extra session is dotted), the program's divisions reaching the checks, and the
+      checks following the week when it is read again.
 
 ## Choices that are hard to undo after release
 

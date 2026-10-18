@@ -445,7 +445,9 @@ export default class ShoreshManualBuild extends LightningElement {
         }
         return {
           ...c,
-          none: c.count === 0,
+          // A zero opens nothing, but stays in the tab order: a counter that drops to zero
+          // while it has focus keeps it (desktop disables it; focus would fall to the page).
+          unavailable: c.count === 0 ? "true" : null,
           expanded: c.count ? String(this.listOpen) : null,
           className
         };
@@ -462,7 +464,10 @@ export default class ShoreshManualBuild extends LightningElement {
       : null;
   }
 
-  handleCounter() {
+  handleCounter(event) {
+    if (event.currentTarget.getAttribute("aria-disabled") === "true") {
+      return;
+    }
     this.listOpen = !this.listOpen;
   }
 
@@ -1143,22 +1148,52 @@ export default class ShoreshManualBuild extends LightningElement {
     this.loadTicket += 1;
     this.loading = false;
     const edit = { runs: serverRuns };
-    this.queue = [
-      ...this.queue,
-      {
-        edit,
-        key,
-        label,
-        stepId,
-        kind,
-        baseLabel: baseLabel || label,
-        // What the director chose and saw, by time block (conflicts.js): what a question compares.
-        intent,
-        slotKey: this.slotKeyOf(firstRun, serverRuns[0])
-      }
-    ];
+    const before = this.checked;
+    const entry = {
+      edit,
+      key,
+      label,
+      stepId,
+      kind,
+      baseLabel: baseLabel || label,
+      // What the director chose and saw, by time block (conflicts.js): what a question compares.
+      intent,
+      slotKey: this.slotKeyOf(firstRun, serverRuns[0])
+    };
+    this.queue = [...this.queue, entry];
     this.applyLocally(edit);
+    // A dot the edit brought or took away, said with its save (a sighted director sees it).
+    entry.news = this.dotNews(before, this.checked);
     this.saveNext();
+  }
+
+  /**
+   * One short line on what an edit did to the bronze dots, for screen readers: the first dot it
+   * brought ("Soccer · Bunk 1: Over its limit of 1 Bunk at once"), or else the first it took away
+   * ("Soccer · Bunk 1: fine now"), with how many more. Null when the dots didn't change.
+   */
+  dotNews(before, after) {
+    const named = (checked, key) => {
+      const p = checked.placements.find((x) => x.key === key);
+      return p ? `${this.activityName(p.id)} · ${p.groupName}` : "";
+    };
+    const brought = [...after.flags].filter(
+      ([key, words]) => before.flags.get(key) !== words
+    );
+    const gone = [...before.flags.keys()].filter(
+      (key) => !after.flags.has(key)
+    );
+    let line = null;
+    let more = 0;
+    if (brought.length) {
+      const [key, words] = brought[0];
+      line = `${named(after, key)}: ${words}`;
+      more = brought.length - 1;
+    } else if (gone.length) {
+      line = `${named(before, gone[0])}: fine now`;
+      more = gone.length - 1;
+    }
+    return line && more ? `${line}, and ${more} more` : line;
   }
 
   /** The draft with an edit made, as the grid shows it until the server answers. */
@@ -1226,7 +1261,9 @@ export default class ShoreshManualBuild extends LightningElement {
         }
         const said = [this.unrepeated, fresh].filter(Boolean).join(" ");
         this.unrepeated = null;
-        this.announce(said ? `${entry.label}. ${said}` : entry.label);
+        this.announce(
+          [entry.label, entry.news, said].filter(Boolean).join(". ")
+        );
       }
     } catch (e) {
       const dropped = this.queue.length - 1;

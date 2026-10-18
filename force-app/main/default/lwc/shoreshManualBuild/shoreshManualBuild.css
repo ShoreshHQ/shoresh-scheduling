@@ -369,6 +369,10 @@
   cursor: default;
 }
 
+.counter[aria-disabled="true"] {
+  cursor: default;
+}
+
 .counter_due {
   border-color: var(--shoresh-caution);
   cursor: pointer;

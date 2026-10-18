@@ -880,8 +880,9 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     await flush();
     expect(saveSlots).toHaveBeenCalledTimes(3);
+    // Swim is now twice in Bunk 1's Monday: both get the dot, said once with the save.
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
-      "Placed Swim · Bunk 1 · Monday · Lunch"
+      "Placed Swim · Bunk 1 · Monday · Lunch. Swim · Bunk 1: Twice in a day, and 1 more"
     );
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Flagpole stays where it is set up."

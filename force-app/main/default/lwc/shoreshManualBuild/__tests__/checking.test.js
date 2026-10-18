@@ -246,7 +246,10 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     // Nothing overlaps; no activity has an early-week goal, so Spread isn't shown (desktop).
     expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
     const overlapping = q(element, '[data-counter="overlapping"]');
-    expect(overlapping.disabled).toBe(true);
+    expect(overlapping.getAttribute("aria-disabled")).toBe("true");
+    overlapping.click();
+    await flush();
+    expect(q(element, '[data-id="counter-list"]')).toBeNull();
     expect(overlapping.hasAttribute("aria-expanded")).toBe(false);
     expect(overlapping.className).not.toContain("counter_due");
     expect(q(element, '[data-counter="stillNeeded"]').className).toContain(
@@ -445,5 +448,105 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(
       q(element, '[data-id="edit-grid"]').shadowRoot.activeElement.dataset.cell
     ).toBe("0-1");
+  });
+
+  it("a screen reader hears, once, the dot an edit brings and the one it takes away", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    await press(cell(element, "1-1"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "soccer";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Placed Soccer · Bunk 2 · Monday · Period 2. Soccer · Bunk 1: Over its limit of 1 Bunk at once, and 1 more"
+    );
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
+    });
+    await press(cell(element, "1-1"), "Delete");
+    expect(q(element, '[data-id="announce"]').textContent).toContain(
+      "Soccer · Bunk 1: fine now, and 1 more"
+    );
+  });
+
+  it("the program's divisions reach the checks: one division at a time", async () => {
+    // Bunk 2 is in Seniors; Soccer is for one division at a time, with no limit of bunks.
+    const twoDivisions = nsRecord({
+      ...SETUP,
+      programs: [
+        {
+          ...SETUP.programs[0],
+          divisions: [
+            {
+              division: { Id: "dv1", Name: "Juniors" },
+              groups: [{ Id: "g1", Name: "Bunk 1", Division__c: "dv1" }]
+            },
+            {
+              division: { Id: "dv2", Name: "Seniors" },
+              groups: [{ Id: "g2", Name: "Bunk 2", Division__c: "dv2" }]
+            }
+          ]
+        }
+      ],
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a3"
+          ? { ...a, NoGroupLimit__c: true, SameDivisionOnly__c: true }
+          : a;
+      })
+    });
+    const element = await render(
+      draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]),
+      twoDivisions
+    );
+    expect(dotIn(element, "0-1").label).toBe(
+      "With another division at the same time"
+    );
+  });
+
+  it("the checks follow the week as it is read again, even when the week itself is unchanged", async () => {
+    const start = draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);
+    start.schedule.days[1] = day(
+      "2026-06-30",
+      [FLAGPOLE, SWIM],
+      ["1,2,", "1,,"]
+    );
+    const element = await render(start);
+    expect(dotIn(element, "0-1")).toBeNull();
+    // Someone sets Swim to once a week elsewhere; the week is read again (the window gets focus).
+    getDraft.mockResolvedValue({
+      ...start,
+      activityRecords: SETUP.activities.map((a) => {
+        return a.Id === "a1" ? { ...a, TimesPerWeekMax__c: 1 } : a;
+      }),
+      locationRecords: []
+    });
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    q(element, '[data-view="group"]').click();
+    await flush();
+    expect(dotIn(element, "1-1").label).toBe("Over its weekly limit");
+  });
+
+  it("a week with no days shows no counters", async () => {
+    const start = draft();
+    start.schedule.days = [];
+    const element = await render(start);
+    expect(q(element, '[data-id="counters"]')).toBeNull();
+  });
+
+  it("an open list marks its counters open and names the list they control", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    const needed = q(element, '[data-counter="stillNeeded"]');
+    expect(needed.getAttribute("aria-controls")).toBeTruthy();
+    expect(needed.className).not.toContain("counter_open");
+    needed.click();
+    await flush();
+    expect(needed.className).toContain("counter_open");
   });
 });
