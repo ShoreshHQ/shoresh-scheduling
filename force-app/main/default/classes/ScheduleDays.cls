@@ -35,7 +35,8 @@ public with sharing class ScheduleDays {
     return days;
   }
 
-  private static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
+  /** One day from its parts (Part__c order), or why it could not be read. */
+  public static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
     DayGrid result = new DayGrid();
     result.day = day;
     List<String> texts = new List<String>();
@@ -60,7 +61,11 @@ public with sharing class ScheduleDays {
     Integer index,
     Integer revision
   ) {
-    if (part.GridFormatVersion__c != ScheduleGrid.FORMAT_VERSION) {
+    if (
+      !ScheduleGridLocks.READABLE.contains(
+        part.GridFormatVersion__c?.intValue()
+      )
+    ) {
       throw new ScheduleGridRules.GridException(
         'it was saved by a newer version of Shoresh'
       );
