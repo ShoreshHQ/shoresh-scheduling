@@ -30,9 +30,10 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    value is missing. Once added, the row shows at once with the saved rows, the blank row
    empties to its starting values, and after Enter or **+** the cursor is back in its first
    field (desktop: focus kept after add).
-3. **Saved rows save as you go.** A change is saved when the director presses **Enter** in the
-   row or leaves it (for anywhere outside the row and its "Who" picker); **Escape** puts the
-   row back as saved. Ticks ("Runs in", "Open in", days), picklists, and "Who" (on **Done**)
+3. **Saved rows save as you go.** A change is saved when the director presses **Enter** in a
+   typing field or tick of the row, or leaves the row (for anywhere outside it and its "Who"
+   picker); a dropdown's Enter picks its choice, and the row saves on leaving. **Escape** puts
+   the row back as saved (not in a date or time field, where it closes the picker). Ticks ("Runs in", "Open in", days), picklists, and "Who" (on **Done**)
    save the same way. A fix offered in a row's note is saved at once.
    _Difference from the desktop:_ the desktop opens a saved row for editing (click, Enter, or
    Space), then saves it on Enter or a Save button; leaving it does not save. Salesforce rows
@@ -56,7 +57,8 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    The question is Manual Build's: **Changed by someone else**, each field named
    ("Week 1 · Name") with **Theirs** and **Yours**, then **Keep theirs** (theirs stays; the
    director's other changes to the row are still saved) or **Use yours** (the same change
-   again, naming what is there now). Escape keeps theirs. Nothing else is sent while it is
+   again, naming what is there now). As in Manual Build, Escape keeps theirs, Tab stays on the
+   two buttons, and afterwards the cursor is back in the row. Nothing else is sent while it is
    open. A row someone else deleted is refused in plain words ("Week 1" was deleted by someone
    else.).
    _Difference from the desktop:_ the desktop syncs devices and shows clashes afterwards on a
@@ -74,6 +76,14 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
 8. **Empty state** (desktop shipped tables): one quiet line in the table ("No bunks yet."),
    centred, with the blank row under it. The explanatory sentences that some empty lines
    carried are gone (design guide: title only).
+
+## Known limits
+
+- "Who" a recurring activity covers is compared under the row's lock, but an import or the
+  older table save writing coverage at the same instant does not take that lock; the window
+  is a few milliseconds.
+- In Safari a click on a tick does not move focus to it, so ticking a week in a row being
+  typed in can save the row early, then again on leaving. Nothing is lost.
 
 ## Not changed
 

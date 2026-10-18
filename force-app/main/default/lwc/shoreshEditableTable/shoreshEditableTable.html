@@ -310,7 +310,7 @@
           </div>
           <div class="slds-modal__content slds-p-around_medium">
             <ul class="conflict-rows">
-              <template for:each={conflict.rows} for:item="row">
+              <template for:each={conflictRows} for:item="row">
                 <li key={row.key} class="conflict-row" data-field={row.key}>
                   <p class="conflict-where">{row.where}</p>
                   <dl class="conflict-choices">

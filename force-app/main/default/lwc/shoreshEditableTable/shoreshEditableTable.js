@@ -430,12 +430,12 @@ export default class ShoreshEditableTable extends LightningElement {
     }
     if (this.focusAddRow) {
       this.focusAddRow = false;
-      const first = this.template.querySelector(
-        `[data-row-key="${ADD}"][data-field]`
-      );
-      if (first) {
-        first.focus();
-      }
+      this.focusRow(ADD);
+    }
+    if (this.focusAfterQuestion && !this.conflict) {
+      // Back where the director was when the question came up.
+      this.focusRow(this.focusAfterQuestion);
+      this.focusAfterQuestion = null;
     }
     if (this.conflict && !this.conflictFocused) {
       this.conflictFocused = true;
@@ -445,6 +445,15 @@ export default class ShoreshEditableTable extends LightningElement {
       }
     }
     this.reportMoves();
+  }
+
+  focusRow(key) {
+    const first = this.template.querySelector(
+      `[data-row-key="${key}"][data-field]`
+    );
+    if (first) {
+      first.focus();
+    }
   }
 
   reportMoves() {
@@ -595,7 +604,8 @@ export default class ShoreshEditableTable extends LightningElement {
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
-          label: col.label,
+          // The blank row's fields say what they add ("Add Bunk: Name").
+          label: draft.isNew ? `${this.addLabel}: ${col.label}` : col.label,
           // The blank row says what it is for in its first text field.
           placeholder:
             draft.isNew && col.fieldName === firstText ? this.addLabel : "",
@@ -653,14 +663,18 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.whoNames(column, draft.who);
   }
 
-  whoNames(column, ids) {
+  /** Names for these choices; with `known`, only those on screen (never a record Id). */
+  whoNames(column, ids, known) {
     if (ids.length === 0) {
       return column.everyone || "Everyone";
     }
     const names = new Map(
       (column.options || []).map((option) => [option.value, option.label])
     );
-    return ids.map((id) => names.get(id) || id).join(", ");
+    return ids
+      .map((id) => names.get(id) || (known ? null : id))
+      .filter((name) => name)
+      .join(", ");
   }
 
   // ---------- typing ----------
@@ -755,7 +769,10 @@ export default class ShoreshEditableTable extends LightningElement {
     } else if (
       event.key === "Escape" &&
       key !== ADD &&
-      from === "LIGHTNING-INPUT"
+      from === "LIGHTNING-INPUT" &&
+      !event.defaultPrevented &&
+      // Escape in a date or time field closes its picker; it doesn't undo the row.
+      !["date", "time"].includes(event.target.type)
     ) {
       this.revert(key);
     }
@@ -1041,13 +1058,25 @@ export default class ShoreshEditableTable extends LightningElement {
       rows.push({
         key: "who",
         where: `${name} · ${column.label}`,
-        theirs: this.whoNames(column, answer.theirWho),
         yours: this.whoNames(column, draft.who),
         theirWho: answer.theirWho
       });
     }
     this.conflictFocused = false;
     this.conflict = { key, rows };
+  }
+
+  /**
+   * The question's rows. Who someone else chose is named from the choices on screen, which the
+   * reload after the save brings up to date (a bunk they just added is named once it has).
+   */
+  get conflictRows() {
+    const column = this.whoColumn;
+    return this.conflict.rows.map((row) => {
+      return row.theirWho
+        ? { ...row, theirs: this.whoNames(column, row.theirWho, true) }
+        : row;
+    });
   }
 
   /** Theirs stays; the director's other changes to the row are still saved. */
@@ -1088,14 +1117,21 @@ export default class ShoreshEditableTable extends LightningElement {
     this.closeConflict(key);
   }
 
+  /** As Manual Build's question: Escape keeps theirs, and Tab stays on its two buttons. */
   handleConflictKeyDown(event) {
     if (event.key === "Escape") {
       this.handleKeepTheirs();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      const keep = this.template.querySelector('[data-id="keep-theirs"]');
+      const use = this.template.querySelector('[data-id="use-yours"]');
+      (this.template.activeElement === keep ? use : keep).focus();
     }
   }
 
   closeConflict(key) {
     this.conflict = null;
+    this.focusAfterQuestion = key;
     if (!this.queue.includes(key)) {
       this.queue = [key, ...this.queue];
     }

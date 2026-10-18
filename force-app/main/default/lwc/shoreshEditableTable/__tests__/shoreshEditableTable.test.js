@@ -233,6 +233,11 @@ describe("c-shoresh-editable-table", () => {
       expect(rows(element).length).toBe(1);
       expect(field(element, 0, "Name").value).toBeUndefined();
       expect(field(element, 0, "Name").placeholder).toBe("Add Time block");
+      // Its fields say what they add, for screen readers.
+      expect(field(element, 0, "Name").label).toBe("Add Time block: Name");
+      expect(field(element, 0, "StartTime__c").label).toBe(
+        "Add Time block: Start"
+      );
       expect(addButton(element).alternativeText).toBe("Add Time block");
 
       const full = render({ columns: COLUMNS, rows: ROWS });
@@ -515,6 +520,16 @@ describe("c-shoresh-editable-table", () => {
         sobjectType: "TimeBlock__c",
         Outdoor__c: false
       });
+    });
+
+    it("Escape in a date or time field closes its picker, and keeps the row's typing", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      await flush();
+      change(field(element, 0, "Name"), "Changed");
+      await flush();
+      press(field(element, 0, "StartTime__c"), "Escape");
+      await flush();
+      expect(field(element, 0, "Name").value).toBe("Changed");
     });
 
     it("Escape puts the row back as saved", async () => {
@@ -926,6 +941,29 @@ describe("c-shoresh-editable-table", () => {
         Name: "First",
         PartOfDay__c: "Morning"
       });
+    });
+
+    it("Tab stays on the question's two buttons; afterwards the director is back in the row", async () => {
+      const { element } = await clash();
+      await flush();
+      const keep = dialog(element).querySelector('[data-id="keep-theirs"]');
+      const use = dialog(element).querySelector('[data-id="use-yours"]');
+      const tab = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true
+      });
+      keep.focus();
+      keep.dispatchEvent(tab);
+      expect(tab.defaultPrevented).toBe(true);
+      expect(element.shadowRoot.activeElement).toBe(use);
+      // The test stand-in for a Salesforce input can't take focus itself.
+      const name = field(element, 0, "Name");
+      name.focus = jest.fn();
+      use.click();
+      await flush();
+      await flush();
+      expect(name.focus).toHaveBeenCalled();
     });
 
     it("Escape keeps theirs, and the question has the first choice focused", async () => {
@@ -1374,7 +1412,11 @@ describe("c-shoresh-editable-table", () => {
       allValid(element);
       toggle(element, 0).click();
       expect(sent[0].seenWho).toEqual(["g1"]);
-      sent[0].onSaved({ changed: [], theirs: { Id: "r1" }, theirWho: ["d1"] });
+      sent[0].onSaved({
+        changed: [],
+        theirs: { Id: "r1" },
+        theirWho: ["d1", "g9"]
+      });
       sent[0].onDone();
       await flush();
       const dialog = element.shadowRoot.querySelector('[data-id="conflict"]');
@@ -1389,7 +1431,7 @@ describe("c-shoresh-editable-table", () => {
       );
       dialog.querySelector('[data-id="use-yours"]').click();
       await flush();
-      expect(sent[1].seenWho).toEqual(["d1"]);
+      expect(sent[1].seenWho).toEqual(["d1", "g9"]);
       expect(sent[1].extras.who).toEqual([{ target: "r1", targets: ["g2"] }]);
     });
 
