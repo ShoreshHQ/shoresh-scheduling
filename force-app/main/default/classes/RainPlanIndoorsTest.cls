@@ -25,8 +25,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anOutdoorRainPlanIsRefusedWithTheDesktopsWords() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       String message = refusal(
         new List<SObject>{
           new Activity__c(Id = ids.get('Swim'), RainPlan__c = ids.get('Soccer'))
@@ -45,8 +50,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void aNewActivityWithAnOutdoorRainPlanIsRefused() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       Activity__c hike = ShoreshTestData.activity(
         ids.get('Season'),
         'Hike',
@@ -62,8 +72,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void aRainPlanMadeOutdoorInTheSameSaveIsRefused() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       String message = refusal(
         new List<SObject>{
           new Activity__c(Id = ids.get('Swim'), Outdoor__c = true),
@@ -79,8 +94,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anIndoorRainPlanSaves() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
           new Activity__c(Id = ids.get('Soccer'), RainPlan__c = ids.get('Swim'))
@@ -96,8 +116,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anActivityWhoseRainPlanWentOutdoorsSavesOnlyOnceItIsChanged() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       // Making Gym games outdoors is allowed, though it is Soccer's rain plan (as on the desktop).
       SeasonSetupController.saveRecords(
         new List<SObject>{
@@ -129,8 +154,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anActivityWithAnOutdoorRainPlanCanStillBeUntickedForAWeek() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
           new Activity__c(Id = ids.get('Gym games'), Outdoor__c = true)
@@ -172,8 +202,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void copyingASeasonKeepsARainPlanMadeOutdoorsSince() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
           new Activity__c(Id = ids.get('Gym games'), Outdoor__c = true)
@@ -197,8 +232,13 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void aListImportGivingAnOutdoorRainPlanIsRefusedAndNothingIsSaved() {
-    Map<String, Id> ids = camp();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
+    System.runAs(scheduler) {
       Map<String, Object> plan = new Map<String, Object>{
         'seasonId' => ids.get('Season'),
         'screen' => 'activities',
@@ -237,7 +277,11 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void theRefusalUsesTheCampsWords() {
-    Map<String, Id> ids = camp();
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = camp();
+    }
     Id campId = [SELECT Camp__c FROM Season__c WHERE Id = :ids.get('Season')]
     .Camp__c;
     Database.insert(
@@ -249,7 +293,7 @@ private class RainPlanIndoorsTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
-    System.runAs(ShoreshTestData.scheduler()) {
+    System.runAs(scheduler) {
       String message = refusal(
         new List<SObject>{
           new Activity__c(Id = ids.get('Swim'), RainPlan__c = ids.get('Soccer'))

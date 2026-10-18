@@ -20,8 +20,13 @@ private class TimeBlockTriggerHandlerTest {
 
   @IsTest
   static void aBlankNameIsSavedAsTheTimeRange() {
-    Id programId = programId();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Id programId;
+    System.runAs(scheduler) {
+      programId = programId();
+    }
+    System.runAs(scheduler) {
       List<Id> ids = SeasonSetupController.saveRecords(
         new List<SObject>{
           new TimeBlock__c(
@@ -46,8 +51,13 @@ private class TimeBlockTriggerHandlerTest {
 
   @IsTest
   static void noPartOfDayFollowsTheStartTimeFromNoon() {
-    Id programId = programId();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Id programId;
+    System.runAs(scheduler) {
+      programId = programId();
+    }
+    System.runAs(scheduler) {
       List<Id> ids = SeasonSetupController.saveRecords(
         new List<SObject>{
           new TimeBlock__c(
@@ -73,8 +83,13 @@ private class TimeBlockTriggerHandlerTest {
 
   @IsTest
   static void aPartOfDayTheDirectorChoseIsKept() {
-    Id programId = programId();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Id programId;
+    System.runAs(scheduler) {
+      programId = programId();
+    }
+    System.runAs(scheduler) {
       List<Id> ids = SeasonSetupController.saveRecords(
         new List<SObject>{
           new TimeBlock__c(
@@ -92,8 +107,13 @@ private class TimeBlockTriggerHandlerTest {
 
   @IsTest
   static void aRangeNameFollowsNewTimesButAChosenNameStays() {
-    Id programId = programId();
-    System.runAs(ShoreshTestData.scheduler()) {
+    // The scheduler makes the camp, so it is theirs to see under sharing.
+    User scheduler = ShoreshTestData.scheduler();
+    Id programId;
+    System.runAs(scheduler) {
+      programId = programId();
+    }
+    System.runAs(scheduler) {
       List<Id> ids = SeasonSetupController.saveRecords(
         new List<SObject>{
           new TimeBlock__c(

@@ -25,11 +25,12 @@ public with sharing class ActivityTriggerHandler {
     List<Activity__c> activities,
     Map<Id, Activity__c> before
   ) {
-    Map<Id, Id> seasonByTarget = targetSeasons(activities);
+    Targets targets = new Targets(activities);
+    Map<Id, Id> seasonByTarget = targets.seasons;
     if (seasonByTarget.isEmpty()) {
       return;
     }
-    refuseOutdoorRainPlans(activities, before);
+    refuseOutdoorRainPlans(activities, before, targets.outdoors);
     Set<Id> seasonIds = new Set<Id>();
     for (Activity__c activity : activities) {
       seasonIds.add(activity.Season__c);
@@ -61,7 +62,8 @@ public with sharing class ActivityTriggerHandler {
    */
   private static void refuseOutdoorRainPlans(
     List<Activity__c> activities,
-    Map<Id, Activity__c> before
+    Map<Id, Activity__c> before,
+    Map<Id, Boolean> savedOutdoors
   ) {
     List<Activity__c> withRainPlan = new List<Activity__c>();
     Set<Id> chosen = new Set<Id>();
@@ -78,7 +80,11 @@ public with sharing class ActivityTriggerHandler {
     if (withRainPlan.isEmpty()) {
       return;
     }
-    Map<Id, Boolean> outdoors = outdoorsAfterSave(chosen, activities);
+    Map<Id, Boolean> outdoors = outdoorsAfterSave(
+      chosen,
+      activities,
+      savedOutdoors
+    );
     Map<Id, CampLabels> labelsBySeason;
     for (Activity__c activity : withRainPlan) {
       if (outdoors.get(activity.RainPlan__c) == true) {
@@ -116,20 +122,16 @@ public with sharing class ActivityTriggerHandler {
     return false;
   }
 
-  /** Whether each rain plan is outdoors as this save leaves it (its own change counts). */
+  /**
+   * Whether each rain plan is outdoors as this save leaves it (its own change counts). Read with
+   * the seasons check (Targets), so the rule costs no query of its own.
+   */
   private static Map<Id, Boolean> outdoorsAfterSave(
     Set<Id> rainPlanIds,
-    List<Activity__c> saving
+    List<Activity__c> saving,
+    Map<Id, Boolean> savedOutdoors
   ) {
-    Map<Id, Boolean> outdoors = new Map<Id, Boolean>();
-    for (Activity__c rainPlan : [
-      SELECT Id, Outdoor__c
-      FROM Activity__c
-      WHERE Id IN :rainPlanIds
-      WITH SYSTEM_MODE
-    ]) {
-      outdoors.put(rainPlan.Id, rainPlan.Outdoor__c);
-    }
+    Map<Id, Boolean> outdoors = new Map<Id, Boolean>(savedOutdoors);
     for (Activity__c activity : saving) {
       if (activity.Id != null && rainPlanIds.contains(activity.Id)) {
         outdoors.put(activity.Id, activity.Outdoor__c);
@@ -153,33 +155,44 @@ public with sharing class ActivityTriggerHandler {
     return result;
   }
 
-  /** The season of each location and rain plan named (Ids are unique across objects). */
-  private static Map<Id, Id> targetSeasons(List<Activity__c> activities) {
-    Set<Id> locationIds = new Set<Id>();
-    Set<Id> rainPlanIds = new Set<Id>();
-    for (Activity__c activity : activities) {
-      locationIds.add(activity.Location__c);
-      rainPlanIds.add(activity.RainPlan__c);
+  /**
+   * The season of each location and rain plan named (Ids are unique across objects), and whether
+   * each rain plan is outdoors as saved. Each list is read only when something names one.
+   */
+  private with sharing class Targets {
+    Map<Id, Id> seasons = new Map<Id, Id>();
+    Map<Id, Boolean> outdoors = new Map<Id, Boolean>();
+
+    Targets(List<Activity__c> activities) {
+      Set<Id> locationIds = new Set<Id>();
+      Set<Id> rainPlanIds = new Set<Id>();
+      for (Activity__c activity : activities) {
+        locationIds.add(activity.Location__c);
+        rainPlanIds.add(activity.RainPlan__c);
+      }
+      locationIds.remove(null);
+      rainPlanIds.remove(null);
+      if (!locationIds.isEmpty()) {
+        for (Location__c location : [
+          SELECT Id, Season__c
+          FROM Location__c
+          WHERE Id IN :locationIds
+          WITH SYSTEM_MODE
+        ]) {
+          seasons.put(location.Id, location.Season__c);
+        }
+      }
+      if (!rainPlanIds.isEmpty()) {
+        for (Activity__c rainPlan : [
+          SELECT Id, Season__c, Outdoor__c
+          FROM Activity__c
+          WHERE Id IN :rainPlanIds
+          WITH SYSTEM_MODE
+        ]) {
+          seasons.put(rainPlan.Id, rainPlan.Season__c);
+          outdoors.put(rainPlan.Id, rainPlan.Outdoor__c);
+        }
+      }
     }
-    locationIds.remove(null);
-    rainPlanIds.remove(null);
-    Map<Id, Id> result = new Map<Id, Id>();
-    for (Location__c location : [
-      SELECT Id, Season__c
-      FROM Location__c
-      WHERE Id IN :locationIds
-      WITH SYSTEM_MODE
-    ]) {
-      result.put(location.Id, location.Season__c);
-    }
-    for (Activity__c rainPlan : [
-      SELECT Id, Season__c
-      FROM Activity__c
-      WHERE Id IN :rainPlanIds
-      WITH SYSTEM_MODE
-    ]) {
-      result.put(rainPlan.Id, rainPlan.Season__c);
-    }
-    return result;
   }
 }
