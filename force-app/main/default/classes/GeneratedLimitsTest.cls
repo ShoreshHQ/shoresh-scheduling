@@ -20,89 +20,129 @@ private class GeneratedLimitsTest {
   // them; saves don't read other programs, and opening a week is measured with them below.
   private static Boolean withOtherPrograms = true;
 
-  private static Map<String, Id> bigCamp() {
-    SetTimeGuard.defer();
-    try {
-      return bigCampDeferred();
-    } finally {
-      SetTimeGuard.resume();
+  // The big camp (with its two other programs) is built once, by the scheduler, in setup; each
+  // test finds it again. A test's changes are undone when it ends, so each starts from the same camp.
+  @TestSetup
+  static void makeCamp() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      bigCamp();
     }
   }
 
-  private static Map<String, Id> bigCampDeferred() {
-    Camp__c camp = ShoreshTestData.camp('Camp Cedar');
-    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
-    Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
-    Program__c program = ShoreshTestData.program(season.Id, 'Main');
-    Database.update(
-      new Program__c(Id = program.Id, Friday__c = true),
-      AccessLevel.SYSTEM_MODE
-    );
-    List<TimeBlock__c> blocks = new List<TimeBlock__c>();
-    for (Integer hour = 8; hour < 16; hour++) {
-      blocks.add(
-        new TimeBlock__c(
-          Program__c = program.Id,
-          Name = 'Period ' + (hour - 7),
-          StartTime__c = Time.newInstance(hour, 0, 0, 0),
-          EndTime__c = Time.newInstance(hour, 45, 0, 0),
-          PartOfDay__c = hour < 12 ? 'Morning' : 'Afternoon',
-          SortOrder__c = hour
+  /** The scheduler setup made. */
+  private static User scheduler() {
+    return [
+      SELECT Id
+      FROM User
+      WHERE
+        Alias = 'sched'
+        AND Id IN (
+          SELECT AssigneeId
+          FROM PermissionSetAssignment
+          WHERE PermissionSet.Name = 'Shoresh_Scheduler'
         )
-      );
-    }
-    Database.insert(blocks, AccessLevel.SYSTEM_MODE);
-    List<Division__c> divisions = new List<Division__c>{
-      new Division__c(
-        Program__c = program.Id,
-        Name = 'Juniors',
-        SortOrder__c = 1
-      ),
-      new Division__c(
-        Program__c = program.Id,
-        Name = 'Seniors',
-        SortOrder__c = 2
-      )
+      LIMIT 1
+    ];
+  }
+
+  /** Setup's camp, as bigCamp returned it (what the tests use of it: Main and Week 1). */
+  private static Map<String, Id> sharedCamp() {
+    Map<String, Id> ids = new Map<String, Id>{
+      'Main' => [
+        SELECT Id
+        FROM Program__c
+        WHERE Name = 'Main' AND Season__r.Camp__r.Name = 'Camp Cedar'
+        WITH SYSTEM_MODE
+      ][0]
+      .Id,
+      'Week 1' => [
+        SELECT Id
+        FROM Week__c
+        WHERE Name = 'Week 1' AND Season__r.Camp__r.Name = 'Camp Cedar'
+        WITH SYSTEM_MODE
+      ][0]
+      .Id
     };
-    Database.insert(divisions, AccessLevel.SYSTEM_MODE);
-    List<Group__c> groups = new List<Group__c>();
-    for (Integer g = 0; g < 8; g++) {
-      groups.add(
-        new Group__c(
-          Division__c = divisions[g / 4].Id,
-          // ShoreshTestData.placesAndActivities sets Swim up for Group A.
-          Name = g == 0 ? 'Group A' : 'Bunk ' + (g + 1),
-          Availability__c = 'AllDay',
-          SortOrder__c = g
-        )
-      );
-    }
-    Database.insert(groups, AccessLevel.SYSTEM_MODE);
-    Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
-    ids.put('Camp', camp.Id);
-    ids.put('Season', season.Id);
-    ids.put('Main', program.Id);
-    ids.put('Week 1', week.Id);
-    Database.insert(
-      new FixedActivity__c(
-        Program__c = program.Id,
-        Name = 'Flagpole',
-        TimeBlock__c = blocks[0].Id,
-        Length__c = 1
-      ),
-      AccessLevel.SYSTEM_MODE
-    );
-    if (withOtherPrograms) {
-      addOtherPrograms(ids, week);
-    }
-    SetTimeGuard.checkPending();
     GeneratedTestData.ids = ids;
     return ids;
   }
 
-  // Two other programs, so a query run once per program would show.
-  private static void addOtherPrograms(Map<String, Id> ids, Week__c week) {
-    addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+  private static Map<String, Id> bigCamp() {
+    SetTimeGuard.defer();
+    try {
+      Camp__c camp = ShoreshTestData.camp('Camp Cedar');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+      Program__c program = ShoreshTestData.program(season.Id, 'Main');
+      Database.update(
+        new Program__c(Id = program.Id, Friday__c = true),
+        AccessLevel.SYSTEM_MODE
+      );
+      List<TimeBlock__c> blocks = new List<TimeBlock__c>();
+      for (Integer hour = 8; hour < 16; hour++) {
+        blocks.add(
+          new TimeBlock__c(
+            Program__c = program.Id,
+            Name = 'Period ' + (hour - 7),
+            StartTime__c = Time.newInstance(hour, 0, 0, 0),
+            EndTime__c = Time.newInstance(hour, 45, 0, 0),
+            PartOfDay__c = hour < 12 ? 'Morning' : 'Afternoon',
+            SortOrder__c = hour
+          )
+        );
+      }
+      Database.insert(blocks, AccessLevel.SYSTEM_MODE);
+      List<Division__c> divisions = new List<Division__c>{
+        new Division__c(
+          Program__c = program.Id,
+          Name = 'Juniors',
+          SortOrder__c = 1
+        ),
+        new Division__c(
+          Program__c = program.Id,
+          Name = 'Seniors',
+          SortOrder__c = 2
+        )
+      };
+      Database.insert(divisions, AccessLevel.SYSTEM_MODE);
+      List<Group__c> groups = new List<Group__c>();
+      for (Integer g = 0; g < 8; g++) {
+        groups.add(
+          new Group__c(
+            Division__c = divisions[g / 4].Id,
+            Name = 'Bunk ' + (g + 1),
+            Availability__c = 'AllDay',
+            SortOrder__c = g
+          )
+        );
+      }
+      // ShoreshTestData.placesAndActivities sets Swim up for Group A.
+      groups[0].Name = 'Group A';
+      Database.insert(groups, AccessLevel.SYSTEM_MODE);
+      Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
+      ids.put('Camp', camp.Id);
+      ids.put('Season', season.Id);
+      ids.put('Main', program.Id);
+      ids.put('Week 1', week.Id);
+      Database.insert(
+        new FixedActivity__c(
+          Program__c = program.Id,
+          Name = 'Flagpole',
+          TimeBlock__c = blocks[0].Id,
+          Length__c = 1
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      if (withOtherPrograms) {
+        // Two other programs, so a query run once per program would show.
+        addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+      }
+      SetTimeGuard.checkPending();
+      GeneratedTestData.ids = ids;
+      return ids;
+    } finally {
+      SetTimeGuard.resume();
+    }
   }
 
   /** The Hall, and the named other programs of the season (ids' Season). */
@@ -332,8 +372,8 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void openingAWeekUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    System.runAs(scheduler()) {
+      sharedCamp();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Integer used = Limits.getQueries();
@@ -352,8 +392,8 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void theFirstSaveUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    System.runAs(scheduler()) {
+      sharedCamp();
       GeneratedWeek.Save save = built(
         GeneratedTestData.inputs(),
         GeneratedSaves.GENERATE
@@ -375,9 +415,9 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void aRebuildUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    System.runAs(scheduler()) {
       withOtherPrograms = false;
-      bigCamp();
+      sharedCamp();
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
@@ -402,8 +442,8 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void aLockAndAHandEditUseFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    System.runAs(scheduler()) {
+      sharedCamp();
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
@@ -472,7 +512,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void threeOtherProgramsUseNoMoreQueriesThanOne() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    System.runAs(scheduler()) {
       SetTimeGuard.defer();
       Map<String, Id> one;
       Map<String, Id> three;
@@ -513,8 +553,8 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void openingManualBuildUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = bigCamp();
+    System.runAs(scheduler()) {
+      Map<String, Id> ids = sharedCamp();
       ManualBuildController.startBlankWeek(ids.get('Main'), ids.get('Week 1'));
       Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.getDraft(
