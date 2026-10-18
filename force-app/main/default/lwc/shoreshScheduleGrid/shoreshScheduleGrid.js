@@ -27,6 +27,10 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * block shorter or longer ("cellresize"). A click is "cellclick". Cells marked draggable can be
  * dragged ("celldragstart"), a resizable one by its bottom handle ("resizestart"), and anything
  * dropped on a cell is "celldrop". The page decides what may change.
+ *
+ * A cell with `dot` (its words) shows the bronze "needs a look" dot (c-shoresh-dot): the words
+ * on hover, tap, or while the cell has keyboard focus, and always in assistive text. The grid
+ * doesn't know why; the page says.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
@@ -35,6 +39,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
   @api editable = false;
 
   activeKey;
+  // The cell that has keyboard focus now, if any: its dot shows its words.
+  focusedKey = null;
 
   /** Moves keyboard focus to a cell (after an editor closes, say). */
   @api
@@ -109,6 +115,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
           draggable: this.editable && cell.movable ? "true" : null,
           ariaSelected: this.editable && cell.selected ? "true" : null,
           handle: this.editable && cell.movable,
+          dotOpen: Boolean(cell.dot) && cell.key === this.focusedKey,
           colIndex: cell.column + 2,
           rowSpan: cell.length || 1
         }))
@@ -158,6 +165,11 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (this.editable && key) {
       this.activeKey = key;
     }
+    this.focusedKey = key || null;
+  }
+
+  handleFocusOut() {
+    this.focusedKey = null;
   }
 
   handleKeyDown(event) {

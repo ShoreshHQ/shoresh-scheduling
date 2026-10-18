@@ -62,43 +62,8 @@ public with sharing class SeasonSetupReader {
       WITH USER_MODE
       ORDER BY SortOrder__c NULLS LAST, Name, Id
     ];
-    result.locations = [
-      SELECT Id, Name, GroupsThatFit__c, LocationType__c, Notes__c, SortOrder__c
-      FROM Location__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY
-        LocationType__r.SortOrder__c NULLS LAST,
-        LocationType__r.Name NULLS LAST,
-        SortOrder__c NULLS LAST,
-        Name,
-        Id
-    ];
-    result.activities = [
-      SELECT
-        Id,
-        Name,
-        Location__c,
-        Length__c,
-        TimesPerWeekMin__c,
-        TimesPerWeekMax__c,
-        NoWeeklyMax__c,
-        Priority__c,
-        Outdoor__c,
-        RainPlan__c,
-        GroupsAtOnce__c,
-        NoGroupLimit__c,
-        SameDivisionOnly__c,
-        EarlyWeekCount__c,
-        EarlyWeekByDay__c,
-        Notes__c,
-        SortOrder__c,
-        (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
-      FROM Activity__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ];
+    result.locations = locationsOf(seasonId);
+    result.activities = activitiesOf(seasonId);
     result.weekExceptions = [
       SELECT
         Id,
@@ -238,6 +203,55 @@ public with sharing class SeasonSetupReader {
     ]) {
       programs.get(item.Program__c).recurringActivities.add(item);
     }
+  }
+
+  /** The season's locations, as every screen gets them (Manual Build's checks read them too). */
+  public static List<Location__c> locationsOf(Id seasonId) {
+    return [
+      SELECT Id, Name, GroupsThatFit__c, LocationType__c, Notes__c, SortOrder__c
+      FROM Location__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY
+        LocationType__r.SortOrder__c NULLS LAST,
+        LocationType__r.Name NULLS LAST,
+        SortOrder__c NULLS LAST,
+        Name,
+        Id
+    ];
+  }
+
+  /**
+   * The season's activities, with who can do each, as every screen gets them. Manual Build's
+   * draft carries them too, and "Add <name>" sends back the one it added, so its checks read the
+   * same records as the setup screen, as fresh as the draft.
+   */
+  public static List<Activity__c> activitiesOf(Id seasonId) {
+    return [
+      SELECT
+        Id,
+        Name,
+        Location__c,
+        Length__c,
+        TimesPerWeekMin__c,
+        TimesPerWeekMax__c,
+        NoWeeklyMax__c,
+        Priority__c,
+        Outdoor__c,
+        RainPlan__c,
+        GroupsAtOnce__c,
+        NoGroupLimit__c,
+        SameDivisionOnly__c,
+        EarlyWeekCount__c,
+        EarlyWeekByDay__c,
+        Notes__c,
+        SortOrder__c,
+        (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
+      FROM Activity__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
+    ];
   }
 
   public class SeasonSetup {

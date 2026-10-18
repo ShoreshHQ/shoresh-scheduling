@@ -13,7 +13,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    name into a slot (and adding a new activity that way), the keyboard grid.
 2. Activity list on the left, drag and drop (place, move, swap, remove), multi-block shortening,
    Undo/Redo (50 steps per visit).
-3. Counters (Placed, Still needed, Spread across the week, Overlapping) and the bronze dots (over
+3. Counters (Filled, Still needed, Spread across the week, Overlapping) and the bronze dots (over
    its weekly limit, not set up for a bunk, twice in a day).
 4. Clear day, Clear week, Copy day to…; Versions on this screen; Save version; any version opens
    in Manual Build.
@@ -333,9 +333,123 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - Activity View is unchanged: it lists the bunks doing an activity in each block, so a
       bunk's away blocks have nothing to show there.
 
+23. **Part 3: checks and counters** (Greg's decisions 2 to 4; desktop `computeFindings`,
+    `computeOverlaps.js`; coordinator's answers 2026-10-17). Worked out live from the grid by
+    `checkWeek` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
+    clears as soon as its cause moves. A day that can't be read is left out. **One source:** the
+    records the checks read all come with the draft (`DraftView`): the season's activities and
+    places (`activityRecords`, `locationRecords`, read by `SeasonSetupReader.activitiesOf` and
+    `locationsOf`, the setup screen's own queries), the program's groups with their divisions
+    (`groupRecords`) and where its fixed and recurring activities are
+    (`fixedActivityRecords`, `recurringActivityRecords`). So they are read again whenever the
+    week is (window focus, reload), and anything changed elsewhere shows at once; the activity
+    list's words come from the same draft. An activity added from a slot ("Add <name>") brings
+    its record back with it (`ActivityOption.record`) and joins the draft's. Field names come
+    from `c/shoreshSchema`.
+    - **One rules module with Generated Schedule.** Written here, then moved into
+      `c/shoreshEngine` (#38, ADR 0010 §10) as the exported `checkWeek` (coordinator's call).
+      Manual Build imports `checkWeek`, its readers and `reasonFor` from there and keeps no copy
+      of any rule or its words (the activity list's and the typing box's words come from
+      `reasonFor` too). The rule order is the order the engine's rules give way.
+    - **The activity list counts as the desktop does** (`counts.js`, `ActivityPalette.jsx`;
+      Greg's round 2 decision 8, "palette counts work as on the desktop"): what is placed comes
+      from checkWeek's `placements`; which group a chip sits in and its bronze dot follow the
+      numbers its own words show ("4 placed (needs 4–6)"). In Daily View that is the camp's
+      total against the targets times the bunks it is set up for, in Group View the one bunk
+      against the activity's own targets whoever it is set up for (desktop `scaleFor`; the
+      grid's dot says "not set up"), so the chip never says one thing and sits or marks
+      another. Exactly at the maximum is not over it.
+    - **The bronze dot** (`c-shoresh-dot`, no visible words) goes on a placement, never on a
+      fixed or recurring activity or a not-set-up item. One dot per placement, its reasons
+      joined by " · ", in this order: _Over its weekly limit_ (only on the sessions past the
+      limit, the latest in the week: by date, then the first block's start time, then its place
+      in the day's blocks, then block Id; Greg's decision 12, 2026-10-17);
+      _Twice in a day_ (on both); _Not set up for Bunk 2_; _Over its limit of 2 bunks at once_;
+      _Shares Pool with another division_ (an activity for one division at a time, sharing its
+      place with another division; or _With another division at the same time_ for one with no
+      place); _More bunks at Pool than fit_ (fixed and recurring activities count toward the
+      place); _Already busy then_ (a bunk in two time blocks whose times overlap; blocks that
+      only touch don't). A placement running several blocks counts once toward weekly and daily
+      counts, and in each block it covers for at-once, division and place checks.
+    - **The grid** (`c-shoresh-schedule-grid`) takes a `dot` (its words) on any cell and knows
+      nothing about why, so Generated Schedule reuses it. The words show on hover and while the
+      cell has keyboard focus (a tap on the cell gives it focus), and are in the cell's
+      assistive text. The dot is `in-cell`: it never takes a tap meant for the cell; its words
+      open toward the cell from its right edge and wrap, so the grid's edge never cuts them
+      off; and Escape reaches the cell only while the cell's focus brought the words up (one
+      press hides them and puts back what was picked up). Shown by hovering, Escape stops at
+      the words, as item 21 says.
+    - **Screen readers hear what an edit did to the dots**, once, with its save: the first dot
+      it brought (_Placed Soccer · Bunk 2 · Monday · Period 2. Soccer · Bunk 1: Over its limit
+      of 1 Bunk at once, and 1 more_), or else the first it took away (_Soccer · Bunk 1: fine
+      now_). A sighted director sees the dot appear (WCAG 4.1.3). The desktop says nothing
+      here (only its drag steps are announced); this is added for screen-reader users
+      (coordinator, 2026-10-17).
+    - **A quiet pulse** (desktop `useFlagChangeAck`, `flag-changed-ack`): when a director's own
+      edit changes the dots of up to three placements, each of those cells shows a neutral grey
+      outline that fades once (220ms), never bronze or red, even for a new problem; a second
+      change to the same cell pulses again. Undo, Redo, a reload, or switching view, day or
+      bunk never pulse; with reduced motion there is none.
+    - **One component for both schedules:** the counters and the list below are
+      `c-shoresh-week-checks` (coordinator, 2026-10-17), so Generated Schedule (G3) shows the same
+      ones. It takes checkWeek's result as it comes (checkWeek says, in `hasCoverageTargets` and
+      `hasSpreadTargets`, whether any activity has a weekly minimum or an early-week goal), a
+      `reset-key` (a week shown fresh closes the list and brings accepted lines back) and a
+      `route` ("manual"; the generated route's lighting of cells is to come). It raises `locate`
+      with the clicked line (the page takes the director there) and `accept`.
+    - **Counters** under the toolbar, as the desktop's manual route shows them (ScheduleScreen.jsx,
+      StatBadge; the desktop is the spec, coordinator 2026-10-17). Each is a tile, its number
+      above its words. **Filled** _34 of 120_ (cells filled, of the cells to fill: at camp, not
+      fixed or recurring; neutral). The desktop says "Placed"; it is **Filled** here by the
+      coordinator's call under Greg's one-word-per-idea rule, because the activity list's
+      "2 placed" counts placements, and "Placed" would mean cells in one place and placements
+      in the other (coordinator, 2026-10-17). **Overlapping** (always shown): one per cell
+      that overlaps, a bunk in a time block where its placement breaks groups at once, one
+      division at a time, place capacity, or is booked at an overlapping time, as the desktop's
+      `computeOverlaps` flags slots (checkWeek's `overlapping`). **Still needed** (activity and
+      bunk pairs short of the weekly minimum, shown only when some activity has one, desktop
+      `hasCoverageTargets`) and **Spread across the week** (short of the early-week goal, by
+      that day inclusive, only when the week has a day by then; shown only when some activity
+      has one, `hasSpreadTargets`). Each number is the number of its lines (Greg, 2026-10-17:
+      like the desktop's badges). A zero shows grey and opens nothing, as on the desktop, which
+      here wins over the design guide's "leave a zero out" (the desktop is the spec); it stays
+      in the tab order (`aria-disabled`), so a counter that drops to zero while it has focus
+      keeps it. As on StatBadge, the words are small and quiet under the number, and a tile
+      that opens the list has a chevron; the tiles have no "open" look (the desktop's manual
+      route has none). The one difference: above zero the tile has a bronze border and the
+      number stays in the text colour, where the desktop colours the number (the design guide
+      keeps bronze off text; coordinator, 2026-10-17).
+    - **One list, "Still to place"** (the desktop's findings rail on the manual route): any
+      counter above zero opens it under the counters, with every overlap first, then still
+      needed, then spread, in the engine's words (_Bunk 1 · Monday · Period 2: Over its limit
+      of 3 bunks at once_, _Swim · Bunk 3: 2 still needed_, _… by Wednesday_). Still needed and
+      Spread list group by group, then activity by SortOrder and Id, as the engine does. As
+      FindingsRail, it is a panel over the grid (at most 360 by 400 pixels, scrolling inside),
+      each line with a bar on its left (bronze; forest for spread) and **Close** at the bottom.
+      A counter again, or **Close**, closes it; with nothing left to list it stays open and says
+      how many cells are open (_5 open_, or _All placed_; desktop `railEmptyText`). After
+      **Close**, focus goes back to the counter that opened it; after **Accept**, to the next
+      line (or Close). The grid isn't highlighted by the list (desktop's manual route).
+    - **A line takes you there** (desktop `locateFindingsRow`): clicking it (or Enter or Space on
+      it) shows that bunk's week in Group View and closes the list; an overlapping cell's line
+      also puts keyboard focus on that cell, so its dot's words show and a screen reader reads
+      them.
+    - **Accept** (the desktop's word, `FindingsRail`): on a still needed or spread line only,
+      it hides the line for this visit and the counter drops by one. The line's key carries its
+      numbers (desktop `findingDismissKey`), so when they change it comes back. Overlaps have
+      nothing to accept: they go when the clash is moved. Accepted lines are forgotten when the
+      week, the program or the page changes; nothing is stored.
+    - **Waits for part 6:** an activity, place or bunk closed that week (a week exception).
+    - **Checked by** `checkWeek`'s own tests in `c/shoreshEngine` (scenario tests and a seeded
+      property test against an independent placement-by-placement oracle: every dot's words,
+      both lists, the overlap count's lines, Filled), and screen tests here for the counters, the
+      list, Accept, a line's jump, the announcement, the dots and their focus, decision 12
+      (only the extra session is dotted), the program's divisions reaching the checks, and the
+      checks following the week when it is read again.
+
 ## Choices that are hard to undo after release
 
-None in parts 1 and 2: no new objects, fields, or picklist values. The draft uses ADR 0005's
+None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
 the screen and the server.
 
