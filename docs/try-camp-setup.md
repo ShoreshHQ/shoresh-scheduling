@@ -670,15 +670,16 @@ This uses the made-up camp's Week 1 from sections 19 to 21.
 
 1. Open **Manual Build**, Week 1, Daily View, Monday. Next to **Undo** and **Redo** are **Clear
    day**, **Copy day to…** and **Clear week**.
-2. **Copy day to…** → **Tuesday**. Tuesday now has Monday's activities, bunk by bunk; Tuesday's
-   fixed and recurring activities (Lunch, Morning meeting, Library time) are where they were. The
-   line under the toolbar says _Copied Monday to Tuesday · Undo_. If anything couldn't go (Bunk 6
-   isn't at camp in the afternoon, say), it is listed there: _… left out: Soccer · Bunk 6 ·
-   Tuesday: not at camp then._ Nothing asks you to confirm.
+2. **Copy day to…** → **Tuesday**. Tuesday now has Monday's activities, bunk by bunk, and Lunch is
+   where it was (Tuesday's own fixed and recurring activities always stay). The line under the
+   toolbar says _Copied Monday to Tuesday · Undo_. Anything that couldn't go would be listed
+   there with why. Nothing asks you to confirm. With three or more days, the menu also has **All
+   other days**.
 3. Click **Undo** on that line: Tuesday is back as it was, in one step.
 4. **Clear day** (on Monday): every bunk's activities on Monday go; fixed and recurring ones stay.
    _Cleared Monday · Undo_. Undo puts them back. Click **Clear day** on an empty day: _Nothing to
-   clear on Monday._
+   clear on Monday._ Anything else that stays is named on that line with why (_… (deleted
+   since)_, _… (not set up yet)_).
 5. **Group View**, Bunk 3: **Clear day** is a menu of the week's days. Pick **Wednesday**: only
    Bunk 3's Wednesday is cleared. _Cleared Bunk 3 · Wednesday · Undo_.
 6. **Clear week**: every activity of every bunk, every day, goes. _Cleared Week 1 · Undo_. Undo

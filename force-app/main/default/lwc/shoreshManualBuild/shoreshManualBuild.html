@@ -69,14 +69,16 @@
         <template lwc:if={showTools}>
           <div class="tools" data-id="tools">
             <template lwc:if={isDaily}>
-              <button
-                type="button"
-                class="slds-button slds-button_neutral"
-                data-id="clear-day"
-                onclick={handleClearDay}
-              >
-                Clear day
-              </button>
+              <template lwc:if={dayReadable}>
+                <button
+                  type="button"
+                  class="slds-button slds-button_neutral"
+                  data-id="clear-day"
+                  onclick={handleClearDay}
+                >
+                  Clear day
+                </button>
+              </template>
               <template lwc:if={canCopyDay}>
                 <lightning-button-menu
                   label="Copy day to…"
@@ -138,6 +140,7 @@
           type="button"
           class="slds-button tool-undo"
           data-id="tool-undo"
+          aria-label={toolUndoLabel}
           onclick={handleToolUndo}
         >
           Undo

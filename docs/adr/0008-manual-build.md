@@ -451,25 +451,40 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     desktop has none of these, so his decisions and the coordinator's answers of 2026-10-17 are
     the spec). Worked out as runs (`tools.js`) and saved like any other edit, slot by slot with
     the same "keep theirs or use yours" check, each one Undo step.
-    - **Only activities change.** Fixed and recurring activities stay where setup put them; a
-      cell where a bunk isn't at camp is left alone; things not set up yet (an imported
-      elective, say) stay, since only activities can be placed back by Undo.
+    - **Only what Undo can put back changes.** Fixed and recurring activities stay where setup
+      put them. Anything else that stays is named, with why: an activity deleted since, one
+      where its bunk is no longer at camp, or something not set up yet (an imported elective).
     - **Clear day**: in Daily View the day shown, every bunk; in Group View a menu of the
       week's days, clearing that bunk's day. **Clear week**: every day, every bunk, in either
       view. No confirm (decision 6): the line under the toolbar says _Cleared Monday · Undo_
-      (_Cleared Bunk 3 · Tuesday_, _Cleared Week 1_), and Undo there (or the toolbar's, or
-      Ctrl+Z) puts it all back. With nothing to clear it says _Nothing to clear on Monday._
-    - **Copy day to…** (Daily View): a menu of the week's other days, and _Every other day_
-      (decision 7: within the same week only). On each target day, each bunk's activities are
-      replaced by the ones it has on the day shown, at the same time blocks (matched by Id). A
-      copied activity that would land on a fixed or recurring activity, where the bunk isn't
-      at camp, on a block the target day lacks, or for a bunk not on that day, is left out
-      whole and listed: _Copied Monday to Tuesday. 1 left out: Soccer · Bunk 2 · Tuesday: not
-      at camp then. · Undo_ (five named at most, then _and N more_). No confirm.
-    - Not in Activity View (read-only there, as on the desktop).
-    - **Checked by** `tools.test.js` (what each tool changes and leaves out) and
-      `dayTools.test.js` (the screen: the runs sent, the line and its Undo, nothing to clear,
-      Group View's day, Clear week, the left-out list).
+      (_Cleared Bunk 3 · Tuesday_, _Cleared Week 1_; _2 stayed: Archery · Bunk 1 · Monday
+      (deleted since); …_ when anything stays), and Undo there (named _Undo Cleared Monday_ for
+      screen readers), the toolbar's, or Ctrl+Z puts it all back. With nothing to clear:
+      _Nothing to clear on Monday._, or _Nothing cleared on Monday. 2 stayed: …_
+    - **Copy day to…** (Daily View): a menu of the week's other days, and _All other days_
+      with three or more (decision 7: within the same week only). On each target day, each
+      bunk's activities are replaced by the ones it has on the day shown, at the same time
+      blocks (matched by Id). Something already the same there needs nothing; anything else that
+      can't go is left out whole and listed: _Copied Monday to Tuesday. 1 left out: Soccer · Bunk
+      2 · Tuesday: not at camp then. · Undo_ (also _Lunch is set up there_, _Tuesday has no
+      Period 5_ naming the block it lacks, _not on Tuesday_, _deleted since_, _not set up yet_;
+      five named at most, then _and N more_). With nothing copied: _Nothing copied. 1 left out:
+      …_ or _Tuesday already matches Monday._ No confirm.
+    - **Someone else's change in the way** (coordinator, 2026-10-17, for Greg): a tool isn't
+      dropped for one cell. On **Keep theirs**, or when the saved week has changed under it (a
+      fixed activity now in a cell it clears, say), it is worked out again on the saved week,
+      leaving every cell someone else changed since the director looked as it is now, and the
+      rest is made as the same Undo step: _Cleared Monday, except 1 cell someone else changed ·
+      Undo_. **Use yours** makes all of it, as for any edit. While the question is open the line
+      isn't shown, and edits wait.
+    - Not on a day that can't be read (only Clear week shows there, and leaves that day), and
+      not in Activity View (read-only there, as on the desktop).
+    - **Checked by** `tools.test.js` (what each tool changes, leaves, and lists, including
+      several-block placements against fixed activities and away times, blocks matched by Id in
+      another order or with one inserted, and cells someone else changed) and `dayTools.test.js`
+      (the screen: the runs sent, the line and its Undo, Keep theirs and Use yours on a clear, a
+      fixed activity appearing, the menu, what stayed and the five-name cap, nothing copied,
+      a day that can't be read).
 
 ## Choices that are hard to undo after release
 

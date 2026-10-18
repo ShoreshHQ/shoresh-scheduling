@@ -3,7 +3,7 @@ import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
-import { day, draft } from "./data/draftFixture";
+import { day, draft, schedule } from "./data/draftFixture";
 
 // Clear day, Clear week and Copy day to… on the Manual Build screen (tools.js works them out;
 // tools.test.js covers the rules). Synthetic camp: draftFixture (Bunk 2 isn't at camp at Lunch).
@@ -38,6 +38,7 @@ const LABELS = [
 const FLAGPOLE = { kind: "F", id: "f1", name: "Flagpole", gone: false };
 const SWIM = { kind: "A", id: "a1", name: "Swim", gone: false };
 const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
+const ELECTIVE = { kind: "E", id: null, name: "Chugim", gone: false };
 const ITEMS = [FLAGPOLE, SWIM, SOCCER];
 
 const flush = () =>
@@ -203,6 +204,150 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(saveSlots).not.toHaveBeenCalled();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Tuesday already matches Monday."
+    );
+  });
+
+  /** The server's week after someone else's change: Monday's and Tuesday's rows. */
+  const theirWeek = (monday, tuesday, items = ITEMS) => {
+    const week = schedule(items, monday);
+    week.days[1] = day("2026-06-30", items, tuesday);
+    return week;
+  };
+
+  it("Keep theirs on a Clear keeps their cell and clears the rest, as one Undo step", async () => {
+    const element = await render(start(["1,2,3", "1,3,"], ["1,,", "1,,"]));
+    // Someone else put Swim in Bunk 2's Period 2 meanwhile.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: theirWeek(["1,2,3", "1,2,"], ["1,,", "1,,"])
+    });
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+    // Not claimed while the question is open.
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: theirWeek(["1,,", "1,2,"], ["1,,", "1,,"])
+    });
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(sentRuns(1).map((run) => [run.groupId, run.after])).toEqual([
+      ["g1", ["", ""]]
+    ]);
+    expect(toolNotice(element)).toBe(
+      "Cleared Monday, except 1 cell someone else changed · Undo"
+    );
+    // One Undo step puts Bunk 1 back, and leaves their Swim.
+    q(element, '[data-id="tool-undo"]').click();
+    await flush();
+    expect(sentRuns(2).map((run) => [run.groupId, run.after])).toEqual([
+      ["g1", ["A:a1", "A:a3"]]
+    ]);
+  });
+
+  it("Use yours on a Clear clears their cell too", async () => {
+    const element = await render(start(["1,2,3", "1,3,"], ["1,,", "1,,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: theirWeek(["1,2,3", "1,2,"], ["1,,", "1,,"])
+    });
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    q(element, '[data-id="use-yours"]').click();
+    await flush();
+    expect(
+      sentRuns(1)
+        .map((run) => run.groupId)
+        .sort()
+    ).toEqual(["g1", "g2"]);
+  });
+
+  it("a fixed activity now in a cleared cell leaves that cell, and the rest is cleared", async () => {
+    const element = await render(start(["1,2,3", "1,3,"], ["1,,", "1,,"]));
+    // Setup now puts Flagpole in Bunk 1's Period 2 as well.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: theirWeek(["1,1,3", "1,3,"], ["1,,", "1,,"])
+    });
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(
+      sentRuns(1).map((run) => [run.groupId, run.firstBlockId, run.after])
+    ).toEqual([
+      ["g1", "t3", [""]],
+      ["g2", "t2", [""]]
+    ]);
+    expect(toolNotice(element)).toBe(
+      "Cleared Monday, except 1 cell someone else changed · Undo"
+    );
+  });
+
+  it("Copy day to… offers the other days, and All other days when there are two or more", async () => {
+    const first = start(["1,2,", "1,,"], ["1,,", "1,,"]);
+    first.schedule.days.push(day("2026-07-01", ITEMS, ["1,,", "1,,"]));
+    const element = await render(first);
+    const items = [
+      ...q(element, '[data-id="copy-day"]').querySelectorAll(
+        "lightning-menu-item"
+      )
+    ].map((i) => i.label);
+    expect(items).toEqual(["Tuesday", "Wednesday", "All other days"]);
+    await choose(element, "copy-day", "all");
+    expect(new Set(sentRuns(0).map((run) => run.day))).toEqual(
+      new Set(["2026-06-30", "2026-07-01"])
+    );
+    expect(toolNotice(element)).toBe("Copied Monday to all other days · Undo");
+  });
+
+  it("a copy that changes nothing but leaves things out says Nothing copied first", async () => {
+    // Bunk 2's Soccer at Lunch can't go: Bunk 2 isn't at camp at Lunch.
+    const element = await render(start(["1,,", "1,,3"], ["1,,", "1,,"]));
+    await choose(element, "copy-day", "1");
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Nothing copied. 1 left out: Soccer · Bunk 2 · Tuesday: not at camp then."
+    );
+  });
+
+  it("Clear says what stayed and why, five named at most", async () => {
+    const withElective = [...ITEMS, ELECTIVE];
+    const first = draft(withElective, ["4,4,4", "4,4,4"]);
+    first.schedule.days[1] = day("2026-06-30", withElective, [
+      "4,4,4",
+      "4,4,4"
+    ]);
+    const element = await render(first);
+    q(element, '[data-id="clear-week"]').click();
+    await flush();
+    const text = q(element, '[data-id="notice"]').textContent;
+    expect(
+      text.startsWith(
+        "Nothing cleared in Week 1. 12 stayed: Chugim · Bunk 1 · Monday (not set up yet);"
+      )
+    ).toBe(true);
+    expect(text.endsWith("; and 7 more.")).toBe(true);
+  });
+
+  it("no Clear day or Copy day on a day that can't be read", async () => {
+    const first = start(["1,2,", "1,,"], ["1,,", "1,,"]);
+    first.schedule.days[0] = {
+      ...first.schedule.days[0],
+      problem: "unreadable"
+    };
+    const element = await render(first);
+    expect(q(element, '[data-id="clear-day"]')).toBeNull();
+    expect(q(element, '[data-id="copy-day"]')).toBeNull();
+    expect(q(element, '[data-id="clear-week"]')).not.toBeNull();
+  });
+
+  it("the line's Undo is named for what it takes back", async () => {
+    const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="tool-undo"]').getAttribute("aria-label")).toBe(
+      "Undo Cleared Monday"
     );
   });
 });
