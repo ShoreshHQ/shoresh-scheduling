@@ -50,7 +50,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     groups that fit and groups at once
  *   terms: the camp's words (c/shoreshTerms), for the reasons
  *
- * Returns { ok: true, days, flags, stillNeeded, spread, overlapping, cells, openCells } or
+ * Returns { ok: true, days, flags, stillNeeded, spread, overlapping, cells, openCells, ruleChecks }
+ * or
  * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
  *   flags: checkWeek's dots on the finished week, one entry per cell of each dotted placement:
@@ -58,6 +59,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     bend a rule for always has one; so does anything kept that breaks a rule
  *   stillNeeded, spread, overlapping, cells: checkWeek's lines and counts, the same words as
  *     Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
+ *   ruleChecks: how many times a placement was checked against the rules, over every build: the
+ *     work done, the same on any machine
  *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open: the group is
  *     busy at an overlapping time ("Already busy then"), or no activity's length fits the gap
  */
@@ -123,10 +126,12 @@ export function generateWeek(input) {
     };
   };
   let chosen = build(model);
+  let ruleChecks = chosen.state.ruleChecks;
   if (chosen.state.leftForNeverBlank) {
     // The minimum repair left a cell for never-blank to fill. Keep that week only if it is no
     // worse: it meets more minimums, or as many with no more bends (ADR 0010).
     const strict = build({ ...model, strictRepair: true });
+    ruleChecks += strict.state.ruleChecks;
     if (worse(chosen.checked, strict.checked)) {
       chosen = strict;
     }
@@ -140,6 +145,7 @@ export function generateWeek(input) {
     spread: checked.spread,
     overlapping: checked.overlapping,
     cells: checked.cells,
+    ruleChecks,
     openCells: state.openCells.map(({ key, why }) => {
       const [groupId, d, blockId] = state.splitKey(key);
       return {

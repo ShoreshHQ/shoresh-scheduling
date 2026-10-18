@@ -194,7 +194,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
     order cells use them; items no cell uses are dropped); `flags`, checkWeek's dots on the
     finished week, one entry per cell; checkWeek's `stillNeeded` and `spread` lines ("Swim ·
     Bunk 3: 1 still needed by Wednesday"), `overlapping` and `cells` (filled of to fill), in the
-    same words and order as Manual Build; and `openCells`. Flags and reasons are not stored: G3
+    same words and order as Manual Build; `openCells`; and `ruleChecks`, the build's work. Flags and reasons are not stored: G3
     works them out again on load with `checkWeek` (coordinator's call).
 12. **Code layout** (`force-app/main/default/lwc/shoreshEngine`): `shoreshEngine.js` (entry
     point, output), `setup.js` (reads inputs, ordering), `week.js` (the builder), `random.js`
@@ -227,10 +227,13 @@ cells) and 0009 (names through `c/shoreshSchema`).
   (`__tests__/data/repairCamps.js`: the coordinator's reviewer's camp 166, and camp 93 from the
   probe).
 - Performance (`performance.test.js`): 12 groups × 5 days × 8 blocks, a week that fits and one
-  that can't, each well under 2 seconds in Jest (about 20 ms and 670 ms on a laptop; a week that
-  can't fit is often built twice, with and without the minimum repair's leniency). For G3: the
-  coordinator measured a 40 × 5 × 12 week that can't fit at 4–5 seconds, so the screen may need
-  to run the build in pieces; nothing in G1 stops that.
+  that can't. Each is bounded by its work, the rule checks the build makes (`ruleChecks` in the
+  result: the same on any machine; about 20,000 and 1,070,000 today, with headroom), and only
+  loosely by wall time, since CI runners are slower: the week that fits takes about 20 ms on a
+  laptop, the one that can't about 0.7 s on a laptop and 1.6 s on CI (it is often built twice,
+  with and without the minimum repair's leniency). For G3: the coordinator measured a
+  40 × 5 × 12 week that can't fit at 4–5 seconds before that doubling, so the screen should run
+  the build in pieces or off the main thread; `ruleChecks` can drive a progress display.
 - Mutation check of the key guards (review practice): deliberate breakages of the rules, kept
   cells, never-blank, the overlap choice, the smallest overage, the repair limit, the seed, input
   ordering and checkWeek's rules; every one makes a test fail (taking out the repair rollback

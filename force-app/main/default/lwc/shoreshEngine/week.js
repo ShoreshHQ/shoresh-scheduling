@@ -94,6 +94,9 @@ export function scheduleWeek(model) {
   // whether any chain it kept did so.
   const lenientRepair = !model.strictRepair;
   let leftForNeverBlank = false;
+  // How many times a placement was checked against the rules: the build's work, the same on any
+  // machine (the performance test bounds it; a screen can use it to show progress).
+  let ruleChecks = 0;
   const actById = new Map(acts.map((a) => [a.id, a]));
   const cellKey = (g, d, b) => `${g}|${d}|${b}`;
   const keyOf = (s) => cellKey(s.groupId, s.dayIndex, s.blockId);
@@ -429,6 +432,7 @@ export function scheduleWeek(model) {
    * at all (LENGTH or OVERLAP), else every rule it would bend ([] when none).
    */
   function check(act, g, d, b, all) {
+    ruleChecks++;
     const span = act.span;
     const found = [];
     const note = (code) => {
@@ -1355,6 +1359,7 @@ export function scheduleWeek(model) {
     keptCells,
     openCells,
     leftForNeverBlank,
+    ruleChecks,
     usageCount,
     away,
     lockedOpen,

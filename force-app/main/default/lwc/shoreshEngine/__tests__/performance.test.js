@@ -1,6 +1,10 @@
 /**
- * A large camp, 12 groups x 5 days x 8 blocks (480 cells), builds well under 2 seconds, whether
- * the week fits or not (the repair passes have budgets so a week that can't fit gives up fast).
+ * A large camp, 12 groups x 5 days x 8 blocks (480 cells), whether the week fits or not (the
+ * repair passes have budgets so a week that can't fit gives up). Time depends on the machine, so
+ * each case is bounded by its work, the rule checks the build makes (the same on any machine,
+ * with headroom over what it does today), and by wall time only loosely, with room for slower
+ * CI runners: a week that fits takes about 20 ms on a laptop; one that can't fit about 0.7 s on a
+ * laptop and 1.6 s on CI, since it is often built twice (ADR 0010).
  */
 import { generateWeek } from "c/shoreshEngine";
 import { activity, block, camp, group } from "./data/camp";
@@ -70,19 +74,28 @@ function timed(spec) {
 }
 
 describe("generateWeek on a large camp", () => {
-  it("builds a week that fits well under 2 seconds, keeping every rule", () => {
+  it("builds a week that fits with little work, keeping every rule", () => {
     const spec = bigCamp(fitting);
     const { input, result, ms } = timed(spec);
-    expect(ms).toBeLessThan(1500);
+    expect(result.ruleChecks).toBeLessThan(30000); // about 20,000 today
+    expect(ms).toBeLessThan(500);
     expect(problems(spec, input, result)).toEqual([]);
   });
 
-  it("gives up on a week that can't fit well under 2 seconds, still leaving nothing blank", () => {
+  it("gives up on a week that can't fit within its work budget, still leaving nothing blank", () => {
     const spec = bigCamp(overfull);
     const { input, result, ms } = timed(spec);
-    expect(ms).toBeLessThan(1500);
+    expect(result.ruleChecks).toBeLessThan(1500000); // about 1,070,000 today
+    expect(ms).toBeLessThan(5000);
     expect(problems(spec, input, result)).toEqual([]);
     expect(result.flags.length).toBeGreaterThan(0);
     expect(result.stillNeeded.length).toBeGreaterThan(0);
+  });
+
+  it("counts the same work every time (it doesn't depend on the machine)", () => {
+    const spec = bigCamp(overfull);
+    expect(generateWeek(camp(spec)).ruleChecks).toBe(
+      generateWeek(camp(spec)).ruleChecks
+    );
   });
 });
