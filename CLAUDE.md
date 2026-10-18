@@ -44,8 +44,13 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   this file beat the skill text. Never install sf-skills plugins.
 - **Apex tests that act as a scheduler create their records inside the same `System.runAs`.** Under
   sharing the scheduler can't see a camp the test's admin made, so such tests pass locally in review
-  and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries
-  and assert it for a realistic camp.
+  and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries;
+  its test must assert the bound with `Limits.getQueries()` for a realistic camp.
+- **Read camp words, labels and describe data once per request**, never per row or in a loop (#60).
+- **Every new Apex class or trigger ships with its `-meta.xml`** (#55). `npm run check:meta` fails
+  without one, `npm run check:name-clash` fails on a variable named like a class or static under
+  another spelling (Apex ignores case; #46, #48), and `npm run check:reserved-words` on a name that
+  is an Apex reserved word (`number`, #46). All run in CI; see `docs/ci-setup.md`.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.

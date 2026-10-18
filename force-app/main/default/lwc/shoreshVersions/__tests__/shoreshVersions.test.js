@@ -69,6 +69,7 @@ describe("c-shoresh-versions", () => {
     expect(q(element, '[data-action="open"]').textContent.trim()).toBe("Open");
     // No line telling the director what to do.
     expect(q(element, ".panel-head").textContent.trim()).toBe("Versions");
+    await expect(element).toBeAccessible();
   });
 
   it("says when there are none", async () => {
@@ -97,6 +98,7 @@ describe("c-shoresh-versions", () => {
     await flush();
     const input = q(element, '[data-id="rename-input"]');
     expect(input.value).toBe("Before my changes");
+    await expect(element).toBeAccessible();
     input.value = "  Monday plan ";
     input.dispatchEvent(new CustomEvent("input"));
     await flush();
