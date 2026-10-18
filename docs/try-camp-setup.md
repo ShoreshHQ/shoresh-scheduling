@@ -640,10 +640,10 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
    Daily View, Thursday, drag Bunk 4's Soccer to Period 5. The dots go at once and
    **Overlapping** is back to a grey 0.
 6. **Accept.** Open the list again. Each still needed line has an **Accept** button. Click it on
-   one line, say _Swim · Bunk 6: 1 still needed_: the line goes and **Still needed** drops by
-   one. Clear one of Bunk 6's Swims, if it has one: the line is back, now saying 2 (its numbers
-   changed). Overlap lines have no Accept: they go when the clash is moved. Reloading the page
-   brings every line back.
+   one line: the line goes and **Still needed** drops by one. Now clear one of that bunk's
+   sessions of that activity (or, if it has none, place one and it is no longer short): with a
+   session cleared, the line is back with its new number. Overlap lines have no Accept: they go
+   when the clash is moved. Reloading the page brings every line back.
 7. **Twice in a day.** Place Art in Bunk 1's Thursday Period 5 and Period 6. Both get the dot:
    _Twice in a day_. Undo one.
 8. **Over its weekly limit.** Give Bunk 5 Gym games on Monday, Tuesday, Wednesday and Thursday
