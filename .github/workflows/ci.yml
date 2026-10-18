@@ -56,10 +56,13 @@ jobs:
     if: github.event_name == 'pull_request'
     # Every pull request deploys to the one test org (scripts/renew-test-org.sh makes it).
     # Greg's rule: exactly two orgs, the Dev Hub and this test org; CI never creates one.
-    # One run at a time, so two pull requests never deploy over each other.
+    # One run at a time, so two pull requests never deploy over each other. The others wait
+    # in line, first come first served: queue: max keeps up to 100 waiting. Without it GitHub
+    # keeps only one waiting and cancels it when another arrives (docs/ci-setup.md).
     concurrency:
       group: shared-test-org
       cancel-in-progress: false
+      queue: max
     env:
       SFDX_AUTH_URL_CI: ${{ secrets.SFDX_AUTH_URL_CI }}
     steps:
