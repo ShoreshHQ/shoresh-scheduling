@@ -93,4 +93,42 @@ public with sharing class ManualBuildController {
       throw ScreenErrors.of(e);
     }
   }
+
+  /**
+   * What "Start from another week" can start from: the program's other weeks' Manual Build, and
+   * every version of the program (this week's too), each with its week's name.
+   */
+  @AuraEnabled
+  public static List<ManualBuildViews.WeekSource> getWeekSources(
+    Id programId,
+    Id weekId
+  ) {
+    try {
+      return ManualBuildViews.weekSources(programId, weekId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
+  /** "Start from another week": the week begins as the chosen one, matched by weekday. */
+  @AuraEnabled
+  public static ManualBuildViews.DraftView startFromWeek(
+    Id programId,
+    Id weekId,
+    Id sourceId
+  ) {
+    try {
+      ManualWeekStart.Started started = ManualWeekStart.start(
+        programId,
+        weekId,
+        sourceId
+      );
+      ManualBuildViews.DraftView view = ManualBuildViews.open(started.draftId);
+      view.notPlaced = started.notPlaced;
+      view.leftOut = started.leftOut;
+      return view;
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
 }

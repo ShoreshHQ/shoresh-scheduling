@@ -29,6 +29,10 @@ public with sharing class ManualBuildViews {
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
     public List<String> notPlaced = new List<String>();
+    // Only just after Start from another week: what the other week had that couldn't go
+    // ("Swim · Bunk 3 · Monday: not at camp then").
+    @AuraEnabled
+    public List<String> leftOut = new List<String>();
   }
 
   public class ActivityOption {
@@ -52,6 +56,49 @@ public with sharing class ManualBuildViews {
     // checks know it at once, before the draft is read again.
     @AuraEnabled
     public Activity__c record;
+  }
+
+  /** A schedule a week can start from: another week's Manual Build, or a version. */
+  public class WeekSource {
+    @AuraEnabled
+    public Id id;
+    // The week's name ("Week 2").
+    @AuraEnabled
+    public String weekName;
+    // The schedule's name: "Manual Build", or the version's.
+    @AuraEnabled
+    public String name;
+    @AuraEnabled
+    public Boolean isVersion;
+    @AuraEnabled
+    public Datetime savedAt;
+  }
+
+  /** The program's other weeks' Manual Build drafts and all its versions, by week, newest first. */
+  public static List<WeekSource> weekSources(Id programId, Id weekId) {
+    List<WeekSource> result = new List<WeekSource>();
+    for (Schedule__c schedule : [
+      SELECT Id, Name, Status__c, Origin__c, Week__c, Week__r.Name, CreatedDate
+      FROM Schedule__c
+      WHERE
+        Program__c = :programId
+        AND (Status__c = 'Version'
+        OR (Status__c = 'Draft'
+        AND Origin__c = 'Manual'
+        AND Week__c != :weekId))
+      WITH USER_MODE
+      ORDER BY Week__r.StartDate__c, Status__c, CreatedDate DESC, Id
+      LIMIT 1000
+    ]) {
+      WeekSource source = new WeekSource();
+      source.id = schedule.Id;
+      source.weekName = schedule.Week__r.Name;
+      source.name = schedule.Name;
+      source.isVersion = schedule.Status__c == 'Version';
+      source.savedAt = schedule.CreatedDate;
+      result.add(source);
+    }
+    return result;
   }
 
   /** A group and the time blocks it is not at camp for. */
