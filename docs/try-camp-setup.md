@@ -59,10 +59,12 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 **How every table saves** (like the desktop): there is no Save button. The last row of each
 table is always blank, tinted, with the table's add word in it in grey (_Add Week_). Type
-into it and press **Enter**, click its **+** button, or just move out of the row: it is added.
-Leaving it half filled adds nothing and keeps your typing. A change to a row that is already
-there is saved when you press **Enter** in it or move to another row; **Escape** puts the
-row back as it was.
+into it and press **Enter**, click its **+ Add** button, or just move out of the row: it is
+added. Until everything it needs is filled in, **+ Add** stays grey and nothing happens.
+A change to a row that is already there is saved when you press **Enter** in it or move to
+another row, and a week tick is saved the moment you click it; **Escape** puts the row back
+as it was. If Shoresh refuses a change, the row keeps a bronze edge on its left until you fix
+it or press **Escape**.
 
 1. On **Weeks**, the season's own name, dates, and status are at the top (**Save season**,
    **Delete season**). Below, click **Fill in weeks from the season dates**. Six weeks
@@ -109,7 +111,9 @@ row back as it was.
    Each row has an **Open in** tick for every week, all ticked.
 
 3. Use **Show** above the table to see only _Field_ locations, or only those with no type.
-   Choose _All location types_ to see them all again.
+   With _Field_ chosen, the blank row starts as a Field. Change Field A's type to none: it
+   stays in view until you leave the row (it is saved), then leaves this view. Choose _All
+   location types_ to see them all again, and put Field A back to _Field_.
 4. Try a mistake: set the Pool's groups that fit to 0 and press **Enter**. Shoresh says it
    must be 1 or more. Press **Escape** to put it back.
 
@@ -145,12 +149,11 @@ row back as it was.
 
 There is no separate grid any more: each row says which weeks it runs in.
 
-1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week) and click
-   anywhere outside that row.
+1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week). It is
+   saved as you click.
 2. Leave it unticked; the copy below carries it over. (Deleting a bunk, activity, or location
    simply takes its unticked weeks with it; you try that in step 11.)
-3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs)
-   and click outside the row.
+3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs).
 
 ## 10. Fixed and recurring activities
 
@@ -184,7 +187,7 @@ activities and from each other. Clashes are refused, never just shown.
    each day Main runs (Monday to Thursday; no Friday) and a **Who** column. In the blank
    row: _Bunk 1 swim_, Period 2, length 1, location Pool, tick **Monday** and **Wednesday**.
    Under **Who** it says _Everyone in Main_; click **Change**, move _Bunk 1 (Juniors)_ to
-   **Covers**, click **Done**, then press the row's **+**.
+   **Covers**, click **Done**. With everything filled in, **Done** adds the row.
 8. Add _Bunk 2 art_: Period 2, **Monday**, who _Bunk 2 (Juniors)_. Both are kept: they
    take different bunks.
 9. **Try a clash from the who side.** On Bunk 2 art, click **Change** and move Bunk 2 back
@@ -193,7 +196,7 @@ activities and from each other. Clashes are refused, never just shown.
    **Escape** to put it back.
 10. **Needs attention:** the Pool is closed in Week 2 (step 3 of the last section), so the box
     at the top says _Bunk 1 swim: "Pool" is not open in Week 2, but this runs then._ Untick
-    **Week 2** on Bunk 1 swim and click outside the row; it goes away.
+    **Week 2** on Bunk 1 swim; it goes away.
 11. Try deleting **Period 2** on **Time blocks**: refused, Bunk 1 swim and Bunk 2 art start in
     it. Try deleting **Bunk 1**: refused, and the message names both things in the way: Swim's
     **Who can do it** and who Bunk 1 swim covers.

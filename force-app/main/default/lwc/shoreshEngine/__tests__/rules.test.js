@@ -968,7 +968,7 @@ describe("other programs count against capacity (G5 supplies them)", () => {
     });
   });
 
-  it("another program's session at the place and doing the activity is one clash, one line", () => {
+  it("another program's session at the place and doing the activity is one overlap for the cell", () => {
     const result = run({
       mode: "fillOpen",
       groups: [group("g1")],
@@ -994,7 +994,13 @@ describe("other programs count against capacity (G5 supplies them)", () => {
       ]
     });
     expect(result.overlapping).toEqual([
-      "Court · Monday · Period 1: Shares Court with another division"
+      {
+        dateValue: dateAt(0),
+        groupId: "g1",
+        blockId: "b0",
+        rules: [RULE.SAME_DIVISION],
+        text: "Bunk g1 · Monday · Period 1: Shares Court with another division"
+      }
     ]);
   });
 
@@ -1158,7 +1164,7 @@ describe("Try another", () => {
 
 describe("the lines that name a day", () => {
   it("names a Saturday (and Sunday) like any other day", () => {
-    // Two kept swims at a one-group activity on a Saturday make one overlap line.
+    // Two kept swims at a one-group activity on a Saturday: each cell is an overlap.
     const result = run({
       mode: "fillOpen",
       days: [dateAt(5)],
@@ -1169,8 +1175,9 @@ describe("the lines that name a day", () => {
         { day: 0, group: "g2", block: "b0", act: "swim" }
       ]
     });
-    expect(result.overlapping).toEqual([
-      "swim · Saturday · Period 1: Over its limit of 1 group at once"
+    expect(result.overlapping.map((o) => o.text)).toEqual([
+      "Bunk g1 · Saturday · Period 1: Over its limit of 1 group at once",
+      "Bunk g2 · Saturday · Period 1: Over its limit of 1 group at once"
     ]);
   });
 });

@@ -105,6 +105,7 @@
                         required={cell.required}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
+                        disabled={cell.disabled}
                         onchange={handleChange}
                       ></lightning-input>
                       <template lwc:if={cell.sameName}>
@@ -146,6 +147,7 @@
                         step="1"
                         data-row-key={row.key}
                         data-field={cell.fieldName}
+                        disabled={cell.disabled}
                         onchange={handleChange}
                       ></lightning-input>
                     </template>
@@ -158,6 +160,7 @@
                         required={cell.required}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
+                        disabled={cell.disabled}
                         onchange={handleChange}
                       ></lightning-input>
                     </template>
@@ -170,6 +173,7 @@
                         required={cell.required}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
+                        disabled={cell.disabled}
                         onchange={handleChange}
                       ></lightning-input>
                     </template>
@@ -181,6 +185,7 @@
                         checked={cell.checked}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
+                        disabled={cell.disabled}
                         onchange={handleChange}
                       ></lightning-input>
                     </template>
@@ -195,6 +200,7 @@
                           title={cell.label}
                           data-row-key={row.key}
                           data-id="who-toggle"
+                          disabled={row.locked}
                           onclick={handleWhoToggle}
                         ></lightning-button>
                       </div>
@@ -208,6 +214,7 @@
                         required={cell.required}
                         data-row-key={row.key}
                         data-field={cell.fieldName}
+                        disabled={cell.disabled}
                         onchange={handleChange}
                       ></lightning-combobox>
                     </template>
@@ -225,6 +232,7 @@
                       checked={cell.checked}
                       data-row-key={row.key}
                       data-week={cell.weekId}
+                      disabled={row.locked}
                       onchange={handleTick}
                     ></lightning-input>
                   </td>
@@ -253,17 +261,22 @@
                 </template>
                 <td>
                   <template lwc:if={row.isNew}>
-                    <lightning-button-icon
+                    <lightning-button
+                      class="add"
+                      label="Add"
                       icon-name="utility:add"
-                      alternative-text={addLabel}
                       title={addLabel}
-                      variant="border-filled"
                       data-id="add"
                       onclick={handleAdd}
                       disabled={addDisabled}
-                    ></lightning-button-icon>
+                    ></lightning-button>
                   </template>
                   <template lwc:else>
+                    <template lwc:if={row.notSaved}>
+                      <span class="slds-assistive-text" data-id="not-saved"
+                        >Not saved</span
+                      >
+                    </template>
                     <lightning-button-icon
                       icon-name="utility:delete"
                       alternative-text={row.deleteLabel}

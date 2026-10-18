@@ -794,6 +794,122 @@ describe("c-shoresh-camp-setup", () => {
     expect(saveRecords).not.toHaveBeenCalled();
   });
 
+  /** A promise and the function that answers it, for answering server calls in any order. */
+  function deferred() {
+    let resolve;
+    const promise = new Promise((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  }
+
+  it("saves rows from two tables one after the other, tells the table before reloading, and never makes the page busy", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    await openScreen(element, "locations");
+    const order = [];
+    const first = deferred();
+    saveRow.mockImplementationOnce(() => {
+      order.push("save 1");
+      return first.promise;
+    });
+    saveRow.mockImplementationOnce(() => {
+      order.push("save 2");
+      return Promise.resolve(nsRecord({ id: "l1", changed: [] }));
+    });
+    getSeasonSetup.mockImplementation(() => {
+      order.push("reload");
+      return Promise.resolve(nsRecord(setupWith()));
+    });
+    const types = q(
+      element,
+      'c-shoresh-editable-table[data-id="location-types"]'
+    );
+    const locations = q(
+      element,
+      'c-shoresh-editable-table[data-id="locations"]'
+    );
+    const one = rowSave({
+      record: { sobjectType: "LocationType__c", Id: "t1", Name: "Fields" }
+    });
+    one.detail.onSaved = jest.fn(() => order.push("table told"));
+    const two = rowSave({
+      record: { sobjectType: "Location__c", Id: "l1", Name: "Pool" }
+    });
+    types.dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(one.detail) })
+    );
+    locations.dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(two.detail) })
+    );
+    await flush();
+    // The second waits for the first; buttons stay usable while rows save.
+    expect(order).toEqual(["save 1"]);
+    expect(types.busy).toBe(false);
+    expect(locations.busy).toBe(false);
+    first.resolve(nsRecord({ id: "t1", changed: [] }));
+    await flush();
+    await flush();
+    expect(order).toEqual([
+      "save 1",
+      "table told",
+      "reload",
+      "save 2",
+      "reload"
+    ]);
+    getSeasonSetup.mockReset();
+  });
+
+  it("an older read of the season that answers last is dropped", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    await openScreen(element, "weeks");
+    const older = deferred();
+    const newer = deferred();
+    getSeasonSetup
+      .mockImplementationOnce(() => older.promise)
+      .mockImplementationOnce(() => newer.promise);
+    saveRow.mockResolvedValue(nsRecord({ id: "w1", changed: [] }));
+    const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+    // A save's reload, then a delete's reload, overlapping.
+    weeks.dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord(
+          rowSave({ record: { sobjectType: "Week__c", Id: "w1", Name: "A" } })
+            .detail
+        )
+      })
+    );
+    await flush();
+    LightningConfirm.open.mockResolvedValueOnce(true);
+    deleteRecord.mockResolvedValueOnce();
+    weeks.dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "w9", name: "Week 9" } })
+    );
+    await flush();
+    const newest = setupWith({
+      weeks: [
+        {
+          Id: "w1",
+          Name: "Newest",
+          StartDate__c: "2026-06-29",
+          EndDate__c: "2026-07-03"
+        }
+      ]
+    });
+    newer.resolve(nsRecord(newest));
+    await flush();
+    older.resolve(nsRecord(setupWith()));
+    await flush();
+    expect(bareRecord(weeks.rows)[0].Name).toBe("Newest");
+    getSeasonSetup.mockReset();
+    saveRow.mockReset();
+  });
+
   it("passes on what someone else changed, and still reloads", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));

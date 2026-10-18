@@ -84,8 +84,6 @@ export default class ShoreshEditableTable extends LightningElement {
   @api addLabel = "Add";
   @api emptyMessage = "Nothing here yet.";
   @api busy = false;
-  @api filterField;
-  @api filterValue;
   @api weeksHeading;
   @api weekPhrase = "runs in";
   @api notesHeading;
@@ -130,6 +128,27 @@ export default class ShoreshEditableTable extends LightningElement {
   }
   set newRowDefaults(value) {
     this._defaults = value && typeof value === "object" ? value : {};
+    if (!this.addRow.dirty && !this.addRow.adding) {
+      this.addRow = this.blankRow();
+    }
+  }
+
+  /** The field the Show filter looks at (a location's type). */
+  @api
+  get filterField() {
+    return this._filterField;
+  }
+  set filterField(value) {
+    this._filterField = value;
+  }
+
+  /** Show only rows whose saved filterField is this ("" for none); the blank row starts with it. */
+  @api
+  get filterValue() {
+    return this._filterValue;
+  }
+  set filterValue(value) {
+    this._filterValue = value;
     if (!this.addRow.dirty && !this.addRow.adding) {
       this.addRow = this.blankRow();
     }
@@ -202,6 +221,7 @@ export default class ShoreshEditableTable extends LightningElement {
       }
       draft.whoOpen = old.whoOpen;
       draft.inFlight = old.inFlight;
+      draft.refused = old.refused;
       old.changed.forEach((field) => {
         if (!sameValue(old.values[field], draft.original[field])) {
           draft.values[field] = old.values[field];
@@ -237,10 +257,14 @@ export default class ShoreshEditableTable extends LightningElement {
 
   /** The blank last row, with the screen's starting values. */
   blankRow() {
+    const filtered =
+      this._filterField && this._filterValue
+        ? { [this._filterField]: this._filterValue }
+        : {};
     return {
       key: ADD,
       original: {},
-      values: this.shownValues({ ...(this._defaults || {}) }),
+      values: this.shownValues({ ...(this._defaults || {}), ...filtered }),
       changed: new Set(),
       seen: {},
       weekTicks: new Map(),
@@ -301,11 +325,11 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   /** Whether a saved row has anything to save. */
-  hasChanges(draft) {
+  hasChanges(draft, offWeeks = this.offWeeks) {
     return (
       draft.changed.size > 0 ||
       this.whoChanged(draft) ||
-      this.weekChanges(draft, this.offWeeks).size > 0
+      this.weekChanges(draft, offWeeks).size > 0
     );
   }
 
@@ -412,8 +436,13 @@ export default class ShoreshEditableTable extends LightningElement {
     ) {
       return this.drafts;
     }
+    // A row being changed stays until it is saved: changing its type mustn't hide it unsaved.
+    const offWeeks = this.offWeeks;
     return this.drafts.filter(
-      (draft) => (draft.values[this.filterField] || "") === this.filterValue
+      (draft) =>
+        (draft.original[this.filterField] || "") === this.filterValue ||
+        this.hasChanges(draft, offWeeks) ||
+        draft.key === this.sending
     );
   }
 
@@ -632,6 +661,9 @@ export default class ShoreshEditableTable extends LightningElement {
       matches.has(looseKey(draft.original.Name));
     const firstText = (this.columns.find((c) => this.isTextColumn(c)) || {})
       .fieldName;
+    // A refused change still on screen, until it is saved or put back.
+    const notSaved =
+      !draft.isNew && !!draft.refused && this.hasChanges(draft, offWeeks);
     return {
       key: draft.key,
       isRow: true,
@@ -655,7 +687,10 @@ export default class ShoreshEditableTable extends LightningElement {
             name: action.key
           })),
       isNew: draft.isNew,
-      rowClass: draft.isNew ? "add-row" : "",
+      rowClass: draft.isNew ? "add-row" : notSaved ? "not-saved" : "",
+      notSaved,
+      // The blank row is locked while it is being added, so nothing typed is lost or added twice.
+      locked: draft.isNew && !!draft.adding,
       deleteLabel: `Delete ${draft.values.Name || ""}`.trim(),
       cells: this.columns.map((col) => {
         const value = draft.values[col.fieldName];
@@ -676,7 +711,9 @@ export default class ShoreshEditableTable extends LightningElement {
           // The blank row says what it is for in its first text field.
           placeholder:
             draft.isNew && col.fieldName === firstText ? this.addLabel : "",
-          required: !!col.required,
+          // The blank row never shows "Complete this field": its + stays greyed out instead.
+          required: !!col.required && !draft.isNew,
+          disabled: draft.isNew && !!draft.adding,
           options: col.excludeSelf
             ? (col.options || []).filter(
                 (option) => !option.value || option.value !== draft.original.Id
@@ -788,6 +825,10 @@ export default class ShoreshEditableTable extends LightningElement {
     draft.weekTicks = new Map(draft.weekTicks).set(week, event.target.checked);
     draft.dirty = true;
     this.touch(draft);
+    if (!draft.isNew) {
+      // As on the desktop, a week tick on a saved row is saved the moment it is clicked.
+      this.commit(draft.key, false);
+    }
   }
 
   handleChange(event) {
@@ -838,7 +879,7 @@ export default class ShoreshEditableTable extends LightningElement {
     } else if (
       event.key === "Escape" &&
       key !== ADD &&
-      from === "LIGHTNING-INPUT" &&
+      ["LIGHTNING-INPUT", "LIGHTNING-COMBOBOX"].includes(from) &&
       !event.defaultPrevented &&
       // Escape in a date or time field closes its picker; it doesn't undo the row.
       !["date", "time"].includes(event.target.type)
@@ -874,6 +915,7 @@ export default class ShoreshEditableTable extends LightningElement {
     draft.weekTicks = new Map();
     draft.who = [...draft.savedWho];
     draft.seenWho = null;
+    draft.refused = false;
     this.touch(draft);
   }
 
@@ -921,11 +963,8 @@ export default class ShoreshEditableTable extends LightningElement {
       return;
     }
     if (draft.isNew) {
-      const show = pressed && draft.dirty;
+      // Not filled in yet: nothing happens, and the + stays greyed out (desktop InlineAddRow).
       if (!draft.dirty || draft.adding || !this.complete(draft)) {
-        if (show) {
-          this.valid(key, true);
-        }
         return;
       }
       if (!this.valid(key, pressed)) {
@@ -1007,7 +1046,6 @@ export default class ShoreshEditableTable extends LightningElement {
       extras.who = who;
     }
     const sent = {
-      values: JSON.stringify(draft.values),
       changes: Object.fromEntries(
         [...draft.changed].map((field) => [field, draft.values[field]])
       ),
@@ -1060,17 +1098,14 @@ export default class ShoreshEditableTable extends LightningElement {
       added.original = { ...values };
       added.values = { ...values };
       this.drafts = [...this.drafts, added];
-      this.announcement = `${draft.values.Name || ""} added`.trim();
-      if (JSON.stringify(draft.values) === sent.values) {
-        this.addRow = this.blankRow();
-        this.focusAddRow = !!draft.pressed;
-      } else {
-        // Typed into while it was being added: what was typed since stays.
-        this.addRow = { ...draft, adding: false, dirty: true };
-      }
+      this.announce(`${draft.values.Name || ""} added`.trim());
+      // Its fields were locked while it was added, so nothing typed since is lost.
+      this.addRow = this.blankRow();
+      this.focusAddRow = !!draft.pressed;
       return;
     }
     if (draft) {
+      draft.refused = false;
       // What was sent is saved now: typing since is compared with that, not with the old values.
       Object.keys(sent.changes).forEach((field) => {
         if (draft.changed.has(field)) {
@@ -1081,12 +1116,27 @@ export default class ShoreshEditableTable extends LightningElement {
         draft.seenWho = sent.who;
       }
     }
-    this.announcement = `${(draft && draft.values.Name) || ""} saved`.trim();
+    this.announce(`${(draft && draft.values.Name) || ""} saved`.trim());
+  }
+
+  /** Said again even when it is the same words as last time, so screen readers repeat it. */
+  announce(text) {
+    // Every other time with a trailing non-breaking space: the words read the same, but the
+    // live region's text changes, so the same message is read again.
+    this.announced = !this.announced;
+    this.announcement = this.announced ? text : `${text}\u00a0`;
   }
 
   failed(key) {
     if (key === ADD) {
       this.addRow = { ...this.addRow, adding: false };
+      return;
+    }
+    // Refused: marked as not saved until it is saved or put back.
+    const draft = this.rowFor(key);
+    if (draft) {
+      draft.refused = true;
+      this.touch(draft);
     }
   }
 
@@ -1117,8 +1167,8 @@ export default class ShoreshEditableTable extends LightningElement {
         key: field,
         field,
         where: `${name} · ${column.label}`,
-        theirs: shownValue(column, theirs[field]),
-        yours: shownValue(column, draft.values[field]),
+        theirsValue: theirs[field],
+        yoursValue: draft.values[field],
         value: column.type === "time" ? timeText(theirs[field]) : theirs[field]
       };
     });
@@ -1140,11 +1190,17 @@ export default class ShoreshEditableTable extends LightningElement {
    * reload after the save brings up to date (a bunk they just added is named once it has).
    */
   get conflictRows() {
-    const column = this.whoColumn;
+    const whoColumn = this.whoColumn;
     return this.conflict.rows.map((row) => {
-      return row.theirWho
-        ? { ...row, theirs: this.whoNames(column, row.theirWho, true) }
-        : row;
+      if (row.theirWho) {
+        return { ...row, theirs: this.whoNames(whoColumn, row.theirWho, true) };
+      }
+      const column = this.columns.find((c) => c.fieldName === row.field) || {};
+      return {
+        ...row,
+        theirs: shownValue(column, row.theirsValue),
+        yours: shownValue(column, row.yoursValue)
+      };
     });
   }
 
@@ -1229,8 +1285,19 @@ function shownValue(column, value) {
     return value ? "Yes" : "No";
   }
   if (column.type === "picklist") {
+    // A choice someone else just added is named once the reload brings it; never its Id.
     const option = (column.options || []).find((o) => o.value === value);
-    return option ? option.label : String(value);
+    return option ? option.label : "";
+  }
+  if (column.type === "date") {
+    // "Sat, Jul 3, 2027", as a camp director reads a date.
+    const [y, m, d] = String(value).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
   }
   if (column.type === "time") {
     const [hours, minutes] = timeText(value).split(":").map(Number);

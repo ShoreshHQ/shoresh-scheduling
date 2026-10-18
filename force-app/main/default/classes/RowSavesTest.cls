@@ -259,6 +259,115 @@ private class RowSavesTest {
   }
 
   @IsTest
+  static void whoTheSameAsTheDirectorChoseIsNoConflict() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id swim = SetTimeTestData.save(
+        new List<SObject>{
+          SetTimeTestData.recurring(ids, 'Bunk swim', 'Period 1')
+        }
+      )[0];
+      ScreenSaves.Extras groupA = SetTimeTestData.extras(
+        null,
+        null,
+        new List<SetTimeWho.Who>{
+          SetTimeTestData.who(null, swim, new List<Id>{ ids.get('Group A') })
+        }
+      );
+      // Someone else already chose Group A.
+      SetTimeTestData.save(
+        new List<SObject>{ new RecurringActivity__c(Id = swim) },
+        groupA
+      );
+      groupA.seenWho = new List<Id>();
+      RowSaves.Result result = SetupTablesController.saveRow(
+        new RecurringActivity__c(Id = swim),
+        null,
+        groupA
+      );
+      Assert.areEqual(swim, result.id);
+    }
+  }
+
+  @IsTest
+  static void weekTicksAndWhoAreForTheSavedRowOnly() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      Id swim = SetTimeTestData.save(
+        new List<SObject>{
+          SetTimeTestData.recurring(ids, 'Bunk swim', 'Period 1')
+        }
+      )[0];
+      WeekException__c gymOff = new WeekException__c(
+        Week__c = ids.get('Week 2'),
+        Location__c = ids.get('Gym')
+      );
+      Database.insert(gymOff, AccessLevel.SYSTEM_MODE);
+      List<ScreenSaves.Extras> refused = new List<ScreenSaves.Extras>{
+        // Another row's who.
+        SetTimeTestData.extras(
+          null,
+          null,
+          new List<SetTimeWho.Who>{
+            SetTimeTestData.who(null, swim, new List<Id>{ ids.get('Group A') })
+          }
+        ),
+        // Another row's week off.
+        SetTimeTestData.extras(
+          new List<RunsIn.WeekOff>{
+            SetTimeTestData.weekOff(null, swim, ids.get('Week 1'))
+          },
+          null,
+          null
+        ),
+        // Another row's week ticked again.
+        SetTimeTestData.extras(null, new List<Id>{ gymOff.Id }, null)
+      };
+      for (ScreenSaves.Extras extras : refused) {
+        try {
+          SetupTablesController.saveRow(
+            new Location__c(Id = ids.get('Pool'), GroupsThatFit__c = 2),
+            new Location__c(GroupsThatFit__c = 1),
+            extras
+          );
+          Assert.fail('Refused: ' + extras);
+        } catch (AuraHandledException e) {
+          Assert.areEqual('These screens can\'t save that.', e.getMessage());
+        }
+      }
+      Assert.areEqual(1, pool().GroupsThatFit__c);
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM WeekException__c
+          WHERE Id = :gymOff.Id
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+  }
+
+  /** Every setup table saves through SetupTablesController: the scheduler must be able to call it. */
+  @IsTest
+  static void theSchedulerPermissionSetCanSaveRows() {
+    Assert.areEqual(
+      1,
+      [
+        SELECT COUNT()
+        FROM SetupEntityAccess
+        WHERE
+          Parent.Name = 'Shoresh_Scheduler'
+          AND SetupEntityId IN (
+            SELECT Id
+            FROM ApexClass
+            WHERE Name = 'SetupTablesController'
+          )
+      ]
+    );
+  }
+
+  @IsTest
   static void someoneWithoutAccessCannotSaveARow() {
     camp();
     System.runAs(ShoreshTestData.outsider()) {

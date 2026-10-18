@@ -88,6 +88,10 @@ export default class ShoreshCampSetup extends LightningElement {
   locationFilter = "all";
   // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
   sameLocation = null;
+  // Table rows are saved one at a time across the whole page, in the order they were left.
+  rowSaves = Promise.resolve();
+  // Each read of the season is numbered; an answer older than the latest read is dropped.
+  loadTicket = 0;
 
   connectedCallback() {
     this.loadCamps();
@@ -137,10 +141,15 @@ export default class ShoreshCampSetup extends LightningElement {
       // Another season: start its tables fresh rather than carrying unsaved rows across.
       this.setup = null;
     }
+    const ticket = ++this.loadTicket;
     const setup = await getSeasonSetup({
       campId: this.campId,
       seasonId: this.seasonId
     });
+    if (ticket !== this.loadTicket) {
+      // A newer read is on its way: this answer would show older data over it.
+      return;
+    }
     // Keep typed but unsaved season details when something else was saved.
     const keepForm =
       this.seasonChanged &&
@@ -752,15 +761,22 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
-   * One table row. The table hears what happened (saved, or what someone else changed), then
-   * the season is read again, and only then may the table send its next row, so every reload
-   * the table sees is newer than the last.
+   * One table row. Rows from every table on the page wait their turn, so two tables never save
+   * at once. The table hears what happened (saved, or what someone else changed), then the
+   * season is read again, and only then may the next row go. A row save doesn't make the page
+   * busy: buttons stay as they are, so a click that moved focus out of a row still lands.
    */
-  async saveTableRow(detail) {
+  saveTableRow(detail) {
+    this.rowSaves = this.rowSaves.then(() => this.saveOneRow(detail));
+    return this.rowSaves;
+  }
+
+  async saveOneRow(detail) {
     const { record, seen, extras, seenWho, onSaved, onFailure, onDone } =
       detail;
     let answered = false;
-    await this.run(async () => {
+    this.error = null;
+    try {
       const result = await saveRow({
         record,
         seen,
@@ -769,7 +785,9 @@ export default class ShoreshCampSetup extends LightningElement {
       answered = true;
       onSaved(result);
       await this.loadSeason();
-    });
+    } catch (e) {
+      this.showError(e);
+    }
     if (!answered) {
       onFailure();
     }
