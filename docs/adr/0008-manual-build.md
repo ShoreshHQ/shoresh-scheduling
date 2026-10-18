@@ -15,8 +15,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    Undo/Redo (50 steps per visit).
 3. Counters (Filled, Still needed, Spread across the week, Overlapping) and the bronze dots (over
    its weekly limit, not set up for a bunk, twice in a day).
-4. Clear day, Clear week, Copy day to…; Versions on this screen; Save version; any version opens
-   in Manual Build.
+4. In two (coordinator, 2026-10-17): **4a** Clear day, Clear week, Copy day to…; **4b** Versions
+   on this screen (Save version, Restore, rename, delete) and Start from another week.
 5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`).
 6. Setup changed since the week started: dots and "Update to match setup".
 
@@ -446,6 +446,30 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       list, Accept, a line's jump, the announcement, the dots and their focus, decision 12
       (only the extra session is dotted), the program's divisions reaching the checks, and the
       checks following the week when it is read again.
+
+24. **Part 4a: Clear day, Clear week, Copy day to…** (Greg's round 2 decisions 6 and 7; the
+    desktop has none of these, so his decisions and the coordinator's answers of 2026-10-17 are
+    the spec). Worked out as runs (`tools.js`) and saved like any other edit, slot by slot with
+    the same "keep theirs or use yours" check, each one Undo step.
+    - **Only activities change.** Fixed and recurring activities stay where setup put them; a
+      cell where a bunk isn't at camp is left alone; things not set up yet (an imported
+      elective, say) stay, since only activities can be placed back by Undo.
+    - **Clear day**: in Daily View the day shown, every bunk; in Group View a menu of the
+      week's days, clearing that bunk's day. **Clear week**: every day, every bunk, in either
+      view. No confirm (decision 6): the line under the toolbar says _Cleared Monday · Undo_
+      (_Cleared Bunk 3 · Tuesday_, _Cleared Week 1_), and Undo there (or the toolbar's, or
+      Ctrl+Z) puts it all back. With nothing to clear it says _Nothing to clear on Monday._
+    - **Copy day to…** (Daily View): a menu of the week's other days, and _Every other day_
+      (decision 7: within the same week only). On each target day, each bunk's activities are
+      replaced by the ones it has on the day shown, at the same time blocks (matched by Id). A
+      copied activity that would land on a fixed or recurring activity, where the bunk isn't
+      at camp, on a block the target day lacks, or for a bunk not on that day, is left out
+      whole and listed: _Copied Monday to Tuesday. 1 left out: Soccer · Bunk 2 · Tuesday: not
+      at camp then. · Undo_ (five named at most, then _and N more_). No confirm.
+    - Not in Activity View (read-only there, as on the desktop).
+    - **Checked by** `tools.test.js` (what each tool changes and leaves out) and
+      `dayTools.test.js` (the screen: the runs sent, the line and its Undo, nothing to clear,
+      Group View's day, Clear week, the left-out list).
 
 ## Choices that are hard to undo after release
 
