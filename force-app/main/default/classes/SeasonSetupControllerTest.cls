@@ -227,20 +227,14 @@ private class SeasonSetupControllerTest {
         );
         Assert.fail('Other objects are refused');
       } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'These screens can\'t save that.',
-          errorOf(e)
-        );
+        Assert.areEqual('These screens can\'t save that.', errorOf(e));
       }
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
       try {
         SeasonSetupController.deleteRecord(camp.Id);
         Assert.fail('Camps are not deleted from these screens');
       } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'These screens can\'t delete that.',
-          errorOf(e)
-        );
+        Assert.areEqual('These screens can\'t delete that.', errorOf(e));
       }
     }
   }

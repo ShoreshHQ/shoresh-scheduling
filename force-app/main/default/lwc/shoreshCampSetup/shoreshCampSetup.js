@@ -9,6 +9,8 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
+import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
+import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
@@ -21,7 +23,7 @@ import {
   setupProblems,
   turnOffQuestion
 } from "c/shoreshSetupRules";
-import { failed } from "c/shoreshErrors";
+import { errorMessage, failed } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
@@ -103,6 +105,14 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonSubmitted = false;
   // Which location type the Locations table shows; "all" shows every location.
   locationFilter = "all";
+  // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
+  sameLocation = null;
+  // Why the last Merge was refused, shown in the question only (one alert, not two).
+  sameLocationError = null;
+  // Merging: the question's buttons wait.
+  merging = false;
+  // A delete's question is open, or the delete is under way.
+  deleting = false;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -548,6 +558,7 @@ export default class ShoreshCampSetup extends LightningElement {
       noLocationTypes: `No ${t.pIn("LocationType")} yet`,
       addLocation: `Add ${t.s("Location")}`,
       noLocations: `No ${t.pIn("Location")} yet`,
+      sameLocation: `Same ${t.sIn("Location")}?`,
       catalogue: `${t.s("Activity")} catalogue`,
       addActivity: `Add ${t.s("Activity")}`,
       noActivities: `No ${t.pIn("Activity")} yet`
@@ -639,8 +650,7 @@ export default class ShoreshCampSetup extends LightningElement {
       message:
         `Delete "${this.setup.season.Name}" and everything set up in it (${t.pIn("Week")}, ${t.pIn("Program")}, ` +
         `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")}, ` +
-        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")}, and saved schedules)? ` +
-        `This cannot be undone.`,
+        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")}, and saved schedules)?`,
       variant: "header",
       theme: "error"
     });
@@ -953,13 +963,24 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   async handleDeleteRecord(event) {
-    const { recordId, name } = event.detail;
-    const ok = await LightningConfirm.open({
-      label: "Delete",
-      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)} This cannot be undone.`,
-      variant: "header",
-      theme: "warning"
-    });
+    // A second click while the question is open (or the delete is under way) does nothing.
+    if (this.deleting) {
+      return;
+    }
+    this.deleting = true;
+    try {
+      await this.askAndDelete(event.detail);
+    } finally {
+      this.deleting = false;
+    }
+  }
+
+  async askAndDelete({ recordId, name }) {
+    // Asked without making the page busy: the row's delete button keeps the focus, so Cancel
+    // gives it back there.
+    const ok = await LightningConfirm.open(
+      await this.deleteQuestion(recordId, name)
+    );
     if (!ok) {
       return;
     }
@@ -969,6 +990,128 @@ export default class ShoreshCampSetup extends LightningElement {
       this.toast(`Deleted "${name}".`);
       await this.loadSeason();
     }, `"${name}" not deleted. Nothing was removed.`);
+  }
+
+  /**
+   * The question before a delete. A bunk or activity some schedule uses says how many first
+   * (decision 15: "Bunk 3 is in 2 schedules. Delete anyway?"); Salesforce's Recycle Bin can
+   * bring it back, and the schedules keep its name.
+   */
+  async deleteQuestion(recordId, name) {
+    // A count that couldn't be made is said so, never left out quietly.
+    const count = (await Promise.resolve()
+      .then(() => scheduleUses({ recordId }))
+      .catch(() => ({ schedules: 0, complete: false }))) || {
+      schedules: 0,
+      complete: true
+    };
+    const uses = count.schedules;
+    const word = uses === 1 ? "schedule" : "schedules";
+    let message = null;
+    if (uses > 0 && count.complete) {
+      message = `${name} is in ${uses} ${word}. Delete anyway?`;
+    } else if (uses > 0) {
+      message = `${name} is in ${uses} or more schedules. Delete anyway?`;
+    } else if (!count.complete) {
+      message = `Shoresh couldn't count the schedules ${name} is in. Delete anyway?`;
+    }
+    if (message) {
+      return {
+        label: `Delete "${name}"?`,
+        message,
+        variant: "header",
+        theme: "warning"
+      };
+    }
+    return {
+      label: "Delete",
+      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)}`,
+      variant: "header",
+      theme: "warning"
+    };
+  }
+
+  /** "Same location?" for a place and the places whose names match it (ADR 0012). */
+  handleSameLocation(event) {
+    this.error = null;
+    this.sameLocationError = null;
+    this.sameLocation = this.placesFor(event.detail.recordIds);
+  }
+
+  /** The places still set up, each with what fits and how many activities happen there. */
+  placesFor(recordIds) {
+    const locations = (this.setup && this.setup.locations) || [];
+    const activities = (this.setup && this.setup.activities) || [];
+    return recordIds
+      .map((id) => locations.find((l) => l.Id === id))
+      .filter((location) => location)
+      .map((location) => ({
+        id: location.Id,
+        name: location.Name,
+        fits: location[LOCATION.GroupsThatFit],
+        activities: activities.filter(
+          (a) => a[ACTIVITY.Location] === location.Id
+        ).length
+      }));
+  }
+
+  handleCloseSameLocation() {
+    const from = this.sameLocation[0].id;
+    this.sameLocation = null;
+    this.sameLocationError = null;
+    this.locationsTable().focusRowOf(from);
+  }
+
+  locationsTable() {
+    return this.template.querySelector(
+      'c-shoresh-editable-table[data-id="locations"]'
+    );
+  }
+
+  /**
+   * Merge. Refused: the season is read again and the question shows the places as they are now
+   * (desktop: it reloads after a failed merge), so trying again can work; if fewer than two of
+   * them are left, the question closes and the page says why.
+   */
+  async handleMergeLocations(event) {
+    if (this.merging) {
+      return;
+    }
+    const { keepId, otherIds, groupsThatFit } = event.detail;
+    const kept = this.sameLocation.find((place) => place.id === keepId);
+    const asked = this.sameLocation.map((place) => place.id);
+    this.merging = true;
+    this.sameLocationError = null;
+    let merged = false;
+    try {
+      await mergeLocations({ keepId, otherIds, groupsThatFit });
+      merged = true;
+      this.sameLocation = null;
+      this.toast(`Merged into "${kept.name}".`);
+      await this.loadSeason();
+      this.locationsTable().focusRowOf(keepId);
+    } catch (e) {
+      if (merged) {
+        // Done, but the screen couldn't read it back: said so (the page's usual words), never
+        // shown as a refusal.
+        this.showError(e, this.refreshFailed);
+        return;
+      }
+      const why = errorMessage(e);
+      // The refusal says more than a failed reload would.
+      await this.loadSeason().catch(() => null);
+      const places = this.placesFor(asked);
+      if (places.length >= 2) {
+        this.sameLocation = places;
+        this.sameLocationError = why;
+      } else {
+        this.sameLocation = null;
+        this.error = why;
+        this.locationsTable().focusRowOf(keepId);
+      }
+    } finally {
+      this.merging = false;
+    }
   }
 
   // ---------- helpers ----------

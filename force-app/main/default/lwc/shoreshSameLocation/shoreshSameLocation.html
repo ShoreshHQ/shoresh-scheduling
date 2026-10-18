@@ -1,0 +1,76 @@
+<template>
+  <section
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="same-location-title"
+    class="slds-modal slds-fade-in-open"
+    data-id="same-location"
+    onkeydown={handleKeyDown}
+  >
+    <div class="slds-modal__container">
+      <div class="slds-modal__header">
+        <h2 id="same-location-title" class="slds-modal__title">{title}</h2>
+      </div>
+      <div class="slds-modal__content slds-p-around_medium">
+        <template lwc:if={error}>
+          <div
+            class="slds-box slds-theme_shade refusal slds-m-bottom_small"
+            role="alert"
+            tabindex="-1"
+            data-id="refusal"
+          >
+            <lightning-icon
+              class="slds-m-right_x-small"
+              icon-name="utility:error"
+              variant="error"
+              size="x-small"
+              alternative-text="Refused"
+            ></lightning-icon
+            ><span data-id="refusal-words">{error}</span>
+          </div>
+        </template>
+        <lightning-radio-group
+          data-id="keep"
+          name="keep"
+          label="Keep"
+          variant="label-hidden"
+          options={options}
+          value={chosen}
+          onchange={handleChoose}
+        ></lightning-radio-group>
+        <lightning-input
+          class="slds-m-top_medium fits"
+          data-id="fits"
+          type="number"
+          label={fitsLabel}
+          value={fits}
+          min="1"
+          step="1"
+          required
+          onchange={handleFits}
+        ></lightning-input>
+      </div>
+      <div class="slds-modal__footer">
+        <button
+          type="button"
+          class="slds-button slds-button_neutral"
+          data-id="keep-separate"
+          onclick={handleClose}
+          aria-disabled={mergeDisabled}
+        >
+          Keep separate
+        </button>
+        <button
+          type="button"
+          class="slds-button slds-button_brand"
+          data-id="merge"
+          onclick={handleMerge}
+          aria-disabled={mergeDisabled}
+        >
+          Merge
+        </button>
+      </div>
+    </div>
+  </section>
+  <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

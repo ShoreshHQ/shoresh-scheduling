@@ -6,12 +6,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { buildTerms } from "c/shoreshTerms";
 import { csvFile } from "c/shoreshImportEngine";
-import {
-  LIST_SCREENS,
-  listPlan,
-  listProposal,
-  listScreen
-} from "./data/lists";
+import { LIST_SCREENS, listPlan, listProposal, listScreen } from "./data/lists";
 
 const apex = ["ImportListSaves", "ImportListRows", "ImportListWho"]
   .map((name) =>

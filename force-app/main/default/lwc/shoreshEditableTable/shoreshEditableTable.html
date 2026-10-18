@@ -114,6 +114,19 @@
                           focusable
                         ></c-shoresh-dot>
                       </template>
+                      <template lwc:if={cell.canMerge}>
+                        <button
+                          type="button"
+                          class="slds-button slds-m-left_x-small"
+                          aria-label={cell.mergeName}
+                          data-id="merge"
+                          data-row-key={row.key}
+                          onclick={handleMerge}
+                          disabled={busy}
+                        >
+                          {cell.mergeLabel}
+                        </button>
+                      </template>
                       <template lwc:if={cell.overlaps}>
                         <c-shoresh-dot
                           class="flag"
@@ -253,7 +266,7 @@
                     <button
                       type="button"
                       class="slds-button slds-button_neutral add"
-                      aria-label={addLabel}
+                      aria-label={addName}
                       title={addLabel}
                       data-id="add"
                       onclick={handleAdd}
