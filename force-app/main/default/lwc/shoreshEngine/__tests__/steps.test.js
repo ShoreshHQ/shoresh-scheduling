@@ -161,6 +161,36 @@ describe("checkGeneratedWeek", () => {
     expect(dots).toBeGreaterThan(0);
   });
 
+  it("with locks, checks a full build the way the engine did (dots skip locked sessions)", () => {
+    let locked = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      // A full build: Fill the open cells keeps every filled cell, so its dots spare them all,
+      // while the screen's check spares only what the director locked.
+      const input = {
+        ...camp(withHistory(randomCamp(seed), seed)),
+        mode: MODE.FULL
+      };
+      const result = generateWeek(input);
+      if (!result.ok) {
+        continue;
+      }
+      locked += (input.locks || []).length;
+      const { checked } = checkGeneratedWeek({ ...input, days: result.days });
+      expect(checked.stillNeeded).toEqual(result.stillNeeded);
+      expect(checked.cells).toEqual(result.cells);
+      const heads = new Set(checked.placements.map((p) => p.key));
+      const dotted = new Map();
+      for (const f of result.flags) {
+        const key = `${f.date}|${f.groupId}|${f.blockId}`;
+        if (heads.has(key)) {
+          dotted.set(key, f.reason);
+        }
+      }
+      expect(new Map(checked.flags)).toEqual(dotted);
+    }
+    expect(locked).toBeGreaterThan(0);
+  });
+
   it("reads a week in date order whatever order its days come in", () => {
     const input = { ...camp(randomCamp(3)), locks: [] };
     const result = generateWeek(input);

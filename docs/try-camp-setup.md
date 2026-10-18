@@ -771,10 +771,23 @@ doesn't change this one.
        week first, so the buttons work on what the other window saved.)
     4. Click **Reload**: the week shows as the second window saved it, with **Option** on its
        option.
-13. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). Cells can be
-    reached with the arrow keys so a dot's words show, but they can't be changed: a hand edit
-    will lock the cell, and locks come in the next part. Use Manual Build for a week built by hand.
-14. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
+13. **Lock.** In Daily View, Monday, press Tab until a cell of the grid has the focus, then use
+    the arrow keys to reach Bunk 1's Period 2. Open the **Lock** menu (lock icon) in the toolbar:
+    it offers _Lock Bunk 1 · Monday · Period 2_, _Lock Monday_ and _Lock Bunk 1 · Monday_. Choose
+    the first: a small lock appears in that cell's top left corner, and nothing else changes.
+    Click **Try another**: every other cell may change, the locked one stays. Open the menu
+    again: it now offers _Unlock Bunk 1 · Monday · Period 2_.
+14. **Lock a day or a bunk.** Choose _Lock Monday_: every Monday cell holding an activity gets the
+    lock (Open cells and Lunch don't). In Group View the menu offers the bunk shown (_Lock Bunk
+    2_). **Rebuild** now says _Locked cells stay as they are._; **Start over** says _…, locked
+    ones too._ and clears them.
+15. **Keep a cell empty.** Reach an Open cell (after Start over, any) and choose _Lock …_ on it:
+    it stays Open through every build, **Open** no longer counts it, and **Filled**'s total
+    drops by one.
+16. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). That comes
+    with the editor Manual Build shares, and a hand edit will lock the cell it changes. Use
+    Manual Build for a week built by hand.
+17. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
     version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
     **Versions**). Fill the open cells keeps none: it only adds.
 
@@ -782,7 +795,7 @@ doesn't change this one.
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: locks and changing cells by hand (next part), other programs sharing a
+- Generated Schedule: changing cells by hand (next part), other programs sharing a
   place, Versions on that screen, and publishing. In Manual Build: Versions on that screen,
   restoring a version into it, Start from another week, and publishing.
 - The camp map is a later piece.

@@ -307,3 +307,13 @@
   outline-offset: 1px;
   background: var(--shoresh-caution-tint);
 }
+
+/* Generated Schedule: a locked cell's lock, in the top left corner (the dot has the right), in
+   slate, the colour of structure that stays put. */
+.cell-lock {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  line-height: 0;
+  --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
+}

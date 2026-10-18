@@ -234,9 +234,17 @@ export function checkGeneratedWeek(input) {
       input.fixedActivities,
       input.recurringActivities
     ),
+    locks: new Set(
+      (input.locks || []).map((l) => lockKey(l.date, l.groupId, l.blockId))
+    ),
     ...otherPrograms(input.otherPrograms, days)
   };
-  const check = checkModel(input, model, null);
+  const check = {
+    ...checkModel(input, model, null),
+    // The placements the director locked (a lock on any of their cells), as the engine keeps
+    // them: a weekly-limit dot goes on an unlocked session first.
+    locked: lockedHeads(days, model.locks)
+  };
   // A group the server didn't send (away this week since the draft was made, G2 §13) keeps its
   // row, but is away in every block: hatched, not counted to fill, nothing goes in.
   const isAway = (groupId, blockId) =>
@@ -256,6 +264,31 @@ export function checkGeneratedWeek(input) {
       ? Math.min(...activities.running.map((a) => a.span))
       : null
   };
+}
+
+/** Head keys ("date|groupId|firstBlockId") of the placements with a locked cell. */
+function lockedHeads(days, locks) {
+  const heads = new Set();
+  for (const day of days) {
+    for (const [groupId, tokens] of day.tokens) {
+      tokens.forEach((token, b) => {
+        if (
+          !token ||
+          !locks.has(lockKey(day.date, groupId, day.blocks[b].id))
+        ) {
+          return;
+        }
+        let first = b;
+        while (first > 0 && tokens[first] === "^") {
+          first -= 1;
+        }
+        if (tokens[first] && tokens[first] !== "^") {
+          heads.add(`${day.date}|${groupId}|${day.blocks[first].id}`);
+        }
+      });
+    }
+  }
+  return heads;
 }
 
 /** Every bend the week's dots name: each rule on each dotted placement. */

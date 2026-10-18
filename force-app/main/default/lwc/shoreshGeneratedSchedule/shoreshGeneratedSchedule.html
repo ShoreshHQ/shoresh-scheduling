@@ -67,6 +67,26 @@
           >
             Try another
           </button>
+          <template lwc:if={hasLockMenu}>
+            <lightning-button-menu
+              class="lock-menu"
+              label="Lock"
+              icon-name="utility:lock"
+              alternative-text="Lock"
+              disabled={lockDisabled}
+              onselect={handleLockSelect}
+              data-id="lock-menu"
+            >
+              <template for:each={lockMenu} for:item="choice">
+                <lightning-menu-item
+                  key={choice.value}
+                  value={choice.value}
+                  label={choice.label}
+                  data-value={choice.value}
+                ></lightning-menu-item>
+              </template>
+            </lightning-button-menu>
+          </template>
           <lightning-combobox
             class="option"
             label={optionLabel}
@@ -206,6 +226,7 @@
             corner={corner}
             label={dailyGridLabel}
             editable
+            oncellfocus={handleCellFocus}
           ></c-shoresh-schedule-grid>
         </template>
       </template>
@@ -232,6 +253,7 @@
             corner={corner}
             label={groupGridLabel}
             editable
+            oncellfocus={handleCellFocus}
           ></c-shoresh-schedule-grid>
         </template>
       </template>

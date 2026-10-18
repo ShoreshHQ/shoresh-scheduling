@@ -641,12 +641,38 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
     **Filled** (`checkWeek`'s cells) doesn't count a cell the director locked empty as one to
     fill (`isLockedOpen`), and the engine never lists it as Open.
     `LOCK` and `UNLOCK` name the two changes. One word, **Lock**, everywhere (decision 3).
-32. **Not in this part: the screen.** G3 (#49) owns the Generated Schedule screen; whichever of
-    the two merges second wires it: hand edits with Manual Build's editing (place, move, swap,
-    clear, length, typing, undo), the lock icon on a locked cell (and as the action), Lock and
-    Unlock for a cell, the day and the group, Rebuild's _Locked cells stay as they are._ and
-    Start over's _locked ones too_ (ADR 0010 G3). Following the desktop (`SlotCell.jsx`): a
-    locked cell isn't dragged or dropped on, and pressing it offers Unlock.
+32. **The screen's side of locks** (G4 screen; `c/shoreshGeneratedSchedule`, `locks.js`):
+    - **the lock icon** (`utility:lock`, slate: the design guide's colour for structure that
+      stays put; "Locked" in assistive text) on every locked cell, in its top left corner (the
+      dot has the right), on every block of a locked placement;
+    - **one Lock menu** in the toolbar (the word **Lock**, the lock icon), offering what applies
+      now: the cell keyboard focus last reached (_Lock Bunk 3 · Monday · Period 2_, an Open
+      cell too, to keep it empty; never a fixed or recurring activity), the day shown in Daily
+      View (_Lock Monday_), the bunk shown in Group View (_Lock Bunk 3_) and the focused cell's
+      bunk's day (_Lock Bunk 3 · Monday_); each with _Unlock …_ when it has a locked cell. The
+      shortcuts are offered only while they would lock a filled cell, as the server locks only
+      those. A change is saved at once (`setLocks`), the week shown is the data module's answer
+      (never patched), and it is said back: _Locked Monday._ A conflict is the G3 box with
+      Reload, focus on Reload; a refusal its sentence;
+    - **builds keep locks**: every build's input is `inputFor(loaded, action)` (Start over
+      builds with none), and after every save the screen goes on with the week the data module
+      returns, its locks as the server kept them;
+    - **the check on load** gets the locks too (`checkGeneratedWeek`): a cell locked empty is
+      neither Open nor counted to fill, and an over-the-limit dot goes on an unlocked session
+      first, as the engine places it (the same dots as the engine's full build, tested);
+    - **the confirms** say _Locked cells stay as they are._ (Rebuild) and _…, locked ones too._
+      (Start over) when the week has a lock;
+    - **hand editing** (place, move, swap, clear, length, typing, undo with `locksAfter`) comes
+      with the shared week editor `c-shoresh-week-editor`, which Manual Build's session extracts
+      from Manual Build after its part 4b (coordinator, 2026-10-18: one editor, no fork). Until
+      then the Generated grid stays read-only, its cells reachable from the keyboard.
+
+    Different from the desktop (`SlotCell.jsx`, `preplacedSlots.js`): there, a lock belongs to
+    an activity (`is_locked`, set by nothing on screen), a locked cell has a bronze bar and no
+    icon, and a click or Enter on it unlocks it at once, with nothing said. Here a lock is a
+    cell's (decision 3), shown by the lock icon (decision 3; bronze is caution here), and
+    nothing unlocks without the director choosing Unlock: a stray click can't undo a choice,
+    and a screen reader hears what changed.
 
 ## Tests (G4)
 

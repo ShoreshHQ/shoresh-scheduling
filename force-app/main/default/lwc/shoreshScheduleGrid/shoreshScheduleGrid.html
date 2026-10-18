@@ -96,6 +96,16 @@
                       <span class="note">{cell.note}</span>
                     </template>
                   </template>
+                  <template lwc:if={cell.locked}>
+                    <span class="cell-lock"
+                      ><lightning-icon
+                        icon-name="utility:lock"
+                        size="xx-small"
+                        alternative-text="Locked"
+                        title="Locked"
+                      ></lightning-icon
+                    ></span>
+                  </template>
                   <template lwc:if={cell.dot}>
                     <span class="cell-dot"
                       ><c-shoresh-dot

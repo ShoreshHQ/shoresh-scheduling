@@ -30,7 +30,11 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  *
  * A cell with `dot` (its words) shows the bronze "needs a look" dot (c-shoresh-dot): the words
  * on hover, tap, or while the cell has keyboard focus, and always in assistive text. The grid
- * doesn't know why; the page says.
+ * doesn't know why; the page says. A cell with `locked` shows the lock icon (Generated Schedule:
+ * the director's Lock keeps it through every build), "Locked" in assistive text.
+ *
+ * Editable, it says which cell keyboard focus has reached ("cellfocus", with the cell's key), so
+ * the page can offer actions on it.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
@@ -164,6 +168,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
     const key = event.target.dataset && event.target.dataset.cell;
     if (this.editable && key) {
       this.activeKey = key;
+      this.dispatchEvent(new CustomEvent("cellfocus", { detail: { key } }));
     }
     this.focusedKey = key || null;
   }
