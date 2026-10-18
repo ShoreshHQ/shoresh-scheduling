@@ -21,287 +21,329 @@
     </article>
   </template>
   <div lwc:else class="slds-m-bottom_medium">
-    <div
-      class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small"
-    >
-      <h3 class="slds-text-heading_small slds-col">{title}</h3>
-      <div class="slds-col slds-grow-none">
-        <lightning-button
-          label={addLabel}
-          icon-name="utility:add"
-          onclick={handleAdd}
-          disabled={busy}
-        ></lightning-button>
-      </div>
-    </div>
-    <template lwc:if={hasRows}>
-      <template lwc:if={hasVisibleRows}>
-        <div class="slds-scrollable_x">
-          <table
-            class="slds-table slds-table_cell-buffer slds-table_bordered"
-            aria-label={title}
-          >
-            <thead>
-              <template lwc:if={hasWeeks}>
-                <tr class="slds-line-height_reset">
-                  <th scope="colgroup" colspan={columnCount}>
-                    <span class="slds-assistive-text">{title}</span>
-                  </th>
-                  <th
-                    scope="colgroup"
-                    colspan={weekCount}
-                    class="slds-text-align_center"
-                    data-id="weeks-heading"
-                  >
-                    {weeksHeading}
-                  </th>
-                  <template lwc:if={hasNotes}>
-                    <th scope="col"></th>
-                  </template>
-                  <th scope="col">
-                    <span class="slds-assistive-text">Actions</span>
-                  </th>
-                </tr>
+    <h3 class="slds-text-heading_small slds-m-bottom_x-small">{title}</h3>
+    <div class="slds-scrollable_x">
+      <table
+        class="slds-table slds-table_cell-buffer slds-table_bordered"
+        aria-label={title}
+      >
+        <thead>
+          <template lwc:if={hasWeeks}>
+            <tr class="slds-line-height_reset">
+              <th scope="colgroup" colspan={columnCount}>
+                <span class="slds-assistive-text">{title}</span>
+              </th>
+              <th
+                scope="colgroup"
+                colspan={weekCount}
+                class="slds-text-align_center"
+                data-id="weeks-heading"
+              >
+                {weeksHeading}
+              </th>
+              <template lwc:if={hasNotes}>
+                <th scope="col"></th>
               </template>
-              <tr class="slds-line-height_reset">
-                <template for:each={columns} for:item="col">
-                  <th key={col.fieldName} scope="col">
-                    <div class="slds-truncate" title={col.label}>
-                      {col.label}
-                    </div>
-                  </th>
-                </template>
-                <template lwc:if={hasWeeks}>
-                  <template for:each={weeks} for:item="week">
-                    <th
-                      key={week.Id}
-                      scope="col"
-                      class="slds-text-align_center"
-                    >
-                      <div class="slds-truncate" title={week.Name}>
-                        {week.Name}
-                      </div>
-                    </th>
-                  </template>
-                </template>
-                <template lwc:if={hasNotes}>
-                  <th scope="col">
-                    <div class="slds-truncate" title={notesTitle}>
-                      {notesTitle}
-                    </div>
-                  </th>
-                </template>
-                <th scope="col">
-                  <span class="slds-assistive-text">Actions</span>
+              <th scope="col">
+                <span class="slds-assistive-text">Actions</span>
+              </th>
+            </tr>
+          </template>
+          <tr class="slds-line-height_reset">
+            <template for:each={columns} for:item="col">
+              <th key={col.fieldName} scope="col">
+                <div class="slds-truncate" title={col.label}>{col.label}</div>
+              </th>
+            </template>
+            <template lwc:if={hasWeeks}>
+              <template for:each={weeks} for:item="week">
+                <th key={week.Id} scope="col" class="slds-text-align_center">
+                  <div class="slds-truncate" title={week.Name}>{week.Name}</div>
                 </th>
+              </template>
+            </template>
+            <template lwc:if={hasNotes}>
+              <th scope="col">
+                <div class="slds-truncate" title={notesTitle}>{notesTitle}</div>
+              </th>
+            </template>
+            <th scope="col">
+              <span class="slds-assistive-text">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <template for:each={bodyRows} for:item="row">
+            <template lwc:if={row.isEmptyState}>
+              <tr key={row.key} data-id="empty">
+                <td
+                  colspan={fullSpan}
+                  class="empty-state slds-text-align_center slds-text-color_weak"
+                  data-id="none-shown"
+                >
+                  {row.message}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              <template for:each={tableRows} for:item="row">
-                <tr key={row.key} data-row={row.key}>
-                  <template for:each={row.cells} for:item="cell">
-                    <td key={cell.key}>
-                      <template lwc:if={cell.isText}>
-                        <lightning-input
-                          type="text"
-                          label={cell.label}
-                          variant="label-hidden"
-                          value={cell.value}
-                          required={cell.required}
-                          data-row-key={row.key}
-                          data-field={cell.fieldName}
-                          onchange={handleChange}
-                        ></lightning-input>
-                        <template lwc:if={cell.sameName}>
-                          <span class="same-name" data-id="same-name">
-                            <span
-                              class="same-name-dot"
-                              aria-hidden="true"
-                            ></span
-                            >Same name as another
-                          </span>
-                        </template>
-                        <template lwc:if={cell.overlaps}>
-                          <span class="same-name" data-id="overlaps">
-                            <span
-                              class="same-name-dot"
-                              aria-hidden="true"
-                            ></span
-                            >{cell.overlapLabel}
-                          </span>
-                        </template>
+            </template>
+            <template lwc:else>
+              <tr
+                key={row.key}
+                class={row.rowClass}
+                data-row={row.key}
+                onkeydown={handleRowKeyDown}
+                onfocusout={handleRowLeave}
+              >
+                <template for:each={row.cells} for:item="cell">
+                  <td key={cell.key}>
+                    <template lwc:if={cell.isText}>
+                      <lightning-input
+                        type="text"
+                        label={cell.label}
+                        variant="label-hidden"
+                        value={cell.value}
+                        placeholder={cell.placeholder}
+                        required={cell.required}
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
+                      ></lightning-input>
+                      <template lwc:if={cell.sameName}>
+                        <span class="same-name" data-id="same-name">
+                          <span class="same-name-dot" aria-hidden="true"></span
+                          >Same name as another
+                        </span>
                       </template>
-                      <template lwc:elseif={cell.isNumber}>
-                        <lightning-input
-                          type="number"
-                          label={cell.label}
-                          variant="label-hidden"
-                          value={cell.value}
-                          required={cell.required}
-                          min={cell.min}
-                          step="1"
-                          data-row-key={row.key}
-                          data-field={cell.fieldName}
-                          onchange={handleChange}
-                        ></lightning-input>
+                      <template lwc:if={cell.overlaps}>
+                        <span class="same-name" data-id="overlaps">
+                          <span class="same-name-dot" aria-hidden="true"></span
+                          >{cell.overlapLabel}
+                        </span>
                       </template>
-                      <template lwc:elseif={cell.isDate}>
-                        <lightning-input
-                          type="date"
-                          label={cell.label}
-                          variant="label-hidden"
-                          value={cell.value}
-                          required={cell.required}
-                          data-row-key={row.key}
-                          data-field={cell.fieldName}
-                          onchange={handleChange}
-                        ></lightning-input>
-                      </template>
-                      <template lwc:elseif={cell.isTime}>
-                        <lightning-input
-                          type="time"
-                          label={cell.label}
-                          variant="label-hidden"
-                          value={cell.value}
-                          required={cell.required}
-                          data-row-key={row.key}
-                          data-field={cell.fieldName}
-                          onchange={handleChange}
-                        ></lightning-input>
-                      </template>
-                      <template lwc:elseif={cell.isCheckbox}>
-                        <lightning-input
-                          type="checkbox"
-                          label={cell.label}
-                          variant="label-hidden"
-                          checked={cell.checked}
-                          data-row-key={row.key}
-                          data-field={cell.fieldName}
-                          onchange={handleChange}
-                        ></lightning-input>
-                      </template>
-                      <template lwc:elseif={cell.isWho}>
-                        <div class="slds-grid slds-grid_vertical-align-center">
-                          <span class="slds-m-right_x-small" data-id="who">
-                            {cell.whoSummary}
-                          </span>
-                          <lightning-button
-                            variant="base"
-                            label={cell.whoButton}
-                            title={cell.label}
-                            data-row-key={row.key}
-                            data-id="who-toggle"
-                            onclick={handleWhoToggle}
-                          ></lightning-button>
-                        </div>
-                      </template>
-                      <template lwc:elseif={cell.isPicklist}>
-                        <lightning-combobox
-                          label={cell.label}
-                          variant="label-hidden"
-                          value={cell.value}
-                          options={cell.options}
-                          required={cell.required}
-                          data-row-key={row.key}
-                          data-field={cell.fieldName}
-                          onchange={handleChange}
-                        ></lightning-combobox>
-                      </template>
-                      <template lwc:elseif={cell.isFixed}>
-                        <span data-id="fixed">{cell.fixedText}</span>
-                      </template>
-                    </td>
-                  </template>
-                  <template for:each={row.weekCells} for:item="cell">
-                    <td key={cell.key} class="slds-text-align_center">
+                    </template>
+                    <template lwc:elseif={cell.isNumber}>
+                      <lightning-input
+                        type="number"
+                        label={cell.label}
+                        variant="label-hidden"
+                        value={cell.value}
+                        required={cell.required}
+                        min={cell.min}
+                        step="1"
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
+                      ></lightning-input>
+                    </template>
+                    <template lwc:elseif={cell.isDate}>
+                      <lightning-input
+                        type="date"
+                        label={cell.label}
+                        variant="label-hidden"
+                        value={cell.value}
+                        required={cell.required}
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
+                      ></lightning-input>
+                    </template>
+                    <template lwc:elseif={cell.isTime}>
+                      <lightning-input
+                        type="time"
+                        label={cell.label}
+                        variant="label-hidden"
+                        value={cell.value}
+                        required={cell.required}
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
+                      ></lightning-input>
+                    </template>
+                    <template lwc:elseif={cell.isCheckbox}>
                       <lightning-input
                         type="checkbox"
                         label={cell.label}
                         variant="label-hidden"
                         checked={cell.checked}
                         data-row-key={row.key}
-                        data-week={cell.weekId}
-                        onchange={handleTick}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
                       ></lightning-input>
-                    </td>
-                  </template>
-                  <template lwc:if={hasNotes}>
-                    <td
-                      class="slds-cell-wrap slds-text-color_weak"
-                      data-id="note"
-                      aria-live="polite"
-                    >
-                      {row.note}
-                      <template for:each={row.actions} for:item="action">
+                    </template>
+                    <template lwc:elseif={cell.isWho}>
+                      <div class="slds-grid slds-grid_vertical-align-center">
+                        <span class="slds-m-right_x-small" data-id="who">
+                          {cell.whoSummary}
+                        </span>
                         <lightning-button
-                          key={action.key}
-                          class="slds-m-left_x-small"
                           variant="base"
-                          label={action.label}
+                          label={cell.whoButton}
+                          title={cell.label}
                           data-row-key={row.key}
-                          data-action={action.name}
-                          data-id="row-action"
-                          onclick={handleRowAction}
-                          disabled={busy}
+                          data-id="who-toggle"
+                          onclick={handleWhoToggle}
                         ></lightning-button>
-                      </template>
-                    </td>
+                      </div>
+                    </template>
+                    <template lwc:elseif={cell.isPicklist}>
+                      <lightning-combobox
+                        label={cell.label}
+                        variant="label-hidden"
+                        value={cell.value}
+                        options={cell.options}
+                        required={cell.required}
+                        data-row-key={row.key}
+                        data-field={cell.fieldName}
+                        onchange={handleChange}
+                      ></lightning-combobox>
+                    </template>
+                    <template lwc:elseif={cell.isFixed}>
+                      <span data-id="fixed">{cell.fixedText}</span>
+                    </template>
+                  </td>
+                </template>
+                <template for:each={row.weekCells} for:item="cell">
+                  <td key={cell.key} class="slds-text-align_center">
+                    <lightning-input
+                      type="checkbox"
+                      label={cell.label}
+                      variant="label-hidden"
+                      checked={cell.checked}
+                      data-row-key={row.key}
+                      data-week={cell.weekId}
+                      onchange={handleTick}
+                    ></lightning-input>
+                  </td>
+                </template>
+                <template lwc:if={hasNotes}>
+                  <td
+                    class="slds-cell-wrap slds-text-color_weak"
+                    data-id="note"
+                    aria-live="polite"
+                  >
+                    {row.note}
+                    <template for:each={row.actions} for:item="action">
+                      <lightning-button
+                        key={action.key}
+                        class="slds-m-left_x-small"
+                        variant="base"
+                        label={action.label}
+                        data-row-key={row.key}
+                        data-action={action.name}
+                        data-id="row-action"
+                        onclick={handleRowAction}
+                        disabled={busy}
+                      ></lightning-button>
+                    </template>
+                  </td>
+                </template>
+                <td>
+                  <template lwc:if={row.isNew}>
+                    <lightning-button-icon
+                      icon-name="utility:add"
+                      alternative-text={addLabel}
+                      title={addLabel}
+                      variant="border-filled"
+                      data-id="add"
+                      onclick={handleAdd}
+                      disabled={addDisabled}
+                    ></lightning-button-icon>
                   </template>
-                  <td>
+                  <template lwc:else>
                     <lightning-button-icon
                       icon-name="utility:delete"
                       alternative-text={row.deleteLabel}
                       title={row.deleteLabel}
                       variant="bare"
+                      data-id="delete"
                       data-row-key={row.key}
                       onclick={handleDelete}
                       disabled={busy}
                     ></lightning-button-icon>
+                  </template>
+                </td>
+              </tr>
+              <template lwc:if={row.whoOpen}>
+                <tr
+                  key={row.whoKey}
+                  data-row={row.key}
+                  data-who-row={row.key}
+                  onfocusout={handleRowLeave}
+                >
+                  <td colspan={fullSpan}>
+                    <lightning-dual-listbox
+                      data-row-key={row.key}
+                      data-id="who-picker"
+                      label={row.whoLabel}
+                      source-label={row.whoSource}
+                      selected-label={row.whoSelected}
+                      options={row.whoOptions}
+                      value={row.who}
+                      onchange={handleWhoChange}
+                    ></lightning-dual-listbox>
                   </td>
                 </tr>
-                <template lwc:if={row.whoOpen}>
-                  <tr key={row.whoKey} data-who-row={row.key}>
-                    <td colspan={fullSpan}>
-                      <lightning-dual-listbox
-                        data-row-key={row.key}
-                        data-id="who-picker"
-                        label={row.whoLabel}
-                        source-label={row.whoSource}
-                        selected-label={row.whoSelected}
-                        options={row.whoOptions}
-                        value={row.who}
-                        onchange={handleWhoChange}
-                      ></lightning-dual-listbox>
-                    </td>
-                  </tr>
-                </template>
               </template>
-            </tbody>
-          </table>
+            </template>
+          </template>
+        </tbody>
+      </table>
+    </div>
+    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+      {announcement}
+    </div>
+
+    <!-- Someone else changed the row since it was shown (Manual Build's question) -->
+    <template lwc:if={conflict}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="conflict-title"
+        class="slds-modal slds-fade-in-open"
+        data-id="conflict"
+        onkeydown={handleConflictKeyDown}
+      >
+        <div class="slds-modal__container">
+          <div class="slds-modal__header">
+            <h2 id="conflict-title" class="slds-modal__title">
+              Changed by someone else
+            </h2>
+          </div>
+          <div class="slds-modal__content slds-p-around_medium">
+            <ul class="conflict-rows">
+              <template for:each={conflict.rows} for:item="row">
+                <li key={row.key} class="conflict-row" data-field={row.key}>
+                  <p class="conflict-where">{row.where}</p>
+                  <dl class="conflict-choices">
+                    <dt>Theirs</dt>
+                    <dd data-id="theirs">{row.theirs}</dd>
+                    <dt>Yours</dt>
+                    <dd data-id="yours">{row.yours}</dd>
+                  </dl>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="slds-modal__footer">
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              onclick={handleKeepTheirs}
+              data-id="keep-theirs"
+            >
+              Keep theirs
+            </button>
+            <button
+              type="button"
+              class="slds-button slds-button_brand"
+              onclick={handleUseYours}
+              data-id="use-yours"
+            >
+              Use yours
+            </button>
+          </div>
         </div>
-      </template>
-      <template lwc:else>
-        <p class="slds-text-color_weak" data-id="none-shown">
-          Nothing to show with this choice.
-        </p>
-      </template>
-      <div class="slds-m-top_x-small">
-        <lightning-button
-          label="Cancel changes"
-          onclick={handleCancel}
-          disabled={cancelDisabled}
-        ></lightning-button>
-        <lightning-button
-          class="slds-m-left_x-small"
-          variant="brand"
-          label="Save changes"
-          onclick={handleSave}
-          disabled={saveDisabled}
-        ></lightning-button>
-      </div>
-    </template>
-    <template lwc:else>
-      <p class="slds-text-color_weak">{emptyMessage}</p>
+      </section>
+      <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
     </template>
   </div>
 </template>

@@ -119,6 +119,9 @@ public with sharing class ScreenSaves {
     public List<Id> weeksBackOn { get; set; }
     @AuraEnabled
     public List<SetTimeWho.Who> who { get; set; }
+    /** A row save only: who the row covered when the director changed it (RowSaves). */
+    @AuraEnabled
+    public List<Id> seenWho { get; set; }
   }
 
   /** Creates new records and updates existing ones, with their week ticks. Returns the Ids in order. */

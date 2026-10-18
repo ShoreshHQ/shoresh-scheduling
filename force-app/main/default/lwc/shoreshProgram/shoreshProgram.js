@@ -231,7 +231,6 @@ export default class ShoreshProgram extends LightningElement {
   get fixedDefaults() {
     return {
       [FIXED.Program]: this.programId,
-      Name: `${this.terms.s("FixedActivity")} {n}`,
       [FIXED.Length]: 1
     };
   }
@@ -240,7 +239,6 @@ export default class ShoreshProgram extends LightningElement {
     // No day ticked: the scheduler ticks at least one (Greg, 2026-10-16).
     const defaults = {
       [RECURRING.Program]: this.programId,
-      Name: `${this.terms.s("RecurringActivity")} {n}`,
       [RECURRING.Length]: 1
     };
     DAYS.forEach((day) => {
@@ -419,10 +417,10 @@ export default class ShoreshProgram extends LightningElement {
       deleteProgram: `Delete this ${t.sIn("Program")}`,
       fixed: `${t.p("FixedActivity")} in ${program}`,
       addFixed: `Add ${t.s("FixedActivity")}`,
-      noFixed: `No ${t.pIn("FixedActivity")} yet. Each one takes every ${t.sIn("Group")} in ${program}, in one ${t.sIn("TimeBlock")}, every day it runs.`,
+      noFixed: `No ${t.pIn("FixedActivity")} yet.`,
       recurring: `${t.p("RecurringActivity")} in ${program}`,
       addRecurring: `Add ${t.s("RecurringActivity")}`,
-      noRecurring: `No ${t.pIn("RecurringActivity")} yet. Each one takes chosen ${t.pIn("Group")} (or all of them) in one ${t.sIn("TimeBlock")}, on the days ticked.`,
+      noRecurring: `No ${t.pIn("RecurringActivity")} yet.`,
       needsBlocks: `${program} has no ${t.pIn("TimeBlock")} yet. Add them under ${t.p("TimeBlock")} first.`,
       leftOut: "Notes"
     };
