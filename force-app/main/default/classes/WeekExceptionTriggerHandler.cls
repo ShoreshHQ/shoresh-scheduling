@@ -42,7 +42,9 @@ public with sharing class WeekExceptionTriggerHandler {
     for (Week__c week : weeks.values()) {
       seasonIds.add(week.Season__c);
     }
-    Map<Id, CampLabels> labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
+      seasonIds
+    );
     for (WeekException__c row : exceptions) {
       Week__c week = weeks.get(row.Week__c);
       for (Schema.SObjectField field : TARGETS.keySet()) {
@@ -78,29 +80,36 @@ public with sharing class WeekExceptionTriggerHandler {
       setTimeIds.add(row.RecurringActivity__c);
     }
     Map<Id, Id> result = new Map<Id, Id>();
-    for (Group__c grp : [
-      SELECT Id, Division__r.Program__r.Season__c
-      FROM Group__c
-      WHERE Id IN :groupIds
-      WITH SYSTEM_MODE
-    ]) {
-      result.put(grp.Id, grp.Division__r.Program__r.Season__c);
+    // Only the kinds a row names are read (a bunk's week off reads no activities or places).
+    groupIds.remove(null);
+    otherIds.remove(null);
+    if (!groupIds.isEmpty()) {
+      for (Group__c grp : [
+        SELECT Id, Division__r.Program__r.Season__c
+        FROM Group__c
+        WHERE Id IN :groupIds
+        WITH SYSTEM_MODE
+      ]) {
+        result.put(grp.Id, grp.Division__r.Program__r.Season__c);
+      }
     }
-    for (Activity__c activity : [
-      SELECT Id, Season__c
-      FROM Activity__c
-      WHERE Id IN :otherIds
-      WITH SYSTEM_MODE
-    ]) {
-      result.put(activity.Id, activity.Season__c);
-    }
-    for (Location__c location : [
-      SELECT Id, Season__c
-      FROM Location__c
-      WHERE Id IN :otherIds
-      WITH SYSTEM_MODE
-    ]) {
-      result.put(location.Id, location.Season__c);
+    if (!otherIds.isEmpty()) {
+      for (Activity__c activity : [
+        SELECT Id, Season__c
+        FROM Activity__c
+        WHERE Id IN :otherIds
+        WITH SYSTEM_MODE
+      ]) {
+        result.put(activity.Id, activity.Season__c);
+      }
+      for (Location__c location : [
+        SELECT Id, Season__c
+        FROM Location__c
+        WHERE Id IN :otherIds
+        WITH SYSTEM_MODE
+      ]) {
+        result.put(location.Id, location.Season__c);
+      }
     }
     result.putAll(SetupSeasons.ofSetTimeItems(setTimeIds));
     return result;
