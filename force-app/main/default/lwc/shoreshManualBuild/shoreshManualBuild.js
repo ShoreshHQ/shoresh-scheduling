@@ -27,6 +27,14 @@ import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
+import {
+  RULE,
+  checkWeek,
+  reasonFor,
+  readActivities,
+  readLocations,
+  readProgram
+} from "c/shoreshEngine";
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -84,6 +92,17 @@ export default class ShoreshManualBuild extends LightningElement {
   loadTicket = 0;
   // The activity list's Filter box.
   filter = "";
+  // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
+  checksResetKey = 0;
+  // Where keyboard focus goes once the page has drawn (after a list line was clicked).
+  focusAfterRender = null;
+  // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
+  // useFlagChangeAck), only for a director's own edit and only when it touched a few.
+  pulseKeys = [];
+  pulseFlip = false;
+  // The last check and what it was worked out from. Changed in place, so updating it while the
+  // page renders doesn't ask for another render (so never @track it).
+  checkMemo = { inputs: null, result: null };
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -241,6 +260,8 @@ export default class ShoreshManualBuild extends LightningElement {
     // The week as the server last sent it, without edits still waiting to save.
     this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
+      this.checksResetKey += 1;
+      this.pulseKeys = [];
       this.dayIndex = 0;
       const all = groups(draft.schedule);
       this.groupKey = all.length ? all[0].key : null;
@@ -293,6 +314,95 @@ export default class ShoreshManualBuild extends LightningElement {
   get hasNoDays() {
     return !!this.schedule && this.schedule.days.length === 0;
   }
+
+  // ---------- checks and counters ----------
+
+  /** The week checked (c/shoreshEngine checkWeek), worked out again only when the week or setup changes. */
+  get checked() {
+    const schedule = this.schedule;
+    // Everything the checks read comes with the draft and is read again with the week (one
+    // source): activities, places, the program's groups and divisions, where its fixed and
+    // recurring activities are, and the away blocks.
+    const inputs = [schedule, this.draft, this.t];
+    const memo = this.checkMemo;
+    if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
+      return memo.result;
+    }
+    const draft = this.draft || {};
+    const entry = {
+      divisions: [{ groups: draft.groupRecords || [] }],
+      fixedActivities: draft.fixedActivityRecords || [],
+      recurringActivities: draft.recurringActivityRecords || []
+    };
+    const away = new Set();
+    ((this.draft && this.draft.away) || []).forEach((row) =>
+      row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
+    );
+    const activities = readActivities(draft.activityRecords);
+    const result = checkWeek(
+      (schedule && schedule.days) || [],
+      {
+        activities,
+        locations: readLocations(draft.locationRecords),
+        ...readProgram(entry),
+        notFor: new Map(
+          ((this.draft && this.draft.activities) || []).map((a) => [
+            a.id,
+            a.notFor || []
+          ])
+        ),
+        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`)
+      },
+      { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
+    );
+    memo.inputs = inputs;
+    memo.result = result;
+    return result;
+  }
+
+  get showCounters() {
+    return !!this.draft && !this.hasNoDays;
+  }
+
+  /**
+   * A line takes the director to its bunk's week (desktop: Group View of that group, the list
+   * closed); an overlapping cell's line also puts keyboard focus on that cell.
+   */
+  handleLocate(event) {
+    const line = event.detail;
+    if (!line || !line.groupId) {
+      return;
+    }
+    this.closeEditor();
+    this.picked = null;
+    this.pulseKeys = [];
+    this.view = "group";
+    this.activityId = null;
+    this.groupKey = line.groupId;
+    this.focusAfterRender = { cellKey: this.cellKeyOf(line) };
+  }
+
+  /** In Group View, the grid cell holding a line's day and time block, if it names one. */
+  cellKeyOf(line) {
+    if (!line.dateValue || !this.schedule) {
+      return null;
+    }
+    const d = this.schedule.days.findIndex(
+      (day) => day.dateValue === line.dateValue
+    );
+    const day = this.schedule.days[d];
+    const g = day ? day.groups.findIndex((grp) => grp.id === line.groupId) : -1;
+    const b = day ? day.blocks.findIndex((blk) => blk.id === line.blockId) : -1;
+    if (g < 0 || b < 0) {
+      return null;
+    }
+    const first = placement(day, g, b).first;
+    const grid = groupGrid(this.schedule, line.groupId, this.t);
+    const found = grid.cells.find(
+      (c) => c.slot && c.slot.day === d && c.slot.block === first
+    );
+    return found ? found.key : null;
+  }
   get noDaysMessage() {
     return `${this.weekName} has no days ${this.programName} runs.`;
   }
@@ -326,6 +436,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleView(event) {
     this.view = event.currentTarget.dataset.view;
     this.closeEditor();
+    this.pulseKeys = [];
     this.picked = null;
     if (this.view !== "activity") {
       this.activityId = null;
@@ -354,6 +465,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleDay(event) {
     this.dayIndex = Number(event.currentTarget.dataset.index);
     this.closeEditor();
+    this.pulseKeys = [];
     this.picked = null;
   }
 
@@ -370,6 +482,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleGroup(event) {
     this.groupKey = event.currentTarget.dataset.key;
     this.closeEditor();
+    this.pulseKeys = [];
     this.picked = null;
   }
 
@@ -402,11 +515,16 @@ export default class ShoreshManualBuild extends LightningElement {
       result = {
         ...cell,
         readOnly: this.lockedReason(cell.slot) !== null,
-        movable: here.startsWith("A:")
+        movable: here.startsWith("A:"),
+        dot: this.dotFor(cell.slot) || null
       };
       if (this.picked && this.picked.key === cell.key) {
         result.className = `${result.className} cell_picked`;
         result.selected = true;
+      }
+      if (this.pulseKeys.includes(this.placementKeyOf(cell.slot))) {
+        // Two names in turn, so a second change to the same cell pulses again.
+        result.className = `${result.className} ${this.pulseFlip ? "cell_pulse2" : "cell_pulse"}`;
       }
     }
     if (cell.slot && cell.open && this.isAwaySlot(cell.slot)) {
@@ -422,6 +540,18 @@ export default class ShoreshManualBuild extends LightningElement {
       result = { ...result, className: `${result.className} cell_saving` };
     }
     return result;
+  }
+
+  /** The words of a placement's dot, if it has one (keyed by where it starts). */
+  dotFor(slot) {
+    return this.checked.flags.get(this.placementKeyOf(slot));
+  }
+
+  /** The check's key for the placement a slot is in: "date|groupId|firstBlockId". */
+  placementKeyOf(slot) {
+    const day = this.dayOf(slot);
+    const first = placement(day, slot.group, slot.block).first;
+    return `${day.dateValue}|${day.groups[slot.group].id}|${day.blocks[first].id}`;
   }
 
   get catalogue() {
@@ -649,7 +779,7 @@ export default class ShoreshManualBuild extends LightningElement {
         kind: "activity",
         label: a.name,
         activity: a,
-        tag: `Not set up for ${grp.name}`
+        tag: reasonFor(RULE.ELIGIBILITY, { groupName: grp.name })
       })
     );
     const name = text.trim().replace(/\s+/g, " ");
@@ -785,10 +915,16 @@ export default class ShoreshManualBuild extends LightningElement {
         this.error = errorMessage(e);
         return;
       }
+      // Its record joins the draft's, so the checks know it before the week is read again.
+      const records = this.draft.activityRecords || [];
       if (!this.draft.activities.some((a) => a.id === activity.id)) {
         this.draft = {
           ...this.draft,
-          activities: [...this.draft.activities, activity]
+          activities: [...this.draft.activities, activity],
+          activityRecords:
+            activity.record && !records.some((r) => r.Id === activity.id)
+              ? [...records, activity.record]
+              : records
         };
       }
     }
@@ -906,22 +1042,71 @@ export default class ShoreshManualBuild extends LightningElement {
     this.loadTicket += 1;
     this.loading = false;
     const edit = { runs: serverRuns };
-    this.queue = [
-      ...this.queue,
-      {
-        edit,
-        key,
-        label,
-        stepId,
-        kind,
-        baseLabel: baseLabel || label,
-        // What the director chose and saw, by time block (conflicts.js): what a question compares.
-        intent,
-        slotKey: this.slotKeyOf(firstRun, serverRuns[0])
-      }
-    ];
+    const before = this.checked;
+    const entry = {
+      edit,
+      key,
+      label,
+      stepId,
+      kind,
+      baseLabel: baseLabel || label,
+      // What the director chose and saw, by time block (conflicts.js): what a question compares.
+      intent,
+      slotKey: this.slotKeyOf(firstRun, serverRuns[0])
+    };
+    this.queue = [...this.queue, entry];
     this.applyLocally(edit);
+    // A dot the edit brought or took away, said with its save (a sighted director sees it).
+    entry.news = this.dotNews(before, this.checked);
+    this.pulseKeys =
+      kind === "edit" ? this.dotChanges(before, this.checked) : [];
+    this.pulseFlip = !this.pulseFlip;
     this.saveNext();
+  }
+
+  /**
+   * The placements (still on the grid) whose dot changed, when they are few enough to be one
+   * edit's doing (desktop MAX_SINGLE_EDIT_CELLS, 3); otherwise none.
+   */
+  dotChanges(before, after) {
+    const keys = new Set([...before.flags.keys(), ...after.flags.keys()]);
+    const changed = [...keys].filter(
+      (key) => before.flags.get(key) !== after.flags.get(key)
+    );
+    const still = new Set(after.placements.map((p) => p.key));
+    return changed.length <= 3 ? changed.filter((key) => still.has(key)) : [];
+  }
+
+  /**
+   * One short line on what an edit did to the bronze dots, for screen readers: the first dot it
+   * brought ("Soccer · Bunk 1: Over its limit of 1 Bunk at once"), or else the first it took away
+   * ("Soccer · Bunk 1: fine now"), with how many more. Null when the dots didn't change.
+   */
+  dotNews(before, after) {
+    const named = (checked, key) => {
+      const p = checked.placements.find((x) => x.key === key);
+      return p ? `${this.activityName(p.id)} · ${p.groupName}` : "";
+    };
+    const brought = [...after.flags].filter(
+      ([key, words]) => before.flags.get(key) !== words
+    );
+    // A dot gone with its placement (cleared or moved) isn't "fine now": only placements still
+    // on the grid.
+    const still = new Set(after.placements.map((p) => p.key));
+    const gone = [...before.flags.keys()].filter(
+      (key) => !after.flags.has(key) && still.has(key)
+    );
+    let line = null;
+    let more = 0;
+    if (brought.length) {
+      const [key, words] = brought[0];
+      line = `${named(after, key)}: ${words}`;
+      more = brought.length - 1;
+    } else if (gone.length) {
+      line = `${named(before, gone[0])}: fine now`;
+      more = gone.length - 1;
+    }
+    return line && more ? `${line}, and ${more} more` : line;
   }
 
   /** The draft with an edit made, as the grid shows it until the server answers. */
@@ -989,7 +1174,9 @@ export default class ShoreshManualBuild extends LightningElement {
         }
         const said = [this.unrepeated, fresh].filter(Boolean).join(" ");
         this.unrepeated = null;
-        this.announce(said ? `${entry.label}. ${said}` : entry.label);
+        this.announce(
+          [entry.label, entry.news, said].filter(Boolean).join(". ")
+        );
       }
     } catch (e) {
       const dropped = this.queue.length - 1;
@@ -1095,6 +1282,7 @@ export default class ShoreshManualBuild extends LightningElement {
   get chips() {
     return paletteChips(
       this.schedule,
+      this.checked,
       (this.draft && this.draft.activities) || [],
       this.isGroup ? this.groupKey : null,
       this.filter
@@ -1609,6 +1797,15 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   renderedCallback() {
+    // A list whose counter went to zero is closed, so it doesn't open again by itself later.
+    if (this.focusAfterRender) {
+      const { cellKey } = this.focusAfterRender;
+      this.focusAfterRender = null;
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (grid) {
+        grid.focusCell(cellKey);
+      }
+    }
     if (this.conflict && !this.conflictFocused) {
       const button = this.template.querySelector('[data-id="keep-theirs"]');
       if (button) {

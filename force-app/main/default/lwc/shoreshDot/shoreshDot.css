@@ -42,6 +42,20 @@
   pointer-events: auto;
 }
 
+/* In a grid cell the dot sits in the top right corner: the words open toward the cell, from the
+   dot's right edge, and wrap, so the grid's own edge never cuts them off. */
+.tip-area_cell {
+  left: auto;
+  right: -4px;
+  transform: none;
+}
+
+.tip-area_cell .tip {
+  width: max-content;
+  max-width: 240px;
+  white-space: normal;
+}
+
 .tip {
   display: block;
   padding: 4px 8px;
