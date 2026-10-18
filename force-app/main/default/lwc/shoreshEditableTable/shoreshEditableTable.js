@@ -540,7 +540,15 @@ export default class ShoreshEditableTable extends LightningElement {
    * the blank row.
    */
   get bodyRows() {
-    const rows = this.visibleDrafts.map((draft) => this.tableRow(draft));
+    // Worked out once for every row drawn.
+    const shared = {
+      offWeeks: this.offWeeks,
+      sameNames: this.sameNameKeys,
+      overlaps: this.overlapKeys
+    };
+    const rows = this.visibleDrafts.map((draft) =>
+      this.tableRow(draft, shared)
+    );
     if (rows.length === 0) {
       rows.push({
         key: "empty",
@@ -550,17 +558,14 @@ export default class ShoreshEditableTable extends LightningElement {
           : this.emptyMessage
       });
     }
-    return [...rows, this.tableRow(this.addRow)];
+    return [...rows, this.tableRow(this.addRow, shared)];
   }
 
   get addDisabled() {
     return this.busy || this.addRow.adding || !this.complete(this.addRow);
   }
 
-  tableRow(draft) {
-    const offWeeks = this.offWeeks;
-    const sameNames = this.sameNameKeys;
-    const overlaps = this.overlapKeys;
+  tableRow(draft, { offWeeks, sameNames, overlaps }) {
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
     const firstText = (this.columns.find((c) => this.isTextColumn(c)) || {})
