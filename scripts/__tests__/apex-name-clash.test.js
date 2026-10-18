@@ -94,6 +94,40 @@ describe("Apex name-clash check", () => {
     ).toEqual(["campLabels"]);
   });
 
+  it("finds a name declared after a comma, and a switch-when binding", () => {
+    expect(
+      names(`public class X {
+        private Integer n = 1, campLabels = 2;
+        static void run(Object record) {
+          Integer a, scheduleUses;
+          switch on record {
+            when Account inUse {
+              InUse.reason(inUse.Id);
+            }
+          }
+          ScheduleUses.Count c = null;
+          CampLabels.forCamp(null);
+        }
+      }`)
+    ).toEqual(["field campLabels", "local scheduleUses", "local inUse"]);
+  });
+
+  it("keeps a switch-when binding to its own block, and commas in initializers out", () => {
+    expect(
+      names(`public class X {
+        static void run(Object record) {
+          switch on record {
+            when Account inUse { System.debug(inUse); }
+          }
+          InUse.reason(null);
+          Map<Id, Id> seen = new Map<Id, Id>(), other = new Map<Id, CampLabels>();
+          List<String> words = new List<String>{ 'a', campLabels };
+          CampLabels.forCamp(null);
+        }
+      }`)
+    ).toEqual([]);
+  });
+
   it("does not flag what compiles in the org", () => {
     expect(
       names(`public with sharing class SeasonSetupController {

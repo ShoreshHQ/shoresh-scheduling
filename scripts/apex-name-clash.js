@@ -17,6 +17,9 @@
  * same spelling everywhere, and methods. It reads Apex with regular expressions, not a parser:
  * a false alarm is a bug in this script.
  *
+ * Declarations: `Type name` (also `Type a = 1, b = 2;`), parameters, for-loop and catch
+ * variables, and `when Type name {` bindings.
+ *
  * Opt-out, on the variable's declaration line, with a reason: `// apex-name-clash-ok: <why>`.
  *
  * Usage: node scripts/apex-name-clash.js   (exit 1, listing each one, if any is found)
@@ -156,6 +159,12 @@ function declarationsOf(code, blocks) {
     if (inParens) {
       kind = block.kind === "class" ? "parameter" : "local";
       scope = scopeAfterParens(code, blocks, at);
+    } else if (/^\s*when\s/i.test(before)) {
+      // `when Account found {`: the binding lives in the block that follows.
+      const open = code.indexOf("{", at);
+      const body = blocks.find((b) => b.start === open);
+      kind = "local";
+      scope = [open, body ? body.end : code.length];
     } else if (block.kind === "class") {
       kind = "field";
       scope = [block.start, block.end];
@@ -164,8 +173,45 @@ function declarationsOf(code, blocks) {
       scope = [statementEnd(code, at), block.end];
     }
     decls.push({ name: m[2], line: lineAt(code, at), scope, kind });
+    const isProperty =
+      code[code.slice(at + m[2].length).search(/\S/) + at + m[2].length] ===
+      "{";
+    if (!inParens && !isProperty && !/^\s*when\s/i.test(before)) {
+      for (const more of moreDeclarators(code, at + m[2].length)) {
+        decls.push({
+          name: more.name,
+          line: lineAt(code, more.at),
+          scope,
+          kind
+        });
+      }
+    }
   }
   return decls;
+}
+
+/**
+ * The other names in `Integer a = 1, b, c = 2;` from just after the first name: each part
+ * between top-level commas that is a name, with or without `= ...`.
+ */
+function moreDeclarators(code, from) {
+  const names = [];
+  let depth = 0;
+  let part = from;
+  for (let i = from; i < code.length; i++) {
+    const c = code[i];
+    if ("({[".includes(c)) depth++;
+    else if (")}]".includes(c)) depth--;
+    if (depth < 0 || (depth === 0 && (c === "," || c === ";"))) {
+      if (part > from) {
+        const m = /^(\s*)([A-Za-z_]\w*)\s*(=[^]*)?$/.exec(code.slice(part, i));
+        if (m) names.push({ name: m[2], at: part + m[1].length });
+      }
+      if (c !== ",") break;
+      part = i + 1;
+    }
+  }
+  return names;
 }
 
 function count(text, c) {

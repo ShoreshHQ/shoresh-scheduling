@@ -284,7 +284,6 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="problems"]').textContent).toContain(
       "Juniors: No Bunks yet."
     );
-    await expect(element).toBeAccessible();
     await openScreen(element, "weeks");
     expect(q(element, '[data-id="problems"]')).toBeNull();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
@@ -293,8 +292,18 @@ describe("c-shoresh-camp-setup", () => {
     // Overlapping weeks get a heads-up, in the camp's word.
     expect(weeks.overlapLabel).toBe("Overlaps another week");
     expect(button(element, "Copy this season")).toBeDefined();
-    // The accessibility check walks the whole setup screen: slow with every suite running.
-  }, 20000);
+  });
+
+  it("the Bunks screen's problems and table are accessible", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    await openScreen(element, "groups");
+    // Only these two parts: axe over the whole setup screen takes about 5 s on its own.
+    await expect(q(element, '[data-id="problems"]')).toBeAccessible();
+    await expect(q(element, "c-shoresh-editable-table")).toBeAccessible();
+  });
 
   it("fills in weeks from the season dates", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));

@@ -46,6 +46,20 @@ describe("Apex reserved-word check", () => {
     ]);
   });
 
+  it("finds a reserved word declared after a comma, or bound in a switch-when", () => {
+    expect(
+      found(`public class X {
+        private Integer total = 0, number = 1;
+        static void run(Object record) {
+          Integer a, into;
+          switch on record {
+            when Account group { System.debug(group); }
+          }
+        }
+      }`)
+    ).toEqual(["field number @2", "local into @4", "local group @6"]);
+  });
+
   it("does not flag keywords used as keywords, comments, strings, queries or allowed words", () => {
     expect(
       found(`public with sharing class SetupReads {
