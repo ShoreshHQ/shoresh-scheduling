@@ -63,11 +63,11 @@ export function placementIn(row, b) {
 /**
  * The run an edit changes: the whole placement the slot is part of, given to `next` (an item's
  * identity, or OPEN). An item runs for its length (Greg, 2026-10-17: multi-block fills its full
- * length) over Open slots, stopping at a filled slot, a slot where the group is away, or the end
- * of the day. Null when the slot can't be changed here: a fixed or recurring activity, or a
+ * length) over Open slots, stopping at a filled slot, a slot where the group is away, a slot
+ * `isStop` names (a locked cell), or the end of the day. Null when the slot can't be changed here: a fixed or recurring activity, or a
  * group away.
  */
-export function editRun(day, g, b, next, length, isAway) {
+export function editRun(day, g, b, next, length, isAway, isStop = () => false) {
   const row = slots(day, g);
   const at = placement(day, g, b);
   if (isSetTime(at.slot) || (next !== OPEN && isAway(at.first))) {
@@ -80,6 +80,7 @@ export function editRun(day, g, b, next, length, isAway) {
       take < (length || 1) &&
       at.first + take < row.length &&
       !isAway(at.first + take) &&
+      !isStop(at.first + take) &&
       (at.first + take < at.first + at.length || row[at.first + take] === OPEN)
     ) {
       take += 1;

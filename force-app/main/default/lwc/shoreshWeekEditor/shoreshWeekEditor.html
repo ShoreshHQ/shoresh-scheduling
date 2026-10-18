@@ -47,7 +47,9 @@
             Redo
           </button>
         </div>
-        <slot name="tools"></slot>
+        <template lwc:if={showTools}>
+          <slot name="tools"></slot>
+        </template>
       </template>
     </div>
     <slot name="checks"></slot>
@@ -131,6 +133,7 @@
                   editable
                   oneditcell={handleEditCell}
                   onclearcell={handleClearCell}
+                  oncellfocus={handleCellFocus}
                   oncellspace={handleCellSpace}
                   oncellclick={handleCellClick}
                   oncellescape={handleCellEscape}
@@ -166,6 +169,7 @@
                   editable
                   oneditcell={handleEditCell}
                   onclearcell={handleClearCell}
+                  oncellfocus={handleCellFocus}
                   oncellspace={handleCellSpace}
                   oncellclick={handleCellClick}
                   oncellescape={handleCellEscape}

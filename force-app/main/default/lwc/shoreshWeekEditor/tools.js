@@ -345,43 +345,60 @@ export function toolRuns(tool, week, options = {}) {
 }
 
 /**
- * A copy goes placement by placement, whole or not at all: when any cell of a copied placement
- * (on the target day) or of what is there now is kept, all of its cells are, and so on until
- * nothing more is, so nothing is cleared for a copy that can't come.
+ * The placements on a tool's target days, each as its cells' keys and what it is: every
+ * placement there now (in `saved`) and, for a copy, every placement copied from `source`, listed
+ * first on each day.
  */
-function keepWholePlacements(tool, source, saved, all) {
+function placementGroups(tool, source, saved) {
   const groups = [];
   tool.dates.forEach((date) => {
     const target = saved.find((d) => d.dateValue === date);
     if (!target || target.problem) {
       return;
     }
-    source.groups.forEach((grp, g) => {
-      headsOf(source, g).forEach((h) => {
-        groups.push(
-          [...Array(h.length).keys()].map(
-            (i) => `${date}|${grp.id}|${source.blocks[h.b + i].id}`
-          )
-        );
+    if (source) {
+      source.groups.forEach((grp, g) => {
+        headsOf(source, g).forEach((h) => {
+          groups.push({
+            slot: h.slot,
+            keys: [...Array(h.length).keys()].map(
+              (i) => `${date}|${grp.id}|${source.blocks[h.b + i].id}`
+            )
+          });
+        });
       });
-    });
+    }
     target.groups.forEach((grp, g) => {
       headsOf(target, g).forEach((h) => {
-        groups.push(
-          [...Array(h.length).keys()].map((i) => cellKey(target, g, h.b + i))
-        );
+        groups.push({
+          slot: h.slot,
+          keys: [...Array(h.length).keys()].map((i) =>
+            cellKey(target, g, h.b + i)
+          )
+        });
       });
     });
   });
-  const partlyKept = (keys) =>
-    keys.some((key) => all.has(key)) && !keys.every((key) => all.has(key));
+  return groups;
+}
+
+/**
+ * The cells with every placement (of `groups`) any of them is in added whole, and so on until
+ * nothing more is.
+ */
+function wholeOf(groups, cells) {
+  const all = new Set(cells);
+  const partlyIn = (group) =>
+    group.keys.some((key) => all.has(key)) &&
+    !group.keys.every((key) => all.has(key));
   for (
-    let found = groups.find(partlyKept);
+    let found = groups.find(partlyIn);
     found;
-    found = groups.find(partlyKept)
+    found = groups.find(partlyIn)
   ) {
-    found.forEach((key) => all.add(key));
+    found.keys.forEach((key) => all.add(key));
   }
+  return all;
 }
 
 /**
@@ -389,22 +406,28 @@ function keepWholePlacements(tool, source, saved, all) {
  * touches a cell that holds something else than in the week the director saw (`seen`, the week
  * the tool was made on, never anything newer), nor a cell kept in an earlier round (`kept`). A
  * copy comes from the source day as the director saw it, and a target whose source cell someone
- * else changed is kept as well. The director's own edits still waiting to save aren't in `saved`
- * (the server's week), so they never count as anyone else's.
+ * else changed is kept as well. A copy goes placement by placement, whole or not at all: when any
+ * cell of a copied placement (on the target day) or of what is there now is kept, all of its
+ * cells are, so nothing is cleared for a copy that can't come. The director's own edits still
+ * waiting to save aren't in `saved` (the server's week), so they never count as anyone else's.
  *
- * Returns the tool's result on `saved` (runs, words), `kept` (every cell kept in any round, for
- * the next) and `missed`: the cells the tool meant to change that, once these runs are made, won't
- * hold what it meant them to.
+ * `locked`: cells someone locked since the director looked, which are left out too. Returns the
+ * tool's result on `saved` (runs, words), `kept` (every cell kept in any round, for the next),
+ * `lockedCells` (the placements left out only because a cell of theirs is locked, once each:
+ * { key, slot }: its first cell and, for a copy, the activity that was to be copied there, else
+ * what it holds now) and `missed`: the other cells the tool meant to change that, once these
+ * runs are made, won't hold what it meant.
  */
-export function replan(tool, seen, saved, kept, isAway) {
+export function replan(tool, seen, saved, kept, isAway, locked = new Set()) {
   const intended = resultOf(seen, toolRuns(tool, seen, { isAway }).runs);
-  const all = new Set(kept);
+  // The cells kept for anyone else's change, the locks aside.
+  const others = new Set(kept);
   // A cell is someone else's when the placement it is part of isn't the one the director saw
   // (not only its text: a placement made shorter keeps its first cell's text).
   const changed = (key) => placementAt(saved, key) !== placementAt(seen, key);
   keysOf(saved).forEach((key) => {
     if (changed(key)) {
-      all.add(key);
+      others.add(key);
     }
   });
   let source;
@@ -417,16 +440,19 @@ export function replan(tool, seen, saved, kept, isAway) {
           const key = cellKey(source, g, b);
           if (changed(key)) {
             tool.dates.forEach((date) =>
-              all.add(`${date}|${grp.id}|${block.id}`)
+              others.add(`${date}|${grp.id}|${block.id}`)
             );
           }
         })
       );
     }
   }
-  if (tool.kind === "copy" && source) {
-    keepWholePlacements(tool, source, saved, all);
-  }
+  const groups = placementGroups(tool, source, saved);
+  const withLocks = wholeOf(groups, [...others, ...locked]);
+  const all =
+    tool.kind === "copy" && source
+      ? withLocks
+      : new Set([...others, ...locked]);
   const result = toolRuns(tool, saved, {
     isAway,
     skip: (key) => all.has(key),
@@ -434,9 +460,35 @@ export function replan(tool, seen, saved, kept, isAway) {
   });
   // What the cells will hold once these runs are made, against what the tool meant them to.
   const made = resultOf(result.week, result.runs);
-  const missed = [...intended.keys()].filter((key) => {
+  const notMade = [...intended.keys()].filter((key) => {
     const after = made.has(key) ? made.get(key) : slotAt(saved, key);
     return after !== intended.get(key);
-  }).length;
-  return { ...result, kept: all, missed };
+  });
+  // A cell left out because it is locked is said as locked, whatever else changed there, and so
+  // is every cell left out only because it is part of a placement with a locked cell.
+  const othersWhole = wholeOf(groups, others);
+  const forLock = notMade.filter(
+    (key) => locked.has(key) || (withLocks.has(key) && !othersWhole.has(key))
+  );
+  const named = new Set();
+  const lockedCells = [];
+  forLock.forEach((key) => {
+    if (named.has(key)) {
+      return;
+    }
+    // For a copy, the placement it was copying there comes first.
+    const group = groups.find((x) => x.keys.includes(key));
+    const keys = group ? group.keys : [key];
+    keys.forEach((k) => named.add(k));
+    lockedCells.push({
+      key: keys[0],
+      slot: group ? group.slot : slotAt(saved, key) || intended.get(key)
+    });
+  });
+  return {
+    ...result,
+    kept: all,
+    missed: notMade.length - forLock.length,
+    lockedCells
+  };
 }

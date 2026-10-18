@@ -50,3 +50,7 @@ suppressions:
     - rule_selector: "pmd:AvoidLwcBubblesComposedTrue"
       max_suppressed_violations: 1
       reason: "Test fakes a real browser keydown, which is composed."
+  "main/default/lwc/shoreshWeekEditor/__tests__/seams.test.js":
+    - rule_selector: "pmd:AvoidLwcBubblesComposedTrue"
+      max_suppressed_violations: 1
+      reason: "Test fakes a real browser keydown, which is composed."

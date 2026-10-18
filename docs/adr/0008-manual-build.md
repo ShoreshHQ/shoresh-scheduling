@@ -579,6 +579,62 @@ The rules modules (`slotEdits`, `moves`, `history`, `conflicts`, `tools`, `count
 editor's folder with their tests, code unchanged: a Lightning component can only import files in
 its own folder, so the editor could not reach them where they were.
 
+### What Generated Schedule adds (all off until a host passes it)
+
+Manual Build passes none of these and behaves as before.
+
+- `locks` (cells as "date|groupId|blockId"): a locked cell shows its lock ("Locked", or "Locked
+  empty" for a cell kept empty on purpose), can't be dragged, dropped on, picked up or typed
+  into, and Enter or a click raises `unlockrequest` {slot, key} and keeps focus on the cell. The
+  editor works out beforehand what a hand edit does to locks, as the server does (the whole
+  placement of a changed cell is locked when it holds something, unlocked when left Open; what is
+  left of a placement made shorter stays locked; a fixed or recurring activity is never locked),
+  so the lock shows at once. Every
+  run it saves names the locks the screen saw (`locksBefore`); an Undo or Redo also names the
+  locks to restore (`locksAfter`, one "1" or "" per time block), the ones from before or after
+  the step. No locks passed, no lock fields on the runs.
+- `tools`: passing false leaves out the host's `tools` slot only. "Add <name> to activities"
+  stays, as on the desktop's generated schedule (review of #67; no decision from Greg to take it
+  away). Open point for when Generated is embedded: `ManualBuildActivities.add` works on a Manual
+  Build draft, so the host must give it a way to add on a Generated draft too.
+- `saved` {schedule, conflicts, label, kind} after each answered save (the host shows that
+  schedule, never a patched copy), `editstate` {busy, queueEmpty}, and `cellfocus` {key, slot,
+  cell} when keyboard focus reaches a cell.
+- After every answered save the editor takes the locks from, in this order: the saver's `locks`
+  (the cells locked now); else the `locks` of each day in the schedule the server sent
+  (`ScheduleViews`, every day must carry them); else what its own prediction says the edit left
+  (nothing when the edit was a conflict).
+- **Nobody's lock is covered unseen.** When a save comes back as a conflict and a cell the edit
+  touches is locked on the server but was not locked when the edit was made, the edit is not sent
+  again, not even by Use yours: it is dropped (no Undo step left, no lock shown for it) and said
+  as "<cell> is locked." (the same words as any other refusal, naming that cell). This holds for
+  an Undo and a Redo too. A conflict that changed no lock on the cells it touches is sent again
+  as before, after its question if there is one. An edit sent again with nothing new to ask is
+  given up after two more tries ("Not saved ... The <week word> kept changing"), rather than sent
+  for ever; this guard also runs in Manual Build, which passes no locks.
+- **What an edit names as locked is what the director saw when they made it.** Each edit keeps
+  the locks on screen at that moment (with the edits waiting before it made) and sends those as
+  `locksBefore` whenever it is sent: first, after a wait behind a slow save, again after a
+  question or a tool worked out again, and for an Undo or Redo (the locks on screen when it was
+  pressed). Never the newest locks the server has since sent, which would cover a lock that
+  arrived while the edit waited. The server then refuses and the editor says "<cell> is locked."
+- **A clash with another director's hand edit ends in "<cell> is locked."** (coordinator call). A
+  hand edit locks the cell it changes, so when two directors change one cell the second one's edit
+  is refused with the same words, with no keep-theirs / use-yours question. Reason: the question
+  would let the second director cover a lock the first one made on purpose, and a lock is only
+  taken off deliberately (the Lock menu), here as everywhere else. A clash on a cell nobody
+  locked still asks as before.
+- **A tool keeps the other person's locked cells and does the rest** (the same as decision 19's
+  tools). Clear day, Clear week, and Copy day that meet a cell locked since the director looked do
+  not drop whole: the locked cells are left out, the rest is made as the same Undo step, and the
+  notice says what was left: "Cleared Monday, except 1 cell that is locked", with the cells listed
+  as "1 stayed: Soccer · Bunk 1 · Monday (locked)." (a copy: "1 left out: …: locked.").
+- **A longer activity stops at a locked cell**, as it stops at a filled one: it fills the blocks
+  before the lock and is shown short ("(1 of 2)"), like a placement cut short in Manual Build.
+- **One unlock request per gesture.** A double-click on a locked cell (click, click, double-click),
+  or Enter right after a click, raises one `unlockrequest`; the same cell asked again after 600 ms
+  is a new gesture.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
