@@ -28,6 +28,31 @@ export function randomCamp(seed) {
       })
     );
   }
+  // Some camps start with a short Wake-up overlapping the first hour, then back-to-back hours,
+  // with more multi-block activities: the overlap choice must weigh activity lengths.
+  const wakeUp = r() < 0.2;
+  if (wakeUp) {
+    const pad = (n) => String(n).padStart(2, "0");
+    blocks.length = 0;
+    blocks.push(
+      block(0, {
+        id: "wake",
+        name: "Wake-up",
+        startTime: "08:00",
+        endTime: "08:30"
+      })
+    );
+    for (let i = 0; i < int(2, 4); i++) {
+      blocks.push(
+        block(i, {
+          id: `p${i}`,
+          name: `P${i + 1}`,
+          startTime: `${pad(8 + i)}:00`,
+          endTime: `${pad(9 + i)}:00`
+        })
+      );
+    }
+  }
   const locations = Array.from({ length: int(0, 3) }, (_, i) => ({
     id: `loc${i}`,
     fit: int(1, 3)
@@ -37,7 +62,8 @@ export function randomCamp(seed) {
     return activity(`a${i}`, {
       min,
       max: r() < 0.2 ? null : min + int(0, 3),
-      span: i > 0 && r() < 0.2 ? 2 : 1,
+      span:
+        i > 0 && r() < (wakeUp ? 0.5 : 0.2) ? (wakeUp && r() < 0.3 ? 3 : 2) : 1,
       atOnce: r() < 0.3 ? null : int(1, 3),
       location: locations.length && r() < 0.6 ? pick(locations).id : null,
       sameDivision: r() < 0.15,

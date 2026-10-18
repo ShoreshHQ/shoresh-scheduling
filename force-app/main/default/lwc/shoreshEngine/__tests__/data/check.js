@@ -230,22 +230,42 @@ export function problems(spec, input, result) {
           out.push(`not set up for the group, unflagged: ${k}`);
         }
         const ck = `${g.id}|${act.id}`;
-        counts.set(ck, [...(counts.get(ck) || []), k]);
+        counts.set(ck, [
+          ...(counts.get(ck) || []),
+          {
+            k,
+            date: day.dateValue,
+            start: minutes(blocks[b].startTime),
+            b,
+            id: blocks[b].id
+          }
+        ]);
         const dayKey = `${g.id}|${d}|${act.id}`;
         daily.set(dayKey, [...(daily.get(dayKey) || []), k]);
       });
     }
   });
 
-  for (const [ck, keys] of counts) {
+  // Over the weekly limit: exactly the sessions past it are dotted, the latest in the week (day,
+  // start time, place in the day, Id), whether the build placed them or they were kept.
+  for (const [ck, sessions] of counts) {
     const act = acts.get(ck.split("|")[1]);
-    if (
-      act.max != null &&
-      keys.length > act.max &&
-      !covered(keys, "weeklyMax")
-    ) {
-      out.push(`over weekly max, unflagged: ${ck}`);
-    }
+    const ordered = [...sessions].sort(
+      (x, y) =>
+        (x.date < y.date ? -1 : x.date > y.date ? 1 : 0) ||
+        x.start - y.start ||
+        x.b - y.b ||
+        (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)
+    );
+    ordered.forEach((s, i) => {
+      const past = act.max != null && i >= act.max;
+      const dotted = (flagged.get(s.k) || []).includes("weeklyMax");
+      if (past !== dotted) {
+        out.push(
+          `${past ? "past the weekly max, undotted" : "dotted within the weekly max"}: ${s.k}`
+        );
+      }
+    });
   }
   for (const [dk, keys] of daily) {
     if (keys.length > 1 && !covered(keys, "onceADay")) {

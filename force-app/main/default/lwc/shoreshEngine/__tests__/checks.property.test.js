@@ -195,7 +195,21 @@ function oracle(days, model) {
     const mine = all.filter(
       (q) => q.kind === "A" && q.id === p.id && q.groupId === p.groupId
     );
-    if (act.max !== null && mine.length > act.max) {
+    // Over the limit: only the sessions past it, the latest in the week (day, start time,
+    // place in the day, Id).
+    const firstOf = (q) => q.blocks[0];
+    const startOf = (q) => mins(days[q.d].blocks[firstOf(q)].startTime);
+    const later = (q, r) =>
+      days[q.d].dateValue > days[r.d].dateValue ||
+      (days[q.d].dateValue === days[r.d].dateValue &&
+        (startOf(q) > startOf(r) ||
+          (startOf(q) === startOf(r) &&
+            (firstOf(q) > firstOf(r) ||
+              (firstOf(q) === firstOf(r) &&
+                days[q.d].blocks[firstOf(q)].id >
+                  days[r.d].blocks[firstOf(r)].id)))));
+    const earlier = mine.filter((q) => q !== p && later(p, q)).length;
+    if (act.max !== null && earlier >= act.max) {
       reasons.push("Over its weekly limit");
     }
     if (mine.some((q) => q !== p && q.d === p.d)) {

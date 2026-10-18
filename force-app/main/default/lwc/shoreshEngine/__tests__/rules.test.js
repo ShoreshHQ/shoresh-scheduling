@@ -33,14 +33,13 @@ describe("never blank (Greg, 2026-10-17)", () => {
       "swim",
       "swim"
     ]);
-    // Over the limit dots every one of that group's sessions of it (Manual Build's rule).
-    expect(result.flags).toHaveLength(2);
-    for (const flag of result.flags) {
-      expect(flag).toMatchObject({
-        bends: [RULE.WEEKLY_MAX],
-        reason: "Over its weekly limit"
-      });
-    }
+    // Only the session past the limit is dotted, the latest in the week (Greg, 2026-10-17).
+    expect(result.flags).toHaveLength(1);
+    expect(result.flags[0]).toMatchObject({
+      date: dateAt(1),
+      bends: [RULE.WEEKLY_MAX],
+      reason: "Over its weekly limit"
+    });
   });
 
   it("repeats an activity in a day before leaving a cell blank", () => {
@@ -259,6 +258,61 @@ describe("never blank (Greg, 2026-10-17)", () => {
       null,
       "arts"
     ]);
+  });
+
+  describe("the overlap choice looks at activity lengths (coordinator's review)", () => {
+    // Wake-up 8:00-8:30 overlaps P1 8:00-9:00; P2 9:00-10:00 follows P1.
+    const blocks = [
+      block(0, {
+        id: "wake",
+        name: "Wake-up",
+        startTime: "08:00",
+        endTime: "08:30"
+      }),
+      block(0, { id: "p1", name: "P1", startTime: "08:00", endTime: "09:00" }),
+      block(1, { id: "p2", name: "P2", startTime: "09:00", endTime: "10:00" })
+    ];
+    const hike = activity("hike", { span: 2, min: 1, max: 1, atOnce: null });
+
+    it("a two-block Hike gets P1 and P2; only Wake-up is left, already busy", () => {
+      const result = run({ groups: [group("g1")], blocks, activities: [hike] });
+      expect(cellsOf(result.days)[0].g1).toEqual([
+        null,
+        { kind: "A", id: "hike", head: true },
+        { kind: "A", id: "hike", head: false }
+      ]);
+      expect(result.openCells.map((c) => [c.blockId, c.reason])).toEqual([
+        ["wake", "Already busy then"]
+      ]);
+      expect(result.stillNeeded).toEqual([]);
+    });
+
+    it("with a one-block Arts too, the Hike still gets P1 and P2 (not Arts twice)", () => {
+      const result = run({
+        groups: [group("g1")],
+        blocks,
+        activities: [hike, activity("arts", { atOnce: null })]
+      });
+      expect(at(result, 0, "g1", 1)).toBe("hike");
+      expect(at(result, 0, "g1", 0)).toBeNull();
+      expect(result.flags).toEqual([]);
+      expect(result.stillNeeded).toEqual([]);
+    });
+
+    it("a cell left out is filled after all when the overlapping one stays Open", () => {
+      // Only a four-block activity: it fits nowhere, so Wake-up, left out for P1, isn't busy
+      // after all, and every cell says no activity fits.
+      const result = run({
+        groups: [group("g1")],
+        blocks,
+        activities: [activity("trek", { span: 4, atOnce: null })]
+      });
+      expect(result.openCells.map((c) => [c.blockId, c.reason])).toEqual([
+        ["wake", "No activity fits this gap"],
+        ["p1", "No activity fits this gap"],
+        ["p2", "No activity fits this gap"]
+      ]);
+    });
   });
 
   it("an Open cell beside a kept one at an overlapping time stays Open, already busy", () => {
@@ -857,6 +911,36 @@ describe("other programs count against capacity (G5 supplies them)", () => {
       bends: [RULE.SAME_DIVISION],
       reason: "Shares Court with another division"
     });
+  });
+
+  it("another program's session at the place and doing the activity is one clash, one line", () => {
+    const result = run({
+      mode: "fillOpen",
+      groups: [group("g1")],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "court", name: "Court", fit: 3 }],
+      activities: [
+        activity("tennis", {
+          atOnce: null,
+          sameDivision: true,
+          location: "court"
+        }),
+        activity("arts", { atOnce: null })
+      ],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "tennis" }],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "08:45",
+          locationId: "court",
+          activityId: "tennis"
+        }
+      ]
+    });
+    expect(result.overlapping).toEqual([
+      "Court · Monday · Period 1: Shares Court with another division"
+    ]);
   });
 
   it("only overlapping clock times count: a touching time doesn't", () => {

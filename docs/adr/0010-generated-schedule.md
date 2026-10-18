@@ -108,10 +108,17 @@ cells) and 0009 (names through `c/shoreshSchema`).
    - a multi-block activity needs its whole length in consecutive Open, at-camp cells, and is one
      session;
    - one placement per group across blocks whose clock times overlap (touching times don't).
-     Where a group's Open cells overlap, the build first picks the most of them that can all be
-     filled (none overlapping a kept cell, then earliest end first, which leaves the fewest
-     Open), the same whatever order anything is filled in; the rest are left Open, "Already busy
-     then". Blocks 8:00–8:45, 8:30–9:15 and 9:00–9:45 fill 8:00 and 9:00. This never gives way.
+     Where a group's Open cells overlap, the build first chooses which to fill, the same
+     whatever order anything is filled in: none overlapping a kept cell; then, of every choice of
+     cells that don't overlap, the one that holds the most activity time given the activities'
+     lengths (a multi-block activity needs its cells next to each other), then the most room for
+     the group's multi-block activities, then the earliest ends (with more than 12 such cells in
+     one day, earliest end first). Blocks 8:00–8:45, 8:30–9:15 and 9:00–9:45 fill 8:00 and 9:00;
+     with Wake-up 8:00–8:30, P1 8:00–9:00 and P2 9:00–10:00 and a two-block Hike, the Hike takes
+     P1 and P2 (coordinator's review). A cell left out whose overlapping cells end up Open isn't
+     busy after all, and is filled at the end. Every cell left Open says why, from the finished
+     week: "Already busy then" only when the group holds something overlapping it, otherwise "No
+     activity fits this gap". This never gives way.
 5. **Soft goals.** Weekly minimum; early in the week (`EarlyWeekCount__c` by
    `EarlyWeekByDay__c`); high priority before low (blank priority is low). **"By Wednesday"
    counts Wednesday** (the plain reading of the Activities screen's "By"). The desktop counted
@@ -180,12 +187,14 @@ cells) and 0009 (names through `c/shoreshSchema`).
     built: `checkWeek(days, model, { t, dayName })` (`checks.js`), written and tested for Manual
     Build part 3 (its scenario tests and its 2,000-week property test against an independent
     oracle came with it) and moved here so both schedules use it (coordinator, 2026-10-17). One
-    function per rule, in the order rules give way, with `reasonFor`'s words. A rule broken by
-    several placements dots all of them: over the weekly limit dots each of that group's
-    placements of it, twice in a day dots both, too many at an activity or a place dots each
-    one there; fixed and recurring activities count toward a place but never get a dot. So the
+    function per rule, in the order rules give way, with `reasonFor`'s words. **Over its weekly
+    limit dots only the sessions past the limit, the latest in the week** (by day, then start
+    time, then place in the day, then Id; a limit of 2 and 3 sessions dots the 3rd) (Greg,
+    2026-10-17). Any other rule broken by several placements dots all of them: twice in a day
+    dots both, too many at an activity or a place dots each one there; fixed and recurring activities count toward a place but never get a dot. So the
     same grid always gets the same dots, whatever order it was filled in, and anything kept
-    that breaks a rule is dotted too. Additions here: other programs' groups (counted
+    that breaks a rule is dotted too. Each clash is one Overlapping line, even when another
+    program's session is both at the place and doing the activity. Additions here: other programs' groups (counted
     at places and activities, another division for same division only), and each dot's rule
     names (`bends`). `checkInputs.js` reads the season's records into its model (activities and
     places through the engine's own readers); the engine builds the same model from its inputs
@@ -232,8 +241,10 @@ cells) and 0009 (names through `c/shoreshSchema`).
   loosely by wall time, since CI runners are slower: the week that fits takes about 20 ms on a
   laptop, the one that can't about 0.7 s on a laptop and 1.6 s on CI (it is often built twice,
   with and without the minimum repair's leniency). For G3: the coordinator measured a
-  40 × 5 × 12 week that can't fit at 4–5 seconds before that doubling, so the screen should run
-  the build in pieces or off the main thread; `ruleChecks` can drive a progress display.
+  40 × 5 × 12 week that can't fit at about 6 seconds. `generateWeek` is one synchronous call, so
+  as it stands the screen would freeze for that long and couldn't show progress; G3 will need the
+  build split into pieces it can run a little at a time (or moved off the main thread), and only
+  then can `ruleChecks` drive a progress display.
 - Mutation check of the key guards (review practice): deliberate breakages of the rules, kept
   cells, never-blank, the overlap choice, the smallest overage, the repair limit, the seed, input
   ordering and checkWeek's rules; every one makes a test fail (taking out the repair rollback

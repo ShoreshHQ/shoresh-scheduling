@@ -58,6 +58,8 @@ const SPAN_LIFT_WORK = 5000;
 const MIN_REPAIR_BUDGET = 1500;
 const FILL_REPAIR_DEPTH = 4;
 const PRIORITY_RANK = { high: 0, low: 1 };
+// Overlapping Open cells in one group's day beyond which every choice isn't weighed.
+const MAX_CONTESTED = 12;
 
 /** Block id -> ids of the day's blocks whose clock times overlap it (touching ones don't). */
 function overlappingPeers(blocks) {
@@ -95,7 +97,7 @@ export function scheduleWeek(model) {
   const lenientRepair = !model.strictRepair;
   let leftForNeverBlank = false;
   // How many times a placement was checked against the rules: the build's work, the same on any
-  // machine (the performance test bounds it; a screen can use it to show progress).
+  // machine (the performance test bounds it; a build run in pieces could show progress by it).
   let ruleChecks = 0;
   const actById = new Map(acts.map((a) => [a.id, a]));
   const cellKey = (g, d, b) => `${g}|${d}|${b}`;
@@ -227,7 +229,8 @@ export function scheduleWeek(model) {
 
   // ── Pass 1: read the grid ──────────────────────────────────────────────────
   const openSlots = [];
-  const busyThen = new Set(); // Open cells left Open: the group is busy at an overlapping time
+  const freeSlots = []; // every Open, at-camp, unlocked cell, in order
+  const busyThen = new Map(); // cells left out because the group is busy at an overlapping time
   const lockedOpen = new Set();
   const away = new Set();
 
@@ -302,49 +305,133 @@ export function scheduleWeek(model) {
         open.push(b);
       }
     });
-    const chosen = fillable(day, open, covered);
+    const eligibleActs = acts.filter((a) => eligibility.get(a.id).has(groupId));
+    const chosen = fillable(day, open, covered, eligibleActs);
     for (const b of open) {
+      const slot = {
+        groupId,
+        dayIndex: day.index,
+        blockId: day.blocks[b].id,
+        eligibleActs
+      };
+      freeSlots.push(slot);
       if (chosen.has(b)) {
-        openSlots.push({
-          groupId,
-          dayIndex: day.index,
-          blockId: day.blocks[b].id,
-          eligibleActs: acts.filter((a) => eligibility.get(a.id).has(groupId))
-        });
+        openSlots.push(slot);
       } else {
-        busyThen.add(cellKey(groupId, day.index, day.blocks[b].id));
+        busyThen.set(keyOf(slot), slot);
       }
     }
   }
 
   /**
    * Of a group's Open cells on a day (block indexes, in order), the ones to fill. Where blocks
-   * overlap in time a group can be in only one of them, so this keeps the most cells that can all
-   * be filled: none overlapping a kept cell, then earliest end first (which leaves the fewest
-   * Open). The same cells whatever order anything is filled in.
+   * overlap in time a group can be in only one of them. Cells overlapping a kept cell are left
+   * out; among the rest, of every choice of cells that don't overlap, the one that holds the most
+   * activity time given the activities' lengths (a multi-block activity needs its cells next to
+   * each other), then the most room for this group's multi-block activities, then the earliest
+   * ends. The same cells whatever order anything is filled in. A cell left out that turns out not
+   * to be busy after all is filled at the end (finishOpen).
    */
-  function fillable(day, open, covered) {
+  function fillable(day, open, covered, eligibleActs) {
     const peers = peersByDay[day.index];
-    const overlapsAny = (b, list) =>
-      (peers.get(day.blocks[b].id) || []).some((peerId) =>
-        list.has(day.blockIndex.get(peerId))
-      );
-    const free = open.filter((b) => !overlapsAny(b, covered));
-    const timed = free
-      .filter((b) => peers.has(day.blocks[b].id))
+    const peerIndexes = (b) =>
+      (peers.get(day.blocks[b].id) || []).map((id) => day.blockIndex.get(id));
+    const free = open.filter(
+      (b) => !peerIndexes(b).some((p) => covered.has(p))
+    );
+    const freeSet = new Set(free);
+    const contested = free.filter((b) =>
+      peerIndexes(b).some((p) => freeSet.has(p))
+    );
+    if (!contested.length) {
+      return freeSet;
+    }
+    const settled = free.filter((b) => !contested.includes(b));
+    if (contested.length > MAX_CONTESTED) {
+      return earliestEnds(day, free, settled, peerIndexes);
+    }
+    const lengths = [...new Set(acts.map((a) => a.span))];
+    const ownLong = new Set(
+      eligibleActs.filter((a) => a.span > 1).map((a) => a.span)
+    );
+    let best = null;
+    let bestRank = null;
+    for (let mask = 0; mask < 1 << contested.length; mask++) {
+      const picked = contested.filter((_, i) => mask & (1 << i));
+      if (picked.some((b) => peerIndexes(b).some((p) => picked.includes(p)))) {
+        continue;
+      }
+      const cells = [...settled, ...picked].sort((x, y) => x - y);
+      const [held, long] = holds(cells, lengths, ownLong);
+      const ends = picked.reduce((n, b) => n + (day.blocks[b].end || 0), 0);
+      const rank = [-held, -long, ends, mask];
+      if (!bestRank || lexLess(rank, bestRank)) {
+        best = cells;
+        bestRank = rank;
+      }
+    }
+    return new Set(best);
+  }
+
+  /** Where there are too many overlapping cells to weigh every choice: earliest end first. */
+  function earliestEnds(day, free, settled, peerIndexes) {
+    const chosen = new Set(settled);
+    const order = free
+      .filter((b) => !chosen.has(b))
       .sort(
         (x, y) =>
           day.blocks[x].end - day.blocks[y].end ||
           day.blocks[x].start - day.blocks[y].start ||
           x - y
       );
-    const chosen = new Set(free.filter((b) => !peers.has(day.blocks[b].id)));
-    for (const b of timed) {
-      if (!overlapsAny(b, chosen)) {
+    for (const b of order) {
+      if (!peerIndexes(b).some((p) => chosen.has(p))) {
         chosen.add(b);
       }
     }
     return chosen;
+  }
+
+  /**
+   * How many of these cells (block indexes, in order) activities of these lengths can hold, each
+   * run of cells next to each other tiled by lengths that fit; and of those, how many this group's
+   * multi-block activities could hold. [held, long], the most held first.
+   */
+  function holds(cells, lengths, ownLong) {
+    let held = 0;
+    let long = 0;
+    let i = 0;
+    while (i < cells.length) {
+      let j = i + 1;
+      while (j < cells.length && cells[j] === cells[j - 1] + 1) {
+        j++;
+      }
+      const n = j - i;
+      const best = [[0, 0]];
+      for (let k = 1; k <= n; k++) {
+        let pick = best[k - 1];
+        for (const len of lengths) {
+          if (len <= k) {
+            const before = best[k - len];
+            const option = [
+              before[0] + len,
+              before[1] + (ownLong.has(len) ? len : 0)
+            ];
+            if (
+              option[0] > pick[0] ||
+              (option[0] === pick[0] && option[1] > pick[1])
+            ) {
+              pick = option;
+            }
+          }
+        }
+        best.push(pick);
+      }
+      held += best[n][0];
+      long += best[n][1];
+      i = j;
+    }
+    return [held, long];
   }
 
   for (const groupId of model.groupIds) {
@@ -374,7 +461,7 @@ export function scheduleWeek(model) {
   // Stable tie-break keys, drawn once per (cell, activity) from a stream seeded by the program,
   // week, option and cell: never a random sort comparator (ADR 0010).
   const tieKeys = new Map();
-  for (const s of openSlots) {
+  for (const s of freeSlots) {
     const next = streamFor(
       `${model.seed}|${days[s.dayIndex].date}|${s.groupId}|${s.blockId}`
     );
@@ -1303,8 +1390,8 @@ export function scheduleWeek(model) {
   // stable key. An activity is never shortened (Greg): a cell where the group is busy at an
   // overlapping time, or a gap no activity's length fits, stays Open.
   const openCells = [];
-  function neverBlank() {
-    for (const u of openSlots) {
+  function neverBlank(slots) {
+    for (const u of slots) {
       const k = keyOf(u);
       if (assigned.has(k)) {
         continue;
@@ -1334,12 +1421,41 @@ export function scheduleWeek(model) {
       if (best) {
         // Its dots come from checkWeek on the finished week (checks.js), like any other cell's.
         place(best, u.groupId, u.dayIndex, u.blockId);
-      } else {
-        openCells.push({ key: k, why: LENGTH });
       }
     }
-    for (const k of busyThen) {
-      openCells.push({ key: k, why: OVERLAP });
+  }
+
+  /** Whether the group holds anything at a time overlapping this cell. */
+  function busyAt(s) {
+    return (peersByDay[s.dayIndex].get(s.blockId) || []).some((peer) => {
+      const pk = cellKey(s.groupId, s.dayIndex, peer);
+      return assigned.has(pk) || keptKeys.has(pk);
+    });
+  }
+
+  /**
+   * A cell left out for an overlapping one that stayed Open isn't busy after all: it is filled
+   * now. Each round frees at least one cell, so the rounds end. Then every cell still Open says
+   * why: the group is busy then, or no activity's length fits.
+   */
+  function finishOpen() {
+    for (let round = 0; round <= freeSlots.length; round++) {
+      const freed = [...busyThen.values()].filter((s) => !busyAt(s));
+      if (!freed.length) {
+        break;
+      }
+      for (const s of freed) {
+        busyThen.delete(keyOf(s));
+        openSlots.push(s);
+        openSlotByKey.set(keyOf(s), s);
+        emptyCells++;
+      }
+      neverBlank(freed);
+    }
+    for (const s of freeSlots) {
+      if (!assigned.has(keyOf(s))) {
+        openCells.push({ key: keyOf(s), why: busyAt(s) ? OVERLAP : LENGTH });
+      }
     }
   }
 
@@ -1351,7 +1467,8 @@ export function scheduleWeek(model) {
   repair();
   minRepair();
   fillRepair();
-  neverBlank();
+  neverBlank(openSlots);
+  finishOpen();
 
   return {
     assigned,

@@ -8,9 +8,10 @@
  *   RELAX_ORDER), in reasonFor's words (words.js): over its weekly limit, twice in a day, not set
  *   up for the group, over its limit of groups at once, sharing a place with another division (an
  *   activity that is for one division at a time), more groups at a place than fit; and a group
- *   busy in two time blocks that overlap. A rule broken by several placements
- *   dots all of them (over the limit dots each of that group's placements; twice in a day dots
- *   both). Fixed and recurring activities count toward a place but never get a dot.
+ *   busy in two time blocks that overlap. Over its weekly limit dots only the sessions past the
+ *   limit, the latest in the week (Greg, 2026-10-17); any other rule broken by several placements
+ *   dots all of them (twice in a day dots both). Fixed and recurring activities count toward a
+ *   place but never get a dot.
  * - Still needed: each activity and group short of its weekly minimum ("Swim · Bunk 3: 2 still
  *   needed"). Spread across the week: short of its early-week goal ("… still needed by
  *   Wednesday"). Overlapping: each clash once (a place in a time block, an activity in a time
@@ -132,6 +133,27 @@ function occupancy(placements) {
 
 // ---------- the rules: each returns marks { flags: [{ p, rule, reason }], clashes } ----------
 
+/**
+ * Placements in the order they happen: by day, then their first block's start time, then its
+ * place in the day's blocks, then its Id.
+ */
+function inWeekOrder(ctx, list) {
+  const start = (p) => {
+    const t = minutes(ctx.days[p.d].blocks[p.first].startTime);
+    return t === null ? Number.POSITIVE_INFINITY : t;
+  };
+  return [...list].sort(
+    (a, b) =>
+      compareText(ctx.days[a.d].dateValue, ctx.days[b.d].dateValue) ||
+      start(a) - start(b) ||
+      a.first - b.first ||
+      compareText(
+        ctx.days[a.d].blocks[a.first].id,
+        ctx.days[b.d].blocks[b.first].id
+      )
+  );
+}
+
 function weeklyMax(ctx) {
   const flags = [];
   groupBy(
@@ -140,13 +162,16 @@ function weeklyMax(ctx) {
   ).forEach((list) => {
     const act = ctx.activities.get(list[0].id);
     if (act && act.max !== null && list.length > act.max) {
-      list.forEach((p) =>
-        flags.push({
-          p,
-          rule: RULES.WEEKLY_MAX,
-          reason: reasonFor(RULES.WEEKLY_MAX)
-        })
-      );
+      // Only the sessions past the limit, the latest in the week (Greg, 2026-10-17).
+      inWeekOrder(ctx, list)
+        .slice(act.max)
+        .forEach((p) =>
+          flags.push({
+            p,
+            rule: RULES.WEEKLY_MAX,
+            reason: reasonFor(RULES.WEEKLY_MAX)
+          })
+        );
     }
   });
   return { flags, clashes: [] };
@@ -228,6 +253,7 @@ function sameDivision(ctx) {
     return Boolean(act && act.sameDivision);
   };
   ctx.occupancy.forEach((here, at) => {
+    const placesClashed = new Set();
     // At a place: a group doing a one-division activity shares it with no other division.
     groupBy(here, (p) => placeOf(ctx, p)).forEach((list, locationId) => {
       const place = ctx.locations.get(locationId).name;
@@ -256,6 +282,7 @@ function sameDivision(ctx) {
         clashes.push(
           ctx.clash(RULES.SAME_DIVISION, `loc:${locationId}`, at, place, reason)
         );
+        placesClashed.add(locationId);
       }
     });
     // The activity itself: its groups at the same time are of one division (with a place, the
@@ -274,6 +301,10 @@ function sameDivision(ctx) {
         list.forEach((p) =>
           flags.push({ p, rule: RULES.SAME_DIVISION, reason })
         );
+        // One clash, one line: already listed at its place (another program there and doing it).
+        if (locationId && placesClashed.has(locationId)) {
+          return;
+        }
         clashes.push(
           ctx.clash(
             RULES.SAME_DIVISION,

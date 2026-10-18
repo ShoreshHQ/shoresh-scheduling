@@ -41,7 +41,7 @@ const WED = "2026-07-01";
 const THU = "2026-07-02";
 
 describe("checks: the bronze dots", () => {
-  it("over its weekly limit dots every placement of it for that bunk; at the limit, none", () => {
+  it("over its weekly limit dots only the sessions past it, the latest in the week; at the limit, none", () => {
     const days = weekOf({
       [MON]: [
         ["A:swim", "", ""],
@@ -57,9 +57,31 @@ describe("checks: the bronze dots", () => {
       model([activity("swim", { max: 1 })]),
       words
     );
-    expect(result.flags.get(`${MON}|g1|t1`)).toBe("Over its weekly limit");
+    expect(result.flags.has(`${MON}|g1|t1`)).toBe(false);
     expect(result.flags.get(`${TUE}|g1|t1`)).toBe("Over its weekly limit");
     expect(result.flags.has(`${MON}|g2|t1`)).toBe(false);
+  });
+
+  it("past the limit goes by time of day, not by row order: the later block on the same day", () => {
+    // Period 2 (10:00) comes before Period 1 (9:00) in this day's list of blocks.
+    const days = weekOf(
+      { [MON]: [["A:swim", "A:swim"]] },
+      {
+        blocks: [
+          { id: "t2", name: "Period 2", startTime: "10:00", endTime: "11:00" },
+          { id: "t1", name: "Period 1", startTime: "09:00", endTime: "10:00" }
+        ]
+      }
+    );
+    const result = checkWeek(
+      days,
+      model([activity("swim", { max: 1 })]),
+      words
+    );
+    expect(result.flags.get(`${MON}|g1|t2`)).toBe(
+      "Over its weekly limit · Twice in a day"
+    );
+    expect(result.flags.get(`${MON}|g1|t1`)).toBe("Twice in a day");
   });
 
   it("twice in a day dots both; once on each of two days, neither", () => {
@@ -251,21 +273,21 @@ describe("checks: the bronze dots", () => {
       [MON]: [
         ["A:swim", "A:swim", ""],
         ["", "", ""]
-      ],
-      [TUE]: [
-        ["A:swim", "", ""],
-        ["", "", ""]
       ]
     });
     const result = checkWeek(
       days,
-      model([activity("swim", { max: 2 })], {
+      model([activity("swim", { max: 1 })], {
         notFor: new Map([["swim", ["g1"]]])
       }),
       words
     );
-    expect(result.flags.get(`${MON}|g1|t1`)).toBe(
+    // The second swim is past the limit; both are twice in a day and not set up for Bunk 1.
+    expect(result.flags.get(`${MON}|g1|t2`)).toBe(
       "Over its weekly limit · Twice in a day · Not set up for Bunk 1"
+    );
+    expect(result.flags.get(`${MON}|g1|t1`)).toBe(
+      "Twice in a day · Not set up for Bunk 1"
     );
   });
 

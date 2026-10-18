@@ -267,15 +267,13 @@ describe("no activity left below its minimum when the week can hold it", () => {
     expect(result.stillNeeded).toHaveLength(26);
   });
 
-  it("camp 93: the week without the leniency had 2 bends, not 4, for the same minimums", () => {
+  it("camp 93: the week without the leniency has fewer bends for the same minimums", () => {
+    // Lenient alone: two sessions past their weekly limits; without it, one.
     const result = run(camp93);
     expect(result.stillNeeded).toHaveLength(1);
     expect(
       result.flags.map((f) => [f.groupId, f.activityId, f.reason])
-    ).toEqual([
-      ["g4", "a3", "Over its weekly limit"],
-      ["g4", "a3", "Over its weekly limit"]
-    ]);
+    ).toEqual([["g4", "a3", "Over its weekly limit"]]);
   });
 
   // The desktop's acceptance rule in miniature: build a full week, read the rules off it the way
