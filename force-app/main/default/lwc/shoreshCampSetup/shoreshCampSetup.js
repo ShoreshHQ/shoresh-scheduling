@@ -44,6 +44,7 @@ const SCREENS = [
   "activities",
   "fixedActivities",
   "recurringActivities",
+  "generatedSchedule",
   "manualBuild",
   "schedules",
   "import"
@@ -768,11 +769,20 @@ export default class ShoreshCampSetup extends LightningElement {
       (s) => s[S.Week] === recordId || s[S.Program] === recordId
     );
     const versions = mine.filter((s) => s[S.Status] === "Version").length;
-    const builds = mine.filter(
-      (s) => s[S.Status] === "Draft" && s[S.Origin] === "Manual"
-    ).length;
+    const drafts = (origin) =>
+      mine.filter((s) => s[S.Status] === "Draft" && s[S.Origin] === origin)
+        .length;
+    const builds = drafts("Manual");
+    const generated = drafts("Generated");
     const t = this.terms;
     const parts = [];
+    if (generated) {
+      parts.push(
+        generated === 1
+          ? "its Generated Schedule"
+          : `${generated} Generated Schedules`
+      );
+    }
     if (builds) {
       parts.push(builds === 1 ? "its Manual Build" : `${builds} Manual Builds`);
     }
@@ -780,7 +790,11 @@ export default class ShoreshCampSetup extends LightningElement {
       const word = versions === 1 ? t.sIn("Version") : t.pIn("Version");
       parts.push(`${versions} saved ${word}`);
     }
-    return parts.length ? ` That includes ${parts.join(" and ")}.` : "";
+    const list =
+      parts.length > 2
+        ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+        : parts.join(" and ");
+    return parts.length ? ` That includes ${list}.` : "";
   }
 
   async handleDeleteRecord(event) {

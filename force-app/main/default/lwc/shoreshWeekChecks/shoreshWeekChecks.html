@@ -19,6 +19,18 @@
         <span class="counter-label">{counter.label}</span>
       </button>
     </template>
+    <template lwc:if={showReviewAll}>
+      <button
+        type="button"
+        class="review-all"
+        aria-expanded={reviewAllExpanded}
+        aria-controls="counter-list"
+        data-id="review-all"
+        onclick={handleReviewAll}
+      >
+        {reviewAllLabel}
+      </button>
+    </template>
   </div>
   <template lwc:if={openLines}>
     <div class="counter-list" id="counter-list" data-id="counter-list">

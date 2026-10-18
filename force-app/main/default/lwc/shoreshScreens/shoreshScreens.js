@@ -1,12 +1,13 @@
 /**
  * The screens of the Shoresh page and the left-hand menu that reaches them, following Shoresh
  * desktop's sidebar: Roots (home), then Camp, then Activities, then
- * the schedules: Manual Build, Generated Schedule, and Schedules (saved versions). Every label is in
- * the camp's own words. Screens not built yet are listed as coming, not hidden.
+ * the schedules: Generated Schedule and Manual Build (by name, as the desktop lists them: the two
+ * are equal and the order means nothing), and Schedules (saved versions). Every label is in the
+ * camp's own words. Screens not built yet are listed as coming, not hidden.
  */
 
 // Built in a later slice: listed, not reachable yet.
-const COMING = new Set(["specialEvents", "generatedSchedule"]);
+const COMING = new Set(["specialEvents"]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 
@@ -59,7 +60,7 @@ const SECTIONS = [
   },
   {
     key: "schedules",
-    screens: ["manualBuild", "generatedSchedule", "schedules"]
+    screens: ["generatedSchedule", "manualBuild", "schedules"]
   }
 ];
 

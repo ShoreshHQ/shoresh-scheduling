@@ -186,6 +186,51 @@ export function* generateWeekSteps(input) {
   };
 }
 
+/**
+ * A Generated week as it stands (built, saved or cleared), checked by the same rules and model
+ * the engine checks its own builds with: the screen's dots, counters and lines, worked out again
+ * whenever the week is shown, never stored (ADR 0010 §11). input: generateWeek's (days are the
+ * week to check; option and mode don't matter). Returns { days, checked, isAway }: the days in
+ * date order (checkWeek's day numbers count in it), checkWeek's answer, and whether a group is
+ * away from camp in a block (the cells shown hatched).
+ */
+export function checkGeneratedWeek(input) {
+  const t = input.terms || buildTerms([]);
+  const activities = readActivities(
+    input.activities,
+    input.weekExceptions,
+    input.weekId || null
+  );
+  const groups = readGroups(input.groups);
+  const days = readDays(input.days, readPartsOfDay(input.timeBlocks));
+  const model = {
+    days,
+    groups,
+    groupIds: groupOrder(groups, days),
+    acts: activities.running,
+    eligibility: readEligibility(
+      activities.running,
+      input.eligibilities,
+      groups
+    ),
+    setTimeLocation: readSetTimeLocations(
+      input.fixedActivities,
+      input.recurringActivities
+    ),
+    ...otherPrograms(input.otherPrograms, days)
+  };
+  const check = checkModel(input, model, null);
+  const shown = days.map((day) => day.frame);
+  return {
+    days: shown,
+    checked: checkWeek(shown, check, {
+      t,
+      dayName: (date) => DAY_NAMES[weekdayOf(date)] || ""
+    }),
+    isAway: check.isAway
+  };
+}
+
 /** Every bend the week's dots name: each rule on each dotted placement. */
 function bendCount(checked) {
   let n = 0;

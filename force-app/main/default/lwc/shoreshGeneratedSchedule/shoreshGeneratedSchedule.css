@@ -1,0 +1,98 @@
+@import "c/shoreshTokens";
+@import "c/shoreshScheduleScreen";
+
+/* Generated Schedule (desktop ScheduleScreen.jsx, generated route). The layout it shares with the
+   other schedule screens is in c/shoreshScheduleScreen. */
+
+.actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.option {
+  width: 6rem;
+}
+
+/* While the week is built: a thin bar that follows the build (design guide: a thin bar for a
+   blocking action), and "Generating…" beside it. */
+.busy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -8px 0 12px;
+}
+
+.progress {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--slds-g-color-border-base-1, #e5e5e5);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--shoresh-primary);
+  transition: width 140ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    transition: none;
+  }
+}
+
+.busy-text {
+  font-family: var(--slds-g-font-family-monospace, monospace);
+  font-size: 12px;
+  color: var(--shoresh-text-secondary);
+}
+
+/* Someone else saved the week first: one quiet box, the sentence and Reload. */
+.conflict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  font-size: 13px;
+}
+
+/* Not generated yet: the title and one button, centred, no card (design guide: empty states). */
+.start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 16px;
+}
+
+.start-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.not-placed {
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  font-size: 13px;
+}
+
+.checks {
+  margin-top: 16px;
+}
+
+.confirm-note {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--shoresh-text-secondary);
+}

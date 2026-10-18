@@ -1,7 +1,7 @@
 # 0010: Generated Schedule
 
-Status: proposed (2026-10-17), parts G1 (the engine) and G2 (reading its inputs, saving the
-week) of 5. Design source: wiki
+Status: proposed (2026-10-17), parts G1 (the engine), G2 (reading its inputs, saving the
+week) and G3 (the screen) of 5. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Generated Schedule round 1", Greg 2026-10-17, and the
 coordinator's technical calls the same day), `projects/shoresh-design-guide`,
 `projects/shoresh-scheduling-data-model`. Starting point: the desktop generator, Greg's own
@@ -55,8 +55,8 @@ cells) and 0009 (names through `c/shoreshSchema`).
 - G2: the Apex reader for the engine's inputs; create the Generated draft; save a rebuild with the
   whole-draft revision check (ADR 0005 §9); the server re-checks what it saves.
 - G3: the Generated Schedule screen (menu entry; Generate, Rebuild, Try another, Fill the open
-  cells; the dots and their hover; still to place).
-- G4: locks (automatic on hand edits; lock a cell, day or group; Start over; stored in grid
+  cells, Start over; the dots and their hover; still to place).
+- G4: locks (automatic on hand edits; lock a cell, day or group; stored in grid
   format v2).
 - G5: other programs' occupancy fed to the engine.
   Versions and Publish reuse Manual Build parts 4 and 5.
@@ -402,12 +402,111 @@ what it loads to the real `generateWeek` and sends what it built.
 - When locks are stored (G4), the server must refuse a save that changes a locked cell itself,
   not leave it to the browser.
 - Deleting a week or program says _That includes its Manual Build and 2 saved versions._ but
-  doesn't yet name a Generated draft (`shoreshCampSetup.savedSchedulesNote`): for G3, when the
-  screen can make one.
+  doesn't yet name a Generated draft (`shoreshCampSetup.savedSchedulesNote`): done in G3 (_That
+  includes its Generated Schedule, its Manual Build and 2 saved versions._).
+
+## Choices (G3)
+
+22. **The build runs in steps** (`generateWeekSteps`). The engine's build is a generator: it
+    yields how far it has got (0 to 1, only going up) between pieces of work (a cell in a round
+    or a repair, one minimum-repair pass, one never-blank cell), and returns what `generateWeek`
+    returns. `generateWeek` runs it to the end at once, so every engine test covers both. The
+    steps only report; they never change the build, so a week built in steps is the same week
+    (tested on random camps in both modes and on a week that can't fit). How far it has got is
+    the share of each pass done (cells, or activity-and-group pairs, done of all), weighted by
+    how long each pass takes on a week that can't fit (the two repairs are about 93%); a week
+    built twice (the minimum repair's leniency) spends the first half of the bar on the first
+    build. The screen (`pieces.js`) runs about 30 ms of steps, then gives the browser a turn
+    (`setTimeout` 0), and draws the bar. The coordinator's 40 bunks × 5 days × 12 blocks week
+    that can't fit (8.8 million rule checks, about 6.5 s under Jest) now runs with at most about
+    50 ms between steps; the test bounds it loosely. `ruleChecks` stays the measure of work; it
+    does not drive the bar, since a week's total isn't known before it is built. A Web Worker
+    was not used: the engine is LWC modules, and a worker would need it bundled again as a
+    static resource, a second copy to keep in step.
+23. **One check for what is shown** (`checkGeneratedWeek`). Dots, counters and lines are worked
+    out from the week on screen with the engine's own model of the season (the same readers,
+    divisions, not-at-camp rule and other programs as the build), whether the week was just
+    built, saved earlier or cleared. So a week reads the same right after a build and after a
+    reload (decision: flags are never stored, §11). Without locks (G4) this equals the dots the
+    engine returns for a full build. **Open** lines come from the grid too: each at-camp cell
+    left Open, with _Already busy then_ when the group holds something at an overlapping time,
+    so a cell cleared by Start over isn't said to fit nothing.
+24. **The screen** (`c/shoreshGeneratedSchedule`), the desktop's generated route:
+    - a menu entry and a screen beside Manual Build; the menu lists **Generated Schedule** then
+      **Manual Build** (by name, as the desktop's `navSections.js`), and the Roots door holds a
+      button for each, side by side, so neither is picked for the director (decision 1;
+      behaviour index: the two routes are never ranked);
+    - a week not generated yet shows the desktop's empty card, _Let the app propose one_ and
+      **Generate a schedule** (Generate, option 1); the blank week's _not placed_ lines, as in
+      Manual Build;
+    - then the toolbar: **Rebuild** (the whole week again, same option, after the confirm),
+      **Fill the open cells** (fill mode; greyed while nothing is Open), **Try another** (the
+      next option, saved at once), **Option** (every option tried this visit and the one saved:
+      picking one builds it again, exactly, decision 4), and **Start over** (after the confirm:
+      every activity cleared; fixed and recurring activities and things not set up yet stay;
+      the option stays). Each saves the whole week through G2's `saveWeek` with its action;
+    - the confirm, the desktop's `ConfirmRegenModal` with Greg's decisions: _Rebuild this
+      schedule?_ / _Builds Week 1 again from your setup. Locked cells stay as they are._ /
+      _Saved to Versions first._ / Cancel (focus first), **Rebuild it**; and _Start over?_ /
+      _Clears all 34 filled cells in Week 1, locked ones too. Fixed activities and recurring
+      activities stay._ / _Saved to Versions first._ / Cancel, **Start over**. Escape cancels,
+      Tab stays in the dialog, focus goes back to the button;
+    - while building: a thin bar that follows the build (role progressbar, 0 to 100) and the
+      desktop's _Generating…_; every action and the week and program pickers wait; moving to
+      another week stops the build and saves nothing;
+    - a conflict (someone else saved the week first, or setup changed under a first save) shows
+      the server's sentence in a box with **Reload**; nothing is written and nothing can be built
+      over it until it is reloaded. A refusal or an engine error shows its sentence and leaves
+      the week as it was;
+    - the grid is Manual Build's shared grid, Daily, Group and Activity View, with the bronze
+      dot (words on hover, focus or tap, and in assistive text), not-at-camp hatching and the
+      legend. Cells are in a keyboard grid (arrows) so a dot's words can be read, and every cell
+      is read-only (below);
+    - the counters and the _Still to place_ list are Manual Build's shared
+      `c-shoresh-week-checks`, with `route="generated"`: **Filled**, **Open** (instead of
+      Overlapping, as the desktop shows Unfillable there; overlaps are still listed), **Still
+      needed**, **Spread across the week**; each counter shows only its own lines and lights up
+      their cells (an Open or overlapping line its cell; a still needed or spread line every
+      placement of that activity for that group, desktop `findingHighlight.js`), **Review all**
+      shows every line; clicking a line opens that group's week at that cell. Manual Build's
+      route is unchanged;
+    - after a save, a screen reader hears _Filled 34 of 36._
+25. **No hand edits on this screen yet.** A hand edit is a lock (decision 2), so an edit without
+    one would be undone by the next Rebuild. Changing cells (drag, type, Delete, undo) comes with
+    locks in G4, reusing Manual Build's editing then.
+26. **Shared layout CSS** `c/shoreshScheduleScreen` (CSS only, like `c/shoreshTokens`): the
+    toolbar, view toggle, pills, Activity View cards and legend. Manual Build still has its own
+    copy; it moves over in a later cleanup, so its in-flight PR isn't disturbed.
+
+## Differences from the desktop (G3)
+
+The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `ConfirmRegenModal.jsx`,
+`FindingsRail.jsx`, Director Guide §4) and what is different here, each with its reason.
+
+| Desktop                                                            | Here                                                                              | Why                                                                                                                  |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| One action, **Rebuild**                                            | Rebuild, Try another, Option, Fill the open cells, Start over                     | Greg's decisions 2, 4 and 5                                                                                          |
+| _Replaces this schedule, including your edits._                    | _Builds Week 1 again from your setup. Locked cells stay as they are._             | Hand edits are locks and are kept (decision 2)                                                                       |
+| Confirm shown for Rebuild only                                     | Also for Start over, naming how many filled cells it clears                       | Start over clears everything (decision 2); the design guide's confirmations name live counts                         |
+| Rebuild is quiet, red on hover                                     | Every action quiet; only the confirm's button is red                              | Design guide: destructive is loud once, in the dialog; Rebuild keeps a version first                                 |
+| A version only when the week had cells                             | Rebuild and Start over always keep one; Try another and Fill the open cells none  | G2 §16                                                                                                               |
+| Seed fixed per camp and program                                    | Program + week + option; any option brought back                                  | Decision 4                                                                                                           |
+| Admins only ("Admin only")                                         | Anyone with Shoresh Scheduler access                                              | Decision 8                                                                                                           |
+| **Unfillable** counter, red; cells marked _Unfillable_ in red      | **Open** counter, bronze border when above 0; Open cells look like Manual Build's | Never blank (decision 7): only a busy or no-fit cell stays Open; one word, Open; red stays for errors (design guide) |
+| Highlight colour by kind (red, bronze, green)                      | One bronze outline and tint                                                       | Bronze is the caution hue; red only for errors (design guide)                                                        |
+| Counters under the toolbar                                         | Below the grid                                                                    | Design guide: "The generated schedule opens on the grid; concern counts sit below it"                                |
+| _Placed X of Y_                                                    | _Filled X of Y_                                                                   | Decision 16 (one word per idea)                                                                                      |
+| Engine's raw finding text ("Goal: N×/wk — scheduled M×")           | The engine's lines (_Swim · Bunk 3: 1 still needed_)                              | ADR 0010 §7 and §11: one set of words for both schedules                                                             |
+| Indeterminate bar, engine on the main thread                       | A bar that follows the build, run in pieces                                       | A 40-bunk week takes about 6 s; the tab must not freeze (§22)                                                        |
+| Drag, swap, undo on the generated grid                             | Read-only until G4                                                                | §25                                                                                                                  |
+| Rebuild clears Undo and Accepted findings                          | No Undo here yet; Accepted lines come back after each build or reload             | Accept is for this visit (#42); Undo comes with editing in G4                                                        |
+| Neutral _Schedule_ entry: _Open_ with each route's _X of Y placed_ | Roots door with both buttons, no counts                                           | The counts would need both drafts read for a week before one is chosen; the door names no week                       |
+| Rainy day…, Export, Versions dropdown on the toolbar               | Not on this screen                                                                | Not built for either schedule yet                                                                                    |
+| Special days replace days                                          | Not here                                                                          | Special days aren't set up in Salesforce yet                                                                         |
 
 ## Choices that are hard to undo after release
 
-None in G1: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
+None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
 
 G2:
 

@@ -1,0 +1,355 @@
+<template>
+  <div class="schedules" data-id="generated-schedule">
+    <!-- Toolbar, as on the desktop: the week, how to look at it, then what to do with it. -->
+    <div class="toolbar">
+      <template lwc:if={hasSeveralPrograms}>
+        <lightning-combobox
+          class="picker"
+          label={programLabel}
+          value={programId}
+          options={programOptions}
+          disabled={isBusy}
+          onchange={handleProgram}
+          data-id="program"
+        ></lightning-combobox>
+      </template>
+      <template lwc:if={canChoose}>
+        <lightning-combobox
+          class="picker"
+          label={weekLabel}
+          value={weekId}
+          options={weekOptions}
+          disabled={isBusy}
+          onchange={handleWeek}
+          data-id="week"
+        ></lightning-combobox>
+      </template>
+      <template lwc:if={showWeek}>
+        <div class="view-toggle" role="group" aria-label="View">
+          <template for:each={viewButtons} for:item="button">
+            <button
+              key={button.key}
+              type="button"
+              class={button.className}
+              aria-pressed={button.pressed}
+              data-view={button.key}
+              onclick={handleView}
+            >
+              {button.label}
+            </button>
+          </template>
+        </div>
+        <div class="actions" role="group" aria-label="Build">
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={actionsDisabled}
+            onclick={handleRebuild}
+            data-action="Rebuild"
+          >
+            Rebuild
+          </button>
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={cannotFill}
+            onclick={handleFillOpen}
+            data-action="FillOpen"
+          >
+            Fill the open cells
+          </button>
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            disabled={actionsDisabled}
+            onclick={handleTryAnother}
+            data-action="TryAnother"
+          >
+            Try another
+          </button>
+          <lightning-combobox
+            class="option"
+            label={optionLabel}
+            value={optionValue}
+            options={optionChoices}
+            disabled={actionsDisabled}
+            onchange={handleOption}
+            data-id="option"
+          ></lightning-combobox>
+        </div>
+        <span class="spacer"></span>
+        <button
+          type="button"
+          class="slds-button slds-button_neutral"
+          disabled={actionsDisabled}
+          onclick={handleStartOver}
+          data-action="StartOver"
+        >
+          Start over
+        </button>
+      </template>
+    </div>
+
+    <!-- While the week is built: a thin bar that follows the build, and the desktop's words. -->
+    <template lwc:if={busy}>
+      <div class="busy" data-id="busy">
+        <div
+          class="progress"
+          role="progressbar"
+          aria-label={busyText}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={progressValue}
+        >
+          <div class="progress-fill" style={progressStyle}></div>
+        </div>
+        <span class="busy-text">{busyText}</span>
+      </div>
+    </template>
+
+    <template lwc:if={loading}>
+      <lightning-spinner
+        alternative-text="Loading"
+        size="small"
+      ></lightning-spinner>
+    </template>
+    <template lwc:if={error}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+        role="alert"
+        data-id="build-error"
+      >
+        {error}
+      </div>
+    </template>
+
+    <!-- Someone else saved this week first: nothing of ours was written. -->
+    <template lwc:if={conflict}>
+      <div class="conflict" role="alert" data-id="conflict">
+        <p>{conflict.message}</p>
+        <button
+          type="button"
+          class="slds-button slds-button_brand"
+          onclick={handleReload}
+          data-id="reload"
+        >
+          Reload
+        </button>
+      </div>
+    </template>
+
+    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+      {announcement}
+    </div>
+
+    <template lwc:if={notPlaced}>
+      <div class="not-placed" role="status" data-id="not-placed">
+        <c-shoresh-dot
+          label="Not placed: the cell was taken"
+          focusable
+          data-id="not-placed-dot"
+        ></c-shoresh-dot>
+        <ul>
+          <template for:each={notPlaced} for:item="line">
+            <li key={line}>{line}</li>
+          </template>
+        </ul>
+      </div>
+    </template>
+
+    <template lwc:if={hasNoDays}>
+      <p class="empty-state">{noDaysMessage}</p>
+    </template>
+
+    <!-- Not generated yet (desktop: "Let the app propose one"). -->
+    <template lwc:if={showStart}>
+      <div class="start" data-id="start">
+        <h3 class="start-title">Let the app propose one</h3>
+        <lightning-button
+          variant="brand"
+          label={generateLabel}
+          disabled={actionsDisabled}
+          onclick={handleGenerate}
+          data-id="generate"
+        ></lightning-button>
+      </div>
+    </template>
+
+    <template lwc:if={showWeek}>
+      <template lwc:if={isDaily}>
+        <div class="pills" data-id="day-pills">
+          <template for:each={dayPills} for:item="day">
+            <button
+              key={day.key}
+              type="button"
+              class={day.className}
+              data-index={day.index}
+              onclick={handleDay}
+            >
+              {day.label} <span class="pill-sub">{day.sub}</span>
+            </button>
+          </template>
+        </div>
+        <template lwc:if={dayProblem}>
+          <div
+            class="slds-notify slds-notify_alert slds-alert_warning"
+            role="alert"
+          >
+            {dayProblem}
+          </div>
+        </template>
+        <template lwc:elseif={grid}>
+          <c-shoresh-schedule-grid
+            data-id="grid"
+            grid={grid}
+            corner={corner}
+            label={dailyGridLabel}
+            editable
+          ></c-shoresh-schedule-grid>
+        </template>
+      </template>
+
+      <template lwc:if={isGroup}>
+        <div class="pills" data-id="group-pills">
+          <template for:each={groupPills} for:item="grp">
+            <button
+              key={grp.key}
+              type="button"
+              class={grp.className}
+              data-key={grp.key}
+              onclick={handleGroup}
+            >
+              {grp.name}
+            </button>
+          </template>
+        </div>
+        <template lwc:if={grid}>
+          <c-shoresh-schedule-grid
+            data-id="grid"
+            grid={grid}
+            corner={corner}
+            label={groupGridLabel}
+            editable
+          ></c-shoresh-schedule-grid>
+        </template>
+      </template>
+
+      <template lwc:if={isActivity}>
+        <template lwc:if={selectedActivity}>
+          <div class="drill-head">
+            <button
+              type="button"
+              class="back"
+              onclick={handleAllActivities}
+              data-id="all-activities"
+            >
+              {allActivitiesLabel}
+            </button>
+            <span class="drill-name">{selectedActivity.name}</span>
+            <template lwc:if={selectedActivity.location}>
+              <span class="drill-place">{selectedActivity.location}</span>
+            </template>
+          </div>
+          <c-shoresh-schedule-grid
+            data-id="activity-grid"
+            grid={activityGrid}
+            corner={corner}
+            label={selectedActivity.name}
+          ></c-shoresh-schedule-grid>
+        </template>
+        <template lwc:else>
+          <div class="cards" data-id="activity-cards">
+            <template for:each={activityCards} for:item="card">
+              <button
+                key={card.key}
+                type="button"
+                class="card"
+                data-key={card.key}
+                onclick={handleActivity}
+              >
+                <span class="card-name">{card.name}</span>
+                <template lwc:if={card.location}>
+                  <span class="card-place">{card.location}</span>
+                </template>
+                <template lwc:if={card.gone}>
+                  <span class="note">deleted since</span>
+                </template>
+                <span class="card-summary">{card.summary}</span>
+              </button>
+            </template>
+          </div>
+        </template>
+      </template>
+
+      <template lwc:if={showLegend}>
+        <div class="legend">
+          <template for:each={legend} for:item="entry">
+            <span key={entry.key} class="legend-entry">
+              <span class={entry.className}></span>
+              {entry.label}
+            </span>
+          </template>
+        </div>
+      </template>
+
+      <!-- The counts sit below the grid on the generated schedule (design guide). -->
+      <div class="checks">
+        <c-shoresh-week-checks
+          checked={checked}
+          reset-key={checksResetKey}
+          route="generated"
+          onlocate={handleLocate}
+          onhighlight={handleHighlight}
+        ></c-shoresh-week-checks>
+      </div>
+    </template>
+
+    <template lwc:if={cannotChoose}>
+      <div class="empty-state" data-id="nothing-to-build">
+        <p>{chooseMessage}</p>
+      </div>
+    </template>
+
+    <!-- Rebuild or Start over: the desktop's ConfirmRegenModal. -->
+    <template lwc:if={confirming}>
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-body"
+        class="slds-modal slds-fade-in-open"
+        data-id="confirm"
+        onkeydown={handleConfirmKeyDown}
+      >
+        <div class="slds-modal__container">
+          <div class="slds-modal__header">
+            <h2 id="confirm-title" class="slds-modal__title">{confirmTitle}</h2>
+          </div>
+          <div class="slds-modal__content slds-p-around_medium">
+            <p id="confirm-body" data-id="confirm-body">{confirmBody}</p>
+            <p class="confirm-note" data-id="confirm-note">{confirmNote}</p>
+          </div>
+          <div class="slds-modal__footer">
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              onclick={handleCancelConfirm}
+              data-id="confirm-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="slds-button slds-button_destructive"
+              onclick={handleConfirm}
+              data-id="confirm-go"
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </section>
+      <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+  </div>
+</template>

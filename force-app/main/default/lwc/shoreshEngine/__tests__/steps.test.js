@@ -1,9 +1,15 @@
 /**
  * generateWeekSteps (ADR 0010 §22): the build in steps, so the screen can run a big week a little
  * at a time and show how far it has got. The steps never change the week: it is the same as
- * generateWeek's, and the progress only goes up, from 0 to 1.
+ * generateWeek's, and the progress only goes up, from 0 to 1. And checkGeneratedWeek, the screen's
+ * check of a week as it stands, with the engine's own rules.
  */
-import { MODE, generateWeek, generateWeekSteps } from "c/shoreshEngine";
+import {
+  MODE,
+  checkGeneratedWeek,
+  generateWeek,
+  generateWeekSteps
+} from "c/shoreshEngine";
 import { activity, block, camp, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
 
@@ -91,5 +97,65 @@ describe("generateWeekSteps", () => {
     expect(result).toEqual(generateWeek(none));
     expect(result.ok).toBe(false);
     expect(progress).toEqual([]);
+  });
+});
+
+describe("checkGeneratedWeek", () => {
+  it("checks a built week the way the engine checked it (no locks: the same dots and lines)", () => {
+    let built = 0;
+    let dots = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const input = { ...camp(randomCamp(seed)), locks: [] };
+      const result = generateWeek(input);
+      if (!result.ok) {
+        continue;
+      }
+      built += 1;
+      dots += result.flags.length;
+      const { checked, days } = checkGeneratedWeek({
+        ...input,
+        days: result.days
+      });
+      expect(days.map((d) => d.rows)).toEqual(result.days.map((d) => d.rows));
+      expect(checked.stillNeeded).toEqual(result.stillNeeded);
+      expect(checked.spread).toEqual(result.spread);
+      expect(checked.overlapping).toEqual(result.overlapping);
+      expect(checked.cells).toEqual(result.cells);
+      const heads = new Map(checked.placements.map((p) => [p.key, p.length]));
+      const dotted = new Map();
+      for (const f of result.flags) {
+        const key = `${f.date}|${f.groupId}|${f.blockId}`;
+        if (heads.has(key)) {
+          dotted.set(key, f.reason);
+        }
+      }
+      expect(new Map(checked.flags)).toEqual(dotted);
+    }
+    // Not vacuous: most camps build, and some have dots.
+    expect(built).toBeGreaterThan(40);
+    expect(dots).toBeGreaterThan(0);
+  });
+
+  it("reads a week in date order whatever order its days come in", () => {
+    const input = { ...camp(randomCamp(3)), locks: [] };
+    const result = generateWeek(input);
+    const shuffled = [...result.days].reverse();
+    const { days, checked } = checkGeneratedWeek({ ...input, days: shuffled });
+    expect(days.map((d) => d.dateValue)).toEqual(
+      result.days.map((d) => d.dateValue)
+    );
+    expect(checked.stillNeeded).toEqual(result.stillNeeded);
+  });
+
+  it("says which cells are away from camp, as the engine leaves them", () => {
+    const input = camp({
+      groups: [group("g1", { availability: "MorningOnly" })],
+      days: 1,
+      blocks: [block(0), block(5)],
+      activities: [activity("swim")]
+    });
+    const { isAway } = checkGeneratedWeek(input);
+    expect(isAway("g1", "b0")).toBe(false);
+    expect(isAway("g1", "b5")).toBe(true);
   });
 });
