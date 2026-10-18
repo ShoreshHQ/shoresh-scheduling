@@ -80,6 +80,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   errorFromRead = false;
   // A save someone else's got in the way of: { message }.
   conflict;
+  // Reload is reading the week after a conflict: edits wait until it is on screen.
+  reloading = false;
   // The build under way: { action, progress (0-100, or null until a long build first reports) }.
   busy;
   // The confirm open: { action }.
@@ -249,13 +251,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   /**
    * Reads the chosen week: the Generated draft if there is one, else the blank week it would
    * start from. again: the same week read again (after a save or a conflict, or coming back to
-   * the window), keeping the view; otherwise a week shown fresh.
+   * the window), keeping the view; otherwise a week shown fresh. True once the week read is
+   * shown.
    */
   async load(again = false) {
     const key = this.canChoose ? `${this.programId}|${this.weekId}` : null;
     const fresh = key !== this.loadedFor;
     if (key && !fresh && !again) {
-      return;
+      return false;
     }
     this.loadTicket += 1;
     this.weekTicket += 1;
@@ -270,7 +273,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loadedFor = null;
       this.reading = false;
       this.loading = false;
-      return;
+      return false;
     }
     this.loadedFor = key;
     this.reading = true;
@@ -283,13 +286,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     try {
       const loaded = await loadWeek(this.programId, this.weekId);
       if (ticket !== this.loadTicket) {
-        return;
+        return false;
       }
       if (this.errorFromRead) {
         this.error = null;
         this.errorFromRead = false;
       }
       this.show(loaded, fresh);
+      return true;
     } catch (e) {
       if (ticket === this.loadTicket) {
         this.error = errorMessage(e);
@@ -304,6 +308,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.reading = false;
       }
     }
+    return false;
   }
 
   show(loaded, fresh) {
@@ -401,6 +406,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   get showWeek() {
     return this.isGenerated && !this.hasNoDays;
+  }
+  /** The build's bar, errors, a conflict and Not placed: under the editor's toolbar once it shows. */
+  get showStatusAbove() {
+    return !this.showWeek;
   }
   get hasNoDays() {
     return !!this.loaded && this.loaded.input.days.length === 0;
@@ -699,12 +708,25 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return this.progressKnown ? `width: ${this.busy.progress}%;` : "";
   }
 
-  /** Someone else saved the week first: read it again, theirs, as it is now. */
+  /** Reload waits while a hand edit saves: the read would draw the week without it. */
+  get reloadDisabled() {
+    return this.editBusy;
+  }
+
+  /**
+   * Someone else saved the week first: read it again, theirs, as it is now. Edits wait until it
+   * is shown, so "as saved now" is said only of the week the read brought.
+   */
   handleReload() {
+    if (this.reloadDisabled) {
+      return;
+    }
     this.conflict = null;
-    this.load(true).then(() => {
+    this.reloading = true;
+    this.load(true).then((shown) => {
+      this.reloading = false;
       this.resetChecks();
-      if (!this.conflict && !this.errorFromRead) {
+      if (shown && !this.conflict && !this.errorFromRead) {
         this.focusAfterRender = {
           selector: this.isGenerated
             ? `[data-action="${ACTION.REBUILD}"]`
@@ -983,9 +1005,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get showToolbar() {
     return !this.showWeek;
   }
-  // Edits wait while a build or a Lock is saved (the week is about to be replaced).
+  // Edits wait while a build or a Lock is saved, or Reload reads the week (it is about to be
+  // replaced).
   get editsWait() {
-    return this.isBusy || this.locking;
+    return this.isBusy || this.locking || this.reloading;
   }
 
   /**

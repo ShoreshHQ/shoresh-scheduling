@@ -774,9 +774,10 @@ doesn't change this one.
    while (scroll, or open the menu, while it runs). Then the week shows in **Daily View**, Monday:
    every cell where a bunk is at camp holds an activity. Lunch, Morning meeting and Library time
    are where setup puts them, and cells where a bunk isn't at camp are hatched, as in Manual Build.
-4. **The toolbar** now has **Rebuild**, **Fill the open cells**, **Try another**, an **Option**
-   picker showing 1, **Lock**, and on the right **Start over**. Below it, as in Manual Build: the
-   three views, **Undo** and **Redo**, and the activity list on the left of the grid.
+4. **The toolbar** is now one row, as on the desktop: the **Week** picker, the three views,
+   **Undo** and **Redo**, then **Rebuild**, **Fill the open cells**, **Try another**, an
+   **Option** picker showing 1, **Lock**, and on the right **Start over**. The activity list is on
+   the left of the grid, as in Manual Build.
 5. **The dots.** A cell that had to bend a rule (Shoresh never leaves a cell empty when something
    can go there) has the small bronze dot. Hold the pointer on it, or tap it, to see which rule,
    for example _Over its weekly limit_ or _Twice in a day_. If no cell has a dot, every rule was

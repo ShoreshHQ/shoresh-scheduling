@@ -820,8 +820,10 @@ refused; `saveWeek`'s locks after a save (none after Start over); `inputFor`.
     `pickers` slot and its Rebuild, Fill the open cells, Try another, Option, Lock and Start over
     in its `tools` slot, so Rebuild sits right after Undo and Redo (desktop ScheduleScreen.jsx,
     "Sits with undo/redo", owner 2026-09-12); before the week is drawn the screen shows the
-    pickers in a toolbar of its own. The screen keeps its counters below the grid, its confirms
-    and its conflict box. What it hands the editor:
+    pickers in a toolbar of its own. The build's bar, its error and the conflict box go in the
+    editor's `status` slot and the _not placed_ list in its `outcome` slot, so they sit under the
+    toolbar as in Manual Build (before the week is drawn, under the pickers). The screen keeps its
+    counters below the grid, its confirms and its conflict box. What it hands the editor:
     - **its saver**: each hand edit goes through `saveEdits` (`GeneratedScheduleController.
 saveSlots`, §33), so every cell it changes is locked (decision 2). A run keeps the locks the
       editor names as seen when the director made it (`locksBefore`; the data module fills them
@@ -841,7 +843,9 @@ saveSlots`, §33), so every cell it changes is locked (decision 2). A run keeps 
     edits wait while a build or a Lock is saved (the editor's "One moment" line). Coming back to
     the window reads the week again only when the editor is settled (nothing saving, no typing
     box, no question); the season read again while an edit saves reads the week once it is
-    saved. A read already on its way when a hand edit is made is set aside (`edited`). After a
+    saved. A read already on its way when a hand edit is made is set aside (`edited`). Reload (the
+    conflict box's) waits while a hand edit saves, and edits wait while Reload reads the week, so
+    _<week> as saved now._ is said only of the week the read brought. After a
     build (Generate, Rebuild, Try another, Fill the open cells, Start over) Undo starts over: its
     steps were made on the week the build replaced. A Lock or Unlock keeps Undo.
 40. **A locked cell asks for its Unlock, it doesn't unlock** (§37: nothing unlocks without the
@@ -868,7 +872,8 @@ on a locked cell offering its Unlock with focus kept; the cell reached offered b
 an Unlock reaching the editor; the engine's Open reason drawn as a dot; a counter's lit cells; Add
 on the Generated draft (not Manual Build's) and known to the checks; a read on its way set aside;
 a refused hand edit said and the week read again; edits waiting during a Lock; the season read
-again after an edit saves. Each connection was taken away once and a test failed. `lockRule.
+again after an edit saves; Reload held while an edit saves, and edits held while Reload reads;
+the bar, error and conflict under the toolbar. Each connection was taken away once and a test failed. `lockRule.
 test.js` and `GeneratedEditLocksTest` run the same cases (read from the Apex test) through the
 editor's lock rule and the server's, with the same answers. `GeneratedAddActivityTest` (as a
 scheduler): an add with hand-added values, the same name again, an existing name, within 15

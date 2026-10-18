@@ -29,72 +29,77 @@
       </div>
     </template>
 
-    <!-- While the week is built: a thin bar that follows the build, and the desktop's words. -->
-    <template lwc:if={busy}>
-      <div class="busy" data-id="busy">
-        <div
-          class={progressClass}
-          role="progressbar"
-          aria-label={busyText}
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow={progressValue}
-        >
-          <div class="progress-fill" style={progressStyle}></div>
+    <!-- Before the week is drawn these sit below the pickers; once it is, they go in the editor
+         under its toolbar (status, outcome), as in Manual Build. -->
+    <template lwc:if={showStatusAbove}>
+      <!-- While the week is built: a thin bar that follows the build, and the desktop's words. -->
+      <template lwc:if={busy}>
+        <div class="busy" data-id="busy">
+          <div
+            class={progressClass}
+            role="progressbar"
+            aria-label={busyText}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={progressValue}
+          >
+            <div class="progress-fill" style={progressStyle}></div>
+          </div>
+          <span class="busy-text">{busyText}</span>
         </div>
-        <span class="busy-text">{busyText}</span>
-      </div>
-    </template>
+      </template>
 
-    <template lwc:if={loading}>
-      <lightning-spinner
-        alternative-text="Loading"
-        size="small"
-      ></lightning-spinner>
-    </template>
-    <template lwc:if={error}>
-      <div
-        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
-        role="alert"
-        data-id="build-error"
-      >
-        {error}
-      </div>
-    </template>
-
-    <!-- Someone else saved this week first: nothing of ours was written. -->
-    <template lwc:if={conflict}>
-      <div class="conflict" role="alert" data-id="conflict">
-        <p>{conflict.message}</p>
-        <button
-          type="button"
-          class="slds-button slds-button_brand"
-          onclick={handleReload}
-          data-id="reload"
+      <template lwc:if={loading}>
+        <lightning-spinner
+          alternative-text="Loading"
+          size="small"
+        ></lightning-spinner>
+      </template>
+      <template lwc:if={error}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+          role="alert"
+          data-id="build-error"
         >
-          Reload
-        </button>
-      </div>
+          {error}
+        </div>
+      </template>
+
+      <!-- Someone else saved this week first: nothing of ours was written. -->
+      <template lwc:if={conflict}>
+        <div class="conflict" role="alert" data-id="conflict">
+          <p>{conflict.message}</p>
+          <button
+            type="button"
+            class="slds-button slds-button_brand"
+            disabled={reloadDisabled}
+            onclick={handleReload}
+            data-id="reload"
+          >
+            Reload
+          </button>
+        </div>
+      </template>
+
+      <template lwc:if={notPlaced}>
+        <div class="not-placed" role="status" data-id="not-placed">
+          <c-shoresh-dot
+            label="Not placed: the cell was taken"
+            focusable
+            data-id="not-placed-dot"
+          ></c-shoresh-dot>
+          <ul>
+            <template for:each={notPlaced} for:item="line">
+              <li key={line}>{line}</li>
+            </template>
+          </ul>
+        </div>
+      </template>
     </template>
 
     <div class="slds-assistive-text" aria-live="polite" data-id="announce">
       {announcement}
     </div>
-
-    <template lwc:if={notPlaced}>
-      <div class="not-placed" role="status" data-id="not-placed">
-        <c-shoresh-dot
-          label="Not placed: the cell was taken"
-          focusable
-          data-id="not-placed-dot"
-        ></c-shoresh-dot>
-        <ul>
-          <template for:each={notPlaced} for:item="line">
-            <li key={line}>{line}</li>
-          </template>
-        </ul>
-      </div>
-    </template>
 
     <template lwc:if={showNoDays}>
       <p class="empty-state">{noDaysMessage}</p>
@@ -166,6 +171,78 @@
         onunlockrequest={handleUnlockRequest}
         oncellfocus={handleCellFocus}
       >
+        <!-- Under the toolbar, as in Manual Build: the build's bar (and the desktop's words), its
+             error, a conflict, and what wasn't placed. -->
+        <template lwc:if={busy}>
+          <div class="busy" slot="status" data-id="busy">
+            <div
+              class={progressClass}
+              role="progressbar"
+              aria-label={busyText}
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={progressValue}
+            >
+              <div class="progress-fill" style={progressStyle}></div>
+            </div>
+            <span class="busy-text">{busyText}</span>
+          </div>
+        </template>
+
+        <template lwc:if={loading}>
+          <lightning-spinner
+            slot="status"
+            alternative-text="Loading"
+            size="small"
+          ></lightning-spinner>
+        </template>
+        <template lwc:if={error}>
+          <div
+            slot="status"
+            class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+            role="alert"
+            data-id="build-error"
+          >
+            {error}
+          </div>
+        </template>
+
+        <!-- Someone else saved this week first: nothing of ours was written. -->
+        <template lwc:if={conflict}>
+          <div class="conflict" slot="status" role="alert" data-id="conflict">
+            <p>{conflict.message}</p>
+            <button
+              type="button"
+              class="slds-button slds-button_brand"
+              disabled={reloadDisabled}
+              onclick={handleReload}
+              data-id="reload"
+            >
+              Reload
+            </button>
+          </div>
+        </template>
+
+        <template lwc:if={notPlaced}>
+          <div
+            class="not-placed"
+            slot="outcome"
+            role="status"
+            data-id="not-placed"
+          >
+            <c-shoresh-dot
+              label="Not placed: the cell was taken"
+              focusable
+              data-id="not-placed-dot"
+            ></c-shoresh-dot>
+            <ul>
+              <template for:each={notPlaced} for:item="line">
+                <li key={line}>{line}</li>
+              </template>
+            </ul>
+          </div>
+        </template>
+
         <!-- One toolbar, as on the desktop: the week, how to look at it (the editor's views), then
              what changes it: Undo and Redo (the editor's), with Rebuild beside them (desktop
              ScheduleScreen.jsx: "Sits with undo/redo", owner 2026-09-12). -->

@@ -176,6 +176,29 @@ async function clearSwim(element) {
   await press(cellAt(element, "0-1"), "Delete");
 }
 
+/** Try another meets someone else's save: the conflict box with Reload shows. */
+async function conflictShown(element) {
+  saveWeekOnServer.mockResolvedValueOnce({
+    conflict: true,
+    message: "Someone else changed this schedule since you opened it."
+  });
+  action(element, "TryAnother").click();
+  await until(() => q(element, '[data-id="conflict"]') !== null);
+}
+
+/** The slot of the editor a node of this screen is drawn in, and whether it comes after the toolbar. */
+function underToolbar(element, node) {
+  const slot = node.assignedSlot;
+  const toolbar = editorRoot(element).querySelector(".toolbar");
+  return {
+    slot: slot ? slot.name : null,
+    after: !!(
+      slot &&
+      toolbar.compareDocumentPosition(slot) & Node.DOCUMENT_POSITION_FOLLOWING
+    )
+  };
+}
+
 describe("hand editing on the Generated Schedule screen", () => {
   afterEach(() => {
     while (document.body.firstChild) {
@@ -671,5 +694,72 @@ describe("hand editing on the Generated Schedule screen", () => {
     held.answer(slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"]));
     await flush();
     expect(getInputs.mock.calls.length).toBe(reads + 1);
+  });
+
+  it("Reload waits while a hand edit saves, then reads the week with it", async () => {
+    const element = await render();
+    await conflictShown(element);
+    const held = slow();
+    saveSlots.mockReturnValue(held.promise);
+    await clearSwim(element);
+    const reload = q(element, '[data-id="reload"]');
+    expect(reload.disabled).toBe(true);
+    const reads = getInputs.mock.calls.length;
+    reload.click();
+    await flush();
+    expect(getInputs.mock.calls.length).toBe(reads);
+    expect(textAt(element, "0-1")).toBe("Open");
+    held.answer(slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"]));
+    await flush();
+    expect(q(element, '[data-id="reload"]').disabled).toBe(false);
+  });
+
+  it("an edit waits while Reload reads the week, and only the week read is said to be as saved now", async () => {
+    const element = await render();
+    await conflictShown(element);
+    const read = slow();
+    getInputs.mockReturnValueOnce(read.promise);
+    q(element, '[data-id="reload"]').click();
+    await flush();
+    await clearSwim(element);
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(notice(element)).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    read.answer(savedWeek());
+    await flush();
+    expect(textAt(element, "0-1")).toBe("Swim");
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Week 1 as saved now."
+    );
+  });
+
+  it("once the week shows, the build's bar, its error and a conflict sit under the toolbar", async () => {
+    const element = await render();
+    saveWeekOnServer.mockReturnValueOnce(new Promise(() => {}));
+    action(element, "TryAnother").click();
+    await until(() => q(element, '[data-id="busy"]') !== null);
+    expect(underToolbar(element, q(element, '[data-id="busy"]'))).toEqual({
+      slot: "status",
+      after: true
+    });
+
+    const second = await render();
+    element.remove();
+    saveWeekOnServer.mockRejectedValueOnce({
+      body: { message: "The engine stopped." }
+    });
+    action(second, "TryAnother").click();
+    await until(() => q(second, '[data-id="build-error"]') !== null);
+    expect(underToolbar(second, q(second, '[data-id="build-error"]'))).toEqual({
+      slot: "status",
+      after: true
+    });
+
+    await conflictShown(second);
+    expect(underToolbar(second, q(second, '[data-id="conflict"]'))).toEqual({
+      slot: "status",
+      after: true
+    });
   });
 });
