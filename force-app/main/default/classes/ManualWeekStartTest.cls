@@ -71,7 +71,7 @@ private class ManualWeekStartTest {
         source
       );
       // A fixed number of queries, whatever the size of the camp (nothing is read per day,
-      // group or placement): well under the limit of 100.
+      // group or placement), under the limit of 100 with room to spare.
       Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
       Assert.isTrue(
