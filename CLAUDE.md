@@ -47,13 +47,17 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries
   and assert it for a realistic camp.
 - **Compile against the test org before pushing Apex:** `sf project deploy start --dry-run --source-dir
-  force-app --target-org shoresh-test --ignore-conflicts` (no tests run, nothing changes, no idle org
-  needed). Two PRs were pushed with Apex that didn't compile.
+  force-app --target-org shoresh-test --test-level NoTestRun --ignore-conflicts`, with 0 errors. It runs
+  no tests and changes nothing, but it is still a deployment: follow the rule above and run it only when
+  no CI run is using the org (during one it would wait on or hold up CI, and compile against that
+  branch's code). It can't catch a clash with a class only `main` has deleted, since the org may still
+  hold it. #46 and #48 were pushed with Apex that didn't compile.
 - **Apex names ignore capitals:** never name a variable, field, parameter or inner class the same as
-  an existing class or static (e.g. a local `scheduleUses` beside the class `ScheduleUses`). Two
-  compile errors came from this.
-- **Test setup goes before `Test.startTest()`**, so the code under test gets its own limits; assert the
-  bound you care about between `startTest` and `stopTest`.
+  an existing class or static method or variable (e.g. a local `scheduleUses` beside the class
+  `ScheduleUses`). Seen in #46 and #48.
+- **Test setup goes before `Test.startTest()`**, so the code under test gets its own limits; read
+  `Limits.getQueries()` (or the bound you care about) before `Test.stopTest()`, and assert async
+  results after it.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.
