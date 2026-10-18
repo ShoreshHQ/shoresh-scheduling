@@ -21,8 +21,21 @@ import { LightningElement, api } from "lwc";
  * counter whose cells are lit up changes, or its lines do.
  */
 export default class ShoreshWeekChecks extends LightningElement {
-  @api checked;
   @api route = "manual";
+  _checked;
+
+  @api
+  get checked() {
+    return this._checked;
+  }
+  set checked(value) {
+    this._checked = value;
+    // Generated: a week read again (someone else's save) changes the lines, so the lit cells
+    // follow them. Told after this render, not during it.
+    if (this.isGenerated && this.filterKind) {
+      Promise.resolve().then(() => this.tellHighlight());
+    }
+  }
 
   // The "Still to place" list is open (any counter with something in it opens it, desktop).
   listOpen = false;

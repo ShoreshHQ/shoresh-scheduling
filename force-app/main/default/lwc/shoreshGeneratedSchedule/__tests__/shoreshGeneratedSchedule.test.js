@@ -125,7 +125,7 @@ describe("c-shoresh-generated-schedule", () => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it("offers Generate a schedule for a week not generated yet, and nothing else", async () => {
@@ -475,15 +475,14 @@ describe("c-shoresh-generated-schedule", () => {
     expect(saveWeekOnServer).not.toHaveBeenCalled();
   });
 
-  it("moving to another week stops a build under way: nothing is saved for the old week", async () => {
+  it("a week that is gone from setup stops a build under way: nothing is saved for it", async () => {
     const element = await render(camp(BIG));
     q(element, '[data-id="generate"]').click();
     await flush();
     expect(q(element, '[data-id="busy"]')).not.toBeNull();
+    // The season is read again without Week 1 (someone deleted it).
     getInputs.mockResolvedValue(camp(SMALL));
-    q(element, '[data-id="week"]').dispatchEvent(
-      new CustomEvent("change", { detail: { value: WEEK_2 } })
-    );
+    element.setup = { ...SETUP, weeks: [{ Id: WEEK_2, Name: "Week 2" }] };
     let turns = 0;
     await until(() => turns++ >= 20);
     expect(saveWeekOnServer).not.toHaveBeenCalled();
@@ -492,6 +491,85 @@ describe("c-shoresh-generated-schedule", () => {
       programId: PROGRAM,
       weekId: WEEK_2
     });
+  });
+
+  it("the season read again mid-build: the build finishes and saves, then the week is read again", async () => {
+    const element = await render(camp(BIG));
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+    q(element, '[data-id="generate"]').click();
+    await flush();
+    getInputs.mockClear();
+    getInputs.mockResolvedValue(camp({ ...BIG, scheduleId: SCHEDULE }));
+    element.setup = { ...SETUP };
+    await flush();
+    // Still building; the read waits for it.
+    expect(q(element, '[data-id="busy"]')).not.toBeNull();
+    expect(getInputs).not.toHaveBeenCalled();
+    await settle(element);
+    expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
+    expect(getInputs).toHaveBeenCalledTimes(1);
+  });
+
+  it("a read sent before a save can't put back the week the save replaced", async () => {
+    const element = await render();
+    await generate(element);
+    // Coming back to the window starts a read of the week as it was (option 1)...
+    let answerRead;
+    getInputs.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answerRead = resolve;
+      })
+    );
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    // ...and a second focus while it is out asks for nothing more.
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    // Try another is saved while that read is out.
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    action(element, "TryAnother").click();
+    await settle(element);
+    expect(q(element, '[data-id="option"]').value).toBe("2");
+    // The old read answers last: it is set aside.
+    answerRead(camp({ ...SMALL, scheduleId: SCHEDULE, option: 1 }));
+    await flush();
+    expect(q(element, '[data-id="option"]').value).toBe("2");
+    // And the next save goes from Try another's revision, not the old one.
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
+    action(element, "Rebuild").click();
+    await flush();
+    q(element, '[data-id="confirm-go"]').click();
+    await settle(element);
+    expect(sent(2).revision).toBe("2026-06-29:2|2026-06-30:2");
+    expect(sent(2).option).toBe(2);
+  });
+
+  it("an option that wasn't saved isn't shown or offered", async () => {
+    const element = await render();
+    await generate(element);
+    saveWeekOnServer.mockRejectedValueOnce({
+      body: { message: "Flagpole stays where it is set up." }
+    });
+    action(element, "TryAnother").click();
+    await settle(element);
+    const option = q(element, '[data-id="option"]');
+    expect(option.value).toBe("1");
+    expect(option.options.map((o) => o.value)).toEqual(["1"]);
+
+    // Try another saved (option 2), then picking 1 again is refused: Option goes back to 2.
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    action(element, "TryAnother").click();
+    await settle(element);
+    saveWeekOnServer.mockRejectedValueOnce({
+      body: { message: "Flagpole stays where it is set up." }
+    });
+    const picker = q(element, '[data-id="option"]');
+    picker.value = "1"; // what the director picked
+    picker.dispatchEvent(new CustomEvent("change", { detail: { value: "1" } }));
+    await settle(element);
+    expect(sent(3).option).toBe(1);
+    expect(q(element, '[data-id="option"]').value).toBe("2");
   });
 
   it("dots a cell that bends a rule, its words in assistive text, worked out again on load", async () => {

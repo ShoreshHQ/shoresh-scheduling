@@ -19,7 +19,14 @@ import {
   kindLabel
 } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
-import { clearedDays, coveredBlocks, isLit, litCells, openCells } from "./week";
+import {
+  activityCells,
+  clearedDays,
+  coveredBlocks,
+  isLit,
+  litCells,
+  openCells
+} from "./week";
 
 // What each action is called on its button and while it runs.
 const ACTION_LABEL = {
@@ -60,6 +67,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   loadedFor;
   loadTicket = 0;
   loading = false;
+  // A read of the week under way, and one asked for while a build ran (done after it).
+  reading = false;
+  readAfterRun = false;
   error;
   // A save someone else's got in the way of: { message }.
   conflict;
@@ -95,7 +105,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!weeks.includes(this.weekId)) {
       this.weekId = weeks[0];
     }
-    // The season was read again (setup changed): read the week's inputs again too.
+    // The season was read again (setup changed): read the week's inputs again too. A build
+    // under way for this same week finishes first (it is the director's own action), then the
+    // week is read again; a build for a week that is gone stops.
+    if (this.busy && `${this.programId}|${this.weekId}` === this.loadedFor) {
+      this.readAfterRun = true;
+      return;
+    }
     this.load(true);
   }
 
@@ -108,6 +124,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     window.removeEventListener("focus", this.onWindowFocus);
     // A build under way stops: nobody is looking.
     this.loadTicket += 1;
+    this.busy = null;
   }
 
   renderedCallback() {
@@ -205,6 +222,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const ticket = this.loadTicket;
     // A build under way for another week stops (its ticket is gone).
     this.busy = null;
+    this.readAfterRun = false;
+    this.reading = true;
     this.confirming = null;
     if (fresh) {
       this.loaded = null;
@@ -228,6 +247,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     } finally {
       if (ticket === this.loadTicket) {
         this.loading = false;
+        this.reading = false;
       }
     }
   }
@@ -250,7 +270,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /** Coming back to the window shows other people's saves, unless something is under way. */
   refresh() {
-    if (this.loaded && !this.busy && !this.confirming && !this.conflict) {
+    if (
+      this.loaded &&
+      !this.reading &&
+      !this.busy &&
+      !this.confirming &&
+      !this.conflict
+    ) {
       this.load(true);
     }
   }
@@ -295,7 +321,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    */
   get week() {
     const loaded = this.loaded;
-    const inputs = [loaded && loaded.input, this.t];
+    // Keyed on the week's input alone: the camp's words come with the season, and when they
+    // change the season (and so the week) is read again.
+    const inputs = [loaded && loaded.input];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
       return memo.result;
@@ -380,9 +408,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.focusConfirm();
   }
   handleTryAnother() {
-    const next = this.option + 1;
-    this.triedUpTo = Math.max(this.triedUpTo, next);
-    this.run(ACTION.TRY_ANOTHER, next);
+    this.run(ACTION.TRY_ANOTHER, this.option + 1);
   }
   handleOption(event) {
     const chosen = Number(event.detail.value);
@@ -402,7 +428,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (this.busy || !this.loaded) {
       return;
     }
+    // The build takes the screen's turn: a read of the week sent before it (coming back to the
+    // window) is set aside when it answers, so it can't put back the week this replaces.
+    this.loadTicket += 1;
     const ticket = this.loadTicket;
+    this.reading = false;
+    this.loading = false;
     const loaded = this.loaded;
     this.error = null;
     this.busy = { action, progress: 0 };
@@ -463,8 +494,21 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     } finally {
       if (ticket === this.loadTicket) {
         this.busy = null;
+        this.showSavedOption();
         this.focusAfterRender = { selector: this.focusAfterRun(action) };
+        if (this.readAfterRun) {
+          this.readAfterRun = false;
+          this.load(true);
+        }
       }
+    }
+  }
+
+  /** Option shows the option saved, also after a pick that wasn't saved (refused, conflict). */
+  showSavedOption() {
+    const picker = this.template.querySelector('[data-id="option"]');
+    if (picker) {
+      picker.value = this.optionValue;
     }
   }
 
@@ -515,7 +559,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.confirming || !this.checked) {
       return "";
     }
-    const { filled } = this.checked.cells;
+    // What Start over clears: the activities (not things set up later, which it keeps).
+    const filled = activityCells(this.week.days);
     const cells = `${filled} filled ${filled === 1 ? "cell" : "cells"}`;
     // Locks come in G4, which adds "Locked cells stay as they are." to Rebuild and "locked ones
     // too" to Start over (decision 2); until then there is nothing locked to speak of.

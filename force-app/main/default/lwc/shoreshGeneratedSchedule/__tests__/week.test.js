@@ -1,5 +1,11 @@
 import { buildTerms } from "c/shoreshTerms";
-import { clearedDays, isLit, litCells, openCells } from "../week";
+import {
+  activityCells,
+  clearedDays,
+  isLit,
+  litCells,
+  openCells
+} from "../week";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -43,6 +49,14 @@ describe("clearedDays (Start over)", () => {
   it("leaves a week with nothing to clear as it is", () => {
     const [day] = clearedDays([{ ...DAY, rows: ["1,,,", "1,3,,"] }]);
     expect(day.rows).toEqual(["1,,,", "1,2,,"]);
+  });
+});
+
+describe("activityCells (what Start over says it clears)", () => {
+  it("counts each block of an activity, never fixed or not-set-up items", () => {
+    // Bunk 1: Hike (2 blocks) and Swim; Bunk 2: Swim. Flagpole and Electives aren't counted.
+    expect(activityCells([DAY])).toBe(4);
+    expect(activityCells(clearedDays([DAY]))).toBe(0);
   });
 });
 

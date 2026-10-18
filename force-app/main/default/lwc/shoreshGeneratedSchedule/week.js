@@ -64,6 +64,24 @@ export function clearedDays(days) {
   });
 }
 
+/** How many cells hold an activity (what Start over clears), each block of a longer one. */
+export function activityCells(days) {
+  let n = 0;
+  (days || []).forEach((day) => {
+    if (day.problem) {
+      return;
+    }
+    (day.groups || []).forEach((grp, g) =>
+      groupCells(day, g).forEach((c) => {
+        if (c.item && c.item.kind === "A") {
+          n += c.length;
+        }
+      })
+    );
+  });
+  return n;
+}
+
 /** The blocks a cell covers: from the one it starts in, for as many as it carries on. */
 export function coveredBlocks(day, groupIndex, firstBlock) {
   const cell = groupCells(day, groupIndex).find(

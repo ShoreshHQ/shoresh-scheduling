@@ -200,6 +200,31 @@ describe("c-shoresh-week-checks", () => {
       expect(last().kind).toBeNull();
     });
 
+    it("lit cells follow the lines when the week is read again", async () => {
+      const element = generated();
+      const lit = jest.fn();
+      element.addEventListener("highlight", lit);
+      await flush();
+      q(element, '[data-counter="open"]').click();
+      await flush();
+      element.checked = {
+        ...GENERATED,
+        openCells: [
+          ...GENERATED.openCells,
+          {
+            dateValue: "2026-06-30",
+            groupId: "g1",
+            blockId: "t1",
+            text: "Bunk 1 · Tuesday · Period 1"
+          }
+        ]
+      };
+      await flush();
+      const last = lit.mock.calls[lit.mock.calls.length - 1][0].detail;
+      expect(last.kind).toBe("open");
+      expect(last.lines.map((l) => l.blockId)).toEqual(["t3", "t1"]);
+    });
+
     it("Accept takes the line's cells out of the lit ones", async () => {
       const element = generated();
       const lit = jest.fn();
