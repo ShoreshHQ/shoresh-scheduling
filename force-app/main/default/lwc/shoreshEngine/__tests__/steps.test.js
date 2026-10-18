@@ -66,6 +66,31 @@ describe("generateWeekSteps", () => {
     expect(progress[progress.length - 1]).toBeGreaterThan(0.5);
   });
 
+  it("ends at 1 whether the week is built once or twice, only going up", () => {
+    let once = 0;
+    let twice = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const input = camp(withHistory(randomCamp(seed), seed));
+      const { result, progress } = runSteps(input);
+      if (!result.ok) {
+        continue;
+      }
+      expect(progress[progress.length - 1]).toBe(1);
+      for (let i = 1; i < progress.length; i++) {
+        expect(progress[i]).toBeGreaterThanOrEqual(progress[i - 1]);
+      }
+      // A week built twice passes through the halfway mark from its first build.
+      if (progress.includes(0.5)) {
+        twice += 1;
+      } else {
+        once += 1;
+      }
+    }
+    expect(once).toBeGreaterThan(0);
+    expect(once + twice).toBeGreaterThan(30);
+    expect(runSteps(overfull).progress.slice(-1)[0]).toBe(1);
+  });
+
   it("never runs long between steps", () => {
     const steps = generateWeekSteps(overfull);
     let longest = 0;

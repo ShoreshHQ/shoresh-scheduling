@@ -399,8 +399,9 @@ describe("c-shoresh-generated-schedule", () => {
       "Start over?"
     );
     const body = q(element, '[data-id="confirm-body"]').textContent;
-    expect(body).toMatch(
-      /^Clears all \d+ filled cells in Week 1\. Fixed activities and recurring activities stay\.$/
+    // Bunk 1's three periods and Bunk 2's two morning ones, on two days: Filled's 10 of 10.
+    expect(body).toBe(
+      "Clears the 10 activity cells in Week 1. Fixed activities and recurring activities stay."
     );
     expect(q(element, '[data-id="confirm-go"]').textContent.trim()).toBe(
       "Start over"
@@ -432,7 +433,11 @@ describe("c-shoresh-generated-schedule", () => {
     await settle(element);
     const box = q(element, '[data-id="conflict"]');
     expect(box.getAttribute("role")).toBe("alert");
-    expect(box.textContent).toContain(CONFLICT_SENTENCE);
+    // The statement only: the Reload button is the way to act on it.
+    expect(box.querySelector("p").textContent).toBe(
+      "Someone else changed this schedule since you opened it."
+    );
+    expect(box.textContent).not.toContain("Open it again");
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="reload"]')
     );
@@ -510,10 +515,10 @@ describe("c-shoresh-generated-schedule", () => {
     expect(getInputs).toHaveBeenCalledTimes(1);
   });
 
-  it("a read sent before a save can't put back the week the save replaced", async () => {
+  it("while a read of the week is out, nothing can be built over it", async () => {
     const element = await render();
     await generate(element);
-    // Coming back to the window starts a read of the week as it was (option 1)...
+    // Coming back to the window starts a read of the week (someone saved option 2)...
     let answerRead;
     getInputs.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -526,23 +531,20 @@ describe("c-shoresh-generated-schedule", () => {
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();
     expect(getInputs).toHaveBeenCalledTimes(2);
-    // Try another is saved while that read is out.
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    ["Rebuild", "TryAnother", "StartOver"].forEach((name) =>
+      expect(action(element, name).disabled).toBe(true)
+    );
+    expect(q(element, '[data-id="option"]').disabled).toBe(true);
+    answerRead(camp({ ...SMALL, scheduleId: SCHEDULE, option: 2 }));
+    await flush();
+    expect(action(element, "TryAnother").disabled).toBe(false);
+    expect(q(element, '[data-id="option"]').value).toBe("2");
+    // The next save goes from the week just read.
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
     action(element, "TryAnother").click();
     await settle(element);
-    expect(q(element, '[data-id="option"]').value).toBe("2");
-    // The old read answers last: it is set aside.
-    answerRead(camp({ ...SMALL, scheduleId: SCHEDULE, option: 1 }));
-    await flush();
-    expect(q(element, '[data-id="option"]').value).toBe("2");
-    // And the next save goes from Try another's revision, not the old one.
-    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
-    action(element, "Rebuild").click();
-    await flush();
-    q(element, '[data-id="confirm-go"]').click();
-    await settle(element);
-    expect(sent(2).revision).toBe("2026-06-29:2|2026-06-30:2");
-    expect(sent(2).option).toBe(2);
+    expect(sent(1).revision).toBe("2026-06-29:1");
+    expect(sent(1).option).toBe(3);
   });
 
   it("an option that wasn't saved isn't shown or offered", async () => {
@@ -572,7 +574,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-id="option"]').value).toBe("2");
   });
 
-  it("a bunk away this week keeps its row, but its empty cells aren't counted as Open", async () => {
+  it("a bunk away this week keeps its row: hatched, not counted to fill, not Open", async () => {
     // A saved week, nothing placed yet; Bunk 2 was marked away after the draft was made, so the
     // server sends its row but not the bunk.
     const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
@@ -588,6 +590,48 @@ describe("c-shoresh-generated-schedule", () => {
       ...checks(element).shadowRoot.querySelectorAll(".line-text")
     ].map((b) => b.textContent);
     expect(texts.every((t) => t.startsWith("Bunk 1 · "))).toBe(true);
+    // Filled agrees: only Bunk 1's six cells are to fill.
+    expect(
+      checks(element).shadowRoot.querySelector('[data-id="filled"]').textContent
+    ).toContain("0 of 6");
+    // Every Bunk 2 cell but Flagpole (fixed, it stays) is hatched, Not at camp (the second
+    // column).
+    const bunk2 = cells(element).filter(
+      (c) =>
+        c.dataset.cell.startsWith("1-") &&
+        !c.className.includes("cell_set-time")
+    );
+    expect(bunk2.length).toBeGreaterThan(0);
+    bunk2.forEach((c) => {
+      expect(c.className).toContain("cell_away");
+      expect(c.querySelector(".cell-name").textContent).toBe("Not at camp");
+    });
+  });
+
+  it("a gap no activity fits stays Open with the engine's reason, on its dot and in the list", async () => {
+    // Every activity takes two blocks; Period 3 (afternoon) is a one-block gap for Bunk 1.
+    const inputs = camp({
+      ...SMALL,
+      activities: [{ name: "Hike", min: 0, max: 5, atOnce: 2, length: 2 }]
+    });
+    const element = await render(inputs);
+    await generate(element);
+    const open = cells(element).filter((c) =>
+      c.className.includes("cell_open")
+    );
+    expect(open.length).toBeGreaterThan(0);
+    open.forEach((c) =>
+      expect(c.querySelector("c-shoresh-dot").label).toBe(
+        "No activity fits this gap"
+      )
+    );
+    counter(element, "open").click();
+    await flush();
+    const texts = [
+      ...checks(element).shadowRoot.querySelectorAll(".line-text")
+    ].map((b) => b.textContent);
+    expect(texts.length).toBeGreaterThan(0);
+    texts.forEach((t) => expect(t).toMatch(/: No activity fits this gap$/));
   });
 
   it("dots a cell that bends a rule, its words in assistive text, worked out again on load", async () => {
@@ -705,5 +749,416 @@ describe("c-shoresh-generated-schedule", () => {
       qa(element, ".view-button").map((b) => b.textContent.trim())
     ).toEqual(["Daily View", "Group View", "Activity View"]);
     expect(q(element, ".legend").textContent).toContain("Not at camp");
+  });
+
+  describe("a short build, and Start over", () => {
+    it("shows a moving bar with no number for a build too short to report, and its own words for Start over", async () => {
+      const element = await render();
+      let answer;
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      q(element, '[data-id="generate"]').click();
+      await until(() => saveWeekOnServer.mock.calls.length > 0);
+      const bar = q(element, '[role="progressbar"]');
+      expect(bar.className).toContain("progress_moving");
+      expect(bar.getAttribute("aria-valuenow")).toBeNull();
+      answer(savedAnswer());
+      await settle(element);
+
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      action(element, "StartOver").click();
+      await flush();
+      q(element, '[data-id="confirm-go"]').click();
+      await flush();
+      expect(q(element, '[data-id="busy"]').textContent).toContain(
+        "Starting over…"
+      );
+      expect(q(element, '[data-id="busy"]').textContent).not.toContain(
+        "Generating"
+      );
+      expect(q(element, '[data-id="announce"]').textContent).toContain(
+        "Starting over…"
+      );
+      answer(savedAnswer(2));
+      await settle(element);
+    });
+
+    it("a long build's bar reaches 100 before the save", async () => {
+      const element = await render(camp(BIG));
+      let answer;
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      q(element, '[data-id="generate"]').click();
+      await until(() => saveWeekOnServer.mock.calls.length > 0);
+      expect(
+        q(element, '[role="progressbar"]').getAttribute("aria-valuenow")
+      ).toBe("100");
+      answer(savedAnswer());
+      await settle(element);
+    });
+  });
+
+  describe("conflicts stay until the director answers them", () => {
+    it("the season read again mid-build, then a conflict: the box stays, with focus on Reload", async () => {
+      const element = await render(camp(BIG));
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: true,
+        message: CONFLICT_SENTENCE
+      });
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      element.setup = { ...SETUP };
+      await settle(element);
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-id="reload"]')
+      );
+      // No read was made behind the box.
+      expect(getInputs).toHaveBeenCalledTimes(1);
+    });
+
+    it("the season read again while the box shows: the box stays", async () => {
+      const element = await render();
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: true,
+        message: CONFLICT_SENTENCE
+      });
+      q(element, '[data-id="generate"]').click();
+      await settle(element);
+      element.setup = { ...SETUP };
+      await flush();
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      expect(getInputs).toHaveBeenCalledTimes(1);
+    });
+
+    it("the conflict is read out once, by its alert box", async () => {
+      const element = await render();
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: true,
+        message: CONFLICT_SENTENCE
+      });
+      q(element, '[data-id="generate"]').click();
+      await settle(element);
+      expect(q(element, '[data-id="announce"]').textContent).not.toContain(
+        "Someone else"
+      );
+    });
+
+    it("an already generated week: every action waits for Reload", async () => {
+      const element = await render();
+      await generate(element);
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: true,
+        message: CONFLICT_SENTENCE
+      });
+      action(element, "TryAnother").click();
+      await settle(element);
+      ["Rebuild", "TryAnother", "StartOver"].forEach((name) =>
+        expect(action(element, name).disabled).toBe(true)
+      );
+    });
+
+    it("Reload holds the actions until the week is read, then puts focus on Rebuild", async () => {
+      const element = await render();
+      await generate(element);
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: true,
+        message: CONFLICT_SENTENCE
+      });
+      action(element, "TryAnother").click();
+      await settle(element);
+      let answerRead;
+      getInputs.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answerRead = resolve;
+        })
+      );
+      q(element, '[data-id="reload"]').click();
+      await flush();
+      expect(q(element, '[data-id="conflict"]')).toBeNull();
+      expect(action(element, "TryAnother").disabled).toBe(true);
+      answerRead(camp({ ...SMALL, scheduleId: SCHEDULE, option: 3 }));
+      await flush();
+      expect(action(element, "TryAnother").disabled).toBe(false);
+      expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+      expect(q(element, '[data-id="announce"]').textContent).toContain(
+        "Week 1 as saved now."
+      );
+      // Every option up to the one saved can be brought back.
+      expect(
+        q(element, '[data-id="option"]').options.map((o) => o.value)
+      ).toEqual(["1", "2", "3"]);
+    });
+  });
+
+  describe("reads and builds that overlap", () => {
+    it("a read that failed, then one that works: its error goes", async () => {
+      const element = await render();
+      await generate(element);
+      getInputs.mockRejectedValueOnce({
+        body: { message: "Network went away." }
+      });
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+      expect(q(element, '[data-id="build-error"]').textContent).toContain(
+        "Network went away."
+      );
+      getInputs.mockResolvedValueOnce(camp({ ...SMALL, scheduleId: SCHEDULE }));
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+      expect(q(element, '[data-id="build-error"]')).toBeNull();
+    });
+
+    it("a refused save's sentence stays when the week is read again after it", async () => {
+      const element = await render(camp(BIG));
+      await generate(element);
+      saveWeekOnServer.mockRejectedValueOnce({
+        body: { message: "Flagpole stays where it is set up." }
+      });
+      action(element, "TryAnother").click();
+      await flush();
+      getInputs.mockResolvedValueOnce(camp({ ...BIG, scheduleId: SCHEDULE }));
+      element.setup = { ...SETUP };
+      await settle(element);
+      await flush();
+      expect(q(element, '[data-id="build-error"]').textContent).toContain(
+        "Flagpole stays where it is set up."
+      );
+    });
+
+    it("a read that failed, then a refused save: the save's sentence outlasts the next read", async () => {
+      const element = await render();
+      await generate(element);
+      getInputs.mockRejectedValueOnce({
+        body: { message: "Network went away." }
+      });
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+      saveWeekOnServer.mockRejectedValueOnce({
+        body: { message: "Flagpole stays where it is set up." }
+      });
+      action(element, "TryAnother").click();
+      await settle(element);
+      getInputs.mockResolvedValueOnce(camp({ ...SMALL, scheduleId: SCHEDULE }));
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+      expect(q(element, '[data-id="build-error"]').textContent).toContain(
+        "Flagpole stays where it is set up."
+      );
+    });
+
+    it("the week a confirm is about is gone from setup: the confirm closes", async () => {
+      const element = await render();
+      await generate(element);
+      action(element, "Rebuild").click();
+      await flush();
+      getInputs.mockResolvedValueOnce(camp(SMALL));
+      element.setup = { ...SETUP, weeks: [{ Id: WEEK_2, Name: "Week 2" }] };
+      await flush();
+      expect(q(element, '[data-id="confirm"]')).toBeNull();
+    });
+
+    it("another season chosen mid-build: the build stops and nothing is saved", async () => {
+      const element = await render(camp(BIG));
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      // The page clears setup first while it reads the new season.
+      element.setup = null;
+      let turns = 0;
+      await until(() => turns++ >= 20);
+      expect(saveWeekOnServer).not.toHaveBeenCalled();
+      expect(q(element, '[data-id="busy"]')).toBeNull();
+    });
+
+    it("coming back to the window mid-build doesn't stop it or read over it", async () => {
+      const element = await render(camp(BIG));
+      saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      window.dispatchEvent(new CustomEvent("focus"));
+      await settle(element);
+      expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
+      expect(getInputs).toHaveBeenCalledTimes(1);
+      expect(grid(element)).not.toBeNull();
+    });
+
+    it("coming back to the window with the confirm open leaves it open", async () => {
+      const element = await render();
+      await generate(element);
+      action(element, "Rebuild").click();
+      await flush();
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+      expect(q(element, '[data-id="confirm"]')).not.toBeNull();
+      expect(getInputs).toHaveBeenCalledTimes(1);
+    });
+
+    it("the season read again with the confirm open: it stays, and the week is read once it closes", async () => {
+      const element = await render();
+      await generate(element);
+      action(element, "Rebuild").click();
+      await flush();
+      element.setup = { ...SETUP };
+      await flush();
+      expect(q(element, '[data-id="confirm"]')).not.toBeNull();
+      expect(getInputs).toHaveBeenCalledTimes(1);
+      getInputs.mockResolvedValueOnce(camp({ ...SMALL, scheduleId: SCHEDULE }));
+      q(element, '[data-id="confirm-cancel"]').click();
+      await flush();
+      expect(getInputs).toHaveBeenCalledTimes(2);
+    });
+
+    it("leaving the page mid-save: the answer changes nothing", async () => {
+      const element = await render();
+      let answer;
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      q(element, '[data-id="generate"]').click();
+      await until(() => saveWeekOnServer.mock.calls.length > 0);
+      document.body.removeChild(element);
+      answer(savedAnswer());
+      await flush();
+      document.body.appendChild(element);
+      await flush();
+      expect(q(element, '[data-id="generate"]')).not.toBeNull();
+      expect(grid(element)).toBeNull();
+    });
+
+    it("a second click while building builds once", async () => {
+      const element = await render(camp(BIG));
+      saveWeekOnServer.mockResolvedValue(savedAnswer());
+      q(element, '[data-id="generate"]').click();
+      q(element, '[data-id="generate"]').click();
+      await settle(element);
+      expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
+    });
+
+    it("the week picker waits while building", async () => {
+      const element = await render(camp(BIG));
+      saveWeekOnServer.mockResolvedValueOnce(savedAnswer());
+      q(element, '[data-id="generate"]').click();
+      await flush();
+      expect(q(element, '[data-id="week"]').disabled).toBe(true);
+      await settle(element);
+      expect(q(element, '[data-id="week"]').disabled).toBe(false);
+    });
+  });
+
+  describe("focus and keys", () => {
+    it("a line about the second block of a two-block cell takes focus to that cell", async () => {
+      // Saved: both bunks hike Monday Periods 1-2, one bunk at a time: each cell overlaps.
+      const inputs = camp({
+        ...SMALL,
+        scheduleId: SCHEDULE,
+        activities: [{ name: "Hike", min: 0, max: 5, atOnce: 1, length: 2 }]
+      });
+      const hike = {
+        kind: "A",
+        id: inputs.activities[0].Id,
+        name: "Hike",
+        gone: false
+      };
+      inputs.days[0] = {
+        ...inputs.days[0],
+        items: [...inputs.days[0].items, hike],
+        rows: ["1,2,^,", "1,2,^,"]
+      };
+      const element = await render(inputs);
+      checks(element)
+        .shadowRoot.querySelector('[data-id="review-all"]')
+        .click();
+      await flush();
+      const line = [
+        ...checks(element).shadowRoot.querySelectorAll(".line-text")
+      ].find((b) => b.textContent.startsWith("Bunk 2 · Monday · Period 2"));
+      expect(line).toBeTruthy();
+      line.click();
+      await flush();
+      // Group View, Bunk 2: Monday's Hike cell starts in Period 1 (row 1).
+      expect(grid(element).shadowRoot.activeElement.dataset.cell).toBe("0-1");
+    });
+
+    it("after the first Generate, focus is on Rebuild; after one the engine can't build, on Generate", async () => {
+      const element = await render();
+      await generate(element);
+      expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+
+      document.body.removeChild(element);
+      const none = await render(camp({ ...SMALL, activities: [] }));
+      // The test's stand-in for Salesforce's button can't hold focus: see that it is asked to.
+      const button = q(none, '[data-id="generate"]');
+      button.focus = jest.fn();
+      button.click();
+      await settle(none);
+      expect(button.focus).toHaveBeenCalled();
+    });
+
+    it("Escape in the confirm goes no further; Tab is kept from moving focus twice", async () => {
+      const element = await render();
+      await generate(element);
+      action(element, "Rebuild").click();
+      await flush();
+      const dialog = q(element, '[data-id="confirm"]');
+      const outside = jest.fn();
+      element.shadowRoot
+        .querySelector('[data-id="generated-schedule"]')
+        .addEventListener("keydown", outside);
+      const tab = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true
+      });
+      dialog.dispatchEvent(tab);
+      expect(tab.defaultPrevented).toBe(true);
+      dialog.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+      );
+      expect(
+        outside.mock.calls.filter((c) => c[0].key === "Escape")
+      ).toHaveLength(0);
+    });
+
+    it("an accepted line comes back after the next build", async () => {
+      const inputs = camp({
+        ...SMALL,
+        activities: [
+          { name: "Swim", min: 3, max: 3, atOnce: 2 },
+          { name: "Art", min: 0, max: 5, atOnce: 2 }
+        ]
+      });
+      const element = await render(inputs);
+      await generate(element);
+      const needed = () =>
+        Number(
+          counter(element, "stillNeeded").querySelector(".count").textContent
+        );
+      const before = needed();
+      counter(element, "stillNeeded").click();
+      await flush();
+      checks(element).shadowRoot.querySelector(".line-accept").click();
+      await flush();
+      expect(needed()).toBe(before - 1);
+      saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+      action(element, "Rebuild").click();
+      await flush();
+      q(element, '[data-id="confirm-go"]').click();
+      await settle(element);
+      expect(needed()).toBe(before);
+    });
   });
 });

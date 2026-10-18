@@ -80,8 +80,10 @@ export function generateWeek(input) {
  * generateWeek in steps (ADR 0010 §22): a generator that yields how far the build has got, a
  * number from 0 to 1 that only goes up, and returns generateWeek's result. A screen runs a few
  * steps at a time between paints so a big week never freezes the tab; the steps never change
- * the week, so it is the same as generateWeek's. A week built twice (the minimum repair's
- * leniency, below) spends the first half of the way on the first build.
+ * the week, so it is the same as generateWeek's. It ends at 1. A week built twice (the minimum
+ * repair's leniency, below) spends the first half of the way on the first build; once the first
+ * build's minimum repair shows it won't be built again, the rest of the first build fills the
+ * rest of the way.
  */
 export function* generateWeekSteps(input) {
   const t = input.terms || buildTerms([]);
@@ -135,28 +137,42 @@ export function* generateWeekSteps(input) {
     ...otherPrograms(input.otherPrograms, days)
   };
   const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
-  function* build(settings, from, share) {
-    const steps = scheduleWeekSteps(settings);
+  function* build(settings, from, share, once) {
+    const notes = {};
+    const steps = scheduleWeekSteps(settings, notes);
+    // Where the bar was when it became known this is the only build (see above), if it is.
+    let alone = null;
     let step = steps.next();
     while (!step.done) {
-      yield from + share * step.value;
+      const f = step.value;
+      if (once && !alone && notes.settled && !notes.leftForNeverBlank) {
+        alone = { f, at: from + share * f };
+      }
+      yield alone && alone.f < 1
+        ? alone.at + ((f - alone.f) / (1 - alone.f)) * (1 - alone.at)
+        : from + share * f;
       step = steps.next();
     }
     const state = step.value;
     const built = writeDays(settings, state);
-    yield from + share;
+    yield once && !state.leftForNeverBlank ? 1 : from + share;
     return {
       state,
       built,
       checked: checkWeek(built, checkModel(input, settings, state), words)
     };
   }
-  let chosen = yield* build(model, 0, 0.5);
+  let chosen = yield* build(model, 0, 0.5, true);
   let ruleChecks = chosen.state.ruleChecks;
   if (chosen.state.leftForNeverBlank) {
     // The minimum repair left a cell for never-blank to fill. Keep that week only if it is no
     // worse: it meets more minimums, or as many with no more bends (ADR 0010).
-    const strict = yield* build({ ...model, strictRepair: true }, 0.5, 0.5);
+    const strict = yield* build(
+      { ...model, strictRepair: true },
+      0.5,
+      0.5,
+      false
+    );
     ruleChecks += strict.state.ruleChecks;
     if (worse(chosen.checked, strict.checked)) {
       chosen = strict;
@@ -190,9 +206,10 @@ export function* generateWeekSteps(input) {
  * A Generated week as it stands (built, saved or cleared), checked by the same rules and model
  * the engine checks its own builds with: the screen's dots, counters and lines, worked out again
  * whenever the week is shown, never stored (ADR 0010 §11). input: generateWeek's (days are the
- * week to check; option and mode don't matter). Returns { days, checked, isAway }: the days in
- * date order (checkWeek's day numbers count in it), checkWeek's answer, and whether a group is
- * away from camp in a block (the cells shown hatched).
+ * week to check; option and mode don't matter). Returns { days, checked, isAway, shortest }: the
+ * days in date order (checkWeek's day numbers count in it), checkWeek's answer, whether a group
+ * is away from camp in a block (the cells shown hatched; a group the server didn't send is away
+ * in all of them), and the shortest activity running this week, in blocks.
  */
 export function checkGeneratedWeek(input) {
   const t = input.terms || buildTerms([]);
@@ -220,14 +237,24 @@ export function checkGeneratedWeek(input) {
     ...otherPrograms(input.otherPrograms, days)
   };
   const check = checkModel(input, model, null);
+  // A group the server didn't send (away this week since the draft was made, G2 §13) keeps its
+  // row, but is away in every block: hatched, not counted to fill, nothing goes in.
+  const isAway = (groupId, blockId) =>
+    !groups.has(groupId) || check.isAway(groupId, blockId);
   const shown = days.map((day) => day.frame);
   return {
     days: shown,
-    checked: checkWeek(shown, check, {
-      t,
-      dayName: (date) => DAY_NAMES[weekdayOf(date)] || ""
-    }),
-    isAway: check.isAway
+    checked: checkWeek(
+      shown,
+      { ...check, isAway },
+      { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" }
+    ),
+    isAway,
+    // The fewest blocks any activity running this week takes: a gap shorter than this fits
+    // nothing (the engine's "No activity fits this gap"); null with none running.
+    shortest: activities.running.length
+      ? Math.min(...activities.running.map((a) => a.span))
+      : null
   };
 }
 

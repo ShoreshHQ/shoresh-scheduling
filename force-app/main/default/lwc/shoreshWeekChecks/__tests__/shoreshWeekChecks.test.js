@@ -293,6 +293,39 @@ describe("c-shoresh-week-checks", () => {
       );
     });
 
+    it("Review all says whether the list is open; Accept under a counter takes its own line", async () => {
+      const element = generated({
+        checked: {
+          ...GENERATED,
+          stillNeeded: [
+            "Swim · Bunk 1: 1 still needed",
+            "Art · Bunk 2: 1 still needed"
+          ],
+          stillNeededBy: [
+            { activityId: "a1", groupId: "g1", missing: 1 },
+            { activityId: "a2", groupId: "g2", missing: 1 }
+          ]
+        }
+      });
+      const accepted = jest.fn();
+      element.addEventListener("accept", accepted);
+      await flush();
+      const all = q(element, '[data-id="review-all"]');
+      expect(all.getAttribute("aria-expanded")).toBe("false");
+      all.click();
+      await flush();
+      expect(
+        q(element, '[data-id="review-all"]').getAttribute("aria-expanded")
+      ).toBe("true");
+      // Under Still needed, the second line's Accept is Art's, not the second line of all.
+      q(element, '[data-counter="stillNeeded"]').click();
+      await flush();
+      element.shadowRoot.querySelectorAll(".line-accept")[1].click();
+      await flush();
+      expect(accepted.mock.calls[0][0].detail.activityId).toBe("a2");
+      expect(lines(element)).toEqual(["Swim · Bunk 1: 1 still needed"]);
+    });
+
     it("Accept takes the line's cells out of the lit ones", async () => {
       const element = generated();
       const lit = jest.fn();

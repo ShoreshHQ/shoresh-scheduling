@@ -96,3 +96,26 @@
   font-size: 13px;
   color: var(--shoresh-text-secondary);
 }
+
+/* Until a long build says how far it has got: a short stripe that moves along the track
+   (desktop IndeterminateBar). Under reduced motion, a still, half-filled track. */
+.progress_moving .progress-fill {
+  width: 30%;
+  animation: progress-move 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-move {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress_moving .progress-fill {
+    width: 50%;
+    animation: none;
+  }
+}

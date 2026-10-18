@@ -3,7 +3,7 @@
  * (ScheduleViews.DayView: blocks, groups, items, rows of "1,^,"): the week Start over leaves, the
  * cells left Open, and the cells a counter lights up. Pure: no server, no screen.
  */
-import { BUSY, reasonFor } from "c/shoreshEngine";
+import { BUSY, NO_FIT, reasonFor } from "c/shoreshEngine";
 import { dayLabel, groupCells } from "c/shoreshScheduleViews";
 
 const CARRIES_ON = "^";
@@ -64,8 +64,11 @@ export function clearedDays(days) {
   });
 }
 
-/** How many cells hold an activity (what Start over clears), each block of a longer one. */
-export function activityCells(days) {
+/**
+ * How many cells hold an activity where the group is at camp (what Start over clears), each block
+ * of a longer one. isAway(groupId, blockId), when given, leaves out cells where the group isn't.
+ */
+export function activityCells(days, isAway = () => false) {
   let n = 0;
   (days || []).forEach((day) => {
     if (day.problem) {
@@ -74,7 +77,9 @@ export function activityCells(days) {
     (day.groups || []).forEach((grp, g) =>
       groupCells(day, g).forEach((c) => {
         if (c.item && c.item.kind === "A") {
-          n += c.length;
+          for (let b = c.blockIndex; b < c.blockIndex + c.length; b++) {
+            n += isAway(grp.id, day.blocks[b].id) ? 0 : 1;
+          }
         }
       })
     );
@@ -93,12 +98,16 @@ export function coveredBlocks(day, groupIndex, firstBlock) {
 
 /**
  * The cells left Open where the group is at camp (what the Open counter counts: Filled's "of"
- * less its filled), one line each: "Bunk 3 · Monday · Period 2", and ": Already busy then" when
- * the group holds something at an overlapping time, the engine's own reason. Worked out from the
- * week as it stands, so a saved week reads the same as one just built.
+ * less its filled), one line each, "Bunk 3 · Monday · Period 2", with the engine's reason when
+ * the grid shows it (the same words, reasonFor): "Already busy then" when the group holds
+ * something at an overlapping time; "No activity fits this gap" when the run of Open cells it is
+ * in is shorter than the shortest activity (shortest, in blocks). A cell Start over just cleared
+ * has neither: something fits, it just isn't built yet. Worked out from the week as it stands,
+ * so a saved week reads the same as one just built.
  */
-export function openCells(days, isAway, terms) {
+export function openCells(days, isAway, terms, shortest = null) {
   const busy = reasonFor(BUSY, { terms });
+  const noFit = reasonFor(NO_FIT, { terms });
   const out = [];
   (days || []).forEach((day) => {
     if (day.problem) {
@@ -114,14 +123,34 @@ export function openCells(days, isAway, terms) {
           }
         }
       });
+      const open = (b) =>
+        b >= 0 &&
+        b < day.blocks.length &&
+        !filled.has(b) &&
+        !isAway(grp.id, day.blocks[b].id);
       cells.forEach((c) => {
         const block = day.blocks[c.blockIndex];
-        if (c.item || !block || isAway(grp.id, block.id)) {
+        if (c.item || !block || !open(c.blockIndex)) {
           return;
         }
         const taken = day.blocks.some(
           (other, b) => filled.has(b) && overlaps(block, other)
         );
+        // The run of Open, at-camp cells this one is in.
+        let first = c.blockIndex;
+        let last = c.blockIndex;
+        while (open(first - 1)) {
+          first -= 1;
+        }
+        while (open(last + 1)) {
+          last += 1;
+        }
+        let reason = null;
+        if (taken) {
+          reason = busy;
+        } else if (shortest !== null && last - first + 1 < shortest) {
+          reason = noFit;
+        }
         const where = [
           grp.name,
           dayLabel(day.dateValue).label,
@@ -131,7 +160,8 @@ export function openCells(days, isAway, terms) {
           dateValue: day.dateValue,
           groupId: grp.id,
           blockId: block.id,
-          text: taken ? `${where}: ${busy}` : where
+          reason,
+          text: reason ? `${where}: ${reason}` : where
         });
       });
     });

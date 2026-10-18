@@ -24,7 +24,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. The camp name now shows at the top left, with a **New season** button. On the left is the
    Shoresh menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
    Camp words; **Activities**: Activities, Fixed activities, Recurring activities, and
-   Special events marked **Coming**; and **Schedules**). Until there is a season, only
+   Special events marked **Coming**; then **Generated Schedule**, **Manual Build** and
+   **Schedules**). Until there is a season, only
    **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
 
 ## 3. Use your camp's own words
@@ -45,7 +46,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 2. Click **Create season**. (If a calendar was still open, the first click only closes it;
    click again.)
 3. You land on **Roots**, the home screen. It has:
-   - a **Build or generate the schedule** bar, marked **Coming**;
+   - **Build or generate the schedule**, with two buttons side by side, **Generated
+     Schedule →** and **Manual Build →** (sections 19 to 22);
    - **What has taken root**: a card each for Activities, Bunks, Units, Locations,
      Time blocks, and Weeks, with how many there are (all 0 for now), and a wide
      **Fixed activities** card;
@@ -677,10 +679,11 @@ doesn't change this one.
    Build →**. Click **Generated Schedule →**.
 2. **A week not generated yet.** The **Week** picker shows _Week 1_. In the middle of the page:
    _Let the app propose one_ and one button, **Generate a schedule**. Nothing else yet.
-3. **Generate.** Click it. A thin bar runs across under the toolbar with _Generating…_ beside it,
-   and the buttons are greyed out until it is done. For the made-up camp it takes about a second;
-   a camp with 40 bunks can take several seconds, and the page keeps responding all the while
-   (scroll, or open the menu, while it runs). Then the week shows in **Daily View**, Monday:
+3. **Generate.** Click it. A thin bar under the toolbar shows a short stripe moving along it,
+   with _Generating…_ beside it, and the buttons are greyed out until it is saved. For the
+   made-up camp that takes about a second. A camp with 40 bunks can take several seconds: then
+   the bar fills from left to right as the week is built, and the page keeps responding all the
+   while (scroll, or open the menu, while it runs). Then the week shows in **Daily View**, Monday:
    every cell where a bunk is at camp holds an activity. Lunch, Morning meeting and Library time
    are where setup puts them, and cells where a bunk isn't at camp are hatched, as in Manual Build.
 4. **The toolbar** now has **Rebuild**, **Fill the open cells**, **Try another**, an **Option**
@@ -692,7 +695,8 @@ doesn't change this one.
 6. **Under the grid** (on this schedule the counts sit below the grid) are the tiles: **Filled**
    (_N of N_ when every cell is filled), **Open**, **Still needed**, and **Spread across the
    week** if an activity has an early-week goal. **Open** counts cells nothing could go in
-   (expected to be 0 here). A tile above 0 has a bronze border: click it to see only its lines
+   (expected to be 0 here); one that no activity is short enough for has the dot, _No activity
+   fits this gap_. A tile above 0 has a bronze border: click it to see only its lines
    in **Still to place**, and the cells they are about get a bronze outline on the grid. Click
    the tile again to turn that off. **Review all** shows every line. Click a line: the grid
    shows that bunk's week (Group View) and the outlines go.
@@ -708,17 +712,24 @@ doesn't change this one.
 9. **A setup change.** On **Activities**, open Swim and lower its most times a week by one. Back on
    Generated Schedule, **Rebuild** → **Rebuild it**: Swim now runs fewer times. Put Swim back
    afterwards.
-10. **Start over.** Click it. The box says _Clears all N filled cells in Week 1. Fixed activities
-    and recurring activities stay._ and _Saved to Versions first._ Click **Start
-    over**: every activity cell says **Open** again; Lunch, Morning meeting and Library time stay.
+10. **Start over.** Click it. The box says _Clears the N activity cells in Week 1. Fixed
+    activities and recurring activities stay._ and _Saved to Versions first._ Click **Start
+    over** (_Starting over…_ shows while it saves): every activity cell says **Open** again; Lunch, Morning meeting and Library time stay.
     **Open** now counts those cells.
 11. **Fill the open cells.** It is greyed out while nothing is Open. After step 10, click it: only
     the Open cells are filled; anything already in a cell stays where it is.
 12. **Someone else saved first.** Open the Shoresh tab in a second browser window, on Generated
-    Schedule, Week 1. In the second window, click **Try another**. Back in the first window, click
-    **Try another** without reloading. A bronze-bordered box says _Someone else changed this
-    schedule since you opened it…_ with a **Reload** button, and nothing of yours was saved. Click
-    **Reload**: the week shows as the other window saved it.
+    Schedule, Week 1, and put the two windows side by side.
+    1. In the **first** window, click **Rebuild**. Leave its box (_Rebuild this schedule?_)
+       open.
+    2. In the **second** window, click **Try another**. It saves.
+    3. Back in the first window, click **Rebuild it**. A bronze-bordered box says _Someone else
+       changed this schedule since you opened it._ with a **Reload** button, and nothing of
+       yours was saved. (While its box is open the first window doesn't read the week again,
+       which is why this shows the clash; without a box open, coming back to a window reads the
+       week first, so the buttons work on what the other window saved.)
+    4. Click **Reload**: the week shows as the second window saved it, with **Option** on its
+       option.
 13. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). Cells can be
     reached with the arrow keys so a dot's words show, but they can't be changed: a hand edit
     will lock the cell, and locks come in the next part. Use Manual Build for a week built by hand.

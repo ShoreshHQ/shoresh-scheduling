@@ -94,7 +94,7 @@
     <template lwc:if={busy}>
       <div class="busy" data-id="busy">
         <div
-          class="progress"
+          class={progressClass}
           role="progressbar"
           aria-label={busyText}
           aria-valuemin="0"

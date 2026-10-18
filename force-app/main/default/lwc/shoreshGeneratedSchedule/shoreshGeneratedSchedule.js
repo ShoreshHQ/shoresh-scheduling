@@ -38,6 +38,16 @@ const ACTION_LABEL = {
 };
 
 /**
+ * The server's conflict sentence without its closing instruction ("Open it again…"): the box's
+ * Reload button is the one way to act on it (one word per idea; Open is a cell here).
+ */
+function statementOf(message) {
+  return String(message || "")
+    .replace(/\s*Open it again\b[^.]*\.\s*$/, "")
+    .trim();
+}
+
+/**
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
  * by the engine (c/shoreshEngine) in the browser and saved whole (c/shoreshGeneratedWeek, ADR
  * 0010). A week not generated yet offers "Generate a schedule". Then:
@@ -71,9 +81,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   reading = false;
   readAfterRun = false;
   error;
+  // The error is a read's (cleared by the next read that works), not a save's.
+  errorFromRead = false;
   // A save someone else's got in the way of: { message }.
   conflict;
-  // The build under way: { action, progress (0-100) }.
+  // The build under way: { action, progress (0-100, or null until a long build first reports) }.
   busy;
   // The confirm open: { action }.
   confirming;
@@ -105,11 +117,16 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!weeks.includes(this.weekId)) {
       this.weekId = weeks[0];
     }
-    // The season was read again (setup changed): read the week's inputs again too. A build
-    // under way for this same week finishes first (it is the director's own action), then the
-    // week is read again; a build for a week that is gone stops.
-    if (this.busy && `${this.programId}|${this.weekId}` === this.loadedFor) {
+    // The season was read again (setup changed): read the week's inputs again too. For this same
+    // week, a build under way or a confirm open goes on first (it is the director's own action),
+    // then the week is read again; a conflict stays until the director answers it (Reload reads
+    // the week). A build for a week that is gone stops.
+    const same = `${this.programId}|${this.weekId}` === this.loadedFor;
+    if (same && (this.busy || this.confirming)) {
       this.readAfterRun = true;
+      return;
+    }
+    if (same && this.conflict) {
       return;
     }
     this.load(true);
@@ -207,24 +224,26 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    * the window), keeping the view; otherwise a week shown fresh.
    */
   async load(again = false) {
-    if (!this.canChoose) {
-      this.loaded = null;
-      this.loadedFor = null;
+    const key = this.canChoose ? `${this.programId}|${this.weekId}` : null;
+    const fresh = key !== this.loadedFor;
+    if (key && !fresh && !again) {
       return;
     }
-    const key = `${this.programId}|${this.weekId}`;
-    const fresh = key !== this.loadedFor;
-    if (!fresh && !again) {
+    this.loadTicket += 1;
+    const ticket = this.loadTicket;
+    // A build under way for another week (or season) stops: its ticket is gone.
+    this.busy = null;
+    this.readAfterRun = false;
+    this.confirming = null;
+    if (!key) {
+      this.loaded = null;
+      this.loadedFor = null;
+      this.reading = false;
+      this.loading = false;
       return;
     }
     this.loadedFor = key;
-    this.loadTicket += 1;
-    const ticket = this.loadTicket;
-    // A build under way for another week stops (its ticket is gone).
-    this.busy = null;
-    this.readAfterRun = false;
     this.reading = true;
-    this.confirming = null;
     if (fresh) {
       this.loaded = null;
       this.error = null;
@@ -236,10 +255,15 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       if (ticket !== this.loadTicket) {
         return;
       }
+      if (this.errorFromRead) {
+        this.error = null;
+        this.errorFromRead = false;
+      }
       this.show(loaded, fresh);
     } catch (e) {
       if (ticket === this.loadTicket) {
         this.error = errorMessage(e);
+        this.errorFromRead = true;
         if (fresh) {
           this.loadedFor = null;
         }
@@ -254,7 +278,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   show(loaded, fresh) {
     this.loaded = loaded;
-    this.conflict = null;
     if (fresh) {
       this.triedUpTo = loaded.option || 1;
       this.view = "day";
@@ -263,8 +286,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
       this.resetChecks();
-    } else {
-      this.triedUpTo = Math.max(this.triedUpTo, loaded.option || 1);
     }
   }
 
@@ -331,19 +352,19 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     let result = null;
     if (loaded) {
       const week = checkGeneratedWeek(this.engineInput(loaded.input.days));
-      const sent = new Set((loaded.input.groups || []).map((g) => g.Id));
+      const open = openCells(week.days, week.isAway, this.t, week.shortest);
       result = {
         ...week,
-        checked: {
-          ...week.checked,
-          // A bunk away this week keeps its row but isn't sent (G2 §13): nothing can go in it.
-          openCells: openCells(
-            week.days,
-            (groupId, blockId) =>
-              !sent.has(groupId) || week.isAway(groupId, blockId),
-            this.t
-          )
-        }
+        // Why each Open cell is Open, when the grid can say (its dot's words).
+        openReasons: new Map(
+          open
+            .filter((cell) => cell.reason)
+            .map((cell) => [
+              `${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
+              cell.reason
+            ])
+        ),
+        checked: { ...week.checked, openCells: open }
       };
     }
     memo.inputs = inputs;
@@ -372,7 +393,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return !!this.busy;
   }
   get actionsDisabled() {
-    return this.isBusy || !!this.conflict || this.loading;
+    // Also while the week is being read (Reload, coming back to the window): a build started
+    // then would build on the week the read is about to replace.
+    return this.isBusy || !!this.conflict || this.loading || this.reading;
   }
   get cannotFill() {
     return (
@@ -439,7 +462,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.loading = false;
     const loaded = this.loaded;
     this.error = null;
-    this.busy = { action, progress: 0 };
+    this.errorFromRead = false;
+    // No number until a long build first says how far it has got (a short one never does).
+    this.busy = { action, progress: null };
     this.announce(this.busyText);
     let days;
     try {
@@ -466,6 +491,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           return;
         }
         days = result.days;
+        if (this.busy && this.busy.progress !== null) {
+          this.busy = { action, progress: 100 };
+        }
       }
       const saved = await saveWeek(loaded, { action, option, days });
       if (ticket !== this.loadTicket) {
@@ -485,8 +513,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         const { filled, total } = this.checked.cells;
         this.announce(`Filled ${filled} of ${total}.`);
       } else if (saved.status === CONFLICT) {
-        this.conflict = { message: saved.message };
-        this.announce(saved.message);
+        // The box is an alert: it is read out once, there.
+        this.conflict = { message: statementOf(saved.message) };
       } else {
         this.error = saved.message;
       }
@@ -499,8 +527,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.busy = null;
         this.showSavedOption();
         this.focusAfterRender = { selector: this.focusAfterRun(action) };
-        if (this.readAfterRun) {
-          this.readAfterRun = false;
+        // A read asked for while it ran; not after a conflict, which stays until Reload.
+        const readNow = this.readAfterRun && !this.conflict;
+        this.readAfterRun = false;
+        if (readNow) {
           this.load(true);
         }
       }
@@ -530,20 +560,40 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return `[data-action="${action === ACTION.GENERATE ? ACTION.REBUILD : action}"]`;
   }
 
+  /** The desktop's "Generating…"; Start over builds nothing, it starts over. */
   get busyText() {
-    return "Generating…";
+    return this.busy && this.busy.action === ACTION.START_OVER
+      ? "Starting over…"
+      : "Generating…";
+  }
+  /** Until a long build reports, the bar moves without a number (desktop IndeterminateBar). */
+  get progressKnown() {
+    return !!this.busy && this.busy.progress !== null;
   }
   get progressValue() {
-    return this.busy ? String(this.busy.progress) : "0";
+    return this.progressKnown ? String(this.busy.progress) : null;
+  }
+  get progressClass() {
+    return this.progressKnown ? "progress" : "progress progress_moving";
   }
   get progressStyle() {
-    return `width: ${this.busy ? this.busy.progress : 0}%;`;
+    return this.progressKnown ? `width: ${this.busy.progress}%;` : "";
   }
 
   /** Someone else saved the week first: read it again, theirs, as it is now. */
   handleReload() {
     this.conflict = null;
-    this.load(true).then(() => this.resetChecks());
+    this.load(true).then(() => {
+      this.resetChecks();
+      if (!this.conflict && !this.errorFromRead) {
+        this.focusAfterRender = {
+          selector: this.isGenerated
+            ? `[data-action="${ACTION.REBUILD}"]`
+            : '[data-id="generate"]'
+        };
+        this.announce(`${this.weekName} as saved now.`);
+      }
+    });
   }
 
   // ---------- the confirm (Rebuild, Start over) ----------
@@ -562,14 +612,19 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.confirming || !this.checked) {
       return "";
     }
-    // What Start over clears: the activities (not things set up later, which it keeps).
-    const filled = activityCells(this.week.days);
-    const cells = `${filled} filled ${filled === 1 ? "cell" : "cells"}`;
     // Locks come in G4, which adds "Locked cells stay as they are." to Rebuild and "locked ones
     // too" to Start over (decision 2); until then there is nothing locked to speak of.
-    return this.confirming.action === ACTION.START_OVER
-      ? `Clears all ${cells} in ${this.weekName}. ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`
-      : `Builds ${this.weekName} again from your setup.`;
+    if (this.confirming.action !== ACTION.START_OVER) {
+      return `Builds ${this.weekName} again from your setup.`;
+    }
+    // What Start over clears: each cell holding an activity where the bunk is at camp. Things
+    // not set up yet (an elective, a trip) stay, so they aren't counted (Filled counts them).
+    const n = activityCells(this.week.days, this.week.isAway);
+    const word = this.t.sIn("Activity");
+    const clears = n
+      ? `Clears the ${n} ${word} ${n === 1 ? "cell" : "cells"} in ${this.weekName}.`
+      : `There are no ${word} cells to clear in ${this.weekName}.`;
+    return `${clears} ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`;
   }
   get confirmNote() {
     return `Saved to ${this.t.p("Version")} first.`;
@@ -598,6 +653,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   handleCancelConfirm() {
     const action = this.confirming && this.confirming.action;
     this.confirming = null;
+    // The season was read again while the confirm was open: the week now.
+    if (this.readAfterRun) {
+      this.readAfterRun = false;
+      this.load(true);
+    }
     Promise.resolve().then(() => {
       const back = this.template.querySelector(`[data-action="${action}"]`);
       if (back) {
@@ -769,7 +829,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       ...cell,
       readOnly: true,
       dot:
-        this.checked.flags.get(`${day.dateValue}|${grp.id}|${block.id}`) || null
+        this.checked.flags.get(`${day.dateValue}|${grp.id}|${block.id}`) ||
+        (cell.open &&
+          this.week.openReasons.get(
+            `${day.dateValue}|${grp.id}|${block.id}`
+          )) ||
+        null
     };
     if (cell.open && this.week.isAway(grp.id, block.id)) {
       result = {

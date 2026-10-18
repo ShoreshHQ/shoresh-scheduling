@@ -112,9 +112,11 @@ const SHARE = Object.freeze({
  * between pieces of work, each piece a cell or a minimum-repair pass, and returns what
  * scheduleWeek returns. The screen runs a few steps at a time so the tab never freezes. The
  * steps only say where the build is; they never change it, so a week built in steps is the
- * same as one built at once.
+ * same as one built at once. notes, if given, is told once the minimum repair is done whether
+ * it left a cell for never-blank (notes.settled, notes.leftForNeverBlank): from then on the
+ * caller knows whether the week will be built a second time.
  */
-export function* scheduleWeekSteps(model) {
+export function* scheduleWeekSteps(model, notes = {}) {
   const { days, groups, acts, eligibility, fit, setTimeLocation, locks } =
     model;
   const fillOpenOnly = model.mode === "fillOpen";
@@ -1515,6 +1517,8 @@ export function* scheduleWeekSteps(model) {
   at += SHARE.repair;
   yield* minRepair(at);
   at += SHARE.minRepair;
+  notes.leftForNeverBlank = leftForNeverBlank;
+  notes.settled = true;
   yield* fillRepair(at);
   at += SHARE.fillRepair;
   yield* neverBlank(openSlots, at);

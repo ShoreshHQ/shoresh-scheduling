@@ -57,6 +57,8 @@ describe("activityCells (what Start over says it clears)", () => {
     // Bunk 1: Hike (2 blocks) and Swim; Bunk 2: Swim. Flagpole and Electives aren't counted.
     expect(activityCells([DAY])).toBe(4);
     expect(activityCells(clearedDays([DAY]))).toBe(0);
+    // Not counted where the bunk isn't at camp.
+    expect(activityCells([DAY], (groupId) => groupId === "g2")).toBe(3);
   });
 });
 
@@ -69,9 +71,24 @@ describe("openCells", () => {
         dateValue: "2026-06-29",
         groupId: "g2",
         blockId: "b4",
+        reason: null,
         text: "Bunk 2 · Monday · Period 3"
       }
     ]);
+  });
+
+  it("says No activity fits this gap when the run of Open cells is shorter than every activity", () => {
+    // Bunk 2's Period 3 is a one-block gap; the shortest activity takes two.
+    expect(openCells([DAY], atCamp, terms, 2)[0].text).toBe(
+      "Bunk 2 · Monday · Period 3: No activity fits this gap"
+    );
+    // One block fits a one-block activity: no reason (it is just not built yet).
+    expect(openCells([DAY], atCamp, terms, 1)[0].reason).toBeNull();
+    // A cleared day: the run is long enough, so nothing is said to fit nothing.
+    const cleared = clearedDays([DAY]);
+    expect(
+      openCells(cleared, atCamp, terms, 2).filter((c) => c.reason)
+    ).toEqual([]);
   });
 
   it("leaves out cells where the bunk isn't at camp", () => {
