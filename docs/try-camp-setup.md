@@ -837,7 +837,7 @@ the Pool fits 3 bunks.
 3. Open **Manual Build**, Main, Week 1, Daily View, **Friday**. Place Swim for Bunk 4 in Period 2.
    No dot: two Teens bunks and Bunk 4 make 3 at the Pool, which fits 3.
 4. Place Swim for Bunk 5 in Period 2 too. Both Main cells get the dot. Hover one: _More bunks at
-   Pool than fit · in use by Teen swim_, naming what Teens is doing there, as the desktop does.
+   Pool than fit, in use by Teen swim_, naming what Teens is doing there, as the desktop does.
    **Overlapping** goes up by 2. Teens isn't shown on Main's grid, but its bunks count.
 5. Clear Bunk 5's Swim: the dots go.
 6. On **Fixed activities**, untick **Week 1** for Teen swim. Back in Manual Build (reload), place

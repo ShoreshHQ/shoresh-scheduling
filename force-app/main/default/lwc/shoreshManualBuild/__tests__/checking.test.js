@@ -693,7 +693,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     // Named as the desktop names it: what is at the place, not which program.
     expect(dotIn(element, "0-1").label).toBe(
-      "More Bunks at Pool than fit · in use by Teen swim"
+      "More Bunks at Pool than fit, in use by Teen swim"
     );
     expect(counters(element)).toContain("1 Overlapping");
 
@@ -740,7 +740,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();
     expect(dotIn(element, "0-1").label).toBe(
-      "Over its limit of 1 Bunk at once · with another program"
+      "Over its limit of 1 Bunk at once, with another program"
     );
   });
 

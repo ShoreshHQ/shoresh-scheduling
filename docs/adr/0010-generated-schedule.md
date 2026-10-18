@@ -621,14 +621,15 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
     activities, not the program: `conflictFindingMessage` (runStateCopy.js) gives "Pool on
     Monday, Period 2: Swim and Teen swim double-booked (capacity 3).", and buildSchedule.js an
     empty cell's "Pool in use by Teen swim". Here, on hover as every dot's words are: _More Bunks
-    at Pool than fit · in use by Teen swim_ (several: "Archery, Lunch and Teen swim", in
-    alphabetical order; `reasonFor`'s `inUseBy`). Each `OtherProgramUse.Entry` carries `names`:
+    at Pool than fit, in use by Teen swim_ (several: "Archery, Lunch and Teen swim", in
+    alphabetical order; `reasonFor`'s `inUseBy`). A comma, not " · ", which already joins one
+    reason to the next. Each `OtherProgramUse.Entry` carries `names`:
     the activity's, or the fixed and recurring activities' at that place and time, read with the
     rest (the season's activities, and `Name` on the fixed and recurring activities in the one
     other-programs query), so no query is added. One the user can't read (an activity not in the
     season's readable list, say) names nothing, and the dot stays. Over its limit of groups at
     once counts other programs' groups doing the same activity, so a name would only repeat the
-    activity's own: it says _Over its limit of 2 Bunks at once · with another Program_ instead,
+    activity's own: it says _Over its limit of 2 Bunks at once, with another program_ instead,
     in the camp's word for Program. Both schedules, since both use checkWeek (`otherNamesAt`
     beside `othersAt`).
 

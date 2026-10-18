@@ -8,11 +8,12 @@
 @IsTest
 private class GeneratedLimitsTest {
   // Each call is one request from the screen: Salesforce allows 100 queries in one. Measured
-  // in shoresh-test (2026-10-18), on the smaller camp: opening a week 18 (not generated yet) or
-  // 12, the first Generate 21, Fill the open cells 14, a Rebuild with its version 19. The bound
-  // is per request, whatever the week's size: no query runs per day, group or cell. Other
-  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse); the
-  // camp has two.
+  // in shoresh-test (2026-10-18) on this camp with its two other programs: opening a week 22
+  // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. Without
+  // them (the Rebuild test): a Rebuild with its version 19, opening the generated week 13. The
+  // bound is per request, whatever the week's size: no query runs per day, group or cell. Other
+  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse;
+  // threeOtherProgramsUseNoMoreQueriesThanOne).
   private static final Integer MOST_QUERIES = 25;
   // Whether the camp has the two other programs. The Rebuild test leaves them out: its setup
   // (a first Generate and two reads) runs before Test.startTest() and would not leave room for
@@ -105,14 +106,23 @@ private class GeneratedLimitsTest {
     Id seasonId,
     Week__c week
   ) {
+    addOtherPrograms(ids, seasonId, week, new List<String>{ 'Teens', 'Kids' });
+  }
+
+  private static void addOtherPrograms(
+    Map<String, Id> ids,
+    Id seasonId,
+    Week__c week,
+    List<String> names
+  ) {
     Location__c hall = new Location__c(
       Season__c = seasonId,
       Name = 'Hall',
-      GroupsThatFit__c = 10
+      GroupsThatFit__c = 20
     );
     Database.insert(hall, AccessLevel.SYSTEM_MODE);
     ids.put('Hall', hall.Id);
-    otherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+    otherPrograms(ids, week, names);
   }
 
   /**
@@ -452,12 +462,15 @@ private class GeneratedLimitsTest {
     Program__c main = ShoreshTestData.program(season.Id, 'Main');
     Database.insert(hoursOf(main.Id), AccessLevel.SYSTEM_MODE);
     Division__c division = ShoreshTestData.division(main.Id, 'Juniors');
-    Database.insert(fourGroupsIn(division), AccessLevel.SYSTEM_MODE);
+    List<Group__c> groups = fourGroupsIn(division);
+    // ShoreshTestData.placesAndActivities sets Swim up for Group A.
+    groups[0].Name = 'Group A';
+    Database.insert(groups, AccessLevel.SYSTEM_MODE);
     Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
     ids.put('Season', season.Id);
     ids.put('Main', main.Id);
     ids.put('Week 1', week.Id);
-    addOtherPrograms(ids, season.Id, week);
+    addOtherPrograms(ids, season.Id, week, others);
     return ids;
   }
 

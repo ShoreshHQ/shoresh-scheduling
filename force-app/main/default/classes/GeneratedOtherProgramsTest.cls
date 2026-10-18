@@ -212,13 +212,13 @@ private class GeneratedOtherProgramsTest {
   static void entriesNameWhatTheyAreDoingAndNothingTheUserCantRead() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = campWithTeens();
-      // Teens' Morning dip at the Pool in Swim hour, every day.
+      // Teens' Morning dip at the Gym (fits 3) in Swim hour, every day.
       FixedActivity__c dip = new FixedActivity__c(
         Program__c = ids.get('Teens'),
         Name = 'Morning dip',
         TimeBlock__c = ids.get('Swim hour'),
         Length__c = 1,
-        Location__c = ids.get('Pool')
+        Location__c = ids.get('Gym')
       );
       insertAll(new List<SObject>{ dip });
       ids.put('Morning dip', dip.Id);
@@ -247,12 +247,12 @@ private class GeneratedOtherProgramsTest {
       Test.stopTest();
       Assert.areEqual(
         new List<String>{
-          '2026-06-29 10:30-11:15 Pool - x1 [Morning dip]',
+          '2026-06-29 10:30-11:15 Gym - x1 [Morning dip]',
           '2026-06-29 10:30-11:15 Pool Swim x1 [Swim]',
           '2026-06-29 13:00-13:45 - Kayak x1 []',
-          '2026-06-30 10:30-11:15 Pool - x2 [Morning dip]',
-          '2026-07-01 10:30-11:15 Pool - x2 [Morning dip]',
-          '2026-07-02 10:30-11:15 Pool - x2 [Morning dip]'
+          '2026-06-30 10:30-11:15 Gym - x2 [Morning dip]',
+          '2026-07-01 10:30-11:15 Gym - x2 [Morning dip]',
+          '2026-07-02 10:30-11:15 Gym - x2 [Morning dip]'
         },
         named(read.otherPrograms, ids)
       );

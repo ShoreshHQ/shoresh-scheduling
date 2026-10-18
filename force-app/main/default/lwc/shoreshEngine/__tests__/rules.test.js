@@ -85,6 +85,33 @@ describe("never blank (Greg, 2026-10-17)", () => {
     expect(result.flags[0].reason).toBe("More groups at Pool than fit");
   });
 
+  it("names what another program is doing at the place, and says so for groups at once", () => {
+    const other = (extra) => ({
+      date: dateAt(0),
+      startTime: "08:00",
+      endTime: "08:45",
+      groups: 1,
+      ...extra
+    });
+    const placed = run({
+      blocks: [block(0)],
+      locations: [{ id: "pool", name: "Pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })],
+      otherPrograms: [other({ locationId: "pool", names: ["Teen swim"] })]
+    });
+    expect(placed.flags.find((f) => f.date === dateAt(0)).reason).toBe(
+      "More groups at Pool than fit, in use by Teen swim"
+    );
+    const atOnce = run({
+      blocks: [block(0)],
+      activities: [activity("swim", { atOnce: 1 })],
+      otherPrograms: [other({ activityId: "swim" })]
+    });
+    expect(atOnce.flags.find((f) => f.date === dateAt(0)).reason).toBe(
+      "Over its limit of 1 group at once, with another program"
+    );
+  });
+
   // One open cell (Bunk g1, first block) and one activity per rule, each of which would bend
   // exactly that rule there. Taking them away one at a time walks the order rules give way in.
   describe("rules give way in order: weekly max, once a day, who it's set up for, groups at once, same division, the place", () => {

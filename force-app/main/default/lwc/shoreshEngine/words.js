@@ -29,14 +29,14 @@ export function reasonFor(
     case RULE.GROUPS_AT_ONCE:
       return `Over its limit of ${groupsAtOnce} ${
         groupsAtOnce === 1 ? t.sIn("Group") : t.pIn("Group")
-      } at once${otherProgram ? ` · with another ${t.sIn("Program")}` : ""}`;
+      } at once${otherProgram ? `, with another ${t.sIn("Program")}` : ""}`;
     case RULE.SAME_DIVISION:
       return placeName
         ? `Shares ${placeName} with another ${t.sIn("Division")}`
         : `With another ${t.sIn("Division")} at the same time`;
     case RULE.PLACE_CAPACITY:
       return `More ${t.pIn("Group")} at ${placeName} than fit${
-        inUseBy && inUseBy.length ? ` · in use by ${listed(inUseBy)}` : ""
+        inUseBy && inUseBy.length ? `, in use by ${listed(inUseBy)}` : ""
       }`;
     case NO_FIT:
       return `No ${t.sIn("Activity")} fits this ${t.sIn("Gap")}`;
