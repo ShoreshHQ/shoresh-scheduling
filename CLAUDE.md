@@ -10,8 +10,7 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
 - **Never work in `~/Dev/Shoresh/shoresh-scheduling` itself.** That folder is Greg's local copy: it
   stays on `main`, clean, and is fast-forwarded after every merge. Do all work in your own git
   worktree outside it (`git worktree add <your scratch dir>/<name> -b <branch> origin/main`). Never
-  check out another branch, edit files, stash or commit there. A local hook refuses commits there
-  on any branch but `main`.
+  check out another branch, edit files, stash or commit there. A local hook refuses any commit there.
 - Build choices for this repo: `docs/adr/`. Walkthrough for Greg: `docs/try-camp-setup.md`.
 - No namespace, package, or package version without Greg's go-ahead.
 - **Merging is by hand** (Greg, 2026-10-16): a PR is merged (squash) only after both CI checks pass
