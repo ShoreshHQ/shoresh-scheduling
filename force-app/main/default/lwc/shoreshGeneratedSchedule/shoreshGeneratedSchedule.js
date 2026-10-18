@@ -956,8 +956,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         return;
       }
       if (result.status === SAVED) {
-        // Every cell the choice covers, locked already or not: Undo and Redo of earlier steps
-        // leave them as the director chose.
+        // Every cell whose lock the choice set, locked already or not: Undo and Redo of earlier
+        // steps leave them as the director chose.
         if (this.weekEditor) {
           this.weekEditor.lockChosen(choice.keys);
         }

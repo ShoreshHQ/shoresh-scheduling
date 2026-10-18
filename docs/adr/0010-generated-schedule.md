@@ -703,8 +703,9 @@ taken out; the Apex tests run only in CI.
       (Redo). Every other cell keeps the lock it has now, whoever set it: someone else, another
       tab, or the director. So undoing a hand edit unlocks the cell again; undoing a clear
       brings no lock back that wasn't there; a Lock chosen after the step stays through the
-      Undo and a Redo after it. A choice covers every cell it names, locked already or not:
-      _Lock Monday_ also holds a cell a hand edit had locked before. The screen keeps each
+      Undo and a Redo after it. A choice covers every cell whose lock it sets, locked already or
+      not: _Lock Monday_ also holds a cell a hand edit had locked before, but not an Open cell it
+      passes over, so a Redo of a hand edit into that cell locks it again. The screen keeps each
       step's locks with it in its Undo history, and for each cell the point in that history of
       the latest Lock-menu choice covering it (the host passes each choice's cells,
       `lockChosen`). The same rule on every send, first or again (`shoreshWeekEditor`
