@@ -7,12 +7,15 @@
 @IsTest
 private class ManualVersionsTest {
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
+  // The test's camp (camp() sets it), for the helpers below.
+  private static Map<String, Id> campIds;
 
   private static Map<String, Id> camp() {
     Map<String, Id> ids = SetTimeTestData.camp();
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );
+    campIds = ids;
     return ids;
   }
 
@@ -22,23 +25,22 @@ private class ManualVersionsTest {
   }
 
   /** Puts an activity in Group A's Monday Period 2 (Open before). */
-  private static void place(Map<String, Id> ids, Id draftId, String activity) {
-    placeOver(ids, draftId, '', activity);
+  private static void place(Id draftId, String activity) {
+    placeOver(draftId, '', activity);
   }
 
-  private static void placeOver(
-    Map<String, Id> ids,
-    Id draftId,
-    String was,
-    String activity
-  ) {
+  private static void placeOver(Id draftId, String was, String activity) {
     SlotEdits.Result result = ManualBuildController.saveSlots(
       draftId,
       new List<SlotEdits.Edit>{
         SlotRunsTestData.edit(
-          SlotRunsTestData.at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+          SlotRunsTestData.at(
+            MONDAY,
+            campIds.get('Group A'),
+            campIds.get('Period 2')
+          ),
           new List<String>{ was },
-          new List<String>{ 'A:' + ids.get(activity) }
+          new List<String>{ 'A:' + campIds.get(activity) }
         )
       }
     );
@@ -66,7 +68,7 @@ private class ManualVersionsTest {
       Map<String, Id> ids = camp();
       Test.startTest();
       Id draftId = startWeek(ids, 'Week 1');
-      place(ids, draftId, 'Swim');
+      place(draftId, 'Swim');
       Id versionId = ManualBuildController.saveVersion(
         draftId,
         '  Monday plan '
@@ -123,9 +125,9 @@ private class ManualVersionsTest {
       Map<String, Id> ids = camp();
       Test.startTest();
       Id draftId = startWeek(ids, 'Week 1');
-      place(ids, draftId, 'Swim');
+      place(draftId, 'Swim');
       Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
-      placeOver(ids, draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
       ManualBuildViews.DraftView view = ManualBuildController.restoreVersion(
         draftId,
         versionId

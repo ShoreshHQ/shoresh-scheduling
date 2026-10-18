@@ -18,12 +18,10 @@ public with sharing class ManualVersions {
       name,
       draft.Program__r.Season__r.Camp__c
     );
-    return keep(
-      draft,
-      readable(ScheduleDays.read(draftId)),
-      named,
-      SAVED_BY_HAND
-    );
+    List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draftId));
+    Id versionId = newVersion(draft, named, SAVED_BY_HAND);
+    writeDays(versionId, days);
+    return versionId;
   }
 
   /**
@@ -39,9 +37,11 @@ public with sharing class ManualVersions {
     List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
     Savepoint beforeRestore = Database.setSavepoint();
     try {
-      Id kept = current.isEmpty()
-        ? null
-        : keep(draft, readable(current), BEFORE_RESTORE, AUTO_SAVED);
+      Id kept = null;
+      if (!current.isEmpty()) {
+        kept = newVersion(draft, BEFORE_RESTORE, AUTO_SAVED);
+        writeDays(kept, readable(current));
+      }
       Map<Date, Integer> revisions = new Map<Date, Integer>();
       for (ScheduleDays.DayGrid day : current) {
         revisions.put(day.day, day.revision);
@@ -124,13 +124,17 @@ public with sharing class ManualVersions {
     return days;
   }
 
-  /** The days kept as a new version of the draft's week. */
-  private static Id keep(
-    Schedule__c draft,
-    List<ScheduleDays.DayGrid> days,
-    String name,
-    String reason
-  ) {
+  /** The days written into a version, as they are. */
+  private static void writeDays(Id versionId, List<ScheduleDays.DayGrid> days) {
+    List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+    for (ScheduleDays.DayGrid day : days) {
+      saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
+    }
+    ScheduleDaySaves.write(versionId, saves);
+  }
+
+  /** A new version of the draft's week (no days yet). */
+  private static Id newVersion(Schedule__c draft, String name, String reason) {
     Schedule__c version = new Schedule__c(
       Program__c = draft.Program__c,
       Week__c = draft.Week__c,
@@ -141,11 +145,6 @@ public with sharing class ManualVersions {
       SourceSchedule__c = draft.Id
     );
     Database.insert(version, AccessLevel.USER_MODE);
-    List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
-    for (ScheduleDays.DayGrid day : days) {
-      saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
-    }
-    ScheduleDaySaves.write(version.Id, saves);
     return version.Id;
   }
 }
