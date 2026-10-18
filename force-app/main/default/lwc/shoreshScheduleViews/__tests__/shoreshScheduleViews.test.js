@@ -35,9 +35,8 @@ describe("c/shoreshScheduleViews", () => {
 
   it("a block named by its time range shows its times once (desktop blockLabelParts)", () => {
     const view = opened();
-    view.days[0].blocks = view.days[0].blocks.map((b, i) =>
-      i === 0 ? { ...b, name: "9:00 AM – 9:45 AM" } : b
-    );
+    const [first, ...rest] = view.days[0].blocks;
+    view.days[0].blocks = [{ ...first, name: "9:00 AM – 9:45 AM" }, ...rest];
     const grid = dailyGrid(view, 0, t);
     expect(grid.rows[0].name).toBe("9:00 AM – 9:45 AM");
     expect(grid.rows[0].timeLines).toEqual([]);

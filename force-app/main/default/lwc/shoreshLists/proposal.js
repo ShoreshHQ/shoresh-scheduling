@@ -954,11 +954,13 @@ function refuseOutdoorRainPlans(leads, column, setup) {
       // Added the way a hand-added activity is: indoors.
       return false;
     }
-    const row = leads.find((r) =>
-      target.id
-        ? r.existing && r.existing.Id === target.id
-        : target.key === `Activity:${r.name}`
-    );
+    const isTarget = (r) => {
+      if (target.id) {
+        return !!r.existing && r.existing.Id === target.id;
+      }
+      return target.key === `Activity:${r.name}`;
+    };
+    const row = leads.find(isTarget);
     if (row && "outdoors" in row.values) {
       return !!row.values.outdoors;
     }
