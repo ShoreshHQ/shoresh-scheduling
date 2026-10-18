@@ -313,7 +313,12 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
     - the program's and week's own Ids (18 characters), which the engine compares exactly and
       seeds with, whatever Ids the screen was given;
     - the draft's Id, what its days were saved at (`revision`, below) and the option it was built
-      with. Locks come in G4 (grid format v2); until then the data module sends none, and other
+      with;
+    - "deleted since" in the days (ADR 0005 §4) from the records just read: the program's time
+      blocks, groups, fixed and recurring activities and the season's activities. Unlike the
+      Schedules page (`ScheduleRefs`, which looks for the record anywhere it can be seen), a
+      record of another season or program counts as gone here; a Generated draft never holds one,
+      since a save refuses another season's activity. Locks come in G4 (grid format v2); until then the data module sends none, and other
       programs (G5) none.
 14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status
     Draft, Origin Generated, named "Generated Schedule", beside Manual Build's (decision 1: two
@@ -335,7 +340,12 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
     is `conflict` with ADR 0005's sentence ("Someone else changed this schedule since you opened
     it…"), for the screen to show. Otherwise the days are written through `ScheduleDaySaves` at
     the revisions just read under the same lock, so its own check passes. A conflict is an
-    answer, not an error; a refusal (below) is an error with a sentence.
+    answer, not an error; a refusal (below) is an error with a sentence. A save takes its lock
+    (the program's for a first save, the draft's after) before it reads the setup it checks
+    (`GeneratedSetup`: time blocks, groups, this week's exceptions), so a save that waited sees
+    what the one before it left. Week exceptions are saved without taking either lock, so one
+    saved while a save is running can still be missed by it; the next save
+    or Rebuild sees it.
 16. **Rebuild, Try another and Start over keep a version first**, in the same all-or-nothing
     save: Status Version, Origin Generated, `SourceSchedule__c` the draft, named "Before
     Rebuild", "Before Try another" or "Before Start over", with the draft's days and option.
