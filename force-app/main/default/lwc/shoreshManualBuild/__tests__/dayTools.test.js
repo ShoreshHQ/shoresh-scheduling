@@ -350,4 +350,49 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       "Undo Cleared Monday"
     );
   });
+
+  it("the director's own edit made while a Clear saves isn't counted as someone else's", async () => {
+    const element = await render(start(["1,2,3", "1,3,"], ["1,2,", "1,,"]));
+    let answer;
+    saveSlots.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    // While it saves, the director clears Bunk 1's Period 2 on Tuesday (it waits its turn).
+    q(element, '[data-view="group"]').click();
+    await flush();
+    q(element, '[data-id="edit-grid"]')
+      .shadowRoot.querySelector('[data-cell="1-1"]')
+      .dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Delete",
+          bubbles: true,
+          composed: true
+        })
+      );
+    await flush();
+    // Someone else put Swim in Bunk 2's Monday Period 2.
+    answer({
+      conflicts: [0],
+      schedule: theirWeek(["1,2,3", "1,2,"], ["1,2,", "1,,"])
+    });
+    await flush();
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      schedule: theirWeek(["1,,", "1,2,"], ["1,,", "1,,"])
+    });
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    // Only their one cell is kept (Bunk 2's); the Clear goes first, then the director's own edit.
+    expect(sentRuns(1).map((run) => run.groupId)).toEqual(["g1"]);
+    // The line isn't shown: Undo would now take back the director's later edit.
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    const order = saveSlots.mock.calls
+      .slice(1)
+      .map((call) => call[0].edits[0].runs[0].day);
+    expect(order).toEqual(["2026-06-29", "2026-06-30"]);
+  });
 });

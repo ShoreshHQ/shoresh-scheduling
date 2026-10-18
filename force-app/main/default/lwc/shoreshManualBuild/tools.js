@@ -246,3 +246,174 @@ function place(row, head, source, target, { isAwayAt, skipAt }) {
   });
   return null;
 }
+
+// ---------- a tool, by day dates and Ids, and worked out again after someone else's change ----------
+
+/** A cell's key, by day date, group Id and time block Id ("2026-06-29|g1|t2"). */
+export function cellKey(day, g, b) {
+  return `${day.dateValue}|${day.groups[g].id}|${day.blocks[b].id}`;
+}
+
+/** What a cell (by key) holds in a week, or null when the week doesn't have it. */
+export function slotAt(week, key) {
+  const [date, groupId, blockId] = key.split("|");
+  const day = week.find((d) => d.dateValue === date);
+  if (!day || day.problem) {
+    return null;
+  }
+  const g = day.groups.findIndex((x) => x.id === groupId);
+  const b = day.blocks.findIndex((x) => x.id === blockId);
+  return g < 0 || b < 0 ? null : slots(day, g)[b];
+}
+
+/** Every cell's key in a week. */
+function keysOf(week) {
+  const keys = [];
+  week.forEach((day) => {
+    if (day.problem) {
+      return;
+    }
+    day.groups.forEach((grp, g) =>
+      day.blocks.forEach((block, b) => keys.push(cellKey(day, g, b)))
+    );
+  });
+  return keys;
+}
+
+/** What runs (on a week) make each cell they touch hold: key -> slot. */
+export function resultOf(week, runs) {
+  const made = new Map();
+  runs.forEach((run) => {
+    run.after.forEach((slot, i) => {
+      made.set(cellKey(week[run.day], run.group, run.first + i), slot);
+    });
+  });
+  return made;
+}
+
+/**
+ * A tool's runs on a week. tool: { kind: "clear", dates, groupId } or { kind: "copy", from,
+ * dates } (days by date). Options: isAway(week, day, group, block); skip(key) for a cell to leave
+ * as it is; source, the day to copy from (by default the week's own). Returns the tool's result
+ * (runs, stayed or leftOut, skipped) and `week`, the week its indexes are on.
+ */
+export function toolRuns(tool, week, options = {}) {
+  const { isAway, skip = never, source } = options;
+  const indexOf = (date) => week.findIndex((d) => d.dateValue === date);
+  const dayIndexes = tool.dates.map(indexOf).filter((i) => i >= 0);
+  const away = (d, g, b) => (isAway ? isAway(week, d, g, b) : false);
+  const skipAt = (d, g, b) => skip(cellKey(week[d], g, b));
+  if (tool.kind === "clear") {
+    return {
+      ...clearEdit(week, dayIndexes, {
+        groupId: tool.groupId,
+        isAway: away,
+        skip: skipAt
+      }),
+      week
+    };
+  }
+  const from = indexOf(tool.from);
+  if (from < 0) {
+    return { runs: [], leftOut: [], skipped: 0, week };
+  }
+  const onto = source ? week.map((d, i) => (i === from ? source : d)) : week;
+  return {
+    ...copyDayEdit(onto, from, dayIndexes, { isAway: away, skip: skipAt }),
+    week: onto
+  };
+}
+
+/**
+ * A copy goes placement by placement, whole or not at all: when any cell of a copied placement
+ * (on the target day) or of what is there now is kept, all of its cells are, and so on until
+ * nothing more is, so nothing is cleared for a copy that can't come.
+ */
+function keepWholePlacements(tool, source, saved, all) {
+  const groups = [];
+  tool.dates.forEach((date) => {
+    const target = saved.find((d) => d.dateValue === date);
+    if (!target || target.problem) {
+      return;
+    }
+    source.groups.forEach((grp, g) => {
+      headsOf(source, g).forEach((h) => {
+        groups.push(
+          [...Array(h.length).keys()].map(
+            (i) => `${date}|${grp.id}|${source.blocks[h.b + i].id}`
+          )
+        );
+      });
+    });
+    target.groups.forEach((grp, g) => {
+      headsOf(target, g).forEach((h) => {
+        groups.push(
+          [...Array(h.length).keys()].map((i) => cellKey(target, g, h.b + i))
+        );
+      });
+    });
+  });
+  const partlyKept = (keys) =>
+    keys.some((key) => all.has(key)) && !keys.every((key) => all.has(key));
+  for (
+    let found = groups.find(partlyKept);
+    found;
+    found = groups.find(partlyKept)
+  ) {
+    found.forEach((key) => all.add(key));
+  }
+}
+
+/**
+ * A tool worked out again on the saved week after someone else's change (ADR 0008 §24): it never
+ * touches a cell that holds something else than in the week the director saw (`seen`, the week
+ * the tool was made on, never anything newer), nor a cell kept in an earlier round (`kept`). A
+ * copy comes from the source day as the director saw it, and a target whose source cell someone
+ * else changed is kept as well. The director's own edits still waiting to save aren't in `saved`
+ * (the server's week), so they never count as anyone else's.
+ *
+ * Returns the tool's result on `saved` (runs, words), `kept` (every cell kept in any round, for
+ * the next) and `missed`: the cells the tool meant to change that, once these runs are made, won't
+ * hold what it meant them to.
+ */
+export function replan(tool, seen, saved, kept, isAway) {
+  const intended = resultOf(seen, toolRuns(tool, seen, { isAway }).runs);
+  const all = new Set(kept);
+  keysOf(saved).forEach((key) => {
+    if (slotAt(saved, key) !== slotAt(seen, key)) {
+      all.add(key);
+    }
+  });
+  let source;
+  if (tool.kind === "copy") {
+    source = seen.find((d) => d.dateValue === tool.from);
+    const sourceNow = saved.find((d) => d.dateValue === tool.from);
+    if (source && sourceNow) {
+      source.groups.forEach((grp, g) =>
+        source.blocks.forEach((block, b) => {
+          const key = cellKey(source, g, b);
+          if (slotAt(saved, key) !== slotAt(seen, key)) {
+            tool.dates.forEach((date) =>
+              all.add(`${date}|${grp.id}|${block.id}`)
+            );
+          }
+        })
+      );
+    }
+  }
+  if (tool.kind === "copy" && source) {
+    keepWholePlacements(tool, source, saved, all);
+  }
+  const result = toolRuns(tool, saved, {
+    isAway,
+    skip: (key) => all.has(key),
+    source
+  });
+  // What the cells will hold once these runs are made, against what the tool meant them to.
+  const made = resultOf(result.week, result.runs);
+  const missed = [...intended.keys()].filter((key) => {
+    const after = made.has(key) ? made.get(key) : slotAt(saved, key);
+    return after !== intended.get(key);
+  }).length;
+  return { ...result, kept: all, missed };
+}

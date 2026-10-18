@@ -21,11 +21,10 @@ import {
   editRun,
   isSetTime,
   owner,
-  placement,
-  slots
+  placement
 } from "./slotEdits";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
-import { LEFT_OUT, clearEdit, copyDayEdit } from "./tools";
+import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
@@ -979,8 +978,8 @@ export default class ShoreshManualBuild extends LightningElement {
    * cell's block (blockIds), so it lands on those blocks or comes back as a conflict, now and
    * when it is undone or redone.
    */
-  toServerRun(run) {
-    const day = this.schedule.days[run.day];
+  toServerRun(run, week = this.schedule.days) {
+    const day = week[run.day];
     return {
       day: day.dateValue,
       groupId: day.groups[run.group].id,
@@ -1026,16 +1025,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /** Shows runs on the grid at once and queues them for the server. */
-  send(
-    serverRuns,
-    label,
-    key,
-    stepId,
-    firstRun,
-    kind = "edit",
-    baseLabel,
-    first = false
-  ) {
+  send(serverRuns, label, key, stepId, firstRun, kind = "edit", baseLabel) {
     // What the director chose and saw, by time block (conflicts.js): what a question compares.
     const intent = intentOf(
       this.schedule.days,
@@ -1072,8 +1062,7 @@ export default class ShoreshManualBuild extends LightningElement {
       intent,
       slotKey: this.slotKeyOf(firstRun, serverRuns[0])
     };
-    // A tool worked out again after a question goes before the edits that waited (as Use yours).
-    this.queue = first ? [entry, ...this.queue] : [...this.queue, entry];
+    this.queue = [...this.queue, entry];
     this.applyLocally(edit);
     // A dot the edit brought or took away, said with its save (a sighted director sees it).
     entry.news = this.dotNews(before, this.checked);
@@ -1421,29 +1410,15 @@ export default class ShoreshManualBuild extends LightningElement {
     });
   }
 
-  /**
-   * A tool worked out on a week (the one on screen, or after a question, the saved one): its
-   * runs, what stayed or was left out (words), and how many of someone else's it left alone.
-   * skip(day, group, block): a cell to leave as it is.
-   */
-  planTool(tool, week, skip) {
-    const indexOf = (date) => week.findIndex((d) => d.dateValue === date);
-    const dayIndexes = tool.dates.map(indexOf).filter((i) => i >= 0);
-    const isAway = (d, g, b) => this.isAwayOn(week, d, g, b);
+  /** A tool's words for what stayed or was left out, from its result (tools.js toolRuns). */
+  toolWords(tool, result) {
     if (tool.kind === "clear") {
-      const result = clearEdit(week, dayIndexes, {
-        groupId: tool.groupId,
-        isAway,
-        skip
-      });
-      return { ...result, said: this.stayedText(week, result.stayed) };
+      return this.stayedText(result.week, result.stayed);
     }
-    const from = indexOf(tool.from);
-    const result =
-      from < 0
-        ? { runs: [], leftOut: [], skipped: 0 }
-        : copyDayEdit(week, from, dayIndexes, { isAway, skip });
-    return { ...result, said: this.leftOutText(week, from, result.leftOut) };
+    const from = result.week.findIndex((d) => d.dateValue === tool.from);
+    return from < 0
+      ? null
+      : this.leftOutText(result.week, from, result.leftOut);
   }
 
   /** Whether a group isn't at camp in a block of a day (indexes) of some week. */
@@ -1545,20 +1520,24 @@ export default class ShoreshManualBuild extends LightningElement {
    */
   runTool(tool) {
     const seen = this.schedule.days;
-    const result = this.planTool(tool, seen, () => false);
+    const result = toolRuns(tool, seen, {
+      isAway: (week, d, g, b) => this.isAwayOn(week, d, g, b)
+    });
+    const said = this.toolWords(tool, result);
     const label = this.toolLabel(tool);
     if (!result.runs.length) {
-      this.say(this.toolNothing(tool, result.said));
+      this.say(this.toolNothing(tool, said));
       return;
     }
     this.commit(result.runs, label, null);
     const entry = this.queue[this.queue.length - 1];
     if (entry && entry.stepId === this.stepSeq) {
-      entry.tool = { ...tool, seen };
+      // The week as the director saw it goes with the change, for working it out again.
+      entry.tool = { ...tool, seen, kept: new Set() };
       // What stayed or was left out is said with the save too.
-      entry.extra = result.said;
+      entry.extra = said;
     }
-    this.showToolNotice(label, result.said, this.stepSeq);
+    this.showToolNotice(label, said, this.stepSeq);
   }
 
   showToolNotice(label, said, stepId) {
@@ -1576,86 +1555,66 @@ export default class ShoreshManualBuild extends LightningElement {
    * same Undo step (coordinator, 2026-10-17). The line says what was left: "Cleared Monday,
    * except 1 cell someone else changed".
    */
-  /** The cells runs touch, by day, group and time block Id. */
-  cellsOf(week, runs) {
-    const cells = [];
-    runs.forEach((run) => {
-      const day = week[run.day];
-      run.after.forEach((slot, i) => {
-        cells.push({
-          dateValue: day.dateValue,
-          groupId: day.groups[run.group].id,
-          blockId: day.blocks[run.first + i].id
-        });
-      });
-    });
-    return cells;
-  }
-
-  /** Whether a cell holds something else now than it did in the week the director saw. */
-  changedSince(seen, now, cell) {
-    const at = (week) => {
-      const day = week.find((d) => d.dateValue === cell.dateValue);
-      const g = day ? day.groups.findIndex((x) => x.id === cell.groupId) : -1;
-      const b = day ? day.blocks.findIndex((x) => x.id === cell.blockId) : -1;
-      return g < 0 || b < 0 ? null : slots(day, g)[b];
-    };
-    return at(seen) !== at(now);
-  }
-
+  /**
+   * After Keep theirs, or when the saved week has changed under a tool (a fixed activity now in
+   * a cell it clears, say): the tool is worked out again on the server's week (tools.js replan),
+   * never touching a cell someone else changed since the director looked or one kept in an
+   * earlier round, and the rest is made as the same Undo step, before the edits that waited
+   * (coordinator, 2026-10-17). The line says what wasn't made: "Cleared Monday, except 1 cell
+   * someone else changed".
+   */
   replanTool(entry) {
     const { tool, stepId } = entry;
     this.conflict = null;
     this.queue = this.queue.filter((w) => w.stepId !== stepId);
-    this.showServerAndWaiting();
-    const week = this.schedule.days;
-    const changed = (d, g, b) =>
-      this.changedSince(tool.seen, week, {
-        dateValue: week[d].dateValue,
-        groupId: week[d].groups[g].id,
-        blockId: week[d].blocks[b].id
-      });
-    const result = this.planTool(tool, week, changed);
+    const saved = this.server.days;
+    const result = replan(tool, tool.seen, saved, tool.kept, (week, d, g, b) =>
+      this.isAwayOn(week, d, g, b)
+    );
     const label = this.toolLabel(tool);
-    // What wasn't done as planned: cells the tool meant to change that someone else changed first.
-    const missed = this.cellsOf(
-      tool.seen,
-      this.planTool(tool, tool.seen, () => false).runs
-    ).filter((cell) => this.changedSince(tool.seen, week, cell)).length;
     if (!result.runs.length) {
       this.history.forget(stepId);
       this.historyVersion += 1;
+      this.showServerAndWaiting();
       this.say(
         `${label}: nothing done, someone else changed those cells first.`
       );
       this.saveNext();
       return;
     }
-    const serverRuns = result.runs.map((run) => this.toServerRun(run));
+    const serverRuns = result.runs.map((run) => this.toServerRun(run, saved));
     const step = { id: stepId, runs: serverRuns, label };
     if (!this.history.replace(stepId, step)) {
       this.history.ensure(step);
     }
     this.historyVersion += 1;
-    const except = missed
-      ? `${label}, except ${missed} ${missed === 1 ? "cell" : "cells"} someone else changed`
+    const except = result.missed
+      ? `${label}, except ${result.missed} ${result.missed === 1 ? "cell" : "cells"} someone else changed`
       : label;
-    this.send(
-      serverRuns,
-      except,
-      null,
-      stepId,
-      result.runs[0],
-      "edit",
-      label,
-      true
-    );
-    const sent = this.queue[0];
-    if (sent && sent.stepId === stepId) {
-      sent.tool = { ...tool, seen: week };
-      sent.extra = result.said;
-    }
-    this.showToolNotice(except, result.said, stepId);
+    const said = this.toolWords(tool, result);
+    this.queue = [
+      {
+        edit: { runs: serverRuns },
+        key: null,
+        label: except,
+        stepId,
+        kind: "edit",
+        baseLabel: label,
+        intent: intentOf(
+          saved,
+          serverRuns,
+          (at) => this.slotName({ day: at.dayIndex, group: at.g }, at.block),
+          (at) => this.dayGroupName({ day: at.dayIndex, group: at.g })
+        ),
+        slotKey: this.slotKeyOf(result.runs[0], serverRuns[0]),
+        tool: { ...tool, kept: result.kept },
+        extra: said
+      },
+      ...this.queue
+    ];
+    this.showServerAndWaiting();
+    this.showToolNotice(except, said, stepId);
+    this.saveNext();
   }
 
   // ---------- the activity list ----------
