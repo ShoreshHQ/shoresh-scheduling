@@ -635,19 +635,27 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
    limit of 3 bunks at once · More bunks at Field than fit_. **Overlapping** now shows 4, one for
    each cell. Click it: the list starts with _Bunk 1 · Thursday · Period 3: Over its limit of 3
    bunks at once · More bunks at Field than fit_, then the same for Bunks 2, 3 and 4.
-5. Drag Bunk 4's Soccer to Period 5. The dots go at once and **Overlapping** is back to a grey 0.
-6. **Twice in a day.** Place Art in Bunk 1's Thursday Period 5 and Period 6. Both get the dot:
+5. Click _Bunk 2 · Thursday · Period 3: …_ in the list: the list closes, the grid shows Bunk 2's
+   week (Group View), and Thursday's Period 3 has the focus, with its dot's words showing. Back in
+   Daily View, Thursday, drag Bunk 4's Soccer to Period 5. The dots go at once and
+   **Overlapping** is back to a grey 0.
+6. **Accept.** Open the list again. Each still needed line has an **Accept** button. Click it on
+   one line, say _Swim · Bunk 6: 1 still needed_: the line goes and **Still needed** drops by
+   one. Clear one of Bunk 6's Swims, if it has one: the line is back, now saying 2 (its numbers
+   changed). Overlap lines have no Accept: they go when the clash is moved. Reloading the page
+   brings every line back.
+7. **Twice in a day.** Place Art in Bunk 1's Thursday Period 5 and Period 6. Both get the dot:
    _Twice in a day_. Undo one.
-7. **Over its weekly limit.** Give Bunk 5 Gym games on Monday, Tuesday, Wednesday and Thursday
+8. **Over its weekly limit.** Give Bunk 5 Gym games on Monday, Tuesday, Wednesday and Thursday
    (its limit is 3). Only Thursday's gets the dot, _Over its weekly limit_: the one past the
    limit, the latest in the week. Nothing stops you. Clear Monday's: Thursday's dot goes.
-8. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
+9. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
    words show beside the dot while the cell has focus. Escape hides them (and, if you picked
    something up with Space, lets go of it too). A screen reader reads them as part of the cell.
-9. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
-   Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
-   Bunk 1_. Set Boating back to everyone afterwards.
-10. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
+10. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
+    Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
+    Bunk 1_. Set Boating back to everyone afterwards.
+11. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
     the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
     tile appears (it isn't shown while no activity has an early-week goal), and the list has each
     bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by Tuesday_). Clear

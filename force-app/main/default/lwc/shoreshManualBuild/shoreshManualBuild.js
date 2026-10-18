@@ -94,6 +94,10 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // The "Still to place" list is open (any counter with something in it opens it, desktop).
   listOpen = false;
+  // Lines accepted this visit (their keys carry their numbers, so a changed line comes back).
+  accepted = [];
+  // Where keyboard focus goes once the page has drawn (after a list line was clicked).
+  focusAfterRender = null;
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
@@ -258,6 +262,8 @@ export default class ShoreshManualBuild extends LightningElement {
     // The week as the server last sent it, without edits still waiting to save.
     this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
+      this.accepted = [];
+      this.listOpen = false;
       this.dayIndex = 0;
       const all = groups(draft.schedule);
       this.groupKey = all.length ? all[0].key : null;
@@ -378,33 +384,69 @@ export default class ShoreshManualBuild extends LightningElement {
     return `${filled} of ${total}`;
   }
 
-  /** Each overlapping cell's line (desktop: one per group, day and time block). */
-  get overlapLines() {
-    return (this.checked.overlapCells || []).map((cell) => cell.text);
+  /**
+   * The lines of the "Still to place" list, as the desktop's findings rail on the manual route
+   * lists them: each overlapping cell (one per group, day and time block), then each pair still
+   * needed, then each still needed early in the week. A still needed or spread line can be
+   * accepted (desktop "Accept"): hidden for this visit, and back as soon as its numbers change.
+   * Overlaps have nothing to accept: they go when the clash is moved.
+   */
+  get lines() {
+    const checked = this.checked;
+    const lines = (checked.overlapCells || []).map((cell) => ({
+      key: `overlap|${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
+      kind: "overlapping",
+      text: cell.text,
+      groupId: cell.groupId,
+      dateValue: cell.dateValue,
+      blockId: cell.blockId
+    }));
+    const short = (kind, texts, entries) =>
+      texts.map((text, i) => {
+        const e = entries[i] || {};
+        return {
+          key: [kind, e.groupId, e.activityId, e.missing, e.byDay].join("|"),
+          kind,
+          text,
+          groupId: e.groupId,
+          acceptable: true
+        };
+      });
+    if (checked.hasCoverageTargets) {
+      lines.push(
+        ...short(
+          "stillNeeded",
+          checked.stillNeeded,
+          checked.stillNeededBy || []
+        )
+      );
+    }
+    if (checked.hasSpreadTargets) {
+      lines.push(...short("spread", checked.spread, checked.spreadBy || []));
+    }
+    return lines.filter((line) => !this.accepted.includes(line.key));
   }
 
   /**
    * The counters, as the desktop's manual route shows them: Overlapping always, Still needed and
-   * Spread across the week when some activity has that target. A zero shows, grey, and opens
-   * nothing; any other opens the one "Still to place" list.
+   * Spread across the week when some activity has that target. Each counts its lines (accepted
+   * ones aside). A zero shows, grey, and opens nothing; any other opens the one list.
    */
   get counterButtons() {
     const checked = this.checked;
+    const lines = this.lines;
+    const count = (kind) => lines.filter((line) => line.kind === kind).length;
     return [
-      {
-        key: "overlapping",
-        label: "Overlapping",
-        count: this.overlapLines.length
-      },
+      { key: "overlapping", label: "Overlapping", count: count("overlapping") },
       checked.hasCoverageTargets && {
         key: "stillNeeded",
         label: "Still needed",
-        count: checked.stillNeeded.length
+        count: count("stillNeeded")
       },
       checked.hasSpreadTargets && {
         key: "spread",
         label: "Spread across the week",
-        count: checked.spread.length
+        count: count("spread")
       }
     ]
       .filter(Boolean)
@@ -422,20 +464,13 @@ export default class ShoreshManualBuild extends LightningElement {
       });
   }
 
-  /** Every line, overlaps first, then still needed, then spread (desktop's list). */
-  get allLines() {
-    const checked = this.checked;
-    return [
-      ...this.overlapLines,
-      ...(checked.hasCoverageTargets ? checked.stillNeeded : []),
-      ...(checked.hasSpreadTargets ? checked.spread : [])
-    ];
-  }
-
   get openLines() {
-    const lines = this.listOpen ? this.allLines : [];
+    const lines = this.listOpen ? this.lines : [];
     return lines.length
-      ? lines.map((text, i) => ({ key: `${i}|${text}`, text }))
+      ? lines.map((line) => ({
+          ...line,
+          acceptLabel: `Accept: ${line.text}`
+        }))
       : null;
   }
 
@@ -445,6 +480,51 @@ export default class ShoreshManualBuild extends LightningElement {
 
   handleCloseList() {
     this.listOpen = false;
+  }
+
+  handleAccept(event) {
+    this.accepted = [...this.accepted, event.currentTarget.dataset.key];
+  }
+
+  /**
+   * A line takes the director to its bunk's week (desktop: Group View of that group, the list
+   * closed); an overlapping cell's line also puts keyboard focus on that cell.
+   */
+  handleLocate(event) {
+    const line = this.lines.find(
+      (l) => l.key === event.currentTarget.dataset.key
+    );
+    if (!line || !line.groupId) {
+      return;
+    }
+    this.closeEditor();
+    this.picked = null;
+    this.view = "group";
+    this.groupKey = line.groupId;
+    this.listOpen = false;
+    this.focusAfterRender = { cellKey: this.cellKeyOf(line) };
+  }
+
+  /** In Group View, the grid cell holding a line's day and time block, if it names one. */
+  cellKeyOf(line) {
+    if (!line.dateValue || !this.schedule) {
+      return null;
+    }
+    const d = this.schedule.days.findIndex(
+      (day) => day.dateValue === line.dateValue
+    );
+    const day = this.schedule.days[d];
+    const g = day ? day.groups.findIndex((grp) => grp.id === line.groupId) : -1;
+    const b = day ? day.blocks.findIndex((blk) => blk.id === line.blockId) : -1;
+    if (g < 0 || b < 0) {
+      return null;
+    }
+    const first = placement(day, g, b).first;
+    const grid = groupGrid(this.schedule, line.groupId, this.t);
+    const found = grid.cells.find(
+      (c) => c.slot && c.slot.day === d && c.slot.block === first
+    );
+    return found ? found.key : null;
   }
   get noDaysMessage() {
     return `${this.weekName} has no days ${this.programName} runs.`;
@@ -1781,8 +1861,16 @@ export default class ShoreshManualBuild extends LightningElement {
 
   renderedCallback() {
     // A list whose counter went to zero is closed, so it doesn't open again by itself later.
-    if (this.listOpen && !this.allLines.length) {
+    if (this.listOpen && !this.lines.length) {
       this.listOpen = false;
+    }
+    if (this.focusAfterRender) {
+      const { cellKey } = this.focusAfterRender;
+      this.focusAfterRender = null;
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (grid) {
+        grid.focusCell(cellKey);
+      }
     }
     if (this.conflict && !this.conflictFocused) {
       const button = this.template.querySelector('[data-id="keep-theirs"]');

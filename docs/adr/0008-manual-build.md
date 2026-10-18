@@ -390,8 +390,16 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       of 3 bunks at once_, _Swim · Bunk 3: 2 still needed_, _… by Wednesday_). Still needed and
       Spread list group by group, then activity by SortOrder and Id, as the engine does. A
       counter again, or **Close**, closes it, and it closes itself when nothing is left to
-      list. The grid isn't highlighted by the list (desktop). Not here yet: the desktop rail's
-      per-line Hide and jump-to-cell.
+      list. The grid isn't highlighted by the list (desktop's manual route).
+    - **A line takes you there** (desktop `locateFindingsRow`): clicking it (or Enter or Space on
+      it) shows that bunk's week in Group View and closes the list; an overlapping cell's line
+      also puts keyboard focus on that cell, so its dot's words show and a screen reader reads
+      them.
+    - **Accept** (the desktop's word, `FindingsRail`): on a still needed or spread line only,
+      it hides the line for this visit and the counter drops by one. The line's key carries its
+      numbers (desktop `findingDismissKey`), so when they change it comes back. Overlaps have
+      nothing to accept: they go when the clash is moved. Accepted lines are forgotten when the
+      week, the program or the page changes; nothing is stored.
     - **Waits for part 6:** an activity, place or bunk closed that week (a week exception).
     - **Checked by** `checkWeek`'s own tests in `c/shoreshEngine` (scenario tests and a seeded
       property test against an independent placement-by-placement oracle: every dot's words,

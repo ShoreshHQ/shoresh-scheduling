@@ -116,9 +116,15 @@ const tile = (el) =>
 const counters = (element) =>
   [...q(element, '[data-id="counters"]').querySelectorAll("button")].map(tile);
 const listLines = (element) =>
-  [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
-    (li) => li.textContent
-  );
+  [
+    ...q(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
+  ].map((b) => b.textContent.trim());
+const lineButton = (element, text) =>
+  [
+    ...q(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
+  ].find((b) => b.textContent.trim() === text);
+const acceptButton = (element, text) =>
+  q(element, `[data-id="counter-list"] [aria-label="Accept: ${text}"]`);
 
 /** Bunk 1's week in Group View (columns are days): Monday's items and rows, then Tuesday's. */
 async function bunkOneWeek(monday, tuesday, setup) {
@@ -381,5 +387,58 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     q(element, '[data-counter="stillNeeded"]').click();
     await flush();
     expect(listLines(element)).toContain("Kayak · Bunk 1: 1 still needed");
+  });
+
+  it("Accept hides a still needed line for this visit; it comes back when its numbers change", async () => {
+    // No overlap here: Soccer for Bunk 1 on Monday only.
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    q(element, '[data-counter="stillNeeded"]').click();
+    await flush();
+    expect(listLines(element)).toEqual([
+      "Swim · Bunk 1: 1 still needed",
+      "Soccer · Bunk 1: 1 still needed",
+      "Soccer · Bunk 2: 2 still needed"
+    ]);
+    acceptButton(element, "Soccer · Bunk 1: 1 still needed").click();
+    await flush();
+    expect(listLines(element)).toEqual([
+      "Swim · Bunk 1: 1 still needed",
+      "Soccer · Bunk 2: 2 still needed"
+    ]);
+    expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
+    // Bunk 1's Soccer is cleared: its line now says 2, a different line, so it shows again.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,,", "1,,"])
+    });
+    await press(cell(element, "0-1"), "Delete");
+    expect(counters(element)).toEqual(["0 Overlapping", "3 Still needed"]);
+    expect(listLines(element)).toContain("Soccer · Bunk 1: 2 still needed");
+  });
+
+  it("a line takes you to its bunk's week; an overlap's line puts focus on its cell", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+    q(element, '[data-counter="stillNeeded"]').click();
+    await flush();
+    lineButton(element, "Soccer · Bunk 2: 1 still needed").click();
+    await flush();
+    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(q(element, '[data-view="group"]').className).toContain("on");
+    expect(
+      q(element, '[data-id="edit-grid"]').getAttribute("aria-label") ||
+        q(element, '[data-id="edit-grid"]').label
+    ).toBe("Bunk 2");
+    q(element, '[data-counter="overlapping"]').click();
+    await flush();
+    lineButton(
+      element,
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
+    ).click();
+    await flush();
+    expect(q(element, '[data-id="edit-grid"]').label).toBe("Bunk 1");
+    // Group View: Monday's column, Period 2.
+    expect(
+      q(element, '[data-id="edit-grid"]').shadowRoot.activeElement.dataset.cell
+    ).toBe("0-1");
   });
 });

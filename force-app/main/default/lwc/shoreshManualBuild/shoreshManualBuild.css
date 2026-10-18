@@ -418,6 +418,35 @@
 
 .counter-list ul {
   margin: 0;
-  padding-left: 16px;
-  list-style: disc;
+  padding: 0;
+  list-style: none;
+}
+
+.counter-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.line-text {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.line-text:hover {
+  text-decoration: underline;
+}
+
+.line-text:focus-visible {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: 2px;
 }

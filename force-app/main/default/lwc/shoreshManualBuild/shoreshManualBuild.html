@@ -105,7 +105,27 @@
           </div>
           <ul aria-label="Still to place">
             <template for:each={openLines} for:item="line">
-              <li key={line.key}>{line.text}</li>
+              <li key={line.key} class="counter-line">
+                <button
+                  type="button"
+                  class="line-text"
+                  data-key={line.key}
+                  onclick={handleLocate}
+                >
+                  {line.text}
+                </button>
+                <template lwc:if={line.acceptable}>
+                  <button
+                    type="button"
+                    class="slds-button slds-button_neutral line-accept"
+                    data-key={line.key}
+                    aria-label={line.acceptLabel}
+                    onclick={handleAccept}
+                  >
+                    Accept
+                  </button>
+                </template>
+              </li>
             </template>
           </ul>
         </div>
