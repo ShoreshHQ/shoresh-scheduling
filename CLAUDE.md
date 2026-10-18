@@ -46,6 +46,14 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   sharing the scheduler can't see a camp the test's admin made, so such tests pass locally in review
   and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries
   and assert it for a realistic camp.
+- **Compile against the test org before pushing Apex:** `sf project deploy start --dry-run --source-dir
+  force-app --target-org shoresh-test --ignore-conflicts` (no tests run, nothing changes, no idle org
+  needed). Two PRs were pushed with Apex that didn't compile.
+- **Apex names ignore capitals:** never name a variable, field, parameter or inner class the same as
+  an existing class or static (e.g. a local `scheduleUses` beside the class `ScheduleUses`). Two
+  compile errors came from this.
+- **Test setup goes before `Test.startTest()`**, so the code under test gets its own limits; assert the
+  bound you care about between `startTest` and `stopTest`.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.
