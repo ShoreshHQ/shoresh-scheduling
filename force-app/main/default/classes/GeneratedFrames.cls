@@ -9,13 +9,38 @@ public with sharing class GeneratedFrames {
     );
   }
 
-  /** Refuses a draft with a day that can't be read (ADR 0005's words), rather than replace it. */
+  /** Refuses a draft with a day that can't be read, naming the day, rather than replace it. */
   public static void checkReadable(List<ScheduleDays.DayGrid> days) {
     for (ScheduleDays.DayGrid day : days) {
       if (day.grid == null) {
         throw new ShoreshException(
-          'This day could not be read: ' + day.problem + '.'
+          BlankWeek.weekdayOf(day.day) +
+            ' could not be read: ' +
+            day.problem +
+            '.'
         );
+      }
+    }
+  }
+
+  /** A first save whose blank week has changed since it was read (a time block added). */
+  public static String setupChanged(Program__c program) {
+    CampLabels labels = CampLabels.forCamp(program.Season__r.Camp__c);
+    return program.Name +
+      '\'s ' +
+      labels.pluralInSentence('TimeBlock') +
+      ' or ' +
+      labels.pluralInSentence('Group') +
+      ' changed since you opened this ' +
+      labels.singularInSentence('Week') +
+      '. Open it again, then generate.';
+  }
+
+  /** Every day sent names its time blocks and groups; one that doesn't wasn't sent by the screen. */
+  public static void checkSent(List<GeneratedWeek.Day> sent) {
+    for (GeneratedWeek.Day day : byDate(sent).values()) {
+      if (day.blockIds == null || day.groupIds == null) {
+        throw unreadable();
       }
     }
   }
@@ -59,8 +84,30 @@ public with sharing class GeneratedFrames {
   }
 
   private static Boolean sameIds(List<String> ids, List<String> sent) {
-    return sent != null &&
-      ids.size() == sent.size() &&
-      SlotIds.sameBlocks(ids, 0, sent);
+    return ids.size() == sent.size() && SlotIds.sameBlocks(ids, 0, sent);
+  }
+
+  /** Stored the one way: '' for Open, item numbers without leading zeros, 18-character Ids. */
+  public static void tidy(ScheduleGrid grid) {
+    for (List<String> row : grid.rows) {
+      for (Integer b = 0; b < row.size(); b++) {
+        row[b] = String.isBlank(row[b]) || row[b] == ScheduleGrid.CARRIES_ON
+          ? row[b].trim()
+          : String.valueOf(Integer.valueOf(row[b].trim()));
+      }
+    }
+    for (ScheduleGrid.Item item : grid.items) {
+      item.id = ScheduleGridRules.SET_UP_KINDS.contains(item.kind)
+        ? fullId(item.id)
+        : item.id;
+    }
+  }
+
+  private static String fullId(String id) {
+    try {
+      return String.valueOf(Id.valueOf(id));
+    } catch (StringException e) {
+      throw unreadable();
+    }
   }
 }

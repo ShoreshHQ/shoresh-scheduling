@@ -55,20 +55,16 @@ public with sharing class GeneratedSaves {
     // Looked for again under the lock: a save that waited sees the one before it.
     GeneratedDrafts.lockProgram(program.Id);
     if (GeneratedDrafts.find(program.Id, request.weekId) != null) {
-      return conflict();
+      return conflict(ScheduleDaySaves.CHANGED_SINCE);
     }
     List<ScheduleDays.DayGrid> blank = GeneratedInputs.daysOf(
       BlankWeek.build(program.Id, request.weekId).days
     );
     // The blank week was read before; if setup has changed its days since, build it again.
     if (!GeneratedFrames.sameFrame(blank, request.days)) {
-      return conflict();
+      return conflict(GeneratedFrames.setupChanged(program));
     }
-    List<ScheduleGrid> grids = GeneratedChecks.check(
-      program,
-      blank,
-      request.days
-    );
+    List<ScheduleGrid> grids = GeneratedChecks.check(program, blank, request);
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Schedule__c draft = new Schedule__c(
@@ -97,18 +93,14 @@ public with sharing class GeneratedSaves {
     );
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
     if (!GeneratedDrafts.revisionOf(days).equals(request.revision ?? '')) {
-      return conflict();
+      return conflict(ScheduleDaySaves.CHANGED_SINCE);
     }
     GeneratedFrames.checkReadable(days);
     // Same revision, so the same days: anything else wasn't built from this draft.
     if (!GeneratedFrames.sameFrame(days, request.days)) {
       throw GeneratedFrames.unreadable();
     }
-    List<ScheduleGrid> grids = GeneratedChecks.check(
-      program,
-      days,
-      request.days
-    );
+    List<ScheduleGrid> grids = GeneratedChecks.check(program, days, request);
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Id versionId = VERSION_FIRST.containsKey(request.action)
@@ -166,10 +158,10 @@ public with sharing class GeneratedSaves {
     return saves;
   }
 
-  private static GeneratedWeek.Result conflict() {
+  private static GeneratedWeek.Result conflict(String message) {
     GeneratedWeek.Result result = new GeneratedWeek.Result();
     result.conflict = true;
-    result.message = ScheduleDaySaves.CHANGED_SINCE;
+    result.message = message;
     return result;
   }
 

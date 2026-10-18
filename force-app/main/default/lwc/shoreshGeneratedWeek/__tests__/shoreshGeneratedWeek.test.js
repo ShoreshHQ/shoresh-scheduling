@@ -1,6 +1,7 @@
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import { FIELD } from "c/shoreshSchema";
+import { generateWeek } from "c/shoreshEngine";
 import { nsRecord } from "shoresh-jest/namespace";
 import {
   ACTION,
@@ -295,5 +296,98 @@ describe("c/shoreshGeneratedWeek", () => {
       message:
         "Fixed activities and recurring activities stay where they are set up."
     });
+  });
+  it("feeds the engine as loaded, and saves what it built", async () => {
+    // Both bunks, both periods, two activities: enough for a whole week of Period 2.
+    getInputs.mockResolvedValue(
+      nsRecord({
+        ...SERVER_INPUTS,
+        groups: [
+          {
+            Id: "a0G000000000001AAA",
+            Name: "Bunk 1",
+            Division__c: "a0D000000000001AAA",
+            Availability__c: "AllDay",
+            SortOrder__c: 1
+          },
+          {
+            Id: "a0G000000000002AAA",
+            Name: "Bunk 2",
+            Division__c: "a0D000000000001AAA",
+            Availability__c: "AllDay",
+            SortOrder__c: 2
+          }
+        ],
+        timeBlocks: [
+          {
+            Id: "a0B000000000001AAA",
+            Name: "Period 1",
+            PartOfDay__c: "Morning",
+            SortOrder__c: 1
+          },
+          {
+            Id: "a0B000000000002AAA",
+            Name: "Period 2",
+            PartOfDay__c: "Morning",
+            SortOrder__c: 2
+          }
+        ],
+        activities: [
+          {
+            Id: "a0A000000000001AAA",
+            Name: "Swim",
+            Length__c: 1,
+            TimesPerWeekMin__c: 0,
+            TimesPerWeekMax__c: 5,
+            GroupsAtOnce__c: 1,
+            Location__c: "a0L000000000001AAA",
+            SortOrder__c: 1
+          },
+          {
+            Id: "a0A000000000002AAA",
+            Name: "Soccer",
+            Length__c: 1,
+            TimesPerWeekMin__c: 0,
+            TimesPerWeekMax__c: 5,
+            GroupsAtOnce__c: 1,
+            SortOrder__c: 2
+          }
+        ],
+        eligibilities: [],
+        weekExceptions: []
+      })
+    );
+    const loaded = await loadWeek(PROGRAM, WEEK);
+    const built = generateWeek({ ...loaded.input, option: loaded.option });
+
+    expect(built.ok).toBe(true);
+    expect(built.openCells).toEqual([]);
+    // Flagpole stays in Period 1; each bunk gets one of the two activities in Period 2.
+    const day = built.days[0];
+    const names = day.rows.map((row) =>
+      row
+        .split(",")
+        .map((cell) => (cell ? day.items[Number(cell) - 1].name : ""))
+    );
+    expect(names.map((cells) => cells[0])).toEqual(["Flagpole", "Flagpole"]);
+    expect(names.map((cells) => cells[1]).sort()).toEqual(["Soccer", "Swim"]);
+
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: "a0S000000000001AAA",
+      revision: "2026-06-29:1"
+    });
+    await saveWeek(loaded, {
+      action: ACTION.GENERATE,
+      option: loaded.option,
+      days: built.days
+    });
+    const sent = saveWeekOnServer.mock.calls[0][0].request.days[0];
+    expect(sent.blockIds).toEqual(["a0B000000000001AAA", "a0B000000000002AAA"]);
+    expect(sent.groupIds).toEqual(["a0G000000000001AAA", "a0G000000000002AAA"]);
+    expect(sent.rows).toEqual(day.rows);
+    expect(sent.items).toEqual(
+      day.items.map(({ kind, id, name }) => ({ kind, id: id || "", name }))
+    );
   });
 });

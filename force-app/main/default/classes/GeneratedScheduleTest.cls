@@ -12,19 +12,6 @@ private class GeneratedScheduleTest {
   static void aWeekNotGeneratedYetReadsAsABlankWeekWithTheSeasonsRecords() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      Database.insert(
-        new List<WeekException__c>{
-          new WeekException__c(
-            Week__c = ids.get('Week 1'),
-            Activity__c = ids.get('Soccer')
-          ),
-          new WeekException__c(
-            Week__c = ids.get('Week 2'),
-            Activity__c = ids.get('Swim')
-          )
-        },
-        AccessLevel.SYSTEM_MODE
-      );
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Test.stopTest();
@@ -42,6 +29,39 @@ private class GeneratedScheduleTest {
       Assert.areEqual(ids.get('Flagpole'), monday.items[0].id);
       Assert.areEqual('1,,', monday.rows[GeneratedTestData.GROUP_A]);
       Assert.areEqual('1,,2', monday.rows[GeneratedTestData.GROUP_C]);
+      // Reading saves nothing.
+      Assert.areEqual(0, [SELECT COUNT() FROM Schedule__c WITH SYSTEM_MODE]);
+    }
+  }
+
+  @IsTest
+  static void theInputsHoldTheSeasonsRecordsWithTheFieldsTheEngineReads() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Database.insert(
+        new List<WeekException__c>{
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Activity__c = ids.get('Soccer')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 2'),
+            Activity__c = ids.get('Swim')
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      // A place no activity uses yet: the engine treats a place it isn't sent as having no limit.
+      Location__c lodge = new Location__c(
+        Season__c = ids.get('Season'),
+        Name = 'Lodge',
+        GroupsThatFit__c = 4
+      );
+      Database.insert(lodge, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+
       // The season's records, with the fields the engine reads.
       Assert.areEqual(3, read.activities.size());
       Activity__c swim = read.activities[0];
@@ -51,7 +71,11 @@ private class GeneratedScheduleTest {
       Assert.areEqual(2, swim.TimesPerWeekMax__c);
       Assert.areEqual(ids.get('Pool'), swim.Location__c);
       Assert.isFalse(read.eligibilities.isEmpty());
-      Assert.areEqual(3, read.locations.size());
+      // Every place of the season, with how many groups fit.
+      Map<Id, Location__c> places = new Map<Id, Location__c>(read.locations);
+      Assert.areEqual(4, places.size());
+      Assert.areEqual(4, places.get(lodge.Id).GroupsThatFit__c);
+      Assert.areEqual(1, places.get(ids.get('Pool')).GroupsThatFit__c);
       Assert.areEqual(3, read.groups.size());
       Assert.areEqual('AllDay', read.groups[0].Availability__c);
       Assert.areEqual(3, read.timeBlocks.size());
@@ -64,8 +88,6 @@ private class GeneratedScheduleTest {
       // Only this week's exceptions.
       Assert.areEqual(1, read.weekExceptions.size());
       Assert.areEqual(ids.get('Soccer'), read.weekExceptions[0].Activity__c);
-      // Reading saves nothing.
-      Assert.areEqual(0, [SELECT COUNT() FROM Schedule__c WITH SYSTEM_MODE]);
     }
   }
 
@@ -366,18 +388,28 @@ private class GeneratedScheduleTest {
         GeneratedSaves.GENERATE,
         1
       );
+      // A 15-character Id, another name, and an item number written "03".
+      String shortId = String.valueOf(ids.get('Swim')).left(15);
       GeneratedTestData.put(
         request.days[0],
         GeneratedTestData.at(0, GeneratedTestData.PERIOD_2),
-        GeneratedTestData.item('A', ids.get('Swim'), 'Something else')
+        GeneratedTestData.item('A', shortId, 'Something else')
+      );
+      GeneratedTestData.setCell(
+        request.days[0],
+        GeneratedTestData.at(0, GeneratedTestData.PERIOD_2),
+        '03'
       );
       request.days[0].items[0].name = 'Not Flagpole';
       Test.startTest();
       Id draftId = GeneratedTestData.save(request).scheduleId;
       Test.stopTest();
+      // Stored the one way: names from setup, the full Id, the plain number.
       ScheduleGrid monday = ScheduleDays.read(draftId)[0].grid;
       Assert.areEqual('Flagpole', monday.items[0].name);
       Assert.areEqual('Swim', monday.items[2].name);
+      Assert.areEqual(String.valueOf(ids.get('Swim')), monday.items[2].id);
+      Assert.areEqual('3', monday.rows[0][GeneratedTestData.PERIOD_2]);
     }
   }
 }

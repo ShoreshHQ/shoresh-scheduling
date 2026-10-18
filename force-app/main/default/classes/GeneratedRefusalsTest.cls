@@ -228,7 +228,55 @@ private class GeneratedRefusalsTest {
       );
       Test.stopTest();
       Assert.isTrue(result.conflict);
+      Assert.areEqual(
+        'Main\'s time blocks or groups changed since you opened this week. Open it again, then generate.',
+        result.message
+      );
       Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+    }
+  }
+
+  @IsTest
+  static void fillTheOpenCellsChangesOnlyOpenCells() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = generated();
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      List<Integer> filledCell = GeneratedTestData.at(
+        0,
+        GeneratedTestData.PERIOD_2
+      );
+      GeneratedWeek.Save replaced = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(replaced.days[0], filledCell, 'Soccer');
+      GeneratedWeek.Save cleared = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.setCell(cleared.days[0], filledCell, '');
+      for (
+        GeneratedWeek.Save refused : new List<GeneratedWeek.Save>{
+          replaced,
+          cleared
+        }
+      ) {
+        Assert.areEqual(
+          GeneratedTestData.UNREADABLE,
+          GeneratedTestData.refusal(refused)
+        );
+      }
+      // Filling an Open cell is what it is for.
+      GeneratedWeek.Save filled = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(
+        filled.days[0],
+        GeneratedTestData.at(0, GeneratedTestData.LUNCH),
+        'Soccer'
+      );
+      Assert.isFalse(GeneratedTestData.save(filled).conflict);
+      Test.stopTest();
+      Assert.areEqual(
+        GeneratedTestData.a('Gym games'),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
+        ]
+      );
     }
   }
 
@@ -284,6 +332,8 @@ private class GeneratedRefusalsTest {
       GeneratedWeek.Save unknownAction = request(read, 'Publish');
       GeneratedWeek.Save noDays = request(read, GeneratedSaves.TRY_ANOTHER);
       noDays.days = null;
+      GeneratedWeek.Save noBlocks = request(read, GeneratedSaves.TRY_ANOTHER);
+      noBlocks.days[0].blockIds = null;
       for (
         GeneratedWeek.Save refused : new List<GeneratedWeek.Save>{
           generateAgain,
@@ -332,7 +382,7 @@ private class GeneratedRefusalsTest {
         request(read, GeneratedSaves.REBUILD)
       );
       Test.stopTest();
-      Assert.isTrue(refused.startsWith('This day could not be read'), refused);
+      Assert.isTrue(refused.startsWith('Monday could not be read: '), refused);
       Assert.areEqual(0, GeneratedTestData.versions());
     }
   }

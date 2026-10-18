@@ -5,13 +5,17 @@
  * (a leftover there may be cleared); only this season's activities are placed; something not set
  * up yet is kept, never newly placed. Rule bends (over a weekly limit and the rest) are allowed:
  * the engine marks them. The checks are Manual Build's own (SlotRules), on the cells that
- * changed. That the days are the draft's own is GeneratedFrames. Reads in user mode.
+ * changed. Fill the open cells changes only cells that were Open. That the days are the draft's
+ * own is GeneratedFrames. Reads in user mode.
  */
 public with sharing class GeneratedChecks {
   private SlotRules rules;
+  // Fill the open cells: every filled cell stays as it is.
+  private Boolean onlyOpen;
 
-  private GeneratedChecks(SlotRules rules) {
+  private GeneratedChecks(SlotRules rules, Boolean onlyOpen) {
     this.rules = rules;
+    this.onlyOpen = onlyOpen;
   }
 
   /**
@@ -21,11 +25,12 @@ public with sharing class GeneratedChecks {
   public static List<ScheduleGrid> check(
     Program__c program,
     List<ScheduleDays.DayGrid> days,
-    List<GeneratedWeek.Day> sent
+    GeneratedWeek.Save request
   ) {
-    Map<Date, GeneratedWeek.Day> byDate = GeneratedFrames.byDate(sent);
+    Map<Date, GeneratedWeek.Day> byDate = GeneratedFrames.byDate(request.days);
     GeneratedChecks checks = new GeneratedChecks(
-      new SlotRules(program, activityIds(sent))
+      new SlotRules(program, activityIds(request.days)),
+      request.action == GeneratedSaves.FILL_OPEN
     );
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
@@ -82,6 +87,7 @@ public with sharing class GeneratedChecks {
           '. Reload the page and try again.'
       );
     }
+    GeneratedFrames.tidy(grid);
     grid.dropUnusedItems();
     return grid;
   }
@@ -122,6 +128,9 @@ public with sharing class GeneratedChecks {
 
   /** at: the cell's group and time block Ids. */
   private void checkCell(String was, String slot, List<String> at) {
+    if (onlyOpen && was != SlotIds.OPEN) {
+      throw GeneratedFrames.unreadable();
+    }
     rules.checkNotSetTime(was, slot);
     rules.checkAtCamp(slot, at[0], at[1]);
     if (slot == SlotIds.OPEN) {

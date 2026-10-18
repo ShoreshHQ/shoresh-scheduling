@@ -28,6 +28,7 @@ public with sharing class GeneratedWeek {
       if (days == null || !actions.contains(action)) {
         throw GeneratedFrames.unreadable();
       }
+      GeneratedFrames.checkSent(days);
       // EngineOption__c holds four digits.
       if (option == null || option < 1 || option > 9999) {
         throw new ShoreshException('That option can\'t be built.');
