@@ -20,9 +20,7 @@ public with sharing class WeekExceptions {
         continue;
       }
       if (rowId.getSObjectType() != WeekException__c.SObjectType) {
-        throw new ShoreshException(
-          'These screens can\'t delete that.'
-        );
+        throw new ShoreshException('These screens can\'t delete that.');
       }
       removeIds.add(rowId);
     }

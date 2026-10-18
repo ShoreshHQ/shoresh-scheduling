@@ -44,9 +44,7 @@ public with sharing class GroupMoves {
       CampLabels labels = labelsByCamp.get(campId);
       if (target == null) {
         // No name here: the screen puts the row's name in front ("Bunk 3": Pick its unit.).
-        grp.addError(
-          'Pick its ' + labels.singularInSentence('Division') + '.'
-        );
+        grp.addError('Pick its ' + labels.singularInSentence('Division') + '.');
       } else if (target.Program__c != origin.Program__c) {
         grp.addError(
           labels.plural('Group') +
