@@ -224,6 +224,43 @@ describe("never blank (Greg, 2026-10-17)", () => {
     }
   });
 
+  it("fills two short blocks rather than the long one they overlap (earliest end first)", () => {
+    for (let option = 1; option <= 5; option++) {
+      const result = run({
+        option,
+        blocks: [
+          block(0, { id: "long", startTime: "08:00", endTime: "10:00" }),
+          block(0, { id: "s1", startTime: "08:30", endTime: "09:00" }),
+          block(1, { id: "s2", startTime: "09:00", endTime: "09:30" })
+        ],
+        activities: [activity("swim"), activity("arts"), activity("hike")]
+      });
+      expect([
+        at(result, 0, "g1", 0),
+        at(result, 0, "g1", 1),
+        at(result, 0, "g1", 2)
+      ]).toEqual([null, expect.any(String), expect.any(String)]);
+    }
+  });
+
+  it("leaves out an Open cell that overlaps a kept one before choosing among the rest", () => {
+    // Kept 8:00-8:30. Open 8:15-9:00 overlaps it; 8:45-9:30 doesn't, and is filled.
+    const result = run({
+      blocks: [
+        block(0, { id: "k", startTime: "08:00", endTime: "08:30" }),
+        block(0, { id: "o1", startTime: "08:15", endTime: "09:00" }),
+        block(0, { id: "o2", startTime: "08:45", endTime: "09:30" })
+      ],
+      activities: [activity("swim"), activity("arts")],
+      cells: [{ day: 0, group: "g1", block: "k", act: "swim" }],
+      locks: [{ date: dateAt(0), groupId: "g1", blockId: "k" }]
+    });
+    expect([at(result, 0, "g1", 1), at(result, 0, "g1", 2)]).toEqual([
+      null,
+      "arts"
+    ]);
+  });
+
   it("an Open cell beside a kept one at an overlapping time stays Open, already busy", () => {
     const result = run({
       blocks: [
@@ -712,23 +749,28 @@ describe("other programs count against capacity (G5 supplies them)", () => {
   });
 
   it("another program's groups at an activity count against its groups at once", () => {
-    const result = run({
-      blocks: [block(0), block(1)],
-      activities: [
-        activity("archery", { atOnce: 2, min: 1, max: 1 }),
-        activity("arts")
-      ],
-      otherPrograms: [
-        {
-          date: dateAt(0),
-          startTime: "08:00",
-          endTime: "08:45",
-          activityId: "archery",
-          groups: 2
-        }
-      ]
-    });
-    expect(at(result, 0, "g1", 1)).toBe("archery");
+    for (let option = 1; option <= 10; option++) {
+      const result = run({
+        option,
+        blocks: [block(0), block(1)],
+        activities: [
+          activity("archery", { atOnce: 2, min: 1, max: 1 }),
+          activity("arts")
+        ],
+        otherPrograms: [
+          {
+            date: dateAt(0),
+            startTime: "08:00",
+            endTime: "08:45",
+            activityId: "archery",
+            groups: 2
+          }
+        ]
+      });
+      expect(at(result, 0, "g1", 1)).toBe("archery");
+      // Respecting it leaves nothing to dot.
+      expect(result.flags).toEqual([]);
+    }
   });
 
   it("a count of 0 groups from another program takes no room", () => {
@@ -745,6 +787,76 @@ describe("other programs count against capacity (G5 supplies them)", () => {
       ]
     });
     expect(result.flags).toEqual([]);
+  });
+
+  it("another program's group at a same-division-only activity's place dots it, and the engine keeps away", () => {
+    const spec = {
+      groups: [group("g1")],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "court", name: "Court", fit: 3 }],
+      activities: [
+        activity("tennis", {
+          atOnce: null,
+          sameDivision: true,
+          location: "court",
+          min: 1,
+          max: 1
+        }),
+        activity("arts", { atOnce: null })
+      ],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "08:45",
+          locationId: "court"
+        }
+      ]
+    };
+    // Built from scratch, tennis waits for the second block.
+    const built = run(spec);
+    expect(at(built, 0, "g1", 1)).toBe("tennis");
+    expect(built.flags).toEqual([]);
+    // Kept in the first block, it is dotted.
+    const kept = run({
+      ...spec,
+      mode: "fillOpen",
+      cells: [{ day: 0, group: "g1", block: "b0", act: "tennis" }]
+    });
+    expect(flagAt(kept, 0, "g1", "b0")).toMatchObject({
+      bends: [RULE.SAME_DIVISION],
+      reason: "Shares Court with another division"
+    });
+  });
+
+  it("another program's group doing a same-division-only activity dots it, even at its place", () => {
+    const result = run({
+      mode: "fillOpen",
+      groups: [group("g1")],
+      blocks: [block(0), block(1)],
+      locations: [{ id: "court", name: "Court", fit: 3 }],
+      activities: [
+        activity("tennis", {
+          atOnce: null,
+          sameDivision: true,
+          location: "court"
+        }),
+        activity("arts", { atOnce: null })
+      ],
+      cells: [{ day: 0, group: "g1", block: "b0", act: "tennis" }],
+      otherPrograms: [
+        {
+          date: dateAt(0),
+          startTime: "08:00",
+          endTime: "08:45",
+          activityId: "tennis"
+        }
+      ]
+    });
+    expect(flagAt(result, 0, "g1", "b0")).toMatchObject({
+      bends: [RULE.SAME_DIVISION],
+      reason: "Shares Court with another division"
+    });
   });
 
   it("only overlapping clock times count: a touching time doesn't", () => {
@@ -871,7 +983,19 @@ describe("soft goals and what is still to place", () => {
 describe("Try another", () => {
   it("refuses an option of 0, a fraction or anything that isn't a number", () => {
     const spec = { activities: [activity("swim")] };
-    for (const option of [0, -1, 1.5, "0", "two", NaN]) {
+    for (const option of [
+      0,
+      -1,
+      1.5,
+      "0",
+      "two",
+      NaN,
+      "1e3",
+      "0x10",
+      " 2",
+      "2.0",
+      Infinity
+    ]) {
       expect(generateWeek({ ...camp(spec), option })).toEqual({
         ok: false,
         error: "That option can't be built."
@@ -890,6 +1014,25 @@ describe("Try another", () => {
     expect(generateWeek({ ...camp(spec), option: "2" })).toEqual(
       generateWeek(camp({ ...spec, option: 2 }))
     );
+  });
+});
+
+describe("the lines that name a day", () => {
+  it("names a Saturday (and Sunday) like any other day", () => {
+    // Two kept swims at a one-group activity on a Saturday make one overlap line.
+    const result = run({
+      mode: "fillOpen",
+      days: [dateAt(5)],
+      groups: [group("g1"), group("g2")],
+      activities: [activity("swim", { atOnce: 1 })],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "swim" },
+        { day: 0, group: "g2", block: "b0", act: "swim" }
+      ]
+    });
+    expect(result.overlapping).toEqual([
+      "swim · Saturday · Period 1: Over its limit of 1 group at once"
+    ]);
   });
 });
 

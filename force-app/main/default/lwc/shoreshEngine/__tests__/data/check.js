@@ -261,7 +261,7 @@ export function problems(spec, input, result) {
         minutes(o.startTime) < minutes(blocks[b].endTime) &&
         minutes(blocks[b].startTime) < minutes(o.endTime)
       ) {
-        n += o.groups || 1;
+        n += o.groups == null ? 1 : o.groups;
       }
     }
     return n;

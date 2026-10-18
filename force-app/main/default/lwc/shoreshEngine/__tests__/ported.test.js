@@ -8,6 +8,7 @@ import { generateWeek } from "c/shoreshEngine";
 import { mulberry32 } from "../random";
 import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
 import { problems } from "./data/check";
+import { camp166, camp93 } from "./data/repairCamps";
 
 const run = (spec) => generateWeek(camp(spec));
 const short = (result) => ({
@@ -256,6 +257,25 @@ describe("no activity left below its minimum when the week can hold it", () => {
     expect(runsOf(result, "g1", "Hike")).toEqual([{ day: 0, blocks: [0, 1] }]);
     expect(result.flags).toEqual([]);
     expect(result.stillNeeded).toEqual(["Swim · Bunk g1: 1 still needed"]);
+  });
+
+  // ADR 0010: when the minimum repair left a cell for never-blank, the engine keeps that week only
+  // if it is no worse than the week built without the leniency.
+  it("camp 166 (coordinator's review): no extra bends from the minimum repair", () => {
+    const result = run(camp166);
+    expect(result.flags).toEqual([]);
+    expect(result.stillNeeded).toHaveLength(26);
+  });
+
+  it("camp 93: the week without the leniency had 2 bends, not 4, for the same minimums", () => {
+    const result = run(camp93);
+    expect(result.stillNeeded).toHaveLength(1);
+    expect(
+      result.flags.map((f) => [f.groupId, f.activityId, f.reason])
+    ).toEqual([
+      ["g4", "a3", "Over its weekly limit"],
+      ["g4", "a3", "Over its weekly limit"]
+    ]);
   });
 
   // The desktop's acceptance rule in miniature: build a full week, read the rules off it the way

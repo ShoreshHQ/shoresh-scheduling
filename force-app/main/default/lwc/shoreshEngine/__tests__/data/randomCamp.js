@@ -74,18 +74,26 @@ export function randomCamp(seed) {
         ]
       : [];
   const days = int(1, 5);
-  const otherPrograms =
-    locations.length && r() < 0.3
-      ? [
-          {
-            date: dateAt(0),
-            startTime: "08:00",
-            endTime: "12:00",
-            locationId: locations[0].id,
-            groups: 1
-          }
-        ]
-      : [];
+  const otherPrograms = [];
+  if (locations.length && r() < 0.3) {
+    otherPrograms.push({
+      date: dateAt(0),
+      startTime: "08:00",
+      endTime: "12:00",
+      locationId: locations[0].id,
+      groups: 1
+    });
+  }
+  // Another program's groups at one of these activities (no count means one; 0 means none).
+  if (r() < 0.3) {
+    otherPrograms.push({
+      date: dateAt(int(0, days - 1)),
+      startTime: "10:00",
+      endTime: "14:00",
+      activityId: pick(activities).id,
+      groups: r() < 0.3 ? null : int(0, 2)
+    });
+  }
   return {
     groups,
     blocks,

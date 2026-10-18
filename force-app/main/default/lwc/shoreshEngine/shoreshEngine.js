@@ -1,6 +1,6 @@
 import { buildTerms } from "c/shoreshTerms";
 import { reasonFor } from "./words";
-import { checkWeek, weekdayOf } from "./checks";
+import { DAY_NAMES, checkWeek, weekdayOf } from "./checks";
 import { readLocations as readLocationMap } from "./checkInputs";
 import { identity } from "./grid";
 import {
@@ -30,14 +30,6 @@ export { readActivities, readLocations, readProgram } from "./checkInputs";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
 export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
-
-const DAY_NAMES = {
-  1: "Monday",
-  2: "Tuesday",
-  3: "Wednesday",
-  4: "Thursday",
-  5: "Friday"
-};
 
 /**
  * Generated Schedule's engine (ADR 0010): one program's week, built in the browser from the
@@ -120,12 +112,26 @@ export function generateWeek(input) {
     seed: `${input.programId || ""}|${weekId || ""}|${option}`,
     ...otherPrograms(input.otherPrograms, days)
   };
-  const state = scheduleWeek(model);
-  const built = writeDays(model, state);
-  const checked = checkWeek(built, checkModel(input, model), {
-    t,
-    dayName: (date) => DAY_NAMES[weekdayOf(date)] || ""
-  });
+  const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
+  const build = (settings) => {
+    const state = scheduleWeek(settings);
+    const built = writeDays(settings, state);
+    return {
+      state,
+      built,
+      checked: checkWeek(built, checkModel(input, settings), words)
+    };
+  };
+  let chosen = build(model);
+  if (chosen.state.leftForNeverBlank) {
+    // The minimum repair left a cell for never-blank to fill. Keep that week only if it is no
+    // worse: it meets more minimums, or as many with no more bends (ADR 0010).
+    const strict = build({ ...model, strictRepair: true });
+    if (worse(chosen.checked, strict.checked)) {
+      chosen = strict;
+    }
+  }
+  const { state, built, checked } = chosen;
   return {
     ok: true,
     days: built,
@@ -146,8 +152,26 @@ export function generateWeek(input) {
   };
 }
 
+/** Every bend the week's dots name: each rule on each dotted placement. */
+function bendCount(checked) {
+  let n = 0;
+  for (const rules of checked.bends.values()) {
+    n += rules.length;
+  }
+  return n;
+}
+
+/** Whether week a is worse than week b: fewer minimums met, or as many with more bends. */
+function worse(a, b) {
+  const short = (c) => c.stillNeeded.length;
+  if (short(a) !== short(b)) {
+    return short(a) > short(b);
+  }
+  return bendCount(a) > bendCount(b);
+}
+
 /**
- * The option for "Try another": 1, 2, ... (a number, or the same as text). Left out means the
+ * The option for "Try another": 1, 2, ... (a whole number, or the same in decimal digits). Left out means the
  * first; 0, a fraction or anything else is refused rather than quietly built as option 1, so a
  * screen bug can't show the wrong week as if it were the one asked for.
  */
@@ -155,8 +179,14 @@ function optionOf(value) {
   if (value === undefined || value === null || value === "") {
     return 1;
   }
-  const n = typeof value === "number" ? value : Number(String(value).trim());
-  return Number.isInteger(n) && n > 0 ? n : null;
+  // A whole number, or plain decimal digits: never "1e3", "0x10" or " 2".
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value) && Number(value) > 0) {
+    return Number(value);
+  }
+  return null;
 }
 
 /**

@@ -28,15 +28,23 @@ cells) and 0009 (names through `c/shoreshSchema`).
    activity's groups at once. No overrun, no conflict.
 7. **Never a blank cell.** Every at-camp cell gets an activity. When the rules can't all be met,
    the least-bad choice goes in with the bronze dot, and hover says which rule it bends. Rules
-   give way in this order (coordinator): weekly max, then once a day, then who it's set up for,
-   then groups at once, then the place's capacity last. **Same division only gives way just
-   before the place's capacity** (Greg, 2026-10-17). **Weekly maximums are soft in practice:
-   go over them before anything else, smallest overage first, and show it** (Greg's correction,
-   2026-10-17: "I write 2 art periods, but I'd accept 3"). **An activity is never shortened** to
-   fit a gap (Greg, the same day, replacing the coordinator's earlier "shorter than set up"
-   bend): a gap no activity's length fits stays Open, which Greg expects to be practically
-   nonexistent in real camps. Locks, fixed and recurring activities and not-at-camp cells never
-   give way. Not-at-camp cells stay hatched.
+   give way in this order, first to last:
+   1. weekly max: **maximums are soft in practice; go over them before anything else, smallest
+      overage first, and show it** (Greg's correction, 2026-10-17: "I write 2 art periods, but
+      I'd accept 3");
+   2. once a day;
+   3. who it's set up for;
+   4. groups at once;
+   5. same division only (Greg, 2026-10-17);
+   6. the place's capacity, last.
+
+   The order is the coordinator's, with Greg's two additions. Locks, fixed and recurring
+   activities and not-at-camp cells never give way; not-at-camp cells stay hatched. **An
+   activity is never shortened** to fit a gap (Greg, 2026-10-17, replacing an earlier "shorter
+   than set up" bend): a gap no activity's length fits stays Open, which Greg expects to be
+   practically nonexistent in real camps, as does a cell where the group is busy at an
+   overlapping time.
+
 8. **Anyone with Shoresh Scheduler access** can generate.
 9. **"Early in the week: N by Wednesday" counts Wednesday** (Greg, 2026-10-17).
 
@@ -118,10 +126,14 @@ cells) and 0009 (names through `c/shoreshSchema`).
    productive sweep or pass makes progress, so the caps never bind on a working engine; they keep
    a future edit from freezing the browser). Differences from the desktop, each on purpose:
    - the weekly-minimum repair may leave a cell its move empties for never-blank to fill, as long
-     as the whole chain leaves no more cells Open than it found: a move that meets a minimum
-     then never adds a bend. The desktop refused any move whose emptied cell it couldn't refill
-     cleanly (coordinator's review, 2026-10-17; the "one spare cell" sweep went from 6 in 1,000
-     options short to none);
+     as the whole chain leaves no more cells Open than it found (the desktop refused any move
+     whose emptied cell it couldn't refill cleanly). What never-blank then puts there can bend
+     more than the move saved, so when the repair did this, the week is also built without it
+     and the lenient week is kept only if it is no worse: it meets more minimums, or as many
+     with no more bends, both counted by `checkWeek` (coordinator's reviews, 2026-10-17). The
+     choice is deterministic. In 1,500 probe camps the lenient week was better in 84 and worse
+     in 31, so keeping the better of the two beats either alone; the "one spare cell" sweep
+     went from 6 in 1,000 options short to none;
    - ties are broken by pre-drawn keys, never `rand() - 0.5` in a sort (an inconsistent
      comparator gives different orders in different browsers);
    - in the greedy round, the early-week goal comes first, then the fewest sessions so far, then
@@ -211,8 +223,12 @@ cells) and 0009 (names through `c/shoreshSchema`).
   that cell.
 - Determinism (`determinism.test.js`): a pinned week, byte-identical rebuilds, 20 shuffled input
   orders, shuffled grid group order, no `Math.random`, different options, weeks and programs.
+- Two camps where the leniency alone made the week worse, kept as fixed data
+  (`__tests__/data/repairCamps.js`: the coordinator's reviewer's camp 166, and camp 93 from the
+  probe).
 - Performance (`performance.test.js`): 12 groups × 5 days × 8 blocks, a week that fits and one
-  that can't, each well under 2 seconds in Jest (about 15 ms and 350 ms on a laptop). For G3: the
+  that can't, each well under 2 seconds in Jest (about 20 ms and 670 ms on a laptop; a week that
+  can't fit is often built twice, with and without the minimum repair's leniency). For G3: the
   coordinator measured a 40 × 5 × 12 week that can't fit at 4–5 seconds, so the screen may need
   to run the build in pieces; nothing in G1 stops that.
 - Mutation check of the key guards (review practice): deliberate breakages of the rules, kept

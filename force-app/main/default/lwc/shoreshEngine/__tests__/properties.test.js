@@ -56,13 +56,12 @@ function checkedApart(spec, input, result) {
         spec.otherPrograms
           .filter(
             (o) =>
-              kind === "place" &&
-              o.locationId === id &&
+              (kind === "place" ? o.locationId : o.activityId) === id &&
               o.date === dates[d] &&
               minutesOf(o.startTime) < minutesOf(blocks.get(blockId).endTime) &&
               minutesOf(blocks.get(blockId).startTime) < minutesOf(o.endTime)
           )
-          .reduce((n, o) => n + (o.groups || 1), 0)
+          .reduce((n, o) => n + (o.groups == null ? 1 : o.groups), 0)
     },
     { t: buildTerms([]), dayName: () => "" }
   );

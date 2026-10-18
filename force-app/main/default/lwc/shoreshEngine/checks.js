@@ -50,7 +50,8 @@ function sortValue(act) {
     : Number.POSITIVE_INFINITY;
 }
 
-const DAY_NAMES = [
+/** Day names by weekday (1 Monday ... 7 Sunday), for the lines that name a day. */
+export const DAY_NAMES = [
   "",
   "Monday",
   "Tuesday",
@@ -257,28 +258,33 @@ function sameDivision(ctx) {
         );
       }
     });
-    // An activity with no place: its groups at the same time are of one division.
-    groupBy(here.filter(isActivity), (p) => {
-      return strict(p) && !placeOf(ctx, p) ? p.id : null;
-    }).forEach((list, actId) => {
-      if (
-        new Set(list.map(division)).size < 2 &&
-        !ctx.others("activity", actId, at)
-      ) {
-        return;
+    // The activity itself: its groups at the same time are of one division (with a place, the
+    // place above already compares them), and another program's groups doing it are another.
+    groupBy(here.filter(isActivity), (p) => (strict(p) ? p.id : null)).forEach(
+      (list, actId) => {
+        const locationId = placeOf(ctx, list[0]);
+        const mixed = !locationId && new Set(list.map(division)).size > 1;
+        if (!mixed && !ctx.others("activity", actId, at)) {
+          return;
+        }
+        const reason = reasonFor(RULES.SAME_DIVISION, {
+          placeName: locationId ? ctx.locations.get(locationId).name : null,
+          terms: ctx.t
+        });
+        list.forEach((p) =>
+          flags.push({ p, rule: RULES.SAME_DIVISION, reason })
+        );
+        clashes.push(
+          ctx.clash(
+            RULES.SAME_DIVISION,
+            `act:${actId}`,
+            at,
+            ctx.activities.get(actId).name,
+            reason
+          )
+        );
       }
-      const reason = reasonFor(RULES.SAME_DIVISION, { terms: ctx.t });
-      list.forEach((p) => flags.push({ p, rule: RULES.SAME_DIVISION, reason }));
-      clashes.push(
-        ctx.clash(
-          RULES.SAME_DIVISION,
-          `act:${actId}`,
-          at,
-          ctx.activities.get(actId).name,
-          reason
-        )
-      );
-    });
+    );
   });
   return { flags, clashes };
 }

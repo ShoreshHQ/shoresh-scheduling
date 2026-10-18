@@ -90,6 +90,10 @@ export function scheduleWeek(model) {
   const { days, groups, acts, eligibility, fit, setTimeLocation, locks } =
     model;
   const fillOpenOnly = model.mode === "fillOpen";
+  // The minimum repair may leave a cell for never-blank (model.strictRepair turns it off), and
+  // whether any chain it kept did so.
+  const lenientRepair = !model.strictRepair;
+  let leftForNeverBlank = false;
   const actById = new Map(acts.map((a) => [a.id, a]));
   const cellKey = (g, d, b) => `${g}|${d}|${b}`;
   const keyOf = (s) => cellKey(s.groupId, s.dayIndex, s.blockId);
@@ -969,7 +973,8 @@ export function scheduleWeek(model) {
   // ejection chain: lift what sits in the cells it needs, place it, re-place anything left short.
   // `lenient` (the minimum repair only): a cell the chain empties may stay Open for never-blank to
   // fill, provided the whole chain, checked at the top (`limit`), leaves no more Open cells than
-  // it found. A move that meets a minimum then never adds a bend.
+  // it found. What never-blank then puts there can still bend more than the move saves, so a
+  // build that used this is weighed against one without it (`leftForNeverBlank`; ADR 0010).
   function raise(
     act,
     groupId,
@@ -1099,7 +1104,9 @@ export function scheduleWeek(model) {
           const fill = v ? fits(v)[0] : null;
           if (fill) {
             jPlace(fill, v.groupId, v.dayIndex, v.blockId);
-          } else if (!lenient) {
+          } else if (lenient) {
+            leftForNeverBlank = true;
+          } else {
             ok = false;
           }
         }
@@ -1126,7 +1133,9 @@ export function scheduleWeek(model) {
           const fill = fits(peer)[0];
           if (fill) {
             jPlace(fill, peer.groupId, peer.dayIndex, peer.blockId);
-          } else if (!lenient) {
+          } else if (lenient) {
+            leftForNeverBlank = true;
+          } else {
             ok = false;
           }
         }
@@ -1253,7 +1262,7 @@ export function scheduleWeek(model) {
               MIN_REPAIR_DEPTH,
               new Set(),
               false,
-              true,
+              lenientRepair,
               emptyCells
             )
           ) {
@@ -1270,7 +1279,7 @@ export function scheduleWeek(model) {
             MIN_REPAIR_DEPTH,
             new Set(),
             true,
-            true,
+            lenientRepair,
             emptyCells
           );
           repairWorkLeft = sharedWorkLeft;
@@ -1345,6 +1354,7 @@ export function scheduleWeek(model) {
     spanTails,
     keptCells,
     openCells,
+    leftForNeverBlank,
     usageCount,
     away,
     lockedOpen,
