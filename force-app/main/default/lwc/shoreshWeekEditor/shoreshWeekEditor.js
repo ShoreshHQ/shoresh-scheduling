@@ -90,6 +90,8 @@ function slotKey(slot) {
  * - lit: the cells ("date|groupId|blockId") the host's counters light up.
  * - addActivityWith({ scheduleId, name }): how "Add <name> to activities" adds on the host's draft
  *   (Manual Build's draft when left out).
+ * - say(text) and clearNotice(): the host's own line on the quiet line, and taking it away once
+ *   it is no longer true (a Lock or Unlock saved).
  */
 // How often an edit is sent again, with nothing new to ask, before it is given up.
 const MAX_RESENDS = 2;
@@ -381,6 +383,13 @@ export default class ShoreshWeekEditor extends LightningElement {
   setNotice(text) {
     this.notice = text;
     this.announce(text);
+  }
+
+  /** The quiet line is no longer true (the host's Lock or Unlock saved): it goes, and isn't said again. */
+  @api
+  clearNotice() {
+    this.notice = null;
+    this.unrepeated = null;
   }
 
   // ---------- the week ----------

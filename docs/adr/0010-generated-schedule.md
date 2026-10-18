@@ -844,9 +844,10 @@ saveSlots`, §33), so every cell it changes is locked (decision 2). A run keeps 
 40. **A locked cell asks for its Unlock, it doesn't unlock** (§37: nothing unlocks without the
     director choosing Unlock). Enter or a click on a locked cell (the editor's `unlockrequest`)
     makes the Lock menu offer that cell (_Unlock Bunk 3 · Monday · Period 2_), keeps focus on
-    the cell, and says _Bunk 3 · Monday · Period 2 is locked. Unlock it from the Lock menu to
-    change it._ The Lock menu's cell is the one keyboard focus last reached in the editor
-    (`cellfocus`). A hand edit that meets a lock someone made meanwhile ends in "<cell> is
+    the cell, and says _Bunk 3 · Monday · Period 2 is locked._ (the editor's own refusal, ADR
+    0008; the Lock menu offering the cell shows where its Unlock is, so no sentence says so). A
+    Lock or Unlock saved clears that line. The Lock menu's cell is the one keyboard focus last
+    reached in the editor (`cellfocus`). A hand edit that meets a lock someone made meanwhile ends in "<cell> is
     locked." (coordinator call, ADR 0008), with no _keep theirs / use yours_ question.
 41. **"Add <name> to activities" works here too**, as on the desktop's generated schedule:
     `GeneratedScheduleController.addActivity` → `ManualBuildActivities.addOnGenerated`, the same

@@ -68,6 +68,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   loaded;
   loadedFor;
   loadTicket = 0;
+  // Moves on when the week shown is replaced by a read or a build (not by a hand edit, which
+  // moves loadTicket on): a hand edit's answer is set aside only when the week it was made on is gone.
+  weekTicket = 0;
   loading = false;
   // A read of the week under way, and one asked for while a build ran (done after it).
   reading = false;
@@ -100,6 +103,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   lastSaved = null;
   // The locks as the editor takes them (cell keys), worked out once per week loaded.
   locksMemo = { of: undefined, keys: [] };
+  // The season as the editor reads it, worked out once per season and week loaded.
+  setupMemo = { setup: undefined, input: undefined, value: undefined };
   announcement = "";
   checksResetKey = 0;
   // The cells the open counter lights up ("date|groupId|blockId"), generated route.
@@ -149,6 +154,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     window.removeEventListener("focus", this.onWindowFocus);
     // A build under way stops: nobody is looking.
     this.loadTicket += 1;
+    this.weekTicket += 1;
     this.busy = null;
   }
 
@@ -243,6 +249,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.loadTicket += 1;
+    this.weekTicket += 1;
     const ticket = this.loadTicket;
     // A build or a Lock under way for another week (or season) stops: its ticket is gone.
     this.busy = null;
@@ -558,6 +565,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // The build takes the screen's turn: a read of the week sent before it (coming back to the
     // window) is set aside when it answers, so it can't put back the week this replaces.
     this.loadTicket += 1;
+    this.weekTicket += 1;
     const ticket = this.loadTicket;
     this.reading = false;
     this.loading = false;
@@ -878,15 +886,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   /**
    * A locked cell was asked to change (Enter or a click in the editor): nothing unlocks without
    * the director choosing Unlock (ADR 0010 §37), so the Lock menu now offers that cell, focus
-   * stays on it, and the line says where its Unlock is.
+   * stays on it, and the line says it is locked (the menu offering it shows where its Unlock is).
    */
   handleUnlockRequest(event) {
     this.focusedSlot = event.detail.slot;
     const cell = this.focusedCell;
     if (cell && this.weekEditor) {
-      this.weekEditor.say(
-        `${cell.where} is locked. Unlock it from the Lock menu to change it.`
-      );
+      this.weekEditor.say(`${cell.where} is locked.`);
     }
   }
 
@@ -914,6 +920,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           notPlaced: []
         };
         this.showInEditor("again");
+        // A line such as "<cell> is locked." is no longer true once the Lock or Unlock is saved.
+        if (this.weekEditor) {
+          this.weekEditor.clearNotice();
+        }
         this.announce(lockedText(choice));
         // The menu was held while it saved, which drops focus: back to it, or to the grid when
         // the menu has nothing left to offer (it is held then).
@@ -967,6 +977,28 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // Edits wait while a build or a Lock is saved (the week is about to be replaced).
   get editsWait() {
     return this.isBusy || this.locking;
+  }
+
+  /**
+   * The season as the editor reads it (activity names and places), with this week's activities:
+   * one added from a cell ("Add <name> to activities") joins them at once, before the season is
+   * read again.
+   */
+  get editorSetup() {
+    const input = this.loaded ? this.loaded.input : null;
+    const memo = this.setupMemo;
+    if (memo.setup !== this._setup || memo.input !== input) {
+      memo.setup = this._setup;
+      memo.input = input;
+      memo.value = input
+        ? {
+            ...this._setup,
+            activities: input.activities,
+            locations: input.locations
+          }
+        : this._setup;
+    }
+    return memo.value;
   }
 
   /** The locks as the editor takes them ("date|groupId|blockId"), the same list while the week is the same. */
@@ -1024,7 +1056,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /** The editor saves each hand edit through here (GeneratedScheduleController.saveSlots). */
   saveRuns = async (edits) => {
-    const ticket = this.loadTicket;
+    // Each edit moves loadTicket on (handleEdited), also one made while this one saves; the
+    // answer still names the revision the next edit in the queue is sent from.
+    const ticket = this.weekTicket;
     const loaded = this.loaded;
     const result = await saveEdits(loaded, edits);
     if (result.status !== SAVED) {
@@ -1035,10 +1069,15 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         message: result.message
       };
     }
-    if (ticket === this.loadTicket) {
+    if (ticket === this.weekTicket) {
       // Shown when the editor says it is saved (saved): the week to go on with.
+      // An activity added while it saved ("Add <name> to activities") stays in the week's list.
       this.lastSaved = {
         ...result.loaded,
+        input: {
+          ...result.loaded.input,
+          activities: this.loaded.input.activities
+        },
         option: loaded.option,
         notPlaced: []
       };

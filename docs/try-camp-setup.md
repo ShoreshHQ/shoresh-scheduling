@@ -839,11 +839,11 @@ doesn't change this one.
     may fill it again). Click **Rebuild** → **Rebuild it**: your changed cells stay, the rest is
     built again. After a build, **Undo** starts over (greyed out).
 17. **A locked cell.** Double-click a locked cell, or reach it and press Enter: nothing opens and
-    nothing unlocks. The line under the toolbar says _Bunk 1 · Monday · Period 2 is locked.
-    Unlock it from the Lock menu to change it._, and the **Lock** menu now offers _Unlock Bunk 1
-    · Monday · Period 2_. Choose it, then type into the cell as usual.
-18. **A new activity.** Double-click an Open cell, type a name the camp doesn't have (_Archery_),
-    and choose _Add "Archery" to activities_: it goes in the cell, and it is on the
+    nothing unlocks. The line under the toolbar says _Bunk 1 · Monday · Period 2 is locked._,
+    and the **Lock** menu now offers _Unlock Bunk 1 · Monday · Period 2_. Choose it: the line
+    goes away. Then type into the cell as usual.
+18. **A new activity.** Double-click an Open cell, type a name the camp doesn't have (_Climbing_),
+    and choose _Add "Climbing" to activities_: it goes in the cell, and it is on the
     **Activities** screen with the usual starting values.
 19. **While a change saves**, Rebuild, Try another, Lock and the pickers are greyed out for a
     moment; they come back on their own.

@@ -248,10 +248,61 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(action(element, "Rebuild").disabled).toBe(true);
     expect(action(element, "TryAnother").disabled).toBe(true);
     expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(q(element, '[data-id="week"]').disabled).toBe(true);
     held.answer(slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"]));
     await flush();
     expect(action(element, "Rebuild").disabled).toBe(false);
     expect(action(element, "TryAnother").disabled).toBe(false);
+    expect(q(element, '[data-id="week"]').disabled).toBe(false);
+  });
+
+  it("a second hand edit made while the first saves is sent from the first's revision, and Rebuild from the second's", async () => {
+    const element = await render();
+    const first = slow();
+    const second = slow();
+    saveSlots
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    await clearSwim(element);
+    // Bunk 1's Monday Period 2: Swim typed in while the clear still saves.
+    await press(cellAt(element, "0-2"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "swim";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    first.answer(
+      slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"], "2026-06-29:2|2026-06-30:1")
+    );
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(saveSlots.mock.calls[1][0].revision).toBe(
+      "2026-06-29:2|2026-06-30:1"
+    );
+    second.answer(
+      slotAnswer(
+        ["1,1,,", "1,,,"],
+        [",1,,", ",,,"],
+        "2026-06-29:3|2026-06-30:1"
+      )
+    );
+    await flush();
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: SCHEDULE,
+      revision: "2026-06-29:4|2026-06-30:2",
+      versionId: null,
+      locks: []
+    });
+    action(element, "Rebuild").click();
+    await flush();
+    q(element, '[data-id="confirm-go"]').click();
+    await until(() => saveWeekOnServer.mock.calls.length > 0);
+    await flush();
+    expect(saveWeekOnServer.mock.calls[0][0].request.revision).toBe(
+      "2026-06-29:3|2026-06-30:1"
+    );
   });
 
   it("shows the locks the week has, and the lock in the legend", async () => {
@@ -261,16 +312,14 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(q(element, ".legend").textContent).toContain("Locked");
   });
 
-  it("Enter on a locked cell doesn't unlock it: the Lock menu offers its Unlock, the line says so, and focus stays on the cell", async () => {
+  it("Enter on a locked cell doesn't unlock it: the Lock menu offers its Unlock, the line says it is locked, and focus stays on the cell", async () => {
     const element = await render(savedWeek({ locks: [[",1,,", ",,,"]] }));
     const cell = cellAt(element, "0-1");
     await press(cell, "Enter");
     expect(setLocksOnServer).not.toHaveBeenCalled();
     expect(q(element, '[data-id="slot-editor"]')).toBeNull();
     expect(menuLabels(element)).toContain("Unlock Bunk 1 · Monday · Period 1");
-    expect(notice(element)).toBe(
-      "Bunk 1 · Monday · Period 1 is locked. Unlock it from the Lock menu to change it."
-    );
+    expect(notice(element)).toBe("Bunk 1 · Monday · Period 1 is locked.");
     expect(grid(element).shadowRoot.activeElement).toBe(cell);
   });
 
@@ -283,9 +332,10 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(menuLabels(element)).toContain("Lock Bunk 1 · Monday · Period 2");
   });
 
-  it("an Unlock from the menu reaches the editor: the cell can be typed into again", async () => {
+  it("an Unlock from the menu reaches the editor: the line saying it is locked goes, and the cell can be typed into again", async () => {
     const element = await render(savedWeek({ locks: [[",1,,", ",,,"]] }));
     await press(cellAt(element, "0-1"), "Enter");
+    expect(notice(element)).toBe("Bunk 1 · Monday · Period 1 is locked.");
     const unlocked = savedWeek();
     setLocksOnServer.mockResolvedValue({
       conflict: false,
@@ -303,6 +353,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
     await flush();
     expect(lockAt(element, "0-1")).toBeNull();
+    expect(notice(element)).toBeNull();
     await press(cellAt(element, "0-1"), "Enter");
     expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
   });
@@ -470,6 +521,51 @@ describe("hand editing on the Generated Schedule screen", () => {
       .filter(Boolean)
       .map((d) => d.label);
     expect(dots.join(" ")).toMatch(/weekly limit/);
+  });
+
+  it("an activity added while another edit saves is on the Activity View as this week's, not deleted, after both save", async () => {
+    const element = await render();
+    const first = slow();
+    const archery = "a0A000000000009AAA";
+    saveSlots
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(new Promise(() => {}));
+    addOnGenerated.mockResolvedValue({
+      id: archery,
+      name: "Archery",
+      length: 1,
+      notFor: [],
+      record: nsRecord({
+        Id: archery,
+        Name: "Archery",
+        Length__c: 1,
+        TimesPerWeekMin__c: 0,
+        TimesPerWeekMax__c: 1,
+        GroupsAtOnce__c: 1
+      })
+    });
+    // Swim cleared (saving), then Archery added and typed into Period 2.
+    await clearSwim(element);
+    await press(cellAt(element, "0-2"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "Archery";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(addOnGenerated).toHaveBeenCalled();
+    first.answer(slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"]));
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    q(element, '[data-view="activity"]').click();
+    await flush();
+    const cards = [
+      ...editorRoot(element).querySelectorAll(
+        '[data-id="activity-cards"] .card'
+      )
+    ];
+    const card = cards.find((c) => c.dataset.key === archery);
+    expect(card).toBeDefined();
+    expect(card.textContent).not.toContain("deleted since");
   });
 
   it("a read of the week already on its way when a hand edit is made doesn't replace it", async () => {
