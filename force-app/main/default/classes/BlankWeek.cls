@@ -34,12 +34,28 @@ public with sharing class BlankWeek {
     Program__c program = ProgramReads.programOf(programId);
     Week__c week = ProgramReads.weekOf(weekId, program);
     BlankWeek blank = new BlankWeek();
-    blank.blocks = checkedBlocks(program);
-    blank.groups = checkedGroups(program, week);
-    blank.items = setTimeItems(program, weekId);
+    blank.blocks = checkedBlocks(program, ProgramReads.blocksOf(program.Id));
+    blank.groups = checkedGroups(
+      program,
+      week,
+      ProgramReads.groupsAtCamp(program.Id, week.Id)
+    );
+    return blank.weekFor(program, week);
+  }
+
+  /** The same, on setup Generated Schedule has already read. */
+  public static Week build(GeneratedSetup setup) {
+    BlankWeek blank = new BlankWeek();
+    blank.blocks = checkedBlocks(setup.program, setup.blocks);
+    blank.groups = checkedGroups(setup.program, setup.week, setup.atCamp());
+    return blank.weekFor(setup.program, setup.week);
+  }
+
+  private Week weekFor(Program__c program, Week__c week) {
+    items = setTimeItems(program, week.Id);
     Week result = new Week();
     for (Date day : runDays(program, week)) {
-      BlankDay filled = blank.filled(weekdayOf(day));
+      BlankDay filled = filled(weekdayOf(day));
       result.days.add(new ScheduleDaySaves.DaySave(day, filled.grid, null));
       for (String line : filled.notPlaced) {
         result.notPlaced.add(line + ' · ' + weekdayOf(day));
@@ -83,8 +99,10 @@ public with sharing class BlankWeek {
       ) == true;
   }
 
-  private static List<TimeBlock__c> checkedBlocks(Program__c program) {
-    List<TimeBlock__c> result = ProgramReads.blocksOf(program.Id);
+  private static List<TimeBlock__c> checkedBlocks(
+    Program__c program,
+    List<TimeBlock__c> result
+  ) {
     if (result.isEmpty()) {
       CampLabels labels = CampLabels.forCamp(program.Season__r.Camp__c);
       throw new ShoreshException(
@@ -100,9 +118,9 @@ public with sharing class BlankWeek {
 
   private static List<Group__c> checkedGroups(
     Program__c program,
-    Week__c week
+    Week__c week,
+    List<Group__c> result
   ) {
-    List<Group__c> result = ProgramReads.groupsAtCamp(program.Id, week.Id);
     if (result.isEmpty()) {
       CampLabels labels = CampLabels.forCamp(program.Season__r.Camp__c);
       throw new ShoreshException(

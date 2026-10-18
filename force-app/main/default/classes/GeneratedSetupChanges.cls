@@ -6,20 +6,22 @@
  */
 public with sharing class GeneratedSetupChanges {
   private Program__c program;
-  private CampLabels labels;
+  // Its camp words are read only when something changed.
+  private GeneratedSetup setup;
 
-  private GeneratedSetupChanges(Program__c program) {
-    this.program = program;
-    this.labels = CampLabels.forCamp(program.Season__r.Camp__c);
+  private GeneratedSetupChanges(GeneratedSetup setup) {
+    this.program = setup.program;
+    this.setup = setup;
   }
 
   /** The sentence for what changed, or null when the blank week is still the one built on. */
   public static String of(
-    Program__c program,
+    GeneratedSetup setup,
     List<ScheduleDays.DayGrid> blank,
     List<GeneratedWeek.Day> sent
   ) {
-    GeneratedSetupChanges changes = new GeneratedSetupChanges(program);
+    GeneratedSetupChanges changes = new GeneratedSetupChanges(setup);
+    Program__c program = setup.program;
     Map<Date, GeneratedWeek.Day> byDate = GeneratedFrames.byDate(sent);
     if (!sameDates(blank, byDate)) {
       return changes.sentence(program.Name + '\'s days');
@@ -50,14 +52,14 @@ public with sharing class GeneratedSetupChanges {
     if (!GeneratedFrames.sameIds(day.grid.blockIds(), built.blockIds)) {
       return program.Name +
         '\'s ' +
-        labels.pluralInSentence('TimeBlock') +
+        setup.labels().pluralInSentence('TimeBlock') +
         ' on ' +
         weekday;
     }
     if (!GeneratedFrames.sameIds(day.grid.groupIds(), built.groupIds)) {
       return program.Name +
         '\'s ' +
-        labels.pluralInSentence('Group') +
+        setup.labels().pluralInSentence('Group') +
         ' on ' +
         weekday;
     }
@@ -91,7 +93,7 @@ public with sharing class GeneratedSetupChanges {
   private String sentence(String changed) {
     return changed +
       ' changed since you opened this ' +
-      labels.singularInSentence('Week') +
+      setup.labels().singularInSentence('Week') +
       '. Open it again, then generate.';
   }
 }

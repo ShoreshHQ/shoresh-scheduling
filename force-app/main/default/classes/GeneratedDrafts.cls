@@ -69,8 +69,11 @@ public with sharing class GeneratedDrafts {
       );
     }
     Schedule__c draft = found[0];
-    CampLabels labels = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c);
+    // The camp's words are read only for a refusal.
     if (draft.Status__c != ManualDrafts.DRAFT) {
+      CampLabels labels = CampLabels.forCamp(
+        draft.Program__r.Season__r.Camp__c
+      );
       throw new ShoreshException(
         'A saved ' +
           labels.singularInSentence('Version') +
@@ -82,6 +85,9 @@ public with sharing class GeneratedDrafts {
       draft.Program__c != programId ||
       draft.Week__c != weekId
     ) {
+      CampLabels labels = CampLabels.forCamp(
+        draft.Program__r.Season__r.Camp__c
+      );
       throw new ShoreshException(
         'Only this ' +
           labels.singularInSentence('Week') +

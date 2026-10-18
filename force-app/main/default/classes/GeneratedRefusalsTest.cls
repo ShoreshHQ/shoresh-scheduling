@@ -9,6 +9,8 @@
  */
 @IsTest
 private class GeneratedRefusalsTest {
+  private static final String REOPEN = ' changed since you opened this week. Open it again, then generate.';
+
   private static GeneratedWeek.Save request(
     GeneratedInputs.Inputs read,
     String action
@@ -30,15 +32,17 @@ private class GeneratedRefusalsTest {
   static void fixedAndRecurringActivitiesStayWhereTheyAreSetUp() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
+      // On a draft: before one, a fixed activity that moved is setup that changed (a conflict).
+      generated();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      GeneratedWeek.Save cleared = request(read, GeneratedSaves.GENERATE);
+      GeneratedWeek.Save cleared = request(read, GeneratedSaves.TRY_ANOTHER);
       GeneratedTestData.setCell(
         cleared.days[0],
         GeneratedTestData.at(0, GeneratedTestData.PERIOD_1),
         ''
       );
-      GeneratedWeek.Save covered = request(read, GeneratedSaves.GENERATE);
+      GeneratedWeek.Save covered = request(read, GeneratedSaves.TRY_ANOTHER);
       GeneratedTestData.put(
         covered.days[0],
         GeneratedTestData.at(
@@ -47,7 +51,7 @@ private class GeneratedRefusalsTest {
         ),
         'Soccer'
       );
-      GeneratedWeek.Save placed = request(read, GeneratedSaves.GENERATE);
+      GeneratedWeek.Save placed = request(read, GeneratedSaves.TRY_ANOTHER);
       GeneratedTestData.put(
         placed.days[1],
         GeneratedTestData.at(
@@ -68,8 +72,7 @@ private class GeneratedRefusalsTest {
           GeneratedTestData.refusal(refused)
         );
       }
-      Test.stopTest();
-      Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+      Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
     }
   }
 
@@ -116,7 +119,6 @@ private class GeneratedRefusalsTest {
       );
       GeneratedTestData.setCell(cleared.days[0], lunchB, '');
       Assert.isFalse(GeneratedTestData.save(cleared).conflict);
-      Test.stopTest();
       Assert.areEqual(
         '',
         GeneratedTestData.slots(
@@ -164,7 +166,6 @@ private class GeneratedRefusalsTest {
         GeneratedTestData.UNREADABLE,
         GeneratedTestData.refusal(trip)
       );
-      Test.stopTest();
       Assert.areEqual(0, GeneratedTestData.generatedDrafts());
     }
   }
@@ -207,7 +208,6 @@ private class GeneratedRefusalsTest {
         GeneratedTestData.UNREADABLE,
         GeneratedTestData.refusal(shortRow)
       );
-      Test.stopTest();
       Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
     }
   }
@@ -225,39 +225,54 @@ private class GeneratedRefusalsTest {
   }
 
   @IsTest
-  static void aFirstGenerateAfterSetupChangedTheWeekIsAConflictThatSaysWhat() {
+  static void aTimeBlockAddedBeforeTheFirstGenerateIsAConflictThatSaysSo() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      String reopen = ' changed since you opened this week. Open it again, then generate.';
       Test.startTest();
-      // A time block added after the week was read.
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
-      GeneratedWeek.Result blocks = generateFrom(read);
-      Assert.isTrue(blocks.conflict);
-      Assert.areEqual('Main\'s time blocks on Monday' + reopen, blocks.message);
-      // A fixed activity added where the engine had placed one (not the director's doing).
-      read = GeneratedTestData.inputs();
+      GeneratedWeek.Result result = generateFrom(read);
+      Assert.isTrue(result.conflict);
+      Assert.areEqual('Main\'s time blocks on Monday' + REOPEN, result.message);
+      Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+    }
+  }
+
+  @IsTest
+  static void aFixedActivityAddedBeforeTheFirstGenerateIsAConflictNotARefusal() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Test.startTest();
+      // Added where the engine had placed an activity: not the director's doing.
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Database.insert(
         SetTimeTestData.fixed(ids, 'Assembly', 'Period 2'),
         AccessLevel.SYSTEM_MODE
       );
-      GeneratedWeek.Result setTime = generateFrom(read);
-      Assert.isTrue(setTime.conflict);
+      GeneratedWeek.Result result = generateFrom(read);
+      Assert.isTrue(result.conflict);
       Assert.areEqual(
-        'Period 2 for Group A on Monday' + reopen,
-        setTime.message
+        'Period 2 for Group A on Monday' + REOPEN,
+        result.message
       );
+      Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+    }
+  }
+
+  @IsTest
+  static void aDayDroppedBeforeTheFirstGenerateIsAConflictThatSaysSo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Test.startTest();
       // The program no longer runs on Thursdays.
-      read = GeneratedTestData.inputs();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Database.update(
         new Program__c(Id = ids.get('Main'), Thursday__c = false),
         AccessLevel.SYSTEM_MODE
       );
-      GeneratedWeek.Result days = generateFrom(read);
-      Assert.isTrue(days.conflict);
-      Assert.areEqual('Main\'s days' + reopen, days.message);
-      Test.stopTest();
+      GeneratedWeek.Result result = generateFrom(read);
+      Assert.isTrue(result.conflict);
+      Assert.areEqual('Main\'s days' + REOPEN, result.message);
       Assert.areEqual(0, GeneratedTestData.generatedDrafts());
     }
   }
@@ -266,7 +281,7 @@ private class GeneratedRefusalsTest {
   static void nothingNewForAGroupAwayOrWhatIsClosedThisWeek() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      Id draftId = generated();
+      generated();
       // After the week was generated: Group B is away, Soccer and the Gym are closed.
       Database.insert(
         new List<WeekException__c>{
@@ -313,6 +328,35 @@ private class GeneratedRefusalsTest {
         'Gym is closed in Week 1.',
         GeneratedTestData.refusal(closedPlace)
       );
+    }
+  }
+
+  @IsTest
+  static void leftoversOfAGroupAwayOrOfWhatIsClosedMayStayOrGo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = generated();
+      // After the week was generated: Group B is away, Soccer and the Gym are closed.
+      Database.insert(
+        new List<WeekException__c>{
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Group__c = ids.get('Group B')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Activity__c = ids.get('Soccer')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Location__c = ids.get('Gym')
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
       // Leftovers may stay (Gym games in Period 2, Group B's row) or be cleared.
       GeneratedWeek.Save kept = request(read, GeneratedSaves.FILL_OPEN);
       GeneratedTestData.put(kept.days[0], lunchA, 'Swim');
@@ -331,7 +375,6 @@ private class GeneratedRefusalsTest {
         ''
       );
       Assert.isFalse(GeneratedTestData.save(cleared).conflict);
-      Test.stopTest();
       Assert.areEqual(
         '',
         GeneratedTestData.slots(
@@ -379,7 +422,6 @@ private class GeneratedRefusalsTest {
           GeneratedTestData.refusal(refused)
         );
       }
-      Test.stopTest();
       Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
     }
   }
@@ -418,7 +460,6 @@ private class GeneratedRefusalsTest {
         'Soccer'
       );
       Assert.isFalse(GeneratedTestData.save(filled).conflict);
-      Test.stopTest();
       Assert.areEqual(
         GeneratedTestData.a('Gym games'),
         GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
@@ -433,11 +474,6 @@ private class GeneratedRefusalsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       generated();
-      Id manualId = ManualBuildController.startBlankWeek(
-          ids.get('Main'),
-          ids.get('Week 1')
-        )
-        .schedule.schedule.id;
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
         ids.get('Week 1'),
@@ -448,6 +484,11 @@ private class GeneratedRefusalsTest {
         'Evenings'
       );
       Test.startTest();
+      Id manualId = ManualBuildController.startBlankWeek(
+          ids.get('Main'),
+          ids.get('Week 1')
+        )
+        .schedule.schedule.id;
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       GeneratedWeek.Save onVersion = request(read, GeneratedSaves.REBUILD);
       onVersion.scheduleId = version.Id;
@@ -466,7 +507,6 @@ private class GeneratedRefusalsTest {
       GeneratedWeek.Save otherProgram = request(read, GeneratedSaves.REBUILD);
       otherProgram.programId = evenings.Id;
       Assert.areEqual(notHere, GeneratedTestData.refusal(otherProgram));
-      Test.stopTest();
       Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
       // Only the imported version: nothing was kept before a refused Rebuild.
       Assert.areEqual(1, GeneratedTestData.versions());
@@ -522,7 +562,6 @@ private class GeneratedRefusalsTest {
           )
         );
       }
-      Test.stopTest();
       Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
       Assert.areEqual(1, GeneratedTestData.generatedDrafts());
     }
@@ -548,7 +587,6 @@ private class GeneratedRefusalsTest {
       String refused = GeneratedTestData.refusal(
         request(read, GeneratedSaves.REBUILD)
       );
-      Test.stopTest();
       Assert.isTrue(refused.startsWith('Monday could not be read: '), refused);
       Assert.areEqual(0, GeneratedTestData.versions());
     }
