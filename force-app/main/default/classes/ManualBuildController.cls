@@ -1,8 +1,8 @@
 /**
  * Server side of Manual Build (desktop: the Manual schedule screen): open a program's draft for a
  * week, start a blank week, save slot edits (each made only if its slots still hold what the
- * director saw), and add an activity typed into a slot. Every query runs in user mode and every
- * write uses user-mode DML.
+ * director saw), add an activity typed into a slot, and its versions: Save version, Restore, Delete
+ * (ManualVersions). Every query runs in user mode and every write uses user-mode DML.
  */
 public with sharing class ManualBuildController {
   /** The program's Manual Build draft for the week, or null when it has not been started. */
@@ -55,6 +55,40 @@ public with sharing class ManualBuildController {
   ) {
     try {
       return ManualBuildActivities.add(scheduleId, name);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Save version: the draft as it is now, kept under a name. */
+  @AuraEnabled
+  public static Id saveVersion(Id scheduleId, String name) {
+    try {
+      return ManualVersions.save(scheduleId, name);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Restore: the version's days become the draft's (the draft kept first as "Before Restore"). */
+  @AuraEnabled
+  public static ManualBuildViews.DraftView restoreVersion(
+    Id scheduleId,
+    Id versionId
+  ) {
+    try {
+      ManualVersions.restore(scheduleId, versionId);
+      return ManualBuildViews.open(scheduleId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Delete: a version of the draft's week goes for good. */
+  @AuraEnabled
+  public static void deleteVersion(Id scheduleId, Id versionId) {
+    try {
+      ManualVersions.remove(scheduleId, versionId);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

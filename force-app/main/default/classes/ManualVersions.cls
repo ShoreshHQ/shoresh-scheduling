@@ -1,0 +1,151 @@
+/**
+ * Versions on Manual Build (desktop useSnapshots.js, VersionsDropdown.jsx; ADR 0008 §25): Save
+ * version keeps the draft as it is now under a name; Restore copies a version of the same week
+ * (from Manual Build or Generated Schedule, Greg's decision 9) into the draft, after keeping the
+ * draft as it was as an automatic version ("Before Restore"), the desktop's way back; Delete
+ * takes a version away. The draft is locked while any of these runs. Runs in user mode.
+ */
+public with sharing class ManualVersions {
+  public static final String VERSION = 'Version';
+  public static final String SAVED_BY_HAND = 'SavedByHand';
+  public static final String AUTO_SAVED = 'AutoSaved';
+  public static final String BEFORE_RESTORE = 'Before Restore';
+
+  /** Save version: the draft as it is now, kept under a name. Returns the version's Id. */
+  public static Id save(Id draftId, String name) {
+    Schedule__c draft = ManualDrafts.locked(draftId);
+    String named = SchedulesController.checkedName(
+      name,
+      draft.Program__r.Season__r.Camp__c
+    );
+    return keep(
+      draft,
+      readable(ScheduleDays.read(draftId)),
+      named,
+      SAVED_BY_HAND
+    );
+  }
+
+  /**
+   * Restore: the version's days become the draft's, after the draft as it was is kept as an
+   * automatic version. Returns that version's Id (null when the draft had no days to keep).
+   */
+  public static Id restore(Id draftId, Id versionId) {
+    Schedule__c draft = ManualDrafts.locked(draftId);
+    Schedule__c version = versionOf(versionId, draft);
+    List<ScheduleDays.DayGrid> restored = readable(
+      ScheduleDays.read(version.Id)
+    );
+    List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
+    Savepoint beforeRestore = Database.setSavepoint();
+    try {
+      Id kept = current.isEmpty()
+        ? null
+        : keep(draft, readable(current), BEFORE_RESTORE, AUTO_SAVED);
+      Map<Date, Integer> revisions = new Map<Date, Integer>();
+      for (ScheduleDays.DayGrid day : current) {
+        revisions.put(day.day, day.revision);
+      }
+      List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+      Set<Date> restoredDays = new Set<Date>();
+      for (ScheduleDays.DayGrid day : restored) {
+        saves.add(
+          new ScheduleDaySaves.DaySave(
+            day.day,
+            day.grid,
+            revisions.get(day.day)
+          )
+        );
+        restoredDays.add(day.day);
+      }
+      ScheduleDaySaves.write(draftId, saves);
+      // A day the version doesn't have goes from the draft too: the draft is the version now.
+      Database.delete(
+        [
+          SELECT Id
+          FROM ScheduleDay__c
+          WHERE Schedule__c = :draftId AND Date__c NOT IN :restoredDays
+          WITH USER_MODE
+        ],
+        true,
+        AccessLevel.USER_MODE
+      );
+      return kept;
+    } catch (Exception e) {
+      Database.rollback(beforeRestore);
+      throw e;
+    }
+  }
+
+  /** Delete: a version of the draft's week goes for good (its days with it). */
+  public static void remove(Id draftId, Id versionId) {
+    Schedule__c draft = ManualDrafts.locked(draftId);
+    Database.delete(versionOf(versionId, draft), true, AccessLevel.USER_MODE);
+  }
+
+  /** A version of the draft's program and week, or refused. */
+  private static Schedule__c versionOf(Id versionId, Schedule__c draft) {
+    List<Schedule__c> found = [
+      SELECT Id, Status__c, Program__c, Week__c
+      FROM Schedule__c
+      WHERE Id = :versionId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    CampLabels labels = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c);
+    if (
+      found.isEmpty() ||
+      found[0].Status__c != VERSION ||
+      found[0].Program__c != draft.Program__c ||
+      found[0].Week__c != draft.Week__c
+    ) {
+      throw new ShoreshException(
+        'That ' +
+          labels.singularInSentence('Version') +
+          ' was not found. It may have been deleted.'
+      );
+    }
+    return found[0];
+  }
+
+  /** Every day, refused if any can't be read (it couldn't be copied as it is). */
+  private static List<ScheduleDays.DayGrid> readable(
+    List<ScheduleDays.DayGrid> days
+  ) {
+    for (ScheduleDays.DayGrid day : days) {
+      if (day.grid == null) {
+        throw new ShoreshException(
+          'A day could not be read (' +
+            day.problem +
+            '), so nothing was changed.'
+        );
+      }
+    }
+    return days;
+  }
+
+  /** The days kept as a new version of the draft's week. */
+  private static Id keep(
+    Schedule__c draft,
+    List<ScheduleDays.DayGrid> days,
+    String name,
+    String reason
+  ) {
+    Schedule__c version = new Schedule__c(
+      Program__c = draft.Program__c,
+      Week__c = draft.Week__c,
+      Name = name,
+      Status__c = VERSION,
+      Origin__c = draft.Origin__c,
+      VersionReason__c = reason,
+      SourceSchedule__c = draft.Id
+    );
+    Database.insert(version, AccessLevel.USER_MODE);
+    List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+    for (ScheduleDays.DayGrid day : days) {
+      saves.add(new ScheduleDaySaves.DaySave(day.day, day.grid, null));
+    }
+    ScheduleDaySaves.write(version.Id, saves);
+    return version.Id;
+  }
+}

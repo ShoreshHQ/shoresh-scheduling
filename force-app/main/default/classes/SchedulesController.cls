@@ -58,8 +58,8 @@ public with sharing class SchedulesController {
     }
   }
 
-  /** The name without spaces around it; refused if blank or too long. */
-  private static String checkedName(String name, Id campId) {
+  /** The name without spaces around it; refused if blank or too long (Save version uses it too). */
+  public static String checkedName(String name, Id campId) {
     String trimmed = name == null ? '' : name.trim();
     if (trimmed.length() == 0) {
       throw ScreenErrors.of(
