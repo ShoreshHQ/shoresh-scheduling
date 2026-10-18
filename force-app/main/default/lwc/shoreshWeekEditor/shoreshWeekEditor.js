@@ -79,7 +79,7 @@ function slotKey(slot) {
  * - locks: the locked cells ("date|groupId|blockId"). A locked cell shows its lock, can't be
  *   dragged, dropped on, picked up or typed into; Enter or a click asks the host to unlock it
  *   ("unlockrequest", with the slot) and keeps focus on the cell. Every run saved names the locks
- *   the screen saw (locksBefore), and an Undo or Redo the locks to restore (locksAfter).
+ *   the screen saw (locksBefore), and an Undo or Redo the locks to leave (locksAfter).
  * - tools=false: the host's tools slot is left out ("Add <name> to activities" stays, as on the desktop).
  * - "cellfocus" says which cell keyboard focus reached; "saved" says each save's answer (the
  *   host shows the schedule it carries, never a patched copy); "editstate" says whether edits are
@@ -1242,8 +1242,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * The locks before and after a step, kept with it (when locks were passed): Undo restores the
-   * ones from before, Redo the ones from after.
+   * The locks before and after a step, kept with it (when locks were passed): Undo takes back the
+   * locks the step itself changed, Redo makes them again (lockTarget). `taken`: the cells whose
+   * lock the director has since set or removed from the Lock menu, which the step no longer owns.
    */
   recordLocks(stepId, serverRuns) {
     const before = this.liveLocks;
@@ -1252,7 +1253,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     this.stepLocks.set(stepId, {
       before,
-      after: serverRuns.reduce((now, run) => foldRun(now, run), before)
+      after: serverRuns.reduce((now, run) => foldRun(now, run), before),
+      taken: new Set()
     });
     const kept = new Set(
       [...this.history.undos, ...this.history.redos].map((step) => step.id)
@@ -1268,9 +1270,42 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (record) {
       this.stepLocks.set(stepId, {
         before: record.before,
-        after: serverRuns.reduce((now, run) => foldRun(now, run), record.before)
+        after: serverRuns.reduce(
+          (now, run) => foldRun(now, run),
+          record.before
+        ),
+        taken: record.taken
       });
     }
+  }
+
+  /**
+   * The locks an Undo or Redo of a step leaves, from the locks the director sees (`seen`): only
+   * the locks the step itself changed go back (Undo) or come again (Redo). A Lock the director set
+   * or removed from the Lock menu after the step stays as they left it, and the step gives up that
+   * cell for good, so a Redo after the Undo leaves it too (Greg, 2026-10-18).
+   */
+  lockTarget(record, kind, seen) {
+    const [from, to] =
+      kind === "undo"
+        ? [record.after, record.before]
+        : [record.before, record.after];
+    const target = new Set(seen);
+    new Set([...record.before, ...record.after]).forEach((key) => {
+      if (record.before.has(key) === record.after.has(key)) {
+        return;
+      }
+      if (record.taken.has(key) || seen.has(key) !== from.has(key)) {
+        record.taken.add(key);
+        return;
+      }
+      if (to.has(key)) {
+        target.add(key);
+      } else {
+        target.delete(key);
+      }
+    });
+    return target;
   }
 
   /** Where an edit starts, for the "saving" shade: from its own run, or found from the server's. */
@@ -1339,8 +1374,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     };
     const record = this.stepLocks.get(stepId);
     if (record && kind !== "edit") {
-      // An Undo puts back the locks from before the step, a Redo the ones from after it.
-      entry.locksTarget = kind === "undo" ? record.before : record.after;
+      // An Undo takes back the locks the step made, a Redo makes them again.
+      entry.locksTarget = this.lockTarget(record, kind, entry.seen);
     }
     this.queue = [...this.queue, entry];
     this.applyLocally(edit);
@@ -2410,13 +2445,16 @@ export default class ShoreshWeekEditor extends LightningElement {
         // Someone only took a lock off a cell this edit touches: nothing of theirs is covered,
         // so it is sent again, as it was, naming those cells unlocked as they are now. Each time
         // takes at least one lock out of what it names, so this ends.
-        this.queue = [
-          {
-            ...entry,
-            seen: new Set([...entry.seen].filter((key) => !unlocked.has(key)))
-          },
-          ...this.queue
-        ];
+        const seen = new Set(
+          [...entry.seen].filter((key) => !unlocked.has(key))
+        );
+        // An Undo or Redo leaves those cells unlocked too: their locks are no longer the step's.
+        const record = this.stepLocks.get(entry.stepId);
+        const locksTarget =
+          record && entry.kind !== "edit"
+            ? this.lockTarget(record, entry.kind, seen)
+            : entry.locksTarget;
+        this.queue = [{ ...entry, seen, locksTarget }, ...this.queue];
         this.showServerAndWaiting();
         this.saveNext();
         return;
@@ -2544,7 +2582,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     const record = this.stepLocks.get(entry.stepId);
     let locksTarget = entry.locksTarget;
     if (record && entry.kind !== "edit") {
-      locksTarget = entry.kind === "undo" ? record.before : record.after;
+      locksTarget = this.lockTarget(record, entry.kind, entry.seen);
     }
     const note = dropped.some((w) => w.kind === "redo")
       ? "Redo skipped."

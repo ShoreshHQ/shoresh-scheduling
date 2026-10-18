@@ -26,7 +26,9 @@ private class GeneratedEditLocksTest {
     'a second run reaches past its blocks; 2,,; ; 2|^A:a1 / 1|A:a2; -; 1 2',
     'undo takes the locks to restore; ,2,^; 2; 2|+; 1 3; 3',
     'undo keeps a lock outside the run; ,2,^; 1 2; 2|+; 1 3; 1 3',
-    'undo to no locks; ,2,^; 2 3; 2|+; ; '
+    'undo to no locks; ,2,^; 2 3; 2|+; ; ',
+    'undo keeps a lock set after its step; ,,; 2; 2|A:a1; 2; 2',
+    'redo keeps a lock set after its step; ,2,; 2; 2|; 2; 2'
   };
 
   private static final List<String> ITEMS = new List<String>{

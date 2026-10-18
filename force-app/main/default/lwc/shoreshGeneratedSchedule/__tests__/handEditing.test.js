@@ -814,6 +814,57 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(saveSlots).toHaveBeenCalledTimes(1);
   });
 
+  it("the week read again without Reload is not said to be as saved now", async () => {
+    const element = await render();
+    const reads = getInputs.mock.calls.length;
+    element.setup = { ...SETUP };
+    await flush();
+    expect(getInputs.mock.calls.length).toBe(reads + 1);
+    expect(q(element, '[data-id="announce"]').textContent.trim()).not.toBe(
+      "Week 1 as saved now."
+    );
+    expect(element.shadowRoot.activeElement).not.toBe(
+      action(element, "Rebuild")
+    );
+  });
+
+  it("Reload's week picked again while Reload reads: it shows fresh, not as Reload's answer", async () => {
+    const WEEK_2 = "a0W000000000002AAA";
+    getInputs.mockResolvedValue(savedWeek());
+    const element = createElement("c-shoresh-generated-schedule", {
+      is: ShoreshGeneratedSchedule
+    });
+    element.terms = terms;
+    element.setup = {
+      ...SETUP,
+      weeks: [...SETUP.weeks, { Id: WEEK_2, Name: "Week 2" }]
+    };
+    document.body.appendChild(element);
+    await flush();
+    await conflictShown(element);
+    // Reload's read and Week 2's never answer.
+    getInputs.mockReturnValueOnce(new Promise(() => {}));
+    q(element, '[data-id="reload"]').click();
+    await flush();
+    const pick = async (value) => {
+      q(element, '[data-id="week"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value } })
+      );
+      await flush();
+    };
+    getInputs.mockReturnValueOnce(new Promise(() => {}));
+    await pick(WEEK_2);
+    getInputs.mockResolvedValueOnce(savedWeek());
+    await pick(WEEK);
+    expect(textAt(element, "0-1")).toBe("Swim");
+    expect(q(element, '[data-id="announce"]').textContent.trim()).not.toBe(
+      "Week 1 as saved now."
+    );
+    expect(element.shadowRoot.activeElement).not.toBe(
+      action(element, "Rebuild")
+    );
+  });
+
   it("once the week shows, the build's bar, its error and a conflict sit under the toolbar", async () => {
     const element = await render();
     saveWeekOnServer.mockReturnValueOnce(new Promise(() => {}));

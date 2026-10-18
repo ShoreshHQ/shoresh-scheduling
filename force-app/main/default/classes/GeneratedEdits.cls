@@ -3,7 +3,8 @@
  * made only if its cells' locks are still as the screen saw them (locksBefore), so nobody's Lock
  * is removed or covered unseen; and every cell an edit changes is locked when it holds something
  * (its whole placement), unlocked when it is left Open (Greg, 2026-10-17: hand edits are locks);
- * an Undo or Redo restores the locks from before its step instead.
+ * an Undo or Redo leaves the locks its run names instead (the screen works them out: the step's
+ * own locks taken back or made again, a Lock set or removed since kept; Greg, 2026-10-18).
  */
 public with sharing class GeneratedEdits {
   private SlotEdits.Run run;
@@ -34,9 +35,9 @@ public with sharing class GeneratedEdits {
   }
 
   /**
-   * The locks after the run (at: group, first block). An Undo or Redo names them (locksAfter):
-   * the locks from before the step it undoes, restored exactly, so Undo leaves no lock behind and
-   * brings none back that wasn't there. Otherwise each changed cell's placement is locked when it
+   * The locks after the run (at: group, first block). An Undo or Redo names them (locksAfter),
+   * and they are left exactly: the locks its step made taken back (or made again, for a Redo),
+   * and a Lock the director set or removed after the step kept as they left it. Otherwise each changed cell's placement is locked when it
    * holds something and unlocked when Open, and a placement made shorter by hand is locked too,
    * so the next build keeps it as the director left it.
    */

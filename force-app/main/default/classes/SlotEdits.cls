@@ -30,8 +30,9 @@ public with sharing class SlotEdits {
     // whose cells are locked otherwise now is a conflict, so no one's Lock goes unseen.
     @AuraEnabled
     public List<String> locksBefore { get; set; }
-    // Generated Schedule only, for an Undo or Redo: each cell's lock to restore (from before the
-    // step it undoes). Left out, what the run changes is locked when filled.
+    // Generated Schedule only, for an Undo or Redo: each cell's lock to leave (the step's own
+    // locks taken back or made again, a Lock set or removed since kept). Left out, what the run
+    // changes is locked when filled.
     @AuraEnabled
     public List<String> locksAfter { get; set; }
 

@@ -197,7 +197,11 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - an Undo is the step's runs sent back the other way, so it is checked like any edit.
       Over someone else's newer change it asks _keep theirs or use yours_. Keeping theirs
       drops the step from both Undo and Redo;
-    - a refused save clears Undo, because what is saved is no longer known there.
+    - a refused save clears Undo, because what is saved is no longer known there;
+    - on Generated Schedule (ADR 0010 §33), Undo and Redo take back or make again only the
+      locks their step made; a Lock the director set or removed from the Lock menu after the
+      step stays as they left it, through Undo and a Redo after it (Greg, 2026-10-18). Manual
+      Build has no locks.
 18. **Keyboard, at parity with drag** (accessibility):
     - Space on a placement picks it up (_Swim picked up from Bunk 1 · Monday · Period 2._);
       arrow keys move; Space or Enter puts it down (move or swap); Escape puts it back;
@@ -488,7 +492,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       cleared for a copy that can't come. "Except N" counts the placements holding the cells
       the tool meant to change that won't hold what it meant, in the camp's word for
       activities, the same word as for locked ones (_except 1 activity that changed_, also
-      _… and 1 activity that is locked_; coordinator, 2026-10-18, one word per idea; until then
+      _… and 1 activity that is locked_; Greg approved, 2026-10-18, one word per idea; until then
       it counted cells). A cell may be kept only to keep a placement whole, or hold a fixed
       activity setup put there. Checked
       by `tools.property.test.js`: 3,000 seeded weeks of 4 or 5 days and 5 to 7 blocks,

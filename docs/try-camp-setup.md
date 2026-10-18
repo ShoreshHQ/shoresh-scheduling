@@ -837,8 +837,12 @@ doesn't change this one.
     a cell (or Enter) and type a name, drag an activity from the list or from another cell,
     Delete to clear, Shift with the arrows for length, Undo and Redo. Each change saves at once,
     and the cell you changed gets the lock straight away (a cell you clear gets none: Rebuild
-    may fill it again). Click **Rebuild** → **Rebuild it**: your changed cells stay, the rest is
-    built again. After a build, **Undo** starts over (greyed out).
+    may fill it again). **Undo** takes your change and its lock back; **Redo** makes both
+    again. A Lock you set yourself stays: clear a cell with Delete, choose _Lock …_ on it from
+    the **Lock** menu (it shows only its lock), then click **Undo**: the activity comes back and
+    the lock stays. **Redo** empties it again, still locked. Click **Rebuild** → **Rebuild it**:
+    your changed cells stay, the rest is built again. After a build, **Undo** starts over
+    (greyed out).
 17. **A locked cell.** Double-click a locked cell, or reach it and press Enter: nothing opens and
     nothing unlocks. The line under the toolbar says _Bunk 1 · Monday · Period 2 is locked._,
     and the **Lock** menu now offers _Unlock Bunk 1 · Monday · Period 2_. Choose it: the line

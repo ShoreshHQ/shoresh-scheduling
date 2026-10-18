@@ -695,11 +695,15 @@ taken out; the Apex tests run only in CI.
     - each run names its cells' locks as the screen saw them (`locksBefore`; the data module
       fills it in): a cell whose lock is different now is a conflict like any cell someone else
       changed, so nobody's Lock is removed or covered unseen;
-    - **Undo and Redo restore the locks** from before their step (Greg confirmed, 2026-10-18; matching
+    - **Undo and Redo reverse their step's own locks** (Greg confirmed, 2026-10-18; matching
       the desktop's Undo, which leaves no trace): their runs carry `locksAfter`, each cell's lock
-      to restore, and the server sets exactly those (never on a fixed or recurring activity).
+      to leave, and the server sets exactly those (never on a fixed or recurring activity).
       Undoing a hand edit unlocks the cell again; undoing a clear brings no lock back that
-      wasn't there. The screen keeps each step's locks with it in its Undo history;
+      wasn't there. **Undo keeps a Lock the director set afterwards** (Greg, 2026-10-18): a Lock
+      set or removed from the Lock menu after the step stays as the director left it, through
+      the Undo and a Redo after it; the step gives that cell's lock up for good. The screen keeps
+      each step's locks with it in its Undo history and works `locksAfter` out from the locks it
+      shows (`shoreshWeekEditor` `lockTarget`);
     - the edit names the revision the screen read the week at. The answer's `revision` (with
       the week) is given only when nobody else saved the week in between; otherwise it is empty
       and the screen reads the week again before a whole-week save. So a lock or a hand edit
@@ -795,7 +799,8 @@ unlocked (version 1), a changed cell locked and an Open one not, unclear lock ro
 split and joined with their groups. `GeneratedLocksTest` (as a scheduler): a hand edit locks
 what it changes and unlocks what it leaves Open, with the locks and revision in the answer; only
 the cells it changes; whole placements but never Flagpole; an activity made shorter is locked as
-left; Undo and Redo restore the locks from before their step; a hand edit over a lock it didn't
+left; Undo and Redo leave the locks their runs name (`GeneratedEditLocksTest` shares the cases,
+including a Lock set after the step, with the screen's `lockRule.test.js`); a hand edit over a lock it didn't
 see is a conflict, and is made when it names it; a stale screen's lock is a conflict and its
 hand edit gets no revision; the day and group shortcuts lock only filled cells, a group's day
 only that group that day, and only the day that changed is written again; unlock; one block of
