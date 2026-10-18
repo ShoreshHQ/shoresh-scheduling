@@ -449,7 +449,10 @@ function stillToPlace(ctx) {
   return { stillNeeded, spread, stillNeededBy, spreadBy };
 }
 
-/** Cells filled, of the cells to fill (at camp, and not a fixed or recurring activity). */
+/**
+ * Cells filled, of the cells to fill: at camp, not a fixed or recurring activity, and not a cell
+ * the director locked empty (Generated Schedule: a Lock on an Open cell keeps it empty).
+ */
 function filledCount(ctx) {
   let filled = 0;
   let total = 0;
@@ -463,7 +466,9 @@ function filledCount(ctx) {
         if (
           ctx.isAway(grp.id, day.blocks[b].id) ||
           item.startsWith("F:") ||
-          item.startsWith("R:")
+          item.startsWith("R:") ||
+          (item === OPEN &&
+            ctx.isLockedOpen(grp.id, day.dateValue, day.blocks[b].id))
         ) {
           return;
         }
@@ -478,7 +483,9 @@ function filledCount(ctx) {
 /**
  * The week checked. model: { activities (readActivities), locations (readLocations), divisions
  * and setTimeLocations (readProgram), notFor: activity Id -> group Ids it isn't set up for,
- * isAway(groupId, blockId), locked (placement keys the director locked), othersAt(kind, id, dayIndex, blockId) }. words: { t (camp terms), dayName(dateValue) }.
+ * isAway(groupId, blockId), locked (placement keys the director locked), isLockedOpen(groupId,
+ * dateValue, blockId) (a cell locked empty, not counted as to fill), othersAt(kind, id, dayIndex,
+ * blockId) }. words: { t (camp terms), dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
@@ -506,6 +513,7 @@ export function checkWeek(days, model, words) {
     setTimeLocations: model.setTimeLocations || new Map(),
     notFor: (id) => notForSets.get(id) || new Set(),
     isAway: model.isAway || (() => false),
+    isLockedOpen: model.isLockedOpen || (() => false),
     locked: model.locked || new Set(),
     // Other programs' groups (G5): kind "place" or "activity", its Id, and "d|b". Both schedules
     // pass them (the engine's checkModel, Manual Build through otherProgramsAt).

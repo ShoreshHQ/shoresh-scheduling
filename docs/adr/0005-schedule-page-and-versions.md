@@ -34,6 +34,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    trip) a dashed box marked "not set up yet". **Trip** is a new camp word (`ModelTerm__c`
    value `Trip`) and glossary term (Greg, 2026-10-16), so a camp can use its own name. A legend under Daily and Group View explains
    the looks (the desktop shows one on Manual Build).
+
 3. **Versions** is the desktop's dropdown, shared by Manual Build and Generated Schedule (it
    lists every version of the program's week). Each row: name, how it was made (Imported,
    Manual Build, Generated Schedule, Copied), when it was saved, "on screen now" for the open
@@ -90,7 +91,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      later Manual Build edits cells by changing one token; new needs (locks, locations per
      cell, gap reasons) come as a format version 2, which `GridFormatVersion__c` lets old and
      new days live side by side. A day saved by a newer format shows "saved by a newer version
-     of Shoresh" rather than guessing.
+     of Shoresh" rather than guessing. Version 2 (ADR 0010 §32) adds the
+     locks.
+
 7. **Size, tested** (data model requirement before release): a day of 100 groups × 14 time
    blocks, every cell filled with three-digit item numbers, 150 items with long names, is
    **16,760 characters** (13% of one record), written and read back unchanged in about 0.1 s

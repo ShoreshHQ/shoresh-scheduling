@@ -38,6 +38,7 @@ public with sharing class ScheduleGridRules {
     for (Integer g = 0; g < grid.rows.size(); g++) {
       checkRow(grid, g);
     }
+    ScheduleGridLocks.check(grid);
   }
 
   private static void checkItems(List<ScheduleGrid.Item> items) {

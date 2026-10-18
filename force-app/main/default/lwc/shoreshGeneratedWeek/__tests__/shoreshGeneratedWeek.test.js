@@ -232,12 +232,16 @@ describe("c/shoreshGeneratedWeek", () => {
         ]
       }
     });
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: SAVED,
       scheduleId: "a0S000000000001AAA",
       revision: "2026-06-29:4",
       versionId: "a0S000000000002AAA"
     });
+    // The week to go on with: what was built, the new revision, the locks the server kept.
+    expect(result.loaded.revision).toBe("2026-06-29:4");
+    expect(result.loaded.input.days).toEqual([built]);
+    expect(result.loaded.input.locks).toEqual([]);
   });
 
   it("sends a first Generate with no draft, and an item not set up yet with an empty id", async () => {
@@ -265,12 +269,13 @@ describe("c/shoreshGeneratedWeek", () => {
     expect(request.days[0].items).toEqual([
       { kind: "T", id: "", name: "Zoo trip" }
     ]);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: SAVED,
       scheduleId: "a0S000000000001AAA",
       revision: "2026-06-29:1",
       versionId: null
     });
+    expect(result.loaded.scheduleId).toBe("a0S000000000001AAA");
   });
 
   it("says when someone else saved the week since it was loaded", async () => {

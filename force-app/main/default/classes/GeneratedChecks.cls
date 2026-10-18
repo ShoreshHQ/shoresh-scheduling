@@ -7,7 +7,9 @@
  *   this week); a leftover there may be cleared;
  * - only this season's activities, and none closed this week (GeneratedClosures);
  * - something not set up yet (an elective, a trip) stays where it is, and is never newly placed;
- * - Fill the open cells changes only cells that were Open.
+ * - Fill the open cells changes only cells that were Open;
+ * - a locked cell is never changed (ScheduleGridLocks): its lock is the director's, and the
+ *   server keeps the stored locks whatever the screen sends. Start over clears them all.
  * Rule bends (over a weekly limit and the rest) are allowed: the engine marks them. That the days
  * are the draft's own is GeneratedFrames; the grids themselves, GeneratedGrids. Reads in user mode.
  */
@@ -16,6 +18,10 @@ public with sharing class GeneratedChecks {
   private GeneratedClosures closures;
   // Fill the open cells: every filled cell stays as it is.
   private Boolean onlyOpen;
+  // Every build but Start over keeps the locks.
+  private Boolean keepLocks;
+  // The day being checked, as saved.
+  private ScheduleDays.DayGrid day;
 
   private GeneratedChecks(
     SlotRules rules,
@@ -42,9 +48,12 @@ public with sharing class GeneratedChecks {
       new GeneratedClosures(setup),
       request.action == GeneratedSaves.FILL_OPEN
     );
+    checks.keepLocks = request.action != GeneratedSaves.START_OVER;
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleGrid now = GeneratedGrids.of(day.grid, byDate.get(day.day));
+      checks.day = day;
+      checks.keepLocksOf(day.grid, now);
       checks.name(day.grid, now);
       for (Integer g = 0; g < now.groups.size(); g++) {
         checks.checkRow(SlotIds.ofRow(day.grid, g), now, g);
@@ -87,17 +96,43 @@ public with sharing class GeneratedChecks {
     }
   }
 
+  /** The stored locks, never the screen's: kept, or all cleared by Start over. */
+  private void keepLocksOf(ScheduleGrid before, ScheduleGrid now) {
+    List<List<String>> stored = keepLocks
+      ? before.locks
+      : new List<List<String>>();
+    now.locks = new List<List<String>>();
+    for (List<String> row : stored) {
+      now.locks.add(new List<String>(row));
+    }
+  }
+
   /** Every cell of a group's row that changed must be one the rules allow. */
   private void checkRow(List<String> was, ScheduleGrid now, Integer g) {
     List<String> slots = SlotIds.ofRow(now, g);
     for (Integer b = 0; b < slots.size(); b++) {
       if (!slots[b].equals(was[b])) {
+        checkNotLocked(now, g, b);
         checkCell(
           was[b],
           slots[b],
           new List<String>{ now.groups[g].id, now.blocks[b].id }
         );
       }
+    }
+  }
+
+  /** A locked cell keeps what it holds (Bunk 1 · Monday · Period 2 is locked.). */
+  private void checkNotLocked(ScheduleGrid now, Integer g, Integer b) {
+    if (keepLocks && ScheduleGridLocks.isLocked(day.grid, g, b)) {
+      throw new ShoreshException(
+        now.groups[g].name +
+          ' · ' +
+          BlankWeek.weekdayOf(day.day) +
+          ' · ' +
+          now.blocks[b].name +
+          ' is locked.'
+      );
     }
   }
 
