@@ -9,60 +9,35 @@
 private class GeneratedLimitsTest {
   // Each call is one request from the screen: Salesforce allows 100 queries in one. Measured
   // in shoresh-test (2026-10-18) on this camp with its two other programs: opening a week 22
-  // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. Without
-  // them (the Rebuild test): a Rebuild with its version 19, opening the generated week 13. The
-  // bound is per request, whatever the week's size: no query runs per day, group or cell. Other
-  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse;
-  // threeOtherProgramsUseNoMoreQueriesThanOne).
+  // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. A
+  // Rebuild with its version measured 19 (on a camp without the other programs: saves don't
+  // read them). The bound is per request, whatever the week's size: no query runs per day,
+  // group or cell. Other programs (G5) add at most 4 to opening a week, whatever their number
+  // (OtherProgramUse; threeOtherProgramsUseNoMoreQueriesThanOne).
   private static final Integer MOST_QUERIES = 25;
-  // Whether the camp has the two other programs. The Rebuild test leaves them out: its setup
-  // (a first Generate and two reads) runs before Test.startTest() and would not leave room for
-  // them; saves don't read other programs, and opening a week is measured with them below.
-  private static Boolean withOtherPrograms = true;
 
   // The big camp (with its two other programs) is built once, by the scheduler, in setup; each
-  // test finds it again. A test's changes are undone when it ends, so each starts from the same camp.
+  // test reads its ids back (sharedCamp). A test's changes are undone when it ends, so each starts
+  // from the same camp.
   @TestSetup
   static void makeCamp() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = bigCamp();
     }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
   }
 
-  /** The scheduler setup made. */
+  /** The scheduler setup built the camp as (by its Id, not looked up by alias). */
   private static User scheduler() {
-    return [
-      SELECT Id
-      FROM User
-      WHERE
-        Alias = 'sched'
-        AND Id IN (
-          SELECT AssigneeId
-          FROM PermissionSetAssignment
-          WHERE PermissionSet.Name = 'Shoresh_Scheduler'
-        )
-      LIMIT 1
-    ];
+    return KeptCamp.scheduler(KeptCamp.keptIds());
   }
 
-  /** Setup's camp, as bigCamp returned it (what the tests use of it: Main and Week 1). */
+  /** Setup's camp, as bigCamp returned it, kept where GeneratedTestData's helpers read it. */
   private static Map<String, Id> sharedCamp() {
-    Map<String, Id> ids = new Map<String, Id>{
-      'Main' => [
-        SELECT Id
-        FROM Program__c
-        WHERE Name = 'Main' AND Season__r.Camp__r.Name = 'Camp Cedar'
-        WITH SYSTEM_MODE
-      ][0]
-      .Id,
-      'Week 1' => [
-        SELECT Id
-        FROM Week__c
-        WHERE Name = 'Week 1' AND Season__r.Camp__r.Name = 'Camp Cedar'
-        WITH SYSTEM_MODE
-      ][0]
-      .Id
-    };
+    Map<String, Id> ids = KeptCamp.keptIds();
     GeneratedTestData.ids = ids;
     return ids;
   }
@@ -133,10 +108,8 @@ private class GeneratedLimitsTest {
         ),
         AccessLevel.SYSTEM_MODE
       );
-      if (withOtherPrograms) {
-        // Two other programs, so a query run once per program would show.
-        addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
-      }
+      // Two other programs, so a query run once per program would show.
+      addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
       SetTimeGuard.checkPending();
       GeneratedTestData.ids = ids;
       return ids;
@@ -416,7 +389,6 @@ private class GeneratedLimitsTest {
   @IsTest
   static void aRebuildUsesFewQueries() {
     System.runAs(scheduler()) {
-      withOtherPrograms = false;
       sharedCamp();
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)

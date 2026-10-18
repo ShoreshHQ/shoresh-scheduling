@@ -11,49 +11,27 @@
 private class GeneratedRefusalsTest {
   private static final String REOPEN = ' changed since you opened this week. Open it again, then generate.';
 
-  // The camp is built once, by the scheduler, in setup; each test finds it again by name. Every
+  // The camp is built once, by the scheduler, in setup; each test reads its ids back. Every
   // test still starts from the same camp, because a test's changes are undone when it ends.
   @TestSetup
   static void makeCamp() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      GeneratedTestData.camp();
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = GeneratedTestData.camp();
     }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
   }
 
-  /** The scheduler setup made (the outsider test makes its own other user later). */
+  /** The scheduler setup built the camp as (by its Id, not looked up by alias). The outsider test makes its own other user later. */
   private static User scheduler() {
-    return [
-      SELECT Id
-      FROM User
-      WHERE
-        Alias = 'sched'
-        AND Id IN (
-          SELECT AssigneeId
-          FROM PermissionSetAssignment
-          WHERE PermissionSet.Name = 'Shoresh_Scheduler'
-        )
-      LIMIT 1
-    ];
+    return KeptCamp.scheduler(KeptCamp.keptIds());
   }
 
-  /** The camp setup made, by name, as GeneratedTestData.camp() returned it. */
+  /** The camp setup built, kept where GeneratedTestData's helpers read it. */
   private static Map<String, Id> camp() {
-    Map<String, Id> ids = new Map<String, Id>();
-    ids.put('Camp', [SELECT Id FROM Camp__c WITH SYSTEM_MODE LIMIT 1].Id);
-    ids.put('Season', [SELECT Id FROM Season__c WITH SYSTEM_MODE LIMIT 1].Id);
-    List<SObject> named = new List<SObject>();
-    named.addAll([SELECT Name FROM Week__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM Program__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM TimeBlock__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM Division__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM Group__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM Location__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM Activity__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM FixedActivity__c WITH SYSTEM_MODE]);
-    named.addAll([SELECT Name FROM RecurringActivity__c WITH SYSTEM_MODE]);
-    for (SObject record : named) {
-      ids.put((String) record.get('Name'), record.Id);
-    }
+    Map<String, Id> ids = KeptCamp.keptIds();
     GeneratedTestData.ids = ids;
     return ids;
   }
