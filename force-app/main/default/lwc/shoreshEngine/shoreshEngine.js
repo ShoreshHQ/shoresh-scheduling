@@ -381,18 +381,59 @@ function groupOrder(groups, days) {
   return [...known, ...unknown];
 }
 
-/** Other programs' groups per place and per activity, on each of this program's blocks. */
+/**
+ * Other programs' groups for checkWeek's model (othersAt), on a week's days as Manual Build's
+ * DayView has them: entries as generateWeek's `otherPrograms`, counted the same way, so both
+ * schedules dot the same over-capacity places. The day index is the one into `days`.
+ */
+export function otherProgramsAt(entries, days) {
+  const read = readDays(days, new Map());
+  const { otherPlace, otherActivity } = otherPrograms(entries, read);
+  const indexOf = new Map(read.map((day) => [day.date, day.index]));
+  return (kind, id, d, blockId) => {
+    const index = days && days[d] ? indexOf.get(days[d].dateValue) : undefined;
+    if (index === undefined) {
+      return 0;
+    }
+    return (
+      (kind === "place" ? otherPlace : otherActivity).get(
+        `${id}|${index}|${blockId}`
+      ) || 0
+    );
+  };
+}
+
+/**
+ * The server's entries (OtherProgramUse.Entry: dateValue, startTime, endTime, locationId,
+ * activityId, groups) in generateWeek's `otherPrograms` shape.
+ */
+export function readOtherPrograms(records) {
+  return (records || []).map((r) => ({
+    date: r.dateValue,
+    startTime: r.startTime,
+    endTime: r.endTime,
+    locationId: r.locationId || null,
+    activityId: r.activityId || null,
+    groups: r.groups
+  }));
+}
+
+/**
+ * Other programs' groups per place and per activity, on each of this program's blocks: the most
+ * there at any one moment of the block, not the total of every entry overlapping it. Programs
+ * keep their own time grids, so one group across two of their shorter blocks, or two groups one
+ * after the other, is one group at a time (ADR 0010 §23).
+ */
 function otherPrograms(entries, days) {
-  const otherPlace = new Map();
-  const otherActivity = new Map();
-  const ordered = [...(entries || [])].sort(
-    (a, b) =>
-      compareText(a.date, b.date) ||
-      compareText(a.startTime, b.startTime) ||
-      compareText(a.locationId, b.locationId) ||
-      compareText(a.activityId, b.activityId)
-  );
-  for (const entry of ordered) {
+  const placeSpans = new Map();
+  const activitySpans = new Map();
+  const addSpan = (spans, k, span) => {
+    if (!spans.has(k)) {
+      spans.set(k, []);
+    }
+    spans.get(k).push(span);
+  };
+  for (const entry of entries || []) {
     const start = minutes(entry.startTime);
     const end = minutes(entry.endTime);
     // No count means one group; a count of 0 means none.
@@ -408,18 +449,55 @@ function otherPrograms(entries, days) {
         if (block.start == null || !(block.start < end && start < block.end)) {
           continue;
         }
+        // The part of the entry inside this block.
+        const span = [
+          Math.max(start, block.start),
+          Math.min(end, block.end),
+          n
+        ];
         if (entry.locationId) {
-          const k = `${entry.locationId}|${day.index}|${block.id}`;
-          otherPlace.set(k, (otherPlace.get(k) || 0) + n);
+          addSpan(
+            placeSpans,
+            `${entry.locationId}|${day.index}|${block.id}`,
+            span
+          );
         }
         if (entry.activityId) {
-          const k = `${entry.activityId}|${day.index}|${block.id}`;
-          otherActivity.set(k, (otherActivity.get(k) || 0) + n);
+          addSpan(
+            activitySpans,
+            `${entry.activityId}|${day.index}|${block.id}`,
+            span
+          );
         }
       }
     }
   }
-  return { otherPlace, otherActivity };
+  const busiest = (spans) =>
+    new Map([...spans].map(([k, list]) => [k, mostAtOnce(list)]));
+  return {
+    otherPlace: busiest(placeSpans),
+    otherActivity: busiest(activitySpans)
+  };
+}
+
+/**
+ * The most groups present at one moment, from [start, end, groups] spans: a sweep over the start
+ * and end times, ends before starts at the same minute (touching times don't overlap). The same
+ * whatever order the spans come in.
+ */
+function mostAtOnce(spans) {
+  const changes = [];
+  for (const [from, to, n] of spans) {
+    changes.push([from, n], [to, -n]);
+  }
+  changes.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let now = 0;
+  let most = 0;
+  for (const [, change] of changes) {
+    now += change;
+    most = Math.max(most, now);
+  }
+  return most;
 }
 
 function activityItem(act) {

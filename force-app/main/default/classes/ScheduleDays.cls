@@ -35,7 +35,8 @@ public with sharing class ScheduleDays {
     return days;
   }
 
-  private static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
+  /** One day from its parts (Part__c order), or why it could not be read. */
+  public static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
     DayGrid result = new DayGrid();
     result.day = day;
     List<String> texts = new List<String>();
