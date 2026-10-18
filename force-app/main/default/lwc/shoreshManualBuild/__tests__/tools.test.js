@@ -1,4 +1,4 @@
-import { LEFT_OUT, clearEdit, copyDayEdit } from "../tools";
+import { LEFT_OUT, clearEdit, copyDayEdit, replan } from "../tools";
 import { slots } from "../slotEdits";
 import { BLOCKS, day } from "./data/draftFixture";
 
@@ -206,5 +206,32 @@ describe("Copy day to…", () => {
     ];
     const { runs } = copyDayEdit(days, 0, [0, 1, 2]);
     expect(runs.map((run) => run.day)).toEqual([1]);
+  });
+});
+
+describe("worked out again after someone else's change (replan)", () => {
+  const COPY = { kind: "copy", from: "2026-06-29", dates: ["2026-06-30"] };
+
+  it("a copy whose source cell someone else changed leaves that target cell as it is", () => {
+    // The director saw Swim in Bunk 1's Monday Period 2 and copied Monday to Tuesday, where
+    // Bunk 1 has Soccer. Someone else made Monday's cell Boating.
+    const seen = week(["1,2,", "1,,"], ["1,4,", "1,,"]);
+    const saved = week(["1,3,", "1,,"], ["1,4,", "1,,"]);
+    const result = replan(COPY, seen, saved, new Set(), () => false);
+    // Tuesday keeps Soccer: neither the Swim the director saw nor their Boating is copied.
+    expect(after(saved, result.runs)[1][0]).toEqual(["F:f1", "A:a3", ""]);
+    expect(result.kept.has("2026-06-30|g1|t2")).toBe(true);
+    expect(result.missed).toBe(1);
+  });
+
+  it("a placement made shorter is someone else's in every cell it covered", () => {
+    // Bunk 1's Boating ran Period 2 and Lunch; someone else shortened it to Period 2.
+    const seen = week(["1,3,^", "1,,"], ["1,,", "1,,"]);
+    const saved = week(["1,3,", "1,,"], ["1,,", "1,,"]);
+    const clear = { kind: "clear", dates: ["2026-06-29"] };
+    const result = replan(clear, seen, saved, new Set(), () => false);
+    expect(result.runs).toEqual([]);
+    expect(result.kept.has("2026-06-29|g1|t2")).toBe(true);
+    expect(result.kept.has("2026-06-29|g1|t3")).toBe(true);
   });
 });

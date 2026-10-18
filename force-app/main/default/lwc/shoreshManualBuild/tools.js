@@ -266,6 +266,26 @@ export function slotAt(week, key) {
   return g < 0 || b < 0 ? null : slots(day, g)[b];
 }
 
+/**
+ * The placement a cell (by key) is part of, as text: its first block's Id, its length and what it
+ * is ("t1|3|A:a1"), so a placement made shorter or longer reads as changed in every cell it
+ * covered or covers; null when the week doesn't have the cell.
+ */
+export function placementAt(week, key) {
+  const [date, groupId, blockId] = key.split("|");
+  const day = week.find((d) => d.dateValue === date);
+  if (!day || day.problem) {
+    return null;
+  }
+  const g = day.groups.findIndex((x) => x.id === groupId);
+  const b = day.blocks.findIndex((x) => x.id === blockId);
+  if (g < 0 || b < 0) {
+    return null;
+  }
+  const p = placementIn(slots(day, g), b);
+  return `${day.blocks[p.first].id}|${p.length}|${p.slot}`;
+}
+
 /** Every cell's key in a week. */
 function keysOf(week) {
   const keys = [];
@@ -379,8 +399,11 @@ function keepWholePlacements(tool, source, saved, all) {
 export function replan(tool, seen, saved, kept, isAway) {
   const intended = resultOf(seen, toolRuns(tool, seen, { isAway }).runs);
   const all = new Set(kept);
+  // A cell is someone else's when the placement it is part of isn't the one the director saw
+  // (not only its text: a placement made shorter keeps its first cell's text).
+  const changed = (key) => placementAt(saved, key) !== placementAt(seen, key);
   keysOf(saved).forEach((key) => {
-    if (slotAt(saved, key) !== slotAt(seen, key)) {
+    if (changed(key)) {
       all.add(key);
     }
   });
@@ -392,7 +415,7 @@ export function replan(tool, seen, saved, kept, isAway) {
       source.groups.forEach((grp, g) =>
         source.blocks.forEach((block, b) => {
           const key = cellKey(source, g, b);
-          if (slotAt(saved, key) !== slotAt(seen, key)) {
+          if (changed(key)) {
             tool.dates.forEach((date) =>
               all.add(`${date}|${grp.id}|${block.id}`)
             );

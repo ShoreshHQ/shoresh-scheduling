@@ -1553,7 +1553,7 @@ export default class ShoreshManualBuild extends LightningElement {
    * a cell it clears, say): the tool is worked out again on the saved week, leaving every cell
    * someone else changed since the director looked as it is now, and the rest is made, as the
    * same Undo step (coordinator, 2026-10-17). The line says what was left: "Cleared Monday,
-   * except 1 cell someone else changed".
+   * except 1 cell that changed".
    */
   /**
    * After Keep theirs, or when the saved week has changed under a tool (a fixed activity now in
@@ -1589,7 +1589,7 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     this.historyVersion += 1;
     const except = result.missed
-      ? `${label}, except ${result.missed} ${result.missed === 1 ? "cell" : "cells"} someone else changed`
+      ? `${label}, except ${result.missed} ${result.missed === 1 ? "cell that" : "cells that"} changed`
       : label;
     const said = this.toolWords(tool, result);
     this.queue = [

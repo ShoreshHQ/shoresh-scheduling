@@ -236,7 +236,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       ["g1", ["", ""]]
     ]);
     expect(toolNotice(element)).toBe(
-      "Cleared Monday, except 1 cell someone else changed · Undo"
+      "Cleared Monday, except 1 cell that changed · Undo"
     );
     // One Undo step puts Bunk 1 back, and leaves their Swim.
     q(element, '[data-id="tool-undo"]').click();
@@ -280,7 +280,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       ["g2", "t2", [""]]
     ]);
     expect(toolNotice(element)).toBe(
-      "Cleared Monday, except 1 cell someone else changed · Undo"
+      "Cleared Monday, except 1 cell that changed · Undo"
     );
   });
 

@@ -474,20 +474,27 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       dropped for one cell. On **Keep theirs**, or when the saved week has changed under it (a
       fixed activity now in a cell it clears, say), it is worked out again on the saved week,
       leaving every cell someone else changed since the director looked as it is now, and the
-      rest is made as the same Undo step: _Cleared Monday, except 1 cell someone else changed ·
+      rest is made as the same Undo step: _Cleared Monday, except 1 cell that changed ·
       Undo_. **Use yours** makes all of it, as for any edit. While the question is open the line
       isn't shown, and edits wait. The re-plan (`tools.js` `replan`) works from two weeks only:
       the one the director made the tool on (kept with it, never replaced by anything newer)
       and the server's, without the director's own edits still waiting, so those never count
-      as anyone else's. A cell kept in any round stays kept in the next. A copy comes from the
+      as anyone else's. A cell is someone else's when the placement it is part of isn't the one
+      the director saw (where it starts, how long it runs, what it is), so a placement made
+      shorter or longer counts in every cell. A cell kept in any round stays kept in the next. A copy comes from the
       source day as the director saw it; a target whose source cell someone else changed is
       kept. A copied placement and what is there now go whole or not at all, so nothing is
       cleared for a copy that can't come. "Except N" counts the cells the tool meant to change
-      that won't hold what it meant. Checked by `tools.property.test.js`: 2,000 seeded weeks,
-      random tools, random changes by others (and put back) across up to three rounds of Keep
-      theirs or Use yours, with an edit of the director's own waiting: nothing kept is
-      overwritten, the tool changes only what it meant, Undo puts the saved week back exactly,
-      "except N" is exact, and the director's own edit is never someone else's.
+      that won't hold what it meant, in neutral words (_except 1 cell that changed_: a cell may
+      be kept only to keep a placement whole, or hold a fixed activity setup put there). Checked
+      by `tools.property.test.js`: 3,000 seeded weeks of 4 or 5 days and 5 to 7 blocks,
+      activities up to 3 blocks long, others making, lengthening, shortening and clearing
+      placements and putting whole rows back, up to four rounds of Keep theirs or Use yours,
+      and an edit of the director's own waiting; the server modelled as SlotSaves and
+      ScheduleGridRules take an edit. Nothing kept is overwritten, the tool changes only what
+      it meant, every placement is left whole, Undo puts the saved week back exactly, "except
+      N" is exact, and the director's own edit is never someone else's and saves after the
+      tool when its cell is as they saw it.
     - Not on a day that can't be read (only Clear week shows there, and leaves that day), and
       not in Activity View (read-only there, as on the desktop).
     - **Checked by** `tools.test.js` (what each tool changes, leaves, and lists, including
