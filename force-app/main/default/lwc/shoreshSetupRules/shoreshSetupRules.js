@@ -584,7 +584,7 @@ function recordNames(setup) {
  * The question before turning something off for a week it is already placed in (Shoresh desktop
  * ExclusionConfirmDialog.jsx, its words in the camp's, "cells" for the desktop's "slots"):
  * { heading, lines, confirmLabel } for c-shoresh-ask. placed: RunsInController.placedInWeeks's
- * answer ([{ target, week, slots }]), one item or several at once.
+ * answer ([{ target, week, cells }]), one item or several at once.
  */
 export function turnOffQuestion(placed, setup, terms) {
   const names = recordNames(setup || {});
@@ -595,7 +595,7 @@ export function turnOffQuestion(placed, setup, terms) {
     const week = names.get(only.week) || `this ${terms.sIn("Week")}`;
     return {
       heading: `Turn off "${names.get(only.target) || "this one"}" for ${week}?`,
-      lines: [`Placed in ${cells(only.slots)} in ${week}.`, stay],
+      lines: [`Placed in ${cells(only.cells)} in ${week}.`, stay],
       confirmLabel: "Turn off anyway"
     };
   }
@@ -604,7 +604,7 @@ export function turnOffQuestion(placed, setup, terms) {
     lines: [
       ...placed.map(
         (p) =>
-          `"${names.get(p.target) || "One of them"}": placed in ${cells(p.slots)} in ${names.get(p.week)}.`
+          `"${names.get(p.target) || "One of them"}": placed in ${cells(p.cells)} in ${names.get(p.week)}.`
       ),
       stay
     ],

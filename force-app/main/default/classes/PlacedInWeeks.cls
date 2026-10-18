@@ -1,8 +1,8 @@
 /**
- * How many slots a group, activity, or location already has in a week's Manual Build and
+ * How many cells a group, activity, or location already has in a week's Manual Build and
  * Generated Schedule drafts, so turning it off for that week can ask first (Shoresh desktop
- * ExclusionConfirmDialog.jsx: "Placed in N slots in <week>.", shown as cells, the design guide's word). As on the desktop, a slot is one
- * time block of one group: an activity two blocks long counts two. A location counts the slots
+ * ExclusionConfirmDialog.jsx: "Placed in N slots in <week>.", shown as "cells", the design guide's word). As on the desktop, a cell is one
+ * time block of one group: an activity two blocks long counts two. A location counts the cells
  * of the activities that use it. Versions and published schedules are not counted: they don't
  * change. Read in user mode; a day that can't be read counts nothing.
  */
@@ -13,10 +13,10 @@ public with sharing class PlacedInWeeks {
     @AuraEnabled
     public Id week { get; set; }
     @AuraEnabled
-    public Integer slots { get; set; }
+    public Integer cells { get; set; }
   }
 
-  /** For each week off asked about (target and week), the slots placed; only those above 0. */
+  /** For each week off asked about (target and week), the cells placed; only those above 0. */
   public static List<Placed> count(List<RunsIn.WeekOff> asks) {
     Set<Id> weekIds = new Set<Id>();
     Set<Id> locationIds = new Set<Id>();
@@ -28,7 +28,7 @@ public with sharing class PlacedInWeeks {
         }
       }
     }
-    return placedFor(asks, slotsByWeek(weekIds, locationsOf(locationIds)));
+    return placedFor(asks, cellsByWeek(weekIds, locationsOf(locationIds)));
   }
 
   /** The activities at these locations: activity -> location. */
@@ -45,8 +45,8 @@ public with sharing class PlacedInWeeks {
     return locationOf;
   }
 
-  /** week -> target -> slots, over the weeks' Manual Build and Generated Schedule drafts. */
-  private static Map<Id, Map<Id, Integer>> slotsByWeek(
+  /** week -> target -> cells, over the weeks' Manual Build and Generated Schedule drafts. */
+  private static Map<Id, Map<Id, Integer>> cellsByWeek(
     Set<Id> weekIds,
     Map<Id, Id> locationOf
   ) {
@@ -69,7 +69,7 @@ public with sharing class PlacedInWeeks {
     return byWeek;
   }
 
-  /** Each week off asked about whose target has slots placed that week. */
+  /** Each week off asked about whose target has cells placed that week. */
   private static List<Placed> placedFor(
     List<RunsIn.WeekOff> asks,
     Map<Id, Map<Id, Integer>> byWeek
@@ -77,22 +77,22 @@ public with sharing class PlacedInWeeks {
     List<Placed> result = new List<Placed>();
     for (RunsIn.WeekOff ask : asks) {
       Map<Id, Integer> counts = byWeek.get(ask.week);
-      Integer slots = counts == null ||
+      Integer cells = counts == null ||
         ask.target == null
         ? null
         : counts.get(ask.target);
-      if (slots != null && slots > 0) {
+      if (cells != null && cells > 0) {
         Placed placed = new Placed();
         placed.target = ask.target;
         placed.week = ask.week;
-        placed.slots = slots;
+        placed.cells = cells;
         result.add(placed);
       }
     }
     return result;
   }
 
-  /** Adds one day part's slots to each group, activity, and location they belong to. */
+  /** Adds one day part's cells to each group, activity, and location they belong to. */
   private static void tally(
     String text,
     Map<Id, Id> locationOf,

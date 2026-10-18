@@ -128,6 +128,49 @@ private class RainPlanIndoorsTest {
   }
 
   @IsTest
+  static void anActivityWithAnOutdoorRainPlanCanStillBeUntickedForAWeek() {
+    Map<String, Id> ids = camp();
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeasonSetupController.saveRecords(
+        new List<SObject>{
+          new Activity__c(Id = ids.get('Gym games'), Outdoor__c = true)
+        }
+      );
+      Id week = [
+        SELECT Id
+        FROM Week__c
+        WHERE Season__c = :ids.get('Season')
+        ORDER BY StartDate__c
+        LIMIT 1
+      ]
+      .Id;
+      Test.startTest();
+      // A week tick on Soccer's row, saved as the table saves it (the row itself unchanged).
+      SetupTablesController.saveRow(
+        new Activity__c(Id = ids.get('Soccer')),
+        null,
+        SetTimeTestData.extras(
+          new List<RunsIn.WeekOff>{
+            SetTimeTestData.weekOff(null, ids.get('Soccer'), week)
+          },
+          new List<Id>(),
+          null
+        )
+      );
+      Test.stopTest();
+    }
+    Assert.areEqual(
+      1,
+      [
+        SELECT COUNT()
+        FROM WeekException__c
+        WHERE Activity__c = :ids.get('Soccer')
+      ],
+      'the week is off, though its rain plan is outdoors'
+    );
+  }
+
+  @IsTest
   static void copyingASeasonKeepsARainPlanMadeOutdoorsSince() {
     Map<String, Id> ids = camp();
     System.runAs(ShoreshTestData.scheduler()) {

@@ -1,5 +1,5 @@
 /**
- * For the setup tables' "Runs in" ticks: before weeks are unticked, how many slots each already
+ * For the setup tables' "Runs in" ticks: before weeks are unticked, how many cells each already
  * has in that week's Manual Build and Generated Schedule, so the screen can ask first (Shoresh
  * desktop ExclusionConfirmDialog.jsx).
  */

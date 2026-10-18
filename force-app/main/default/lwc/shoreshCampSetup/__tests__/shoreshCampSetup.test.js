@@ -1014,7 +1014,7 @@ describe("c-shoresh-camp-setup", () => {
     });
 
     it("asks first, in the desktop's words, and Turn off anyway goes ahead", async () => {
-      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", slots: 4 }]);
+      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", cells: 4 }]);
       const element = await render();
       const answer = hookOf(element)({
         recordId: "g3",
@@ -1040,7 +1040,7 @@ describe("c-shoresh-camp-setup", () => {
     });
 
     it("Cancel answers no (the table puts the tick back); focus goes back to the tick", async () => {
-      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", slots: 1 }]);
+      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", cells: 1 }]);
       const element = await render();
       // Stands in for the tick, which had focus when it was clicked.
       const tick = document.createElement("input");
@@ -1083,8 +1083,8 @@ describe("c-shoresh-camp-setup", () => {
 
     it("several at once are listed in one question", async () => {
       placedInWeeks.mockResolvedValue([
-        { target: "g3", week: "w1", slots: 2 },
-        { target: "a1", week: "w1", slots: 3 }
+        { target: "g3", week: "w1", cells: 2 },
+        { target: "a1", week: "w1", cells: 3 }
       ]);
       const element = await render();
       const component = element;

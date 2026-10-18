@@ -9,18 +9,27 @@ public with sharing class ActivityTriggerHandler {
    * an outdoor one already chosen is kept (and shown as one to choose again), never refused.
    */
   public static Boolean checkRainPlans = true;
+  // Set by the platform on every save, so never a sign that the director edited the row.
+  private static final Set<String> SYSTEM_FIELDS = new Set<String>{
+    'LastModifiedDate',
+    'LastModifiedById',
+    'SystemModstamp'
+  };
 
   private static final Map<Schema.SObjectField, String> TARGETS = new Map<Schema.SObjectField, String>{
     Activity__c.Location__c => 'Location',
     Activity__c.RainPlan__c => 'RainPlan'
   };
 
-  public static void beforeSave(List<Activity__c> activities) {
+  public static void beforeSave(
+    List<Activity__c> activities,
+    Map<Id, Activity__c> before
+  ) {
     Map<Id, Id> seasonByTarget = targetSeasons(activities);
     if (seasonByTarget.isEmpty()) {
       return;
     }
-    refuseOutdoorRainPlans(activities);
+    refuseOutdoorRainPlans(activities, before);
     Set<Id> seasonIds = new Set<Id>();
     for (Activity__c activity : activities) {
       seasonIds.add(activity.Season__c);
@@ -50,11 +59,18 @@ public with sharing class ActivityTriggerHandler {
    * Making an activity outdoors that is another's rain plan is not refused (nor on the desktop);
    * that one shows "(outdoor, choose another)" until its rain plan is changed.
    */
-  private static void refuseOutdoorRainPlans(List<Activity__c> activities) {
+  private static void refuseOutdoorRainPlans(
+    List<Activity__c> activities,
+    Map<Id, Activity__c> before
+  ) {
     List<Activity__c> withRainPlan = new List<Activity__c>();
     Set<Id> chosen = new Set<Id>();
     for (Activity__c activity : activities) {
-      if (checkRainPlans && activity.RainPlan__c != null) {
+      if (
+        checkRainPlans &&
+        activity.RainPlan__c != null &&
+        editsTheActivity(activity, before)
+      ) {
         withRainPlan.add(activity);
         chosen.add(activity.RainPlan__c);
       }
@@ -75,6 +91,29 @@ public with sharing class ActivityTriggerHandler {
         );
       }
     }
+  }
+
+  /**
+   * A new activity, or a change to one of its own fields. A save that changes nothing on the row
+   * (a week tick, who can do it, saved with the row) is not an edit of the activity: on the
+   * desktop those are records of their own, and never refused for its rain plan.
+   */
+  private static Boolean editsTheActivity(
+    Activity__c activity,
+    Map<Id, Activity__c> before
+  ) {
+    Activity__c old = before == null ? null : before.get(activity.Id);
+    if (old == null) {
+      return true;
+    }
+    for (String field : activity.getPopulatedFieldsAsMap().keySet()) {
+      if (
+        !SYSTEM_FIELDS.contains(field) && activity.get(field) != old.get(field)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Whether each rain plan is outdoors as this save leaves it (its own change counts). */

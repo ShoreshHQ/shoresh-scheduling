@@ -1,6 +1,6 @@
 /**
  * Slots already placed in a week's drafts (desktop ExclusionConfirmDialog's count): by group, by
- * activity (each block of a longer one counts), and by location (its activities' slots), in
+ * activity (each block of a longer one counts), and by location (its activities' cells), in
  * Manual Build and Generated Schedule drafts only. Synthetic camp (ShoreshTestData).
  */
 @IsTest
@@ -97,7 +97,7 @@ private class PlacedInWeeksTest {
     Map<String, Integer> result = new Map<String, Integer>();
     for (PlacedInWeeks.Placed placed : RunsInController.placedInWeeks(asks)) {
       String weekName = placed.week == c.weeks[0].Id ? 'Week 1' : 'Week 2';
-      result.put(names.get(placed.target) + ' ' + weekName, placed.slots);
+      result.put(names.get(placed.target) + ' ' + weekName, placed.cells);
     }
     return result;
   }
