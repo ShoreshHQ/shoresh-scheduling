@@ -34,6 +34,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    trip) a dashed box marked "not set up yet". **Trip** is a new camp word (`ModelTerm__c`
    value `Trip`) and glossary term (Greg, 2026-10-16), so a camp can use its own name. A legend under Daily and Group View explains
    the looks (the desktop shows one on Manual Build).
+
 3. **Versions** is the desktop's dropdown, shared by Manual Build and Generated Schedule (it
    lists every version of the program's week). Each row: name, how it was made (Imported,
    Manual Build, Generated Schedule, Copied), when it was saved, "on screen now" for the open
@@ -43,6 +44,10 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    be renamed (the desktop renames only unnamed auto-saves); names are 1 to 80 characters. A
    blue strip says which version is on screen and that it is read-only. **Open** in Versions
    switches to another version.
+   On Manual Build (ADR 0008 §25) the same list's action is **Restore**, the desktop's word,
+   because there it copies the version into the week being built; it also has **delete** and
+   the "Name current version… · Save version" footer there. **Open** stays the Schedules
+   page's look-only word (one word per idea, coordinator 2026-10-17).
 4. **A version shows what was saved, not today's setup.** Each day stores the names of its
    time blocks, groups, and items as they were (as the data model has published rows copy
    names). Anything it points at that has been deleted since still shows under its saved name,
@@ -91,6 +96,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
      cell, gap reasons) come as a format version 2, which `GridFormatVersion__c` lets old and
      new days live side by side. A day saved by a newer format shows "saved by a newer version
      of Shoresh" rather than guessing.
+
 7. **Size, tested** (data model requirement before release): a day of 100 groups × 14 time
    blocks, every cell filled with three-digit item numbers, 150 items with long names, is
    **16,760 characters** (13% of one record), written and read back unchanged in about 0.1 s

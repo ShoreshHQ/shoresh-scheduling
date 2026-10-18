@@ -705,12 +705,34 @@ This uses the made-up camp's Week 1 from sections 19 to 21.
    brings the whole week back. (Ctrl+Z works too.)
 7. **Activity View** has none of these (it is read-only).
 
+## 23. Manual Build: versions, and Start from another week
+
+This uses the made-up camp's Week 1 from sections 19 to 22.
+
+1. Open **Manual Build**, Week 1. After Clear week, past a thin line, is **Versions**. Click it:
+   the week's versions, newest first, each with **rename**, **delete** and **Restore**, and at
+   the bottom a box _Name current version…_ with **Save version**.
+2. Type _First try_ and click **Save version** (or press Enter). _Saved First try._ It is at the
+   top of the list.
+3. Change something (place Swim somewhere). Open **Versions** and click **Restore** on _First
+   try_: the week is back as it was saved. _Restored First try._ Undo is empty now. The list has
+   a new version on top, _Before Restore_ (Auto-saved): the week as it was just before, so
+   Restore on that one takes you back.
+4. Click **delete** on _First try_: it says _Delete?_. Click it again: it goes. Click **delete**
+   once and then elsewhere: nothing is deleted.
+5. **Start from another week.** Pick a week that has no Manual Build yet (Week 2, say). Next to
+   **Start a blank week** is **Start from another week**: a menu of the other weeks' Manual
+   Build and the versions (_Week 1 · Manual Build_, _Week 1 · First try (version)_). Pick
+   _Week 1 · Manual Build_. Week 2 begins with Week 1's activities, Monday from Monday and so on;
+   its fixed and recurring activities are Week 2's own. Anything that couldn't go is listed under
+   the toolbar, such as _Swim · Bunk 6 · Monday: not at camp then_ (or _not running this week_ if
+   Swim is closed in Week 2 on the Activities screen), and those cells are Open.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule (marked Coming in the menu). In Manual Build: Versions on that screen,
-  restoring a version into it, Start from another week, and publishing.
+- Generated Schedule (marked Coming in the menu). In Manual Build: publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

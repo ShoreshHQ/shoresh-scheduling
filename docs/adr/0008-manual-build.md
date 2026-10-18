@@ -504,11 +504,51 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       fixed activity appearing, the menu, what stayed and the five-name cap, nothing copied,
       a day that can't be read).
 
+25. **Part 4b: Versions on Manual Build and Start from another week** (desktop VersionsDropdown,
+    useSnapshots; Greg's decision 9 and his "Start from another week", 2026-10-17; coordinator's
+    answers of the same day). Server: `ManualVersions`, `ManualWeekStart`, through
+    `ManualBuildController`; every query in user mode, every write user-mode DML, the draft
+    locked while each runs.
+    - **Versions** (the shared `c-shoresh-versions`, in its Manual Build form, after a divider
+      on the toolbar as on the desktop): the program's week's versions, each with **rename**,
+      **delete** and **Restore**, and the footer _Name current version…_ · **Save version**.
+    - **Save version** keeps the week as it is now under its name (1 to 80 characters): Status
+      Version, Origin Manual, VersionReason Saved by hand, SourceSchedule the draft.
+    - **Restore** (the desktop's word; on the Schedules page the look-only action stays
+      **Open**) takes any version of the program's week, from Manual Build or Generated
+      Schedule (decision 9), and copies its days into the draft. First the draft as it was is
+      kept as a version named _Before Restore_ (VersionReason **Auto-saved**, the value G2 adds
+      too), the way back, as on the desktop; a day the version doesn't have leaves the draft.
+      Undo starts over (desktop). A version whose day can't be read is refused, with nothing
+      changed. A version keeps the names it was saved with (ADR 0005 §4), so nothing is
+      skipped; setup changed since is part 6's.
+    - **Delete** (anyone with Shoresh Scheduler access, coordinator): a second click, as the
+      desktop's inline _Delete?_; its days go with it. Only a version of the draft's week; never
+      the draft.
+    - **Start from another week**, beside Start a blank week while the week has no Manual
+      Build: a menu of the program's other weeks' Manual Build and every version of the program
+      (_Week 2 · Manual Build_, _Week 1 · Before the trip (version)_). The week starts as Start
+      a blank week does (fixed and recurring activities from this week's own setup), then each
+      day takes the activities of the source day with the same weekday, bunk by bunk, at the
+      same time blocks, through the same slot saves as any edit. Only into Open cells where the
+      bunk is at camp, and only activities still in setup and running that week; anything else
+      stays Open and is listed under the toolbar, never guessed (_Swim · Bunk 3 · Monday: not at
+      camp then_; also _not at camp this week_, _not running this week_, _deleted from setup_,
+      _not set up yet_, _that day has no Period 5_, _Lunch is there_). The desktop's Duplicate
+      week is a whole-week clone with no choice of source; this is Greg's own.
+    - **Checked by** `ManualVersionsTest` (save, a name needed, Restore with Before Restore,
+      only the same week's versions, delete never the draft), `ManualWeekStartTest` (matched by
+      weekday, a bunk away that week, an activity closed that week, a version as the start, a
+      week already started, another program's schedule refused), and `versions.test.js` (the
+      list, Restore, Save version, Delete?, Start from another week and its list).
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
-the screen and the server.
+the screen and the server. Part 4b adds the `VersionReason__c` value **AutoSaved**
+("Auto-saved"), the same one Generated Schedule G2 (#46) adds; whichever merges second keeps
+the one value.
 
 ## Not done here
 
