@@ -956,16 +956,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         return;
       }
       if (result.status === SAVED) {
-        // The cells whose lock this choice changed: Undo and Redo of earlier steps leave them.
-        // Nobody else saved in between (that would be a conflict), so the change is all ours.
-        const was = lockedKeys(loaded.input.locks);
-        const now = lockedKeys(result.loaded.input.locks);
-        const changed = [
-          ...[...was].filter((key) => !now.has(key)),
-          ...[...now].filter((key) => !was.has(key))
-        ];
+        // Every cell the choice covers, locked already or not: Undo and Redo of earlier steps
+        // leave them as the director chose.
         if (this.weekEditor) {
-          this.weekEditor.lockChosen(changed);
+          this.weekEditor.lockChosen(choice.keys);
         }
         // The week to go on with, its locks as saved (never patched here).
         this.loaded = {

@@ -696,17 +696,21 @@ taken out; the Apex tests run only in CI.
       fills it in): a cell whose lock is different now is a conflict like any cell someone else
       changed, so nobody's Lock is removed or covered unseen;
     - **Undo and Redo reverse their step's own locks** (Greg confirmed, 2026-10-18; matching
-      the desktop's Undo, which leaves no trace): their runs carry `locksAfter`, each cell's lock
-      to leave, and the server sets exactly those (never on a fixed or recurring activity).
-      Undoing a hand edit unlocks the cell again; undoing a clear brings no lock back that
-      wasn't there. **Undo keeps a Lock the director set afterwards** (Greg, 2026-10-18): a Lock
-      set or removed from the Lock menu after the step stays as the director left it, through
-      the Undo and a Redo after it. The screen keeps each step's locks with it in its Undo
-      history, and for each cell the point in that history of the director's latest Lock or
-      Unlock from the menu (the host names the cells each choice changed, `lockChosen`). An Undo
-      or Redo of a step leaves a cell chosen after the step as it is now, and every other cell
-      as the step's locks say; the same rule when it is sent again (`shoreshWeekEditor`
-      `lockTarget`);
+      the desktop's Undo, which leaves no trace), and **Undo keeps a Lock the director chose**
+      (Greg, 2026-10-18). The rule, for each cell an Undo or Redo touches: its lock changes
+      only if the step itself locked or unlocked that cell, and no Lock-menu choice covered the
+      cell after the step. Then it goes back to what it was before the step (Undo) or after it
+      (Redo). Every other cell keeps the lock it has now, whoever set it: someone else, another
+      tab, or the director. So undoing a hand edit unlocks the cell again; undoing a clear
+      brings no lock back that wasn't there; a Lock chosen after the step stays through the
+      Undo and a Redo after it. A choice covers every cell it names, locked already or not:
+      _Lock Monday_ also holds a cell a hand edit had locked before. The screen keeps each
+      step's locks with it in its Undo history, and for each cell the point in that history of
+      the latest Lock-menu choice covering it (the host passes each choice's cells,
+      `lockChosen`). The same rule on every send, first or again (`shoreshWeekEditor`
+      `lockTarget`). Each run carries `locksAfter`, every one of its cells' locks as the rule
+      leaves them (the cells kept name their lock as it is now), and the server sets exactly
+      those (never on a fixed or recurring activity);
     - the edit names the revision the screen read the week at. The answer's `revision` (with
       the week) is given only when nobody else saved the week in between; otherwise it is empty
       and the screen reads the week again before a whole-week save. So a lock or a hand edit

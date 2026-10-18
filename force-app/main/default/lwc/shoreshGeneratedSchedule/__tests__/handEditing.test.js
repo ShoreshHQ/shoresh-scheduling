@@ -459,6 +459,42 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(lockAt(element, "0-2")).toBe("Locked empty");
   });
 
+  it("a bunk's day Locked from the menu keeps the cell a hand edit had already locked when the edit is undone", async () => {
+    const element = await render();
+    const swimAt = ["1,2,2,", "1,,,"];
+    saveSlots.mockResolvedValueOnce(slotAnswer(swimAt, [",,1,", ",,,"]));
+    // Swim typed into Bunk 1's Monday Period 2: saved and locked.
+    await press(cellAt(element, "0-2"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "swim";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(lockAt(element, "0-2")).toBe("Locked");
+    // Lock Bunk 1 · Monday: it locks Period 1's Swim; Period 2 was locked already.
+    setLocksOnServer.mockResolvedValueOnce(
+      slotAnswer(swimAt, [",1,1,", ",,,"], "2026-06-29:3|2026-06-30:1")
+    );
+    cellAt(element, "0-2").dispatchEvent(
+      new CustomEvent("focusin", { bubbles: true, composed: true })
+    );
+    await flush();
+    const item = [
+      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
+    ].find((i) => i.label === "Lock Bunk 1 · Monday");
+    q(element, '[data-id="lock-menu"]').dispatchEvent(
+      new CustomEvent("select", { detail: { value: item.value } })
+    );
+    await flush();
+    saveSlots.mockReturnValueOnce(new Promise(() => {}));
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    const [run] = saveSlots.mock.calls[1][0].edits[0].runs;
+    expect(run.after).toEqual([""]);
+    expect(run.locksAfter).toEqual(["1"]);
+    expect(lockAt(element, "0-2")).toBe("Locked empty");
+  });
+
   it("a dot follows the locks on screen while an edit saves: the over-limit dot skips the session just locked", async () => {
     // Swim (at most 2 a week) in Bunk 1's Period 1 on Monday and Tuesday; a third on Tuesday's
     // Period 2 is typed in and still saving. It is locked on screen, so the dot goes on the

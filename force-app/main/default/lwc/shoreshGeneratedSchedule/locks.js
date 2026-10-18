@@ -58,7 +58,9 @@ export function weekCells(days, locked, isAway) {
 }
 
 /**
- * The Lock menu: [{ value, label, change }], change as setLocks takes it. Offered:
+ * The Lock menu: [{ value, label, change, keys }], change as setLocks takes it, keys every cell
+ * ("date|groupId|blockId") the choice covers, locked already or not: an Undo or Redo of an
+ * earlier step leaves them as the director chose (shoreshWeekEditor lockChosen). Offered:
  *   the cell keyboard focus last reached (cell: { dateValue, groupId, blockId, where }): Lock it
  *     (an Open cell too: kept empty) or Unlock it; never a fixed or recurring activity;
  *   the day shown in Daily View (day: { dateValue, name }), the group shown in Group View
@@ -69,18 +71,23 @@ export function weekCells(days, locked, isAway) {
 export function lockChoices(cells, { cell, day, group }) {
   const choices = [];
   const offer = (scope, cellsIn, change, name, lockable) => {
+    const keys = cellsIn.flatMap((c) =>
+      c.blockIds.map((blockId) => cellKey(c.dateValue, c.groupId, blockId))
+    );
     if (cellsIn.some(lockable)) {
       choices.push({
         value: `${LOCK}|${scope}`,
         label: `Lock ${name}`,
-        change: { action: LOCK, ...change }
+        change: { action: LOCK, ...change },
+        keys
       });
     }
     if (cellsIn.some((c) => c.locked)) {
       choices.push({
         value: `${UNLOCK}|${scope}`,
         label: `Unlock ${name}`,
-        change: { action: UNLOCK, ...change }
+        change: { action: UNLOCK, ...change },
+        keys
       });
     }
   };

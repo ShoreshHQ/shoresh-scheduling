@@ -198,10 +198,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Over someone else's newer change it asks _keep theirs or use yours_. Keeping theirs
       drops the step from both Undo and Redo;
     - a refused save clears Undo, because what is saved is no longer known there;
-    - on Generated Schedule (ADR 0010 §33), Undo and Redo take back or make again only the
-      locks their step made; a Lock the director set or removed from the Lock menu after the
-      step stays as they left it, through Undo and a Redo after it (Greg, 2026-10-18). Manual
-      Build has no locks.
+    - on Generated Schedule (ADR 0010 §33), an Undo or Redo changes a cell's lock only if its
+      step locked or unlocked that cell and no Lock-menu choice covered the cell since; every
+      other cell keeps the lock it has now, whoever set it (Greg, 2026-10-18: Undo keeps a Lock
+      the director chose). Manual Build has no locks.
 18. **Keyboard, at parity with drag** (accessibility):
     - Space on a placement picks it up (_Swim picked up from Bunk 1 · Monday · Period 2._);
       arrow keys move; Space or Enter puts it down (move or swap); Escape puts it back;

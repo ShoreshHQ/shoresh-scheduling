@@ -170,8 +170,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   lockBase = null;
   _locks;
   stepLocks = new Map();
-  // Each cell whose lock the director last set or removed from the Lock menu, with the newest
-  // step made by then (stepSeq): an Undo or Redo of that step or an earlier one leaves it as is.
+  // Each cell a Lock-menu choice last covered, with the newest step made by then (stepSeq): an
+  // Undo or Redo of that step or an earlier one leaves its lock as it is now.
   lockChosenAt = new Map();
 
   connectedCallback() {
@@ -199,8 +199,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * The director set or removed these cells' locks from the Lock menu ("date|groupId|blockId"):
-   * an Undo or Redo of any step made before leaves them as they are (Greg, 2026-10-18).
+   * A Lock-menu choice covered these cells ("date|groupId|blockId"), locked already or not: an
+   * Undo or Redo of any step made before leaves their locks as they are (Greg, 2026-10-18).
    */
   @api
   lockChosen(keys) {
@@ -209,11 +209,13 @@ export default class ShoreshWeekEditor extends LightningElement {
     );
   }
 
-  /** Undo and Redo start over: nothing of the steps before, nor of the Lock choices made after them, is kept. */
+  /**
+   * Undo and Redo start over. The Lock choices are kept: steps made from now on come after them,
+   * so they hold none of those (the map has at most one entry per cell).
+   */
   startHistoryOver() {
     this.history.clear();
     this.historyVersion += 1;
-    this.lockChosenAt.clear();
   }
 
   /** The locks with the edits still waiting made on top, or null when no locks were passed. */
@@ -1273,18 +1275,12 @@ export default class ShoreshWeekEditor extends LightningElement {
       before,
       after: serverRuns.reduce((now, run) => foldRun(now, run), before)
     });
-    const kept = [...this.history.undos, ...this.history.redos].map(
-      (step) => step.id
+    const kept = new Set(
+      [...this.history.undos, ...this.history.redos].map((step) => step.id)
     );
-    const keptIds = new Set(kept);
     [...this.stepLocks.keys()]
-      .filter((id) => !keptIds.has(id))
+      .filter((id) => !kept.has(id))
       .forEach((id) => this.stepLocks.delete(id));
-    // A Lock choice made before every step still kept can no longer matter.
-    const oldest = Math.min(...kept);
-    [...this.lockChosenAt]
-      .filter(([, at]) => at < oldest)
-      .forEach(([key]) => this.lockChosenAt.delete(key));
   }
 
   /** A step made differently (Use yours, a tool worked out again): its locks after follow. */
@@ -1299,27 +1295,30 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * The locks an Undo or Redo of a step leaves: the step's own, from before it (Undo) or after it
-   * (Redo); but a cell whose lock the director set or removed from the Lock menu after the step
-   * was made keeps the lock it has now (`seen`), through the Undo and any Redo (Greg, 2026-10-18).
-   * Null when the step has no locks kept with it.
+   * The locks an Undo or Redo of a step leaves (Greg, 2026-10-18: Undo keeps a Lock the director
+   * chose). A cell's lock changes only if the step itself changed it and no Lock-menu choice
+   * covered the cell since the step: then it is the step's, from before it (Undo) or after it
+   * (Redo). Every other cell keeps the lock it has now (`seen`), whoever set it. Used on every
+   * send of an Undo or Redo; null for an edit, or a step with no locks kept with it.
    */
   lockTarget(stepId, kind, seen) {
     const record = this.stepLocks.get(stepId);
     if (!record || kind === "edit") {
       return null;
     }
-    const target = new Set(kind === "undo" ? record.before : record.after);
-    this.lockChosenAt.forEach((at, key) => {
-      if (at < stepId) {
-        return;
-      }
-      if (seen.has(key)) {
-        target.add(key);
-      } else {
-        target.delete(key);
-      }
-    });
+    const target = new Set(seen);
+    const stepLeft = kind === "undo" ? record.before : record.after;
+    const chosenSince = (key) => this.lockChosenAt.get(key) >= stepId;
+    [...record.before, ...record.after]
+      .filter((key) => record.before.has(key) !== record.after.has(key))
+      .filter((key) => !chosenSince(key))
+      .forEach((key) => {
+        if (stepLeft.has(key)) {
+          target.add(key);
+        } else {
+          target.delete(key);
+        }
+      });
     return target;
   }
 
@@ -1562,7 +1561,7 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /**
    * The edit as the server takes it: with the locks the director saw when they made it (and, for
-   * Undo or Redo, to restore). Never the newest locks: a lock that arrived while the edit waited
+   * Undo or Redo, to leave). Never the newest locks: a lock that arrived while the edit waited
    * must come back as a refusal, not be covered.
    */
   withLocks(entry) {

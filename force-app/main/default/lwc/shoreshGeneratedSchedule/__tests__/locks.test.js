@@ -132,6 +132,40 @@ describe("lockChoices", () => {
     });
   });
 
+  it("each choice names every cell it covers, locked already or not (what Undo and Redo then leave)", () => {
+    const k = (groupId, blockId) => `2026-06-29|${groupId}|${blockId}`;
+    const keysOf = (choices, label) =>
+      [...choices.find((c) => c.label === label).keys].sort();
+    const choices = lockChoices(cellsWith([lock("g1", "b3")]), {
+      cell: cell("g1", "b3", "Bunk 1 · Monday · Period 2", "Bunk 1"),
+      day: { dateValue: "2026-06-29", name: "Monday" },
+      group: { groupId: "g2", name: "Bunk 2" }
+    });
+    // The focused cell: Hike's whole placement.
+    expect(keysOf(choices, "Unlock Bunk 1 · Monday · Period 2")).toEqual([
+      k("g1", "b2"),
+      k("g1", "b3")
+    ]);
+    // The day: every cell listed, the locked Hike too; Bunk 2's away Period 3 isn't listed.
+    const day = [
+      k("g1", "b1"),
+      k("g1", "b2"),
+      k("g1", "b3"),
+      k("g1", "b4"),
+      k("g2", "b1"),
+      k("g2", "b2"),
+      k("g2", "b3")
+    ].sort();
+    expect(keysOf(choices, "Lock Monday")).toEqual(day);
+    expect(keysOf(choices, "Unlock Monday")).toEqual(day);
+    expect(keysOf(choices, "Lock Bunk 2")).toEqual(
+      [k("g2", "b1"), k("g2", "b2"), k("g2", "b3")].sort()
+    );
+    expect(keysOf(choices, "Lock Bunk 1 · Monday")).toEqual(
+      [k("g1", "b1"), k("g1", "b2"), k("g1", "b3"), k("g1", "b4")].sort()
+    );
+  });
+
   it("offers nothing with nothing to say", () => {
     expect(lockChoices(cellsWith([]), {})).toEqual([]);
   });
