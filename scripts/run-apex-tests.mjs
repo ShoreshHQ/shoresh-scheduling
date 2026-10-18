@@ -101,18 +101,23 @@ function sf(sfArgs) {
 }
 
 /**
- * A session with the org, from the CLI's own login (one CLI start for the whole run; starting
- * the CLI for every class cost seconds each). Held in memory only, never printed.
+ * A session with the org, from the CLI's own login (two CLI starts for the whole run; starting
+ * the CLI for every class cost seconds each). The token is held in memory only, never printed.
  */
-let session;
+const session = {};
 function connect() {
-  const out = sf(["org", "display"]);
-  const r = out.result || {};
-  if (!r.accessToken || !r.instanceUrl || !r.apiVersion) {
-    console.log(`Could not reach the test org: ${out.message || "no login"}`);
+  const org = sf(["org", "display"]).result || {};
+  const token = sf(["org", "auth", "show-access-token"]);
+  const accessToken = token.result && token.result.accessToken;
+  if (!org.instanceUrl || !accessToken) {
+    console.log(`Could not reach the test org: ${token.message || "no login"}`);
     process.exit(1);
   }
-  session = r;
+  session.instanceUrl = org.instanceUrl;
+  session.accessToken = accessToken;
+  session.apiVersion =
+    org.apiVersion ||
+    JSON.parse(readFileSync("sfdx-project.json", "utf8")).sourceApiVersion;
 }
 
 /**
@@ -122,6 +127,7 @@ function connect() {
 async function tooling(path, init = {}, retried = false) {
   const url = `${session.instanceUrl}/services/data/v${session.apiVersion}/tooling/${path}`;
   let response;
+  let text;
   try {
     response = await fetch(url, {
       ...init,
@@ -131,6 +137,7 @@ async function tooling(path, init = {}, retried = false) {
       },
       signal: AbortSignal.timeout(CLASS_TIMEOUT_MS)
     });
+    text = await response.text();
   } catch (e) {
     const timedOut = e.name === "TimeoutError";
     return {
@@ -142,7 +149,6 @@ async function tooling(path, init = {}, retried = false) {
       }
     };
   }
-  const text = await response.text();
   let body;
   try {
     body = JSON.parse(text);
@@ -205,6 +211,9 @@ function runOnce(name) {
   });
 }
 
+// The test classes that ran (their ids), for reading coverage at the end.
+const testClassIds = new Set();
+
 function summarize(out) {
   const result = out.body;
   if (!out.ok || typeof result.numTestsRun !== "number") {
@@ -216,6 +225,9 @@ function summarize(out) {
       failures: []
     };
   }
+  [...(result.successes || []), ...(result.failures || [])].forEach(
+    (t) => t.id && testClassIds.add(t.id)
+  );
   const failed = (result.failures || []).length;
   const failures = (result.failures || []).map(
     (t) => `      ${t.methodName}: ${(t.message || "").split("\n")[0]}`
@@ -229,39 +241,63 @@ function summarize(out) {
   };
 }
 
-/**
- * Class or trigger name -> line number -> covered (true) or not: the org's running totals
- * (ApexCodeCoverageAggregate), read once after every class has run, as the CLI read them after
- * each class.
- */
-async function readCoverage() {
-  const lines = new Map();
-  let next = `query/?q=${encodeURIComponent(
-    "SELECT ApexClassOrTrigger.Name, Coverage FROM ApexCodeCoverageAggregate"
-  )}`;
+/** Every record a Tooling API query returns, following its pages. */
+async function queryAll(soql) {
+  const records = [];
+  let next = `query/?q=${encodeURIComponent(soql)}`;
   while (next) {
     const out = await tooling(next);
     if (!out.ok) {
       console.log(`Could not read coverage: ${out.body.message}`);
       process.exit(1);
     }
-    (out.body.records || []).forEach((record) => {
-      const name = record.ApexClassOrTrigger && record.ApexClassOrTrigger.Name;
-      const seen = new Map();
-      ((record.Coverage && record.Coverage.coveredLines) || []).forEach(
-        (line) => seen.set(String(line), true)
-      );
-      ((record.Coverage && record.Coverage.uncoveredLines) || []).forEach(
-        (line) => seen.set(String(line), seen.get(String(line)) === true)
-      );
-      if (name) {
-        lines.set(name, seen);
-      }
-    });
+    records.push(...(out.body.records || []));
     next = out.body.done
       ? null
       : out.body.nextRecordsUrl.replace(/^.*\/tooling\//, "");
   }
+  return records;
+}
+
+/**
+ * Class or trigger name -> line number -> covered (true) or not, read once after every class
+ * has run, as the CLI read it after each class: the org's running totals
+ * (ApexCodeCoverageAggregate) for the classes and triggers this run's tests touched, so a class
+ * only an old or deleted test covered still counts as not run.
+ */
+async function readCoverage(testClassIds) {
+  const touched = new Set();
+  const ids = [...testClassIds];
+  for (let i = 0; i < ids.length; i += 50) {
+    const list = ids
+      .slice(i, i + 50)
+      .map((id) => `'${id}'`)
+      .join(",");
+    (
+      await queryAll(
+        `SELECT ApexClassOrTriggerId FROM ApexCodeCoverage WHERE ApexTestClassId IN (${list})`
+      )
+    ).forEach((record) => touched.add(record.ApexClassOrTriggerId));
+  }
+  const lines = new Map();
+  (
+    await queryAll(
+      "SELECT ApexClassOrTriggerId, ApexClassOrTrigger.Name, Coverage FROM ApexCodeCoverageAggregate"
+    )
+  ).forEach((record) => {
+    const name = record.ApexClassOrTrigger && record.ApexClassOrTrigger.Name;
+    if (!name || !touched.has(record.ApexClassOrTriggerId)) {
+      return;
+    }
+    const seen = new Map();
+    ((record.Coverage && record.Coverage.coveredLines) || []).forEach((line) =>
+      seen.set(String(line), true)
+    );
+    ((record.Coverage && record.Coverage.uncoveredLines) || []).forEach(
+      (line) => seen.set(String(line), seen.get(String(line)) === true)
+    );
+    lines.set(name, seen);
+  });
   return lines;
 }
 
@@ -317,7 +353,7 @@ for (const name of classes) {
   failedClasses += r.ok ? 0 : 1;
 }
 
-const { percent, untouched } = coverage(await readCoverage());
+const { percent, untouched } = coverage(await readCoverage(testClassIds));
 console.log(
   `\nSummary: ${classes.length - failedClasses}/${classes.length} classes passed, ` +
     `${ran} tests ran, ${failedTests} failed.`
