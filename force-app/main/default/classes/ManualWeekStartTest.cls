@@ -332,6 +332,8 @@ private class ManualWeekStartTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
       Id source = weekOneWithSwim(ids);
+      // The rest of the setup shares the start's queries (the camp and Week 1 had theirs).
+      Test.startTest();
       String soccer = 'A:' + ids.get('Soccer');
       put(
         source,
@@ -345,7 +347,6 @@ private class ManualWeekStartTest {
           new List<String>{ soccer, '^' + soccer }
         )
       );
-      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
@@ -364,6 +365,8 @@ private class ManualWeekStartTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
       Id source = weekOneWithSwim(ids);
+      // The rest of the setup shares the start's queries (the camp and Week 1 had theirs).
+      Test.startTest();
       String soccer = 'A:' + ids.get('Soccer');
       String gym = 'A:' + ids.get('Gym games');
       // Group B: Soccer at Lunch; Group C: Gym games in Period 2.
@@ -410,7 +413,6 @@ private class ManualWeekStartTest {
       } finally {
         SetTimeGuard.resume();
       }
-      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
@@ -478,6 +480,8 @@ private class ManualWeekStartTest {
         AccessLevel.SYSTEM_MODE
       );
       Id source = weekOneWithSwim(ids);
+      // The rest of the setup shares the start's queries (the camp and Week 1 had theirs).
+      Test.startTest();
       put(
         source,
         SlotRunsTestData.edit(
@@ -490,7 +494,6 @@ private class ManualWeekStartTest {
           new List<String>{ 'A:' + ids.get('Soccer') }
         )
       );
-      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),

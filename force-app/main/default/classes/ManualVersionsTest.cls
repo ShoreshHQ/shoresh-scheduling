@@ -160,8 +160,8 @@ private class ManualVersionsTest {
       Map<String, Id> ids = camp();
       Id draftId = startWeek(ids, 'Week 1');
       place(draftId, 'Swim');
-      Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
       Test.startTest();
+      Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
       placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
       String seenRevisions = seen(draftId);
       Integer queriesBefore = Limits.getQueries();
