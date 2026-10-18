@@ -35,7 +35,11 @@ private class GeneratedLimitsTest {
     return KeptCamp.scheduler(KeptCamp.keptIds());
   }
 
-  /** Setup's camp, as bigCamp returned it, kept where GeneratedTestData's helpers read it. */
+  /**
+   * Setup's camp, as bigCamp returned it, kept where GeneratedTestData's helpers read it. Call it
+   * before System.runAs (the scheduler can't see the kept record), then run as
+   * KeptCamp.scheduler(ids).
+   */
   private static Map<String, Id> sharedCamp() {
     Map<String, Id> ids = KeptCamp.keptIds();
     GeneratedTestData.ids = ids;
@@ -345,8 +349,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void openingAWeekUsesFewQueries() {
-    System.runAs(scheduler()) {
-      sharedCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Integer used = Limits.getQueries();
@@ -365,8 +368,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void theFirstSaveUsesFewQueries() {
-    System.runAs(scheduler()) {
-      sharedCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       GeneratedWeek.Save save = built(
         GeneratedTestData.inputs(),
         GeneratedSaves.GENERATE
@@ -388,8 +390,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void aRebuildUsesFewQueries() {
-    System.runAs(scheduler()) {
-      sharedCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
@@ -414,8 +415,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void aLockAndAHandEditUseFewQueries() {
-    System.runAs(scheduler()) {
-      sharedCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
@@ -525,8 +525,8 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void openingManualBuildUsesFewQueries() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = sharedCamp();
+    Map<String, Id> ids = sharedCamp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       ManualBuildController.startBlankWeek(ids.get('Main'), ids.get('Week 1'));
       Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.getDraft(

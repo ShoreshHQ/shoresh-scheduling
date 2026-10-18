@@ -24,12 +24,10 @@ private class GeneratedRefusalsTest {
     KeptCamp.keepIds(ids);
   }
 
-  /** The scheduler setup built the camp as (by its Id, not looked up by alias). The outsider test makes its own other user later. */
-  private static User scheduler() {
-    return KeptCamp.scheduler(KeptCamp.keptIds());
-  }
-
-  /** The camp setup built, kept where GeneratedTestData's helpers read it. */
+  /**
+   * The camp setup built, kept where GeneratedTestData's helpers read it. Call it before
+   * System.runAs (the scheduler can't see the kept record), then run as KeptCamp.scheduler(ids).
+   */
   private static Map<String, Id> camp() {
     Map<String, Id> ids = KeptCamp.keptIds();
     GeneratedTestData.ids = ids;
@@ -55,8 +53,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void fixedAndRecurringActivitiesStayWhereTheyAreSetUp() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       // On a draft: before one, a fixed activity that moved is setup that changed (a conflict).
       generated();
       Test.startTest();
@@ -103,8 +101,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void nothingIsPutWhereAGroupIsNotAtCampButALeftoverMayGo() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       List<Integer> lunchB = GeneratedTestData.at(
         GeneratedTestData.GROUP_B,
         GeneratedTestData.LUNCH
@@ -152,8 +150,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void onlyThisSeasonsActivitiesArePlaced() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
       Activity__c stranger = ShoreshTestData.activity(
         other.Id,
@@ -191,8 +189,7 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void theWeekSentMustBeTheDraftsOwnDays() {
-    System.runAs(scheduler()) {
-      camp();
+    System.runAs(KeptCamp.scheduler(camp())) {
       generated();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -245,8 +242,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aTimeBlockAddedBeforeTheFirstGenerateIsAConflictThatSaysSo() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
@@ -259,8 +256,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aFixedActivityAddedBeforeTheFirstGenerateIsAConflictNotARefusal() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       // Added where the engine had placed an activity: not the director's doing.
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -280,8 +277,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aDayDroppedBeforeTheFirstGenerateIsAConflictThatSaysSo() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       // The program no longer runs on Thursdays.
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -309,8 +306,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aGroupMarkedAwayAfterTheWeekWasOpenedIsCheckedOnSave() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       generated();
       Test.startTest();
       // A stale screen: it still has Group B, and the save checks this week's exceptions as they
@@ -337,8 +334,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aGroupMarkedAwayBeforeTheFirstGenerateIsAConflictThatSaysSo() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       groupBAwayNow(ids);
@@ -351,8 +348,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void nothingNewForAGroupAwayOrWhatIsClosedThisWeek() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       generated();
       Test.startTest();
       // After the week was generated: Group B is away, Soccer and the Gym are closed.
@@ -405,8 +402,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void leftoversOfAGroupAwayOrOfWhatIsClosedMayStayOrGo() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       Id draftId = generated();
       Test.startTest();
       // After the week was generated: Group B is away, Soccer and the Gym are closed.
@@ -461,8 +458,7 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void somethingNotSetUpYetStaysWhereItIs() {
-    System.runAs(scheduler()) {
-      camp();
+    System.runAs(KeptCamp.scheduler(camp())) {
       Id draftId = generated();
       Test.startTest();
       // An elective in Group A's Monday Lunch, as an import could have left it.
@@ -500,8 +496,7 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void fillTheOpenCellsChangesOnlyOpenCells() {
-    System.runAs(scheduler()) {
-      camp();
+    System.runAs(KeptCamp.scheduler(camp())) {
       Id draftId = generated();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -543,8 +538,8 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void onlyThisWeeksGeneratedDraftCanBeSaved() {
-    System.runAs(scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       generated();
       Test.startTest();
       Schedule__c version = ShoreshTestData.version(
@@ -592,8 +587,7 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aSaveTheScreenCouldNotHaveSentIsRefused() {
-    System.runAs(scheduler()) {
-      camp();
+    System.runAs(KeptCamp.scheduler(camp())) {
       generated();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -646,8 +640,7 @@ private class GeneratedRefusalsTest {
 
   @IsTest
   static void aDayThatCannotBeReadIsRefused() {
-    System.runAs(scheduler()) {
-      camp();
+    System.runAs(KeptCamp.scheduler(camp())) {
       Id draftId = generated();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
@@ -672,8 +665,7 @@ private class GeneratedRefusalsTest {
   @IsTest
   static void someoneWithoutShoreshCanNeitherReadNorSave() {
     GeneratedWeek.Save request;
-    System.runAs(scheduler()) {
-      camp();
+    System.runAs(KeptCamp.scheduler(camp())) {
       request = GeneratedTestData.filled(
         request(GeneratedTestData.inputs(), GeneratedSaves.GENERATE),
         'Swim'
