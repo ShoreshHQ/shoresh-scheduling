@@ -4,7 +4,7 @@
  * does to locks (GeneratedEdits): every cell an edit changes is locked when it holds something
  * and unlocked when it is left Open. The editor works the same out beforehand, so the grid shows
  * the lock at once, and so each run it sends names the locks the screen saw (locksBefore) and, for
- * an Undo or Redo, the locks to restore (locksAfter): one entry per time block, "1" or "".
+ * an Undo or Redo, the locks to leave (locksAfter): one entry per time block, "1" or "".
  * Pure: no screen.
  */
 

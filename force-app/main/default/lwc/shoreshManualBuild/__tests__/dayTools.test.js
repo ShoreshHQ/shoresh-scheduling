@@ -44,6 +44,7 @@ const FLAGPOLE = { kind: "F", id: "f1", name: "Flagpole", gone: false };
 const SWIM = { kind: "A", id: "a1", name: "Swim", gone: false };
 const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
 const ELECTIVE = { kind: "E", id: null, name: "Chugim", gone: false };
+const BOATING = { kind: "A", id: "a2", name: "Boating", gone: false };
 const ITEMS = [FLAGPOLE, SWIM, SOCCER];
 
 const flush = () =>
@@ -241,7 +242,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       ["g1", ["", ""]]
     ]);
     expect(toolNotice(element)).toBe(
-      "Cleared Monday, except 1 cell that changed · Undo"
+      "Cleared Monday, except 1 activity that changed · Undo"
     );
     // One Undo step puts Bunk 1 back, and leaves their Swim.
     q(element, '[data-id="tool-undo"]').click();
@@ -249,6 +250,34 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(sentRuns(2).map((run) => [run.groupId, run.after])).toEqual([
       ["g1", ["A:a1", "A:a3"]]
     ]);
+  });
+
+  it("Keep theirs counts an activity running two blocks that someone else put there as one", async () => {
+    const items = [...ITEMS, BOATING];
+    const first = draft(items, ["1,2,3", "1,3,"]);
+    first.schedule.days[1] = day("2026-06-30", items, ["1,,", "1,,"]);
+    const element = await render(first);
+    // Someone else put Boating (two blocks) over Bunk 1's Period 2 and Lunch meanwhile.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [0],
+      schedule: theirWeek(["1,4,^", "1,3,"], ["1,,", "1,,"], items)
+    });
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: theirWeek(["1,4,^", "1,,"], ["1,,", "1,,"], items)
+    });
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(sentRuns(1).map((run) => [run.groupId, run.after])).toEqual([
+      ["g2", [""]]
+    ]);
+    // Two cells, one activity.
+    expect(toolNotice(element)).toBe(
+      "Cleared Monday, except 1 activity that changed · Undo"
+    );
   });
 
   it("Use yours on a Clear clears their cell too", async () => {
@@ -285,7 +314,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       ["g2", "t2", [""]]
     ]);
     expect(toolNotice(element)).toBe(
-      "Cleared Monday, except 1 cell that changed · Undo"
+      "Cleared Monday, except 1 activity that changed · Undo"
     );
   });
 

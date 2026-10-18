@@ -5,6 +5,7 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
+import { find } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
@@ -93,8 +94,8 @@ async function render(inputs) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
-const grid = (element) => q(element, '[data-id="grid"]');
+const q = (element, selector) => find(element, selector);
+const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cellAt = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);
 const menu = (element) => q(element, '[data-id="lock-menu"]');

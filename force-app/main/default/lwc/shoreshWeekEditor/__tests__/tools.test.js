@@ -224,6 +224,18 @@ describe("worked out again after someone else's change (replan)", () => {
     expect(result.missed).toBe(1);
   });
 
+  it("a copy keeps the whole of a target placement one of whose cells it keeps, for the next round too", () => {
+    // The director copied Monday (Swim, Soccer) to Tuesday, where Bunk 1 has Boating over
+    // Period 2 and Lunch. Someone else made Monday's Lunch Swim, so Tuesday's Lunch is kept,
+    // and with it all of Boating: nothing is cleared for a copy that can't come.
+    const seen = week(["1,2,4", "1,,"], ["1,3,^", "1,,"]);
+    const saved = week(["1,2,2", "1,,"], ["1,3,^", "1,,"]);
+    const result = replan(COPY, seen, saved, new Set(), () => false);
+    expect(after(saved, result.runs)[1][0]).toEqual(["F:f1", "A:a2", "^A:a2"]);
+    expect(result.kept.has("2026-06-30|g1|t3")).toBe(true);
+    expect(result.kept.has("2026-06-30|g1|t2")).toBe(true);
+  });
+
   it("a placement made shorter is someone else's in every cell it covered", () => {
     // Bunk 1's Boating ran Period 2 and Lunch; someone else shortened it to Period 2.
     const seen = week(["1,3,^", "1,,"], ["1,,", "1,,"]);
@@ -233,6 +245,21 @@ describe("worked out again after someone else's change (replan)", () => {
     expect(result.runs).toEqual([]);
     expect(result.kept.has("2026-06-29|g1|t2")).toBe(true);
     expect(result.kept.has("2026-06-29|g1|t3")).toBe(true);
+  });
+
+  it("counts what it couldn't make by placement: a two-block activity someone else put there is one", () => {
+    // The director saw Swim and Soccer in Bunk 1's Monday and cleared Monday; someone else had
+    // put Boating (two blocks) over both.
+    const seen = week(["1,2,4", "1,4,"], ["1,,", "1,,"]);
+    const saved = week(["1,3,^", "1,4,"], ["1,,", "1,,"]);
+    const clear = { kind: "clear", dates: ["2026-06-29"] };
+    const result = replan(clear, seen, saved, new Set(), () => false);
+    expect(after(saved, result.runs)[0]).toEqual([
+      ["F:f1", "A:a2", "^A:a2"],
+      ["F:f1", "", ""]
+    ]);
+    expect(result.missed).toBe(2);
+    expect(result.missedPlacements).toBe(1);
   });
 
   describe("a cell someone locked meanwhile", () => {
@@ -352,6 +379,27 @@ describe("worked out again after someone else's change (replan)", () => {
       expect(result.runs).toEqual([]);
       expect(result.missed).toBe(0);
       expect(result.lockedCells).toHaveLength(1);
+    });
+
+    it("a second round still counts a locked placement's other cell as locked, not changed", () => {
+      // As above (Boating copied over Period 2 and Lunch, Tuesday's Lunch locked), then worked
+      // out again the way the editor does it: what was kept and locked carried over.
+      const days = week(["1,3,^", "1,4,2"], ["1,,", "1,,"]);
+      const locked = new Set([TUE("g1", "t3")]);
+      const first = replan(COPY, days, days, new Set(), () => false, locked);
+      expect(first.missed).toBe(0);
+      const again = replan(COPY, days, days, first.kept, () => false, locked);
+      expect(again.missed).toBe(0);
+      expect(again.lockedCells).toEqual([
+        { key: TUE("g1", "t2"), slot: "A:a2" }
+      ]);
+      // And with a second lock that came since, both are said as locked.
+      const more = new Set([...locked, TUE("g2", "t3")]);
+      const third = replan(COPY, days, days, again.kept, () => false, more);
+      expect(third.missed).toBe(0);
+      expect(third.lockedCells).toHaveLength(2);
+      // Bunk 2's Soccer is still copied.
+      expect(after(days, third.runs)[1][1]).toEqual(["F:f1", "A:a3", ""]);
     });
 
     it("a cell someone else changed beside a locked placement still counts as changed", () => {

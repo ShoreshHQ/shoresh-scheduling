@@ -44,6 +44,22 @@ public with sharing class GeneratedScheduleController {
     }
   }
 
+  /**
+   * "Add <name> to activities" while typing in a cell, as on Manual Build (the desktop's generated
+   * schedule allows it too): the season's activity by that name, made if there is none.
+   */
+  @AuraEnabled
+  public static ManualBuildViews.ActivityOption addActivity(
+    Id scheduleId,
+    String name
+  ) {
+    try {
+      return ManualBuildActivities.addOnGenerated(scheduleId, name);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** Lock or unlock a cell, a day or a group (decision 3); a conflict if the week changed since. */
   @AuraEnabled
   public static GeneratedWeek.Locked setLocks(

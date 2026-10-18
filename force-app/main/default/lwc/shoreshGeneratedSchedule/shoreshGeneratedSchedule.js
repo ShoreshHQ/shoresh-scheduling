@@ -1,37 +1,23 @@
 import { LightningElement, api } from "lwc";
 import { errorMessage } from "c/shoreshErrors";
-import { FIELD } from "c/shoreshSchema";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
   CONFLICT,
   SAVED,
+  addActivity,
   inputFor,
   loadWeek,
+  saveEdits,
   saveWeek,
   setLocks
 } from "c/shoreshGeneratedWeek";
-import {
-  activityCards,
-  activityGrid,
-  dailyGrid,
-  dayLabel,
-  days as dayPillsOf,
-  groupGrid,
-  groups,
-  kindLabel
-} from "c/shoreshScheduleViews";
+import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
-import {
-  activityCells,
-  clearedDays,
-  coveredBlocks,
-  isLit,
-  litCells,
-  openCells
-} from "./week";
+import { activityCells, clearedDays, litCells, openCells } from "./week";
+import { activityOptions, awayRows, lockOf } from "./editing";
 
 // What each action is called on its button and while it runs.
 const ACTION_LABEL = {
@@ -66,8 +52,9 @@ function statementOf(message) {
  * so and offers to reload. Dots, counters and the "Still to place" list are worked out from the
  * week on screen with the engine's own rules, whether it was just built or saved before.
  *
- * Read-only here: changing cells by hand comes with locks (G4), since a hand edit is a lock
- * (Greg's decision 2) and Rebuild would otherwise undo it.
+ * The week is drawn and edited by hand in the shared week editor (c-shoresh-week-editor, ADR
+ * 0010 §38), the same as Manual Build's, with this screen's saver: every hand edit locks what it
+ * changes (Greg's decision 2), so Rebuild keeps it. Builds and Lock wait while an edit saves.
  *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
  */
@@ -81,6 +68,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   loaded;
   loadedFor;
   loadTicket = 0;
+  // Moves on when the week shown is replaced by a read or a build (not by a hand edit, which
+  // moves loadTicket on): a hand edit's answer is set aside only when the week it was made on is gone.
+  weekTicket = 0;
   loading = false;
   // A read of the week under way, and one asked for while a build ran (done after it).
   reading = false;
@@ -90,19 +80,34 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   errorFromRead = false;
   // A save someone else's got in the way of: { message }.
   conflict;
+  // The week Reload is reading after a conflict ("program|week"): edits wait while any read is
+  // under way after it (Reload's, or one that took its place), until the latest lands or fails.
+  reloading = null;
   // The build under way: { action, progress (0-100, or null until a long build first reports) }.
   busy;
   // The confirm open: { action }.
-  // A Lock or Unlock being saved, and the grid cell keyboard focus last reached.
+  // A Lock or Unlock being saved; the cell keyboard focus last reached in the editor's grid (its
+  // grid key, and the slot: day, group and block positions in the week shown).
   locking = false;
   focusedCellKey = null;
+  focusedSlot = null;
   confirming;
   // The highest option tried this visit, so each stays in Option to bring back.
   triedUpTo = 1;
+  // How the editor shows the week (it says so with statechange): what the Lock menu offers.
   view = "day";
   dayIndex = 0;
   groupKey;
-  activityId;
+  // A hand edit is saving or waiting to (the editor's editstate): builds and Lock wait.
+  editBusy = false;
+  // What the editor is to be told once it is drawn: "fresh", "rebuilt" or "again" (show).
+  editorNews = null;
+  // The week to go on with from the hand edit just saved, until the editor says it is saved.
+  lastSaved = null;
+  // The locks as the editor takes them (cell keys), worked out once per week loaded.
+  locksMemo = { of: undefined, keys: [] };
+  // The season as the editor reads it, worked out once per season and week loaded.
+  setupMemo = { setup: undefined, input: undefined, value: undefined };
   announcement = "";
   checksResetKey = 0;
   // The cells the open counter lights up ("date|groupId|blockId"), generated route.
@@ -130,7 +135,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // then the week is read again; a conflict stays until the director answers it (Reload reads
     // the week). A build for a week that is gone stops.
     const same = `${this.programId}|${this.weekId}` === this.loadedFor;
-    if (same && (this.busy || this.confirming || this.locking)) {
+    if (
+      same &&
+      (this.busy || this.confirming || this.locking || this.editBusy)
+    ) {
       this.readAfterRun = true;
       return;
     }
@@ -149,23 +157,38 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     window.removeEventListener("focus", this.onWindowFocus);
     // A build under way stops: nobody is looking.
     this.loadTicket += 1;
+    this.weekTicket += 1;
     this.busy = null;
   }
 
   renderedCallback() {
+    if (this.editorNews && this.weekEditor) {
+      const how = this.editorNews;
+      this.editorNews = null;
+      this.tellEditor(how);
+    }
     if (!this.focusAfterRender) {
       return;
     }
     const { cellKey, selector, grid: toGrid } = this.focusAfterRender;
     this.focusAfterRender = null;
-    const grid = this.template.querySelector('[data-id="grid"]');
-    if (grid && (cellKey || toGrid)) {
-      grid.focusCell(cellKey);
+    const editor = this.weekEditor;
+    if (editor && (cellKey || toGrid)) {
+      editor.focusCell(cellKey);
       return;
     }
     const target = selector && this.template.querySelector(selector);
     if (target) {
       target.focus();
+    } else if (selector && editor) {
+      // The build actions sit in the editor's toolbar, drawn once the editor has drawn the week
+      // it was just told of: its render runs first, then this.
+      Promise.resolve().then(() => {
+        const later = this.template.querySelector(selector);
+        if (later) {
+          later.focus();
+        }
+      });
     }
   }
 
@@ -229,15 +252,17 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   /**
    * Reads the chosen week: the Generated draft if there is one, else the blank week it would
    * start from. again: the same week read again (after a save or a conflict, or coming back to
-   * the window), keeping the view; otherwise a week shown fresh.
+   * the window), keeping the view; otherwise a week shown fresh. True once the week read is
+   * shown.
    */
   async load(again = false) {
     const key = this.canChoose ? `${this.programId}|${this.weekId}` : null;
     const fresh = key !== this.loadedFor;
     if (key && !fresh && !again) {
-      return;
+      return false;
     }
     this.loadTicket += 1;
+    this.weekTicket += 1;
     const ticket = this.loadTicket;
     // A build or a Lock under way for another week (or season) stops: its ticket is gone.
     this.busy = null;
@@ -249,7 +274,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loadedFor = null;
       this.reading = false;
       this.loading = false;
-      return;
+      this.reloading = null;
+      return false;
     }
     this.loadedFor = key;
     this.reading = true;
@@ -262,13 +288,18 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     try {
       const loaded = await loadWeek(this.programId, this.weekId);
       if (ticket !== this.loadTicket) {
-        return;
+        return false;
       }
       if (this.errorFromRead) {
         this.error = null;
         this.errorFromRead = false;
       }
       this.show(loaded, fresh);
+      // The week Reload asked for, read again (by Reload or a read that took its place).
+      if (!fresh && this.reloading === key) {
+        this.reloaded();
+      }
+      return true;
     } catch (e) {
       if (ticket === this.loadTicket) {
         this.error = errorMessage(e);
@@ -281,8 +312,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       if (ticket === this.loadTicket) {
         this.loading = false;
         this.reading = false;
+        if (this.reloading) {
+          this.reloading = null;
+          this.resetChecks();
+        }
       }
     }
+    return false;
   }
 
   show(loaded, fresh) {
@@ -293,10 +329,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.dayIndex = 0;
       const all = groups(this.schedule);
       this.groupKey = all.length ? all[0].key : null;
-      this.activityId = null;
       this.focusedCellKey = null;
+      this.focusedSlot = null;
       this.resetChecks();
     }
+    this.showInEditor(fresh ? "fresh" : "again");
   }
 
   /** Coming back to the window shows other people's saves, unless something is under way. */
@@ -307,7 +344,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       !this.busy &&
       !this.locking &&
       !this.confirming &&
-      !this.conflict
+      !this.conflict &&
+      (!this.weekEditor || this.weekEditor.settled)
     ) {
       this.load(true);
     }
@@ -379,6 +417,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get showWeek() {
     return this.isGenerated && !this.hasNoDays;
   }
+  /** The build's bar, errors, a conflict and Not placed: under the editor's toolbar once it shows. */
+  get showStatusAbove() {
+    return !this.showWeek;
+  }
   get hasNoDays() {
     return !!this.loaded && this.loaded.input.days.length === 0;
   }
@@ -413,37 +455,45 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
       return memo.result;
     }
-    let result = null;
-    if (loaded) {
-      const week = checkGeneratedWeek(this.engineInput(loaded.input.days));
-      const locked = lockedKeys(loaded.input.locks);
-      // A cell the director locked empty is kept empty: not Open, not to fill (G4 §31).
-      const open = openCells(
-        week.days,
-        week.isAway,
-        this.t,
-        week.shortest,
-        (dateValue, groupId, blockId) =>
-          locked.has(`${dateValue}|${groupId}|${blockId}`)
-      );
-      result = {
-        ...week,
-        locked,
-        // Why each Open cell is Open, when the grid can say (its dot's words).
-        openReasons: new Map(
-          open
-            .filter((cell) => cell.reason)
-            .map((cell) => [
-              `${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
-              cell.reason
-            ])
-        ),
-        checked: { ...week.checked, openCells: open }
-      };
-    }
+    const result = loaded
+      ? this.checkDays(loaded.input.days, loaded.input.locks)
+      : null;
     memo.inputs = inputs;
     memo.result = result;
     return result;
+  }
+
+  /**
+   * Days checked by the engine's rules with these locks ({ date, groupId, blockId }): { days,
+   * checked (with openCells and openReasons), isAway, locked, shortest }.
+   */
+  checkDays(days, locks) {
+    const week = checkGeneratedWeek(this.engineInput(days, { locks }));
+    const locked = lockedKeys(locks);
+    // A cell the director locked empty is kept empty: not Open, not to fill (G4 §31).
+    const open = openCells(
+      week.days,
+      week.isAway,
+      this.t,
+      week.shortest,
+      (dateValue, groupId, blockId) =>
+        locked.has(`${dateValue}|${groupId}|${blockId}`)
+    );
+    // Why each Open cell is Open, when the grid can say (its dot's words).
+    const openReasons = new Map(
+      open
+        .filter((cell) => cell.reason)
+        .map((cell) => [
+          `${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
+          cell.reason
+        ])
+    );
+    return {
+      ...week,
+      locked,
+      openReasons,
+      checked: { ...week.checked, openCells: open, openReasons }
+    };
   }
 
   get schedule() {
@@ -466,19 +516,21 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get isBusy() {
     return !!this.busy;
   }
-  /** The program and week pickers wait for a build or a Lock under way. */
+  /** The program and week pickers wait for a build, a Lock or a hand edit under way. */
   get pickerDisabled() {
-    return this.isBusy || this.locking;
+    return this.isBusy || this.locking || this.editBusy;
   }
   get actionsDisabled() {
     // Also while the week is being read (Reload, coming back to the window): a build started
-    // then would build on the week the read is about to replace.
+    // then would build on the week the read is about to replace. And while a hand edit saves:
+    // a build then would replace the week the edit is being saved into.
     return (
       this.isBusy ||
       !!this.conflict ||
       this.loading ||
       this.reading ||
-      this.locking
+      this.locking ||
+      this.editBusy
     );
   }
   get cannotFill() {
@@ -535,12 +587,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    * until the server has it; a conflict or a refusal leaves the week as it was.
    */
   async run(action, option) {
-    if (this.busy || !this.loaded) {
+    if (this.busy || !this.loaded || this.editBusy) {
       return;
     }
     // The build takes the screen's turn: a read of the week sent before it (coming back to the
     // window) is set aside when it answers, so it can't put back the week this replaces.
     this.loadTicket += 1;
+    this.weekTicket += 1;
     const ticket = this.loadTicket;
     this.reading = false;
     this.loading = false;
@@ -593,6 +646,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.loaded = { ...saved.loaded, option, notPlaced: [] };
         this.triedUpTo = Math.max(this.triedUpTo, option);
         this.resetChecks();
+        // A whole new week: Undo starts over (its steps were made on the week it replaced).
+        this.showInEditor("rebuilt");
         const { filled, total } = this.checked.cells;
         this.announce(`Filled ${filled} of ${total}.`);
       } else if (saved.status === CONFLICT) {
@@ -663,20 +718,35 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return this.progressKnown ? `width: ${this.busy.progress}%;` : "";
   }
 
-  /** Someone else saved the week first: read it again, theirs, as it is now. */
+  /** Reload waits while a hand edit saves: the read would draw the week without it. */
+  get reloadDisabled() {
+    return this.editBusy;
+  }
+
+  /**
+   * Someone else saved the week first: read it again, theirs, as it is now. Edits wait until it
+   * is shown, so "as saved now" is said only of the week the read brought.
+   */
   handleReload() {
+    if (this.reloadDisabled) {
+      return;
+    }
     this.conflict = null;
-    this.load(true).then(() => {
-      this.resetChecks();
-      if (!this.conflict && !this.errorFromRead) {
-        this.focusAfterRender = {
-          selector: this.isGenerated
-            ? `[data-action="${ACTION.REBUILD}"]`
-            : '[data-id="generate"]'
-        };
-        this.announce(`${this.weekName} as saved now.`);
-      }
-    });
+    this.reloading = this.loadedFor;
+    this.load(true);
+  }
+
+  /** Reload's week is on screen as saved now: focus to the main action, and said so. */
+  reloaded() {
+    if (this.conflict) {
+      return;
+    }
+    this.focusAfterRender = {
+      selector: this.isGenerated
+        ? `[data-action="${ACTION.REBUILD}"]`
+        : '[data-id="generate"]'
+    };
+    this.announce(`${this.weekName} as saved now.`);
   }
 
   // ---------- the confirm (Rebuild, Start over) ----------
@@ -786,62 +856,32 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       : new Set();
   }
 
-  /** A line was clicked: that group's week, at that cell when it names one (desktop). */
+  /** A line was clicked: that group's week, at that cell when it names one (desktop; the editor's showLine). */
   handleLocate(event) {
     const line = event.detail;
-    if (!line || !line.groupId) {
+    if (!line || !line.groupId || !this.weekEditor) {
       return;
     }
-    this.view = "group";
-    this.groupKey = line.groupId;
-    this.focusedCellKey = null;
-    // The cell the line names; else the bunk's own pill, so focus is never left nowhere.
-    this.focusAfterRender = {
-      cellKey: this.cellKeyOf(line),
-      selector: '[data-id="group-pills"] [aria-pressed="true"]'
-    };
-  }
-
-  /** In Group View, the grid cell covering a line's day and time block, if it names one. */
-  cellKeyOf(line) {
-    if (!line.dateValue || !this.schedule) {
-      return null;
-    }
-    const all = this.schedule.days;
-    const d = all.findIndex((day) => day.dateValue === line.dateValue);
-    const day = all[d];
-    const g = day ? day.groups.findIndex((grp) => grp.id === line.groupId) : -1;
-    if (g < 0) {
-      return null;
-    }
-    const grid = groupGrid(this.schedule, line.groupId, this.t);
-    const found = grid.cells.find(
-      (c) =>
-        c.slot &&
-        c.slot.day === d &&
-        coveredBlocks(day, g, c.slot.block).some((b) => b.id === line.blockId)
-    );
-    return found ? found.key : null;
+    this.weekEditor.showLine(line);
   }
 
   // ---------- Lock (decision 3) ----------
 
-  /** The cell keyboard focus last reached in the grid, so the Lock menu can offer it. */
+  /** The cell keyboard focus last reached in the editor's grid, so the Lock menu can offer it. */
   handleCellFocus(event) {
     this.focusedCellKey = event.detail.key;
+    this.focusedSlot = event.detail.slot || null;
   }
 
-  /** That cell, if the grid on screen still has it: what the Lock menu needs of it. */
+  /** That cell, if the week shown still has it: what the Lock menu needs of it. */
   get focusedCell() {
-    const grid = this.grid;
-    const found =
-      grid && grid.cells.find((c) => c.key === this.focusedCellKey && c.slot);
-    if (!found) {
+    const slot = this.focusedSlot;
+    const day = slot && this.schedule ? this.schedule.days[slot.day] : null;
+    const grp = day && !day.problem ? day.groups[slot.group] : null;
+    const block = grp ? day.blocks[slot.block] : null;
+    if (!block) {
       return null;
     }
-    const day = this.schedule.days[found.slot.day];
-    const grp = day.groups[found.slot.group];
-    const block = day.blocks[found.slot.block];
     return {
       dateValue: day.dateValue,
       groupId: grp.id,
@@ -886,6 +926,19 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return this.actionsDisabled || this.lockMenu.length === 0;
   }
 
+  /**
+   * A locked cell was asked to change (Enter or a click in the editor): nothing unlocks without
+   * the director choosing Unlock (ADR 0010 §37), so the Lock menu now offers that cell, focus
+   * stays on it, and the line says it is locked (the menu offering it shows where its Unlock is).
+   */
+  handleUnlockRequest(event) {
+    this.focusedSlot = event.detail.slot;
+    const cell = this.focusedCell;
+    if (cell && this.weekEditor) {
+      this.weekEditor.say(`${cell.where} is locked.`);
+    }
+  }
+
   /** Lock or Unlock what the menu named, on the server, then show the week as saved. */
   async handleLockSelect(event) {
     const choice = this.lockMenu.find((c) => c.value === event.detail.value);
@@ -903,12 +956,22 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         return;
       }
       if (result.status === SAVED) {
+        // Every cell whose lock the choice set, locked already or not: Undo and Redo of earlier
+        // steps leave them as the director chose.
+        if (this.weekEditor) {
+          this.weekEditor.lockChosen(choice.keys);
+        }
         // The week to go on with, its locks as saved (never patched here).
         this.loaded = {
           ...result.loaded,
           option: loaded.option,
           notPlaced: []
         };
+        this.showInEditor("again");
+        // A line such as "<cell> is locked." is no longer true once the Lock or Unlock is saved.
+        if (this.weekEditor) {
+          this.weekEditor.clearNotice();
+        }
         this.announce(lockedText(choice));
         // The menu was held while it saved, which drops focus: back to it, or to the grid when
         // the menu has nothing left to offer (it is held then).
@@ -935,20 +998,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
   }
 
-  // ---------- views ----------
+  // ---------- hand editing (the shared week editor) ----------
 
-  get viewButtons() {
-    return [
-      ["day", "Daily View"],
-      ["group", "Group View"],
-      ["activity", "Activity View"]
-    ].map(([key, label]) => ({
-      key,
-      label,
-      className:
-        key === this.view ? "view-button view-button_on" : "view-button",
-      pressed: String(key === this.view)
-    }));
+  get weekEditor() {
+    return this.template.querySelector("c-shoresh-week-editor");
   }
   get isDaily() {
     return this.view === "day";
@@ -959,178 +1012,209 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get isActivity() {
     return this.view === "activity";
   }
-  handleView(event) {
-    this.view = event.currentTarget.dataset.view;
-    // Grid keys repeat from day to day and bunk to bunk: the cell reached is another grid's.
-    this.focusedCellKey = null;
-    if (this.view !== "activity") {
-      this.activityId = null;
-    }
-  }
-  get corner() {
-    return this.t.s("TimeBlock");
-  }
-
   get dayPills() {
-    return dayPillsOf(this.schedule).map((day) => ({
-      ...day,
-      className: day.index === this.dayIndex ? "pill pill_on" : "pill",
-      pressed: String(day.index === this.dayIndex)
-    }));
+    return dayPillsOf(this.schedule);
   }
-  get dayProblem() {
-    const day = this.schedule && this.schedule.days[this.dayIndex];
-    return day && day.problem
-      ? `This day could not be read: ${day.problem}.`
-      : null;
-  }
-  get dailyGridLabel() {
-    const day = this.dayPills.find((pill) => pill.index === this.dayIndex);
-    return day ? day.label : null;
-  }
-  handleDay(event) {
-    this.dayIndex = Number(event.currentTarget.dataset.index);
-    this.focusedCellKey = null;
-  }
-
   get groupPills() {
-    return groups(this.schedule).map((grp) => ({
-      ...grp,
-      className: grp.key === this.groupKey ? "pill pill_on" : "pill",
-      pressed: String(grp.key === this.groupKey)
-    }));
+    return groups(this.schedule);
   }
-  get groupGridLabel() {
-    const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
-    return grp ? grp.name : null;
+  // The screen's own toolbar (the pickers alone) until the week is drawn; then the editor's.
+  get showToolbar() {
+    return !this.showWeek;
   }
-  handleGroup(event) {
-    this.groupKey = event.currentTarget.dataset.key;
-    this.focusedCellKey = null;
+  // Edits wait while a build or a Lock is saved, or Reload reads the week (it is about to be
+  // replaced).
+  get editsWait() {
+    return this.isBusy || this.locking || !!this.reloading;
   }
 
-  /** The grid on screen (Daily or Group View): dots, not-at-camp hatching, lit cells. */
-  get grid() {
-    if (!this.schedule) {
-      return null;
+  /**
+   * The season as the editor reads it (activity names and places), with this week's activities:
+   * one added from a cell ("Add <name> to activities") joins them at once, before the season is
+   * read again.
+   */
+  get editorSetup() {
+    const input = this.loaded ? this.loaded.input : null;
+    const memo = this.setupMemo;
+    if (memo.setup !== this._setup || memo.input !== input) {
+      memo.setup = this._setup;
+      memo.input = input;
+      memo.value = input
+        ? {
+            ...this._setup,
+            activities: input.activities,
+            locations: input.locations
+          }
+        : this._setup;
     }
-    const grid = this.isDaily
-      ? dailyGrid(this.schedule, this.dayIndex, this.t)
-      : this.groupKey && groupGrid(this.schedule, this.groupKey, this.t);
-    if (!grid) {
-      return null;
-    }
-    return { ...grid, cells: grid.cells.map((cell) => this.decorate(cell)) };
+    return memo.value;
   }
 
-  decorate(cell) {
-    if (!cell.slot) {
-      return cell;
+  /** The locks as the editor takes them ("date|groupId|blockId"), the same list while the week is the same. */
+  get editorLocks() {
+    const locks = this.loaded ? this.loaded.input.locks : null;
+    const memo = this.locksMemo;
+    if (memo.of !== locks) {
+      memo.of = locks;
+      memo.keys = [...lockedKeys(locks)];
     }
-    const day = this.schedule.days[cell.slot.day];
-    const grp = day.groups[cell.slot.group];
-    const block = day.blocks[cell.slot.block];
-    // Changing cells by hand comes with the shared editor (ADR 0010 §37): read-only for now.
-    let result = {
-      ...cell,
-      readOnly: true,
-      locked: coveredBlocks(day, cell.slot.group, cell.slot.block).some((b) =>
-        this.week.locked.has(`${day.dateValue}|${grp.id}|${b.id}`)
-      ),
-      dot:
-        this.checked.flags.get(`${day.dateValue}|${grp.id}|${block.id}`) ||
-        (cell.open &&
-          this.week.openReasons.get(
-            `${day.dateValue}|${grp.id}|${block.id}`
-          )) ||
-        null
+    return memo.keys;
+  }
+
+  /** The week as the editor shows it: the days checked, the activities to place, where groups are away. */
+  get editorDraft() {
+    const week = this.week;
+    return {
+      schedule: { schedule: { id: this.loaded.scheduleId }, days: week.days },
+      activities: activityOptions(this.loaded.input, week.days),
+      away: awayRows(week.days, week.isAway)
     };
-    if (cell.open && result.locked && !this.week.isAway(grp.id, block.id)) {
-      // Kept empty on purpose (a Lock on an Open cell): not "Open", which is a cell to fill.
-      result = {
-        ...result,
-        text: "",
-        className: "cell cell_locked-empty",
-        title: "Locked empty",
-        lockLabel: "Locked empty"
-      };
-    }
-    if (cell.open && this.week.isAway(grp.id, block.id)) {
-      result = {
-        ...result,
-        text: "Not at camp",
-        className: "cell cell_away",
-        title: `${grp.name}: not at camp`
-      };
-    }
-    if (isLit(this.lit, this.schedule.days, cell.slot)) {
-      result = { ...result, className: `${result.className} cell_lit` };
-    }
-    return result;
   }
 
-  get catalogue() {
-    return (this.loaded && this.loaded.input.activities) || [];
-  }
-  locationName(activityId) {
-    const activity = this.catalogue.find((a) => a.Id === activityId);
-    const location =
-      activity &&
-      ((this.loaded && this.loaded.input.locations) || []).find(
-        (l) => l.Id === activity[FIELD.Activity.Location]
-      );
-    return location ? location.Name : null;
-  }
-  get activityCards() {
-    return activityCards(this.schedule, this.catalogue, this.t).map((card) => ({
-      ...card,
-      location: this.locationName(card.key)
-    }));
-  }
-  get selectedActivity() {
-    return this.activityCards.find((card) => card.key === this.activityId);
-  }
-  get activityGrid() {
-    return activityGrid(this.schedule, this.activityId);
-  }
-  get allActivitiesLabel() {
-    return `All ${this.t.p("Activity")}`;
-  }
-  handleActivity(event) {
-    this.activityId = event.currentTarget.dataset.key;
-  }
-  handleAllActivities() {
-    this.activityId = null;
+  /** The editor is told of a week from this screen (a read, a build, a Lock) once it is drawn. */
+  showInEditor(how) {
+    this.editorNews = how;
   }
 
-  get showLegend() {
-    return !this.isActivity;
+  tellEditor(how) {
+    const editor = this.weekEditor;
+    if (!this.showWeek) {
+      return;
+    }
+    // A week the editor hasn't shown yet starts at the first day and bunk.
+    if (how === "fresh" || !editor.savedWeek) {
+      // Another week: nothing of the last one is kept (Undo, the typing box, what was picked up).
+      editor.clear();
+      editor.show(this.editorDraft, true);
+    } else if (how === "rebuilt") {
+      editor.restored(this.editorDraft);
+    } else {
+      editor.show(this.editorDraft, false);
+    }
   }
-  get legend() {
-    return [
-      {
-        key: "activity",
-        label: this.t.s("Activity"),
-        className: "swatch swatch_activity"
-      },
-      {
-        key: "set-time",
-        label: `${this.t.s("FixedActivity")} or ${this.t.sIn("RecurringActivity")}`,
-        className: "swatch swatch_set-time"
-      },
-      {
-        key: "not-set-up",
-        label: `Not set up yet (${["E", "D", "S", "T"].map((k) => kindLabel(k, this.t)).join(", ")})`,
-        className: "swatch swatch_not-set-up"
-      },
-      {
-        key: "open",
-        label: "Open: nothing placed",
-        className: "swatch swatch_open"
-      },
-      { key: "away", label: "Not at camp", className: "swatch swatch_away" },
-      { key: "locked", label: "Locked", icon: "utility:lock" }
-    ];
+
+  /**
+   * The editor's check of the week as it shows it (with the edits still saving): the engine's,
+   * with those locks, so its dots, the Open reasons and the counts are this screen's own.
+   */
+  checkWith = (days, locks) =>
+    this.checkDays(
+      days,
+      locks ? [...locks].map(lockOf) : this.loaded.input.locks
+    ).checked;
+
+  /** The editor saves each hand edit through here (GeneratedScheduleController.saveSlots). */
+  saveRuns = async (edits) => {
+    // Each edit moves loadTicket on (handleEdited), also one made while this one saves; the
+    // answer still names the revision the next edit in the queue is sent from.
+    const ticket = this.weekTicket;
+    const loaded = this.loaded;
+    const result = await saveEdits(loaded, edits);
+    if (result.status !== SAVED) {
+      return {
+        status: "refused",
+        conflicts: [],
+        schedule: null,
+        message: result.message
+      };
+    }
+    if (ticket === this.weekTicket) {
+      // Shown when the editor says it is saved (saved): the week to go on with.
+      // An activity added while it saved ("Add <name> to activities") stays in the week's list.
+      this.lastSaved = {
+        ...result.loaded,
+        input: {
+          ...result.loaded.input,
+          activities: this.loaded.input.activities
+        },
+        option: loaded.option,
+        notPlaced: []
+      };
+    }
+    return {
+      status: "saved",
+      conflicts: result.conflicts,
+      schedule: result.schedule
+    };
+  };
+
+  /** "Add <name> to activities" on this week's Generated draft; its record joins the week's. */
+  addActivityWith = async (request) => {
+    const added = await addActivity(request);
+    const loaded = this.loaded;
+    if (
+      added.record &&
+      loaded &&
+      !loaded.input.activities.some((a) => a.Id === added.record.Id)
+    ) {
+      this.loaded = {
+        ...loaded,
+        input: {
+          ...loaded.input,
+          activities: [...loaded.input.activities, added.record]
+        }
+      };
+    }
+    return added;
+  };
+
+  /** A hand edit saved: the week to go on with is the one the server sent (never patched). */
+  handleSaved() {
+    if (this.lastSaved) {
+      this.loaded = this.lastSaved;
+      this.lastSaved = null;
+    }
+  }
+
+  /** What the editor shows (view, day, bunk): the Lock menu offers what is on screen. */
+  handleEditorState(event) {
+    const { view, dayIndex, groupKey } = event.detail;
+    if (
+      view !== this.view ||
+      dayIndex !== this.dayIndex ||
+      groupKey !== this.groupKey
+    ) {
+      // Grid keys repeat from day to day and bunk to bunk: the cell reached is another grid's.
+      this.focusedCellKey = null;
+      this.focusedSlot = null;
+    }
+    this.view = view;
+    this.dayIndex = dayIndex;
+    this.groupKey = groupKey;
+  }
+
+  /** A hand edit saving or waiting holds builds and Lock; once all are saved, a read asked for meanwhile is done. */
+  handleEditState(event) {
+    const { busy, queueEmpty } = event.detail;
+    this.editBusy = busy || !queueEmpty;
+    if (
+      !this.editBusy &&
+      this.readAfterRun &&
+      !this.busy &&
+      !this.locking &&
+      !this.confirming &&
+      !this.conflict
+    ) {
+      this.readAfterRun = false;
+      this.load(true);
+    }
+  }
+
+  /** A hand edit was made: a read of the week already on its way is older than it. */
+  handleEdited() {
+    this.loadTicket += 1;
+    this.reading = false;
+    this.loading = false;
+  }
+
+  handleEditorError(event) {
+    this.error = event.detail.message;
+    this.errorFromRead = false;
+  }
+
+  /** A hand edit failed: what is saved is read again. */
+  handleEditorReload() {
+    this.load(true);
   }
 
   announce(text) {

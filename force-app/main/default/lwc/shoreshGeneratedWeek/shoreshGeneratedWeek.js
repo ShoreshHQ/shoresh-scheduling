@@ -2,6 +2,7 @@ import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
+import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.addActivity";
 import { errorMessage } from "c/shoreshErrors";
 import { readOtherPrograms } from "c/shoreshEngine";
 
@@ -190,15 +191,22 @@ function lockedIn(loaded, run, blockId) {
   );
 }
 
-/** Each run names its cells' locks as the screen saw them, so nobody's Lock is lost unseen. */
+/**
+ * Each run names its cells' locks as the screen saw them, so nobody's Lock is lost unseen. A run
+ * that already names them (the week editor's: the locks on screen when the director made the
+ * edit, ADR 0008) keeps its own; never the newer locks of the week as loaded now, which would
+ * cover a lock that arrived while the edit waited.
+ */
 function withLocksSeen(loaded, edits) {
   return (edits || []).map((edit) => ({
     ...edit,
     runs: (edit.runs || []).map((run) => ({
       ...run,
-      locksBefore: (run.blockIds || []).map((blockId) => {
-        return lockedIn(loaded, run, blockId) ? "1" : "";
-      })
+      locksBefore:
+        run.locksBefore ||
+        (run.blockIds || []).map((blockId) => {
+          return lockedIn(loaded, run, blockId) ? "1" : "";
+        })
     }))
   }));
 }
@@ -230,6 +238,15 @@ export async function saveEdits(loaded, edits) {
   } catch (e) {
     return { status: REFUSED, message: errorMessage(e) };
   }
+}
+
+/**
+ * "Add <name> to activities" from a cell of the Generated draft (as Manual Build's): resolves to
+ * the season's activity by that name, made if there is none ({ id, name, length, notFor, record },
+ * ManualBuildController's ActivityOption), or rejects with the server's reason.
+ */
+export function addActivity({ scheduleId, name }) {
+  return addActivityOnServer({ scheduleId, name });
 }
 
 /**

@@ -695,11 +695,23 @@ taken out; the Apex tests run only in CI.
     - each run names its cells' locks as the screen saw them (`locksBefore`; the data module
       fills it in): a cell whose lock is different now is a conflict like any cell someone else
       changed, so nobody's Lock is removed or covered unseen;
-    - **Undo and Redo restore the locks** from before their step (Greg confirmed, 2026-10-18; matching
-      the desktop's Undo, which leaves no trace): their runs carry `locksAfter`, each cell's lock
-      to restore, and the server sets exactly those (never on a fixed or recurring activity).
-      Undoing a hand edit unlocks the cell again; undoing a clear brings no lock back that
-      wasn't there. The screen keeps each step's locks with it in its Undo history;
+    - **Undo and Redo reverse their step's own locks** (Greg confirmed, 2026-10-18; matching
+      the desktop's Undo, which leaves no trace), and **Undo keeps a Lock the director chose**
+      (Greg, 2026-10-18). The rule, for each cell an Undo or Redo touches: its lock changes
+      only if the step itself locked or unlocked that cell, and no Lock-menu choice covered the
+      cell after the step. Then it goes back to what it was before the step (Undo) or after it
+      (Redo). Every other cell keeps the lock it has now, whoever set it: someone else, another
+      tab, or the director. So undoing a hand edit unlocks the cell again; undoing a clear
+      brings no lock back that wasn't there; a Lock chosen after the step stays through the
+      Undo and a Redo after it. A choice covers every cell whose lock it sets, locked already or
+      not: _Lock Monday_ also holds a cell a hand edit had locked before, but not an Open cell it
+      passes over, so a Redo of a hand edit into that cell locks it again. The screen keeps each
+      step's locks with it in its Undo history, and for each cell the point in that history of
+      the latest Lock-menu choice covering it (the host passes each choice's cells,
+      `lockChosen`). The same rule on every send, first or again (`shoreshWeekEditor`
+      `lockTarget`). Each run carries `locksAfter`, every one of its cells' locks as the rule
+      leaves them (the cells kept name their lock as it is now), and the server sets exactly
+      those (never on a fixed or recurring activity);
     - the edit names the revision the screen read the week at. The answer's `revision` (with
       the week) is given only when nobody else saved the week in between; otherwise it is empty
       and the screen reads the week again before a whole-week save. So a lock or a hand edit
@@ -778,9 +790,8 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
       Manual Build's chain: not beside _No weeks yet_, a load error, a conflict, or _Week 1 has
       no days Main runs._;
     - **hand editing** (place, move, swap, clear, length, typing, undo with `locksAfter`) comes
-      with the shared week editor `c-shoresh-week-editor`, which Manual Build's session extracts
-      from Manual Build after its part 4b (coordinator, 2026-10-18: one editor, no fork). Until
-      then the Generated grid stays read-only, its cells reachable from the keyboard.
+      with the shared week editor `c-shoresh-week-editor` (coordinator, 2026-10-18: one editor,
+      no fork); see §38.
 
     Different from the desktop (`SlotCell.jsx`, `preplacedSlots.js`): there, a lock belongs to
     an activity (`is_locked`, set by nothing on screen), a locked cell has a bronze bar and no
@@ -796,7 +807,8 @@ unlocked (version 1), a changed cell locked and an Open one not, unclear lock ro
 split and joined with their groups. `GeneratedLocksTest` (as a scheduler): a hand edit locks
 what it changes and unlocks what it leaves Open, with the locks and revision in the answer; only
 the cells it changes; whole placements but never Flagpole; an activity made shorter is locked as
-left; Undo and Redo restore the locks from before their step; a hand edit over a lock it didn't
+left; Undo and Redo leave the locks their runs name (`GeneratedEditLocksTest` shares the cases,
+including a Lock set after the step, with the screen's `lockRule.test.js`); a hand edit over a lock it didn't
 see is a conflict, and is made when it names it; a stale screen's lock is a conflict and its
 hand edit gets no revision; the day and group shortcuts lock only filled cells, a group's day
 only that group that day, and only the day that changed is written again; unlock; one block of
@@ -811,6 +823,74 @@ keeps the locked cell in eight options (a run without them moves it), and a cell
 not counted as to fill; `saveEdits` naming the locks seen by day, group and block, and the week
 to go on with (also when someone else saved, with no revision); `setLocks` saved, conflict and
 refused; `saveWeek`'s locks after a save (none after Start over); `inputFor`.
+
+## Choices (hand editing in the week)
+
+38. **The week is drawn and edited in the shared week editor** (`c-shoresh-week-editor`, ADR
+    0008 "The week editor"), the same as Manual Build's: the activity list, typing a name, drag
+    and drop, Space to pick up, Shift+Up/Down for length, Undo and Redo, _Keep theirs / Use
+    yours_. The toolbar stays one row, as on the desktop: the screen's pickers go in the editor's
+    `pickers` slot and its Rebuild, Fill the open cells, Try another, Option, Lock and Start over
+    in its `tools` slot, so Rebuild sits right after Undo and Redo (desktop ScheduleScreen.jsx,
+    "Sits with undo/redo", owner 2026-09-12); before the week is drawn the screen shows the
+    pickers in a toolbar of its own. The build's bar, its error and the conflict box go in the
+    editor's `status` slot and the _not placed_ list in its `outcome` slot, so they sit under the
+    toolbar as in Manual Build (before the week is drawn, under the pickers). The screen keeps its
+    counters below the grid, its confirms and its conflict box. What it hands the editor:
+    - **its saver**: each hand edit goes through `saveEdits` (`GeneratedScheduleController.
+saveSlots`, §33), so every cell it changes is locked (decision 2). A run keeps the locks the
+      editor names as seen when the director made it (`locksBefore`; the data module fills them
+      in only for a run that names none). After each save the screen goes on with the week the
+      server sent (`saved`; days, locks and revision replaced together, never patched), so a
+      Rebuild after a hand edit builds on it;
+    - **its locks** (`locks`, the cells as "date|groupId|blockId"), the lock icon and _Locked_ /
+      _Locked empty_ as before (§37), and the legend's _Locked_;
+    - **its checks**: the editor's dots, counts and the _Open_ reasons are this screen's engine
+      check (`checkWith(days, locks)`, `checkGeneratedWeek` with the locks on screen), worked
+      out again as each edit is shown, so a dot follows an edit at once; the counters' lit cells
+      (`lit`);
+    - **the activities it offers** from the week's inputs (`editing.js` `activityOptions`: who
+      each is set up for, its length and weekly targets) and the blocks each bunk isn't at camp
+      for (`awayRows`, from the check's `isAway`).
+39. **Builds, Lock and the pickers wait while a hand edit saves** (the editor's `editstate`), and
+    edits wait while a build or a Lock is saved (the editor's "One moment" line). Coming back to
+    the window reads the week again only when the editor is settled (nothing saving, no typing
+    box, no question); the season read again while an edit saves reads the week once it is
+    saved. A read already on its way when a hand edit is made is set aside (`edited`). Reload (the
+    conflict box's) waits while a hand edit saves, and edits wait while Reload reads the week, so
+    _<week> as saved now._ is said only of the week the read brought. After a
+    build (Generate, Rebuild, Try another, Fill the open cells, Start over) Undo starts over: its
+    steps were made on the week the build replaced. A Lock or Unlock keeps Undo.
+40. **A locked cell asks for its Unlock, it doesn't unlock** (§37: nothing unlocks without the
+    director choosing Unlock). Enter or a click on a locked cell (the editor's `unlockrequest`)
+    makes the Lock menu offer that cell (_Unlock Bunk 3 · Monday · Period 2_), keeps focus on
+    the cell, and says _Bunk 3 · Monday · Period 2 is locked._ (the editor's own refusal, ADR
+    0008; the Lock menu offering the cell shows where its Unlock is, so no sentence says so). A
+    Lock or Unlock saved clears that line. The Lock menu's cell is the one keyboard focus last
+    reached in the editor (`cellfocus`). A hand edit that meets a lock someone made meanwhile ends in "<cell> is
+    locked." (coordinator call, ADR 0008), with no _keep theirs / use yours_ question.
+41. **"Add <name> to activities" works here too**, as on the desktop's generated schedule:
+    `GeneratedScheduleController.addActivity` → `ManualBuildActivities.addOnGenerated`, the same
+    as Manual Build's add (the season locked first, then the draft; a name the season has gives
+    that activity) on the Generated draft only (`GeneratedDrafts.lockedToEdit`: never a version,
+    a published schedule or Manual Build's draft). Its record joins the week's activities at once,
+    so the checks know it before the week is read again.
+
+## Tests (hand editing)
+
+`handEditing.test.js` drives the screen with the real editor: a hand edit through `saveSlots`
+naming the locks seen and shown locked at once; Rebuild after it building on the revision the
+hand edit returned; builds, Lock and the pickers held while it saves; locks and the legend; Enter
+on a locked cell offering its Unlock with focus kept; the cell reached offered by the Lock menu;
+an Unlock reaching the editor; the engine's Open reason drawn as a dot; a counter's lit cells; Add
+on the Generated draft (not Manual Build's) and known to the checks; a read on its way set aside;
+a refused hand edit said and the week read again; edits waiting during a Lock; the season read
+again after an edit saves; Reload held while an edit saves, and edits held while Reload reads;
+the bar, error and conflict under the toolbar. Each connection was taken away once and a test failed. `lockRule.
+test.js` and `GeneratedEditLocksTest` run the same cases (read from the Apex test) through the
+editor's lock rule and the server's, with the same answers. `GeneratedAddActivityTest` (as a
+scheduler): an add with hand-added values, the same name again, an existing name, within 15
+queries; refused from a version and from Manual Build's draft.
 
 ## Choices that are hard to undo after release
 

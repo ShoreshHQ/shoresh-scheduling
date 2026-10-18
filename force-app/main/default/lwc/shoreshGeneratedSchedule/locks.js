@@ -58,7 +58,12 @@ export function weekCells(days, locked, isAway) {
 }
 
 /**
- * The Lock menu: [{ value, label, change }], change as setLocks takes it. Offered:
+ * The Lock menu: [{ value, label, change, keys }], change as setLocks takes it, keys every cell
+ * ("date|groupId|blockId") whose lock the choice sets, locked already or not, as the server does
+ * (GeneratedLockCells): a Lock sets the cells it locks, an Unlock every cell but a fixed or
+ * recurring activity. An Undo or Redo of an earlier step leaves those as the director chose
+ * (shoreshWeekEditor lockChosen); an Open cell a shortcut Lock passes over is not one of them.
+ * Offered:
  *   the cell keyboard focus last reached (cell: { dateValue, groupId, blockId, where }): Lock it
  *     (an Open cell too: kept empty) or Unlock it; never a fixed or recurring activity;
  *   the day shown in Daily View (day: { dateValue, name }), the group shown in Group View
@@ -68,23 +73,31 @@ export function weekCells(days, locked, isAway) {
  */
 export function lockChoices(cells, { cell, day, group }) {
   const choices = [];
-  const offer = (scope, cellsIn, change, name, lockable) => {
-    if (cellsIn.some(lockable)) {
+  const keysOf = (cellsIn) =>
+    cellsIn.flatMap((c) =>
+      c.blockIds.map((blockId) => cellKey(c.dateValue, c.groupId, blockId))
+    );
+  // locks: the cells of the scope a Lock reaches.
+  const offer = (scope, cellsIn, change, name, locks) => {
+    const lockCells = cellsIn.filter(locks);
+    if (lockCells.some((c) => !c.locked)) {
       choices.push({
         value: `${LOCK}|${scope}`,
         label: `Lock ${name}`,
-        change: { action: LOCK, ...change }
+        change: { action: LOCK, ...change },
+        keys: keysOf(lockCells)
       });
     }
     if (cellsIn.some((c) => c.locked)) {
       choices.push({
         value: `${UNLOCK}|${scope}`,
         label: `Unlock ${name}`,
-        change: { action: UNLOCK, ...change }
+        change: { action: UNLOCK, ...change },
+        keys: keysOf(cellsIn.filter((c) => !c.setTime))
       });
     }
   };
-  const shortcut = (c) => c.filled && !c.locked;
+  const shortcut = (c) => c.filled;
   if (cell) {
     const here = cells.filter(
       (c) =>
@@ -102,7 +115,7 @@ export function lockChoices(cells, { cell, day, group }) {
         blockId: cell.blockId
       },
       cell.where,
-      (c) => !c.locked
+      (c) => !c.setTime
     );
   }
   if (day) {

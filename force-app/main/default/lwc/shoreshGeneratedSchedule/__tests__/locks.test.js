@@ -132,6 +132,49 @@ describe("lockChoices", () => {
     });
   });
 
+  it("each choice names every cell whose lock it sets, locked already or not (what Undo and Redo then leave)", () => {
+    const k = (groupId, blockId) => `2026-06-29|${groupId}|${blockId}`;
+    const keysOf = (choices, label) =>
+      [...choices.find((c) => c.label === label).keys].sort();
+    const choices = lockChoices(cellsWith([lock("g1", "b3")]), {
+      cell: cell("g1", "b3", "Bunk 1 · Monday · Period 2", "Bunk 1"),
+      day: { dateValue: "2026-06-29", name: "Monday" },
+      group: { groupId: "g2", name: "Bunk 2" }
+    });
+    // The focused cell: Hike's whole placement.
+    expect(keysOf(choices, "Unlock Bunk 1 · Monday · Period 2")).toEqual([
+      k("g1", "b2"),
+      k("g1", "b3")
+    ]);
+    // A shortcut Lock: the filled cells, the locked Hike too; never Flagpole (fixed) or Bunk 2's
+    // Open Period 2, which it leaves unlocked.
+    expect(keysOf(choices, "Lock Monday")).toEqual(
+      [k("g1", "b2"), k("g1", "b3"), k("g1", "b4"), k("g2", "b2")].sort()
+    );
+    // Its Unlock: every cell but Flagpole, the Open one too; Bunk 2's away Period 3 isn't listed.
+    expect(keysOf(choices, "Unlock Monday")).toEqual(
+      [
+        k("g1", "b2"),
+        k("g1", "b3"),
+        k("g1", "b4"),
+        k("g2", "b2"),
+        k("g2", "b3")
+      ].sort()
+    );
+    expect(keysOf(choices, "Lock Bunk 2")).toEqual([k("g2", "b2")]);
+    expect(keysOf(choices, "Lock Bunk 1 · Monday")).toEqual(
+      [k("g1", "b2"), k("g1", "b3"), k("g1", "b4")].sort()
+    );
+  });
+
+  it("a Lock on an Open cell names it: it is the one cell kept empty", () => {
+    const choices = lockChoices(cellsWith([]), {
+      cell: cell("g2", "b3", "Bunk 2 · Monday · Period 2", "Bunk 2")
+    });
+    expect(choices[0].label).toBe("Lock Bunk 2 · Monday · Period 2");
+    expect(choices[0].keys).toEqual(["2026-06-29|g2|b3"]);
+  });
+
   it("offers nothing with nothing to say", () => {
     expect(lockChoices(cellsWith([]), {})).toEqual([]);
   });

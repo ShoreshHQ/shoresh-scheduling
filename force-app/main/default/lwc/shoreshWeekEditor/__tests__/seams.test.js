@@ -346,6 +346,402 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
       expect(bySent(saveRuns, 1).locksAfter).toEqual([""]);
     });
 
+    describe("Undo and Redo keep a Lock the director set or removed after the step (Greg, 2026-10-18)", () => {
+      const EMPTY = ["1,,", "1,,"];
+      /** A Lock or Unlock from the host's Lock menu: the host says which cells changed, then passes the locks as saved. */
+      const fromLockMenu = async (element, locks) => {
+        element.lockChosen([P2]);
+        element.locks = locks;
+        await flush();
+      };
+      const undo = async (element) => {
+        q(element, '[data-id="undo"]').click();
+        await flush();
+      };
+      const redo = async (element) => {
+        q(element, '[data-id="redo"]').click();
+        await flush();
+      };
+
+      it("a Lock set on a cleared cell stays through Undo and Redo", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: []
+        });
+        await press(cell(element, "0-1"), "Delete");
+        // The director locks the emptied cell from the Lock menu.
+        await fromLockMenu(element, [P2]);
+
+        q(element, '[data-id="undo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 1).after).toEqual(["A:a1"]);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 1).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked");
+
+        q(element, '[data-id="redo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 2).after).toEqual([""]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+      });
+
+      it("a Lock set again on a cell a tool cleared and unlocked stays through Undo and Redo", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        element.runTool(CLEAR_MONDAY);
+        await flush();
+        expect(lockText(element, "0-1")).toBeNull();
+        await fromLockMenu(element, [P2]);
+
+        q(element, '[data-id="undo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 1).locksAfter).toEqual(["1"]);
+        q(element, '[data-id="redo"]').click();
+        await flush();
+        // Redo would have taken the lock off with the activity; the director's Lock stays.
+        expect(bySent(saveRuns, 2).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+      });
+
+      it("a lock the director removed from an edit stays off through Undo, then Redo", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        expect(lockText(element, "0-1")).toBe("Locked");
+        // The director unlocks the cell the edit locked.
+        await fromLockMenu(element, []);
+
+        q(element, '[data-id="undo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+        expect(bySent(saveRuns, 1).locksAfter).toEqual([""]);
+        q(element, '[data-id="redo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 2).after).toEqual(["A:a1"]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual([""]);
+        expect(lockText(element, "0-1")).toBeNull();
+      });
+
+      it("undoing an earlier step keeps a Lock set after a later step on the same cell", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, { locks: [] });
+        // Step 1 places Swim (and locks it); the director unlocks it to change it again.
+        await placeSwim(element);
+        await fromLockMenu(element, []);
+        // Step 2 clears it; then the director locks the empty cell.
+        await press(cell(element, "0-1"), "Delete");
+        await fromLockMenu(element, [P2]);
+
+        await undo(element);
+        expect(bySent(saveRuns, 2).after).toEqual(["A:a1"]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+        // Step 1 made its lock before the director's Lock: undoing it keeps the Lock.
+        await undo(element);
+        expect(bySent(saveRuns, 3).after).toEqual([""]);
+        expect(bySent(saveRuns, 3).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 3).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+      });
+
+      it("a cell unlocked and locked again from the Lock menu keeps its Lock through Undo and Redo", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        // Unlock, then Lock again: the cell ends locked, as the edit left it, but by the director.
+        await fromLockMenu(element, []);
+        await fromLockMenu(element, [P2]);
+
+        await undo(element);
+        expect(bySent(saveRuns, 1).after).toEqual([""]);
+        expect(bySent(saveRuns, 1).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+        await redo(element);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked");
+      });
+
+      it("an Undo sent again by Use yours keeps a Lock set after its step", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          // Someone else put Soccer there meanwhile.
+          .mockResolvedValueOnce(saved(WITH_SOCCER, SWIM_AT_P2, [0]))
+          .mockResolvedValue(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        await fromLockMenu(element, []);
+        await fromLockMenu(element, [P2]);
+        await undo(element);
+        expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+        q(element, '[data-id="use-yours"]').click();
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(3);
+        expect(bySent(saveRuns, 2).after).toEqual([""]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+      });
+
+      it("a Redo sent again by Use yours keeps a Lock set after its step", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          // Someone else put Soccer there meanwhile.
+          .mockResolvedValueOnce(saved(WITH_SOCCER, SWIM_AT_P2, [0]))
+          .mockResolvedValue(saved(WITH_SWIM, SWIM_AT_P2));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        await undo(element);
+        // The director locks the cell the Undo emptied.
+        await fromLockMenu(element, [P2]);
+        await redo(element);
+        expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+        // The Lock-menu Lock came after the step: kept, though the Redo leaves the cell locked anyway.
+        q(element, '[data-id="use-yours"]').click();
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(4);
+        expect(bySent(saveRuns, 3).after).toEqual(["A:a1"]);
+        expect(bySent(saveRuns, 3).locksAfter).toEqual(["1"]);
+      });
+
+      it("two steps on one cell, a Lock after them, then Undo, Undo, Redo, Redo: the Lock stays throughout", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, { locks: [] });
+        // Edit A places Swim; the cell is unlocked so edit B can clear it; then the Lock.
+        await placeSwim(element);
+        await fromLockMenu(element, []);
+        await press(cell(element, "0-1"), "Delete");
+        await fromLockMenu(element, [P2]);
+
+        const leaves = (n, after, shown) => {
+          const sent = bySent(saveRuns, n);
+          expect(sent.after).toEqual([after]);
+          expect(sent.locksBefore).toEqual(["1"]);
+          expect(sent.locksAfter).toEqual(["1"]);
+          expect(lockText(element, "0-1")).toBe(shown);
+        };
+        await undo(element);
+        leaves(2, "A:a1", "Locked");
+        await undo(element);
+        leaves(3, "", "Locked empty");
+        await redo(element);
+        leaves(4, "A:a1", "Locked");
+        await redo(element);
+        leaves(5, "", "Locked empty");
+      });
+
+      it("a Lock-menu choice made before a step doesn't hold its cell when that step is undone and redone", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2));
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        // The director's Unlock comes before both steps: each Undo and Redo leaves its own lock.
+        await fromLockMenu(element, []);
+        await press(cell(element, "0-1"), "Delete");
+        await placeSwim(element);
+        await undo(element);
+        expect(bySent(saveRuns, 2).after).toEqual([""]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual([""]);
+        await undo(element);
+        expect(bySent(saveRuns, 3).locksAfter).toEqual([""]);
+        await redo(element);
+        expect(bySent(saveRuns, 4).locksAfter).toEqual([""]);
+        await redo(element);
+        expect(bySent(saveRuns, 5).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked");
+      });
+
+      it("with no Lock changed, Undo then Redo takes back and makes again the edit's own lock", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        q(element, '[data-id="undo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 1).locksAfter).toEqual([""]);
+        expect(lockText(element, "0-1")).toBeNull();
+        q(element, '[data-id="redo"]').click();
+        await flush();
+        expect(bySent(saveRuns, 2).locksBefore).toEqual([""]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked");
+      });
+
+      it("an Undo leaves a lock someone else set since on a cell its step didn't lock or unlock", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2));
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: []
+        });
+        // Clearing an unlocked Swim leaves the cell unlocked: the step makes no lock.
+        await press(cell(element, "0-1"), "Delete");
+        // The week read again: someone else locked the cell meanwhile (not from this Lock menu).
+        element.locks = [P2];
+        await flush();
+        await undo(element);
+        expect(bySent(saveRuns, 1).after).toEqual(["A:a1"]);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 1).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked");
+      });
+
+      it("a Redo leaves a lock someone else set since on a cell its step didn't lock or unlock", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(undefined, EMPTY))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: []
+        });
+        await press(cell(element, "0-1"), "Delete");
+        await undo(element);
+        expect(lockText(element, "0-1")).toBeNull();
+        element.locks = [P2];
+        await flush();
+        await redo(element);
+        expect(bySent(saveRuns, 2).after).toEqual([""]);
+        expect(bySent(saveRuns, 2).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 2).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+      });
+
+      it("a Lock chosen on a cell the step had already locked still keeps it", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        // A day or bunk Lock covers the cell the edit locked: the lock doesn't flip, it is chosen.
+        await fromLockMenu(element, [P2]);
+        await undo(element);
+        expect(bySent(saveRuns, 1).after).toEqual([""]);
+        expect(bySent(saveRuns, 1).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+      });
+
+      it("a Lock-menu choice made before the step doesn't hold the cell the step locked", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, { locks: [] });
+        // Locked empty, then unlocked again from the Lock menu, before any step.
+        await fromLockMenu(element, [P2]);
+        await fromLockMenu(element, []);
+        await placeSwim(element);
+        await undo(element);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 1).locksAfter).toEqual([""]);
+        expect(lockText(element, "0-1")).toBeNull();
+      });
+
+      it("a choice made right after the oldest step still holds it once later steps are made", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(WITH_SWIM, ["1,2,2", "1,,"]))
+          .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+          .mockResolvedValueOnce(saved(undefined, EMPTY));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        await fromLockMenu(element, [P2]);
+        // A second step, on Lunch.
+        await typeInto(element, "0-2", "swim");
+        expect(bySent(saveRuns, 1).blockIds).toEqual(["t3"]);
+        await undo(element);
+        await undo(element);
+        expect(bySent(saveRuns, 3).blockIds).toEqual(["t2"]);
+        expect(bySent(saveRuns, 3).after).toEqual([""]);
+        expect(bySent(saveRuns, 3).locksAfter).toEqual(["1"]);
+        expect(lockText(element, "0-1")).toBe("Locked empty");
+      });
+    });
+
+    it("an Undo sent again after someone only took a lock off leaves that cell unlocked, as they left it", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        // The Undo: refused only because the lock has been taken off again meanwhile.
+        .mockResolvedValueOnce(
+          savedLocked(undefined, ["1,,", "1,,"], ["", ""], [0])
+        )
+        .mockResolvedValue(savedLocked(WITH_SWIM, SWIM_AT_P2, ["", ""]));
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      // Clearing an unlocked Swim makes no lock; then someone else locks the cell.
+      await press(cell(element, "0-1"), "Delete");
+      element.locks = [P2];
+      await flush();
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(3);
+      expect(bySent(saveRuns, 1).locksBefore).toEqual(["1"]);
+      expect(bySent(saveRuns, 1).locksAfter).toEqual(["1"]);
+      // Sent again: the lock they took off stays off.
+      expect(bySent(saveRuns, 2).after).toEqual(["A:a1"]);
+      expect(bySent(saveRuns, 2).locksBefore).toEqual([""]);
+      expect(bySent(saveRuns, 2).locksAfter).toEqual([""]);
+      expect(lockText(element, "0-1")).toBeNull();
+    });
+
     it("an edit made while the one before still saves sees the lock that one made", async () => {
       let answer;
       const saveRuns = jest
@@ -1247,7 +1643,7 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
         await flush();
         expect(saveRuns).toHaveBeenCalledTimes(1);
         expect(noticeOf(element)).toBe(
-          "Cleared Monday: nothing done, those cells are locked."
+          "Cleared Monday: nothing done, those activities are locked."
         );
         expect(q(element, '[data-id="undo"]').disabled).toBe(true);
       });
@@ -1347,6 +1743,81 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
         expect(toolNoticeOf(element)).not.toMatch(/except/);
         expect(q(element, '[data-id="notice"]')).toBeNull();
         expect(q(element, '[data-id="conflict"]')).toBeNull();
+      });
+
+      it("an edit waiting behind one sent again keeps its place and is saved after it", async () => {
+        const first = slow();
+        const saveRuns = jest
+          .fn()
+          .mockReturnValueOnce(first.promise)
+          .mockResolvedValueOnce(
+            savedLocked(undefined, ["1,,", "1,,"], ["", ""])
+          )
+          .mockResolvedValue(
+            savedLocked(WITH_SOCCER, ["1,,", "1,2,"], ["", ""])
+          );
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        element.runTool({
+          kind: "clear",
+          dates: ["2026-06-29"],
+          name: "Monday"
+        });
+        await flush();
+        // Bunk 2's Period 2 gets Soccer while the clear is still saving.
+        await typeInto(element, "1-1", "soccer");
+        expect(saveRuns).toHaveBeenCalledTimes(1);
+        first.answer(unlockedSince());
+        await flush();
+        // The clear, the clear sent again, then the edit that waited: none lost, in order.
+        expect(saveRuns).toHaveBeenCalledTimes(3);
+        expect(
+          [0, 1, 2].map((n) => [
+            bySent(saveRuns, n).groupId,
+            bySent(saveRuns, n).after
+          ])
+        ).toEqual([
+          ["g1", [""]],
+          ["g1", [""]],
+          ["g2", ["A:a3"]]
+        ]);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+        expect(q(element, '[data-id="notice"]')).toBeNull();
+      });
+
+      it("a lock still held on the server is still named when another one was taken off", async () => {
+        // Both bunks have Swim in Period 2, both locked when the director cleared Monday; someone
+        // unlocked Bunk 1's only.
+        const both = ["1,2,", "1,2,"];
+        const BUNK2_P2 = "2026-06-29|g2|t2";
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(savedLocked(WITH_SWIM, both, ["", ",1,"], [0]))
+          .mockResolvedValue(
+            savedLocked(WITH_SWIM, ["1,,", "1,2,"], ["", ",1,"])
+          );
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: both,
+          locks: [P2, BUNK2_P2]
+        });
+        element.runTool({
+          kind: "clear",
+          dates: ["2026-06-29"],
+          name: "Monday"
+        });
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(2);
+        const resent = saveRuns.mock.calls[1][0][0].runs;
+        const named = (groupId) =>
+          resent.find((run) => run.groupId === groupId).locksBefore;
+        // Bunk 1's lock is gone on the server: named unlocked. Bunk 2's is still there: named
+        // locked, as the director saw it.
+        expect(named("g1")).toEqual([""]);
+        expect(named("g2")).toEqual(["1"]);
       });
 
       it("a conflict with no lock taken off and nothing of anyone else's is still sent again only a few times", async () => {
