@@ -15,10 +15,31 @@ deploys to the existing test org instead of creating one.
 ## How the checks use it
 
 The "Scratch org deploy and Apex tests" check logs in to the test org with the encrypted secret
-`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests. One check at a time, so two
+`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests (unless the pull request
+doesn't need them, see the next section). One check at a time, so two
 pull requests never deploy over each other. Tests run one class at a time (see below). Because
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
+
+### How much of the test org a pull request needs
+
+A full check takes about 20 minutes, and every pull request waits for the one before it. So a
+first, quick check ("Which org checks this change needs", `scripts/ci-pr-category.js`) looks at
+the files the pull request changes and picks one of three:
+
+| Category | What changed                                                                                                     | What the org check does                                            |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `docs`   | Nothing the test org sees: `docs/`, `.md` files, `.claude/`, `prototypes/`, Jest and lint settings               | Passes at once. Doesn't wait in line for the test org or touch it. |
+| `screen` | Only screens (`force-app/main/default/lwc/`) and static resources, plus any `docs` files                         | Deploys to the test org (proves it deploys); no Apex tests.        |
+| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/` | Deploys and runs every Apex test, as before.                       |
+
+When in doubt it picks `full`: a path not in the first two rows, or a failure to list the
+changed files, runs everything. The org check still reports under the same name, and passes,
+in every category; its log and summary say which category it chose and why.
+
+**Every merge to main runs the full check.** That is the safety net: whatever a `docs` or
+`screen` pull request skipped is tested as soon as it lands. Merges never cancel each other's
+run; each one waits its turn for the test org.
 
 ### Waiting in line for the test org
 
@@ -32,7 +53,7 @@ cancelled ("Canceling since a higher priority waiting request for shared-test-or
 and with five or six pull requests open, checks kept getting cancelled (2026-10-17).
 
 Pushing again to a pull request still cancels that pull request's older check; only the newest
-version of each pull request is checked.
+version of each pull request is checked. A `docs` pull request doesn't join the line at all.
 
 ## Namespace-safety checks (in "LWC Jest and Code Analyzer")
 
