@@ -92,8 +92,8 @@ export default class ShoreshManualBuild extends LightningElement {
   loadTicket = 0;
   // The activity list's Filter box.
   filter = "";
-  // The counter whose list is open (stillNeeded, spread, overlapping), if any.
-  openCounter = null;
+  // The "Still to place" list is open (any counter with something in it opens it, desktop).
+  listOpen = false;
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
@@ -337,13 +337,14 @@ export default class ShoreshManualBuild extends LightningElement {
     ((this.draft && this.draft.away) || []).forEach((row) =>
       row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
     );
+    const activities = readActivities([
+      ...(setup.activities || []),
+      ...this.addedRecords
+    ]);
     const result = checkWeek(
       (schedule && schedule.days) || [],
       {
-        activities: readActivities([
-          ...(setup.activities || []),
-          ...this.addedRecords
-        ]),
+        activities,
         locations: readLocations(setup.locations),
         ...readProgram(entry),
         notFor: new Map(
@@ -357,8 +358,15 @@ export default class ShoreshManualBuild extends LightningElement {
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );
     memo.inputs = inputs;
-    memo.result = result;
-    return result;
+    // Which targets the camp has set (desktop hasCoverageTargets / hasSpreadTargets): without
+    // any, a counter's zero means nothing was checked, so it isn't shown.
+    const all = [...activities.values()];
+    memo.result = {
+      ...result,
+      hasCoverageTargets: all.some((a) => a.min > 0),
+      hasSpreadTargets: all.some((a) => !!a.early)
+    };
+    return memo.result;
   }
 
   get showCounters() {
@@ -370,40 +378,73 @@ export default class ShoreshManualBuild extends LightningElement {
     return `${filled} of ${total}`;
   }
 
-  /** The counters with something to look at (a zero asks for nothing, so it isn't shown). */
+  /** Each overlapping cell's line (desktop: one per group, day and time block). */
+  get overlapLines() {
+    return (this.checked.overlapCells || []).map((cell) => cell.text);
+  }
+
+  /**
+   * The counters, as the desktop's manual route shows them: Overlapping always, Still needed and
+   * Spread across the week when some activity has that target. A zero shows, grey, and opens
+   * nothing; any other opens the one "Still to place" list.
+   */
   get counterButtons() {
     const checked = this.checked;
     return [
-      { key: "stillNeeded", label: "Still needed", lines: checked.stillNeeded },
-      { key: "spread", label: "Spread across the week", lines: checked.spread },
-      { key: "overlapping", label: "Overlapping", lines: checked.overlapping }
+      {
+        key: "overlapping",
+        label: "Overlapping",
+        count: this.overlapLines.length
+      },
+      checked.hasCoverageTargets && {
+        key: "stillNeeded",
+        label: "Still needed",
+        count: checked.stillNeeded.length
+      },
+      checked.hasSpreadTargets && {
+        key: "spread",
+        label: "Spread across the week",
+        count: checked.spread.length
+      }
     ]
-      .filter((c) => c.lines.length)
-      .map((c) => ({
-        key: c.key,
-        label: c.label,
-        count: c.lines.length,
-        expanded: String(this.openCounter === c.key),
-        className:
-          this.openCounter === c.key ? "counter counter_open" : "counter"
-      }));
+      .filter(Boolean)
+      .map((c) => {
+        let className = c.count ? "counter counter_due" : "counter";
+        if (c.count && this.listOpen) {
+          className = `${className} counter_open`;
+        }
+        return {
+          ...c,
+          none: c.count === 0,
+          expanded: c.count ? String(this.listOpen) : null,
+          className
+        };
+      });
+  }
+
+  /** Every line, overlaps first, then still needed, then spread (desktop's list). */
+  get allLines() {
+    const checked = this.checked;
+    return [
+      ...this.overlapLines,
+      ...(checked.hasCoverageTargets ? checked.stillNeeded : []),
+      ...(checked.hasSpreadTargets ? checked.spread : [])
+    ];
   }
 
   get openLines() {
-    const lines = this.openCounter ? this.checked[this.openCounter] : null;
-    return lines && lines.length
+    const lines = this.listOpen ? this.allLines : [];
+    return lines.length
       ? lines.map((text, i) => ({ key: `${i}|${text}`, text }))
       : null;
   }
 
-  get openCounterLabel() {
-    const open = this.counterButtons.find((c) => c.key === this.openCounter);
-    return open ? open.label : "";
+  handleCounter() {
+    this.listOpen = !this.listOpen;
   }
 
-  handleCounter(event) {
-    const key = event.currentTarget.dataset.counter;
-    this.openCounter = this.openCounter === key ? null : key;
+  handleCloseList() {
+    this.listOpen = false;
   }
   get noDaysMessage() {
     return `${this.weekName} has no days ${this.programName} runs.`;
@@ -1740,8 +1781,8 @@ export default class ShoreshManualBuild extends LightningElement {
 
   renderedCallback() {
     // A list whose counter went to zero is closed, so it doesn't open again by itself later.
-    if (this.openCounter && !this.checked[this.openCounter].length) {
-      this.openCounter = null;
+    if (this.listOpen && !this.allLines.length) {
+      this.listOpen = false;
     }
     if (this.conflict && !this.conflictFocused) {
       const button = this.template.querySelector('[data-id="keep-theirs"]');

@@ -343,47 +343,81 @@
   gap: 12px;
 }
 
-/* The counters under the toolbar (desktop): quiet, no colour; a count is its own numeral. */
+/* The counters under the toolbar (desktop StatBadge): the number on top, the words below. Only
+   a count with something in it is bronze; a zero is grey and opens nothing. */
 .counters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: 0 0 8px;
+  gap: 10px;
+  align-items: stretch;
+  margin: 0 0 12px;
 }
 
 .counter {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 4px 12px;
+  gap: 2px;
+  min-width: 120px;
+  padding: 8px 14px;
   border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
-  border-radius: 16px;
+  border-radius: 8px;
   background: var(--slds-g-color-neutral-base-100, #ffffff);
   color: var(--slds-g-color-neutral-base-10, #181818);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.counter_plain {
-  border-color: transparent;
-  background: transparent;
+  font: inherit;
+  text-align: center;
   cursor: default;
 }
 
+.counter_due {
+  border-color: var(--shoresh-caution);
+  cursor: pointer;
+}
+
 .counter_open {
-  border-color: var(--slds-g-color-brand-base-50, #0176d3);
+  background: var(--shoresh-caution-tint);
 }
 
 .count {
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--shoresh-text-secondary);
+}
+
+.counter_plain .count {
+  color: var(--slds-g-color-neutral-base-10, #181818);
+}
+
+.counter_due .count {
+  color: var(--slds-g-color-neutral-base-10, #181818);
+}
+
+.counter-label {
+  font-size: 13px;
 }
 
 .counter-list {
   margin: 0 0 12px;
-  padding: 8px 12px 8px 28px;
-  list-style: disc;
+  padding: 8px 12px;
   border-left: 2px solid var(--slds-g-color-border-base-1, #c9c9c9);
   font-size: 13px;
+}
+
+.counter-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.counter-list-title {
+  font-size: 12px;
+  color: var(--shoresh-text-secondary);
+}
+
+.counter-list ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
 }

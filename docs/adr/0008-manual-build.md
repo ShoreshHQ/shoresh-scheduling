@@ -369,18 +369,29 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - **The grid** (`c-shoresh-schedule-grid`) takes a `dot` (its words) on any cell and knows
       nothing about why, so Generated Schedule reuses it. The words show on hover, on a tap,
       and while the cell has keyboard focus, and are in the cell's assistive text.
-    - **Counters** under the toolbar (desktop): **Filled** _34 of 120_ (cells filled, of the
-      cells to fill: at camp, not fixed or recurring; neutral; the desktop's "Placed", renamed
-      because the activity list's "2 placed" counts placements, not cells). **Still needed** (activity and
-      bunk pairs short of the weekly minimum: one per line of its list, like the desktop's
-      badges; Greg, 2026-10-17), **Spread across the week** (short of the
-      early-week goal, by that day inclusive, only when the week has a day by then), and
-      **Overlapping** (each clash once: a place in a block, an activity in a block, two of a
-      bunk's placements whose blocks overlap). Still needed and Spread list group by group, then
-      activity by SortOrder and Id, as the engine does. Each shows its count as a separate numeral and is left out at zero
-      (design guide). A click opens the list of its lines, in the engine's words (_Swim · Bunk 3:
-      2 still needed_, _… by Wednesday_, _Swim · Monday · Period 2: Over its limit of 3 bunks at
-      once_); a second click closes it. The grid isn't highlighted by the list (desktop).
+    - **Counters** under the toolbar, as the desktop's manual route shows them (ScheduleScreen.jsx,
+      StatBadge; the desktop is the spec, coordinator 2026-10-17). Each is a tile, its number
+      above its words. **Filled** _34 of 120_ (cells filled, of the cells to fill: at camp, not
+      fixed or recurring; neutral; the desktop's "Placed", renamed because the activity list's
+      "2 placed" counts placements, not cells). **Overlapping** (always shown): one per cell
+      that overlaps, a bunk in a time block where its placement breaks groups at once, one
+      division at a time, place capacity, or is booked at an overlapping time, as the desktop's
+      `computeOverlaps` flags slots (checkWeek's `overlapCells`). **Still needed** (activity and
+      bunk pairs short of the weekly minimum, shown only when some activity has one, desktop
+      `hasCoverageTargets`) and **Spread across the week** (short of the early-week goal, by
+      that day inclusive, only when the week has a day by then; shown only when some activity
+      has one, `hasSpreadTargets`). Each number is the number of its lines (Greg, 2026-10-17:
+      like the desktop's badges). A zero shows grey and opens nothing; above zero the tile has a
+      bronze border. The number stays in the text colour (the design guide keeps bronze off
+      text; the desktop colours it).
+    - **One list, "Still to place"** (the desktop's findings rail on the manual route): any
+      counter above zero opens it under the counters, with every overlap first, then still
+      needed, then spread, in the engine's words (_Bunk 1 · Monday · Period 2: Over its limit
+      of 3 bunks at once_, _Swim · Bunk 3: 2 still needed_, _… by Wednesday_). Still needed and
+      Spread list group by group, then activity by SortOrder and Id, as the engine does. A
+      counter again, or **Close**, closes it, and it closes itself when nothing is left to
+      list. The grid isn't highlighted by the list (desktop). Not here yet: the desktop rail's
+      per-line Hide and jump-to-cell.
     - **Waits for part 6:** an activity, place or bunk closed that week (a week exception).
     - **Checked by** `checkWeek`'s own tests in `c/shoreshEngine` (scenario tests and a seeded
       property test against an independent placement-by-placement oracle: every dot's words,

@@ -65,6 +65,13 @@ const SETUP = nsRecord({
   ],
   locations: []
 });
+// The same camp with no weekly minimums set (so Still needed has nothing to count).
+const NO_MINIMUMS = nsRecord({
+  ...SETUP,
+  activities: SETUP.activities.map((a) => {
+    return { ...a, TimesPerWeekMin__c: 0 };
+  })
+});
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
   { term: "TimeBlock", singular: "Period", plural: "Periods", isCustom: true }
@@ -103,9 +110,14 @@ const dotIn = (element, key) =>
   cell(element, key).querySelector("c-shoresh-dot");
 const tipIn = (element, key) =>
   dotIn(element, key).shadowRoot.querySelector('[data-id="dot-tip"]');
+/** A counter tile as read: its number, then its words. */
+const tile = (el) =>
+  [...el.querySelectorAll("span")].map((span) => span.textContent).join(" ");
 const counters = (element) =>
-  [...q(element, '[data-id="counters"]').querySelectorAll("button")].map((b) =>
-    b.textContent.replace(/\s+/g, " ").trim()
+  [...q(element, '[data-id="counters"]').querySelectorAll("button")].map(tile);
+const listLines = (element) =>
+  [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
+    (li) => li.textContent
   );
 
 /** Bunk 1's week in Group View (columns are days): Monday's items and rows, then Tuesday's. */
@@ -138,7 +150,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     jest.clearAllMocks();
   });
 
-  it("two bunks at Soccer at once: a dot on each, with the words, and one overlap", async () => {
+  it("two bunks at Soccer at once: a dot on each, with the words, and two cells overlapping", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     expect(dotIn(element, "0-1").label).toBe(
       "Over its limit of 1 Bunk at once"
@@ -149,28 +161,26 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     // Fixed activities and Open cells have none.
     expect(dotIn(element, "0-0")).toBeNull();
     expect(dotIn(element, "0-2")).toBeNull();
-    expect(counters(element)).toEqual(["Still needed 3", "Overlapping 1"]);
+    // As the desktop counts it: each cell that overlaps (a bunk in a time block).
+    expect(counters(element)).toEqual(["2 Overlapping", "3 Still needed"]);
   });
 
-  it("a counter opens the list of what it counts; again closes it", async () => {
+  it("any counter opens the one list, overlaps first; again, or Close, closes it", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     const overlapping = q(element, '[data-counter="overlapping"]');
     expect(overlapping.getAttribute("aria-expanded")).toBe("false");
     overlapping.click();
     await flush();
     expect(overlapping.getAttribute("aria-expanded")).toBe("true");
-    const list = q(element, '[data-id="counter-list"]');
-    expect(list.getAttribute("aria-label")).toBe("Overlapping");
     expect(
-      [...list.querySelectorAll("li")].map((li) => li.textContent)
-    ).toEqual(["Soccer · Monday · Period 2: Over its limit of 1 Bunk at once"]);
-    q(element, '[data-counter="stillNeeded"]').click();
-    await flush();
+      q(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
+    ).toBe("true");
     expect(
-      [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
-        (li) => li.textContent
-      )
-    ).toEqual([
+      q(element, '[data-id="counter-list"] ul').getAttribute("aria-label")
+    ).toBe("Still to place");
+    expect(listLines(element)).toEqual([
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
+      "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once",
       "Swim · Bunk 1: 1 still needed",
       "Soccer · Bunk 1: 1 still needed",
       "Soccer · Bunk 2: 1 still needed"
@@ -178,14 +188,17 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     q(element, '[data-counter="stillNeeded"]').click();
     await flush();
     expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    overlapping.click();
+    await flush();
+    q(element, '[data-id="close-list"]').click();
+    await flush();
+    expect(q(element, '[data-id="counter-list"]')).toBeNull();
   });
 
   it("Filled counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     // Two days; Bunk 1 has Period 2 and Lunch to fill, Bunk 2 only Period 2 (away at Lunch).
-    expect(
-      q(element, '[data-id="filled"]').textContent.replace(/\s+/g, " ")
-    ).toBe("Filled 2 of 6");
+    expect(tile(q(element, '[data-id="filled"]'))).toBe("2 of 6 Filled");
   });
 
   it("a placement for a bunk it isn't set up for gets the dot", async () => {
@@ -212,17 +225,31 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     await press(cell(element, "1-1"), "Delete");
     expect(dotIn(element, "0-1")).toBeNull();
-    expect(counters(element)).toEqual(["Still needed 3"]);
+    expect(counters(element)).toEqual(["0 Overlapping", "3 Still needed"]);
   });
 
-  it("a counter at zero isn't shown", async () => {
+  it("a counter at zero shows grey and opens nothing; one with no targets set isn't shown", async () => {
     const element = await render(
       draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
     );
-    // Nothing overlaps and no activity has an early-week goal: only Filled and Still needed.
-    expect(counters(element)).toEqual(["Still needed 2"]);
-    expect(q(element, '[data-counter="overlapping"]')).toBeNull();
+    // Nothing overlaps; no activity has an early-week goal, so Spread isn't shown (desktop).
+    expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
+    const overlapping = q(element, '[data-counter="overlapping"]');
+    expect(overlapping.disabled).toBe(true);
+    expect(overlapping.hasAttribute("aria-expanded")).toBe(false);
+    expect(overlapping.className).not.toContain("counter_due");
+    expect(q(element, '[data-counter="stillNeeded"]').className).toContain(
+      "counter_due"
+    );
     expect(q(element, '[data-counter="spread"]')).toBeNull();
+  });
+
+  it("Still needed isn't shown when no activity has a weekly minimum", async () => {
+    const element = await render(
+      draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]),
+      NO_MINIMUMS
+    );
+    expect(counters(element)).toEqual(["0 Overlapping"]);
   });
 
   it("one Escape on a cell with a dot hides the words and lets go of what was picked up", async () => {
@@ -254,8 +281,12 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(dotIn(element, "1-1").open).toBe(false);
   });
 
-  it("a list whose counter went to zero doesn't open again by itself", async () => {
-    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+  it("the list closes when nothing is left to list, and doesn't open again by itself", async () => {
+    // No minimums: only the overlap is listed.
+    const element = await render(
+      draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]),
+      NO_MINIMUMS
+    );
     q(element, '[data-counter="overlapping"]').click();
     await flush();
     expect(q(element, '[data-id="counter-list"]')).not.toBeNull();
@@ -265,15 +296,16 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     await press(cell(element, "1-1"), "Delete");
     expect(q(element, '[data-id="counter-list"]')).toBeNull();
-    // The clash comes back (Undo): its counter does, its list stays closed.
+    // The clash comes back (Undo): its counter counts again, the list stays closed.
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
     });
     await press(cell(element, "1-1"), "z", { ctrlKey: true });
-    expect(q(element, '[data-counter="overlapping"]')).not.toBeNull();
+    expect(counters(element)).toEqual(["2 Overlapping"]);
     expect(q(element, '[data-id="counter-list"]')).toBeNull();
   });
+
   it("over its weekly limit: only the session past the limit gets the dot, the latest in the week", async () => {
     // Swim at most once a week: Monday's is fine, Tuesday's is the extra one (Greg, 2026-10-17).
     const onceAWeek = nsRecord({
@@ -348,10 +380,6 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(input, "Enter");
     q(element, '[data-counter="stillNeeded"]').click();
     await flush();
-    expect(
-      [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
-        (li) => li.textContent
-      )
-    ).toContain("Kayak · Bunk 1: 1 still needed");
+    expect(listLines(element)).toContain("Kayak · Bunk 1: 1 still needed");
   });
 });

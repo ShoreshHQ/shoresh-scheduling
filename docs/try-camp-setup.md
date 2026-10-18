@@ -620,20 +620,22 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
    set **Who can do it** back to everyone. On **Bunks**, set Bunk 6 back to all day. Dots left on
    the grid from section 20 (a Swim over its weekly limit, say) are expected: hold the pointer on
    one to see why.
-2. Open **Manual Build**, Week 1. Under the toolbar, **Filled** shows how many cells hold
-   something, out of the cells to fill (Lunch, Morning meeting, Library time, and cells where a
-   bunk isn't at camp aren't counted). Place something and the number goes up at once.
-3. **Still needed** has a number beside it: how many activity-and-bunk pairs are short of their
-   weekly minimum. Click it: a list opens under the counters (_Bunk 1_'s lines first, then
-   _Bunk 2_'s, and so on, such as _Swim · Bunk 1: 1 still needed_). Click **Still needed** again
-   to close it. Nothing on the grid is highlighted.
-4. **Overlapping.** In Daily View, Thursday, place Soccer in Period 3 for Bunks 1, 2, 3 and 4
-   (pick Open cells). Each of the four gets a small bronze dot in its top corner, with no words
-   beside it. Hold the pointer on a dot: _Over its limit of 3 bunks at once · More bunks at Field
-   than fit_. An **Overlapping** counter appears. Click it: _Soccer · Thursday · Period 3: Over its
-   limit of 3 bunks at once_ and _Field · Thursday · Period 3: More bunks at Field than fit_.
-5. Drag Bunk 4's Soccer to Period 5. The dots and the **Overlapping** counter go at once (a
-   counter at zero isn't shown).
+2. Open **Manual Build**, Week 1. Under the toolbar is a row of tiles, each a number with its
+   words under it. **Filled** shows how many cells hold something, out of the cells to fill
+   (Lunch, Morning meeting, Library time, and cells where a bunk isn't at camp aren't counted).
+   Place something and the number goes up at once.
+3. **Still needed** counts the activity-and-bunk pairs short of their weekly minimum. Its tile has
+   a bronze border while the number is above 0. Click it: a **Still to place** list opens under
+   the tiles, with every overlap first, then each pair still needed (_Bunk 1_'s lines first, then
+   _Bunk 2_'s, such as _Swim · Bunk 1: 1 still needed_), then the spread lines. Click any tile
+   again, or **Close**, to close it. Nothing on the grid is highlighted.
+4. **Overlapping** shows 0, grey, and does nothing when clicked. In Daily View, Thursday, place
+   Soccer in Period 3 for Bunks 1, 2, 3 and 4 (pick Open cells). Each of the four gets a small
+   bronze dot in its top corner, with no words beside it. Hold the pointer on a dot: _Over its
+   limit of 3 bunks at once · More bunks at Field than fit_. **Overlapping** now shows 4, one for
+   each cell. Click it: the list starts with _Bunk 1 · Thursday · Period 3: Over its limit of 3
+   bunks at once · More bunks at Field than fit_, then the same for Bunks 2, 3 and 4.
+5. Drag Bunk 4's Soccer to Period 5. The dots go at once and **Overlapping** is back to a grey 0.
 6. **Twice in a day.** Place Art in Bunk 1's Thursday Period 5 and Period 6. Both get the dot:
    _Twice in a day_. Undo one.
 7. **Over its weekly limit.** Give Bunk 5 Gym games on Monday, Tuesday, Wednesday and Thursday
@@ -647,8 +649,9 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
    Bunk 1_. Set Boating back to everyone afterwards.
 10. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
     the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
-    counter lists each bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by
-    Tuesday_). Clear those two settings afterwards.
+    tile appears (it isn't shown while no activity has an early-week goal), and the list has each
+    bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by Tuesday_). Clear
+    those two settings afterwards: the tile goes again.
 
 ## What is not here yet
 
