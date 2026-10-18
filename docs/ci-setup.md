@@ -20,6 +20,20 @@ pull requests never deploy over each other. Tests run one class at a time (see b
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
 
+### Waiting in line for the test org
+
+When several pull requests are open, their checks take turns: the rest wait (shown as
+"Waiting" / "Pending" on the pull request) and start in the order they arrived. Nothing needs
+pushing again. This is the `queue: max` setting on the check in `.github/workflows/ci.yml`,
+which lets up to 100 checks wait.
+
+Without it, GitHub lets only **one** check wait: when a third arrived, the waiting one was
+cancelled ("Canceling since a higher priority waiting request for shared-test-org exists"),
+and with five or six pull requests open, checks kept getting cancelled (2026-10-17).
+
+Pushing again to a pull request still cancels that pull request's older check; only the newest
+version of each pull request is checked.
+
 ## Namespace-safety checks (in "LWC Jest and Code Analyzer")
 
 Once the package has its `shoresh` namespace, Salesforce names every custom field
