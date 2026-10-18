@@ -13,12 +13,12 @@ private class ActivitiesAndLocationsTest {
     Season__c season = seasonWithEverything(ids);
     ids.put('Season', season.Id);
     ids.put('Camp', season.Camp__c);
-    ShoreshTestData.keepIds(ids);
+    KeptCamp.keepIds(ids);
   }
 
   /** The season setup built, with its places and activities in ids. */
   private static Season__c sharedSeason(Map<String, Id> ids) {
-    ids.putAll(ShoreshTestData.keptIds());
+    ids.putAll(KeptCamp.keptIds());
     return new Season__c(Id = ids.get('Season'), Camp__c = ids.get('Camp'));
   }
 
@@ -702,7 +702,7 @@ private class ActivitiesAndLocationsTest {
     // The scheduler's season is the only one here, as before the class built a shared one: the
     // counts below are of every activity and location.
     Database.delete(
-      new Season__c(Id = ShoreshTestData.keptIds().get('Season')),
+      new Season__c(Id = KeptCamp.keptIds().get('Season')),
       AccessLevel.SYSTEM_MODE
     );
     System.runAs(ShoreshTestData.scheduler()) {

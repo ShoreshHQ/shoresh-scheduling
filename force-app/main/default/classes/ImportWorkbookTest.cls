@@ -20,7 +20,17 @@ private class ImportWorkbookTest {
     User scheduler = ShoreshTestData.scheduler();
     Camp c;
     System.runAs(scheduler) {
-      c = build();
+      c = new Camp();
+      c.camp = ShoreshTestData.camp('Birch Hollow (made up)');
+      c.season = ShoreshTestData.season(c.camp.Id, 'Summer 2026');
+      c.weeks = ShoreshTestData.weeks(c.season.Id, 3);
+      c.swim = ShoreshTestData.activity(c.season.Id, 'Swim', null);
+      insert as user c.swim;
+      c.swimOffWeek2 = new WeekException__c(
+        Week__c = c.weeks[1].Id,
+        Activity__c = c.swim.Id
+      );
+      insert as user c.swimOffWeek2;
     }
     Map<String, Id> ids = new Map<String, Id>{
       'Camp' => c.camp.Id,
@@ -32,12 +42,12 @@ private class ImportWorkbookTest {
     for (Week__c week : c.weeks) {
       ids.put(week.Name, week.Id);
     }
-    ShoreshTestData.keepIds(ids);
+    KeptCamp.keepIds(ids);
   }
 
   /** The camp setup built, with the scheduler it built it as. */
   private static Camp camp() {
-    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Map<String, Id> ids = KeptCamp.keptIds();
     Camp c = new Camp();
     c.camp = new Camp__c(Id = ids.get('Camp'));
     c.season = new Season__c(Id = ids.get('Season'));
@@ -51,76 +61,9 @@ private class ImportWorkbookTest {
     return c;
   }
 
-  private static Camp build() {
-    Camp c = new Camp();
-    c.camp = ShoreshTestData.camp('Birch Hollow (made up)');
-    c.season = ShoreshTestData.season(c.camp.Id, 'Summer 2026');
-    c.weeks = ShoreshTestData.weeks(c.season.Id, 3);
-    c.swim = ShoreshTestData.activity(c.season.Id, 'Swim', null);
-    insert as user c.swim;
-    c.swimOffWeek2 = new WeekException__c(
-      Week__c = c.weeks[1].Id,
-      Activity__c = c.swim.Id
-    );
-    insert as user c.swimOffWeek2;
-    return c;
-  }
-
-  private static Map<String, Object> plan(
-    Id seasonId,
-    List<Object> records,
-    List<Object> campWords
-  ) {
-    return new Map<String, Object>{
-      'seasonId' => seasonId,
-      'files' => 'camp.xlsx',
-      'records' => records,
-      'campWords' => campWords,
-      'remember' => new List<Object>(),
-      'forget' => new List<Object>()
-    };
-  }
-
-  private static Map<String, Object> linked(
-    Map<String, Object> record,
-    Map<String, Object> refs
-  ) {
-    record.put('refs', refs);
-    return record;
-  }
-
-  private static Map<String, Object> rec(
-    String kind,
-    String keyOrId,
-    Map<String, Object> fields
-  ) {
-    Map<String, Object> r = new Map<String, Object>{
-      'kind' => kind,
-      'fields' => fields,
-      'refs' => new Map<String, Object>()
-    };
-    r.put(keyOrId.contains(':') ? 'key' : 'id', keyOrId);
-    return r;
-  }
-
-  private static Map<String, Object> word(
-    String term,
-    String singular,
-    String plural
-  ) {
-    return new Map<String, Object>{
-      'kind' => 'CampLabel',
-      'term' => term,
-      'fields' => new Map<String, Object>{
-        'Singular__c' => singular,
-        'Plural__c' => plural
-      }
-    };
-  }
-
   /** A workbook adding a week and an activity off in it, ticking Swim back on, and a word. */
   private static ImportSetupSaves.Result importWorkbook(Camp c) {
-    Map<String, Object> archery = rec(
+    Map<String, Object> archery = ImportTestPlans.rec(
       'Activity',
       'Activity:Archery',
       new Map<String, Object>{
@@ -141,10 +84,10 @@ private class ImportWorkbookTest {
     };
     return ImportController.saveWorkbook(
       JSON.serialize(
-        plan(
+        ImportTestPlans.workbookPlan(
           c.season.Id,
           new List<Object>{
-            rec(
+            ImportTestPlans.rec(
               'Week',
               'Week:2026-07-20',
               new Map<String, Object>{
@@ -153,7 +96,7 @@ private class ImportWorkbookTest {
                 'EndDate__c' => '2026-07-24'
               }
             ),
-            rec(
+            ImportTestPlans.rec(
               'Week',
               c.weeks[0].Id,
               new Map<String, Object>{
@@ -162,8 +105,8 @@ private class ImportWorkbookTest {
               }
             ),
             archery,
-            linked(
-              rec(
+            ImportTestPlans.linked(
+              ImportTestPlans.rec(
                 'WeekException',
                 'WeekException:Activity:Archery:Week:2026-07-20',
                 new Map<String, Object>()
@@ -175,7 +118,7 @@ private class ImportWorkbookTest {
             ),
             backOn
           },
-          new List<Object>{ word('Group', 'Cabin', 'Cabins') }
+          new List<Object>{ ImportTestPlans.word('Group', 'Cabin', 'Cabins') }
         )
       )
     );
@@ -271,10 +214,12 @@ private class ImportWorkbookTest {
       );
       ImportSetupSaves.Result result = ImportController.saveWorkbook(
         JSON.serialize(
-          plan(
+          ImportTestPlans.workbookPlan(
             c.season.Id,
             new List<Object>(),
-            new List<Object>{ word('Division', 'Village', 'Villages') }
+            new List<Object>{
+              ImportTestPlans.word('Division', 'Village', 'Villages')
+            }
           )
         )
       );
@@ -302,7 +247,7 @@ private class ImportWorkbookTest {
     System.runAs(c.scheduler) {
       for (
         Map<String, Object> record : new List<Map<String, Object>>{
-          rec(
+          ImportTestPlans.rec(
             'Week',
             'Week:2026-07-20',
             new Map<String, Object>{
@@ -311,8 +256,12 @@ private class ImportWorkbookTest {
               'EndDate__c' => '2026-07-24'
             }
           ),
-          linked(
-            rec('WeekException', 'WeekException:x', new Map<String, Object>()),
+          ImportTestPlans.linked(
+            ImportTestPlans.rec(
+              'WeekException',
+              'WeekException:x',
+              new Map<String, Object>()
+            ),
             new Map<String, Object>{
               'Week__c' => c.weeks[0].Id,
               'Activity__c' => c.swim.Id
@@ -323,7 +272,11 @@ private class ImportWorkbookTest {
         try {
           ImportController.saveList(
             JSON.serialize(
-              plan(c.season.Id, new List<Object>{ record }, new List<Object>())
+              ImportTestPlans.workbookPlan(
+                c.season.Id,
+                new List<Object>{ record },
+                new List<Object>()
+              )
             )
           );
           Assert.fail('refused: ' + record.get('kind'));
@@ -349,7 +302,7 @@ private class ImportWorkbookTest {
       );
       insert as user farOff;
       List<Object> refused = new List<Object>{
-        rec(
+        ImportTestPlans.rec(
           'Week',
           c.weeks[0].Id,
           new Map<String, Object>{ 'StartDate__c' => '2026-06-30' }
@@ -366,7 +319,11 @@ private class ImportWorkbookTest {
         try {
           ImportController.saveWorkbook(
             JSON.serialize(
-              plan(c.season.Id, new List<Object>{ record }, new List<Object>())
+              ImportTestPlans.workbookPlan(
+                c.season.Id,
+                new List<Object>{ record },
+                new List<Object>()
+              )
             )
           );
           Assert.fail('refused: ' + JSON.serialize(record));
@@ -567,7 +524,11 @@ private class ImportWorkbookTest {
     List<Object> fillWeeks,
     List<Object> records
   ) {
-    Map<String, Object> p = plan(seasonId, records, new List<Object>());
+    Map<String, Object> p = ImportTestPlans.workbookPlan(
+      seasonId,
+      records,
+      new List<Object>()
+    );
     p.put('fillWeeks', fillWeeks);
     return ImportController.saveWorkbook(JSON.serialize(p));
   }
@@ -576,7 +537,7 @@ private class ImportWorkbookTest {
   static void anotherSeasonsWorkbookFillsAnEmptySeasonsWeeksAndUndoRemovesThem() {
     System.runAs(ShoreshTestData.scheduler()) {
       Season__c season = emptySeason();
-      Map<String, Object> archery = rec(
+      Map<String, Object> archery = ImportTestPlans.rec(
         'Activity',
         'Activity:Archery',
         new Map<String, Object>{
@@ -604,8 +565,8 @@ private class ImportWorkbookTest {
         new List<Object>{
           archery,
           // Runs in, paired by order onto a week this save fills in.
-          linked(
-            rec(
+          ImportTestPlans.linked(
+            ImportTestPlans.rec(
               'WeekException',
               'WeekException:Activity:Archery:Week:2026-07-06',
               new Map<String, Object>()
@@ -730,12 +691,12 @@ private class ImportWorkbookTest {
       );
       ImportSetupSaves.Result result = ImportController.saveWorkbook(
         JSON.serialize(
-          plan(
+          ImportTestPlans.workbookPlan(
             c.season.Id,
             new List<Object>(),
             new List<Object>{
-              word('Division', 'Division', 'Divisions'),
-              word('Group', 'Group', 'Groups')
+              ImportTestPlans.word('Division', 'Division', 'Divisions'),
+              ImportTestPlans.word('Group', 'Group', 'Groups')
             }
           )
         )
@@ -767,10 +728,12 @@ private class ImportWorkbookTest {
       );
       ImportSetupSaves.Result result = ImportController.saveWorkbook(
         JSON.serialize(
-          plan(
+          ImportTestPlans.workbookPlan(
             c.season.Id,
             new List<Object>(),
-            new List<Object>{ word('Division', 'Division', 'Divisions') }
+            new List<Object>{
+              ImportTestPlans.word('Division', 'Division', 'Divisions')
+            }
           )
         )
       );

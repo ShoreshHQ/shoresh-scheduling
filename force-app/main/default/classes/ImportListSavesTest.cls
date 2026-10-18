@@ -20,9 +20,27 @@ private class ImportListSavesTest {
     User scheduler = ShoreshTestData.scheduler();
     Camp c;
     System.runAs(scheduler) {
-      c = build();
+      c = new Camp();
+      Camp__c record = ShoreshTestData.camp('Pine Hollow (made up)');
+      c.season = ShoreshTestData.season(record.Id, 'Summer 2027');
+      Program__c program = ShoreshTestData.program(c.season.Id, 'Main');
+      c.juniors = ShoreshTestData.division(program.Id, 'Juniors').Id;
+      c.seniors = ShoreshTestData.division(program.Id, 'Seniors').Id;
+      c.bunk1 = ShoreshTestData.groupIn(c.juniors, 'Bunk 1').Id;
+      c.gym = new Location__c(
+        Season__c = c.season.Id,
+        Name = 'Gym',
+        GroupsThatFit__c = 2
+      );
+      insert as user c.gym;
+      c.archery = ShoreshTestData.activity(c.season.Id, 'Archery', c.gym.Id);
+      insert as user c.archery;
+      insert as user new ActivityEligibility__c(
+        Activity__c = c.archery.Id,
+        Division__c = c.juniors
+      );
     }
-    ShoreshTestData.keepIds(
+    KeptCamp.keepIds(
       new Map<String, Id>{
         'Season' => c.season.Id,
         'Juniors' => c.juniors,
@@ -37,7 +55,7 @@ private class ImportListSavesTest {
 
   /** The camp setup built. */
   private static Camp camp() {
-    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Map<String, Id> ids = KeptCamp.keptIds();
     Camp c = new Camp();
     c.season = new Season__c(Id = ids.get('Season'));
     c.juniors = ids.get('Juniors');
@@ -49,105 +67,39 @@ private class ImportListSavesTest {
     return c;
   }
 
-  /** The scheduler setup built the camp as. */
-  private static User scheduler(Camp c) {
-    return new User(Id = c.scheduler);
-  }
-
-  private static Camp build() {
-    Camp c = new Camp();
-    Camp__c record = ShoreshTestData.camp('Pine Hollow (made up)');
-    c.season = ShoreshTestData.season(record.Id, 'Summer 2027');
-    Program__c program = ShoreshTestData.program(c.season.Id, 'Main');
-    c.juniors = ShoreshTestData.division(program.Id, 'Juniors').Id;
-    c.seniors = ShoreshTestData.division(program.Id, 'Seniors').Id;
-    c.bunk1 = ShoreshTestData.groupIn(c.juniors, 'Bunk 1').Id;
-    c.gym = new Location__c(
-      Season__c = c.season.Id,
-      Name = 'Gym',
-      GroupsThatFit__c = 2
-    );
-    insert as user c.gym;
-    c.archery = ShoreshTestData.activity(c.season.Id, 'Archery', c.gym.Id);
-    insert as user c.archery;
-    insert as user new ActivityEligibility__c(
-      Activity__c = c.archery.Id,
-      Division__c = c.juniors
-    );
-    return c;
-  }
-
-  private static Map<String, Object> plan(Id seasonId, List<Object> records) {
-    return new Map<String, Object>{
-      'seasonId' => seasonId,
-      'screen' => 'activities',
-      'files' => 'activities.csv (Activities)',
-      'records' => records,
-      'remember' => new List<Object>(),
-      'forget' => new List<Object>()
-    };
-  }
-
-  private static Map<String, Object> newActivity(
-    String name,
-    Map<String, Object> refs,
-    List<Object> who
-  ) {
-    return new Map<String, Object>{
-      'kind' => 'Activity',
-      'key' => 'Activity:' + name,
-      'fields' => new Map<String, Object>{
-        'Name' => name,
-        'Length__c' => 1,
-        'TimesPerWeekMin__c' => 2,
-        'TimesPerWeekMax__c' => 3,
-        'NoWeeklyMax__c' => false,
-        'Priority__c' => 'High',
-        // Board games is a rain plan in these lists, so it is indoors (a rain plan has to be).
-        'Outdoor__c' => name != 'Board games',
-        'GroupsAtOnce__c' => 1,
-        'NoGroupLimit__c' => false
-      },
-      'refs' => refs,
-      'who' => who
-    };
-  }
-
-  private static ImportSetupSaves.Result save(Map<String, Object> plan) {
-    return ImportController.saveList(JSON.serialize(plan));
-  }
-
   @IsTest
   static void addsActivitiesWithANewLocationWhoAndARainPlanInTheSameList() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       Test.startTest();
-      ImportSetupSaves.Result result = save(
-        plan(
-          c.season.Id,
-          new List<Object>{
-            new Map<String, Object>{
-              'kind' => 'Location',
-              'key' => 'Location:Lake',
-              'fields' => new Map<String, Object>{
-                'Name' => 'Lake',
-                'GroupsThatFit__c' => 1
-              }
-            },
-            newActivity(
-              'Canoeing',
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
               new Map<String, Object>{
-                'Location__c' => 'Location:Lake',
-                'RainPlan__c' => 'Activity:Board games'
+                'kind' => 'Location',
+                'key' => 'Location:Lake',
+                'fields' => new Map<String, Object>{
+                  'Name' => 'Lake',
+                  'GroupsThatFit__c' => 1
+                }
               },
-              new List<Object>{ c.seniors, c.bunk1 }
-            ),
-            newActivity(
-              'Board games',
-              new Map<String, Object>{ 'Location__c' => c.gym.Id },
-              new List<Object>()
-            )
-          }
+              ImportTestPlans.newActivity(
+                'Canoeing',
+                new Map<String, Object>{
+                  'Location__c' => 'Location:Lake',
+                  'RainPlan__c' => 'Activity:Board games'
+                },
+                new List<Object>{ c.seniors, c.bunk1 }
+              ),
+              ImportTestPlans.newActivity(
+                'Board games',
+                new Map<String, Object>{ 'Location__c' => c.gym.Id },
+                new List<Object>()
+              )
+            }
+          )
         )
       );
       Test.stopTest();
@@ -180,24 +132,26 @@ private class ImportListSavesTest {
   @IsTest
   static void undoRemovesWhatTheListAddedEvenWithALinkBetweenThem() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
-      ImportSetupSaves.Result result = save(
-        plan(
-          c.season.Id,
-          new List<Object>{
-            newActivity(
-              'Canoeing',
-              new Map<String, Object>{
-                'RainPlan__c' => 'Activity:Board games'
-              },
-              new List<Object>{ c.seniors }
-            ),
-            newActivity(
-              'Board games',
-              new Map<String, Object>(),
-              new List<Object>()
-            )
-          }
+    System.runAs(new User(Id = c.scheduler)) {
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              ImportTestPlans.newActivity(
+                'Canoeing',
+                new Map<String, Object>{
+                  'RainPlan__c' => 'Activity:Board games'
+                },
+                new List<Object>{ c.seniors }
+              ),
+              ImportTestPlans.newActivity(
+                'Board games',
+                new Map<String, Object>(),
+                new List<Object>()
+              )
+            }
+          )
         )
       );
       Test.startTest();
@@ -222,23 +176,25 @@ private class ImportListSavesTest {
   @IsTest
   static void changesOnlyTheChosenFieldsAndUndoPutsThemAndWhoBack() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
-      ImportSetupSaves.Result result = save(
-        plan(
-          c.season.Id,
-          new List<Object>{
-            new Map<String, Object>{
-              'kind' => 'Activity',
-              'id' => c.archery.Id,
-              'fields' => new Map<String, Object>{
-                'TimesPerWeekMin__c' => 2,
-                'NoWeeklyMax__c' => true,
-                'TimesPerWeekMax__c' => null
-              },
-              'refs' => new Map<String, Object>{ 'Location__c' => null },
-              'who' => new List<Object>{ c.seniors, c.bunk1 }
+    System.runAs(new User(Id = c.scheduler)) {
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'Activity',
+                'id' => c.archery.Id,
+                'fields' => new Map<String, Object>{
+                  'TimesPerWeekMin__c' => 2,
+                  'NoWeeklyMax__c' => true,
+                  'TimesPerWeekMax__c' => null
+                },
+                'refs' => new Map<String, Object>{ 'Location__c' => null },
+                'who' => new List<Object>{ c.seniors, c.bunk1 }
+              }
             }
-          }
+          )
         )
       );
       Assert.areEqual(1, result.changed.get('Activity'));
@@ -284,19 +240,21 @@ private class ImportListSavesTest {
   @IsTest
   static void undoKeepsAWhoListEditedSince() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
-      ImportSetupSaves.Result result = save(
-        plan(
-          c.season.Id,
-          new List<Object>{
-            new Map<String, Object>{
-              'kind' => 'Activity',
-              'id' => c.archery.Id,
-              'fields' => new Map<String, Object>(),
-              'refs' => new Map<String, Object>(),
-              'who' => new List<Object>{ c.seniors }
+    System.runAs(new User(Id = c.scheduler)) {
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'Activity',
+                'id' => c.archery.Id,
+                'fields' => new Map<String, Object>(),
+                'refs' => new Map<String, Object>(),
+                'who' => new List<Object>{ c.seniors }
+              }
             }
-          }
+          )
         )
       );
       insert as user new ActivityEligibility__c(
@@ -321,30 +279,32 @@ private class ImportListSavesTest {
   @IsTest
   static void aNewLocationTypeIsUndoneButOneALocationWasGivenSinceIsKept() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
-      ImportSetupSaves.Result result = save(
-        new Map<String, Object>{
-          'seasonId' => c.season.Id,
-          'files' => 'locations.csv',
-          'records' => new List<Object>{
-            new Map<String, Object>{
-              'kind' => 'LocationType',
-              'key' => 'LocationType:Indoors',
-              'fields' => new Map<String, Object>{ 'Name' => 'Indoors' }
-            },
-            new Map<String, Object>{
-              'kind' => 'Location',
-              'key' => 'Location:Barn',
-              'fields' => new Map<String, Object>{
-                'Name' => 'Barn',
-                'GroupsThatFit__c' => 2
+    System.runAs(new User(Id = c.scheduler)) {
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          new Map<String, Object>{
+            'seasonId' => c.season.Id,
+            'files' => 'locations.csv',
+            'records' => new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'LocationType',
+                'key' => 'LocationType:Indoors',
+                'fields' => new Map<String, Object>{ 'Name' => 'Indoors' }
               },
-              'refs' => new Map<String, Object>{
-                'LocationType__c' => 'LocationType:Indoors'
+              new Map<String, Object>{
+                'kind' => 'Location',
+                'key' => 'Location:Barn',
+                'fields' => new Map<String, Object>{
+                  'Name' => 'Barn',
+                  'GroupsThatFit__c' => 2
+                },
+                'refs' => new Map<String, Object>{
+                  'LocationType__c' => 'LocationType:Indoors'
+                }
               }
             }
           }
-        }
+        )
       );
       Id indoors = [SELECT Id FROM LocationType__c WHERE Name = 'Indoors'].Id;
       update as user new Location__c(Id = c.gym.Id, LocationType__c = indoors);
@@ -359,8 +319,8 @@ private class ImportListSavesTest {
   @IsTest
   static void allOrNone() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
-      Map<String, Object> bad = newActivity(
+    System.runAs(new User(Id = c.scheduler)) {
+      Map<String, Object> bad = ImportTestPlans.newActivity(
         'Canoeing',
         new Map<String, Object>(),
         new List<Object>()
@@ -368,17 +328,19 @@ private class ImportListSavesTest {
       ((Map<String, Object>) bad.get('fields')).put('Length__c', 0);
       Test.startTest();
       try {
-        save(
-          plan(
-            c.season.Id,
-            new List<Object>{
-              newActivity(
-                'Hiking',
-                new Map<String, Object>(),
-                new List<Object>()
-              ),
-              bad
-            }
+        ImportController.saveList(
+          JSON.serialize(
+            ImportTestPlans.listPlan(
+              c.season.Id,
+              new List<Object>{
+                ImportTestPlans.newActivity(
+                  'Hiking',
+                  new Map<String, Object>(),
+                  new List<Object>()
+                ),
+                bad
+              }
+            )
           )
         );
         Assert.fail('a refused row stops the whole list');
@@ -397,7 +359,7 @@ private class ImportListSavesTest {
   @IsTest
   static void refusesRecordsOfAnotherSeasonAndFieldsAListCannotWrite() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       Season__c other = ShoreshTestData.season(
         ShoreshTestData.camp('Other (made up)').Id,
         'Elsewhere'
@@ -424,7 +386,11 @@ private class ImportListSavesTest {
       };
       for (Map<String, Object> attempt : attempts) {
         try {
-          save(plan(c.season.Id, new List<Object>{ attempt }));
+          ImportController.saveList(
+            JSON.serialize(
+              ImportTestPlans.listPlan(c.season.Id, new List<Object>{ attempt })
+            )
+          );
           Assert.fail('refused: ' + JSON.serialize(attempt));
         } catch (AuraHandledException e) {
           Assert.isTrue(
@@ -444,7 +410,7 @@ private class ImportListSavesTest {
   @IsTest
   static void changingWhoForSixtyActivitiesFitsInTheUndoLog() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       List<Group__c> bunks = new List<Group__c>();
       for (Integer i = 2; i <= 11; i++) {
         bunks.add(
@@ -491,7 +457,9 @@ private class ImportListSavesTest {
         );
       }
       Test.startTest();
-      ImportSetupSaves.Result result = save(plan(c.season.Id, records));
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(ImportTestPlans.listPlan(c.season.Id, records))
+      );
       ImportUndo.Result undone = ImportController.undoImport(result.importId);
       Test.stopTest();
       Assert.areEqual(60, result.changed.get('Activity'));
@@ -515,27 +483,29 @@ private class ImportListSavesTest {
   @IsTest
   static void addsAGroupNamedInWhoCanDoItAndUndoRemovesIt() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       String key = 'Group:' + c.seniors + ':Middlers';
-      ImportSetupSaves.Result result = save(
-        plan(
-          c.season.Id,
-          new List<Object>{
-            new Map<String, Object>{
-              'kind' => 'Group',
-              'key' => key,
-              'fields' => new Map<String, Object>{
-                'Name' => 'Middlers',
-                'Availability__c' => 'AllDay'
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'Group',
+                'key' => key,
+                'fields' => new Map<String, Object>{
+                  'Name' => 'Middlers',
+                  'Availability__c' => 'AllDay'
+                },
+                'refs' => new Map<String, Object>{ 'Division__c' => c.seniors }
               },
-              'refs' => new Map<String, Object>{ 'Division__c' => c.seniors }
-            },
-            newActivity(
-              'Pottery',
-              new Map<String, Object>(),
-              new List<Object>{ key }
-            )
-          }
+              ImportTestPlans.newActivity(
+                'Pottery',
+                new Map<String, Object>(),
+                new List<Object>{ key }
+              )
+            }
+          )
         )
       );
       Group__c middlers = [
@@ -566,25 +536,29 @@ private class ImportListSavesTest {
   @IsTest
   static void aRainPlanChangedToAnActivityTheListAddsIsUndone() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
-      ImportSetupSaves.Result result = save(
-        plan(
-          c.season.Id,
-          new List<Object>{
-            new Map<String, Object>{
-              'kind' => 'Activity',
-              'id' => c.archery.Id,
-              'fields' => new Map<String, Object>{ 'Notes__c' => 'Arm guards' },
-              'refs' => new Map<String, Object>{
-                'RainPlan__c' => 'Activity:Board games'
-              }
-            },
-            newActivity(
-              'Board games',
-              new Map<String, Object>(),
-              new List<Object>()
-            )
-          }
+    System.runAs(new User(Id = c.scheduler)) {
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'Activity',
+                'id' => c.archery.Id,
+                'fields' => new Map<String, Object>{
+                  'Notes__c' => 'Arm guards'
+                },
+                'refs' => new Map<String, Object>{
+                  'RainPlan__c' => 'Activity:Board games'
+                }
+              },
+              ImportTestPlans.newActivity(
+                'Board games',
+                new Map<String, Object>(),
+                new List<Object>()
+              )
+            }
+          )
         )
       );
       Assert.areEqual(1, result.changed.get('Activity'), 'counted once');
@@ -615,7 +589,7 @@ private class ImportListSavesTest {
   @IsTest
   static void aListNeverRenamesNorChangesWhatItCanOnlyAdd() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       Test.startTest();
       List<Map<String, Object>> attempts = new List<Map<String, Object>>{
         new Map<String, Object>{
@@ -632,7 +606,11 @@ private class ImportListSavesTest {
       };
       for (Map<String, Object> attempt : attempts) {
         try {
-          save(plan(c.season.Id, new List<Object>{ attempt }));
+          ImportController.saveList(
+            JSON.serialize(
+              ImportTestPlans.listPlan(c.season.Id, new List<Object>{ attempt })
+            )
+          );
           Assert.fail('refused: ' + JSON.serialize(attempt));
         } catch (AuraHandledException e) {
           Assert.isTrue(
@@ -656,7 +634,7 @@ private class ImportListSavesTest {
   @IsTest
   static void aListTooLongToUndoIsRefusedBeforeAnythingIsSaved() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       List<Location__c> places = new List<Location__c>();
       for (Integer i = 0; i < 5; i++) {
         places.add(
@@ -682,7 +660,9 @@ private class ImportListSavesTest {
       }
       Test.startTest();
       try {
-        save(plan(c.season.Id, records));
+        ImportController.saveList(
+          JSON.serialize(ImportTestPlans.listPlan(c.season.Id, records))
+        );
         Assert.fail('too long to undo');
       } catch (AuraHandledException e) {
         Assert.isTrue(e.getMessage().contains('too long'), e.getMessage());
@@ -698,7 +678,7 @@ private class ImportListSavesTest {
   @IsTest
   static void refusesAnotherSeasonsRecordInALinkOrWhoList() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       Season__c other = ShoreshTestData.season(
         ShoreshTestData.camp('Other (made up)').Id,
         'Elsewhere'
@@ -718,17 +698,17 @@ private class ImportListSavesTest {
       Program__c theirProgram = ShoreshTestData.program(other.Id, 'Theirs');
       Id theirDivision = ShoreshTestData.division(theirProgram.Id, 'Theirs').Id;
       List<Map<String, Object>> attempts = new List<Map<String, Object>>{
-        newActivity(
+        ImportTestPlans.newActivity(
           'A',
           new Map<String, Object>{ 'Location__c' => theirPlace.Id },
           new List<Object>()
         ),
-        newActivity(
+        ImportTestPlans.newActivity(
           'B',
           new Map<String, Object>{ 'RainPlan__c' => theirActivity.Id },
           new List<Object>()
         ),
-        newActivity(
+        ImportTestPlans.newActivity(
           'C',
           new Map<String, Object>(),
           new List<Object>{ theirDivision }
@@ -737,7 +717,11 @@ private class ImportListSavesTest {
       Test.startTest();
       for (Map<String, Object> attempt : attempts) {
         try {
-          save(plan(c.season.Id, new List<Object>{ attempt }));
+          ImportController.saveList(
+            JSON.serialize(
+              ImportTestPlans.listPlan(c.season.Id, new List<Object>{ attempt })
+            )
+          );
           Assert.fail('refused: ' + JSON.serialize(attempt));
         } catch (AuraHandledException e) {
           Assert.isTrue(
@@ -757,19 +741,21 @@ private class ImportListSavesTest {
   @IsTest
   static void refusesARecordSentAsAnotherKind() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       Test.startTest();
       try {
-        save(
-          plan(
-            c.season.Id,
-            new List<Object>{
-              new Map<String, Object>{
-                'kind' => 'Location',
-                'id' => c.archery.Id,
-                'fields' => new Map<String, Object>{ 'Notes__c' => 'x' }
+        ImportController.saveList(
+          JSON.serialize(
+            ImportTestPlans.listPlan(
+              c.season.Id,
+              new List<Object>{
+                new Map<String, Object>{
+                  'kind' => 'Location',
+                  'id' => c.archery.Id,
+                  'fields' => new Map<String, Object>{ 'Notes__c' => 'x' }
+                }
               }
-            }
+            )
           )
         );
         Assert.fail('an activity sent as a location');
@@ -791,9 +777,9 @@ private class ImportListSavesTest {
   @IsTest
   static void aListAndLogSpelledWithTheNamespaceAreReadTheSame() {
     Camp c = camp();
-    System.runAs(scheduler(c)) {
+    System.runAs(new User(Id = c.scheduler)) {
       ShoreshSchema.simulatedPrefix = 'shoresh__';
-      Map<String, Object> sent = plan(
+      Map<String, Object> sent = ImportTestPlans.listPlan(
         c.season.Id,
         new List<Object>{
           new Map<String, Object>{
@@ -807,7 +793,7 @@ private class ImportListSavesTest {
             'refs' => new Map<String, Object>{ 'Location__c' => null },
             'who' => new List<Object>{ c.seniors, c.bunk1 }
           },
-          newActivity(
+          ImportTestPlans.newActivity(
             'Climbing',
             new Map<String, Object>{
               'Location__c' => c.gym.Id,

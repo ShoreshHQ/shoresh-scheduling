@@ -17,12 +17,12 @@ private class GeneratedScheduleTest {
       ids = GeneratedTestData.camp();
     }
     ids.put('Scheduler', scheduler.Id);
-    ShoreshTestData.keepIds(ids);
+    KeptCamp.keepIds(ids);
   }
 
   /** The camp setup built, kept where GeneratedTestData's helpers read it. */
   private static Map<String, Id> camp() {
-    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Map<String, Id> ids = KeptCamp.keptIds();
     GeneratedTestData.ids = ids;
     return ids;
   }

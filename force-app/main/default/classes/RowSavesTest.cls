@@ -11,12 +11,12 @@ private class RowSavesTest {
       built = SetTimeTestData.camp();
     }
     built.put('Scheduler', scheduler.Id);
-    ShoreshTestData.keepIds(built);
+    KeptCamp.keepIds(built);
   }
 
   /** The camp setup built. */
   private static Map<String, Id> camp() {
-    ids = ShoreshTestData.keptIds();
+    ids = KeptCamp.keptIds();
     return ids;
   }
 

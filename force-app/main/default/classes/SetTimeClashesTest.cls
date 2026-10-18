@@ -14,12 +14,12 @@ private class SetTimeClashesTest {
       ids = SetTimeTestData.camp();
     }
     ids.put('Scheduler', scheduler.Id);
-    ShoreshTestData.keepIds(ids);
+    KeptCamp.keepIds(ids);
   }
 
   /** The camp setup built. */
   private static Map<String, Id> camp() {
-    return ShoreshTestData.keptIds();
+    return KeptCamp.keptIds();
   }
 
   /** The scheduler setup built the camp as. */

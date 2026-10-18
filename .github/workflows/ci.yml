@@ -53,6 +53,8 @@ jobs:
   scratch-org:
     name: Scratch org deploy and Apex tests
     runs-on: ubuntu-24.04
+    # A hung run would hold the shared-test-org line for GitHub's 6-hour default.
+    timeout-minutes: 60
     if: github.event_name == 'pull_request'
     # Every pull request deploys to the one test org (scripts/renew-test-org.sh makes it).
     # Greg's rule: exactly two orgs, the Dev Hub and this test org; CI never creates one.

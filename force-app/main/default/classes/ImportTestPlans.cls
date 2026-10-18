@@ -347,4 +347,97 @@ public class ImportTestPlans {
     Database.update(done, AccessLevel.SYSTEM_MODE);
     return done;
   }
+
+  /** A camp workbook's plan, as the import screen sends it. */
+  public static Map<String, Object> workbookPlan(
+    Id seasonId,
+    List<Object> records,
+    List<Object> campWords
+  ) {
+    return new Map<String, Object>{
+      'seasonId' => seasonId,
+      'files' => 'camp.xlsx',
+      'records' => records,
+      'campWords' => campWords,
+      'remember' => new List<Object>(),
+      'forget' => new List<Object>()
+    };
+  }
+
+  public static Map<String, Object> linked(
+    Map<String, Object> record,
+    Map<String, Object> refs
+  ) {
+    record.put('refs', refs);
+    return record;
+  }
+
+  public static Map<String, Object> rec(
+    String kind,
+    String keyOrId,
+    Map<String, Object> fields
+  ) {
+    Map<String, Object> r = new Map<String, Object>{
+      'kind' => kind,
+      'fields' => fields,
+      'refs' => new Map<String, Object>()
+    };
+    r.put(keyOrId.contains(':') ? 'key' : 'id', keyOrId);
+    return r;
+  }
+
+  public static Map<String, Object> word(
+    String term,
+    String singular,
+    String plural
+  ) {
+    return new Map<String, Object>{
+      'kind' => 'CampLabel',
+      'term' => term,
+      'fields' => new Map<String, Object>{
+        'Singular__c' => singular,
+        'Plural__c' => plural
+      }
+    };
+  }
+
+  /** A setup list's plan (activities screen), as the import screen sends it. */
+  public static Map<String, Object> listPlan(
+    Id seasonId,
+    List<Object> records
+  ) {
+    return new Map<String, Object>{
+      'seasonId' => seasonId,
+      'screen' => 'activities',
+      'files' => 'activities.csv (Activities)',
+      'records' => records,
+      'remember' => new List<Object>(),
+      'forget' => new List<Object>()
+    };
+  }
+
+  public static Map<String, Object> newActivity(
+    String name,
+    Map<String, Object> refs,
+    List<Object> who
+  ) {
+    return new Map<String, Object>{
+      'kind' => 'Activity',
+      'key' => 'Activity:' + name,
+      'fields' => new Map<String, Object>{
+        'Name' => name,
+        'Length__c' => 1,
+        'TimesPerWeekMin__c' => 2,
+        'TimesPerWeekMax__c' => 3,
+        'NoWeeklyMax__c' => false,
+        'Priority__c' => 'High',
+        // Board games is a rain plan in these lists, so it is indoors (a rain plan has to be).
+        'Outdoor__c' => name != 'Board games',
+        'GroupsAtOnce__c' => 1,
+        'NoGroupLimit__c' => false
+      },
+      'refs' => refs,
+      'who' => who
+    };
+  }
 }

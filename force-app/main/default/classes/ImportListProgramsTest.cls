@@ -24,7 +24,7 @@ private class ImportListProgramsTest {
     System.runAs(scheduler) {
       c = build();
     }
-    ShoreshTestData.keepIds(
+    KeptCamp.keepIds(
       new Map<String, Id>{
         'Season' => c.season.Id,
         'Main' => c.main.Id,
@@ -40,7 +40,7 @@ private class ImportListProgramsTest {
 
   /** The camp setup built. */
   private static Camp camp() {
-    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Map<String, Id> ids = KeptCamp.keptIds();
     Camp c = new Camp();
     c.season = new Season__c(Id = ids.get('Season'));
     c.main = new Program__c(Id = ids.get('Main'));

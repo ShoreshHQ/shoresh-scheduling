@@ -16,46 +16,40 @@ private class ManualBuildTest {
     User scheduler = ShoreshTestData.scheduler();
     Map<String, Id> ids;
     System.runAs(scheduler) {
-      ids = build();
+      ids = SetTimeTestData.camp();
+      FixedActivity__c flagpole = SetTimeTestData.fixed(
+        ids,
+        'Flagpole',
+        'Period 1'
+      );
+      Database.insert(flagpole, AccessLevel.SYSTEM_MODE);
+      ids.put('Flagpole', flagpole.Id);
+      RecurringActivity__c rest = SetTimeTestData.recurring(
+        ids,
+        'Rest',
+        'Lunch'
+      );
+      Database.insert(rest, AccessLevel.SYSTEM_MODE);
+      Database.insert(
+        new Coverage__c(
+          RecurringActivity__c = rest.Id,
+          Division__c = ids.get('Seniors'),
+          Season__c = ids.get('Season')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      ids.put('Rest', rest.Id);
     }
     ids.put('Scheduler', scheduler.Id);
-    ShoreshTestData.keepIds(ids);
+    KeptCamp.keepIds(ids);
   }
 
   /** The camp setup built, with the program's time blocks set for the slot-save runs. */
   private static Map<String, Id> camp() {
-    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Map<String, Id> ids = KeptCamp.keptIds();
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );
-    return ids;
-  }
-
-  /** The scheduler setup built the camp as. */
-  private static User scheduler(Map<String, Id> ids) {
-    return new User(Id = ids.get('Scheduler'));
-  }
-
-  private static Map<String, Id> build() {
-    Map<String, Id> ids = SetTimeTestData.camp();
-    FixedActivity__c flagpole = SetTimeTestData.fixed(
-      ids,
-      'Flagpole',
-      'Period 1'
-    );
-    Database.insert(flagpole, AccessLevel.SYSTEM_MODE);
-    ids.put('Flagpole', flagpole.Id);
-    RecurringActivity__c rest = SetTimeTestData.recurring(ids, 'Rest', 'Lunch');
-    Database.insert(rest, AccessLevel.SYSTEM_MODE);
-    Database.insert(
-      new Coverage__c(
-        RecurringActivity__c = rest.Id,
-        Division__c = ids.get('Seniors'),
-        Season__c = ids.get('Season')
-      ),
-      AccessLevel.SYSTEM_MODE
-    );
-    ids.put('Rest', rest.Id);
     return ids;
   }
 
@@ -68,42 +62,6 @@ private class ManualBuildTest {
 
   private static ScheduleViews.DayView monday(ScheduleViews.ScheduleView view) {
     return view.days[0];
-  }
-
-  /** What a group's slots hold on a day, as identities ('' Open, 'A:<Id>', '^A:<Id>'). */
-  private static List<String> slots(ScheduleViews.DayView day, Integer g) {
-    List<String> result = new List<String>();
-    String carrying = '';
-    for (String token : day.rows[g].split(',', -1)) {
-      if (token == '^') {
-        result.add('^' + carrying);
-      } else if (String.isBlank(token)) {
-        carrying = '';
-        result.add('');
-      } else {
-        ScheduleViews.Ref item = day.items[Integer.valueOf(token) - 1];
-        carrying = item.kind + ':' + item.id;
-        result.add(carrying);
-      }
-    }
-    return result;
-  }
-
-  /** Where a run starts: a day, a group, and its first time block. */
-  private static SlotEdits.Run at(
-    Date day,
-    String groupId,
-    String firstBlockId
-  ) {
-    return SlotRunsTestData.at(day, groupId, firstBlockId);
-  }
-
-  private static SlotEdits.Edit edit(
-    SlotEdits.Run run,
-    List<String> before,
-    List<String> after
-  ) {
-    return SlotRunsTestData.edit(run, before, after);
   }
 
   private static SlotEdits.Result save(Id scheduleId, SlotEdits.Edit edit) {
@@ -129,7 +87,7 @@ private class ManualBuildTest {
   @IsTest
   static void aBlankWeekPlacesFixedAndRecurringAndLeavesTheRestOpen() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
 
@@ -145,12 +103,18 @@ private class ManualBuildTest {
       String flagpole = 'F:' + ids.get('Flagpole');
       String rest = 'R:' + ids.get('Rest');
       // Flagpole for everyone in Period 1; Rest for the Seniors at Monday's lunch.
-      Assert.areEqual(new List<String>{ flagpole, '', '' }, slots(mon, 0));
-      Assert.areEqual(new List<String>{ flagpole, '', rest }, slots(mon, 2));
+      Assert.areEqual(
+        new List<String>{ flagpole, '', '' },
+        SlotRunsTestData.slots(mon, 0)
+      );
+      Assert.areEqual(
+        new List<String>{ flagpole, '', rest },
+        SlotRunsTestData.slots(mon, 2)
+      );
       // Rest is on Mondays only.
       Assert.areEqual(
         new List<String>{ flagpole, '', '' },
-        slots(view.schedule.days[1], 2)
+        SlotRunsTestData.slots(view.schedule.days[1], 2)
       );
       // Not a version: the Versions list stays empty.
       Assert.areEqual(
@@ -164,7 +128,7 @@ private class ManualBuildTest {
   @IsTest
   static void aGroupAwayThatWeekIsLeftOut() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 3');
       ScheduleViews.DayView mon = monday(view.schedule);
@@ -176,7 +140,7 @@ private class ManualBuildTest {
   @IsTest
   static void startingTwiceGivesTheSameDraft() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       Assert.isNull(
         ManualBuildController.getDraft(ids.get('Main'), ids.get('Week 1'))
@@ -206,7 +170,7 @@ private class ManualBuildTest {
   @IsTest
   static void theDraftNamesWhatToPlaceAndWhereGroupsAreAway() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       Database.update(
         new Group__c(Id = ids.get('Group C'), Availability__c = 'MorningOnly'),
@@ -282,7 +246,7 @@ private class ManualBuildTest {
   @IsTest
   static void twoPeopleOnDifferentGroupsOfTheSameDayBothSave() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -290,16 +254,16 @@ private class ManualBuildTest {
       // Both opened the week before either saved: each names the slot as it was then.
       SlotEdits.Result first = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Swim') }
         )
       );
       SlotEdits.Result second = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
@@ -307,23 +271,23 @@ private class ManualBuildTest {
       Assert.isTrue(first.conflicts.isEmpty());
       Assert.isTrue(second.conflicts.isEmpty());
       ScheduleViews.DayView day = monday(second.schedule);
-      Assert.areEqual(a(ids, 'Swim'), slots(day, 0)[1]);
-      Assert.areEqual(a(ids, 'Soccer'), slots(day, 1)[1]);
+      Assert.areEqual(a(ids, 'Swim'), SlotRunsTestData.slots(day, 0)[1]);
+      Assert.areEqual(a(ids, 'Soccer'), SlotRunsTestData.slots(day, 1)[1]);
     }
   }
 
   @IsTest
   static void theSameSlotChangedSinceComesBackAsAConflict() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
       Date mon = monday(view.schedule).dateValue;
       save(
         draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
@@ -331,33 +295,39 @@ private class ManualBuildTest {
       // Someone who saw the slot Open now puts Gym games there.
       SlotEdits.Result late = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Gym games') }
         )
       );
       Assert.areEqual(new List<Integer>{ 0 }, late.conflicts);
       // Theirs is kept, and sent back for "keep theirs or use yours".
-      Assert.areEqual(a(ids, 'Soccer'), slots(monday(late.schedule), 1)[1]);
+      Assert.areEqual(
+        a(ids, 'Soccer'),
+        SlotRunsTestData.slots(monday(late.schedule), 1)[1]
+      );
       // "Use yours": the same edit, naming what is there now.
       SlotEdits.Result mine = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ a(ids, 'Soccer') },
           new List<String>{ a(ids, 'Gym games') }
         )
       );
       Assert.isTrue(mine.conflicts.isEmpty());
-      Assert.areEqual(a(ids, 'Gym games'), slots(monday(mine.schedule), 1)[1]);
+      Assert.areEqual(
+        a(ids, 'Gym games'),
+        SlotRunsTestData.slots(monday(mine.schedule), 1)[1]
+      );
     }
   }
 
   @IsTest
   static void undoOverSomeoneElsesNewerEditAsksToo() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -367,16 +337,16 @@ private class ManualBuildTest {
       // I place Soccer; someone else then changes it to Gym games.
       save(
         draftId,
-        edit(
-          at(mon, groupB, period2),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, groupB, period2),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
       );
       save(
         draftId,
-        edit(
-          at(mon, groupB, period2),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, groupB, period2),
           new List<String>{ a(ids, 'Soccer') },
           new List<String>{ a(ids, 'Gym games') }
         )
@@ -384,21 +354,24 @@ private class ManualBuildTest {
       // My undo puts back Open where I left Soccer: their Gym games is not overwritten.
       SlotEdits.Result undo = save(
         draftId,
-        edit(
-          at(mon, groupB, period2),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, groupB, period2),
           new List<String>{ a(ids, 'Soccer') },
           new List<String>{ '' }
         )
       );
       Assert.areEqual(new List<Integer>{ 0 }, undo.conflicts);
-      Assert.areEqual(a(ids, 'Gym games'), slots(monday(undo.schedule), 1)[1]);
+      Assert.areEqual(
+        a(ids, 'Gym games'),
+        SlotRunsTestData.slots(monday(undo.schedule), 1)[1]
+      );
     }
   }
 
   @IsTest
   static void aMultiBlockPlacementAndItsRemoval() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -406,37 +379,40 @@ private class ManualBuildTest {
       String soccer = a(ids, 'Soccer');
       SlotEdits.Result placed = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '', '' },
           new List<String>{ soccer, '^' + soccer }
         )
       );
       ScheduleViews.DayView day = monday(placed.schedule);
-      Assert.areEqual(soccer, slots(day, 0)[1]);
-      Assert.areEqual('^' + soccer, slots(day, 0)[2]);
+      Assert.areEqual(soccer, SlotRunsTestData.slots(day, 0)[1]);
+      Assert.areEqual('^' + soccer, SlotRunsTestData.slots(day, 0)[2]);
       // Changing only its first block would cut into the block it carries on into: the screen's
       // picture was out of date, so it comes back as a conflict, and nothing changes.
       SlotEdits.Result cut = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ soccer },
           new List<String>{ a(ids, 'Swim') }
         )
       );
       Assert.areEqual(new List<Integer>{ 0 }, cut.conflicts);
-      Assert.areEqual(soccer, slots(monday(cut.schedule), 0)[1]);
+      Assert.areEqual(
+        soccer,
+        SlotRunsTestData.slots(monday(cut.schedule), 0)[1]
+      );
       SlotEdits.Result removed = save(
         draftId,
-        edit(
-          at(mon, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ soccer, '^' + soccer },
           new List<String>{ '', '' }
         )
       );
       ScheduleViews.DayView after = monday(removed.schedule);
-      Assert.areEqual('', slots(after, 0)[1]);
+      Assert.areEqual('', SlotRunsTestData.slots(after, 0)[1]);
       // An item no slot uses is dropped from the day's list.
       for (ScheduleViews.Ref item : after.items) {
         Assert.areNotEqual('Soccer', item.name);
@@ -447,7 +423,7 @@ private class ManualBuildTest {
   @IsTest
   static void aRunIsMadeOnlyOnTheTimeBlocksItWasMadeOn() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -455,14 +431,18 @@ private class ManualBuildTest {
       String soccer = a(ids, 'Soccer');
       // The screen placed Soccer in Period 2 and a block it knew as next to it: since then, the
       // block after Period 2 is Lunch, not that one. A conflict, and nothing is written.
-      SlotEdits.Run moved = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      SlotEdits.Run moved = SlotRunsTestData.at(
+        mon,
+        ids.get('Group A'),
+        ids.get('Period 2')
+      );
       moved.blockIds = new List<String>{
         ids.get('Period 2'),
         ids.get('Period 1')
       };
       SlotEdits.Result shifted = save(
         draftId,
-        edit(
+        SlotRunsTestData.edit(
           moved,
           new List<String>{ '', '' },
           new List<String>{ soccer, '^' + soccer }
@@ -472,18 +452,22 @@ private class ManualBuildTest {
       Assert.areEqual(
         new List<String>{ '', '' },
         new List<String>{
-          slots(monday(shifted.schedule), 0)[1],
-          slots(monday(shifted.schedule), 0)[2]
+          SlotRunsTestData.slots(monday(shifted.schedule), 0)[1],
+          SlotRunsTestData.slots(monday(shifted.schedule), 0)[2]
         }
       );
       // Naming fewer blocks than it changes is a conflict too.
-      SlotEdits.Run fewer = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      SlotEdits.Run fewer = SlotRunsTestData.at(
+        mon,
+        ids.get('Group A'),
+        ids.get('Period 2')
+      );
       fewer.blockIds = new List<String>{ ids.get('Period 2') };
       Assert.areEqual(
         new List<Integer>{ 0 },
         save(
             draftId,
-            edit(
+            SlotRunsTestData.edit(
               fewer,
               new List<String>{ '', '' },
               new List<String>{ soccer, '^' + soccer }
@@ -492,30 +476,48 @@ private class ManualBuildTest {
           .conflicts
       );
       // On the blocks it names (15-character Ids match 18-character ones), it is made.
-      SlotEdits.Run same = at(mon, ids.get('Group A'), ids.get('Period 2'));
+      SlotEdits.Run same = SlotRunsTestData.at(
+        mon,
+        ids.get('Group A'),
+        ids.get('Period 2')
+      );
       same.blockIds = new List<String>{
         String.valueOf(ids.get('Period 2')).left(15),
         ids.get('Lunch')
       };
       SlotEdits.Result made = save(
         draftId,
-        edit(
+        SlotRunsTestData.edit(
           same,
           new List<String>{ '', '' },
           new List<String>{ soccer, '^' + soccer }
         )
       );
       Assert.areEqual(0, made.conflicts.size());
-      Assert.areEqual(soccer, slots(monday(made.schedule), 0)[1]);
-      Assert.areEqual('^' + soccer, slots(monday(made.schedule), 0)[2]);
+      Assert.areEqual(
+        soccer,
+        SlotRunsTestData.slots(monday(made.schedule), 0)[1]
+      );
+      Assert.areEqual(
+        '^' + soccer,
+        SlotRunsTestData.slots(monday(made.schedule), 0)[2]
+      );
       // A run that names no blocks wasn't sent by the screen as it is: refused, not guessed.
-      SlotEdits.Run unnamed = at(mon, ids.get('Group B'), ids.get('Period 2'));
+      SlotEdits.Run unnamed = SlotRunsTestData.at(
+        mon,
+        ids.get('Group B'),
+        ids.get('Period 2')
+      );
       unnamed.blockIds = new List<String>();
       Assert.areEqual(
         'That change could not be read. Reload the page and try again.',
         refusal(
           draftId,
-          edit(unnamed, new List<String>{ '' }, new List<String>{ soccer })
+          SlotRunsTestData.edit(
+            unnamed,
+            new List<String>{ '' },
+            new List<String>{ soccer }
+          )
         )
       );
     }
@@ -524,7 +526,7 @@ private class ManualBuildTest {
   @IsTest
   static void fixedRecurringAndAwaySlotsCannotBeChanged() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       Database.update(
         new Group__c(Id = ids.get('Group B'), Availability__c = 'MorningOnly'),
@@ -535,8 +537,8 @@ private class ManualBuildTest {
       Date mon = monday(view.schedule).dateValue;
       String overFlagpole = refusal(
         draftId,
-        edit(
-          at(mon, ids.get('Group A'), ids.get('Period 1')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 1')),
           new List<String>{ 'F:' + ids.get('Flagpole') },
           new List<String>{ a(ids, 'Swim') }
         )
@@ -547,8 +549,8 @@ private class ManualBuildTest {
       );
       String placingFixed = refusal(
         draftId,
-        edit(
-          at(mon, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ 'F:' + ids.get('Flagpole') }
         )
@@ -559,8 +561,8 @@ private class ManualBuildTest {
       );
       String away = refusal(
         draftId,
-        edit(
-          at(mon, ids.get('Group B'), ids.get('Lunch')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(mon, ids.get('Group B'), ids.get('Lunch')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
@@ -572,7 +574,7 @@ private class ManualBuildTest {
   @IsTest
   static void aVersionCannotBeChangedHere() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
@@ -581,8 +583,8 @@ private class ManualBuildTest {
       );
       String refused = refusal(
         version.Id,
-        edit(
-          at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Swim') }
         )
@@ -594,7 +596,7 @@ private class ManualBuildTest {
   @IsTest
   static void anActivityFromAnotherSeasonIsNotPlaced() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
@@ -606,8 +608,8 @@ private class ManualBuildTest {
       Database.insert(stranger, AccessLevel.SYSTEM_MODE);
       String refused = refusal(
         view.schedule.schedule.id,
-        edit(
-          at(
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
             monday(view.schedule).dateValue,
             ids.get('Group A'),
             ids.get('Period 2')
@@ -623,7 +625,7 @@ private class ManualBuildTest {
   @IsTest
   static void aTypedNameAddsAnActivityOnceWithHandAddedStartingValues() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -670,15 +672,15 @@ private class ManualBuildTest {
   @IsTest
   static void aRunMayNotStartPartwayThroughSomeoneElsesPlacement() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
       String soccer = a(ids, 'Soccer');
       save(
         draftId,
-        edit(
-          at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '', '' },
           new List<String>{ soccer, '^' + soccer }
         )
@@ -686,8 +688,8 @@ private class ManualBuildTest {
       // Its second block alone, even naming it correctly, would cut Soccer short unasked.
       String cut = refusal(
         draftId,
-        edit(
-          at(MONDAY, ids.get('Group A'), ids.get('Lunch')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group A'), ids.get('Lunch')),
           new List<String>{ '^' + soccer },
           new List<String>{ a(ids, 'Swim') }
         )
@@ -699,15 +701,15 @@ private class ManualBuildTest {
   @IsTest
   static void editsAreMatchedByRecordNotSpellingAndEachConflictIsNamed() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
       String swim15 = 'A:' + String.valueOf(ids.get('Swim')).left(15);
       List<SlotEdits.Edit> edits = new List<SlotEdits.Edit>{
         // 15-character Ids for the group, the block, and the activity.
-        edit(
-          at(
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
             MONDAY,
             String.valueOf(ids.get('Group A')).left(15),
             String.valueOf(ids.get('Period 2')).left(15)
@@ -716,13 +718,13 @@ private class ManualBuildTest {
           new List<String>{ swim15 }
         ),
         // Names a slot as Soccer, which it never held: a conflict, and only this one.
-        edit(
-          at(MONDAY, ids.get('Group B'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group B'), ids.get('Period 2')),
           new List<String>{ a(ids, 'Soccer') },
           new List<String>{ '' }
         ),
-        edit(
-          at(MONDAY, ids.get('Group C'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group C'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Soccer') }
         )
@@ -730,15 +732,15 @@ private class ManualBuildTest {
       SlotEdits.Result result = ManualBuildController.saveSlots(draftId, edits);
       Assert.areEqual(new List<Integer>{ 1 }, result.conflicts);
       ScheduleViews.DayView day = monday(result.schedule);
-      Assert.areEqual(a(ids, 'Swim'), slots(day, 0)[1]);
-      Assert.areEqual(a(ids, 'Soccer'), slots(day, 2)[1]);
+      Assert.areEqual(a(ids, 'Swim'), SlotRunsTestData.slots(day, 0)[1]);
+      Assert.areEqual(a(ids, 'Soccer'), SlotRunsTestData.slots(day, 2)[1]);
     }
   }
 
   @IsTest
   static void aDayThatCannotBeReadIsRefusedNotAConflict() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -754,8 +756,8 @@ private class ManualBuildTest {
       );
       String refused = refusal(
         draftId,
-        edit(
-          at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(MONDAY, ids.get('Group A'), ids.get('Period 2')),
           new List<String>{ '' },
           new List<String>{ a(ids, 'Swim') }
         )
@@ -767,7 +769,7 @@ private class ManualBuildTest {
   @IsTest
   static void anActivityIsAddedOnlyFromAManualBuildDraft() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
@@ -798,7 +800,7 @@ private class ManualBuildTest {
   @IsTest
   static void aWeekFromAnotherSeasonOrAProgramWithoutTimeBlocksIsRefused() {
     Map<String, Id> ids = camp();
-    System.runAs(scheduler(ids)) {
+    System.runAs(KeptCamp.scheduler(ids)) {
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
       Week__c otherWeek = ShoreshTestData.weeks(other.Id, 1)[0];
       Program__c empty = ShoreshTestData.program(ids.get('Season'), 'Evenings');

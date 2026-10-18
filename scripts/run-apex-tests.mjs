@@ -23,6 +23,7 @@ import { join } from "node:path";
 
 const MIN_COVERAGE = 75;
 const CLASS_TIMEOUT_MS = 10 * 60 * 1000;
+const CLI_TIMEOUT_MS = 2 * 60 * 1000;
 const args = process.argv.slice(2);
 const orgIndex = args.indexOf("--target-org");
 const orgArgs = orgIndex >= 0 ? ["--target-org", args[orgIndex + 1]] : [];
@@ -88,10 +89,14 @@ function sf(sfArgs) {
       execFileSync("sf", [...sfArgs, ...orgArgs, "--json"], {
         encoding: "utf8",
         maxBuffer: 64 * 1024 * 1024,
-        stdio: ["ignore", "pipe", "pipe"]
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: CLI_TIMEOUT_MS
       })
     );
   } catch (e) {
+    if (e.signal) {
+      return { message: `took longer than ${CLI_TIMEOUT_MS / 60000} minutes` };
+    }
     try {
       return JSON.parse(e.stdout);
     } catch {
@@ -225,6 +230,16 @@ function summarize(out) {
       failures: []
     };
   }
+  if (result.numTestsRun === 0) {
+    // A class the org found no tests in (renamed, or its tests did not compile) is not a pass.
+    return {
+      ok: false,
+      ran: 0,
+      failed: 0,
+      line: "no tests ran",
+      failures: []
+    };
+  }
   [...(result.successes || []), ...(result.failures || [])].forEach(
     (t) => t.id && testClassIds.add(t.id)
   );
@@ -248,7 +263,9 @@ async function queryAll(soql) {
   while (next) {
     const out = await tooling(next);
     if (!out.ok) {
-      console.log(`Could not read coverage: ${out.body.message}`);
+      console.log(
+        `Could not read coverage: ${out.body.message}\n(A deploy to the test org while this run was going can cause this; run it again.)`
+      );
       process.exit(1);
     }
     records.push(...(out.body.records || []));
@@ -286,7 +303,12 @@ async function readCoverage(testClassIds) {
     )
   ).forEach((record) => {
     const name = record.ApexClassOrTrigger && record.ApexClassOrTrigger.Name;
-    if (!name || !touched.has(record.ApexClassOrTriggerId)) {
+    // With no per-test rows (the org stores only aggregate coverage) take every aggregate row,
+    // as the CLI does.
+    if (
+      !name ||
+      (touched.size > 0 && !touched.has(record.ApexClassOrTriggerId))
+    ) {
       return;
     }
     const seen = new Map();

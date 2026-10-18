@@ -69,7 +69,7 @@ Direct single-class runs do not count against that allowance. **Never queue a fu
 
 Coverage is read once, after the last class, from the org's running totals for this
 repository's classes and triggers, so it is close to, but not exactly, what a single full run
-would report. The script starts the Salesforce CLI only once (for its login) and sends each
+would report. The script starts the Salesforce CLI only twice (to read the login; twice more if the session expires mid-run) and sends each
 class's run itself, with the same call the CLI's `--synchronous` run makes; each class's line
 shows how many seconds it took.
 
