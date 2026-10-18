@@ -20,7 +20,14 @@
             role="alert"
             data-id="refusal"
           >
-            {error}
+            <lightning-icon
+              class="slds-m-right_x-small"
+              icon-name="utility:error"
+              variant="error"
+              size="x-small"
+              alternative-text="Refused"
+            ></lightning-icon
+            ><span data-id="refusal-words">{error}</span>
           </div>
         </template>
         <lightning-radio-group

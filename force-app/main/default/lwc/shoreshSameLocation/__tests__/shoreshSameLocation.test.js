@@ -103,6 +103,17 @@ describe("c-shoresh-same-location", () => {
     expect(close).toHaveBeenCalledTimes(2);
   });
 
+  it("Escape does nothing while a merge is being made", async () => {
+    const element = render({ busy: true });
+    const close = jest.fn();
+    element.addEventListener("close", close);
+    await flush();
+    $(element, "same-location").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+    expect(close).not.toHaveBeenCalled();
+  });
+
   it("Tab stays inside the question", async () => {
     const element = render();
     await flush();
@@ -123,7 +134,8 @@ describe("c-shoresh-same-location", () => {
   it("shows why a merge was refused", async () => {
     const element = render({ error: '"Pool" fits 1 Bunk at once …' });
     await flush();
-    expect($(element, "refusal").textContent.trim()).toBe(
+    expect($(element, "refusal").getAttribute("role")).toBe("alert");
+    expect($(element, "refusal-words").textContent.trim()).toBe(
       '"Pool" fits 1 Bunk at once …'
     );
   });

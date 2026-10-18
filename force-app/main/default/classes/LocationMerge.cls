@@ -49,15 +49,21 @@ public with sharing class LocationMerge {
     List<Id> otherIds
   ) {
     Set<Id> ids = idsToMerge(keepId, otherIds);
-    Map<Id, Location__c> places = new Map<Id, Location__c>(
-      [
-        SELECT Id, Name, Season__c
-        FROM Location__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-        FOR UPDATE
-      ]
-    );
+    Map<Id, Location__c> places;
+    try {
+      places = new Map<Id, Location__c>(
+        [
+          SELECT Id, Name, Season__c
+          FROM Location__c
+          WHERE Id IN :ids
+          WITH USER_MODE
+          FOR UPDATE
+        ]
+      );
+    } catch (QueryException e) {
+      // Someone else is saving one of them right now, or they can't be read.
+      throw ScreenErrors.of(CHANGED);
+    }
     if (places.size() != ids.size() || !oneSeasonOneName(places, keepId)) {
       throw ScreenErrors.of(CHANGED);
     }
@@ -101,7 +107,12 @@ public with sharing class LocationMerge {
   /** Capitals and spacing aside, as the tables' "Same name as another" compares names. */
   @TestVisible
   private static String sameNameKey(String name) {
-    return name == null ? '' : name.normalizeSpace().toLowerCase();
+    // Non-breaking spaces (pasted from spreadsheets) count as spaces, as on the screen.
+    return name == null
+      ? ''
+      : name.replaceAll('[\\u00A0\\u2007\\u202F]', ' ')
+          .normalizeSpace()
+          .toLowerCase();
   }
 
   private static void moveReferences(Id keepId, Set<Id> others) {

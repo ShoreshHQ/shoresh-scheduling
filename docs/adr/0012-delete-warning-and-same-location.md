@@ -24,14 +24,18 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
 3. **No Shoresh Trash.** Salesforce's Recycle Bin can bring a deleted record back.
 4. **Refusals stay.** Something else depending on it (who can do it, a rain plan, who a
    recurring activity covers) still refuses the delete with the existing messages.
-5. **Read in user mode:** a schedule the director can't see is not counted.
+5. **Read in user mode:** a schedule the director can't see is not counted. Days are read a
+   few at a time, and a schedule already found is not read again, so a big camp's long day
+   text stays within memory. If the count still can't be made, the delete is asked about as
+   before, without the count, rather than blocked.
 
 ## "Same location?"
 
 6. **Which places:** saved places in one season whose saved names differ only in capitals and
    spacing ("Pool", "pool", " POOL"), as the Locations table's "Same name as another" already
    compares them (desktop `locationDuplicates.js`: trimmed, spaces collapsed, capitals
-   ignored). Typing a matching name is a heads-up only until it is saved.
+   ignored). A non-breaking space pasted from a spreadsheet counts as a space on the server
+   too. Typing a matching name is a heads-up only until it is saved.
 7. **Where:** a **Same location?** button beside the tag on each such row opens the question.
    _Difference from the desktop:_ the desktop has two ways in, a review after its upgrade and a
    dot on the row whose "Merge into X" merges at once into the first match. Greg's brief asks
@@ -40,7 +44,9 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    _Pool · 2 Bunks at once · 3 activities here_, in the camp's words; the place with the most
    activities is chosen first, then the one that fits the most (desktop `defaultWinner`); the
    camp's "groups that fit" starts at the most any of them fits; **Merge** and **Keep
-   separate**. Escape is Keep separate. A refused merge says why inside the question.
+   separate**. Escape is Keep separate (not while a merge is being made). A refused merge says
+   why inside the question, with the error icon. Afterwards the cursor is back on the row's
+   button, or on the kept place once merged.
    Left out: the desktop's "You can undo this…" line (design guide: no explanatory text).
 9. **What moves** (`LocationMerge`, desktop D1: "merge is a delete that re-points"): every
    activity, fixed activity, and recurring activity at the other places; the next season's

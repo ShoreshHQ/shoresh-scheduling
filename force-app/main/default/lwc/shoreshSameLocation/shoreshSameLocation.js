@@ -94,7 +94,7 @@ export default class ShoreshSameLocation extends LightningElement {
 
   /** Escape leaves the places as they are; Tab stays inside the question. */
   handleKeyDown(event) {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && !this.busy) {
       this.handleClose();
       return;
     }

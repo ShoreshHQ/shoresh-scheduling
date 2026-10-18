@@ -4,6 +4,6 @@
 
 /* A refused merge: a faint brick box (design guide, inline recoverable error). */
 .refusal {
-  border-color: #b44e48;
-  background: #faf0ef;
+  border-color: var(--slds-g-color-error-base-50, #b44e48);
+  background: var(--slds-g-color-error-base-95, #faf0ef);
 }

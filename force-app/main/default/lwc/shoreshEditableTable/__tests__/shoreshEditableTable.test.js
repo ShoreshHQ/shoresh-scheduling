@@ -1692,6 +1692,19 @@ describe("c-shoresh-editable-table", () => {
       await flush();
       expect(tags(element)).toEqual([true, true, true, true, false]);
       expect(buttons().length).toBe(3);
+      // Afterwards: back to the row's button, its first field once merged, or the blank row.
+      const button = buttons()[1];
+      button.focus = jest.fn();
+      element.focusRowOf("r2");
+      expect(button.focus).toHaveBeenCalled();
+      const gym = field(element, 1, "Name");
+      gym.focus = jest.fn();
+      element.focusRowOf("r1");
+      expect(gym.focus).toHaveBeenCalled();
+      const blank = field(element, 4, "Name");
+      blank.focus = jest.fn();
+      element.focusRowOf("gone");
+      expect(blank.focus).toHaveBeenCalled();
       const plain = render({
         objectApiName: "Location__c",
         columns: COLUMNS,

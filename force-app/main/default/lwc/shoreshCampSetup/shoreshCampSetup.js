@@ -826,7 +826,10 @@ export default class ShoreshCampSetup extends LightningElement {
    * bring it back, and the schedules keep its name.
    */
   async deleteQuestion(recordId, name) {
-    const uses = await scheduleUses({ recordId });
+    // If the count can't be made, the delete is still asked about, as it always was.
+    const uses = await Promise.resolve()
+      .then(() => scheduleUses({ recordId }))
+      .catch(() => 0);
     if (uses > 0) {
       return {
         label: `Delete "${name}"?`,
@@ -863,7 +866,15 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleCloseSameLocation() {
+    const from = this.sameLocation[0].id;
     this.sameLocation = null;
+    this.locationsTable().focusRowOf(from);
+  }
+
+  locationsTable() {
+    return this.template.querySelector(
+      'c-shoresh-editable-table[data-id="locations"]'
+    );
   }
 
   async handleMergeLocations(event) {
@@ -874,6 +885,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.sameLocation = null;
       this.toast(`Merged into "${kept.name}".`);
       await this.loadSeason();
+      this.locationsTable().focusRowOf(keepId);
     });
   }
 

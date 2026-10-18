@@ -398,6 +398,17 @@ describe("c-shoresh-camp-setup", () => {
       "Swim is in 1 schedule. Delete anyway?"
     );
     expect(deleteRecord).toHaveBeenCalledTimes(1);
+
+    // The count couldn't be made: the delete is still asked about, the usual way.
+    scheduleUses.mockRejectedValueOnce({ body: { message: "Too big" } });
+    LightningConfirm.open.mockResolvedValueOnce(false);
+    activities.dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "a1", name: "Swim" } })
+    );
+    await flush();
+    expect(LightningConfirm.open.mock.calls[2][0].message).toContain(
+      'Delete "Swim"?'
+    );
   });
 
   it("deleting a week says which saved versions go with it", async () => {
@@ -926,17 +937,22 @@ describe("c-shoresh-camp-setup", () => {
         { id: "l2", name: "pool", fits: 2, activities: 1 },
         { id: "l1", name: "Pool", fits: 1, activities: 2 }
       ]);
+      const table = q(element, 'c-shoresh-editable-table[data-id="locations"]');
+      table.focusRowOf = jest.fn();
       q(element, "c-shoresh-same-location").dispatchEvent(
         new CustomEvent("close")
       );
       await flush();
       expect(q(element, "c-shoresh-same-location")).toBeNull();
+      expect(table.focusRowOf).toHaveBeenCalledWith("l2");
     });
 
     it("Merge keeps the chosen place, then reads the season again", async () => {
       const element = await asked();
       mergeLocations.mockResolvedValueOnce();
       getSeasonSetup.mockClear();
+      const table = q(element, 'c-shoresh-editable-table[data-id="locations"]');
+      table.focusRowOf = jest.fn();
       q(element, "c-shoresh-same-location").dispatchEvent(
         new CustomEvent("merge", {
           detail: { keepId: "l1", otherIds: ["l2"], groupsThatFit: 2 }
@@ -950,6 +966,7 @@ describe("c-shoresh-camp-setup", () => {
       });
       expect(getSeasonSetup).toHaveBeenCalledTimes(1);
       expect(q(element, "c-shoresh-same-location")).toBeNull();
+      expect(table.focusRowOf).toHaveBeenCalledWith("l1");
     });
 
     it("a refused merge stays open and says why", async () => {

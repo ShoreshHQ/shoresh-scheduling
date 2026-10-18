@@ -34,6 +34,10 @@ public with sharing class SetupTablesController {
     List<Id> otherIds,
     Decimal groupsThatFit
   ) {
-    LocationMerge.mergeInto(keepId, otherIds, groupsThatFit);
+    try {
+      LocationMerge.mergeInto(keepId, otherIds, groupsThatFit);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
   }
 }

@@ -543,6 +543,23 @@ export default class ShoreshEditableTable extends LightningElement {
     return byName;
   }
 
+  /**
+   * After "Same location?" closes: back to that row's button, or its first field once merged
+   * (the blank row's if the row is gone).
+   */
+  @api
+  focusRowOf(recordId) {
+    const key = `row-${recordId}`;
+    const button = this.template.querySelector(
+      `[data-id="merge"][data-row-key="${key}"]`
+    );
+    if (button) {
+      button.focus();
+    } else {
+      this.focusRow(this.rowFor(key) ? key : ADD);
+    }
+  }
+
   handleMerge(event) {
     const draft = this.rowFor(event.currentTarget.dataset.rowKey);
     const others = (

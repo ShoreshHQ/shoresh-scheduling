@@ -202,6 +202,65 @@ private class SetupTablesTest {
   }
 
   @IsTest
+  static void fixedActivitiesMoveAndPastedSpacesCount() {
+    ids = SetTimeTestData.camp();
+    Location__c other = new Location__c(
+      Season__c = ids.get('Season'),
+      Name = 'Pool\u00A0',
+      GroupsThatFit__c = 3
+    );
+    Database.insert(other, AccessLevel.SYSTEM_MODE);
+    FixedActivity__c flag = SetTimeTestData.fixed(ids, 'Flagpole', 'Period 1');
+    flag.Location__c = other.Id;
+    SetTimeTestData.save(new List<SObject>{ flag });
+    System.runAs(ShoreshTestData.scheduler()) {
+      SetupTablesController.mergeLocations(
+        ids.get('Pool'),
+        new List<Id>{ other.Id },
+        3
+      );
+    }
+    Assert.areEqual(
+      ids.get('Pool'),
+      [
+        SELECT Location__c
+        FROM FixedActivity__c
+        WHERE Id = :flag.Id
+        WITH SYSTEM_MODE
+      ]
+      .Location__c
+    );
+  }
+
+  @IsTest
+  static void placesInAnotherSeasonAreNeverMerged() {
+    ids = SetTimeTestData.camp();
+    Season__c next = ShoreshTestData.season(ids.get('Camp'), 'Summer 2027');
+    Location__c nextPool = new Location__c(
+      Season__c = next.Id,
+      Name = 'Pool',
+      GroupsThatFit__c = 1
+    );
+    Database.insert(nextPool, AccessLevel.SYSTEM_MODE);
+    System.runAs(ShoreshTestData.scheduler()) {
+      try {
+        SetupTablesController.mergeLocations(
+          ids.get('Pool'),
+          new List<Id>{ nextPool.Id },
+          1
+        );
+        Assert.fail('Another season');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(LocationMerge.CHANGED, e.getMessage());
+      }
+    }
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM Location__c WHERE Id = :nextPool.Id WITH SYSTEM_MODE]
+    );
+  }
+
+  @IsTest
   static void aMergeThatWouldCrowdThePlaceIsRefusedAndChangesNothing() {
     ids = SetTimeTestData.camp();
     Id other = secondPool();
