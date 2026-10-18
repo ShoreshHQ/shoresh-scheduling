@@ -18,6 +18,19 @@ public with sharing class SlotSaves {
     Id scheduleId,
     List<SlotEdits.Edit> edits
   ) {
+    SlotEdits.Result result = make(scheduleId, edits);
+    result.schedule = ScheduleViews.open(scheduleId);
+    return result;
+  }
+
+  /**
+   * The same, without reading the schedule back (Start from another week reads the whole draft
+   * once afterwards anyway): which edits came back as conflicts.
+   */
+  public static SlotEdits.Result make(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits
+  ) {
     Schedule__c schedule = ManualDrafts.locked(scheduleId);
     SlotSaves saves = new SlotSaves();
     saves.rules = new SlotRules(schedule, edits);
@@ -31,7 +44,6 @@ public with sharing class SlotSaves {
       }
     }
     saves.write(scheduleId);
-    result.schedule = ScheduleViews.open(scheduleId);
     return result;
   }
 

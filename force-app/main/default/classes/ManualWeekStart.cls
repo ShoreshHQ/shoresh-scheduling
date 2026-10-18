@@ -44,7 +44,7 @@ public with sharing class ManualWeekStart {
     copy.plan(ScheduleDays.read(source.Id), ScheduleDays.read(blank.draftId));
     result.leftOut = copy.leftOut;
     if (!copy.edits.isEmpty()) {
-      SlotEdits.Result saved = SlotSaves.save(blank.draftId, copy.edits);
+      SlotEdits.Result saved = SlotSaves.make(blank.draftId, copy.edits);
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
           'The week could not be copied. Reload the page and try again.'
