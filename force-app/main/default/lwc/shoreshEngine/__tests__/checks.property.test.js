@@ -362,6 +362,8 @@ function oracle(days, model) {
   // Still to place.
   const stillNeeded = [];
   const spread = [];
+  const stillNeededBy = [];
+  const spreadBy = [];
   const groups = [];
   days.forEach((day) =>
     day.groups.forEach((grp) => {
@@ -387,6 +389,11 @@ function oracle(days, model) {
         stillNeeded.push(
           `${act.name} · ${grp.name}: ${act.min - mine.length} still needed`
         );
+        stillNeededBy.push({
+          activityId: act.id,
+          groupId: grp.id,
+          missing: act.min - mine.length
+        });
       }
       const byDay = act.early && act.early.byDay;
       if (
@@ -400,6 +407,12 @@ function oracle(days, model) {
           spread.push(
             `${act.name} · ${grp.name}: ${act.early.count - early} still needed by ${NAMES[byDay]}`
           );
+          spreadBy.push({
+            activityId: act.id,
+            groupId: grp.id,
+            missing: act.early.count - early,
+            byDay: NAMES[byDay]
+          });
         }
       }
     })
@@ -432,6 +445,8 @@ function oracle(days, model) {
     clashes: [...clashes.values()],
     stillNeeded,
     spread,
+    stillNeededBy,
+    spreadBy,
     cells: { filled, total }
   };
 }
@@ -469,9 +484,11 @@ describe("checks over generated weeks", () => {
       if (gotLines !== wantLines) {
         failures.push(`seed ${seed}: overlaps ${gotLines} != ${wantLines}`);
       }
-      ["stillNeeded", "spread"].forEach((list) => {
+      ["stillNeeded", "spread", "stillNeededBy", "spreadBy"].forEach((list) => {
         if (JSON.stringify(got[list]) !== JSON.stringify(want[list])) {
-          failures.push(`seed ${seed}: ${list} ${got[list]} != ${want[list]}`);
+          failures.push(
+            `seed ${seed}: ${list} ${JSON.stringify(got[list])} != ${JSON.stringify(want[list])}`
+          );
         }
       });
       if (JSON.stringify(got.cells) !== JSON.stringify(want.cells)) {

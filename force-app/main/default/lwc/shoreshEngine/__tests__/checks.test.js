@@ -332,6 +332,28 @@ describe("checks: still to place and the counters", () => {
       "Hike · Bunk 1: 1 still needed",
       "Hike · Bunk 2: 2 still needed"
     ]);
+    // The same as data, entry for entry.
+    expect(result.stillNeededBy).toEqual([
+      { activityId: "hike", groupId: "g1", missing: 1 },
+      { activityId: "hike", groupId: "g2", missing: 2 }
+    ]);
+  });
+
+  it("spread across the week as data: entry i is line i", () => {
+    const early = { count: 2, byDay: 3 };
+    const days = weekOf(
+      { [MON]: [["A:swim"], [""]], [THU]: [[""], [""]] },
+      { width: 1 }
+    );
+    const result = checkWeek(days, model([activity("swim", { early })]), words);
+    expect(result.spread).toEqual([
+      "Swim · Bunk 1: 1 still needed by Wednesday",
+      "Swim · Bunk 2: 2 still needed by Wednesday"
+    ]);
+    expect(result.spreadBy).toEqual([
+      { activityId: "swim", groupId: "g1", missing: 1, byDay: "Wednesday" },
+      { activityId: "swim", groupId: "g2", missing: 2, byDay: "Wednesday" }
+    ]);
   });
 
   it("spread across the week: short of its early-week goal, by that day inclusive", () => {

@@ -207,8 +207,10 @@ cells) and 0009 (names through `c/shoreshSchema`).
 11. **Output.** The days in the same shape Manual Build uses (frame unchanged; items listed in the
     order cells use them; items no cell uses are dropped); `flags`, checkWeek's dots on the
     finished week, one entry per cell; checkWeek's `stillNeeded` and `spread` lines ("Swim ·
-    Bunk 3: 1 still needed by Wednesday"), `overlapping` and `cells` (filled of to fill), in the
-    same words and order as Manual Build; `openCells`; and `ruleChecks`, the build's work. Flags and reasons are not stored: G3
+    Bunk 3: 1 still needed by Wednesday"), the same as data (`stillNeededBy`: activity, group,
+    how many missing; `spreadBy`: the same and the day; entry i is line i, so Manual Build's
+    counters can add them up), `overlapping` and `cells` (filled of to fill), in the same words
+    and order as Manual Build; `openCells`; and `ruleChecks`, the build's work. Flags and reasons are not stored: G3
     works them out again on load with `checkWeek` (coordinator's call).
 12. **Code layout** (`force-app/main/default/lwc/shoreshEngine`): `shoreshEngine.js` (entry
     point, output), `setup.js` (reads inputs, ordering), `week.js` (the builder), `random.js`
