@@ -41,3 +41,8 @@
 .add-row td {
   background: var(--slds-g-color-neutral-base-95, #f4f3ef);
 }
+
+/* A refused change still on the row: a bronze edge until it is saved or put back. */
+.not-saved td:first-child {
+  box-shadow: inset 3px 0 0 var(--shoresh-caution);
+}

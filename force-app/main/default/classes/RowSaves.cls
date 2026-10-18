@@ -43,6 +43,8 @@ public with sharing class RowSaves {
     }
     // Only fields the screens save are compared (and so read back as theirs).
     ScreenSaves.refuseWhatCannotBeSaved(new List<SObject>{ record });
+    // Week ticks and who it covers are for this row only.
+    RowExtras.refuseOtherRows(record, extras);
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Result result = record.Id == null
@@ -82,7 +84,12 @@ public with sharing class RowSaves {
     List<Id> seenWho = extras == null ? null : extras.seenWho;
     if (seenWho != null) {
       List<Id> who = RowSeen.whoNow(record);
-      if (!RowSeen.sameIds(seenWho, who)) {
+      // Unchanged since, or someone else chose the same: no question.
+      List<Id> wanted = RowExtras.wantedWho(extras);
+      if (
+        !RowSeen.sameIds(seenWho, who) &&
+        (wanted == null || !RowSeen.sameIds(wanted, who))
+      ) {
         result.theirWho = who;
         result.theirs = now;
       }

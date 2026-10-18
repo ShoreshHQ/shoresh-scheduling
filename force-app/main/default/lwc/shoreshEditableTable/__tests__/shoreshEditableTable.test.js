@@ -238,7 +238,9 @@ describe("c-shoresh-editable-table", () => {
       expect(field(element, 0, "StartTime__c").label).toBe(
         "Add Time block: Start"
       );
-      expect(addButton(element).alternativeText).toBe("Add Time block");
+      // As the desktop's "+ Add", named for what it adds.
+      expect(addButton(element).label).toBe("Add");
+      expect(addButton(element).title).toBe("Add Time block");
 
       const full = render({ columns: COLUMNS, rows: ROWS });
       await flush();
@@ -346,6 +348,7 @@ describe("c-shoresh-editable-table", () => {
       expect(addButton(element).disabled).toBe(true);
       sent[0].onSaved({ id: "a3", changed: [] });
       await flush();
+      await flush();
       expect(rows(element).length).toBe(4);
       expect(field(element, 2, "Name").value).toBe("Swim");
       expect(field(element, 3, "Name").value).toBeUndefined();
@@ -372,7 +375,41 @@ describe("c-shoresh-editable-table", () => {
       expect(field(element, 2, "StartTime__c").value).toBe("13:30:00.000");
     });
 
-    it("typing into it while it is being added stays", async () => {
+    it("is locked while it is being added, so fast entry adds each row once", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      // Swim, Enter …
+      change(field(element, 2, "Name"), "Swim");
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      press(field(element, 2, "Name"), "Enter");
+      await flush();
+      expect(field(element, 2, "Name").disabled).toBe(true);
+      expect(field(element, 2, "StartTime__c").disabled).toBe(true);
+      // … a second Enter while it is being added sends nothing more.
+      press(field(element, 2, "Name"), "Enter");
+      leave(element, 2);
+      expect(sent.length).toBe(1);
+      await answer(element, sent[0], { id: "a3", changed: [] }, [
+        ...ROWS,
+        { Id: "a3", Name: "Swim", StartTime__c: 48600000, SortOrder__c: 3 }
+      ]);
+      // … the blank row is empty and open again, with the cursor back in it.
+      expect(field(element, 3, "Name").value).toBeUndefined();
+      expect(field(element, 3, "Name").disabled).toBe(false);
+      // … Archery, Enter.
+      change(field(element, 3, "Name"), "Archery");
+      change(field(element, 3, "StartTime__c"), "14:30");
+      await flush();
+      allValid(element);
+      press(field(element, 3, "Name"), "Enter");
+      expect(sent.map((d) => d.record.Name)).toEqual(["Swim", "Archery"]);
+      expect(sent[1].record.StartTime__c).toBe("14:30:00.000Z");
+    });
+
+    it("after Enter or +, the cursor is back in the blank row's first field", async () => {
       const element = render({ columns: COLUMNS, rows: ROWS });
       const sent = listen(element);
       await flush();
@@ -380,10 +417,33 @@ describe("c-shoresh-editable-table", () => {
       change(field(element, 2, "StartTime__c"), "13:30");
       await flush();
       allValid(element);
+      addButton(element).click();
+      await flush();
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      sent[0].onSaved({ id: "a3", changed: [] });
+      await flush();
+      const focused = focus.mock.contexts.map(
+        (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+      );
+      focus.mockRestore();
+      expect(focused).toContain(`add:${nsName("Name")}`);
+    });
+
+    it("its required values never show as missing; a value its field refuses stops the add", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      expect(field(element, 2, "Name").required).toBe(false);
+      expect(field(element, 0, "Name").required).toBe(true);
+      change(field(element, 2, "Name"), "Swim");
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      const time = field(element, 2, "StartTime__c");
+      time.reportValidity = jest.fn(() => false);
       press(field(element, 2, "Name"), "Enter");
-      change(field(element, 2, "Name"), "Archery");
-      await answer(element, sent[0], { id: "a3", changed: [] });
-      expect(field(element, 3, "Name").value).toBe("Archery");
+      expect(time.reportValidity).toHaveBeenCalled();
+      expect(sent.length).toBe(0);
     });
 
     it("refused, keeps what was typed", async () => {
@@ -1051,6 +1111,212 @@ describe("c-shoresh-editable-table", () => {
     });
   });
 
+  describe("what someone else changed, kept straight", () => {
+    // Each of these guards stops an unseen change of someone else's being saved over.
+    it("typing again after a reload still compares with what the director first saw", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 0, "Name"), "One");
+      await flush();
+      // Someone else renamed it meanwhile; the reload brings theirs under the typing.
+      element.rows = packaged({
+        rows: [{ ...ROWS[0], Name: "Theirs" }, ROWS[1]]
+      }).rows;
+      await flush();
+      change(field(element, 0, "Name"), "Uno");
+      await flush();
+      allValid(element);
+      leave(element, 0);
+      expect(sent[0].seen.Name).toBe("Period 1");
+    });
+
+    it("Keep theirs on a time puts back their time as the field shows it", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 0, "StartTime__c"), "13:30:00.000");
+      await flush();
+      allValid(element);
+      leave(element, 0);
+      sent[0].onSaved(
+        nsRecord({
+          changed: [nsName("StartTime__c")],
+          theirs: { Id: "a1", StartTime__c: 36000000 }
+        })
+      );
+      sent[0].onDone();
+      await flush();
+      element.shadowRoot.querySelector('[data-id="keep-theirs"]').click();
+      await flush();
+      expect(field(element, 0, "StartTime__c").value).toBe("10:00:00.000");
+    });
+
+    it("names a choice someone else just added once the reload brings it, never its Id; dates as a director reads them", async () => {
+      const columns = [
+        COLUMNS[0],
+        {
+          fieldName: "Location__c",
+          label: "Location",
+          type: "picklist",
+          options: [{ label: "Gym", value: "l1" }]
+        },
+        { fieldName: "StartDate__c", label: "Start date", type: "date" }
+      ];
+      const rowList = [
+        {
+          Id: "a1",
+          Name: "Swim",
+          Location__c: "l1",
+          StartDate__c: "2027-07-05"
+        }
+      ];
+      const element = render({ columns, rows: rowList });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 0, "StartDate__c"), "2027-07-06");
+      change(field(element, 0, "Location__c"), "");
+      await flush();
+      allValid(element);
+      leave(element, 0);
+      sent[0].onSaved(
+        nsRecord({
+          changed: [nsName("Location__c"), nsName("StartDate__c")],
+          theirs: { Id: "a1", Location__c: "l9", StartDate__c: "2027-07-03" }
+        })
+      );
+      await flush();
+      const theirs = () =>
+        [...element.shadowRoot.querySelectorAll('[data-id="theirs"]')].map(
+          (dd) => dd.textContent
+        );
+      expect(theirs()).toEqual(["", "Sat, Jul 3, 2027"]);
+      expect(
+        element.shadowRoot.querySelectorAll('[data-id="yours"]')[1].textContent
+      ).toBe("Tue, Jul 6, 2027");
+      element.columns = packaged({
+        columns: [
+          columns[0],
+          {
+            ...columns[1],
+            options: [...columns[1].options, { label: "Lake", value: "l9" }]
+          },
+          columns[2]
+        ]
+      }).columns;
+      await flush();
+      expect(theirs()[0]).toBe("Lake");
+    });
+
+    it("the question takes the focus, says it is a question, and Enter on a row's buttons saves nothing", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 0, "Name"), "One");
+      await flush();
+      press(
+        element.shadowRoot.querySelectorAll('[data-id="delete"]')[0],
+        "Enter"
+      );
+      expect(sent.length).toBe(0);
+      allValid(element);
+      leave(element, 0);
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      sent[0].onSaved(
+        nsRecord({ changed: ["Name"], theirs: { Id: "a1", Name: "Theirs" } })
+      );
+      await flush();
+      const focused = focus.mock.contexts.map((el) => el.dataset.id);
+      focus.mockRestore();
+      expect(focused).toContain("keep-theirs");
+      const question = element.shadowRoot.querySelector('[data-id="conflict"]');
+      expect(question.getAttribute("role")).toBe("dialog");
+      expect(question.getAttribute("aria-modal")).toBe("true");
+      expect(question.getAttribute("aria-labelledby")).toBeTruthy();
+      expect(question.querySelector("h2").textContent.trim()).toBe(
+        "Changed by someone else"
+      );
+    });
+  });
+
+  describe("saving, as the director sees it", () => {
+    it("says each save to screen readers, the same words again too", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      const live = element.shadowRoot.querySelector('[data-id="announce"]');
+      expect(live.getAttribute("aria-live")).toBe("polite");
+      const saveAs = async (name) => {
+        change(field(element, 1, "Name"), name);
+        await flush();
+        allValid(element);
+        leave(element, 1);
+        const detail = sent[sent.length - 1];
+        detail.onSaved({ id: "a2", changed: [] });
+        await flush();
+        await flush();
+        expect(live.textContent.trim()).toBe(`${name} saved`);
+        element.rows = packaged({
+          rows: [ROWS[0], { ...ROWS[1], Name: name }]
+        }).rows;
+        detail.onDone();
+        await flush();
+      };
+      await saveAs("Again");
+      await saveAs("Lunch");
+      // "Lunch saved" again (another change to the same row): the text still changes.
+      const before = live.textContent;
+      change(field(element, 1, "Outdoor__c"), false);
+      await flush();
+      leave(element, 1);
+      sent[sent.length - 1].onSaved({ id: "a2", changed: [] });
+      await flush();
+      expect(live.textContent.trim()).toBe("Lunch saved");
+      expect(live.textContent).not.toBe(before);
+    });
+
+    it("a refused change keeps a mark until it is saved or put back", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 1, "Name"), "Clash");
+      await flush();
+      allValid(element);
+      leave(element, 1);
+      sent[0].onFailure();
+      sent[0].onDone();
+      await flush();
+      const marked = () =>
+        rows(element).map((tr) => tr.classList.contains("not-saved"));
+      expect(marked()).toEqual([false, true, false]);
+      expect(
+        rows(element)[1].querySelector('[data-id="not-saved"]').textContent
+      ).toBe("Not saved");
+      press(field(element, 1, "Name"), "Escape");
+      await flush();
+      expect(marked()).toEqual([false, false, false]);
+    });
+
+    it("Escape in a dropdown puts the row back, unless the dropdown used it to close", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      await flush();
+      change(field(element, 0, "PartOfDay__c"), "Afternoon");
+      await flush();
+      const closing = new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true
+      });
+      closing.preventDefault();
+      field(element, 0, "PartOfDay__c").dispatchEvent(closing);
+      await flush();
+      expect(field(element, 0, "PartOfDay__c").value).toBe("Afternoon");
+      press(field(element, 0, "PartOfDay__c"), "Escape");
+      await flush();
+      expect(field(element, 0, "PartOfDay__c").value).toBe("Morning");
+    });
+  });
+
   describe("showing only some rows", () => {
     const LOCATION_COLUMNS = [
       { fieldName: "Name", label: "Name", type: "text", required: true },
@@ -1091,6 +1357,37 @@ describe("c-shoresh-editable-table", () => {
       element.filterValue = undefined;
       await flush();
       expect(names(element)).toEqual(["Pool", "Field A", "Field B", undefined]);
+    });
+
+    it("a row whose type is changed stays until it is saved; the blank row starts with the chosen type", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        addLabel: "Add Location",
+        columns: LOCATION_COLUMNS,
+        rows: LOCATIONS,
+        filterField: "LocationType__c",
+        filterValue: "t1"
+      });
+      const sent = listen(element);
+      await flush();
+      expect(field(element, 2, "LocationType__c").value).toBe("t1");
+      change(field(element, 0, "LocationType__c"), "");
+      await flush();
+      expect(names(element)).toEqual(["Field A", "Field B", undefined]);
+      allValid(element);
+      leave(element, 0);
+      expect(sent[0].record).toEqual({
+        sobjectType: "Location__c",
+        Id: "l2",
+        LocationType__c: null
+      });
+      // Saved: the reload has it with no type, so it leaves this view.
+      await answer(element, sent[0], { id: "l2", changed: [] }, [
+        LOCATIONS[0],
+        { Id: "l2", Name: "Field A" },
+        LOCATIONS[2]
+      ]);
+      expect(names(element)).toEqual(["Field B", undefined]);
     });
 
     it("says so when nothing matches", async () => {
@@ -1211,6 +1508,21 @@ describe("c-shoresh-editable-table", () => {
       addButton(element).click();
       expect(sent[0].record.Name).toBe("Bunk 3");
       expect(sent[0].extras.weeksOff).toEqual([{ row: 0, week: "w1" }]);
+    });
+
+    it("a tick on a saved row is saved the moment it is clicked, as on the desktop", async () => {
+      const element = renderGroups();
+      const sent = listen(element);
+      await flush();
+      allValid(element);
+      change(tick(element, 0, 1), false);
+      await flush();
+      expect(sent.length).toBe(1);
+      expect(sent[0].extras.weeksOff).toEqual([{ target: "g1", week: "w2" }]);
+      // The blank row's ticks wait for it to be added.
+      change(tick(element, 2, 0), false);
+      await flush();
+      expect(sent.length).toBe(1);
     });
 
     it("unticking and ticking again is no change", async () => {
@@ -1428,6 +1740,61 @@ describe("c-shoresh-editable-table", () => {
       });
       expect(sent[0].extras.who).toEqual([{ target: "r2", targets: ["d1"] }]);
       expect(sent[0].seenWho).toEqual([]);
+    });
+
+    it("who is compared with what the director first saw, across reloads and a save in between", async () => {
+      const element = renderRecurring();
+      const sent = listen(element);
+      await flush();
+      toggle(element, 0).click();
+      await flush();
+      picker(element).dispatchEvent(
+        new CustomEvent("change", { detail: { value: ["g2"] } })
+      );
+      await flush();
+      // Someone else's who arrives with a reload, under the director's choice.
+      element.rows = packaged({
+        rows: [
+          { ...SWIM[0], Coverages__r: [{ Id: "c9", Division__c: "d1" }] },
+          SWIM[1]
+        ]
+      }).rows;
+      await flush();
+      // A second change keeps what was first seen.
+      picker(element).dispatchEvent(
+        new CustomEvent("change", { detail: { value: ["g1", "g2"] } })
+      );
+      await flush();
+      allValid(element);
+      // Leaving into the picker is staying; leaving the picker's row saves.
+      const whoRow = element.shadowRoot.querySelector("tr[data-who-row]");
+      whoRow.dispatchEvent(
+        new FocusEvent("focusout", { bubbles: true, relatedTarget: null })
+      );
+      expect(sent.length).toBe(1);
+      expect(sent[0].seenWho).toEqual(["g1"]);
+      // Changed again while that save is going: compared with what was just sent.
+      picker(element).dispatchEvent(
+        new CustomEvent("change", { detail: { value: ["g1"] } })
+      );
+      sent[0].onSaved({ id: "r1", changed: [] });
+      element.rows = packaged({
+        rows: [
+          {
+            ...SWIM[0],
+            Coverages__r: [
+              { Id: "c1", Group__c: "g1" },
+              { Id: "c2", Group__c: "g2" }
+            ]
+          },
+          SWIM[1]
+        ]
+      }).rows;
+      sent[0].onDone();
+      await flush();
+      leave(element, 0);
+      expect(sent[1].seenWho).toEqual(["g1", "g2"]);
+      expect(sent[1].extras.who).toEqual([{ target: "r1", targets: ["g1"] }]);
     });
 
     it("someone else changed who: theirs and yours by name", async () => {
