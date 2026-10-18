@@ -7,63 +7,36 @@
 @IsTest
 public class SetTimeTestData {
   public static Map<String, Id> camp() {
-    Camp__c camp = ShoreshTestData.camp('Camp Willow');
-    Season__c season = ShoreshTestData.fullSeason(camp.Id);
-    Map<String, Id> ids = new Map<String, Id>{
-      'Camp' => camp.Id,
-      'Season' => season.Id
-    };
-    ids.putAll(ShoreshTestData.placesAndActivities(season.Id));
-    Program__c program = [
-      SELECT Id
-      FROM Program__c
-      WHERE Season__c = :season.Id
-      WITH SYSTEM_MODE
-    ];
-    ids.put('Main', program.Id);
-    ShoreshTestData.timeBlock(program.Id, 'Period 2', 10);
-    Division__c seniors = ShoreshTestData.division(program.Id, 'Seniors');
-    Database.update(
-      new Division__c(Id = seniors.Id, SortOrder__c = 2),
-      AccessLevel.SYSTEM_MODE
-    );
-    ShoreshTestData.groupIn(seniors.Id, 'Group C');
-    List<Group__c> groups = new List<Group__c>();
-    for (Group__c grp : [
-      SELECT Id, Name
-      FROM Group__c
-      WHERE Division__r.Program__c = :program.Id
-      WITH SYSTEM_MODE
-    ]) {
-      groups.add(new Group__c(Id = grp.Id, Availability__c = 'AllDay'));
-      ids.put(grp.Name, grp.Id);
+    // The clash check runs once, at the end, as a screen save does, not after every insert; and
+    // what the builders made is kept, not read back (SetupCostTest holds the cost down).
+    SetTimeGuard.defer();
+    try {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Map<String, Id> ids = new Map<String, Id>{ 'Camp' => camp.Id };
+      ids.putAll(ShoreshTestData.lastSeasonIds);
+      ids.putAll(ShoreshTestData.placesAndActivities(season.Id));
+      Id main = ids.get('Main');
+      ids.put('Period 2', ShoreshTestData.timeBlock(main, 'Period 2', 10).Id);
+      Division__c seniors = ShoreshTestData.division(main, 'Seniors');
+      Database.update(
+        new Division__c(Id = seniors.Id, SortOrder__c = 2),
+        AccessLevel.SYSTEM_MODE
+      );
+      ids.put('Seniors', seniors.Id);
+      ids.put('Group C', ShoreshTestData.groupIn(seniors.Id, 'Group C').Id);
+      List<Group__c> groups = new List<Group__c>();
+      for (String name : new List<String>{ 'Group A', 'Group B', 'Group C' }) {
+        groups.add(
+          new Group__c(Id = ids.get(name), Availability__c = 'AllDay')
+        );
+      }
+      Database.update(groups, AccessLevel.SYSTEM_MODE);
+      SetTimeGuard.checkPending();
+      return ids;
+    } finally {
+      SetTimeGuard.resume();
     }
-    Database.update(groups, AccessLevel.SYSTEM_MODE);
-    for (Division__c division : [
-      SELECT Id, Name
-      FROM Division__c
-      WHERE Program__c = :program.Id
-      WITH SYSTEM_MODE
-    ]) {
-      ids.put(division.Name, division.Id);
-    }
-    for (TimeBlock__c block : [
-      SELECT Id, Name
-      FROM TimeBlock__c
-      WHERE Program__c = :program.Id
-      WITH SYSTEM_MODE
-    ]) {
-      ids.put(block.Name, block.Id);
-    }
-    for (Week__c week : [
-      SELECT Id, Name
-      FROM Week__c
-      WHERE Season__c = :season.Id
-      WITH SYSTEM_MODE
-    ]) {
-      ids.put(week.Name, week.Id);
-    }
-    return ids;
   }
 
   public static FixedActivity__c fixed(

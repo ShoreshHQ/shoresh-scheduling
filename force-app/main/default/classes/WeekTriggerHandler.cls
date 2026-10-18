@@ -45,16 +45,14 @@ public with sharing class WeekTriggerHandler {
     ]) {
       takenByKey.put(keyOf(existing), existing);
     }
-    Map<Id, Id> campIdBySeasonId = campIdBySeasonId(seasonIds);
-    Map<Id, CampLabels> labelsByCamp = CampLabels.forCamps(
-      new Set<Id>(campIdBySeasonId.values())
+    // The camp's words are read only if a week is refused.
+    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
+      seasonIds
     );
     for (Week__c week : weeks) {
       Week__c other = takenByKey.get(week.Key__c);
       if (other != null) {
-        CampLabels labels = labelsByCamp.get(
-          campIdBySeasonId.get(week.Season__c)
-        );
+        CampLabels labels = labelsBySeason.get(week.Season__c);
         week.StartDate__c.addError(
           '"' +
             other.Name +

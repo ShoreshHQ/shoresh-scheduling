@@ -46,13 +46,17 @@ public with sharing class SetTimeItemTriggerHandler {
     for (TimeBlock__c block : blocks) {
       ownerOf.put(block.Id, block.Program__c);
     }
-    for (Location__c location : [
-      SELECT Id, Season__c
-      FROM Location__c
-      WHERE Id IN :locationIds
-      WITH SYSTEM_MODE
-    ]) {
-      ownerOf.put(location.Id, location.Season__c);
+    // Items with no location read no places.
+    locationIds.remove(null);
+    if (!locationIds.isEmpty()) {
+      for (Location__c location : [
+        SELECT Id, Season__c
+        FROM Location__c
+        WHERE Id IN :locationIds
+        WITH SYSTEM_MODE
+      ]) {
+        ownerOf.put(location.Id, location.Season__c);
+      }
     }
     Map<Id, Program__c> programs = new Map<Id, Program__c>(
       [

@@ -6,7 +6,7 @@
 public with sharing class CoverageTriggerHandler {
   // The program of each division and group named.
   private Map<Id, Id> programOf;
-  private Map<Id, CampLabels> labelsBySeason;
+  private SetupSeasons.LazyLabels labelsBySeason;
 
   public static void handle(
     System.TriggerOperation operation,
@@ -47,7 +47,7 @@ public with sharing class CoverageTriggerHandler {
     }
     CoverageTriggerHandler handler = new CoverageTriggerHandler();
     handler.programOf = programsOf(targetIds);
-    handler.labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    handler.labelsBySeason = SetupSeasons.labelsWhenNeeded(seasonIds);
     for (Coverage__c row : rows) {
       RecurringActivity__c owner = owners.get(row.RecurringActivity__c);
       if (owner != null) {
