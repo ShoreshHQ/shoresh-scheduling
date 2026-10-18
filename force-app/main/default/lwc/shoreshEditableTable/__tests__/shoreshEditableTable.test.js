@@ -214,6 +214,7 @@ describe("c-shoresh-editable-table", () => {
     await flush();
     expect(field(element, 0, "StartTime__c").value).toBe("09:00:00.000");
     expect(field(element, 1, "Outdoor__c").checked).toBe(true);
+    await expect(element).toBeAccessible();
 
     const other = render({ columns: COLUMNS, rows: ROWS });
     await flush();
@@ -238,6 +239,7 @@ describe("c-shoresh-editable-table", () => {
       expect(field(element, 0, "Name").placeholder).toBe("Add Time block");
       // Its fields say what they add, for screen readers.
       expect(field(element, 0, "Name").label).toBe("Add Time block: Name");
+      await expect(element).toBeAccessible();
       expect(field(element, 0, "StartTime__c").label).toBe(
         "Add Time block: Start"
       );

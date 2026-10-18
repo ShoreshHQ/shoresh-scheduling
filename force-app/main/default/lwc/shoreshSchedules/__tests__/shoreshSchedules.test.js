@@ -120,6 +120,7 @@ describe("c-shoresh-schedules", () => {
     );
     expect(q(element, "c-shoresh-versions").openId).toBe("s3");
     expect(q(element, '[data-id="nothing-open"]')).toBeNull();
+    await expect(element).toBeAccessible();
   });
 
   it("never says nothing is saved or open while the newest version is loading", async () => {
@@ -224,6 +225,7 @@ describe("c-shoresh-schedules", () => {
       "Bunk 2"
     ]);
     expect(daily.corner).toBe("Time block");
+    await expect(element).toBeAccessible();
     // Wednesday could not be read: it says so instead of a grid.
     qa(element, '[data-id="day-pills"] button')[2].click();
     await flush();
@@ -257,6 +259,7 @@ describe("c-shoresh-schedules", () => {
     q(element, '[data-id="all-activities"]').click();
     await flush();
     expect(q(element, '[data-id="activity-cards"]')).not.toBeNull();
+    await expect(element).toBeAccessible();
   });
 
   it("another week opens its own newest version, or says it has none", async () => {

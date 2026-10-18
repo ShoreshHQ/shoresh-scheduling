@@ -138,6 +138,7 @@ describe("c-shoresh-manual-build", () => {
     expect(grid(element).editable).toBe(true);
     expect(cellText(element, "0-0")).toBe("Flagpole");
     expect(cellText(element, "0-1")).toBe("Open");
+    await expect(element).toBeAccessible();
   });
 
   it("waits for the basics: everything still needed in one sentence, each a link", async () => {
@@ -161,6 +162,7 @@ describe("c-shoresh-manual-build", () => {
       ["Time blocks", "timeBlocks"],
       ["Activities", "activities"]
     ]);
+    await expect(element).toBeAccessible();
     links[2].click();
     expect(handler.mock.calls[0][0].detail).toEqual({ screen: "programs" });
   });

@@ -43,18 +43,39 @@ jobs:
       - name: No field or object names written as text
         # scripts/namespace-safety.js: any one fails the check (docs/adr/0009-namespace-safe-names.md).
         run: npm run check:namespace
+      - name: Every Apex class and trigger has its -meta.xml
+        # scripts/apex-meta-files.js: a class without one never reaches the org (#55).
+        run: npm run check:meta
+      - name: No Apex name that clashes with a class name
+        # scripts/apex-name-clash.js: Apex ignores case, so a local `scheduleUses` beside class
+        # ScheduleUses fails only in the org (#46, #48).
+        run: npm run check:name-clash
       - name: Install Salesforce CLI and Code Analyzer
         run: |
           npm install --global @salesforce/cli@2.154.4
           sf plugins install code-analyzer@5.16.0
       - name: Salesforce Code Analyzer
-        # Recommended rules; fails on moderate (3) or worse.
-        run: sf code-analyzer run --workspace force-app --severity-threshold 3 --output-file code-analyzer.html
+        # Recommended rules plus the AppExchange security-review rules (AppExchange,
+        # Recommended:Security); fails on moderate (3) or worse. Known false positives are
+        # suppressed one by one in code-analyzer.yml (docs/ci-setup.md).
+        run: >-
+          sf code-analyzer run --workspace force-app
+          --rule-selector Recommended --rule-selector AppExchange --rule-selector Recommended:Security
+          --severity-threshold 3 --output-file code-analyzer.html
+      - name: AppExchange security-review report
+        # The same scan Salesforce documents for security review, on its own, for the submission.
+        if: always()
+        run: >-
+          sf code-analyzer run --workspace force-app
+          --rule-selector AppExchange --rule-selector Recommended:Security
+          --output-file appexchange-security-review.html
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: code-analyzer-report
-          path: code-analyzer.html
+          path: |
+            code-analyzer.html
+            appexchange-security-review.html
           if-no-files-found: ignore
 
   pr-category:

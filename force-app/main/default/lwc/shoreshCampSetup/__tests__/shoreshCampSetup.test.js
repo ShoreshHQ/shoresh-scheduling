@@ -193,6 +193,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(element.shadowRoot.textContent).toContain(
       "Start by naming your camp."
     );
+    await expect(element).toBeAccessible();
 
     const name = q(element, 'lightning-input[data-id="camp-name"]');
     name.dispatchEvent(
@@ -283,6 +284,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="problems"]').textContent).toContain(
       "Juniors: No Bunks yet."
     );
+    await expect(element).toBeAccessible();
     await openScreen(element, "weeks");
     expect(q(element, '[data-id="problems"]')).toBeNull();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
@@ -291,7 +293,8 @@ describe("c-shoresh-camp-setup", () => {
     // Overlapping weeks get a heads-up, in the camp's word.
     expect(weeks.overlapLabel).toBe("Overlaps another week");
     expect(button(element, "Copy this season")).toBeDefined();
-  });
+    // The accessibility check walks the whole setup screen: slow with every suite running.
+  }, 20000);
 
   it("fills in weeks from the season dates", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
