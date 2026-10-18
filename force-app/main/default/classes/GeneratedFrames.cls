@@ -103,9 +103,9 @@ public with sharing class GeneratedFrames {
     }
   }
 
-  private static String fullId(String id) {
+  private static String fullId(String recordId) {
     try {
-      return String.valueOf(Id.valueOf(id));
+      return String.valueOf(Id.valueOf(recordId));
     } catch (StringException e) {
       throw unreadable();
     }

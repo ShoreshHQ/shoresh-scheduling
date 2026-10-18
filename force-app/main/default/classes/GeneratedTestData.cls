@@ -108,14 +108,14 @@ public class GeneratedTestData {
     List<Integer> cell,
     GeneratedWeek.Item placed
   ) {
-    Integer number = day.items.size() + 1;
+    Integer position = day.items.size() + 1;
     for (Integer i = day.items.size() - 1; i >= 0; i--) {
-      number = sameItem(day.items[i], placed) ? i + 1 : number;
+      position = sameItem(day.items[i], placed) ? i + 1 : position;
     }
-    if (number > day.items.size()) {
+    if (position > day.items.size()) {
       day.items.add(placed);
     }
-    setCell(day, cell, String.valueOf(number));
+    setCell(day, cell, String.valueOf(position));
   }
 
   private static Boolean sameItem(GeneratedWeek.Item a, GeneratedWeek.Item b) {
