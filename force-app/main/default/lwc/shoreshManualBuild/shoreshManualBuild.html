@@ -66,6 +66,64 @@
             Redo
           </button>
         </div>
+        <template lwc:if={showTools}>
+          <div class="tools" data-id="tools">
+            <template lwc:if={isDaily}>
+              <template lwc:if={dayReadable}>
+                <button
+                  type="button"
+                  class="slds-button slds-button_neutral"
+                  data-id="clear-day"
+                  onclick={handleClearDay}
+                >
+                  Clear day
+                </button>
+              </template>
+              <template lwc:if={canCopyDay}>
+                <lightning-button-menu
+                  label="Copy day to…"
+                  alternative-text="Copy day to…"
+                  menu-alignment="right"
+                  data-id="copy-day"
+                  onselect={handleCopyDay}
+                >
+                  <template for:each={copyTargets} for:item="target">
+                    <lightning-menu-item
+                      key={target.value}
+                      value={target.value}
+                      label={target.label}
+                    ></lightning-menu-item>
+                  </template>
+                </lightning-button-menu>
+              </template>
+            </template>
+            <template lwc:if={isGroup}>
+              <lightning-button-menu
+                label="Clear day"
+                alternative-text="Clear day"
+                menu-alignment="right"
+                data-id="clear-group-day"
+                onselect={handleClearGroupDay}
+              >
+                <template for:each={clearDayTargets} for:item="target">
+                  <lightning-menu-item
+                    key={target.value}
+                    value={target.value}
+                    label={target.label}
+                  ></lightning-menu-item>
+                </template>
+              </lightning-button-menu>
+            </template>
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              data-id="clear-week"
+              onclick={handleClearWeek}
+            >
+              {clearWeekLabel}
+            </button>
+          </div>
+        </template>
       </template>
     </div>
     <template lwc:if={showCounters}>
@@ -74,6 +132,20 @@
         reset-key={checksResetKey}
         onlocate={handleLocate}
       ></c-shoresh-week-checks>
+    </template>
+    <template lwc:if={toolNoticeText}>
+      <p class="notice" data-id="tool-notice">
+        <span>{toolNoticeText} ·</span>
+        <button
+          type="button"
+          class="slds-button tool-undo"
+          data-id="tool-undo"
+          aria-label={toolUndoLabel}
+          onclick={handleToolUndo}
+        >
+          Undo
+        </button>
+      </p>
     </template>
     <template lwc:if={notice}>
       <p class="notice" data-id="notice">{notice}</p>

@@ -342,3 +342,18 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* Clear day, Copy day to… and Clear week, after Undo and Redo. */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tool-undo {
+  margin-left: 0.25rem;
+  min-height: 24px;
+  min-width: 24px;
+  padding: 0 0.5rem;
+}

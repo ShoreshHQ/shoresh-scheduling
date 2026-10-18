@@ -36,7 +36,7 @@ function fill(row, start, slot, length, isAway) {
 }
 
 /** Rows of the schedule by "day|group", copied when first touched, with their originals. */
-class Rows {
+export class Rows {
   constructor(days) {
     this.days = days;
     this.original = new Map();

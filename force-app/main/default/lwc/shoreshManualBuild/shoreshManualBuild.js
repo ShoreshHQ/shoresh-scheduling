@@ -24,6 +24,7 @@ import {
   placement
 } from "./slotEdits";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
+import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
@@ -94,6 +95,11 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
+  // "Cleared Monday" after a day or week tool: { text, stepId }, shown with Undo while Undo
+  // would take back that step.
+  toolNotice = null;
+  // After the line's Undo, focus goes to the toolbar's (the line itself goes away).
+  focusUndoAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -261,6 +267,7 @@ export default class ShoreshManualBuild extends LightningElement {
     this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
       this.checksResetKey += 1;
+      this.toolNotice = null;
       this.pulseKeys = [];
       this.dayIndex = 0;
       const all = groups(draft.schedule);
@@ -971,8 +978,8 @@ export default class ShoreshManualBuild extends LightningElement {
    * cell's block (blockIds), so it lands on those blocks or comes back as a conflict, now and
    * when it is undone or redone.
    */
-  toServerRun(run) {
-    const day = this.schedule.days[run.day];
+  toServerRun(run, week = this.schedule.days) {
+    const day = week[run.day];
     return {
       day: day.dateValue,
       groupId: day.groups[run.group].id,
@@ -1037,6 +1044,7 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     this.notice = null;
+    this.toolNotice = null;
     this.unrepeated = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
@@ -1175,7 +1183,9 @@ export default class ShoreshManualBuild extends LightningElement {
         const said = [this.unrepeated, fresh].filter(Boolean).join(" ");
         this.unrepeated = null;
         this.announce(
-          [entry.label, entry.news, said].filter(Boolean).join(". ")
+          [entry.label, entry.extra, entry.news, said]
+            .filter(Boolean)
+            .join(". ")
         );
       }
     } catch (e) {
@@ -1272,6 +1282,339 @@ export default class ShoreshManualBuild extends LightningElement {
       event.preventDefault();
       this.handleRedo();
     }
+  }
+
+  // ---------- day and week tools (Greg, Manual Build round 2, decisions 6 and 7) ----------
+
+  get showTools() {
+    return !!this.draft && !this.hasNoDays && !this.isActivity;
+  }
+
+  /** Clear day and Copy day to… work on the day shown, so only when it can be read. */
+  get dayReadable() {
+    const day = this.schedule && this.schedule.days[this.dayIndex];
+    return !!day && !day.problem;
+  }
+
+  get clearWeekLabel() {
+    return `Clear ${this.t.sIn("Week")}`;
+  }
+
+  /** The week Copy day to… can copy to: the week's other days, and all of them at once. */
+  get copyTargets() {
+    const others = this.readableDayPills
+      .filter((d) => d.index !== this.dayIndex)
+      .map((d) => ({ value: String(d.index), label: d.label }));
+    return others.length > 1
+      ? [...others, { value: "all", label: "All other days" }]
+      : others;
+  }
+
+  /** The week of the week, for Group View's Clear day (that bunk's day). */
+  get clearDayTargets() {
+    return this.readableDayPills.map((d) => ({
+      value: String(d.index),
+      label: d.label
+    }));
+  }
+
+  /** The week that can be read (a day that can't is never cleared or copied to). */
+  get readableDayPills() {
+    return this.dayPills.filter((d) => !this.schedule.days[d.index].problem);
+  }
+
+  get canCopyDay() {
+    return this.dayReadable && this.copyTargets.length > 0;
+  }
+
+  /**
+   * The line after a tool, while Undo would still take that step back, and not while a
+   * "keep theirs or use yours" question about it is open (it may not happen as it says).
+   */
+  get toolNoticeText() {
+    // Read so the line follows Undo and Redo (History itself isn't watched).
+    const version = this.historyVersion;
+    const notice = this.toolNotice;
+    return version >= 0 &&
+      notice &&
+      !this.conflict &&
+      this.history.lastId === notice.stepId
+      ? notice.text
+      : null;
+  }
+
+  get toolUndoLabel() {
+    return this.toolNotice ? `Undo ${this.toolNotice.label}` : "Undo";
+  }
+
+  handleToolUndo() {
+    this.handleUndo();
+    this.focusUndoAfterRender = true;
+  }
+
+  isAwayAt(day, group, block) {
+    return this.isAwaySlot({ day, group, block });
+  }
+
+  dayNameAt(index) {
+    return dayLabel(this.schedule.days[index].dateValue).label;
+  }
+
+  /** Daily View: the day shown, every bunk. */
+  handleClearDay() {
+    const name = this.dayNameAt(this.dayIndex);
+    this.runTool({
+      kind: "clear",
+      dates: [this.schedule.days[this.dayIndex].dateValue],
+      name
+    });
+  }
+
+  /** Group View: one day of the bunk shown. */
+  handleClearGroupDay(event) {
+    const d = Number(event.detail.value);
+    const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
+    this.runTool({
+      kind: "clear",
+      dates: [this.schedule.days[d].dateValue],
+      groupId: this.groupKey,
+      name: `${grp ? grp.name : ""} · ${this.dayNameAt(d)}`
+    });
+  }
+
+  /** The whole week, every bunk. */
+  handleClearWeek() {
+    this.runTool({
+      kind: "clear",
+      dates: this.schedule.days.map((day) => day.dateValue),
+      name: this.weekName,
+      inWeek: true
+    });
+  }
+
+  /** Copies the day shown onto another day of the week (or all the other days). */
+  handleCopyDay(event) {
+    const value = event.detail.value;
+    const targets =
+      value === "all"
+        ? this.copyTargets
+            .filter((c) => c.value !== "all")
+            .map((c) => Number(c.value))
+        : [Number(value)];
+    this.runTool({
+      kind: "copy",
+      from: this.schedule.days[this.dayIndex].dateValue,
+      dates: targets.map((t) => this.schedule.days[t].dateValue),
+      fromName: this.dayNameAt(this.dayIndex),
+      toName: value === "all" ? "all other days" : this.dayNameAt(targets[0])
+    });
+  }
+
+  /** A tool's words for what stayed or was left out, from its result (tools.js toolRuns). */
+  toolWords(tool, result) {
+    if (tool.kind === "clear") {
+      return this.stayedText(result.week, result.stayed);
+    }
+    const from = result.week.findIndex((d) => d.dateValue === tool.from);
+    return from < 0
+      ? null
+      : this.leftOutText(result.week, from, result.leftOut);
+  }
+
+  /** Whether a group isn't at camp in a block of a day (indexes) of some week. */
+  isAwayOn(week, d, g, b) {
+    const day = week[d];
+    const groupId = day.groups[g].id;
+    const blockId = day.blocks[b].id;
+    return ((this.draft && this.draft.away) || []).some(
+      (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
+    );
+  }
+
+  /** "Cleared Monday", "Copied Monday to Tuesday": a tool's words for Undo and the line. */
+  toolLabel(tool) {
+    return tool.kind === "clear"
+      ? `Cleared ${tool.name}`
+      : `Copied ${tool.fromName} to ${tool.toName}`;
+  }
+
+  /** What a tool says when it changes nothing. */
+  toolNothing(tool, said) {
+    if (tool.kind === "clear") {
+      const where = `${tool.inWeek ? "in" : "on"} ${tool.name}`;
+      return said
+        ? `Nothing cleared ${where}. ${said}`
+        : `Nothing to clear ${where}.`;
+    }
+    if (said) {
+      return `Nothing copied. ${said}`;
+    }
+    const to =
+      tool.toName === "all other days" ? "All other days" : tool.toName;
+    return `${to} ${tool.toName === "all other days" ? "already match" : "already matches"} ${tool.fromName}.`;
+  }
+
+  /** The things a placement is named by in a line: "Swim · Bunk 3 · Tuesday". */
+  placementName(week, dayIndex, group, slot) {
+    const day = week[dayIndex];
+    return `${this.nameOf(slot, day)} · ${day.groups[group].name} · ${dayLabel(day.dateValue).label}`;
+  }
+
+  /** "2 stayed: Archery · Bunk 1 · Monday (deleted since); …" (at most five named). */
+  stayedText(week, stayed) {
+    const why = {
+      [LEFT_OUT.GONE]: "deleted since",
+      [LEFT_OUT.NOT_SET_UP]: "not set up yet",
+      [LEFT_OUT.AWAY]: "not at camp then"
+    };
+    return this.listText(
+      stayed,
+      "stayed",
+      (o) =>
+        `${this.placementName(week, o.day, o.group, o.slot)} (${why[o.why]})`
+    );
+  }
+
+  /** "2 left out: Swim · Bunk 3 · Tuesday: not at camp then; …" (at most five named). */
+  leftOutText(week, from, leftOut) {
+    const source = week[from];
+    const why = (o) => {
+      const target = dayLabel(week[o.day].dateValue).label;
+      switch (o.why) {
+        case LEFT_OUT.AWAY:
+          return "not at camp then";
+        case LEFT_OUT.NO_BLOCK:
+          return `${target} has no ${source.blocks[o.missing].name}`;
+        case LEFT_OUT.NO_GROUP:
+          return `not on ${target}`;
+        case LEFT_OUT.GONE:
+          return "deleted since";
+        case LEFT_OUT.NOT_SET_UP:
+          return "not set up yet";
+        default:
+          return `${this.nameOf(o.blocking, week[o.day])} is set up there`;
+      }
+    };
+    return this.listText(
+      leftOut,
+      "left out",
+      (o) =>
+        `${this.nameOf(o.slot, source)} · ${source.groups[o.group].name} · ${dayLabel(week[o.day].dateValue).label}: ${why(o)}`
+    );
+  }
+
+  /** "N <what>: a; b; …; and M more." with at most five named, or null. */
+  listText(list, what, name) {
+    if (!list.length) {
+      return null;
+    }
+    const named = list.slice(0, 5).map(name);
+    const more = list.length - named.length;
+    return `${list.length} ${what}: ${named.join("; ")}${more > 0 ? `; and ${more} more` : ""}.`;
+  }
+
+  /**
+   * Makes a tool's change as one Undo step and shows "Cleared Monday · Undo" (with what stayed
+   * or was left out); with nothing to change, says so instead. The week as the director saw it
+   * goes with the change: after a question, the tool is worked out again around anyone else's.
+   */
+  runTool(tool) {
+    const seen = this.schedule.days;
+    const result = toolRuns(tool, seen, {
+      isAway: (week, d, g, b) => this.isAwayOn(week, d, g, b)
+    });
+    const said = this.toolWords(tool, result);
+    const label = this.toolLabel(tool);
+    if (!result.runs.length) {
+      this.say(this.toolNothing(tool, said));
+      return;
+    }
+    this.commit(result.runs, label, null);
+    const entry = this.queue[this.queue.length - 1];
+    if (entry && entry.stepId === this.stepSeq) {
+      // The week as the director saw it goes with the change, for working it out again.
+      entry.tool = { ...tool, seen, kept: new Set() };
+      // What stayed or was left out is said with the save too.
+      entry.extra = said;
+    }
+    this.showToolNotice(label, said, this.stepSeq);
+  }
+
+  showToolNotice(label, said, stepId) {
+    this.toolNotice = {
+      label,
+      text: said ? `${label}. ${said}` : label,
+      stepId
+    };
+  }
+
+  /**
+   * After Keep theirs, or when the saved week has changed under a tool (a fixed activity now in
+   * a cell it clears, say): the tool is worked out again on the saved week, leaving every cell
+   * someone else changed since the director looked as it is now, and the rest is made, as the
+   * same Undo step (coordinator, 2026-10-17). The line says what was left: "Cleared Monday,
+   * except 1 cell that changed".
+   */
+  /**
+   * After Keep theirs, or when the saved week has changed under a tool (a fixed activity now in
+   * a cell it clears, say): the tool is worked out again on the server's week (tools.js replan),
+   * never touching a cell someone else changed since the director looked or one kept in an
+   * earlier round, and the rest is made as the same Undo step, before the edits that waited
+   * (coordinator, 2026-10-17). The line says what wasn't made: "Cleared Monday, except 1 cell
+   * someone else changed".
+   */
+  replanTool(entry) {
+    const { tool, stepId } = entry;
+    this.conflict = null;
+    this.queue = this.queue.filter((w) => w.stepId !== stepId);
+    const saved = this.server.days;
+    const result = replan(tool, tool.seen, saved, tool.kept, (week, d, g, b) =>
+      this.isAwayOn(week, d, g, b)
+    );
+    const label = this.toolLabel(tool);
+    if (!result.runs.length) {
+      this.history.forget(stepId);
+      this.historyVersion += 1;
+      this.showServerAndWaiting();
+      this.say(
+        `${label}: nothing done, someone else changed those cells first.`
+      );
+      this.saveNext();
+      return;
+    }
+    const serverRuns = result.runs.map((run) => this.toServerRun(run, saved));
+    const step = { id: stepId, runs: serverRuns, label };
+    if (!this.history.replace(stepId, step)) {
+      this.history.ensure(step);
+    }
+    this.historyVersion += 1;
+    const except = result.missed
+      ? `${label}, except ${result.missed} ${result.missed === 1 ? "cell that" : "cells that"} changed`
+      : label;
+    const said = this.toolWords(tool, result);
+    this.queue = [
+      {
+        edit: { runs: serverRuns },
+        key: null,
+        label: except,
+        stepId,
+        kind: "edit",
+        baseLabel: label,
+        intent: intentOf(
+          saved,
+          serverRuns,
+          (at) => this.slotName({ day: at.dayIndex, group: at.g }, at.block),
+          (at) => this.dayGroupName({ day: at.dayIndex, group: at.g })
+        ),
+        slotKey: this.slotKeyOf(result.runs[0], serverRuns[0]),
+        tool: { ...tool, kept: result.kept },
+        extra: said
+      },
+      ...this.queue
+    ];
+    this.showServerAndWaiting();
+    this.showToolNotice(except, said, stepId);
+    this.saveNext();
   }
 
   // ---------- the activity list ----------
@@ -1635,6 +1978,11 @@ export default class ShoreshManualBuild extends LightningElement {
 
   askAboutConflict(entry) {
     const made = plan(this.server.days, entry.intent);
+    if (entry.tool && (made.gone || made.changed || made.fixed)) {
+      // A day or week tool isn't dropped for one cell: it is worked out again around it.
+      this.replanTool(entry);
+      return;
+    }
     if (made.gone || made.changed || made.fixed) {
       // Nothing of this edit was saved: it leaves Undo, and a waiting Undo or Redo of it goes.
       this.abandon(entry);
@@ -1716,6 +2064,14 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleKeepTheirs() {
+    if (this.conflict.entry.tool) {
+      // Their cells stay; the rest of the tool is made (coordinator, 2026-10-17).
+      const entry = this.conflict.entry;
+      this.notice = null;
+      this.unrepeated = null;
+      this.replanTool(entry);
+      return;
+    }
     const { key, stepId } = this.conflict.entry;
     this.notice = null;
     this.unrepeated = null;
@@ -1798,6 +2154,17 @@ export default class ShoreshManualBuild extends LightningElement {
 
   renderedCallback() {
     // A list whose counter went to zero is closed, so it doesn't open again by itself later.
+    if (this.focusUndoAfterRender) {
+      this.focusUndoAfterRender = false;
+      const undo = this.template.querySelector('[data-id="undo"]');
+      const target =
+        undo && !undo.disabled
+          ? undo
+          : this.template.querySelector('[data-id="redo"]');
+      if (target) {
+        target.focus();
+      }
+    }
     if (this.focusAfterRender) {
       const { cellKey } = this.focusAfterRender;
       this.focusAfterRender = null;
