@@ -93,7 +93,9 @@ public with sharing class ManualWeekCopy {
   private void listUnmatched(Map<String, ScheduleDays.DayGrid> byWeekday) {
     for (ScheduleDays.DayGrid day : byWeekday.values()) {
       if (ManualWeekPlacements.hasActivities(day.grid)) {
-        leftOut.add(sourceNames.get(day.day) + ': not in this week');
+        leftOut.add(
+          sourceNames.get(day.day) + ': not in this ' + rules.weekWord()
+        );
       }
     }
   }
@@ -111,7 +113,9 @@ public with sharing class ManualWeekCopy {
     for (
       ManualWeekPlacements.Placement p : ManualWeekPlacements.of(source, sg)
     ) {
-      String why = target.g < 0 ? 'not at camp this week' : whyNot(p, target);
+      String why = target.g < 0
+        ? 'not at camp this ' + rules.weekWord()
+        : whyNot(p, target);
       if (why == null) {
         add(p, target);
       } else {

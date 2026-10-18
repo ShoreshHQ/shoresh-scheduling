@@ -203,10 +203,7 @@
 
     <template lwc:if={leftOut}>
       <div class="not-placed" role="status" data-id="left-out">
-        <c-shoresh-dot
-          label="Left Open: it couldn't go there this week"
-          focusable
-        ></c-shoresh-dot>
+        <c-shoresh-dot label={leftOutLabel} focusable></c-shoresh-dot>
         <ul>
           <template for:each={leftOut} for:item="line">
             <li key={line}>{line}</li>
@@ -403,8 +400,8 @@
         ></lightning-button>
         <template lwc:if={hasWeekSources}>
           <lightning-button-menu
-            label="Start from another week"
-            alternative-text="Start from another week"
+            label={startFromLabel}
+            alternative-text={startFromLabel}
             disabled={starting}
             onselect={handleStartFrom}
             data-id="start-from"

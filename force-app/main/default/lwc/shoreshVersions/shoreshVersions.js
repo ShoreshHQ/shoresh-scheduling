@@ -39,8 +39,10 @@ export default class ShoreshVersions extends LightningElement {
   announcement = "";
   // After the panel closes, focus goes back to the Versions button (desktop design audit #7).
   focusButtonAfterRender = false;
-  // After a delete: the row at this place gets focus once the list comes back without it.
-  focusRowAfterDelete = null;
+  // After a delete: { id, index }. Once the action is done (busy false; the list is read again
+  // first), focus goes to the version now at that place, or back to the row if it is still there
+  // (refused).
+  focusAfterDelete = null;
 
   @api
   get versions() {
@@ -58,14 +60,26 @@ export default class ShoreshVersions extends LightningElement {
         button.focus();
       }
     }
-    if (this.focusRowAfterDelete !== null && !this.busy) {
-      const actions = this.template.querySelectorAll('[data-action="open"]');
-      const index = this.focusRowAfterDelete;
-      this.focusRowAfterDelete = null;
-      if (actions.length) {
-        actions[Math.min(index, actions.length - 1)].focus();
-      } else {
-        this.focusButtonAfterRender = true;
+    if (this.focusAfterDelete && !this.busy) {
+      this.focusAfterDeleted();
+    }
+  }
+
+  focusAfterDeleted() {
+    const { id, index } = this.focusAfterDelete;
+    this.focusAfterDelete = null;
+    const still = this.template.querySelector(
+      `[data-action="delete"][data-id="${id}"]`
+    );
+    const actions = this.template.querySelectorAll('[data-action="open"]');
+    if (still) {
+      still.focus();
+    } else if (actions.length) {
+      actions[Math.min(index, actions.length - 1)].focus();
+    } else {
+      const button = this.template.querySelector('[data-id="versions-button"]');
+      if (button) {
+        button.focus();
       }
     }
   }
@@ -135,7 +149,10 @@ export default class ShoreshVersions extends LightningElement {
     }
     this.deletingId = null;
     this.announcement = "";
-    this.focusRowAfterDelete = this._versions.findIndex((v) => v.id === id);
+    this.focusAfterDelete = {
+      id,
+      index: this._versions.findIndex((v) => v.id === id)
+    };
     this.dispatchEvent(new CustomEvent("delete", { detail: { id } }));
   }
   handleDeleteBlur() {

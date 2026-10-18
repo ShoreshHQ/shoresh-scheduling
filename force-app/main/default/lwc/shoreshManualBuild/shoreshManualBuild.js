@@ -269,13 +269,15 @@ export default class ShoreshManualBuild extends LightningElement {
         if (!again) {
           this.error = null;
         }
-        // Saved since (by anyone): no longer the version just restored.
+        // Saved since (by anyone): no longer the version just restored; a refused Restore's
+        // Reload is done.
         if (
           !draft ||
           !this.server ||
           draft.schedule.revisions !== this.server.revisions
         ) {
           this.restoredId = null;
+          this.restoreRefused = false;
         }
         this.show(draft, !again);
         if (draft) {
@@ -477,7 +479,10 @@ export default class ShoreshManualBuild extends LightningElement {
     }
   }
 
-  /** Runs a versions action, then reads the list again; refused ones say why. */
+  /**
+   * Runs a versions action, then reads the list again before it is done (so the list never shows
+   * a version just deleted as if it were there); refused ones say why.
+   */
   async versionsAction(work) {
     this.versionsWorking = true;
     this.error = null;
@@ -488,8 +493,8 @@ export default class ShoreshManualBuild extends LightningElement {
       this.error = errorMessage(e);
       return false;
     } finally {
+      await this.loadVersions();
       this.versionsWorking = false;
-      this.loadVersions();
     }
   }
 
@@ -562,7 +567,9 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!this.versionsWorking) {
       return false;
     }
-    this.say("One moment: the week is being saved or restored.");
+    this.say(
+      `One moment: the ${this.t.sIn("Week")} is being saved or restored.`
+    );
     return true;
   }
 
@@ -591,6 +598,12 @@ export default class ShoreshManualBuild extends LightningElement {
   get weekName() {
     const week = this.weekOptions.find((o) => o.value === this.weekId);
     return week ? week.label : "";
+  }
+  get startFromLabel() {
+    return `Start from another ${this.t.sIn("Week")}`;
+  }
+  get leftOutLabel() {
+    return `Left Open: it couldn't go there this ${this.t.sIn("Week")}`;
   }
   get startLabel() {
     return `Start a blank ${this.t.sIn("Week")}`;
@@ -1337,8 +1350,9 @@ export default class ShoreshManualBuild extends LightningElement {
     this.unrepeated = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
-    // The week is no longer the version just restored.
+    // The week is no longer the version just restored, and a refused Restore is behind it.
     this.restoredId = null;
+    this.restoreRefused = false;
     this.loading = false;
     const edit = { runs: serverRuns };
     const before = this.checked;

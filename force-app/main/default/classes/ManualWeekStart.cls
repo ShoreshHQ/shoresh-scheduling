@@ -13,6 +13,7 @@ public with sharing class ManualWeekStart {
   private Set<Id> closedActivities = new Set<Id>();
   private Map<Id, Group__c> groups;
   private Map<Id, TimeBlock__c> blocks;
+  private GeneratedSetup setup;
 
   /** The new draft, and what was left out. */
   public class Started {
@@ -91,6 +92,7 @@ public with sharing class ManualWeekStart {
 
   /** Setup as it is for this week: what decides where a copied activity may go. */
   private ManualWeekStart(GeneratedSetup setup) {
+    this.setup = setup;
     activities = new Map<Id, Activity__c>(
       [
         SELECT Id, Location__c
@@ -132,8 +134,13 @@ public with sharing class ManualWeekStart {
       return 'deleted from setup';
     }
     return closedActivities.contains(activityId)
-      ? 'not running this week'
+      ? 'not running this ' + weekWord()
       : null;
+  }
+
+  /** The camp's word for a week, in a sentence ("week", "session"), read only when needed. */
+  public String weekWord() {
+    return setup.labels().singularInSentence('Week');
   }
 
   /** Whether a group is at camp in a time block (both by Id). */

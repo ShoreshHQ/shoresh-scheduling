@@ -215,14 +215,19 @@ describe("c-shoresh-versions", () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it("after a delete, focus goes to the next version", async () => {
+    it("after a delete, focus goes to the next version once the action is done (list read again first)", async () => {
       const element = await renderRestore();
       const del = q(element, '[data-action="delete"]');
       del.click();
       del.click();
+      // As Manual Build does it: busy while deleting and while the list is read again.
       element.busy = true;
       await flush();
       element.versions = VERSIONS;
+      await flush();
+      expect(element.shadowRoot.activeElement).not.toBe(
+        q(element, '[data-action="open"]')
+      );
       element.busy = false;
       await flush();
       expect(element.shadowRoot.activeElement).toBe(
@@ -230,6 +235,20 @@ describe("c-shoresh-versions", () => {
       );
       expect(element.shadowRoot.activeElement.getAttribute("aria-label")).toBe(
         "Restore Before my changes"
+      );
+    });
+
+    it("a delete that was refused keeps focus on that version's delete", async () => {
+      const element = await renderRestore();
+      const del = q(element, '[data-action="delete"]');
+      del.click();
+      del.click();
+      element.busy = true;
+      await flush();
+      element.busy = false;
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-action="delete"][data-id="s3"]')
       );
     });
 

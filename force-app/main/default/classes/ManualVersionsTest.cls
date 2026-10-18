@@ -34,11 +34,15 @@ private class ManualVersionsTest {
   }
 
   /** Puts an activity in Group A's Monday Period 2 (Open before). */
-  private static void place(Id draftId, String activity) {
-    placeOver(draftId, '', activity);
+  private static SlotEdits.Result place(Id draftId, String activity) {
+    return placeOver(draftId, '', activity);
   }
 
-  private static void placeOver(Id draftId, String was, String activity) {
+  private static SlotEdits.Result placeOver(
+    Id draftId,
+    String was,
+    String activity
+  ) {
     SlotEdits.Result result = ManualBuildController.saveSlots(
       draftId,
       new List<SlotEdits.Edit>{
@@ -54,6 +58,7 @@ private class ManualVersionsTest {
       }
     );
     Assert.isTrue(result.conflicts.isEmpty());
+    return result;
   }
 
   /** The draft's revisions as a screen opened now would send them back with Restore. */
@@ -418,6 +423,51 @@ private class ManualVersionsTest {
       Test.stopTest();
       Assert.areEqual(4, ScheduleDays.read(draftId).size());
       Assert.areEqual(0, beforeRestoreCount());
+    }
+  }
+
+  @IsTest
+  static void restoreTakesTheRevisionsTheScreenWasSentWhenItOpenedTheWeek() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids, 'Week 1');
+      place(draftId, 'Swim');
+      Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
+      Test.startTest();
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      // The screen opens the week, and Restore sends back what that gave it.
+      ManualBuildViews.DraftView opened = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      ManualBuildViews.DraftView view = ManualBuildController.restoreVersion(
+        draftId,
+        versionId,
+        opened.schedule.revisions
+      );
+      Test.stopTest();
+      Assert.isFalse(view.changedSince);
+      Assert.areEqual('Swim', mondayPeriod2(draftId));
+    }
+  }
+
+  @IsTest
+  static void restoreTakesTheRevisionsTheScreenWasSentAfterItsOwnEdit() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids, 'Week 1');
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Empty');
+      Test.startTest();
+      // The director's own edit: the screen now holds the week its save sent back.
+      SlotEdits.Result saved = place(draftId, 'Swim');
+      ManualBuildViews.DraftView view = ManualBuildController.restoreVersion(
+        draftId,
+        versionId,
+        saved.schedule.revisions
+      );
+      Test.stopTest();
+      Assert.isFalse(view.changedSince);
+      Assert.areEqual('', mondayPeriod2(draftId));
     }
   }
 }
