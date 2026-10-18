@@ -78,8 +78,8 @@ describe("c-shoresh-menu", () => {
       "Anchors",
       "Recurring activities",
       "Special events (Coming)",
+      "Generated Schedule",
       "Manual Build",
-      "Generated Schedule (Coming)",
       "Schedules"
     ]);
   });
@@ -108,6 +108,8 @@ describe("c-shoresh-menu", () => {
     expect(links.map((a) => a.dataset.screen)).toEqual(["campWords"]);
     expect(canOpen("specialEvents", true)).toBe(false);
     expect(canOpen("schedules", true)).toBe(true);
+    expect(canOpen("generatedSchedule", true)).toBe(true);
+    expect(canOpen("generatedSchedule", false)).toBe(false);
     expect(canOpen("schedules", false)).toBe(false);
     expect(canOpen("fixedActivities", true)).toBe(true);
     expect(canOpen("recurringActivities", false)).toBe(false);

@@ -7,17 +7,35 @@ import { LightningElement, api } from "lwc";
  * checked: c/shoreshEngine checkWeek's result for the week shown, as it comes (its
  * hasCoverageTargets and hasSpreadTargets say whether Still needed and Spread across the week
  * are shown). resetKey: change it when a different week is shown fresh; the list closes and
- * accepted lines come back. route: "manual" (the default) or "generated"; the generated route's
- * own behaviour (lighting up the cells a counter concerns) is to come, and today both behave
- * alike.
+ * accepted lines come back. route: "manual" (the default) or "generated".
  *
- * Events: locate (detail: the line, { key, kind, text, groupId, and for an overlap dateValue and
- * blockId }) when a line is clicked; the parent takes the director there. accept (detail: the
- * line) when a still needed or spread line is accepted; it is hidden for this visit already.
+ * The generated route, as the desktop's: Open (the cells nothing could go in; checked.openCells,
+ * [{ dateValue, groupId, blockId, text }], first in the list) instead of the Overlapping counter,
+ * though overlaps are still listed; each counter shows only its own lines and lights up the cells
+ * they are about (the "highlight" event); "Review all" shows every line.
+ *
+ * Events: locate (detail: the line, { key, kind, text, groupId, activityId, and for a cell
+ * dateValue and blockId }) when a line is clicked; the parent takes the director there. accept
+ * (detail: the line) when a still needed or spread line is accepted; it is hidden for this visit
+ * already. highlight (generated route; detail: { kind, lines }, kind null for none) when the
+ * counter whose cells are lit up changes, or its lines do.
  */
 export default class ShoreshWeekChecks extends LightningElement {
-  @api checked;
   @api route = "manual";
+  _checked;
+
+  @api
+  get checked() {
+    return this._checked;
+  }
+  set checked(value) {
+    this._checked = value;
+    // Generated: a week read again (someone else's save) changes the lines, so the lit cells
+    // follow them. Told after this render, not during it.
+    if (this.isGenerated && this.filterKind) {
+      Promise.resolve().then(() => this.tellHighlight());
+    }
+  }
 
   // The "Still to place" list is open (any counter with something in it opens it, desktop).
   listOpen = false;
@@ -27,6 +45,8 @@ export default class ShoreshWeekChecks extends LightningElement {
   opener = null;
   // Where keyboard focus goes once the list has redrawn: { counter } or { line } (an index).
   focusAfterRender = null;
+  // Generated route: the counter whose lines are shown and whose cells are lit, or null (all).
+  filterKind = null;
   _resetKey;
 
   @api
@@ -37,6 +57,7 @@ export default class ShoreshWeekChecks extends LightningElement {
     if (value !== this._resetKey) {
       this.listOpen = false;
       this.accepted = [];
+      this.setFilter(null);
     }
     this._resetKey = value;
   }
@@ -56,9 +77,24 @@ export default class ShoreshWeekChecks extends LightningElement {
    * accepted (desktop "Accept"): hidden for this visit, and back as soon as its numbers change.
    * Overlaps have nothing to accept: they go when the clash is moved.
    */
+  get isGenerated() {
+    return this.route === "generated";
+  }
+
   get lines() {
     const checked = this.checked || {};
-    const lines = (checked.overlapping || []).map((cell) => ({
+    // Generated: the cells nothing could go in come first, as the desktop's Unfillable rows do.
+    const lines = (this.isGenerated ? checked.openCells || [] : []).map(
+      (cell) => ({
+        key: `open|${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
+        kind: "open",
+        text: cell.text,
+        groupId: cell.groupId,
+        dateValue: cell.dateValue,
+        blockId: cell.blockId
+      })
+    );
+    const overlaps = (checked.overlapping || []).map((cell) => ({
       key: `overlap|${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
       kind: "overlapping",
       text: cell.text,
@@ -66,6 +102,7 @@ export default class ShoreshWeekChecks extends LightningElement {
       dateValue: cell.dateValue,
       blockId: cell.blockId
     }));
+    lines.push(...overlaps);
     const short = (kind, texts, entries) =>
       texts.map((text, i) => {
         const e = entries[i] || {};
@@ -74,6 +111,7 @@ export default class ShoreshWeekChecks extends LightningElement {
           kind,
           text,
           groupId: e.groupId,
+          activityId: e.activityId,
           acceptable: true
         };
       });
@@ -101,8 +139,15 @@ export default class ShoreshWeekChecks extends LightningElement {
     const checked = this.checked || {};
     const lines = this.lines;
     const count = (kind) => lines.filter((line) => line.kind === kind).length;
+    const first = this.isGenerated
+      ? { key: "open", label: "Open", count: count("open") }
+      : {
+          key: "overlapping",
+          label: "Overlapping",
+          count: count("overlapping")
+        };
     return [
-      { key: "overlapping", label: "Overlapping", count: count("overlapping") },
+      first,
       checked.hasCoverageTargets && {
         key: "stillNeeded",
         label: "Still needed",
@@ -115,19 +160,33 @@ export default class ShoreshWeekChecks extends LightningElement {
       }
     ]
       .filter(Boolean)
-      .map((c) => ({
-        ...c,
-        className: c.count ? "counter counter_due" : "counter",
-        // A zero opens nothing, but stays in the tab order: a counter that drops to zero
-        // while it has focus keeps it (desktop disables it; focus would fall to the page).
-        unavailable: c.count === 0 ? "true" : null,
-        expanded: c.count ? String(this.listOpen) : null,
-        controls: c.count && this.listOpen ? "counter-list" : null
-      }));
+      .map((c) => {
+        // Generated: only the counter showing its own lines is open.
+        const open =
+          this.listOpen &&
+          (!this.isGenerated || !this.filterKind || this.filterKind === c.key);
+        return {
+          ...c,
+          className: c.count ? "counter counter_due" : "counter",
+          // A zero opens nothing, but stays in the tab order: a counter that drops to zero
+          // while it has focus keeps it (desktop disables it; focus would fall to the page).
+          unavailable: c.count === 0 ? "true" : null,
+          expanded: c.count ? String(open) : null,
+          controls: c.count && open ? "counter-list" : null
+        };
+      });
+  }
+
+  /** The lines the list shows: on the generated route, only the chosen counter's. */
+  get shownLines() {
+    const lines = this.lines;
+    return this.isGenerated && this.filterKind
+      ? lines.filter((line) => line.kind === this.filterKind)
+      : lines;
   }
 
   get openLines() {
-    const lines = this.lines;
+    const lines = this.shownLines;
     return lines.length
       ? lines.map((line) => ({
           ...line,
@@ -151,18 +210,68 @@ export default class ShoreshWeekChecks extends LightningElement {
       return;
     }
     this.opener = event.currentTarget.dataset.counter;
-    this.listOpen = !this.listOpen;
+    if (!this.isGenerated) {
+      this.listOpen = !this.listOpen;
+      return;
+    }
+    // Generated (desktop): a counter shows its own lines and lights up their cells; clicking it
+    // again closes them.
+    const kind = this.opener;
+    const again = this.listOpen && this.filterKind === kind;
+    this.listOpen = !again;
+    this.setFilter(again ? null : kind);
+  }
+
+  /** Generated: "Review all" shows every line (no cells lit); again, it hides the list. */
+  get showReviewAll() {
+    return this.isGenerated && this.lines.length > 0;
+  }
+  get reviewAllLabel() {
+    return this.listOpen && !this.filterKind ? "Hide list" : "Review all";
+  }
+  get reviewAllExpanded() {
+    return String(this.listOpen && !this.filterKind);
+  }
+  get reviewAllControls() {
+    return this.listOpen ? "counter-list" : null;
+  }
+  handleReviewAll() {
+    const hide = this.listOpen && !this.filterKind;
+    this.opener = null;
+    this.listOpen = !hide;
+    this.setFilter(null);
   }
 
   /** Close: the list goes, and focus goes back to the counter that opened it. */
   handleCloseList() {
     this.listOpen = false;
-    this.focusAfterRender = { counter: this.opener || "overlapping" };
+    this.setFilter(null);
+    this.focusAfterRender = this.opener
+      ? { counter: this.opener }
+      : { reviewAll: true };
+  }
+
+  /** The counter whose cells are lit (generated route), told to the page. */
+  setFilter(kind) {
+    this.filterKind = kind;
+    this.tellHighlight();
+  }
+
+  tellHighlight() {
+    if (!this.isGenerated) {
+      return;
+    }
+    const kind = this.filterKind;
+    this.dispatchEvent(
+      new CustomEvent("highlight", {
+        detail: { kind, lines: kind ? this.shownLines : [] }
+      })
+    );
   }
 
   /** Accept: the line goes for this visit, and focus moves to the line after it (or before). */
   handleAccept(event) {
-    const lines = this.lines;
+    const lines = this.shownLines;
     const index = lines.findIndex(
       (l) => l.key === event.currentTarget.dataset.key
     );
@@ -173,6 +282,9 @@ export default class ShoreshWeekChecks extends LightningElement {
     this.accepted = [...this.accepted, line.key];
     this.focusAfterRender = { line: index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
+    if (this.filterKind) {
+      this.tellHighlight();
+    }
   }
 
   /** A line was clicked: the parent takes the director there (and the list closes). */
@@ -184,6 +296,9 @@ export default class ShoreshWeekChecks extends LightningElement {
       return;
     }
     this.listOpen = false;
+    if (this.filterKind) {
+      this.setFilter(null);
+    }
     this.dispatchEvent(new CustomEvent("locate", { detail: line }));
   }
 
@@ -196,6 +311,8 @@ export default class ShoreshWeekChecks extends LightningElement {
     let target = null;
     if (focus.counter) {
       target = this.template.querySelector(`[data-counter="${focus.counter}"]`);
+    } else if (focus.reviewAll) {
+      target = this.template.querySelector('[data-id="review-all"]');
     } else {
       const lines = [...this.template.querySelectorAll(".line-text")];
       target =
