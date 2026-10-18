@@ -17,7 +17,7 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   is the wiki's `projects/shoresh-desktop-behaviour-index.md`. Before asking Greg anything about
   how a feature should behave or be worded, look up what the desktop does and cite it (file or
   ADR). Do what the desktop does unless Salesforce forces a difference or Greg has decided
-  otherwise in the wiki build log. Ask Greg only when the desktop is silent or can't apply, and then
+  otherwise in the build log (`projects/shoresh-scheduling-sf.md`). Ask Greg only when the desktop is silent or can't apply, and then
   say what it does and why it can't.
 - Build choices for this repo: `docs/adr/`. Walkthrough for Greg: `docs/try-camp-setup.md`.
 - No namespace, package, or package version without Greg's go-ahead.
