@@ -632,6 +632,12 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
     activity's own: it says _Over its limit of 2 Bunks at once, with another program_ instead,
     in the camp's word for Program. Both schedules, since both use checkWeek (`otherNamesAt`
     beside `othersAt`).
+    Who decided: naming the activities, not the program ("in use by Swim" even when the other
+    program's activity is called Swim too), is Greg's decision (2026-10-18, wiki decision 25:
+    keep the desktop's wording). "with another program" for groups at once is a coordinator
+    call: the desktop has no words for that case. A placement over several time blocks says
+    each rule once: the names from all its blocks together, and "with another program" if any
+    of its blocks has their groups; each cell's Overlapping line keeps its own block's words.
 
 ## Tests (G5)
 
@@ -655,8 +661,9 @@ apart); Manual Build dots the Pool only once another program's groups take it pa
 and counts another program doing Soccer against its bunks at once but not one only at a place.
 Naming (§32): Apex, the entries' names (an activity, a fixed activity on a published day and
 from setup, and an activity the user can't read naming nothing); Jest, the names per place and
-block (in order, once each, only at that place and time), and Manual Build's dot words with a
-name and without one. Query counts: `GeneratedLimitsTest` opens a week with one other program
+block (in order, once each, only at that place and time), the list's wording (A; A and B;
+A, B and C), a two-block placement saying each rule once, Generated's and Manual Build's dot
+words with a name and without one. Query counts: `GeneratedLimitsTest` opens a week with one other program
 and with three and asserts the same number of queries (catches a query per program), opens the
 week again once generated, and opens Manual Build, each with other programs. Jest: one group
 leaving as another arrives counts as one whichever entry comes first (a plain sort by time
