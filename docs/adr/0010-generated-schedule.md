@@ -182,8 +182,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
    same inputs and option give the same week in every browser and whatever order records
    arrive in, and another week, program or option gives another pattern.
 9. **Other programs (G5 fills it).** `otherPrograms`: groups per place and per activity at a
-   date and clock time. An entry counts against each of this program's blocks whose time
-   overlaps it, on places' groups that fit and activities' groups at once. No count means one
+   date and clock time. Entries count against each of this program's blocks whose time they
+   overlap, on places' groups that fit and activities' groups at once, as the most groups there
+   at any one moment of the block (§23). No count means one
    group; a count of 0 takes no room. Default: none.
 10. **One rules module: `checkWeek`.** The dots come from the finished grid, not from how it was
     built: `checkWeek(days, model, { t, dayName })` (`checks.js`), written and tested for Manual
@@ -448,7 +449,8 @@ what it loads to the real `generateWeek` and sends what it built.
     groups it covers, only groups at camp in each time block). Never both for one day, so nothing
     counts twice. **Drafts and versions never count**: only Status Published (should a program
     have more than one, the newest). A group away that week, a place closed that week, and a fixed
-    or recurring activity off that week don't count, as in the clash check. A published cell
+    or recurring activity off that week don't count, as in the clash check, for published cells
+    too. A published cell whose Id can't be read is skipped, never a screen that fails to open. A published cell
     counts at its activity's place (as setup has it now) and for the activity; a fixed or
     recurring one at its place; something not set up yet (elective, trip...) counts nowhere.
     Publishing itself is Manual Build part 5, so until it ships the fixed and recurring activities
@@ -456,8 +458,11 @@ what it loads to the real `generateWeek` and sends what it built.
 23. **By clock time.** Programs keep their own time grids, so each entry is one of the other
     program's time blocks with its real start and end (`dateValue`, `startTime`, `endTime`
     "HH:mm", `locationId`, `activityId`, `groups`), summed per date, time, place and activity and
-    sorted, so the same week always sends the same list. The engine counts an entry against each
-    of this program's blocks it overlaps (§9; touching times don't). The data module renames
+    sorted, so the same week always sends the same list. For each of this program's blocks the
+    engine counts the **most groups there at any one moment** (a sweep over the entries' start
+    and end times inside the block; touching times don't overlap), never the total of every
+    entry it overlaps: one group across two of the other program's shorter blocks is one group,
+    and two groups one after the other are one at a time (coordinator's review). The data module renames
     `dateValue` to the engine's `date` (`readOtherPrograms`: `date` is reserved in Apex).
 24. **No overrun, no conflict.** Other programs only take room: the engine places elsewhere when
     a place's groups that fit or an activity's groups at once is used up, and a dot appears only
@@ -470,24 +475,34 @@ what it loads to the real `generateWeek` and sends what it built.
 26. **Reads.** User mode, `with sharing`: at most four queries whatever the number of programs
     (the other programs with their time blocks, fixed and recurring activities; their published
     days; their groups and who their recurring activities cover only when one has a place), one
-    when the season has no other program; Manual Build adds the week's exceptions. A program the
-    user can't see isn't counted; everything in a season is controlled by the season (ADR 0001),
-    so a scheduler sees all of it. `GeneratedSetup` now also reads each exception's fixed and
+    when the season has no other program; Manual Build adds the week's exceptions. Programs and schedules are controlled by their season (`ControlledByParent`), so whoever
+    can open this program's week sees every other program of the season: a program the user can't
+    see while seeing this one can't be made, and so isn't tested. `GeneratedSetup` now also reads each exception's fixed and
     recurring activity. `ScheduleDays.readDay` is public, so published days are read as any day.
+
+Not decided in G5: a dot caused by another program says only "More Bunks at Pool than fit", as
+for this program's own bunks; the desktop names who has the place. Naming the other program is a
+wording call for Greg, the same in both schedules.
 
 ## Tests (G5)
 
 `GeneratedOtherProgramsTest` (Apex, as a scheduler, data made inside `runAs`, the clash check
 deferred to the end of setup): one program sends nothing; a published day counts at its own times
-and a draft doesn't; fixed and recurring activities count on the days with no published schedule
-(a two-block recurring one for the one group it covers, a fixed one for every group); a group
-away, a place closed and an activity off that week don't count; Manual Build's draft gets the same
-list. `GeneratedLimitsTest`'s camp gains a second program with a published week and fixed and
-recurring activities, inside the same query bound. Jest, normal and namespaced: the data module
+and a draft doesn't; only the newest published schedule counts, never a version; published cells
+carry on across blocks and count fixed and recurring activities at their place; published cells
+skip a group away, a place closed and a recurring activity off that week; fixed and recurring
+activities count on the days with no published schedule (a two-block recurring one for the one
+group it covers, one naming nobody for every group at camp then, one naming a division, a fixed
+one for every group), and on a published day that can't be read; a group away, a place closed
+and an activity off that week don't count; Manual Build's draft gets the same list. `GeneratedLimitsTest`'s camp gains a second program with a published week and fixed and
+recurring activities each, inside the same query bound. Jest, normal and namespaced: the data module
 passes the list on in the engine's shape; with the Pool free one bunk swims, with another
 program's published cell filling it at an overlapping time nobody does (and no dot), and a time
-that only touches, or a count of 0, doesn't block; Manual Build dots the Pool only once another
-program's groups take it past what fits. Each new path was confirmed to fail its Jest test when
+that only touches, or a count of 0, doesn't block; the busiest-moment count (one group across
+two shorter blocks, two groups back to back, true overlap, any order, places and activities
+apart); Manual Build dots the Pool only once another program's groups take it past what fits,
+and counts another program doing Soccer against its bunks at once but not one only at a place.
+The property tests' independent checkers count other programs at their busiest moment too. Each new path was confirmed to fail its Jest test when
 taken out; the Apex tests run only in CI.
 
 ## Choices that are hard to undo after release

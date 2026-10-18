@@ -3,7 +3,9 @@
  * group's cell counts at its activity's place and for the activity (a fixed or recurring
  * activity at its place), at its time block's own start and end. Only Status Published counts
  * (a draft or version never does); should a program have more than one, the newest. A group
- * away that week doesn't count. One query in user mode.
+ * away, a place closed, or a fixed or recurring activity off that week doesn't count, as for
+ * setup's (OtherProgramSetTime). A cell whose Id can't be read is skipped. One query in user
+ * mode.
  */
 public with sharing class OtherProgramGrids {
   private static final String PUBLISHED = 'Published';
@@ -78,7 +80,8 @@ public with sharing class OtherProgramGrids {
   private void addDay(ScheduleDays.DayGrid day) {
     ScheduleGrid grid = day.grid;
     for (Integer g = 0; g < grid.groups.size(); g++) {
-      if (!tally.isOff(grid.groups[g].id)) {
+      Id groupId = idOf(grid.groups[g].id);
+      if (groupId != null && !tally.isOff(groupId)) {
         addRow(day.day, grid, g);
       }
     }
@@ -103,14 +106,29 @@ public with sharing class OtherProgramGrids {
     }
   }
 
-  /** An activity counts at its place and for itself; a fixed or recurring one at its place. */
+  /**
+   * An activity counts at its place and for itself; a fixed or recurring one at its place. Not
+   * for a fixed or recurring activity off this week, nor at a place closed this week (the same
+   * rules as for setup's, OtherProgramSetTime).
+   */
   private void place(OtherProgramUse.Entry entry, ScheduleGrid.Item item) {
     Boolean setUp = item.kind == 'A' || item.kind == 'F' || item.kind == 'R';
-    if (!setUp || String.isBlank(item.id)) {
-      // Not set up in Shoresh yet (an elective, a trip...): no place to count.
+    Id itemId = idOf(item.id);
+    if (!setUp || itemId == null || tally.isOff(itemId)) {
+      // Not set up in Shoresh yet (an elective, a trip...), or off this week: nothing to count.
       return;
     }
-    entry.locationId = places.get((Id) item.id);
-    entry.activityId = item.kind == 'A' ? (Id) item.id : null;
+    Id placeId = places.get(itemId);
+    entry.locationId = tally.isOff(placeId) ? null : placeId;
+    entry.activityId = item.kind == 'A' ? itemId : null;
+  }
+
+  /** A grid's Id text as an Id; null for one that isn't (skipped, never a failed screen). */
+  private static Id idOf(String text) {
+    try {
+      return String.isBlank(text) ? null : Id.valueOf(text);
+    } catch (StringException e) {
+      return null;
+    }
   }
 }

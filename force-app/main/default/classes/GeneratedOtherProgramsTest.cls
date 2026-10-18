@@ -98,14 +98,14 @@ private class GeneratedOtherProgramsTest {
     String status,
     Date day
   ) {
-    Schedule__c schedule = new Schedule__c(
-      Program__c = ids.get('Teens'),
-      Week__c = ids.get('Week 1'),
-      Name = status == 'Published' ? 'Published' : 'Teens draft',
-      Status__c = status,
-      Origin__c = 'Manual'
-    );
-    Database.insert(schedule, AccessLevel.SYSTEM_MODE);
+    ScheduleGrid grid = teensGrid(ids);
+    grid.items.add(item(ids, 'A', 'Swim'));
+    grid.rows[0][0] = '1';
+    return teensDay(ids, status, day, grid);
+  }
+
+  /** Teens' day frame: its three time blocks, Teen 1 and Teen 2, nothing placed. */
+  private static ScheduleGrid teensGrid(Map<String, Id> ids) {
     ScheduleGrid grid = new ScheduleGrid();
     grid.blocks.add(
       new ScheduleGrid.Block(ids.get('Swim hour'), 'Swim hour')
@@ -121,9 +121,35 @@ private class GeneratedOtherProgramsTest {
     );
     grid.groups.add(new ScheduleGrid.GroupRef(ids.get('Teen 1'), 'Teen 1'));
     grid.groups.add(new ScheduleGrid.GroupRef(ids.get('Teen 2'), 'Teen 2'));
-    grid.items.add(new ScheduleGrid.Item('A', ids.get('Swim'), 'Swim'));
-    grid.rows.add(new List<String>{ '1', '', '' });
     grid.rows.add(new List<String>{ '', '', '' });
+    grid.rows.add(new List<String>{ '', '', '' });
+    return grid;
+  }
+
+  private static ScheduleGrid.Item item(
+    Map<String, Id> ids,
+    String kind,
+    String name
+  ) {
+    return new ScheduleGrid.Item(kind, ids.get(name), name);
+  }
+
+  /** A Teens schedule of Week 1 (Published, Draft or Version) with one day. */
+  private static Id teensDay(
+    Map<String, Id> ids,
+    String status,
+    Date day,
+    ScheduleGrid grid
+  ) {
+    Schedule__c schedule = new Schedule__c(
+      Program__c = ids.get('Teens'),
+      Week__c = ids.get('Week 1'),
+      Name = 'Teens ' + status,
+      Status__c = status,
+      Origin__c = 'Manual',
+      VersionReason__c = status == 'Version' ? 'Imported' : null
+    );
+    Database.insert(schedule, AccessLevel.SYSTEM_MODE);
     ScheduleDaySaves.write(
       schedule.Id,
       new List<ScheduleDaySaves.DaySave>{
@@ -158,6 +184,8 @@ private class GeneratedOtherProgramsTest {
           entry.groups
       );
     }
+    // Sorted as text (places by name): Ids don't come in a fixed order.
+    lines.sort();
     return lines;
   }
 
@@ -325,6 +353,234 @@ private class GeneratedOtherProgramsTest {
       Assert.areEqual(
         JSON.serialize(read.otherPrograms),
         JSON.serialize(view.otherPrograms)
+      );
+    }
+  }
+
+  @IsTest
+  static void onlyTheNewestPublishedScheduleCountsNeverAVersion() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = campWithTeens();
+      checked();
+      // An older published Monday (Teen 1 swims), the newest (Teen 2 plays Soccer), and a saved
+      // version (Teen 1 at Gym games).
+      Id older = teensSchedule(ids, 'Published', MONDAY);
+      Test.setCreatedDate(older, Datetime.now().addDays(-2));
+      ScheduleGrid newest = teensGrid(ids);
+      newest.items.add(item(ids, 'A', 'Soccer'));
+      newest.rows[1][0] = '1';
+      teensDay(ids, 'Published', MONDAY, newest);
+      ScheduleGrid version = teensGrid(ids);
+      version.items.add(item(ids, 'A', 'Gym games'));
+      version.rows[0][0] = '1';
+      teensDay(ids, 'Version', MONDAY, version);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{ '2026-06-29 10:30-11:15 Field A Soccer x1' },
+        described(read.otherPrograms, ids)
+      );
+    }
+  }
+
+  @IsTest
+  static void publishedCellsCarryOnAndFixedAndRecurringCountAtTheirPlace() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = campWithTeens();
+      // Morning dip (fixed) at the Gym in Swim hour; Canoe (recurring, Mondays) on Field A in
+      // Rest hour.
+      FixedActivity__c dip = new FixedActivity__c(
+        Program__c = ids.get('Teens'),
+        Name = 'Morning dip',
+        TimeBlock__c = ids.get('Swim hour'),
+        Length__c = 1,
+        Location__c = ids.get('Gym')
+      );
+      RecurringActivity__c canoe = new RecurringActivity__c(
+        Program__c = ids.get('Teens'),
+        Name = 'Canoe',
+        TimeBlock__c = ids.get('Rest hour'),
+        Length__c = 1,
+        Location__c = ids.get('Field A'),
+        Monday__c = true
+      );
+      insertAll(new List<SObject>{ dip, canoe });
+      checked();
+      ids.put('Morning dip', dip.Id);
+      ids.put('Canoe', canoe.Id);
+      // Published Monday as a director might have changed it: Teen 1 swims two blocks, then
+      // Canoe; Teen 2 has Morning dip.
+      ScheduleGrid grid = teensGrid(ids);
+      grid.items.add(item(ids, 'A', 'Swim'));
+      grid.items.add(item(ids, 'R', 'Canoe'));
+      grid.items.add(item(ids, 'F', 'Morning dip'));
+      grid.rows[0] = new List<String>{ '1', '^', '2' };
+      grid.rows[1] = new List<String>{ '3', '', '' };
+      teensDay(ids, 'Published', MONDAY, grid);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      // From Tuesday, Morning dip counts from setup for both Teens.
+      Assert.areEqual(
+        new List<String>{
+          '2026-06-29 10:30-11:15 Gym - x1',
+          '2026-06-29 10:30-11:15 Pool Swim x1',
+          '2026-06-29 13:00-13:45 Pool Swim x1',
+          '2026-06-29 14:00-14:45 Field A - x1',
+          '2026-06-30 10:30-11:15 Gym - x2',
+          '2026-07-01 10:30-11:15 Gym - x2',
+          '2026-07-02 10:30-11:15 Gym - x2'
+        },
+        described(read.otherPrograms, ids)
+      );
+    }
+  }
+
+  @IsTest
+  static void publishedCellsSkipAGroupAwayAPlaceClosedAndAnActivityOff() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = campWithTeens();
+      RecurringActivity__c canoe = new RecurringActivity__c(
+        Program__c = ids.get('Teens'),
+        Name = 'Canoe',
+        TimeBlock__c = ids.get('Afternoon'),
+        Length__c = 1,
+        Location__c = ids.get('Gym'),
+        Monday__c = true
+      );
+      insertAll(new List<SObject>{ canoe });
+      ids.put('Canoe', canoe.Id);
+      // Week 1: Teen 2 away, Field A closed, Canoe off.
+      Id week = ids.get('Week 1');
+      Database.insert(
+        new List<WeekException__c>{
+          new WeekException__c(Week__c = week, Group__c = ids.get('Teen 2')),
+          new WeekException__c(
+            Week__c = week,
+            Location__c = ids.get('Field A')
+          ),
+          new WeekException__c(Week__c = week, RecurringActivity__c = canoe.Id)
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      checked();
+      ScheduleGrid grid = teensGrid(ids);
+      grid.items.add(item(ids, 'A', 'Soccer'));
+      grid.items.add(item(ids, 'R', 'Canoe'));
+      grid.items.add(item(ids, 'A', 'Swim'));
+      grid.rows[0] = new List<String>{ '1', '2', '' };
+      grid.rows[1] = new List<String>{ '3', '', '' };
+      teensDay(ids, 'Published', MONDAY, grid);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      // Soccer still counts as Soccer, but not on Field A; Canoe and Teen 2's Swim don't count.
+      Assert.areEqual(
+        new List<String>{ '2026-06-29 10:30-11:15 - Soccer x1' },
+        described(read.otherPrograms, ids)
+      );
+    }
+  }
+
+  @IsTest
+  static void recurringActivitiesCoverWhoTheyNameAndOnlyGroupsAtCamp() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = campWithTeens();
+      // Teen 2 comes mornings only.
+      Database.update(
+        new Group__c(Id = ids.get('Teen 2'), Availability__c = 'MorningOnly'),
+        AccessLevel.SYSTEM_MODE
+      );
+      // Choir (Tuesdays, Afternoon, the Gym) names nobody: every Teen at camp then. Hike
+      // (Wednesdays, Swim hour, Field A) names the Teen groups division.
+      RecurringActivity__c choir = new RecurringActivity__c(
+        Program__c = ids.get('Teens'),
+        Name = 'Choir',
+        TimeBlock__c = ids.get('Afternoon'),
+        Length__c = 1,
+        Location__c = ids.get('Gym'),
+        Monday__c = false,
+        Tuesday__c = true
+      );
+      RecurringActivity__c hike = new RecurringActivity__c(
+        Program__c = ids.get('Teens'),
+        Name = 'Hike',
+        TimeBlock__c = ids.get('Swim hour'),
+        Length__c = 1,
+        Location__c = ids.get('Field A'),
+        Monday__c = false,
+        Wednesday__c = true
+      );
+      insertAll(new List<SObject>{ choir, hike });
+      Database.insert(
+        new Coverage__c(
+          RecurringActivity__c = hike.Id,
+          Division__c = ids.get('Teen groups'),
+          Season__c = ids.get('Season')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      checked();
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{
+          '2026-06-30 13:00-13:45 Gym - x1',
+          '2026-07-01 10:30-11:15 Field A - x2'
+        },
+        described(read.otherPrograms, ids)
+      );
+    }
+  }
+
+  @IsTest
+  static void aPublishedDayThatCantBeReadFallsBackToSetup() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = campWithTeens();
+      insertAll(
+        new List<SObject>{
+          new FixedActivity__c(
+            Program__c = ids.get('Teens'),
+            Name = 'Teen lunch',
+            TimeBlock__c = ids.get('Rest hour'),
+            Length__c = 1,
+            Location__c = ids.get('Gym')
+          )
+        }
+      );
+      checked();
+      Schedule__c published = new Schedule__c(
+        Program__c = ids.get('Teens'),
+        Week__c = ids.get('Week 1'),
+        Name = 'Teens Published',
+        Status__c = 'Published',
+        Origin__c = 'Manual'
+      );
+      Database.insert(published, AccessLevel.SYSTEM_MODE);
+      Database.insert(
+        new ScheduleDay__c(
+          Schedule__c = published.Id,
+          Date__c = MONDAY,
+          Part__c = 1,
+          Revision__c = 1,
+          GridFormatVersion__c = ScheduleGrid.FORMAT_VERSION,
+          Grid__c = 'not a grid'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{
+          '2026-06-29 14:00-14:45 Gym - x2',
+          '2026-06-30 14:00-14:45 Gym - x2',
+          '2026-07-01 14:00-14:45 Gym - x2',
+          '2026-07-02 14:00-14:45 Gym - x2'
+        },
+        described(read.otherPrograms, ids)
       );
     }
   }

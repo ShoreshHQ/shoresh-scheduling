@@ -11,7 +11,8 @@ private class GeneratedLimitsTest {
   // in shoresh-test (2026-10-18), on the smaller camp: opening a week 18 (not generated yet) or
   // 12, the first Generate 21, Fill the open cells 14, a Rebuild with its version 19. The bound
   // is per request, whatever the week's size: no query runs per day, group or cell. Other
-  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse).
+  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse); the
+  // camp has two.
   private static final Integer MOST_QUERIES = 25;
 
   private static Map<String, Id> bigCamp() {
@@ -86,23 +87,32 @@ private class GeneratedLimitsTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
-    otherProgram(ids, season.Id, week);
+    // Two other programs, so a query run once per program would show.
+    Location__c hall = new Location__c(
+      Season__c = season.Id,
+      Name = 'Hall',
+      GroupsThatFit__c = 10
+    );
+    Database.insert(hall, AccessLevel.SYSTEM_MODE);
+    ids.put('Hall', hall.Id);
+    otherProgram(ids, week, 'Teens');
+    otherProgram(ids, week, 'Kids');
     SetTimeGuard.checkPending();
     GeneratedTestData.ids = ids;
     return ids;
   }
 
   /**
-   * Teens, sharing the season's places (G5): 4 groups, 8 time blocks half an hour later than
-   * Main's, a fixed and a recurring activity in the Hall, and a published week with Swim in
-   * every cell.
+   * Another program sharing the season's places (G5): 4 groups, 8 time blocks half an hour later
+   * than Main's, a fixed and a recurring activity in the Hall, and a published Monday and
+   * Tuesday with Swim in every cell.
    */
   private static void otherProgram(
     Map<String, Id> ids,
-    Id seasonId,
-    Week__c week
+    Week__c week,
+    String name
   ) {
-    Program__c teens = ShoreshTestData.program(seasonId, 'Teens');
+    Program__c teens = ShoreshTestData.program(ids.get('Season'), name);
     List<TimeBlock__c> blocks = new List<TimeBlock__c>();
     for (Integer hour = 8; hour < 16; hour++) {
       blocks.add(
@@ -117,32 +127,26 @@ private class GeneratedLimitsTest {
       );
     }
     Database.insert(blocks, AccessLevel.SYSTEM_MODE);
-    Division__c division = ShoreshTestData.division(teens.Id, 'Teen groups');
+    Division__c division = ShoreshTestData.division(teens.Id, name + ' groups');
     List<Group__c> groups = new List<Group__c>();
     for (Integer g = 0; g < 4; g++) {
       groups.add(
         new Group__c(
           Division__c = division.Id,
-          Name = 'Teen ' + (g + 1),
+          Name = name + ' ' + (g + 1),
           Availability__c = 'AllDay',
           SortOrder__c = g
         )
       );
     }
     Database.insert(groups, AccessLevel.SYSTEM_MODE);
-    Location__c hall = new Location__c(
-      Season__c = seasonId,
-      Name = 'Hall',
-      GroupsThatFit__c = 10
-    );
-    Database.insert(hall, AccessLevel.SYSTEM_MODE);
     Database.insert(
       new FixedActivity__c(
         Program__c = teens.Id,
         Name = 'Assembly',
         TimeBlock__c = blocks[0].Id,
         Length__c = 1,
-        Location__c = hall.Id
+        Location__c = ids.get('Hall')
       ),
       AccessLevel.SYSTEM_MODE
     );
@@ -152,7 +156,7 @@ private class GeneratedLimitsTest {
         Name = 'Lunch',
         TimeBlock__c = blocks[4].Id,
         Length__c = 1,
-        Location__c = hall.Id,
+        Location__c = ids.get('Hall'),
         Monday__c = true,
         Wednesday__c = true
       ),
@@ -238,10 +242,11 @@ private class GeneratedLimitsTest {
       Assert.areEqual(5, read.days.size());
       Assert.areEqual(8, read.days[0].groups.size());
       Assert.areEqual(8, read.days[0].blocks.size());
-      // Teens: Swim at the Pool in each of 8 hours on its published Monday and Tuesday; the
-      // Hall's Assembly on Wednesday and Thursday (Teens doesn't run Fridays), and Lunch on
-      // Wednesday.
+      // Two other programs, each: Swim at the Pool in each of 8 hours on its published Monday
+      // and Tuesday; the Hall's Assembly on Wednesday and Thursday (they don't run Fridays), and
+      // Lunch on Wednesday. Their times are the same, so their groups add up in one entry each.
       Assert.areEqual(8 * 2 + 2 + 1, read.otherPrograms.size());
+      Assert.areEqual(8, read.otherPrograms[0].groups);
       assertFew(used, 'Opening a week not generated yet');
     }
   }
