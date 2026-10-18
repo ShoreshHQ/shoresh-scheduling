@@ -64,7 +64,20 @@ function checkedApart(spec, input, result) {
           )
           .reduce((n, o) => n + (o.groups == null ? 1 : o.groups), 0)
     },
-    { t: buildTerms([]), dayName: () => "" }
+    {
+      t: buildTerms([]),
+      // Written here, not taken from the engine.
+      dayName: (date) =>
+        [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday"
+        ][new Date(`${date}T00:00:00Z`).getUTCDay()]
+    }
   );
 }
 
@@ -120,6 +133,7 @@ describe("generateWeek on random small camps", () => {
   it(`keeps every rule, never leaves a cell blank, and is deterministic (${SEEDS} seeds)`, () => {
     const bad = [];
     let flagged = 0;
+    let overlaps = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
       const spec = withHistory(randomCamp(seed), seed);
       const input = camp(spec);
@@ -137,6 +151,24 @@ describe("generateWeek on random small camps", () => {
       ) {
         bad.push(`seed ${seed}: the engine's dots aren't checkWeek's`);
       }
+      if (
+        JSON.stringify(apart.overlapping) !== JSON.stringify(result.overlapping)
+      ) {
+        bad.push(`seed ${seed}: the engine's overlaps aren't checkWeek's`);
+      }
+      // Each overlapping cell holds a dotted placement that bends the same rules.
+      for (const o of result.overlapping) {
+        const dot = result.flags.find(
+          (f) =>
+            f.date === o.dateValue &&
+            f.groupId === o.groupId &&
+            f.blockId === o.blockId
+        );
+        if (!dot || !o.rules.every((r) => dot.bends.includes(r))) {
+          bad.push(`seed ${seed}: an overlap with no matching dot: ${o.text}`);
+        }
+      }
+      overlaps += result.overlapping.length;
       // Each data entry says what its line says: the activity, the bunk and the number.
       const name = (id) => spec.activities.find((a) => a.id === id).name;
       const bunk = (id) => spec.groups.find((g) => g.id === id).name;
@@ -168,6 +200,7 @@ describe("generateWeek on random small camps", () => {
     expect(bad.slice(0, 20)).toEqual([]);
     // The camps are tight enough that the never-blank pass really runs.
     expect(flagged).toBeGreaterThan(0);
+    expect(overlaps).toBeGreaterThan(0);
   });
 });
 

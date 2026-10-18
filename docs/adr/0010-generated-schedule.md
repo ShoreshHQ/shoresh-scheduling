@@ -198,8 +198,12 @@ cells) and 0009 (names through `c/shoreshSchema`).
     no locks, so it is unaffected. Any other rule broken by several placements dots all of them: twice in a day
     dots both, too many at an activity or a place dots each one there; fixed and recurring activities count toward a place but never get a dot. So the
     same grid always gets the same dots, whatever order it was filled in, and anything kept
-    that breaks a rule is dotted too. Each clash is one Overlapping line, even when another
-    program's session is both at the place and doing the activity. Additions here: other programs' groups (counted
+    that breaks a rule is dotted too. Overlapping lists each group's cell (day, time block)
+    where its placement breaks a rule that time block shares with other cells: groups at once,
+    same division, place capacity, or busy at an overlapping time, like the desktop's
+    `computeOverlaps` (coordinator, 2026-10-17). A placement running two time blocks that clashes
+    in one is one cell; a cell breaking several is one entry, its reasons in give-way order;
+    fixed and recurring activities never have one. Additions here: other programs' groups (counted
     at places and activities, another division for same division only), and each dot's rule
     names (`bends`). `checkInputs.js` reads the season's records into its model (activities and
     places through the engine's own readers); the engine builds the same model from its inputs
@@ -209,8 +213,10 @@ cells) and 0009 (names through `c/shoreshSchema`).
     finished week, one entry per cell; checkWeek's `stillNeeded` and `spread` lines ("Swim ·
     Bunk 3: 1 still needed by Wednesday"), the same as data (`stillNeededBy`: activity, group,
     how many missing; `spreadBy`: the same and the day; entry i is line i, so Manual Build's
-    counters can add them up), `overlapping` and `cells` (filled of to fill), in the same words
-    and order as Manual Build; `openCells`; and `ruleChecks`, the build's work. Flags and reasons are not stored: G3
+    counters can add them up), `overlapping` (`[{ dateValue, groupId, blockId, rules, text }]`,
+    text "Bunk 3 · Monday · Period 2: Over its limit of 1 Bunk at once · More Bunks at Pool than
+    fit", by day, then time block, then the grid's group order) and `cells` (filled of to fill),
+    in the same words and order as Manual Build; `openCells`; and `ruleChecks`, the build's work. Flags and reasons are not stored: G3
     works them out again on load with `checkWeek` (coordinator's call).
 12. **Code layout** (`force-app/main/default/lwc/shoreshEngine`): `shoreshEngine.js` (entry
     point, output), `setup.js` (reads inputs, ordering), `week.js` (the builder), `random.js`
@@ -228,6 +234,7 @@ The desktop's schedule flags (per cell) and findings (per group and activity; de
 | `DISTRIBUTION`                                                                                                                                                     | Short of an early-week goal                                                      | `spread` lines and `spreadBy` data ("by Wednesday" counts Wednesday)                                                                                                                                                                                    | Carried  |
 | `UNFILLABLE` and its reasons (nothing eligible, weekly max, already today, place full, no room for full length, activity at capacity, busy at an overlapping time) | A cell left blank, and why                                                       | Never blank fills the cell; the rule it bends is a dot in `flags`. Only a cell nothing can go in is in `openCells` ("Already busy then", "No activity fits this gap")                                                                                   | Replaced |
 | `OUTER_RESOURCE_CONFLICT`                                                                                                                                          | Combined use of a place over its capacity, across cohorts or between fixed items | Other programs' groups count in the build and in checkWeek's place capacity, groups at once and same division (`flags`, `overlapping`). Fixed and recurring activities over a place's capacity are refused by setup's clash checks (slice 3b)           | Replaced |
+| `OVERLAP` (place capacity, an activity's groups per slot, a group in two blocks at an overlapping time)                                                            | A cell booked past a limit it shares with other cells                            | `overlapping`, one entry per cell, in the same give-way order as the dots. Adds same division only (Greg's give-way order, decision 10), which the desktop's `OVERLAP` didn't check                                                                     | Carried  |
 | `FIXED_EVENT_OVERLAP`                                                                                                                                              | Two same-name fixed events in one group's block                                  | Refused by setup's clash checks; a cell holds one item; Start a blank week lists anything it couldn't place (ADR 0008 §3)                                                                                                                               | Replaced |
 | `DANGLING_LOCATION`                                                                                                                                                | An activity set to a place that isn't in the list                                | Can't happen: `Activity__c.Location__c` is restrict-delete and must be in the activity's season (`ActivityTriggerHandler`). A place missing from the engine's input has no limit, as on the desktop, so G2's reader passes every location of the season | Dropped  |
 | `FIXED_EVENT_DUPLICATE`                                                                                                                                            | An activity also placed as a fixed event                                         | Fixed and recurring activities aren't linked to activities (data model)                                                                                                                                                                                 | Dropped  |
