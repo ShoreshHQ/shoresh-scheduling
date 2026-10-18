@@ -6,8 +6,14 @@ import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
-import { useYoursSendsWhatWasShown } from "./data/shownIsSent";
+import { editorRoot, find, findAll } from "shoresh-jest/week-editor";
+import {
+  WITH_SOCCER,
+  WITH_SWIM,
+  draft,
+  schedule
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { useYoursSendsWhatWasShown } from "../../shoreshWeekEditor/__tests__/data/shownIsSent";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -75,10 +81,8 @@ async function render(setup = SETUP) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
-const qa = (element, selector) => [
-  ...element.shadowRoot.querySelectorAll(selector)
-];
+const q = (element, selector) => find(element, selector);
+const qa = (element, selector) => findAll(element, selector);
 const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cell = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);
@@ -753,13 +757,13 @@ describe("c-shoresh-manual-build", () => {
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
     const keep = q(element, '[data-id="keep-theirs"]');
-    expect(element.shadowRoot.activeElement).toBe(keep);
+    expect(editorRoot(element).activeElement).toBe(keep);
     await press(keep, "Tab");
-    expect(element.shadowRoot.activeElement).toBe(
+    expect(editorRoot(element).activeElement).toBe(
       q(element, '[data-id="use-yours"]')
     );
     await press(q(element, '[data-id="use-yours"]'), "Tab");
-    expect(element.shadowRoot.activeElement).toBe(keep);
+    expect(editorRoot(element).activeElement).toBe(keep);
   });
 
   it("Group View edits one bunk's week the same way", async () => {

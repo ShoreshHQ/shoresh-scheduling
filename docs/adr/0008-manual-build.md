@@ -564,6 +564,21 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       `shoreshVersions.test.js` (the list, Restore and its guards, Save version, Delete?, focus,
       Start from another week and its guards).
 
+## The week editor (extracted from Manual Build)
+
+Generated Schedule needs the same hand-editing as Manual Build, so the drawing and editing of a
+week moved into one component, `c-shoresh-week-editor`, with no change in behaviour. Manual Build
+keeps choosing the program and week, starting a week, Versions, the week-checks counters and the
+Clear day, Clear week and Copy day buttons; it hands the editor the week (`show`) and a saver
+(`saveRuns`, which wraps `saveSlots` and turns its refusal into an answer), and hears what changed
+(`statechange`, `edited`, `errorchange`, `reload`). The host's own controls sit in the editor's
+slots (pickers, tools, checks, status, outcome), so the screen reads the same. The tool buttons call the
+editor's `runTool`, so a tool is one step in the same queue and Undo as a typed edit.
+
+The rules modules (`slotEdits`, `moves`, `history`, `conflicts`, `tools`, `counts`) moved into the
+editor's folder with their tests, code unchanged: a Lightning component can only import files in
+its own folder, so the editor could not reach them where they were.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
