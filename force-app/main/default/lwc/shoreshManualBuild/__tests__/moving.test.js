@@ -3,7 +3,6 @@ import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
-import { nsRecord } from "shoresh-jest/namespace";
 import { draft, schedule } from "./data/draftFixture";
 import {
   listedCells,
@@ -26,31 +25,13 @@ jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
   virtual: true
 });
 
-// The fixture's activities as setup records (the week's checks read them): Swim 1 to 2 a week,
-// Boating any number, Soccer 2 to 3.
-const SETUP = nsRecord({
+const SETUP = {
   season: { Id: "se1", Name: "Summer 2026" },
   weeks: [{ Id: "w1", Name: "Week 1" }],
   programs: [{ program: { Id: "p1", Name: "Main" } }],
-  activities: [
-    {
-      Id: "a1",
-      Name: "Swim",
-      TimesPerWeekMin__c: 1,
-      TimesPerWeekMax__c: 2,
-      NoGroupLimit__c: true
-    },
-    { Id: "a2", Name: "Boating", NoWeeklyMax__c: true, NoGroupLimit__c: true },
-    {
-      Id: "a3",
-      Name: "Soccer",
-      TimesPerWeekMin__c: 2,
-      TimesPerWeekMax__c: 3,
-      NoGroupLimit__c: true
-    }
-  ],
+  activities: [],
   locations: []
-});
+};
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
   { term: "TimeBlock", singular: "Period", plural: "Periods", isCustom: true }
@@ -899,8 +880,9 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     await flush();
     expect(saveSlots).toHaveBeenCalledTimes(3);
+    // Swim is now twice in Bunk 1's Monday: both get the dot, said once with the save.
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
-      "Placed Swim · Bunk 1 · Monday · Lunch"
+      "Placed Swim · Bunk 1 · Monday · Lunch. Swim · Bunk 1: Twice in a day, and 1 more"
     );
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Flagpole stays where it is set up."

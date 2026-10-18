@@ -11,6 +11,12 @@ public with sharing class ManualBuildViews {
     public List<ActivityOption> activities = new List<ActivityOption>();
     @AuraEnabled
     public List<AwaySlots> away = new List<AwaySlots>();
+    // The season's activity and location records, as the setup screen reads them
+    // (SeasonSetupReader), read with the week so the screen's checks are as fresh as it is.
+    @AuraEnabled
+    public List<Activity__c> activityRecords = new List<Activity__c>();
+    @AuraEnabled
+    public List<Location__c> locationRecords = new List<Location__c>();
     // Only just after Start a blank week: fixed or recurring activities whose slot was taken
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
@@ -35,7 +41,7 @@ public with sharing class ManualBuildViews {
     @AuraEnabled
     public List<Id> notFor = new List<Id>();
     // Only from "Add <name>": its setup record (SeasonSetupReader.activitiesOf), so the screen's
-    // checks know an activity added since the setup was read.
+    // checks know it at once, before the draft is read again.
     @AuraEnabled
     public Activity__c record;
   }
@@ -66,6 +72,12 @@ public with sharing class ManualBuildViews {
     view.schedule = ScheduleViews.open(scheduleId);
     List<Group__c> groups = ProgramReads.groupsOf(schedule.Program__c);
     view.activities = options(schedule.Program__r.Season__c, groups);
+    view.activityRecords = SeasonSetupReader.activitiesOf(
+      schedule.Program__r.Season__c
+    );
+    view.locationRecords = SeasonSetupReader.locationsOf(
+      schedule.Program__r.Season__c
+    );
     view.away = away(groups, ProgramReads.blocksOf(schedule.Program__c));
     return view;
   }

@@ -1,0 +1,63 @@
+<template>
+  <div class="counters" data-id="counters">
+    <div class="counter counter_plain" data-id="filled">
+      <span class="count">{filledText}</span>
+      <span class="counter-label">Filled</span>
+    </div>
+    <template for:each={counterButtons} for:item="counter">
+      <button
+        key={counter.key}
+        type="button"
+        class={counter.className}
+        aria-expanded={counter.expanded}
+        aria-controls="counter-list"
+        aria-disabled={counter.unavailable}
+        data-counter={counter.key}
+        onclick={handleCounter}
+      >
+        <span class="count">{counter.count}</span>
+        <span class="counter-label">{counter.label}</span>
+      </button>
+    </template>
+  </div>
+  <template lwc:if={openLines}>
+    <div class="counter-list" id="counter-list" data-id="counter-list">
+      <div class="counter-list-head">
+        <span class="counter-list-title">Still to place</span>
+        <button
+          type="button"
+          class="slds-button slds-button_neutral"
+          data-id="close-list"
+          onclick={handleCloseList}
+        >
+          Close
+        </button>
+      </div>
+      <ul aria-label="Still to place">
+        <template for:each={openLines} for:item="line">
+          <li key={line.key} class="counter-line">
+            <button
+              type="button"
+              class="line-text"
+              data-key={line.key}
+              onclick={handleLocate}
+            >
+              {line.text}
+            </button>
+            <template lwc:if={line.acceptable}>
+              <button
+                type="button"
+                class="slds-button slds-button_neutral line-accept"
+                data-key={line.key}
+                aria-label={line.acceptLabel}
+                onclick={handleAccept}
+              >
+                Accept
+              </button>
+            </template>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </template>
+</template>

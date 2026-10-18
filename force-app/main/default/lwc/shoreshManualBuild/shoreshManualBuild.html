@@ -69,36 +69,11 @@
       </template>
     </div>
     <template lwc:if={showCounters}>
-      <div class="counters" data-id="counters">
-        <span class="counter counter_plain" data-id="filled"
-          >Filled <span class="count">{filledText}</span></span
-        >
-        <template for:each={counterButtons} for:item="counter">
-          <button
-            key={counter.key}
-            type="button"
-            class={counter.className}
-            aria-expanded={counter.expanded}
-            aria-controls="counter-list"
-            data-counter={counter.key}
-            onclick={handleCounter}
-          >
-            {counter.label} <span class="count">{counter.count}</span>
-          </button>
-        </template>
-      </div>
-      <template lwc:if={openLines}>
-        <ul
-          class="counter-list"
-          id="counter-list"
-          aria-label={openCounterLabel}
-          data-id="counter-list"
-        >
-          <template for:each={openLines} for:item="line">
-            <li key={line.key}>{line.text}</li>
-          </template>
-        </ul>
-      </template>
+      <c-shoresh-week-checks
+        checked={checked}
+        reset-key={checksResetKey}
+        onlocate={handleLocate}
+      ></c-shoresh-week-checks>
     </template>
     <template lwc:if={notice}>
       <p class="notice" data-id="notice">{notice}</p>

@@ -65,6 +65,13 @@ const SETUP = nsRecord({
   ],
   locations: []
 });
+// The same camp with no weekly minimums set (so Still needed has nothing to count).
+const NO_MINIMUMS = nsRecord({
+  ...SETUP,
+  activities: SETUP.activities.map((a) => {
+    return { ...a, TimesPerWeekMin__c: 0 };
+  })
+});
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
   { term: "TimeBlock", singular: "Period", plural: "Periods", isCustom: true }
@@ -80,7 +87,12 @@ const flush = () =>
   );
 
 async function render(start, setup = SETUP) {
-  getDraft.mockResolvedValue(start);
+  // The server sends the season's activity and location records with the week.
+  getDraft.mockResolvedValue({
+    ...start,
+    activityRecords: setup.activities,
+    locationRecords: setup.locations
+  });
   saveSlots.mockImplementation(() =>
     Promise.resolve({ conflicts: [], schedule: start.schedule })
   );
@@ -95,6 +107,11 @@ async function render(start, setup = SETUP) {
 }
 
 const q = (element, selector) => element.shadowRoot.querySelector(selector);
+// Inside the counters and their list (c-shoresh-week-checks).
+const qc = (element, selector) => {
+  const checks = q(element, "c-shoresh-week-checks");
+  return checks ? checks.shadowRoot.querySelector(selector) : null;
+};
 const cell = (element, key) =>
   q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
     `[data-cell="${key}"]`
@@ -103,10 +120,21 @@ const dotIn = (element, key) =>
   cell(element, key).querySelector("c-shoresh-dot");
 const tipIn = (element, key) =>
   dotIn(element, key).shadowRoot.querySelector('[data-id="dot-tip"]');
+/** A counter tile as read: its number, then its words. */
+const tile = (el) =>
+  [...el.querySelectorAll("span")].map((span) => span.textContent).join(" ");
 const counters = (element) =>
-  [...q(element, '[data-id="counters"]').querySelectorAll("button")].map((b) =>
-    b.textContent.replace(/\s+/g, " ").trim()
-  );
+  [...qc(element, '[data-id="counters"]').querySelectorAll("button")].map(tile);
+const listLines = (element) =>
+  [
+    ...qc(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
+  ].map((b) => b.textContent.trim());
+const lineButton = (element, text) =>
+  [
+    ...qc(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
+  ].find((b) => b.textContent.trim() === text);
+const acceptButton = (element, text) =>
+  qc(element, `[data-id="counter-list"] [aria-label="Accept: ${text}"]`);
 
 /** Bunk 1's week in Group View (columns are days): Monday's items and rows, then Tuesday's. */
 async function bunkOneWeek(monday, tuesday, setup) {
@@ -138,7 +166,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     jest.clearAllMocks();
   });
 
-  it("two bunks at Soccer at once: a dot on each, with the words, and one overlap", async () => {
+  it("two bunks at Soccer at once: a dot on each, with the words, and two cells overlapping", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     expect(dotIn(element, "0-1").label).toBe(
       "Over its limit of 1 Bunk at once"
@@ -149,43 +177,44 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     // Fixed activities and Open cells have none.
     expect(dotIn(element, "0-0")).toBeNull();
     expect(dotIn(element, "0-2")).toBeNull();
-    expect(counters(element)).toEqual(["Still needed 3", "Overlapping 1"]);
+    // As the desktop counts it: each cell that overlaps (a bunk in a time block).
+    expect(counters(element)).toEqual(["2 Overlapping", "3 Still needed"]);
   });
 
-  it("a counter opens the list of what it counts; again closes it", async () => {
+  it("any counter opens the one list, overlaps first; again, or Close, closes it", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
-    const overlapping = q(element, '[data-counter="overlapping"]');
+    const overlapping = qc(element, '[data-counter="overlapping"]');
     expect(overlapping.getAttribute("aria-expanded")).toBe("false");
     overlapping.click();
     await flush();
     expect(overlapping.getAttribute("aria-expanded")).toBe("true");
-    const list = q(element, '[data-id="counter-list"]');
-    expect(list.getAttribute("aria-label")).toBe("Overlapping");
     expect(
-      [...list.querySelectorAll("li")].map((li) => li.textContent)
-    ).toEqual(["Soccer · Monday · Period 2: Over its limit of 1 Bunk at once"]);
-    q(element, '[data-counter="stillNeeded"]').click();
-    await flush();
+      qc(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
+    ).toBe("true");
     expect(
-      [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
-        (li) => li.textContent
-      )
-    ).toEqual([
+      qc(element, '[data-id="counter-list"] ul').getAttribute("aria-label")
+    ).toBe("Still to place");
+    expect(listLines(element)).toEqual([
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
+      "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once",
       "Swim · Bunk 1: 1 still needed",
       "Soccer · Bunk 1: 1 still needed",
       "Soccer · Bunk 2: 1 still needed"
     ]);
-    q(element, '[data-counter="stillNeeded"]').click();
+    qc(element, '[data-counter="stillNeeded"]').click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
+    overlapping.click();
+    await flush();
+    qc(element, '[data-id="close-list"]').click();
+    await flush();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
   });
 
   it("Filled counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     // Two days; Bunk 1 has Period 2 and Lunch to fill, Bunk 2 only Period 2 (away at Lunch).
-    expect(
-      q(element, '[data-id="filled"]').textContent.replace(/\s+/g, " ")
-    ).toBe("Filled 2 of 6");
+    expect(tile(qc(element, '[data-id="filled"]'))).toBe("2 of 6 Filled");
   });
 
   it("a placement for a bunk it isn't set up for gets the dot", async () => {
@@ -212,17 +241,34 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     await press(cell(element, "1-1"), "Delete");
     expect(dotIn(element, "0-1")).toBeNull();
-    expect(counters(element)).toEqual(["Still needed 3"]);
+    expect(counters(element)).toEqual(["0 Overlapping", "3 Still needed"]);
   });
 
-  it("a counter at zero isn't shown", async () => {
+  it("a counter at zero shows grey and opens nothing; one with no targets set isn't shown", async () => {
     const element = await render(
       draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
     );
-    // Nothing overlaps and no activity has an early-week goal: only Filled and Still needed.
-    expect(counters(element)).toEqual(["Still needed 2"]);
-    expect(q(element, '[data-counter="overlapping"]')).toBeNull();
-    expect(q(element, '[data-counter="spread"]')).toBeNull();
+    // Nothing overlaps; no activity has an early-week goal, so Spread isn't shown (desktop).
+    expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
+    const overlapping = qc(element, '[data-counter="overlapping"]');
+    expect(overlapping.getAttribute("aria-disabled")).toBe("true");
+    overlapping.click();
+    await flush();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
+    expect(overlapping.hasAttribute("aria-expanded")).toBe(false);
+    expect(overlapping.className).not.toContain("counter_due");
+    expect(qc(element, '[data-counter="stillNeeded"]').className).toContain(
+      "counter_due"
+    );
+    expect(qc(element, '[data-counter="spread"]')).toBeNull();
+  });
+
+  it("Still needed isn't shown when no activity has a weekly minimum", async () => {
+    const element = await render(
+      draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]),
+      NO_MINIMUMS
+    );
+    expect(counters(element)).toEqual(["0 Overlapping"]);
   });
 
   it("one Escape on a cell with a dot hides the words and lets go of what was picked up", async () => {
@@ -254,26 +300,31 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(dotIn(element, "1-1").open).toBe(false);
   });
 
-  it("a list whose counter went to zero doesn't open again by itself", async () => {
-    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
-    q(element, '[data-counter="overlapping"]').click();
+  it("the list closes when nothing is left to list, and doesn't open again by itself", async () => {
+    // No minimums: only the overlap is listed.
+    const element = await render(
+      draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]),
+      NO_MINIMUMS
+    );
+    qc(element, '[data-counter="overlapping"]').click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).not.toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).not.toBeNull();
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
     });
     await press(cell(element, "1-1"), "Delete");
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
-    // The clash comes back (Undo): its counter does, its list stays closed.
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
+    // The clash comes back (Undo): its counter counts again, the list stays closed.
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
     });
     await press(cell(element, "1-1"), "z", { ctrlKey: true });
-    expect(q(element, '[data-counter="overlapping"]')).not.toBeNull();
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(counters(element)).toEqual(["2 Overlapping"]);
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
   });
+
   it("over its weekly limit: only the session past the limit gets the dot, the latest in the week", async () => {
     // Swim at most once a week: Monday's is fine, Tuesday's is the extra one (Greg, 2026-10-17).
     const onceAWeek = nsRecord({
@@ -346,12 +397,186 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     input.dispatchEvent(new CustomEvent("input"));
     await flush();
     await press(input, "Enter");
-    q(element, '[data-counter="stillNeeded"]').click();
+    qc(element, '[data-counter="stillNeeded"]').click();
     await flush();
+    expect(listLines(element)).toContain("Kayak · Bunk 1: 1 still needed");
+  });
+
+  it("Accept hides a still needed line for this visit; it comes back when its numbers change", async () => {
+    // No overlap here: Soccer for Bunk 1 on Monday only.
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    qc(element, '[data-counter="stillNeeded"]').click();
+    await flush();
+    expect(listLines(element)).toEqual([
+      "Swim · Bunk 1: 1 still needed",
+      "Soccer · Bunk 1: 1 still needed",
+      "Soccer · Bunk 2: 2 still needed"
+    ]);
+    acceptButton(element, "Soccer · Bunk 1: 1 still needed").click();
+    await flush();
+    expect(listLines(element)).toEqual([
+      "Swim · Bunk 1: 1 still needed",
+      "Soccer · Bunk 2: 2 still needed"
+    ]);
+    expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
+    // Bunk 1's Soccer is cleared: its line now says 2, a different line, so it shows again.
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,,", "1,,"])
+    });
+    await press(cell(element, "0-1"), "Delete");
+    expect(counters(element)).toEqual(["0 Overlapping", "3 Still needed"]);
+    expect(listLines(element)).toContain("Soccer · Bunk 1: 2 still needed");
+  });
+
+  it("a line takes you to its bunk's week; an overlap's line puts focus on its cell", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+    qc(element, '[data-counter="stillNeeded"]').click();
+    await flush();
+    lineButton(element, "Soccer · Bunk 2: 1 still needed").click();
+    await flush();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
+    expect(q(element, '[data-view="group"]').className).toContain("on");
     expect(
-      [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
-        (li) => li.textContent
-      )
-    ).toContain("Kayak · Bunk 1: 1 still needed");
+      q(element, '[data-id="edit-grid"]').getAttribute("aria-label") ||
+        q(element, '[data-id="edit-grid"]').label
+    ).toBe("Bunk 2");
+    qc(element, '[data-counter="overlapping"]').click();
+    await flush();
+    lineButton(
+      element,
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
+    ).click();
+    await flush();
+    expect(q(element, '[data-id="edit-grid"]').label).toBe("Bunk 1");
+    // Group View: Monday's column, Period 2.
+    expect(
+      q(element, '[data-id="edit-grid"]').shadowRoot.activeElement.dataset.cell
+    ).toBe("0-1");
+  });
+
+  it("a screen reader hears, once, the dot an edit brings and the one it takes away", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    await press(cell(element, "1-1"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "soccer";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Placed Soccer · Bunk 2 · Monday · Period 2. Soccer · Bunk 1: Over its limit of 1 Bunk at once, and 1 more"
+    );
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
+    });
+    await press(cell(element, "1-1"), "Delete");
+    expect(q(element, '[data-id="announce"]').textContent).toContain(
+      "Soccer · Bunk 1: fine now, and 1 more"
+    );
+  });
+
+  it("the program's divisions reach the checks: one division at a time", async () => {
+    // Bunk 2 is in Seniors; Soccer is for one division at a time, with no limit of bunks.
+    const twoDivisions = nsRecord({
+      ...SETUP,
+      programs: [
+        {
+          ...SETUP.programs[0],
+          divisions: [
+            {
+              division: { Id: "dv1", Name: "Juniors" },
+              groups: [{ Id: "g1", Name: "Bunk 1", Division__c: "dv1" }]
+            },
+            {
+              division: { Id: "dv2", Name: "Seniors" },
+              groups: [{ Id: "g2", Name: "Bunk 2", Division__c: "dv2" }]
+            }
+          ]
+        }
+      ],
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a3"
+          ? { ...a, NoGroupLimit__c: true, SameDivisionOnly__c: true }
+          : a;
+      })
+    });
+    const element = await render(
+      draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]),
+      twoDivisions
+    );
+    expect(dotIn(element, "0-1").label).toBe(
+      "With another division at the same time"
+    );
+  });
+
+  it("the checks follow the week as it is read again, even when the week itself is unchanged", async () => {
+    const start = draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);
+    start.schedule.days[1] = day(
+      "2026-06-30",
+      [FLAGPOLE, SWIM],
+      ["1,2,", "1,,"]
+    );
+    const element = await render(start);
+    expect(dotIn(element, "0-1")).toBeNull();
+    // Someone sets Swim to once a week elsewhere; the week is read again (the window gets focus).
+    getDraft.mockResolvedValue({
+      ...start,
+      activityRecords: nsRecord(
+        SETUP.activities.map((a) => {
+          return a.Id === "a1" ? { ...a, TimesPerWeekMax__c: 1 } : a;
+        })
+      ),
+      locationRecords: []
+    });
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    q(element, '[data-view="group"]').click();
+    await flush();
+    expect(dotIn(element, "1-1").label).toBe("Over its weekly limit");
+  });
+
+  it("a week with no days shows no counters", async () => {
+    const start = draft();
+    start.schedule.days = [];
+    const element = await render(start);
+    expect(qc(element, '[data-id="counters"]')).toBeNull();
+  });
+
+  it("an open list marks its counters open and names the list they control", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    const needed = qc(element, '[data-counter="stillNeeded"]');
+    expect(needed.getAttribute("aria-controls")).toBeTruthy();
+    expect(needed.className).not.toContain("counter_open");
+    needed.click();
+    await flush();
+    expect(needed.className).toContain("counter_open");
+  });
+
+  it("a director's edit that changes a few dots pulses those cells once; Undo doesn't", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    await press(cell(element, "1-1"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "soccer";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(cell(element, "0-1").className).toContain("cell_pulse");
+    expect(cell(element, "1-1").className).toContain("cell_pulse");
+    expect(cell(element, "0-2").className).not.toContain("cell_pulse");
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
+    });
+    await press(cell(element, "1-1"), "z", { ctrlKey: true });
+    expect(cell(element, "0-1").className).not.toContain("cell_pulse");
   });
 });

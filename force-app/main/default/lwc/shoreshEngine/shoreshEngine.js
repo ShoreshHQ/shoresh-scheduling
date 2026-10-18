@@ -58,9 +58,10 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *   flags: checkWeek's dots on the finished week, one entry per cell of each dotted placement:
  *     [{ date, groupId, blockId, activityId, bends: [RULE...], reason }]. A cell the engine had to
  *     bend a rule for always has one; so does anything kept that breaks a rule
- *   stillNeeded, spread, stillNeededBy, spreadBy, overlapping, cells: checkWeek's lines, the
- *     same as data, and counts, the same words as
- *     Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
+ *   stillNeeded, spread, stillNeededBy, spreadBy, cells: checkWeek's lines, the same as data,
+ *     and counts, the same words as Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
+ *   overlapping: checkWeek's cells where a placement breaks a rule that time block shares with
+ *     other cells: [{ dateValue, groupId, blockId, rules: [RULE... or BUSY], text }]
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
  *     work done, the same on any machine
  *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open: the group is

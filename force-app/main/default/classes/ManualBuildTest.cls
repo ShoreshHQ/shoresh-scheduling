@@ -215,6 +215,23 @@ private class ManualBuildTest {
       Assert.areEqual(1, view.away.size());
       Assert.areEqual(ids.get('Group C'), view.away[0].groupId);
       Assert.areEqual(new List<Id>{ ids.get('Lunch') }, view.away[0].blockIds);
+      // The season's activity and location records come with the week, as the setup screen
+      // reads them, so the screen's checks are as fresh as the week.
+      Map<Id, Activity__c> records = new Map<Id, Activity__c>(
+        view.activityRecords
+      );
+      Assert.areEqual(view.activities.size(), records.size());
+      Assert.areEqual(2, records.get(ids.get('Swim')).TimesPerWeekMax__c);
+      Assert.isTrue(records.get(ids.get('Soccer')).NoWeeklyMax__c);
+      Assert.areEqual(
+        [
+          SELECT COUNT()
+          FROM Location__c
+          WHERE Season__c = :ids.get('Season')
+          WITH SYSTEM_MODE
+        ],
+        view.locationRecords.size()
+      );
     }
   }
 

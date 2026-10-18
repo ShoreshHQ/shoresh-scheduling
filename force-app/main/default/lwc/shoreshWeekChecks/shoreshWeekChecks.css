@@ -1,0 +1,113 @@
+@import "c/shoreshTokens";
+
+/* The counters under the toolbar (desktop StatBadge): the number on top, the words below. Only
+   a count with something in it is bronze; a zero is grey and opens nothing. */
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+  margin: 0 0 12px;
+}
+
+.counter {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 120px;
+  padding: 8px 14px;
+  border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+  border-radius: 8px;
+  background: var(--slds-g-color-neutral-base-100, #ffffff);
+  color: var(--slds-g-color-neutral-base-10, #181818);
+  font: inherit;
+  text-align: center;
+  cursor: default;
+}
+
+.counter[aria-disabled="true"] {
+  cursor: default;
+}
+
+.counter_due {
+  border-color: var(--shoresh-caution);
+  cursor: pointer;
+}
+
+.counter_open {
+  background: var(--shoresh-caution-tint);
+}
+
+.count {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--shoresh-text-secondary);
+}
+
+.counter_plain .count {
+  color: var(--slds-g-color-neutral-base-10, #181818);
+}
+
+.counter_due .count {
+  color: var(--slds-g-color-neutral-base-10, #181818);
+}
+
+.counter-label {
+  font-size: 13px;
+}
+
+.counter-list {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 2px solid var(--slds-g-color-border-base-1, #c9c9c9);
+  font-size: 13px;
+}
+
+.counter-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.counter-list-title {
+  font-size: 12px;
+  color: var(--shoresh-text-secondary);
+}
+
+.counter-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.counter-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.line-text {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.line-text:hover {
+  text-decoration: underline;
+}
+
+.line-text:focus-visible {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: 2px;
+}
