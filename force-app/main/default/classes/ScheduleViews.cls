@@ -45,6 +45,10 @@ public with sharing class ScheduleViews {
     // One row per group: its cells separated by commas (the stored format's rows).
     @AuraEnabled
     public List<String> rows = new List<String>();
+    // Locked cells (Generated Schedule): one row per group like rows, each cell '1' or empty;
+    // no rows when nothing is locked.
+    @AuraEnabled
+    public List<String> locks = new List<String>();
   }
 
   /** A time block, group, or item as saved, and whether it has been deleted since. */
@@ -84,6 +88,14 @@ public with sharing class ScheduleViews {
 
   /** One schedule with its days, or null if it is not there (or not visible). */
   public static ScheduleView open(Id scheduleId) {
+    return open(scheduleId, null);
+  }
+
+  /**
+   * The same, with what still counts as there given (Generated Schedule: the program's setup,
+   * as GeneratedInputs reads it), or null to look each record up (ScheduleRefs).
+   */
+  public static ScheduleView open(Id scheduleId, Set<String> stillThere) {
     List<Schedule__c> found = [
       SELECT Id, Name, Status__c, Origin__c, VersionReason__c, CreatedDate
       FROM Schedule__c
@@ -98,7 +110,10 @@ public with sharing class ScheduleViews {
     view.status = found[0].Status__c;
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
     view.revisions = ScheduleDays.stamp(days);
-    view.days = dayViews(days);
+    view.days = dayViews(
+      days,
+      stillThere == null ? ScheduleRefs.stillThere(days) : stillThere
+    );
     return view;
   }
 
@@ -157,6 +172,11 @@ public with sharing class ScheduleViews {
     }
     for (List<String> cells : day.grid.rows) {
       view.rows.add(String.join(cells, ','));
+    }
+    if (ScheduleGridLocks.hasAny(day.grid)) {
+      for (List<String> cells : day.grid.locks) {
+        view.locks.add(String.join(cells, ','));
+      }
     }
     return view;
   }

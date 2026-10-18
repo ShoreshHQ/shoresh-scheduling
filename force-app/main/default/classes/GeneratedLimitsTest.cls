@@ -387,4 +387,51 @@ private class GeneratedLimitsTest {
       assertFew(reading, 'Opening a generated week');
     }
   }
+
+  @IsTest
+  static void aLockAndAHandEditUseFewQueries() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      bigCamp();
+      Id draftId = GeneratedTestData.save(
+          built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
+        )
+        .scheduleId;
+      String revision = GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
+      GeneratedWeek.LockChange wholeDay = new GeneratedWeek.LockChange();
+      wholeDay.action = GeneratedWeek.LOCK;
+      wholeDay.dateValue = GeneratedTestData.MONDAY;
+      Test.startTest();
+      GeneratedWeek.Locked locked = GeneratedScheduleController.setLocks(
+        draftId,
+        new List<GeneratedWeek.LockChange>{ wholeDay },
+        revision
+      );
+      Integer locking = Limits.getQueries();
+      // A hand edit on Tuesday (not locked): Period 2 of the first group, cleared.
+      ScheduleViews.DayView tuesday = locked.schedule.days[1];
+      SlotEdits.Run run = new SlotEdits.Run();
+      run.day = tuesday.dateValue;
+      run.groupId = tuesday.groups[0].id;
+      run.firstBlockId = tuesday.blocks[1].id;
+      run.blockIds = new List<String>{ tuesday.blocks[1].id };
+      run.before = new List<String>{
+        SlotIds.ofRow(ScheduleDays.read(draftId)[1].grid, 0)[1]
+      };
+      run.after = new List<String>{ '' };
+      SlotEdits.Edit edit = new SlotEdits.Edit();
+      edit.runs = new List<SlotEdits.Run>{ run };
+      Integer before = Limits.getQueries();
+      SlotEdits.Result edited = GeneratedScheduleController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{ edit },
+        locked.revision
+      );
+      Integer editing = Limits.getQueries() - before;
+      Assert.isFalse(locked.conflict);
+      Assert.isTrue(edited.conflicts.isEmpty());
+      Assert.isNotNull(edited.revision);
+      assertFew(locking, 'Locking a whole day');
+      assertFew(editing, 'A hand edit');
+    }
+  }
 }

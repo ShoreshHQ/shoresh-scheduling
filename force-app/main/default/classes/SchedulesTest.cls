@@ -260,7 +260,8 @@ private class SchedulesTest {
             Schedule__c = version.Id,
             Date__c = monday.addDays(1),
             Grid__c = grid(c).toText(),
-            GridFormatVersion__c = 2,
+            // Version 2 (locks) is read; a format past it is from a newer Shoresh.
+            GridFormatVersion__c = 3,
             Revision__c = 1,
             Part__c = 1
           ),
