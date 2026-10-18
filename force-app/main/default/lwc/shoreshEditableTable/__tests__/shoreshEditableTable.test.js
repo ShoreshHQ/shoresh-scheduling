@@ -239,8 +239,11 @@ describe("c-shoresh-editable-table", () => {
         "Add Time block: Start"
       );
       // As the desktop's "+ Add", named for what it adds.
-      expect(addButton(element).label).toBe("Add");
-      expect(addButton(element).title).toBe("Add Time block");
+      expect(addButton(element).textContent.trim()).toBe("Add");
+      // Its spoken name says which table it adds to.
+      expect(addButton(element).getAttribute("aria-label")).toBe(
+        "Add Time block"
+      );
 
       const full = render({ columns: COLUMNS, rows: ROWS });
       await flush();
@@ -1190,7 +1193,7 @@ describe("c-shoresh-editable-table", () => {
         [...element.shadowRoot.querySelectorAll('[data-id="theirs"]')].map(
           (dd) => dd.textContent
         );
-      expect(theirs()).toEqual(["", "Sat, Jul 3, 2027"]);
+      expect(theirs()).toEqual(["None", "Sat, Jul 3, 2027"]);
       expect(
         element.shadowRoot.querySelectorAll('[data-id="yours"]')[1].textContent
       ).toBe("Tue, Jul 6, 2027");
@@ -1314,6 +1317,235 @@ describe("c-shoresh-editable-table", () => {
       press(field(element, 0, "PartOfDay__c"), "Escape");
       await flush();
       expect(field(element, 0, "PartOfDay__c").value).toBe("Morning");
+    });
+  });
+
+  describe("the third look", () => {
+    it("a blank row added while another row is saving waits, locked, and goes next", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 0, "Name"), "Period One");
+      await flush();
+      allValid(element);
+      leave(element, 0);
+      change(field(element, 2, "Name"), "Swim");
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      press(field(element, 2, "Name"), "Enter");
+      await flush();
+      expect(sent.length).toBe(1);
+      await answer(element, sent[0], { id: "a1", changed: [] }, [
+        { ...ROWS[0], Name: "Period One" },
+        ROWS[1]
+      ]);
+      expect(sent.map((d) => d.record.Name)).toEqual(["Period One", "Swim"]);
+      expect(field(element, 2, "Name").disabled).toBe(true);
+      expect(addButton(element).textContent.trim()).toBe("Adding…");
+    });
+
+    it("while the blank row is being added, its ticks and who wait too", async () => {
+      const element = render({
+        objectApiName: "RecurringActivity__c",
+        columns: [
+          COLUMNS[0],
+          {
+            fieldName: "Coverages__r",
+            label: "Who",
+            type: "who",
+            options: [{ label: "Bunk 1", value: "g1" }]
+          }
+        ],
+        rows: [{ Id: "r1", Name: "Swim" }],
+        weeks: [{ Id: "w1", Name: "Week 1" }],
+        weeksHeading: "Runs in"
+      });
+      listen(element);
+      await flush();
+      change(field(element, 1, "Name"), "Art");
+      await flush();
+      allValid(element);
+      press(field(element, 1, "Name"), "Enter");
+      await flush();
+      const blank = rows(element)[1];
+      expect(blank.querySelector("lightning-input[data-week]").disabled).toBe(
+        true
+      );
+      expect(blank.querySelector('[data-id="who-toggle"]').disabled).toBe(true);
+      // Every Change button is named for its row.
+      expect(
+        rows(element)[0]
+          .querySelector('[data-id="who-toggle"]')
+          .getAttribute("aria-label")
+      ).toBe("Change: Who, Swim");
+    });
+
+    it("a refused add puts the cursor back where it was: the field, or the Add button", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 2, "Name"), "Carpool");
+      change(field(element, 2, "StartTime__c"), "09:00");
+      await flush();
+      allValid(element);
+      press(field(element, 2, "StartTime__c"), "Enter");
+      await flush();
+      let focus = jest.spyOn(HTMLElement.prototype, "focus");
+      sent[0].onFailure();
+      sent[0].onDone();
+      await flush();
+      let focused = focus.mock.contexts.map(
+        (el) => el.dataset.field || el.dataset.id
+      );
+      focus.mockRestore();
+      expect(focused).toContain(nsName("StartTime__c"));
+      allValid(element);
+      addButton(element).click();
+      await flush();
+      focus = jest.spyOn(HTMLElement.prototype, "focus");
+      sent[1].onFailure();
+      sent[1].onDone();
+      await flush();
+      focused = focus.mock.contexts.map((el) => el.dataset.id);
+      focus.mockRestore();
+      expect(focused).toContain("add");
+    });
+
+    it("asks before a week is turned off on a saved row; no puts the tick back", async () => {
+      const ask = jest.fn();
+      const element = render({
+        objectApiName: "Group__c",
+        columns: [COLUMNS[0]],
+        rows: [{ Id: "g1", Name: "Bunk 1" }],
+        weeks: [{ Id: "w1", Name: "Week 1" }],
+        weeksHeading: "Runs in",
+        beforeWeekOff: ask
+      });
+      const sent = listen(element);
+      await flush();
+      const box = () =>
+        rows(element)[0].querySelector("lightning-input[data-week]");
+      ask.mockResolvedValueOnce(false);
+      change(box(), false);
+      await flush();
+      await flush();
+      expect(ask).toHaveBeenCalledWith({
+        recordId: "g1",
+        name: "Bunk 1",
+        weekId: "w1",
+        weekName: "Week 1"
+      });
+      expect(box().checked).toBe(true);
+      expect(sent.length).toBe(0);
+      ask.mockResolvedValueOnce(true);
+      allValid(element);
+      change(box(), false);
+      await flush();
+      await flush();
+      expect(sent[0].extras.weeksOff).toEqual([{ target: "g1", week: "w1" }]);
+      // The blank row's weeks are not asked about.
+      change(
+        rows(element)[1].querySelector("lightning-input[data-week]"),
+        false
+      );
+      await flush();
+      expect(ask).toHaveBeenCalledTimes(2);
+    });
+
+    it("the not-saved mark: kept across a reload, read with each field, and gone once typed back, saved or put back", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      const refuse = async (value) => {
+        change(field(element, 1, "Name"), value);
+        await flush();
+        allValid(element);
+        leave(element, 1);
+        const detail = sent[sent.length - 1];
+        detail.onFailure();
+        detail.onDone();
+        await flush();
+      };
+      const marked = () => rows(element)[1].classList.contains("not-saved");
+      await refuse("Clash");
+      // Another row's save reloads the table: the mark stays.
+      element.rows = packaged({ rows: [...ROWS] }).rows;
+      await flush();
+      expect(marked()).toBe(true);
+      expect(field(element, 1, "Name").label).toBe("Name, not saved");
+      // Typed back: nothing unsaved; typing again is not marked before any save.
+      change(field(element, 1, "Name"), "Lunch");
+      await flush();
+      change(field(element, 1, "Name"), "Lunch 2");
+      await flush();
+      expect(marked()).toBe(false);
+      // A refusal, then Escape, then new typing: no mark.
+      await refuse("Clash");
+      press(field(element, 1, "Name"), "Escape");
+      change(field(element, 1, "Name"), "Lunch 3");
+      await flush();
+      expect(marked()).toBe(false);
+      // A refusal, then a save that goes through, then new typing: no mark.
+      await refuse("Clash");
+      leave(element, 1);
+      const detail = sent[sent.length - 1];
+      detail.onSaved({ id: "a2", changed: [] });
+      element.rows = packaged({
+        rows: [ROWS[0], { ...ROWS[1], Name: "Clash" }]
+      }).rows;
+      detail.onDone();
+      await flush();
+      change(field(element, 1, "Name"), "Lunch 4");
+      await flush();
+      expect(marked()).toBe(false);
+    });
+
+    it("after a refused save, typing back to the saved value is nothing to save", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 1, "Name"), "Clash");
+      await flush();
+      allValid(element);
+      leave(element, 1);
+      sent[0].onFailure();
+      sent[0].onDone();
+      await flush();
+      change(field(element, 1, "Name"), "Lunch");
+      await flush();
+      leave(element, 1);
+      expect(sent.length).toBe(1);
+    });
+
+    it("the page handing over the same starting values again keeps the blank row's typing", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: ROWS,
+        newRowDefaults: { PartOfDay__c: "Morning" }
+      });
+      await flush();
+      change(field(element, 2, "Name"), "Half typed");
+      await flush();
+      element.newRowDefaults = nsRecord({ PartOfDay__c: "Morning" });
+      await flush();
+      expect(field(element, 2, "Name").value).toBe("Half typed");
+    });
+
+    it("leaving a filled-in blank row checks its fields quietly; Enter shows what's wrong", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      listen(element);
+      await flush();
+      change(field(element, 2, "Name"), "Swim");
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      const time = field(element, 2, "StartTime__c");
+      time.checkValidity = jest.fn(() => false);
+      time.reportValidity = jest.fn(() => false);
+      leave(element, 2);
+      expect(time.checkValidity).toHaveBeenCalled();
+      expect(time.reportValidity).not.toHaveBeenCalled();
     });
   });
 

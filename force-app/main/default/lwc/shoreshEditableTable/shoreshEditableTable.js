@@ -95,6 +95,12 @@ export default class ShoreshEditableTable extends LightningElement {
   @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
   @api rowActions = {};
+  /**
+   * Optional: asked before a week is unticked on a saved row, ({ recordId, name, weekId,
+   * weekName }) -> Promise<boolean>; false leaves the week ticked. The place for the desktop's
+   * "Turn off … for Week 3?" when the week already has placements (PR #48).
+   */
+  @api beforeWeekOff;
 
   drafts = [];
   addRow = this.blankRow();
@@ -462,6 +468,18 @@ export default class ShoreshEditableTable extends LightningElement {
       this.focusAddRow = false;
       this.focusRow(ADD);
     }
+    if (this.focusAfterRefusal && !this.addRow.adding) {
+      const from = this.focusAfterRefusal;
+      this.focusAfterRefusal = null;
+      const target = this.template.querySelector(
+        from === "add"
+          ? '[data-id="add"]'
+          : `[data-row-key="${ADD}"][data-field="${from}"]`
+      );
+      if (target) {
+        target.focus();
+      }
+    }
     if (this.focusAfterQuestion && !this.conflict) {
       // Back where the director was when the question came up.
       this.focusRow(this.focusAfterQuestion);
@@ -591,6 +609,11 @@ export default class ShoreshEditableTable extends LightningElement {
     return [...rows, this.tableRow(this.addRow, shared)];
   }
 
+  /** The desktop's words while the blank row is being added. */
+  get addText() {
+    return this.addRow.adding ? "Adding…" : "Add";
+  }
+
   get addDisabled() {
     return this.busy || this.addRow.adding || !this.complete(this.addRow);
   }
@@ -645,8 +668,13 @@ export default class ShoreshEditableTable extends LightningElement {
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
-          // The blank row's fields say what they add ("Add Bunk: Name").
-          label: draft.isNew ? `${this.addLabel}: ${col.label}` : col.label,
+          // The blank row's fields say what they add ("Add Bunk: Name"); a refused row's
+          // fields say they aren't saved, read as the director tabs through them.
+          label: draft.isNew
+            ? `${this.addLabel}: ${col.label}`
+            : notSaved
+              ? `${col.label}, not saved`
+              : col.label,
           // The blank row says what it is for in its first text field.
           placeholder:
             draft.isNew && col.fieldName === firstText ? this.addLabel : "",
@@ -672,6 +700,10 @@ export default class ShoreshEditableTable extends LightningElement {
           whoSummary:
             col.type === "who" ? this.whoSummary(col, draft) : undefined,
           whoButton: draft.whoOpen ? "Done" : "Change",
+          // Named for its row, so a screen reader can tell the buttons apart.
+          whoName: `${draft.whoOpen ? "Done" : "Change"}: ${col.label}, ${
+            draft.values.Name || this.addLabel
+          }`,
           value:
             col.type === "checkbox" || col.type === "who" ? undefined : value,
           checked: col.type === "checkbox" ? !!value : undefined
@@ -756,10 +788,27 @@ export default class ShoreshEditableTable extends LightningElement {
     this.commit(draft.key, false);
   }
 
-  handleTick(event) {
+  async handleTick(event) {
     const { rowKey, week } = event.target.dataset;
+    const box = event.target;
+    const ticked = box.checked;
     const draft = this.rowFor(rowKey);
-    draft.weekTicks = new Map(draft.weekTicks).set(week, event.target.checked);
+    if (!draft.isNew && !ticked && typeof this.beforeWeekOff === "function") {
+      // A question first (the desktop's "Turn off … for Week 3?" when it has placements).
+      const weekName = (this._weeks.find((w) => w.Id === week) || {}).Name;
+      const go = await this.beforeWeekOff({
+        recordId: draft.original.Id,
+        name: draft.values.Name,
+        weekId: week,
+        weekName
+      });
+      if (!go) {
+        box.checked = true;
+        this.touch(draft);
+        return;
+      }
+    }
+    draft.weekTicks = new Map(draft.weekTicks).set(week, ticked);
     draft.dirty = true;
     this.touch(draft);
     if (!draft.isNew) {
@@ -804,6 +853,10 @@ export default class ShoreshEditableTable extends LightningElement {
     } else {
       draft.changed.add(field);
     }
+    if (!this.hasChanges(draft)) {
+      // Typed back to what is saved: nothing is left unsaved.
+      draft.refused = false;
+    }
   }
 
   /** Enter saves the row; Escape puts a saved row back as it was. */
@@ -812,7 +865,7 @@ export default class ShoreshEditableTable extends LightningElement {
     const from = event.target.tagName;
     if (event.key === "Enter" && from === "LIGHTNING-INPUT") {
       event.preventDefault();
-      this.commit(key, true);
+      this.commit(key, true, event.target.dataset.field);
     } else if (
       event.key === "Escape" &&
       key !== ADD &&
@@ -838,7 +891,7 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   handleAdd() {
-    this.commit(ADD, true);
+    this.commit(ADD, true, "add");
   }
 
   revert(key) {
@@ -894,7 +947,7 @@ export default class ShoreshEditableTable extends LightningElement {
    * Queues the row for saving if it has something to save and can be saved. The blank row is
    * added only once it is filled in; leaving it half-typed keeps the typing, quietly (desktop).
    */
-  commit(key, pressed) {
+  commit(key, pressed, from) {
     const draft = this.rowFor(key);
     if (!draft || this.unknownObject) {
       return;
@@ -909,6 +962,8 @@ export default class ShoreshEditableTable extends LightningElement {
       }
       draft.adding = true;
       draft.pressed = pressed;
+      // Where the cursor was, to put it back if the add is refused (not after leaving the row).
+      draft.from = pressed ? from : null;
       this.touch(draft);
     } else if (key === this.sending) {
       // Being saved: whether anything is left to save is known once the screen has reloaded.
@@ -1066,6 +1121,8 @@ export default class ShoreshEditableTable extends LightningElement {
 
   failed(key) {
     if (key === ADD) {
+      // Refused: open again, with the cursor back where it was (the field, or the Add button).
+      this.focusAfterRefusal = this.addRow.from;
       this.addRow = { ...this.addRow, adding: false };
       return;
     }
@@ -1082,8 +1139,10 @@ export default class ShoreshEditableTable extends LightningElement {
     if (draft) {
       draft.inFlight = null;
     }
+    const was = this.sending;
     this.sending = null;
-    if (this.addRow.adding) {
+    // Only the blank row's own add unlocks it: one waiting its turn stays locked and goes next.
+    if (was === ADD && this.addRow.adding) {
       this.addRow = { ...this.addRow, adding: false };
     }
     this.sendNext();
@@ -1224,7 +1283,7 @@ function shownValue(column, value) {
   if (column.type === "picklist") {
     // A choice someone else just added is named once the reload brings it; never its Id.
     const option = (column.options || []).find((o) => o.value === value);
-    return option ? option.label : "";
+    return option ? option.label : "None";
   }
   if (column.type === "date") {
     // "Sat, Jul 3, 2027", as a camp director reads a date.

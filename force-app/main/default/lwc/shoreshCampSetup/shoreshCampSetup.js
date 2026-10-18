@@ -88,6 +88,11 @@ export default class ShoreshCampSetup extends LightningElement {
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
   loadTicket = 0;
+  /**
+   * Asked before a week is unticked on a saved row: ({ recordId, name, weekId, weekName }) ->
+   * Promise<boolean>. None yet; the desktop's "Turn off … for Week 3?" plugs in here (PR #48).
+   */
+  beforeWeekOff = null;
 
   connectedCallback() {
     this.loadCamps();
@@ -130,6 +135,8 @@ export default class ShoreshCampSetup extends LightningElement {
 
   async loadSeason() {
     if (!this.seasonId) {
+      // No season: any read still on its way is out of date.
+      this.loadTicket += 1;
       this.setup = null;
       return;
     }
@@ -764,7 +771,10 @@ export default class ShoreshCampSetup extends LightningElement {
    * busy: buttons stay as they are, so a click that moved focus out of a row still lands.
    */
   saveTableRow(detail) {
-    this.rowSaves = this.rowSaves.then(() => this.saveOneRow(detail));
+    // A step that fails in a way no one expected is shown, and the rows after it still go.
+    this.rowSaves = this.rowSaves
+      .then(() => this.saveOneRow(detail))
+      .catch((e) => this.showError(e));
     return this.rowSaves;
   }
 
@@ -785,10 +795,14 @@ export default class ShoreshCampSetup extends LightningElement {
     } catch (e) {
       this.showError(e);
     }
-    if (!answered) {
-      onFailure();
+    try {
+      if (!answered) {
+        onFailure();
+      }
+    } finally {
+      // Always: the table may only send its next row once this one is done.
+      onDone();
     }
-    onDone();
   }
 
   /**

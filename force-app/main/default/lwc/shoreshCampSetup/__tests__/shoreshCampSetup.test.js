@@ -806,6 +806,36 @@ describe("c-shoresh-camp-setup", () => {
     getSeasonSetup.mockReset();
   });
 
+  it("an unexpected failure in one row's step is shown, and later rows still save", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRow.mockResolvedValue(nsRecord({ id: "w1", changed: [] }));
+    const element = await render();
+    const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+    const broken = rowSave({
+      record: { sobjectType: "Week__c", Id: "w1", Name: "A" }
+    });
+    broken.detail.onDone = () => {
+      throw new Error("boom");
+    };
+    weeks.dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(broken.detail) })
+    );
+    await flush();
+    weeks.dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord(
+          rowSave({ record: { sobjectType: "Week__c", Id: "w1", Name: "B" } })
+            .detail
+        )
+      })
+    );
+    await flush();
+    expect(saveRow).toHaveBeenCalledTimes(2);
+    saveRow.mockReset();
+  });
+
   it("an older read of the season that answers last is dropped", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));

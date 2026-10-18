@@ -28,7 +28,11 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    picker. Moving between its own fields adds nothing. Until every required value is filled
    in, **+ Add** is greyed out and Enter or leaving does nothing, quietly, as on the desktop;
    its fields never show "Complete this field". While it is being added its fields are
-   locked, so fast typing can't add a row twice or run into the next one. Once added, the
+   locked and its button reads "Adding…" (the desktop's word), so fast typing can't add a row
+   twice or run into the next one; a blank row added while another row is saving waits, still
+   locked, and goes next. If the add is refused, the row opens again with the cursor back where
+   it was (the field, or the Add button). The button shows "+ Add" and is named for its table
+   for screen readers ("Add Bunk"). Once added, the
    row shows at once with the saved rows, the blank row empties to its starting values, and
    after Enter or **+ Add** the cursor is back in its first field (desktop: focus kept after
    add). With a Show filter on (Locations by type), it starts with the chosen type.
@@ -37,7 +41,10 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    picker); a dropdown's Enter picks its choice, and the row saves on leaving. **Escape** puts
    the row back as saved, from a typing field or a dropdown (not from a date or time field, or
    a dropdown that is using it to close its list). A **"Runs in"/"Open in" tick** is saved the
-   moment it is clicked, as on the desktop (`GroupsScreen` `handleToggleExclusion`); other
+   moment it is clicked, as on the desktop (`GroupsScreen` `handleToggleExclusion`). The
+   desktop first asks "Turn off … for Week 3?" when the week already has placements; the table
+   has the place for that question (`beforeWeekOff`, an async yes/no asked before a saved row's
+   week is unticked; no puts the tick back), which PR #48 fills in after this one; other
    ticks (days, Outdoors), dropdowns, and "Who" (on **Done**) save with the row. A fix offered
    in a row's note is saved at once. A **refused** change stays on screen with a bronze edge
    on its row (and "Not saved" for screen readers) until it is saved or put back, so it is
@@ -52,7 +59,8 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    screen, as do a program's tables). The page saves a row, tells the table what happened,
    reads the season again, and only then sends the next row; and any read of the season that
    answers after a newer one was asked for is dropped, so the screen never goes back to older
-   data. A row save does not make the page busy: buttons stay usable, so the click that moved
+   data. A step that fails in a way nothing expected is shown, and the rows after it still go.
+   A row save does not make the page busy: buttons stay usable, so the click that moved
    focus out of a row (say, a Delete) still lands. Typing while a row is being saved stays on screen and is saved next. A Jest property
    test plays 200 random sessions of typing, leaving rows, answers, and someone else's changes,
    and checks that nothing typed is lost, nothing older is saved over it, and only one row is
@@ -99,8 +107,11 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
 
 - Leaving a saved row saves it (choice 3); the desktop opens a row and saves on Enter or Save.
 - Conflicts are asked at save time (choice 5); the desktop shows them on a Conflicts screen.
-- A refused change keeps a bronze edge on its row; the desktop keeps a refused row open with
-  Save and Cancel.
+- A refused change keeps a bronze edge on its row (its fields read "…, not saved" to screen
+  readers); the desktop keeps a refused row open with Save and Cancel.
+- The blank row's fields lock while it is being added; the desktop's stay open (with "Adding…"
+  on its button, which this table shows too).
+- Until PR #48, unticking a week with placements doesn't ask first (see choice 3).
 - Escape in the question keeps theirs (Manual Build's rule; coordinator, 2026-10-17).
 
 ## Known limits
