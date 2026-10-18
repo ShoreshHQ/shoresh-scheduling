@@ -255,12 +255,14 @@ describe("c-shoresh-program", () => {
       return element;
     }
 
-    it("clears both flags when the move is cancelled", async () => {
+    it("clears both flags when the move is put back with Escape", async () => {
       const element = await movedJuniorsBunk();
       const juniors = tablesOf(element)[0];
-      [...juniors.shadowRoot.querySelectorAll("lightning-button")]
-        .find((b) => b.label === "Cancel changes")
-        .click();
+      juniors.shadowRoot
+        .querySelector('lightning-input[data-field="Name"]')
+        .dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        );
       await flush();
       await flush();
       expect(tablesOf(element).map(flagged)).toEqual([false, false]);
@@ -430,12 +432,6 @@ describe("c-shoresh-program", () => {
   it("keeps a new division typed on its screen while saving, and after a failed save", async () => {
     const element = await render("divisions");
     const table = element.shadowRoot.querySelector("c-shoresh-editable-table");
-    const tableButton = (label) =>
-      [...table.shadowRoot.querySelectorAll("lightning-button")].find(
-        (b) => b.label === label
-      );
-    tableButton("Add Unit").click();
-    await flush();
     const names = () => [
       ...table.shadowRoot.querySelectorAll('lightning-input[data-field="Name"]')
     ];
@@ -451,13 +447,19 @@ describe("c-shoresh-program", () => {
       .querySelectorAll("lightning-input, lightning-combobox")
       .forEach((input) => {
         input.reportValidity = () => true;
+        input.checkValidity = () => true;
       });
-    tableButton("Save changes").click();
+    names()[1].dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+    );
+    expect(saves).toHaveBeenCalledTimes(1);
     // The screen marks itself busy while saving, which redraws this program.
     element.busy = true;
     await flush();
     expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
-    bareRecord(saves.mock.calls[0][0].detail).onFailure();
+    const detail = bareRecord(saves.mock.calls[0][0].detail);
+    detail.onFailure();
+    detail.onDone();
     element.busy = false;
     await flush();
     expect(names().map((n) => n.value)).toEqual(["Juniors", "Seniors"]);
@@ -522,7 +524,6 @@ describe("c-shoresh-program", () => {
       expect(fixed.weeksHeading).toBe("Runs in");
       expect(bareRecord(fixed.newRowDefaults)).toEqual({
         Program__c: "p1",
-        Name: "Fixed activity {n}",
         Length__c: 1
       });
       expect(fixed.rowNotes).toEqual({
@@ -578,7 +579,6 @@ describe("c-shoresh-program", () => {
       ]);
       expect(bareRecord(recurring.newRowDefaults)).toEqual({
         Program__c: "p1",
-        Name: "Recurring activity {n}",
         Length__c: 1,
         Monday__c: false,
         Tuesday__c: false,

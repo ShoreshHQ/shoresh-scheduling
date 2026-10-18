@@ -85,32 +85,7 @@ public with sharing class SeasonSetupController {
   /** Creates new records and updates existing ones, all or none. Returns the Ids in order. */
   @AuraEnabled
   public static List<Id> saveRecords(List<SObject> records) {
-    return saveRowsAndWeeks(records, null, null);
-  }
-
-  /**
-   * Saves a table's rows together with its "Runs in" week ticks, all or none. Returns the
-   * rows' Ids in order.
-   */
-  @AuraEnabled
-  public static List<Id> saveRowsAndWeeks(
-    List<SObject> records,
-    List<RunsIn.WeekOff> weeksOff,
-    List<Id> weeksBackOn
-  ) {
-    return ScreenSaves.save(records, weeksOff, weeksBackOn);
-  }
-
-  /**
-   * Saves a table's rows with their week ticks and, for recurring activities, who each covers,
-   * all or none. Returns the rows' Ids in order.
-   */
-  @AuraEnabled
-  public static List<Id> saveRowsWeeksAndWho(
-    List<SObject> records,
-    ScreenSaves.Extras extras
-  ) {
-    return ScreenSaves.save(records, extras);
+    return ScreenSaves.save(records, null, null);
   }
 
   @AuraEnabled

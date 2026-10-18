@@ -8,8 +8,7 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
-import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
-import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
+import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
@@ -85,6 +84,15 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonSubmitted = false;
   // Which location type the Locations table shows; "all" shows every location.
   locationFilter = "all";
+  // Table rows are saved one at a time across the whole page, in the order they were left.
+  rowSaves = Promise.resolve();
+  // Each read of the season is numbered; an answer older than the latest read is dropped.
+  loadTicket = 0;
+  /**
+   * Asked before a week is unticked on a saved row: ({ recordId, name, weekId, weekName }) ->
+   * Promise<boolean>. None yet; the desktop's "Turn off … for Week 3?" plugs in here (PR #48).
+   */
+  beforeWeekOff = null;
 
   connectedCallback() {
     this.loadCamps();
@@ -127,6 +135,8 @@ export default class ShoreshCampSetup extends LightningElement {
 
   async loadSeason() {
     if (!this.seasonId) {
+      // No season: any read still on its way is out of date.
+      this.loadTicket += 1;
       this.setup = null;
       return;
     }
@@ -134,10 +144,15 @@ export default class ShoreshCampSetup extends LightningElement {
       // Another season: start its tables fresh rather than carrying unsaved rows across.
       this.setup = null;
     }
+    const ticket = ++this.loadTicket;
     const setup = await getSeasonSetup({
       campId: this.campId,
       seasonId: this.seasonId
     });
+    if (ticket !== this.loadTicket) {
+      // A newer read is on its way: this answer would show older data over it.
+      return;
+    }
     // Keep typed but unsaved season details when something else was saved.
     const keepForm =
       this.seasonChanged &&
@@ -302,11 +317,7 @@ export default class ShoreshCampSetup extends LightningElement {
     ];
   }
   get weekDefaults() {
-    // The table puts each new row's position in place of {n}.
-    return {
-      [WEEK.Season]: this.seasonId,
-      Name: `${this.terms.s("Week")} {n}`
-    };
+    return { [WEEK.Season]: this.seasonId };
   }
   get programs() {
     return ((this.setup && this.setup.programs) || []).map((entry) => ({
@@ -382,7 +393,6 @@ export default class ShoreshCampSetup extends LightningElement {
   get locationDefaults() {
     return {
       [LOCATION.Season]: this.seasonId,
-      Name: `${this.terms.s("Location")} {n}`,
       [LOCATION.GroupsThatFit]: 1
     };
   }
@@ -466,7 +476,6 @@ export default class ShoreshCampSetup extends LightningElement {
     // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
     return {
       [ACTIVITY.Season]: this.seasonId,
-      Name: `${this.terms.s("Activity")} {n}`,
       [ACTIVITY.Length]: 1,
       [ACTIVITY.TimesPerWeekMin]: 1,
       [ACTIVITY.TimesPerWeekMax]: 1,
@@ -506,7 +515,7 @@ export default class ShoreshCampSetup extends LightningElement {
       copiedFrom: `Copied from "${this.copiedFromName}".`,
       locationTypes: t.p("LocationType"),
       addLocationType: `Add ${t.s("LocationType")}`,
-      noLocationTypes: `No ${t.pIn("LocationType")} yet. They are optional; ${t.pIn("Location")} are listed by ${t.sIn("LocationType")}.`,
+      noLocationTypes: `No ${t.pIn("LocationType")} yet.`,
       addLocation: `Add ${t.s("Location")}`,
       noLocations: `No ${t.pIn("Location")} yet.`,
       catalogue: `${t.s("Activity")} catalogue`,
@@ -740,22 +749,60 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
-   * A table's save: its rows, and (for tables with "Runs in" weeks) its week ticks with them, and
-   * (for recurring activities) who each covers.
+   * A save from a table (one row, as the director leaves it: SetupTablesController.saveRow,
+   * ADR 0011) or from a program's own form (its records).
    */
   async handleSaveRecords(event) {
-    const { records, weeksOff, weeksBackOn, who, onFailure } = event.detail;
-    let save = () => saveRecords({ records });
-    if (who) {
-      save = () =>
-        saveRowsWeeksAndWho({
-          records,
-          extras: { weeksOff, weeksBackOn, who }
-        });
-    } else if (weeksOff || weeksBackOn) {
-      save = () => saveRowsAndWeeks({ records, weeksOff, weeksBackOn });
+    const detail = event.detail;
+    if (detail.record) {
+      await this.saveTableRow(detail);
+      return;
     }
-    await this.saveAndReload(save, onFailure);
+    await this.saveAndReload(
+      () => saveRecords({ records: detail.records }),
+      detail.onFailure
+    );
+  }
+
+  /**
+   * One table row. Rows from every table on the page wait their turn, so two tables never save
+   * at once. The table hears what happened (saved, or what someone else changed), then the
+   * season is read again, and only then may the next row go. A row save doesn't make the page
+   * busy: buttons stay as they are, so a click that moved focus out of a row still lands.
+   */
+  saveTableRow(detail) {
+    // A step that fails in a way no one expected is shown, and the rows after it still go.
+    this.rowSaves = this.rowSaves
+      .then(() => this.saveOneRow(detail))
+      .catch((e) => this.showError(e));
+    return this.rowSaves;
+  }
+
+  async saveOneRow(detail) {
+    const { record, seen, extras, seenWho, onSaved, onFailure, onDone } =
+      detail;
+    let answered = false;
+    this.error = null;
+    try {
+      const result = await saveRow({
+        record,
+        seen,
+        extras: { ...extras, seenWho }
+      });
+      answered = true;
+      onSaved(result);
+      await this.loadSeason();
+    } catch (e) {
+      this.showError(e);
+    }
+    try {
+      if (!answered) {
+        onFailure();
+      }
+    } finally {
+      // Always: the table may only send its next row once this one is done.
+      onDone();
+    }
   }
 
   /**

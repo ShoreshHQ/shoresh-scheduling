@@ -46,7 +46,7 @@ private class RunsInTest {
         WHERE Name = 'Juniors'
         WITH SYSTEM_MODE
       ];
-      List<Id> ids = SeasonSetupController.saveRowsAndWeeks(
+      List<Id> ids = ScreenSaves.save(
         new List<SObject>{
           new Group__c(
             Division__c = division.Id,
@@ -88,7 +88,7 @@ private class RunsInTest {
         WITH SYSTEM_MODE
         LIMIT 1
       ];
-      SeasonSetupController.saveRowsAndWeeks(
+      ScreenSaves.save(
         new List<SObject>(),
         new List<RunsIn.WeekOff>{
           weekOff(places.get('Swim'), null, weeks.get('Week 1'))
@@ -114,7 +114,7 @@ private class RunsInTest {
       Map<String, Id> weeks = weekIds(season.Id);
       Map<String, Id> places = ShoreshTestData.placesAndActivities(season.Id);
       try {
-        SeasonSetupController.saveRowsAndWeeks(
+        ScreenSaves.save(
           new List<SObject>{
             new Location__c(Id = places.get('Pool'), GroupsThatFit__c = 0)
           },
@@ -143,7 +143,7 @@ private class RunsInTest {
       };
       for (RunsIn.WeekOff bad : badWeeks) {
         try {
-          SeasonSetupController.saveRowsAndWeeks(
+          ScreenSaves.save(
             new List<SObject>(),
             new List<RunsIn.WeekOff>{ bad },
             null
@@ -173,7 +173,7 @@ private class RunsInTest {
         WITH SYSTEM_MODE
       ];
       try {
-        SeasonSetupController.saveRowsAndWeeks(
+        ScreenSaves.save(
           new List<SObject>{
             new Group__c(
               Division__c = division.Id,

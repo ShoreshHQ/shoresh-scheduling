@@ -8,8 +8,7 @@ import getSeasonSetup from "@salesforce/apex/SeasonSetupController.getSeasonSetu
 import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
-import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
-import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
+import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -41,16 +40,9 @@ jest.mock(
   () => apex(),
   { virtual: true }
 );
-jest.mock(
-  "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks",
-  () => apex(),
-  { virtual: true }
-);
-jest.mock(
-  "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho",
-  () => apex(),
-  { virtual: true }
-);
+jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/SeasonSetupController.previewCopy", () => apex(), {
   virtual: true
 });
@@ -277,10 +269,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(q(element, '[data-id="problems"]')).toBeNull();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
     expect(weeks.addLabel).toBe("Add Week");
-    expect(bareRecord(weeks.newRowDefaults)).toEqual({
-      Season__c: "s1",
-      Name: "Week {n}"
-    });
+    expect(bareRecord(weeks.newRowDefaults)).toEqual({ Season__c: "s1" });
     // Overlapping weeks get a heads-up, in the camp's word.
     expect(weeks.overlapLabel).toBe("Overlaps another week");
     expect(button(element, "Copy this season")).toBeDefined();
@@ -552,7 +541,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(shape(table("weeks"))).toEqual({
       object: "Week__c",
       columns: ["Name", "StartDate__c", "EndDate__c"],
-      defaults: { Season__c: "s1", Name: "Week {n}" }
+      defaults: { Season__c: "s1" }
     });
     await openScreen(element, "locations");
     expect(shape(table("location-types"))).toMatchObject({
@@ -583,7 +572,6 @@ describe("c-shoresh-camp-setup", () => {
       ],
       defaults: {
         Season__c: "s1",
-        Name: "Activity {n}",
         Length__c: 1,
         TimesPerWeekMin__c: 1,
         TimesPerWeekMax__c: 1,
@@ -675,7 +663,29 @@ describe("c-shoresh-camp-setup", () => {
     expect(flagged("weeks")).toBeFalsy();
   });
 
-  it("saves a table's rows with its Runs in weeks, and reloads", async () => {
+  /** A table's row save as the table sends it, with its callbacks watched. */
+  function rowSave(fields) {
+    const calls = [];
+    const note = (name) =>
+      jest.fn((...args) => {
+        calls.push(name);
+        return args;
+      });
+    return {
+      calls,
+      detail: {
+        seen: null,
+        seenWho: null,
+        extras: { weeksOff: [], weeksBackOn: [] },
+        ...fields,
+        onSaved: note("saved"),
+        onFailure: note("failure"),
+        onDone: note("done")
+      }
+    };
+  }
+
+  it("saves a table's row with its Runs in weeks, tells the table, then reloads", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(
@@ -685,7 +695,7 @@ describe("c-shoresh-camp-setup", () => {
         })
       )
     );
-    saveRowsAndWeeks.mockResolvedValue(nsRecord([]));
+    saveRow.mockResolvedValue(nsRecord({ id: "l1", changed: [] }));
     const element = await render();
     const locations = q(
       element,
@@ -697,65 +707,236 @@ describe("c-shoresh-camp-setup", () => {
     expect(
       q(element, 'c-shoresh-editable-table[data-id="activities"]').weeksHeading
     ).toBe("Runs in");
+    const { detail, calls } = rowSave({
+      record: { sobjectType: "Location__c", Id: "l1", Name: "Pool" },
+      seen: { sobjectType: "Location__c", Name: "pool" },
+      extras: { weeksOff: [{ target: "l1", week: "w1" }], weeksBackOn: [] }
+    });
+    getSeasonSetup.mockClear();
     locations.dispatchEvent(
-      new CustomEvent("save", {
-        detail: nsRecord({
-          records: [{ sobjectType: "Location__c", Name: "Pool" }],
-          weeksOff: [{ row: 0, week: "w1" }],
-          weeksBackOn: ["x1"]
-        })
-      })
+      new CustomEvent("save", { detail: nsRecord(detail) })
     );
     await flush();
-    expect(sentTo(saveRowsAndWeeks)).toContainEqual({
-      records: [{ sobjectType: "Location__c", Name: "Pool" }],
-      weeksOff: [{ row: 0, week: "w1" }],
-      weeksBackOn: ["x1"]
+    await flush();
+    expect(sentTo(saveRow)).toEqual([
+      {
+        record: { sobjectType: "Location__c", Id: "l1", Name: "Pool" },
+        seen: { sobjectType: "Location__c", Name: "pool" },
+        extras: {
+          weeksOff: [{ target: "l1", week: "w1" }],
+          weeksBackOn: [],
+          seenWho: null
+        }
+      }
+    ]);
+    expect(calls).toEqual(["saved", "done"]);
+    expect(bareRecord(detail.onSaved.mock.calls[0][0])).toEqual({
+      id: "l1",
+      changed: []
     });
+    expect(getSeasonSetup).toHaveBeenCalledTimes(1);
     expect(saveRecords).not.toHaveBeenCalled();
-    expect(getSeasonSetup).toHaveBeenCalledTimes(2);
   });
 
-  it("saves recurring activities with their weeks and who each covers, and shows a refusal", async () => {
+  /** A promise and the function that answers it, for answering server calls in any order. */
+  function deferred() {
+    let resolve;
+    const promise = new Promise((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  }
+
+  it("saves rows from two tables one after the other, tells the table before reloading, and never makes the page busy", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRowsWeeksAndWho.mockResolvedValue(nsRecord([]));
+    const element = await render();
+    await openScreen(element, "locations");
+    const order = [];
+    const first = deferred();
+    saveRow.mockImplementationOnce(() => {
+      order.push("save 1");
+      return first.promise;
+    });
+    saveRow.mockImplementationOnce(() => {
+      order.push("save 2");
+      return Promise.resolve(nsRecord({ id: "l1", changed: [] }));
+    });
+    getSeasonSetup.mockImplementation(() => {
+      order.push("reload");
+      return Promise.resolve(nsRecord(setupWith()));
+    });
+    const types = q(
+      element,
+      'c-shoresh-editable-table[data-id="location-types"]'
+    );
+    const locations = q(
+      element,
+      'c-shoresh-editable-table[data-id="locations"]'
+    );
+    const one = rowSave({
+      record: { sobjectType: "LocationType__c", Id: "t1", Name: "Fields" }
+    });
+    one.detail.onSaved = jest.fn(() => order.push("table told"));
+    const two = rowSave({
+      record: { sobjectType: "Location__c", Id: "l1", Name: "Pool" }
+    });
+    types.dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(one.detail) })
+    );
+    locations.dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(two.detail) })
+    );
+    await flush();
+    // The second waits for the first; buttons stay usable while rows save.
+    expect(order).toEqual(["save 1"]);
+    expect(types.busy).toBe(false);
+    expect(locations.busy).toBe(false);
+    first.resolve(nsRecord({ id: "t1", changed: [] }));
+    await flush();
+    await flush();
+    expect(order).toEqual([
+      "save 1",
+      "table told",
+      "reload",
+      "save 2",
+      "reload"
+    ]);
+    getSeasonSetup.mockReset();
+  });
+
+  it("an unexpected failure in one row's step is shown, and later rows still save", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRow.mockResolvedValue(nsRecord({ id: "w1", changed: [] }));
+    const element = await render();
+    const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+    const broken = rowSave({
+      record: { sobjectType: "Week__c", Id: "w1", Name: "A" }
+    });
+    broken.detail.onDone = () => {
+      throw new Error("boom");
+    };
+    weeks.dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(broken.detail) })
+    );
+    await flush();
+    weeks.dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord(
+          rowSave({ record: { sobjectType: "Week__c", Id: "w1", Name: "B" } })
+            .detail
+        )
+      })
+    );
+    await flush();
+    expect(saveRow).toHaveBeenCalledTimes(2);
+    saveRow.mockReset();
+  });
+
+  it("an older read of the season that answers last is dropped", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    await openScreen(element, "weeks");
+    const older = deferred();
+    const newer = deferred();
+    getSeasonSetup
+      .mockImplementationOnce(() => older.promise)
+      .mockImplementationOnce(() => newer.promise);
+    saveRow.mockResolvedValue(nsRecord({ id: "w1", changed: [] }));
+    const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+    // A save's reload, then a delete's reload, overlapping.
+    weeks.dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord(
+          rowSave({ record: { sobjectType: "Week__c", Id: "w1", Name: "A" } })
+            .detail
+        )
+      })
+    );
+    await flush();
+    LightningConfirm.open.mockResolvedValueOnce(true);
+    deleteRecord.mockResolvedValueOnce();
+    weeks.dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "w9", name: "Week 9" } })
+    );
+    await flush();
+    const newest = setupWith({
+      weeks: [
+        {
+          Id: "w1",
+          Name: "Newest",
+          StartDate__c: "2026-06-29",
+          EndDate__c: "2026-07-03"
+        }
+      ]
+    });
+    newer.resolve(nsRecord(newest));
+    await flush();
+    older.resolve(nsRecord(setupWith()));
+    await flush();
+    expect(bareRecord(weeks.rows)[0].Name).toBe("Newest");
+    getSeasonSetup.mockReset();
+    saveRow.mockReset();
+  });
+
+  it("passes on what someone else changed, and still reloads", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const theirs = { changed: ["Name"], theirs: { Id: "w1", Name: "First" } };
+    saveRow.mockResolvedValue(nsRecord(theirs));
+    const element = await render();
+    const { detail, calls } = rowSave({
+      record: { sobjectType: "Week__c", Id: "w1", Name: "Week One" },
+      seen: { sobjectType: "Week__c", Name: "Week 1" }
+    });
+    getSeasonSetup.mockClear();
+    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(detail) })
+    );
+    await flush();
+    await flush();
+    expect(calls).toEqual(["saved", "done"]);
+    expect(bareRecord(detail.onSaved.mock.calls[0][0])).toEqual(theirs);
+    expect(getSeasonSetup).toHaveBeenCalledTimes(1);
+  });
+
+  it("a refused row: the table hears so, and the refusal shows", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const refusal =
+      '"Flagpole" and "Swim" would both have Bunk 1 in Period 1 on Monday in Week 1.';
+    saveRow.mockRejectedValue({ body: { message: refusal } });
     const element = await render();
     const recurring = q(
       element,
       'c-shoresh-program[data-id="recurring-activities"]'
     );
     expect(recurring.show).toBe("recurringActivities");
-    const detail = {
-      records: [{ sobjectType: "RecurringActivity__c", Name: "Swim" }],
-      weeksOff: [],
-      weeksBackOn: [],
-      who: [{ row: 0, targets: ["d1"] }]
-    };
-    recurring.dispatchEvent(
-      new CustomEvent("save", {
-        detail: nsRecord(detail)
-      })
-    );
-    await flush();
-    expect(sentTo(saveRowsWeeksAndWho)).toContainEqual({
-      records: detail.records,
-      extras: { weeksOff: [], weeksBackOn: [], who: detail.who }
+    const { detail, calls } = rowSave({
+      record: { sobjectType: "RecurringActivity__c", Name: "Swim" },
+      extras: {
+        weeksOff: [],
+        weeksBackOn: [],
+        who: [{ row: 0, targets: ["d1"] }]
+      }
     });
-    expect(saveRowsAndWeeks).not.toHaveBeenCalled();
-
-    const refusal =
-      '"Flagpole" and "Swim" would both have Bunk 1 in Period 1 on Monday in Week 1.';
-    saveRowsWeeksAndWho.mockRejectedValue({ body: { message: refusal } });
-    const onFailure = jest.fn();
+    getSeasonSetup.mockClear();
     recurring.dispatchEvent(
-      new CustomEvent("save", {
-        detail: nsRecord({ ...detail, onFailure })
-      })
+      new CustomEvent("save", { detail: nsRecord(detail) })
     );
     await flush();
-    expect(onFailure).toHaveBeenCalled();
+    await flush();
+    expect(sentTo(saveRow)[0].extras.who).toEqual([
+      { row: 0, targets: ["d1"] }
+    ]);
+    expect(calls).toEqual(["failure", "done"]);
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(refusal);
   });
 
@@ -803,28 +984,6 @@ describe("c-shoresh-camp-setup", () => {
     expect(sentTo(saveRecords)).toContainEqual({
       records: [{ sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }]
     });
-  });
-
-  it("tells a table with weeks when its save failed", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRowsAndWeeks.mockRejectedValue({ body: { message: "No." } });
-    const element = await render();
-    const onFailure = jest.fn();
-    q(element, 'c-shoresh-editable-table[data-id="activities"]').dispatchEvent(
-      new CustomEvent("save", {
-        detail: nsRecord({
-          records: [],
-          weeksOff: [],
-          weeksBackOn: ["x1"],
-          onFailure
-        })
-      })
-    );
-    await flush();
-    expect(onFailure).toHaveBeenCalled();
-    expect(q(element, '[data-id="error"]').textContent).toContain("No.");
   });
 
   describe("the menu", () => {
@@ -916,7 +1075,6 @@ describe("c-shoresh-camp-setup", () => {
           'c-shoresh-editable-table[data-id="weeks"]'
         ).shadowRoot.querySelector('lightning-input[data-field="Name"]').value
       ).toBe("First week");
-      expect(button(weeks, "Save changes").disabled).toBe(false);
     });
 
     it("before the first season, only camp words opens", async () => {
