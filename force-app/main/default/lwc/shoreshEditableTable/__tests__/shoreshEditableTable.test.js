@@ -1625,6 +1625,45 @@ describe("c-shoresh-editable-table", () => {
       });
     });
 
+    it("offers a merge on saved rows whose saved names match, naming them all", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        columns: COLUMNS,
+        rows: named(["Pool", "Gym", " pool", "POOL"]),
+        flagSameNames: true,
+        mergeLabel: "Same location?"
+      });
+      const merges = jest.fn();
+      element.addEventListener("merge", merges);
+      await flush();
+      const buttons = () => [
+        ...element.shadowRoot.querySelectorAll('[data-id="merge"]')
+      ];
+      expect(buttons().map((b) => b.label)).toEqual([
+        "Same location?",
+        "Same location?",
+        "Same location?"
+      ]);
+      buttons()[1].click();
+      expect(merges.mock.calls[0][0].detail).toEqual({
+        recordIds: ["r2", "r0", "r3"]
+      });
+      // Typing a matching name is a heads-up only: nothing saved to merge yet.
+      change(field(element, 1, "Name"), "pool");
+      change(field(element, 4, "Name"), "Gym");
+      await flush();
+      expect(tags(element)).toEqual([true, true, true, true, false]);
+      expect(buttons().length).toBe(3);
+      const plain = render({
+        objectApiName: "Location__c",
+        columns: COLUMNS,
+        rows: named(["Pool", "pool"]),
+        flagSameNames: true
+      });
+      await flush();
+      expect(plain.shadowRoot.querySelector('[data-id="merge"]')).toBeNull();
+    });
+
     it("matches names exactly as the import's looseKey does", async () => {
       const pairs = [
         ["Bunk  3", "bunk 3"],

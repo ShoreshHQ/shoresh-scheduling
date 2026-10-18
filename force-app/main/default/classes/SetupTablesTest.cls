@@ -1,0 +1,329 @@
+@IsTest
+private class SetupTablesTest {
+  private static Map<String, Id> ids;
+
+  /** A version of Main's week, with one day naming these groups and Swim. */
+  private static Id scheduleNaming(
+    String name,
+    Integer week,
+    List<String> groups
+  ) {
+    Week__c saved = [
+      SELECT Id, StartDate__c
+      FROM Week__c
+      WHERE Id = :ids.get('Week ' + week)
+      WITH SYSTEM_MODE
+    ];
+    Schedule__c schedule = ShoreshTestData.version(
+      ids.get('Main'),
+      saved.Id,
+      name
+    );
+    ScheduleGrid grid = new ScheduleGrid();
+    grid.blocks.add(
+      new ScheduleGrid.Block(ids.get('Period 1'), 'Period 1')
+        .at('09:00', '09:45')
+    );
+    grid.items.add(new ScheduleGrid.Item('A', ids.get('Swim'), 'Swim'));
+    for (String groupName : groups) {
+      grid.groups.add(new ScheduleGrid.GroupRef(ids.get(groupName), groupName));
+      grid.rows.add(new List<String>{ '1' });
+    }
+    Database.insert(
+      new ScheduleDay__c(
+        Schedule__c = schedule.Id,
+        Date__c = saved.StartDate__c,
+        Grid__c = grid.toText(),
+        GridFormatVersion__c = ScheduleGrid.FORMAT_VERSION,
+        Revision__c = 1,
+        Part__c = 1
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    return schedule.Id;
+  }
+
+  @IsTest
+  static void aBunkOrActivityCountsTheSchedulesItIsIn() {
+    ids = SetTimeTestData.camp();
+    scheduleNaming('First', 1, new List<String>{ 'Group A', 'Group B' });
+    scheduleNaming('Second', 2, new List<String>{ 'Group A' });
+    System.runAs(ShoreshTestData.scheduler()) {
+      Assert.areEqual(
+        2,
+        SetupTablesController.scheduleUses(ids.get('Group A'))
+      );
+      Assert.areEqual(
+        1,
+        SetupTablesController.scheduleUses(ids.get('Group B'))
+      );
+      Assert.areEqual(
+        0,
+        SetupTablesController.scheduleUses(ids.get('Group C'))
+      );
+      Assert.areEqual(2, SetupTablesController.scheduleUses(ids.get('Swim')));
+      Assert.areEqual(0, SetupTablesController.scheduleUses(ids.get('Soccer')));
+      // Only bunks and activities are counted.
+      Assert.areEqual(0, SetupTablesController.scheduleUses(ids.get('Pool')));
+      Assert.areEqual(0, SetupTablesController.scheduleUses(null));
+    }
+  }
+
+  @IsTest
+  static void someoneWhoCannotSeeSchedulesCountsNone() {
+    ids = SetTimeTestData.camp();
+    scheduleNaming('First', 1, new List<String>{ 'Group A' });
+    System.runAs(ShoreshTestData.outsider()) {
+      try {
+        Assert.areEqual(
+          0,
+          SetupTablesController.scheduleUses(ids.get('Group A'))
+        );
+      } catch (AuraHandledException e) {
+        Assert.isNotNull(e.getMessage());
+      }
+    }
+  }
+
+  /** "pool " (fits 2), with Diving, closed in Weeks 1 and 2; the Pool is closed in Week 1. */
+  private static Id secondPool() {
+    Location__c other = new Location__c(
+      Season__c = ids.get('Season'),
+      Name = 'pool ',
+      GroupsThatFit__c = 2
+    );
+    Database.insert(other, AccessLevel.SYSTEM_MODE);
+    Database.insert(
+      ShoreshTestData.activity(ids.get('Season'), 'Diving', other.Id),
+      AccessLevel.SYSTEM_MODE
+    );
+    Database.insert(
+      new List<WeekException__c>{
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Location__c = other.Id
+        ),
+        new WeekException__c(
+          Week__c = ids.get('Week 2'),
+          Location__c = other.Id
+        ),
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Location__c = ids.get('Pool')
+        )
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+    return other.Id;
+  }
+
+  @IsTest
+  static void sameLocationMovesEverythingToTheKeptPlace() {
+    ids = SetTimeTestData.camp();
+    Id other = secondPool();
+    RecurringActivity__c swim = SetTimeTestData.recurring(
+      ids,
+      'Bunk swim',
+      'Period 1'
+    );
+    swim.Location__c = other;
+    Database.insert(swim, AccessLevel.SYSTEM_MODE);
+    Location__c copy = new Location__c(
+      Season__c = ids.get('Season'),
+      Name = 'Pool next year',
+      GroupsThatFit__c = 1,
+      CopiedFrom__c = other
+    );
+    Database.insert(copy, AccessLevel.SYSTEM_MODE);
+    System.runAs(ShoreshTestData.scheduler()) {
+      SetupTablesController.mergeLocations(
+        ids.get('Pool'),
+        new List<Id>{ other },
+        2
+      );
+    }
+    Id pool = ids.get('Pool');
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
+    );
+    Assert.areEqual(
+      2,
+      [
+        SELECT GroupsThatFit__c
+        FROM Location__c
+        WHERE Id = :pool
+        WITH SYSTEM_MODE
+      ]
+      .GroupsThatFit__c
+    );
+    Assert.areEqual(
+      2,
+      [
+        SELECT COUNT()
+        FROM Activity__c
+        WHERE Location__c = :pool
+        WITH SYSTEM_MODE
+      ]
+    );
+    Assert.areEqual(
+      pool,
+      [
+        SELECT Location__c
+        FROM RecurringActivity__c
+        WHERE Id = :swim.Id
+        WITH SYSTEM_MODE
+      ]
+      .Location__c
+    );
+    Assert.areEqual(
+      pool,
+      [
+        SELECT CopiedFrom__c
+        FROM Location__c
+        WHERE Id = :copy.Id
+        WITH SYSTEM_MODE
+      ]
+      .CopiedFrom__c
+    );
+    Set<Id> closed = new Set<Id>();
+    for (WeekException__c mark : [
+      SELECT Week__c
+      FROM WeekException__c
+      WHERE Location__c = :pool
+      WITH SYSTEM_MODE
+    ]) {
+      Assert.isTrue(closed.add(mark.Week__c), 'One mark per week');
+    }
+    Assert.areEqual(
+      new Set<Id>{ ids.get('Week 1'), ids.get('Week 2') },
+      closed
+    );
+  }
+
+  @IsTest
+  static void aMergeThatWouldCrowdThePlaceIsRefusedAndChangesNothing() {
+    ids = SetTimeTestData.camp();
+    Id other = secondPool();
+    RecurringActivity__c first = SetTimeTestData.recurring(
+      ids,
+      'A swim',
+      'Period 1'
+    );
+    first.Location__c = ids.get('Pool');
+    RecurringActivity__c second = SetTimeTestData.recurring(
+      ids,
+      'B swim',
+      'Period 1'
+    );
+    second.Location__c = other;
+    SetTimeTestData.save(
+      new List<SObject>{ first, second },
+      SetTimeTestData.extras(
+        null,
+        null,
+        new List<SetTimeWho.Who>{
+          SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') }),
+          SetTimeTestData.who(1, null, new List<Id>{ ids.get('Group B') })
+        }
+      )
+    );
+    System.runAs(ShoreshTestData.scheduler()) {
+      try {
+        SetupTablesController.mergeLocations(
+          ids.get('Pool'),
+          new List<Id>{ other },
+          1
+        );
+        Assert.fail('Two bunks at a place that fits 1');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('"Pool"'), e.getMessage());
+      }
+    }
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
+    );
+    Assert.areEqual(
+      other,
+      [
+        SELECT Location__c
+        FROM RecurringActivity__c
+        WHERE Id = :second.Id
+        WITH SYSTEM_MODE
+      ]
+      .Location__c
+    );
+  }
+
+  @IsTest
+  static void onlyNearDuplicatesInOneSeasonStillThereAreMerged() {
+    ids = SetTimeTestData.camp();
+    Id other = secondPool();
+    System.runAs(ShoreshTestData.scheduler()) {
+      List<List<Id>> refused = new List<List<Id>>{
+        // Different names.
+        new List<Id>{ ids.get('Pool'), ids.get('Gym') },
+        // The kept place among the others.
+        new List<Id>{ ids.get('Pool'), ids.get('Pool') },
+        // Not a location.
+        new List<Id>{ ids.get('Pool'), ids.get('Swim') }
+      };
+      for (List<Id> pair : refused) {
+        try {
+          SetupTablesController.mergeLocations(
+            pair[0],
+            new List<Id>{ pair[1] },
+            1
+          );
+          Assert.fail('Refused: ' + pair);
+        } catch (AuraHandledException e) {
+          Assert.isNotNull(e.getMessage());
+        }
+      }
+      Database.delete(other, AccessLevel.SYSTEM_MODE);
+      try {
+        SetupTablesController.mergeLocations(
+          ids.get('Pool'),
+          new List<Id>{ other },
+          1
+        );
+        Assert.fail('Someone else deleted it');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(LocationMerge.CHANGED, e.getMessage());
+      }
+    }
+    Assert.areEqual(
+      3,
+      [
+        SELECT COUNT()
+        FROM Location__c
+        WHERE Season__c = :ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+    );
+    Assert.areEqual('pool', LocationMerge.sameNameKey('  POOL '));
+  }
+
+  @IsTest
+  static void someoneWithoutAccessCannotMerge() {
+    ids = SetTimeTestData.camp();
+    Id other = secondPool();
+    System.runAs(ShoreshTestData.outsider()) {
+      try {
+        SetupTablesController.mergeLocations(
+          ids.get('Pool'),
+          new List<Id>{ other },
+          2
+        );
+        Assert.fail('Refused');
+      } catch (AuraHandledException e) {
+        Assert.isNotNull(e.getMessage());
+      }
+    }
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
+    );
+  }
+}

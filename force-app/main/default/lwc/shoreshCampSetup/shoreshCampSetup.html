@@ -535,10 +535,22 @@
                 week-exceptions={setup.weekExceptions}
                 weeks-heading="Open in"
                 week-phrase="is open in"
+                merge-label="Same location?"
                 busy={busy}
                 onsave={handleSaveRecords}
                 ondelete={handleDeleteRecord}
+                onmerge={handleSameLocation}
               ></c-shoresh-editable-table>
+              <template lwc:if={sameLocation}>
+                <c-shoresh-same-location
+                  places={sameLocation}
+                  terms={terms}
+                  busy={busy}
+                  error={error}
+                  onmerge={handleMergeLocations}
+                  onclose={handleCloseSameLocation}
+                ></c-shoresh-same-location>
+              </template>
             </div>
 
             <!-- Activities, with the weeks each runs in, and each one's details -->

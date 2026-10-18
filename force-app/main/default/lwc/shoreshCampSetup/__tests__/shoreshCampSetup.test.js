@@ -9,6 +9,8 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
+import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
+import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -43,6 +45,14 @@ jest.mock(
 jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
   virtual: true
 });
+jest.mock("@salesforce/apex/SetupTablesController.scheduleUses", () => apex(), {
+  virtual: true
+});
+jest.mock(
+  "@salesforce/apex/SetupTablesController.mergeLocations",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock("@salesforce/apex/SeasonSetupController.previewCopy", () => apex(), {
   virtual: true
 });
@@ -353,6 +363,41 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "w1" });
+  });
+
+  it("deleting a bunk or activity some schedules use says how many first", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    deleteRecord.mockResolvedValue();
+    const element = await render();
+    const activities = q(
+      element,
+      'c-shoresh-editable-table[data-id="activities"]'
+    );
+    scheduleUses.mockResolvedValueOnce(2);
+    LightningConfirm.open.mockResolvedValueOnce(true);
+    activities.dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "g3", name: "Bunk 3" } })
+    );
+    await flush();
+    expect(scheduleUses).toHaveBeenCalledWith({ recordId: "g3" });
+    expect(LightningConfirm.open.mock.calls[0][0]).toMatchObject({
+      label: 'Delete "Bunk 3"?',
+      message: "Bunk 3 is in 2 schedules. Delete anyway?"
+    });
+    expect(deleteRecord).toHaveBeenCalledWith({ recordId: "g3" });
+
+    scheduleUses.mockResolvedValueOnce(1);
+    LightningConfirm.open.mockResolvedValueOnce(false);
+    activities.dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "a1", name: "Swim" } })
+    );
+    await flush();
+    expect(LightningConfirm.open.mock.calls[1][0].message).toBe(
+      "Swim is in 1 schedule. Delete anyway?"
+    );
+    expect(deleteRecord).toHaveBeenCalledTimes(1);
   });
 
   it("deleting a week says which saved versions go with it", async () => {
@@ -837,6 +882,89 @@ describe("c-shoresh-camp-setup", () => {
     await flush();
     expect(sentTo(saveRecords)).toContainEqual({
       records: [{ sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }]
+    });
+  });
+
+  describe("Same location?", () => {
+    const places = () =>
+      nsRecord(
+        setupWith({
+          locations: [
+            { Id: "l1", Name: "Pool", GroupsThatFit__c: 1 },
+            { Id: "l2", Name: "pool", GroupsThatFit__c: 2 },
+            { Id: "l3", Name: "Gym", GroupsThatFit__c: 3 }
+          ],
+          activities: [
+            { Id: "a1", Name: "Swim", Location__c: "l1" },
+            { Id: "a2", Name: "Dive", Location__c: "l1" },
+            { Id: "a3", Name: "Laps", Location__c: "l2" }
+          ]
+        })
+      );
+
+    async function asked() {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(places());
+      const element = await render();
+      await openScreen(element, "locations");
+      const locations = q(
+        element,
+        'c-shoresh-editable-table[data-id="locations"]'
+      );
+      expect(locations.mergeLabel).toBe("Same location?");
+      locations.dispatchEvent(
+        new CustomEvent("merge", { detail: { recordIds: ["l2", "l1"] } })
+      );
+      await flush();
+      return element;
+    }
+
+    it("asks about the matching places, with what fits and happens at each", async () => {
+      const element = await asked();
+      expect(bareRecord(q(element, "c-shoresh-same-location").places)).toEqual([
+        { id: "l2", name: "pool", fits: 2, activities: 1 },
+        { id: "l1", name: "Pool", fits: 1, activities: 2 }
+      ]);
+      q(element, "c-shoresh-same-location").dispatchEvent(
+        new CustomEvent("close")
+      );
+      await flush();
+      expect(q(element, "c-shoresh-same-location")).toBeNull();
+    });
+
+    it("Merge keeps the chosen place, then reads the season again", async () => {
+      const element = await asked();
+      mergeLocations.mockResolvedValueOnce();
+      getSeasonSetup.mockClear();
+      q(element, "c-shoresh-same-location").dispatchEvent(
+        new CustomEvent("merge", {
+          detail: { keepId: "l1", otherIds: ["l2"], groupsThatFit: 2 }
+        })
+      );
+      await flush();
+      expect(mergeLocations).toHaveBeenCalledWith({
+        keepId: "l1",
+        otherIds: ["l2"],
+        groupsThatFit: 2
+      });
+      expect(getSeasonSetup).toHaveBeenCalledTimes(1);
+      expect(q(element, "c-shoresh-same-location")).toBeNull();
+    });
+
+    it("a refused merge stays open and says why", async () => {
+      const element = await asked();
+      mergeLocations.mockRejectedValueOnce({
+        body: { message: '"Pool" fits 1 Bunk at once …' }
+      });
+      q(element, "c-shoresh-same-location").dispatchEvent(
+        new CustomEvent("merge", {
+          detail: { keepId: "l1", otherIds: ["l2"], groupsThatFit: 1 }
+        })
+      );
+      await flush();
+      const question = q(element, "c-shoresh-same-location");
+      expect(question.error).toBe('"Pool" fits 1 Bunk at once …');
     });
   });
 

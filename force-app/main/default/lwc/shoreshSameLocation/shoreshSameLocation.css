@@ -1,0 +1,9 @@
+.fits {
+  max-width: 12rem;
+}
+
+/* A refused merge: a faint brick box (design guide, inline recoverable error). */
+.refusal {
+  border-color: #b44e48;
+  background: #faf0ef;
+}

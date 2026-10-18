@@ -9,6 +9,8 @@ import saveRecords from "@salesforce/apex/SeasonSetupController.saveRecords";
 import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
+import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
+import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
@@ -84,6 +86,8 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonSubmitted = false;
   // Which location type the Locations table shows; "all" shows every location.
   locationFilter = "all";
+  // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
+  sameLocation = null;
 
   connectedCallback() {
     this.loadCamps();
@@ -800,11 +804,11 @@ export default class ShoreshCampSetup extends LightningElement {
 
   async handleDeleteRecord(event) {
     const { recordId, name } = event.detail;
-    const ok = await LightningConfirm.open({
-      label: "Delete",
-      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)} This cannot be undone.`,
-      variant: "header",
-      theme: "warning"
+    let ok = false;
+    await this.run(async () => {
+      ok = await LightningConfirm.open(
+        await this.deleteQuestion(recordId, name)
+      );
     });
     if (!ok) {
       return;
@@ -812,6 +816,63 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(async () => {
       await deleteRecord({ recordId });
       this.toast(`Deleted "${name}".`);
+      await this.loadSeason();
+    });
+  }
+
+  /**
+   * The question before a delete. A bunk or activity some schedule uses says how many first
+   * (decision 15: "Bunk 3 is in 2 schedules. Delete anyway?"); Salesforce's Recycle Bin can
+   * bring it back, and the schedules keep its name.
+   */
+  async deleteQuestion(recordId, name) {
+    const uses = await scheduleUses({ recordId });
+    if (uses > 0) {
+      return {
+        label: `Delete "${name}"?`,
+        message: `${name} is in ${uses} ${uses === 1 ? "schedule" : "schedules"}. Delete anyway?`,
+        variant: "header",
+        theme: "warning"
+      };
+    }
+    return {
+      label: "Delete",
+      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)} This cannot be undone.`,
+      variant: "header",
+      theme: "warning"
+    };
+  }
+
+  /** "Same location?" for a place and the places whose names match it (ADR 0012). */
+  handleSameLocation(event) {
+    const { recordIds } = event.detail;
+    this.error = null;
+    const locations = (this.setup && this.setup.locations) || [];
+    const activities = (this.setup && this.setup.activities) || [];
+    this.sameLocation = recordIds
+      .map((id) => locations.find((l) => l.Id === id))
+      .filter((location) => location)
+      .map((location) => ({
+        id: location.Id,
+        name: location.Name,
+        fits: location[LOCATION.GroupsThatFit] || 0,
+        activities: activities.filter(
+          (a) => a[ACTIVITY.Location] === location.Id
+        ).length
+      }));
+  }
+
+  handleCloseSameLocation() {
+    this.sameLocation = null;
+  }
+
+  async handleMergeLocations(event) {
+    const { keepId, otherIds, groupsThatFit } = event.detail;
+    const kept = this.sameLocation.find((place) => place.id === keepId);
+    await this.run(async () => {
+      await mergeLocations({ keepId, otherIds, groupsThatFit });
+      this.sameLocation = null;
+      this.toast(`Merged into "${kept.name}".`);
       await this.loadSeason();
     });
   }
