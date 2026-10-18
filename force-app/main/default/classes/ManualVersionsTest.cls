@@ -58,7 +58,7 @@ private class ManualVersionsTest {
 
   /** The draft's revisions as a screen opened now would send them back with Restore. */
   private static String seen(Id draftId) {
-    return ScheduleViews.open(draftId).revisions;
+    return ScheduleDays.stamp(ScheduleDays.read(draftId));
   }
 
   /** Restore as the screen does it, having just read the week. */
@@ -79,19 +79,22 @@ private class ManualVersionsTest {
     ];
   }
 
-  /** What Group A's Monday Period 2 holds in a schedule ('' Open, else the item's name). */
+  /**
+   * What Group A's Monday Period 2 holds in a schedule ('' Open, else the camp record's name),
+   * read in one query so the checks leave the test its queries.
+   */
   private static String mondayPeriod2(Id scheduleId) {
-    ScheduleViews.DayView day = ScheduleViews.open(scheduleId).days[0];
-    Integer g = 0;
-    for (Integer i = 0; i < day.groups.size(); i++) {
-      if (day.groups[i].name == 'Group A') {
-        g = i;
+    ScheduleGrid grid = ScheduleDays.read(scheduleId)[0].grid;
+    String slot = SlotIds.ofRow(
+      grid,
+      SlotIds.indexOf(grid.groupIds(), campIds.get('Group A'))
+    )[1];
+    for (String name : campIds.keySet()) {
+      if (slot == 'A:' + campIds.get(name)) {
+        return name;
       }
     }
-    String token = day.rows[g].split(',', -1)[1];
-    return String.isBlank(token)
-      ? ''
-      : day.items[Integer.valueOf(token) - 1].name;
+    return slot;
   }
 
   @IsTest
@@ -160,8 +163,8 @@ private class ManualVersionsTest {
       Map<String, Id> ids = camp();
       Id draftId = startWeek(ids, 'Week 1');
       place(draftId, 'Swim');
-      Test.startTest();
       Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
+      Test.startTest();
       placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
       String seenRevisions = seen(draftId);
       Integer queriesBefore = Limits.getQueries();

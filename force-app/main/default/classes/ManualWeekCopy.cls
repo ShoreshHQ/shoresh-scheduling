@@ -12,8 +12,9 @@ public with sharing class ManualWeekCopy {
   // One edit per day of the new week: its runs go in together (one read of the day each).
   private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
   // How each day is named in what is left out: "Monday", or with its date for a week's second
-  // Monday (both weeks' days).
-  private Map<Date, String> dayNames = new Map<Date, String>();
+  // Monday. One map per week: the two weeks can share a date (a two-week week).
+  private Map<Date, String> sourceNames = new Map<Date, String>();
+  private Map<Date, String> targetNames = new Map<Date, String>();
 
   /** One group's row on the new week's day, kept up to date as copies go in. */
   private class Target {
@@ -32,7 +33,10 @@ public with sharing class ManualWeekCopy {
     List<ScheduleDays.DayGrid> targetDays
   ) {
     Map<String, ScheduleDays.DayGrid> byWeekday = readableByWeekday(sourceDays);
-    Map<String, ScheduleDays.DayGrid> targets = byPlace(targetDays);
+    Map<String, ScheduleDays.DayGrid> targets = byPlace(
+      targetDays,
+      targetNames
+    );
     for (String place : targets.keySet()) {
       ScheduleDays.DayGrid target = targets.get(place);
       ScheduleDays.DayGrid source = byWeekday.remove(place);
@@ -49,12 +53,15 @@ public with sharing class ManualWeekCopy {
   private Map<String, ScheduleDays.DayGrid> readableByWeekday(
     List<ScheduleDays.DayGrid> sourceDays
   ) {
-    Map<String, ScheduleDays.DayGrid> byWeekday = byPlace(sourceDays);
+    Map<String, ScheduleDays.DayGrid> byWeekday = byPlace(
+      sourceDays,
+      sourceNames
+    );
     for (String place : new List<String>(byWeekday.keySet())) {
       ScheduleDays.DayGrid day = byWeekday.get(place);
       if (day.grid == null) {
         leftOut.add(
-          dayNames.get(day.day) + ': could not be read (' + day.problem + ')'
+          sourceNames.get(day.day) + ': could not be read (' + day.problem + ')'
         );
         byWeekday.remove(place);
       }
@@ -64,10 +71,11 @@ public with sharing class ManualWeekCopy {
 
   /**
    * Days (in date order) by weekday and which of that weekday they are: "Monday", then "Monday 2"
-   * for a second Monday. Names each day as it goes.
+   * for a second Monday. Names each day (in names) as it goes.
    */
-  private Map<String, ScheduleDays.DayGrid> byPlace(
-    List<ScheduleDays.DayGrid> days
+  private static Map<String, ScheduleDays.DayGrid> byPlace(
+    List<ScheduleDays.DayGrid> days,
+    Map<Date, String> names
   ) {
     Map<String, ScheduleDays.DayGrid> result = new Map<String, ScheduleDays.DayGrid>();
     Map<String, Integer> seen = new Map<String, Integer>();
@@ -76,10 +84,7 @@ public with sharing class ManualWeekCopy {
       Integer n = seen.containsKey(weekday) ? seen.get(weekday) + 1 : 1;
       seen.put(weekday, n);
       result.put(n == 1 ? weekday : weekday + ' ' + n, day);
-      dayNames.put(
-        day.day,
-        n == 1 ? weekday : weekday + ' ' + day.day.format()
-      );
+      names.put(day.day, n == 1 ? weekday : weekday + ' ' + day.day.format());
     }
     return result;
   }
@@ -88,7 +93,7 @@ public with sharing class ManualWeekCopy {
   private void listUnmatched(Map<String, ScheduleDays.DayGrid> byWeekday) {
     for (ScheduleDays.DayGrid day : byWeekday.values()) {
       if (ManualWeekPlacements.hasActivities(day.grid)) {
-        leftOut.add(dayNames.get(day.day) + ': not in this week');
+        leftOut.add(sourceNames.get(day.day) + ': not in this week');
       }
     }
   }
@@ -115,7 +120,7 @@ public with sharing class ManualWeekCopy {
             ' · ' +
             source.groups[sg].name +
             ' · ' +
-            dayNames.get(day.day) +
+            targetNames.get(day.day) +
             ': ' +
             why
         );

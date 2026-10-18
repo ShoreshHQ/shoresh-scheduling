@@ -63,6 +63,8 @@ public with sharing class ManualDrafts {
     if (existing != null) {
       return new Started(existing.Id);
     }
+    // Manual Build starts only with activities to place (desktop readiness; #48).
+    BlankWeek.checkActivities(setup.program);
     BlankWeek.Week week = setup.blankWeek();
     Savepoint beforeStart = Database.setSavepoint();
     try {
