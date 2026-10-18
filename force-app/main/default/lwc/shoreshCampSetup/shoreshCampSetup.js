@@ -16,6 +16,7 @@ import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import {
   menuMarks,
+  rainPlanChoices,
   rainPlanOptions,
   setupProblems,
   turnOffQuestion
@@ -480,7 +481,12 @@ export default class ShoreshCampSetup extends LightningElement {
         label: t.s("RainPlan"),
         type: "picklist",
         excludeSelf: true,
-        options: [none, ...rainPlanOptions(activities)]
+        options: [none, ...rainPlanOptions(activities)],
+        // Only the activity holding an outdoor rain plan shows it (desktop :339-341).
+        optionsFor: (saved) => [
+          none,
+          ...rainPlanChoices(activities, saved[ACTIVITY.RainPlan])
+        ]
       },
       {
         fieldName: ACTIVITY.GroupsAtOnce,

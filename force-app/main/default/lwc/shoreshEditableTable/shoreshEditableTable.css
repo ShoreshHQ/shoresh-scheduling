@@ -6,11 +6,6 @@
   margin-top: 0.125rem;
 }
 
-/* Nothing saved yet: one quiet line, centred, with the blank row under it. */
-.empty-state {
-  padding: 1.5rem 0.75rem;
-}
-
 /* Someone else changed the row: each field the question is about, one under another. */
 .conflict-rows {
   display: flex;

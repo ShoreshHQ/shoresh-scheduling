@@ -412,21 +412,29 @@ export function suggestedCopyStart(oldStartDate) {
   return date.toISOString().slice(0, 10);
 }
 
-/**
- * What a rain plan can be (Shoresh desktop ActivitiesScreen.jsx): indoor activities only. An
- * outdoor one still chosen somewhere stays listed as "<name> (outdoor, choose another)", so that
- * row shows what it has; saving it again is refused (ActivityTriggerHandler).
- */
+function rainPlanOption(activity) {
+  return {
+    label: activity[ACTIVITY.Outdoor]
+      ? `${activity.Name} (outdoor, choose another)`
+      : activity.Name,
+    value: activity.Id
+  };
+}
+
+/** Every activity as a rain plan is named, outdoor ones "(outdoor, choose another)". */
 export function rainPlanOptions(activities) {
-  const chosen = new Set(activities.map((a) => a[ACTIVITY.RainPlan]));
+  return activities.map(rainPlanOption);
+}
+
+/**
+ * What one activity's rain plan can be (Shoresh desktop ActivitiesScreen.jsx:336-341): indoor
+ * activities only, plus, for the activity that already holds an outdoor one, that one, so its
+ * row shows what it has. Saving it again is refused (ActivityTriggerHandler).
+ */
+export function rainPlanChoices(activities, held) {
   return activities
-    .filter((a) => !a[ACTIVITY.Outdoor] || chosen.has(a.Id))
-    .map((a) => ({
-      label: a[ACTIVITY.Outdoor]
-        ? `${a.Name} (outdoor, choose another)`
-        : a.Name,
-      value: a.Id
-    }));
+    .filter((a) => !a[ACTIVITY.Outdoor] || a.Id === held)
+    .map(rainPlanOption);
 }
 
 const RUN_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];

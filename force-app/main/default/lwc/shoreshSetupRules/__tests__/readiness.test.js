@@ -13,8 +13,8 @@ const terms = buildTerms([
 const stillNeeded = (setup, programId) =>
   rules.stillNeeded(nsRecord(setup), terms, programId);
 const menuMarks = (setup) => rules.menuMarks(nsRecord(setup));
-const rainPlanOptions = (activities) =>
-  rules.rainPlanOptions(nsRecord(activities));
+const rainPlanChoices = (activities, held) =>
+  rules.rainPlanChoices(nsRecord(activities), held);
 
 const main = {
   program: { Id: "p1", Name: "Main", Monday__c: true },
@@ -171,16 +171,32 @@ describe("menuMarks", () => {
 });
 
 describe("rainPlanOptions", () => {
-  it("offers indoor activities; an outdoor one still chosen says to choose another", () => {
-    const activities = [
-      { Id: "a1", Name: "Swim", Outdoor__c: false },
-      { Id: "a2", Name: "Soccer", Outdoor__c: true, RainPlan__c: "a3" },
-      { Id: "a3", Name: "Hiking", Outdoor__c: true },
-      { Id: "a4", Name: "Canoe", Outdoor__c: true }
-    ];
-    expect(rainPlanOptions(activities)).toEqual([
+  const activities = [
+    { Id: "a1", Name: "Swim", Outdoor__c: false },
+    { Id: "a2", Name: "Soccer", Outdoor__c: true, RainPlan__c: "a3" },
+    { Id: "a3", Name: "Hiking", Outdoor__c: true },
+    { Id: "a4", Name: "Canoe", Outdoor__c: true }
+  ];
+
+  it("offers indoor activities; only the row holding an outdoor one shows it", () => {
+    expect(rainPlanChoices(activities, "a3")).toEqual([
       { label: "Swim", value: "a1" },
       { label: "Hiking (outdoor, choose another)", value: "a3" }
+    ]);
+    // Any other row: indoor only.
+    expect(rainPlanChoices(activities, undefined)).toEqual([
+      { label: "Swim", value: "a1" }
+    ]);
+  });
+
+  it("names every activity, so a value is always shown by its name", () => {
+    expect(
+      rules.rainPlanOptions(nsRecord(activities)).map((o) => o.label)
+    ).toEqual([
+      "Swim",
+      "Soccer (outdoor, choose another)",
+      "Hiking (outdoor, choose another)",
+      "Canoe (outdoor, choose another)"
     ]);
   });
 });
