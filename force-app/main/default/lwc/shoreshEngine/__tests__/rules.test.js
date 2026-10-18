@@ -85,6 +85,98 @@ describe("never blank (Greg, 2026-10-17)", () => {
     expect(result.flags[0].reason).toBe("More groups at Pool than fit");
   });
 
+  it("names what another program is doing at the place, and says so for groups at once", () => {
+    const other = (extra) => ({
+      date: dateAt(0),
+      startTime: "08:00",
+      endTime: "08:45",
+      groups: 1,
+      ...extra
+    });
+    const placed = run({
+      blocks: [block(0)],
+      locations: [{ id: "pool", name: "Pool", fit: 1 }],
+      activities: [activity("swim", { atOnce: null, location: "pool" })],
+      otherPrograms: [other({ locationId: "pool", names: ["Teen swim"] })]
+    });
+    expect(placed.flags.find((f) => f.date === dateAt(0)).reason).toBe(
+      "More groups at Pool than fit, in use by Teen swim"
+    );
+    const atOnce = run({
+      blocks: [block(0)],
+      activities: [activity("swim", { atOnce: 1 })],
+      otherPrograms: [other({ activityId: "swim" })]
+    });
+    expect(atOnce.flags.find((f) => f.date === dateAt(0)).reason).toBe(
+      "Over its limit of 1 group at once, with another program"
+    );
+  });
+
+  it("lists what is in use as people say it: A, A and B, A, B and C", () => {
+    const words = (inUseBy) =>
+      reasonFor(RULE.PLACE_CAPACITY, { placeName: "Pool", inUseBy });
+    expect(words([])).toBe("More groups at Pool than fit");
+    expect(words(["Swim"])).toBe(
+      "More groups at Pool than fit, in use by Swim"
+    );
+    expect(words(["Lunch", "Swim"])).toBe(
+      "More groups at Pool than fit, in use by Lunch and Swim"
+    );
+    expect(words(["Archery", "Lunch", "Swim"])).toBe(
+      "More groups at Pool than fit, in use by Archery, Lunch and Swim"
+    );
+  });
+
+  it("a placement over two blocks says each idea once, naming what is there in either", () => {
+    const other = (blockStart, blockEnd, extra) => ({
+      date: dateAt(0),
+      startTime: blockStart,
+      endTime: blockEnd,
+      groups: 1,
+      ...extra
+    });
+    // Swim runs Period 1 and 2 at the Pool (fits 1); Teen swim is there in Period 1, Lunch and
+    // something the user can't read in Period 2.
+    const placed = run({
+      blocks: [block(0), block(1)],
+      locations: [{ id: "pool", name: "Pool", fit: 1 }],
+      activities: [
+        activity("swim", { atOnce: null, location: "pool", span: 2 })
+      ],
+      otherPrograms: [
+        other("08:00", "08:45", { locationId: "pool", names: ["Teen swim"] }),
+        other("09:00", "09:45", { locationId: "pool", names: ["Lunch"] }),
+        other("09:00", "09:45", { locationId: "pool", names: [] })
+      ]
+    });
+    const day0 = placed.flags.filter((f) => f.date === dateAt(0));
+    expect(day0.map((f) => f.reason)).toEqual([
+      "More groups at Pool than fit, in use by Lunch and Teen swim",
+      "More groups at Pool than fit, in use by Lunch and Teen swim"
+    ]);
+    // Each cell's Overlapping line names only what is there then.
+    expect(
+      placed.overlapping
+        .filter((c) => c.dateValue === dateAt(0))
+        .map((c) => c.text.split(": ")[1])
+    ).toEqual([
+      "More groups at Pool than fit, in use by Teen swim",
+      "More groups at Pool than fit, in use by Lunch"
+    ]);
+    // Two bunks swimming both blocks (one at a time); another program swims in Period 1 only.
+    const atOnce = run({
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      activities: [activity("swim", { atOnce: 1, span: 2 })],
+      otherPrograms: [other("08:00", "08:45", { activityId: "swim" })]
+    });
+    expect([
+      ...new Set(
+        atOnce.flags.filter((f) => f.date === dateAt(0)).map((f) => f.reason)
+      )
+    ]).toEqual(["Over its limit of 1 group at once, with another program"]);
+  });
+
   // One open cell (Bunk g1, first block) and one activity per rule, each of which would bend
   // exactly that rule there. Taking them away one at a time walks the order rules give way in.
   describe("rules give way in order: weekly max, once a day, who it's set up for, groups at once, same division, the place", () => {

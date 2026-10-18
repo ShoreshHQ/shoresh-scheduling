@@ -20,6 +20,9 @@ public with sharing class OtherProgramUse {
   private final Set<Id> offThisWeek = new Set<Id>();
   // "date|start|end|place|activity" -> its entry.
   private final Map<String, Entry> entries = new Map<String, Entry>();
+  // An activity, or an other program's fixed or recurring activity -> its name, as this user
+  // reads it (one that can't be read has none).
+  private final Map<Id, String> names = new Map<Id, String>();
 
   public class Entry {
     @AuraEnabled
@@ -35,6 +38,11 @@ public with sharing class OtherProgramUse {
     public Id activityId;
     @AuraEnabled
     public Integer groups = 0;
+    // What their groups are doing there, for the dot's words ("Pool in use by Teen swim"): an
+    // activity's name, or the fixed and recurring activities' at that place and time. Nothing
+    // for one the user can't read.
+    @AuraEnabled
+    public List<String> names = new List<String>();
   }
 
   /**
@@ -83,7 +91,7 @@ public with sharing class OtherProgramUse {
             ORDER BY StartTime__c, SortOrder__c, Id
           ),
           (
-            SELECT Id, TimeBlock__c, Length__c, Location__c
+            SELECT Id, Name, TimeBlock__c, Length__c, Location__c
             FROM FixedActivities__r
             WHERE Location__c != NULL
             ORDER BY Id
@@ -91,6 +99,7 @@ public with sharing class OtherProgramUse {
           (
             SELECT
               Id,
+              Name,
               TimeBlock__c,
               Length__c,
               Location__c,
@@ -112,6 +121,7 @@ public with sharing class OtherProgramUse {
     if (others.isEmpty()) {
       return new List<Entry>();
     }
+    readNames(activities, others);
     Set<String> published = new OtherProgramGrids(
         this,
         placesOf(activities, others)
@@ -142,6 +152,41 @@ public with sharing class OtherProgramUse {
       }
     }
     return places;
+  }
+
+  /** The names of the activities and of the other programs' fixed and recurring activities. */
+  private void readNames(
+    List<Activity__c> activities,
+    Map<Id, Program__c> others
+  ) {
+    for (Activity__c activity : activities) {
+      names.put(activity.Id, activity.Name);
+    }
+    for (Program__c other : others.values()) {
+      for (FixedActivity__c item : other.FixedActivities__r) {
+        names.put(item.Id, item.Name);
+      }
+      for (RecurringActivity__c item : other.RecurringActivities__r) {
+        names.put(item.Id, item.Name);
+      }
+    }
+  }
+
+  /** Adds what a record is called to an entry's names, if the user can read it. */
+  public void name(Entry entry, Id recordId) {
+    String name = names.get(recordId);
+    if (String.isNotBlank(name)) {
+      addNames(entry, new List<String>{ name });
+    }
+  }
+
+  /** Adds names an entry doesn't have yet. */
+  private static void addNames(Entry entry, List<String> more) {
+    for (String name : more) {
+      if (!entry.names.contains(name)) {
+        entry.names.add(name);
+      }
+    }
   }
 
   /** Whether a group is away, a place closed, or a fixed or recurring activity off this week. */
@@ -180,7 +225,9 @@ public with sharing class OtherProgramUse {
       '|'
     );
     if (entries.containsKey(key)) {
-      entries.get(key).groups += entry.groups;
+      Entry there = entries.get(key);
+      there.groups += entry.groups;
+      addNames(there, entry.names);
     } else {
       entries.put(key, entry);
     }
@@ -192,7 +239,9 @@ public with sharing class OtherProgramUse {
     keys.sort();
     List<Entry> result = new List<Entry>();
     for (String key : keys) {
-      result.add(entries.get(key));
+      Entry entry = entries.get(key);
+      entry.names.sort();
+      result.add(entry);
     }
     return result;
   }

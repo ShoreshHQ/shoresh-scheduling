@@ -664,14 +664,15 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     const start = draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);
     // Another program's published schedule: one of its groups at the Pool 10:30 to 11:15.
-    const others = (groups) => [
+    const others = (groups, names = ["Teen swim"]) => [
       {
         dateValue: "2026-06-29",
         startTime: "10:30",
         endTime: "11:15",
         locationId: "l1",
         activityId: null,
-        groups
+        groups,
+        names
       }
     ];
     getDraft.mockResolvedValue({
@@ -695,8 +696,20 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();
-    expect(dotIn(element, "0-1").label).toBe("More Bunks at Pool than fit");
+    // Named as the desktop names it: what is at the place, not which program.
+    expect(dotIn(element, "0-1").label).toBe(
+      "More Bunks at Pool than fit, in use by Teen swim"
+    );
     expect(counters(element)).toContain("1 Overlapping");
+
+    // What the user can't read comes with no name: the dot names nothing, and still shows.
+    getDraft.mockResolvedValue({
+      ...withRecords(start, pool),
+      otherPrograms: others(2, [])
+    });
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(dotIn(element, "0-1").label).toBe("More Bunks at Pool than fit");
   });
 
   it("another program doing Soccer counts against its bunks at once; one only at a place doesn't", async () => {
@@ -732,7 +745,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();
     expect(dotIn(element, "0-1").label).toBe(
-      "Over its limit of 1 Bunk at once"
+      "Over its limit of 1 Bunk at once, with another program"
     );
   });
 

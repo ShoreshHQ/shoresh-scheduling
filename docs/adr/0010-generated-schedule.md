@@ -617,9 +617,27 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
     see while seeing this one can't be made, and so isn't tested. `GeneratedSetup` now also reads each exception's fixed and
     recurring activity. `ScheduleDays.readDay` is public, so published days are read as any day.
 
-Not decided in G5: a dot caused by another program says only "More Bunks at Pool than fit", as
-for this program's own bunks; the desktop names who has the place. Naming the other program is a
-wording call for Greg, the same in both schedules.
+32. **The dot names what else is at the place** (follow-up to G5). The desktop names the
+    activities, not the program: `conflictFindingMessage` (runStateCopy.js) gives "Pool on
+    Monday, Period 2: Swim and Teen swim double-booked (capacity 3).", and buildSchedule.js an
+    empty cell's "Pool in use by Teen swim". Here, on hover as every dot's words are: _More Bunks
+    at Pool than fit, in use by Teen swim_ (several: "Archery, Lunch and Teen swim", in
+    alphabetical order; `reasonFor`'s `inUseBy`). A comma, not " · ", which already joins one
+    reason to the next. Each `OtherProgramUse.Entry` carries `names`:
+    the activity's, or the fixed and recurring activities' at that place and time, read with the
+    rest (the season's activities, and `Name` on the fixed and recurring activities in the one
+    other-programs query), so no query is added. One the user can't read (an activity not in the
+    season's readable list, say) names nothing, and the dot stays. Over its limit of groups at
+    once counts other programs' groups doing the same activity, so a name would only repeat the
+    activity's own: it says _Over its limit of 2 Bunks at once, with another program_ instead,
+    in the camp's word for Program. Both schedules, since both use checkWeek (`otherNamesAt`
+    beside `othersAt`).
+    Who decided: naming the activities, not the program ("in use by Swim" even when the other
+    program's activity is called Swim too), is Greg's decision (2026-10-18, wiki decision 25:
+    keep the desktop's wording). "with another program" for groups at once is a coordinator
+    call: the desktop has no words for that case. A placement over several time blocks says
+    each rule once: the names from all its blocks together, and "with another program" if any
+    of its blocks has their groups; each cell's Overlapping line keeps its own block's words.
 
 ## Tests (G5)
 
@@ -641,6 +659,15 @@ that only touches, or a count of 0, doesn't block; the busiest-moment count (one
 two shorter blocks, two groups back to back, true overlap, any order, places and activities
 apart); Manual Build dots the Pool only once another program's groups take it past what fits,
 and counts another program doing Soccer against its bunks at once but not one only at a place.
+Naming (§32): Apex, the entries' names (an activity, a fixed activity on a published day and
+from setup, and an activity the user can't read naming nothing); Jest, the names per place and
+block (in order, once each, only at that place and time), the list's wording (A; A and B;
+A, B and C), a two-block placement saying each rule once, Generated's and Manual Build's dot
+words with a name and without one. Query counts: `GeneratedLimitsTest` opens a week with one other program
+and with three and asserts the same number of queries (catches a query per program), opens the
+week again once generated, and opens Manual Build, each with other programs. Jest: one group
+leaving as another arrives counts as one whichever entry comes first (a plain sort by time
+passes only when the leaving one is listed first).
 The property tests' independent checkers count other programs at their busiest moment too. Each new path was confirmed to fail its Jest test when
 taken out; the Apex tests run only in CI.
 
