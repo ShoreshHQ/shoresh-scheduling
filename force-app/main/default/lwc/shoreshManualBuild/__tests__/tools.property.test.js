@@ -26,8 +26,7 @@ const GROUPS = [
 ];
 const BLOCK_IDS = ["t1", "t2", "t3", "t4", "t5"];
 const ACTIVITIES = ["A:a1", "A:a2", "A:a3"];
-const SEEDS = Number(process.env.SEEDS || 2000);
-const DEBUG = process.env.DEBUG_SEED ? Number(process.env.DEBUG_SEED) : 0;
+const SEEDS = 2000;
 
 // ---------- weeks from rows of identities ----------
 
@@ -219,7 +218,7 @@ describe("a day or week tool and someone else's change (seeded)", () => {
       }
     };
     const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
-    for (let seed = DEBUG || 1; seed <= (DEBUG || SEEDS); seed++) {
+    for (let seed = 1; seed <= SEEDS; seed++) {
       const rnd = random(seed);
       const seen = weekOf(DATES.map(() => GROUPS.map(() => randomRow(rnd))));
       const awayCells = new Set();
@@ -232,15 +231,6 @@ describe("a day or week tool and someone else's change (seeded)", () => {
       const tool = randomTool(rnd);
       const first = toolRuns(tool, seen, { isAway }).runs;
       const intended = resultOf(seen, first);
-      const log = DEBUG ? (...a) => console.log(...a) : () => undefined;
-      log(
-        "tool",
-        JSON.stringify(tool),
-        "seen",
-        JSON.stringify(rowsOfWeek(seen)),
-        "first",
-        JSON.stringify(first)
-      );
 
       // The director's own edit after the tool, still waiting: never sent here.
       const mineKey = `${pick(rnd, DATES)}|${pick(rnd, GROUPS).id}|${pick(rnd, BLOCK_IDS)}`;
@@ -257,14 +247,6 @@ describe("a day or week tool and someone else's change (seeded)", () => {
       let done = false;
       for (let round = 0; round < 4 && !done; round++) {
         before = rows.map((day) => day.map((row) => [...row]));
-        log(
-          "round",
-          round,
-          "rows",
-          JSON.stringify(rows),
-          "runs",
-          JSON.stringify(runs)
-        );
         if (save(rows, runs)) {
           done = true;
         } else if (round === 3) {
