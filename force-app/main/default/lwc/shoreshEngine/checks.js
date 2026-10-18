@@ -440,6 +440,9 @@ function weekGroups(days) {
 function stillToPlace(ctx) {
   const stillNeeded = [];
   const spread = [];
+  // The same, as data: entry i is line i's activity, group and how many are missing.
+  const stillNeededBy = [];
+  const spreadBy = [];
   const groups = weekGroups(ctx.days);
   const readable = ctx.days.filter((day) => !day.problem);
   const heads = groupBy(
@@ -457,9 +460,9 @@ function stillToPlace(ctx) {
       }
       const mine = heads.get(`${groupId}|${act.id}`) || [];
       if (mine.length < act.min) {
-        stillNeeded.push(
-          `${act.name} · ${groupName}: ${act.min - mine.length} still needed`
-        );
+        const missing = act.min - mine.length;
+        stillNeeded.push(`${act.name} · ${groupName}: ${missing} still needed`);
+        stillNeededBy.push({ activityId: act.id, groupId, missing });
       }
       if (
         act.early &&
@@ -469,16 +472,17 @@ function stillToPlace(ctx) {
           (p) => weekdayOf(ctx.days[p.d].dateValue) <= act.early.byDay
         ).length;
         if (early < act.early.count) {
+          const missing = act.early.count - early;
+          const byDay = DAY_NAMES[act.early.byDay];
           spread.push(
-            `${act.name} · ${groupName}: ${act.early.count - early} still needed by ${
-              DAY_NAMES[act.early.byDay]
-            }`
+            `${act.name} · ${groupName}: ${missing} still needed by ${byDay}`
           );
+          spreadBy.push({ activityId: act.id, groupId, missing, byDay });
         }
       }
     });
   });
-  return { stillNeeded, spread };
+  return { stillNeeded, spread, stillNeededBy, spreadBy };
 }
 
 /** Cells filled, of the cells to fill (at camp, and not a fixed or recurring activity). */
@@ -514,7 +518,9 @@ function filledCount(ctx) {
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
- * overlapping, stillNeeded, spread (lines of text), cells: { filled, total } }.
+ * overlapping, stillNeeded, spread (lines of text), stillNeededBy ([{ activityId, groupId,
+ * missing }], entry i for line i), spreadBy ([{ activityId, groupId, missing, byDay }], byDay the
+ * day's name as the line says it), cells: { filled, total } }.
  */
 export function checkWeek(days, model, words) {
   const placements = placementsOf(days);
