@@ -11,6 +11,12 @@
 private class GeneratedLocksTest {
   // One day and group's locks, as stored.
   private static final List<String> NONE = new List<String>{ '', '', '' };
+  // Group A's Monday with only its Lunch locked (kept empty).
+  private static final List<String> LUNCH_LOCKED = new List<String>{
+    '',
+    '',
+    ScheduleGridLocks.LOCKED
+  };
   private static final List<String> PERIOD_2 = new List<String>{ '', '1', '' };
 
   private static GeneratedWeek.LockChange change(
@@ -483,51 +489,66 @@ private class GeneratedLocksTest {
     }
   }
 
-  @IsTest
-  static void unlockOnADayOrAGroupReachesACellLockedEmpty() {
+  /**
+   * Lunch is Open for Group A on Monday, kept empty by a Lock on that one cell; then the unlock
+   * the test passes (by day, by group or by both). Gives Group A's Monday locks after the Lock
+   * and after the Unlock. Each way is its own test, so each has its own setup and limits.
+   */
+  private static List<List<String>> lockThenUnlock(
+    Boolean byDay,
+    Boolean byGroup
+  ) {
+    List<List<String>> seen = new List<List<String>>();
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
-      List<String> lunchLocked = new List<String>{
-        '',
-        '',
-        ScheduleGridLocks.LOCKED
-      };
-      List<List<GeneratedWeek.LockChange>> unlocks = new List<List<GeneratedWeek.LockChange>>{
+      setLocks(
+        draftId,
         new List<GeneratedWeek.LockChange>{
-          change(GeneratedWeek.UNLOCK, GeneratedTestData.MONDAY, null)
-        },
-        new List<GeneratedWeek.LockChange>{
-          change(GeneratedWeek.UNLOCK, null, ids.get('Group A'))
-        },
+          cell(GeneratedTestData.MONDAY, ids.get('Group A'), ids.get('Lunch'))
+        }
+      );
+      seen.add(
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      setLocks(
+        draftId,
         new List<GeneratedWeek.LockChange>{
           change(
             GeneratedWeek.UNLOCK,
-            GeneratedTestData.MONDAY,
-            ids.get('Group A')
+            byDay ? GeneratedTestData.MONDAY : null,
+            byGroup ? ids.get('Group A') : null
           )
         }
-      };
-      for (List<GeneratedWeek.LockChange> unlock : unlocks) {
-        // Lunch is Open for Group A on Monday: kept empty by a Lock on that one cell.
-        setLocks(
-          draftId,
-          new List<GeneratedWeek.LockChange>{
-            cell(GeneratedTestData.MONDAY, ids.get('Group A'), ids.get('Lunch'))
-          }
-        );
-        Assert.areEqual(
-          lunchLocked,
-          locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
-        );
-        setLocks(draftId, unlock);
-        Assert.areEqual(
-          NONE,
-          locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
-        );
-      }
+      );
+      seen.add(
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      Test.stopTest();
     }
+    return seen;
+  }
+
+  @IsTest
+  static void unlockOnADayReachesACellLockedEmpty() {
+    List<List<String>> seen = lockThenUnlock(true, false);
+    Assert.areEqual(LUNCH_LOCKED, seen[0]);
+    Assert.areEqual(NONE, seen[1]);
+  }
+
+  @IsTest
+  static void unlockOnAGroupReachesACellLockedEmpty() {
+    List<List<String>> seen = lockThenUnlock(false, true);
+    Assert.areEqual(LUNCH_LOCKED, seen[0]);
+    Assert.areEqual(NONE, seen[1]);
+  }
+
+  @IsTest
+  static void unlockOnAGroupsDayReachesACellLockedEmpty() {
+    List<List<String>> seen = lockThenUnlock(true, true);
+    Assert.areEqual(LUNCH_LOCKED, seen[0]);
+    Assert.areEqual(NONE, seen[1]);
   }
 
   @IsTest

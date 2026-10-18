@@ -668,7 +668,7 @@ taken out; the Apex tests run only in CI.
     - each run names its cells' locks as the screen saw them (`locksBefore`; the data module
       fills it in): a cell whose lock is different now is a conflict like any cell someone else
       changed, so nobody's Lock is removed or covered unseen;
-    - **Undo and Redo restore the locks** from before their step (coordinator's call, matching
+    - **Undo and Redo restore the locks** from before their step (Greg confirmed, 2026-10-18; matching
       the desktop's Undo, which leaves no trace): their runs carry `locksAfter`, each cell's lock
       to restore, and the server sets exactly those (never on a fixed or recurring activity).
       Undoing a hand edit unlocks the cell again; undoing a clear brings no lock back that
@@ -683,7 +683,7 @@ taken out; the Apex tests run only in CI.
 34. **Lock and Unlock** (decision 3; `GeneratedScheduleController.setLocks` → `GeneratedLocks`):
     a cell (date, group and time block), a whole day (date only) or a whole group (group only,
     or with a date for its day; `Lock` and `Unlock` spelled exactly; nothing else is read). **The
-    shortcuts lock only cells that hold something** (coordinator's call): locking a day's Open or
+    shortcuts lock only cells that hold something** (Greg confirmed, 2026-10-18): locking a day's Open or
     not-at-camp cells would keep them empty through every build, unseen, so keeping a cell empty
     is always a Lock on that one cell. Unlock reaches every cell. Like
     a whole-week save it names the revision the screen read the week at, and is a conflict when
@@ -717,7 +717,7 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
     - **the lock icon** (`utility:lock`, slate: the design guide's colour for structure that
       stays put; "Locked" in assistive text) on every locked cell, in its top left corner (the
       dot has the right), on every block of a locked placement; the legend shows it (_Locked_), as the desktop's lists its
-      locked mark. **A cell locked empty** reads as kept empty, not as Open (coordinator,
+      locked mark. **A cell locked empty** reads as kept empty, not as Open (Greg confirmed,
       2026-10-18): no _Open_ word and not Open's dashed look, just the cell and its lock,
       _Locked empty_ in assistive text; Open names only cells still to fill;
     - **one Lock menu** in the toolbar (the word **Lock**, the lock icon), offering what applies

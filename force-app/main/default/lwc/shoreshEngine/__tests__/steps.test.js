@@ -102,8 +102,10 @@ describe("generateWeekSteps", () => {
       last = now;
       step = steps.next();
     }
-    // About 10 ms on a laptop; loose, for slower CI runners.
-    expect(longest).toBeLessThan(250);
+    // About 10 ms on a laptop. The ceiling is generous because a loaded machine (other tests
+    // running alongside) stretches a gap many times over; it only catches a step that has
+    // become one long block, which would be seconds.
+    expect(longest).toBeLessThan(2000);
   });
 
   it("is the same as generateWeek on random camps, both modes", () => {

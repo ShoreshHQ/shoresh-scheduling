@@ -731,6 +731,46 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       expect(q(element, '[data-id="start-from"]')).toBeNull();
     });
 
+    it("the camp's word for a week is in the notice while a Restore runs", async () => {
+      getWeekSources.mockResolvedValue([]);
+      getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+      getVersions.mockResolvedValue(VERSIONS);
+      const element = createElement("c-shoresh-manual-build", {
+        is: ShoreshManualBuild
+      });
+      element.terms = buildTerms([
+        ...LABELS,
+        {
+          term: "Week",
+          singular: "Session",
+          plural: "Sessions",
+          isCustom: true
+        }
+      ]);
+      element.setup = nsRecord(SETUP);
+      document.body.appendChild(element);
+      await flush();
+      saveSlots.mockResolvedValue({
+        conflicts: [],
+        schedule: draft(WITH_SWIM, ["1,,", "1,,"]).schedule
+      });
+      await clearSwim(element);
+      saveSlots.mockClear();
+      const restore = pending();
+      restoreVersion.mockReturnValue(restore.promise);
+      const panel = await versionsPanel(element);
+      restoreButton(panel).click();
+      await flush();
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      expect(saveSlots).not.toHaveBeenCalled();
+      expect(q(element, '[data-id="notice"]').textContent).toBe(
+        "One moment: the Session is being saved or restored."
+      );
+      restore.resolve(draft(WITH_SWIM, ["1,2,", "1,,"]));
+      await flush();
+    });
+
     it("the camp's word for a week names Start from another week and what was left out", async () => {
       getWeekSources.mockResolvedValue([
         {

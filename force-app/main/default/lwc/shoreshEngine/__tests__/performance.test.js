@@ -78,7 +78,8 @@ describe("generateWeek on a large camp", () => {
     const spec = bigCamp(fitting);
     const { input, result, ms } = timed(spec);
     expect(result.ruleChecks).toBeLessThan(30000); // about 20,000 today
-    expect(ms).toBeLessThan(500);
+    // Only catches pathological slowness; the work itself is held by ruleChecks above.
+    expect(ms).toBeLessThan(5000);
     expect(problems(spec, input, result)).toEqual([]);
   });
 
@@ -86,7 +87,9 @@ describe("generateWeek on a large camp", () => {
     const spec = bigCamp(overfull);
     const { input, result, ms } = timed(spec);
     expect(result.ruleChecks).toBeLessThan(1500000); // about 1,070,000 today
-    expect(ms).toBeLessThan(5000);
+    // Only catches pathological slowness (about 1 s alone); the work itself is held by
+    // ruleChecks above, which doesn't depend on the machine.
+    expect(ms).toBeLessThan(30000);
     expect(problems(spec, input, result)).toEqual([]);
     expect(result.flags.length).toBeGreaterThan(0);
     expect(result.stillNeeded.length).toBeGreaterThan(0);

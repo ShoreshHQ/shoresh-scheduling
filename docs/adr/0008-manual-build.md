@@ -463,7 +463,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       screen readers), the toolbar's, or Ctrl+Z puts it all back. With nothing to clear:
       _Nothing to clear on Monday._, or _Nothing cleared on Monday. 2 stayed: …_
     - **Copy day to…** (Daily View): a menu of the week's other days, and _All other days_
-      with three or more (decision 7: within the same week only). On each target day, each
+      with three or more (decision 7: within the same week only; Greg confirmed, 2026-10-18). On each target day, each
       bunk's activities are replaced by the ones it has on the day shown, at the same time
       blocks (matched by Id). Something already the same there needs nothing; anything else that
       can't go is left out whole and listed: _Copied Monday to Tuesday. 1 left out: Soccer · Bunk
@@ -471,7 +471,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Period 5_ naming the block it lacks, _not on Tuesday_, _deleted since_, _not set up yet_;
       five named at most, then _and N more_). With nothing copied: _Nothing copied. 1 left out:
       …_ or _Tuesday already matches Monday._ No confirm.
-    - **Someone else's change in the way** (coordinator, 2026-10-17, for Greg): a tool isn't
+    - **Someone else's change in the way** (Greg confirmed, 2026-10-18): a tool isn't
       dropped for one cell. On **Keep theirs**, or when the saved week has changed under it (a
       fixed activity now in a cell it clears, say), it is worked out again on the saved week,
       leaving every cell someone else changed since the director looked as it is now, and the
@@ -515,7 +515,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       **delete** and **Restore**, and the footer _Name current version…_ · **Save version**.
     - **Save version** keeps the week as it is now under its name (1 to 80 characters): Status
       Version, Origin Manual, VersionReason Saved by hand, SourceSchedule the draft.
-    - **Restore** (the desktop's word; on the Schedules page the look-only action stays
+    - **Restore** (the desktop's word, Greg confirmed, 2026-10-18; on the Schedules page the look-only action stays
       **Open**) takes any version of the program's week, from Manual Build or Generated
       Schedule (decision 9), and copies its days into the draft. First the draft as it was is
       kept as a version named _Before Restore_ (VersionReason **Auto-saved**, the value G2 adds
