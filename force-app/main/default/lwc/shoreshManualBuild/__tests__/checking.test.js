@@ -86,13 +86,25 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render(start, setup = SETUP) {
-  // The server sends the season's activity and location records with the week.
-  getDraft.mockResolvedValue({
+/**
+ * A draft as the server sends it: with the season's activity and location records, the program's
+ * groups (with their divisions), and its fixed and recurring activities.
+ */
+function withRecords(start, setup = SETUP) {
+  const program = setup.programs[0];
+  return {
     ...start,
     activityRecords: setup.activities,
-    locationRecords: setup.locations
-  });
+    locationRecords: setup.locations,
+    groupRecords: program.divisions.flatMap((d) => d.groups),
+    fixedActivityRecords: program.fixedActivities,
+    recurringActivityRecords: program.recurringActivities
+  };
+}
+
+async function render(start, setup = SETUP) {
+  // The server sends the season's activity and location records with the week.
+  getDraft.mockResolvedValue(withRecords(start, setup));
   saveSlots.mockImplementation(() =>
     Promise.resolve({ conflicts: [], schedule: start.schedule })
   );
@@ -475,8 +487,24 @@ describe("c-shoresh-manual-build: checks and counters", () => {
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
     });
     await press(cell(element, "1-1"), "Delete");
+    // Bunk 2's Soccer is gone, not fixed: only Bunk 1's is fine now.
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Cleared Bunk 2 · Monday · Period 2. Soccer · Bunk 1: fine now"
+    );
+  });
+
+  it("clearing the first of two clashing bunks says the other is fine now, not the cleared one", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,,", "1,2,"])
+    });
+    await press(cell(element, "0-1"), "Delete");
     expect(q(element, '[data-id="announce"]').textContent).toContain(
-      "Soccer · Bunk 1: fine now, and 1 more"
+      "Soccer · Bunk 2: fine now"
+    );
+    expect(q(element, '[data-id="announce"]').textContent).not.toContain(
+      "Soccer · Bunk 1: fine now"
     );
   });
 

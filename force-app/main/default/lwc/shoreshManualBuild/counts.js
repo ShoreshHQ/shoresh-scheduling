@@ -51,9 +51,10 @@ export function paletteChips(schedule, checked, activities, groupId, filter) {
     )
     .map((a) => {
       const notFor = a.notFor || [];
-      // A bunk an activity isn't set up for needs none of it.
+      // Group View: the bunk's own times a week, whoever it is set up for (desktop scaleFor;
+      // the grid's dot says "not set up"). Daily View: times the bunks it is set up for.
       const scale = groupId
-        ? Number(!notFor.includes(groupId))
+        ? 1
         : groupIds.filter((id) => !notFor.includes(id)).length;
       const target = (a.minPerWeek || 0) * scale;
       const cap =
