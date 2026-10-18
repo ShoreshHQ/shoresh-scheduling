@@ -78,8 +78,10 @@ describe("generateWeek on a large camp", () => {
     const spec = bigCamp(fitting);
     const { input, result, ms } = timed(spec);
     expect(result.ruleChecks).toBeLessThan(30000); // about 20,000 today
-    // Only catches pathological slowness; the work itself is held by ruleChecks above.
-    expect(ms).toBeLessThan(5000);
+    // About 80 ms alone. ruleChecks above counts how many checks run, not how long each takes,
+    // so this ceiling is what catches a slower check (roughly 10x or worse); 1 s leaves room
+    // for a loaded machine, and the fastest of three builds is what is measured.
+    expect(ms).toBeLessThan(1000);
     expect(problems(spec, input, result)).toEqual([]);
   });
 
@@ -87,9 +89,10 @@ describe("generateWeek on a large camp", () => {
     const spec = bigCamp(overfull);
     const { input, result, ms } = timed(spec);
     expect(result.ruleChecks).toBeLessThan(1500000); // about 1,070,000 today
-    // Only catches pathological slowness (about 1 s alone); the work itself is held by
-    // ruleChecks above, which doesn't depend on the machine.
-    expect(ms).toBeLessThan(30000);
+    // About 1 s alone (under 3 s on a busy machine). ruleChecks above counts how many checks
+    // run, not how long each takes, so this ceiling is what catches a slower check (roughly
+    // 10x or worse); a slowdown smaller than that can still pass.
+    expect(ms).toBeLessThan(10000);
     expect(problems(spec, input, result)).toEqual([]);
     expect(result.flags.length).toBeGreaterThan(0);
     expect(result.stillNeeded.length).toBeGreaterThan(0);

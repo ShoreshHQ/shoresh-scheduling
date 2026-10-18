@@ -93,19 +93,24 @@ describe("generateWeekSteps", () => {
 
   it("never runs long between steps", () => {
     const steps = generateWeekSteps(overfull);
+    const started = Date.now();
     let longest = 0;
-    let last = Date.now();
+    let count = 0;
+    let last = started;
     let step = steps.next();
     while (!step.done) {
       const now = Date.now();
       longest = Math.max(longest, now - last);
       last = now;
+      count += 1;
       step = steps.next();
     }
-    // About 10 ms on a laptop. The ceiling is generous because a loaded machine (other tests
-    // running alongside) stretches a gap many times over; it only catches a step that has
-    // become one long block, which would be seconds.
-    expect(longest).toBeLessThan(2000);
+    const total = Date.now() - started;
+    // Judged against the whole build, not a fixed time, so a slow or busy machine can't fail
+    // it: a build cut into many steps has no gap near the total, while one that runs as a
+    // single block (the screen freezing) has one gap that is almost all of it.
+    expect(count).toBeGreaterThan(20);
+    expect(longest).toBeLessThan(total / 5);
   });
 
   it("is the same as generateWeek on random camps, both modes", () => {
