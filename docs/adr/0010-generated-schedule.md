@@ -1,7 +1,7 @@
 # 0010: Generated Schedule
 
 Status: proposed (2026-10-17), parts G1 (the engine), G2 (reading its inputs, saving the
-week) and G3 (the screen) of 5. Design source: wiki
+week), G3 (the screen) and G5 (other programs' occupancy) of 5. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Generated Schedule round 1", Greg 2026-10-17, and the
 coordinator's technical calls the same day), `projects/shoresh-design-guide`,
 `projects/shoresh-scheduling-data-model`. Starting point: the desktop generator, Greg's own
@@ -58,7 +58,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
   cells, Start over; the dots and their hover; still to place).
 - G4: locks (automatic on hand edits; lock a cell, day or group; stored in grid
   format v2).
-- G5: other programs' occupancy fed to the engine.
+- G5: other programs' occupancy fed to the engine (and to Manual Build's checks).
   Versions and Publish reuse Manual Build parts 4 and 5.
 
 ## Choices (G1)
@@ -182,8 +182,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
    same inputs and option give the same week in every browser and whatever order records
    arrive in, and another week, program or option gives another pattern.
 9. **Other programs (G5 fills it).** `otherPrograms`: groups per place and per activity at a
-   date and clock time. An entry counts against each of this program's blocks whose time
-   overlaps it, on places' groups that fit and activities' groups at once. No count means one
+   date and clock time. Entries count against each of this program's blocks whose time they
+   overlap, on places' groups that fit and activities' groups at once, as the most groups there
+   at any one moment of the block (§28). No count means one
    group; a count of 0 takes no room. Default: none.
 10. **One rules module: `checkWeek`.** The dots come from the finished grid, not from how it was
     built: `checkWeek(days, model, { t, dayName })` (`checks.js`), written and tested for Manual
@@ -318,8 +319,8 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       blocks, groups, fixed and recurring activities and the season's activities. Unlike the
       Schedules page (`ScheduleRefs`, which looks for the record anywhere it can be seen), a
       record of another season or program counts as gone here; a Generated draft never holds one,
-      since a save refuses another season's activity. Locks come in G4 (grid format v2); until then the data module sends none, and other
-      programs (G5) none.
+      since a save refuses another season's activity. Locks come in G4 (grid format v2); until then the data module sends none. Other
+      programs: G5 (§27).
 14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status
     Draft, Origin Generated, named "Generated Schedule", beside Manual Build's (decision 1: two
     separate schedules). It is made by the week's **first save** (Generate), not by opening the
@@ -571,6 +572,75 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
 | Rainy day…, Export, Versions dropdown on the toolbar                         | Not on this screen                                                                                                | Not built for either schedule yet                                                                                   |
 | Special days replace days                                                    | Not here                                                                                                          | Special days aren't set up in Salesforce yet                                                                        |
 
+## Choices (G5)
+
+27. **What counts** (Greg's decision 6; `OtherProgramUse`, read with the engine's inputs). For
+    every other program of the season and every day of the week: its **published** schedule's
+    cells when it has one for that day, fixed and recurring activities included as placed there
+    (`OtherProgramGrids`); otherwise its fixed and recurring activities with a place, where setup
+    puts them (`OtherProgramSetTime`, SetTimePlan's rules, the same as Start a blank week and
+    setup's clash check: a fixed activity takes every group of its program, a recurring one the
+    groups it covers, only groups at camp in each time block). Never both for one day, so nothing
+    counts twice. **Drafts and versions never count**: only Status Published (should a program
+    have more than one, the newest). A group away that week, a place closed that week, and a fixed
+    or recurring activity off that week don't count, as in the clash check, for published cells
+    too. A published cell whose Id can't be read is skipped, never a screen that fails to open. A published cell
+    counts at its activity's place (as setup has it now) and for the activity; a fixed or
+    recurring one at its place; something not set up yet (elective, trip...) counts nowhere.
+    Publishing itself is Manual Build part 5, so until it ships the fixed and recurring activities
+    are what a camp will see counted.
+28. **By clock time.** Programs keep their own time grids, so each entry is one of the other
+    program's time blocks with its real start and end (`dateValue`, `startTime`, `endTime`
+    "HH:mm", `locationId`, `activityId`, `groups`), summed per date, time, place and activity and
+    sorted, so the same week always sends the same list. For each of this program's blocks the
+    engine counts the **most groups there at any one moment** (a sweep over the entries' start
+    and end times inside the block; touching times don't overlap), never the total of every
+    entry it overlaps: one group across two of the other program's shorter blocks is one group,
+    and two groups one after the other are one at a time (coordinator's review). The data module renames
+    `dateValue` to the engine's `date` (`readOtherPrograms`: `date` is reserved in Apex).
+29. **No overrun, no conflict.** Other programs only take room: the engine places elsewhere when
+    a place's groups that fit or an activity's groups at once is used up, and a dot appears only
+    when the finished week is over capacity there (checkWeek's place capacity, groups at once and
+    same division only, which already counted other programs, §10).
+30. **Manual Build dots the same.** Its draft (`ManualBuildViews.DraftView.otherPrograms`) carries
+    the same list, and its checks give checkWeek `othersAt` from `otherProgramsAt` (exported by
+    `c/shoreshEngine`, the engine's own counting on Manual Build's days), so both schedules dot
+    the same over-capacity places. Nothing else in Manual Build changes.
+31. **Reads.** User mode, `with sharing`: at most four queries whatever the number of programs
+    (the other programs with their time blocks, fixed and recurring activities; their published
+    days; their groups and who their recurring activities cover only when one has a place), one
+    when the season has no other program; Manual Build adds the week's exceptions. Programs and schedules are controlled by their season (`ControlledByParent`), so whoever
+    can open this program's week sees every other program of the season: a program the user can't
+    see while seeing this one can't be made, and so isn't tested. `GeneratedSetup` now also reads each exception's fixed and
+    recurring activity. `ScheduleDays.readDay` is public, so published days are read as any day.
+
+Not decided in G5: a dot caused by another program says only "More Bunks at Pool than fit", as
+for this program's own bunks; the desktop names who has the place. Naming the other program is a
+wording call for Greg, the same in both schedules.
+
+## Tests (G5)
+
+`GeneratedOtherProgramsTest` (Apex, as a scheduler, data made inside `runAs`, the clash check
+deferred to the end of setup): one program sends nothing; a published day counts at its own times
+and a draft doesn't; only the newest published schedule counts, never a version; published cells
+carry on across blocks and count fixed and recurring activities at their place; published cells
+skip a group away, a place closed and a recurring activity off that week; fixed and recurring
+activities count on the days with no published schedule (a two-block recurring one for the one
+group it covers, one naming nobody for every group at camp then, one naming a division, a fixed
+one for every group), and on a published day that can't be read; a group away, a place closed
+and an activity off that week don't count; Manual Build's draft gets the same list. `GeneratedLimitsTest`'s camp gains a second program with a published week and fixed and
+recurring activities each, inside the same query bound (opening a week and the first save; the
+Rebuild test leaves them out, as its setup runs before `Test.startTest()` and saves don't read
+other programs). Jest, normal and namespaced: the data module
+passes the list on in the engine's shape; with the Pool free one bunk swims, with another
+program's published cell filling it at an overlapping time nobody does (and no dot), and a time
+that only touches, or a count of 0, doesn't block; the busiest-moment count (one group across
+two shorter blocks, two groups back to back, true overlap, any order, places and activities
+apart); Manual Build dots the Pool only once another program's groups take it past what fits,
+and counts another program doing Soccer against its bunks at once but not one only at a place.
+The property tests' independent checkers count other programs at their busiest moment too. Each new path was confirmed to fail its Jest test when
+taken out; the Apex tests run only in CI.
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -581,3 +651,5 @@ G2:
 - The picklist value `VersionReason__c` `AutoSaved` ("Auto-saved").
 - The Generated draft's name "Generated Schedule" and the versions' names "Before Rebuild",
   "Before Try another", "Before Start over" (stored text; versions can be renamed).
+
+G5: none (no objects, fields or global members).

@@ -507,8 +507,8 @@ export function checkWeek(days, model, words) {
     notFor: (id) => notForSets.get(id) || new Set(),
     isAway: model.isAway || (() => false),
     locked: model.locked || new Set(),
-    // Other programs' groups (Generated Schedule, G5): kind "place" or "activity", its Id, and
-    // "d|b"; Manual Build passes none.
+    // Other programs' groups (G5): kind "place" or "activity", its Id, and "d|b". Both schedules
+    // pass them (the engine's checkModel, Manual Build through otherProgramsAt).
     others: (kind, id, at) => {
       if (!model.othersAt) {
         return 0;

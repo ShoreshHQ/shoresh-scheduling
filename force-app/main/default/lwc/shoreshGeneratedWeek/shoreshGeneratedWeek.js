@@ -1,6 +1,7 @@
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import { errorMessage } from "c/shoreshErrors";
+import { readOtherPrograms } from "c/shoreshEngine";
 
 /** What a save is for (GeneratedSaves). Rebuild and Start over keep the week as a version first. */
 export const ACTION = Object.freeze({
@@ -51,9 +52,10 @@ export async function loadWeek(programId, weekId) {
       fixedActivities: r.fixedActivities || [],
       recurringActivities: r.recurringActivities || [],
       weekExceptions: r.weekExceptions || [],
-      // Locks are stored from G4 (grid format v2); other programs come in G5.
+      // Locks are stored from G4 (grid format v2).
       locks: [],
-      otherPrograms: []
+      // Other programs' published schedules, or fixed and recurring activities, this week (G5).
+      otherPrograms: readOtherPrograms(r.otherPrograms)
     }
   };
 }

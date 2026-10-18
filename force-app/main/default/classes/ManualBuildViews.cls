@@ -1,7 +1,8 @@
 /**
  * What the Manual Build screen needs besides the draft itself: the season's activities to place
  * (with the groups each is not set up for), and the slots where a group is not at camp (a
- * morning-only or afternoon-only group). Worked out from today's setup. Runs in user mode.
+ * morning-only or afternoon-only group), and other programs' use of places and activities that
+ * week. Worked out from today's setup. Runs in user mode.
  */
 public with sharing class ManualBuildViews {
   public class DraftView {
@@ -25,6 +26,10 @@ public with sharing class ManualBuildViews {
     public List<FixedActivity__c> fixedActivityRecords = new List<FixedActivity__c>();
     @AuraEnabled
     public List<RecurringActivity__c> recurringActivityRecords = new List<RecurringActivity__c>();
+    // Other programs' groups at the season's places and activities this week, for the checks
+    // (OtherProgramUse; the same as Generated Schedule's engine counts).
+    @AuraEnabled
+    public List<OtherProgramUse.Entry> otherPrograms = new List<OtherProgramUse.Entry>();
     // Only just after Start a blank week: fixed or recurring activities whose slot was taken
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
@@ -134,7 +139,13 @@ public with sharing class ManualBuildViews {
 
   private static Schedule__c draftOf(Id scheduleId) {
     List<Schedule__c> found = [
-      SELECT Program__c, Program__r.Season__c
+      SELECT
+        Program__c,
+        Program__r.Id,
+        Program__r.Season__c,
+        Week__c,
+        Week__r.StartDate__c,
+        Week__r.EndDate__c
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
@@ -177,6 +188,15 @@ public with sharing class ManualBuildViews {
       ORDER BY Id
     ];
     view.away = away(groups, blocks);
+    view.otherPrograms = new OtherProgramUse(
+        new Week__c(
+          Id = schedule.Week__c,
+          StartDate__c = schedule.Week__r.StartDate__c,
+          EndDate__c = schedule.Week__r.EndDate__c
+        ),
+        OtherProgramUse.exceptionsOf(schedule.Week__c)
+      )
+      .read(schedule.Program__r, view.activityRecords);
     return view;
   }
 

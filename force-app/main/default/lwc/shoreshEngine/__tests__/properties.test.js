@@ -15,7 +15,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { mulberry32 } from "../random";
 import { activity, block, camp, cellsOf, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
-import { problems } from "./data/check";
+import { busiestOther, problems } from "./data/check";
 
 const SEEDS = 300;
 
@@ -24,7 +24,6 @@ const SEEDS = 300;
  * by the engine, so the engine's flags must be what the one rules module says about its output.
  */
 function checkedApart(spec, input, result) {
-  const minutesOf = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
   const dates = result.days.map((d) => d.dateValue);
   const blocks = new Map(spec.blocks.map((b) => [b.id, b]));
   return checkWeek(
@@ -54,15 +53,14 @@ function checkedApart(spec, input, result) {
       ),
       locked: keptActivities(spec, input),
       othersAt: (kind, id, d, blockId) =>
-        spec.otherPrograms
-          .filter(
-            (o) =>
-              (kind === "place" ? o.locationId : o.activityId) === id &&
-              o.date === dates[d] &&
-              minutesOf(o.startTime) < minutesOf(blocks.get(blockId).endTime) &&
-              minutesOf(blocks.get(blockId).startTime) < minutesOf(o.endTime)
-          )
-          .reduce((n, o) => n + (o.groups == null ? 1 : o.groups), 0)
+        busiestOther(
+          spec.otherPrograms,
+          kind === "place" ? "locationId" : "activityId",
+          id,
+          dates[d],
+          blocks.get(blockId).startTime,
+          blocks.get(blockId).endTime
+        )
     },
     {
       t: buildTerms([]),

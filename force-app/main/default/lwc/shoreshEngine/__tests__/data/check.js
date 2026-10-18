@@ -13,6 +13,34 @@ const minutes = (t) => {
   return h * 60 + m;
 };
 
+/**
+ * Other programs' groups at a place or activity during a block, the most at one moment: tried at
+ * every moment one of them starts (or the block starts), summing those there then. Written
+ * without the engine's sweep.
+ */
+export function busiestOther(entries, field, id, date, startTime, endTime) {
+  const from = minutes(startTime);
+  const to = minutes(endTime);
+  const there = (entries || []).filter(
+    (o) =>
+      o[field] === id &&
+      o.date === date &&
+      minutes(o.startTime) < to &&
+      from < minutes(o.endTime)
+  );
+  let most = 0;
+  for (const o of there) {
+    const moment = Math.max(from, minutes(o.startTime));
+    const n = there
+      .filter(
+        (x) => minutes(x.startTime) <= moment && moment < minutes(x.endTime)
+      )
+      .reduce((sum, x) => sum + (x.groups == null ? 1 : Number(x.groups)), 0);
+    most = Math.max(most, n);
+  }
+  return most;
+}
+
 function atCamp(group, partOfDay) {
   if (group.availability === "MorningOnly") {
     return partOfDay === "Morning";
@@ -280,20 +308,15 @@ export function problems(spec, input, result) {
       out.push(`twice in a day, unflagged: ${dk}`);
     }
   }
-  const other = (d, b, field, id) => {
-    let n = 0;
-    for (const o of spec.otherPrograms || []) {
-      if (
-        o[field] === id &&
-        o.date === result.days[d].dateValue &&
-        minutes(o.startTime) < minutes(blocks[b].endTime) &&
-        minutes(blocks[b].startTime) < minutes(o.endTime)
-      ) {
-        n += o.groups == null ? 1 : o.groups;
-      }
-    }
-    return n;
-  };
+  const other = (d, b, field, id) =>
+    busiestOther(
+      spec.otherPrograms,
+      field,
+      id,
+      result.days[d].dateValue,
+      blocks[b].startTime,
+      blocks[b].endTime
+    );
   for (const [lk, list] of place) {
     const [loc, d, b] = lk.split("|");
     const extra = other(Number(d), Number(b), "locationId", loc);
