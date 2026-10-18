@@ -271,6 +271,57 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  /** Group B marked away in Week 1, after the screen read the week. */
+  private static void groupBAwayNow(Map<String, Id> ids) {
+    Database.insert(
+      new WeekException__c(
+        Week__c = ids.get('Week 1'),
+        Group__c = ids.get('Group B')
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+  }
+
+  @IsTest
+  static void aGroupMarkedAwayAfterTheWeekWasOpenedIsCheckedOnSave() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      generated();
+      Test.startTest();
+      // The screen still has Group B; the save reads this week's exceptions as they are now.
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      groupBAwayNow(ids);
+      GeneratedWeek.Save stale = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(
+        stale.days[0],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_B,
+          GeneratedTestData.LUNCH
+        ),
+        'Swim'
+      );
+      Assert.areEqual(
+        'Group B isn\'t at camp in Week 1.',
+        GeneratedTestData.refusal(stale)
+      );
+      Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
+    }
+  }
+
+  @IsTest
+  static void aGroupMarkedAwayBeforeTheFirstGenerateIsAConflictThatSaysSo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      groupBAwayNow(ids);
+      GeneratedWeek.Result result = generateFrom(read);
+      Assert.isTrue(result.conflict);
+      Assert.areEqual('Main\'s groups on Monday' + REOPEN, result.message);
+      Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+    }
+  }
+
   @IsTest
   static void nothingNewForAGroupAwayOrWhatIsClosedThisWeek() {
     System.runAs(ShoreshTestData.scheduler()) {
