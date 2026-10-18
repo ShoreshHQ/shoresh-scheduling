@@ -20,26 +20,46 @@ public class GeneratedTestData {
   public static Map<String, Id> ids;
 
   public static Map<String, Id> camp() {
-    ids = SetTimeTestData.camp();
-    FixedActivity__c flagpole = SetTimeTestData.fixed(
-      ids,
-      'Flagpole',
-      'Period 1'
-    );
-    Database.insert(flagpole, AccessLevel.SYSTEM_MODE);
-    ids.put('Flagpole', flagpole.Id);
-    RecurringActivity__c rest = SetTimeTestData.recurring(ids, 'Rest', 'Lunch');
-    Database.insert(rest, AccessLevel.SYSTEM_MODE);
-    Database.insert(
-      new Coverage__c(
-        RecurringActivity__c = rest.Id,
-        Division__c = ids.get('Seniors'),
-        Season__c = ids.get('Season')
-      ),
-      AccessLevel.SYSTEM_MODE
-    );
-    ids.put('Rest', rest.Id);
+    // The clash check runs once, at the end, as a screen save does (SetTimeGuard), not after
+    // every insert: the setup fits in one test's queries alongside a generated week.
+    SetTimeGuard.defer();
+    try {
+      ids = SetTimeTestData.camp();
+      FixedActivity__c flagpole = SetTimeTestData.fixed(
+        ids,
+        'Flagpole',
+        'Period 1'
+      );
+      Database.insert(flagpole, AccessLevel.SYSTEM_MODE);
+      ids.put('Flagpole', flagpole.Id);
+      RecurringActivity__c rest = SetTimeTestData.recurring(
+        ids,
+        'Rest',
+        'Lunch'
+      );
+      Database.insert(rest, AccessLevel.SYSTEM_MODE);
+      Database.insert(
+        new Coverage__c(
+          RecurringActivity__c = rest.Id,
+          Division__c = ids.get('Seniors'),
+          Season__c = ids.get('Season')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      ids.put('Rest', rest.Id);
+      SetTimeGuard.checkPending();
+    } finally {
+      SetTimeGuard.resume();
+    }
     return ids;
+  }
+
+  /** The first Generate of Week 1: Gym games in every group's Period 2. */
+  public static Id generated() {
+    return save(
+        filled(request(inputs(), GeneratedSaves.GENERATE, 1), 'Gym games')
+      )
+      .scheduleId;
   }
 
   /** Week 1 of Main, as the screen reads it. */

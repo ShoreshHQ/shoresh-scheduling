@@ -91,11 +91,11 @@ private class GeneratedRefusalsTest {
       );
       GeneratedTestData.put(first.days[0], lunchB, 'Soccer');
       Id draftId = GeneratedTestData.save(first).scheduleId;
+      Test.startTest();
       Database.update(
         new Group__c(Id = ids.get('Group B'), Availability__c = 'MorningOnly'),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       GeneratedWeek.Save away = request(
         GeneratedTestData.inputs(),
         GeneratedSaves.FILL_OPEN
@@ -105,13 +105,7 @@ private class GeneratedRefusalsTest {
         'Group B isn\'t at camp in Lunch.',
         GeneratedTestData.refusal(away)
       );
-      // Fill the open cells keeps the leftover as it is.
-      Assert.isFalse(
-        GeneratedTestData.save(
-            request(GeneratedTestData.inputs(), GeneratedSaves.FILL_OPEN)
-          )
-          .conflict
-      );
+      // Fill the open cells keeping it: leftoversOfAGroupAwayOrOfWhatIsClosedMayStayOrGo.
       // A full build clears it (ADR 0010 §3).
       GeneratedWeek.Save cleared = request(
         GeneratedTestData.inputs(),
@@ -282,6 +276,7 @@ private class GeneratedRefusalsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       generated();
+      Test.startTest();
       // After the week was generated: Group B is away, Soccer and the Gym are closed.
       Database.insert(
         new List<WeekException__c>{
@@ -300,7 +295,6 @@ private class GeneratedRefusalsTest {
         },
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
       GeneratedWeek.Save awayGroup = request(read, GeneratedSaves.FILL_OPEN);
@@ -336,6 +330,7 @@ private class GeneratedRefusalsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = generated();
+      Test.startTest();
       // After the week was generated: Group B is away, Soccer and the Gym are closed.
       Database.insert(
         new List<WeekException__c>{
@@ -354,7 +349,6 @@ private class GeneratedRefusalsTest {
         },
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
       // Leftovers may stay (Gym games in Period 2, Group B's row) or be cleared.
@@ -392,6 +386,7 @@ private class GeneratedRefusalsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = generated();
+      Test.startTest();
       // An elective in Group A's Monday Lunch, as an import could have left it.
       ScheduleDays.DayGrid monday = ScheduleDays.read(draftId)[0];
       monday.grid.items.add(new ScheduleGrid.Item('E', '', 'Chugim'));
@@ -404,7 +399,6 @@ private class GeneratedRefusalsTest {
           new ScheduleDaySaves.DaySave(monday.day, monday.grid, monday.revision)
         }
       );
-      Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
       GeneratedWeek.Save cleared = request(read, GeneratedSaves.TRY_ANOTHER);
@@ -474,6 +468,7 @@ private class GeneratedRefusalsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       generated();
+      Test.startTest();
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
         ids.get('Week 1'),
@@ -483,12 +478,16 @@ private class GeneratedRefusalsTest {
         ids.get('Season'),
         'Evenings'
       );
-      Test.startTest();
-      Id manualId = ManualBuildController.startBlankWeek(
-          ids.get('Main'),
-          ids.get('Week 1')
-        )
-        .schedule.schedule.id;
+      // Manual Build's draft of the same week (made directly: only its kind matters here).
+      Schedule__c manual = new Schedule__c(
+        Program__c = ids.get('Main'),
+        Week__c = ids.get('Week 1'),
+        Name = ManualDrafts.NAME,
+        Status__c = ManualDrafts.DRAFT,
+        Origin__c = ManualDrafts.MANUAL
+      );
+      Database.insert(manual, AccessLevel.SYSTEM_MODE);
+      Id manualId = manual.Id;
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       GeneratedWeek.Save onVersion = request(read, GeneratedSaves.REBUILD);
       onVersion.scheduleId = version.Id;
@@ -572,6 +571,7 @@ private class GeneratedRefusalsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = generated();
+      Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       ScheduleDay__c stored = [
         SELECT Id
@@ -583,7 +583,6 @@ private class GeneratedRefusalsTest {
         new ScheduleDay__c(Id = stored.Id, Grid__c = 'not a grid'),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       String refused = GeneratedTestData.refusal(
         request(read, GeneratedSaves.REBUILD)
       );

@@ -11,7 +11,7 @@ public with sharing class GeneratedSetup {
   // Every group of the program, those away this week included.
   public List<Group__c> groups;
   public List<WeekException__c> exceptions;
-  private CampLabels campLabels;
+  private CampLabels wordsRead;
 
   public GeneratedSetup(Id programId, Id weekId) {
     program = ProgramReads.programOf(programId);
@@ -36,10 +36,10 @@ public with sharing class GeneratedSetup {
 
   /** The camp's words, read when first needed. */
   public CampLabels labels() {
-    if (campLabels == null) {
-      campLabels = CampLabels.forCamp(program.Season__r.Camp__c);
+    if (wordsRead == null) {
+      wordsRead = CampLabels.forCamp(program.Season__r.Camp__c);
     }
-    return campLabels;
+    return wordsRead;
   }
 
   /** The groups away this week (a week exception on the group). */
@@ -55,10 +55,10 @@ public with sharing class GeneratedSetup {
 
   /** The program's groups in order, without those away this week (ProgramReads.groupsAtCamp). */
   public List<Group__c> atCamp() {
-    Set<Id> away = away();
+    Set<Id> awayIds = away();
     List<Group__c> result = new List<Group__c>();
     for (Group__c grp : groups) {
-      if (!away.contains(grp.Id)) {
+      if (!awayIds.contains(grp.Id)) {
         result.add(grp);
       }
     }
