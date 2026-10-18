@@ -243,7 +243,7 @@ export function checkGeneratedWeek(input) {
     ...checkModel(input, model, null),
     // The placements the director locked (a lock on any of their cells), as the engine keeps
     // them: a weekly-limit dot goes on an unlocked session first.
-    locked: lockedHeads(days, model.locks)
+    locked: lockedHeads(days, model.locks, groups)
   };
   // A group the server didn't send (away this week since the draft was made, G2 §13) keeps its
   // row, but is away in every block: hatched, not counted to fill, nothing goes in.
@@ -266,15 +266,20 @@ export function checkGeneratedWeek(input) {
   };
 }
 
-/** Head keys ("date|groupId|firstBlockId") of the placements with a locked cell. */
-function lockedHeads(days, locks) {
+/**
+ * Head keys ("date|groupId|firstBlockId") of the placements the engine keeps as the director's:
+ * those with a locked cell, and every placement of a group setup no longer has (the engine keeps
+ * those rows whole).
+ */
+function lockedHeads(days, locks, groups) {
   const heads = new Set();
   for (const day of days) {
     for (const [groupId, tokens] of day.tokens) {
+      const kept = !groups.has(groupId);
       tokens.forEach((token, b) => {
         if (
           !token ||
-          !locks.has(lockKey(day.date, groupId, day.blocks[b].id))
+          (!kept && !locks.has(lockKey(day.date, groupId, day.blocks[b].id)))
         ) {
           return;
         }

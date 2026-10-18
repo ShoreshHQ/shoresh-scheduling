@@ -238,8 +238,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
     this.loadTicket += 1;
     const ticket = this.loadTicket;
-    // A build under way for another week (or season) stops: its ticket is gone.
+    // A build or a Lock under way for another week (or season) stops: its ticket is gone.
     this.busy = null;
+    this.locking = false;
     this.readAfterRun = false;
     this.confirming = null;
     if (!key) {
@@ -292,6 +293,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       const all = groups(this.schedule);
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
+      this.focusedCellKey = null;
       this.resetChecks();
     }
   }
@@ -370,10 +372,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         week.days,
         week.isAway,
         this.t,
-        week.shortest
-      ).filter(
-        (cell) =>
-          !locked.has(`${cell.dateValue}|${cell.groupId}|${cell.blockId}`)
+        week.shortest,
+        (dateValue, groupId, blockId) =>
+          locked.has(`${dateValue}|${groupId}|${blockId}`)
       );
       result = {
         ...week,
@@ -414,6 +415,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   get isBusy() {
     return !!this.busy;
+  }
+  /** The program and week pickers wait for a build or a Lock under way. */
+  get pickerDisabled() {
+    return this.isBusy || this.locking;
   }
   get actionsDisabled() {
     // Also while the week is being read (Reload, coming back to the window): a build started
@@ -651,9 +656,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const n = activityCells(this.week.days, this.week.isAway);
     const word = this.t.sIn("Activity");
     const too = anyLocked ? ", locked ones too" : "";
-    const clears = n
-      ? `Clears the ${n} ${word} ${n === 1 ? "cell" : "cells"} in ${this.weekName}${too}.`
-      : `There are no ${word} cells to clear in ${this.weekName}.`;
+    let clears = `Clears the ${n} ${word} ${n === 1 ? "cell" : "cells"} in ${this.weekName}${too}.`;
+    if (!n) {
+      clears = anyLocked
+        ? `There are no ${word} cells to clear in ${this.weekName}; its locks are cleared.`
+        : `There are no ${word} cells to clear in ${this.weekName}.`;
+    }
     return `${clears} ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`;
   }
   get confirmNote() {
@@ -793,7 +801,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /** What the Lock menu offers now: the focused cell, the day or group shown, the cell's group's day. */
   get lockMenu() {
-    if (!this.week || this.isActivity) {
+    // A day that can't be read makes the server refuse any change (it reads the whole week):
+    // nothing to offer then; the day says why.
+    if (
+      !this.week ||
+      this.isActivity ||
+      this.week.days.some((day) => day.problem)
+    ) {
       return [];
     }
     const cells = weekCells(this.week.days, this.week.locked, this.week.isAway);
@@ -846,11 +860,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           notPlaced: []
         };
         this.announce(lockedText(choice));
+        // The menu was held while it saved, which drops focus: back to it.
+        this.focusAfterRender = { selector: '[data-id="lock-menu"]' };
       } else if (result.status === CONFLICT) {
         this.conflict = { message: statementOf(result.message) };
         this.focusAfterRender = { selector: '[data-id="reload"]' };
       } else {
         this.error = result.message;
+        this.focusAfterRender = { selector: '[data-id="lock-menu"]' };
       }
     } finally {
       if (ticket === this.loadTicket) {

@@ -8,7 +8,7 @@
           label={programLabel}
           value={programId}
           options={programOptions}
-          disabled={isBusy}
+          disabled={pickerDisabled}
           onchange={handleProgram}
           data-id="program"
         ></lightning-combobox>
@@ -19,7 +19,7 @@
           label={weekLabel}
           value={weekId}
           options={weekOptions}
-          disabled={isBusy}
+          disabled={pickerDisabled}
           onchange={handleWeek}
           data-id="week"
         ></lightning-combobox>
@@ -67,7 +67,18 @@
           >
             Try another
           </button>
-          <template lwc:if={hasLockMenu}>
+          <lightning-combobox
+            class="option"
+            label={optionLabel}
+            value={optionValue}
+            options={optionChoices}
+            disabled={actionsDisabled}
+            onchange={handleOption}
+            data-id="option"
+          ></lightning-combobox>
+        </div>
+        <template lwc:if={hasLockMenu}>
+          <div class="actions" role="group" aria-label="Lock">
             <lightning-button-menu
               class="lock-menu"
               label="Lock"
@@ -86,17 +97,8 @@
                 ></lightning-menu-item>
               </template>
             </lightning-button-menu>
-          </template>
-          <lightning-combobox
-            class="option"
-            label={optionLabel}
-            value={optionValue}
-            options={optionChoices}
-            disabled={actionsDisabled}
-            onchange={handleOption}
-            data-id="option"
-          ></lightning-combobox>
-        </div>
+          </div>
+        </template>
         <span class="spacer"></span>
         <button
           type="button"

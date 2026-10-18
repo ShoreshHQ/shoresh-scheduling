@@ -134,8 +134,14 @@ export function lockChoices(cells, { cell, day, group }) {
   return choices;
 }
 
-/** What a change did, said back: "Locked Monday." */
+/**
+ * What a change did, said back for a screen reader: "Locked Bunk 1, Monday, Period 2." (commas,
+ * not the screen's "·", which screen readers read unevenly).
+ */
 export function lockedText(choice) {
-  const name = choice.label.replace(/^(Lock|Unlock) /, "");
+  const name = choice.label
+    .replace(/^(Lock|Unlock) /, "")
+    .split(" · ")
+    .join(", ");
   return `${choice.change.action === LOCK ? "Locked" : "Unlocked"} ${name}.`;
 }

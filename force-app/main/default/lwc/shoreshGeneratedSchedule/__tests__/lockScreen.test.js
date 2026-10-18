@@ -198,7 +198,7 @@ describe("locks on the Generated Schedule screen", () => {
     });
     expect(cellAt(element, "0-1").querySelector(".cell-lock")).not.toBeNull();
     expect(q(element, '[data-id="announce"]').textContent).toContain(
-      "Locked Bunk 1 · Monday · Period 1."
+      "Locked Bunk 1, Monday, Period 1."
     );
     // Now the menu offers Unlock for it.
     expect(menuLabels(element)).toContain("Unlock Bunk 1 · Monday · Period 1");
@@ -221,7 +221,9 @@ describe("locks on the Generated Schedule screen", () => {
     const request = saveWeekOnServer.mock.calls[0][0].request;
     expect(request.revision).toBe("2026-06-29:2|2026-06-30:1");
     // Bunk 1's locked Swim is where it was.
-    expect(request.days[0].rows[0].split(",")[1]).not.toBe("");
+    const monday = request.days[0];
+    const token = monday.rows[0].split(",")[1];
+    expect(monday.items[Number(token) - 1].name).toBe("Swim");
     await flush();
     expect(cellAt(element, "0-1").querySelector(".cell-lock")).not.toBeNull();
   });
@@ -270,7 +272,7 @@ describe("locks on the Generated Schedule screen", () => {
     );
   });
 
-  it("Start over builds with no locks and shows none after", async () => {
+  it("Start over: the server clears the locks, and none show after", async () => {
     const element = await render(savedWeek([[",1,,", ",,,"]]));
     saveWeekOnServer.mockResolvedValue({
       conflict: false,
@@ -285,5 +287,77 @@ describe("locks on the Generated Schedule screen", () => {
     await flush();
     expect(saveWeekOnServer.mock.calls[0][0].request.action).toBe("StartOver");
     expect(cellAt(element, "0-1").querySelector(".cell-lock")).toBeNull();
+  });
+
+  it("after a Lock is saved, focus is back on the Lock menu", async () => {
+    const element = await render(savedWeek());
+    const after = savedWeek([[",1,,", ",,,"]]);
+    setLocksOnServer.mockResolvedValue({
+      conflict: false,
+      revision: "2026-06-29:2|2026-06-30:1",
+      schedule: { days: after.days }
+    });
+    // The test's stand-in for Salesforce's menu can't hold focus: see that it is asked to.
+    const focus = jest.fn();
+    menu(element).focus = focus;
+    await choose(element, "Lock Monday");
+    await flush();
+    expect(focus).toHaveBeenCalled();
+  });
+
+  it("another week chosen while a Lock saves: the screen isn't left waiting", async () => {
+    const element = await render(savedWeek());
+    let answer;
+    setLocksOnServer.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await choose(element, "Lock Monday");
+    // The pickers wait while it saves...
+    expect(q(element, '[data-id="week"]').disabled).toBe(true);
+    // ...but setup read again without this week moves on (as if the week was deleted).
+    getInputs.mockResolvedValue(savedWeek());
+    element.setup = {
+      ...SETUP,
+      weeks: [{ Id: "a0K000000000002AAA", Name: "Week 2" }]
+    };
+    await flush();
+    answer({ conflict: false, revision: "x", schedule: { days: [] } });
+    await flush();
+    expect(q(element, '[data-action="Rebuild"]').disabled).toBe(false);
+    expect(menu(element).disabled).toBe(false);
+  });
+
+  it("a cell reached in one week isn't offered in the next", async () => {
+    const element = await render(savedWeek());
+    await focusCell(element, "0-1");
+    expect(menuLabels(element)).toContain("Lock Bunk 1 · Monday · Period 1");
+    getInputs.mockResolvedValue(savedWeek());
+    element.setup = {
+      ...SETUP,
+      weeks: [{ Id: "a0K000000000002AAA", Name: "Week 2" }]
+    };
+    await flush();
+    expect(menuLabels(element)).toEqual(["Lock Monday"]);
+  });
+
+  it("Start over with only locks on Open cells says the locks go", async () => {
+    // Nothing placed but Flagpole; Bunk 1's Period 2 locked empty.
+    const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
+    inputs.days[0] = { ...inputs.days[0], locks: [",,1,", ",,,"] };
+    const element = await render(inputs);
+    q(element, '[data-action="StartOver"]').click();
+    await flush();
+    expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
+      "There are no activity cells to clear in Week 1; its locks are cleared. Fixed activities and recurring activities stay."
+    );
+  });
+
+  it("a day that can't be read: no Lock menu (the server would refuse any change)", async () => {
+    const inputs = savedWeek();
+    inputs.days[1] = { ...inputs.days[1], problem: "the grid has 3 rows" };
+    const element = await render(inputs);
+    expect(menu(element)).toBeNull();
   });
 });

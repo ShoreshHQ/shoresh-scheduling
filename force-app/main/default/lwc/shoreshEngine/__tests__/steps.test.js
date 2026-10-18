@@ -191,6 +191,46 @@ describe("checkGeneratedWeek", () => {
     expect(locked).toBeGreaterThan(0);
   });
 
+  it("a group setup no longer has: its placements count as kept, as the engine keeps them", () => {
+    // Two groups in the grid, one of them gone from setup; one activity at most once a week,
+    // placed twice for each.
+    const spec = {
+      groups: [group("g1")],
+      days: 1,
+      blocks: [block(0), block(1)],
+      activities: [activity("swim", { min: 0, max: 1, atOnce: 2 })]
+    };
+    const input = camp(spec);
+    const day = input.days[0];
+    const days = [
+      {
+        ...day,
+        groups: [...day.groups, { id: "gGone", name: "Bunk gone", gone: true }],
+        items: [{ kind: "A", id: input.activities[0].Id, name: "swim" }],
+        rows: ["1,1", "1,1"]
+      }
+    ];
+    // The gone group's later session is also locked by hand: the engine keeps both anyway, so
+    // its over-the-limit dot goes on the later one, as on screen.
+    const locks = [{ date: day.dateValue, groupId: "gGone", blockId: "b1" }];
+    const built = generateWeek({ ...input, days, locks, mode: MODE.FULL });
+    const { checked } = checkGeneratedWeek({
+      ...input,
+      locks,
+      days: built.days
+    });
+    expect([...checked.flags.keys()]).toContain(`${day.dateValue}|gGone|b1`);
+    const heads = new Set(checked.placements.map((p) => p.key));
+    const dotted = new Map();
+    for (const f of built.flags) {
+      const key = `${f.date}|${f.groupId}|${f.blockId}`;
+      if (heads.has(key)) {
+        dotted.set(key, f.reason);
+      }
+    }
+    expect(new Map(checked.flags)).toEqual(dotted);
+  });
+
   it("reads a week in date order whatever order its days come in", () => {
     const input = { ...camp(randomCamp(3)), locks: [] };
     const result = generateWeek(input);
