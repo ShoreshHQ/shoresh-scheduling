@@ -67,8 +67,11 @@ Direct single-class runs do not count against that allowance. **Never queue a fu
 `RunLocalTests` run in the test org.** To see what is left:
 `sf org list limits --target-org shoresh-test` (`DailyAsyncApexTests`).
 
-Coverage is read from the org's running totals for this repository's classes and triggers,
-so it is close to, but not exactly, what a single full run would report.
+Coverage is read once, after the last class, from the org's running totals for this
+repository's classes and triggers, so it is close to, but not exactly, what a single full run
+would report. The script starts the Salesforce CLI only once (for its login) and sends each
+class's run itself, with the same call the CLI's `--synchronous` run makes; each class's line
+shows how many seconds it took.
 
 ## When the test org expires (every 30 days)
 

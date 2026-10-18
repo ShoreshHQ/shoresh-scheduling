@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
  * Runs every Apex test class in force-app, one class at a time and directly (synchronously),
- * then prints one line per class, a summary, and the code coverage of the classes and triggers
- * in force-app, merged from what each of these runs covered.
+ * then prints one line per class (with its seconds), a summary, and the code coverage of the
+ * classes and triggers in force-app, read from the org's running totals after the last class.
+ * It starts the Salesforce CLI once, for its login, and runs each class through the same
+ * Tooling API call `sf apex run test --synchronous --code-coverage` makes: starting the CLI and
+ * reading coverage for every class cost about as much as the quickest classes take to run.
  *
  * Why: queued test runs (the usual `sf apex run test --test-level RunLocalTests`) count against
  * the test org's daily allowance of 500 queued test classes. CI and working sessions share one
@@ -78,23 +81,17 @@ function codeUnderTest() {
   );
 }
 
+/** Runs the Salesforce CLI and returns its JSON output (or what went wrong). */
 function sf(sfArgs) {
   try {
     return JSON.parse(
       execFileSync("sf", [...sfArgs, ...orgArgs, "--json"], {
         encoding: "utf8",
         maxBuffer: 64 * 1024 * 1024,
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: CLASS_TIMEOUT_MS
+        stdio: ["ignore", "pipe", "pipe"]
       })
     );
   } catch (e) {
-    if (e.signal) {
-      return {
-        message: `took longer than ${CLASS_TIMEOUT_MS / 60000} minutes`
-      };
-    }
-    // sf exits non-zero when tests fail; its JSON is still on stdout.
     try {
       return JSON.parse(e.stdout);
     } catch {
@@ -103,17 +100,68 @@ function sf(sfArgs) {
   }
 }
 
-// Class or trigger name -> line number -> covered (true) or not, merged across the runs.
-const lines = new Map();
+/**
+ * A session with the org, from the CLI's own login (one CLI start for the whole run; starting
+ * the CLI for every class cost seconds each). Held in memory only, never printed.
+ */
+let session;
+function connect() {
+  const out = sf(["org", "display"]);
+  const r = out.result || {};
+  if (!r.accessToken || !r.instanceUrl || !r.apiVersion) {
+    console.log(`Could not reach the test org: ${out.message || "no login"}`);
+    process.exit(1);
+  }
+  session = r;
+}
 
-function recordCoverage(result) {
-  ((result.coverage && result.coverage.coverage) || []).forEach((entry) => {
-    const seen = lines.get(entry.name) || new Map();
-    Object.entries(entry.lines || {}).forEach(([line, hits]) => {
-      seen.set(line, seen.get(line) === true || hits > 0);
+/**
+ * Calls the org's Tooling API. Returns { ok, body } (body parsed from JSON when it is JSON).
+ * Logs in again once if the session has expired.
+ */
+async function tooling(path, init = {}, retried = false) {
+  const url = `${session.instanceUrl}/services/data/v${session.apiVersion}/tooling/${path}`;
+  let response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${session.accessToken}`,
+        "Content-Type": "application/json"
+      },
+      signal: AbortSignal.timeout(CLASS_TIMEOUT_MS)
     });
-    lines.set(entry.name, seen);
-  });
+  } catch (e) {
+    const timedOut = e.name === "TimeoutError";
+    return {
+      ok: false,
+      body: {
+        message: timedOut
+          ? `took longer than ${CLASS_TIMEOUT_MS / 60000} minutes`
+          : e.message
+      }
+    };
+  }
+  const text = await response.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = { message: text.trim() };
+  }
+  if (response.status === 401 && !retried) {
+    connect();
+    return tooling(path, init, true);
+  }
+  if (!response.ok) {
+    // Errors come back as [{ errorCode, message }].
+    const error = Array.isArray(body) ? body[0] || {} : body;
+    body = {
+      name: error.errorCode || `HTTP ${response.status}`,
+      message: `${error.errorCode ? `${error.errorCode}: ` : ""}${error.message || text.trim()}`
+    };
+  }
+  return { ok: response.ok, body };
 }
 
 const BUSY_RETRIES = 6;
@@ -122,72 +170,106 @@ const BUSY_WAIT_MS = 30 * 1000;
 /** The org is busy with another test run or deploy (shared org): worth waiting for. */
 function orgBusy(out) {
   return (
-    !out.result &&
+    !out.ok &&
     /ORG_ADMIN_LOCKED|admin operation already in progress/i.test(
-      `${out.name || ""} ${out.message || ""}`
+      `${out.body.name || ""} ${out.body.message || ""}`
     )
   );
 }
 
-function pause(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Runs one class, waiting (up to 3 minutes) while the shared org is busy. */
-function runClass(name) {
-  let out = runOnce(name);
+async function runClass(name) {
+  let out = await runOnce(name);
   for (let attempt = 1; attempt <= BUSY_RETRIES && orgBusy(out); attempt++) {
     console.log(`      (test org busy; trying ${name} again in 30 seconds)`);
-    pause(BUSY_WAIT_MS);
-    out = runOnce(name);
+    await pause(BUSY_WAIT_MS);
+    out = await runOnce(name);
   }
   return summarize(out);
 }
 
+/**
+ * One class, run directly (synchronously), as `sf apex run test --synchronous --class-names
+ * <name> --code-coverage` does it. Direct runs don't count against the queued-run allowance.
+ */
 function runOnce(name) {
-  return sf([
-    "apex",
-    "run",
-    "test",
-    "--synchronous",
-    "--class-names",
-    name,
-    "--code-coverage",
-    "--result-format",
-    "json"
-  ]);
+  return tooling("runTestsSynchronous/", {
+    method: "POST",
+    body: JSON.stringify({
+      tests: [{ className: name }],
+      testLevel: "RunSpecifiedTests",
+      skipCodeCoverage: false
+    })
+  });
 }
 
 function summarize(out) {
-  const result = out.result || {};
-  const summary = result.summary;
-  if (!summary) {
+  const result = out.body;
+  if (!out.ok || typeof result.numTestsRun !== "number") {
     return {
       ok: false,
       ran: 0,
       failed: 0,
-      line: `could not run: ${out.message || "no result"}`,
+      line: `could not run: ${result.message || "no result"}`,
       failures: []
     };
   }
-  recordCoverage(result);
-  const failures = (result.tests || [])
-    .filter((t) => t.Outcome !== "Pass")
-    .map((t) => `      ${t.MethodName}: ${(t.Message || "").split("\n")[0]}`);
+  const failed = (result.failures || []).length;
+  const failures = (result.failures || []).map(
+    (t) => `      ${t.methodName}: ${(t.message || "").split("\n")[0]}`
+  );
   return {
-    ok: summary.outcome === "Passed" && failures.length === 0,
-    ran: Number(summary.testsRan) || 0,
-    failed: Number(summary.failing) || 0,
-    line: `${summary.testsRan} tests, ${summary.failing} failed`,
+    ok: failed === 0 && Number(result.numFailures || 0) === 0,
+    ran: result.numTestsRun,
+    failed,
+    line: `${result.numTestsRun} tests, ${failed} failed`,
     failures
   };
+}
+
+/**
+ * Class or trigger name -> line number -> covered (true) or not: the org's running totals
+ * (ApexCodeCoverageAggregate), read once after every class has run, as the CLI read them after
+ * each class.
+ */
+async function readCoverage() {
+  const lines = new Map();
+  let next = `query/?q=${encodeURIComponent(
+    "SELECT ApexClassOrTrigger.Name, Coverage FROM ApexCodeCoverageAggregate"
+  )}`;
+  while (next) {
+    const out = await tooling(next);
+    if (!out.ok) {
+      console.log(`Could not read coverage: ${out.body.message}`);
+      process.exit(1);
+    }
+    (out.body.records || []).forEach((record) => {
+      const name = record.ApexClassOrTrigger && record.ApexClassOrTrigger.Name;
+      const seen = new Map();
+      ((record.Coverage && record.Coverage.coveredLines) || []).forEach(
+        (line) => seen.set(String(line), true)
+      );
+      ((record.Coverage && record.Coverage.uncoveredLines) || []).forEach(
+        (line) => seen.set(String(line), seen.get(String(line)) === true)
+      );
+      if (name) {
+        lines.set(name, seen);
+      }
+    });
+    next = out.body.done
+      ? null
+      : out.body.nextRecordsUrl.replace(/^.*\/tooling\//, "");
+  }
+  return lines;
 }
 
 /**
  * Coverage of the repository's classes and triggers from these runs. One no run touched counts
  * as 0%, with its statements (lines ending in ";") as an estimate of its lines.
  */
-function coverage() {
+function coverage(lines) {
   let covered = 0;
   let total = 0;
   const untouched = [];
@@ -217,20 +299,25 @@ if (classes.length === 0) {
   console.log(anyApex ? "No Apex test classes found." : "No Apex yet.");
   process.exit(anyApex ? 1 : 0);
 }
+connect();
 console.log(`Running ${classes.length} Apex test classes, one at a time:\n`);
 let ran = 0;
 let failedTests = 0;
 let failedClasses = 0;
-classes.forEach((name) => {
-  const r = runClass(name);
-  console.log(`${r.ok ? "PASS" : "FAIL"}  ${name.padEnd(36)} ${r.line}`);
+for (const name of classes) {
+  const started = Date.now();
+  const r = await runClass(name);
+  const seconds = ((Date.now() - started) / 1000).toFixed(1);
+  console.log(
+    `${r.ok ? "PASS" : "FAIL"}  ${name.padEnd(36)} ${r.line.padEnd(22)} ${seconds.padStart(6)} s`
+  );
   r.failures.forEach((f) => console.log(f));
   ran += r.ran;
   failedTests += r.failed;
   failedClasses += r.ok ? 0 : 1;
-});
+}
 
-const { percent, untouched } = coverage();
+const { percent, untouched } = coverage(await readCoverage());
 console.log(
   `\nSummary: ${classes.length - failedClasses}/${classes.length} classes passed, ` +
     `${ran} tests ran, ${failedTests} failed.`
