@@ -50,14 +50,16 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     groups that fit and groups at once
  *   terms: the camp's words (c/shoreshTerms), for the reasons
  *
- * Returns { ok: true, days, flags, stillNeeded, spread, overlapping, cells, openCells, ruleChecks }
+ * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy, overlapping, cells,
+ * openCells, ruleChecks }
  * or
  * { ok: false, error }:
  *   days: the same DayView shape, with new rows and items
  *   flags: checkWeek's dots on the finished week, one entry per cell of each dotted placement:
  *     [{ date, groupId, blockId, activityId, bends: [RULE...], reason }]. A cell the engine had to
  *     bend a rule for always has one; so does anything kept that breaks a rule
- *   stillNeeded, spread, overlapping, cells: checkWeek's lines and counts, the same words as
+ *   stillNeeded, spread, stillNeededBy, spreadBy, overlapping, cells: checkWeek's lines, the
+ *     same as data, and counts, the same words as
  *     Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
  *   ruleChecks: how many times a placement was checked against the rules, over every build: the
  *     work done, the same on any machine
@@ -143,6 +145,8 @@ export function generateWeek(input) {
     flags: flagCells(built, checked),
     stillNeeded: checked.stillNeeded,
     spread: checked.spread,
+    stillNeededBy: checked.stillNeededBy,
+    spreadBy: checked.spreadBy,
     overlapping: checked.overlapping,
     cells: checked.cells,
     ruleChecks,
