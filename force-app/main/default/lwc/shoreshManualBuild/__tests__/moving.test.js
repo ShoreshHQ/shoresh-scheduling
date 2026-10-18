@@ -3,11 +3,15 @@ import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
-import { draft, schedule } from "./data/draftFixture";
+import {
+  draft,
+  schedule
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { find } from "shoresh-jest/week-editor";
 import {
   listedCells,
   useYoursSendsWhatWasShown as shownIsSent
-} from "./data/shownIsSent";
+} from "../../shoreshWeekEditor/__tests__/data/shownIsSent";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -78,7 +82,7 @@ async function render(start = draft(MONDAY_ITEMS, MONDAY_ROWS)) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const q = (element, selector) => find(element, selector);
 const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cell = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);

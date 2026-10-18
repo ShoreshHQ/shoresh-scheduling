@@ -175,8 +175,17 @@ public with sharing class OtherProgramUse {
   /** Adds what a record is called to an entry's names, if the user can read it. */
   public void name(Entry entry, Id recordId) {
     String name = names.get(recordId);
-    if (String.isNotBlank(name) && !entry.names.contains(name)) {
-      entry.names.add(name);
+    if (String.isNotBlank(name)) {
+      addNames(entry, new List<String>{ name });
+    }
+  }
+
+  /** Adds names an entry doesn't have yet. */
+  private static void addNames(Entry entry, List<String> more) {
+    for (String name : more) {
+      if (!entry.names.contains(name)) {
+        entry.names.add(name);
+      }
     }
   }
 
@@ -218,11 +227,7 @@ public with sharing class OtherProgramUse {
     if (entries.containsKey(key)) {
       Entry there = entries.get(key);
       there.groups += entry.groups;
-      for (String name : entry.names) {
-        if (!there.names.contains(name)) {
-          there.names.add(name);
-        }
-      }
+      addNames(there, entry.names);
     } else {
       entries.put(key, entry);
     }

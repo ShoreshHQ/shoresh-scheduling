@@ -5,6 +5,28 @@
  */
 @IsTest
 private class SetTimeClashesTest {
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = SetTimeTestData.camp();
+    }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
+  }
+
+  /** The camp setup built. */
+  private static Map<String, Id> camp() {
+    return KeptCamp.keptIds();
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> ids) {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
   private static Integer count(String objectName) {
     return Database.countQuery(
       'SELECT COUNT() FROM ' + objectName,
@@ -14,8 +36,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void twoFixedActivitiesInOneTimeBlockAreRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       SetTimeTestData.save(
         new List<SObject>{ SetTimeTestData.fixed(ids, 'Flagpole', 'Period 1') }
       );
@@ -33,8 +55,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void aFixedAndARecurringActivityInOneTimeBlockAreRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       SetTimeTestData.save(
         new List<SObject>{ SetTimeTestData.fixed(ids, 'Flagpole', 'Period 1') }
       );
@@ -65,8 +87,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void anActivityRunningPastTheLastTimeBlockIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 2');
       rest.Length__c = 3;
       Assert.areEqual(
@@ -84,8 +106,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void differentDaysWeeksOrGroupsDoNotClash() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       RecurringActivity__c swim = SetTimeTestData.recurring(
         ids,
         'Swim',
@@ -142,8 +164,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void tickingAWeekBackOnThatWouldClashIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       List<RunsIn.WeekOff> off = new List<RunsIn.WeekOff>();
       for (Integer week = 2; week <= 6; week++) {
         off.add(SetTimeTestData.weekOff(0, null, ids.get('Week ' + week)));
@@ -177,8 +199,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void widenedWhoThatWouldClashIsRefusedFromTheScreenAndDirectly() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       List<Id> saved = SetTimeTestData.save(
         new List<SObject>{
           SetTimeTestData.recurring(ids, 'Swim', 'Period 1'),
@@ -233,8 +255,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void aDayTheProgramDoesNotRunIsRefusedFromEitherSide() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       RecurringActivity__c swim = SetTimeTestData.recurring(
         ids,
         'Swim',
@@ -264,8 +286,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void moreGroupsThanALocationFitsIsRefusedFromEitherSide() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       FixedActivity__c flagpole = SetTimeTestData.fixed(
         ids,
         'Flagpole',
@@ -304,8 +326,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void groupsFromAnotherProgramAtTheSameTimeCountAtALocation() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Program__c teens = ShoreshTestData.program(ids.get('Season'), 'Teens');
       TimeBlock__c early = new TimeBlock__c(
         Program__c = teens.Id,
@@ -354,8 +376,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void timeBlockChangesThatWouldClashAreRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       FixedActivity__c rest = SetTimeTestData.fixed(ids, 'Rest', 'Period 2');
       rest.Length__c = 2;
@@ -396,8 +418,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void groupsNotAtCampAreLeftOutAndNotRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Database.update(
         new Group__c(Id = ids.get('Group C'), Availability__c = 'MorningOnly'),
         AccessLevel.SYSTEM_MODE
@@ -449,8 +471,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void aNewWeekOrADirectSaveThatWouldClashIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       List<RunsIn.WeekOff> off = new List<RunsIn.WeekOff>();
       for (Integer week = 2; week <= 6; week++) {
         off.add(SetTimeTestData.weekOff(0, null, ids.get('Week ' + week)));
@@ -494,8 +516,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void movingAWeekTickIntoAClashIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       List<Id> flag = SetTimeTestData.save(
         new List<SObject>{ SetTimeTestData.fixed(ids, 'Flag', 'Period 2') },
@@ -540,8 +562,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void restoringAnItemIntoAClashIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       // A fixed activity deleted, then brought back from the Recycle Bin into a taken block.
       List<Id> rest = SetTimeTestData.save(
@@ -566,8 +588,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void aBunkAwayThatWeekIsNoClash() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       // Group C is away in Week 1.
       SetTimeTestData.save(
@@ -630,8 +652,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void aBunkAwayThatWeekIsNotCountedAtALocation() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       // Group C is away in Week 1; the Gym fits 2.
       WeekException__c away = new WeekException__c(
@@ -672,8 +694,8 @@ private class SetTimeClashesTest {
 
   @IsTest
   static void aLocationClosedThatWeekIsNoClash() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Database.insert(
         new WeekException__c(

@@ -18,8 +18,6 @@ public with sharing class GeneratedSaves {
   public static final String TRY_ANOTHER = 'TryAnother';
   public static final String FILL_OPEN = 'FillOpen';
   public static final String START_OVER = 'StartOver';
-  public static final String AUTO_SAVED = 'AutoSaved';
-  public static final String VERSION = 'Version';
   // What replaces the whole week keeps it first, as a version with this name.
   private static final Map<String, String> VERSION_FIRST = new Map<String, String>{
     REBUILD => 'Before Rebuild',
@@ -140,9 +138,9 @@ public with sharing class GeneratedSaves {
       Program__c = draft.Program__c,
       Week__c = draft.Week__c,
       Name = VERSION_FIRST.get(request.action),
-      Status__c = VERSION,
+      Status__c = ManualVersions.VERSION,
       Origin__c = GeneratedDrafts.GENERATED,
-      VersionReason__c = AUTO_SAVED,
+      VersionReason__c = ManualVersions.AUTO_SAVED,
       SourceSchedule__c = draft.Id,
       EngineOption__c = draft.EngineOption__c
     );

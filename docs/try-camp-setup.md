@@ -764,7 +764,9 @@ doesn't change this one.
    schedule** now holds two buttons side by side, **Generated Schedule →** and **Manual
    Build →**. Click **Generated Schedule →**.
 2. **A week not generated yet.** The **Week** picker shows _Week 1_. In the middle of the page:
-   _Let the app propose one_ and one button, **Generate a schedule**. Nothing else yet.
+   _Let the app propose one_ and one button, **Generate a schedule**. Nothing else yet. (In a
+   camp still missing its basics, such as activities or bunks, the page says instead what is
+   still needed, as Manual Build does, with links and a **Set up …** button.)
 3. **Generate.** Click it. A thin bar under the toolbar shows a short stripe moving along it,
    with _Generating…_ beside it, and the buttons are greyed out until it is saved. For the
    made-up camp that takes about a second. A camp with 40 bunks can take several seconds: then
@@ -816,10 +818,23 @@ doesn't change this one.
        week first, so the buttons work on what the other window saved.)
     4. Click **Reload**: the week shows as the second window saved it, with **Option** on its
        option.
-13. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). Cells can be
-    reached with the arrow keys so a dot's words show, but they can't be changed: a hand edit
-    will lock the cell, and locks come in the next part. Use Manual Build for a week built by hand.
-14. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
+13. **Lock.** In Daily View, Monday, press Tab until a cell of the grid has the focus, then use
+    the arrow keys to reach Bunk 1's Period 2. Open the **Lock** menu (lock icon) in the toolbar:
+    it offers _Lock Bunk 1 · Monday · Period 2_, _Lock Monday_ and _Lock Bunk 1 · Monday_. Choose
+    the first: a small lock appears in that cell's top left corner, and nothing else changes.
+    Click **Try another**: every other cell may change, the locked one stays. Open the menu
+    again: it now offers _Unlock Bunk 1 · Monday · Period 2_.
+14. **Lock a day or a bunk.** Choose _Lock Monday_: every Monday cell holding an activity gets the
+    lock (Open cells and Lunch don't). In Group View the menu offers the bunk shown (_Lock Bunk
+    2_). **Rebuild** now says _Locked cells stay as they are._; **Start over** says _Clears the N
+    activity cells and every lock in Week 1._ The legend under the grid shows the lock.
+15. **Keep a cell empty.** Reach an Open cell (after Start over, any) and choose _Lock …_ on it:
+    it no longer says _Open_ (it shows only its lock: kept empty on purpose), it stays empty
+    through every build, **Open** no longer counts it, and **Filled**'s total drops by one.
+16. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). That comes
+    with the editor Manual Build shares, and a hand edit will lock the cell it changes. Use
+    Manual Build for a week built by hand.
+17. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
     version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
     **Versions**). Fill the open cells keeps none: it only adds.
 
@@ -849,13 +864,36 @@ the Pool fits 3 bunks.
    Only its fixed and recurring activities count meanwhile.
 9. Afterwards, delete the Teens program so the camp is as it was.
 
+## 25. Manual Build: versions, and Start from another week
+
+This uses the made-up camp's Week 1 from sections 19 to 22.
+
+1. Open **Manual Build**, Week 1. After Clear week, past a thin line, is **Versions**. Click it:
+   the week's versions, newest first, each with **rename**, **delete** and **Restore**, and at
+   the bottom a box _Name current version…_ with **Save version**.
+2. Type _First try_ and click **Save version** (or press Enter). _Saved First try._ It is at the
+   top of the list.
+3. Change something (place Swim somewhere). Open **Versions** and click **Restore** on _First
+   try_: the week is back as it was saved. _Restored First try._ Undo is empty now. The list has
+   a new version on top, _Before Restore_, marked _Auto-saved_: the week as it was just before,
+   so Restore on that one takes you back. _First try_ is marked _on screen now_ until your next
+   change.
+4. Click **delete** on _First try_: it says _Delete?_. Click it again: it goes. Click **delete**
+   once and then elsewhere: nothing is deleted.
+5. **Start from another week.** Pick a week that has no Manual Build yet (Week 2, say). Next to
+   **Start a blank week** is **Start from another week**: a menu of the other weeks' Manual
+   Build and the versions (_Week 1 · Manual Build_, _Week 1 · First try (version)_). Pick
+   _Week 1 · Manual Build_. Week 2 begins with Week 1's activities, Monday from Monday and so on;
+   its fixed and recurring activities are Week 2's own. Anything that couldn't go is listed under
+   the toolbar, such as _Swim · Bunk 6 · Monday: not at camp then_ (or _not running this week_ if
+   Swim is closed in Week 2 on the Activities screen), and those cells are Open.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: locks and changing cells by hand (next part), Versions on that screen,
-  and publishing. In Manual Build: Versions on that screen,
-  restoring a version into it, Start from another week, and publishing.
+- Generated Schedule: changing cells by hand (next part), Versions on that screen, and
+  publishing. In Manual Build: publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

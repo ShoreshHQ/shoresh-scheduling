@@ -5,7 +5,12 @@ import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { day, draft, schedule } from "./data/draftFixture";
+import { find } from "shoresh-jest/week-editor";
+import {
+  day,
+  draft,
+  schedule
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 
 // The counters and the bronze dots on the Manual Build screen (c/shoreshEngine's checkWeek does
 // the working out; its checks.test.js covers every rule). Synthetic camp: draftFixture, with the setup below.
@@ -118,7 +123,7 @@ async function render(start, setup = SETUP) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const q = (element, selector) => find(element, selector);
 // Inside the counters and their list (c-shoresh-week-checks).
 const qc = (element, selector) => {
   const checks = q(element, "c-shoresh-week-checks");

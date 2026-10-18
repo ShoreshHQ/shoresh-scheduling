@@ -121,7 +121,7 @@ public with sharing class BlankWeek {
    * Building waits for the basics, as on the desktop (readiness.js: activities are required),
    * so a week is never started with nothing to place.
    */
-  private static void checkActivities(Program__c program) {
+  public static void checkActivities(Program__c program) {
     Integer count = [
       SELECT COUNT()
       FROM Activity__c

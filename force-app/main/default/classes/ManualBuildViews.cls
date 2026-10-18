@@ -34,6 +34,18 @@ public with sharing class ManualBuildViews {
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
     public List<String> notPlaced = new List<String>();
+    // Only just after Start from another week: what the other week had that couldn't go
+    // ("Swim · Bunk 3 · Monday: not at camp then").
+    @AuraEnabled
+    public List<String> leftOut = new List<String>();
+    // Only just after Start from another week: someone else had started the week first, so
+    // theirs is shown and nothing was copied.
+    @AuraEnabled
+    public Boolean startedBySomeoneElse = false;
+    // Only from a refused Restore: someone saved a day since the screen read the week, so
+    // nothing changed (the rest of this view is empty).
+    @AuraEnabled
+    public Boolean changedSince = false;
   }
 
   public class ActivityOption {
@@ -59,6 +71,49 @@ public with sharing class ManualBuildViews {
     public Activity__c record;
   }
 
+  /** A schedule a week can start from: another week's Manual Build, or a version. */
+  public class WeekSource {
+    @AuraEnabled
+    public Id id;
+    // The week's name ("Week 2").
+    @AuraEnabled
+    public String weekName;
+    // The schedule's name: "Manual Build", or the version's.
+    @AuraEnabled
+    public String name;
+    @AuraEnabled
+    public Boolean isVersion;
+    @AuraEnabled
+    public Datetime savedAt;
+  }
+
+  /** The program's other weeks' Manual Build drafts and all its versions, by week, newest first. */
+  public static List<WeekSource> weekSources(Id programId, Id weekId) {
+    List<WeekSource> result = new List<WeekSource>();
+    for (Schedule__c schedule : [
+      SELECT Id, Name, Status__c, Origin__c, Week__c, Week__r.Name, CreatedDate
+      FROM Schedule__c
+      WHERE
+        Program__c = :programId
+        AND (Status__c = 'Version'
+        OR (Status__c = 'Draft'
+        AND Origin__c = 'Manual'
+        AND Week__c != :weekId))
+      WITH USER_MODE
+      ORDER BY Week__r.StartDate__c, Status__c, CreatedDate DESC, Id
+      LIMIT 1000
+    ]) {
+      WeekSource source = new WeekSource();
+      source.id = schedule.Id;
+      source.weekName = schedule.Week__r.Name;
+      source.name = schedule.Name;
+      source.isVersion = schedule.Status__c == 'Version';
+      source.savedAt = schedule.CreatedDate;
+      result.add(source);
+    }
+    return result;
+  }
+
   /** A group and the time blocks it is not at camp for. */
   public class AwaySlots {
     @AuraEnabled
@@ -67,8 +122,56 @@ public with sharing class ManualBuildViews {
     public List<Id> blockIds = new List<Id>();
   }
 
+  /** What a draft's view is built from: read once per request. */
+  private class Read {
+    private Id scheduleId;
+    // Id, Season__c and Season__r.Camp__c.
+    private Program__c program;
+    // Id, StartDate__c and EndDate__c.
+    private Week__c week;
+    private List<Group__c> groups;
+    private List<TimeBlock__c> blocks;
+    private List<WeekException__c> exceptions;
+    private List<Activity__c> activities;
+  }
+
   /** The draft opened for Manual Build. */
   public static DraftView open(Id scheduleId) {
+    Schedule__c schedule = draftOf(scheduleId);
+    Read read = new Read();
+    read.scheduleId = scheduleId;
+    read.program = schedule.Program__r;
+    read.week = new Week__c(
+      Id = schedule.Week__c,
+      StartDate__c = schedule.Week__r.StartDate__c,
+      EndDate__c = schedule.Week__r.EndDate__c
+    );
+    read.groups = ProgramReads.groupsOf(schedule.Program__c);
+    read.blocks = ProgramReads.blocksOf(schedule.Program__c);
+    read.exceptions = OtherProgramUse.exceptionsOf(schedule.Week__c);
+    read.activities = SeasonSetupReader.activitiesOf(
+      schedule.Program__r.Season__c
+    );
+    return viewOf(read);
+  }
+
+  /**
+   * The same, for the draft of the program and week the setup was read for (a start just made
+   * or found it): nothing the setup has read is read again.
+   */
+  public static DraftView openWith(Id scheduleId, GeneratedSetup setup) {
+    Read read = new Read();
+    read.scheduleId = scheduleId;
+    read.program = setup.program;
+    read.week = setup.week;
+    read.groups = setup.groups;
+    read.blocks = setup.blocks;
+    read.exceptions = setup.exceptions;
+    read.activities = setup.activityRecords();
+    return viewOf(read);
+  }
+
+  private static Schedule__c draftOf(Id scheduleId) {
     List<Schedule__c> found = [
       SELECT
         Program__c,
@@ -86,42 +189,35 @@ public with sharing class ManualBuildViews {
         'That schedule was not found, or you do not have access to it.'
       );
     }
-    Schedule__c schedule = found[0];
+    return found[0];
+  }
+
+  private static DraftView viewOf(Read read) {
     DraftView view = new DraftView();
-    view.schedule = ScheduleViews.open(scheduleId);
-    List<Group__c> groups = ProgramReads.groupsOf(schedule.Program__c);
-    view.activities = options(schedule.Program__r.Season__c, groups);
-    view.activityRecords = SeasonSetupReader.activitiesOf(
-      schedule.Program__r.Season__c
-    );
+    view.schedule = ScheduleViews.open(read.scheduleId);
+    view.activities = options(read.program.Season__c, read.groups);
+    view.activityRecords = read.activities;
     view.locationRecords = SeasonSetupReader.locationsOf(
-      schedule.Program__r.Season__c
+      read.program.Season__c
     );
-    view.groupRecords = groups;
+    view.groupRecords = read.groups;
     view.fixedActivityRecords = [
       SELECT Id, Location__c
       FROM FixedActivity__c
-      WHERE Program__c = :schedule.Program__c
+      WHERE Program__c = :read.program.Id
       WITH USER_MODE
       ORDER BY Id
     ];
     view.recurringActivityRecords = [
       SELECT Id, Location__c
       FROM RecurringActivity__c
-      WHERE Program__c = :schedule.Program__c
+      WHERE Program__c = :read.program.Id
       WITH USER_MODE
       ORDER BY Id
     ];
-    view.away = away(groups, ProgramReads.blocksOf(schedule.Program__c));
-    view.otherPrograms = new OtherProgramUse(
-        new Week__c(
-          Id = schedule.Week__c,
-          StartDate__c = schedule.Week__r.StartDate__c,
-          EndDate__c = schedule.Week__r.EndDate__c
-        ),
-        OtherProgramUse.exceptionsOf(schedule.Week__c)
-      )
-      .read(schedule.Program__r, view.activityRecords);
+    view.away = away(read.groups, read.blocks);
+    view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
+      .read(read.program, read.activities);
     return view;
   }
 

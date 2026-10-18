@@ -102,10 +102,17 @@ export function coveredBlocks(day, groupIndex, firstBlock) {
  * the grid shows it (the same words, reasonFor): "Already busy then" when the group holds
  * something at an overlapping time; "No activity fits this gap" when the run of Open cells it is
  * in is shorter than the shortest activity (shortest, in blocks). A cell Start over just cleared
- * has neither: something fits, it just isn't built yet. Worked out from the week as it stands,
- * so a saved week reads the same as one just built.
+ * has neither: something fits, it just isn't built yet. lockedOpen(dateValue, groupId, blockId)
+ * says a cell is locked empty: it isn't listed and isn't room for an activity. Worked out from the
+ * week as it stands, so a saved week reads the same as one just built.
  */
-export function openCells(days, isAway, terms, shortest = null) {
+export function openCells(
+  days,
+  isAway,
+  terms,
+  shortest = null,
+  lockedOpen = () => false
+) {
   const busy = reasonFor(BUSY, { terms });
   const noFit = reasonFor(NO_FIT, { terms });
   const out = [];
@@ -123,11 +130,13 @@ export function openCells(days, isAway, terms, shortest = null) {
           }
         }
       });
+      // A cell locked empty is kept empty: it is neither Open nor room for an activity.
       const open = (b) =>
         b >= 0 &&
         b < day.blocks.length &&
         !filled.has(b) &&
-        !isAway(grp.id, day.blocks[b].id);
+        !isAway(grp.id, day.blocks[b].id) &&
+        !lockedOpen(day.dateValue, grp.id, day.blocks[b].id);
       cells.forEach((c) => {
         const block = day.blocks[c.blockIndex];
         if (c.item || !block || !open(c.blockIndex)) {

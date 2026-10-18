@@ -2,23 +2,28 @@ import { LightningElement, api } from "lwc";
 import { errorMessage } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
+import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
   CONFLICT,
   SAVED,
+  inputFor,
   loadWeek,
-  saveWeek
+  saveWeek,
+  setLocks
 } from "c/shoreshGeneratedWeek";
 import {
   activityCards,
   activityGrid,
   dailyGrid,
+  dayLabel,
   days as dayPillsOf,
   groupGrid,
   groups,
   kindLabel
 } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
+import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
 import {
   activityCells,
   clearedDays,
@@ -88,6 +93,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // The build under way: { action, progress (0-100, or null until a long build first reports) }.
   busy;
   // The confirm open: { action }.
+  // A Lock or Unlock being saved, and the grid cell keyboard focus last reached.
+  locking = false;
+  focusedCellKey = null;
   confirming;
   // The highest option tried this visit, so each stays in Option to bring back.
   triedUpTo = 1;
@@ -122,7 +130,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // then the week is read again; a conflict stays until the director answers it (Reload reads
     // the week). A build for a week that is gone stops.
     const same = `${this.programId}|${this.weekId}` === this.loadedFor;
-    if (same && (this.busy || this.confirming)) {
+    if (same && (this.busy || this.confirming || this.locking)) {
       this.readAfterRun = true;
       return;
     }
@@ -148,10 +156,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.focusAfterRender) {
       return;
     }
-    const { cellKey, selector } = this.focusAfterRender;
+    const { cellKey, selector, grid: toGrid } = this.focusAfterRender;
     this.focusAfterRender = null;
     const grid = this.template.querySelector('[data-id="grid"]');
-    if (grid && cellKey) {
+    if (grid && (cellKey || toGrid)) {
       grid.focusCell(cellKey);
       return;
     }
@@ -231,8 +239,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
     this.loadTicket += 1;
     const ticket = this.loadTicket;
-    // A build under way for another week (or season) stops: its ticket is gone.
+    // A build or a Lock under way for another week (or season) stops: its ticket is gone.
     this.busy = null;
+    this.locking = false;
     this.readAfterRun = false;
     this.confirming = null;
     if (!key) {
@@ -285,6 +294,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       const all = groups(this.schedule);
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
+      this.focusedCellKey = null;
       this.resetChecks();
     }
   }
@@ -295,6 +305,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loaded &&
       !this.reading &&
       !this.busy &&
+      !this.locking &&
       !this.confirming &&
       !this.conflict
     ) {
@@ -313,7 +324,56 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       !!this.loaded &&
       !this.isGenerated &&
       !this.hasNoDays &&
-      !this.conflict
+      !this.conflict &&
+      this.stillNeeded.length === 0
+    );
+  }
+
+  // ---------- what building still needs (as Manual Build: desktop readiness.js) ----------
+
+  /** What building still needs: Generate waits for all of it, as Manual Build's Start does. */
+  get stillNeeded() {
+    return stillNeeded(this._setup, this.t, this.programId);
+  }
+  /** The desktop's one sentence, each missing thing a link to its screen. */
+  get stillNeededParts() {
+    return stillNeededSentence(this.stillNeeded);
+  }
+  /** The desktop's main action: "Set up <the first thing missing>". */
+  get setUpFirstLabel() {
+    const [first] = this.stillNeeded;
+    return first ? `Set up ${first.label}` : "";
+  }
+  get setUpFirstScreen() {
+    const [first] = this.stillNeeded;
+    return first ? first.screen : null;
+  }
+  /**
+   * Before the first Generate only (a week already generated is shown whatever setup lacks),
+   * and as the one message: not beside "No weeks yet", a load error or a conflict (as Manual
+   * Build's chain).
+   */
+  get showStillNeeded() {
+    return (
+      this.canChoose &&
+      !!this.loaded &&
+      !this.loading &&
+      !this.error &&
+      !this.conflict &&
+      !this.isGenerated &&
+      this.stillNeeded.length > 0
+    );
+  }
+  /** "Week 1 has no days Main runs.", unless what is still needed already says it. */
+  get showNoDays() {
+    return this.hasNoDays && !this.showStillNeeded;
+  }
+  handleStillNeeded(event) {
+    event.preventDefault();
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: event.currentTarget.dataset.screen }
+      })
     );
   }
   get showWeek() {
@@ -331,9 +391,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return lines.length ? lines : null;
   }
 
-  /** The engine's input for this week, with the camp's words. */
-  engineInput(days, extra = {}) {
-    return { ...this.loaded.input, days, terms: this.t, ...extra };
+  /**
+   * The engine's input for this week, with the camp's words: the data module's for the action
+   * (Start over builds without locks; every other build keeps them), or the week as loaded.
+   */
+  engineInput(days, extra = {}, action = null) {
+    const base = action ? inputFor(this.loaded, action) : this.loaded.input;
+    return { ...base, days, terms: this.t, ...extra };
   }
 
   /**
@@ -352,9 +416,19 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     let result = null;
     if (loaded) {
       const week = checkGeneratedWeek(this.engineInput(loaded.input.days));
-      const open = openCells(week.days, week.isAway, this.t, week.shortest);
+      const locked = lockedKeys(loaded.input.locks);
+      // A cell the director locked empty is kept empty: not Open, not to fill (G4 §31).
+      const open = openCells(
+        week.days,
+        week.isAway,
+        this.t,
+        week.shortest,
+        (dateValue, groupId, blockId) =>
+          locked.has(`${dateValue}|${groupId}|${blockId}`)
+      );
       result = {
         ...week,
+        locked,
         // Why each Open cell is Open, when the grid can say (its dot's words).
         openReasons: new Map(
           open
@@ -392,10 +466,20 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get isBusy() {
     return !!this.busy;
   }
+  /** The program and week pickers wait for a build or a Lock under way. */
+  get pickerDisabled() {
+    return this.isBusy || this.locking;
+  }
   get actionsDisabled() {
     // Also while the week is being read (Reload, coming back to the window): a build started
     // then would build on the week the read is about to replace.
-    return this.isBusy || !!this.conflict || this.loading || this.reading;
+    return (
+      this.isBusy ||
+      !!this.conflict ||
+      this.loading ||
+      this.reading ||
+      this.locking
+    );
   }
   get cannotFill() {
     return (
@@ -472,10 +556,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         days = clearedDays(loaded.input.days);
       } else {
         const result = await buildInPieces(
-          this.engineInput(loaded.input.days, {
-            option,
-            mode: action === ACTION.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL
-          }),
+          this.engineInput(
+            loaded.input.days,
+            {
+              option,
+              mode: action === ACTION.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL
+            },
+            action
+          ),
           (fraction) => {
             if (this.busy) {
               this.busy = { action, progress: Math.round(fraction * 100) };
@@ -500,14 +588,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         return;
       }
       if (saved.status === SAVED) {
-        this.loaded = {
-          ...loaded,
-          scheduleId: saved.scheduleId,
-          revision: saved.revision,
-          option,
-          notPlaced: [],
-          input: { ...loaded.input, days }
-        };
+        // The data module's week to go on with (days, revision and the locks the server kept,
+        // replaced together; never patched here), on the option just built.
+        this.loaded = { ...saved.loaded, option, notPlaced: [] };
         this.triedUpTo = Math.max(this.triedUpTo, option);
         this.resetChecks();
         const { filled, total } = this.checked.cells;
@@ -612,18 +695,25 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.confirming || !this.checked) {
       return "";
     }
-    // Locks come in G4, which adds "Locked cells stay as they are." to Rebuild and "locked ones
-    // too" to Start over (decision 2); until then there is nothing locked to speak of.
+    // Locked cells stay through a Rebuild and are cleared by Start over (decision 2); said only
+    // when the week has some.
+    const anyLocked = this.week.locked.size > 0;
     if (this.confirming.action !== ACTION.START_OVER) {
-      return `Builds ${this.weekName} again from your setup.`;
+      return `Builds ${this.weekName} again from your setup.${anyLocked ? " Locked cells stay as they are." : ""}`;
     }
     // What Start over clears: each cell holding an activity where the bunk is at camp. Things
     // not set up yet (an elective, a trip) stay, so they aren't counted (Filled counts them).
     const n = activityCells(this.week.days, this.week.isAway);
     const word = this.t.sIn("Activity");
-    const clears = n
-      ? `Clears the ${n} ${word} ${n === 1 ? "cell" : "cells"} in ${this.weekName}.`
-      : `There are no ${word} cells to clear in ${this.weekName}.`;
+    const cells = `the ${n} ${word} ${n === 1 ? "cell" : "cells"}`;
+    let clears = `Clears ${cells} in ${this.weekName}.`;
+    if (n && anyLocked) {
+      clears = `Clears ${cells} and every lock in ${this.weekName}.`;
+    } else if (anyLocked) {
+      clears = `Clears every lock in ${this.weekName}; there are no ${word} cells to clear.`;
+    } else if (!n) {
+      clears = `There are no ${word} cells to clear in ${this.weekName}.`;
+    }
     return `${clears} ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`;
   }
   get confirmNote() {
@@ -704,6 +794,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
     this.view = "group";
     this.groupKey = line.groupId;
+    this.focusedCellKey = null;
     // The cell the line names; else the bunk's own pill, so focus is never left nowhere.
     this.focusAfterRender = {
       cellKey: this.cellKeyOf(line),
@@ -733,6 +824,117 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return found ? found.key : null;
   }
 
+  // ---------- Lock (decision 3) ----------
+
+  /** The cell keyboard focus last reached in the grid, so the Lock menu can offer it. */
+  handleCellFocus(event) {
+    this.focusedCellKey = event.detail.key;
+  }
+
+  /** That cell, if the grid on screen still has it: what the Lock menu needs of it. */
+  get focusedCell() {
+    const grid = this.grid;
+    const found =
+      grid && grid.cells.find((c) => c.key === this.focusedCellKey && c.slot);
+    if (!found) {
+      return null;
+    }
+    const day = this.schedule.days[found.slot.day];
+    const grp = day.groups[found.slot.group];
+    const block = day.blocks[found.slot.block];
+    return {
+      dateValue: day.dateValue,
+      groupId: grp.id,
+      blockId: block.id,
+      groupName: grp.name,
+      where: [grp.name, dayLabel(day.dateValue).label, block.name].join(" · ")
+    };
+  }
+
+  /** What the Lock menu offers now: the focused cell, the day or group shown, the cell's group's day. */
+  get lockMenu() {
+    // A day that can't be read makes the server refuse any change (it reads the whole week):
+    // nothing to offer then; the day says why.
+    if (
+      !this.week ||
+      this.isActivity ||
+      this.week.days.some((day) => day.problem)
+    ) {
+      return [];
+    }
+    const cells = weekCells(this.week.days, this.week.locked, this.week.isAway);
+    const pill = this.isDaily
+      ? this.dayPills.find((d) => d.index === this.dayIndex)
+      : null;
+    const grp = this.isGroup
+      ? this.groupPills.find((g) => g.key === this.groupKey)
+      : null;
+    return lockChoices(cells, {
+      cell: this.focusedCell,
+      day:
+        pill && !pill.problem
+          ? {
+              dateValue: this.schedule.days[pill.index].dateValue,
+              name: pill.label
+            }
+          : null,
+      group: grp ? { groupId: grp.key, name: grp.name } : null
+    });
+  }
+  /** The menu stays in the toolbar; with nothing to offer it is there, held. */
+  get lockDisabled() {
+    return this.actionsDisabled || this.lockMenu.length === 0;
+  }
+
+  /** Lock or Unlock what the menu named, on the server, then show the week as saved. */
+  async handleLockSelect(event) {
+    const choice = this.lockMenu.find((c) => c.value === event.detail.value);
+    if (!choice || this.lockDisabled) {
+      return;
+    }
+    const ticket = this.loadTicket;
+    const loaded = this.loaded;
+    this.locking = true;
+    this.error = null;
+    this.errorFromRead = false;
+    try {
+      const result = await setLocks(loaded, [choice.change]);
+      if (ticket !== this.loadTicket) {
+        return;
+      }
+      if (result.status === SAVED) {
+        // The week to go on with, its locks as saved (never patched here).
+        this.loaded = {
+          ...result.loaded,
+          option: loaded.option,
+          notPlaced: []
+        };
+        this.announce(lockedText(choice));
+        // The menu was held while it saved, which drops focus: back to it, or to the grid when
+        // the menu has nothing left to offer (it is held then).
+        this.focusAfterRender = this.lockMenu.length
+          ? { selector: '[data-id="lock-menu"]' }
+          : { cellKey: this.focusedCellKey, grid: true };
+      } else if (result.status === CONFLICT) {
+        this.conflict = { message: statementOf(result.message) };
+        this.focusAfterRender = { selector: '[data-id="reload"]' };
+      } else {
+        this.error = result.message;
+        this.focusAfterRender = { selector: '[data-id="lock-menu"]' };
+      }
+    } finally {
+      if (ticket === this.loadTicket) {
+        this.locking = false;
+        // A read asked for while it saved; not after a conflict, which stays until Reload.
+        const readNow = this.readAfterRun && !this.conflict;
+        this.readAfterRun = false;
+        if (readNow) {
+          this.load(true);
+        }
+      }
+    }
+  }
+
   // ---------- views ----------
 
   get viewButtons() {
@@ -759,6 +961,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   handleView(event) {
     this.view = event.currentTarget.dataset.view;
+    // Grid keys repeat from day to day and bunk to bunk: the cell reached is another grid's.
+    this.focusedCellKey = null;
     if (this.view !== "activity") {
       this.activityId = null;
     }
@@ -786,6 +990,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   handleDay(event) {
     this.dayIndex = Number(event.currentTarget.dataset.index);
+    this.focusedCellKey = null;
   }
 
   get groupPills() {
@@ -801,6 +1006,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   handleGroup(event) {
     this.groupKey = event.currentTarget.dataset.key;
+    this.focusedCellKey = null;
   }
 
   /** The grid on screen (Daily or Group View): dots, not-at-camp hatching, lit cells. */
@@ -824,10 +1030,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const day = this.schedule.days[cell.slot.day];
     const grp = day.groups[cell.slot.group];
     const block = day.blocks[cell.slot.block];
-    // Changing cells by hand comes with locks (G4): every cell is read-only for now.
+    // Changing cells by hand comes with the shared editor (ADR 0010 §37): read-only for now.
     let result = {
       ...cell,
       readOnly: true,
+      locked: coveredBlocks(day, cell.slot.group, cell.slot.block).some((b) =>
+        this.week.locked.has(`${day.dateValue}|${grp.id}|${b.id}`)
+      ),
       dot:
         this.checked.flags.get(`${day.dateValue}|${grp.id}|${block.id}`) ||
         (cell.open &&
@@ -836,6 +1045,16 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           )) ||
         null
     };
+    if (cell.open && result.locked && !this.week.isAway(grp.id, block.id)) {
+      // Kept empty on purpose (a Lock on an Open cell): not "Open", which is a cell to fill.
+      result = {
+        ...result,
+        text: "",
+        className: "cell cell_locked-empty",
+        title: "Locked empty",
+        lockLabel: "Locked empty"
+      };
+    }
     if (cell.open && this.week.isAway(grp.id, block.id)) {
       result = {
         ...result,
@@ -909,7 +1128,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         label: "Open: nothing placed",
         className: "swatch swatch_open"
       },
-      { key: "away", label: "Not at camp", className: "swatch swatch_away" }
+      { key: "away", label: "Not at camp", className: "swatch swatch_away" },
+      { key: "locked", label: "Locked", icon: "utility:lock" }
     ];
   }
 

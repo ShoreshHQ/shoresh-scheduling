@@ -93,7 +93,7 @@ private class GeneratedLimitsTest {
       AccessLevel.SYSTEM_MODE
     );
     if (withOtherPrograms) {
-      addOtherPrograms(ids, season.Id, week);
+      addOtherPrograms(ids, week);
     }
     SetTimeGuard.checkPending();
     GeneratedTestData.ids = ids;
@@ -101,22 +101,18 @@ private class GeneratedLimitsTest {
   }
 
   // Two other programs, so a query run once per program would show.
-  private static void addOtherPrograms(
-    Map<String, Id> ids,
-    Id seasonId,
-    Week__c week
-  ) {
-    addOtherPrograms(ids, seasonId, week, new List<String>{ 'Teens', 'Kids' });
+  private static void addOtherPrograms(Map<String, Id> ids, Week__c week) {
+    addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
   }
 
+  /** The Hall, and the named other programs of the season (ids' Season). */
   private static void addOtherPrograms(
     Map<String, Id> ids,
-    Id seasonId,
     Week__c week,
     List<String> names
   ) {
     Location__c hall = new Location__c(
-      Season__c = seasonId,
+      Season__c = ids.get('Season'),
       Name = 'Hall',
       GroupsThatFit__c = 20
     );
@@ -470,7 +466,7 @@ private class GeneratedLimitsTest {
     ids.put('Season', season.Id);
     ids.put('Main', main.Id);
     ids.put('Week 1', week.Id);
-    addOtherPrograms(ids, season.Id, week, others);
+    addOtherPrograms(ids, week, others);
     return ids;
   }
 

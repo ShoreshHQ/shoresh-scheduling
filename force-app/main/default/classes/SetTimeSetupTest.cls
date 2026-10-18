@@ -5,6 +5,28 @@
  */
 @IsTest
 private class SetTimeSetupTest {
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = SetTimeTestData.camp();
+    }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
+  }
+
+  /** The camp setup built. */
+  private static Map<String, Id> camp() {
+    return KeptCamp.keptIds();
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> ids) {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
   private static Integer count(String objectName) {
     return Database.countQuery(
       'SELECT COUNT() FROM ' + objectName,
@@ -57,8 +79,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void theScreensSaveAndReadFixedAndRecurringActivities() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       // The camp is set up; each screen action below is its own transaction on screen.
       Test.startTest();
       List<Id> saved = saveBoth(ids);
@@ -125,8 +147,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void aRowNeedsATimeBlockALengthAndADay() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       FixedActivity__c noBlock = SetTimeTestData.fixed(ids, 'Rest', 'Period 1');
       noBlock.TimeBlock__c = null;
       Assert.areEqual(
@@ -158,8 +180,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void everythingStaysInsideItsOwnProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Program__c teens = ShoreshTestData.program(ids.get('Season'), 'Teens');
       TimeBlock__c early = ShoreshTestData.timeBlock(teens.Id, 'Early', 8);
       Division__c division = ShoreshTestData.division(teens.Id, 'Teens');
@@ -211,8 +233,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void copyingASeasonBringsFixedAndRecurringActivitiesWithWhoAndWeeks() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       List<Id> saved = saveBoth(ids);
       // The copy runs in a transaction of its own on screen; give it its own limits here too.
       Test.startTest();
@@ -288,8 +310,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void deletingAnItemTakesItsOwnWeeksAndWhoWithIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       // The camp is set up; each screen action below is its own transaction on screen.
       Test.startTest();
       List<Id> saved = saveBoth(ids);
@@ -305,8 +327,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void deletingWhatAnItemUsesIsRefusedNamingIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       // The camp is set up; each screen action below is its own transaction on screen.
       Test.startTest();
       saveBoth(ids);
@@ -356,8 +378,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void deletingASeasonDeletesItsFixedAndRecurringActivities() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       // The camp is set up; each screen action below is its own transaction on screen.
       Test.startTest();
       saveBoth(ids);
@@ -409,8 +431,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void aBlockAddedInsideAnItemIsKeptOrStretchedNotForgotten() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Id restId = saveRest(ids);
       // Snack added between Period 1 and Period 2: Rest now covers Period 1 and Snack.
@@ -461,8 +483,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void aRenameOrLocationChangeLeavesTheNote() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Id restId = saveRest(ids);
       Database.insert(
@@ -491,8 +513,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void aBlockAddedInsideAnItemCanBeStretchedOver() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Id restId = saveRest(ids);
       Database.insert(
@@ -515,8 +537,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void aBlockRemovedInsideAnItemIsShortenedOrExtended() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Id restId = saveRest(ids);
       // Period 2 deleted: Rest now runs on into Lunch; its saved end is gone.
@@ -534,8 +556,8 @@ private class SetTimeSetupTest {
 
   @IsTest
   static void aBlockRemovedInsideAnItemCanKeepTheShorterCoverage() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Id restId = saveRest(ids);
       SeasonSetupController.deleteRecord(ids.get('Period 2'));

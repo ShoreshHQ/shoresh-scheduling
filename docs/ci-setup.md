@@ -15,10 +15,48 @@ deploys to the existing test org instead of creating one.
 ## How the checks use it
 
 The "Scratch org deploy and Apex tests" check logs in to the test org with the encrypted secret
-`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests. One check at a time, so two
+`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests (unless the pull request
+doesn't need them, see the next section). One check at a time, so two
 pull requests never deploy over each other. Tests run one class at a time (see below). Because
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
+
+### How much of the test org a pull request needs
+
+A full check takes about 20 minutes, and every pull request waits for the one before it. So a
+first, quick check ("Which org checks this change needs", `scripts/ci-pr-category.js`) looks at
+the files the pull request changes and picks one of three:
+
+| Category | What changed                                                                                                     | What the org check does                                            |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `docs`   | Nothing the test org sees: `docs/`, `.md` files, `.claude/`, `prototypes/`, Jest and lint settings               | Passes at once. Doesn't wait in line for the test org or touch it. |
+| `screen` | Only screens (`force-app/main/default/lwc/`) and static resources, plus any `docs` files                         | Deploys to the test org (proves it deploys); no Apex tests.        |
+| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/` | Deploys and runs every Apex test, as before.                       |
+
+When in doubt it picks `full`: a path not in the first two rows, a failure to list the
+changed files, or the quick check itself failing runs everything. It uses the rules as they are
+on the base branch, so a pull request that edits `scripts/ci-pr-category.js` is still judged by
+the old rules (and, since it changes `scripts/`, gets `full`). The org check still reports under the same name, and passes,
+in every category; its log and summary say which category it chose and why.
+
+### The nightly full run on main (the safety net)
+
+Merges to main run only the quick check ("LWC Jest and Code Analyzer"). Every night at 07:15 UTC
+(03:15 New York time in summer, 02:15 in winter) the full check runs on main: deploy and every
+Apex test. Whatever a `docs` or `screen` pull request skipped is tested by the next morning. It
+waits its turn for the test org like any pull request.
+
+A failed nightly run shows as a red run in the repository's **Actions** tab (filter by event
+"schedule"); GitHub also emails whoever last changed the schedule. The coordinator session
+checks the latest nightly run each morning:
+`gh run list --repo ShoreshHQ/shoresh-scheduling --workflow CI --event schedule --limit 1`.
+
+To start a full run by hand (for example right after a risky merge): **Actions** tab → **CI** →
+**Run workflow** → branch `main` → **Run workflow**, or
+`gh workflow run CI --repo ShoreshHQ/shoresh-scheduling --ref main`.
+
+GitHub turns scheduled runs off after 60 days with no commits to the repository; the Actions tab
+then offers to turn it back on.
 
 ### Waiting in line for the test org
 
@@ -32,7 +70,7 @@ cancelled ("Canceling since a higher priority waiting request for shared-test-or
 and with five or six pull requests open, checks kept getting cancelled (2026-10-17).
 
 Pushing again to a pull request still cancels that pull request's older check; only the newest
-version of each pull request is checked.
+version of each pull request is checked. A `docs` pull request doesn't join the line at all.
 
 ## Namespace-safety checks (in "LWC Jest and Code Analyzer")
 
@@ -67,8 +105,11 @@ Direct single-class runs do not count against that allowance. **Never queue a fu
 `RunLocalTests` run in the test org.** To see what is left:
 `sf org list limits --target-org shoresh-test` (`DailyAsyncApexTests`).
 
-Coverage is read from the org's running totals for this repository's classes and triggers,
-so it is close to, but not exactly, what a single full run would report.
+Coverage is read once, after the last class, from the org's running totals for this
+repository's classes and triggers, so it is close to, but not exactly, what a single full run
+would report. The script starts the Salesforce CLI only twice (to read the login; twice more if the session expires mid-run) and sends each
+class's run itself, with the same call the CLI's `--synchronous` run makes; each class's line
+shows how many seconds it took.
 
 ## When the test org expires (every 30 days)
 

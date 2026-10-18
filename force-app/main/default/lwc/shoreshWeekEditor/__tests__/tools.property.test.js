@@ -15,9 +15,9 @@
  *     nobody else touched its cell.
  *
  * The server is modelled as SlotSaves takes an edit: every run's slots must still hold what it
- * says they held, a run may not start inside a placement, cells outside a run must still belong
- * to what they did, and no day may be left with a carry-on after an empty block
- * (ScheduleGridRules); otherwise nothing of the edit is made. Seeded (mulberry32).
+ * says they held, a run may not start inside a placement, and cells outside a run must still
+ * belong to what they did, read as SlotIds.ofRow reads the stored grid; otherwise nothing of the
+ * edit is made. Seeded (mulberry32).
  */
 import { cellKey, placementAt, replan, resultOf, toolRuns } from "../tools";
 import { slots } from "../slotEdits";
@@ -187,6 +187,21 @@ function othersMove(rnd, rows, seenRows) {
 
 // ---------- the server, as SlotSaves takes an edit ----------
 
+/**
+ * A row's identities as SlotIds.ofRow reads them from the stored grid: a carry-on belongs to
+ * whatever starts before it, so one left after an Open cell reads as "^" (no owner).
+ */
+function identities(row) {
+  let carrying = "";
+  return row.map((slot) => {
+    if (slot.startsWith("^")) {
+      return `^${carrying}`;
+    }
+    carrying = slot;
+    return slot;
+  });
+}
+
 /** Makes an edit's runs, all or nothing, as SlotSaves does. */
 function save(rows, runs) {
   const next = copyRows(rows);
@@ -203,16 +218,13 @@ function save(rows, runs) {
     run.after.forEach((slot, i) => {
       row[run.first + i] = slot;
     });
-    // neighboursKept: cells outside the run still belong to what they did.
+    // neighboursKept: cells outside the run still belong to what they did, read as the server
+    // reads them (a carry-on left after what the run changed belongs to that now).
     const inRun = (b) => b >= run.first && b < run.first + run.after.length;
-    if (!row.every((slot, b) => inRun(b) || owner(slot) === owner(was[b]))) {
+    const now = identities(row);
+    if (!now.every((slot, b) => inRun(b) || owner(slot) === owner(was[b]))) {
       return false;
     }
-  }
-  // ScheduleGridRules: a day whose grid has a carry-on after an empty block isn't saved (the
-  // whole edit fails).
-  if (!whole(next)) {
-    return false;
   }
   next.forEach((day, d) =>
     day.forEach((row, g) => {

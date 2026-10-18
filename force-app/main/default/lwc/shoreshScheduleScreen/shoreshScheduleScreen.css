@@ -214,3 +214,18 @@
   );
   border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
 }
+
+/* Building waits for the basics: the desktop's one sentence with its links, and "Set up …". */
+.still-needed-box {
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  color: var(--shoresh-text);
+}
+
+.still-needed {
+  margin-bottom: 0.75rem;
+}
