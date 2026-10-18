@@ -69,6 +69,10 @@ must be found even in records the user cannot see).
    traces, exception type names, record Ids or internal details reach the screen; no
    `System.debug` of record data. (platform-apex-generate)
 8. **Tests.** No `SeeAllData=true`; synthetic data via `ShoreshTestData`. (platform-apex-test-generate)
+   A test that acts as a scheduler (`System.runAs`) must create the records that scheduler works on
+   inside the same `runAs`, or the org's sharing hides them and the test fails only in the org. A
+   test of a whole request must stay well under 100 SOQL queries for a realistic camp, and should
+   assert it (`Limits.getQueries()`).
 9. **Package hygiene (2GP).** Each new `global` member or `@namespaceAccessible` is permanent once
    released: flag it. Packaged fields can't be deleted or retyped after release. Permission sets
    least-privilege, never ViewAllData/ModifyAllData/ViewAllRecords/ModifyAllRecords.
