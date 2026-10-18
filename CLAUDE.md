@@ -11,6 +11,14 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   stays on `main`, clean, and is fast-forwarded after every merge. Do all work in your own git
   worktree outside it (`git worktree add <your scratch dir>/<name> -b <branch> origin/main`). Never
   check out another branch, edit files, stash or commit there. A local hook refuses any commit there.
+- **The desktop app is the spec.** Shoresh began as a desktop app; its code, 166 decision records
+  (`docs/adr/`) and Director Guide (`docs/guide/`) answer most product questions. A read-only copy
+  is at `~/Dev/Shoresh/shoresh-desktop` (never edit or commit there); the map of where things are
+  is the wiki's `projects/shoresh-desktop-behaviour-index.md`. Before asking Greg anything about
+  how a feature should behave or be worded, look up what the desktop does and cite it (file or
+  ADR). Do what the desktop does unless Salesforce forces a difference or Greg has decided
+  otherwise in the wiki build log. Ask Greg only when the desktop is silent or can't apply, and then
+  say what it does and why it can't.
 - Build choices for this repo: `docs/adr/`. Walkthrough for Greg: `docs/try-camp-setup.md`.
 - No namespace, package, or package version without Greg's go-ahead.
 - **Merging is by hand** (Greg, 2026-10-16): a PR is merged (squash) only after both CI checks pass
