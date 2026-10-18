@@ -125,7 +125,9 @@ public with sharing class GeneratedSaves {
         AccessLevel.USER_MODE
       );
       ScheduleDaySaves.write(draft.Id, daySaves(days, grids, true));
-      return saved(draft.Id, days, versionId);
+      GeneratedWeek.Result result = saved(draft.Id, days, versionId);
+      result.locks = GeneratedLockCells.lockedIn(days, grids);
+      return result;
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;

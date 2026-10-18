@@ -162,11 +162,7 @@ public with sharing class SlotSaves {
       inRun.add(first + i);
     }
     if (lockEdits) {
-      GeneratedEdits.lockChanged(
-        grid,
-        was,
-        new List<Integer>{ g, first, run.after.size() }
-      );
+      new GeneratedEdits(run, was).lock(grid, new List<Integer>{ g, first });
     }
     return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }

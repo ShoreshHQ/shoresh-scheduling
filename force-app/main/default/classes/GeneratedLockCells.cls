@@ -42,12 +42,26 @@ public with sharing class GeneratedLockCells {
     for (Integer b = 0; b < grid.blocks.size(); b++) {
       if (matches(grid.blocks[b].id, change.blockId)) {
         named++;
-        if (!SlotIds.isSetTime(slots[b])) {
+        if (changes(slots[b], change)) {
           setPlacement(grid, new List<Integer>{ g, b }, change);
         }
       }
     }
     return named;
+  }
+
+  /**
+   * Whether the change reaches this cell. Never a fixed or recurring activity. The shortcuts (a
+   * day, a group, a group's day) lock only cells that hold something: locking an Open or
+   * not-at-camp cell would keep it empty through every build, unseen, so keeping a cell empty is
+   * always a Lock on that one cell. Unlock reaches every cell.
+   */
+  private static Boolean changes(String slot, GeneratedWeek.LockChange change) {
+    Boolean oneCell = String.isNotBlank(change.blockId);
+    return !SlotIds.isSetTime(slot) &&
+      (oneCell ||
+      !change.locks() ||
+      slot != SlotIds.OPEN);
   }
 
   /** Whether a record Id is the one named (any, when none is named). */
@@ -112,5 +126,28 @@ public with sharing class GeneratedLockCells {
       result.add(b);
     }
     return result;
+  }
+
+  /** The locked cells of grids saved for these days (in the days' order). */
+  public static List<GeneratedWeek.Cell> lockedIn(
+    List<ScheduleDays.DayGrid> days,
+    List<ScheduleGrid> grids
+  ) {
+    List<GeneratedWeek.Cell> cells = new List<GeneratedWeek.Cell>();
+    for (Integer d = 0; d < days.size(); d++) {
+      ScheduleGrid grid = grids[d];
+      for (Integer g = 0; g < grid.locks.size(); g++) {
+        for (Integer b = 0; b < grid.locks[g].size(); b++) {
+          if (ScheduleGridLocks.isLocked(grid, g, b)) {
+            GeneratedWeek.Cell cell = new GeneratedWeek.Cell();
+            cell.dateValue = days[d].day;
+            cell.groupId = grid.groups[g].id;
+            cell.blockId = grid.blocks[b].id;
+            cells.add(cell);
+          }
+        }
+      }
+    }
+    return cells;
   }
 }

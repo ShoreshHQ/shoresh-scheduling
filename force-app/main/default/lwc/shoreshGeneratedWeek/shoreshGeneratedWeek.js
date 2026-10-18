@@ -67,8 +67,9 @@ export async function loadWeek(programId, weekId) {
 /**
  * Saves the week the engine built (its result's days) over what was loaded.
  * Resolves to one of
- *   { status: SAVED, scheduleId, revision, versionId }: loaded's scheduleId and revision for
- *     the next save; versionId is the version Rebuild or Start over kept first, or null
+ *   { status: SAVED, scheduleId, revision, versionId, loaded }: loaded is the week to go on
+ *     with (what was built, the new revision, the locks kept: none after Start over); versionId
+ *     is the version Rebuild, Try another or Start over kept first, or null
  *   { status: CONFLICT, message }: someone else saved the week since; nothing was written
  *   { status: REFUSED, message }: the server refused it (a fixed activity moved, ...)
  */
@@ -95,8 +96,34 @@ export async function saveWeek(loaded, { action, option, days }) {
     status: SAVED,
     scheduleId: result.scheduleId,
     revision: result.revision,
-    versionId: result.versionId || null
+    versionId: result.versionId || null,
+    // The week to go on with: what was built, at the new revision, with the locks the server
+    // kept (none after Start over), replaced together.
+    loaded: {
+      ...loaded,
+      scheduleId: result.scheduleId,
+      revision: result.revision,
+      input: {
+        ...loaded.input,
+        days: days || [],
+        locks: (result.locks || []).map((cell) => ({
+          date: cell.dateValue,
+          groupId: cell.groupId,
+          blockId: cell.blockId
+        }))
+      }
+    }
   };
+}
+
+/**
+ * generateWeek's input for a build of the loaded week: Start over builds with no locks (it clears
+ * them all, after keeping a version); every other build keeps them.
+ */
+export function inputFor(loaded, action) {
+  return action === ACTION.START_OVER
+    ? { ...loaded.input, locks: [] }
+    : loaded.input;
 }
 
 /** Only what the server reads: the day, its frame's Ids, and the grid's items and rows. */
@@ -180,8 +207,9 @@ function withLocksSeen(loaded, edits) {
  * something, unlocked when left Open; a run over a cell whose lock changed since is a conflict,
  * like any cell someone else changed. Resolves to
  *   { status: SAVED, conflicts, schedule, loaded }: conflicts as Manual Build's saveSlots;
- *     loaded is the week to go on with, or null when someone else saved the week meanwhile
- *     (then loadWeek again before a whole-week save)
+ *     loaded is the week to go on with (its days and locks as saved now). When someone else
+ *     saved the week meanwhile its revision is empty, so a whole-week save from it is a
+ *     conflict: loadWeek again before Rebuild, while hand edits can go on from it
  *   { status: REFUSED, message }
  */
 export async function saveEdits(loaded, edits) {
@@ -195,9 +223,7 @@ export async function saveEdits(loaded, edits) {
       status: SAVED,
       conflicts: result.conflicts || [],
       schedule: result.schedule,
-      loaded: result.revision
-        ? withWeek(loaded, result.schedule, result.revision)
-        : null
+      loaded: withWeek(loaded, result.schedule, result.revision || "")
     };
   } catch (e) {
     return { status: REFUSED, message: errorMessage(e) };

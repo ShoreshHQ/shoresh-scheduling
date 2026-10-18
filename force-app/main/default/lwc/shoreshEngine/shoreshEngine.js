@@ -229,6 +229,8 @@ export function checkModel(input, model, state) {
       groupsInSetup.has(groupId) &&
       !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
     locked: lockedPlacements(model, state),
+    isLockedOpen: (groupId, date, blockId) =>
+      model.locks.has(lockKey(date, groupId, blockId)),
     othersAt: (kind, id, d, blockId) =>
       (kind === "place" ? model.otherPlace : model.otherActivity).get(
         `${id}|${d}|${blockId}`

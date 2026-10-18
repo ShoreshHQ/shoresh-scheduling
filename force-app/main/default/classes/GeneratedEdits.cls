@@ -2,9 +2,19 @@
  * What a hand edit on Generated Schedule adds to Manual Build's slot saves (SlotSaves): a run is
  * made only if its cells' locks are still as the screen saw them (locksBefore), so nobody's Lock
  * is removed or covered unseen; and every cell an edit changes is locked when it holds something
- * (its whole placement), unlocked when it is left Open (Greg, 2026-10-17: hand edits are locks).
+ * (its whole placement), unlocked when it is left Open (Greg, 2026-10-17: hand edits are locks);
+ * an Undo or Redo restores the locks from before its step instead.
  */
 public with sharing class GeneratedEdits {
+  private SlotEdits.Run run;
+  // What the run's group held before it (SlotIds.ofRow).
+  private List<String> was;
+
+  public GeneratedEdits(SlotEdits.Run run, List<String> was) {
+    this.run = run;
+    this.was = was;
+  }
+
   /** Whether the run's cells are locked now exactly as the screen saw them. at: group, first block. */
   public static Boolean sawLocks(
     SlotEdits.Run run,
@@ -23,16 +33,51 @@ public with sharing class GeneratedEdits {
     return true;
   }
 
-  /** Locks (or unlocks) each cell of the run that changed. at: group, first block, length. */
-  public static void lockChanged(
-    ScheduleGrid grid,
-    List<String> was,
-    List<Integer> at
-  ) {
+  /**
+   * The locks after the run (at: group, first block). An Undo or Redo names them (locksAfter):
+   * the locks from before the step it undoes, restored exactly, so Undo leaves no lock behind and
+   * brings none back that wasn't there. Otherwise each changed cell's placement is locked when it
+   * holds something and unlocked when Open, and a placement made shorter by hand is locked too,
+   * so the next build keeps it as the director left it.
+   */
+  public void lock(ScheduleGrid grid, List<Integer> at) {
+    if (run.locksAfter != null) {
+      restore(grid, at);
+      return;
+    }
     List<String> now = SlotIds.ofRow(grid, at[0]);
-    for (Integer b = at[1]; b < at[1] + at[2]; b++) {
+    for (Integer b = at[1]; b < at[1] + run.after.size(); b++) {
       if (!now[b].equals(was[b])) {
         GeneratedLockCells.lockIfFilled(grid, new List<Integer>{ at[0], b });
+      }
+      if (!now[b].equals(was[b]) && SlotIds.isCarryOn(was[b])) {
+        // What is left of the placement this cell carried on from (made shorter by hand).
+        GeneratedLockCells.lockIfFilled(
+          grid,
+          new List<Integer>{ at[0], b - 1 }
+        );
+      }
+    }
+  }
+
+  private void restore(ScheduleGrid grid, List<Integer> at) {
+    if (run.locksAfter.size() != run.after.size()) {
+      throw GeneratedFrames.unreadable();
+    }
+    List<String> now = SlotIds.ofRow(grid, at[0]);
+    for (Integer i = 0; i < run.locksAfter.size(); i++) {
+      List<Integer> cell = new List<Integer>{ at[0], at[1] + i };
+      String lock = run.locksAfter[i] ?? '';
+      if (!(lock.equals(ScheduleGridLocks.LOCKED) || lock.equals(''))) {
+        throw GeneratedFrames.unreadable();
+      }
+      if (
+        lock.equals(ScheduleGridLocks.LOCKED) &&
+        !SlotIds.isSetTime(now[cell[1]])
+      ) {
+        ScheduleGridLocks.lock(grid, cell);
+      } else {
+        ScheduleGridLocks.unlock(grid, cell);
       }
     }
   }

@@ -134,12 +134,13 @@ private class GeneratedLocksTest {
   }
 
   @IsTest
-  static void aLockCoversTheWholePlacementButNeverAFixedActivity() {
+  static void theShortcutsLockFilledCellsButNeverAFixedActivity() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
-      // A whole day: every cell of every group but Flagpole and Rest.
+      // A whole day: every filled cell of every group but Flagpole and Rest (Lunch, Open, is not:
+      // keeping a cell empty is a Lock on that one cell).
       GeneratedWeek.Locked day = setLocks(
         draftId,
         new List<GeneratedWeek.LockChange>{
@@ -147,7 +148,7 @@ private class GeneratedLocksTest {
         }
       );
       Assert.areEqual(
-        new List<String>{ '', '1', '1' },
+        PERIOD_2,
         locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
       );
       Assert.areEqual(
@@ -167,7 +168,7 @@ private class GeneratedLocksTest {
         }
       );
       Assert.areEqual(
-        new List<String>{ '', '1', '1' },
+        PERIOD_2,
         locks(draftId, GeneratedTestData.at(3, GeneratedTestData.GROUP_B))
       );
       setLocks(
@@ -567,7 +568,7 @@ private class GeneratedLocksTest {
         locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
       );
       Assert.areEqual(
-        new List<String>{ '', '1', '1' },
+        PERIOD_2,
         locks(
           result.versionId,
           GeneratedTestData.at(0, GeneratedTestData.GROUP_A)
@@ -640,6 +641,214 @@ private class GeneratedLocksTest {
         Assert.areEqual('A saved version can\'t be changed.', e.getMessage());
       }
       Assert.isTrue(GeneratedTestData.inputs().days[0].locks.isEmpty());
+    }
+  }
+
+  @IsTest
+  static void aGroupsDayLocksThatGroupOnThatDayOnly() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      String tuesdayBefore = [
+          SELECT Revision__c
+          FROM ScheduleDay__c
+          WHERE
+            Schedule__c = :draftId
+            AND Date__c = :GeneratedTestData.MONDAY.addDays(1)
+          WITH SYSTEM_MODE
+        ]
+        .Revision__c.format();
+      setLocks(
+        draftId,
+        new List<GeneratedWeek.LockChange>{
+          change(
+            GeneratedWeek.LOCK,
+            GeneratedTestData.MONDAY,
+            ids.get('Group B')
+          )
+        }
+      );
+      Assert.areEqual(
+        PERIOD_2,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_B))
+      );
+      Assert.areEqual(
+        NONE,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      Assert.areEqual(
+        NONE,
+        locks(draftId, GeneratedTestData.at(1, GeneratedTestData.GROUP_B))
+      );
+      // Only the day whose locks changed is written again.
+      Assert.areEqual(
+        tuesdayBefore,
+        [
+            SELECT Revision__c
+            FROM ScheduleDay__c
+            WHERE
+              Schedule__c = :draftId
+              AND Date__c = :GeneratedTestData.MONDAY.addDays(1)
+            WITH SYSTEM_MODE
+          ]
+          .Revision__c.format()
+      );
+      // A day and a time block with no group isn't one of the shortcuts.
+      try {
+        setLocks(
+          draftId,
+          new List<GeneratedWeek.LockChange>{
+            cell(GeneratedTestData.MONDAY, null, ids.get('Period 2'))
+          }
+        );
+        Assert.fail('Locked a time block across every group');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(GeneratedTestData.UNREADABLE, e.getMessage());
+      }
+    }
+  }
+
+  @IsTest
+  static void undoAndRedoRestoreTheLocksFromBeforeTheirStep() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      useBlocks(ids);
+      Test.startTest();
+      SlotEdits.Run at = SlotRunsTestData.at(
+        GeneratedTestData.MONDAY,
+        ids.get('Group A'),
+        ids.get('Period 2')
+      );
+      // Swim over Gym games by hand: locked.
+      handEdit(
+        draftId,
+        SlotRunsTestData.edit(
+          at,
+          new List<String>{ GeneratedTestData.a('Gym games') },
+          new List<String>{ GeneratedTestData.a('Swim') }
+        )
+      );
+      Assert.areEqual(
+        PERIOD_2,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      // Undo: Gym games back, and unlocked as it was before the step.
+      SlotEdits.Edit undo = SlotRunsTestData.edit(
+        SlotRunsTestData.at(
+          GeneratedTestData.MONDAY,
+          ids.get('Group A'),
+          ids.get('Period 2')
+        ),
+        new List<String>{ GeneratedTestData.a('Swim') },
+        new List<String>{ GeneratedTestData.a('Gym games') }
+      );
+      undo.runs[0].locksBefore = new List<String>{ ScheduleGridLocks.LOCKED };
+      undo.runs[0].locksAfter = new List<String>{ '' };
+      Assert.isTrue(handEdit(draftId, undo).conflicts.isEmpty());
+      Assert.areEqual(
+        GeneratedTestData.a('Gym games'),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
+        ]
+      );
+      Assert.areEqual(
+        NONE,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      // Redo: Swim again, locked as the step left it.
+      SlotEdits.Edit redo = SlotRunsTestData.edit(
+        SlotRunsTestData.at(
+          GeneratedTestData.MONDAY,
+          ids.get('Group A'),
+          ids.get('Period 2')
+        ),
+        new List<String>{ GeneratedTestData.a('Gym games') },
+        new List<String>{ GeneratedTestData.a('Swim') }
+      );
+      redo.runs[0].locksAfter = new List<String>{ ScheduleGridLocks.LOCKED };
+      handEdit(draftId, redo);
+      Assert.areEqual(
+        PERIOD_2,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+    }
+  }
+
+  @IsTest
+  static void onlyTheCellsAHandEditChangesAreLocked() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      useBlocks(ids);
+      Test.startTest();
+      // A run over Gym games (unchanged) and an Open Lunch (Swim by hand).
+      handEdit(
+        draftId,
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
+            GeneratedTestData.MONDAY,
+            ids.get('Group A'),
+            ids.get('Period 2')
+          ),
+          new List<String>{ GeneratedTestData.a('Gym games'), '' },
+          new List<String>{
+            GeneratedTestData.a('Gym games'),
+            GeneratedTestData.a('Swim')
+          }
+        )
+      );
+      Assert.areEqual(
+        new List<String>{ '', '', '1' },
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+    }
+  }
+
+  @IsTest
+  static void anActivityMadeShorterByHandIsLockedAsItIsLeft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // Generated with Swim two blocks long in Group A's Monday Period 2 and Lunch, unlocked.
+      GeneratedWeek.Save first = GeneratedTestData.request(
+        GeneratedTestData.inputs(),
+        GeneratedSaves.GENERATE,
+        1
+      );
+      GeneratedTestData.put(
+        first.days[0],
+        GeneratedTestData.at(0, GeneratedTestData.PERIOD_2),
+        'Swim'
+      );
+      GeneratedTestData.setCell(
+        first.days[0],
+        GeneratedTestData.at(0, GeneratedTestData.LUNCH),
+        '^'
+      );
+      Id draftId = GeneratedTestData.save(first).scheduleId;
+      useBlocks(ids);
+      Test.startTest();
+      handEdit(
+        draftId,
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
+            GeneratedTestData.MONDAY,
+            ids.get('Group A'),
+            ids.get('Period 2')
+          ),
+          new List<String>{
+            GeneratedTestData.a('Swim'),
+            '^' + GeneratedTestData.a('Swim')
+          },
+          new List<String>{ GeneratedTestData.a('Swim'), '' }
+        )
+      );
+      // What is left is locked, so a build keeps it short; the cell it gave up is free.
+      Assert.areEqual(
+        PERIOD_2,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
     }
   }
 }

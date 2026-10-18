@@ -78,9 +78,12 @@ public with sharing class GeneratedWeek {
     public Id scheduleId;
     @AuraEnabled
     public String revision;
-    // The version saved first (Rebuild, Start over), or null.
+    // The version saved first (Rebuild, Try another, Start over), or null.
     @AuraEnabled
     public Id versionId;
+    // The locked cells after the save: the stored ones, kept; none after Start over.
+    @AuraEnabled
+    public List<Cell> locks = new List<Cell>();
   }
 
   /**
@@ -114,5 +117,15 @@ public with sharing class GeneratedWeek {
     public ScheduleViews.ScheduleView schedule;
     @AuraEnabled
     public String revision;
+  }
+
+  /** A cell of the week: a day, a group and a time block. */
+  public class Cell {
+    @AuraEnabled
+    public Date dateValue;
+    @AuraEnabled
+    public String groupId;
+    @AuraEnabled
+    public String blockId;
   }
 }

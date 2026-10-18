@@ -3,14 +3,18 @@ import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import { generateWeek } from "c/shoreshEngine";
 import { nsRecord } from "shoresh-jest/namespace";
+import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import {
+  ACTION,
   CONFLICT,
   LOCK,
   REFUSED,
   SAVED,
   loadWeek,
+  inputFor,
   locksOf,
   saveEdits,
+  saveWeek,
   setLocks
 } from "c/shoreshGeneratedWeek";
 
@@ -195,7 +199,7 @@ describe("c/shoreshGeneratedWeek locks", () => {
     expect(result.loaded.input.programId).toBe("a0P000000000001AAA");
   });
 
-  it("has no week to go on from when someone else saved it meanwhile", async () => {
+  it("goes on from the week as saved when someone else saved it meanwhile, but not for a build", async () => {
     saveSlots.mockResolvedValue({
       conflicts: [],
       schedule: { days: [AFTER] },
@@ -203,7 +207,83 @@ describe("c/shoreshGeneratedWeek locks", () => {
     });
     const result = await saveEdits(LOADED, []);
     expect(result.status).toBe(SAVED);
-    expect(result.loaded).toBeNull();
+    // Their locks are seen, so the next hand edit (or Use yours) isn't a false conflict...
+    expect(result.loaded.input.locks).toEqual([
+      { date: "2026-06-29", groupId: G1, blockId: B2 },
+      { date: "2026-06-29", groupId: G2, blockId: B2 }
+    ]);
+    // ...but there is no revision to build on: a whole-week save from it is a conflict.
+    expect(result.loaded.revision).toBe("");
+  });
+
+  it("looks each lock up by its day too", async () => {
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      schedule: { days: [DAY] },
+      revision: "r"
+    });
+    const tuesday = { ...DAY, dateValue: "2026-06-30", locks: [] };
+    const twoDays = {
+      ...LOADED,
+      input: {
+        ...LOADED.input,
+        days: [DAY, tuesday],
+        locks: locksOf([DAY, tuesday])
+      }
+    };
+    await saveEdits(twoDays, [
+      { runs: [{ day: "2026-06-30", groupId: G1, blockIds: [B2] }] }
+    ]);
+    const sent = saveSlots.mock.calls[0][0].edits[0].runs[0];
+    expect(sent.locksBefore).toEqual([""]);
+  });
+
+  it("builds Start over without locks and every other build with them", () => {
+    expect(inputFor(LOADED, ACTION.START_OVER).locks).toEqual([]);
+    expect(inputFor(LOADED, ACTION.REBUILD).locks).toEqual(LOADED.input.locks);
+    expect(inputFor(LOADED, ACTION.TRY_ANOTHER)).toBe(LOADED.input);
+  });
+
+  it("gives back the locks the server kept after a whole-week save: none after Start over", async () => {
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: "a0S000000000001AAA",
+      revision: "2026-06-29:3",
+      versionId: "a0S000000000009AAA",
+      locks: []
+    });
+    const result = await saveWeek(LOADED, {
+      action: ACTION.START_OVER,
+      option: 2,
+      days: [DAY]
+    });
+    expect(result.loaded.input.locks).toEqual([]);
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: "a0S000000000001AAA",
+      revision: "2026-06-29:4",
+      locks: [{ dateValue: "2026-06-29", groupId: G1, blockId: B2 }]
+    });
+    const kept = await saveWeek(LOADED, {
+      action: ACTION.REBUILD,
+      option: 2,
+      days: [DAY]
+    });
+    expect(kept.loaded.input.locks).toEqual([
+      { date: "2026-06-29", groupId: G1, blockId: B2 }
+    ]);
+  });
+
+  it("doesn't count a cell locked empty as still to fill", async () => {
+    // Bunk 2's Period 2 is Open and locked: kept empty on purpose.
+    getInputs.mockResolvedValue(
+      nsRecord({ ...SERVER_INPUTS, days: [{ ...DAY, locks: [",1", ",1"] }] })
+    );
+    const loaded = await loadWeek("a0P000000000001AAA", "a0K000000000001AAA");
+    const built = generateWeek({ ...loaded.input, option: 1 });
+    expect(nameAt(built.days[0], 1, 1)).toBe("");
+    expect(built.cells).toEqual({ filled: 1, total: 1 });
+    expect(built.openCells).toEqual([]);
   });
 
   it("locks a day, a group or a cell, says when the week changed since, and passes on a refusal", async () => {
