@@ -9,100 +9,117 @@
 private class GeneratedLimitsTest {
   // Each call is one request from the screen: Salesforce allows 100 queries in one. Measured
   // in shoresh-test (2026-10-18) on this camp with its two other programs: opening a week 22
-  // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. Without
-  // them (the Rebuild test): a Rebuild with its version 19, opening the generated week 13. The
-  // bound is per request, whatever the week's size: no query runs per day, group or cell. Other
-  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse;
-  // threeOtherProgramsUseNoMoreQueriesThanOne).
+  // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. A
+  // Rebuild with its version measured 19 (on a camp without the other programs: saves don't
+  // read them). The bound is per request, whatever the week's size: no query runs per day,
+  // group or cell. Other programs (G5) add at most 4 to opening a week, whatever their number
+  // (OtherProgramUse; threeOtherProgramsUseNoMoreQueriesThanOne).
   private static final Integer MOST_QUERIES = 25;
-  // Whether the camp has the two other programs. The Rebuild test leaves them out: its setup
-  // (a first Generate and two reads) runs before Test.startTest() and would not leave room for
-  // them; saves don't read other programs, and opening a week is measured with them below.
-  private static Boolean withOtherPrograms = true;
 
-  private static Map<String, Id> bigCamp() {
-    SetTimeGuard.defer();
-    try {
-      return bigCampDeferred();
-    } finally {
-      SetTimeGuard.resume();
+  // The big camp (with its two other programs) is built once, by the scheduler, in setup; each
+  // test reads its ids back (sharedCamp). A test's changes are undone when it ends, so each starts
+  // from the same camp.
+  @TestSetup
+  static void makeCamp() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = bigCamp();
     }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
   }
 
-  private static Map<String, Id> bigCampDeferred() {
-    Camp__c camp = ShoreshTestData.camp('Camp Cedar');
-    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
-    Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
-    Program__c program = ShoreshTestData.program(season.Id, 'Main');
-    Database.update(
-      new Program__c(Id = program.Id, Friday__c = true),
-      AccessLevel.SYSTEM_MODE
-    );
-    List<TimeBlock__c> blocks = new List<TimeBlock__c>();
-    for (Integer hour = 8; hour < 16; hour++) {
-      blocks.add(
-        new TimeBlock__c(
-          Program__c = program.Id,
-          Name = 'Period ' + (hour - 7),
-          StartTime__c = Time.newInstance(hour, 0, 0, 0),
-          EndTime__c = Time.newInstance(hour, 45, 0, 0),
-          PartOfDay__c = hour < 12 ? 'Morning' : 'Afternoon',
-          SortOrder__c = hour
-        )
-      );
-    }
-    Database.insert(blocks, AccessLevel.SYSTEM_MODE);
-    List<Division__c> divisions = new List<Division__c>{
-      new Division__c(
-        Program__c = program.Id,
-        Name = 'Juniors',
-        SortOrder__c = 1
-      ),
-      new Division__c(
-        Program__c = program.Id,
-        Name = 'Seniors',
-        SortOrder__c = 2
-      )
-    };
-    Database.insert(divisions, AccessLevel.SYSTEM_MODE);
-    List<Group__c> groups = new List<Group__c>();
-    for (Integer g = 0; g < 8; g++) {
-      groups.add(
-        new Group__c(
-          Division__c = divisions[g / 4].Id,
-          // ShoreshTestData.placesAndActivities sets Swim up for Group A.
-          Name = g == 0 ? 'Group A' : 'Bunk ' + (g + 1),
-          Availability__c = 'AllDay',
-          SortOrder__c = g
-        )
-      );
-    }
-    Database.insert(groups, AccessLevel.SYSTEM_MODE);
-    Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
-    ids.put('Camp', camp.Id);
-    ids.put('Season', season.Id);
-    ids.put('Main', program.Id);
-    ids.put('Week 1', week.Id);
-    Database.insert(
-      new FixedActivity__c(
-        Program__c = program.Id,
-        Name = 'Flagpole',
-        TimeBlock__c = blocks[0].Id,
-        Length__c = 1
-      ),
-      AccessLevel.SYSTEM_MODE
-    );
-    if (withOtherPrograms) {
-      addOtherPrograms(ids, week);
-    }
-    SetTimeGuard.checkPending();
+  /** The scheduler setup built the camp as (by its Id, not looked up by alias). */
+  private static User scheduler() {
+    return KeptCamp.scheduler(KeptCamp.keptIds());
+  }
+
+  /**
+   * Setup's camp, as bigCamp returned it, kept where GeneratedTestData's helpers read it. Call it
+   * before System.runAs (the scheduler can't see the kept record), then run as
+   * KeptCamp.scheduler(ids).
+   */
+  private static Map<String, Id> sharedCamp() {
+    Map<String, Id> ids = KeptCamp.keptIds();
     GeneratedTestData.ids = ids;
     return ids;
   }
 
-  // Two other programs, so a query run once per program would show.
-  private static void addOtherPrograms(Map<String, Id> ids, Week__c week) {
-    addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+  private static Map<String, Id> bigCamp() {
+    SetTimeGuard.defer();
+    try {
+      Camp__c camp = ShoreshTestData.camp('Camp Cedar');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+      Program__c program = ShoreshTestData.program(season.Id, 'Main');
+      Database.update(
+        new Program__c(Id = program.Id, Friday__c = true),
+        AccessLevel.SYSTEM_MODE
+      );
+      List<TimeBlock__c> blocks = new List<TimeBlock__c>();
+      for (Integer hour = 8; hour < 16; hour++) {
+        blocks.add(
+          new TimeBlock__c(
+            Program__c = program.Id,
+            Name = 'Period ' + (hour - 7),
+            StartTime__c = Time.newInstance(hour, 0, 0, 0),
+            EndTime__c = Time.newInstance(hour, 45, 0, 0),
+            PartOfDay__c = hour < 12 ? 'Morning' : 'Afternoon',
+            SortOrder__c = hour
+          )
+        );
+      }
+      Database.insert(blocks, AccessLevel.SYSTEM_MODE);
+      List<Division__c> divisions = new List<Division__c>{
+        new Division__c(
+          Program__c = program.Id,
+          Name = 'Juniors',
+          SortOrder__c = 1
+        ),
+        new Division__c(
+          Program__c = program.Id,
+          Name = 'Seniors',
+          SortOrder__c = 2
+        )
+      };
+      Database.insert(divisions, AccessLevel.SYSTEM_MODE);
+      List<Group__c> groups = new List<Group__c>();
+      for (Integer g = 0; g < 8; g++) {
+        groups.add(
+          new Group__c(
+            Division__c = divisions[g / 4].Id,
+            Name = 'Bunk ' + (g + 1),
+            Availability__c = 'AllDay',
+            SortOrder__c = g
+          )
+        );
+      }
+      // ShoreshTestData.placesAndActivities sets Swim up for Group A.
+      groups[0].Name = 'Group A';
+      Database.insert(groups, AccessLevel.SYSTEM_MODE);
+      Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
+      ids.put('Camp', camp.Id);
+      ids.put('Season', season.Id);
+      ids.put('Main', program.Id);
+      ids.put('Week 1', week.Id);
+      Database.insert(
+        new FixedActivity__c(
+          Program__c = program.Id,
+          Name = 'Flagpole',
+          TimeBlock__c = blocks[0].Id,
+          Length__c = 1
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      // Two other programs, so a query run once per program would show.
+      addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+      SetTimeGuard.checkPending();
+      GeneratedTestData.ids = ids;
+      return ids;
+    } finally {
+      SetTimeGuard.resume();
+    }
   }
 
   /** The Hall, and the named other programs of the season (ids' Season). */
@@ -332,8 +349,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void openingAWeekUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Integer used = Limits.getQueries();
@@ -352,8 +368,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void theFirstSaveUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       GeneratedWeek.Save save = built(
         GeneratedTestData.inputs(),
         GeneratedSaves.GENERATE
@@ -375,9 +390,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void aRebuildUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      withOtherPrograms = false;
-      bigCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
@@ -402,8 +415,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void aLockAndAHandEditUseFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bigCamp();
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
       Id draftId = GeneratedTestData.save(
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
@@ -472,7 +484,7 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void threeOtherProgramsUseNoMoreQueriesThanOne() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    System.runAs(scheduler()) {
       SetTimeGuard.defer();
       Map<String, Id> one;
       Map<String, Id> three;
@@ -513,8 +525,8 @@ private class GeneratedLimitsTest {
 
   @IsTest
   static void openingManualBuildUsesFewQueries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = bigCamp();
+    Map<String, Id> ids = sharedCamp();
+    System.runAs(KeptCamp.scheduler(ids)) {
       ManualBuildController.startBlankWeek(ids.get('Main'), ids.get('Week 1'));
       Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.getDraft(

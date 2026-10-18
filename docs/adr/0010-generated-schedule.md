@@ -650,9 +650,9 @@ activities count on the days with no published schedule (a two-block recurring o
 group it covers, one naming nobody for every group at camp then, one naming a division, a fixed
 one for every group), and on a published day that can't be read; a group away, a place closed
 and an activity off that week don't count; Manual Build's draft gets the same list. `GeneratedLimitsTest`'s camp gains a second program with a published week and fixed and
-recurring activities each, inside the same query bound (opening a week and the first save; the
-Rebuild test leaves them out, as its setup runs before `Test.startTest()` and saves don't read
-other programs). Jest, normal and namespaced: the data module
+recurring activities each, inside the same query bound (opening a week, the first save and a
+Rebuild: the camp is built once in `@TestSetup`, so every test, the Rebuild one included, starts
+from it with the other programs). Jest, normal and namespaced: the data module
 passes the list on in the engine's shape; with the Pool free one bunk swims, with another
 program's published cell filling it at an overlapping time nobody does (and no dot), and a time
 that only touches, or a count of 0, doesn't block; the busiest-moment count (one group across
