@@ -183,6 +183,35 @@
       <p class="empty-state">{noDaysMessage}</p>
     </template>
 
+    <!-- Building waits for the basics (desktop readiness.js), as in Manual Build. -->
+    <template lwc:if={showStillNeeded}>
+      <div class="still-needed-box" data-id="still-needed-box">
+        <p class="still-needed" data-id="still-needed">
+          <template for:each={stillNeededParts} for:item="part">
+            <template lwc:if={part.link}>
+              <a
+                key={part.key}
+                href="#"
+                data-screen={part.screen}
+                onclick={handleStillNeeded}
+                >{part.text}</a
+              >
+            </template>
+            <template lwc:else>
+              <span key={part.key}>{part.text}</span>
+            </template>
+          </template>
+        </p>
+        <lightning-button
+          variant="brand"
+          label={setUpFirstLabel}
+          data-screen={setUpFirstScreen}
+          onclick={handleStillNeeded}
+          data-id="set-up-first"
+        ></lightning-button>
+      </div>
+    </template>
+
     <!-- Not generated yet (desktop: "Let the app propose one"). -->
     <template lwc:if={showStart}>
       <div class="start" data-id="start">

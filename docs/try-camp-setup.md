@@ -753,7 +753,9 @@ doesn't change this one.
    schedule** now holds two buttons side by side, **Generated Schedule →** and **Manual
    Build →**. Click **Generated Schedule →**.
 2. **A week not generated yet.** The **Week** picker shows _Week 1_. In the middle of the page:
-   _Let the app propose one_ and one button, **Generate a schedule**. Nothing else yet.
+   _Let the app propose one_ and one button, **Generate a schedule**. Nothing else yet. (In a
+   camp still missing its basics, such as activities or bunks, the page says instead what is
+   still needed, as Manual Build does, with links and a **Set up …** button.)
 3. **Generate.** Click it. A thin bar under the toolbar shows a short stripe moving along it,
    with _Generating…_ beside it, and the buttons are greyed out until it is saved. For the
    made-up camp that takes about a second. A camp with 40 bunks can take several seconds: then

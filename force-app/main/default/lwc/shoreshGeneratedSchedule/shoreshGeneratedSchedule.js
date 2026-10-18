@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import { errorMessage } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
+import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
   CONFLICT,
@@ -323,7 +324,40 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       !!this.loaded &&
       !this.isGenerated &&
       !this.hasNoDays &&
-      !this.conflict
+      !this.conflict &&
+      this.stillNeeded.length === 0
+    );
+  }
+
+  // ---------- what building still needs (as Manual Build: desktop readiness.js) ----------
+
+  /** What building still needs: Generate waits for all of it, as Manual Build's Start does. */
+  get stillNeeded() {
+    return stillNeeded(this._setup, this.t, this.programId);
+  }
+  /** The desktop's one sentence, each missing thing a link to its screen. */
+  get stillNeededParts() {
+    return stillNeededSentence(this.stillNeeded);
+  }
+  /** The desktop's main action: "Set up <the first thing missing>". */
+  get setUpFirstLabel() {
+    const [first] = this.stillNeeded;
+    return first ? `Set up ${first.label}` : "";
+  }
+  get setUpFirstScreen() {
+    const [first] = this.stillNeeded;
+    return first ? first.screen : null;
+  }
+  /** Before the first Generate only: a week already generated is shown whatever setup lacks. */
+  get showStillNeeded() {
+    return !this.loading && !this.isGenerated && this.stillNeeded.length > 0;
+  }
+  handleStillNeeded(event) {
+    event.preventDefault();
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: event.currentTarget.dataset.screen }
+      })
     );
   }
   get showWeek() {

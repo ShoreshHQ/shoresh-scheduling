@@ -662,6 +662,12 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
       first, as the engine places it (the same dots as the engine's full build, tested);
     - **the confirms** say _Locked cells stay as they are._ (Rebuild) and _…, locked ones too._
       (Start over) when the week has a lock;
+    - **building waits for the basics**, as Manual Build does (#48; desktop `readiness.js`):
+      before the first Generate, the desktop's one sentence of what is still needed (_One
+      thing still needed before you can build the schedule: Activities._), each missing thing
+      a link to its screen, and _Set up …_ for the first, in place of _Generate a schedule_
+      (`c/shoreshSetupRules` `stillNeeded` / `stillNeededSentence`, the same as Manual Build's).
+      A week already generated opens whatever setup lacks since;
     - **hand editing** (place, move, swap, clear, length, typing, undo with `locksAfter`) comes
       with the shared week editor `c-shoresh-week-editor`, which Manual Build's session extracts
       from Manual Build after its part 4b (coordinator, 2026-10-18: one editor, no fork). Until

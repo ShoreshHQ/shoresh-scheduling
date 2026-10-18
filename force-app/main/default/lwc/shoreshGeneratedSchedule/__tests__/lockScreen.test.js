@@ -9,6 +9,7 @@ import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp } from "./data/camp";
 
 const apex = () => ({ default: jest.fn() });
@@ -33,13 +34,25 @@ jest.mock(
   { virtual: true }
 );
 
-const SETUP = {
+const SETUP = nsRecord({
   season: { Id: "a0Z000000000001AAA", Name: "Summer 2026" },
   weeks: [{ Id: WEEK, Name: "Week 1" }],
-  programs: [{ program: { Id: PROGRAM, Name: "Main" } }],
-  activities: [],
+  // Everything building needs (desktop readiness.js), so Generate is offered.
+  programs: [
+    {
+      program: { Id: PROGRAM, Name: "Main", Monday__c: true },
+      divisions: [
+        {
+          division: { Id: "a0D000000000001AAA", Name: "Juniors" },
+          groups: [{ Id: "a0G000000000001AAA" }]
+        }
+      ],
+      timeBlocks: [{ Id: "a0B000000000001AAA", Name: "Period 1" }]
+    }
+  ],
+  activities: [{ Id: "a0A000000000001AAA", Name: "Swim" }],
   locations: []
-};
+});
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ]);
