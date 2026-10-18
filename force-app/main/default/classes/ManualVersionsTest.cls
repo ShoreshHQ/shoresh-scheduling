@@ -98,9 +98,9 @@ private class ManualVersionsTest {
   static void saveVersionKeepsTheDraftAsItIsUnderAName() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id draftId = startWeek(ids, 'Week 1');
       place(draftId, 'Swim');
+      Test.startTest();
       Integer queriesBefore = Limits.getQueries();
       Id versionId = ManualBuildController.saveVersion(
         draftId,
@@ -158,10 +158,10 @@ private class ManualVersionsTest {
   static void restoreCopiesTheVersionInAfterKeepingTheDraftAsBeforeRestore() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id draftId = startWeek(ids, 'Week 1');
       place(draftId, 'Swim');
       Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
+      Test.startTest();
       placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
       String seenRevisions = seen(draftId);
       Integer queriesBefore = Limits.getQueries();

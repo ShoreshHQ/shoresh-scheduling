@@ -24,8 +24,8 @@ public with sharing class ManualBuildController {
   ) {
     try {
       GeneratedSetup setup = new GeneratedSetup(programId, weekId);
-      ManualDrafts.Started started = ManualDrafts.start(setup);
-      ManualBuildViews.DraftView view = ManualBuildViews.open(
+      ManualDrafts.Started started = ManualDrafts.startWith(setup);
+      ManualBuildViews.DraftView view = ManualBuildViews.openWith(
         started.draftId,
         setup
       );
@@ -133,8 +133,11 @@ public with sharing class ManualBuildController {
     try {
       // The program's setup for the week, read once for everything the start does.
       GeneratedSetup setup = new GeneratedSetup(programId, weekId);
-      ManualWeekStart.Started started = ManualWeekStart.start(setup, sourceId);
-      ManualBuildViews.DraftView view = ManualBuildViews.open(
+      ManualWeekStart.Started started = ManualWeekStart.startWith(
+        setup,
+        sourceId
+      );
+      ManualBuildViews.DraftView view = ManualBuildViews.openWith(
         started.draftId,
         setup
       );

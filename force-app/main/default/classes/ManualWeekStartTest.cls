@@ -52,10 +52,12 @@ private class ManualWeekStartTest {
 
   /** One edit (SlotRunsTestData.edit) saved in a draft, with no conflict. */
   private static void put(Id draftId, SlotEdits.Edit edit) {
-    SlotEdits.Result result = ManualBuildController.saveSlots(
-      draftId,
-      new List<SlotEdits.Edit>{ edit }
-    );
+    putAll(draftId, new List<SlotEdits.Edit>{ edit });
+  }
+
+  /** Several edits saved in a draft at once, with no conflict. */
+  private static void putAll(Id draftId, List<SlotEdits.Edit> edits) {
+    SlotEdits.Result result = ManualBuildController.saveSlots(draftId, edits);
     Assert.isTrue(result.conflicts.isEmpty());
   }
 
@@ -94,8 +96,8 @@ private class ManualWeekStartTest {
   static void aWeekStartsAsTheOtherWeekMatchedByWeekday() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Test.startTest();
       Integer queriesBefore = Limits.getQueries();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
@@ -329,7 +331,6 @@ private class ManualWeekStartTest {
   static void aPlacementRunningSeveralBlocksIsCopiedWhole() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
       String soccer = 'A:' + ids.get('Soccer');
       put(
@@ -344,6 +345,7 @@ private class ManualWeekStartTest {
           new List<String>{ soccer, '^' + soccer }
         )
       );
+      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
@@ -361,37 +363,35 @@ private class ManualWeekStartTest {
   static void whatIsAlreadyThereOrAwayThenOrDeletedIsListed() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
       String soccer = 'A:' + ids.get('Soccer');
       String gym = 'A:' + ids.get('Gym games');
       // Group B: Soccer at Lunch; Group C: Gym games in Period 2.
-      put(
+      putAll(
         source,
-        SlotRunsTestData.edit(
-          SlotRunsTestData.at(
-            WEEK_1_MONDAY,
-            ids.get('Group B'),
-            ids.get('Lunch')
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              WEEK_1_MONDAY,
+              ids.get('Group B'),
+              ids.get('Lunch')
+            ),
+            new List<String>{ '' },
+            new List<String>{ soccer }
           ),
-          new List<String>{ '' },
-          new List<String>{ soccer }
-        )
-      );
-      put(
-        source,
-        SlotRunsTestData.edit(
-          SlotRunsTestData.at(
-            WEEK_1_MONDAY,
-            ids.get('Group C'),
-            ids.get('Period 2')
-          ),
-          new List<String>{ '' },
-          new List<String>{ gym }
-        )
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              WEEK_1_MONDAY,
+              ids.get('Group C'),
+              ids.get('Period 2')
+            ),
+            new List<String>{ '' },
+            new List<String>{ gym }
+          )
+        }
       );
       // Since then: Group B comes mornings only, Swim was deleted from setup, and a fixed
-      // activity (all groups) now fills Period 1... and Group C's Period 2.
+      // activity (every group) fills Period 2.
       Database.update(
         new Group__c(Id = ids.get('Group B'), Availability__c = 'MorningOnly'),
         AccessLevel.SYSTEM_MODE
@@ -402,7 +402,15 @@ private class ManualWeekStartTest {
         'Assembly',
         'Period 2'
       );
-      Database.insert(assembly, AccessLevel.SYSTEM_MODE);
+      // Saved around the clash check (it clashes with nothing; the check's queries are the
+      // setup's, not the start's).
+      SetTimeGuard.defer();
+      try {
+        Database.insert(assembly, AccessLevel.SYSTEM_MODE);
+      } finally {
+        SetTimeGuard.resume();
+      }
+      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
@@ -469,7 +477,6 @@ private class ManualWeekStartTest {
         new Week__c(Id = ids.get('Week 1'), EndDate__c = WEEK_1_MONDAY + 10),
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
       Id source = weekOneWithSwim(ids);
       put(
         source,
@@ -483,6 +490,7 @@ private class ManualWeekStartTest {
           new List<String>{ 'A:' + ids.get('Soccer') }
         )
       );
+      Test.startTest();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),

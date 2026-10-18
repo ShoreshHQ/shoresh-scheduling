@@ -119,14 +119,20 @@ public with sharing class ManualBuildViews {
 
   /** The draft opened for Manual Build. */
   public static DraftView open(Id scheduleId) {
-    return open(scheduleId, null);
+    Schedule__c schedule = draftOf(scheduleId);
+    return viewOf(
+      schedule,
+      ProgramReads.groupsOf(schedule.Program__c),
+      ProgramReads.blocksOf(schedule.Program__c)
+    );
   }
 
-  /**
-   * The same; setup: the program's groups and time blocks already read in this request (a
-   * GeneratedSetup of the draft's program), or null to read them.
-   */
-  public static DraftView open(Id scheduleId, GeneratedSetup setup) {
+  /** The same, on the program's groups and time blocks already read in this request. */
+  public static DraftView openWith(Id scheduleId, GeneratedSetup setup) {
+    return viewOf(draftOf(scheduleId), setup.groups, setup.blocks);
+  }
+
+  private static Schedule__c draftOf(Id scheduleId) {
     List<Schedule__c> found = [
       SELECT Program__c, Program__r.Season__c
       FROM Schedule__c
@@ -138,12 +144,16 @@ public with sharing class ManualBuildViews {
         'That schedule was not found, or you do not have access to it.'
       );
     }
-    Schedule__c schedule = found[0];
+    return found[0];
+  }
+
+  private static DraftView viewOf(
+    Schedule__c schedule,
+    List<Group__c> groups,
+    List<TimeBlock__c> blocks
+  ) {
     DraftView view = new DraftView();
-    view.schedule = ScheduleViews.open(scheduleId);
-    List<Group__c> groups = setup == null
-      ? ProgramReads.groupsOf(schedule.Program__c)
-      : setup.groups;
+    view.schedule = ScheduleViews.open(schedule.Id);
     view.activities = options(schedule.Program__r.Season__c, groups);
     view.activityRecords = SeasonSetupReader.activitiesOf(
       schedule.Program__r.Season__c
@@ -166,10 +176,7 @@ public with sharing class ManualBuildViews {
       WITH USER_MODE
       ORDER BY Id
     ];
-    view.away = away(
-      groups,
-      setup == null ? ProgramReads.blocksOf(schedule.Program__c) : setup.blocks
-    );
+    view.away = away(groups, blocks);
     return view;
   }
 

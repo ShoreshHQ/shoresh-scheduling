@@ -30,14 +30,14 @@ public with sharing class ManualWeekStart {
    * of the program). If the week was started meanwhile, its draft is returned unchanged.
    */
   public static Started start(Id programId, Id weekId, Id sourceId) {
-    return start(new GeneratedSetup(programId, weekId), sourceId);
+    return startWith(new GeneratedSetup(programId, weekId), sourceId);
   }
 
   /** The same, on the program's setup for the week, read once for the whole request. */
-  public static Started start(GeneratedSetup setup, Id sourceId) {
+  public static Started startWith(GeneratedSetup setup, Id sourceId) {
     Schedule__c source = sourceOf(sourceId, setup.program.Id);
     Started result = new Started();
-    ManualDrafts.Started blank = ManualDrafts.start(setup);
+    ManualDrafts.Started blank = ManualDrafts.startWith(setup);
     result.draftId = blank.draftId;
     if (!blank.created) {
       // Someone else started the week (before, or while this waited for the lock): theirs stays
@@ -51,7 +51,7 @@ public with sharing class ManualWeekStart {
     result.leftOut = copy.leftOut;
     if (!copy.edits.isEmpty()) {
       ManualDrafts.locked(blank.draftId);
-      SlotEdits.Result saved = SlotSaves.make(
+      SlotEdits.Result saved = SlotSaves.makeWith(
         blank.draftId,
         copy.edits,
         setup.rules(SlotRules.activityIdsIn(copy.edits))

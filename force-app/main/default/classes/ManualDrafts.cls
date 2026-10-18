@@ -39,11 +39,11 @@ public with sharing class ManualDrafts {
 
   /** Starts a blank week, or returns the draft someone already started. */
   public static Started start(Id programId, Id weekId) {
-    return start(new GeneratedSetup(programId, weekId));
+    return startWith(new GeneratedSetup(programId, weekId));
   }
 
   /** The same, on the program's setup for the week already read (one read per request). */
-  public static Started start(GeneratedSetup setup) {
+  public static Started startWith(GeneratedSetup setup) {
     Id programId = setup.program.Id;
     Id weekId = setup.week.Id;
     List<Program__c> locked = [

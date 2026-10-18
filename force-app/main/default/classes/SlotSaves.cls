@@ -32,7 +32,7 @@ public with sharing class SlotSaves {
     List<SlotEdits.Edit> edits
   ) {
     Schedule__c schedule = ManualDrafts.locked(scheduleId);
-    return make(
+    return makeWith(
       scheduleId,
       edits,
       new SlotRules(
@@ -46,7 +46,7 @@ public with sharing class SlotSaves {
    * The same, on setup already read (Start from another week: GeneratedSetup.rules). The draft
    * must already be locked (ManualDrafts.locked) in this request.
    */
-  public static SlotEdits.Result make(
+  public static SlotEdits.Result makeWith(
     Id scheduleId,
     List<SlotEdits.Edit> edits,
     SlotRules rules
