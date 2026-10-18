@@ -31,6 +31,21 @@ public with sharing class SlotSaves {
   }
 
   /**
+   * Start from another week's copy: on setup already read (GeneratedSetup.rules), and without
+   * reading the schedule back (the start reads the whole draft once afterwards anyway). The draft
+   * must already be locked (ManualDrafts.locked) in this request.
+   */
+  public static SlotEdits.Result makeWith(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits,
+    SlotRules rules
+  ) {
+    SlotSaves saves = new SlotSaves();
+    saves.rules = rules;
+    return saves.saveAll(scheduleId, edits);
+  }
+
+  /**
    * The same, on a Generated draft (GeneratedEdits): each run is made only if its locks are as
    * the screen saw them, and what it changes is locked. seen: the revision the screen read the
    * week at; the answer's revision is given only when nobody else saved the week since.
@@ -58,11 +73,15 @@ public with sharing class SlotSaves {
     Schedule__c schedule,
     List<SlotEdits.Edit> edits
   ) {
-    Id scheduleId = schedule.Id;
     rules = new SlotRules(
       setupOf(schedule.Program__r),
       SlotRules.activityIdsIn(edits)
     );
+    return saveAll(schedule.Id, edits);
+  }
+
+  /** The edits, on the rules already set. */
+  private SlotEdits.Result saveAll(Id scheduleId, List<SlotEdits.Edit> edits) {
     for (ScheduleDays.DayGrid day : ScheduleDays.read(scheduleId)) {
       days.put(day.day, day);
     }

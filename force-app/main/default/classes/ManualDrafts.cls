@@ -28,6 +28,8 @@ public with sharing class ManualDrafts {
   /** A started week: the draft, and what Start a blank week could not place. */
   public class Started {
     public Id draftId;
+    // False when someone else had started the week already (their draft is returned).
+    public Boolean created = false;
     public List<String> notPlaced = new List<String>();
 
     private Started(Id draftId) {
@@ -37,6 +39,13 @@ public with sharing class ManualDrafts {
 
   /** Starts a blank week, or returns the draft someone already started. */
   public static Started start(Id programId, Id weekId) {
+    return startWith(new GeneratedSetup(programId, weekId));
+  }
+
+  /** The same, on the program's setup for the week already read (one read per request). */
+  public static Started startWith(GeneratedSetup setup) {
+    Id programId = setup.program.Id;
+    Id weekId = setup.week.Id;
     List<Program__c> locked = [
       SELECT Id
       FROM Program__c
@@ -54,7 +63,9 @@ public with sharing class ManualDrafts {
     if (existing != null) {
       return new Started(existing.Id);
     }
-    BlankWeek.Week week = BlankWeek.build(programId, weekId);
+    // Manual Build starts only with activities to place (desktop readiness; #48).
+    BlankWeek.checkActivities(setup.program);
+    BlankWeek.Week week = setup.blankWeek();
     Savepoint beforeStart = Database.setSavepoint();
     try {
       Schedule__c draft = new Schedule__c(
@@ -67,6 +78,7 @@ public with sharing class ManualDrafts {
       Database.insert(draft, AccessLevel.USER_MODE);
       ScheduleDaySaves.write(draft.Id, week.days);
       Started started = new Started(draft.Id);
+      started.created = true;
       started.notPlaced = week.notPlaced;
       return started;
     } catch (Exception e) {
@@ -86,6 +98,7 @@ public with sharing class ManualDrafts {
         Status__c,
         Origin__c,
         Program__c,
+        Week__c,
         Program__r.Id,
         Program__r.Season__c,
         Program__r.Season__r.Camp__c

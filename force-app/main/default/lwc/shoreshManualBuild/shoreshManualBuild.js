@@ -3,7 +3,14 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
-import { failed } from "c/shoreshErrors";
+import saveVersion from "@salesforce/apex/ManualBuildController.saveVersion";
+import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersion";
+import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
+import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
+import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
+import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
+import { errorMessage, failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -98,6 +105,14 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
+  // The week's versions (Versions), and what Start from another week can start from.
+  versions = [];
+  weekSources = [];
+  versionsWorking = false;
+  // The version just restored, "on screen now" until the next edit (desktop VersionsDropdown).
+  restoredId = null;
+  // A Restore refused because someone saved the week since this screen read it: offers Reload.
+  restoreRefused = false;
   // "Cleared Monday" after a day or week tool: { text, stepId }, shown with Undo while Undo
   // would take back that step.
   toolNotice = null;
@@ -237,6 +252,8 @@ export default class ShoreshManualBuild extends LightningElement {
       this.draft = null;
       this.loading = true;
       this.notice = null;
+      this.restoredId = null;
+      this.restoreRefused = false;
       this.unrepeated = null;
       this.closeEditor();
       // Undo is for this visit to this week (Greg #10).
@@ -254,7 +271,23 @@ export default class ShoreshManualBuild extends LightningElement {
         if (!again) {
           this.error = null;
         }
+        // Saved since (by anyone): no longer the version just restored; a refused Restore's
+        // Reload is done.
+        if (
+          !draft ||
+          !this.server ||
+          draft.schedule.revisions !== this.server.revisions
+        ) {
+          this.restoredId = null;
+          this.restoreRefused = false;
+        }
         this.show(draft, !again);
+        if (draft) {
+          this.loadVersions();
+        } else {
+          this.versions = [];
+          this.loadWeekSources();
+        }
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
@@ -271,10 +304,15 @@ export default class ShoreshManualBuild extends LightningElement {
     }
   }
 
-  /** Coming back to the window shows other people's changes, unless an edit is under way. */
+  /**
+   * Coming back to the window shows other people's changes, unless an edit, a Restore or a start
+   * is under way.
+   */
   refresh() {
     if (
       this.draft &&
+      !this.versionsWorking &&
+      !this.starting &&
       !this.saving &&
       !this.queue.length &&
       !this.editor &&
@@ -301,6 +339,12 @@ export default class ShoreshManualBuild extends LightningElement {
     }
   }
 
+  /** Just after Start from another week: what the other week had that couldn't go. */
+  get leftOut() {
+    const lines = (this.draft && this.draft.leftOut) || [];
+    return lines.length ? lines : null;
+  }
+
   /** Just after Start a blank week: fixed or recurring activities whose slot was taken. */
   get notPlaced() {
     const lines = (this.draft && this.draft.notPlaced) || [];
@@ -317,31 +361,251 @@ export default class ShoreshManualBuild extends LightningElement {
     );
   }
 
-  async handleStart() {
+  /** The week and program can't change while a start or a Restore is on its way. */
+  get pickersLocked() {
+    return this.starting || this.versionsWorking;
+  }
+
+  /**
+   * Runs a start (blank or from another week) and shows the week it gives; an answer for a week
+   * no longer chosen, or older than a reload, is dropped. Returns the draft, or null.
+   */
+  async startWith(work) {
+    this.loadTicket += 1;
+    const ticket = this.loadTicket;
     this.starting = true;
     this.error = null;
     try {
-      this.show(
-        await startBlankWeek({
-          programId: this.programId,
-          weekId: this.weekId
-        }),
-        true
-      );
-      this.announce(`Started ${this.weekName}.`);
+      const draft = await work();
+      if (ticket !== this.loadTicket) {
+        return null;
+      }
+      this.show(draft, true);
+      this.loadVersions();
+      return draft;
     } catch (e) {
-      this.error = failed(
-        `${this.weekName} not started. Nothing was saved.`,
-        e
-      );
+      if (ticket === this.loadTicket) {
+        this.error = failed(
+          `${this.weekName} not started. Nothing was saved.`,
+          e
+        );
+      }
+      return null;
     } finally {
       this.starting = false;
     }
   }
 
+  async handleStart() {
+    const draft = await this.startWith(() =>
+      startBlankWeek({ programId: this.programId, weekId: this.weekId })
+    );
+    if (draft) {
+      this.announce(`Started ${this.weekName}.`);
+    }
+  }
+
+  // ---------- Start from another week ----------
+
+  get hasWeekSources() {
+    return this.weekSources.length > 0;
+  }
+
+  /** "Week 2 · Manual Build", "Week 1 · Before the trip (version)" */
+  get weekSourceItems() {
+    return this.weekSources.map((source) => ({
+      value: source.id,
+      label: `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})` : ""}`
+    }));
+  }
+
+  async loadWeekSources() {
+    const key = `${this.programId}|${this.weekId}`;
+    try {
+      const sources = await getWeekSources({
+        programId: this.programId,
+        weekId: this.weekId
+      });
+      if (key === `${this.programId}|${this.weekId}`) {
+        this.weekSources = sources || [];
+      }
+    } catch {
+      // Without the list, only Start a blank week is offered.
+      this.weekSources = [];
+    }
+  }
+
+  async handleStartFrom(event) {
+    const sourceId = event.detail.value;
+    const source = this.weekSources.find((s) => s.id === sourceId);
+    const draft = await this.startWith(() =>
+      startFromWeek({
+        programId: this.programId,
+        weekId: this.weekId,
+        sourceId
+      })
+    );
+    if (!draft) {
+      return;
+    }
+    if (draft.startedBySomeoneElse) {
+      // Theirs is shown as they made it: say so, rather than claim a copy.
+      this.notice = `Someone else started this ${this.t.sIn("Week")}; nothing was copied.`;
+      this.announce(this.notice);
+    } else {
+      this.announce(
+        `Started ${this.weekName} from ${source ? source.weekName : ""}.`
+      );
+    }
+  }
+
+  // ---------- versions (desktop VersionsDropdown, useSnapshots) ----------
+
+  get versionsBusy() {
+    return this.versionsWorking || this.saving || this.queue.length > 0;
+  }
+
+  async loadVersions() {
+    const key = `${this.programId}|${this.weekId}`;
+    try {
+      const rows = await getVersions({
+        programId: this.programId,
+        weekId: this.weekId
+      });
+      if (key === `${this.programId}|${this.weekId}`) {
+        this.versions = rows || [];
+      }
+    } catch {
+      // The list shows as empty; the week itself is unaffected.
+      this.versions = [];
+    }
+  }
+
+  /**
+   * Runs a versions action, then reads the list again before it is done (so the list never shows
+   * a version just deleted as if it were there); refused ones say why.
+   */
+  async versionsAction(work) {
+    this.versionsWorking = true;
+    this.error = null;
+    try {
+      await work();
+      return true;
+    } catch (e) {
+      this.error = errorMessage(e);
+      return false;
+    } finally {
+      await this.loadVersions();
+      this.versionsWorking = false;
+    }
+  }
+
+  /** Save version: the week as it is now, kept under a name. */
+  async handleSaveVersion(event) {
+    const { name, onDone } = event.detail;
+    const saved = await this.versionsAction(() =>
+      saveVersion({ scheduleId: this.schedule.schedule.id, name })
+    );
+    if (saved) {
+      this.say(`Saved ${name}.`);
+    }
+    onDone(saved);
+  }
+
+  /**
+   * Restore: the version is copied into the week being built, after the week as it was is kept
+   * as "Before Restore" (the way back). Undo starts over, as on the desktop.
+   */
+  async handleRestore(event) {
+    const id = event.detail.id;
+    const version = this.versions.find((v) => v.id === id);
+    if (this.versionsBusy) {
+      this.say("One moment: an edit is still saving.");
+      return;
+    }
+    // A reload already on its way read the week before this Restore: its answer must not
+    // replace the restored week. A change of week while it runs drops this answer.
+    this.loadTicket += 1;
+    const ticket = this.loadTicket;
+    this.restoreRefused = false;
+    await this.versionsAction(async () => {
+      const draft = await restoreVersion({
+        scheduleId: this.schedule.schedule.id,
+        versionId: id,
+        seenRevisions: this.server ? this.server.revisions : null
+      });
+      if (ticket !== this.loadTicket) {
+        return;
+      }
+      if (draft.changedSince) {
+        // Nothing was changed: someone else's newer week is never replaced unseen.
+        this.restoreRefused = true;
+        // Its line (with Reload) is on screen; said aloud too.
+        this.announce(this.restoreRefusedText);
+        return;
+      }
+      this.history.clear();
+      this.historyVersion += 1;
+      this.checksResetKey += 1;
+      this.toolNotice = null;
+      this.show(draft, false);
+      this.restoredId = id;
+      this.say(`Restored ${version ? version.name : ""}.`);
+    });
+  }
+
+  get restoreRefusedText() {
+    return `Someone else changed this ${this.t.sIn("Week")} since you opened it, so nothing was restored.`;
+  }
+
+  /** Reload after a refused Restore: shows the week as it is now. */
+  handleReloadAfterRefusal() {
+    this.restoreRefused = false;
+    this.load(true);
+  }
+
+  /** While a version is being restored or saved, edits wait (Restore would paint over them). */
+  refuseWhileRestoring() {
+    if (!this.versionsWorking) {
+      return false;
+    }
+    this.say(
+      `One moment: the ${this.t.sIn("Week")} is being saved or restored.`
+    );
+    return true;
+  }
+
+  async handleDeleteVersion(event) {
+    if (this.versionsBusy) {
+      return;
+    }
+    const id = event.detail.id;
+    const version = this.versions.find((v) => v.id === id);
+    const done = await this.versionsAction(() =>
+      deleteVersion({ scheduleId: this.schedule.schedule.id, versionId: id })
+    );
+    if (done) {
+      this.say(`Deleted ${version ? version.name : ""}.`);
+    }
+  }
+
+  async handleRenameVersion(event) {
+    const { id, name, onDone } = event.detail;
+    const renamed = await this.versionsAction(() =>
+      renameSchedule({ scheduleId: id, name })
+    );
+    onDone(renamed);
+  }
+
   get weekName() {
     const week = this.weekOptions.find((o) => o.value === this.weekId);
     return week ? week.label : "";
+  }
+  get startFromLabel() {
+    return `Start from another ${this.t.sIn("Week")}`;
+  }
+  get leftOutLabel() {
+    return `Left Open: it couldn't go there this ${this.t.sIn("Week")}`;
   }
   get startLabel() {
     return `Start a blank ${this.t.sIn("Week")}`;
@@ -1036,6 +1300,9 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** A new change ({ day, group, first, before, after } runs): saved, and one Undo step. */
   commit(runs, label, key) {
+    if (this.refuseWhileRestoring()) {
+      return;
+    }
     const serverRuns = runs.map((run) => this.toServerRun(run));
     this.stepSeq += 1;
     const step = { id: this.stepSeq, runs: serverRuns, label };
@@ -1090,6 +1357,9 @@ export default class ShoreshManualBuild extends LightningElement {
     this.unrepeated = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
+    // The week is no longer the version just restored, and a refused Restore is behind it.
+    this.restoredId = null;
+    this.restoreRefused = false;
     this.loading = false;
     const edit = { runs: serverRuns };
     const before = this.checked;
@@ -1267,7 +1537,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleUndo() {
-    if (!this.canUndo) {
+    if (!this.canUndo || this.refuseWhileRestoring()) {
       return;
     }
     const { step, runs } = this.history.undo();
@@ -1284,7 +1554,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleRedo() {
-    if (this.cannotRedo) {
+    if (this.cannotRedo || this.refuseWhileRestoring()) {
       return;
     }
     const { step, runs } = this.history.redo();

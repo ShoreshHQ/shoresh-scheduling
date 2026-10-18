@@ -13,6 +13,7 @@
           label={programLabel}
           value={programId}
           options={programOptions}
+          disabled={pickersLocked}
           onchange={handleProgram}
           data-id="program"
         ></lightning-combobox>
@@ -23,6 +24,7 @@
           label={weekLabel}
           value={weekId}
           options={weekOptions}
+          disabled={pickersLocked}
           onchange={handleWeek}
           data-id="week"
         ></lightning-combobox>
@@ -124,6 +126,21 @@
             </button>
           </div>
         </template>
+        <template lwc:if={draft}>
+          <div class="divider" aria-hidden="true"></div>
+          <c-shoresh-versions
+            restore
+            versions={versions}
+            open-id={restoredId}
+            terms={terms}
+            busy={versionsBusy}
+            onopen={handleRestore}
+            onrename={handleRenameVersion}
+            ondelete={handleDeleteVersion}
+            onsave={handleSaveVersion}
+            data-id="versions"
+          ></c-shoresh-versions>
+        </template>
       </template>
     </div>
     <template lwc:if={showCounters}>
@@ -150,6 +167,19 @@
     <template lwc:if={notice}>
       <p class="notice" data-id="notice">{notice}</p>
     </template>
+    <template lwc:if={restoreRefused}>
+      <p class="notice" data-id="restore-refused">
+        <span>{restoreRefusedText} ·</span>
+        <button
+          type="button"
+          class="slds-button tool-undo"
+          data-id="reload"
+          onclick={handleReloadAfterRefusal}
+        >
+          Reload
+        </button>
+      </p>
+    </template>
 
     <template lwc:if={loading}>
       <lightning-spinner
@@ -171,6 +201,16 @@
       {announcement}
     </div>
 
+    <template lwc:if={leftOut}>
+      <div class="not-placed" role="status" data-id="left-out">
+        <c-shoresh-dot label={leftOutLabel} focusable></c-shoresh-dot>
+        <ul>
+          <template for:each={leftOut} for:item="line">
+            <li key={line}>{line}</li>
+          </template>
+        </ul>
+      </div>
+    </template>
     <template lwc:if={notPlaced}>
       <div class="not-placed" role="status" data-id="not-placed">
         <c-shoresh-dot
@@ -358,6 +398,23 @@
           onclick={handleStart}
           data-id="start-week"
         ></lightning-button>
+        <template lwc:if={hasWeekSources}>
+          <lightning-button-menu
+            label={startFromLabel}
+            alternative-text={startFromLabel}
+            disabled={starting}
+            onselect={handleStartFrom}
+            data-id="start-from"
+          >
+            <template for:each={weekSourceItems} for:item="source">
+              <lightning-menu-item
+                key={source.value}
+                value={source.value}
+                label={source.label}
+              ></lightning-menu-item>
+            </template>
+          </lightning-button-menu>
+        </template>
       </div>
     </template>
     <template lwc:elseif={showStillNeeded}>
