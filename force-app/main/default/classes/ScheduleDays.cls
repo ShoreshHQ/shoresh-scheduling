@@ -11,6 +11,18 @@ public with sharing class ScheduleDays {
     public String problem;
   }
 
+  /**
+   * Each day's revision, as one line ("2026-06-29:3,2026-06-30:1"): what a screen was showing,
+   * so a change to the whole week (Restore) can tell whether anyone saved a day since.
+   */
+  public static String stamp(List<DayGrid> days) {
+    List<String> parts = new List<String>();
+    for (DayGrid day : days) {
+      parts.add(String.valueOf(day.day) + ':' + day.revision);
+    }
+    return String.join(parts, ',');
+  }
+
   /** The schedule's days, in date order. */
   public static List<DayGrid> read(Id scheduleId) {
     Map<Date, List<ScheduleDay__c>> partsByDay = new Map<Date, List<ScheduleDay__c>>();
@@ -35,7 +47,8 @@ public with sharing class ScheduleDays {
     return days;
   }
 
-  private static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
+  /** One day from its parts (Part__c order), or why it could not be read. */
+  public static DayGrid readDay(Date day, List<ScheduleDay__c> parts) {
     DayGrid result = new DayGrid();
     result.day = day;
     List<String> texts = new List<String>();
@@ -60,7 +73,11 @@ public with sharing class ScheduleDays {
     Integer index,
     Integer revision
   ) {
-    if (part.GridFormatVersion__c != ScheduleGrid.FORMAT_VERSION) {
+    if (
+      !ScheduleGridLocks.READABLE.contains(
+        part.GridFormatVersion__c?.intValue()
+      )
+    ) {
       throw new ScheduleGridRules.GridException(
         'it was saved by a newer version of Shoresh'
       );

@@ -161,6 +161,106 @@ describe("checkGeneratedWeek", () => {
     expect(dots).toBeGreaterThan(0);
   });
 
+  it("with locks, checks a full build the way the engine did (dots skip locked sessions)", () => {
+    let locked = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      // A full build: Fill the open cells keeps every filled cell, so its dots spare them all,
+      // while the screen's check spares only what the director locked.
+      const input = {
+        ...camp(withHistory(randomCamp(seed), seed)),
+        mode: MODE.FULL
+      };
+      const result = generateWeek(input);
+      if (!result.ok) {
+        continue;
+      }
+      locked += (input.locks || []).length;
+      const { checked } = checkGeneratedWeek({ ...input, days: result.days });
+      expect(checked.stillNeeded).toEqual(result.stillNeeded);
+      expect(checked.cells).toEqual(result.cells);
+      const heads = new Set(checked.placements.map((p) => p.key));
+      const dotted = new Map();
+      for (const f of result.flags) {
+        const key = `${f.date}|${f.groupId}|${f.blockId}`;
+        if (heads.has(key)) {
+          dotted.set(key, f.reason);
+        }
+      }
+      expect(new Map(checked.flags)).toEqual(dotted);
+    }
+    expect(locked).toBeGreaterThan(0);
+  });
+
+  it("the weekly-limit dot goes on the unlocked session: Swim locked Friday, not Monday, limit 1", () => {
+    const input = camp({
+      groups: [group("g1")],
+      days: 5,
+      blocks: [block(0)],
+      activities: [activity("swim", { min: 0, max: 1, atOnce: 2 })]
+    });
+    const item = { kind: "A", id: input.activities[0].Id, name: "swim" };
+    // Swim on Monday and on Friday, as reloaded (no build state): only Friday is locked.
+    const days = input.days.map((day, d) => ({
+      ...day,
+      items: [item],
+      rows: [d === 0 || d === 4 ? "1" : ""]
+    }));
+    const monday = days[0].dateValue;
+    const friday = days[4].dateValue;
+    const locks = [{ date: friday, groupId: "g1", blockId: "b0" }];
+    const { checked } = checkGeneratedWeek({ ...input, days, locks });
+    const dotted = [...checked.flags.keys()];
+    expect(dotted).toContain(`${monday}|g1|b0`);
+    expect(dotted).not.toContain(`${friday}|g1|b0`);
+    // Locked on Monday instead: the dot moves to Friday.
+    const other = checkGeneratedWeek({
+      ...input,
+      days,
+      locks: [{ date: monday, groupId: "g1", blockId: "b0" }]
+    }).checked;
+    expect([...other.flags.keys()]).toEqual([`${friday}|g1|b0`]);
+  });
+
+  it("a group setup no longer has: its placements count as kept, as the engine keeps them", () => {
+    // Two groups in the grid, one of them gone from setup; one activity at most once a week,
+    // placed twice for each.
+    const spec = {
+      groups: [group("g1")],
+      days: 1,
+      blocks: [block(0), block(1)],
+      activities: [activity("swim", { min: 0, max: 1, atOnce: 2 })]
+    };
+    const input = camp(spec);
+    const day = input.days[0];
+    const days = [
+      {
+        ...day,
+        groups: [...day.groups, { id: "gGone", name: "Bunk gone", gone: true }],
+        items: [{ kind: "A", id: input.activities[0].Id, name: "swim" }],
+        rows: ["1,1", "1,1"]
+      }
+    ];
+    // The gone group's later session is also locked by hand: the engine keeps both anyway, so
+    // its over-the-limit dot goes on the later one, as on screen.
+    const locks = [{ date: day.dateValue, groupId: "gGone", blockId: "b1" }];
+    const built = generateWeek({ ...input, days, locks, mode: MODE.FULL });
+    const { checked } = checkGeneratedWeek({
+      ...input,
+      locks,
+      days: built.days
+    });
+    expect([...checked.flags.keys()]).toContain(`${day.dateValue}|gGone|b1`);
+    const heads = new Set(checked.placements.map((p) => p.key));
+    const dotted = new Map();
+    for (const f of built.flags) {
+      const key = `${f.date}|${f.groupId}|${f.blockId}`;
+      if (heads.has(key)) {
+        dotted.set(key, f.reason);
+      }
+    }
+    expect(new Map(checked.flags)).toEqual(dotted);
+  });
+
   it("reads a week in date order whatever order its days come in", () => {
     const input = { ...camp(randomCamp(3)), locks: [] };
     const result = generateWeek(input);

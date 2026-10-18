@@ -202,7 +202,7 @@ function main() {
   return 0;
 }
 
-module.exports = { scan, scanJs, scanHtml, scanApex };
+module.exports = { scan, scanJs, scanHtml, scanApex, lexApex };
 
 if (require.main === module) {
   process.exitCode = main();

@@ -5,7 +5,12 @@ import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { day, draft, schedule } from "./data/draftFixture";
+import { find } from "shoresh-jest/week-editor";
+import {
+  day,
+  draft,
+  schedule
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 
 // The counters and the bronze dots on the Manual Build screen (c/shoreshEngine's checkWeek does
 // the working out; its checks.test.js covers every rule). Synthetic camp: draftFixture, with the setup below.
@@ -118,7 +123,7 @@ async function render(start, setup = SETUP) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const q = (element, selector) => find(element, selector);
 // Inside the counters and their list (c-shoresh-week-checks).
 const qc = (element, selector) => {
   const checks = q(element, "c-shoresh-week-checks");
@@ -646,6 +651,89 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();
     expect(dotIn(element, "0-1").label).toBe("More Bunks at Pool than fit");
+  });
+
+  it("another program at the Pool counts by clock time: only past what fits gets the dot", async () => {
+    // Swim at the Pool, which fits 2; Bunk 1 swims Monday Period 2 (10:00 to 10:45).
+    const pool = nsRecord({
+      ...SETUP,
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a1" ? { ...a, Location__c: "l1" } : a;
+      }),
+      locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 2 }]
+    });
+    const start = draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);
+    // Another program's published schedule: one of its groups at the Pool 10:30 to 11:15.
+    const others = (groups) => [
+      {
+        dateValue: "2026-06-29",
+        startTime: "10:30",
+        endTime: "11:15",
+        locationId: "l1",
+        activityId: null,
+        groups
+      }
+    ];
+    getDraft.mockResolvedValue({
+      ...withRecords(start, pool),
+      otherPrograms: others(1)
+    });
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = pool;
+    document.body.appendChild(element);
+    await flush();
+    // Two groups at a place that fits two: no conflict.
+    expect(dotIn(element, "0-1")).toBeNull();
+    expect(counters(element)).toContain("0 Overlapping");
+
+    getDraft.mockResolvedValue({
+      ...withRecords(start, pool),
+      otherPrograms: others(2)
+    });
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(dotIn(element, "0-1").label).toBe("More Bunks at Pool than fit");
+    expect(counters(element)).toContain("1 Overlapping");
+  });
+
+  it("another program doing Soccer counts against its bunks at once; one only at a place doesn't", async () => {
+    // Soccer: one bunk at a time. Bunk 1 plays Monday Period 2 (10:00 to 10:45).
+    const start = draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]);
+    const entry = (extra) => ({
+      dateValue: "2026-06-29",
+      startTime: "10:00",
+      endTime: "10:45",
+      locationId: null,
+      activityId: null,
+      groups: 1,
+      ...extra
+    });
+    // Another program's group at a place (not doing Soccer): Soccer still has room.
+    getDraft.mockResolvedValue({
+      ...withRecords(start),
+      otherPrograms: [entry({ locationId: "l9" })]
+    });
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = SETUP;
+    document.body.appendChild(element);
+    await flush();
+    expect(dotIn(element, "0-1")).toBeNull();
+
+    getDraft.mockResolvedValue({
+      ...withRecords(start),
+      otherPrograms: [entry({ activityId: "a3" })]
+    });
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(dotIn(element, "0-1").label).toBe(
+      "Over its limit of 1 Bunk at once"
+    );
   });
 
   it("a director's edit that changes a few dots pulses those cells once; Undo doesn't", async () => {

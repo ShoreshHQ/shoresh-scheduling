@@ -4,10 +4,17 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Nightly full Apex run on main: the safety net for pull requests that skipped Apex tests.
+  # 07:15 UTC is 03:15 New York time in summer, 02:15 in winter (docs/ci-setup.md).
+  schedule:
+    - cron: "15 7 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push cancels the older run of the same pull request, or of main. The nightly and
+  # by-hand full runs have their own group and are never cancelled by a merge.
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 permissions:
   contents: read
@@ -36,64 +43,153 @@ jobs:
       - name: No field or object names written as text
         # scripts/namespace-safety.js: any one fails the check (docs/adr/0009-namespace-safe-names.md).
         run: npm run check:namespace
+      - name: Every Apex class and trigger has its -meta.xml
+        # scripts/apex-meta-files.js: a class without one never reaches the org (#55).
+        run: npm run check:meta
+      - name: No Apex name that clashes with a class name
+        # scripts/apex-name-clash.js: Apex ignores case, so a local `scheduleUses` beside class
+        # ScheduleUses fails only in the org (#46, #48).
+        run: npm run check:name-clash
+      - name: No Apex name that is a reserved word
+        # scripts/apex-reserved-words.js: `Integer number` fails only in the org's compiler (#46).
+        run: npm run check:reserved-words
       - name: Install Salesforce CLI and Code Analyzer
         run: |
           npm install --global @salesforce/cli@2.154.4
           sf plugins install code-analyzer@5.16.0
       - name: Salesforce Code Analyzer
-        # Recommended rules; fails on moderate (3) or worse.
-        run: sf code-analyzer run --workspace force-app --severity-threshold 3 --output-file code-analyzer.html
+        # Recommended rules plus the AppExchange security-review rules (AppExchange,
+        # Recommended:Security); fails on moderate (3) or worse. Known false positives are
+        # suppressed one by one in code-analyzer.yml (docs/ci-setup.md).
+        run: >-
+          sf code-analyzer run --workspace force-app
+          --rule-selector Recommended --rule-selector AppExchange --rule-selector Recommended:Security
+          --severity-threshold 3 --output-file code-analyzer.html
+      - name: AppExchange security-review report
+        # The same scan Salesforce documents for security review, on its own, for the submission.
+        if: always()
+        run: >-
+          sf code-analyzer run --workspace force-app
+          --rule-selector AppExchange --rule-selector Recommended:Security
+          --output-file appexchange-security-review.html
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: code-analyzer-report
-          path: code-analyzer.html
+          path: |
+            code-analyzer.html
+            appexchange-security-review.html
           if-no-files-found: ignore
+
+  pr-category:
+    name: Which org checks this change needs
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'push'
+    outputs:
+      category: ${{ steps.decide.outputs.category }}
+      reason: ${{ steps.decide.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Decide from the changed files
+        # docs: no org check needed; screen: deploy only; full: deploy and every Apex test.
+        # scripts/ci-pr-category.js says full whenever in doubt. Nightly and by-hand runs: full.
+        # It runs the base branch's copy, so a pull request can't loosen the rules it is judged by.
+        id: decide
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            if git show "origin/$BASE_REF:scripts/ci-pr-category.js" > "$RUNNER_TEMP/ci-pr-category.js"; then
+              node "$RUNNER_TEMP/ci-pr-category.js" "$BASE_REF" | tee -a "$GITHUB_OUTPUT"
+            else
+              echo "category=full" | tee -a "$GITHUB_OUTPUT"
+              echo "reason=the base branch has no scripts/ci-pr-category.js, so running everything" | tee -a "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "category=full" | tee -a "$GITHUB_OUTPUT"
+            echo "reason=$GITHUB_EVENT_NAME run: the full Apex suite on $GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
+          fi
 
   scratch-org:
     name: Scratch org deploy and Apex tests
     runs-on: ubuntu-24.04
-    if: github.event_name == 'pull_request'
+    # A hung run would hold the shared-test-org line for GitHub's 6-hour default.
+    timeout-minutes: 60
+    needs: pr-category
+    # Pushes to main run only the quick checks; main's full Apex run is the nightly one.
+    # !cancelled(): if the category check fails, this still runs, and runs everything.
+    if: ${{ !cancelled() && github.event_name != 'push' }}
     # Every pull request deploys to the one test org (scripts/renew-test-org.sh makes it).
     # Greg's rule: exactly two orgs, the Dev Hub and this test org; CI never creates one.
     # One run at a time, so two pull requests never deploy over each other. The others wait
     # in line, first come first served: queue: max keeps up to 100 waiting. Without it GitHub
     # keeps only one waiting and cancels it when another arrives (docs/ci-setup.md).
+    # A docs-only pull request never touches the org, so it gets a group of its own and doesn't
+    # wait in that line; the check still reports, and passes.
     concurrency:
-      group: shared-test-org
+      group: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.category == 'docs' && format('no-test-org-{0}', github.run_id) || 'shared-test-org' }}
       cancel-in-progress: false
       queue: max
     env:
       SFDX_AUTH_URL_CI: ${{ secrets.SFDX_AUTH_URL_CI }}
+      # Anything but a successful category check with an answer means full.
+      CATEGORY: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.category || 'full' }}
+      REASON: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.reason || 'the category check did not finish, so running everything' }}
     steps:
+      - name: What this change needs
+        run: |
+          case "$CATEGORY" in
+            docs)   what="No org check needed: nothing deployed, no Apex tests." ;;
+            screen) what="Deploy to the test org, no Apex tests." ;;
+            *)      what="Deploy to the test org and run every Apex test." ;;
+          esac
+          echo "Category: ${CATEGORY:-full}. $what"
+          echo "Why: $REASON"
+          {
+            echo "### Category: ${CATEGORY:-full}"
+            echo "$what"
+            echo
+            echo "Why: $REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v7
+        if: env.CATEGORY != 'docs'
       - name: Check the shared test org secret is set
+        if: env.CATEGORY != 'docs'
         run: |
           if [ -z "$SFDX_AUTH_URL_CI" ]; then
             echo "::error::The SFDX_AUTH_URL_CI secret is not set. Run scripts/renew-test-org.sh (see docs/ci-setup.md)."
             exit 1
           fi
       - uses: actions/setup-node@v7
+        if: env.CATEGORY != 'docs'
         with:
           node-version: 22
       - name: Install Salesforce CLI
+        if: env.CATEGORY != 'docs'
         run: npm install --global @salesforce/cli@2.154.4
       - name: Log in to the shared test org
+        if: env.CATEGORY != 'docs'
         run: |
           if ! echo "$SFDX_AUTH_URL_CI" | sf org login sfdx-url --sfdx-url-stdin - --alias ci --set-default; then
             echo "::error::Could not log in to the shared test org. It has probably expired (they last 30 days). Run scripts/renew-test-org.sh (see docs/ci-setup.md), then re-run this check."
             exit 1
           fi
       - name: Deploy
+        if: env.CATEGORY != 'docs'
         run: |
           if [ -z "$(find force-app -type f ! -name .gitkeep)" ]; then
             echo "::notice::No metadata in force-app yet; nothing to deploy."
           else
             # The shared org is also deployed to by hand, so its change tracking reports
             # conflicts; the repository is always what should end up in the org.
-            sf project deploy start --source-dir force-app --ignore-conflicts --wait 30
+            sf project deploy start --source-dir force-app --ignore-conflicts --test-level NoTestRun --wait 30
           fi
       - name: Apex tests
+        # Skipped only for docs and screen-only pull requests; anything unrecognised runs them.
+        if: env.CATEGORY != 'docs' && env.CATEGORY != 'screen'
         # One class at a time, run directly: queued runs (RunLocalTests) count against the test
         # org's daily allowance of 500 queued test classes, which CI and sessions share, and a
         # busy day used it up (2026-10-16). See docs/ci-setup.md.

@@ -1,6 +1,7 @@
 /**
- * One day of a schedule (or one part of a day), in Shoresh's compact grid format, version 1
- * (repo docs/adr/0005). Stored in ScheduleDay__c.Grid__c as JSON with four lists:
+ * One day of a schedule (or one part of a day), in Shoresh's compact grid format (repo
+ * docs/adr/0005; version 2 adds locks, docs/adr/0010 §32). Stored in ScheduleDay__c.Grid__c as
+ * JSON with four lists, and a fifth for locks:
  *
  *   "b": time blocks, in the order of the day: [id, name, start "HH:mm", end "HH:mm"]
  *   "g": groups, in order: [id, name]
@@ -10,6 +11,8 @@
  *   "r": one row per group (same order as "g"), its cells separated by commas, one per time
  *        block (same order as "b"). A cell is empty (nothing placed), a number (an item in
  *        "i", counting from 1), or ^ (the item in the cell above carries on into this block).
+ *   "l": version 2 only, when a cell is locked (ScheduleGridLocks): one row per group, like "r",
+ *        each cell '1' (locked) or empty.
  *
  * Names are copied as they were when the day was saved, so a saved version keeps saying what it
  * said after the setup changes. Written with a fixed key order, so the same day always gives the
@@ -24,6 +27,8 @@ public with sharing class ScheduleGrid {
   public List<Item> items = new List<Item>();
   // rows[group][block]: '' (nothing), '1'.. (an item), or '^' (carries on from above).
   public List<List<String>> rows = new List<List<String>>();
+  // locks[group][block]: '1' (locked) or ''; empty when nothing is locked (ScheduleGridLocks).
+  public List<List<String>> locks = new List<List<String>>();
 
   public class Block {
     public String id;
@@ -140,6 +145,7 @@ public with sharing class ScheduleGrid {
       out.writeString(String.join(row, ','));
     }
     out.writeEndArray();
+    ScheduleGridLocks.write(out, this);
     out.writeEndObject();
     return out.getAsString();
   }
@@ -173,6 +179,7 @@ public with sharing class ScheduleGrid {
     for (Object row : listAt(raw, 'r')) {
       grid.rows.add(String.valueOf(row).split(',', -1));
     }
+    ScheduleGridLocks.read(raw.get('l'), grid);
     ScheduleGridRules.check(grid);
     return grid;
   }

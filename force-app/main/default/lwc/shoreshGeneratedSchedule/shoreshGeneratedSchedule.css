@@ -119,3 +119,7 @@
     animation: none;
   }
 }
+
+.legend-icon {
+  --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
+}

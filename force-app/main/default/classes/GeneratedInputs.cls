@@ -3,7 +3,8 @@
  * one program's week: the week's days (the Generated draft's, or a blank week's when there is
  * none yet: fixed and recurring activities placed, groups away that week left out), and the
  * season's records as the engine reads them. Records go to the screen as records, so their field
- * names carry the package's prefix once it has one (ADR 0009). Every query runs in user mode,
+ * names carry the package's prefix once it has one (ADR 0009), plus other programs' use of the
+ * season's places and activities that week (OtherProgramUse). Every query runs in user mode,
  * which checks object and field access; the set-time reader behind a blank week is checked first
  * by SetTimeAccess (ADR 0008 §3).
  */
@@ -48,6 +49,10 @@ public with sharing class GeneratedInputs {
     // This week's exceptions (an activity or place closed, a group away).
     @AuraEnabled
     public List<WeekException__c> weekExceptions;
+    // Other programs' groups at the season's places and activities this week (their published
+    // schedule, or their fixed and recurring activities), by date and clock time (G5).
+    @AuraEnabled
+    public List<OtherProgramUse.Entry> otherPrograms { get; set; }
   }
 
   public static Inputs read(Id programId, Id weekId) {
@@ -62,6 +67,8 @@ public with sharing class GeneratedInputs {
     inputs.weekExceptions = setup.exceptions;
     readSeason(inputs, setup.program.Season__c);
     readSetTime(inputs, setup.program.Id);
+    inputs.otherPrograms = new OtherProgramUse(setup.week, setup.exceptions)
+      .read(setup.program, inputs.activities);
     List<ScheduleDays.DayGrid> days;
     Schedule__c draft = GeneratedDrafts.find(setup.program.Id, setup.week.Id);
     if (draft == null) {
@@ -85,7 +92,7 @@ public with sharing class GeneratedInputs {
    * them again otherwise): the program's time blocks, groups, fixed and recurring activities,
    * and the season's activities.
    */
-  private static Set<String> stillThere(GeneratedSetup setup, Inputs inputs) {
+  public static Set<String> stillThere(GeneratedSetup setup, Inputs inputs) {
     List<SObject> records = new List<SObject>();
     records.addAll(setup.blocks);
     records.addAll(setup.groups);
@@ -97,6 +104,24 @@ public with sharing class GeneratedInputs {
       ids.add(record.Id);
     }
     return ids;
+  }
+
+  /**
+   * The Generated draft as the screen shows it after a lock or a hand edit, with "deleted since"
+   * worked out exactly as getInputs does (the program's setup now), so the same week always shows
+   * the same notes, whichever answer it came from.
+   */
+  public static ScheduleViews.ScheduleView view(Schedule__c draft) {
+    GeneratedSetup setup = new GeneratedSetup(draft.Program__c, draft.Week__c);
+    Inputs records = new Inputs();
+    records.activities = [
+      SELECT Id
+      FROM Activity__c
+      WHERE Season__c = :setup.program.Season__c
+      WITH USER_MODE
+    ];
+    readSetTime(records, setup.program.Id);
+    return ScheduleViews.open(draft.Id, stillThere(setup, records));
   }
 
   /** A blank week's days, read as a saved draft's days are. */

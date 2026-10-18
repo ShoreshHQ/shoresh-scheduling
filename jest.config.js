@@ -3,6 +3,11 @@ const { jestConfig } = require('@salesforce/sfdx-lwc-jest/config');
 module.exports = {
     ...jestConfig,
     modulePathIgnorePatterns: ['<rootDir>/.localdevserver'],
+    // Accessibility checks in tests: toBeAccessible() (jest/sa11y-setup.js).
+    setupFilesAfterEnv: [
+        ...(jestConfig.setupFilesAfterEnv || []),
+        '<rootDir>/jest/sa11y-setup.js'
+    ],
     // CSS-only modules (shared colours) have no JavaScript for Jest to find.
     moduleNameMapper: {
         ...(jestConfig.moduleNameMapper || {}),

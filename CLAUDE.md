@@ -44,17 +44,21 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   this file beat the skill text. Never install sf-skills plugins.
 - **Apex tests that act as a scheduler create their records inside the same `System.runAs`.** Under
   sharing the scheduler can't see a camp the test's admin made, so such tests pass locally in review
-  and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries
-  and assert it for a realistic camp.
+  and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries;
+  its test must assert the bound with `Limits.getQueries()` for a realistic camp.
+- **Read camp words, labels and describe data once per request**, never per row or in a loop (#60).
+- **Every new Apex class or trigger ships with its `-meta.xml`** (#55). `npm run check:meta` fails
+  without one, `npm run check:name-clash` fails on a variable named like a class or static under
+  another spelling (Apex ignores case; #46, #48), and `npm run check:reserved-words` on a name that
+  is an Apex reserved word (`number`, #46). All run in CI; see `docs/ci-setup.md`.
 - **Compile against the test org before pushing Apex:** `sf project deploy start --dry-run --source-dir
   force-app --target-org shoresh-test --test-level NoTestRun --ignore-conflicts`, with 0 errors. It runs
   no tests and changes nothing, but it is still a deployment: follow the rule above and run it only when
   no CI run is using the org (during one it would wait on or hold up CI, and compile against that
-  branch's code). It can't catch a clash with a class only `main` has deleted, since the org may still
-  hold it. #46 and #48 were pushed with Apex that didn't compile.
-- **Apex names ignore capitals:** never name a variable, field, parameter or inner class the same as
-  an existing class or static method or variable (e.g. a local `scheduleUses` beside the class
-  `ScheduleUses`). Seen in #46 and #48.
+  branch's code). If the org is busy, push without it: CI's deploy step fails within minutes on a
+  compile error, while waiting only loses your place in the queue. It can't catch a clash with a class
+  only `main` has deleted, since the org may still hold it. #46 and #48 were pushed with Apex that
+  didn't compile.
 - **Test setup goes before `Test.startTest()`**, so the code under test gets its own limits; read
   `Limits.getQueries()` (or the bound you care about) before `Test.stopTest()`, and assert async
   results after it.

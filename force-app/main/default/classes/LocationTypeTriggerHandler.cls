@@ -24,7 +24,9 @@ public with sharing class LocationTypeTriggerHandler {
     ]) {
       taken.add(keyOf(existing));
     }
-    Map<Id, CampLabels> labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
+      seasonIds
+    );
     for (LocationType__c type : types) {
       if (!taken.add(type.Key__c)) {
         CampLabels labels = labelsBySeason.get(type.Season__c);

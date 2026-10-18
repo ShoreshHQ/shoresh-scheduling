@@ -2,8 +2,9 @@
  * The program's setup for one week, read once per request and shared by everything Generated
  * Schedule does in it (GeneratedInputs, GeneratedSaves, GeneratedChecks, GeneratedClosures,
  * GeneratedSetupChanges, and BlankWeek for a blank week): the program and week, the time blocks,
- * every group, and this week's exceptions. A save reads it only once it holds its lock. Reading it once keeps a request to a
- * fixed, small number of queries, whatever the size of the week. Runs in user mode.
+ * every group, and this week's exceptions. A save reads it only once it holds its lock. Reading
+ * it once keeps a request to a fixed, small number of queries, whatever the size of the week.
+ * Runs in user mode.
  */
 public with sharing class GeneratedSetup {
   public Program__c program;
@@ -13,6 +14,7 @@ public with sharing class GeneratedSetup {
   public List<Group__c> groups;
   public List<WeekException__c> exceptions;
   private CampLabels wordsRead;
+  private List<Activity__c> activitiesRead;
 
   public GeneratedSetup(Id programId, Id weekId) {
     program = ProgramReads.programOf(programId);
@@ -27,12 +29,22 @@ public with sharing class GeneratedSetup {
         Location__c,
         Location__r.Name,
         Group__c,
-        Group__r.Name
+        Group__r.Name,
+        FixedActivity__c,
+        RecurringActivity__c
       FROM WeekException__c
       WHERE Week__c = :week.Id
       WITH USER_MODE
       ORDER BY Id
     ];
+  }
+
+  /** The season's activities as setup reads them (SeasonSetupReader), read when first needed. */
+  public List<Activity__c> activityRecords() {
+    if (activitiesRead == null) {
+      activitiesRead = SeasonSetupReader.activitiesOf(program.Season__c);
+    }
+    return activitiesRead;
   }
 
   /** The camp's words, read when first needed. */

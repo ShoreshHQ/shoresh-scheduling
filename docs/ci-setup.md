@@ -15,10 +15,48 @@ deploys to the existing test org instead of creating one.
 ## How the checks use it
 
 The "Scratch org deploy and Apex tests" check logs in to the test org with the encrypted secret
-`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests. One check at a time, so two
+`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests (unless the pull request
+doesn't need them, see the next section). One check at a time, so two
 pull requests never deploy over each other. Tests run one class at a time (see below). Because
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
+
+### How much of the test org a pull request needs
+
+A full check takes about 20 minutes, and every pull request waits for the one before it. So a
+first, quick check ("Which org checks this change needs", `scripts/ci-pr-category.js`) looks at
+the files the pull request changes and picks one of three:
+
+| Category | What changed                                                                                                     | What the org check does                                            |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `docs`   | Nothing the test org sees: `docs/`, `.md` files, `.claude/`, `prototypes/`, Jest and lint settings               | Passes at once. Doesn't wait in line for the test org or touch it. |
+| `screen` | Only screens (`force-app/main/default/lwc/`) and static resources, plus any `docs` files                         | Deploys to the test org (proves it deploys); no Apex tests.        |
+| `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/` | Deploys and runs every Apex test, as before.                       |
+
+When in doubt it picks `full`: a path not in the first two rows, a failure to list the
+changed files, or the quick check itself failing runs everything. It uses the rules as they are
+on the base branch, so a pull request that edits `scripts/ci-pr-category.js` is still judged by
+the old rules (and, since it changes `scripts/`, gets `full`). The org check still reports under the same name, and passes,
+in every category; its log and summary say which category it chose and why.
+
+### The nightly full run on main (the safety net)
+
+Merges to main run only the quick check ("LWC Jest and Code Analyzer"). Every night at 07:15 UTC
+(03:15 New York time in summer, 02:15 in winter) the full check runs on main: deploy and every
+Apex test. Whatever a `docs` or `screen` pull request skipped is tested by the next morning. It
+waits its turn for the test org like any pull request.
+
+A failed nightly run shows as a red run in the repository's **Actions** tab (filter by event
+"schedule"); GitHub also emails whoever last changed the schedule. The coordinator session
+checks the latest nightly run each morning:
+`gh run list --repo ShoreshHQ/shoresh-scheduling --workflow CI --event schedule --limit 1`.
+
+To start a full run by hand (for example right after a risky merge): **Actions** tab → **CI** →
+**Run workflow** → branch `main` → **Run workflow**, or
+`gh workflow run CI --repo ShoreshHQ/shoresh-scheduling --ref main`.
+
+GitHub turns scheduled runs off after 60 days with no commits to the repository; the Actions tab
+then offers to turn it back on.
 
 ### Waiting in line for the test org
 
@@ -32,7 +70,7 @@ cancelled ("Canceling since a higher priority waiting request for shared-test-or
 and with five or six pull requests open, checks kept getting cancelled (2026-10-17).
 
 Pushing again to a pull request still cancels that pull request's older check; only the newest
-version of each pull request is checked.
+version of each pull request is checked. A `docs` pull request doesn't join the line at all.
 
 ## Namespace-safety checks (in "LWC Jest and Code Analyzer")
 
@@ -52,6 +90,42 @@ saves). Every such spelling has been replaced; two checks keep it that way
 
 Neither proves the namespaced org works; that is checked after the namespace is registered.
 
+## Checks that catch org-only mistakes early (in "LWC Jest and Code Analyzer")
+
+The test org is shared and each run takes about 20 minutes, so these checks catch, with no org,
+mistakes that used to show up only there or at AppExchange security review:
+
+- **AppExchange security-review rules.** The Code Analyzer step runs `Recommended` plus the scan
+  Salesforce documents for security review (`--rule-selector AppExchange --rule-selector
+Recommended:Security`), and fails on moderate (3) or worse. A second step runs the
+  security-review scan on its own; both reports are in the `code-analyzer-report` artifact
+  (`code-analyzer.html`, `appexchange-security-review.html`). Known false positives are suppressed
+  in `code-analyzer.yml`, each for one file or folder, one rule, a limit and a reason: the `Key__c` /
+  `QuestionKey__c` lookup keys (`ProtectSensitiveData`: not secrets) and Jest tests that fake
+  real browser events (`AvoidLwcBubblesComposedTrue`). Suppression paths are relative to
+  `force-app`, the scanned folder. Suppressed findings are not in the reports.
+- **Every Apex class and trigger has its `-meta.xml`** (`npm run check:meta`,
+  `scripts/apex-meta-files.js`), and no `-meta.xml` is left without its file. Without one, a class
+  is left out of every deploy and dry-run with no error, so it never compiles (#55).
+- **No Apex variable takes over a class or static's name** (`npm run check:name-clash`,
+  `scripts/apex-name-clash.js`). Apex ignores case, and a variable beats a class: inside the scope
+  of a field `campLabels`, `CampLabels.forCamp(...)` means the field, and the class doesn't compile
+  (#46; also a local `targets` before `TARGETS.keySet()`, #48). Only uses with a dot count, and only
+  under a different spelling. Opt out on the declaration's line, with a reason:
+  `// apex-name-clash-ok: <why>`.
+- **No Apex name that is a reserved word** (`npm run check:reserved-words`,
+  `scripts/apex-reserved-words.js`): a local, parameter, field, class, interface or enum named
+  with one of Salesforce's Apex reserved keywords, ignoring case (`Integer number`, #46;
+  `List<String> into`). The list is the Apex Developer Guide's "Reserved Keywords" page; its
+  special keywords that can be names (`count`, `first`, `order`, ...) are allowed.
+- **Accessibility in Jest** (`@sa11y/jest`, axe-core rules): the main screens' render tests
+  (Manual Build, Generated, Schedules, Versions, the setup screen and its tables) end with
+  `await expect(element).toBeAccessible()`. jsdom has no layout, so focus loss, contrast and
+  tap-target size are still review items.
+
+Not covered: anything else only the org's compiler knows (types, method signatures), and
+sharing and query limits at run time.
+
 ## Running Apex tests: one class at a time
 
 Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the
@@ -67,8 +141,11 @@ Direct single-class runs do not count against that allowance. **Never queue a fu
 `RunLocalTests` run in the test org.** To see what is left:
 `sf org list limits --target-org shoresh-test` (`DailyAsyncApexTests`).
 
-Coverage is read from the org's running totals for this repository's classes and triggers,
-so it is close to, but not exactly, what a single full run would report.
+Coverage is read once, after the last class, from the org's running totals for this
+repository's classes and triggers, so it is close to, but not exactly, what a single full run
+would report. The script starts the Salesforce CLI only twice (to read the login; twice more if the session expires mid-run) and sends each
+class's run itself, with the same call the CLI's `--synchronous` run makes; each class's line
+shows how many seconds it took.
 
 ## When the test org expires (every 30 days)
 

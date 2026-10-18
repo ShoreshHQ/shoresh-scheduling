@@ -8,10 +8,34 @@
  */
 @IsTest
 private class GeneratedScheduleTest {
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = GeneratedTestData.camp();
+    }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
+  }
+
+  /** The camp setup built, kept where GeneratedTestData's helpers read it. */
+  private static Map<String, Id> camp() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    GeneratedTestData.ids = ids;
+    return ids;
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> ids) {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
   @IsTest
   static void aWeekNotGeneratedYetReadsAsABlankWeekWithTheSeasonsRecords() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
 
@@ -39,8 +63,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void aGroupAwayThatWeekIsNotSentToTheEngine() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       // Group A is away in Week 3: the engine keeps a row of a group it isn't sent as it is.
       GeneratedInputs.Inputs read = GeneratedScheduleController.getInputs(
@@ -55,8 +79,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void aFixedActivityWhoseSlotIsTakenIsListedAsNotPlaced() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       // Saved around the clash check (as only a save that skips it could): two fixed
       // activities in Period 1.
       SetTimeGuard.defer();
@@ -81,8 +105,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void theInputsHoldTheSeasonsRecordsWithTheFieldsTheEngineReads() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Database.insert(
         new List<WeekException__c>{
           new WeekException__c(
@@ -154,8 +178,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void everyRuleFieldTheEngineReadsIsSent() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       // An activity with every rule the engine reads set away from the hand-add values.
       Activity__c hike = ShoreshTestData.activity(
         ids.get('Season'),
@@ -192,8 +216,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void theFirstGenerateMakesTheGeneratedDraftBesideManualBuild() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Id manualId = ManualBuildController.startBlankWeek(
           ids.get('Main'),
@@ -265,8 +289,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void twoFirstGeneratesMakeOneDraftAndTheSecondHearsOfIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       // Two people open the week before either has generated it.
       GeneratedInputs.Inputs mine = GeneratedTestData.inputs();
@@ -301,8 +325,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void aSaveOverSomeoneElsesNewerSaveIsAConflictAndWritesNothing() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       GeneratedTestData.save(
         GeneratedTestData.filled(
           GeneratedTestData.request(
@@ -401,8 +425,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void rebuildAndTryAnotherKeepTheWeekAsAVersionFirst() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Id draftId = generatedWithOption4();
       Test.startTest();
       GeneratedWeek.Result rebuilt = saveNow(
@@ -454,8 +478,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void startOverKeepsAVersionAndFillTheOpenCellsDoesNot() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Id draftId = generatedWithOption4();
       Test.startTest();
       // Fill the open cells only adds: nothing is replaced, so nothing is kept.
@@ -500,8 +524,8 @@ private class GeneratedScheduleTest {
 
   @IsTest
   static void namesComeFromSetupNotFromTheScreen() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       GeneratedWeek.Save request = GeneratedTestData.request(
         GeneratedTestData.inputs(),
         GeneratedSaves.GENERATE,

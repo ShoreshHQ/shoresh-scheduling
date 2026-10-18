@@ -3,7 +3,12 @@ import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
-import { day, draft, schedule } from "./data/draftFixture";
+import {
+  day,
+  draft,
+  schedule
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { editorRoot, find } from "shoresh-jest/week-editor";
 
 // Clear day, Clear week and Copy day to… on the Manual Build screen (tools.js works them out;
 // tools.test.js covers the rules). Synthetic camp: draftFixture (Bunk 2 isn't at camp at Lunch).
@@ -69,7 +74,7 @@ async function render(first) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const q = (element, selector) => find(element, selector);
 const sentRuns = (call) => saveSlots.mock.calls[call][0].edits[0].runs;
 const choose = async (element, id, value) => {
   q(element, `[data-id="${id}"]`).dispatchEvent(
@@ -176,7 +181,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       ["g2", [""]],
       ["g1", [""]]
     ]);
-    const focused = element.shadowRoot.activeElement;
+    const focused = editorRoot(element).activeElement;
     expect(["undo", "redo"]).toContain(focused && focused.dataset.id);
   });
 

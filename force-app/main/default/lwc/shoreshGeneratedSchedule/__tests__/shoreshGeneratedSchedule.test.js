@@ -3,6 +3,7 @@ import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { MODE, generateWeek } from "c/shoreshEngine";
 import { loadWeek } from "c/shoreshGeneratedWeek";
 import { nextTurn } from "../pieces";
@@ -28,16 +29,28 @@ jest.mock(
   { virtual: true }
 );
 
-const SETUP = {
+const SETUP = nsRecord({
   season: { Id: "a0Z000000000001AAA", Name: "Summer 2026" },
   weeks: [
     { Id: WEEK, Name: "Week 1" },
     { Id: WEEK_2, Name: "Week 2" }
   ],
-  programs: [{ program: { Id: PROGRAM, Name: "Main" } }],
-  activities: [],
+  // Everything building needs (desktop readiness.js), so Generate is offered.
+  programs: [
+    {
+      program: { Id: PROGRAM, Name: "Main", Monday__c: true },
+      divisions: [
+        {
+          division: { Id: "a0D000000000001AAA", Name: "Juniors" },
+          groups: [{ Id: "a0G000000000001AAA" }]
+        }
+      ],
+      timeBlocks: [{ Id: "a0B000000000001AAA", Name: "Period 1" }]
+    }
+  ],
+  activities: [{ Id: "a0A000000000001AAA", Name: "Swim" }],
   locations: []
-};
+});
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
@@ -82,13 +95,13 @@ function savedAnswer(n = 1) {
   };
 }
 
-async function render(inputs = camp(SMALL)) {
+async function render(inputs = camp(SMALL), setup = SETUP) {
   getInputs.mockResolvedValue(inputs);
   const element = createElement("c-shoresh-generated-schedule", {
     is: ShoreshGeneratedSchedule
   });
   element.terms = terms;
-  element.setup = SETUP;
+  element.setup = setup;
   document.body.appendChild(element);
   await flush();
   return element;
@@ -143,6 +156,35 @@ describe("c-shoresh-generated-schedule", () => {
     expect(action(element, "Rebuild")).toBeNull();
     expect(grid(element)).toBeNull();
     expect(saveWeekOnServer).not.toHaveBeenCalled();
+    await expect(element).toBeAccessible();
+  });
+
+  it("building waits for the basics: the desktop's sentence, its links and Set up …, no Generate", async () => {
+    const element = await render(camp(SMALL), { ...SETUP, activities: [] });
+    const box = q(element, '[data-id="still-needed-box"]');
+    expect(box.querySelector('[data-id="still-needed"]').textContent).toBe(
+      "One thing still needed before you can build the schedule: Activities."
+    );
+    expect(q(element, '[data-id="generate"]')).toBeNull();
+    const setUp = q(element, '[data-id="set-up-first"]');
+    expect(setUp.label).toMatch(/^Set up activities$/i);
+    const navigate = jest.fn();
+    element.addEventListener("navigate", navigate);
+    setUp.click();
+    box.querySelector("a").click();
+    expect(navigate.mock.calls.map((c) => c[0].detail.screen)).toEqual([
+      "activities",
+      "activities"
+    ]);
+  });
+
+  it("a week already generated opens even with basics missing since", async () => {
+    const element = await render(camp({ ...SMALL, scheduleId: SCHEDULE }), {
+      ...SETUP,
+      activities: []
+    });
+    expect(q(element, '[data-id="still-needed-box"]')).toBeNull();
+    expect(grid(element)).not.toBeNull();
   });
 
   it("lists a blank week's fixed activities that couldn't be placed", async () => {
@@ -197,6 +239,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(texts).toContain("Not at camp");
     const away = cells(element).find((c) => c.className.includes("cell_away"));
     expect(away).toBeTruthy();
+    await expect(element).toBeAccessible();
   });
 
   it("builds a big week in pieces, showing its progress, with the actions held until it is saved", async () => {
@@ -255,6 +298,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-id="confirm-note"]').textContent).toBe(
       "Saved to Versions first."
     );
+    await expect(element).toBeAccessible();
     // Cancel has focus first, as on the desktop.
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="confirm-cancel"]')

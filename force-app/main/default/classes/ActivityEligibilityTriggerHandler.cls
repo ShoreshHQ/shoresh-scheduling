@@ -18,7 +18,9 @@ public with sharing class ActivityEligibilityTriggerHandler {
     for (Activity__c activity : activities.values()) {
       seasonIds.add(activity.Season__c);
     }
-    Map<Id, CampLabels> labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
+      seasonIds
+    );
     for (ActivityEligibility__c row : rows) {
       Activity__c activity = activities.get(row.Activity__c);
       Id target = row.Division__c != null ? row.Division__c : row.Group__c;

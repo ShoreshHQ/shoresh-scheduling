@@ -35,7 +35,9 @@ public with sharing class ActivityTriggerHandler {
     for (Activity__c activity : activities) {
       seasonIds.add(activity.Season__c);
     }
-    Map<Id, CampLabels> labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
+      seasonIds
+    );
     for (Activity__c activity : activities) {
       for (Schema.SObjectField field : TARGETS.keySet()) {
         Id targetSeason = seasonByTarget.get((Id) activity.get(field));
