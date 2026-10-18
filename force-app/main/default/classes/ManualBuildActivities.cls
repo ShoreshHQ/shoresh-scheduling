@@ -31,9 +31,7 @@ public with sharing class ManualBuildActivities {
         return option;
       }
     }
-    throw new ShoreshException(
-      'It couldn\'t be read back after adding, so it wasn\'t kept. Try again.'
-    );
+    throw new ShoreshException('Shoresh couldn\'t tell why. Try again.');
   }
 
   private static Id lockedSeasonOf(Id scheduleId) {

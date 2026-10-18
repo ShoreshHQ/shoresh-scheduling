@@ -46,6 +46,7 @@ describe("stillNeeded", () => {
     expect(screens(stillNeeded(bare))).toEqual([
       "weeks:Weeks",
       "divisions:Units",
+      "groups:Bunks",
       "programs:Days",
       "timeBlocks:Periods",
       "activities:Activities"
@@ -138,6 +139,24 @@ describe("menuMarks", () => {
     });
   });
 
+  it("with two programs, an area is done only when both have it, as Manual Build lists it", () => {
+    const teens = {
+      program: { Id: "p2", Name: "Teens", Monday__c: true },
+      divisions: [
+        { division: { Id: "d2" }, groups: [] },
+        { division: { Id: "d3" }, groups: [{ Id: "g9" }] }
+      ],
+      timeBlocks: []
+    };
+    const setup = { ...ready, programs: [main, teens] };
+    const marks = menuMarks(setup);
+    expect(marks.timeBlocks).toBe("needed");
+    expect(marks.divisions).toBe("done");
+    // One unit without bunks is fine: the program has bunks.
+    expect(marks.groups).toBe("done");
+    expect(screens(stillNeeded(setup, "p2"))).toEqual(["timeBlocks:Periods"]);
+  });
+
   it("a program that runs on no day still needs its days", () => {
     const noDays = {
       ...ready,
@@ -161,7 +180,7 @@ describe("rainPlanOptions", () => {
     ];
     expect(rainPlanOptions(activities)).toEqual([
       { label: "Swim", value: "a1" },
-      { label: "Hiking (outdoors, choose another)", value: "a3" }
+      { label: "Hiking (outdoor, choose another)", value: "a3" }
     ]);
   });
 });

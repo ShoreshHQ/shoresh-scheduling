@@ -145,19 +145,47 @@ describe("c-shoresh-manual-build", () => {
     expect(q(element, '[data-id="start-week"]')).toBeNull();
     const needed = q(element, '[data-id="still-needed"]');
     expect(needed.textContent).toBe(
-      "4 things still needed before you can build the schedule: Divisions, Days, Time blocks and Activities."
+      "5 things still needed before you can build the schedule: Divisions, Bunks, Days, Time blocks and Activities."
     );
     const handler = jest.fn();
     element.addEventListener("navigate", handler);
     const links = [...needed.querySelectorAll("a")];
     expect(links.map((a) => [a.textContent, a.dataset.screen])).toEqual([
       ["Divisions", "divisions"],
+      ["Bunks", "groups"],
       ["Days", "programs"],
       ["Time blocks", "timeBlocks"],
       ["Activities", "activities"]
     ]);
-    links[1].click();
+    links[2].click();
     expect(handler.mock.calls[0][0].detail).toEqual({ screen: "programs" });
+  });
+
+  it("offers the desktop's main action, Set up the first thing missing", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({ ...READY, activities: [] });
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const button = q(element, '[data-id="set-up-first"]');
+    expect(button.label).toBe("Set up Activities");
+    button.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "activities" });
+  });
+
+  it("a link to a screen doesn't also follow its # address", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({ ...READY, activities: [] });
+    const link = q(element, '[data-id="still-needed"] a');
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+  });
+
+  it("a week already started opens even with basics missing since", async () => {
+    getDraft.mockResolvedValue(draft());
+    const element = await render({ ...READY, activities: [] });
+    expect(q(element, '[data-id="still-needed"]')).toBeNull();
+    expect(grid(element)).not.toBeNull();
   });
 
   it("one thing missing reads as one thing", async () => {

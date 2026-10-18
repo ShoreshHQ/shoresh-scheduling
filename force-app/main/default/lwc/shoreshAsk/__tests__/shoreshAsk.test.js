@@ -30,6 +30,9 @@ describe("c-shoresh-ask", () => {
     const dialog = q(element, '[data-id="ask"]');
     expect(dialog.getAttribute("role")).toBe("dialog");
     expect(dialog.getAttribute("aria-modal")).toBe("true");
+    // Screen readers hear the lines too, not just the heading and Cancel.
+    const lines = q(element, ".slds-modal__content");
+    expect(dialog.getAttribute("aria-describedby")).toBe(lines.id);
     expect(q(element, "h2").textContent).toBe('Turn off "Bunk 3" for Week 2?');
     expect(
       [...element.shadowRoot.querySelectorAll("p")].map((p) => p.textContent)
@@ -64,5 +67,29 @@ describe("c-shoresh-ask", () => {
       new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
     );
     expect(element.shadowRoot.activeElement).toBe(q(element, '[data-id="no"]'));
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true
+      })
+    );
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="yes"]')
+    );
+  });
+
+  it("Escape is used up by the question, so it doesn't also close what is behind it", async () => {
+    const element = await render();
+    const behind = jest.fn();
+    element.addEventListener("keydown", behind);
+    q(element, '[data-id="ask"]').dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        composed: true
+      })
+    );
+    expect(behind).not.toHaveBeenCalled();
   });
 });

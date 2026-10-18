@@ -282,22 +282,31 @@
       </div>
     </template>
     <template lwc:elseif={showStillNeeded}>
-      <p class="still-needed" data-id="still-needed">
-        <template for:each={stillNeededParts} for:item="part">
-          <template lwc:if={part.link}>
-            <a
-              key={part.key}
-              href="#"
-              data-screen={part.screen}
-              onclick={handleStillNeeded}
-              >{part.text}</a
-            >
+      <div class="still-needed-box" data-id="still-needed-box">
+        <p class="still-needed" data-id="still-needed">
+          <template for:each={stillNeededParts} for:item="part">
+            <template lwc:if={part.link}>
+              <a
+                key={part.key}
+                href="#"
+                data-screen={part.screen}
+                onclick={handleStillNeeded}
+                >{part.text}</a
+              >
+            </template>
+            <template lwc:else>
+              <span key={part.key}>{part.text}</span>
+            </template>
           </template>
-          <template lwc:else>
-            <span key={part.key}>{part.text}</span>
-          </template>
-        </template>
-      </p>
+        </p>
+        <lightning-button
+          variant="brand"
+          label={setUpFirstLabel}
+          data-screen={setUpFirstScreen}
+          onclick={handleStillNeeded}
+          data-id="set-up-first"
+        ></lightning-button>
+      </div>
     </template>
 
     <!-- Typing a name into a slot -->

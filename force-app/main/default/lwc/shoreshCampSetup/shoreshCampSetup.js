@@ -15,7 +15,12 @@ import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActiv
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
-import { menuMarks, rainPlanOptions, setupProblems } from "c/shoreshSetupRules";
+import {
+  menuMarks,
+  rainPlanOptions,
+  setupProblems,
+  turnOffQuestion
+} from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
@@ -822,49 +827,7 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!placed.length) {
       return true;
     }
-    return this.askFirst(this.turnOffQuestion(placed));
-  }
-
-  /** The desktop's words: one bunk and week, or each of several. */
-  turnOffQuestion(placed) {
-    const names = this.recordNames();
-    const cells = (n) => `${n} ${n === 1 ? "cell" : "cells"}`;
-    const stay = "They stay until you change them.";
-    if (placed.length === 1) {
-      const [only] = placed;
-      const week = names.get(only.week) || `this ${this.terms.sIn("Week")}`;
-      return {
-        heading: `Turn off "${names.get(only.target) || "this one"}" for ${week}?`,
-        lines: [`Placed in ${cells(only.slots)} in ${week}.`, stay],
-        confirmLabel: "Turn off anyway"
-      };
-    }
-    return {
-      heading: "Turn these off?",
-      lines: [
-        ...placed.map(
-          (p) =>
-            `"${names.get(p.target) || "One of them"}": placed in ${cells(p.slots)} in ${names.get(p.week)}.`
-        ),
-        stay
-      ],
-      confirmLabel: "Turn off anyway"
-    };
-  }
-
-  /** Every week, bunk, activity, and location of the season: Id -> name. */
-  recordNames() {
-    const setup = this.setup || {};
-    const names = new Map();
-    const add = (records) =>
-      (records || []).forEach((r) => names.set(r.Id, r.Name));
-    add(setup.weeks);
-    add(setup.activities);
-    add(setup.locations);
-    (setup.programs || []).forEach((entry) =>
-      (entry.divisions || []).forEach((d) => add(d.groups))
-    );
-    return names;
+    return this.askFirst(turnOffQuestion(placed, this.setup, this.terms));
   }
 
   /**

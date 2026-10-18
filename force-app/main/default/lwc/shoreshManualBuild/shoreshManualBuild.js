@@ -162,6 +162,15 @@ export default class ShoreshManualBuild extends LightningElement {
   get stillNeededParts() {
     return stillNeededSentence(this.stillNeeded);
   }
+  /** The desktop's main action: "Set up <the first thing missing>". */
+  get setUpFirstLabel() {
+    const [first] = this.stillNeeded;
+    return first ? `Set up ${first.label}` : "";
+  }
+  get setUpFirstScreen() {
+    const [first] = this.stillNeeded;
+    return first ? first.screen : null;
+  }
   get showStillNeeded() {
     return !this.loading && !this.draft && this.stillNeeded.length > 0;
   }

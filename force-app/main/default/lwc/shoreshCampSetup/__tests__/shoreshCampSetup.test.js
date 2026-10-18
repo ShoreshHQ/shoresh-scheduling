@@ -11,6 +11,7 @@ import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addW
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
+import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -52,6 +53,9 @@ jest.mock(
   () => apex(),
   { virtual: true }
 );
+jest.mock("@salesforce/apex/ImportController.undoImport", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/RunsInController.placedInWeeks", () => apex(), {
   virtual: true
 });
@@ -914,6 +918,22 @@ describe("c-shoresh-camp-setup", () => {
       expect(saveRowsAndWeeks).toHaveBeenCalled();
     });
 
+    it("if the check of what is placed fails, nothing is turned off and it says to try again", async () => {
+      placedInWeeks.mockRejectedValue({
+        body: { message: "Shoresh couldn't tell why. Try again." }
+      });
+      const element = await render();
+      const onFailure = jest.fn();
+      turnOff(element, [{ target: "g3", week: "w1" }], onFailure);
+      await flush();
+      expect(saveRowsAndWeeks).not.toHaveBeenCalled();
+      expect(onFailure).toHaveBeenCalled();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+        "Roots not saved. Your changes are still here. Shoresh couldn't tell why. Try again."
+      );
+    });
+
     it("several at once are listed in one question", async () => {
       placedInWeeks.mockResolvedValue([
         { target: "g3", week: "w1", slots: 2 },
@@ -958,6 +978,33 @@ describe("c-shoresh-camp-setup", () => {
       "Done, but the screen couldn't show it yet. Reload the page. Offline."
     );
     expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it("a delete or an Undo that worked never says it didn't, when only the refresh failed", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValueOnce(nsRecord(setupWith()));
+    LightningConfirm.open.mockResolvedValue(nsRecord(true));
+    deleteRecord.mockResolvedValue();
+    undoImport.mockResolvedValue({ removed: 1, restored: 0, kept: [] });
+    const element = await render();
+    getSeasonSetup.mockRejectedValue({ body: { message: "Offline." } });
+    const done =
+      "Done, but the screen couldn't show it yet. Reload the page. Offline.";
+    q(element, 'c-shoresh-editable-table[data-id="locations"]').dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "l1", name: "Pool" } })
+    );
+    await flush();
+    expect(deleteRecord).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
+    q(element, "c-shoresh-roots").dispatchEvent(
+      new CustomEvent("undoimport", {
+        detail: { importId: "i1", files: "camp.xlsx" }
+      })
+    );
+    await flush();
+    expect(undoImport).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
   });
 
   it("tells a table with weeks when its save failed", async () => {

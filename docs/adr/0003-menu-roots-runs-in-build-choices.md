@@ -43,7 +43,14 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    desktop's required areas, readiness.js. Manual Build's Start lists everything missing in one
    sentence with links, `shoreshSetupRules.stillNeeded`, and each setup menu item shows the
    desktop's **!** (Needed) or **✓** (Done), `menuMarks`. Needs attention items still block
-   nothing.)
+   nothing. Two differences from the desktop's look, both from the design guide's colour rules:
+   the desktop draws **!** in red (`--danger`) in a column before the label, and Shoresh draws
+   it as dark text on a bronze ring after the label (red is for errors only; bronze is the
+   caution hue but never text, and SLDS navigation puts badges after the label); and the ✓ is
+   a green check icon, as green is for small marks only. The turn-off question's **Turn off
+   anyway** is the brand button, not the desktop's red one: turning a week off is undone by
+   ticking it again, and red is kept for what can't be undone. With several programs an area
+   is done only when every program has it, as Manual Build lists it.)
 6. **"Runs in" week ticks live in each table** (Groups, Activities; Locations say **"Open in"**,
    which reads better for a place). Every week is ticked unless a week exception names the row
    in that week; new rows start with every week ticked. Storage is unchanged (`WeekException__c`).

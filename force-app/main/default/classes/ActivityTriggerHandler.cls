@@ -1,22 +1,26 @@
 /**
- * Activities: the location and rain plan must belong to the same season as the activity, and a
- * rain plan chosen or changed must be indoors (Shoresh desktop ActivitiesScreen.jsx save()).
+ * Activities: the location and rain plan must belong to the same season as the activity, and an
+ * activity with a rain plan saves only if that rain plan is indoors (Shoresh desktop
+ * ActivitiesScreen.jsx save()).
  */
 public with sharing class ActivityTriggerHandler {
+  /**
+   * Off while a season is copied or an import undone: they put rain plans back as they were, so
+   * an outdoor one already chosen is kept (and shown as one to choose again), never refused.
+   */
+  public static Boolean checkRainPlans = true;
+
   private static final Map<Schema.SObjectField, String> TARGETS = new Map<Schema.SObjectField, String>{
     Activity__c.Location__c => 'Location',
     Activity__c.RainPlan__c => 'RainPlan'
   };
 
-  public static void beforeSave(
-    List<Activity__c> activities,
-    Map<Id, Activity__c> before
-  ) {
+  public static void beforeSave(List<Activity__c> activities) {
     Map<Id, Id> seasonByTarget = targetSeasons(activities);
     if (seasonByTarget.isEmpty()) {
       return;
     }
-    refuseOutdoorRainPlans(activities, before);
+    refuseOutdoorRainPlans(activities);
     Set<Id> seasonIds = new Set<Id>();
     for (Activity__c activity : activities) {
       seasonIds.add(activity.Season__c);
@@ -41,27 +45,26 @@ public with sharing class ActivityTriggerHandler {
 
   /**
    * A rain plan is used on a rainy day instead of an outdoor activity, so one that is itself
-   * outdoors would do nothing. Checked only where the rain plan is chosen or changed (as the
-   * desktop does), using the rain plan's outdoors as this same save leaves it.
+   * outdoors would do nothing. As on the desktop, saving an activity whose rain plan is outdoors
+   * is refused, whatever else changed, using the rain plan's outdoors as this same save leaves it.
+   * Making an activity outdoors that is another's rain plan is not refused (nor on the desktop);
+   * that one shows "(outdoor, choose another)" until its rain plan is changed.
    */
-  private static void refuseOutdoorRainPlans(
-    List<Activity__c> activities,
-    Map<Id, Activity__c> before
-  ) {
-    List<Activity__c> choosing = new List<Activity__c>();
+  private static void refuseOutdoorRainPlans(List<Activity__c> activities) {
+    List<Activity__c> withRainPlan = new List<Activity__c>();
     Set<Id> chosen = new Set<Id>();
     for (Activity__c activity : activities) {
-      if (choosesRainPlan(activity, before)) {
-        choosing.add(activity);
+      if (checkRainPlans && activity.RainPlan__c != null) {
+        withRainPlan.add(activity);
         chosen.add(activity.RainPlan__c);
       }
     }
-    if (choosing.isEmpty()) {
+    if (withRainPlan.isEmpty()) {
       return;
     }
     Map<Id, Boolean> outdoors = outdoorsAfterSave(chosen, activities);
     Map<Id, CampLabels> labelsBySeason;
-    for (Activity__c activity : choosing) {
+    for (Activity__c activity : withRainPlan) {
       if (outdoors.get(activity.RainPlan__c) == true) {
         if (labelsBySeason == null) {
           labelsBySeason = SetupSeasons.labelsBySeason(seasonsOf(activities));
@@ -72,17 +75,6 @@ public with sharing class ActivityTriggerHandler {
         );
       }
     }
-  }
-
-  /** A rain plan set on a new activity, or changed on a saved one. */
-  private static Boolean choosesRainPlan(
-    Activity__c activity,
-    Map<Id, Activity__c> before
-  ) {
-    Activity__c old = before == null ? null : before.get(activity.Id);
-    return activity.RainPlan__c != null &&
-      (old == null ||
-      old.RainPlan__c != activity.RainPlan__c);
   }
 
   /** Whether each rain plan is outdoors as this save leaves it (its own change counts). */

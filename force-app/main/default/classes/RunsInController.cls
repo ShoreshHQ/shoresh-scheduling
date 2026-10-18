@@ -11,7 +11,8 @@ public with sharing class RunsInController {
     try {
       return PlacedInWeeks.count(weeksOff);
     } catch (Exception e) {
-      throw ScreenErrors.ofLoading(e);
+      // A count that can't be made is tried again; the ticks are still on screen.
+      throw ScreenErrors.of(e);
     }
   }
 }

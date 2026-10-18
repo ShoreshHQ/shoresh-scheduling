@@ -414,7 +414,7 @@ export function suggestedCopyStart(oldStartDate) {
 
 /**
  * What a rain plan can be (Shoresh desktop ActivitiesScreen.jsx): indoor activities only. An
- * outdoor one still chosen somewhere stays listed as "<name> (outdoors, choose another)", so that
+ * outdoor one still chosen somewhere stays listed as "<name> (outdoor, choose another)", so that
  * row shows what it has; saving it again is refused (ActivityTriggerHandler).
  */
 export function rainPlanOptions(activities) {
@@ -423,7 +423,7 @@ export function rainPlanOptions(activities) {
     .filter((a) => !a[ACTIVITY.Outdoor] || chosen.has(a.Id))
     .map((a) => ({
       label: a[ACTIVITY.Outdoor]
-        ? `${a.Name} (outdoors, choose another)`
+        ? `${a.Name} (outdoor, choose another)`
         : a.Name,
       value: a.Id
     }));
@@ -460,7 +460,9 @@ export function stillNeeded(setup, terms, programId) {
     const divisions = entry.divisions || [];
     if (divisions.length === 0) {
       add("divisions", t.p("Division"));
-    } else if (divisions.every((d) => (d.groups || []).length === 0)) {
+    }
+    // As on the desktop, groups are needed until there are some, units or not.
+    if (divisions.every((d) => (d.groups || []).length === 0)) {
       add("groups", t.p("Group"));
     }
     if (!runsOnADay(entry.program)) {
@@ -514,19 +516,22 @@ export function stillNeededSentence(needed) {
 /**
  * Each setup menu item's mark (Shoresh desktop Sidebar.jsx renderItem): "needed" ("!") when an
  * area building needs is empty, "done" ("✓") when an area has rows, none otherwise. Screen -> mark.
+ * The desktop has one program; here an area a program owns is done only when every program has
+ * it, so the menu never shows ✓ on what Manual Build still lists as needed (stillNeeded).
  */
 export function menuMarks(setup) {
   if (!setup || !setup.season) {
     return {};
   }
   const programs = setup.programs || [];
-  const divisions = programs.flatMap((p) => p.divisions || []);
+  const every = (test) => programs.length > 0 && programs.every(test);
+  const groupsOf = (p) => (p.divisions || []).flatMap((d) => d.groups || []);
   const has = {
     weeks: (setup.weeks || []).length > 0,
-    programs: programs.some((p) => runsOnADay(p.program)),
-    divisions: divisions.length > 0,
-    groups: divisions.some((d) => (d.groups || []).length > 0),
-    timeBlocks: programs.some((p) => (p.timeBlocks || []).length > 0),
+    programs: every((p) => runsOnADay(p.program)),
+    divisions: every((p) => (p.divisions || []).length > 0),
+    groups: every((p) => groupsOf(p).length > 0),
+    timeBlocks: every((p) => (p.timeBlocks || []).length > 0),
     activities: (setup.activities || []).length > 0,
     locations: (setup.locations || []).length > 0,
     fixedActivities: programs.some((p) => (p.fixedActivities || []).length > 0),
@@ -551,4 +556,50 @@ export function menuMarks(setup) {
     }
   });
   return marks;
+}
+
+/** Every week, bunk, activity, and location of the season: Id -> name. */
+function recordNames(setup) {
+  const names = new Map();
+  const add = (records) =>
+    (records || []).forEach((r) => names.set(r.Id, r.Name));
+  add(setup.weeks);
+  add(setup.activities);
+  add(setup.locations);
+  (setup.programs || []).forEach((entry) =>
+    (entry.divisions || []).forEach((d) => add(d.groups))
+  );
+  return names;
+}
+
+/**
+ * The question before turning something off for a week it is already placed in (Shoresh desktop
+ * ExclusionConfirmDialog.jsx, its words in the camp's, "cells" for the desktop's "slots"):
+ * { heading, lines, confirmLabel } for c-shoresh-ask. placed: RunsInController.placedInWeeks's
+ * answer ([{ target, week, slots }]), one item or several at once.
+ */
+export function turnOffQuestion(placed, setup, terms) {
+  const names = recordNames(setup || {});
+  const cells = (n) => `${n} ${n === 1 ? "cell" : "cells"}`;
+  const stay = "They stay until you change them.";
+  if (placed.length === 1) {
+    const [only] = placed;
+    const week = names.get(only.week) || `this ${terms.sIn("Week")}`;
+    return {
+      heading: `Turn off "${names.get(only.target) || "this one"}" for ${week}?`,
+      lines: [`Placed in ${cells(only.slots)} in ${week}.`, stay],
+      confirmLabel: "Turn off anyway"
+    };
+  }
+  return {
+    heading: "Turn these off?",
+    lines: [
+      ...placed.map(
+        (p) =>
+          `"${names.get(p.target) || "One of them"}": placed in ${cells(p.slots)} in ${names.get(p.week)}.`
+      ),
+      stay
+    ],
+    confirmLabel: "Turn off anyway"
+  };
 }
