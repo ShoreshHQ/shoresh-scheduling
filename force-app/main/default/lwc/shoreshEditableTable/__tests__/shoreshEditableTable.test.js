@@ -403,6 +403,37 @@ describe("c-shoresh-editable-table", () => {
       expect(addButton(element).disabled).toBe(false);
     });
 
+    it("adds with a value left blank when its column doesn't require it, sent as nothing", async () => {
+      // Time blocks: a blank name and part of day are filled in on the server.
+      const element = render({
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text" },
+          COLUMNS[1],
+          {
+            ...COLUMNS[3],
+            options: [
+              { label: "From start time", value: "" },
+              ...COLUMNS[3].options
+            ]
+          }
+        ],
+        rows: ROWS,
+        newRowDefaults: { PartOfDay__c: "" }
+      });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      allValid(element);
+      addButton(element).click();
+      expect(sent[0].record).toEqual({
+        sobjectType: "TimeBlock__c",
+        SortOrder__c: 3,
+        PartOfDay__c: null,
+        StartTime__c: "13:30:00.000Z"
+      });
+    });
+
     it("goes after the last row in the order, whatever their numbers", async () => {
       const element = render({
         columns: COLUMNS,
@@ -1569,8 +1600,15 @@ describe("c-shoresh-editable-table", () => {
       await flush();
       expect(tags(element)).toEqual([true, false, true, false]);
       expect(
-        element.shadowRoot.querySelector('[data-id="same-name"]').textContent
-      ).toContain("Same name as another");
+        element.shadowRoot.querySelector('[data-id="same-name"]').label
+      ).toBe("Same name as another");
+      // The words are on the dot (hover, focus, tap, screen readers), not beside it.
+      expect(
+        element.shadowRoot.querySelector('[data-id="same-name"]').focusable
+      ).toBe(true);
+      expect(rows(element)[0].querySelector("td").textContent).not.toContain(
+        "Same name as another"
+      );
     });
 
     it("follows what is typed, the blank row too, and stays off unless asked for", async () => {
@@ -1711,7 +1749,7 @@ describe("c-shoresh-editable-table", () => {
     const tags = (element) =>
       rows(element).map((tr) => {
         const tag = tr.querySelector('[data-id="overlaps"]');
-        return tag ? tag.textContent.trim() : null;
+        return tag ? tag.label : null;
       });
 
     it("tags each week whose dates overlap another's, without stopping the save", async () => {
