@@ -717,12 +717,34 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
     bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by Tuesday_). Clear
     those two settings afterwards: the tile goes again.
 
+## 22. Manual Build: Clear day, Clear week, Copy day to…
+
+This uses the made-up camp's Week 1 from sections 19 to 21.
+
+1. Open **Manual Build**, Week 1, Daily View, Monday. Next to **Undo** and **Redo** are **Clear
+   day**, **Copy day to…** and **Clear week**.
+2. **Copy day to…** → **Tuesday**. Tuesday now has Monday's activities, bunk by bunk, and Lunch is
+   where it was (Tuesday's own fixed and recurring activities always stay). The line under the
+   toolbar says _Copied Monday to Tuesday · Undo_. Anything that couldn't go would be listed
+   there with why. Nothing asks you to confirm. With three or more days, the menu also has **All
+   other days**.
+3. Click **Undo** on that line: Tuesday is back as it was, in one step.
+4. **Clear day** (on Monday): every bunk's activities on Monday go; fixed and recurring ones stay.
+   _Cleared Monday · Undo_. Undo puts them back. Click **Clear day** on an empty day: _Nothing to
+   clear on Monday._ Anything else that stays is named on that line with why (_… (deleted
+   since)_, _… (not set up yet)_).
+5. **Group View**, Bunk 3: **Clear day** is a menu of the week's days. Pick **Wednesday**: only
+   Bunk 3's Wednesday is cleared. _Cleared Bunk 3 · Wednesday · Undo_.
+6. **Clear week**: every activity of every bunk, every day, goes. _Cleared Week 1 · Undo_. Undo
+   brings the whole week back. (Ctrl+Z works too.)
+7. **Activity View** has none of these (it is read-only).
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule (marked Coming in the menu). In Manual Build: Clear and Copy day, Versions
-  on that screen, opening a version in it, and publishing.
+- Generated Schedule (marked Coming in the menu). In Manual Build: Versions on that screen,
+  restoring a version into it, Start from another week, and publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

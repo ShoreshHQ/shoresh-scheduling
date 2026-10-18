@@ -15,8 +15,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    Undo/Redo (50 steps per visit).
 3. Counters (Filled, Still needed, Spread across the week, Overlapping) and the bronze dots (over
    its weekly limit, not set up for a bunk, twice in a day).
-4. Clear day, Clear week, Copy day to…; Versions on this screen; Save version; any version opens
-   in Manual Build.
+4. In two (coordinator, 2026-10-17): **4a** Clear day, Clear week, Copy day to…; **4b** Versions
+   on this screen (Save version, Restore, rename, delete) and Start from another week.
 5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`).
 6. Setup changed since the week started: dots and "Update to match setup".
 
@@ -447,6 +447,63 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       list, Accept, a line's jump, the announcement, the dots and their focus, decision 12
       (only the extra session is dotted), the program's divisions reaching the checks, and the
       checks following the week when it is read again.
+
+24. **Part 4a: Clear day, Clear week, Copy day to…** (Greg's round 2 decisions 6 and 7; the
+    desktop has none of these, so his decisions and the coordinator's answers of 2026-10-17 are
+    the spec). Worked out as runs (`tools.js`) and saved like any other edit, slot by slot with
+    the same "keep theirs or use yours" check, each one Undo step.
+    - **Only what Undo can put back changes.** Fixed and recurring activities stay where setup
+      put them. Anything else that stays is named, with why: an activity deleted since, one
+      where its bunk is no longer at camp, or something not set up yet (an imported elective).
+    - **Clear day**: in Daily View the day shown, every bunk; in Group View a menu of the
+      week's days, clearing that bunk's day. **Clear week**: every day, every bunk, in either
+      view. No confirm (decision 6): the line under the toolbar says _Cleared Monday · Undo_
+      (_Cleared Bunk 3 · Tuesday_, _Cleared Week 1_; _2 stayed: Archery · Bunk 1 · Monday
+      (deleted since); …_ when anything stays), and Undo there (named _Undo Cleared Monday_ for
+      screen readers), the toolbar's, or Ctrl+Z puts it all back. With nothing to clear:
+      _Nothing to clear on Monday._, or _Nothing cleared on Monday. 2 stayed: …_
+    - **Copy day to…** (Daily View): a menu of the week's other days, and _All other days_
+      with three or more (decision 7: within the same week only). On each target day, each
+      bunk's activities are replaced by the ones it has on the day shown, at the same time
+      blocks (matched by Id). Something already the same there needs nothing; anything else that
+      can't go is left out whole and listed: _Copied Monday to Tuesday. 1 left out: Soccer · Bunk
+      2 · Tuesday: not at camp then. · Undo_ (also _Lunch is set up there_, _Tuesday has no
+      Period 5_ naming the block it lacks, _not on Tuesday_, _deleted since_, _not set up yet_;
+      five named at most, then _and N more_). With nothing copied: _Nothing copied. 1 left out:
+      …_ or _Tuesday already matches Monday._ No confirm.
+    - **Someone else's change in the way** (coordinator, 2026-10-17, for Greg): a tool isn't
+      dropped for one cell. On **Keep theirs**, or when the saved week has changed under it (a
+      fixed activity now in a cell it clears, say), it is worked out again on the saved week,
+      leaving every cell someone else changed since the director looked as it is now, and the
+      rest is made as the same Undo step: _Cleared Monday, except 1 cell that changed ·
+      Undo_. **Use yours** makes all of it, as for any edit. While the question is open the line
+      isn't shown, and edits wait. The re-plan (`tools.js` `replan`) works from two weeks only:
+      the one the director made the tool on (kept with it, never replaced by anything newer)
+      and the server's, without the director's own edits still waiting, so those never count
+      as anyone else's. A cell is someone else's when the placement it is part of isn't the one
+      the director saw (where it starts, how long it runs, what it is), so a placement made
+      shorter or longer counts in every cell. A cell kept in any round stays kept in the next. A copy comes from the
+      source day as the director saw it; a target whose source cell someone else changed is
+      kept. A copied placement and what is there now go whole or not at all, so nothing is
+      cleared for a copy that can't come. "Except N" counts the cells the tool meant to change
+      that won't hold what it meant, in neutral words (_except 1 cell that changed_: a cell may
+      be kept only to keep a placement whole, or hold a fixed activity setup put there). Checked
+      by `tools.property.test.js`: 3,000 seeded weeks of 4 or 5 days and 5 to 7 blocks,
+      activities up to 3 blocks long, others making, lengthening, shortening and clearing
+      placements and putting whole rows back, up to four rounds of Keep theirs or Use yours,
+      and an edit of the director's own waiting; the server modelled as SlotSaves and
+      ScheduleGridRules take an edit. Nothing kept is overwritten, the tool changes only what
+      it meant, every placement is left whole, Undo puts the saved week back exactly, "except
+      N" is exact, and the director's own edit is never someone else's and saves after the
+      tool when its cell is as they saw it.
+    - Not on a day that can't be read (only Clear week shows there, and leaves that day), and
+      not in Activity View (read-only there, as on the desktop).
+    - **Checked by** `tools.test.js` (what each tool changes, leaves, and lists, including
+      several-block placements against fixed activities and away times, blocks matched by Id in
+      another order or with one inserted, and cells someone else changed) and `dayTools.test.js`
+      (the screen: the runs sent, the line and its Undo, Keep theirs and Use yours on a clear, a
+      fixed activity appearing, the menu, what stayed and the five-name cap, nothing copied,
+      a day that can't be read).
 
 ## Choices that are hard to undo after release
 
