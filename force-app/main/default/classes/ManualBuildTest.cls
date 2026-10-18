@@ -232,6 +232,27 @@ private class ManualBuildTest {
         ],
         view.locationRecords.size()
       );
+      // The program's groups with their divisions, and where its set-time items are.
+      Map<Id, Group__c> groupsById = new Map<Id, Group__c>(view.groupRecords);
+      Assert.isNotNull(groupsById.get(ids.get('Group C')).Division__c);
+      Assert.areEqual(
+        [
+          SELECT COUNT()
+          FROM FixedActivity__c
+          WHERE Program__c = :ids.get('Main')
+          WITH SYSTEM_MODE
+        ],
+        view.fixedActivityRecords.size()
+      );
+      Assert.areEqual(
+        [
+          SELECT COUNT()
+          FROM RecurringActivity__c
+          WHERE Program__c = :ids.get('Main')
+          WITH SYSTEM_MODE
+        ],
+        view.recurringActivityRecords.size()
+      );
     }
   }
 

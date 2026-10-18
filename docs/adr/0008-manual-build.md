@@ -337,14 +337,15 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     `computeOverlaps.js`; coordinator's answers 2026-10-17). Worked out live from the grid by
     `checkWeek` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
     clears as soon as its cause moves. A day that can't be read is left out. **One source:** the
-    activity and location records the checks read come with the draft (`DraftView`
-    `activityRecords`, `locationRecords`, read by `SeasonSetupReader.activitiesOf` and
-    `locationsOf`, the setup screen's own queries), so they are read again whenever the week is
-    (window focus, reload), and an activity or limit changed elsewhere shows at once; the
-    activity list's words come from the same draft. An activity added from a slot ("Add
-    <name>") brings its record back with it (`ActivityOption.record`) and joins the draft's.
-    The program's divisions and where its fixed and recurring activities are come from the
-    setup (`readProgram`). Field names come from `c/shoreshSchema`.
+    records the checks read all come with the draft (`DraftView`): the season's activities and
+    places (`activityRecords`, `locationRecords`, read by `SeasonSetupReader.activitiesOf` and
+    `locationsOf`, the setup screen's own queries), the program's groups with their divisions
+    (`groupRecords`) and where its fixed and recurring activities are
+    (`fixedActivityRecords`, `recurringActivityRecords`). So they are read again whenever the
+    week is (window focus, reload), and anything changed elsewhere shows at once; the activity
+    list's words come from the same draft. An activity added from a slot ("Add <name>") brings
+    its record back with it (`ActivityOption.record`) and joins the draft's. Field names come
+    from `c/shoreshSchema`.
     - **One rules module with Generated Schedule.** Written here, then moved into
       `c/shoreshEngine` (#38, ADR 0010 §10) as the exported `checkWeek` (coordinator's call).
       Manual Build imports `checkWeek`, its readers and `reasonFor` from there and keeps no copy
@@ -355,7 +356,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       from checkWeek's `placements`; which group a chip sits in and its bronze dot follow the
       numbers its own words show ("4 placed (needs 4–6)"). In Daily View that is the camp's
       total against the targets times the bunks it is set up for, in Group View the one bunk
-      against its own targets, so the chip never says one thing and sits or marks another.
+      against the activity's own targets whoever it is set up for (desktop `scaleFor`; the
+      grid's dot says "not set up"), so the chip never says one thing and sits or marks
+      another. Exactly at the maximum is not over it.
     - **The bronze dot** (`c-shoresh-dot`, no visible words) goes on a placement, never on a
       fixed or recurring activity or a not-set-up item. One dot per placement, its reasons
       joined by " · ", in this order: _Over its weekly limit_ (only on the sessions past the
@@ -384,11 +387,13 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       (coordinator, 2026-10-17).
     - **A quiet pulse** (desktop `useFlagChangeAck`, `flag-changed-ack`): when a director's own
       edit changes the dots of up to three placements, each of those cells shows a neutral grey
-      outline that fades once (220ms), never bronze or red, even for a new problem. Undo, Redo,
-      a reload, or switching view, day or bunk never pulse; with reduced motion there is none.
+      outline that fades once (220ms), never bronze or red, even for a new problem; a second
+      change to the same cell pulses again. Undo, Redo, a reload, or switching view, day or
+      bunk never pulse; with reduced motion there is none.
     - **One component for both schedules:** the counters and the list below are
       `c-shoresh-week-checks` (coordinator, 2026-10-17), so Generated Schedule (G3) shows the same
-      ones. It takes checkWeek's result (with `hasCoverageTargets` and `hasSpreadTargets`), a
+      ones. It takes checkWeek's result as it comes (checkWeek says, in `hasCoverageTargets` and
+      `hasSpreadTargets`, whether any activity has a weekly minimum or an early-week goal), a
       `reset-key` (a week shown fresh closes the list and brings accepted lines back) and a
       `route` ("manual"; the generated route's lighting of cells is to come). It raises `locate`
       with the clicked line (the page takes the director there) and `accept`.
@@ -409,15 +414,22 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       like the desktop's badges). A zero shows grey and opens nothing, as on the desktop, which
       here wins over the design guide's "leave a zero out" (the desktop is the spec); it stays
       in the tab order (`aria-disabled`), so a counter that drops to zero while it has focus
-      keeps it. Above zero the tile has a bronze border. The number stays in the text colour (the design guide keeps bronze off
-      text; the desktop colours it).
+      keeps it. As on StatBadge, the words are small and quiet under the number, and a tile
+      that opens the list has a chevron; the tiles have no "open" look (the desktop's manual
+      route has none). The one difference: above zero the tile has a bronze border and the
+      number stays in the text colour, where the desktop colours the number (the design guide
+      keeps bronze off text; coordinator, 2026-10-17).
     - **One list, "Still to place"** (the desktop's findings rail on the manual route): any
       counter above zero opens it under the counters, with every overlap first, then still
       needed, then spread, in the engine's words (_Bunk 1 · Monday · Period 2: Over its limit
       of 3 bunks at once_, _Swim · Bunk 3: 2 still needed_, _… by Wednesday_). Still needed and
-      Spread list group by group, then activity by SortOrder and Id, as the engine does. A
-      counter again, or **Close**, closes it, and it closes itself when nothing is left to
-      list. The grid isn't highlighted by the list (desktop's manual route).
+      Spread list group by group, then activity by SortOrder and Id, as the engine does. As
+      FindingsRail, it is a panel over the grid (at most 360 by 400 pixels, scrolling inside),
+      each line with a bar on its left (bronze; forest for spread) and **Close** at the bottom.
+      A counter again, or **Close**, closes it; with nothing left to list it stays open and says
+      how many cells are open (_5 open_, or _All placed_; desktop `railEmptyText`). After
+      **Close**, focus goes back to the counter that opened it; after **Accept**, to the next
+      line (or Close). The grid isn't highlighted by the list (desktop's manual route).
     - **A line takes you there** (desktop `locateFindingsRow`): clicking it (or Enter or Space on
       it) shows that bunk's week in Group View and closes the list; an overlapping cell's line
       also puts keyboard focus on that cell, so its dot's words show and a screen reader reads

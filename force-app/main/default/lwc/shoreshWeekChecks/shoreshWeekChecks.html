@@ -1,75 +1,89 @@
 <template>
-  <div class="counters" data-id="counters">
-    <div class="counter counter_plain" data-id="filled">
-      <span class="count">{filledText}</span>
-      <span class="counter-label">Filled</span>
-    </div>
-    <template for:each={counterButtons} for:item="counter">
-      <button
-        key={counter.key}
-        type="button"
-        class={counter.className}
-        aria-expanded={counter.expanded}
-        aria-controls="counter-list"
-        aria-disabled={counter.unavailable}
-        data-counter={counter.key}
-        onclick={handleCounter}
-      >
-        <span class="count">{counter.count}</span>
-        <span class="counter-label">{counter.label}</span>
-      </button>
-    </template>
-    <template lwc:if={showReviewAll}>
-      <button
-        type="button"
-        class="review-all"
-        aria-expanded={reviewAllExpanded}
-        aria-controls="counter-list"
-        data-id="review-all"
-        onclick={handleReviewAll}
-      >
-        {reviewAllLabel}
-      </button>
-    </template>
-  </div>
-  <template lwc:if={openLines}>
-    <div class="counter-list" id="counter-list" data-id="counter-list">
-      <div class="counter-list-head">
-        <span class="counter-list-title">Still to place</span>
+  <div class="checks">
+    <div class="counters" data-id="counters">
+      <div class="counter counter_plain" data-id="filled">
+        <span class="count">{filledText}</span>
+        <span class="counter-label">Filled</span>
+      </div>
+      <template for:each={counterButtons} for:item="counter">
+        <button
+          key={counter.key}
+          type="button"
+          class={counter.className}
+          aria-expanded={counter.expanded}
+          aria-controls={counter.controls}
+          aria-disabled={counter.unavailable}
+          data-counter={counter.key}
+          onclick={handleCounter}
+        >
+          <span class="count">{counter.count}</span>
+          <span class="counter-label"
+            >{counter.label}<template lwc:if={counter.count}
+              ><lightning-icon
+                class="chevron"
+                icon-name="utility:chevrondown"
+                size="xx-small"
+              ></lightning-icon></template
+          ></span>
+        </button>
+      </template>
+      <template lwc:if={showReviewAll}>
         <button
           type="button"
-          class="slds-button slds-button_neutral"
-          data-id="close-list"
-          onclick={handleCloseList}
+          class="review-all"
+          aria-expanded={reviewAllExpanded}
+          aria-controls={reviewAllControls}
+          data-id="review-all"
+          onclick={handleReviewAll}
         >
-          Close
+          {reviewAllLabel}
         </button>
-      </div>
-      <ul aria-label="Still to place">
-        <template for:each={openLines} for:item="line">
-          <li key={line.key} class="counter-line">
-            <button
-              type="button"
-              class="line-text"
-              data-key={line.key}
-              onclick={handleLocate}
-            >
-              {line.text}
-            </button>
-            <template lwc:if={line.acceptable}>
-              <button
-                type="button"
-                class="slds-button slds-button_neutral line-accept"
-                data-key={line.key}
-                aria-label={line.acceptLabel}
-                onclick={handleAccept}
-              >
-                Accept
-              </button>
-            </template>
-          </li>
-        </template>
-      </ul>
+      </template>
     </div>
-  </template>
+    <template lwc:if={listOpen}>
+      <div class="counter-list" id="counter-list" data-id="counter-list">
+        <div class="counter-list-head">Still to place</div>
+        <template lwc:if={openLines}>
+          <ul aria-label="Still to place">
+            <template for:each={openLines} for:item="line">
+              <li key={line.key} class={line.className}>
+                <button
+                  type="button"
+                  class="line-text"
+                  data-key={line.key}
+                  onclick={handleLocate}
+                >
+                  {line.text}
+                </button>
+                <template lwc:if={line.acceptable}>
+                  <button
+                    type="button"
+                    class="slds-button slds-button_neutral line-accept"
+                    data-key={line.key}
+                    aria-label={line.acceptLabel}
+                    onclick={handleAccept}
+                  >
+                    Accept
+                  </button>
+                </template>
+              </li>
+            </template>
+          </ul>
+        </template>
+        <template lwc:else>
+          <p class="counter-list-empty" data-id="list-empty">{emptyText}</p>
+        </template>
+        <div class="counter-list-foot">
+          <button
+            type="button"
+            class="slds-button slds-button_neutral"
+            data-id="close-list"
+            onclick={handleCloseList}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
 </template>

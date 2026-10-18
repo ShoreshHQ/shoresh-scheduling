@@ -1,7 +1,7 @@
 import { LightningElement, api } from "lwc";
 import { errorMessage } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
-import { MODE, checkGeneratedWeek, readActivities } from "c/shoreshEngine";
+import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
 import {
   ACTION,
   CONFLICT,
@@ -331,7 +331,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     let result = null;
     if (loaded) {
       const week = checkGeneratedWeek(this.engineInput(loaded.input.days));
-      const all = [...readActivities(loaded.input.activities).values()];
       const sent = new Set((loaded.input.groups || []).map((g) => g.Id));
       result = {
         ...week,
@@ -343,10 +342,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
             (groupId, blockId) =>
               !sent.has(groupId) || week.isAway(groupId, blockId),
             this.t
-          ),
-          // Which targets the camp has set (desktop hasCoverageTargets / hasSpreadTargets).
-          hasCoverageTargets: all.some((a) => a.min > 0),
-          hasSpreadTargets: all.some((a) => !!a.early)
+          )
         }
       };
     }

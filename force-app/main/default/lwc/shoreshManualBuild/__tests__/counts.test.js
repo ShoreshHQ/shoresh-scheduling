@@ -84,10 +84,34 @@ describe("activity list counts", () => {
     expect([...stillNeeded, ...placed].map((c) => c.name)).toEqual(["Boating"]);
   });
 
-  it("in Group View, a bunk an activity isn't set up for needs none of it", () => {
-    const { stillNeeded, placed } = chips(schedule(), "g2");
-    expect(stillNeeded.map((c) => c.name)).toEqual(["Soccer"]);
-    expect(placed.find((c) => c.name === "Swim").label).toBe("0 placed");
+  it("in Group View, a bunk counts against the activity's own times a week, set up for it or not (desktop)", () => {
+    // Swim isn't set up for Bunk 2: the chip still says what a bunk needs; the grid's dot says
+    // "not set up". One Swim placed is not over its limit.
+    const week = schedule(
+      [
+        { kind: "F", id: "f1", name: "Flagpole", gone: false },
+        { kind: "A", id: "a1", name: "Swim", gone: false }
+      ],
+      ["1,,", "1,2,"]
+    );
+    const swim = chips(week, "g2").stillNeeded.find((c) => c.name === "Swim");
+    expect(swim).toBeUndefined();
+    const placed = chips(week, "g2").placed.find((c) => c.name === "Swim");
+    expect(placed.label).toBe("1 placed (needs 1–2)");
+    expect(placed.over).toBe(false);
+  });
+
+  it("exactly at the weekly maximum is not over it", () => {
+    // Swim at most twice: Bunk 1 has it Monday and Tuesday.
+    const items = [
+      { kind: "F", id: "f1", name: "Flagpole", gone: false },
+      { kind: "A", id: "a1", name: "Swim", gone: false }
+    ];
+    const week = schedule(items, ["1,2,", "1,,"]);
+    week.days[1] = { ...week.days[1], items, rows: ["1,2,", "1,,"] };
+    const swim = chips(week, "g1").placed.find((c) => c.name === "Swim");
+    expect(swim.label).toBe("2 placed (needs 1–2)");
+    expect(swim.over).toBe(false);
   });
 
   it("Daily View weighs the camp's total against the targets times the bunks, as the desktop does", () => {

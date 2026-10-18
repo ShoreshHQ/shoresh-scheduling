@@ -99,6 +99,7 @@ export default class ShoreshManualBuild extends LightningElement {
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
   // useFlagChangeAck), only for a director's own edit and only when it touched a few.
   pulseKeys = [];
+  pulseFlip = false;
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
@@ -319,22 +320,24 @@ export default class ShoreshManualBuild extends LightningElement {
   /** The week checked (c/shoreshEngine checkWeek), worked out again only when the week or setup changes. */
   get checked() {
     const schedule = this.schedule;
-    // The draft carries the activities, places and away blocks the checks read (one source,
-    // read again with the week); setup gives the program's divisions and set-time places.
-    const inputs = [schedule, this.draft, this._setup, this.programId, this.t];
+    // Everything the checks read comes with the draft and is read again with the week (one
+    // source): activities, places, the program's groups and divisions, where its fixed and
+    // recurring activities are, and the away blocks.
+    const inputs = [schedule, this.draft, this.t];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
       return memo.result;
     }
-    const setup = this._setup || {};
-    const entry = (setup.programs || []).find(
-      (p) => p.program && p.program.Id === this.programId
-    );
+    const draft = this.draft || {};
+    const entry = {
+      divisions: [{ groups: draft.groupRecords || [] }],
+      fixedActivities: draft.fixedActivityRecords || [],
+      recurringActivities: draft.recurringActivityRecords || []
+    };
     const away = new Set();
     ((this.draft && this.draft.away) || []).forEach((row) =>
       row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
     );
-    const draft = this.draft || {};
     const activities = readActivities(draft.activityRecords);
     const result = checkWeek(
       (schedule && schedule.days) || [],
@@ -353,15 +356,8 @@ export default class ShoreshManualBuild extends LightningElement {
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );
     memo.inputs = inputs;
-    // Which targets the camp has set (desktop hasCoverageTargets / hasSpreadTargets): without
-    // any, a counter's zero means nothing was checked, so it isn't shown.
-    const all = [...activities.values()];
-    memo.result = {
-      ...result,
-      hasCoverageTargets: all.some((a) => a.min > 0),
-      hasSpreadTargets: all.some((a) => !!a.early)
-    };
-    return memo.result;
+    memo.result = result;
+    return result;
   }
 
   get showCounters() {
@@ -381,6 +377,7 @@ export default class ShoreshManualBuild extends LightningElement {
     this.picked = null;
     this.pulseKeys = [];
     this.view = "group";
+    this.activityId = null;
     this.groupKey = line.groupId;
     this.focusAfterRender = { cellKey: this.cellKeyOf(line) };
   }
@@ -526,7 +523,8 @@ export default class ShoreshManualBuild extends LightningElement {
         result.selected = true;
       }
       if (this.pulseKeys.includes(this.placementKeyOf(cell.slot))) {
-        result.className = `${result.className} cell_pulse`;
+        // Two names in turn, so a second change to the same cell pulses again.
+        result.className = `${result.className} ${this.pulseFlip ? "cell_pulse2" : "cell_pulse"}`;
       }
     }
     if (cell.slot && cell.open && this.isAwaySlot(cell.slot)) {
@@ -1062,6 +1060,7 @@ export default class ShoreshManualBuild extends LightningElement {
     entry.news = this.dotNews(before, this.checked);
     this.pulseKeys =
       kind === "edit" ? this.dotChanges(before, this.checked) : [];
+    this.pulseFlip = !this.pulseFlip;
     this.saveNext();
   }
 
@@ -1091,8 +1090,11 @@ export default class ShoreshManualBuild extends LightningElement {
     const brought = [...after.flags].filter(
       ([key, words]) => before.flags.get(key) !== words
     );
+    // A dot gone with its placement (cleared or moved) isn't "fine now": only placements still
+    // on the grid.
+    const still = new Set(after.placements.map((p) => p.key));
     const gone = [...before.flags.keys()].filter(
-      (key) => !after.flags.has(key)
+      (key) => !after.flags.has(key) && still.has(key)
     );
     let line = null;
     let more = 0;

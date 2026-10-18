@@ -17,6 +17,14 @@ public with sharing class ManualBuildViews {
     public List<Activity__c> activityRecords = new List<Activity__c>();
     @AuraEnabled
     public List<Location__c> locationRecords = new List<Location__c>();
+    // The program's groups (with their divisions) and where its fixed and recurring activities
+    // take place, read with the week too, for the checks that compare divisions and places.
+    @AuraEnabled
+    public List<Group__c> groupRecords = new List<Group__c>();
+    @AuraEnabled
+    public List<FixedActivity__c> fixedActivityRecords = new List<FixedActivity__c>();
+    @AuraEnabled
+    public List<RecurringActivity__c> recurringActivityRecords = new List<RecurringActivity__c>();
     // Only just after Start a blank week: fixed or recurring activities whose slot was taken
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
@@ -78,6 +86,21 @@ public with sharing class ManualBuildViews {
     view.locationRecords = SeasonSetupReader.locationsOf(
       schedule.Program__r.Season__c
     );
+    view.groupRecords = groups;
+    view.fixedActivityRecords = [
+      SELECT Id, Location__c
+      FROM FixedActivity__c
+      WHERE Program__c = :schedule.Program__c
+      WITH USER_MODE
+      ORDER BY Id
+    ];
+    view.recurringActivityRecords = [
+      SELECT Id, Location__c
+      FROM RecurringActivity__c
+      WHERE Program__c = :schedule.Program__c
+      WITH USER_MODE
+      ORDER BY Id
+    ];
     view.away = away(groups, ProgramReads.blocksOf(schedule.Program__c));
     return view;
   }

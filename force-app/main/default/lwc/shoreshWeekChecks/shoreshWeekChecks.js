@@ -4,10 +4,10 @@ import { LightningElement, api } from "lwc";
  * A week's counters and its "Still to place" list (desktop ScheduleScreen's StatBadge row and
  * FindingsRail on the manual route), shared by Manual Build and Generated Schedule.
  *
- * checked: c/shoreshEngine checkWeek's result for the week shown, plus hasCoverageTargets and
- * hasSpreadTargets (some activity has a weekly minimum / an early-week goal; without one, that
- * counter isn't shown). resetKey: change it when a different week is shown fresh; the list closes
- * and accepted lines come back. route: "manual" (the default) or "generated".
+ * checked: c/shoreshEngine checkWeek's result for the week shown, as it comes (its
+ * hasCoverageTargets and hasSpreadTargets say whether Still needed and Spread across the week
+ * are shown). resetKey: change it when a different week is shown fresh; the list closes and
+ * accepted lines come back. route: "manual" (the default) or "generated".
  *
  * The generated route, as the desktop's: Open (the cells nothing could go in; checked.openCells,
  * [{ dateValue, groupId, blockId, text }], first in the list) instead of the Overlapping counter,
@@ -41,6 +41,10 @@ export default class ShoreshWeekChecks extends LightningElement {
   listOpen = false;
   // Lines accepted this visit (their keys carry their numbers, so a changed line comes back).
   accepted = [];
+  // The counter that opened the list (Close puts focus back on it).
+  opener = null;
+  // Where keyboard focus goes once the list has redrawn: { counter } or { line } (an index).
+  focusAfterRender = null;
   // Generated route: the counter whose lines are shown and whose cells are lit, or null (all).
   filterKind = null;
   _resetKey;
@@ -161,17 +165,14 @@ export default class ShoreshWeekChecks extends LightningElement {
         const open =
           this.listOpen &&
           (!this.isGenerated || !this.filterKind || this.filterKind === c.key);
-        let className = c.count ? "counter counter_due" : "counter";
-        if (c.count && open) {
-          className = `${className} counter_open`;
-        }
         return {
           ...c,
+          className: c.count ? "counter counter_due" : "counter",
           // A zero opens nothing, but stays in the tab order: a counter that drops to zero
           // while it has focus keeps it (desktop disables it; focus would fall to the page).
           unavailable: c.count === 0 ? "true" : null,
           expanded: c.count ? String(open) : null,
-          className
+          controls: c.count && open ? "counter-list" : null
         };
       });
   }
@@ -185,26 +186,37 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
 
   get openLines() {
-    const lines = this.listOpen ? this.shownLines : [];
+    const lines = this.shownLines;
     return lines.length
       ? lines.map((line) => ({
           ...line,
+          // Desktop FindingsRail's bar: bronze for overlaps and still needed, forest for spread.
+          className:
+            line.kind === "spread" ? "counter-line line_info" : "counter-line",
           acceptLabel: `Accept: ${line.text}`
         }))
       : null;
+  }
+
+  /** With nothing left to list (desktop railEmptyText): how many cells are still open. */
+  get emptyText() {
+    const cells = (this.checked && this.checked.cells) || {};
+    const open = (cells.total || 0) - (cells.filled || 0);
+    return open > 0 ? `${open} open` : "All placed";
   }
 
   handleCounter(event) {
     if (event.currentTarget.getAttribute("aria-disabled") === "true") {
       return;
     }
+    this.opener = event.currentTarget.dataset.counter;
     if (!this.isGenerated) {
       this.listOpen = !this.listOpen;
       return;
     }
     // Generated (desktop): a counter shows its own lines and lights up their cells; clicking it
     // again closes them.
-    const kind = event.currentTarget.dataset.counter;
+    const kind = this.opener;
     const again = this.listOpen && this.filterKind === kind;
     this.listOpen = !again;
     this.setFilter(again ? null : kind);
@@ -220,15 +232,23 @@ export default class ShoreshWeekChecks extends LightningElement {
   get reviewAllExpanded() {
     return String(this.listOpen && !this.filterKind);
   }
+  get reviewAllControls() {
+    return this.listOpen ? "counter-list" : null;
+  }
   handleReviewAll() {
     const hide = this.listOpen && !this.filterKind;
+    this.opener = null;
     this.listOpen = !hide;
     this.setFilter(null);
   }
 
+  /** Close: the list goes, and focus goes back to the counter that opened it. */
   handleCloseList() {
     this.listOpen = false;
     this.setFilter(null);
+    this.focusAfterRender = this.opener
+      ? { counter: this.opener }
+      : { reviewAll: true };
   }
 
   /** The counter whose cells are lit (generated route), told to the page. */
@@ -249,14 +269,18 @@ export default class ShoreshWeekChecks extends LightningElement {
     );
   }
 
+  /** Accept: the line goes for this visit, and focus moves to the line after it (or before). */
   handleAccept(event) {
-    const line = this.lines.find(
+    const lines = this.shownLines;
+    const index = lines.findIndex(
       (l) => l.key === event.currentTarget.dataset.key
     );
-    if (!line) {
+    if (index < 0) {
       return;
     }
+    const line = lines[index];
     this.accepted = [...this.accepted, line.key];
+    this.focusAfterRender = { line: index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
     if (this.filterKind) {
       this.tellHighlight();
@@ -279,12 +303,24 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
 
   renderedCallback() {
-    // A list with nothing left in it closes, so it doesn't open again by itself later.
-    if (this.listOpen && !this.shownLines.length) {
-      this.listOpen = false;
-      if (this.filterKind) {
-        this.setFilter(null);
-      }
+    const focus = this.focusAfterRender;
+    if (!focus) {
+      return;
+    }
+    this.focusAfterRender = null;
+    let target = null;
+    if (focus.counter) {
+      target = this.template.querySelector(`[data-counter="${focus.counter}"]`);
+    } else if (focus.reviewAll) {
+      target = this.template.querySelector('[data-id="review-all"]');
+    } else {
+      const lines = [...this.template.querySelectorAll(".line-text")];
+      target =
+        lines[Math.min(focus.line, lines.length - 1)] ||
+        this.template.querySelector('[data-id="close-list"]');
+    }
+    if (target) {
+      target.focus();
     }
   }
 }
