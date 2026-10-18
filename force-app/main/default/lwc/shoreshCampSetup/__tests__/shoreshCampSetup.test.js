@@ -193,6 +193,7 @@ describe("c-shoresh-camp-setup", () => {
     expect(element.shadowRoot.textContent).toContain(
       "Start by naming your camp."
     );
+    await expect(element).toBeAccessible();
 
     const name = q(element, 'lightning-input[data-id="camp-name"]');
     name.dispatchEvent(
@@ -291,6 +292,18 @@ describe("c-shoresh-camp-setup", () => {
     // Overlapping weeks get a heads-up, in the camp's word.
     expect(weeks.overlapLabel).toBe("Overlaps another week");
     expect(button(element, "Copy this season")).toBeDefined();
+  });
+
+  it("the Bunks screen's problems and table are accessible", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    await openScreen(element, "groups");
+    // Only these two parts: axe over the whole setup screen takes about 5 s on its own.
+    await expect(q(element, '[data-id="problems"]')).toBeAccessible();
+    // The Bunks screen itself: the other screens are on the page too, hidden.
+    await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
   });
 
   it("fills in weeks from the season dates", async () => {

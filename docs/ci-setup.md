@@ -90,6 +90,42 @@ saves). Every such spelling has been replaced; two checks keep it that way
 
 Neither proves the namespaced org works; that is checked after the namespace is registered.
 
+## Checks that catch org-only mistakes early (in "LWC Jest and Code Analyzer")
+
+The test org is shared and each run takes about 20 minutes, so these checks catch, with no org,
+mistakes that used to show up only there or at AppExchange security review:
+
+- **AppExchange security-review rules.** The Code Analyzer step runs `Recommended` plus the scan
+  Salesforce documents for security review (`--rule-selector AppExchange --rule-selector
+Recommended:Security`), and fails on moderate (3) or worse. A second step runs the
+  security-review scan on its own; both reports are in the `code-analyzer-report` artifact
+  (`code-analyzer.html`, `appexchange-security-review.html`). Known false positives are suppressed
+  in `code-analyzer.yml`, each for one file or folder, one rule, a limit and a reason: the `Key__c` /
+  `QuestionKey__c` lookup keys (`ProtectSensitiveData`: not secrets) and Jest tests that fake
+  real browser events (`AvoidLwcBubblesComposedTrue`). Suppression paths are relative to
+  `force-app`, the scanned folder. Suppressed findings are not in the reports.
+- **Every Apex class and trigger has its `-meta.xml`** (`npm run check:meta`,
+  `scripts/apex-meta-files.js`), and no `-meta.xml` is left without its file. Without one, a class
+  is left out of every deploy and dry-run with no error, so it never compiles (#55).
+- **No Apex variable takes over a class or static's name** (`npm run check:name-clash`,
+  `scripts/apex-name-clash.js`). Apex ignores case, and a variable beats a class: inside the scope
+  of a field `campLabels`, `CampLabels.forCamp(...)` means the field, and the class doesn't compile
+  (#46; also a local `targets` before `TARGETS.keySet()`, #48). Only uses with a dot count, and only
+  under a different spelling. Opt out on the declaration's line, with a reason:
+  `// apex-name-clash-ok: <why>`.
+- **No Apex name that is a reserved word** (`npm run check:reserved-words`,
+  `scripts/apex-reserved-words.js`): a local, parameter, field, class, interface or enum named
+  with one of Salesforce's Apex reserved keywords, ignoring case (`Integer number`, #46;
+  `List<String> into`). The list is the Apex Developer Guide's "Reserved Keywords" page; its
+  special keywords that can be names (`count`, `first`, `order`, ...) are allowed.
+- **Accessibility in Jest** (`@sa11y/jest`, axe-core rules): the main screens' render tests
+  (Manual Build, Generated, Schedules, Versions, the setup screen and its tables) end with
+  `await expect(element).toBeAccessible()`. jsdom has no layout, so focus loss, contrast and
+  tap-target size are still review items.
+
+Not covered: anything else only the org's compiler knows (types, method signatures), and
+sharing and query limits at run time.
+
 ## Running Apex tests: one class at a time
 
 Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the

@@ -156,6 +156,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(action(element, "Rebuild")).toBeNull();
     expect(grid(element)).toBeNull();
     expect(saveWeekOnServer).not.toHaveBeenCalled();
+    await expect(element).toBeAccessible();
   });
 
   it("building waits for the basics: the desktop's sentence, its links and Set up …, no Generate", async () => {
@@ -238,6 +239,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(texts).toContain("Not at camp");
     const away = cells(element).find((c) => c.className.includes("cell_away"));
     expect(away).toBeTruthy();
+    await expect(element).toBeAccessible();
   });
 
   it("builds a big week in pieces, showing its progress, with the actions held until it is saved", async () => {
@@ -296,6 +298,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-id="confirm-note"]').textContent).toBe(
       "Saved to Versions first."
     );
+    await expect(element).toBeAccessible();
     // Cancel has focus first, as on the desktop.
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="confirm-cancel"]')

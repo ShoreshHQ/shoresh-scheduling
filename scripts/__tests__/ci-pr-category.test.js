@@ -81,6 +81,7 @@ describe("ci-pr-category", () => {
   it("full: look-alike paths inside force-app, scripts or .github", () => {
     for (const f of [
       "force-app/main/default/classes/docs/X.cls",
+      "force-app/main/default/classes/.vscode/X.cls",
       "nested/docs/x.cls",
       "force-app/main/default/classes/README.md",
       "force-app/main/default/classes/lwc/X.cls",
