@@ -1,6 +1,7 @@
 /**
  * Generated Schedule stays well inside Salesforce's limits on a realistic week: 8 groups (two
- * divisions), 5 days, 8 time blocks, a fixed activity every morning. Opening the week and each
+ * divisions), 5 days, 8 time blocks, a fixed activity every morning, and another program sharing
+ * the season's places (fixed and recurring activities, and a published week). Opening the week and each
  * kind of save use a small, fixed number of queries, whatever the size of the week (no query per
  * day, group or cell). Synthetic camp.
  */
@@ -9,7 +10,8 @@ private class GeneratedLimitsTest {
   // Each call is one request from the screen: Salesforce allows 100 queries in one. Measured
   // in shoresh-test (2026-10-18), on the smaller camp: opening a week 18 (not generated yet) or
   // 12, the first Generate 21, Fill the open cells 14, a Rebuild with its version 19. The bound
-  // is per request, whatever the week's size: no query runs per day, group or cell.
+  // is per request, whatever the week's size: no query runs per day, group or cell. Other
+  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse).
   private static final Integer MOST_QUERIES = 25;
 
   private static Map<String, Id> bigCamp() {
@@ -84,9 +86,113 @@ private class GeneratedLimitsTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
+    otherProgram(ids, season.Id, week);
     SetTimeGuard.checkPending();
     GeneratedTestData.ids = ids;
     return ids;
+  }
+
+  /**
+   * Teens, sharing the season's places (G5): 4 groups, 8 time blocks half an hour later than
+   * Main's, a fixed and a recurring activity in the Hall, and a published week with Swim in
+   * every cell.
+   */
+  private static void otherProgram(
+    Map<String, Id> ids,
+    Id seasonId,
+    Week__c week
+  ) {
+    Program__c teens = ShoreshTestData.program(seasonId, 'Teens');
+    List<TimeBlock__c> blocks = new List<TimeBlock__c>();
+    for (Integer hour = 8; hour < 16; hour++) {
+      blocks.add(
+        new TimeBlock__c(
+          Program__c = teens.Id,
+          Name = 'Hour ' + (hour - 7),
+          StartTime__c = Time.newInstance(hour, 30, 0, 0),
+          EndTime__c = Time.newInstance(hour + 1, 15, 0, 0),
+          PartOfDay__c = hour < 12 ? 'Morning' : 'Afternoon',
+          SortOrder__c = hour
+        )
+      );
+    }
+    Database.insert(blocks, AccessLevel.SYSTEM_MODE);
+    Division__c division = ShoreshTestData.division(teens.Id, 'Teen groups');
+    List<Group__c> groups = new List<Group__c>();
+    for (Integer g = 0; g < 4; g++) {
+      groups.add(
+        new Group__c(
+          Division__c = division.Id,
+          Name = 'Teen ' + (g + 1),
+          Availability__c = 'AllDay',
+          SortOrder__c = g
+        )
+      );
+    }
+    Database.insert(groups, AccessLevel.SYSTEM_MODE);
+    Location__c hall = new Location__c(
+      Season__c = seasonId,
+      Name = 'Hall',
+      GroupsThatFit__c = 10
+    );
+    Database.insert(hall, AccessLevel.SYSTEM_MODE);
+    Database.insert(
+      new FixedActivity__c(
+        Program__c = teens.Id,
+        Name = 'Assembly',
+        TimeBlock__c = blocks[0].Id,
+        Length__c = 1,
+        Location__c = hall.Id
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Database.insert(
+      new RecurringActivity__c(
+        Program__c = teens.Id,
+        Name = 'Lunch',
+        TimeBlock__c = blocks[4].Id,
+        Length__c = 1,
+        Location__c = hall.Id,
+        Monday__c = true,
+        Wednesday__c = true
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    Schedule__c published = new Schedule__c(
+      Program__c = teens.Id,
+      Week__c = week.Id,
+      Name = 'Published',
+      Status__c = 'Published',
+      Origin__c = 'Manual'
+    );
+    Database.insert(published, AccessLevel.SYSTEM_MODE);
+    // Published Monday and Tuesday; the other days count from setup.
+    List<ScheduleDaySaves.DaySave> days = new List<ScheduleDaySaves.DaySave>();
+    for (Integer d = 0; d < 2; d++) {
+      ScheduleGrid grid = new ScheduleGrid();
+      for (TimeBlock__c block : blocks) {
+        grid.blocks.add(
+          new ScheduleGrid.Block(block.Id, block.Name)
+            .at(
+              BlankWeek.clock(block.StartTime__c),
+              BlankWeek.clock(block.EndTime__c)
+            )
+        );
+      }
+      grid.items.add(new ScheduleGrid.Item('A', ids.get('Swim'), 'Swim'));
+      for (Group__c grp : groups) {
+        grid.groups.add(new ScheduleGrid.GroupRef(grp.Id, grp.Name));
+        List<String> row = new List<String>();
+        for (Integer b = 0; b < blocks.size(); b++) {
+          row.add('1');
+        }
+        grid.rows.add(row);
+      }
+      days.add(
+        new ScheduleDaySaves.DaySave(week.StartDate__c.addDays(d), grid, null)
+      );
+    }
+    ScheduleDaySaves.write(published.Id, days);
   }
 
   /** Every Open cell filled, the three activities in turn, as a generated week would be. */
@@ -132,6 +238,10 @@ private class GeneratedLimitsTest {
       Assert.areEqual(5, read.days.size());
       Assert.areEqual(8, read.days[0].groups.size());
       Assert.areEqual(8, read.days[0].blocks.size());
+      // Teens: Swim at the Pool in each of 8 hours on its published Monday and Tuesday; the
+      // Hall's Assembly on Wednesday and Thursday (Teens doesn't run Fridays), and Lunch on
+      // Wednesday.
+      Assert.areEqual(8 * 2 + 2 + 1, read.otherPrograms.size());
       assertFew(used, 'Opening a week not generated yet');
     }
   }
@@ -174,6 +284,7 @@ private class GeneratedLimitsTest {
       Test.stopTest();
       Assert.isFalse(result.conflict);
       Assert.areEqual(draftId, again.scheduleId);
+      Assert.isFalse(again.otherPrograms.isEmpty());
       assertFew(used, 'A Rebuild (with its version)');
       assertFew(reading, 'Opening a generated week');
     }

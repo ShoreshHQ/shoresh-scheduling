@@ -648,6 +648,52 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(dotIn(element, "0-1").label).toBe("More Bunks at Pool than fit");
   });
 
+  it("another program at the Pool counts by clock time: only past what fits gets the dot", async () => {
+    // Swim at the Pool, which fits 2; Bunk 1 swims Monday Period 2 (10:00 to 10:45).
+    const pool = nsRecord({
+      ...SETUP,
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a1" ? { ...a, Location__c: "l1" } : a;
+      }),
+      locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 2 }]
+    });
+    const start = draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);
+    // Another program's published schedule: one of its groups at the Pool 10:30 to 11:15.
+    const others = (groups) => [
+      {
+        dateValue: "2026-06-29",
+        startTime: "10:30",
+        endTime: "11:15",
+        locationId: "l1",
+        activityId: null,
+        groups
+      }
+    ];
+    getDraft.mockResolvedValue({
+      ...withRecords(start, pool),
+      otherPrograms: others(1)
+    });
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = pool;
+    document.body.appendChild(element);
+    await flush();
+    // Two groups at a place that fits two: no conflict.
+    expect(dotIn(element, "0-1")).toBeNull();
+    expect(counters(element)).toContain("0 Overlapping");
+
+    getDraft.mockResolvedValue({
+      ...withRecords(start, pool),
+      otherPrograms: others(2)
+    });
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(dotIn(element, "0-1").label).toBe("More Bunks at Pool than fit");
+    expect(counters(element)).toContain("1 Overlapping");
+  });
+
   it("a director's edit that changes a few dots pulses those cells once; Undo doesn't", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
     saveSlots.mockResolvedValueOnce({

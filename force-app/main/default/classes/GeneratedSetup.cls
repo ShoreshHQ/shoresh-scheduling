@@ -27,7 +27,9 @@ public with sharing class GeneratedSetup {
         Location__c,
         Location__r.Name,
         Group__c,
-        Group__r.Name
+        Group__r.Name,
+        FixedActivity__c,
+        RecurringActivity__c
       FROM WeekException__c
       WHERE Week__c = :week.Id
       WITH USER_MODE

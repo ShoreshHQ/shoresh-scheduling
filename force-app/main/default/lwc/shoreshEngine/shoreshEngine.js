@@ -286,6 +286,43 @@ function groupOrder(groups, days) {
   return [...known, ...unknown];
 }
 
+/**
+ * Other programs' groups for checkWeek's model (othersAt), on a week's days as Manual Build's
+ * DayView has them: entries as generateWeek's `otherPrograms`, counted the same way, so both
+ * schedules dot the same over-capacity places. The day index is the one into `days`.
+ */
+export function otherProgramsAt(entries, days) {
+  const read = readDays(days, new Map());
+  const { otherPlace, otherActivity } = otherPrograms(entries, read);
+  const indexOf = new Map(read.map((day) => [day.date, day.index]));
+  return (kind, id, d, blockId) => {
+    const index = days && days[d] ? indexOf.get(days[d].dateValue) : undefined;
+    if (index === undefined) {
+      return 0;
+    }
+    return (
+      (kind === "place" ? otherPlace : otherActivity).get(
+        `${id}|${index}|${blockId}`
+      ) || 0
+    );
+  };
+}
+
+/**
+ * The server's entries (OtherProgramUse.Entry: dateValue, startTime, endTime, locationId,
+ * activityId, groups) in generateWeek's `otherPrograms` shape.
+ */
+export function readOtherPrograms(records) {
+  return (records || []).map((r) => ({
+    date: r.dateValue,
+    startTime: r.startTime,
+    endTime: r.endTime,
+    locationId: r.locationId || null,
+    activityId: r.activityId || null,
+    groups: r.groups
+  }));
+}
+
 /** Other programs' groups per place and per activity, on each of this program's blocks. */
 function otherPrograms(entries, days) {
   const otherPlace = new Map();
