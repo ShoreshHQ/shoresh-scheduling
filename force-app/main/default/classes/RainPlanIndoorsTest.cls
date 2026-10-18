@@ -132,7 +132,8 @@ private class RainPlanIndoorsTest {
       // Then any save of Soccer is refused until its rain plan changes (desktop save()).
       String message = refusal(
         new List<SObject>{
-          new Activity__c(Id = ids.get('Soccer'), Notes__c = 'Bring cones')
+          // A field the activities table saves (notes are saved by the details panel).
+          new Activity__c(Id = ids.get('Soccer'), Length__c = 2)
         }
       );
       Assert.isTrue(message.contains('has to be indoors'), message);
@@ -140,15 +141,16 @@ private class RainPlanIndoorsTest {
         new List<SObject>{
           new Activity__c(
             Id = ids.get('Soccer'),
-            Notes__c = 'Bring cones',
+            Length__c = 2,
             RainPlan__c = ids.get('Swim')
           )
         }
       );
     }
     Assert.areEqual(
-      'Bring cones',
-      [SELECT Notes__c FROM Activity__c WHERE Id = :ids.get('Soccer')].Notes__c
+      2,
+      [SELECT Length__c FROM Activity__c WHERE Id = :ids.get('Soccer')]
+      .Length__c
     );
   }
 
