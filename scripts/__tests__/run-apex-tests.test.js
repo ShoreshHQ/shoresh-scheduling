@@ -205,6 +205,26 @@ describe("run-apex-tests.mjs", () => {
     expect(out).toContain("no tests ran");
   });
 
+  it("shows the org's reason when a class that did not compile ran no tests", async () => {
+    behave.run = (name, res) =>
+      reply(res, 200, {
+        numTestsRun: 0,
+        numFailures: 1,
+        failures: [
+          {
+            id: "id-x",
+            name,
+            methodName: "setup",
+            message: "Dependent class is invalid"
+          }
+        ],
+        successes: []
+      });
+    const { code, out } = await run();
+    expect(code).toBe(1);
+    expect(out).toContain("Dependent class is invalid");
+  });
+
   it("logs in again once when the session is refused", async () => {
     const marker = path.join(work, "stale-marker");
     const { code } = await run({ STALE_FIRST: marker });
@@ -222,6 +242,7 @@ describe("run-apex-tests.mjs", () => {
     const { code, out } = await run();
     expect(code).toBe(1);
     expect(out).toContain("Not run by any test");
+    expect(out).toContain("deploy to the test org while this run was going");
   });
 
   it("uses the aggregate totals when the org keeps no per-test coverage", async () => {

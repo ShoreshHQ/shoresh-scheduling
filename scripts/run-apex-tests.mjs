@@ -3,7 +3,8 @@
  * Runs every Apex test class in force-app, one class at a time and directly (synchronously),
  * then prints one line per class (with its seconds), a summary, and the code coverage of the
  * classes and triggers in force-app, read from the org's running totals after the last class.
- * It starts the Salesforce CLI once, for its login, and runs each class through the same
+ * It starts the Salesforce CLI twice, to read its login (twice more if the session expires
+ * mid-run), and runs each class through the same
  * Tooling API call `sf apex run test --synchronous --code-coverage` makes: starting the CLI and
  * reading coverage for every class cost about as much as the quickest classes take to run.
  *
@@ -230,8 +231,9 @@ function summarize(out) {
       failures: []
     };
   }
-  if (result.numTestsRun === 0) {
-    // A class the org found no tests in (renamed, or its tests did not compile) is not a pass.
+  if (result.numTestsRun === 0 && !(result.failures || []).length) {
+    // A class the org found no tests in (renamed, say) is not a pass. When the org reported
+    // failures instead (a class that did not compile), those say why and are shown below.
     return {
       ok: false,
       ran: 0,
@@ -385,6 +387,11 @@ console.log(
 );
 if (untouched.length > 0) {
   console.log(`Not run by any test (counted as 0%): ${untouched.join(", ")}`);
+}
+if (percent < MIN_COVERAGE) {
+  console.log(
+    "A deploy to the test org while this run was going can lower this; if so, run it again."
+  );
 }
 if (failedClasses > 0 || percent < MIN_COVERAGE) {
   console.log("\nApex tests FAILED.");
