@@ -3,7 +3,7 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
-import { errorMessage } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -222,7 +222,10 @@ export default class ShoreshManualBuild extends LightningElement {
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `${this.weekName} couldn't be opened. Nothing was changed.`,
+          e
+        );
         this.loadedFor = again ? key : null;
       }
     } finally {
@@ -288,7 +291,10 @@ export default class ShoreshManualBuild extends LightningElement {
       );
       this.announce(`Started ${this.weekName}.`);
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed(
+        `${this.weekName} not started. Nothing was saved.`,
+        e
+      );
     } finally {
       this.starting = false;
     }
@@ -799,7 +805,7 @@ export default class ShoreshManualBuild extends LightningElement {
           name: option.name
         });
       } catch (e) {
-        this.error = errorMessage(e);
+        this.error = failed(`"${option.name}" not added. Nothing was saved.`, e);
         return;
       }
       if (!this.draft.activities.some((a) => a.id === activity.id)) {
@@ -1011,7 +1017,7 @@ export default class ShoreshManualBuild extends LightningElement {
     } catch (e) {
       const dropped = this.queue.length - 1;
       this.error =
-        errorMessage(e) +
+        failed(`Not saved: ${entry.label}.`, e) +
         (dropped > 0
           ? ` ${dropped} more ${dropped === 1 ? "change was" : "changes were"} not saved.`
           : "");

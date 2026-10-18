@@ -2,7 +2,7 @@ import { LightningElement, api } from "lwc";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
 import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
-import { errorMessage } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 
 /**
  * The camp's own words for each term (decision 0006). Blank means the standard word.
@@ -36,7 +36,7 @@ export default class ShoreshCampLabels extends LightningElement {
         plural: row.isCustom ? row.plural : ""
       }));
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed("Couldn't open the camp words. Nothing was changed.", e);
     }
   }
 
@@ -66,7 +66,10 @@ export default class ShoreshCampLabels extends LightningElement {
       await saveCampLabels({ campId: this.campId, labels: this.rows });
       this.dispatchEvent(new CustomEvent("saved"));
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed(
+        "Camp words not saved. Your changes are still here.",
+        e
+      );
     } finally {
       this.busy = false;
     }

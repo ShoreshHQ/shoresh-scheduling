@@ -762,7 +762,10 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     expect(onFailure).toHaveBeenCalled();
-    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(refusal);
+    // What didn't save and that nothing typed was lost, then why (desktop error shape).
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      `Recurring activities not saved. Your changes are still here. ${refusal}`
+    );
   });
 
   it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {

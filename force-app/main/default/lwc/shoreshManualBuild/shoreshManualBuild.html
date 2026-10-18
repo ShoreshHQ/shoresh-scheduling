@@ -109,7 +109,10 @@
 
     <template lwc:if={draft}>
       <template lwc:if={hasNoDays}>
-        <p class="empty">{noDaysMessage}</p>
+        <c-shoresh-empty-state
+          title={noDaysMessage}
+          data-id="no-days"
+        ></c-shoresh-empty-state>
       </template>
       <template lwc:else>
         <div class="build-layout">

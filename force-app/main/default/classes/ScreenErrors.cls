@@ -1,13 +1,15 @@
 /**
- * Turns anything that went wrong into a plain message the scheduler sees on screen. Shoresh's own
- * messages (ShoreshException, trigger and validation messages) are shown as they are; the
- * platform's own wording never is: it names objects and fields. Unknown problems get a short
- * "try again", and the detail goes to the debug log (once packaged, readable only through
+ * Turns anything that went wrong into a plain message the scheduler sees on screen: the why.
+ * The screen puts what didn't happen in front of it, in the desktop's shape (writeErrorMessage.js:
+ * what failed, then the cause; c/shoreshErrors failed()). Shoresh's own messages
+ * (ShoreshException, trigger and validation messages) are shown as they are; the platform's own
+ * wording never is: it names objects and fields. Unknown problems say Shoresh couldn't tell why,
+ * rather than guess, and the detail goes to the debug log (once packaged, readable only through
  * subscriber support login, not by the camp's own admin).
  */
 public with sharing class ScreenErrors {
-  private static final String COULD_NOT_SAVE = 'Couldn\'t save. Try again.';
-  private static final String COULD_NOT_OPEN = 'Couldn\'t open this. Try again.';
+  private static final String COULD_NOT_SAVE = 'Shoresh couldn\'t tell why. Try again.';
+  private static final String COULD_NOT_OPEN = 'Shoresh couldn\'t tell why. Reload the page to try again.';
   // Plain words for the platform's refusals that are not Shoresh's own.
   private static final Map<StatusCode, String> PLAIN = new Map<StatusCode, String>{
     StatusCode.DELETE_FAILED => 'This can\'t be deleted while something else still uses it. Change that first.',

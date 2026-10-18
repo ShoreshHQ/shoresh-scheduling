@@ -440,13 +440,14 @@ describe("c-shoresh-manual-build", () => {
   it("a refused save says why and reloads the week", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockRejectedValue({
-      body: { message: "Couldn't save. Try again." }
+      body: { message: "Shoresh couldn't tell why. Try again." }
     });
     const element = await render();
     await press(cell(element, "0-1"), "Enter");
     await press(await type(element, "swim"), "Enter");
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Couldn't save. Try again."
+    // What wasn't saved, then why (desktop error shape).
+    expect(q(element, '[data-id="build-error"]').textContent).toMatch(
+      /^Not saved: Placed Swim · .*\. Shoresh couldn't tell why\. Try again\.$/
     );
     expect(getDraft).toHaveBeenCalledTimes(2);
     expect(cellText(element, "0-1")).toBe("Open");

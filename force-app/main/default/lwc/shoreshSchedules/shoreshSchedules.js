@@ -3,7 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
-import { errorMessage } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -141,7 +141,7 @@ export default class ShoreshSchedules extends LightningElement {
       if (key === this.loadedFor) {
         this.versions = versions || [];
       }
-    });
+    }, "Couldn't open the saved schedules. Nothing was changed.");
     if (!loaded && key === this.loadedFor) {
       // Choosing the same week again tries again.
       this.loadedFor = null;
@@ -177,7 +177,7 @@ export default class ShoreshSchedules extends LightningElement {
       const all = groups(opened);
       this.groupKey = all.length ? all[0].key : null;
       this.activityId = null;
-    });
+    }, "Couldn't open that schedule. Nothing was changed.");
   }
 
   async handleRename(event) {
@@ -198,7 +198,7 @@ export default class ShoreshSchedules extends LightningElement {
       this.dispatchEvent(
         new ShowToastEvent({ title: "Renamed.", variant: "success" })
       );
-    });
+    }, "Not renamed. The name is as it was.");
     onDone(saved);
   }
 
@@ -373,18 +373,19 @@ export default class ShoreshSchedules extends LightningElement {
 
   // ---------- empty states ----------
 
+  /** The empty state's title (desktop: a title only, the same on every screen). */
   get emptyMessage() {
     const t = this.t;
     if (!this.programId) {
-      return `No ${t.pIn("Program")} yet. Add one on the ${t.p("Program")} screen first.`;
+      return `No ${t.pIn("Program")} yet`;
     }
     if (!this.weekId) {
-      return `No ${t.pIn("Week")} yet. Add them on the ${t.p("Week")} screen first.`;
+      return `No ${t.pIn("Week")} yet`;
     }
     if (this.versions.length === 0) {
-      return `Nothing saved for ${this.weekName} yet. Manual Build and Generated Schedule are coming; bringing in last year's schedule (also coming) saves it here as a ${t.sIn("Version")}.`;
+      return `Nothing saved for ${this.weekName} yet`;
     }
-    return `Nothing is open. Choose a ${t.sIn("Version")} from ${t.p("Version")}.`;
+    return "Nothing open yet";
   }
 
   // ---------- helpers ----------
@@ -393,15 +394,18 @@ export default class ShoreshSchedules extends LightningElement {
     return this.pending > 0;
   }
 
-  /** Runs a server call, showing its error if it fails. Returns whether it worked. */
-  async run(work) {
+  /**
+   * Runs a server call; if it fails, says what didn't happen (what), then why. Returns whether
+   * it worked.
+   */
+  async run(work, what = "That didn't go through. Nothing was changed.") {
     this.pending += 1;
     this.error = null;
     try {
       await work();
       return true;
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed(what, e);
       return false;
     } finally {
       this.pending -= 1;
