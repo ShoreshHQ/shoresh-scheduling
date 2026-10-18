@@ -723,6 +723,8 @@ export default class ShoreshEditableTable extends LightningElement {
           sameName: col.fieldName === "Name" && sameNames.has(draft.key),
           canMerge: col.fieldName === "Name" && mergeable,
           mergeLabel: this.mergeLabel,
+          // Named for its row, so a screen reader can tell the buttons apart.
+          mergeName: `${this.mergeLabel} ${draft.original.Name || ""}`.trim(),
           overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
           overlapLabel: this.overlapLabel,
           isNumber: col.type === "number",

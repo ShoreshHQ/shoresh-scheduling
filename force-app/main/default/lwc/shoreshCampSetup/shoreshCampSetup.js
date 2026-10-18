@@ -88,6 +88,10 @@ export default class ShoreshCampSetup extends LightningElement {
   locationFilter = "all";
   // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
   sameLocation = null;
+  // Why the last Merge was refused, shown in the question only (one alert, not two).
+  sameLocationError = null;
+  // Merging: the question's buttons wait.
+  merging = false;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -515,6 +519,7 @@ export default class ShoreshCampSetup extends LightningElement {
       noLocationTypes: `No ${t.pIn("LocationType")} yet.`,
       addLocation: `Add ${t.s("Location")}`,
       noLocations: `No ${t.pIn("Location")} yet.`,
+      sameLocation: `Same ${t.sIn("Location")}?`,
       catalogue: `${t.s("Activity")} catalogue`,
       addActivity: `Add ${t.s("Activity")}`,
       noActivities: `No ${t.pIn("Activity")} yet.`
@@ -821,12 +826,11 @@ export default class ShoreshCampSetup extends LightningElement {
 
   async handleDeleteRecord(event) {
     const { recordId, name } = event.detail;
-    let ok = false;
-    await this.run(async () => {
-      ok = await LightningConfirm.open(
-        await this.deleteQuestion(recordId, name)
-      );
-    });
+    // Asked without making the page busy: the row's delete button keeps the focus, so Cancel
+    // gives it back there.
+    const ok = await LightningConfirm.open(
+      await this.deleteQuestion(recordId, name)
+    );
     if (!ok) {
       return;
     }
@@ -843,14 +847,27 @@ export default class ShoreshCampSetup extends LightningElement {
    * bring it back, and the schedules keep its name.
    */
   async deleteQuestion(recordId, name) {
-    // If the count can't be made, the delete is still asked about, as it always was.
-    const uses = await Promise.resolve()
+    // A count that couldn't be made is said so, never left out quietly.
+    const count = (await Promise.resolve()
       .then(() => scheduleUses({ recordId }))
-      .catch(() => 0);
-    if (uses > 0) {
+      .catch(() => ({ schedules: 0, complete: false }))) || {
+      schedules: 0,
+      complete: true
+    };
+    const uses = count.schedules;
+    const word = uses === 1 ? "schedule" : "schedules";
+    let message = null;
+    if (uses > 0 && count.complete) {
+      message = `${name} is in ${uses} ${word}. Delete anyway?`;
+    } else if (uses > 0) {
+      message = `${name} is in ${uses} or more schedules. Delete anyway?`;
+    } else if (!count.complete) {
+      message = `Shoresh couldn't count the schedules ${name} is in. Delete anyway?`;
+    }
+    if (message) {
       return {
         label: `Delete "${name}"?`,
-        message: `${name} is in ${uses} ${uses === 1 ? "schedule" : "schedules"}. Delete anyway?`,
+        message,
         variant: "header",
         theme: "warning"
       };
@@ -865,17 +882,22 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** "Same location?" for a place and the places whose names match it (ADR 0012). */
   handleSameLocation(event) {
-    const { recordIds } = event.detail;
     this.error = null;
+    this.sameLocationError = null;
+    this.sameLocation = this.placesFor(event.detail.recordIds);
+  }
+
+  /** The places still set up, each with what fits and how many activities happen there. */
+  placesFor(recordIds) {
     const locations = (this.setup && this.setup.locations) || [];
     const activities = (this.setup && this.setup.activities) || [];
-    this.sameLocation = recordIds
+    return recordIds
       .map((id) => locations.find((l) => l.Id === id))
       .filter((location) => location)
       .map((location) => ({
         id: location.Id,
         name: location.Name,
-        fits: location[LOCATION.GroupsThatFit] || 0,
+        fits: location[LOCATION.GroupsThatFit],
         activities: activities.filter(
           (a) => a[ACTIVITY.Location] === location.Id
         ).length
@@ -885,6 +907,7 @@ export default class ShoreshCampSetup extends LightningElement {
   handleCloseSameLocation() {
     const from = this.sameLocation[0].id;
     this.sameLocation = null;
+    this.sameLocationError = null;
     this.locationsTable().focusRowOf(from);
   }
 
@@ -894,16 +917,42 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
 
+  /**
+   * Merge. Refused: the season is read again and the question shows the places as they are now
+   * (desktop: it reloads after a failed merge), so trying again can work; if fewer than two of
+   * them are left, the question closes and the page says why.
+   */
   async handleMergeLocations(event) {
+    if (this.merging) {
+      return;
+    }
     const { keepId, otherIds, groupsThatFit } = event.detail;
     const kept = this.sameLocation.find((place) => place.id === keepId);
-    await this.run(async () => {
+    const asked = this.sameLocation.map((place) => place.id);
+    this.merging = true;
+    this.sameLocationError = null;
+    try {
       await mergeLocations({ keepId, otherIds, groupsThatFit });
       this.sameLocation = null;
       this.toast(`Merged into "${kept.name}".`);
       await this.loadSeason();
       this.locationsTable().focusRowOf(keepId);
-    });
+    } catch (e) {
+      const why = errorMessage(e);
+      // The refusal says more than a failed reload would.
+      await this.loadSeason().catch(() => null);
+      const places = this.placesFor(asked);
+      if (places.length >= 2) {
+        this.sameLocation = places;
+        this.sameLocationError = why;
+      } else {
+        this.sameLocation = null;
+        this.error = why;
+        this.locationsTable().focusRowOf(keepId);
+      }
+    } finally {
+      this.merging = false;
+    }
   }
 
   // ---------- helpers ----------

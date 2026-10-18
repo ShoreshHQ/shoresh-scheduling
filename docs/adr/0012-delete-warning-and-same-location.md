@@ -28,40 +28,62 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    restore either (coordinator, 2026-10-17).
 4. **Refusals stay.** Something else depending on it (who can do it, a rain plan, who a
    recurring activity covers) still refuses the delete with the existing messages.
-5. **Read in user mode:** a schedule the director can't see is not counted. Days are read a
-   few at a time, and a schedule already found is not read again, so a big camp's long day
-   text stays within memory. If the count still can't be made, the delete is asked about as
-   before, without the count, rather than blocked.
+5. **Read in user mode:** a schedule the director can't see is not counted. The days are read
+   in one query, 200 at a time (a SOQL for loop), so the number of queries stays the same
+   however big the season is (a test with 601 days uses at most 3). If the season is past
+   40,000 day parts or 60 million characters of day text, the count stops and says it isn't complete, and the question says
+   _Bunk 3 is in 2 or more schedules. Delete anyway?_; if nothing was found by then, or the
+   count can't be made at all, _Shoresh couldn't count the schedules Bunk 3 is in. Delete
+   anyway?_. It is never left out quietly. The question opens without making the page busy,
+   so Cancel gives the focus back to the row's delete button.
 
 ## "Same location?"
 
 6. **Which places:** saved places in one season whose saved names differ only in capitals and
    spacing ("Pool", "pool", " POOL"), as the Locations table's "Same name as another" already
    compares them (desktop `locationDuplicates.js`: trimmed, spaces collapsed, capitals
-   ignored). A non-breaking space pasted from a spreadsheet counts as a space on the server
-   too. Typing a matching name is a heads-up only until it is saved.
-7. **Where:** a **Same location?** button beside the tag on each such row opens the question.
+   ignored). The server folds names exactly as the screen does: every kind of space
+   JavaScript counts (pasted non-breaking spaces and byte-order marks included) and capitals
+   the same in every locale (`toLowerCase('en')`). Typing a matching name is a heads-up only
+   until it is saved.
+7. **Where:** a **Same location?** button beside the dot on each such row opens the question,
+   in the camp's word for location ("Same area?"), named for its row for screen readers
+   ("Same location? Pool").
    _Difference from the desktop:_ the desktop has two ways in, a review after its upgrade and a
    dot on the row whose "Merge into X" merges at once into the first match. Greg's brief asks
    that the director pick which to keep, so the question is the only way in here.
-8. **The question** (desktop `NearDuplicateGate`): title _Same location?_; one choice per place,
-   _Pool · 2 Bunks at once · 3 activities here_, in the camp's words; the place with the most
+8. **The question** (desktop `NearDuplicateGate`): title _Same location?_ in the camp's word;
+   one choice per place, _Pool · Bunks that fit: 2 · 3 activities here_, in the camp's words
+   (one word for the idea: the number box below is labelled the same; the desktop says "at
+   once" in both; a place with no number shows "—"); the place with the most
    activities is chosen first, then the one that fits the most (desktop `defaultWinner`); the
    camp's "groups that fit" starts at the most any of them fits; **Merge** and **Keep
-   separate**. Escape is Keep separate (not while a merge is being made). A refused merge says
-   why inside the question, with the error icon. Afterwards the cursor is back on the row's
-   button, or on the kept place once merged.
+   separate**. Escape is Keep separate. While a merge is being made the buttons wait (they stay
+   focusable, so the focus never leaves the question). A refused merge reads the season again
+   (as the desktop reloads after a failed merge) and the question shows the places as they are
+   now, keeping the director's choice and number, with why it was refused, focused, inside the
+   question only. If fewer than two places are left, the question closes and the page says
+   why. Afterwards the cursor is back on the row's button, or on the kept place once merged.
    Left out: the desktop's "You can undo this…" line (design guide: no explanatory text).
 9. **What moves** (`LocationMerge`, desktop D1: "merge is a delete that re-points"): every
    activity, fixed activity, and recurring activity at the other places; the next season's
    copies of them (their "copied from"); and the weeks they are closed (one mark per week; a
    week both were closed stays closed once). The kept place gets the chosen groups that fit.
    Then the others are deleted. All of it is one transaction, in user mode, with each place
-   locked; places changed or deleted meanwhile refuse it in the desktop's words: _That merge
-   could not be completed — someone may have changed these locations. Try again._
+   locked; places changed or deleted meanwhile refuse it in the desktop's words, with the
+   camp's word for locations: _That merge could not be completed — someone may have changed
+   these locations. Try again._
 10. **Clashes are checked once everything has moved.** Two recurring activities that fitted
     at two places may not fit at one; the merge is then refused with the usual clash message,
     and nothing changes.
 11. **Undo:** Salesforce's Recycle Bin can bring a merged-away place back, empty (desktop D4:
     restoring brings it back without what moved).
 12. **Plain delete is unchanged:** a place something uses is still refused.
+
+## Known limits
+
+- The count reads days 200 at a time; 200 days of very long text (each near the 131,072
+  character limit) could still run past Salesforce's memory limit before the count can stop.
+  Shoresh splits a day into parts long before that, so a part is normally a few thousand
+  characters. The stop at 40,000 parts or 60 million characters is not exercised by a test
+  (it needs that much data).

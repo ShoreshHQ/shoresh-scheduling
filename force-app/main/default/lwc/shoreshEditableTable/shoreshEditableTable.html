@@ -117,15 +117,17 @@
                         ></c-shoresh-dot>
                       </template>
                       <template lwc:if={cell.canMerge}>
-                        <lightning-button
-                          class="slds-m-left_x-small"
-                          variant="base"
-                          label={cell.mergeLabel}
+                        <button
+                          type="button"
+                          class="slds-button slds-m-left_x-small"
+                          aria-label={cell.mergeName}
                           data-id="merge"
                           data-row-key={row.key}
                           onclick={handleMerge}
                           disabled={busy}
-                        ></lightning-button>
+                        >
+                          {cell.mergeLabel}
+                        </button>
                       </template>
                       <template lwc:if={cell.overlaps}>
                         <c-shoresh-dot

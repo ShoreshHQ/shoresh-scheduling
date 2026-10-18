@@ -2044,10 +2044,16 @@ describe("c-shoresh-editable-table", () => {
       const buttons = () => [
         ...element.shadowRoot.querySelectorAll('[data-id="merge"]')
       ];
-      expect(buttons().map((b) => b.label)).toEqual([
+      expect(buttons().map((b) => b.textContent.trim())).toEqual([
         "Same location?",
         "Same location?",
         "Same location?"
+      ]);
+      // Each named for its row, so a screen reader can tell them apart.
+      expect(buttons().map((b) => b.getAttribute("aria-label"))).toEqual([
+        "Same location? Pool",
+        "Same location?  pool",
+        "Same location? POOL"
       ]);
       buttons()[1].click();
       expect(merges.mock.calls[0][0].detail).toEqual({
@@ -2072,6 +2078,14 @@ describe("c-shoresh-editable-table", () => {
       blank.focus = jest.fn();
       element.focusRowOf("gone");
       expect(blank.focus).toHaveBeenCalled();
+      // A row renamed to something else (not saved yet) is no longer offered a merge.
+      change(field(element, 0, "Name"), "Lake");
+      await flush();
+      expect(buttons().length).toBe(2);
+      // While the page is busy (a delete, an import), the buttons wait.
+      element.busy = true;
+      await flush();
+      expect(buttons().every((b) => b.disabled)).toBe(true);
       const plain = render({
         objectApiName: "Location__c",
         columns: COLUMNS,

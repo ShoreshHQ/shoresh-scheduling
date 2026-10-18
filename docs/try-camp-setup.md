@@ -140,8 +140,9 @@ it or press **Escape**.
 8. **Same location?** On **Locations**, add _pool_ (lower case), groups that fit 2. Then on
    **Activities** set Gym games' **Location** to _pool_. Back on **Locations**, both pools
    have a bronze dot (point at it: _Same name as another_) and a **Same location?** button. Click it. The question
-   lists _Pool · 1 Bunk at once · 1 activity here_ and _pool · 2 Bunks at once · 1 activity
-   here_, with **Bunks that fit** at 2. Choose _Pool_ and click **Merge**. One Pool is left,
+   lists _Pool · Bunks that fit: 1 · 1 activity here_ and _pool · Bunks that fit: 2 · 1
+   activity here_, with **Bunks that fit** at 2. (If you renamed Location on Camp words, the
+   button and question use your word.) Choose _Pool_ and click **Merge**. One Pool is left,
    fitting 2, and on **Activities** Gym games is now at the Pool. (**Keep separate** or
    Escape leaves both as they are.) Put Gym games back in the Gym, and the Pool back to 1.
 
@@ -302,8 +303,8 @@ save one), so first add a made-up one.
     Build.
 11. **Something deleted since the version was saved** still shows under its saved name, marked
     _deleted since_. Try it: on **Activities**, delete _Art_. Shoresh asks first: _Art is in 1
-    schedule. Delete anyway?_ (the count is every schedule using it: drafts, saved versions,
-    published). Confirm, then open the version again. Deleting a bunk asks the same way. Art
+    schedule. Delete anyway?_ The number is every schedule using Art: drafts, saved versions,
+    and published ones, so it is 1 if you ran the script once, 2 after two runs, and so on. Confirm, then open the version again. Deleting a bunk asks the same way. Art
     can be brought back from Salesforce's Recycle Bin.
 12. **Deleting the week takes its versions.** On **Weeks**, delete _Week 1_: the confirmation
     says _That includes 1 saved version._ Confirm, and the version goes with the week (as on

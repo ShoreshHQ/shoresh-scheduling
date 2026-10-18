@@ -8,8 +8,32 @@
  * Salesforce's Recycle Bin can bring a deleted place back (empty).
  */
 public with sharing class LocationMerge {
+  // JavaScript's \s, which the screen's "Same name as another" folds: spaces of every kind.
+  private static final String SPACES = '[\\s\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]+';
+
+  /** The desktop's words, in the camp's word for locations. */
   @TestVisible
-  private static final String CHANGED = 'That merge could not be completed — someone may have changed these locations. Try again.';
+  private static String changedMessage(Id keepId) {
+    String places = 'locations';
+    try {
+      List<Location__c> found = [
+        SELECT Season__r.Camp__c
+        FROM Location__c
+        WHERE Id = :keepId
+        WITH USER_MODE
+      ];
+      if (!found.isEmpty()) {
+        places = CampLabels.forCamp(found[0].Season__r.Camp__c)
+          .pluralInSentence('Location');
+      }
+    } catch (Exception e) {
+      // Can't read it: the model's word will do.
+      places = 'locations';
+    }
+    return 'That merge could not be completed — someone may have changed these ' +
+      places +
+      '. Try again.';
+  }
 
   public static void mergeInto(
     Id keepId,
@@ -62,10 +86,10 @@ public with sharing class LocationMerge {
       );
     } catch (QueryException e) {
       // Someone else is saving one of them right now, or they can't be read.
-      throw ScreenErrors.of(CHANGED);
+      throw ScreenErrors.of(changedMessage(keepId));
     }
     if (places.size() != ids.size() || !oneSeasonOneName(places, keepId)) {
-      throw ScreenErrors.of(CHANGED);
+      throw ScreenErrors.of(changedMessage(keepId));
     }
     return places;
   }
@@ -107,12 +131,10 @@ public with sharing class LocationMerge {
   /** Capitals and spacing aside, as the tables' "Same name as another" compares names. */
   @TestVisible
   private static String sameNameKey(String name) {
-    // Non-breaking spaces (pasted from spreadsheets) count as spaces, as on the screen.
+    // As the screen folds them: every kind of space, and capitals the same in every locale.
     return name == null
       ? ''
-      : name.replaceAll('[\\u00A0\\u2007\\u202F]', ' ')
-          .normalizeSpace()
-          .toLowerCase();
+      : name.replaceAll(SPACES, ' ').trim().toLowerCase('en');
   }
 
   private static void moveReferences(Id keepId, Set<Id> others) {

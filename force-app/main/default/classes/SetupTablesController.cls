@@ -17,9 +17,9 @@ public with sharing class SetupTablesController {
     return RowSaves.save(record, seen, extras);
   }
 
-  /** How many schedules a bunk or activity is in (0 for anything else), asked before a delete. */
+  /** How many schedules a bunk or activity is in (none for anything else), asked before a delete. */
   @AuraEnabled
-  public static Integer scheduleUses(Id recordId) {
+  public static ScheduleUses.Count scheduleUses(Id recordId) {
     try {
       return ScheduleUses.count(recordId);
     } catch (Exception e) {

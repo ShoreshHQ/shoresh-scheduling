@@ -9,15 +9,14 @@
   >
     <div class="slds-modal__container">
       <div class="slds-modal__header">
-        <h2 id="same-location-title" class="slds-modal__title">
-          Same location?
-        </h2>
+        <h2 id="same-location-title" class="slds-modal__title">{title}</h2>
       </div>
       <div class="slds-modal__content slds-p-around_medium">
         <template lwc:if={error}>
           <div
             class="slds-box slds-theme_shade refusal slds-m-bottom_small"
             role="alert"
+            tabindex="-1"
             data-id="refusal"
           >
             <lightning-icon
@@ -57,7 +56,7 @@
           class="slds-button slds-button_neutral"
           data-id="keep-separate"
           onclick={handleClose}
-          disabled={busy}
+          aria-disabled={mergeDisabled}
         >
           Keep separate
         </button>
@@ -66,7 +65,7 @@
           class="slds-button slds-button_brand"
           data-id="merge"
           onclick={handleMerge}
-          disabled={busy}
+          aria-disabled={mergeDisabled}
         >
           Merge
         </button>

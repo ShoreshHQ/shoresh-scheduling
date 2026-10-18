@@ -43,42 +43,103 @@ private class SetupTablesTest {
     return schedule.Id;
   }
 
+  private static Integer uses(String name) {
+    ScheduleUses.Count count = SetupTablesController.scheduleUses(
+      name == null ? null : ids.get(name)
+    );
+    Assert.isTrue(count.complete);
+    return count.schedules;
+  }
+
   @IsTest
   static void aBunkOrActivityCountsTheSchedulesItIsIn() {
     ids = SetTimeTestData.camp();
     scheduleNaming('First', 1, new List<String>{ 'Group A', 'Group B' });
     scheduleNaming('Second', 2, new List<String>{ 'Group A' });
     System.runAs(ShoreshTestData.scheduler()) {
-      Assert.areEqual(
-        2,
-        SetupTablesController.scheduleUses(ids.get('Group A'))
-      );
-      Assert.areEqual(
-        1,
-        SetupTablesController.scheduleUses(ids.get('Group B'))
-      );
-      Assert.areEqual(
-        0,
-        SetupTablesController.scheduleUses(ids.get('Group C'))
-      );
-      Assert.areEqual(2, SetupTablesController.scheduleUses(ids.get('Swim')));
-      Assert.areEqual(0, SetupTablesController.scheduleUses(ids.get('Soccer')));
+      Assert.areEqual(2, uses('Group A'));
+      Assert.areEqual(1, uses('Group B'));
+      Assert.areEqual(0, uses('Group C'));
+      Assert.areEqual(2, uses('Swim'));
+      Assert.areEqual(0, uses('Soccer'));
       // Only bunks and activities are counted.
-      Assert.areEqual(0, SetupTablesController.scheduleUses(ids.get('Pool')));
-      Assert.areEqual(0, SetupTablesController.scheduleUses(null));
+      Assert.areEqual(0, uses('Pool'));
+      Assert.areEqual(0, uses(null));
+    }
+  }
+
+  /** A big season: the count reads every day in one query, whatever the number of days. */
+  @IsTest
+  static void aBigSeasonIsCountedInAFewQueries() {
+    ids = SetTimeTestData.camp();
+    String grid = [
+      SELECT Grid__c
+      FROM ScheduleDay__c
+      WHERE
+        Schedule__c = :scheduleNaming('First', 1, new List<String>{ 'Group A' })
+      WITH SYSTEM_MODE
+    ]
+    .Grid__c;
+    Week__c week = [
+      SELECT Id, StartDate__c
+      FROM Week__c
+      WHERE Id = :ids.get('Week 2')
+      WITH SYSTEM_MODE
+    ];
+    List<Schedule__c> schedules = new List<Schedule__c>();
+    for (Integer i = 0; i < 60; i++) {
+      schedules.add(
+        new Schedule__c(
+          Program__c = ids.get('Main'),
+          Week__c = week.Id,
+          Name = 'Version ' + i,
+          Status__c = 'Version',
+          Origin__c = 'Imported',
+          VersionReason__c = 'Imported'
+        )
+      );
+    }
+    Database.insert(schedules, AccessLevel.SYSTEM_MODE);
+    List<ScheduleDay__c> days = new List<ScheduleDay__c>();
+    for (Schedule__c schedule : schedules) {
+      for (Integer part = 1; part <= 10; part++) {
+        days.add(
+          new ScheduleDay__c(
+            Schedule__c = schedule.Id,
+            Date__c = week.StartDate__c,
+            Grid__c = grid,
+            GridFormatVersion__c = ScheduleGrid.FORMAT_VERSION,
+            Revision__c = 1,
+            Part__c = part
+          )
+        );
+      }
+    }
+    Database.insert(days, AccessLevel.SYSTEM_MODE);
+    System.runAs(ShoreshTestData.scheduler()) {
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      ScheduleUses.Count count = SetupTablesController.scheduleUses(
+        ids.get('Soccer')
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      // 601 days, none naming Soccer: every one read, in one query (plus finding the season).
+      Assert.areEqual(0, count.schedules);
+      Assert.isTrue(count.complete);
+      Assert.isTrue(used <= 3, 'Queries used: ' + used);
+      Assert.areEqual(61, uses('Group A'));
     }
   }
 
   @IsTest
-  static void someoneWhoCannotSeeSchedulesCountsNone() {
+  static void someoneWhoCannotSeeTheSeasonCannotCount() {
     ids = SetTimeTestData.camp();
     scheduleNaming('First', 1, new List<String>{ 'Group A' });
     System.runAs(ShoreshTestData.outsider()) {
       try {
-        Assert.areEqual(
-          0,
-          SetupTablesController.scheduleUses(ids.get('Group A'))
-        );
+        SetupTablesController.scheduleUses(ids.get('Group A'));
+        Assert.fail('No access: refused, never a count of 0');
       } catch (AuraHandledException e) {
         Assert.isNotNull(e.getMessage());
       }
@@ -251,7 +312,10 @@ private class SetupTablesTest {
         );
         Assert.fail('Another season');
       } catch (AuraHandledException e) {
-        Assert.areEqual(LocationMerge.CHANGED, e.getMessage());
+        Assert.areEqual(
+          LocationMerge.changedMessage(ids.get('Pool')),
+          e.getMessage()
+        );
       }
     }
     Assert.areEqual(
@@ -349,7 +413,10 @@ private class SetupTablesTest {
         );
         Assert.fail('Someone else deleted it');
       } catch (AuraHandledException e) {
-        Assert.areEqual(LocationMerge.CHANGED, e.getMessage());
+        Assert.areEqual(
+          LocationMerge.changedMessage(ids.get('Pool')),
+          e.getMessage()
+        );
       }
     }
     Assert.areEqual(
@@ -362,6 +429,15 @@ private class SetupTablesTest {
       ]
     );
     Assert.areEqual('pool', LocationMerge.sameNameKey('  POOL '));
+    // Every kind of space the screen folds, and capitals the same in every locale.
+    Assert.areEqual(
+      'indoor gym',
+      LocationMerge.sameNameKey('\uFEFFINDOOR\u3000GYM\u00A0')
+    );
+    Assert.areEqual(
+      'That merge could not be completed — someone may have changed these locations. Try again.',
+      LocationMerge.changedMessage(ids.get('Pool'))
+    );
   }
 
   @IsTest
