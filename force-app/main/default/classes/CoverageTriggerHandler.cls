@@ -6,7 +6,7 @@
 public with sharing class CoverageTriggerHandler {
   // The program of each division and group named.
   private Map<Id, Id> programOf;
-  private Map<Id, CampLabels> labelsBySeason;
+  private SetupSeasons.LazyLabels labelsBySeason;
 
   public static void handle(
     System.TriggerOperation operation,
@@ -47,7 +47,7 @@ public with sharing class CoverageTriggerHandler {
     }
     CoverageTriggerHandler handler = new CoverageTriggerHandler();
     handler.programOf = programsOf(targetIds);
-    handler.labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    handler.labelsBySeason = SetupSeasons.labelsWhenNeeded(seasonIds);
     for (Coverage__c row : rows) {
       RecurringActivity__c owner = owners.get(row.RecurringActivity__c);
       if (owner != null) {
@@ -57,9 +57,10 @@ public with sharing class CoverageTriggerHandler {
   }
 
   private void check(Coverage__c row, RecurringActivity__c owner) {
-    CampLabels labels = labelsBySeason.get(owner.Program__r.Season__c);
     Id target = row.Division__c != null ? row.Division__c : row.Group__c;
     if (row.Season__c != owner.Program__r.Season__c) {
+      // Only a refusal needs the camp's words.
+      CampLabels labels = labelsBySeason.get(owner.Program__r.Season__c);
       row.addError(
         'This row belongs to a different ' +
           labels.singularInSentence('Season') +
@@ -70,6 +71,7 @@ public with sharing class CoverageTriggerHandler {
     } else if (
       programOf.containsKey(target) && programOf.get(target) != owner.Program__c
     ) {
+      CampLabels labels = labelsBySeason.get(owner.Program__r.Season__c);
       row.addError(
         'This ' +
           labels.singularInSentence(

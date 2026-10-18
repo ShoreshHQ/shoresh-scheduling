@@ -11,6 +11,7 @@ import { parseCsv } from "./sheets";
 
 export { buildProposal, LEAVE_OUT } from "./proposal";
 export { LAYOUTS } from "./layouts";
+export { weekdayWeeks, weeksToFill } from "./weeks";
 
 /** A comma-separated file as a file of one sheet. */
 export function csvFile(name, text) {

@@ -382,7 +382,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -413,7 +415,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -447,7 +451,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -478,7 +484,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -540,10 +548,23 @@
                 weeks-heading="Open in"
                 before-week-off={beforeWeekOff}
                 week-phrase="is open in"
+                merge-label={labels.sameLocation}
                 busy={busy}
                 onsave={handleSaveRecords}
                 ondelete={handleDeleteRecord}
+                onmerge={handleSameLocation}
               ></c-shoresh-editable-table>
+              <template lwc:if={sameLocation}>
+                <c-shoresh-same-location
+                  places={sameLocation}
+                  terms={terms}
+                  title={labels.sameLocation}
+                  busy={merging}
+                  error={sameLocationError}
+                  onmerge={handleMergeLocations}
+                  onclose={handleCloseSameLocation}
+                ></c-shoresh-same-location>
+              </template>
             </div>
 
             <!-- Activities, with the weeks each runs in, and each one's details -->
@@ -618,7 +639,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -656,7 +679,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -682,6 +707,7 @@
               <c-shoresh-manual-build
                 setup={setup}
                 terms={terms}
+                onnavigate={handleNavigate}
               ></c-shoresh-manual-build>
             </div>
 
@@ -708,6 +734,14 @@
           </template>
         </div>
       </div>
+    </template>
+    <template lwc:if={ask}>
+      <c-shoresh-ask
+        heading={ask.heading}
+        lines={ask.lines}
+        confirm-label={ask.confirmLabel}
+        onanswer={handleAnswer}
+      ></c-shoresh-ask>
     </template>
   </div>
 </template>

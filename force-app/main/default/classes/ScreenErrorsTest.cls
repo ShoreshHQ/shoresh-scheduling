@@ -43,12 +43,12 @@ private class ScreenErrorsTest {
     } catch (DmlException e) {
       String shown = ScreenErrors.of(e).getMessage();
       Assert.areEqual(e.getDmlMessage(0), shown);
-      Assert.areNotEqual('Couldn\'t save. Try again.', shown);
+      Assert.areNotEqual('Shoresh couldn\'t tell why. Try again.', shown);
     }
   }
 
   @IsTest
-  static void anythingElseShowsAShortTryAgain() {
+  static void anythingElseSaysShoreshCouldNotTellWhy() {
     Exception unexpected;
     try {
       List<Integer> none = new List<Integer>();
@@ -57,11 +57,11 @@ private class ScreenErrorsTest {
       unexpected = e;
     }
     Assert.areEqual(
-      'Couldn\'t save. Try again.',
+      'Shoresh couldn\'t tell why. Try again.',
       ScreenErrors.of(unexpected).getMessage()
     );
     Assert.areEqual(
-      'Couldn\'t open this. Try again.',
+      'Shoresh couldn\'t tell why. Reload the page to try again.',
       ScreenErrors.ofLoading(unexpected).getMessage()
     );
   }

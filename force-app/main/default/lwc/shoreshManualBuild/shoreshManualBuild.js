@@ -3,7 +3,7 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
-import { errorMessage } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -28,12 +28,15 @@ import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
+import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   RULE,
   checkWeek,
+  otherProgramsAt,
   reasonFor,
   readActivities,
   readLocations,
+  readOtherPrograms,
   readProgram
 } from "c/shoreshEngine";
 
@@ -178,14 +181,33 @@ export default class ShoreshManualBuild extends LightningElement {
   get canChoose() {
     return !!this.programId && !!this.weekId;
   }
-  get cannotChoose() {
-    return !this.canChoose;
+  /** What building still needs (desktop readiness.js): Start waits for all of it. */
+  get stillNeeded() {
+    return stillNeeded(this._setup, this.t, this.programId);
   }
-  get chooseMessage() {
-    const t = this.t;
-    return this.programId
-      ? `No ${t.pIn("Week")} yet. Add them on the ${t.p("Week")} screen first.`
-      : `No ${t.pIn("Program")} yet. Add one on the ${t.p("Program")} screen first.`;
+  /** The desktop's one sentence, each missing thing a link to its screen. */
+  get stillNeededParts() {
+    return stillNeededSentence(this.stillNeeded);
+  }
+  /** The desktop's main action: "Set up <the first thing missing>". */
+  get setUpFirstLabel() {
+    const [first] = this.stillNeeded;
+    return first ? `Set up ${first.label}` : "";
+  }
+  get setUpFirstScreen() {
+    const [first] = this.stillNeeded;
+    return first ? first.screen : null;
+  }
+  get showStillNeeded() {
+    return !this.loading && !this.draft && this.stillNeeded.length > 0;
+  }
+  handleStillNeeded(event) {
+    event.preventDefault();
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: event.currentTarget.dataset.screen }
+      })
+    );
   }
 
   handleProgram(event) {
@@ -236,7 +258,10 @@ export default class ShoreshManualBuild extends LightningElement {
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `${this.weekName} couldn't be opened. Nothing was changed.`,
+          e
+        );
         this.loadedFor = again ? key : null;
       }
     } finally {
@@ -283,7 +308,13 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   get showStart() {
-    return this.canChoose && !this.loading && !this.draft && !this.error;
+    return (
+      this.canChoose &&
+      !this.loading &&
+      !this.draft &&
+      !this.error &&
+      this.stillNeeded.length === 0
+    );
   }
 
   async handleStart() {
@@ -299,7 +330,10 @@ export default class ShoreshManualBuild extends LightningElement {
       );
       this.announce(`Started ${this.weekName}.`);
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed(
+        `${this.weekName} not started. Nothing was saved.`,
+        e
+      );
     } finally {
       this.starting = false;
     }
@@ -329,7 +363,7 @@ export default class ShoreshManualBuild extends LightningElement {
     const schedule = this.schedule;
     // Everything the checks read comes with the draft and is read again with the week (one
     // source): activities, places, the program's groups and divisions, where its fixed and
-    // recurring activities are, and the away blocks.
+    // recurring activities are, the away blocks, and other programs at places and activities.
     const inputs = [schedule, this.draft, this.t];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
@@ -346,8 +380,9 @@ export default class ShoreshManualBuild extends LightningElement {
       row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
     );
     const activities = readActivities(draft.activityRecords);
+    const weekDays = (schedule && schedule.days) || [];
     const result = checkWeek(
-      (schedule && schedule.days) || [],
+      weekDays,
       {
         activities,
         locations: readLocations(draft.locationRecords),
@@ -358,7 +393,11 @@ export default class ShoreshManualBuild extends LightningElement {
             a.notFor || []
           ])
         ),
-        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`)
+        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
+        othersAt: otherProgramsAt(
+          readOtherPrograms(draft.otherPrograms),
+          weekDays
+        )
       },
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );
@@ -919,7 +958,10 @@ export default class ShoreshManualBuild extends LightningElement {
           name: option.name
         });
       } catch (e) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `"${option.name}" not added. Nothing was saved.`,
+          e
+        );
         return;
       }
       // Its record joins the draft's, so the checks know it before the week is read again.
@@ -1191,7 +1233,7 @@ export default class ShoreshManualBuild extends LightningElement {
     } catch (e) {
       const dropped = this.queue.length - 1;
       this.error =
-        errorMessage(e) +
+        failed(`Not saved: ${entry.label}.`, e) +
         (dropped > 0
           ? ` ${dropped} more ${dropped === 1 ? "change was" : "changes were"} not saved.`
           : "");

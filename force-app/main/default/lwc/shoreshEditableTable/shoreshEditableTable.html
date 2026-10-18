@@ -76,12 +76,10 @@
           <template for:each={bodyRows} for:item="row">
             <template lwc:if={row.isEmptyState}>
               <tr key={row.key} data-id="empty">
-                <td
-                  colspan={fullSpan}
-                  class="empty-state slds-text-align_center slds-text-color_weak"
-                  data-id="none-shown"
-                >
-                  {row.message}
+                <td colspan={fullSpan} data-id="none-shown">
+                  <c-shoresh-empty-state
+                    title={row.message}
+                  ></c-shoresh-empty-state>
                 </td>
               </tr>
             </template>
@@ -115,6 +113,19 @@
                           label="Same name as another"
                           focusable
                         ></c-shoresh-dot>
+                      </template>
+                      <template lwc:if={cell.canMerge}>
+                        <button
+                          type="button"
+                          class="slds-button slds-m-left_x-small"
+                          aria-label={cell.mergeName}
+                          data-id="merge"
+                          data-row-key={row.key}
+                          onclick={handleMerge}
+                          disabled={busy}
+                        >
+                          {cell.mergeLabel}
+                        </button>
                       </template>
                       <template lwc:if={cell.overlaps}>
                         <c-shoresh-dot
@@ -255,7 +266,7 @@
                     <button
                       type="button"
                       class="slds-button slds-button_neutral add"
-                      aria-label={addLabel}
+                      aria-label={addName}
                       title={addLabel}
                       data-id="add"
                       onclick={handleAdd}

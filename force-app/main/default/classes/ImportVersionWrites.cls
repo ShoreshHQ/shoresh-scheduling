@@ -20,7 +20,7 @@ public with sharing class ImportVersionWrites {
       schedules.add(
         new Schedule__c(
           Program__c = writer.keys.of(entry.text('programKey')),
-          Week__c = writer.keys.existing((Id) entry.text('weekId')),
+          Week__c = weekOf(entry),
           Name = entry.text('name').left(80),
           Status__c = 'Version',
           Origin__c = 'Imported',
@@ -36,6 +36,18 @@ public with sharing class ImportVersionWrites {
       writer.result.countAdded('Version');
     }
     ScheduleDaySaves.writeAll(daysBySchedule);
+  }
+
+  /** A season week by Id, or one this import filled in from the season's dates, by its key. */
+  private Id weekOf(ImportPlan.Entry entry) {
+    String key = entry.text('weekKey');
+    if (String.isBlank(key)) {
+      return writer.keys.existing((Id) entry.text('weekId'));
+    }
+    if (!key.startsWith('Week:')) {
+      throw ImportListSaves.unreadable();
+    }
+    return writer.keys.of(key);
   }
 
   private List<ScheduleDaySaves.DaySave> days(ImportPlan.Entry entry) {

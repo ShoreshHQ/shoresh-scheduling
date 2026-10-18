@@ -33,7 +33,9 @@ public with sharing class LocationTriggerHandler {
         WITH SYSTEM_MODE
       ]
     );
-    Map<Id, CampLabels> labelsBySeason = SetupSeasons.labelsBySeason(seasonIds);
+    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
+      seasonIds
+    );
     for (Location__c location : locations) {
       LocationType__c type = types.get(location.LocationType__c);
       if (type != null && type.Season__c != location.Season__c) {

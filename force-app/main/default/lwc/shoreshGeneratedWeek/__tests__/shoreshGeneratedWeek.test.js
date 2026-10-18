@@ -408,4 +408,145 @@ describe("c/shoreshGeneratedWeek", () => {
       day.items.map(({ kind, id, name }) => ({ kind, id: id || "", name }))
     );
   });
+
+  it("passes on other programs' use of places and activities in the engine's shape", async () => {
+    getInputs.mockResolvedValue(
+      nsRecord({
+        ...SERVER_INPUTS,
+        otherPrograms: [
+          {
+            dateValue: "2026-06-29",
+            startTime: "10:00",
+            endTime: "11:00",
+            locationId: "a0L000000000001AAA",
+            activityId: "a0A000000000001AAA",
+            groups: 2
+          },
+          {
+            dateValue: "2026-06-29",
+            startTime: "09:00",
+            endTime: "09:30",
+            locationId: "a0L000000000001AAA",
+            groups: 1
+          }
+        ]
+      })
+    );
+    const loaded = await loadWeek(PROGRAM, WEEK);
+    expect(loaded.input.otherPrograms).toEqual([
+      {
+        date: "2026-06-29",
+        startTime: "10:00",
+        endTime: "11:00",
+        locationId: "a0L000000000001AAA",
+        activityId: "a0A000000000001AAA",
+        groups: 2
+      },
+      {
+        date: "2026-06-29",
+        startTime: "09:00",
+        endTime: "09:30",
+        locationId: "a0L000000000001AAA",
+        activityId: null,
+        groups: 1
+      }
+    ]);
+  });
+
+  describe("another program at the Pool (G5)", () => {
+    // Bunk 1 and Bunk 2 have Period 2 (10:00 to 11:00) to fill; Swim is at the Pool, which fits
+    // one; Soccer has no place and no limit on bunks at once.
+    const camp = (otherPrograms) =>
+      nsRecord({
+        ...SERVER_INPUTS,
+        groups: [1, 2].map((n) => ({
+          Id: `a0G00000000000${n}AAA`,
+          Name: `Bunk ${n}`,
+          Division__c: "a0D000000000001AAA",
+          Availability__c: "AllDay",
+          SortOrder__c: n
+        })),
+        timeBlocks: [1, 2].map((n) => ({
+          Id: `a0B00000000000${n}AAA`,
+          Name: `Period ${n}`,
+          PartOfDay__c: "Morning",
+          SortOrder__c: n
+        })),
+        activities: [
+          {
+            Id: "a0A000000000001AAA",
+            Name: "Swim",
+            Length__c: 1,
+            TimesPerWeekMin__c: 1,
+            TimesPerWeekMax__c: 5,
+            Priority__c: "High",
+            NoGroupLimit__c: true,
+            Location__c: "a0L000000000001AAA",
+            SortOrder__c: 1
+          },
+          {
+            Id: "a0A000000000002AAA",
+            Name: "Soccer",
+            Length__c: 1,
+            TimesPerWeekMin__c: 0,
+            TimesPerWeekMax__c: 5,
+            NoGroupLimit__c: true,
+            SortOrder__c: 2
+          }
+        ],
+        eligibilities: [],
+        weekExceptions: [],
+        otherPrograms
+      });
+    const period2 = (built) => {
+      const day = built.days[0];
+      return day.rows.map((row) => {
+        const cell = row.split(",")[1];
+        return cell ? day.items[Number(cell) - 1].name : "";
+      });
+    };
+    const atPool = (startTime, endTime, groups) => ({
+      dateValue: "2026-06-29",
+      startTime,
+      endTime,
+      locationId: "a0L000000000001AAA",
+      activityId: null,
+      groups
+    });
+    const build = async (otherPrograms) => {
+      getInputs.mockResolvedValue(camp(otherPrograms));
+      const loaded = await loadWeek(PROGRAM, WEEK);
+      return generateWeek({ ...loaded.input, option: loaded.option });
+    };
+
+    it("with the Pool free, one bunk swims there", async () => {
+      const built = await build([]);
+      expect(built.ok).toBe(true);
+      expect(period2(built).sort()).toEqual(["Soccer", "Swim"]);
+      expect(built.flags).toEqual([]);
+    });
+
+    it("its published schedule filling the Pool at an overlapping time: the build swims nowhere then", async () => {
+      // Another program's grid: its Period 3, 10:30 to 11:15, overlaps this Period 2.
+      const built = await build([atPool("10:30", "11:15", 1)]);
+      expect(built.ok).toBe(true);
+      expect(period2(built)).toEqual(["Soccer", "Soccer"]);
+      expect(built.flags).toEqual([]);
+      expect(built.overlapping).toEqual([]);
+    });
+
+    it("a time that only touches, or a place with room left, doesn't block", async () => {
+      expect(
+        period2(await build([atPool("11:00", "11:45", 1)])).sort()
+      ).toEqual(["Soccer", "Swim"]);
+      expect(
+        period2(await build([atPool("09:00", "10:00", 1)])).sort()
+      ).toEqual(["Soccer", "Swim"]);
+      // A draft of another program is never sent (the server reads only published schedules),
+      // so with nothing sent the Pool is free; a count of 0 takes no room either.
+      expect(
+        period2(await build([atPool("10:00", "11:00", 0)])).sort()
+      ).toEqual(["Soccer", "Swim"]);
+    });
+  });
 });

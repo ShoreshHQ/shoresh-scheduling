@@ -27,8 +27,10 @@ const ADD = "add";
  *
  * columns: [{ fieldName, label, type: 'text'|'number'|'date'|'time'|'checkbox'|'picklist', options,
  *   required, min, excludeSelf }]  (min: smallest number allowed, for number columns;
- *   excludeSelf: a picklist of records leaves out the row's own record; savedOnly: the blank row
- *   shows the value as text, not a field to change)
+ *   excludeSelf: a picklist of records leaves out the row's own record; optionsFor(saved): the
+ *   choices one row offers, from its saved record ({} for the blank row), where they differ by
+ *   row (an outdoor rain plan only where it is held); options still names every value;
+ *   savedOnly: the blank row shows the value as text, not a field to change)
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen.
  *
@@ -74,6 +76,8 @@ const ADD = "add";
  *          .saveRow's answer, or onFailure() if it did not go through; then, once it has
  *          reloaded, onDone(), and the next row is sent.
  *   delete { recordId, name }
+ *   merge  { recordIds } - with mergeLabel: the saved row asked about first, then the saved rows
+ *          whose names match it (capitals and spacing aside)
  */
 export default class ShoreshEditableTable extends LightningElement {
   @api title;
@@ -95,6 +99,11 @@ export default class ShoreshEditableTable extends LightningElement {
   @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
   @api rowActions = {};
+  /**
+   * With flagSameNames: a button with this label ("Same location?") beside the tag of a saved
+   * row whose saved name another saved row has; it asks the screen to merge them.
+   */
+  @api mergeLabel;
   /**
    * Optional: asked before a week is unticked on a saved row, ({ recordId, name, weekId,
    * weekName }) -> Promise<boolean>; false leaves the week ticked. The place for the desktop's
@@ -563,6 +572,55 @@ export default class ShoreshEditableTable extends LightningElement {
     return same;
   }
 
+  /** Saved rows by their saved name (capitals and spacing aside), where two or more share it. */
+  get savedNameMatches() {
+    const byName = new Map();
+    if (!this.mergeLabel) {
+      return byName;
+    }
+    this.drafts.forEach((draft) => {
+      const name = looseKey(draft.original.Name);
+      if (name) {
+        byName.set(name, [...(byName.get(name) || []), draft.original.Id]);
+      }
+    });
+    byName.forEach((ids, name) => {
+      if (ids.length < 2) {
+        byName.delete(name);
+      }
+    });
+    return byName;
+  }
+
+  /**
+   * After "Same location?" closes: back to that row's button, or its first field once merged
+   * (the blank row's if the row is gone).
+   */
+  @api
+  focusRowOf(recordId) {
+    const key = `row-${recordId}`;
+    const button = this.template.querySelector(
+      `[data-id="merge"][data-row-key="${key}"]`
+    );
+    if (button) {
+      button.focus();
+    } else {
+      this.focusRow(this.rowFor(key) ? key : ADD);
+    }
+  }
+
+  handleMerge(event) {
+    const draft = this.rowFor(event.currentTarget.dataset.rowKey);
+    const others = (
+      this.savedNameMatches.get(looseKey(draft.original.Name)) || []
+    ).filter((id) => id !== draft.original.Id);
+    this.dispatchEvent(
+      new CustomEvent("merge", {
+        detail: { recordIds: [draft.original.Id, ...others] }
+      })
+    );
+  }
+
   /** Keys of the rows whose dates overlap another row's, saved or being typed. */
   get overlapKeys() {
     const keys = new Set();
@@ -592,7 +650,8 @@ export default class ShoreshEditableTable extends LightningElement {
     const shared = {
       offWeeks: this.offWeeks,
       sameNames: this.sameNameKeys,
-      overlaps: this.overlapKeys
+      overlaps: this.overlapKeys,
+      matches: this.savedNameMatches
     };
     const rows = this.visibleDrafts.map((draft) =>
       this.tableRow(draft, shared)
@@ -614,13 +673,24 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.addRow.adding ? "Adding…" : "Add";
   }
 
+  /** Its spoken name: "Add Bunk", and "Adding Bunk…" while it is being added. */
+  get addName() {
+    return this.addRow.adding
+      ? `${this.addLabel.replace(/^Add\b/, "Adding")}…`
+      : this.addLabel;
+  }
+
   get addDisabled() {
     return this.busy || this.addRow.adding || !this.complete(this.addRow);
   }
 
-  tableRow(draft, { offWeeks, sameNames, overlaps }) {
+  tableRow(draft, { offWeeks, sameNames, overlaps, matches }) {
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
+    const mergeable =
+      !draft.isNew &&
+      sameNames.has(draft.key) &&
+      matches.has(looseKey(draft.original.Name));
     const firstText = (this.columns.find((c) => this.isTextColumn(c)) || {})
       .fieldName;
     // A refused change still on screen, until it is saved or put back.
@@ -681,13 +751,13 @@ export default class ShoreshEditableTable extends LightningElement {
           // The blank row never shows "Complete this field": its + stays greyed out instead.
           required: !!col.required && !draft.isNew,
           disabled: draft.isNew && !!draft.adding,
-          options: col.excludeSelf
-            ? (col.options || []).filter(
-                (option) => !option.value || option.value !== draft.original.Id
-              )
-            : col.options,
+          options: this.rowOptions(col, draft),
           isText: this.isTextColumn(col),
           sameName: col.fieldName === "Name" && sameNames.has(draft.key),
+          canMerge: col.fieldName === "Name" && mergeable,
+          mergeLabel: this.mergeLabel,
+          // Named for its row, so a screen reader can tell the buttons apart.
+          mergeName: `${this.mergeLabel} ${draft.original.Name || ""}`.trim(),
           overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
           overlapLabel: this.overlapLabel,
           isNumber: col.type === "number",
@@ -736,6 +806,17 @@ export default class ShoreshEditableTable extends LightningElement {
   /** "Everyone", or the names chosen. */
   whoSummary(column, draft) {
     return this.whoNames(column, draft.who);
+  }
+
+  /** A picklist's choices in one row: its own (optionsFor), less the row's own record. */
+  rowOptions(col, draft) {
+    const saved = draft.isNew ? {} : draft.original || {};
+    const options = col.optionsFor ? col.optionsFor(saved) : col.options;
+    return col.excludeSelf
+      ? (options || []).filter(
+          (option) => !option.value || option.value !== saved.Id
+        )
+      : options;
   }
 
   /** Names for these choices; with `known`, only those on screen (never a record Id). */

@@ -1,7 +1,7 @@
 # 0010: Generated Schedule
 
 Status: proposed (2026-10-17), parts G1 (the engine), G2 (reading its inputs, saving the
-week) and G3 (the screen) of 5. Design source: wiki
+week), G3 (the screen) and G5 (other programs' occupancy) of 5. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Generated Schedule round 1", Greg 2026-10-17, and the
 coordinator's technical calls the same day), `projects/shoresh-design-guide`,
 `projects/shoresh-scheduling-data-model`. Starting point: the desktop generator, Greg's own
@@ -58,7 +58,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
   cells, Start over; the dots and their hover; still to place).
 - G4: locks (automatic on hand edits; lock a cell, day or group; stored in grid
   format v2).
-- G5: other programs' occupancy fed to the engine.
+- G5: other programs' occupancy fed to the engine (and to Manual Build's checks).
   Versions and Publish reuse Manual Build parts 4 and 5.
 
 ## Choices (G1)
@@ -182,8 +182,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
    same inputs and option give the same week in every browser and whatever order records
    arrive in, and another week, program or option gives another pattern.
 9. **Other programs (G5 fills it).** `otherPrograms`: groups per place and per activity at a
-   date and clock time. An entry counts against each of this program's blocks whose time
-   overlaps it, on places' groups that fit and activities' groups at once. No count means one
+   date and clock time. Entries count against each of this program's blocks whose time they
+   overlap, on places' groups that fit and activities' groups at once, as the most groups there
+   at any one moment of the block (§28). No count means one
    group; a count of 0 takes no room. Default: none.
 10. **One rules module: `checkWeek`.** The dots come from the finished grid, not from how it was
     built: `checkWeek(days, model, { t, dayName })` (`checks.js`), written and tested for Manual
@@ -321,8 +322,8 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       since a save refuses another season's activity. The week a Lock or a hand edit answers
       with is marked the same way (`GeneratedInputs.view`), so a note never comes and goes
       between opening the week and changing it;
-    - each day's locked cells (G4, §27), which the data module turns into the engine's locks.
-      Other programs (G5): none yet.
+    - each day's locked cells (G4, §32), which the data module turns into the engine's locks.
+      Other programs come with G5 (§27–31).
 14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status
     Draft, Origin Generated, named "Generated Schedule", beside Manual Build's (decision 1: two
     separate schedules). It is made by the week's **first save** (Generate), not by opening the
@@ -574,9 +575,78 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
 | Rainy day…, Export, Versions dropdown on the toolbar                         | Not on this screen                                                                                                | Not built for either schedule yet                                                                                   |
 | Special days replace days                                                    | Not here                                                                                                          | Special days aren't set up in Salesforce yet                                                                        |
 
+## Choices (G5)
+
+27. **What counts** (Greg's decision 6; `OtherProgramUse`, read with the engine's inputs). For
+    every other program of the season and every day of the week: its **published** schedule's
+    cells when it has one for that day, fixed and recurring activities included as placed there
+    (`OtherProgramGrids`); otherwise its fixed and recurring activities with a place, where setup
+    puts them (`OtherProgramSetTime`, SetTimePlan's rules, the same as Start a blank week and
+    setup's clash check: a fixed activity takes every group of its program, a recurring one the
+    groups it covers, only groups at camp in each time block). Never both for one day, so nothing
+    counts twice. **Drafts and versions never count**: only Status Published (should a program
+    have more than one, the newest). A group away that week, a place closed that week, and a fixed
+    or recurring activity off that week don't count, as in the clash check, for published cells
+    too. A published cell whose Id can't be read is skipped, never a screen that fails to open. A published cell
+    counts at its activity's place (as setup has it now) and for the activity; a fixed or
+    recurring one at its place; something not set up yet (elective, trip...) counts nowhere.
+    Publishing itself is Manual Build part 5, so until it ships the fixed and recurring activities
+    are what a camp will see counted.
+28. **By clock time.** Programs keep their own time grids, so each entry is one of the other
+    program's time blocks with its real start and end (`dateValue`, `startTime`, `endTime`
+    "HH:mm", `locationId`, `activityId`, `groups`), summed per date, time, place and activity and
+    sorted, so the same week always sends the same list. For each of this program's blocks the
+    engine counts the **most groups there at any one moment** (a sweep over the entries' start
+    and end times inside the block; touching times don't overlap), never the total of every
+    entry it overlaps: one group across two of the other program's shorter blocks is one group,
+    and two groups one after the other are one at a time (coordinator's review). The data module renames
+    `dateValue` to the engine's `date` (`readOtherPrograms`: `date` is reserved in Apex).
+29. **No overrun, no conflict.** Other programs only take room: the engine places elsewhere when
+    a place's groups that fit or an activity's groups at once is used up, and a dot appears only
+    when the finished week is over capacity there (checkWeek's place capacity, groups at once and
+    same division only, which already counted other programs, §10).
+30. **Manual Build dots the same.** Its draft (`ManualBuildViews.DraftView.otherPrograms`) carries
+    the same list, and its checks give checkWeek `othersAt` from `otherProgramsAt` (exported by
+    `c/shoreshEngine`, the engine's own counting on Manual Build's days), so both schedules dot
+    the same over-capacity places. Nothing else in Manual Build changes.
+31. **Reads.** User mode, `with sharing`: at most four queries whatever the number of programs
+    (the other programs with their time blocks, fixed and recurring activities; their published
+    days; their groups and who their recurring activities cover only when one has a place), one
+    when the season has no other program; Manual Build adds the week's exceptions. Programs and schedules are controlled by their season (`ControlledByParent`), so whoever
+    can open this program's week sees every other program of the season: a program the user can't
+    see while seeing this one can't be made, and so isn't tested. `GeneratedSetup` now also reads each exception's fixed and
+    recurring activity. `ScheduleDays.readDay` is public, so published days are read as any day.
+
+Not decided in G5: a dot caused by another program says only "More Bunks at Pool than fit", as
+for this program's own bunks; the desktop names who has the place. Naming the other program is a
+wording call for Greg, the same in both schedules.
+
+## Tests (G5)
+
+`GeneratedOtherProgramsTest` (Apex, as a scheduler, data made inside `runAs`, the clash check
+deferred to the end of setup): one program sends nothing; a published day counts at its own times
+and a draft doesn't; only the newest published schedule counts, never a version; published cells
+carry on across blocks and count fixed and recurring activities at their place; published cells
+skip a group away, a place closed and a recurring activity off that week; fixed and recurring
+activities count on the days with no published schedule (a two-block recurring one for the one
+group it covers, one naming nobody for every group at camp then, one naming a division, a fixed
+one for every group), and on a published day that can't be read; a group away, a place closed
+and an activity off that week don't count; Manual Build's draft gets the same list. `GeneratedLimitsTest`'s camp gains a second program with a published week and fixed and
+recurring activities each, inside the same query bound (opening a week and the first save; the
+Rebuild test leaves them out, as its setup runs before `Test.startTest()` and saves don't read
+other programs). Jest, normal and namespaced: the data module
+passes the list on in the engine's shape; with the Pool free one bunk swims, with another
+program's published cell filling it at an overlapping time nobody does (and no dot), and a time
+that only touches, or a count of 0, doesn't block; the busiest-moment count (one group across
+two shorter blocks, two groups back to back, true overlap, any order, places and activities
+apart); Manual Build dots the Pool only once another program's groups take it past what fits,
+and counts another program doing Soccer against its bunks at once but not one only at a place.
+The property tests' independent checkers count other programs at their busiest moment too. Each new path was confirmed to fail its Jest test when
+taken out; the Apex tests run only in CI.
+
 ## Choices (G4: locks, server side)
 
-27. **Locks are stored in grid format version 2** (ADR 0005 §6 planned it; `ScheduleGridLocks`).
+32. **Locks are stored in grid format version 2** (ADR 0005 §6 planned it; `ScheduleGridLocks`).
     A day with a locked cell gets one more list, `"l"`, after `"r"`: one row per group in the
     same order, one cell per time block, `1` locked or empty (`"l":[",1,",",,"]`), and is saved
     with `GridFormatVersion__c` 2. A day with no lock is stored as version 1, exactly as before,
@@ -585,7 +655,7 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
     day split into parts (ADR 0005 §8) keeps each group's lock row with it; a part with no lock
     has no `"l"`, and joining gives every group a lock row or none. Versions copy a day as it is,
     locks included.
-28. **Hand edits are locks** (decision 2). A hand edit on the Generated draft is Manual Build's
+33. **Hand edits are locks** (decision 2). A hand edit on the Generated draft is Manual Build's
     slot save (`GeneratedScheduleController.saveSlots` → `SlotSaves.saveOnGenerated`: the same
     runs, the same compare-and-set and _keep theirs or use yours_ conflicts, the same rules),
     with `GeneratedEdits`:
@@ -610,7 +680,7 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
 
     Manual Build's own saves never lock and stay version 1.
 
-29. **Lock and Unlock** (decision 3; `GeneratedScheduleController.setLocks` → `GeneratedLocks`):
+34. **Lock and Unlock** (decision 3; `GeneratedScheduleController.setLocks` → `GeneratedLocks`):
     a cell (date, group and time block), a whole day (date only) or a whole group (group only,
     or with a date for its day; `Lock` and `Unlock` spelled exactly; nothing else is read). **The
     shortcuts lock only cells that hold something** (coordinator's call): locking a day's Open or
@@ -623,13 +693,13 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
     cell of the week, or isn't `Lock` or `Unlock`, is refused; so is a change to a version or to
     Manual Build's draft. Only the days whose locks changed are written, at their revisions,
     under the draft's lock (`GeneratedLocks`, `GeneratedLockCells`).
-30. **Builds keep locks; the server enforces them.** Rebuild, Try another and Fill the open
+35. **Builds keep locks; the server enforces them.** Rebuild, Try another and Fill the open
     cells keep every locked cell (the engine gets them as `locks`). On save the server keeps the
     stored locks whatever the screen sends, and refuses a build that changes a locked cell:
     _Group A · Monday · Period 2 is locked._ (group, day, time block in the camp's words).
     **Start over** clears every lock, after keeping its "Before Start over" version, which keeps
     them.
-31. **The data module** (`c/shoreshGeneratedWeek`): `loadWeek` gives the engine the stored locks
+36. **The data module** (`c/shoreshGeneratedWeek`): `loadWeek` gives the engine the stored locks
     (`locksOf`: `{ date, groupId, blockId }` from each day's `locks` rows). `saveEdits(loaded,
 edits)` adds each run's `locksBefore` and resolves to `saved` with the week to go on with
     (its days, locks and revision replaced together; none when someone else saved meanwhile) or
@@ -643,7 +713,7 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
     **Filled** (`checkWeek`'s cells) doesn't count a cell the director locked empty as one to
     fill (`isLockedOpen`), and the engine never lists it as Open.
     `LOCK` and `UNLOCK` name the two changes. One word, **Lock**, everywhere (decision 3).
-32. **Not in this part: the screen.** G3 (#49) owns the Generated Schedule screen; whichever of
+37. **Not in this part: the screen.** G3 (#49) owns the Generated Schedule screen; whichever of
     the two merges second wires it: hand edits with Manual Build's editing (place, move, swap,
     clear, length, typing, undo), the lock icon on a locked cell (and as the action), Lock and
     Unlock for a cell, the day and the group, Rebuild's _Locked cells stay as they are._ and
@@ -665,7 +735,7 @@ a two-block activity locks both; a build that changes a locked cell is refused a
 keeps the lock; Fill the open cells can't fill a locked Open cell; Start over clears the locks
 and its version keeps them (version 2); Manual Build's saves stay version 1, and Generated edits
 and locks don't reach its draft; changes that name nothing, unknown or misspelled actions,
-shapes §29 doesn't list (a time block alone, or with a day but no group) and a version are
+shapes §34 doesn't list (a time block alone, or with a day but no group) and a version are
 refused. `GeneratedLimitsTest`: locking a whole day and a hand edit on the realistic week stay
 within the same 25 queries. Jest: `locksOf`; the locks reaching the real `generateWeek`, which
 keeps the locked cell in eight options (a run without them moves it), and a cell locked empty
@@ -683,6 +753,8 @@ G2:
 - The picklist value `VersionReason__c` `AutoSaved` ("Auto-saved").
 - The Generated draft's name "Generated Schedule" and the versions' names "Before Rebuild",
   "Before Try another", "Before Start over" (stored text; versions can be renamed).
+
+G5: none (no objects, fields or global members).
 
 G4:
 

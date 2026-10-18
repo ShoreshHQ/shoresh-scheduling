@@ -39,6 +39,7 @@ import {
 } from "./adds";
 import { resolveProgramDays, resolvePrograms } from "./scope";
 import { resolveColumn } from "./refs";
+import { FIELD } from "c/shoreshSchema";
 
 /** Keep or Change, for one difference. */
 export const KEEP = "keep";
@@ -919,6 +920,7 @@ function resolveRainPlans(read, leads, column, setup, answers) {
       break;
     }
   }
+  refuseOutdoorRainPlans(leads, column, setup);
   const added = new Set();
   leads.filter(usable).forEach((r) => {
     const target = (r.targets || {})[column.key];
@@ -939,6 +941,42 @@ function resolveRainPlans(read, leads, column, setup, answers) {
     pairs: [...pairs.values()].sort((x, y) => x.id.localeCompare(y.id)),
     adds: adds.adds
   };
+}
+
+/**
+ * A rain plan has to be indoors (desktop ActivitiesScreen.jsx save(); ActivityTriggerHandler
+ * refuses the save otherwise): a row whose rain plan would be outdoors after the import, as the
+ * file says or as it is now, can't be saved, and says so before anything is.
+ */
+function refuseOutdoorRainPlans(leads, column, setup) {
+  const outdoors = (target) => {
+    if (!target || target.add) {
+      // Added the way a hand-added activity is: indoors.
+      return false;
+    }
+    const isTarget = (r) => {
+      if (target.id) {
+        return !!r.existing && r.existing.Id === target.id;
+      }
+      return target.key === `Activity:${r.name}`;
+    };
+    const row = leads.find(isTarget);
+    if (row && "outdoors" in row.values) {
+      return !!row.values.outdoors;
+    }
+    const saved = (setup.activities || []).find((a) => a.Id === target.id);
+    return !!(saved && saved[FIELD.Activity.Outdoor]);
+  };
+  leads.filter(usable).forEach((r) => {
+    const fromFile = (r.targets || {})[column.key];
+    const kept =
+      !(column.key in r.values) && r.existing && r.existing[column.refField]
+        ? { id: r.existing[column.refField] }
+        : null;
+    if (outdoors(fromFile || kept)) {
+      r.problems.push(`${column.heading}: has to be indoors`);
+    }
+  });
 }
 
 /**
@@ -1044,6 +1082,11 @@ export function listProposal(input) {
   const rainPlans = rain
     ? resolveRainPlans(read, leads, rain.column, setup, answers)
     : { pairs: [], adds: [] };
+  // With no rain plan column, a row still saves its activity with the rain plan it has.
+  const rainColumn = (screen.columns || []).find((c) => c.ref === "activity");
+  if (!rain && rainColumn) {
+    refuseOutdoorRainPlans(leads, rainColumn, setup);
+  }
   result.pairs.push(...rainPlans.pairs);
   finishRepeats(read);
   result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));

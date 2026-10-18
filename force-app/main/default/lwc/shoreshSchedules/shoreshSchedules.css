@@ -225,11 +225,3 @@
   font-weight: 600;
   color: var(--shoresh-text-secondary);
 }
-
-.empty-state {
-  padding: 60px 16px;
-  text-align: center;
-  color: var(--slds-g-color-neutral-base-30, #444);
-  max-width: 40rem;
-  margin: 0 auto;
-}

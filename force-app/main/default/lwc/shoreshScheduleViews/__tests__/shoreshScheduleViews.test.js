@@ -33,6 +33,16 @@ describe("c/shoreshScheduleViews", () => {
     expect(tuesday[0].item).toBeNull();
   });
 
+  it("a block named by its time range shows its times once (desktop blockLabelParts)", () => {
+    const view = opened();
+    const [first, ...rest] = view.days[0].blocks;
+    view.days[0].blocks = [{ ...first, name: "9:00 AM – 9:45 AM" }, ...rest];
+    const grid = dailyGrid(view, 0, t);
+    expect(grid.rows[0].name).toBe("9:00 AM – 9:45 AM");
+    expect(grid.rows[0].timeLines).toEqual([]);
+    expect(grid.rows[1].timeLines.length).toBe(2);
+  });
+
   it("Daily View: a column per group, a two-block activity spanning two rows", () => {
     const grid = dailyGrid(opened(), 0, t);
     expect(grid.columns.map((c) => c.label)).toEqual(["Bunk 1", "Bunk 2"]);

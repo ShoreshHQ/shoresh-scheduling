@@ -62,7 +62,8 @@ private class ImportListSavesTest {
         'TimesPerWeekMax__c' => 3,
         'NoWeeklyMax__c' => false,
         'Priority__c' => 'High',
-        'Outdoor__c' => true,
+        // Board games is a rain plan in these lists, so it is indoors (a rain plan has to be).
+        'Outdoor__c' => name != 'Board games',
         'GroupsAtOnce__c' => 1,
         'NoGroupLimit__c' => false
       },
