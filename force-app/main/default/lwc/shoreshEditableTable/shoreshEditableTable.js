@@ -14,25 +14,30 @@ const WHO_FIELDS = {
 };
 const OFF = FIELD.WeekException;
 const WEEK = FIELD.Week;
+// The blank last row's key.
+const ADD = "add";
 
 /**
- * A small table of records edited in place. Changes stay on screen until the scheduler
- * presses Save; nothing is saved behind their back.
+ * A table of records edited in place, saved as you go, like the desktop's setup tables (ADR
+ * 0011; desktop DESIGN_STANDARD §6a "InlineAddRow"). The last row is always blank: typing there
+ * and pressing Enter, the add button, or leaving the row adds it. A saved row's changes are saved
+ * when the director presses Enter in it or leaves it; Escape puts it back as saved. One row is
+ * saved at a time, in the order the director left them. A row someone else changed since it was
+ * shown asks "Keep theirs" or "Use yours" (as Manual Build does, ADR 0008 §4).
  *
  * columns: [{ fieldName, label, type: 'text'|'number'|'date'|'time'|'checkbox'|'picklist', options,
  *   required, min, excludeSelf }]  (min: smallest number allowed, for number columns;
- *   excludeSelf: a picklist of records leaves out the row's own record; savedOnly: new rows show
- *   the value as text, not a field to change)
+ *   excludeSelf: a picklist of records leaves out the row's own record; savedOnly: the blank row
+ *   shows the value as text, not a field to change)
  * When the screen reloads after something else was saved, anything typed here and not yet
- * saved stays on screen. Only this table's own successful save clears it.
+ * saved stays on screen.
  *
  * filterField / filterValue: show only rows whose filterField equals filterValue ("" means rows
- * where it is empty; no filterValue shows every row). Hidden rows keep their unsaved typing
- * and are still saved; new rows always show.
+ * where it is empty; no filterValue shows every row). The blank row always shows.
  *
  * weeks / weekExceptions / weeksHeading: with weeks and a heading (such as "Runs in"), each row
- * gets a tick per week, ticked unless a week exception names the row in that week. New rows
- * start with every week ticked. weekPhrase words each tick for screen readers ("runs in").
+ * gets a tick per week, ticked unless a week exception names the row in that week. The blank
+ * row starts with every week ticked. weekPhrase words each tick for screen readers ("runs in").
  *
  * A "who" column (type "who", fieldName: the child rows' relationship, such as Coverages__r,
  * options: the divisions and groups to choose from, everyone: what an empty choice means,
@@ -42,9 +47,10 @@ const WEEK = FIELD.Week;
  *
  * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
  *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
- *   "Same name as another" tag. Every row counts, hidden or unsaved. A heads-up only.
+ *   "Same name as another" dot (c/shoreshDot: its words on hover, focus, or tap, and to
+ *   screen readers). Every row counts, hidden or blank-row typing. A heads-up only.
  * overlapLabel: a row whose StartDate__c to EndDate__c overlaps another row's gets the same dot
- *   with this tag ("Overlaps another week", in the camp's words). A heads-up only.
+ *   with these words ("Overlaps another week", in the camp's words). A heads-up only.
  *   sameNameScope / sameNamesElsewhere: when rows can move to another scope (a group's
  *   division), a row is compared within the scope its values now name, and against
  *   sameNamesElsewhere[scope] (names in other scopes' tables, and names moving in from them).
@@ -53,32 +59,29 @@ const WEEK = FIELD.Week;
  * draftNote / draftNoteHeading: a note worked out from a saved row's unsaved values,
  *   draftNote(values, original) -> text or null, shown in that column while it applies (instead
  *   of the row's saved note). Without notesHeading the column shows only while one applies.
- * rowActions: fixes offered in a saved row's note; each saves just its changes to that row.
+ * rowActions: fixes offered in a saved row's note; each is a change to that row, saved at once.
  *
  * Fires:
  *   pendingnames { moved: { scope: [names] } } - with sameNameScope, whenever the saved rows
  *          switched to another scope (and not saved yet) change, so the screen can show those
  *          names to the other scopes' tables
- *   save   { records, onFailure } - new rows with all values, existing rows with Id and changed
- *          fields only; call onFailure() if the save did not go through. With weeks, also
- *          weeksOff [{ target, week }, or { row, week } for a new row: its place in records]
- *          and weeksBackOn [week exception Ids]. With a who column, also who [{ target, targets },
- *          or { row, targets } for a new row]
+ *   save   { record, seen, extras: { weeksOff, weeksBackOn, who }, seenWho, onSaved, onFailure,
+ *          onDone } - one row: a new one with all its values, or a saved one with Id and changed
+ *          fields only, and seen: those fields as the director saw them. weeksOff
+ *          [{ target, week }, or { row: 0, week } for a new row], weeksBackOn [week exception
+ *          Ids], who [{ target, targets }, or { row: 0, targets }]; seenWho: who it covered as
+ *          seen, when who changed. The screen calls onSaved(result) with SetupTablesController
+ *          .saveRow's answer, or onFailure() if it did not go through; then, once it has
+ *          reloaded, onDone(), and the next row is sent.
  *   delete { recordId, name }
  */
 export default class ShoreshEditableTable extends LightningElement {
   @api title;
   @api objectApiName;
+  /** The add button's name, and the blank row's name placeholder ("Add Bunk"). */
   @api addLabel = "Add";
   @api emptyMessage = "Nothing here yet.";
-  /**
-   * Values every new row starts with, such as the parent record and a default name.
-   * "{n}" in a text value becomes the new row's position, so new rows get distinct names.
-   */
-  @api newRowDefaults = {};
   @api busy = false;
-  @api filterField;
-  @api filterValue;
   @api weeksHeading;
   @api weekPhrase = "runs in";
   @api notesHeading;
@@ -92,17 +95,63 @@ export default class ShoreshEditableTable extends LightningElement {
   @api draftNoteHeading;
   /** Fixes offered on saved rows: record Id -> [{ key, label, changes }]. */
   @api rowActions = {};
+  /**
+   * Optional: asked before a week is unticked on a saved row, ({ recordId, name, weekId,
+   * weekName }) -> Promise<boolean>; false leaves the week ticked. The place for the desktop's
+   * "Turn off … for Week 3?" when the week already has placements (PR #48).
+   */
+  @api beforeWeekOff;
 
   drafts = [];
-  nextKey = 0;
-  // True from this table's Save until the screen reloads (or reports the save failed).
-  submitted = false;
+  addRow = this.blankRow();
+  // Row keys waiting to be saved, in order; and the one being saved.
+  queue = [];
+  sending = null;
+  // Someone else changed a row being saved: the question shown.
+  conflict = null;
+  // Said to screen readers after each save.
+  announcement = "";
   // Said once in the console when the screen names an object this table doesn't know.
   reportedUnknown = false;
+  focusAddRow = false;
   _rows = [];
   _columns = [];
   _weeks = [];
   _weekExceptions = [];
+  _defaults = {};
+
+  /** Values the blank row starts with, such as the parent record and default numbers. */
+  @api
+  get newRowDefaults() {
+    return this._defaults;
+  }
+  set newRowDefaults(value) {
+    this._defaults = value && typeof value === "object" ? value : {};
+    if (!this.addRow.dirty && !this.addRow.adding) {
+      this.addRow = this.blankRow();
+    }
+  }
+
+  /** The field the Show filter looks at (a location's type). */
+  @api
+  get filterField() {
+    return this._filterField;
+  }
+  set filterField(value) {
+    this._filterField = value;
+  }
+
+  /** Show only rows whose saved filterField is this ("" for none); the blank row starts with it. */
+  @api
+  get filterValue() {
+    return this._filterValue;
+  }
+  set filterValue(value) {
+    this._filterValue = value;
+    if (!this.addRow.dirty && !this.addRow.adding) {
+      this.addRow = this.blankRow();
+    }
+  }
 
   @api
   get weeks() {
@@ -119,6 +168,7 @@ export default class ShoreshEditableTable extends LightningElement {
   }
   set weekExceptions(value) {
     this._weekExceptions = value || [];
+    this.drafts = this.keepTyping(this._rows);
   }
 
   @api
@@ -129,6 +179,9 @@ export default class ShoreshEditableTable extends LightningElement {
     this._columns = value || [];
     // The screen may hand over the columns again whenever it redraws; keep what was typed.
     this.drafts = this.keepTyping(this._rows);
+    if (!this.addRow.dirty && !this.addRow.adding) {
+      this.addRow = this.blankRow();
+    }
   }
 
   @api
@@ -137,61 +190,115 @@ export default class ShoreshEditableTable extends LightningElement {
   }
   set rows(value) {
     this._rows = value || [];
-    if (this.submitted) {
-      // This table's own save went through: show exactly what was saved.
-      this.submitted = false;
-      this.drafts = this._rows.map((record) => this.draftFor(record, false));
-      return;
-    }
-    // Something else was saved: keep what was typed here and not yet saved.
     this.drafts = this.keepTyping(this._rows);
   }
 
-  /** Rows for these records, carrying over any unsaved changes and unsaved new rows. */
+  // ---------- rows ----------
+
+  /**
+   * Rows for these records, carrying over any unsaved changes. A change is kept only where it
+   * still differs from what is saved, so a row's own save clears it and later typing stays.
+   */
   keepTyping(records) {
-    const previous = this.drafts;
-    const kept = records.map((record) => {
-      const draft = this.draftFor(record, false);
-      const old = previous.find((d) => !d.isNew && d.original.Id === record.Id);
-      if (old) {
-        draft.weekTicks = new Map(old.weekTicks);
-        if (this.whoChanged(old)) {
-          draft.who = old.who;
-        }
-        draft.whoOpen = old.whoOpen;
-        old.changed.forEach((field) => {
-          if (!sameValue(old.values[field], draft.original[field])) {
-            draft.values[field] = old.values[field];
-            draft.changed.add(field);
-          }
-        });
+    const previous = new Map(this.drafts.map((d) => [d.key, d]));
+    const offWeeks = this.offWeeks;
+    return records.map((record) => {
+      const draft = this.draftFor(record);
+      const old = previous.get(draft.key);
+      if (!old) {
+        return draft;
       }
+      const saved = this.savedOff(draft, offWeeks);
+      old.weekTicks.forEach((ticked, week) => {
+        if (ticked === saved.has(week)) {
+          draft.weekTicks.set(week, ticked);
+        }
+      });
+      if (!sameIds(old.who, draft.savedWho)) {
+        draft.who = old.who;
+        draft.seenWho = old.seenWho;
+      }
+      draft.whoOpen = old.whoOpen;
+      draft.inFlight = old.inFlight;
+      draft.refused = old.refused;
+      old.changed.forEach((field) => {
+        if (!sameValue(old.values[field], draft.original[field])) {
+          draft.values[field] = old.values[field];
+          draft.changed.add(field);
+          draft.seen[field] = old.seen[field];
+        }
+      });
       return draft;
     });
-    return [...kept, ...previous.filter((d) => d.isNew)];
   }
 
-  draftFor(record, isNew) {
-    this.nextKey += 1;
-    const shown = { ...record };
-    this.columns
-      .filter((col) => col.type === "time")
-      .forEach((col) => {
-        shown[col.fieldName] = timeText(shown[col.fieldName]);
-      });
+  draftFor(record) {
+    const shown = this.shownValues(record);
     return {
-      key: `row-${this.nextKey}`,
+      key: `row-${record.Id}`,
       original: shown,
       values: { ...shown },
       changed: new Set(),
+      // What each changed field held when the director changed it.
+      seen: {},
       // Unsaved week ticks: week Id -> ticked. Only differences from what is saved count.
       weekTicks: new Map(),
       // Who the row covers (division and group Ids), as saved and as chosen on screen.
       savedWho: this.whoOf(record),
       who: this.whoOf(record),
+      seenWho: null,
       whoOpen: false,
-      isNew
+      // The changes being saved right now (field -> value), while they are.
+      inFlight: null,
+      isNew: false
     };
+  }
+
+  /** The blank last row, with the screen's starting values. */
+  blankRow() {
+    const filtered =
+      this._filterField && this._filterValue
+        ? { [this._filterField]: this._filterValue }
+        : {};
+    return {
+      key: ADD,
+      original: {},
+      values: this.shownValues({ ...(this._defaults || {}), ...filtered }),
+      changed: new Set(),
+      seen: {},
+      weekTicks: new Map(),
+      savedWho: [],
+      who: [],
+      seenWho: null,
+      whoOpen: false,
+      isNew: true,
+      dirty: false,
+      adding: false
+    };
+  }
+
+  /** A record's values as the inputs show them (times as "09:00:00.000"). */
+  shownValues(record) {
+    const shown = { ...record };
+    (this._columns || [])
+      .filter((col) => col.type === "time")
+      .forEach((col) => {
+        shown[col.fieldName] = timeText(shown[col.fieldName]);
+      });
+    return shown;
+  }
+
+  rowFor(key) {
+    return key === ADD ? this.addRow : this.drafts.find((d) => d.key === key);
+  }
+
+  /** Redraws after a row's values changed in place. */
+  touch(draft) {
+    if (draft.key === ADD) {
+      this.addRow = { ...draft };
+    } else {
+      this.drafts = [...this.drafts];
+    }
   }
 
   get whoColumn() {
@@ -213,25 +320,20 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   whoChanged(draft) {
-    const saved = new Set(draft.savedWho);
+    return !sameIds(draft.who, draft.savedWho);
+  }
+
+  /** Whether a saved row has anything to save. */
+  hasChanges(draft, offWeeks = this.offWeeks) {
     return (
-      draft.who.length !== saved.size || draft.who.some((id) => !saved.has(id))
+      draft.changed.size > 0 ||
+      this.whoChanged(draft) ||
+      this.weekChanges(draft, offWeeks).size > 0
     );
   }
 
   get hasRows() {
     return this.drafts.length > 0;
-  }
-
-  get isDirty() {
-    const offWeeks = this.offWeeks;
-    return this.drafts.some(
-      (d) =>
-        d.isNew ||
-        d.changed.size > 0 ||
-        this.whoChanged(d) ||
-        this.weekChanges(d, offWeeks).size > 0
-    );
   }
 
   get hasWeeks() {
@@ -270,12 +372,12 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   noteFromDraft(draft) {
-    return !draft.isNew && typeof this.draftNote === "function"
+    return typeof this.draftNote === "function"
       ? this.draftNote(draft.values, draft.original)
       : null;
   }
 
-  /** Every column, for the row that opens under a row to choose who it covers. */
+  /** Every column, for a row that spans the table (who picker, empty state). */
   get fullSpan() {
     return (
       this.columns.length +
@@ -325,14 +427,6 @@ export default class ShoreshEditableTable extends LightningElement {
     return changes;
   }
 
-  get saveDisabled() {
-    return this.busy || !this.isDirty;
-  }
-
-  get cancelDisabled() {
-    return this.busy || !this.isDirty;
-  }
-
   get visibleDrafts() {
     if (
       !this.filterField ||
@@ -341,10 +435,13 @@ export default class ShoreshEditableTable extends LightningElement {
     ) {
       return this.drafts;
     }
+    // A row being changed stays until it is saved: changing its type mustn't hide it unsaved.
+    const offWeeks = this.offWeeks;
     return this.drafts.filter(
       (draft) =>
-        draft.isNew ||
-        (draft.values[this.filterField] || "") === this.filterValue
+        (draft.original[this.filterField] || "") === this.filterValue ||
+        this.hasChanges(draft, offWeeks) ||
+        draft.key === this.sending
     );
   }
 
@@ -367,6 +464,47 @@ export default class ShoreshEditableTable extends LightningElement {
         `shoreshEditableTable: unknown object "${this.objectApiName}". Pass a name from c/shoreshSchema (OBJECT).`
       );
     }
+    if (this.focusAddRow) {
+      this.focusAddRow = false;
+      this.focusRow(ADD);
+    }
+    if (this.focusAfterRefusal && !this.addRow.adding) {
+      const from = this.focusAfterRefusal;
+      this.focusAfterRefusal = null;
+      const target = this.template.querySelector(
+        from === "add"
+          ? '[data-id="add"]'
+          : `[data-row-key="${ADD}"][data-field="${from}"]`
+      );
+      if (target) {
+        target.focus();
+      }
+    }
+    if (this.focusAfterQuestion && !this.conflict) {
+      // Back where the director was when the question came up.
+      this.focusRow(this.focusAfterQuestion);
+      this.focusAfterQuestion = null;
+    }
+    if (this.conflict && !this.conflictFocused) {
+      this.conflictFocused = true;
+      const keep = this.template.querySelector('[data-id="keep-theirs"]');
+      if (keep) {
+        keep.focus();
+      }
+    }
+    this.reportMoves();
+  }
+
+  focusRow(key) {
+    const first = this.template.querySelector(
+      `[data-row-key="${key}"][data-field]`
+    );
+    if (first) {
+      first.focus();
+    }
+  }
+
+  reportMoves() {
     if (!this.sameNameScope) {
       return;
     }
@@ -374,12 +512,7 @@ export default class ShoreshEditableTable extends LightningElement {
     const moved = {};
     this.drafts.forEach((draft) => {
       const to = draft.values[field];
-      if (
-        !draft.isNew &&
-        to &&
-        to !== draft.original[field] &&
-        draft.values.Name
-      ) {
+      if (to && to !== draft.original[field] && draft.values.Name) {
         moved[to] = [...(moved[to] || []), draft.values.Name];
       }
     });
@@ -392,17 +525,25 @@ export default class ShoreshEditableTable extends LightningElement {
     }
   }
 
+  /** Every row the flags look at: the saved rows and the blank row's typing. */
+  get flaggedRows() {
+    return this.addRow.dirty && !this.addRow.adding
+      ? [...this.drafts, this.addRow]
+      : this.drafts;
+  }
+
   /** Keys of the rows whose name another row also has, in the same scope. */
   get sameNameKeys() {
     const same = new Set();
     if (!this.flagSameNames) {
       return same;
     }
-    const scopeOf = (draft) =>
-      (this.sameNameScope ? draft.values[this.sameNameScope] || "" : "");
+    const scopeOf = (draft) => {
+      return this.sameNameScope ? draft.values[this.sameNameScope] || "" : "";
+    };
     const elsewhere = this.sameNamesElsewhere || {};
     const byName = new Map();
-    this.drafts.forEach((draft) => {
+    this.flaggedRows.forEach((draft) => {
       const name = looseKey(draft.values.Name);
       if (!name) {
         return;
@@ -422,7 +563,7 @@ export default class ShoreshEditableTable extends LightningElement {
     return same;
   }
 
-  /** Keys of the rows whose dates overlap another row's, saved or not. */
+  /** Keys of the rows whose dates overlap another row's, saved or being typed. */
   get overlapKeys() {
     const keys = new Set();
     if (!this.overlapLabel) {
@@ -431,7 +572,7 @@ export default class ShoreshEditableTable extends LightningElement {
     // Only weeks are told apart by their dates.
     const start = (d) => d.values[WEEK.StartDate];
     const end = (d) => d.values[WEEK.EndDate];
-    const dated = this.drafts.filter((d) => start(d) && end(d));
+    const dated = this.flaggedRows.filter((d) => start(d) && end(d));
     dated.forEach((a) => {
       if (
         dated.some((b) => b !== a && start(a) <= end(b) && start(b) <= end(a))
@@ -442,15 +583,52 @@ export default class ShoreshEditableTable extends LightningElement {
     return keys;
   }
 
-  get tableRows() {
-    const offWeeks = this.offWeeks;
-    const sameNames = this.sameNameKeys;
-    const overlaps = this.overlapKeys;
-    const draftNotes = this.draftNotes;
+  /**
+   * What the table body shows: the saved rows (or, when there are none, the empty state), then
+   * the blank row.
+   */
+  get bodyRows() {
+    // Worked out once for every row drawn.
+    const shared = {
+      offWeeks: this.offWeeks,
+      sameNames: this.sameNameKeys,
+      overlaps: this.overlapKeys
+    };
+    const rows = this.visibleDrafts.map((draft) =>
+      this.tableRow(draft, shared)
+    );
+    if (rows.length === 0) {
+      rows.push({
+        key: "empty",
+        isEmptyState: true,
+        message: this.hasRows
+          ? "Nothing to show with this choice."
+          : this.emptyMessage
+      });
+    }
+    return [...rows, this.tableRow(this.addRow, shared)];
+  }
+
+  /** The desktop's words while the blank row is being added. */
+  get addText() {
+    return this.addRow.adding ? "Adding…" : "Add";
+  }
+
+  get addDisabled() {
+    return this.busy || this.addRow.adding || !this.complete(this.addRow);
+  }
+
+  tableRow(draft, { offWeeks, sameNames, overlaps }) {
     const whoColumn = this.whoColumn;
     const notes = this.rowNotes || {};
-    return this.visibleDrafts.map((draft) => ({
+    const firstText = (this.columns.find((c) => this.isTextColumn(c)) || {})
+      .fieldName;
+    // A refused change still on screen, until it is saved or put back.
+    const notSaved =
+      !draft.isNew && !!draft.refused && this.hasChanges(draft, offWeeks);
+    return {
       key: draft.key,
+      isRow: true,
       whoKey: `${draft.key}-who`,
       whoOpen: !!whoColumn && draft.whoOpen,
       who: draft.who,
@@ -462,7 +640,7 @@ export default class ShoreshEditableTable extends LightningElement {
         : "",
       note: draft.isNew
         ? ""
-        : draftNotes.get(draft.key) || notes[draft.original.Id] || "",
+        : this.draftNotes.get(draft.key) || notes[draft.original.Id] || "",
       actions: draft.isNew
         ? []
         : ((this.rowActions || {})[draft.original.Id] || []).map((action) => ({
@@ -471,9 +649,11 @@ export default class ShoreshEditableTable extends LightningElement {
             name: action.key
           })),
       isNew: draft.isNew,
-      deleteLabel: draft.isNew
-        ? "Remove this new row"
-        : `Delete ${draft.values.Name || ""}`.trim(),
+      rowClass: draft.isNew ? "add-row" : notSaved ? "not-saved" : "",
+      notSaved,
+      // The blank row is locked while it is being added, so nothing typed is lost or added twice.
+      locked: draft.isNew && !!draft.adding,
+      deleteLabel: `Delete ${draft.values.Name || ""}`.trim(),
       cells: this.columns.map((col) => {
         const value = draft.values[col.fieldName];
         if (col.savedOnly && draft.isNew) {
@@ -488,14 +668,25 @@ export default class ShoreshEditableTable extends LightningElement {
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
-          label: col.label,
-          required: !!col.required,
+          // The blank row's fields say what they add ("Add Bunk: Name"); a refused row's
+          // fields say they aren't saved, read as the director tabs through them.
+          label: draft.isNew
+            ? `${this.addLabel}: ${col.label}`
+            : notSaved
+              ? `${col.label}, not saved`
+              : col.label,
+          // The blank row says what it is for in its first text field.
+          placeholder:
+            draft.isNew && col.fieldName === firstText ? this.addLabel : "",
+          // The blank row never shows "Complete this field": its + stays greyed out instead.
+          required: !!col.required && !draft.isNew,
+          disabled: draft.isNew && !!draft.adding,
           options: col.excludeSelf
             ? (col.options || []).filter(
                 (option) => !option.value || option.value !== draft.original.Id
               )
             : col.options,
-          isText: col.type === "text" || !col.type,
+          isText: this.isTextColumn(col),
           sameName: col.fieldName === "Name" && sameNames.has(draft.key),
           overlaps: col.fieldName === "Name" && overlaps.has(draft.key),
           overlapLabel: this.overlapLabel,
@@ -509,13 +700,21 @@ export default class ShoreshEditableTable extends LightningElement {
           whoSummary:
             col.type === "who" ? this.whoSummary(col, draft) : undefined,
           whoButton: draft.whoOpen ? "Done" : "Change",
+          // Named for its row, so a screen reader can tell the buttons apart.
+          whoName: `${draft.whoOpen ? "Done" : "Change"}: ${col.label}, ${
+            draft.values.Name || this.addLabel
+          }`,
           value:
             col.type === "checkbox" || col.type === "who" ? undefined : value,
           checked: col.type === "checkbox" ? !!value : undefined
         };
       }),
       weekCells: this.weekCells(draft, offWeeks)
-    }));
+    };
+  }
+
+  isTextColumn(col) {
+    return col.type === "text" || !col.type;
   }
 
   weekCells(draft, offWeeks) {
@@ -523,7 +722,7 @@ export default class ShoreshEditableTable extends LightningElement {
       return [];
     }
     const saved = this.savedOff(draft, offWeeks);
-    const name = draft.values.Name || "This row";
+    const name = draft.values.Name || this.addLabel;
     return this._weeks.map((week) => ({
       key: `${draft.key}-week-${week.Id}`,
       weekId: week.Id,
@@ -536,64 +735,91 @@ export default class ShoreshEditableTable extends LightningElement {
 
   /** "Everyone", or the names chosen. */
   whoSummary(column, draft) {
-    if (draft.who.length === 0) {
+    return this.whoNames(column, draft.who);
+  }
+
+  /** Names for these choices; with `known`, only those on screen (never a record Id). */
+  whoNames(column, ids, known) {
+    if (ids.length === 0) {
       return column.everyone || "Everyone";
     }
     const names = new Map(
       (column.options || []).map((option) => [option.value, option.label])
     );
-    return draft.who.map((id) => names.get(id) || id).join(", ");
+    return ids
+      .map((id) => names.get(id) || (known ? null : id))
+      .filter((name) => name)
+      .join(", ");
   }
 
+  // ---------- typing ----------
+
   handleWhoToggle(event) {
-    const draft = this.drafts.find(
-      (d) => d.key === event.currentTarget.dataset.rowKey
-    );
+    const draft = this.rowFor(event.currentTarget.dataset.rowKey);
     draft.whoOpen = !draft.whoOpen;
-    this.drafts = [...this.drafts];
+    this.touch(draft);
+    if (!draft.whoOpen) {
+      // Done: the choice is made.
+      this.commit(draft.key, false);
+    }
   }
 
   handleWhoChange(event) {
-    const draft = this.drafts.find(
-      (d) => d.key === event.target.dataset.rowKey
-    );
+    const draft = this.rowFor(event.target.dataset.rowKey);
+    if (!draft.isNew && draft.seenWho === null) {
+      draft.seenWho = [...draft.savedWho];
+    }
     draft.who = [...event.detail.value];
-    this.drafts = [...this.drafts];
+    draft.dirty = true;
+    this.touch(draft);
   }
 
-  /** A fix from the row's note: saves just its changes to that row. */
+  /** A fix from the row's note: a change to that row, saved at once. */
   handleRowAction(event) {
     const { rowKey, action } = event.currentTarget.dataset;
-    const draft = this.drafts.find((d) => d.key === rowKey);
+    const draft = this.rowFor(rowKey);
     const chosen = (this.rowActions[draft.original.Id] || []).find(
       (a) => a.key === action
     );
-    this.dispatchEvent(
-      new CustomEvent("save", {
-        detail: {
-          records: [
-            {
-              sobjectType: this.objectApiName,
-              Id: draft.original.Id,
-              ...chosen.changes
-            }
-          ],
-          onFailure: () => {}
-        }
-      })
-    );
+    Object.keys(chosen.changes).forEach((field) => {
+      this.setValue(draft, field, chosen.changes[field]);
+    });
+    this.touch(draft);
+    this.commit(draft.key, false);
   }
 
-  handleTick(event) {
+  async handleTick(event) {
     const { rowKey, week } = event.target.dataset;
-    const draft = this.drafts.find((d) => d.key === rowKey);
-    draft.weekTicks = new Map(draft.weekTicks).set(week, event.target.checked);
-    this.drafts = [...this.drafts];
+    const box = event.target;
+    const ticked = box.checked;
+    const draft = this.rowFor(rowKey);
+    if (!draft.isNew && !ticked && typeof this.beforeWeekOff === "function") {
+      // A question first (the desktop's "Turn off … for Week 3?" when it has placements).
+      const weekName = (this._weeks.find((w) => w.Id === week) || {}).Name;
+      const go = await this.beforeWeekOff({
+        recordId: draft.original.Id,
+        name: draft.values.Name,
+        weekId: week,
+        weekName
+      });
+      if (!go) {
+        box.checked = true;
+        this.touch(draft);
+        return;
+      }
+    }
+    draft.weekTicks = new Map(draft.weekTicks).set(week, ticked);
+    draft.dirty = true;
+    this.touch(draft);
+    if (!draft.isNew) {
+      // As on the desktop, a week tick on a saved row is saved the moment it is clicked.
+      this.commit(draft.key, false);
+    }
   }
 
   handleChange(event) {
     const { rowKey, field } = event.target.dataset;
-    const draft = this.drafts.find((d) => d.key === rowKey);
+    const draft = this.rowFor(rowKey);
     const column = this.columns.find((col) => col.fieldName === field);
     let value =
       event.target.type === "checkbox" || event.target.type === "toggle"
@@ -603,40 +829,88 @@ export default class ShoreshEditableTable extends LightningElement {
       // The number input hands back text; Salesforce wants a number (or nothing).
       value = value === "" || value === null ? null : Number(value);
     }
+    this.setValue(draft, field, value);
+    draft.dirty = true;
+    this.touch(draft);
+  }
+
+  setValue(draft, field, value) {
     draft.values = { ...draft.values, [field]: value };
-    if (!draft.isNew) {
-      if (sameValue(value, draft.original[field])) {
-        draft.changed.delete(field);
-      } else {
-        draft.changed.add(field);
-      }
+    if (draft.isNew) {
+      return;
     }
-    this.drafts = [...this.drafts];
+    // While a change is being saved, it is what typing is compared with.
+    const before =
+      draft.inFlight && field in draft.inFlight
+        ? draft.inFlight[field]
+        : draft.original[field];
+    if (!draft.changed.has(field)) {
+      draft.seen[field] = before;
+    }
+    if (sameValue(value, before)) {
+      draft.changed.delete(field);
+      delete draft.seen[field];
+    } else {
+      draft.changed.add(field);
+    }
+    if (!this.hasChanges(draft)) {
+      // Typed back to what is saved: nothing is left unsaved.
+      draft.refused = false;
+    }
+  }
+
+  /** Enter saves the row; Escape puts a saved row back as it was. */
+  handleRowKeyDown(event) {
+    const key = event.currentTarget.dataset.row;
+    const from = event.target.tagName;
+    if (event.key === "Enter" && from === "LIGHTNING-INPUT") {
+      event.preventDefault();
+      this.commit(key, true, event.target.dataset.field);
+    } else if (
+      event.key === "Escape" &&
+      key !== ADD &&
+      ["LIGHTNING-INPUT", "LIGHTNING-COMBOBOX"].includes(from) &&
+      !event.defaultPrevented &&
+      // Escape in a date or time field closes its picker; it doesn't undo the row.
+      !["date", "time"].includes(event.target.type)
+    ) {
+      this.revert(key);
+    }
+  }
+
+  /** Leaving a row (for anywhere outside it and its who picker) saves it. */
+  handleRowLeave(event) {
+    const key = event.currentTarget.dataset.row;
+    const to = event.relatedTarget;
+    const within =
+      to && typeof to.closest === "function" ? to.closest("[data-row]") : null;
+    if (within && within.dataset.row === key) {
+      return;
+    }
+    this.commit(key, false);
   }
 
   handleAdd() {
-    const defaults =
-      typeof this.newRowDefaults === "object" ? this.newRowDefaults : {};
-    if (this.unknownObject) {
+    this.commit(ADD, true, "add");
+  }
+
+  revert(key) {
+    const draft = this.rowFor(key);
+    if (!draft || draft.isNew) {
       return;
     }
-    const position = this.drafts.length + 1;
-    const record = { [FIELDS_OF[this.objectApiName].SortOrder]: position };
-    Object.keys(defaults).forEach((field) => {
-      const value = defaults[field];
-      record[field] =
-        typeof value === "string" ? value.replace("{n}", position) : value;
-    });
-    this.drafts = [...this.drafts, this.draftFor(record, true)];
+    draft.values = { ...draft.original };
+    draft.changed = new Set();
+    draft.seen = {};
+    draft.weekTicks = new Map();
+    draft.who = [...draft.savedWho];
+    draft.seenWho = null;
+    draft.refused = false;
+    this.touch(draft);
   }
 
   handleDelete(event) {
-    const rowKey = event.currentTarget.dataset.rowKey;
-    const draft = this.drafts.find((d) => d.key === rowKey);
-    if (draft.isNew) {
-      this.drafts = this.drafts.filter((d) => d !== draft);
-      return;
-    }
+    const draft = this.rowFor(event.currentTarget.dataset.rowKey);
     this.dispatchEvent(
       new CustomEvent("delete", {
         detail: { recordId: draft.original.Id, name: draft.original.Name }
@@ -644,66 +918,345 @@ export default class ShoreshEditableTable extends LightningElement {
     );
   }
 
-  handleCancel() {
-    this.drafts = this._rows.map((record) => this.draftFor(record, false));
+  // ---------- saving, one row at a time ----------
+
+  /** Every required value filled in. */
+  complete(draft) {
+    return this.columns.every(
+      (col) =>
+        !col.required ||
+        (col.savedOnly && draft.isNew) ||
+        !isBlank(draft.values[col.fieldName])
+    );
   }
 
-  handleSave() {
+  /** The row's inputs pass their own checks; shown under each field when `show`. */
+  valid(key, show) {
     const inputs = [
-      ...this.template.querySelectorAll("lightning-input, lightning-combobox")
+      ...this.template.querySelectorAll(
+        `lightning-input[data-row-key="${key}"], lightning-combobox[data-row-key="${key}"]`
+      )
     ];
-    const allValid = inputs.reduce(
-      (ok, input) => input.reportValidity() && ok,
-      true
-    );
-    if (!allValid) {
+    return inputs.reduce((ok, input) => {
+      const check = show ? input.reportValidity : input.checkValidity;
+      return (typeof check === "function" ? check.call(input) : true) && ok;
+    }, true);
+  }
+
+  /**
+   * Queues the row for saving if it has something to save and can be saved. The blank row is
+   * added only once it is filled in; leaving it half-typed keeps the typing, quietly (desktop).
+   */
+  commit(key, pressed, from) {
+    const draft = this.rowFor(key);
+    if (!draft || this.unknownObject) {
       return;
     }
+    if (draft.isNew) {
+      // Not filled in yet: nothing happens, and the + stays greyed out (desktop InlineAddRow).
+      if (!draft.dirty || draft.adding || !this.complete(draft)) {
+        return;
+      }
+      if (!this.valid(key, pressed)) {
+        return;
+      }
+      draft.adding = true;
+      draft.pressed = pressed;
+      // Where the cursor was, to put it back if the add is refused (not after leaving the row).
+      draft.from = pressed ? from : null;
+      this.touch(draft);
+    } else if (key === this.sending) {
+      // Being saved: whether anything is left to save is known once the screen has reloaded.
+    } else if (!this.hasChanges(draft) || !this.valid(key, true)) {
+      return;
+    }
+    if (!this.queue.includes(key)) {
+      this.queue = [...this.queue, key];
+    }
+    this.sendNext();
+  }
+
+  sendNext() {
+    if (this.sending || this.conflict) {
+      return;
+    }
+    while (this.queue.length) {
+      const [key, ...rest] = this.queue;
+      this.queue = rest;
+      const draft = this.rowFor(key);
+      if (draft && (draft.isNew ? draft.adding : this.hasChanges(draft))) {
+        this.send(draft);
+        return;
+      }
+    }
+  }
+
+  send(draft) {
     const timeFields = new Set(
       this.columns.filter((c) => c.type === "time").map((c) => c.fieldName)
     );
-    const records = [];
-    const weeksOff = [];
-    const weeksBackOn = [];
-    const who = [];
     const offWeeks = this.offWeeks;
-    this.drafts.forEach((draft) => {
-      if (draft.isNew) {
-        records.push(toRecord(this.objectApiName, draft.values, timeFields));
-      } else if (draft.changed.size > 0) {
-        const changes = { Id: draft.original.Id };
-        draft.changed.forEach((field) => {
-          changes[field] = draft.values[field];
-        });
-        records.push(toRecord(this.objectApiName, changes, timeFields));
+    const extras = { weeksOff: [], weeksBackOn: [] };
+    let record;
+    let seen = null;
+    let seenWho = null;
+    const who = [];
+    if (draft.isNew) {
+      record = toRecord(
+        this.objectApiName,
+        { [this.sortField]: this.nextSortOrder, ...draft.values },
+        timeFields
+      );
+      if (draft.who.length > 0) {
+        who.push({ row: 0, targets: [...draft.who] });
       }
-      if (draft.isNew && draft.who.length > 0) {
-        who.push({ row: records.length - 1, targets: [...draft.who] });
-      } else if (!draft.isNew && this.whoChanged(draft)) {
+    } else {
+      const changes = { Id: draft.original.Id };
+      const before = {};
+      draft.changed.forEach((field) => {
+        changes[field] = draft.values[field];
+        before[field] = draft.seen[field];
+      });
+      record = toRecord(this.objectApiName, changes, timeFields);
+      seen = toRecord(this.objectApiName, before, timeFields);
+      if (this.whoChanged(draft)) {
         who.push({ target: draft.original.Id, targets: [...draft.who] });
+        seenWho = [...(draft.seenWho || draft.savedWho)];
       }
-      const saved = this.savedOff(draft, offWeeks);
-      this.weekChanges(draft, offWeeks).forEach((ticked, week) => {
-        if (ticked) {
-          weeksBackOn.push(...saved.get(week));
-        } else if (draft.isNew) {
-          weeksOff.push({ row: records.length - 1, week });
-        } else {
-          weeksOff.push({ target: draft.original.Id, week });
+    }
+    const saved = this.savedOff(draft, offWeeks);
+    this.weekChanges(draft, offWeeks).forEach((ticked, week) => {
+      if (ticked) {
+        extras.weeksBackOn.push(...saved.get(week));
+      } else if (draft.isNew) {
+        extras.weeksOff.push({ row: 0, week });
+      } else {
+        extras.weeksOff.push({ target: draft.original.Id, week });
+      }
+    });
+    if (this.whoColumn) {
+      extras.who = who;
+    }
+    const sent = {
+      changes: Object.fromEntries(
+        [...draft.changed].map((field) => [field, draft.values[field]])
+      ),
+      who: seenWho ? [...draft.who] : null
+    };
+    this.sending = draft.key;
+    draft.inFlight = draft.isNew ? null : sent.changes;
+    this.dispatchEvent(
+      new CustomEvent("save", {
+        detail: {
+          record,
+          seen,
+          extras,
+          seenWho,
+          onSaved: (result) => this.saved(draft.key, sent, result),
+          onFailure: () => this.failed(draft.key),
+          onDone: () => this.done()
+        }
+      })
+    );
+  }
+
+  get sortField() {
+    return FIELDS_OF[this.objectApiName].SortOrder;
+  }
+
+  /** After the last row: one more than the highest saved, so rows keep their order. */
+  get nextSortOrder() {
+    const orders = this.drafts
+      .map((d) => d.original[this.sortField])
+      .filter((n) => typeof n === "number");
+    return orders.length ? Math.max(...orders) + 1 : this.drafts.length + 1;
+  }
+
+  saved(key, sent, result) {
+    const answer = result || {};
+    const draft = this.rowFor(key);
+    if (answer.changed && answer.changed.length) {
+      this.askAbout(key, answer);
+      return;
+    }
+    if (answer.theirWho) {
+      this.askAbout(key, answer);
+      return;
+    }
+    if (key === ADD) {
+      // The new row shows at once, as saved, until the screen reloads it.
+      const values = { ...draft.values, Id: answer.id };
+      const added = this.draftFor(values);
+      added.original = { ...values };
+      added.values = { ...values };
+      this.drafts = [...this.drafts, added];
+      this.announce(`${draft.values.Name || ""} added`.trim());
+      // Its fields were locked while it was added, so nothing typed since is lost.
+      this.addRow = this.blankRow();
+      this.focusAddRow = !!draft.pressed;
+      return;
+    }
+    if (draft) {
+      draft.refused = false;
+      // What was sent is saved now: typing since is compared with that, not with the old values.
+      Object.keys(sent.changes).forEach((field) => {
+        if (draft.changed.has(field)) {
+          draft.seen[field] = sent.changes[field];
         }
       });
-    });
-    this.submitted = true;
-    const onFailure = () => {
-      this.submitted = false;
-    };
-    const detail = this.hasWeeks
-      ? { records, weeksOff, weeksBackOn, onFailure }
-      : { records, onFailure };
-    if (this.whoColumn) {
-      detail.who = who;
+      if (sent.who) {
+        draft.seenWho = sent.who;
+      }
     }
-    this.dispatchEvent(new CustomEvent("save", { detail }));
+    this.announce(`${(draft && draft.values.Name) || ""} saved`.trim());
+  }
+
+  /** Said again even when it is the same words as last time, so screen readers repeat it. */
+  announce(text) {
+    // Every other time with a trailing non-breaking space: the words read the same, but the
+    // live region's text changes, so the same message is read again.
+    this.announced = !this.announced;
+    this.announcement = this.announced ? text : `${text}\u00a0`;
+  }
+
+  failed(key) {
+    if (key === ADD) {
+      // Refused: open again, with the cursor back where it was (the field, or the Add button).
+      this.focusAfterRefusal = this.addRow.from;
+      this.addRow = { ...this.addRow, adding: false };
+      return;
+    }
+    // Refused: marked as not saved until it is saved or put back.
+    const draft = this.rowFor(key);
+    if (draft) {
+      draft.refused = true;
+      this.touch(draft);
+    }
+  }
+
+  done() {
+    const draft = this.rowFor(this.sending);
+    if (draft) {
+      draft.inFlight = null;
+    }
+    const was = this.sending;
+    this.sending = null;
+    // Only the blank row's own add unlocks it: one waiting its turn stays locked and goes next.
+    if (was === ADD && this.addRow.adding) {
+      this.addRow = { ...this.addRow, adding: false };
+    }
+    this.sendNext();
+  }
+
+  // ---------- someone else changed the row ----------
+
+  askAbout(key, answer) {
+    const draft = this.rowFor(key);
+    const theirs = answer.theirs || {};
+    const name = draft.values.Name || draft.original.Name || "";
+    const rows = (answer.changed || []).map((field) => {
+      const column = this.columns.find((c) => c.fieldName === field) || {
+        fieldName: field,
+        label: field
+      };
+      return {
+        key: field,
+        field,
+        where: `${name} · ${column.label}`,
+        theirsValue: theirs[field],
+        yoursValue: draft.values[field],
+        value: column.type === "time" ? timeText(theirs[field]) : theirs[field]
+      };
+    });
+    if (answer.theirWho) {
+      const column = this.whoColumn;
+      rows.push({
+        key: "who",
+        where: `${name} · ${column.label}`,
+        yours: this.whoNames(column, draft.who),
+        theirWho: answer.theirWho
+      });
+    }
+    this.conflictFocused = false;
+    this.conflict = { key, rows };
+  }
+
+  /**
+   * The question's rows. Who someone else chose is named from the choices on screen, which the
+   * reload after the save brings up to date (a bunk they just added is named once it has).
+   */
+  get conflictRows() {
+    const whoColumn = this.whoColumn;
+    return this.conflict.rows.map((row) => {
+      if (row.theirWho) {
+        return { ...row, theirs: this.whoNames(whoColumn, row.theirWho, true) };
+      }
+      const column = this.columns.find((c) => c.fieldName === row.field) || {};
+      return {
+        ...row,
+        theirs: shownValue(column, row.theirsValue),
+        yours: shownValue(column, row.yoursValue)
+      };
+    });
+  }
+
+  /** Theirs stays; the director's other changes to the row are still saved. */
+  handleKeepTheirs() {
+    const { key, rows } = this.conflict;
+    const draft = this.rowFor(key);
+    if (draft) {
+      rows.forEach((row) => {
+        if (row.theirWho) {
+          draft.who = [...row.theirWho];
+          draft.seenWho = null;
+        } else {
+          draft.values = { ...draft.values, [row.field]: row.value };
+          draft.changed.delete(row.field);
+          delete draft.seen[row.field];
+        }
+      });
+      this.touch(draft);
+    }
+    this.closeConflict(key);
+  }
+
+  /** The same change again, naming what is there now. */
+  handleUseYours() {
+    const { key, rows } = this.conflict;
+    const draft = this.rowFor(key);
+    if (draft) {
+      rows.forEach((row) => {
+        if (row.theirWho) {
+          draft.seenWho = [...row.theirWho];
+        } else {
+          draft.seen[row.field] = row.value;
+          draft.changed.add(row.field);
+        }
+      });
+      this.touch(draft);
+    }
+    this.closeConflict(key);
+  }
+
+  /** As Manual Build's question: Escape keeps theirs, and Tab stays on its two buttons. */
+  handleConflictKeyDown(event) {
+    if (event.key === "Escape") {
+      this.handleKeepTheirs();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      const keep = this.template.querySelector('[data-id="keep-theirs"]');
+      const use = this.template.querySelector('[data-id="use-yours"]');
+      (this.template.activeElement === keep ? use : keep).focus();
+    }
+  }
+
+  closeConflict(key) {
+    this.conflict = null;
+    this.focusAfterQuestion = key;
+    if (!this.queue.includes(key)) {
+      this.queue = [key, ...this.queue];
+    }
+    this.sendNext();
   }
 }
 
@@ -719,9 +1272,48 @@ export function timeText(value) {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(value % 1000, 3)}`;
 }
 
+/** A value as the director reads it: a choice's name, Yes or No, a clock time. */
+function shownValue(column, value) {
+  if (isBlank(value)) {
+    return column.type === "checkbox" ? "No" : "None";
+  }
+  if (column.type === "checkbox") {
+    return value ? "Yes" : "No";
+  }
+  if (column.type === "picklist") {
+    // A choice someone else just added is named once the reload brings it; never its Id.
+    const option = (column.options || []).find((o) => o.value === value);
+    return option ? option.label : "None";
+  }
+  if (column.type === "date") {
+    // "Sat, Jul 3, 2027", as a camp director reads a date.
+    const [y, m, d] = String(value).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  }
+  if (column.type === "time") {
+    const [hours, minutes] = timeText(value).split(":").map(Number);
+    const hour = hours % 12 || 12;
+    return `${hour}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
+  }
+  return String(value);
+}
+
+function isBlank(value) {
+  return value === undefined || value === null || value === "";
+}
+
 function sameValue(a, b) {
-  const empty = (v) => v === undefined || v === null || v === "";
-  return (empty(a) && empty(b)) || a === b;
+  return (isBlank(a) && isBlank(b)) || a === b;
+}
+
+function sameIds(a, b) {
+  const set = new Set(b);
+  return a.length === set.size && a.every((id) => set.has(id));
 }
 
 /** Shapes a row for Apex: names the object, and gives times the zone marker Apex expects. */
@@ -732,7 +1324,7 @@ function toRecord(objectApiName, values, timeFields) {
     if (timeFields.has(field) && typeof value === "string" && value !== "") {
       value = apexTime(value);
     }
-    record[field] = value === "" ? null : value;
+    record[field] = value === "" || value === undefined ? null : value;
   });
   return record;
 }

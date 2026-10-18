@@ -8,11 +8,16 @@ import { LightningElement, api } from "lwc";
  *
  * label: a few words in the camp's terms ("Not set up for Bunk 2"). open: the row it sits on has
  * focus or is highlighted, so the tooltip shows. focusable: the dot is its own tab stop (when the
- * row around it isn't focusable itself).
+ * row around it isn't focusable itself). inCell: the dot sits in a grid cell, which carries
+ * focus and taps: a tap goes to the cell (whose focus shows the words), so the dot never swallows
+ * a tap meant for the cell; while the words show because the cell has keyboard focus, Escape hides
+ * them and still reaches the cell (where it also puts back what was picked up), so one press does
+ * both; and the words open toward the cell, wrapping, so the grid's edge never cuts them off.
  */
 export default class ShoreshDot extends LightningElement {
   @api label;
   @api focusable = false;
+  @api inCell = false;
 
   hovered = false;
   tapped = false;
@@ -40,8 +45,11 @@ export default class ShoreshDot extends LightningElement {
     this.onKey = (event) => {
       if (event.key === "Escape" && this.showTip) {
         this.dismissed = true;
-        event.stopPropagation();
-        event.preventDefault();
+        // Through to the cell only when its keyboard focus brought the words up.
+        if (!(this.inCell && this._open)) {
+          event.stopPropagation();
+          event.preventDefault();
+        }
       }
     };
     window.addEventListener("keydown", this.onKey, true);
@@ -61,9 +69,8 @@ export default class ShoreshDot extends LightningElement {
 
   /** The words can be pointed at only when the pointer brought them up (hover or tap). */
   get tipClass() {
-    return this.hovered || this.tapped
-      ? "tip-area tip-area_pointer"
-      : "tip-area";
+    const where = this.inCell ? "tip-area tip-area_cell" : "tip-area";
+    return this.hovered || this.tapped ? `${where} tip-area_pointer` : where;
   }
 
   get tabIndex() {
@@ -93,6 +100,10 @@ export default class ShoreshDot extends LightningElement {
    * neither is taken as a click on the row (picking an activity, say).
    */
   handleTap(event) {
+    // In a grid cell the tap is the cell's (its focus shows the words).
+    if (this.inCell) {
+      return;
+    }
     // A click on the words themselves is left alone.
     if (event.target.closest && event.target.closest(".tip-area")) {
       return;

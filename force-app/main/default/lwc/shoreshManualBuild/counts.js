@@ -4,10 +4,10 @@
  * times a week; in Daily View the whole camp, against those times multiplied by the number of
  * groups it is set up for. A multi-block placement counts once. Activities still under their
  * minimum come first, then the rest, each by name. Over the maximum is never blocked (Greg,
- * 2026-10-17): its count gets the bronze dot.
+ * 2026-10-17): its count gets the bronze dot. Which group a chip sits in and its dot follow the
+ * numbers its own words show, as on the desktop (Greg, round 2 decision 8: palette counts work as
+ * on the desktop). What is placed comes from the engine's checkWeek (c/shoreshEngine).
  */
-import { slots } from "./slotEdits";
-
 /** "2 placed (needs 3–5)", "14 placed (needs 6+)", "4 placed (up to 5)". */
 export function countLabel(count, target, cap) {
   let needs = null;
@@ -23,24 +23,6 @@ export function countLabel(count, target, cap) {
   return `${count} placed${needs ? ` (${needs})` : ""}`;
 }
 
-/** How many placements of each activity start in the week, for one group or all. */
-function placedCounts(schedule, groupId) {
-  const counts = new Map();
-  ((schedule && schedule.days) || [])
-    .filter((day) => !day.problem)
-    .forEach((day) =>
-      day.groups.forEach((grp, g) => {
-        if (groupId && grp.id !== groupId) {
-          return;
-        }
-        slots(day, g)
-          .filter((slot) => slot.startsWith("A:"))
-          .forEach((slot) => counts.set(slot, (counts.get(slot) || 0) + 1));
-      })
-    );
-  return counts;
-}
-
 /** Every group in the week, by id. */
 function weekGroupIds(schedule) {
   const ids = new Set();
@@ -51,11 +33,14 @@ function weekGroupIds(schedule) {
 }
 
 /**
- * The list: { stillNeeded, placed }, each chip { id, name, length, count, label, over }. filter:
- * what was typed in the list's Filter box (spaces and capitals aside).
+ * The list: { stillNeeded, placed }, each chip { id, name, length, count, label, over }. checked:
+ * checkWeek's answer for the week (its placements). groupId: the group in Group View, or null for
+ * the whole camp. filter: what was typed in the list's Filter box (spaces and capitals aside).
  */
-export function paletteChips(schedule, activities, groupId, filter) {
-  const counts = placedCounts(schedule, groupId);
+export function paletteChips(schedule, checked, activities, groupId, filter) {
+  const mine = ((checked && checked.placements) || []).filter(
+    (p) => p.kind === "A" && (!groupId || p.groupId === groupId)
+  );
   const groupIds = weekGroupIds(schedule);
   const typed = String(filter || "")
     .replace(/\s+/g, "")
@@ -66,16 +51,17 @@ export function paletteChips(schedule, activities, groupId, filter) {
     )
     .map((a) => {
       const notFor = a.notFor || [];
-      // A bunk an activity isn't set up for needs none of it.
+      // Group View: the bunk's own times a week, whoever it is set up for (desktop scaleFor;
+      // the grid's dot says "not set up"). Daily View: times the bunks it is set up for.
       const scale = groupId
-        ? Number(!notFor.includes(groupId))
+        ? 1
         : groupIds.filter((id) => !notFor.includes(id)).length;
       const target = (a.minPerWeek || 0) * scale;
       const cap =
         a.maxPerWeek === null || a.maxPerWeek === undefined
           ? null
           : a.maxPerWeek * scale;
-      const count = counts.get(`A:${a.id}`) || 0;
+      const count = mine.filter((p) => p.id === a.id).length;
       return {
         id: a.id,
         name: a.name,

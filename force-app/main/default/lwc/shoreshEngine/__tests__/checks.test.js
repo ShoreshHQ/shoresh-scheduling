@@ -512,3 +512,22 @@ describe("checks: nothing to say", () => {
     expect(result.cells).toEqual({ filled: 0, total: 6 });
   });
 });
+
+describe("checks: which targets the camp has set", () => {
+  it("says whether any activity has a weekly minimum or an early-week goal", () => {
+    const days = weekOf({});
+    const none = checkWeek(days, model([activity("swim")]), words);
+    expect(none.hasCoverageTargets).toBe(false);
+    expect(none.hasSpreadTargets).toBe(false);
+    const both = checkWeek(
+      days,
+      model([
+        activity("swim", { min: 1 }),
+        activity("art", { early: { count: 1, byDay: 2 } })
+      ]),
+      words
+    );
+    expect(both.hasCoverageTargets).toBe(true);
+    expect(both.hasSpreadTargets).toBe(true);
+  });
+});

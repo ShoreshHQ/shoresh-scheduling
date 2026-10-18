@@ -89,6 +89,51 @@ describe("c-shoresh-dot", () => {
     expect(tip(element)).not.toBeNull();
   });
 
+  it("in a cell, Escape reaches the cell only while the cell's keyboard focus shows the words", async () => {
+    const element = render();
+    element.inCell = true;
+    // Shown by hovering: Escape stops at the words (it mustn't also close a typing box).
+    q(element, '[data-id="dot"]').dispatchEvent(new CustomEvent("mouseenter"));
+    await flush();
+    const held = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true
+    });
+    window.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
+    q(element, '[data-id="dot"]').dispatchEvent(new CustomEvent("mouseleave"));
+    // Shown because the cell has keyboard focus: one press hides them and reaches the cell.
+    element.open = true;
+    await flush();
+    const through = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true
+    });
+    window.dispatchEvent(through);
+    await flush();
+    expect(through.defaultPrevented).toBe(false);
+    expect(tip(element)).toBeNull();
+  });
+
+  it("in a cell, a tap is the cell's: the dot doesn't take it", async () => {
+    const element = render();
+    element.inCell = true;
+    await flush();
+    const tap = new MouseEvent("click", { bubbles: true, cancelable: true });
+    q(element, '[data-id="dot"]').dispatchEvent(tap);
+    await flush();
+    expect(tap.defaultPrevented).toBe(false);
+    expect(tip(element)).toBeNull();
+  });
+
+  it("in a cell, the words open toward the cell and wrap", async () => {
+    const element = render();
+    element.inCell = true;
+    element.open = true;
+    await flush();
+    expect(q(element, ".tip-area").className).toContain("tip-area_cell");
+  });
+
   it("on touch, where a tap also counts as hovering, a second tap hides the words", async () => {
     const element = render();
     const dot = q(element, '[data-id="dot"]');

@@ -1,18 +1,48 @@
 @import "c/shoreshTokens";
 
-/* "Needs a look": the bronze caution dot, with a short tag in ordinary text. */
-.same-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
+/* "Needs a look": the bronze dot (c/shoreshDot), its words on hover, focus, or tap. */
+.flag {
+  display: inline-block;
   margin-top: 0.125rem;
-  font-size: 0.75rem;
-  color: var(--slds-g-color-neutral-base-30, #444);
 }
 
-.same-name-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--shoresh-caution);
+/* Nothing saved yet: one quiet line, centred, with the blank row under it. */
+.empty-state {
+  padding: 1.5rem 0.75rem;
+}
+
+/* Someone else changed the row: each field the question is about, one under another. */
+.conflict-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conflict-where {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.conflict-choices {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+}
+
+.conflict-choices dt {
+  color: var(--shoresh-text-secondary);
+}
+
+.conflict-choices dd {
+  font-weight: 600;
+}
+
+/* The blank last row sits on the page colour, as on the desktop. */
+.add-row td {
+  background: var(--slds-g-color-neutral-base-95, #f4f3ef);
+}
+
+/* A refused change still on the row: a bronze edge until it is saved or put back. */
+.not-saved td:first-child {
+  box-shadow: inset 3px 0 0 var(--shoresh-caution);
 }

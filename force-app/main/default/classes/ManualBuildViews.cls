@@ -11,6 +11,20 @@ public with sharing class ManualBuildViews {
     public List<ActivityOption> activities = new List<ActivityOption>();
     @AuraEnabled
     public List<AwaySlots> away = new List<AwaySlots>();
+    // The season's activity and location records, as the setup screen reads them
+    // (SeasonSetupReader), read with the week so the screen's checks are as fresh as it is.
+    @AuraEnabled
+    public List<Activity__c> activityRecords = new List<Activity__c>();
+    @AuraEnabled
+    public List<Location__c> locationRecords = new List<Location__c>();
+    // The program's groups (with their divisions) and where its fixed and recurring activities
+    // take place, read with the week too, for the checks that compare divisions and places.
+    @AuraEnabled
+    public List<Group__c> groupRecords = new List<Group__c>();
+    @AuraEnabled
+    public List<FixedActivity__c> fixedActivityRecords = new List<FixedActivity__c>();
+    @AuraEnabled
+    public List<RecurringActivity__c> recurringActivityRecords = new List<RecurringActivity__c>();
     // Only just after Start a blank week: fixed or recurring activities whose slot was taken
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
@@ -34,6 +48,10 @@ public with sharing class ManualBuildViews {
     // Groups it is not set up for (its "who can do it" leaves them out).
     @AuraEnabled
     public List<Id> notFor = new List<Id>();
+    // Only from "Add <name>": its setup record (SeasonSetupReader.activitiesOf), so the screen's
+    // checks know it at once, before the draft is read again.
+    @AuraEnabled
+    public Activity__c record;
   }
 
   /** A group and the time blocks it is not at camp for. */
@@ -62,6 +80,27 @@ public with sharing class ManualBuildViews {
     view.schedule = ScheduleViews.open(scheduleId);
     List<Group__c> groups = ProgramReads.groupsOf(schedule.Program__c);
     view.activities = options(schedule.Program__r.Season__c, groups);
+    view.activityRecords = SeasonSetupReader.activitiesOf(
+      schedule.Program__r.Season__c
+    );
+    view.locationRecords = SeasonSetupReader.locationsOf(
+      schedule.Program__r.Season__c
+    );
+    view.groupRecords = groups;
+    view.fixedActivityRecords = [
+      SELECT Id, Location__c
+      FROM FixedActivity__c
+      WHERE Program__c = :schedule.Program__c
+      WITH USER_MODE
+      ORDER BY Id
+    ];
+    view.recurringActivityRecords = [
+      SELECT Id, Location__c
+      FROM RecurringActivity__c
+      WHERE Program__c = :schedule.Program__c
+      WITH USER_MODE
+      ORDER BY Id
+    ];
     view.away = away(groups, ProgramReads.blocksOf(schedule.Program__c));
     return view;
   }

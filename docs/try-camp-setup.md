@@ -57,59 +57,77 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 ## 5. Weeks with real dates
 
+**How every table saves** (like the desktop): there is no Save button. The last row of each
+table is always blank, tinted, with the table's add word in it in grey (_Add Week_). Type
+into it and press **Enter**, click its **+ Add** button, or just move out of the row: it is
+added. Until everything it needs is filled in, **+ Add** stays grey and nothing happens.
+A change to a row that is already there is saved when you press **Enter** in it or move to
+another row, and a week tick is saved the moment you click it; **Escape** puts the row back
+as it was. If Shoresh refuses a change, the row keeps a bronze edge on its left until you fix
+it or press **Escape**.
+
 1. On **Weeks**, the season's own name, dates, and status are at the top (**Save season**,
    **Delete season**). Below, click **Fill in weeks from the season dates**. Six weeks
    appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday.
-2. Try editing: change Week 6's end date, then **Save changes**. Or **Add Week** for an extra
-   one, fill in its dates, **Save changes**.
-3. Try a mistake: give a week a start date another week already has and save. Shoresh
-   refuses and says which week already starts that day.
-4. Unsaved typing stays put: change a week's name, click **Roots** in the menu, then
-   **Weeks** again. Your typing is still there, waiting for **Save changes** (or
-   **Cancel changes**).
+2. Try editing: change Week 6's end date and press **Enter**. It is saved. In the blank row,
+   type _Week 7_, its dates, and press **Enter**: it is added, and the blank row is ready for
+   the next one.
+3. Try a mistake: give a week a start date another week already has and press **Enter**.
+   Shoresh refuses and says which week already starts that day. Your typing stays; fix it or
+   press **Escape**.
+4. Change a week's name and, without pressing anything, click another week's row: the change
+   is saved as you leave the row.
+5. **Two people at once.** Open the Shoresh tab in a second browser window. In the first,
+   rename Week 1 to _First week_ and press **Enter**. In the second (not reloaded), rename
+   Week 1 to _Week one_ and press **Enter**. A box **Changed by someone else** shows
+   _Week one · Name_ with **Theirs** _First week_ and **Yours** _Week one_. **Keep theirs**
+   keeps _First week_; **Use yours** saves _Week one_. Nothing is overwritten without you
+   seeing it. Changing a different column of the same week in each window just saves both.
 
 ## 6. A program, its time blocks, units, and bunks
 
 1. **Programs**: click **Add Program**. A program called _Main_ appears. Untick **Friday**
    (it runs Monday to Thursday) and click **Save**.
-2. **Time blocks**: the table is called _Time blocks in Main_. Click **Add Time block**, type
-   _Period 1_, start 9:00 AM, end 9:45 AM, part of day Morning, then **Save changes**. Add
-   _Period 2_ 10:00 AM – 10:45 AM, Morning, and _Lunch_ 12:00 PM – 12:45 PM, Afternoon,
-   **Save changes**.
-3. **Units**: click **Add Unit**, type _Juniors_, **Save changes**.
-4. **Bunks**: a table **Bunks in Juniors** is there. Click **Add Bunk** twice. Name them
-   _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to _Morning only_. To the right,
-   under **Runs in**, every week is ticked: a new bunk runs every week. **Save changes**.
+2. **Time blocks**: the table is called _Time blocks in Main_. In its blank row type
+   _Period 1_, start 9:00 AM, end 9:45 AM, part of day Morning, then press **Enter**. Add
+   _Period 2_ 10:00 AM – 10:45 AM, Morning, and _Lunch_ 12:00 PM – 12:45 PM, Afternoon, the
+   same way.
+3. **Units**: type _Juniors_ in the blank row and press **Enter**.
+4. **Bunks**: a table **Bunks in Juniors** is there. Add _Bunk 1_ and _Bunk 2_ in its blank
+   row, then set Bunk 2's **Availability** to _Morning only_ and click elsewhere. To the
+   right, under **Runs in**, every week is ticked: a new bunk runs every week.
 5. Back on **Roots**, the cards count your weeks, 1 unit, 2 bunks (named on the card), and
    3 time blocks, and those attention items are gone.
 
 ## 7. Locations
 
-1. **Locations**: first, optionally, **Location types**: click **Add Location type**,
-   type _Field_, **Save changes**. Types are only for sorting your locations.
-2. Under **Locations**, click **Add Location** three times and fill them in:
+1. **Locations**: first, optionally, **Location types**: type _Field_ in its blank row and
+   press **Enter**. Types are only for sorting your locations.
+2. Under **Locations**, add three in the blank row (each starts with groups that fit 1):
    - _Pool_, no type, **Groups that fit** 1
    - _Field A_, type _Field_, groups that fit 2
    - _Gym_, no type, groups that fit 3
 
-   Each row has an **Open in** tick for every week, all ticked. Then **Save changes**.
+   Each row has an **Open in** tick for every week, all ticked.
 
 3. Use **Show** above the table to see only _Field_ locations, or only those with no type.
-   Choose _All location types_ to see them all again.
-4. Try a mistake: set the Pool's groups that fit to 0 and save. Shoresh says it must be 1 or
-   more. Put it back to 1.
+   With _Field_ chosen, the blank row starts as a Field. Change Field A's type to none: it
+   stays in view until you leave the row (it is saved), then leaves this view. Choose _All
+   location types_ to see them all again, and put Field A back to _Field_.
+4. Try a mistake: set the Pool's groups that fit to 0 and press **Enter**. Shoresh says it
+   must be 1 or more. Press **Escape** to put it back.
 
 ## 8. Activities
 
-1. **Activities** (under the Activities heading in the menu). Click **Add Activity**. The new
-   row starts with the usual defaults: length 1, at least 1 and at most 1 time a week, Low
-   priority, indoors, one bunk at a time, and every week ticked under **Runs in**.
-2. Make three: _Swim_ at the Pool; _Gym games_ in the Gym; _Soccer_ on Field A with
-   **Outdoors** ticked. **Save changes**.
+1. **Activities** (under the Activities heading in the menu). The blank row starts with the
+   usual defaults: length 1, at least 1 and at most 1 time a week, Low priority, indoors, one
+   bunk at a time, and every week ticked under **Runs in**.
+2. Add three: _Swim_ at the Pool; _Gym games_ in the Gym; _Soccer_ on Field A with
+   **Outdoors** ticked. For each, fill in the blank row and press **Enter**.
 3. A yellow **Needs attention** box at the top of the screen says
    _Soccer: Outdoors and has no rain plan._ (Roots lists it too.) Set Soccer's **Rain plan**
-   to _Gym games_ and save; it goes away. (Soccer's own name is not offered as its rain plan.)
-4. Set Gym games' **Groups at once** to 5 and save. Needs attention now says the Gym fits 3, so
+   to _Gym games_ and click elsewhere; it goes away. (Soccer's own name is not offered as its rain plan.)
+4. Set Gym games' **Groups at once** to 5 and press **Enter**. Needs attention now says the Gym fits 3, so
    scheduling will use 3. Put it back to 1.
 5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
    to **Can do it**, then **Save changes**. Only Bunk 1 can swim now; nobody chosen means
@@ -124,12 +142,11 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 There is no separate grid any more: each row says which weeks it runs in.
 
-1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week) and click
-   **Save changes**.
+1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week). It is
+   saved as you click.
 2. Leave it unticked; the copy below carries it over. (Deleting a bunk, activity, or location
    simply takes its unticked weeks with it; you try that in step 11.)
-3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs)
-   and save.
+3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs).
 
 ## 10. Fixed and recurring activities
 
@@ -139,38 +156,40 @@ block on the days you tick (Bunk 1 swims Monday and Wednesday). They are separat
 activities and from each other. Clashes are refused, never just shown.
 
 1. **Fixed activities** (under Activities in the menu). The table is _Fixed activities in
-   Main_. Click **Add Fixed activity**: type _Flagpole_, **Time block** Period 1, length 1, no
-   location. Every week is ticked under **Runs in**. Add a second one, _Lunch break_ in Lunch.
-   **Save changes**.
+   Main_. In the blank row type _Flagpole_, **Time block** Period 1, length 1, no location,
+   and press **Enter**. Every week is ticked under **Runs in**. Add a second one, _Lunch
+   break_ in Lunch.
 2. The **Notes** column on Lunch break says _Bunk 2 is morning only and is left out._
    Bunk 2 is not at camp in the afternoon, so Lunch break leaves it out rather than refusing.
 3. On **Roots**, the wide **Fixed activities** card now counts 2 and names them. Click it to
    come back.
-4. **Try a clash.** Add _Carpool_ in Period 1 and save. Shoresh refuses:
+4. **Try a clash.** Add _Carpool_ in Period 1. Shoresh refuses:
    _"Flagpole" and "Carpool" would both have Bunk 1 in Period 1 on Monday in Week 1. Change the
    time block, length, or weeks of one of them._ Nothing is saved, and
-   your row is still there to fix. Remove it with its trash can.
-5. **Too many bunks at a location.** Set Flagpole's **Location** to the Pool and save:
-   refused, _"Pool" fits 1 Bunk at once, but "Flagpole" would have 2 there …_. Choose the Gym
-   instead and save. Now go to **Locations**, set the Gym's groups that fit to 1 and save:
+   your typing is still in the blank row to fix. Clear its name to drop it.
+5. **Too many bunks at a location.** Set Flagpole's **Location** to the Pool and click
+   outside the row: refused, _"Pool" fits 1 Bunk at once, but "Flagpole" would have 2 there
+   …_. Choose the Gym instead and click outside the row again. Now go to **Locations**, set
+   the Gym's groups that fit to 1 and press **Enter**:
    refused from that side too, _… Keep it at 2 or more, or move it to another location first._
    Put it back to 3.
-6. **Past the end of the day.** Set Lunch break's **Length** to 2 and save: refused, it would
-   run past the last time block of Main. Put it back to 1. (Deleting or moving a time block
+6. **Past the end of the day.** Set Lunch break's **Length** to 2 and press **Enter**:
+   refused, it would run past the last time block of Main. Press **Escape**. (Deleting or moving a time block
    that would cause this is refused the same way.)
 7. **Recurring activities.** The table is _Recurring activities in Main_, with a tick for
-   each day Main runs (Monday to Thursday; no Friday) and a **Who** column. Click
-   **Add Recurring activity**: _Bunk 1 swim_, Period 2, length 1, location Pool, tick
-   **Monday** and **Wednesday**. Under **Who** it says _Everyone in Main_; click **Change**,
-   move _Bunk 1 (Juniors)_ to **Covers**, click **Done**. **Save changes**.
-8. Add _Bunk 2 art_: Period 2, **Monday**, who _Bunk 2 (Juniors)_. Save. Both are kept: they
+   each day Main runs (Monday to Thursday; no Friday) and a **Who** column. In the blank
+   row: _Bunk 1 swim_, Period 2, length 1, location Pool, tick **Monday** and **Wednesday**.
+   Under **Who** it says _Everyone in Main_; click **Change**, move _Bunk 1 (Juniors)_ to
+   **Covers**, click **Done**. With everything filled in, **Done** adds the row.
+8. Add _Bunk 2 art_: Period 2, **Monday**, who _Bunk 2 (Juniors)_. Both are kept: they
    take different bunks.
 9. **Try a clash from the who side.** On Bunk 2 art, click **Change** and move Bunk 2 back
-   out, so it covers everyone. Save: refused, _"Bunk 1 swim" and "Bunk 2 art" would both have
-   Bunk 1 in Period 2 on Monday in Week 1 …_. Click **Cancel changes**.
+   out, so it covers everyone, and click **Done**: refused, _"Bunk 1 swim" and "Bunk 2 art"
+   would both have Bunk 1 in Period 2 on Monday in Week 1 …_. Click in its name and press
+   **Escape** to put it back.
 10. **Needs attention:** the Pool is closed in Week 2 (step 3 of the last section), so the box
     at the top says _Bunk 1 swim: "Pool" is not open in Week 2, but this runs then._ Untick
-    **Week 2** on Bunk 1 swim and save; it goes away.
+    **Week 2** on Bunk 1 swim; it goes away.
 11. Try deleting **Period 2** on **Time blocks**: refused, Bunk 1 swim and Bunk 2 art start in
     it. Try deleting **Bunk 1**: refused, and the message names both things in the way: Swim's
     **Who can do it** and who Bunk 1 swim covers.
@@ -210,11 +229,11 @@ Does this work the way you think in practice? Note anything that feels awkward.
    and in who Bunk 1 swim covers.
 2. **A time block added inside an activity.** Still on _Summer 2027_, delete **Bunk 1 swim**
    too (Recurring activities), so Period 2 is free. On **Fixed activities**, set Flagpole's
-   **Length** to 2 and save: it covers Period 1 and Period 2. Now on **Time blocks** add
-   _Snack_ 9:45–10:00 AM, Morning, and save. Back on **Fixed activities**, Needs attention
+   **Length** to 2 and press **Enter**: it covers Period 1 and Period 2. Now on **Time
+   blocks** add _Snack_ 9:45–10:00 AM, Morning. Back on **Fixed activities**, Needs attention
    and Flagpole's Notes say _Time blocks changed since it was saved: it covered Period 1 –
    Period 2 and now covers Period 1 – Snack._ Two fixes are offered: **Keep Period 1 – Snack**
-   and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and save: the note stays.
+   and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and press **Enter**: the note stays.
    Click **Stretch to Period 1 – Period 2**: the length becomes 3 and the note goes. (Deleting
    a block inside an activity offers **Keep the shorter …** or **Extend to …** instead.)
 3. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
@@ -607,16 +626,69 @@ Same made-up camp, Manual Build, Week 1.
     The confirmation now says _That includes its Manual Build and 1 saved version._ (or
     however many there are). Click **Cancel**.
 
-Not in these parts yet: the counters (Still needed, Spread across the week, Overlapping) and
-their dots on the grid, Clear day or week, Copy day, Versions on this screen, and Publish. Each
+Not in these parts yet: Clear day or week, Copy day, Versions on this screen, and Publish. Each
 comes in the next pieces of Manual Build.
+
+## 21. Manual Build: counters and the bronze dots
+
+This uses the made-up camp's Week 1 from sections 19 and 20. Every activity runs one to three
+times a week and takes 3 bunks at once; each place fits 3 bunks (the Dining hall and Library 6).
+Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
+
+1. **First, put back what sections 19 and 20 changed in setup.** On **Activities**, open Swim and
+   set **Who can do it** back to everyone. On **Bunks**, set Bunk 6 back to all day. Dots left on
+   the grid from section 20 (a Swim over its weekly limit, say) are expected: hold the pointer on
+   one to see why.
+2. Open **Manual Build**, Week 1. Under the toolbar is a row of tiles, each a number with its
+   words under it. **Filled** shows how many cells hold something, out of the cells to fill
+   (Lunch, Morning meeting, Library time, and cells where a bunk isn't at camp aren't counted).
+   Place something and the number goes up at once.
+3. **Still needed** counts the activity-and-bunk pairs short of their weekly minimum. Its tile has
+   a bronze border while the number is above 0. Click it: a **Still to place** list opens under
+   the tiles, with every overlap first, then each pair still needed (_Bunk 1_'s lines first, then
+   _Bunk 2_'s, such as _Swim · Bunk 1: 1 still needed_), then the spread lines. It sits over the
+   grid and scrolls if it is long. Click any tile again, or **Close** at its bottom, to close it.
+   Nothing on the grid is highlighted. When everything in it has been dealt with, it stays open
+   and says how many cells are still open (or _All placed_).
+4. **Overlapping** shows 0, grey, and does nothing when clicked. In Daily View, Thursday, place
+   Soccer in Period 3 for Bunks 1, 2, 3 and 4 (pick Open cells). Each of the four gets a small
+   bronze dot in its top corner, with no words beside it. Hold the pointer on a dot: _Over its
+   limit of 3 bunks at once · More bunks at Field than fit_. **Overlapping** now shows 4, one for
+   each cell. Click it: the list starts with _Bunk 1 · Thursday · Period 3: Over its limit of 3
+   bunks at once · More bunks at Field than fit_, then the same for Bunks 2, 3 and 4.
+5. Click _Bunk 2 · Thursday · Period 3: …_ in the list: the list closes, the grid shows Bunk 2's
+   week (Group View), and Thursday's Period 3 has the focus, with its dot's words showing. Back in
+   Daily View, Thursday, drag Bunk 4's Soccer to Period 5. The dots go at once and
+   **Overlapping** is back to a grey 0.
+6. **Accept.** Open the list again. Each still needed line has an **Accept** button. Click it on
+   one line: the line goes and **Still needed** drops by one. Now place or clear one of that
+   bunk's sessions of that activity: if the bunk is still short, the line is back with its new
+   number. Overlap lines have no Accept: they go
+   when the clash is moved. Reloading the page brings every line back.
+7. **Twice in a day.** Place Art in Bunk 1's Thursday Period 5 and Period 6. Both get the dot:
+   _Twice in a day_. Undo one.
+8. **Over its weekly limit.** Give Bunk 5 Gym games on Monday, Tuesday, Wednesday and Thursday
+   (its limit is 3). Only Thursday's gets the dot, _Over its weekly limit_: the one past the
+   limit, the latest in the week. Nothing stops you. Clear Monday's: Thursday's dot goes.
+9. **From the keyboard.** Click a cell, then use the arrow keys to reach a cell with a dot: its
+   words show above the dot while the cell has focus. Escape hides them (and, if you picked
+   something up with Space, puts it back where it was). A screen reader reads them as part of
+   the cell, and when you place or move something, says the first dot it brought or took away.
+10. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
+    Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
+    Bunk 1_. Set Boating back to everyone afterwards.
+11. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
+    the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
+    tile appears (it isn't shown while no activity has an early-week goal), and the list has each
+    bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by Tuesday_). Clear
+    those two settings afterwards: the tile goes again.
 
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule (marked Coming in the menu). In Manual Build: the counters and their dots,
-  Clear and Copy day, Versions on that screen, opening a version in it, and publishing.
+- Generated Schedule (marked Coming in the menu). In Manual Build: Clear and Copy day, Versions
+  on that screen, opening a version in it, and publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

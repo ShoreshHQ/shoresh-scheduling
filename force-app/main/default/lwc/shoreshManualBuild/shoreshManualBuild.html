@@ -68,6 +68,13 @@
         </div>
       </template>
     </div>
+    <template lwc:if={showCounters}>
+      <c-shoresh-week-checks
+        checked={checked}
+        reset-key={checksResetKey}
+        onlocate={handleLocate}
+      ></c-shoresh-week-checks>
+    </template>
     <template lwc:if={notice}>
       <p class="notice" data-id="notice">{notice}</p>
     </template>

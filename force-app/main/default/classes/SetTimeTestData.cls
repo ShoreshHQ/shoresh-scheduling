@@ -124,7 +124,7 @@ public class SetTimeTestData {
 
   /** Saves as the screens do; returns the Ids. */
   public static List<Id> save(List<SObject> rows, ScreenSaves.Extras extras) {
-    return SeasonSetupController.saveRowsWeeksAndWho(rows, extras);
+    return ScreenSaves.save(rows, extras);
   }
 
   public static List<Id> save(List<SObject> rows) {
