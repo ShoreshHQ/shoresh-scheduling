@@ -24,6 +24,7 @@ import {
   placement
 } from "./slotEdits";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
+import { LEFT_OUT, clearEdit, copyDayEdit } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
@@ -94,6 +95,8 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
+  // "Cleared Monday" after a day or week tool, shown with Undo until the next change.
+  toolNotice = null;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -1037,6 +1040,7 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     this.notice = null;
+    this.toolNotice = null;
     this.unrepeated = null;
     // A reload already on its way is older than this edit: its answer must not replace it.
     this.loadTicket += 1;
@@ -1272,6 +1276,140 @@ export default class ShoreshManualBuild extends LightningElement {
       event.preventDefault();
       this.handleRedo();
     }
+  }
+
+  // ---------- day and week tools (Greg, Manual Build round 2, decisions 6 and 7) ----------
+
+  get showTools() {
+    return !!this.draft && !this.hasNoDays && !this.isActivity;
+  }
+
+  get clearWeekLabel() {
+    return `Clear ${this.t.sIn("Week")}`;
+  }
+
+  /** The days Copy day to… can copy to: the week's other days, and all of them at once. */
+  get copyTargets() {
+    const others = this.dayPills
+      .filter((d) => d.index !== this.dayIndex)
+      .map((d) => ({ value: String(d.index), label: d.label }));
+    return others.length > 1
+      ? [...others, { value: "all", label: "Every other day" }]
+      : others;
+  }
+
+  /** The days of the week, for Group View's Clear day (that bunk's day). */
+  get clearDayTargets() {
+    return this.dayPills.map((d) => ({
+      value: String(d.index),
+      label: d.label
+    }));
+  }
+
+  dayNameAt(index) {
+    return dayLabel(this.schedule.days[index].dateValue).label;
+  }
+
+  /** Daily View: the day shown, every bunk. */
+  handleClearDay() {
+    const name = this.dayNameAt(this.dayIndex);
+    this.runTool(
+      clearEdit(this.schedule.days, [this.dayIndex]),
+      `Cleared ${name}`,
+      `Nothing to clear on ${name}.`
+    );
+  }
+
+  /** Group View: one day of the bunk shown. */
+  handleClearGroupDay(event) {
+    const d = Number(event.detail.value);
+    const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
+    const name = `${grp ? grp.name : ""} · ${this.dayNameAt(d)}`;
+    this.runTool(
+      clearEdit(this.schedule.days, [d], this.groupKey),
+      `Cleared ${name}`,
+      `Nothing to clear on ${name}.`
+    );
+  }
+
+  /** The whole week, every bunk. */
+  handleClearWeek() {
+    this.runTool(
+      clearEdit(
+        this.schedule.days,
+        this.schedule.days.map((day, i) => i)
+      ),
+      `Cleared ${this.weekName}`,
+      `Nothing to clear in ${this.weekName}.`
+    );
+  }
+
+  /** Copies the day shown onto another day of the week (or every other day). */
+  handleCopyDay(event) {
+    const value = event.detail.value;
+    const targets =
+      value === "all"
+        ? this.copyTargets
+            .filter((c) => c.value !== "all")
+            .map((c) => Number(c.value))
+        : [Number(value)];
+    const from = this.dayIndex;
+    const { runs, leftOut } = copyDayEdit(
+      this.schedule.days,
+      from,
+      targets,
+      (day, group, block) => this.isAwaySlot({ day, group, block })
+    );
+    const to = value === "all" ? "every other day" : this.dayNameAt(targets[0]);
+    const said = this.leftOutText(from, leftOut);
+    this.runTool(
+      runs.length ? runs : null,
+      `Copied ${this.dayNameAt(from)} to ${to}`,
+      said || `Nothing to copy from ${this.dayNameAt(from)}.`,
+      said
+    );
+  }
+
+  /** "2 left out: Swim · Bunk 3 · Tuesday: not at camp then; …" (at most five named). */
+  leftOutText(from, leftOut) {
+    if (!leftOut.length) {
+      return null;
+    }
+    const source = this.schedule.days[from];
+    const why = (o) => {
+      const target = this.dayNameAt(o.day);
+      switch (o.why) {
+        case LEFT_OUT.AWAY:
+          return "not at camp then";
+        case LEFT_OUT.NO_BLOCK:
+          return `${target} has no ${source.blocks[o.block].name}`;
+        case LEFT_OUT.NO_GROUP:
+          return `not on ${target}`;
+        default:
+          return `${source.blocks[o.block].name} is already set up there`;
+      }
+    };
+    const named = leftOut
+      .slice(0, 5)
+      .map(
+        (o) =>
+          `${this.nameOf(o.slot, source)} · ${source.groups[o.group].name} · ${this.dayNameAt(o.day)}: ${why(o)}`
+      );
+    const more = leftOut.length - named.length;
+    return `${leftOut.length} left out: ${named.join("; ")}${more > 0 ? `; and ${more} more` : ""}.`;
+  }
+
+  /**
+   * Makes a tool's change as one Undo step, and shows "Cleared Monday · Undo" (with what was left
+   * out, if anything); with nothing to change, says so instead.
+   */
+  runTool(runs, label, nothing, extra) {
+    if (!runs) {
+      this.say(nothing);
+      return;
+    }
+    this.commit(runs, label, null);
+    this.toolNotice = extra ? `${label}. ${extra}` : label;
   }
 
   // ---------- the activity list ----------
