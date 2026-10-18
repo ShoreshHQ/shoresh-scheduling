@@ -53,18 +53,21 @@ private class SetupTablesTest {
 
   @IsTest
   static void aBunkOrActivityCountsTheSchedulesItIsIn() {
-    ids = SetTimeTestData.camp();
-    scheduleNaming('First', 1, new List<String>{ 'Group A', 'Group B' });
-    scheduleNaming('Second', 2, new List<String>{ 'Group A' });
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      Assert.areEqual(2, uses('Group A'));
-      Assert.areEqual(1, uses('Group B'));
-      Assert.areEqual(0, uses('Group C'));
-      Assert.areEqual(2, uses('Swim'));
-      Assert.areEqual(0, uses('Soccer'));
-      // Only bunks and activities are counted.
-      Assert.areEqual(0, uses('Pool'));
-      Assert.areEqual(0, uses(null));
+      ids = SetTimeTestData.camp();
+      scheduleNaming('First', 1, new List<String>{ 'Group A', 'Group B' });
+      scheduleNaming('Second', 2, new List<String>{ 'Group A' });
+      {
+        Assert.areEqual(2, uses('Group A'));
+        Assert.areEqual(1, uses('Group B'));
+        Assert.areEqual(0, uses('Group C'));
+        Assert.areEqual(2, uses('Swim'));
+        Assert.areEqual(0, uses('Soccer'));
+        // Only bunks and activities are counted.
+        Assert.areEqual(0, uses('Pool'));
+        Assert.areEqual(0, uses(null));
+      }
     }
   }
 
@@ -119,51 +122,57 @@ private class SetupTablesTest {
   /** A big season: the text is read a few days at a time, in a capped number of queries. */
   @IsTest
   static void aBigSeasonIsCountedInBoundedQueries() {
-    ids = SetTimeTestData.camp();
-    bigSeason();
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      Test.startTest();
-      Integer before = Limits.getQueries();
-      ScheduleUses.Count count = SetupTablesController.scheduleUses(
-        ids.get('Soccer')
-      );
-      Integer used = Limits.getQueries() - before;
-      Test.stopTest();
-      // 601 days, none naming Soccer: every one read, 25 at a time (25 queries), plus 2.
-      Assert.areEqual(0, count.schedules);
-      Assert.isTrue(count.complete);
-      Assert.isTrue(used <= 30, 'Queries used: ' + used);
-      // Group A: a schedule found is not read again.
-      Assert.areEqual(61, uses('Group A'));
+      ids = SetTimeTestData.camp();
+      bigSeason();
+      {
+        Test.startTest();
+        Integer before = Limits.getQueries();
+        ScheduleUses.Count count = SetupTablesController.scheduleUses(
+          ids.get('Soccer')
+        );
+        Integer used = Limits.getQueries() - before;
+        Test.stopTest();
+        // 601 days, none naming Soccer: every one read, 25 at a time (25 queries), plus 2.
+        Assert.areEqual(0, count.schedules);
+        Assert.isTrue(count.complete);
+        Assert.isTrue(used <= 30, 'Queries used: ' + used);
+        // Group A: a schedule found is not read again.
+        Assert.areEqual(61, uses('Group A'));
+      }
     }
   }
 
   /** Past any budget the count stops, and says it isn't complete; it never guesses. */
   @IsTest
   static void pastItsBudgetTheCountSaysItIsNotComplete() {
-    ids = SetTimeTestData.camp();
-    bigSeason();
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      ScheduleUses.partsAtOnce = 10;
-      ScheduleUses.queryBudget = 2;
-      ScheduleUses.Count count = SetupTablesController.scheduleUses(
-        ids.get('Group A')
-      );
-      // Two reads of 10 days each: some schedules found, the rest not read.
-      Assert.isTrue(
-        count.schedules >= 1 && count.schedules < 61,
-        'Found: ' + count.schedules
-      );
-      Assert.isFalse(count.complete);
-      ScheduleUses.queryBudget = 90;
-      ScheduleUses.rowBudget = 100;
-      count = SetupTablesController.scheduleUses(ids.get('Soccer'));
-      Assert.areEqual(0, count.schedules);
-      Assert.isFalse(count.complete);
-      ScheduleUses.rowBudget = 40000;
-      ScheduleUses.textBudget = 1;
-      count = SetupTablesController.scheduleUses(ids.get('Swim'));
-      Assert.isFalse(count.complete);
+      ids = SetTimeTestData.camp();
+      bigSeason();
+      {
+        ScheduleUses.partsAtOnce = 10;
+        ScheduleUses.queryBudget = 2;
+        ScheduleUses.Count count = SetupTablesController.scheduleUses(
+          ids.get('Group A')
+        );
+        // Two reads of 10 days each: some schedules found, the rest not read.
+        Assert.isTrue(
+          count.schedules >= 1 && count.schedules < 61,
+          'Found: ' + count.schedules
+        );
+        Assert.isFalse(count.complete);
+        ScheduleUses.queryBudget = 90;
+        ScheduleUses.rowBudget = 100;
+        count = SetupTablesController.scheduleUses(ids.get('Soccer'));
+        Assert.areEqual(0, count.schedules);
+        Assert.isFalse(count.complete);
+        ScheduleUses.rowBudget = 40000;
+        ScheduleUses.textBudget = 1;
+        count = SetupTablesController.scheduleUses(ids.get('Swim'));
+        Assert.isFalse(count.complete);
+      }
     }
   }
 
@@ -215,264 +224,298 @@ private class SetupTablesTest {
 
   @IsTest
   static void sameLocationMovesEverythingToTheKeptPlace() {
-    ids = SetTimeTestData.camp();
-    Id other = secondPool();
-    RecurringActivity__c swim = SetTimeTestData.recurring(
-      ids,
-      'Bunk swim',
-      'Period 1'
-    );
-    swim.Location__c = other;
-    Database.insert(swim, AccessLevel.SYSTEM_MODE);
-    Location__c copy = new Location__c(
-      Season__c = ids.get('Season'),
-      Name = 'Pool next year',
-      GroupsThatFit__c = 1,
-      CopiedFrom__c = other
-    );
-    Database.insert(copy, AccessLevel.SYSTEM_MODE);
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      SetupTablesController.mergeLocations(
-        ids.get('Pool'),
-        new List<Id>{ other },
-        2
+      ids = SetTimeTestData.camp();
+      Id other = secondPool();
+      RecurringActivity__c swim = SetTimeTestData.recurring(
+        ids,
+        'Bunk swim',
+        'Period 1'
       );
-    }
-    Id pool = ids.get('Pool');
-    Assert.areEqual(
-      0,
-      [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
-    );
-    Assert.areEqual(
-      2,
-      [
-        SELECT GroupsThatFit__c
-        FROM Location__c
-        WHERE Id = :pool
-        WITH SYSTEM_MODE
-      ]
-      .GroupsThatFit__c
-    );
-    Assert.areEqual(
-      2,
-      [
-        SELECT COUNT()
-        FROM Activity__c
+      swim.Location__c = other;
+      // Group A only: "pool " fits 2, and everyone would be 3.
+      SetTimeTestData.save(
+        new List<SObject>{ swim },
+        SetTimeTestData.extras(
+          null,
+          null,
+          new List<SetTimeWho.Who>{
+            SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') })
+          }
+        )
+      );
+      Location__c copy = new Location__c(
+        Season__c = ids.get('Season'),
+        Name = 'Pool next year',
+        GroupsThatFit__c = 1,
+        CopiedFrom__c = other
+      );
+      Database.insert(copy, AccessLevel.SYSTEM_MODE);
+      {
+        SetupTablesController.mergeLocations(
+          ids.get('Pool'),
+          new List<Id>{ other },
+          2
+        );
+      }
+      Id pool = ids.get('Pool');
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(
+        2,
+        [
+          SELECT GroupsThatFit__c
+          FROM Location__c
+          WHERE Id = :pool
+          WITH SYSTEM_MODE
+        ]
+        .GroupsThatFit__c
+      );
+      Assert.areEqual(
+        2,
+        [
+          SELECT COUNT()
+          FROM Activity__c
+          WHERE Location__c = :pool
+          WITH SYSTEM_MODE
+        ]
+      );
+      Assert.areEqual(
+        pool,
+        [
+          SELECT Location__c
+          FROM RecurringActivity__c
+          WHERE Id = :swim.Id
+          WITH SYSTEM_MODE
+        ]
+        .Location__c
+      );
+      Assert.areEqual(
+        pool,
+        [
+          SELECT CopiedFrom__c
+          FROM Location__c
+          WHERE Id = :copy.Id
+          WITH SYSTEM_MODE
+        ]
+        .CopiedFrom__c
+      );
+      Set<Id> closed = new Set<Id>();
+      for (WeekException__c mark : [
+        SELECT Week__c
+        FROM WeekException__c
         WHERE Location__c = :pool
         WITH SYSTEM_MODE
-      ]
-    );
-    Assert.areEqual(
-      pool,
-      [
-        SELECT Location__c
-        FROM RecurringActivity__c
-        WHERE Id = :swim.Id
-        WITH SYSTEM_MODE
-      ]
-      .Location__c
-    );
-    Assert.areEqual(
-      pool,
-      [
-        SELECT CopiedFrom__c
-        FROM Location__c
-        WHERE Id = :copy.Id
-        WITH SYSTEM_MODE
-      ]
-      .CopiedFrom__c
-    );
-    Set<Id> closed = new Set<Id>();
-    for (WeekException__c mark : [
-      SELECT Week__c
-      FROM WeekException__c
-      WHERE Location__c = :pool
-      WITH SYSTEM_MODE
-    ]) {
-      Assert.isTrue(closed.add(mark.Week__c), 'One mark per week');
+      ]) {
+        Assert.isTrue(closed.add(mark.Week__c), 'One mark per week');
+      }
+      Assert.areEqual(
+        new Set<Id>{ ids.get('Week 1'), ids.get('Week 2') },
+        closed
+      );
     }
-    Assert.areEqual(
-      new Set<Id>{ ids.get('Week 1'), ids.get('Week 2') },
-      closed
-    );
   }
 
   @IsTest
   static void fixedActivitiesMoveAndPastedSpacesCount() {
-    ids = SetTimeTestData.camp();
-    Location__c other = new Location__c(
-      Season__c = ids.get('Season'),
-      Name = 'Pool\u00A0',
-      GroupsThatFit__c = 3
-    );
-    Database.insert(other, AccessLevel.SYSTEM_MODE);
-    FixedActivity__c flag = SetTimeTestData.fixed(ids, 'Flagpole', 'Period 1');
-    flag.Location__c = other.Id;
-    SetTimeTestData.save(new List<SObject>{ flag });
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      SetupTablesController.mergeLocations(
+      ids = SetTimeTestData.camp();
+      Location__c other = new Location__c(
+        Season__c = ids.get('Season'),
+        Name = 'Pool\u00A0',
+        GroupsThatFit__c = 3
+      );
+      Database.insert(other, AccessLevel.SYSTEM_MODE);
+      FixedActivity__c flag = SetTimeTestData.fixed(
+        ids,
+        'Flagpole',
+        'Period 1'
+      );
+      flag.Location__c = other.Id;
+      SetTimeTestData.save(new List<SObject>{ flag });
+      {
+        SetupTablesController.mergeLocations(
+          ids.get('Pool'),
+          new List<Id>{ other.Id },
+          3
+        );
+      }
+      Assert.areEqual(
         ids.get('Pool'),
-        new List<Id>{ other.Id },
-        3
+        [
+          SELECT Location__c
+          FROM FixedActivity__c
+          WHERE Id = :flag.Id
+          WITH SYSTEM_MODE
+        ]
+        .Location__c
       );
     }
-    Assert.areEqual(
-      ids.get('Pool'),
-      [
-        SELECT Location__c
-        FROM FixedActivity__c
-        WHERE Id = :flag.Id
-        WITH SYSTEM_MODE
-      ]
-      .Location__c
-    );
   }
 
   @IsTest
   static void placesInAnotherSeasonAreNeverMerged() {
-    ids = SetTimeTestData.camp();
-    Season__c next = ShoreshTestData.season(ids.get('Camp'), 'Summer 2027');
-    Location__c nextPool = new Location__c(
-      Season__c = next.Id,
-      Name = 'Pool',
-      GroupsThatFit__c = 1
-    );
-    Database.insert(nextPool, AccessLevel.SYSTEM_MODE);
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      try {
-        SetupTablesController.mergeLocations(
-          ids.get('Pool'),
-          new List<Id>{ nextPool.Id },
-          1
-        );
-        Assert.fail('Another season');
-      } catch (AuraHandledException e) {
-        Assert.areEqual(
-          LocationMerge.changedMessage(ids.get('Pool')),
-          e.getMessage()
-        );
+      ids = SetTimeTestData.camp();
+      Season__c next = ShoreshTestData.season(ids.get('Camp'), 'Summer 2027');
+      Location__c nextPool = new Location__c(
+        Season__c = next.Id,
+        Name = 'Pool',
+        GroupsThatFit__c = 1
+      );
+      Database.insert(nextPool, AccessLevel.SYSTEM_MODE);
+      {
+        try {
+          SetupTablesController.mergeLocations(
+            ids.get('Pool'),
+            new List<Id>{ nextPool.Id },
+            1
+          );
+          Assert.fail('Another season');
+        } catch (AuraHandledException e) {
+          Assert.areEqual(
+            LocationMerge.changedMessage(ids.get('Pool')),
+            e.getMessage()
+          );
+        }
       }
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM Location__c
+          WHERE Id = :nextPool.Id
+          WITH SYSTEM_MODE
+        ]
+      );
     }
-    Assert.areEqual(
-      1,
-      [SELECT COUNT() FROM Location__c WHERE Id = :nextPool.Id WITH SYSTEM_MODE]
-    );
   }
 
   @IsTest
   static void aMergeThatWouldCrowdThePlaceIsRefusedAndChangesNothing() {
-    ids = SetTimeTestData.camp();
-    Id other = secondPool();
-    RecurringActivity__c first = SetTimeTestData.recurring(
-      ids,
-      'A swim',
-      'Period 1'
-    );
-    first.Location__c = ids.get('Pool');
-    RecurringActivity__c second = SetTimeTestData.recurring(
-      ids,
-      'B swim',
-      'Period 1'
-    );
-    second.Location__c = other;
-    SetTimeTestData.save(
-      new List<SObject>{ first, second },
-      SetTimeTestData.extras(
-        null,
-        null,
-        new List<SetTimeWho.Who>{
-          SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') }),
-          SetTimeTestData.who(1, null, new List<Id>{ ids.get('Group B') })
-        }
-      )
-    );
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      try {
-        SetupTablesController.mergeLocations(
-          ids.get('Pool'),
-          new List<Id>{ other },
-          1
-        );
-        Assert.fail('Two bunks at a place that fits 1');
-      } catch (AuraHandledException e) {
-        Assert.isTrue(e.getMessage().contains('"Pool"'), e.getMessage());
+      ids = SetTimeTestData.camp();
+      Id other = secondPool();
+      RecurringActivity__c first = SetTimeTestData.recurring(
+        ids,
+        'A swim',
+        'Period 1'
+      );
+      first.Location__c = ids.get('Pool');
+      RecurringActivity__c second = SetTimeTestData.recurring(
+        ids,
+        'B swim',
+        'Period 1'
+      );
+      second.Location__c = other;
+      SetTimeTestData.save(
+        new List<SObject>{ first, second },
+        SetTimeTestData.extras(
+          null,
+          null,
+          new List<SetTimeWho.Who>{
+            SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') }),
+            SetTimeTestData.who(1, null, new List<Id>{ ids.get('Group B') })
+          }
+        )
+      );
+      {
+        try {
+          SetupTablesController.mergeLocations(
+            ids.get('Pool'),
+            new List<Id>{ other },
+            1
+          );
+          Assert.fail('Two bunks at a place that fits 1');
+        } catch (AuraHandledException e) {
+          Assert.isTrue(e.getMessage().contains('"Pool"'), e.getMessage());
+        }
       }
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(
+        other,
+        [
+          SELECT Location__c
+          FROM RecurringActivity__c
+          WHERE Id = :second.Id
+          WITH SYSTEM_MODE
+        ]
+        .Location__c
+      );
     }
-    Assert.areEqual(
-      1,
-      [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
-    );
-    Assert.areEqual(
-      other,
-      [
-        SELECT Location__c
-        FROM RecurringActivity__c
-        WHERE Id = :second.Id
-        WITH SYSTEM_MODE
-      ]
-      .Location__c
-    );
   }
 
   @IsTest
   static void onlyNearDuplicatesInOneSeasonStillThereAreMerged() {
-    ids = SetTimeTestData.camp();
-    Id other = secondPool();
+    // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
     System.runAs(ShoreshTestData.scheduler()) {
-      List<List<Id>> refused = new List<List<Id>>{
-        // Different names.
-        new List<Id>{ ids.get('Pool'), ids.get('Gym') },
-        // The kept place among the others.
-        new List<Id>{ ids.get('Pool'), ids.get('Pool') },
-        // Not a location.
-        new List<Id>{ ids.get('Pool'), ids.get('Swim') }
-      };
-      for (List<Id> pair : refused) {
+      ids = SetTimeTestData.camp();
+      Id other = secondPool();
+      {
+        List<List<Id>> refused = new List<List<Id>>{
+          // Different names.
+          new List<Id>{ ids.get('Pool'), ids.get('Gym') },
+          // The kept place among the others.
+          new List<Id>{ ids.get('Pool'), ids.get('Pool') },
+          // Not a location.
+          new List<Id>{ ids.get('Pool'), ids.get('Swim') }
+        };
+        for (List<Id> pair : refused) {
+          try {
+            SetupTablesController.mergeLocations(
+              pair[0],
+              new List<Id>{ pair[1] },
+              1
+            );
+            Assert.fail('Refused: ' + pair);
+          } catch (AuraHandledException e) {
+            Assert.isNotNull(e.getMessage());
+          }
+        }
+        Database.delete(other, AccessLevel.SYSTEM_MODE);
         try {
           SetupTablesController.mergeLocations(
-            pair[0],
-            new List<Id>{ pair[1] },
+            ids.get('Pool'),
+            new List<Id>{ other },
             1
           );
-          Assert.fail('Refused: ' + pair);
+          Assert.fail('Someone else deleted it');
         } catch (AuraHandledException e) {
-          Assert.isNotNull(e.getMessage());
+          Assert.areEqual(
+            LocationMerge.changedMessage(ids.get('Pool')),
+            e.getMessage()
+          );
         }
       }
-      Database.delete(other, AccessLevel.SYSTEM_MODE);
-      try {
-        SetupTablesController.mergeLocations(
-          ids.get('Pool'),
-          new List<Id>{ other },
-          1
-        );
-        Assert.fail('Someone else deleted it');
-      } catch (AuraHandledException e) {
-        Assert.areEqual(
-          LocationMerge.changedMessage(ids.get('Pool')),
-          e.getMessage()
-        );
-      }
+      Assert.areEqual(
+        3,
+        [
+          SELECT COUNT()
+          FROM Location__c
+          WHERE Season__c = :ids.get('Season')
+          WITH SYSTEM_MODE
+        ]
+      );
+      Assert.areEqual('pool', LocationMerge.sameNameKey('  POOL '));
+      // Every kind of space the screen folds, and capitals the same in every locale.
+      Assert.areEqual(
+        'indoor gym',
+        LocationMerge.sameNameKey('\uFEFFINDOOR\u3000GYM\u00A0')
+      );
+      Assert.areEqual(
+        'That merge could not be completed — someone may have changed these locations. Try again.',
+        LocationMerge.changedMessage(ids.get('Pool'))
+      );
     }
-    Assert.areEqual(
-      3,
-      [
-        SELECT COUNT()
-        FROM Location__c
-        WHERE Season__c = :ids.get('Season')
-        WITH SYSTEM_MODE
-      ]
-    );
-    Assert.areEqual('pool', LocationMerge.sameNameKey('  POOL '));
-    // Every kind of space the screen folds, and capitals the same in every locale.
-    Assert.areEqual(
-      'indoor gym',
-      LocationMerge.sameNameKey('\uFEFFINDOOR\u3000GYM\u00A0')
-    );
-    Assert.areEqual(
-      'That merge could not be completed — someone may have changed these locations. Try again.',
-      LocationMerge.changedMessage(ids.get('Pool'))
-    );
   }
 
   @IsTest
