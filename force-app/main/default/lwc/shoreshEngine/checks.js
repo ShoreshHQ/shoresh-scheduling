@@ -14,8 +14,11 @@
  *   place but never get a dot.
  * - Still needed: each activity and group short of its weekly minimum ("Swim · Bunk 3: 2 still
  *   needed"). Spread across the week: short of its early-week goal ("… still needed by
- *   Wednesday"). Overlapping: each clash once (a place in a time block, an activity in a time
- *   block, a group in two overlapping time blocks). Filled: cells filled, of the cells to fill.
+ *   Wednesday"). Overlapping: each group's cell (day, time block) where one of its placements
+ *   breaks a rule that time block shares with other cells (groups at once, same division, place
+ *   capacity, busy at an overlapping time), like the desktop's computeOverlaps; a placement
+ *   running two time blocks that clashes in one is one cell. Filled: cells filled, of the cells to
+ *   fill.
  *
  * A placement counts once, however many time blocks it runs. A day that can't be read is left out.
  */
@@ -116,6 +119,9 @@ function groupBy(list, keyOf) {
   return map;
 }
 
+/** The time block index of an occupancy key "d|b". */
+const blockOf = (at) => Number(at.split("|")[1]);
+
 /** Each placement in each time block it covers: "d|b" -> placements. */
 function occupancy(placements) {
   const map = new Map();
@@ -131,7 +137,8 @@ function occupancy(placements) {
   return map;
 }
 
-// ---------- the rules: each returns marks { flags: [{ p, rule, reason }], clashes } ----------
+// ---------- the rules: each returns flags [{ p, rule, reason, b }] ----------
+// b: the time block the rule is broken in, for the rules a time block shares with other cells.
 
 /**
  * Placements in the order they happen: by day, then their first block's start time, then its
@@ -182,7 +189,7 @@ function weeklyMax(ctx) {
       );
     }
   });
-  return { flags, clashes: [] };
+  return flags;
 }
 
 function onceADay(ctx) {
@@ -201,7 +208,7 @@ function onceADay(ctx) {
       );
     }
   });
-  return { flags, clashes: [] };
+  return flags;
 }
 
 function eligibility(ctx) {
@@ -212,12 +219,11 @@ function eligibility(ctx) {
       rule: RULES.ELIGIBILITY,
       reason: reasonFor(RULES.ELIGIBILITY, { groupName: p.groupName })
     }));
-  return { flags, clashes: [] };
+  return flags;
 }
 
 function groupsAtOnce(ctx) {
   const flags = [];
-  const clashes = [];
   ctx.occupancy.forEach((here, at) => {
     groupBy(here.filter(isActivity), (p) => p.id).forEach((list, actId) => {
       const act = ctx.activities.get(actId);
@@ -230,14 +236,11 @@ function groupsAtOnce(ctx) {
         terms: ctx.t
       });
       list.forEach((p) =>
-        flags.push({ p, rule: RULES.GROUPS_AT_ONCE, reason })
-      );
-      clashes.push(
-        ctx.clash(RULES.GROUPS_AT_ONCE, `act:${actId}`, at, act.name, reason)
+        flags.push({ p, rule: RULES.GROUPS_AT_ONCE, reason, b: blockOf(at) })
       );
     });
   });
-  return { flags, clashes };
+  return flags;
 }
 
 /** Where a placement takes place, if it is a place the camp has set up. */
@@ -254,14 +257,13 @@ function placeOf(ctx, p) {
 
 function sameDivision(ctx) {
   const flags = [];
-  const clashes = [];
   const division = (p) => ctx.divisions.get(p.groupId) || null;
   const strict = (p) => {
     const act = isActivity(p) ? ctx.activities.get(p.id) : null;
     return Boolean(act && act.sameDivision);
   };
   ctx.occupancy.forEach((here, at) => {
-    const placesClashed = new Set();
+    const b = blockOf(at);
     // At a place: a group doing a one-division activity shares it with no other division.
     groupBy(here, (p) => placeOf(ctx, p)).forEach((list, locationId) => {
       const place = ctx.locations.get(locationId).name;
@@ -283,15 +285,11 @@ function sameDivision(ctx) {
             clashing.add(y);
           });
       });
-      if (clashing.size) {
-        [...clashing]
-          .filter(isActivity)
-          .forEach((p) => flags.push({ p, rule: RULES.SAME_DIVISION, reason }));
-        clashes.push(
-          ctx.clash(RULES.SAME_DIVISION, `loc:${locationId}`, at, place, reason)
+      [...clashing]
+        .filter(isActivity)
+        .forEach((p) =>
+          flags.push({ p, rule: RULES.SAME_DIVISION, reason, b })
         );
-        placesClashed.add(locationId);
-      }
     });
     // The activity itself: its groups at the same time are of one division (with a place, the
     // place above already compares them), and another program's groups doing it are another.
@@ -307,30 +305,16 @@ function sameDivision(ctx) {
           terms: ctx.t
         });
         list.forEach((p) =>
-          flags.push({ p, rule: RULES.SAME_DIVISION, reason })
-        );
-        // One clash, one line: already listed at its place (another program there and doing it).
-        if (locationId && placesClashed.has(locationId)) {
-          return;
-        }
-        clashes.push(
-          ctx.clash(
-            RULES.SAME_DIVISION,
-            `act:${actId}`,
-            at,
-            ctx.activities.get(actId).name,
-            reason
-          )
+          flags.push({ p, rule: RULES.SAME_DIVISION, reason, b })
         );
       }
     );
   });
-  return { flags, clashes };
+  return flags;
 }
 
 function placeCapacity(ctx) {
   const flags = [];
-  const clashes = [];
   ctx.occupancy.forEach((here, at) => {
     groupBy(here, (p) => placeOf(ctx, p)).forEach((list, locationId) => {
       const place = ctx.locations.get(locationId);
@@ -344,26 +328,16 @@ function placeCapacity(ctx) {
         terms: ctx.t
       });
       movable.forEach((p) =>
-        flags.push({ p, rule: RULES.PLACE_CAPACITY, reason })
-      );
-      clashes.push(
-        ctx.clash(
-          RULES.PLACE_CAPACITY,
-          `loc:${locationId}`,
-          at,
-          place.name,
-          reason
-        )
+        flags.push({ p, rule: RULES.PLACE_CAPACITY, reason, b: blockOf(at) })
       );
     });
   });
-  return { flags, clashes };
+  return flags;
 }
 
 /** A group with something in two time blocks whose times overlap (blocks that touch don't). */
 function busy(ctx) {
   const flags = [];
-  const clashes = [];
   const reason = reasonFor(BUSY);
   ctx.days.forEach((day, d) => {
     if (day.problem) {
@@ -398,28 +372,18 @@ function busy(ctx) {
           if (!overlap || !p1 || !p2 || p1 === p2) {
             continue;
           }
-          [p1, p2]
-            .filter(isActivity)
-            .forEach((p) => flags.push({ p, rule: BUSY, reason }));
-          if (isActivity(p1) || isActivity(p2)) {
-            // One clash per two placements, however many of their blocks overlap.
-            clashes.push({
-              ...ctx.clash(
-                BUSY,
-                "",
-                `${d}|${b1}`,
-                grp.name,
-                reason,
-                day.blocks[b2].name
-              ),
-              key: `${BUSY}|${p1.key}|${p2.key}`
-            });
-          }
+          // Each in the time block it holds: both cells are the group busy twice.
+          [
+            [p1, b1],
+            [p2, b2]
+          ]
+            .filter(([p]) => isActivity(p))
+            .forEach(([p, b]) => flags.push({ p, rule: BUSY, reason, b }));
         }
       }
     });
   });
-  return { flags, clashes };
+  return flags;
 }
 
 // ---------- still to place ----------
@@ -518,7 +482,10 @@ function filledCount(ctx) {
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
- * overlapping, stillNeeded, spread (lines of text), stillNeededBy ([{ activityId, groupId,
+ * overlapping ([{ dateValue, groupId, blockId, rules, text }]: one per group's cell where a
+ * placement breaks a rule shared with other cells there, by day, then time block, then the
+ * day's group order; rules in give-way order; text "Bunk 3 · Monday · Period 2: reason · reason"),
+ * stillNeeded, spread (lines of text), stillNeededBy ([{ activityId, groupId,
  * missing }], entry i for line i), spreadBy ([{ activityId, groupId, missing, byDay }], byDay the
  * day's name as the line says it), cells: { filled, total } }.
  */
@@ -547,20 +514,7 @@ export function checkWeek(days, model, words) {
       const [d, b] = at.split("|").map(Number);
       return model.othersAt(kind, id, d, days[d].blocks[b].id) || 0;
     },
-    t: words.t,
-    clash(rule, what, at, name, reason, alsoBlock) {
-      const [d, b] = at.split("|").map(Number);
-      const day = days[d];
-      const when = [words.dayName(day.dateValue), day.blocks[b].name];
-      if (alsoBlock) {
-        when.push(alsoBlock);
-      }
-      return {
-        key: `${rule}|${what}|${at}`,
-        order: [d, b, RULE.indexOf(rule)],
-        text: `${name} · ${when.join(" · ")}: ${reason}`
-      };
-    }
+    t: words.t
   };
   const marks = [
     weeklyMax,
@@ -574,10 +528,22 @@ export function checkWeek(days, model, words) {
 
   const reasons = new Map();
   const bends = new Map();
+  const cellMarks = new Map();
   marks
-    .flatMap((m) => m.flags)
+    .flat()
     .sort((a, b) => RULE.indexOf(a.rule) - RULE.indexOf(b.rule))
-    .forEach(({ p, rule, reason }) => {
+    .forEach(({ p, rule, reason, b }) => {
+      if (b !== undefined) {
+        const key = `${p.d}|${b}|${p.groupId}`;
+        const cell = cellMarks.get(key) || { p, b, rules: [], reasons: [] };
+        if (!cell.rules.includes(rule)) {
+          cell.rules.push(rule);
+        }
+        if (!cell.reasons.includes(reason)) {
+          cell.reasons.push(reason);
+        }
+        cellMarks.set(key, cell);
+      }
       const list = reasons.get(p.key) || [];
       if (!list.includes(reason)) {
         list.push(reason);
@@ -593,24 +559,21 @@ export function checkWeek(days, model, words) {
     [...reasons].map(([key, list]) => [key, list.join(" · ")])
   );
 
-  const clashes = new Map();
-  // The first time a clash is met names it (its earliest blocks).
-  marks
-    .flatMap((m) => m.clashes)
-    .forEach((c) => {
-      if (!clashes.has(c.key)) {
-        clashes.set(c.key, c);
-      }
+  const row = (c) =>
+    ctx.days[c.p.d].groups.findIndex((grp) => grp.id === c.p.groupId);
+  const overlapping = [...cellMarks.values()]
+    .sort((a, b) => a.p.d - b.p.d || a.b - b.b || row(a) - row(b))
+    .map((c) => {
+      const day = ctx.days[c.p.d];
+      const blockName = day.blocks[c.b].name;
+      return {
+        dateValue: day.dateValue,
+        groupId: c.p.groupId,
+        blockId: day.blocks[c.b].id,
+        rules: c.rules,
+        text: `${c.p.groupName} · ${words.dayName(day.dateValue)} · ${blockName}: ${c.reasons.join(" · ")}`
+      };
     });
-  const overlapping = [...clashes.values()]
-    .sort(
-      (a, b) =>
-        a.order[0] - b.order[0] ||
-        a.order[1] - b.order[1] ||
-        a.order[2] - b.order[2] ||
-        (a.text < b.text ? -1 : Number(a.text > b.text))
-    )
-    .map((c) => c.text);
 
   return {
     flags,
