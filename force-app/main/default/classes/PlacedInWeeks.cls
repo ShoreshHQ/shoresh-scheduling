@@ -1,7 +1,7 @@
 /**
  * How many slots a group, activity, or location already has in a week's Manual Build and
  * Generated Schedule drafts, so turning it off for that week can ask first (Shoresh desktop
- * ExclusionConfirmDialog.jsx: "Placed in N slots in <week>."). As on the desktop, a slot is one
+ * ExclusionConfirmDialog.jsx: "Placed in N slots in <week>.", shown as cells, the design guide's word). As on the desktop, a slot is one
  * time block of one group: an activity two blocks long counts two. A location counts the slots
  * of the activities that use it. Versions and published schedules are not counted: they don't
  * change. Read in user mode; a day that can't be read counts nothing.

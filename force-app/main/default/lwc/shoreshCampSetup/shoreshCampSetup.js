@@ -50,6 +50,15 @@ const SCREENS = [
   "import"
 ];
 
+/** The element with focus, looking inside components (their shadow roots). */
+function focusedElement() {
+  let element = document.activeElement;
+  while (element && element.shadowRoot && element.shadowRoot.activeElement) {
+    element = element.shadowRoot.activeElement;
+  }
+  return element;
+}
+
 const STATUS_OPTIONS = [
   { label: "Planning", value: "Planning" },
   { label: "Active", value: "Active" },
@@ -819,14 +828,14 @@ export default class ShoreshCampSetup extends LightningElement {
   /** The desktop's words: one bunk and week, or each of several. */
   turnOffQuestion(placed) {
     const names = this.recordNames();
-    const slots = (n) => `${n} ${n === 1 ? "slot" : "slots"}`;
+    const cells = (n) => `${n} ${n === 1 ? "cell" : "cells"}`;
     const stay = "They stay until you change them.";
     if (placed.length === 1) {
       const [only] = placed;
       const week = names.get(only.week) || `this ${this.terms.sIn("Week")}`;
       return {
         heading: `Turn off "${names.get(only.target) || "this one"}" for ${week}?`,
-        lines: [`Placed in ${slots(only.slots)} in ${week}.`, stay],
+        lines: [`Placed in ${cells(only.slots)} in ${week}.`, stay],
         confirmLabel: "Turn off anyway"
       };
     }
@@ -835,7 +844,7 @@ export default class ShoreshCampSetup extends LightningElement {
       lines: [
         ...placed.map(
           (p) =>
-            `"${names.get(p.target) || "One of them"}": placed in ${slots(p.slots)} in ${names.get(p.week)}.`
+            `"${names.get(p.target) || "One of them"}": placed in ${cells(p.slots)} in ${names.get(p.week)}.`
         ),
         stay
       ],
@@ -858,8 +867,12 @@ export default class ShoreshCampSetup extends LightningElement {
     return names;
   }
 
-  /** Shows the question and waits for the answer: true for yes. */
+  /**
+   * Shows the question and waits for the answer: true for yes. Focus goes back to where it was
+   * (the table's Save, or the tick) when the question closes (WCAG 2.4.3).
+   */
   askFirst(question) {
+    this.focusBack = focusedElement();
     this.ask = question;
     return new Promise((resolve) => {
       this.answerAsk = resolve;
@@ -868,8 +881,13 @@ export default class ShoreshCampSetup extends LightningElement {
 
   handleAnswer(event) {
     const resolve = this.answerAsk;
+    const back = this.focusBack;
     this.ask = null;
     this.answerAsk = null;
+    this.focusBack = null;
+    if (back && back.isConnected && typeof back.focus === "function") {
+      back.focus();
+    }
     if (resolve) {
       resolve(event.detail.yes);
     }

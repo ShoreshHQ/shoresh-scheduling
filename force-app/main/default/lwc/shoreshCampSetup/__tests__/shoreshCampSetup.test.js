@@ -52,11 +52,9 @@ jest.mock(
   () => apex(),
   { virtual: true }
 );
-jest.mock(
-  "@salesforce/apex/RunsInController.placedInWeeks",
-  () => apex(),
-  { virtual: true }
-);
+jest.mock("@salesforce/apex/RunsInController.placedInWeeks", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/SeasonSetupController.previewCopy", () => apex(), {
   virtual: true
 });
@@ -862,7 +860,7 @@ describe("c-shoresh-camp-setup", () => {
       const ask = q(element, "c-shoresh-ask");
       expect(ask.heading).toBe('Turn off "Bunk 3" for Week 1?');
       expect(ask.lines).toEqual([
-        "Placed in 4 slots in Week 1.",
+        "Placed in 4 cells in Week 1.",
         "They stay until you change them."
       ]);
       expect(ask.confirmLabel).toBe("Turn off anyway");
@@ -879,18 +877,24 @@ describe("c-shoresh-camp-setup", () => {
       ]);
     });
 
-    it("Cancel saves nothing and keeps the typing", async () => {
+    it("Cancel saves nothing and keeps the typing; focus goes back where it was", async () => {
       placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", slots: 1 }]);
       const element = await render();
       const onFailure = jest.fn();
+      // Stands in for the table's Save button, which had focus when it was pressed.
+      const saveButton = document.createElement("button");
+      document.body.appendChild(saveButton);
+      saveButton.focus();
       turnOff(element, [{ target: "g3", week: "w1" }], onFailure);
       await flush();
       const ask = q(element, "c-shoresh-ask");
-      expect(ask.lines[0]).toBe("Placed in 1 slot in Week 1.");
+      expect(ask.lines[0]).toBe("Placed in 1 cell in Week 1.");
+      saveButton.blur();
       ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: false } }));
       await flush();
       expect(saveRowsAndWeeks).not.toHaveBeenCalled();
       expect(onFailure).toHaveBeenCalled();
+      expect(document.activeElement).toBe(saveButton);
     });
 
     it("with nothing placed, switches off without asking", async () => {
@@ -924,8 +928,8 @@ describe("c-shoresh-camp-setup", () => {
       const ask = q(element, "c-shoresh-ask");
       expect(ask.heading).toBe("Turn these off?");
       expect(ask.lines).toEqual([
-        '"Bunk 3": placed in 2 slots in Week 1.',
-        '"Swim": placed in 3 slots in Week 1.',
+        '"Bunk 3": placed in 2 cells in Week 1.',
+        '"Swim": placed in 3 cells in Week 1.',
         "They stay until you change them."
       ]);
     });

@@ -7,7 +7,7 @@ async function render() {
   const element = createElement("c-shoresh-ask", { is: ShoreshAsk });
   element.heading = 'Turn off "Bunk 3" for Week 2?';
   element.lines = [
-    "Placed in 4 slots in Week 2.",
+    "Placed in 4 cells in Week 2.",
     "They stay until you change them."
   ];
   element.confirmLabel = "Turn off anyway";
@@ -34,7 +34,7 @@ describe("c-shoresh-ask", () => {
     expect(
       [...element.shadowRoot.querySelectorAll("p")].map((p) => p.textContent)
     ).toEqual([
-      "Placed in 4 slots in Week 2.",
+      "Placed in 4 cells in Week 2.",
       "They stay until you change them."
     ]);
     expect(q(element, '[data-id="yes"]').textContent.trim()).toBe(

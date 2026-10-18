@@ -575,7 +575,7 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
 14. **Turning a bunk off for a week it is placed in.** On the **Bunks** screen, untick
     **Week 1** under **Runs in** on Bunk 1 and click **Save changes**. Because Bunk 1 already
     has things placed in Week 1, Shoresh asks first: _Turn off "Bunk 1" for Week 1?_,
-    _Placed in N slots in Week 1._ and _They stay until you change them._, with **Cancel**
+    _Placed in N cells in Week 1._ and _They stay until you change them._, with **Cancel**
     (where the keyboard starts) and **Turn off anyway**. Cancel saves nothing and keeps the
     tick unticked on screen; **Cancel changes** puts it back. The same question comes for an
     activity or a location placed that week. A bunk, activity, or location with nothing placed
