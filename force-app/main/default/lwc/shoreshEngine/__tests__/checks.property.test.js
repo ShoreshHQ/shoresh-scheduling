@@ -1,8 +1,8 @@
 /**
  * The checks over generated weeks (seeded, so every run is the same), against an oracle written
  * independently: placement by placement, straight from each rule's definition, with no grouping
- * shared with checks.js. Every dot's words, every still-needed and early-week line, the number of
- * overlaps, and Filled must agree.
+ * shared with checks.js. Every dot's words, every Overlapping cell (in order, with its rules and
+ * line), every still-needed and early-week line, and Filled must agree.
  */
 import { checkWeek } from "../checks";
 import { buildTerms } from "c/shoreshTerms";
@@ -177,15 +177,9 @@ function oracle(days, model) {
   const div = (q) => model.divisions.get(q.groupId) || null;
   const strict = (q) => q.kind === "A" && acts.get(q.id).sameDivision;
   const flags = new Map();
-  // Each clash once, by what it is, with the line the screen shows (the first time it is met).
-  const clashes = new Map();
+  const overlapping = [];
   const when = (d, b) =>
     `${NAMES[weekday(days[d].dateValue)]} · ${days[d].blocks[b].name}`;
-  const add = (key, text) => {
-    if (!clashes.has(key)) {
-      clashes.set(key, text);
-    }
-  };
   all.forEach((p) => {
     if (p.kind !== "A") {
       return;
@@ -288,74 +282,72 @@ function oracle(days, model) {
       flags.set(p.key, unique.join(" · "));
     }
   });
-  // Overlaps, each once.
+  // Overlapping: cell by cell (day, time block, then the day's groups in order), an activity in
+  // the cell breaking a rule that time block shares with other cells.
   days.forEach((day, d) => {
     if (day.problem) {
       return;
     }
     day.blocks.forEach((block, b) => {
       const here = at(d, b);
-      const ids = [
-        ...new Set(here.filter((q) => q.kind === "A").map((q) => q.id))
-      ];
-      ids.forEach((id) => {
-        const act = acts.get(id);
-        const doing = here.filter((q) => q.kind === "A" && q.id === id);
-        if (act.atOnce !== null && doing.length > act.atOnce) {
-          add(
-            `atOnce|${id}|${d}|${b}`,
-            `${act.name} · ${when(d, b)}: Over its limit of ${act.atOnce} ${act.atOnce === 1 ? "Bunk" : "Bunks"} at once`
-          );
-        }
-        if (
-          act.sameDivision &&
-          !placeOf(doing[0]) &&
-          new Set(doing.map(div)).size > 1
-        ) {
-          add(
-            `division|act:${id}|${d}|${b}`,
-            `${act.name} · ${when(d, b)}: With another division at the same time`
-          );
-        }
-      });
-      model.locations.forEach((place, loc) => {
-        const there = here.filter((q) => placeOf(q) === loc);
-        if (there.length > place.fit && there.some((q) => q.kind === "A")) {
-          add(
-            `capacity|${loc}|${d}|${b}`,
-            `${place.name} · ${when(d, b)}: More Bunks at ${place.name} than fit`
-          );
-        }
-        if (
-          there.some((x) => strict(x) && there.some((y) => div(y) !== div(x)))
-        ) {
-          add(
-            `division|loc:${loc}|${d}|${b}`,
-            `${place.name} · ${when(d, b)}: Shares ${place.name} with another division`
-          );
-        }
-      });
       day.groups.forEach((grp) => {
-        day.blocks.forEach((other, b2) => {
-          if (
-            b2 <= b ||
-            !(
-              mins(block.startTime) < mins(other.endTime) &&
-              mins(other.startTime) < mins(block.endTime)
-            )
-          ) {
-            return;
-          }
-          const p1 = here.find((q) => q.groupId === grp.id);
-          const p2 = at(d, b2).find((q) => q.groupId === grp.id);
-          if (p1 && p2 && p1 !== p2 && (p1.kind === "A" || p2.kind === "A")) {
-            // Two placements clash once, however many of their blocks overlap.
-            add(
-              `busy|${p1.key}|${p2.key}`,
-              `${grp.name} · ${when(d, b)} · ${other.name}: Already busy then`
-            );
-          }
+        const p = here.find((q) => q.groupId === grp.id);
+        if (!p || p.kind !== "A") {
+          return;
+        }
+        const act = acts.get(p.id);
+        const loc = placeOf(p);
+        const there = loc ? here.filter((q) => placeOf(q) === loc) : [];
+        const reasons = [];
+        const rules = [];
+        const doing = here.filter((q) => q.kind === "A" && q.id === p.id);
+        if (act.atOnce !== null && doing.length > act.atOnce) {
+          rules.push("groupsAtOnce");
+          reasons.push(
+            `Over its limit of ${act.atOnce} ${act.atOnce === 1 ? "Bunk" : "Bunks"} at once`
+          );
+        }
+        if (
+          (strict(p) && there.some((q) => div(q) !== div(p))) ||
+          there.some((x) => strict(x) && div(x) !== div(p))
+        ) {
+          rules.push("sameDivision");
+          reasons.push(
+            `Shares ${model.locations.get(loc).name} with another division`
+          );
+        } else if (!loc && strict(p) && doing.some((q) => div(q) !== div(p))) {
+          rules.push("sameDivision");
+          reasons.push("With another division at the same time");
+        }
+        if (loc && there.length > model.locations.get(loc).fit) {
+          rules.push("placeCapacity");
+          reasons.push(
+            `More Bunks at ${model.locations.get(loc).name} than fit`
+          );
+        }
+        const busyThen = day.blocks.some((other, b2) => {
+          const q = at(d, b2).find((x) => x.groupId === grp.id);
+          return (
+            b2 !== b &&
+            q &&
+            q !== p &&
+            mins(block.startTime) < mins(other.endTime) &&
+            mins(other.startTime) < mins(block.endTime)
+          );
         });
+        if (busyThen) {
+          rules.push("busy");
+          reasons.push("Already busy then");
+        }
+        if (rules.length) {
+          overlapping.push({
+            dateValue: day.dateValue,
+            groupId: grp.id,
+            blockId: block.id,
+            rules,
+            text: `${grp.name} · ${when(d, b)}: ${reasons.join(" · ")}`
+          });
+        }
       });
     });
   });
@@ -442,7 +434,7 @@ function oracle(days, model) {
   });
   return {
     flags,
-    clashes: [...clashes.values()],
+    overlapping,
     stillNeeded,
     spread,
     stillNeededBy,
@@ -465,7 +457,12 @@ describe("checks over generated weeks", () => {
       "than fit",
       "Already busy then"
     ];
-    const seen = { stillNeeded: 0, spread: 0 };
+    const seen = {
+      stillNeeded: 0,
+      spread: 0,
+      overlapping: 0,
+      "overlapping, two rules": 0
+    };
     REASONS.forEach((r) => {
       seen[r] = 0;
     });
@@ -478,13 +475,13 @@ describe("checks over generated weeks", () => {
       if (gotFlags !== wantFlags) {
         failures.push(`seed ${seed}: dots ${gotFlags} != ${wantFlags}`);
       }
-      // The same lines (their order is the scenario tests' to check).
-      const gotLines = JSON.stringify([...got.overlapping].sort());
-      const wantLines = JSON.stringify([...want.clashes].sort());
-      if (gotLines !== wantLines) {
-        failures.push(`seed ${seed}: overlaps ${gotLines} != ${wantLines}`);
-      }
-      ["stillNeeded", "spread", "stillNeededBy", "spreadBy"].forEach((list) => {
+      [
+        "overlapping",
+        "stillNeeded",
+        "spread",
+        "stillNeededBy",
+        "spreadBy"
+      ].forEach((list) => {
         if (JSON.stringify(got[list]) !== JSON.stringify(want[list])) {
           failures.push(
             `seed ${seed}: ${list} ${JSON.stringify(got[list])} != ${JSON.stringify(want[list])}`
@@ -496,6 +493,10 @@ describe("checks over generated weeks", () => {
       }
       seen.stillNeeded += want.stillNeeded.length;
       seen.spread += want.spread.length;
+      seen.overlapping += want.overlapping.length;
+      seen["overlapping, two rules"] += want.overlapping.filter(
+        (o) => o.rules.length > 1
+      ).length;
       want.flags.forEach((words) =>
         REASONS.forEach((r) => {
           seen[r] += words.includes(r) ? 1 : 0;

@@ -37,6 +37,7 @@ function model(activities, extra = {}) {
 
 const MON = "2026-06-29";
 const TUE = "2026-06-30";
+const lines = (result) => result.overlapping.map((o) => o.text);
 const WED = "2026-07-01";
 const THU = "2026-07-02";
 
@@ -131,7 +132,7 @@ describe("checks: the bronze dots", () => {
     expect(result.flags.get(`${MON}|g2|t1`)).toBe("Not set up for Bunk 2");
   });
 
-  it("more bunks at an activity than its limit dots each, and is one overlap", () => {
+  it("more bunks at an activity than its limit dots each; each bunk's cell is one overlap", () => {
     const days = weekOf({
       [MON]: [
         ["A:archery", "^A:archery", ""],
@@ -150,8 +151,22 @@ describe("checks: the bronze dots", () => {
     expect(result.flags.get(`${MON}|g2|t2`)).toBe(
       "Over its limit of 1 Bunk at once"
     );
+    // Bunk 1's archery runs two periods but clashes only in Period 2: one cell.
     expect(result.overlapping).toEqual([
-      "Archery · Monday · Period 2: Over its limit of 1 Bunk at once"
+      {
+        dateValue: MON,
+        groupId: "g1",
+        blockId: "t2",
+        rules: ["groupsAtOnce"],
+        text: "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
+      },
+      {
+        dateValue: MON,
+        groupId: "g2",
+        blockId: "t2",
+        rules: ["groupsAtOnce"],
+        text: "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once"
+      }
     ]);
   });
 
@@ -175,8 +190,8 @@ describe("checks: the bronze dots", () => {
       "More Bunks at Pool than fit"
     );
     expect(result.flags.has(`${MON}|g2|t1`)).toBe(false);
-    expect(result.overlapping).toEqual([
-      "Pool · Monday · Period 1: More Bunks at Pool than fit"
+    expect(lines(result)).toEqual([
+      "Bunk 1 · Monday · Period 1: More Bunks at Pool than fit"
     ]);
   });
 
@@ -215,8 +230,9 @@ describe("checks: the bronze dots", () => {
     );
     expect(result.flags.has(`${MON}|g1|t2`)).toBe(false);
     expect(result.flags.has(`${MON}|g3|t2`)).toBe(false);
-    expect(result.overlapping).toEqual([
-      "Court · Monday · Period 1: Shares Court with another Unit"
+    expect(lines(result)).toEqual([
+      "Bunk 1 · Monday · Period 1: Shares Court with another Unit",
+      "Bunk 2 · Monday · Period 1: Shares Court with another Unit"
     ]);
   });
 
@@ -240,8 +256,9 @@ describe("checks: the bronze dots", () => {
     expect(result.flags.get(`${MON}|g1|t1`)).toBe(
       "With another Unit at the same time"
     );
-    expect(result.overlapping).toEqual([
-      "Drama · Monday · Period 1: With another Unit at the same time"
+    expect(lines(result)).toEqual([
+      "Bunk 1 · Monday · Period 1: With another Unit at the same time",
+      "Bunk 2 · Monday · Period 1: With another Unit at the same time"
     ]);
   });
 
@@ -263,9 +280,88 @@ describe("checks: the bronze dots", () => {
     expect(result.flags.get(`${MON}|g1|t1`)).toBe("Already busy then");
     expect(result.flags.get(`${MON}|g1|t2`)).toBe("Already busy then");
     expect(result.flags.has(`${MON}|g1|t3`)).toBe(false);
-    expect(result.overlapping).toEqual([
-      "Bunk 1 · Monday · Period 1 · Snack: Already busy then"
+    expect(lines(result)).toEqual([
+      "Bunk 1 · Monday · Period 1: Already busy then",
+      "Bunk 1 · Monday · Snack: Already busy then"
     ]);
+  });
+
+  it("one cell breaking several shared rules is one overlap, its reasons in give-way order", () => {
+    const days = weekOf({
+      [MON]: [
+        ["A:swim", "", ""],
+        ["A:swim", "", ""],
+        ["A:swim", "", ""]
+      ]
+    });
+    const result = checkWeek(
+      days,
+      model([activity("swim", { locationId: "pool", atOnce: 2 })], {
+        locations: new Map([["pool", { name: "Pool", fit: 2 }]])
+      }),
+      words
+    );
+    expect(result.overlapping.map((o) => [o.groupId, o.rules])).toEqual([
+      ["g1", ["groupsAtOnce", "placeCapacity"]],
+      ["g2", ["groupsAtOnce", "placeCapacity"]],
+      ["g3", ["groupsAtOnce", "placeCapacity"]]
+    ]);
+    expect(lines(result)[0]).toBe(
+      "Bunk 1 · Monday · Period 1: Over its limit of 2 Bunks at once · More Bunks at Pool than fit"
+    );
+  });
+
+  it("lists cells by day, then period, then the grid's group order; a fixed activity never has one", () => {
+    const days = weekOf({
+      [MON]: [
+        ["A:arts", "A:swim", ""],
+        ["F:flag", "A:swim", ""]
+      ],
+      [TUE]: [
+        ["A:arts", "", ""],
+        ["A:arts", "", ""]
+      ]
+    });
+    const result = checkWeek(
+      days,
+      model(
+        [
+          activity("swim", { atOnce: 1 }),
+          activity("arts", { locationId: "hall" })
+        ],
+        {
+          locations: new Map([["hall", { name: "Hall", fit: 1 }]]),
+          setTimeLocations: new Map([["flag", "hall"]])
+        }
+      ),
+      words
+    );
+    // Monday Period 1: Bunk 2's flag fills the hall; only Bunk 1's arts is listed.
+    expect(lines(result)).toEqual([
+      "Bunk 1 · Monday · Period 1: More Bunks at Hall than fit",
+      "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
+      "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once",
+      "Bunk 1 · Tuesday · Period 1: More Bunks at Hall than fit",
+      "Bunk 2 · Tuesday · Period 1: More Bunks at Hall than fit"
+    ]);
+  });
+
+  it("a rule only one placement breaks (weekly limit, twice in a day, not set up) is no overlap", () => {
+    const days = weekOf({
+      [MON]: [
+        ["A:swim", "A:swim", ""],
+        ["", "", ""]
+      ]
+    });
+    const result = checkWeek(
+      days,
+      model([activity("swim", { max: 1 })], {
+        notFor: new Map([["swim", ["g1"]]])
+      }),
+      words
+    );
+    expect(result.flags.size).toBe(2);
+    expect(result.overlapping).toEqual([]);
   });
 
   it("several reasons on one placement are joined, in the order rules give way", () => {
