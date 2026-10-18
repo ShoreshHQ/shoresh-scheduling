@@ -206,4 +206,112 @@ describe("c-shoresh-week-editor", () => {
     expect(grid(element)).toBeNull();
     expect(heard.state[heard.state.length - 1].draft).toBeNull();
   });
+
+  it("clear() also ends Undo and the typing box: the next week starts with neither", async () => {
+    const saveRuns = jest.fn().mockResolvedValue(saved(WITH_SWIM, ["1,2,"]));
+    const { element } = await render(saveRuns);
+    await placeSwim(element);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(false);
+    await press(
+      grid(element).shadowRoot.querySelector('[data-cell="0-2"]'),
+      "Enter"
+    );
+    expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+    element.clear();
+    element.show(draft(), true);
+    await flush();
+    expect(q(element, '[data-id="slot-editor"]')).toBeNull();
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+  });
+
+  describe("settled: nothing under way, so the host may read the week again", () => {
+    it("is false while the typing box is open", async () => {
+      const { element } = await render(jest.fn());
+      await press(
+        grid(element).shadowRoot.querySelector('[data-cell="0-1"]'),
+        "Enter"
+      );
+      expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+      expect(element.settled).toBe(false);
+      await press(q(element, '[data-id="slot-input"]'), "Escape");
+      expect(element.settled).toBe(true);
+    });
+
+    it("is false while an edit is saving", async () => {
+      let answer;
+      const saveRuns = jest.fn().mockReturnValue(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      const { element } = await render(saveRuns);
+      await placeSwim(element);
+      expect(element.busy).toBe(true);
+      expect(element.settled).toBe(false);
+      answer(saved(WITH_SWIM, ["1,2,"]));
+      await flush();
+      expect(element.settled).toBe(true);
+    });
+  });
+
+  describe("focus goes back to the cell", () => {
+    /** The cell with keyboard focus in the grid, or null. */
+    const focusedCell = (element) => {
+      const on = grid(element).shadowRoot.activeElement;
+      return on ? on.dataset.cell : null;
+    };
+    const theirs = [
+      ...WITH_SWIM.slice(0, 1),
+      { kind: "A", id: "a3", name: "Soccer", gone: false }
+    ];
+    const asked = async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(theirs, ["1,2,"], [0]))
+        .mockResolvedValue(saved(WITH_SWIM, ["1,2,"]));
+      const made = await render(saveRuns);
+      await placeSwim(made.element);
+      expect(q(made.element, '[data-id="conflict"]')).not.toBeNull();
+      // The question has focus, so a cell having it later is the editor's doing.
+      expect(focusedCell(made.element)).toBeNull();
+      return made;
+    };
+
+    it("after Keep theirs", async () => {
+      const { element } = await asked();
+      q(element, '[data-id="keep-theirs"]').click();
+      await flush();
+      expect(focusedCell(element)).toBe("0-1");
+    });
+
+    it("after Use yours", async () => {
+      const { element } = await asked();
+      q(element, '[data-id="use-yours"]').click();
+      await flush();
+      expect(focusedCell(element)).toBe("0-1");
+    });
+
+    it("after Escape on the question, which keeps theirs", async () => {
+      const { element } = await asked();
+      await press(q(element, '[data-id="conflict"]'), "Escape");
+      expect(q(element, '[data-id="conflict"]')).toBeNull();
+      expect(cellText(element, "0-1")).toBe("Soccer");
+      expect(focusedCell(element)).toBe("0-1");
+    });
+
+    it("after Escape closes the typing box", async () => {
+      const { element } = await render(jest.fn());
+      await press(
+        grid(element).shadowRoot.querySelector('[data-cell="0-1"]'),
+        "Enter"
+      );
+      const input = q(element, '[data-id="slot-input"]');
+      expect(element.shadowRoot.activeElement).toBe(input);
+      expect(focusedCell(element)).toBeNull();
+      await press(input, "Escape");
+      expect(q(element, '[data-id="slot-editor"]')).toBeNull();
+      expect(focusedCell(element)).toBe("0-1");
+    });
+  });
 });

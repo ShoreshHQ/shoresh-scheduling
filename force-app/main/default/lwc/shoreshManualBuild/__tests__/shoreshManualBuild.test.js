@@ -766,6 +766,101 @@ describe("c-shoresh-manual-build", () => {
     expect(editorRoot(element).activeElement).toBe(keep);
   });
 
+  // Coming back to the window reads the week again, unless the editor has something under way
+  // (the host asks the editor: weekEditor.settled). Each test also shows the read happens once
+  // the thing is over, so "no read" is not just a window that never reads.
+  describe("coming back to the window", () => {
+    const comeBack = async () => {
+      getDraft.mockClear();
+      window.dispatchEvent(new CustomEvent("focus"));
+      await flush();
+    };
+
+    it("reads the week again when nothing is under way", async () => {
+      getDraft.mockResolvedValue(draft());
+      await render();
+      await comeBack();
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
+    it("waits while the typing box is open, and reads once it is closed", async () => {
+      getDraft.mockResolvedValue(draft());
+      const element = await render();
+      await press(cell(element, "0-1"), "Enter");
+      expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+      await comeBack();
+      expect(getDraft).not.toHaveBeenCalled();
+      await press(await type(element, "swim"), "Escape");
+      expect(q(element, '[data-id="slot-editor"]')).toBeNull();
+      await comeBack();
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
+    it("waits while an edit is saving, and reads once it has saved", async () => {
+      getDraft.mockResolvedValue(draft());
+      const element = await render();
+      const saving = later();
+      saveSlots.mockReturnValue(saving.promise);
+      await press(cell(element, "0-1"), "Enter");
+      await press(await type(element, "swim"), "Enter");
+      await comeBack();
+      expect(getDraft).not.toHaveBeenCalled();
+      saving.answer(answer(WITH_SWIM, ["1,2,", "1,,"]));
+      await flush();
+      await comeBack();
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
+    it("waits while the keep-theirs-or-use-yours question is open, and reads once it is answered", async () => {
+      getDraft.mockResolvedValue(draft());
+      saveSlots.mockResolvedValueOnce(
+        answer(WITH_SOCCER, ["1,2,", "1,,"], [0])
+      );
+      const element = await render();
+      await press(cell(element, "0-1"), "Enter");
+      await press(await type(element, "swim"), "Enter");
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      await comeBack();
+      expect(getDraft).not.toHaveBeenCalled();
+      q(element, '[data-id="keep-theirs"]').click();
+      await flush();
+      await comeBack();
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("choosing another week lets go of the old week's Undo, typing box and notice", async () => {
+    const twoWeeks = {
+      ...SETUP,
+      weeks: [
+        { Id: "w1", Name: "Week 1" },
+        { Id: "w2", Name: "Week 2" }
+      ]
+    };
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValue(answer(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render(twoWeeks);
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "swim"), "Enter");
+    expect(q(element, '[data-id="undo"]').disabled).toBe(false);
+    // A box left open on the old week, too.
+    await press(cell(element, "0-2"), "Enter");
+    expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="slot-editor"]')).toBeNull();
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    // Coming back to the first week starts clean as well.
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w1" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+  });
+
   it("Group View edits one bunk's week the same way", async () => {
     getDraft.mockResolvedValue(draft());
     saveSlots.mockResolvedValue(answer(WITH_SOCCER, ["1,2,", "1,,"]));
