@@ -6,6 +6,8 @@ const ORIGINS = {
   Copied: "Copied",
   Imported: "Imported"
 };
+// VersionReason__c's value for a version kept by the app ("Before Restore").
+const AUTO_SAVED = "AutoSaved";
 
 /**
  * The Versions button and its list, as on Shoresh desktop's schedule toolbar (VersionsDropdown):
@@ -21,7 +23,7 @@ const ORIGINS = {
  * delete { id }, save { name, onDone(saved) }
  */
 export default class ShoreshVersions extends LightningElement {
-  @api versions = [];
+  _versions = [];
   @api openId;
   @api terms;
   @api busy = false;
@@ -33,14 +35,43 @@ export default class ShoreshVersions extends LightningElement {
   // The version whose delete was clicked once: it now asks "Delete?".
   deletingId;
   saveName = "";
+  // Said to screen readers: "Delete Before the trip? Press again to delete."
+  announcement = "";
+  // After the panel closes, focus goes back to the Versions button (desktop design audit #7).
+  focusButtonAfterRender = false;
+  // After a delete: the row at this place gets focus once the list comes back without it.
+  focusRowAfterDelete = null;
+
+  @api
+  get versions() {
+    return this._versions;
+  }
+  set versions(value) {
+    this._versions = value || [];
+  }
+
+  renderedCallback() {
+    if (this.focusButtonAfterRender) {
+      this.focusButtonAfterRender = false;
+      const button = this.template.querySelector('[data-id="versions-button"]');
+      if (button) {
+        button.focus();
+      }
+    }
+    if (this.focusRowAfterDelete !== null && !this.busy) {
+      const actions = this.template.querySelectorAll('[data-action="open"]');
+      const index = this.focusRowAfterDelete;
+      this.focusRowAfterDelete = null;
+      if (actions.length) {
+        actions[Math.min(index, actions.length - 1)].focus();
+      } else {
+        this.focusButtonAfterRender = true;
+      }
+    }
+  }
 
   get title() {
     return this.terms ? this.terms.p("Version") : "Versions";
-  }
-
-  get subtitle() {
-    const week = this.terms ? this.terms.sIn("Week") : "week";
-    return `Saved copies of this ${week}'s schedule. Open one to look at it.`;
   }
 
   get buttonIcon() {
@@ -48,17 +79,31 @@ export default class ShoreshVersions extends LightningElement {
   }
 
   get rows() {
-    return (this.versions || []).map((version) => ({
-      ...version,
-      origin: ORIGINS[version.origin] || version.origin,
-      onScreen: version.id === this.openId,
-      renaming: version.id === this.renamingId,
-      deleteLabel: version.id === this.deletingId ? "Delete?" : "delete"
-    }));
+    return this._versions.map((version) => {
+      const confirming = version.id === this.deletingId;
+      return {
+        ...version,
+        origin: ORIGINS[version.origin] || version.origin,
+        autoSaved: version.reason === AUTO_SAVED,
+        onScreen: version.id === this.openId,
+        renaming: version.id === this.renamingId,
+        deleteLabel: confirming ? "Delete?" : "delete",
+        deleteClass: confirming ? "link link_danger" : "link link_quiet",
+        deleteName: confirming
+          ? `Delete ${version.name}? Press again to delete.`
+          : `Delete ${version.name}`,
+        actionName: `${this.actionLabel} ${version.name}`,
+        renameName: `Rename ${version.name}`
+      };
+    });
   }
 
   get actionLabel() {
     return this.restore ? "Restore" : "Open";
+  }
+  /** Restore waits while an edit is saving (it would paint over it); Open never does. */
+  get actionDisabled() {
+    return this.restore && this.busy;
   }
   get canDelete() {
     return this.restore;
@@ -82,11 +127,15 @@ export default class ShoreshVersions extends LightningElement {
   /** Delete takes two clicks: the first asks "Delete?" (desktop), leaving it forgets that. */
   handleDelete(event) {
     const id = event.currentTarget.dataset.id;
+    const version = this._versions.find((v) => v.id === id);
     if (this.deletingId !== id) {
       this.deletingId = id;
+      this.announcement = `Delete ${version ? version.name : ""}? Press again to delete.`;
       return;
     }
     this.deletingId = null;
+    this.announcement = "";
+    this.focusRowAfterDelete = this._versions.findIndex((v) => v.id === id);
     this.dispatchEvent(new CustomEvent("delete", { detail: { id } }));
   }
   handleDeleteBlur() {
@@ -120,7 +169,7 @@ export default class ShoreshVersions extends LightningElement {
   }
 
   get isEmpty() {
-    return !this.versions || this.versions.length === 0;
+    return this._versions.length === 0;
   }
 
   get renameDisabled() {
@@ -151,8 +200,9 @@ export default class ShoreshVersions extends LightningElement {
       event.stopPropagation();
       if (this.renamingId) {
         this.renamingId = null;
-      } else {
+      } else if (this.isOpen) {
         this.isOpen = false;
+        this.focusButtonAfterRender = true;
       }
     }
   }
@@ -160,13 +210,14 @@ export default class ShoreshVersions extends LightningElement {
   handleOpen(event) {
     const id = event.currentTarget.dataset.id;
     this.isOpen = false;
+    this.focusButtonAfterRender = true;
     this.dispatchEvent(new CustomEvent("open", { detail: { id } }));
   }
 
   handleStartRename(event) {
     const id = event.currentTarget.dataset.id;
     this.renamingId = id;
-    this.renameValue = this.versions.find((v) => v.id === id).name;
+    this.renameValue = this._versions.find((v) => v.id === id).name;
   }
 
   handleRenameInput(event) {

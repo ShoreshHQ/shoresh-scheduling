@@ -716,8 +716,9 @@ This uses the made-up camp's Week 1 from sections 19 to 22.
    top of the list.
 3. Change something (place Swim somewhere). Open **Versions** and click **Restore** on _First
    try_: the week is back as it was saved. _Restored First try._ Undo is empty now. The list has
-   a new version on top, _Before Restore_ (Auto-saved): the week as it was just before, so
-   Restore on that one takes you back.
+   a new version on top, _Before Restore_, marked _Auto-saved_: the week as it was just before,
+   so Restore on that one takes you back. _First try_ is marked _on screen now_ until your next
+   change.
 4. Click **delete** on _First try_: it says _Delete?_. Click it again: it goes. Click **delete**
    once and then elsewhere: nothing is deleted.
 5. **Start from another week.** Pick a week that has no Manual Build yet (Week 2, say). Next to

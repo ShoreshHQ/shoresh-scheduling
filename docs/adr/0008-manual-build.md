@@ -519,8 +519,13 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Schedule (decision 9), and copies its days into the draft. First the draft as it was is
       kept as a version named _Before Restore_ (VersionReason **Auto-saved**, the value G2 adds
       too), the way back, as on the desktop; a day the version doesn't have leaves the draft.
-      Undo starts over (desktop). A version whose day can't be read is refused, with nothing
-      changed. A version keeps the names it was saved with (ADR 0005 §4), so nothing is
+      Undo starts over (desktop), and the restored version is marked _on screen now_ until the
+      next edit. The screen sends back each day's revision as it showed the week; if anyone saved
+      a day since, Restore is refused with nothing changed (_Someone else changed this week since
+      you opened it, so nothing was restored._ · **Reload**), so a newer week is never replaced
+      unseen. Restore waits, disabled, while an edit is saving; the week and program can't be
+      changed while it runs, and a reload already on its way can't paint the old week over the
+      restored one. A version whose day can't be read is refused, with nothing changed. A version keeps the names it was saved with (ADR 0005 §4), so nothing is
       skipped; setup changed since is part 6's.
     - **Delete** (anyone with Shoresh Scheduler access, coordinator): a second click, as the
       desktop's inline _Delete?_; its days go with it. Only a version of the draft's week; never
@@ -529,24 +534,34 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Build: a menu of the program's other weeks' Manual Build and every version of the program
       (_Week 2 · Manual Build_, _Week 1 · Before the trip (version)_). The week starts as Start
       a blank week does (fixed and recurring activities from this week's own setup), then each
-      day takes the activities of the source day with the same weekday, bunk by bunk, at the
+      day takes the activities of the source day with the same weekday (in a week longer than
+      seven days, first Monday from first Monday, second from second), bunk by bunk, at the
       same time blocks, through the same slot saves as any edit. Only into Open cells where the
       bunk is at camp, and only activities still in setup and running that week; anything else
       stays Open and is listed under the toolbar, never guessed (_Swim · Bunk 3 · Monday: not at
       camp then_; also _not at camp this week_, _not running this week_, _deleted from setup_,
       _not set up yet_, _that day has no Period 5_, _Lunch is there_). A whole source day is never
       dropped silently either: one that can't be read, or a weekday the new week doesn't have
-      (a week starting on a Tuesday), is listed (_Monday: not in this week_). The copy goes in as
-      one edit per day. If someone else started the week first, even while this one waited for
-      the program's lock, their draft is returned as it is and nothing is copied into it. While
+      (a week starting on a Tuesday), or a second Monday the new week doesn't have, is listed
+      (_Monday: not in this week_, with the date for a second one). The copy goes in as one edit
+      per day. If someone else started the week first, even while this one waited for the
+      program's lock, their draft is shown as it is, nothing is copied into it, and the screen
+      says so (_Someone else started this week; nothing was copied._). While
       a version is being saved or restored, edits on the grid wait (_One moment: the week is
       being saved or restored._), so Restore never paints over one. The desktop's Duplicate
       week is a whole-week clone with no choice of source; this is Greg's own.
-    - **Checked by** `ManualVersionsTest` (save, a name needed, Restore with Before Restore,
-      only the same week's versions, delete never the draft), `ManualWeekStartTest` (matched by
-      weekday, a bunk away that week, an activity closed that week, a version as the start, a
-      week already started, another program's schedule refused), and `versions.test.js` (the
-      list, Restore, Save version, Delete?, Start from another week and its list).
+    - **The list** has no line explaining itself; each row's buttons are named for their version
+      (_Restore Before the trip_), _Delete?_ is red and said aloud, an auto-saved version says
+      _Auto-saved_, buttons are at least 24px, and focus returns to the Versions button after
+      Restore or Escape and to the next version after a delete.
+    - **Checked by** `ManualVersionsTest` (save, a name needed, Restore with Before Restore, a
+      week changed since refused, a day the version lacks, only this program's and week's
+      versions, an unreadable day refused, a draft with no days, delete never the draft),
+      `ManualWeekStartTest` (matched by weekday, a second Monday, a placement several blocks
+      long, a bunk away that week or then, closed, deleted, already there, an unreadable day,
+      a week already started, what can and can't be the start), `versions.test.js` and
+      `shoreshVersions.test.js` (the list, Restore and its guards, Save version, Delete?, focus,
+      Start from another week and its guards).
 
 ## Choices that are hard to undo after release
 

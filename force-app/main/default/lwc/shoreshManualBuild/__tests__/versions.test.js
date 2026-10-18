@@ -10,7 +10,7 @@ import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek"
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { buildTerms } from "c/shoreshTerms";
-import { WITH_SWIM, draft } from "./data/draftFixture";
+import { WITH_SOCCER, WITH_SWIM, draft } from "./data/draftFixture";
 
 // Versions on Manual Build (Save version, Restore, rename, delete) and Start from another week.
 // Synthetic camp: draftFixture.
@@ -103,6 +103,34 @@ async function render(first) {
 }
 
 const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const cellText = (element, key) =>
+  q(element, '[data-id="edit-grid"]')
+    .shadowRoot.querySelector(`[data-cell="${key}"]`)
+    .querySelector(".cell-name").textContent;
+const withRevisions = (d, revisions) => ({
+  ...d,
+  schedule: { ...d.schedule, revisions }
+});
+const pending = () => {
+  let resolve;
+  const promise = new Promise((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+async function clearSwim(element) {
+  q(element, '[data-id="edit-grid"]')
+    .shadowRoot.querySelector('[data-cell="0-1"]')
+    .dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Delete",
+        bubbles: true,
+        composed: true
+      })
+    );
+  await flush();
+}
+const restoreButton = (panel) => panel.querySelector('[data-action="open"]');
 const versionsPanel = async (element) => {
   const versions = q(element, '[data-id="versions"]');
   versions.shadowRoot.querySelector('[data-id="versions-button"]').click();
@@ -129,26 +157,192 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     );
   });
 
-  it("Restore copies the version in, starts Undo over, and says so", async () => {
-    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+  it("Restore copies the version in, shows it, starts Undo over, and says so", async () => {
+    const element = await render(
+      withRevisions(draft(WITH_SWIM, ["1,2,", "1,,"]), "2026-06-29:1")
+    );
+    // An edit first: Undo has something to take back, and the week's revision moves on.
     saveSlots.mockResolvedValue({
       conflicts: [],
-      schedule: draft(WITH_SWIM, ["1,2,", "1,,"]).schedule
+      schedule: withRevisions(draft(WITH_SWIM, ["1,,", "1,,"]), "2026-06-29:2")
+        .schedule
     });
-    restoreVersion.mockResolvedValue(draft(WITH_SWIM, ["1,,", "1,,"]));
+    await clearSwim(element);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(false);
+    restoreVersion.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,2,"]));
     const panel = await versionsPanel(element);
-    panel.querySelector('[data-action="open"]').click();
+    restoreButton(panel).click();
     await flush();
+    // The revisions sent are the ones on screen (after the edit), so a newer week is refused.
     expect(restoreVersion).toHaveBeenCalledWith({
       scheduleId: "d1",
-      versionId: "v1"
+      versionId: "v1",
+      seenRevisions: "2026-06-29:2"
     });
+    expect(cellText(element, "0-1")).toBe("Swim");
+    expect(cellText(element, "1-1")).toBe("Swim");
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Restored Before the trip."
     );
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
-    // The list is read again ("Before Restore" is in it now).
+    // The list is read again ("Before Restore" is in it now), and the restored version is the
+    // one on screen.
     expect(getVersions).toHaveBeenCalledTimes(2);
+    const again = await versionsPanel(element);
+    expect(again.querySelector(".on-screen")).not.toBeNull();
+  });
+
+  it("a Restore refused because someone else changed the week changes nothing and offers Reload", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    restoreVersion.mockResolvedValue({ changedSince: true });
+    const panel = await versionsPanel(element);
+    restoreButton(panel).click();
+    await flush();
+    // The grid is as it was; nothing says Restored.
+    expect(cellText(element, "0-1")).toBe("Swim");
+    expect(q(element, '[data-id="notice"]')).toBeNull();
+    const refused = q(element, '[data-id="restore-refused"]');
+    expect(refused.textContent).toContain(
+      "Someone else changed this week since you opened it, so nothing was restored."
+    );
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,,", "1,,"]));
+    getDraft.mockClear();
+    q(element, '[data-id="reload"]').click();
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="restore-refused"]')).toBeNull();
+  });
+
+  it("Restore waits while an edit is still saving: its button is disabled", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const save = pending();
+    saveSlots.mockReturnValue(save.promise);
+    await clearSwim(element);
+    const panel = await versionsPanel(element);
+    expect(restoreButton(panel).disabled).toBe(true);
+    expect(panel.querySelector('[data-action="delete"]').disabled).toBe(true);
+    save.resolve({
+      conflicts: [],
+      schedule: draft(WITH_SWIM, ["1,,", "1,,"]).schedule
+    });
+    await flush();
+    expect(restoreButton(panel).disabled).toBe(false);
+  });
+
+  it("while a Restore runs the week can't be changed, and an answer for another week is dropped", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const restore = pending();
+    restoreVersion.mockReturnValue(restore.promise);
+    const panel = await versionsPanel(element);
+    restoreButton(panel).click();
+    await flush();
+    const week = q(element, '[data-id="week"]');
+    expect(week.disabled).toBe(true);
+    // Even if a change got through, Week 1's restored draft never shows under Week 2.
+    getDraft.mockResolvedValue(null);
+    getWeekSources.mockResolvedValue([]);
+    week.dispatchEvent(new CustomEvent("change", { detail: { value: "w2" } }));
+    await flush();
+    restore.resolve(draft(WITH_SWIM, ["1,,", "1,,"]));
+    await flush();
+    expect(q(element, '[data-id="edit-grid"]')).toBeNull();
+    expect(q(element, '[data-id="start-week"]')).not.toBeNull();
+    expect(week.disabled).toBe(false);
+  });
+
+  it("coming back to the window during a Restore doesn't read the week again", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const restore = pending();
+    restoreVersion.mockReturnValue(restore.promise);
+    const panel = await versionsPanel(element);
+    restoreButton(panel).click();
+    await flush();
+    getDraft.mockClear();
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getDraft).not.toHaveBeenCalled();
+    restore.resolve(draft(WITH_SOCCER, ["1,2,", "1,,"]));
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Soccer");
+  });
+
+  it("a reload already on its way when Restore starts can't paint the old week over it", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const reload = pending();
+    getDraft.mockReturnValue(reload.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    restoreVersion.mockResolvedValue(draft(WITH_SOCCER, ["1,2,", "1,,"]));
+    const panel = await versionsPanel(element);
+    restoreButton(panel).click();
+    await flush();
+    reload.resolve(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Soccer");
+  });
+
+  it("Undo and Redo wait while a Restore runs, and say so", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      schedule: draft(WITH_SWIM, ["1,,", "1,,"]).schedule
+    });
+    await clearSwim(element);
+    saveSlots.mockClear();
+    const restore = pending();
+    restoreVersion.mockReturnValue(restore.promise);
+    const panel = await versionsPanel(element);
+    restoreButton(panel).click();
+    await flush();
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    restore.resolve(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    await flush();
+  });
+
+  it("a refused Save version says why, keeps the name typed, and says nothing was saved", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    saveVersion.mockRejectedValue({ body: { message: "That name is taken." } });
+    const panel = await versionsPanel(element);
+    const input = panel.querySelector('[data-id="save-name"]');
+    input.value = "Before the trip";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    panel.querySelector('[data-id="save-button"]').click();
+    await flush();
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "That name is taken."
+    );
+    expect(q(element, '[data-id="notice"]')).toBeNull();
+    expect(panel.querySelector('[data-id="save-name"]').value).toBe(
+      "Before the trip"
+    );
+  });
+
+  it("a slow list of versions for the week before is not shown for this one", async () => {
+    const slow = pending();
+    getVersions.mockReturnValueOnce(slow.promise);
+    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = createElement("c-shoresh-manual-build", {
+      is: ShoreshManualBuild
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = SETUP;
+    document.body.appendChild(element);
+    await flush();
+    getVersions.mockResolvedValue([]);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    slow.resolve(VERSIONS);
+    await flush();
+    const panel = await versionsPanel(element);
+    expect(panel.querySelector('[data-action="open"]')).toBeNull();
   });
 
   it("Save version keeps the week under the name typed", async () => {
@@ -216,6 +410,72 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     expect(q(element, '[data-id="left-out"]').textContent).toContain(
       "Swim · Bunk 2 · Monday: not at camp then"
     );
+  });
+
+  it("says so when someone else had started the week (nothing copied)", async () => {
+    getWeekSources.mockResolvedValue([
+      { id: "d9", weekName: "Week 2", name: "Manual Build", isVersion: false }
+    ]);
+    const element = await render(null);
+    startFromWeek.mockResolvedValue({
+      ...draft(WITH_SWIM, ["1,2,", "1,,"]),
+      startedBySomeoneElse: true
+    });
+    q(element, '[data-id="start-from"]').dispatchEvent(
+      new CustomEvent("select", { detail: { value: "d9" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Someone else started this week; nothing was copied."
+    );
+    expect(q(element, '[data-id="announce"]').textContent).not.toContain(
+      "from Week 2"
+    );
+  });
+
+  it("Start from another week: buttons wait while it runs; a start for a week no longer chosen is dropped", async () => {
+    getWeekSources.mockResolvedValue([
+      { id: "d9", weekName: "Week 2", name: "Manual Build", isVersion: false }
+    ]);
+    const element = await render(null);
+    const start = pending();
+    startFromWeek.mockReturnValue(start.promise);
+    q(element, '[data-id="start-from"]').dispatchEvent(
+      new CustomEvent("select", { detail: { value: "d9" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="start-from"]').disabled).toBe(true);
+    expect(q(element, '[data-id="start-week"]').disabled).toBe(true);
+    const week = q(element, '[data-id="week"]');
+    expect(week.disabled).toBe(true);
+    getDraft.mockResolvedValue(null);
+    week.dispatchEvent(new CustomEvent("change", { detail: { value: "w2" } }));
+    await flush();
+    getVersions.mockClear();
+    start.resolve(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    await flush();
+    expect(q(element, '[data-id="edit-grid"]')).toBeNull();
+    expect(getVersions).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="announce"]').textContent).not.toContain(
+      "Started"
+    );
+  });
+
+  it("after Start from another week, it says so and reads the week's versions", async () => {
+    getWeekSources.mockResolvedValue([
+      { id: "d9", weekName: "Week 2", name: "Manual Build", isVersion: false }
+    ]);
+    const element = await render(null);
+    startFromWeek.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    getVersions.mockClear();
+    q(element, '[data-id="start-from"]').dispatchEvent(
+      new CustomEvent("select", { detail: { value: "d9" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Started Week 1 from Week 2."
+    );
+    expect(getVersions).toHaveBeenCalledWith({ programId: "p1", weekId: "w1" });
   });
 
   it("while a version is being restored, edits wait and say so", async () => {

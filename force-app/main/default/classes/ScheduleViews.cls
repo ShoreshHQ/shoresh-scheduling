@@ -25,6 +25,9 @@ public with sharing class ScheduleViews {
     public String status;
     @AuraEnabled
     public List<DayView> days = new List<DayView>();
+    // Each day's revision as read (ScheduleDays.stamp): sent back by Restore.
+    @AuraEnabled
+    public String revisions;
   }
 
   public class DayView {
@@ -94,6 +97,7 @@ public with sharing class ScheduleViews {
     view.schedule = row(found[0]);
     view.status = found[0].Status__c;
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
+    view.revisions = ScheduleDays.stamp(days);
     Set<String> stillThere = ScheduleRefs.stillThere(days);
     for (ScheduleDays.DayGrid day : days) {
       view.days.add(dayView(day, stillThere));

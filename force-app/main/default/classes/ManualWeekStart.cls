@@ -21,6 +21,8 @@ public with sharing class ManualWeekStart {
     public List<String> notPlaced = new List<String>();
     // What the other week had that couldn't go ("Swim · Bunk 3 · Monday: not at camp then").
     public List<String> leftOut = new List<String>();
+    // False when someone else had started the week first: nothing was copied into theirs.
+    public Boolean copied = true;
   }
 
   /**
@@ -35,6 +37,7 @@ public with sharing class ManualWeekStart {
     if (!blank.created) {
       // Someone else started the week (before, or while this waited for the lock): theirs stays
       // as it is, nothing copied into it.
+      result.copied = false;
       return result;
     }
     result.notPlaced = blank.notPlaced;

@@ -24,17 +24,27 @@ public with sharing class ManualVersions {
     return versionId;
   }
 
+  /** Restore refused: someone saved a day of the week since the screen read it. */
+  public class ChangedSinceException extends Exception {
+  }
+
   /**
    * Restore: the version's days become the draft's, after the draft as it was is kept as an
-   * automatic version. Returns that version's Id (null when the draft had no days to keep).
+   * automatic version. seenRevisions: the week's revisions as the screen showed them
+   * (ScheduleView.revisions); if anyone has saved a day since, nothing is changed
+   * (ChangedSinceException), so a newer week is never replaced unseen. Returns the kept
+   * version's Id (null when the draft had no days to keep).
    */
-  public static Id restore(Id draftId, Id versionId) {
+  public static Id restore(Id draftId, Id versionId, String seenRevisions) {
     Schedule__c draft = ManualDrafts.locked(draftId);
     Schedule__c version = versionOf(versionId, draft);
+    List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
+    if (ScheduleDays.stamp(current) != seenRevisions) {
+      throw new ChangedSinceException();
+    }
     List<ScheduleDays.DayGrid> restored = readable(
       ScheduleDays.read(version.Id)
     );
-    List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
     Savepoint beforeRestore = Database.setSavepoint();
     try {
       Id kept = null;

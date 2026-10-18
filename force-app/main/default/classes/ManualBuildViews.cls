@@ -33,6 +33,14 @@ public with sharing class ManualBuildViews {
     // ("Swim · Bunk 3 · Monday: not at camp then").
     @AuraEnabled
     public List<String> leftOut = new List<String>();
+    // Only just after Start from another week: someone else had started the week first, so
+    // theirs is shown and nothing was copied.
+    @AuraEnabled
+    public Boolean startedBySomeoneElse = false;
+    // Only from a refused Restore: someone saved a day since the screen read the week, so
+    // nothing changed (the rest of this view is empty).
+    @AuraEnabled
+    public Boolean changedSince = false;
   }
 
   public class ActivityOption {

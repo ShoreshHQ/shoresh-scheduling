@@ -70,15 +70,24 @@ public with sharing class ManualBuildController {
     }
   }
 
-  /** Restore: the version's days become the draft's (the draft kept first as "Before Restore"). */
+  /**
+   * Restore: the version's days become the draft's (the draft kept first as "Before Restore").
+   * Refused (changedSince) when someone saved a day since the screen read the week.
+   */
   @AuraEnabled
   public static ManualBuildViews.DraftView restoreVersion(
     Id scheduleId,
-    Id versionId
+    Id versionId,
+    String seenRevisions
   ) {
     try {
-      ManualVersions.restore(scheduleId, versionId);
+      ManualVersions.restore(scheduleId, versionId, seenRevisions);
       return ManualBuildViews.open(scheduleId);
+    } catch (ManualVersions.ChangedSinceException e) {
+      // Nothing changed: the screen says someone else changed the week, and offers Reload.
+      ManualBuildViews.DraftView refused = new ManualBuildViews.DraftView();
+      refused.changedSince = true;
+      return refused;
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
@@ -126,6 +135,7 @@ public with sharing class ManualBuildController {
       ManualBuildViews.DraftView view = ManualBuildViews.open(started.draftId);
       view.notPlaced = started.notPlaced;
       view.leftOut = started.leftOut;
+      view.startedBySomeoneElse = !started.copied;
       return view;
     } catch (Exception e) {
       throw ScreenErrors.of(e);

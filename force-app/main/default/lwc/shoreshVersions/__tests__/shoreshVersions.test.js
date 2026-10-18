@@ -62,10 +62,13 @@ describe("c-shoresh-versions", () => {
     expect(rows[0].textContent).toContain("Manual Build");
     expect(rows[1].textContent).toContain("on screen now");
     expect(rows[0].textContent).not.toContain("on screen now");
-    // Read-only in 4a: no restore, save, or delete.
-    expect(element.shadowRoot.textContent).not.toMatch(
-      /Restore|Delete|Save version/
-    );
+    // The Schedules page only looks: Open, never Restore, delete or Save version.
+    expect(element.shadowRoot.textContent).not.toMatch(/Restore|delete/i);
+    expect(q(element, '[data-action="delete"]')).toBeNull();
+    expect(q(element, '[data-id="save-version"]')).toBeNull();
+    expect(q(element, '[data-action="open"]').textContent.trim()).toBe("Open");
+    // No line telling the director what to do.
+    expect(q(element, ".panel-head").textContent.trim()).toBe("Versions");
   });
 
   it("says when there are none", async () => {
@@ -143,5 +146,141 @@ describe("c-shoresh-versions", () => {
     document.body.click();
     await flush();
     expect(q(element, '[data-id="versions-panel"]')).toBeNull();
+  });
+
+  describe("on Manual Build (restore)", () => {
+    const WITH_AUTO = [
+      {
+        id: "s3",
+        name: "Before Restore",
+        origin: "Manual",
+        reason: "AutoSaved",
+        savedAt: "2026-10-16T16:00:00.000Z"
+      },
+      ...VERSIONS
+    ];
+
+    async function renderRestore(versions = WITH_AUTO) {
+      const element = createElement("c-shoresh-versions", {
+        is: ShoreshVersions
+      });
+      element.terms = buildTerms([]);
+      element.versions = versions;
+      element.restore = true;
+      document.body.appendChild(element);
+      await flush();
+      await openList(element);
+      return element;
+    }
+
+    it("each row's buttons name their version; an auto-saved one says so", async () => {
+      const element = await renderRestore();
+      const first = qa(element, ".version")[0];
+      expect(
+        first.querySelector('[data-action="open"]').getAttribute("aria-label")
+      ).toBe("Restore Before Restore");
+      expect(
+        first.querySelector('[data-action="delete"]').getAttribute("aria-label")
+      ).toBe("Delete Before Restore");
+      expect(
+        first.querySelector('[data-action="rename"]').getAttribute("aria-label")
+      ).toBe("Rename Before Restore");
+      expect(first.textContent).toContain("Auto-saved");
+      expect(qa(element, ".version")[1].textContent).not.toContain(
+        "Auto-saved"
+      );
+    });
+
+    it("Delete? looks different, is said aloud, and blur takes it back", async () => {
+      const element = await renderRestore();
+      const handler = jest.fn();
+      element.addEventListener("delete", handler);
+      const del = q(element, '[data-action="delete"]');
+      expect(del.className).toContain("link_quiet");
+      del.click();
+      await flush();
+      expect(del.textContent.trim()).toBe("Delete?");
+      expect(del.className).toContain("link_danger");
+      expect(del.getAttribute("aria-label")).toBe(
+        "Delete Before Restore? Press again to delete."
+      );
+      expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+        "Delete Before Restore? Press again to delete."
+      );
+      del.dispatchEvent(new CustomEvent("blur"));
+      await flush();
+      expect(del.textContent.trim()).toBe("delete");
+      del.click();
+      await flush();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("after a delete, focus goes to the next version", async () => {
+      const element = await renderRestore();
+      const del = q(element, '[data-action="delete"]');
+      del.click();
+      del.click();
+      element.busy = true;
+      await flush();
+      element.versions = VERSIONS;
+      element.busy = false;
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-action="open"]')
+      );
+      expect(element.shadowRoot.activeElement.getAttribute("aria-label")).toBe(
+        "Restore Before my changes"
+      );
+    });
+
+    it("after Restore or Escape, focus goes back to the Versions button", async () => {
+      const element = await renderRestore();
+      const button = q(element, '[data-id="versions-button"]');
+      // lightning-button forwards focus to its inner button (the Jest stub has none).
+      button.focus = jest.fn();
+      q(element, '[data-action="open"]').click();
+      await flush();
+      expect(button.focus).toHaveBeenCalledTimes(1);
+      await openList(element);
+      q(element, ".versions").dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape" })
+      );
+      await flush();
+      expect(q(element, '[data-id="versions-panel"]')).toBeNull();
+      expect(button.focus).toHaveBeenCalledTimes(2);
+    });
+
+    it("while busy, Restore and delete are disabled", async () => {
+      const element = await renderRestore();
+      element.busy = true;
+      await flush();
+      expect(q(element, '[data-action="open"]').disabled).toBe(true);
+      expect(q(element, '[data-action="delete"]').disabled).toBe(true);
+      expect(q(element, '[data-id="save-button"]').disabled).toBe(true);
+    });
+
+    it("Save version: not with a blank name; Enter saves; the name clears only once saved", async () => {
+      const element = await renderRestore();
+      const saves = [];
+      element.addEventListener("save", (event) => saves.push(event.detail));
+      const input = q(element, '[data-id="save-name"]');
+      input.value = "   ";
+      input.dispatchEvent(new CustomEvent("input"));
+      await flush();
+      expect(q(element, '[data-id="save-button"]').disabled).toBe(true);
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      expect(saves).toHaveLength(0);
+      input.value = "Lunch swap";
+      input.dispatchEvent(new CustomEvent("input"));
+      await flush();
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      expect(saves.map((d) => d.name)).toEqual(["Lunch swap"]);
+      saves[0].onDone(false);
+      await flush();
+      expect(q(element, '[data-id="save-name"]').value).toBe("Lunch swap");
+      saves[0].onDone(true);
+      await flush();
+      expect(q(element, '[data-id="save-name"]').value).toBe("");
+    });
   });
 });

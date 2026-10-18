@@ -1,6 +1,7 @@
 /**
  * The copying half of "Start from another week" (ManualWeekStart): each source day onto the new
- * week's day with the same weekday, group by group (matched by Id), placement by placement at the
+ * week's day with the same weekday (a week longer than seven days: first Monday onto first Monday,
+ * second onto second), group by group (matched by Id), placement by placement at the
  * same time blocks (matched by Id). A placement goes only whole, into Open cells where its group
  * is at camp; otherwise it is listed with why ("Swim · Bunk 3 · Monday: not at camp then").
  */
@@ -10,6 +11,9 @@ public with sharing class ManualWeekCopy {
   public List<String> leftOut = new List<String>();
   // One edit per day of the new week: its runs go in together (one read of the day each).
   private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
+  // How each day is named in what is left out: "Monday", or with its date for a week's second
+  // Monday (both weeks' days).
+  private Map<Date, String> dayNames = new Map<Date, String>();
 
   /** One group's row on the new week's day, kept up to date as copies go in. */
   private class Target {
@@ -28,10 +32,10 @@ public with sharing class ManualWeekCopy {
     List<ScheduleDays.DayGrid> targetDays
   ) {
     Map<String, ScheduleDays.DayGrid> byWeekday = readableByWeekday(sourceDays);
-    for (ScheduleDays.DayGrid target : targetDays) {
-      ScheduleDays.DayGrid source = byWeekday.remove(
-        BlankWeek.weekdayOf(target.day)
-      );
+    Map<String, ScheduleDays.DayGrid> targets = byPlace(targetDays);
+    for (String place : targets.keySet()) {
+      ScheduleDays.DayGrid target = targets.get(place);
+      ScheduleDays.DayGrid source = byWeekday.remove(place);
       if (source != null && target.grid != null) {
         for (Integer sg = 0; sg < source.grid.groups.size(); sg++) {
           copyGroup(source.grid, sg, target);
@@ -41,27 +45,50 @@ public with sharing class ManualWeekCopy {
     listUnmatched(byWeekday);
   }
 
-  /** The source's days by weekday; one that can't be read is listed, never skipped silently. */
+  /** The source's days by place in the week; one that can't be read is listed, never skipped. */
   private Map<String, ScheduleDays.DayGrid> readableByWeekday(
     List<ScheduleDays.DayGrid> sourceDays
   ) {
-    Map<String, ScheduleDays.DayGrid> byWeekday = new Map<String, ScheduleDays.DayGrid>();
-    for (ScheduleDays.DayGrid day : sourceDays) {
-      String weekday = BlankWeek.weekdayOf(day.day);
+    Map<String, ScheduleDays.DayGrid> byWeekday = byPlace(sourceDays);
+    for (String place : new List<String>(byWeekday.keySet())) {
+      ScheduleDays.DayGrid day = byWeekday.get(place);
       if (day.grid == null) {
-        leftOut.add(weekday + ': could not be read (' + day.problem + ')');
-      } else if (!byWeekday.containsKey(weekday)) {
-        byWeekday.put(weekday, day);
+        leftOut.add(
+          dayNames.get(day.day) + ': could not be read (' + day.problem + ')'
+        );
+        byWeekday.remove(place);
       }
     }
     return byWeekday;
   }
 
-  /** A weekday the new week doesn't have: its activities are listed, not dropped. */
+  /**
+   * Days (in date order) by weekday and which of that weekday they are: "Monday", then "Monday 2"
+   * for a second Monday. Names each day as it goes.
+   */
+  private Map<String, ScheduleDays.DayGrid> byPlace(
+    List<ScheduleDays.DayGrid> days
+  ) {
+    Map<String, ScheduleDays.DayGrid> result = new Map<String, ScheduleDays.DayGrid>();
+    Map<String, Integer> seen = new Map<String, Integer>();
+    for (ScheduleDays.DayGrid day : days) {
+      String weekday = BlankWeek.weekdayOf(day.day);
+      Integer n = seen.containsKey(weekday) ? seen.get(weekday) + 1 : 1;
+      seen.put(weekday, n);
+      result.put(n == 1 ? weekday : weekday + ' ' + n, day);
+      dayNames.put(
+        day.day,
+        n == 1 ? weekday : weekday + ' ' + day.day.format()
+      );
+    }
+    return result;
+  }
+
+  /** A source day the new week has no match for: its activities are listed, not dropped. */
   private void listUnmatched(Map<String, ScheduleDays.DayGrid> byWeekday) {
-    for (String weekday : byWeekday.keySet()) {
-      if (ManualWeekPlacements.hasActivities(byWeekday.get(weekday).grid)) {
-        leftOut.add(weekday + ': not in this week');
+    for (ScheduleDays.DayGrid day : byWeekday.values()) {
+      if (ManualWeekPlacements.hasActivities(day.grid)) {
+        leftOut.add(dayNames.get(day.day) + ': not in this week');
       }
     }
   }
@@ -88,7 +115,7 @@ public with sharing class ManualWeekCopy {
             ' · ' +
             source.groups[sg].name +
             ' · ' +
-            BlankWeek.weekdayOf(day.day) +
+            dayNames.get(day.day) +
             ': ' +
             why
         );

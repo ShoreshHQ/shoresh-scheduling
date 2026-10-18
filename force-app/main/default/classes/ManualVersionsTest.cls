@@ -47,6 +47,29 @@ private class ManualVersionsTest {
     Assert.isTrue(result.conflicts.isEmpty());
   }
 
+  /** The draft's revisions as a screen opened now would send them back with Restore. */
+  private static String seen(Id draftId) {
+    return ScheduleViews.open(draftId).revisions;
+  }
+
+  /** Restore as the screen does it, having just read the week. */
+  private static ManualBuildViews.DraftView restore(Id draftId, Id versionId) {
+    return ManualBuildController.restoreVersion(
+      draftId,
+      versionId,
+      seen(draftId)
+    );
+  }
+
+  private static Integer beforeRestoreCount() {
+    return [
+      SELECT COUNT()
+      FROM Schedule__c
+      WHERE Name = 'Before Restore'
+      WITH SYSTEM_MODE
+    ];
+  }
+
   /** What Group A's Monday Period 2 holds in a schedule ('' Open, else the item's name). */
   private static String mondayPeriod2(Id scheduleId) {
     ScheduleViews.DayView day = ScheduleViews.open(scheduleId).days[0];
@@ -131,16 +154,19 @@ private class ManualVersionsTest {
       place(draftId, 'Swim');
       Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
       placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      String seenRevisions = seen(draftId);
       Integer queriesBefore = Limits.getQueries();
       ManualBuildViews.DraftView view = ManualBuildController.restoreVersion(
         draftId,
-        versionId
+        versionId,
+        seenRevisions
       );
       // A fixed number of queries, whatever the size of the week: well under 100.
       Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
       Assert.isTrue(queries <= 50, 'Restore used ' + queries + ' queries');
       Assert.areEqual(draftId, view.schedule.schedule.id);
+      Assert.isFalse(view.changedSince);
       Assert.areEqual('Swim', mondayPeriod2(draftId));
       Schedule__c kept = [
         SELECT Id, Name, VersionReason__c, Origin__c
@@ -175,12 +201,12 @@ private class ManualVersionsTest {
       String otherWeek;
       String notAVersion;
       try {
-        ManualBuildController.restoreVersion(draftId, otherVersion);
+        restore(draftId, otherVersion);
       } catch (AuraHandledException e) {
         otherWeek = e.getMessage();
       }
       try {
-        ManualBuildController.restoreVersion(draftId, otherDraft);
+        restore(draftId, otherDraft);
       } catch (AuraHandledException e) {
         notAVersion = e.getMessage();
       }
@@ -239,6 +265,147 @@ private class ManualVersionsTest {
         1,
         [SELECT COUNT() FROM Schedule__c WHERE Id = :draftId WITH SYSTEM_MODE]
       );
+    }
+  }
+
+  @IsTest
+  static void restoreRefusesAWeekSomeoneChangedSinceItWasRead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      Id draftId = startWeek(ids, 'Week 1');
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Empty');
+      // The director's screen reads the week; then someone else places Swim.
+      String seenRevisions = seen(draftId);
+      place(draftId, 'Swim');
+      ManualBuildViews.DraftView view = ManualBuildController.restoreVersion(
+        draftId,
+        versionId,
+        seenRevisions
+      );
+      Test.stopTest();
+      Assert.isTrue(view.changedSince);
+      Assert.isNull(view.schedule);
+      // Their Swim stands; nothing was kept or restored.
+      Assert.areEqual('Swim', mondayPeriod2(draftId));
+      Assert.areEqual(0, beforeRestoreCount());
+    }
+  }
+
+  @IsTest
+  static void aDayTheVersionLacksGoesFromTheDraft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      Id draftId = startWeek(ids, 'Week 1');
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Short');
+      Database.delete(
+        [
+          SELECT Id
+          FROM ScheduleDay__c
+          WHERE Schedule__c = :versionId AND Date__c = :MONDAY + 3
+          WITH SYSTEM_MODE
+        ],
+        AccessLevel.SYSTEM_MODE
+      );
+      restore(draftId, versionId);
+      Test.stopTest();
+      List<ScheduleDays.DayGrid> days = ScheduleDays.read(draftId);
+      Assert.areEqual(3, days.size());
+      Assert.areEqual(MONDAY + 2, days[2].day);
+      // The draft as it was (four days) is kept.
+      Id kept = [
+        SELECT Id
+        FROM Schedule__c
+        WHERE Name = 'Before Restore'
+        WITH SYSTEM_MODE
+      ]
+      .Id;
+      Assert.areEqual(4, ScheduleDays.read(kept).size());
+    }
+  }
+
+  @IsTest
+  static void restoreTakesOnlyThisProgramsVersion() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Program__c other = ShoreshTestData.program(ids.get('Season'), 'Other');
+      Schedule__c otherVersion = ShoreshTestData.version(
+        other.Id,
+        ids.get('Week 1'),
+        'Other plan'
+      );
+      Test.startTest();
+      Id draftId = startWeek(ids, 'Week 1');
+      String message;
+      try {
+        restore(draftId, otherVersion.Id);
+      } catch (AuraHandledException e) {
+        message = e.getMessage();
+      }
+      Test.stopTest();
+      Assert.isTrue(
+        message.endsWith('was not found. It may have been deleted.'),
+        message
+      );
+      Assert.areEqual(0, beforeRestoreCount());
+    }
+  }
+
+  @IsTest
+  static void aVersionWithADayThatCantBeReadIsRefusedAndNothingChanges() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      Id draftId = startWeek(ids, 'Week 1');
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Broken');
+      place(draftId, 'Swim');
+      Database.update(
+        new ScheduleDay__c(
+          Id = [
+            SELECT Id
+            FROM ScheduleDay__c
+            WHERE Schedule__c = :versionId AND Date__c = :MONDAY
+            WITH SYSTEM_MODE
+          ]
+          .Id,
+          GridFormatVersion__c = 999
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      String message;
+      try {
+        restore(draftId, versionId);
+      } catch (AuraHandledException e) {
+        message = e.getMessage();
+      }
+      Test.stopTest();
+      Assert.isTrue(message.startsWith('A day could not be read ('), message);
+      Assert.areEqual('Swim', mondayPeriod2(draftId));
+      Assert.areEqual(0, beforeRestoreCount());
+    }
+  }
+
+  @IsTest
+  static void aDraftWithNoDaysIsRestoredWithoutKeepingAnything() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Test.startTest();
+      Id draftId = startWeek(ids, 'Week 1');
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Full');
+      Database.delete(
+        [
+          SELECT Id
+          FROM ScheduleDay__c
+          WHERE Schedule__c = :draftId
+          WITH SYSTEM_MODE
+        ],
+        AccessLevel.SYSTEM_MODE
+      );
+      restore(draftId, versionId);
+      Test.stopTest();
+      Assert.areEqual(4, ScheduleDays.read(draftId).size());
+      Assert.areEqual(0, beforeRestoreCount());
     }
   }
 }
