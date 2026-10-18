@@ -124,10 +124,12 @@ describe("c-shoresh-menu", () => {
       element.shadowRoot.querySelector(`a[data-screen="${screen}"]`);
     const mark = (screen) => item(screen).querySelector("[data-mark]");
     expect(mark("groups").textContent).toBe("!");
+    expect(mark("groups").querySelector("svg")).toBeNull();
     expect(mark("groups").getAttribute("aria-hidden")).toBe("true");
     expect(mark("groups").title).toBe("Needed");
     expect(mark("groups").className).toContain("menu-mark_needed");
-    expect(mark("weeks").textContent).toBe("✓");
+    // Done is a check drawn as an icon (contrast for a mark, not text).
+    expect(mark("weeks").querySelector("svg")).not.toBeNull();
     expect(mark("weeks").title).toBe("Done");
     // Screen readers hear the entry's name, then its mark in words.
     expect(item("groups").textContent).toBe("Bunks!Needed");

@@ -38,11 +38,18 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
 5. **Needs attention items know which screen fixes them.** `setupProblems` returns
    `{ screen, name, why }`; Roots lists all of them and each opens its screen, and each screen
    shows its own at the top. Two checks come from the desktop's Roots: a season with no
-   activities, and a group no activity is open to. None blocks anything.
+   activities, and a group no activity is open to. None blocks anything. (Since the
+   desktop-parity cleanup, 2026-10-17, coordinator's call: building a week waits for the
+   desktop's required areas, readiness.js. Manual Build's Start lists everything missing in one
+   sentence with links, `shoreshSetupRules.stillNeeded`, and each setup menu item shows the
+   desktop's **!** (Needed) or **✓** (Done), `menuMarks`. Needs attention items still block
+   nothing.)
 6. **"Runs in" week ticks live in each table** (Groups, Activities; Locations say **"Open in"**,
    which reads better for a place). Every week is ticked unless a week exception names the row
    in that week; new rows start with every week ticked. Storage is unchanged (`WeekException__c`).
-   The Week exceptions grid is gone.
+   The Week exceptions grid is gone. Unticking a bunk, activity, or location for a week it is
+   already placed in (a Manual Build or Generated Schedule draft) asks first, in the desktop's
+   words (ExclusionConfirmDialog.jsx; `RunsInController`; desktop-parity cleanup, 2026-10-17).
 7. **A table's rows and its week ticks save together, all or none**
    (`SeasonSetupController.saveRowsAndWeeks`, `RunsIn`, `ScreenSaves`). A new row's unticked
    weeks are sent with the row's place in the save, so a new bunk can be saved with a week

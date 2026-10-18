@@ -931,6 +931,31 @@ describe("c-shoresh-camp-setup", () => {
     });
   });
 
+  it("a save that worked but whose refresh failed never says it wasn't saved", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValueOnce(nsRecord(setupWith()));
+    saveRowsAndWeeks.mockResolvedValue(nsRecord([]));
+    const element = await render();
+    getSeasonSetup.mockRejectedValue({ body: { message: "Offline." } });
+    const onFailure = jest.fn();
+    q(element, 'c-shoresh-editable-table[data-id="locations"]').dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord({
+          records: [{ sobjectType: "Location__c", Name: "Pool" }],
+          weeksOff: [],
+          weeksBackOn: [],
+          onFailure
+        })
+      })
+    );
+    await flush();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      "Done, but the screen couldn't show it yet. Reload the page. Offline."
+    );
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
   it("tells a table with weeks when its save failed", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));

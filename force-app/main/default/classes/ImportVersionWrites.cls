@@ -41,9 +41,13 @@ public with sharing class ImportVersionWrites {
   /** A season week by Id, or one this import filled in from the season's dates, by its key. */
   private Id weekOf(ImportPlan.Entry entry) {
     String key = entry.text('weekKey');
-    return String.isBlank(key)
-      ? writer.keys.existing((Id) entry.text('weekId'))
-      : writer.keys.of(key);
+    if (String.isBlank(key)) {
+      return writer.keys.existing((Id) entry.text('weekId'));
+    }
+    if (!key.startsWith('Week:')) {
+      throw ImportListSaves.unreadable();
+    }
+    return writer.keys.of(key);
   }
 
   private List<ScheduleDaySaves.DaySave> days(ImportPlan.Entry entry) {

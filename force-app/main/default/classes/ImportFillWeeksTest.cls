@@ -56,6 +56,7 @@ private class ImportFillWeeksTest {
         ORDER BY StartDate__c
       ];
       Assert.areEqual(6, weeks.size());
+      Assert.areEqual(6, result.added.get('Week'), 'the summary counts them');
       Assert.areEqual('Week 1', weeks[0].Name);
       Assert.areEqual(FIRST_MONDAY.addDays(4), weeks[0].EndDate__c);
       Assert.areEqual(1, result.added.get('Version'));

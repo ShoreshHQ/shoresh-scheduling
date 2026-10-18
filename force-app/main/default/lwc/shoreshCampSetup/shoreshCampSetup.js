@@ -536,6 +536,7 @@ export default class ShoreshCampSetup extends LightningElement {
       const [campId] = await saveRecords({
         records: [{ sobjectType: OBJECT.Camp, Name: this.newCamp.Name }]
       });
+      this.changedOnServer = true;
       await this.loadCamps(campId);
     }, "Camp not created. Nothing was saved.");
   }
@@ -613,6 +614,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       await deleteRecord({ recordId: this.seasonId });
+      this.changedOnServer = true;
       this.toast(`Deleted "${this.setup.season.Name}".`);
       this.seasonId = null;
       this.screen = "roots";
@@ -649,6 +651,7 @@ export default class ShoreshCampSetup extends LightningElement {
             }
           ]
         });
+        this.changedOnServer = true;
         this.screen = "roots";
         await this.loadCamp(seasonId);
       },
@@ -698,6 +701,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       const result = await undoImport({ importId });
+      this.changedOnServer = true;
       this.toast(undoMessage(result));
       await this.loadSeason();
     }, "That import could not be undone. Nothing was changed.");
@@ -717,6 +721,7 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(
       async () => {
         await addWeeksFromSeasonDates({ seasonId: this.seasonId });
+        this.changedOnServer = true;
         await this.loadSeason();
       },
       `${this.terms.p("Week")} not added. Nothing was saved.`
@@ -746,6 +751,7 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(
       async () => {
         await saveActivityDetails({ rules, whoCanDoIt });
+        this.changedOnServer = true;
         saved = true;
         this.toast("Saved.");
         await this.loadSeason();
@@ -819,7 +825,7 @@ export default class ShoreshCampSetup extends LightningElement {
       const [only] = placed;
       const week = names.get(only.week) || `this ${this.terms.sIn("Week")}`;
       return {
-        heading: `Turn off "${names.get(only.target)}" for ${week}?`,
+        heading: `Turn off "${names.get(only.target) || "this one"}" for ${week}?`,
         lines: [`Placed in ${slots(only.slots)} in ${week}.`, stay],
         confirmLabel: "Turn off anyway"
       };
@@ -829,7 +835,7 @@ export default class ShoreshCampSetup extends LightningElement {
       lines: [
         ...placed.map(
           (p) =>
-            `"${names.get(p.target)}": placed in ${slots(p.slots)} in ${names.get(p.week)}.`
+            `"${names.get(p.target) || "One of them"}": placed in ${slots(p.slots)} in ${names.get(p.week)}.`
         ),
         stay
       ],
@@ -907,6 +913,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       await deleteRecord({ recordId });
+      this.changedOnServer = true;
       this.toast(`Deleted "${name}".`);
       await this.loadSeason();
     }, `"${name}" not deleted. Nothing was removed.`);
@@ -919,6 +926,7 @@ export default class ShoreshCampSetup extends LightningElement {
     let saved = false;
     await this.run(async () => {
       await save();
+      this.changedOnServer = true;
       saved = true;
       this.toast("Saved.");
       await this.loadSeason();
@@ -933,10 +941,13 @@ export default class ShoreshCampSetup extends LightningElement {
   async run(work, what) {
     this.busy = true;
     this.error = null;
+    // Set by work once its change is saved, so a failure after it (the reload) never says
+    // the change wasn't made.
+    this.changedOnServer = false;
     try {
       await work();
     } catch (e) {
-      this.showError(e, what);
+      this.showError(e, this.changedOnServer ? this.refreshFailed : what);
     } finally {
       this.busy = false;
     }
@@ -947,6 +958,11 @@ export default class ShoreshCampSetup extends LightningElement {
       (ok, input) => input.reportValidity() && ok,
       true
     );
+  }
+
+  /** The change was saved, but showing the season again failed. */
+  get refreshFailed() {
+    return "Done, but the screen couldn't show it yet. Reload the page.";
   }
 
   /** Loading a camp or season. */

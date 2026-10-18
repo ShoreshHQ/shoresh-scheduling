@@ -52,6 +52,11 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
      activities yet;
    - **Import last year** at the bottom (section 14).
+   - In the menu, a small **!** beside Weeks, Programs, Units, Bunks, Time blocks, and
+     Activities: each is still empty, and building a schedule needs it. As each gets its
+     first rows it turns to a green **✓** (Locations, Fixed and Recurring activities get the
+     ✓ too once they have rows, but never the !). A screen reader reads them as _Needed_ and
+     _Done_.
 4. Click the **Summer 2026 / No weeks yet** item. Shoresh opens the **Weeks** screen, where
    it is fixed. Every card and every attention item works this way.
 
@@ -59,11 +64,14 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 1. On **Weeks**, the season's own name, dates, and status are at the top (**Save season**,
    **Delete season**). Below, click **Fill in weeks from the season dates**. Six weeks
-   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday.
+   appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday. The **!** beside Weeks in the menu
+   is now a **✓**.
 2. Try editing: change Week 6's end date, then **Save changes**. Or **Add Week** for an extra
    one, fill in its dates, **Save changes**.
 3. Try a mistake: give a week a start date another week already has and save. Shoresh
-   refuses and says which week already starts that day.
+   refuses: _Weeks not saved. Your changes are still here._ and then which week already
+   starts that day. Every refusal reads this way: what didn't happen, whether anything was
+   lost, then why.
 4. Unsaved typing stays put: change a week's name, click **Roots** in the menu, then
    **Weeks** again. Your typing is still there, waiting for **Save changes** (or
    **Cancel changes**).
@@ -73,9 +81,14 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 1. **Programs**: click **Add Program**. A program called _Main_ appears. Untick **Friday**
    (it runs Monday to Thursday) and click **Save**.
 2. **Time blocks**: the table is called _Time blocks in Main_. Click **Add Time block**, type
-   _Period 1_, start 9:00 AM, end 9:45 AM, part of day Morning, then **Save changes**. Add
-   _Period 2_ 10:00 AM – 10:45 AM, Morning, and _Lunch_ 12:00 PM – 12:45 PM, Afternoon,
-   **Save changes**.
+   _Period 1_, start 9:00 AM, end 9:45 AM, and leave **Part of day** as **From start time**,
+   then **Save changes**. It saves as Morning. Add _Period 2_ 10:00 AM – 10:45 AM and _Lunch_
+   12:00 PM – 12:45 PM the same way, **Save changes**: Lunch comes up as Afternoon, because it
+   starts at noon. (Choosing Morning or Afternoon yourself always wins.)
+   Try leaving a name blank: add a block 1:00 PM – 1:45 PM with no name and save. It is saved
+   and shown as _1:00 PM – 1:45 PM_, Afternoon. Change its end to 1:50 PM and save: the name
+   follows (_1:00 PM – 1:50 PM_). A name you typed never changes. Delete that block (trash
+   can) before going on.
 3. **Units**: click **Add Unit**, type _Juniors_, **Save changes**.
 4. **Bunks**: a table **Bunks in Juniors** is there. Click **Add Bunk** twice. Name them
    _Bunk 1_ and _Bunk 2_; set Bunk 2's **Availability** to _Morning only_. To the right,
@@ -109,6 +122,12 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 3. A yellow **Needs attention** box at the top of the screen says
    _Soccer: Outdoors and has no rain plan._ (Roots lists it too.) Set Soccer's **Rain plan**
    to _Gym games_ and save; it goes away. (Soccer's own name is not offered as its rain plan.)
+   The **Rain plan** list offers only indoor activities: Soccer, being outdoors, is never
+   offered as anyone's rain plan. Try a mistake: in one save, tick **Outdoors** on Gym games
+   and set Swim's rain plan to Gym games. Shoresh refuses: _"Swim": The rain plan has to be
+   indoors. Pick an indoor one, or choose None._ Cancel changes. (If an activity that is
+   already a rain plan is later made outdoors, the list shows it as _Gym games (outdoors,
+   choose another)_.)
 4. Set Gym games' **Groups at once** to 5 and save. Needs attention now says the Gym fits 3, so
    scheduling will use 3. Put it back to 1.
 5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
@@ -125,7 +144,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 There is no separate grid any more: each row says which weeks it runs in.
 
 1. **Bunks**: untick **Week 3** on **Bunk 2** (say it is away on a trip that week) and click
-   **Save changes**.
+   **Save changes**. Nothing is placed in Week 3 yet, so it just switches off (section 19 shows
+   what happens when something is).
 2. Leave it unticked; the copy below carries it over. (Deleting a bunk, activity, or location
    simply takes its unticked weeks with it; you try that in step 11.)
 3. **Locations**: untick **Week 2** under **Open in** on the **Pool** (closed for repairs)
@@ -349,12 +369,14 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 **Last year's week as a version, and undoing an import**
 
 12. Start a fresh season for this: **New season**, _Import test 2_, first day Jun 28, 2027,
-    last day Jul 9, 2027, **Create season**. On **Weeks**, click **Fill in weeks from the
-    season dates** (two weeks). Then, from Roots, import `maple-grove-2026-all-camp.xlsx` again.
-    The answers you gave last time are filled in already and marked _remembered_ (the review
-    says how many); any can be changed.
-13. If the season has several weeks, the review asks _Which week is last year's schedule?_
-    Pick _Week 1_.
+    last day Jul 9, 2027, **Create season**. Don't add weeks: from Roots, import
+    `maple-grove-2026-all-camp.xlsx` again. The answers you gave last time are filled in
+    already and marked _remembered_ (the review says how many); any can be changed.
+13. The season has no weeks yet, so Shoresh adds them from its dates, as **Fill in weeks**
+    would (two weeks), and asks only which one last year's schedule is: _Which week is last
+    year's schedule?_ with _Week 1 (starts Jun 28)_ and _Week 2 (starts Jul 5)_. Pick
+    _Week 1_. **Good to know** says the season's 2 weeks are added from its dates, and the
+    summary's **Added** includes 2 weeks. (Undo in step 15 removes them too.)
 14. The summary now has **Last year's schedule**: _Imported from maple-grove-2026-all-camp.xlsx,
     for Week 1 (Main): open it on Schedules._ Click **Continue**, then **Schedules**: the version
     opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim, the Zoo
@@ -501,6 +523,11 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
    **Schedules**. On Roots, **Build or generate the schedule** is now a button (no _Coming_).
 2. Click **Build or generate the schedule** (or **Manual Build** in the menu). The **Week** picker
    shows _Week 1_, and there is one button: **Start a blank week**. Click it.
+   (Building waits for the basics, as on the desktop. In a season still missing some, there is
+   no Start button; one sentence lists everything missing, each a link to its screen, for
+   example _3 things still needed before you can build the schedule: Units, Time blocks and
+   Activities._ Try it with the _Import test_ season from section 14 before its import, or any
+   new season.)
 3. The week opens in **Daily View** on Monday, as on the desktop. Lunch is in every bunk's Lunch
    row, and Morning meeting is in every bunk's Period 1. Both have the grey bar down the left.
    Every other cell says **Open**. Click **Wednesday**: Library time is in Period 4 for Bunks 1
@@ -545,6 +572,14 @@ This uses the made-up camp from section 13. If you haven't run that script yet, 
 13. **A morning-only bunk.** On the **Bunks** screen, set Bunk 6 to come in the morning only.
     Back in Manual Build, Bunk 6's afternoon cells are hatched and say _Not at camp_, and
     nothing can be placed there.
+14. **Turning a bunk off for a week it is placed in.** On the **Bunks** screen, untick
+    **Week 1** under **Runs in** on Bunk 1 and click **Save changes**. Because Bunk 1 already
+    has things placed in Week 1, Shoresh asks first: _Turn off "Bunk 1" for Week 1?_,
+    _Placed in N slots in Week 1._ and _They stay until you change them._, with **Cancel**
+    (where the keyboard starts) and **Turn off anyway**. Cancel saves nothing and keeps the
+    tick unticked on screen; **Cancel changes** puts it back. The same question comes for an
+    activity or a location placed that week. A bunk, activity, or location with nothing placed
+    that week switches off without asking.
 
 ## 20. Manual Build: drag, move, and undo
 
