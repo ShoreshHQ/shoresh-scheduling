@@ -342,3 +342,48 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* The counters under the toolbar (desktop): quiet, no colour; a count is its own numeral. */
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+  border-radius: 16px;
+  background: var(--slds-g-color-neutral-base-100, #ffffff);
+  color: var(--slds-g-color-neutral-base-10, #181818);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.counter_plain {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
+.counter_open {
+  border-color: var(--slds-g-color-brand-base-50, #0176d3);
+}
+
+.count {
+  font-weight: 700;
+}
+
+.counter-list {
+  margin: 0 0 12px;
+  padding: 8px 12px 8px 28px;
+  list-style: disc;
+  border-left: 2px solid var(--slds-g-color-border-base-1, #c9c9c9);
+  font-size: 13px;
+}

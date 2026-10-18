@@ -5,8 +5,12 @@
  * groups it is set up for. A multi-block placement counts once. Activities still under their
  * minimum come first, then the rest, each by name. Over the maximum is never blocked (Greg,
  * 2026-10-17): its count gets the bronze dot.
+ *
+ * What is placed, what is over its weekly limit and what is still needed all come from the
+ * engine's checkWeek (c/shoreshEngine), so the list and the grid's dots never disagree; this file
+ * only counts them for the list and words the targets.
  */
-import { slots } from "./slotEdits";
+import { RULE } from "c/shoreshEngine";
 
 /** "2 placed (needs 3–5)", "14 placed (needs 6+)", "4 placed (up to 5)". */
 export function countLabel(count, target, cap) {
@@ -23,24 +27,6 @@ export function countLabel(count, target, cap) {
   return `${count} placed${needs ? ` (${needs})` : ""}`;
 }
 
-/** How many placements of each activity start in the week, for one group or all. */
-function placedCounts(schedule, groupId) {
-  const counts = new Map();
-  ((schedule && schedule.days) || [])
-    .filter((day) => !day.problem)
-    .forEach((day) =>
-      day.groups.forEach((grp, g) => {
-        if (groupId && grp.id !== groupId) {
-          return;
-        }
-        slots(day, g)
-          .filter((slot) => slot.startsWith("A:"))
-          .forEach((slot) => counts.set(slot, (counts.get(slot) || 0) + 1));
-      })
-    );
-  return counts;
-}
-
 /** Every group in the week, by id. */
 function weekGroupIds(schedule) {
   const ids = new Set();
@@ -51,11 +37,18 @@ function weekGroupIds(schedule) {
 }
 
 /**
- * The list: { stillNeeded, placed }, each chip { id, name, length, count, label, over }. filter:
- * what was typed in the list's Filter box (spaces and capitals aside).
+ * The list: { stillNeeded, placed }, each chip { id, name, length, count, label, over }. checked:
+ * checkWeek's answer for the week (placements, bends, stillNeededBy). groupId: the group in Group
+ * View, or null for the whole camp. filter: what was typed in the list's Filter box (spaces and
+ * capitals aside).
  */
-export function paletteChips(schedule, activities, groupId, filter) {
-  const counts = placedCounts(schedule, groupId);
+export function paletteChips(schedule, checked, activities, groupId, filter) {
+  const inView = (entry) => !groupId || entry.groupId === groupId;
+  const mine = ((checked && checked.placements) || []).filter(
+    (p) => p.kind === "A" && inView(p)
+  );
+  const bends = (checked && checked.bends) || new Map();
+  const short = ((checked && checked.stillNeededBy) || []).filter(inView);
   const groupIds = weekGroupIds(schedule);
   const typed = String(filter || "")
     .replace(/\s+/g, "")
@@ -75,15 +68,18 @@ export function paletteChips(schedule, activities, groupId, filter) {
         a.maxPerWeek === null || a.maxPerWeek === undefined
           ? null
           : a.maxPerWeek * scale;
-      const count = counts.get(`A:${a.id}`) || 0;
+      const placed = mine.filter((p) => p.id === a.id);
+      const count = placed.length;
       return {
         id: a.id,
         name: a.name,
         length: a.length,
         count,
         label: countLabel(count, target, cap),
-        over: cap !== null && count > cap,
-        needed: target > 0 && count < target
+        over: placed.some((p) =>
+          (bends.get(p.key) || []).includes(RULE.WEEKLY_MAX)
+        ),
+        needed: short.some((entry) => entry.activityId === a.id)
       };
     });
   const byName = (x, y) => x.name.localeCompare(y.name);

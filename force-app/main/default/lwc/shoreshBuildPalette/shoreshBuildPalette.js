@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { RULE, reasonFor } from "c/shoreshEngine";
 
 /**
  * Manual Build's activity list (desktop ActivityPalette.jsx): a Filter box, then the activities
@@ -24,7 +25,7 @@ export default class ShoreshBuildPalette extends LightningElement {
   focusedId;
 
   get overLabel() {
-    return "Over its weekly limit";
+    return reasonFor(RULE.WEEKLY_MAX);
   }
 
   handleChipFocus(event) {

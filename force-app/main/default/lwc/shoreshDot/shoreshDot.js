@@ -8,11 +8,13 @@ import { LightningElement, api } from "lwc";
  *
  * label: a few words in the camp's terms ("Not set up for Bunk 2"). open: the row it sits on has
  * focus or is highlighted, so the tooltip shows. focusable: the dot is its own tab stop (when the
- * row around it isn't focusable itself).
+ * row around it isn't focusable itself). escapeThrough: Escape hides the words and still reaches
+ * the row (a grid cell, where Escape also lets go of what was picked up), so one press does both.
  */
 export default class ShoreshDot extends LightningElement {
   @api label;
   @api focusable = false;
+  @api escapeThrough = false;
 
   hovered = false;
   tapped = false;
@@ -40,8 +42,10 @@ export default class ShoreshDot extends LightningElement {
     this.onKey = (event) => {
       if (event.key === "Escape" && this.showTip) {
         this.dismissed = true;
-        event.stopPropagation();
-        event.preventDefault();
+        if (!this.escapeThrough) {
+          event.stopPropagation();
+          event.preventDefault();
+        }
       }
     };
     window.addEventListener("keydown", this.onKey, true);

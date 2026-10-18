@@ -3,6 +3,7 @@ import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { draft, schedule } from "./data/draftFixture";
 import {
   listedCells,
@@ -25,13 +26,31 @@ jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
   virtual: true
 });
 
-const SETUP = {
+// The fixture's activities as setup records (the week's checks read them): Swim 1 to 2 a week,
+// Boating any number, Soccer 2 to 3.
+const SETUP = nsRecord({
   season: { Id: "se1", Name: "Summer 2026" },
   weeks: [{ Id: "w1", Name: "Week 1" }],
   programs: [{ program: { Id: "p1", Name: "Main" } }],
-  activities: [],
+  activities: [
+    {
+      Id: "a1",
+      Name: "Swim",
+      TimesPerWeekMin__c: 1,
+      TimesPerWeekMax__c: 2,
+      NoGroupLimit__c: true
+    },
+    { Id: "a2", Name: "Boating", NoWeeklyMax__c: true, NoGroupLimit__c: true },
+    {
+      Id: "a3",
+      Name: "Soccer",
+      TimesPerWeekMin__c: 2,
+      TimesPerWeekMax__c: 3,
+      NoGroupLimit__c: true
+    }
+  ],
   locations: []
-};
+});
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
   { term: "TimeBlock", singular: "Period", plural: "Periods", isCustom: true }

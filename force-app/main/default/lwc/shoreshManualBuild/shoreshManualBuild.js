@@ -27,6 +27,14 @@ import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
+import {
+  RULE,
+  checkWeek,
+  reasonFor,
+  readActivities,
+  readLocations,
+  readProgram
+} from "c/shoreshEngine";
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -84,6 +92,14 @@ export default class ShoreshManualBuild extends LightningElement {
   loadTicket = 0;
   // The activity list's Filter box.
   filter = "";
+  // The counter whose list is open (stillNeeded, spread, overlapping), if any.
+  openCounter = null;
+  // The last check and what it was worked out from. Changed in place, so updating it while the
+  // page renders doesn't ask for another render (so never @track it).
+  checkMemo = { inputs: null, result: null };
+  // Setup records of activities added from a slot since the setup was read (the setup this page
+  // was given doesn't have them yet), so the checks know them too.
+  addedRecords = [];
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -99,6 +115,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
   set setup(value) {
     this._setup = value;
+    this.addedRecords = [];
     const programs = this.programOptions.map((o) => o.value);
     const weeks = this.weekOptions.map((o) => o.value);
     if (!programs.includes(this.programId)) {
@@ -293,6 +310,101 @@ export default class ShoreshManualBuild extends LightningElement {
   get hasNoDays() {
     return !!this.schedule && this.schedule.days.length === 0;
   }
+
+  // ---------- checks and counters ----------
+
+  /** The week checked (c/shoreshEngine checkWeek), worked out again only when the week or setup changes. */
+  get checked() {
+    const schedule = this.schedule;
+    const inputs = [
+      schedule,
+      this._setup,
+      this.addedRecords,
+      this.draft && this.draft.activities,
+      this.draft && this.draft.away,
+      this.programId,
+      this.t
+    ];
+    const memo = this.checkMemo;
+    if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
+      return memo.result;
+    }
+    const setup = this._setup || {};
+    const entry = (setup.programs || []).find(
+      (p) => p.program && p.program.Id === this.programId
+    );
+    const away = new Set();
+    ((this.draft && this.draft.away) || []).forEach((row) =>
+      row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
+    );
+    const result = checkWeek(
+      (schedule && schedule.days) || [],
+      {
+        activities: readActivities([
+          ...(setup.activities || []),
+          ...this.addedRecords
+        ]),
+        locations: readLocations(setup.locations),
+        ...readProgram(entry),
+        notFor: new Map(
+          ((this.draft && this.draft.activities) || []).map((a) => [
+            a.id,
+            a.notFor || []
+          ])
+        ),
+        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`)
+      },
+      { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
+    );
+    memo.inputs = inputs;
+    memo.result = result;
+    return result;
+  }
+
+  get showCounters() {
+    return !!this.draft && !this.hasNoDays;
+  }
+
+  get filledText() {
+    const { filled, total } = this.checked.cells;
+    return `${filled} of ${total}`;
+  }
+
+  /** The counters with something to look at (a zero asks for nothing, so it isn't shown). */
+  get counterButtons() {
+    const checked = this.checked;
+    return [
+      { key: "stillNeeded", label: "Still needed", lines: checked.stillNeeded },
+      { key: "spread", label: "Spread across the week", lines: checked.spread },
+      { key: "overlapping", label: "Overlapping", lines: checked.overlapping }
+    ]
+      .filter((c) => c.lines.length)
+      .map((c) => ({
+        key: c.key,
+        label: c.label,
+        count: c.lines.length,
+        expanded: String(this.openCounter === c.key),
+        className:
+          this.openCounter === c.key ? "counter counter_open" : "counter"
+      }));
+  }
+
+  get openLines() {
+    const lines = this.openCounter ? this.checked[this.openCounter] : null;
+    return lines && lines.length
+      ? lines.map((text, i) => ({ key: `${i}|${text}`, text }))
+      : null;
+  }
+
+  get openCounterLabel() {
+    const open = this.counterButtons.find((c) => c.key === this.openCounter);
+    return open ? open.label : "";
+  }
+
+  handleCounter(event) {
+    const key = event.currentTarget.dataset.counter;
+    this.openCounter = this.openCounter === key ? null : key;
+  }
   get noDaysMessage() {
     return `${this.weekName} has no days ${this.programName} runs.`;
   }
@@ -402,7 +514,8 @@ export default class ShoreshManualBuild extends LightningElement {
       result = {
         ...cell,
         readOnly: this.lockedReason(cell.slot) !== null,
-        movable: here.startsWith("A:")
+        movable: here.startsWith("A:"),
+        dot: this.dotFor(cell.slot) || null
       };
       if (this.picked && this.picked.key === cell.key) {
         result.className = `${result.className} cell_picked`;
@@ -422,6 +535,15 @@ export default class ShoreshManualBuild extends LightningElement {
       result = { ...result, className: `${result.className} cell_saving` };
     }
     return result;
+  }
+
+  /** The words of a placement's dot, if it has one (keyed by where it starts). */
+  dotFor(slot) {
+    const day = this.dayOf(slot);
+    const first = placement(day, slot.group, slot.block).first;
+    return this.checked.flags.get(
+      `${day.dateValue}|${day.groups[slot.group].id}|${day.blocks[first].id}`
+    );
   }
 
   get catalogue() {
@@ -649,7 +771,7 @@ export default class ShoreshManualBuild extends LightningElement {
         kind: "activity",
         label: a.name,
         activity: a,
-        tag: `Not set up for ${grp.name}`
+        tag: reasonFor(RULE.ELIGIBILITY, { groupName: grp.name })
       })
     );
     const name = text.trim().replace(/\s+/g, " ");
@@ -784,6 +906,13 @@ export default class ShoreshManualBuild extends LightningElement {
       } catch (e) {
         this.error = errorMessage(e);
         return;
+      }
+      const known = [
+        ...((this._setup && this._setup.activities) || []),
+        ...this.addedRecords
+      ];
+      if (activity.record && !known.some((r) => r.Id === activity.id)) {
+        this.addedRecords = [...this.addedRecords, activity.record];
       }
       if (!this.draft.activities.some((a) => a.id === activity.id)) {
         this.draft = {
@@ -1095,6 +1224,7 @@ export default class ShoreshManualBuild extends LightningElement {
   get chips() {
     return paletteChips(
       this.schedule,
+      this.checked,
       (this.draft && this.draft.activities) || [],
       this.isGroup ? this.groupKey : null,
       this.filter
@@ -1609,6 +1739,10 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   renderedCallback() {
+    // A list whose counter went to zero is closed, so it doesn't open again by itself later.
+    if (this.openCounter && !this.checked[this.openCounter].length) {
+      this.openCounter = null;
+    }
     if (this.conflict && !this.conflictFocused) {
       const button = this.template.querySelector('[data-id="keep-theirs"]');
       if (button) {

@@ -89,6 +89,31 @@ describe("c-shoresh-dot", () => {
     expect(tip(element)).not.toBeNull();
   });
 
+  it("Escape is used up by the words, unless they let it through to the row", async () => {
+    const element = render();
+    element.open = true;
+    await flush();
+    const held = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true
+    });
+    window.dispatchEvent(held);
+    expect(held.defaultPrevented).toBe(true);
+    element.escapeThrough = true;
+    element.open = false;
+    await flush();
+    element.open = true;
+    await flush();
+    const through = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true
+    });
+    window.dispatchEvent(through);
+    await flush();
+    expect(through.defaultPrevented).toBe(false);
+    expect(tip(element)).toBeNull();
+  });
+
   it("on touch, where a tap also counts as hovering, a second tap hides the words", async () => {
     const element = render();
     const dot = q(element, '[data-id="dot"]');
