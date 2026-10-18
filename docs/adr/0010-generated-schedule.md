@@ -593,7 +593,7 @@ The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `Confir
       unlocked when left Open, so the next build fills it. An activity made **shorter** by hand
       is locked as it is left (otherwise a build would put it back at full length). Cells a run
       covers but doesn't change, and fixed and recurring activities, are left as they are. Greg confirmed, 2026-10-18
-      (decision 13): clearing a cell by hand reads as "not this" rather than "keep this
+      (decisions 20 and 23, confirmed in 24): clearing a cell by hand reads as "not this" rather than "keep this
       empty"; **Lock** an Open cell to keep it empty;
     - each run names its cells' locks as the screen saw them (`locksBefore`; the data module
       fills it in): a cell whose lock is different now is a conflict like any cell someone else
