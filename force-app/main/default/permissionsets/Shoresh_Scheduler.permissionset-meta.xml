@@ -9,6 +9,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>SetupTablesController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>ImportController</apexClass>
         <enabled>true</enabled>
     </classAccesses>

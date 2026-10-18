@@ -3,7 +3,7 @@
  * newly placed for a group away this week, and no activity is newly placed that is closed this
  * week, or whose place is. A leftover may stay or be cleared, as with other leftovers. The
  * engine leaves closed activities out; groups away are left out of its inputs (GeneratedInputs),
- * so their rows stay as they were. Reads in user mode.
+ * so their rows stay as they were. The exceptions are GeneratedSetup's, read in user mode.
  */
 public with sharing class GeneratedClosures {
   private String weekName;
@@ -11,20 +11,9 @@ public with sharing class GeneratedClosures {
   private Set<Id> closedActivities = new Set<Id>();
   private Map<Id, String> closedPlaces = new Map<Id, String>();
 
-  public GeneratedClosures(Id weekId) {
-    for (WeekException__c mark : [
-      SELECT
-        Week__r.Name,
-        Group__c,
-        Group__r.Name,
-        Activity__c,
-        Location__c,
-        Location__r.Name
-      FROM WeekException__c
-      WHERE Week__c = :weekId
-      WITH USER_MODE
-    ]) {
-      weekName = mark.Week__r.Name;
+  public GeneratedClosures(GeneratedSetup setup) {
+    weekName = setup.week.Name;
+    for (WeekException__c mark : setup.exceptions) {
       if (mark.Group__c != null) {
         away.put(mark.Group__c, mark.Group__r.Name);
       }

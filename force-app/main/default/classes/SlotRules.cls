@@ -9,18 +9,18 @@ public with sharing class SlotRules {
   private Map<Id, Group__c> groups = new Map<Id, Group__c>();
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
 
-  public SlotRules(Schedule__c schedule, List<SlotEdits.Edit> edits) {
-    this(schedule.Program__r, activityIdsIn(edits));
+  /** What the rules are checked against: the season, the camp's words, groups and time blocks. */
+  public class Setup {
+    public Id seasonId;
+    public CampLabels labels;
+    public List<Group__c> groups;
+    public List<TimeBlock__c> blocks;
   }
 
-  /**
-   * The same rules for a whole week's grids (Generated Schedule), with the activities it places.
-   * program: its Id, Season__c and Season__r.Camp__c.
-   */
-  public SlotRules(Program__c program, Set<Id> activityIds) {
-    Id seasonId = program.Season__c;
-    Id programId = program.Id;
-    labels = CampLabels.forCamp(program.Season__r.Camp__c);
+  /** The rules on setup already read, with the activities the edits place. */
+  public SlotRules(Setup setup, Set<Id> activityIds) {
+    Id seasonId = setup.seasonId;
+    labels = setup.labels;
     activities = new Map<Id, Activity__c>(
       [
         SELECT Id, Name, Location__c
@@ -29,15 +29,16 @@ public with sharing class SlotRules {
         WITH USER_MODE
       ]
     );
-    for (Group__c grp : ProgramReads.groupsOf(programId)) {
+    for (Group__c grp : setup.groups) {
       groups.put(grp.Id, grp);
     }
-    for (TimeBlock__c block : ProgramReads.blocksOf(programId)) {
+    for (TimeBlock__c block : setup.blocks) {
       blocks.put(block.Id, block);
     }
   }
 
-  private static Set<Id> activityIdsIn(List<SlotEdits.Edit> edits) {
+  /** The activities a Manual Build save's edits place; refuses an edit that can't be read. */
+  public static Set<Id> activityIdsIn(List<SlotEdits.Edit> edits) {
     Set<Id> result = new Set<Id>();
     for (SlotEdits.Edit edit : edits) {
       if (edit == null || edit.runs == null || edit.runs.isEmpty()) {

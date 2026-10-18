@@ -14,7 +14,6 @@ private class GeneratedScheduleTest {
       Map<String, Id> ids = GeneratedTestData.camp();
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      Test.stopTest();
 
       Assert.isNull(read.scheduleId);
       // The server's own Ids: the engine compares them exactly and seeds with them.
@@ -48,7 +47,6 @@ private class GeneratedScheduleTest {
         ids.get('Main'),
         ids.get('Week 3')
       );
-      Test.stopTest();
       Assert.areEqual(2, read.groups.size());
       Assert.areEqual(ids.get('Group B'), read.groups[0].Id);
       Assert.areEqual(2, read.days[0].groups.size());
@@ -72,7 +70,6 @@ private class GeneratedScheduleTest {
       }
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      Test.stopTest();
       // One of the two for each group on each of the four days.
       Assert.areEqual(12, read.notPlaced.size());
       Assert.isTrue(
@@ -108,11 +105,11 @@ private class GeneratedScheduleTest {
       Database.insert(lodge, AccessLevel.SYSTEM_MODE);
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      Test.stopTest();
 
       // The season's records, with the fields the engine reads.
       Assert.areEqual(3, read.activities.size());
-      Activity__c swim = read.activities[0];
+      Activity__c swim = new Map<Id, Activity__c>(read.activities)
+        .get(ids.get('Swim'));
       Assert.areEqual('Swim', swim.Name);
       Assert.areEqual(1, swim.Length__c);
       Assert.areEqual(1, swim.GroupsAtOnce__c);
@@ -179,7 +176,6 @@ private class GeneratedScheduleTest {
       Database.insert(hike, AccessLevel.SYSTEM_MODE);
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      Test.stopTest();
       Activity__c readHike = new Map<Id, Activity__c>(read.activities)
         .get(hike.Id);
       Assert.areEqual('High', readHike.Priority__c);
@@ -214,7 +210,6 @@ private class GeneratedScheduleTest {
           'Gym games'
         )
       );
-      Test.stopTest();
 
       Assert.isFalse(result.conflict);
       Assert.isNull(result.versionId);
@@ -289,7 +284,6 @@ private class GeneratedScheduleTest {
           'Soccer'
         )
       );
-      Test.stopTest();
 
       Assert.isFalse(first.conflict);
       Assert.isTrue(second.conflict);
@@ -334,7 +328,6 @@ private class GeneratedScheduleTest {
           'Swim'
         )
       );
-      Test.stopTest();
 
       Assert.isFalse(tried.conflict);
       Assert.isTrue(late.conflict);
@@ -359,80 +352,71 @@ private class GeneratedScheduleTest {
     }
   }
 
-  @IsTest
-  static void rebuildAndStartOverKeepTheWeekAsAVersionFirst() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
-      Id draftId = GeneratedTestData.save(
-          GeneratedTestData.filled(
-            GeneratedTestData.request(
-              GeneratedTestData.inputs(),
-              GeneratedSaves.GENERATE,
-              4
-            ),
-            'Gym games'
-          )
-        )
-        .scheduleId;
-      Test.startTest();
-      GeneratedWeek.Result rebuilt = GeneratedTestData.save(
+  /** The week generated with option 4, Gym games in every Period 2. */
+  private static Id generatedWithOption4() {
+    return GeneratedTestData.save(
         GeneratedTestData.filled(
           GeneratedTestData.request(
             GeneratedTestData.inputs(),
-            GeneratedSaves.REBUILD,
+            GeneratedSaves.GENERATE,
             4
-          ),
-          'Soccer'
-        )
-      );
-      GeneratedWeek.Result tried = GeneratedTestData.save(
-        GeneratedTestData.filled(
-          GeneratedTestData.request(
-            GeneratedTestData.inputs(),
-            GeneratedSaves.TRY_ANOTHER,
-            5
           ),
           'Gym games'
         )
-      );
-      GeneratedWeek.Result filledOpen = GeneratedTestData.save(
-        GeneratedTestData.request(
-          GeneratedTestData.inputs(),
-          GeneratedSaves.FILL_OPEN,
-          5
-        )
-      );
-      GeneratedWeek.Result startedOver = GeneratedTestData.save(
-        GeneratedTestData.filled(
-          GeneratedTestData.request(
-            GeneratedTestData.inputs(),
-            GeneratedSaves.START_OVER,
-            6
-          ),
-          'Swim'
-        )
-      );
-      Test.stopTest();
+      )
+      .scheduleId;
+  }
 
-      // Rebuild, Try another and Start over replace the week, so each keeps it first (Try
-      // another as on the desktop); Fill the open cells only adds.
-      Assert.isNotNull(tried.versionId);
-      Assert.isNull(filledOpen.versionId);
-      Assert.isNotNull(rebuilt.versionId);
-      Assert.isNotNull(startedOver.versionId);
-      Schedule__c beforeRebuild = [
-        SELECT
-          Name,
-          Status__c,
-          Origin__c,
-          VersionReason__c,
-          SourceSchedule__c,
-          EngineOption__c,
-          Week__c
-        FROM Schedule__c
-        WHERE Id = :rebuilt.versionId
-        WITH SYSTEM_MODE
-      ];
+  /** A save of the week as it is now, with the activity in every Period 2. */
+  private static GeneratedWeek.Result saveNow(
+    String action,
+    Integer option,
+    String activity
+  ) {
+    GeneratedWeek.Save request = GeneratedTestData.request(
+      GeneratedTestData.inputs(),
+      action,
+      option
+    );
+    return GeneratedTestData.save(
+      activity == null ? request : GeneratedTestData.filled(request, activity)
+    );
+  }
+
+  private static Schedule__c version(Id versionId) {
+    return [
+      SELECT
+        Name,
+        Status__c,
+        Origin__c,
+        VersionReason__c,
+        SourceSchedule__c,
+        EngineOption__c,
+        Week__c
+      FROM Schedule__c
+      WHERE Id = :versionId
+      WITH SYSTEM_MODE
+    ];
+  }
+
+  @IsTest
+  static void rebuildAndTryAnotherKeepTheWeekAsAVersionFirst() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = generatedWithOption4();
+      Test.startTest();
+      GeneratedWeek.Result rebuilt = saveNow(
+        GeneratedSaves.REBUILD,
+        4,
+        'Soccer'
+      );
+      // Try another as on the desktop, which keeps one before every build that replaces a week.
+      GeneratedWeek.Result tried = saveNow(
+        GeneratedSaves.TRY_ANOTHER,
+        5,
+        'Gym games'
+      );
+      Schedule__c beforeRebuild = version(rebuilt.versionId);
       Assert.areEqual('Before Rebuild', beforeRebuild.Name);
       Assert.areEqual('Version', beforeRebuild.Status__c);
       Assert.areEqual('Generated', beforeRebuild.Origin__c);
@@ -451,24 +435,44 @@ private class GeneratedScheduleTest {
           GeneratedTestData.PERIOD_2
         ]
       );
-      Schedule__c beforeStartOver = [
-        SELECT Name, EngineOption__c
-        FROM Schedule__c
-        WHERE Id = :startedOver.versionId
-        WITH SYSTEM_MODE
-      ];
+      Schedule__c beforeTry = version(tried.versionId);
+      Assert.areEqual('Before Try another', beforeTry.Name);
+      Assert.areEqual(4, beforeTry.EngineOption__c);
       Assert.areEqual(
-        'Before Try another',
-        [
-          SELECT Name
-          FROM Schedule__c
-          WHERE Id = :tried.versionId
-          WITH SYSTEM_MODE
+        GeneratedTestData.a('Soccer'),
+        GeneratedTestData.slots(tried.versionId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
         ]
-        .Name
       );
+      Assert.areEqual(
+        2,
+        SchedulesController.getVersions(ids.get('Main'), ids.get('Week 1'))
+          .size()
+      );
+    }
+  }
+
+  @IsTest
+  static void startOverKeepsAVersionAndFillTheOpenCellsDoesNot() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = generatedWithOption4();
+      Test.startTest();
+      // Fill the open cells only adds: nothing is replaced, so nothing is kept.
+      GeneratedWeek.Result filledOpen = saveNow(
+        GeneratedSaves.FILL_OPEN,
+        4,
+        null
+      );
+      GeneratedWeek.Result startedOver = saveNow(
+        GeneratedSaves.START_OVER,
+        6,
+        'Swim'
+      );
+      Assert.isNull(filledOpen.versionId);
+      Schedule__c beforeStartOver = version(startedOver.versionId);
       Assert.areEqual('Before Start over', beforeStartOver.Name);
-      Assert.areEqual(5, beforeStartOver.EngineOption__c);
+      Assert.areEqual(4, beforeStartOver.EngineOption__c);
       Assert.areEqual(
         GeneratedTestData.a('Gym games'),
         GeneratedTestData.slots(
@@ -478,7 +482,7 @@ private class GeneratedScheduleTest {
           GeneratedTestData.PERIOD_2
         ]
       );
-      // The draft holds the newest week; both versions are listed.
+      // The draft holds the newest week; the one version is listed.
       Assert.areEqual(draftId, startedOver.scheduleId);
       Assert.areEqual(
         GeneratedTestData.a('Swim'),
@@ -487,7 +491,7 @@ private class GeneratedScheduleTest {
         ]
       );
       Assert.areEqual(
-        3,
+        1,
         SchedulesController.getVersions(ids.get('Main'), ids.get('Week 1'))
           .size()
       );
@@ -518,7 +522,6 @@ private class GeneratedScheduleTest {
       request.days[0].items[0].name = 'Not Flagpole';
       Test.startTest();
       Id draftId = GeneratedTestData.save(request).scheduleId;
-      Test.stopTest();
       // Stored the one way: names from setup, the full Id, the plain number.
       ScheduleGrid monday = ScheduleDays.read(draftId)[0].grid;
       Assert.areEqual('Flagpole', monday.items[0].name);

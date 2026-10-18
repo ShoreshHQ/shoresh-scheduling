@@ -20,7 +20,10 @@ public with sharing class SlotSaves {
   ) {
     Schedule__c schedule = ManualDrafts.locked(scheduleId);
     SlotSaves saves = new SlotSaves();
-    saves.rules = new SlotRules(schedule, edits);
+    saves.rules = new SlotRules(
+      setupOf(schedule.Program__r),
+      SlotRules.activityIdsIn(edits)
+    );
     for (ScheduleDays.DayGrid day : ScheduleDays.read(scheduleId)) {
       saves.days.put(day.day, day);
     }
@@ -33,6 +36,16 @@ public with sharing class SlotSaves {
     saves.write(scheduleId);
     result.schedule = ScheduleViews.open(scheduleId);
     return result;
+  }
+
+  /** program: its Id, Season__c and Season__r.Camp__c. */
+  private static SlotRules.Setup setupOf(Program__c program) {
+    SlotRules.Setup setup = new SlotRules.Setup();
+    setup.seasonId = program.Season__c;
+    setup.labels = CampLabels.forCamp(program.Season__r.Camp__c);
+    setup.groups = ProgramReads.groupsOf(program.Id);
+    setup.blocks = ProgramReads.blocksOf(program.Id);
+    return setup;
   }
 
   private void write(Id scheduleId) {

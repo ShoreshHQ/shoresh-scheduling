@@ -20,6 +20,10 @@ export class History {
   get canRedo() {
     return this.redos.length > 0;
   }
+  /** The Id of the step Undo would take back, if any. */
+  get lastId() {
+    return this.canUndo ? this.undos[this.undos.length - 1].id : null;
+  }
   get undoLabel() {
     return this.canUndo ? this.undos[this.undos.length - 1].label : null;
   }

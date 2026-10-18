@@ -395,6 +395,12 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
     reader), `GeneratedDrafts` (find, lock, revision), `GeneratedWeek` (what is sent and returned),
     `GeneratedSaves` (the save), `GeneratedSetupChanges` (what changed before a first save),
     `GeneratedFrames`, `GeneratedGrids`, `GeneratedChecks` and `GeneratedClosures` (the checks).
+    `GeneratedSetup` reads the program's setup for the week once per request (program, week,
+    time blocks, every group, this week's exceptions; the camp's words only when needed) and
+    shares it with the reader, the save, the checks and `BlankWeek.build(setup)`, so a request
+    uses a fixed, small number of queries whatever the week's size. `SlotRules` takes a
+    `SlotRules.Setup` (Manual Build's is built in `SlotSaves`); the reader marks what is
+    "deleted since" from the records it has just read, not `ScheduleRefs`' extra queries.
     Shared with Manual Build: `ProgramReads` (now also reads sort orders), `BlankWeek`,
     `ScheduleViews.dayViews`, `SlotRules` (a second constructor, and `activityOf`/
     `seasonActivity`; it reads activities' places too), `ScheduleDaySaves.CHANGED_SINCE`. Deleting
@@ -416,6 +422,14 @@ someone without Shoresh access can neither read nor save. Each new check was con
 its test when taken out (Jest; the Apex ones by reading, as the org was busy).
 Jest for `c/shoreshGeneratedWeek`, in the normal and namespaced runs, including one that feeds
 what it loads to the real `generateWeek` and sends what it built.
+
+`GeneratedLimitsTest`: a realistic week (8 groups in two divisions, 5 days, 8 time blocks, a
+fixed activity every morning) opened, generated and rebuilt, each request within 25 queries
+(Salesforce allows 100). Measured in shoresh-test (2026-10-18): opening a week not generated
+yet 18 (7 of them the set-time reader's), opening a generated week 12, the first Generate 21
+(3 of them the `Schedule__c` trigger's), Fill the open cells 14, a Rebuild with its version 19. No query runs per day, group or cell. Test setup runs the fixed-activity clash check once
+(`SetTimeGuard.defer` / `checkPending`), as a screen save does, so each test fits one test's
+limits.
 
 ## Not done in G2
 
@@ -439,21 +453,21 @@ what it loads to the real `generateWeek` and sends what it built.
     how long each pass takes on a week that can't fit (the two repairs are about 93%); a week
     built twice (the minimum repair's leniency) spends the first half of the bar on the first
     build; the first build's minimum repair settles whether there will be a second, and when
-    there won't, the rest of the first build fills the rest of the bar, so every build ends at
-    1. The screen shows the desktop's moving bar (no number) until a long build first reports,
-       then the number, and 100 once the week is built, while it saves. The screen (`pieces.js`) runs about 30 ms of steps, then gives the browser a turn
-       (a message the page posts itself through a `MessageChannel`, handled as a task of its own,
-       as React's scheduler does; no timer, which the platform's lint rules don't allow, and none
-       of a timer's clamping), and draws the bar. Where `MessageChannel` is missing or refused the
-       pieces follow at once, without the browser's turns (Jest's jsdom has none; every browser
-       has it). A timer would be the better fallback, but `setTimeout` is a Moderate finding for
-       CI's code analyzer (`@lwc/lwc/no-async-operation`), as is an inline exemption, so it would
-       fail CI; allowing it for this one file is a CI-settings call, not made here. The coordinator's 40 bunks × 5 days × 12 blocks week
-       that can't fit (8.8 million rule checks, about 6.5 s under Jest) now runs with at most about
-       50 ms between steps; the test bounds it loosely. `ruleChecks` stays the measure of work; it
-       does not drive the bar, since a week's total isn't known before it is built. A Web Worker
-       was not used: the engine is LWC modules, and a worker would need it bundled again as a
-       static resource, a second copy to keep in step.
+    there won't, the rest of the first build fills the rest of the bar, so every build ends with the bar full. The screen shows the desktop's moving bar (no number)
+    until a long build first reports, then the number, and 100 once the week is built, while it
+    saves. The screen (`pieces.js`) runs about 30 ms of steps, then gives the browser a turn
+    (a message the page posts itself through a `MessageChannel`, handled as a task of its own,
+    as React's scheduler does; no timer, which the platform's lint rules don't allow, and none
+    of a timer's clamping), and draws the bar. Where `MessageChannel` is missing or refused the
+    pieces follow at once, without the browser's turns (Jest's jsdom has none; every browser
+    has it). A timer would be the better fallback, but `setTimeout` is a Moderate finding for
+    CI's code analyzer (`@lwc/lwc/no-async-operation`), as is an inline exemption, so it would
+    fail CI; allowing it for this one file is a CI-settings call, not made here. The coordinator's 40 bunks × 5 days × 12 blocks week
+    that can't fit (8.8 million rule checks, about 6.5 s under Jest) now runs with at most about
+    50 ms between steps; the test bounds it loosely. `ruleChecks` stays the measure of work; it
+    does not drive the bar, since a week's total isn't known before it is built. A Web Worker
+    was not used: the engine is LWC modules, and a worker would need it bundled again as a
+    static resource, a second copy to keep in step.
 23. **One check for what is shown** (`checkGeneratedWeek`). Dots, counters and lines are worked
     out from the week on screen with the engine's own model of the season (the same readers,
     divisions, not-at-camp rule and other programs as the build), whether the week was just

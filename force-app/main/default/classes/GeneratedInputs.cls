@@ -51,32 +51,52 @@ public with sharing class GeneratedInputs {
   }
 
   public static Inputs read(Id programId, Id weekId) {
-    Program__c program = ProgramReads.programOf(programId);
-    Week__c week = ProgramReads.weekOf(weekId, program);
+    GeneratedSetup setup = new GeneratedSetup(programId, weekId);
     Inputs inputs = new Inputs();
-    inputs.programId = program.Id;
-    inputs.weekId = week.Id;
-    Schedule__c draft = GeneratedDrafts.find(programId, weekId);
+    inputs.programId = setup.program.Id;
+    inputs.weekId = setup.week.Id;
+    // Groups away this week are left out, so the engine leaves their rows as they are (a row of a
+    // group it isn't sent is kept); GeneratedClosures refuses anything new there on save.
+    inputs.groups = setup.atCamp();
+    inputs.timeBlocks = setup.blocks;
+    inputs.weekExceptions = setup.exceptions;
+    readSeason(inputs, setup.program.Season__c);
+    readSetTime(inputs, setup.program.Id);
+    List<ScheduleDays.DayGrid> days;
+    Schedule__c draft = GeneratedDrafts.find(setup.program.Id, setup.week.Id);
     if (draft == null) {
-      BlankWeek.Week blank = BlankWeek.build(programId, weekId);
-      inputs.days = ScheduleViews.dayViews(daysOf(blank.days));
+      BlankWeek.Week blank = setup.blankWeek();
+      days = daysOf(blank.days);
       inputs.notPlaced = blank.notPlaced;
     } else {
-      List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
+      days = ScheduleDays.read(draft.Id);
       inputs.scheduleId = draft.Id;
       inputs.revision = GeneratedDrafts.revisionOf(days);
       inputs.option = draft.EngineOption__c == null
         ? null
         : draft.EngineOption__c.intValue();
-      inputs.days = ScheduleViews.dayViews(days);
     }
-    // Groups away this week are left out, so the engine leaves their rows as they are (a row of a
-    // group it isn't sent is kept); GeneratedClosures refuses anything new there on save.
-    inputs.groups = ProgramReads.groupsAtCamp(programId, week.Id);
-    inputs.timeBlocks = ProgramReads.blocksOf(programId);
-    readSeason(inputs, program.Season__c);
-    readSetTime(inputs, programId, week.Id);
+    inputs.days = ScheduleViews.dayViews(days, stillThere(setup, inputs));
     return inputs;
+  }
+
+  /**
+   * What a day may point at that is still there, from the records just read (ScheduleRefs reads
+   * them again otherwise): the program's time blocks, groups, fixed and recurring activities,
+   * and the season's activities.
+   */
+  private static Set<String> stillThere(GeneratedSetup setup, Inputs inputs) {
+    List<SObject> records = new List<SObject>();
+    records.addAll(setup.blocks);
+    records.addAll(setup.groups);
+    records.addAll(inputs.activities);
+    records.addAll(inputs.fixedActivities);
+    records.addAll(inputs.recurringActivities);
+    Set<String> ids = new Set<String>();
+    for (SObject record : records) {
+      ids.add(record.Id);
+    }
+    return ids;
   }
 
   /** A blank week's days, read as a saved draft's days are. */
@@ -131,7 +151,7 @@ public with sharing class GeneratedInputs {
     ];
   }
 
-  private static void readSetTime(Inputs inputs, Id programId, Id weekId) {
+  private static void readSetTime(Inputs inputs, Id programId) {
     inputs.fixedActivities = [
       SELECT Id, Name, Location__c, SortOrder__c
       FROM FixedActivity__c
@@ -145,13 +165,6 @@ public with sharing class GeneratedInputs {
       WHERE Program__c = :programId
       WITH USER_MODE
       ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ];
-    inputs.weekExceptions = [
-      SELECT Id, Week__c, Activity__c, Location__c, Group__c
-      FROM WeekException__c
-      WHERE Week__c = :weekId
-      WITH USER_MODE
-      ORDER BY Id
     ];
   }
 }

@@ -30,11 +30,13 @@ public with sharing class GeneratedSaves {
   };
 
   private GeneratedWeek.Save request;
+  private GeneratedSetup setup;
   private Program__c program;
 
-  private GeneratedSaves(GeneratedWeek.Save request, Program__c program) {
+  private GeneratedSaves(GeneratedWeek.Save request, GeneratedSetup setup) {
     this.request = request;
-    this.program = program;
+    this.setup = setup;
+    this.program = setup.program;
   }
 
   public static GeneratedWeek.Result save(GeneratedWeek.Save request) {
@@ -43,9 +45,10 @@ public with sharing class GeneratedSaves {
     }
     Boolean isFirst = request.scheduleId == null;
     request.check(isFirst ? new Set<String>{ GENERATE } : ON_A_DRAFT);
-    Program__c program = ProgramReads.programOf(request.programId);
-    ProgramReads.weekOf(request.weekId, program);
-    GeneratedSaves saves = new GeneratedSaves(request, program);
+    GeneratedSaves saves = new GeneratedSaves(
+      request,
+      new GeneratedSetup(request.programId, request.weekId)
+    );
     return isFirst ? saves.first() : saves.again();
   }
 
@@ -60,14 +63,14 @@ public with sharing class GeneratedSaves {
       return conflict(ScheduleDaySaves.CHANGED_SINCE);
     }
     List<ScheduleDays.DayGrid> blank = GeneratedInputs.daysOf(
-      BlankWeek.build(program.Id, request.weekId).days
+      setup.blankWeek().days
     );
     // The blank week was read before; if setup has changed it since, the week is opened again.
-    String changed = GeneratedSetupChanges.of(program, blank, request.days);
+    String changed = GeneratedSetupChanges.of(setup, blank, request.days);
     if (changed != null) {
       return conflict(changed);
     }
-    List<ScheduleGrid> grids = GeneratedChecks.check(program, blank, request);
+    List<ScheduleGrid> grids = GeneratedChecks.check(setup, blank, request);
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Schedule__c draft = new Schedule__c(
@@ -80,7 +83,7 @@ public with sharing class GeneratedSaves {
       );
       Database.insert(draft, AccessLevel.USER_MODE);
       ScheduleDaySaves.write(draft.Id, daySaves(blank, grids, false));
-      return saved(draft.Id, null);
+      return saved(draft.Id, blank, null);
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;
@@ -103,7 +106,7 @@ public with sharing class GeneratedSaves {
     if (!GeneratedFrames.sameFrame(days, request.days)) {
       throw GeneratedFrames.unreadable();
     }
-    List<ScheduleGrid> grids = GeneratedChecks.check(program, days, request);
+    List<ScheduleGrid> grids = GeneratedChecks.check(setup, days, request);
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Id versionId = VERSION_FIRST.containsKey(request.action)
@@ -114,7 +117,7 @@ public with sharing class GeneratedSaves {
         AccessLevel.USER_MODE
       );
       ScheduleDaySaves.write(draft.Id, daySaves(days, grids, true));
-      return saved(draft.Id, versionId);
+      return saved(draft.Id, days, versionId);
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;
@@ -168,10 +171,25 @@ public with sharing class GeneratedSaves {
     return result;
   }
 
-  private static GeneratedWeek.Result saved(Id draftId, Id versionId) {
+  /**
+   * What the save leaves: each day one revision on from what was read under the lock (or 1 for a
+   * new day), as ScheduleDaySaves writes it, so nothing is read again.
+   */
+  private static GeneratedWeek.Result saved(
+    Id draftId,
+    List<ScheduleDays.DayGrid> days,
+    Id versionId
+  ) {
+    List<ScheduleDays.DayGrid> now = new List<ScheduleDays.DayGrid>();
+    for (ScheduleDays.DayGrid day : days) {
+      ScheduleDays.DayGrid next = new ScheduleDays.DayGrid();
+      next.day = day.day;
+      next.revision = day.revision == null ? 1 : day.revision + 1;
+      now.add(next);
+    }
     GeneratedWeek.Result result = new GeneratedWeek.Result();
     result.scheduleId = draftId;
-    result.revision = GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
+    result.revision = GeneratedDrafts.revisionOf(now);
     result.versionId = versionId;
     return result;
   }

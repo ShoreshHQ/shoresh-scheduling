@@ -99,7 +99,14 @@ public with sharing class ScheduleViews {
 
   /** Days as the screens show them, with anything deleted since marked gone. */
   public static List<DayView> dayViews(List<ScheduleDays.DayGrid> days) {
-    Set<String> stillThere = ScheduleRefs.stillThere(days);
+    return dayViews(days, ScheduleRefs.stillThere(days));
+  }
+
+  /** The same, with the records still there already known (their Ids). */
+  public static List<DayView> dayViews(
+    List<ScheduleDays.DayGrid> days,
+    Set<String> stillThere
+  ) {
     List<DayView> views = new List<DayView>();
     for (ScheduleDays.DayGrid day : days) {
       views.add(dayView(day, stillThere));

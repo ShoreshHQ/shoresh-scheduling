@@ -119,6 +119,9 @@ public with sharing class ScreenSaves {
     public List<Id> weeksBackOn { get; set; }
     @AuraEnabled
     public List<SetTimeWho.Who> who { get; set; }
+    /** A row save only: who the row covered when the director changed it (RowSaves). */
+    @AuraEnabled
+    public List<Id> seenWho { get; set; }
   }
 
   /** Creates new records and updates existing ones, with their week ticks. Returns the Ids in order. */
@@ -157,7 +160,8 @@ public with sharing class ScreenSaves {
     return ids;
   }
 
-  private static void refuseWhatCannotBeSaved(List<SObject> records) {
+  /** Refuses a kind or field these screens don't save, before anything is read or written. */
+  public static void refuseWhatCannotBeSaved(List<SObject> records) {
     for (SObject record : records) {
       refuseFieldsNotShown(record);
     }

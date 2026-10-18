@@ -32,14 +32,14 @@ public with sharing class GeneratedChecks {
    * rows sent. Refuses the whole week if any cell breaks a rule.
    */
   public static List<ScheduleGrid> check(
-    Program__c program,
+    GeneratedSetup setup,
     List<ScheduleDays.DayGrid> days,
     GeneratedWeek.Save request
   ) {
     Map<Date, GeneratedWeek.Day> byDate = GeneratedFrames.byDate(request.days);
     GeneratedChecks checks = new GeneratedChecks(
-      new SlotRules(program, activityIds(request.days)),
-      new GeneratedClosures(request.weekId),
+      setup.rules(activityIds(request.days)),
+      new GeneratedClosures(setup),
       request.action == GeneratedSaves.FILL_OPEN
     );
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
