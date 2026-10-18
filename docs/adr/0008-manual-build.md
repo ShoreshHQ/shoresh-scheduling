@@ -612,6 +612,23 @@ Manual Build passes none of these and behaves as before.
   as before, after its question if there is one. An edit sent again with nothing new to ask is
   given up after two more tries ("Not saved ... The <week word> kept changing"), rather than sent
   for ever; this guard also runs in Manual Build, which passes no locks.
+- **What an edit names as locked is what the director saw when they made it.** Each edit keeps
+  the locks on screen at that moment (with the edits waiting before it made) and sends those as
+  `locksBefore` whenever it is sent: first, after a wait behind a slow save, again after a
+  question or a tool worked out again, and for an Undo or Redo (the locks on screen when it was
+  pressed). Never the newest locks the server has since sent, which would cover a lock that
+  arrived while the edit waited. The server then refuses and the editor says "<cell> is locked."
+- **A clash with another director's hand edit ends in "<cell> is locked."** (coordinator call). A
+  hand edit locks the cell it changes, so when two directors change one cell the second one's edit
+  is refused with the same words, with no keep-theirs / use-yours question. Reason: the question
+  would let the second director cover a lock the first one made on purpose, and a lock is only
+  taken off deliberately (the Lock menu), here as everywhere else. A clash on a cell nobody
+  locked still asks as before.
+- **A tool keeps the other person's locked cells and does the rest** (the same as decision 19's
+  tools). Clear day, Clear week, and Copy day that meet a cell locked since the director looked do
+  not drop whole: the locked cells are left out, the rest is made as the same Undo step, and the
+  notice says what was left: "Cleared Monday, except 1 cell that is locked", with the cells listed
+  as "1 stayed: Soccer · Bunk 1 · Monday (locked)." (a copy: "1 left out: …: locked.").
 - **A longer activity stops at a locked cell**, as it stops at a filled one: it fills the blocks
   before the lock and is shown short ("(1 of 2)"), like a placement cut short in Manual Build.
 - **One unlock request per gesture.** A double-click on a locked cell (click, click, double-click),

@@ -1039,6 +1039,190 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
     });
   });
 
+  describe("locks: what the director saw is what an edit names", () => {
+    const bySent = (saveRuns, n) => saveRuns.mock.calls[n][0][0].runs[0];
+    const noticeOf = (element) => q(element, '[data-id="notice"]').textContent;
+    const toolNoticeOf = (element) =>
+      q(element, '[data-id="tool-notice"]').textContent;
+    const slow = () => {
+      const held = {};
+      held.promise = new Promise((resolve) => {
+        held.answer = resolve;
+      });
+      return held;
+    };
+    const SESSION = [
+      ...LABELS,
+      { term: "Week", singular: "Session", plural: "Sessions", isCustom: true }
+    ];
+
+    it("a queued edit behind a slow save is sent with the locks it was made with, so a lock that arrived meanwhile refuses it", async () => {
+      const first = slow();
+      const saveRuns = jest
+        .fn()
+        .mockReturnValueOnce(first.promise)
+        // The server holds Lunch locked (theirs), so the second edit comes back as a conflict.
+        .mockResolvedValue(
+          savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,1", ""], [0])
+        );
+      const { element } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      await typeInto(element, "0-2", "soccer");
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      // Another director's lock on Lunch arrives in the first save's answer.
+      first.answer(savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,1", ""]));
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(2);
+      // Lunch was unlocked on the screen when the edit was made: that is what is sent.
+      expect(bySent(saveRuns, 1).blockIds).toEqual(["t3"]);
+      expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+      expect(noticeOf(element)).toBe("Bunk 1 · Monday · Lunch is locked.");
+      expect(q(element, '[data-id="conflict"]')).toBeNull();
+      expect(cellText(element, "0-2")).toBe("");
+    });
+
+    it("an Undo waiting behind a slow save names the locks it was pressed with, so a lock that arrived meanwhile refuses it", async () => {
+      const first = slow();
+      const saveRuns = jest
+        .fn()
+        .mockReturnValueOnce(first.promise)
+        .mockResolvedValue(
+          savedLocked(undefined, ["1,,", "1,,"], [",1,", ""], [0])
+        );
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      await press(cell(element, "0-1"), "Delete");
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      // Someone locks Period 2 while the Undo waits.
+      first.answer(savedLocked(undefined, ["1,,", "1,,"], [",1,", ""]));
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(2);
+      expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+      expect(bySent(saveRuns, 1).locksAfter).toEqual([""]);
+      expect(noticeOf(element)).toBe("Bunk 1 · Monday · Period 2 is locked.");
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+      expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    });
+
+    it("a Redo waiting behind a slow Undo names the locks it was pressed with, so a lock that arrived meanwhile refuses it", async () => {
+      const second = slow();
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        .mockReturnValueOnce(second.promise)
+        .mockResolvedValue(
+          savedLocked(undefined, ["1,,", "1,,"], [",1,", ""], [0])
+        );
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      await press(cell(element, "0-1"), "Delete");
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      q(element, '[data-id="redo"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(2);
+      second.answer(savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,", ""]));
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(3);
+      expect(bySent(saveRuns, 2).locksBefore).toEqual([""]);
+      expect(noticeOf(element)).toBe("Bunk 1 · Monday · Period 2 is locked.");
+      expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    });
+
+    describe("a tool that meets a cell someone locked meanwhile", () => {
+      const BOTH = [...WITH_SWIM, WITH_SOCCER[1]];
+      const BOTH_ROWS = ["1,2,3", "1,,"];
+      const CLEAR_MONDAY = {
+        kind: "clear",
+        dates: ["2026-06-29"],
+        name: "Monday"
+      };
+
+      it("Clear day skips the locked cell, clears the rest, and lists it", async () => {
+        const saveRuns = jest
+          .fn()
+          // Lunch (Soccer) was locked by someone else: the first send comes back as a conflict.
+          .mockResolvedValueOnce(savedLocked(BOTH, BOTH_ROWS, [",,1", ""], [0]))
+          .mockResolvedValue(savedLocked(BOTH, ["1,,3", "1,,"], [",,1", ""]));
+        const { element } = await render(saveRuns, {
+          items: BOTH,
+          rows: BOTH_ROWS,
+          locks: []
+        });
+        element.runTool(CLEAR_MONDAY);
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(2);
+        // Sent again without the locked cell, still naming only what the director saw.
+        expect(bySent(saveRuns, 1).blockIds).toEqual(["t2"]);
+        expect(bySent(saveRuns, 1).after).toEqual([""]);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+        expect(q(element, '[data-id="conflict"]')).toBeNull();
+        expect(toolNoticeOf(element)).toContain(
+          "Cleared Monday, except 1 cell that is locked. 1 stayed: Soccer · Bunk 1 · Monday (locked)."
+        );
+        expect(cellText(element, "0-1")).toBe("Open");
+        expect(cellText(element, "0-2")).toBe("Soccer");
+        expect(lockText(element, "0-2")).toBe("Locked");
+      });
+
+      it("Clear day with nothing left but locked cells says so and changes nothing", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValue(savedLocked(BOTH, BOTH_ROWS, [",1,1", ""], [0]));
+        const { element } = await render(saveRuns, {
+          items: BOTH,
+          rows: BOTH_ROWS,
+          locks: []
+        });
+        element.runTool(CLEAR_MONDAY);
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(1);
+        expect(noticeOf(element)).toBe(
+          "Cleared Monday: nothing done, those cells are locked."
+        );
+        expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+      });
+    });
+
+    it("the camp's word for the week is used when a cell has left it, in a Session camp", async () => {
+      const shorter = saved(WITH_SOCCER, ["1,2", "1,"], [0]);
+      shorter.schedule.days[0] = {
+        ...shorter.schedule.days[0],
+        blocks: shorter.schedule.days[0].blocks.slice(0, 2)
+      };
+      const saveRuns = jest.fn().mockResolvedValue(shorter);
+      const { element } = await render(saveRuns, { labels: SESSION });
+      await typeInto(element, "0-1", "boating");
+      expect(noticeOf(element)).toBe(
+        "Bunk 1 · Monday · Lunch isn't in the Session any more."
+      );
+    });
+
+    it("the camp's word for the week is used when an Undo can't be made, in a Session camp", async () => {
+      const shorter = saved(WITH_SWIM, ["1,", "1,2"]);
+      shorter.schedule.days[0] = {
+        ...shorter.schedule.days[0],
+        blocks: shorter.schedule.days[0].blocks.slice(0, 2)
+      };
+      const saveRuns = jest.fn().mockResolvedValue(shorter);
+      const { element } = await render(saveRuns, { labels: SESSION });
+      await typeInto(element, "0-2", "swim");
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      expect(noticeOf(element)).toBe(
+        "Can't undo Placed Swim · Bunk 1 · Monday · Lunch: the Session has changed."
+      );
+    });
+  });
+
   describe("an unlock request is one per gesture", () => {
     const count = (heard) => heardNamed(heard, "unlockrequest").length;
     const mouse = (element, key, name = "click") =>

@@ -392,13 +392,14 @@ function keepWholePlacements(tool, source, saved, all) {
  * else changed is kept as well. The director's own edits still waiting to save aren't in `saved`
  * (the server's week), so they never count as anyone else's.
  *
- * Returns the tool's result on `saved` (runs, words), `kept` (every cell kept in any round, for
- * the next) and `missed`: the cells the tool meant to change that, once these runs are made, won't
- * hold what it meant them to.
+ * `locked`: cells someone locked since the director looked, which are left out too. Returns the
+ * tool's result on `saved` (runs, words), `kept` (every cell kept in any round, for the next),
+ * `lockedCells` ({ key, slot }: the cells left out because they are locked) and `missed`: the
+ * other cells the tool meant to change that, once these runs are made, won't hold what it meant.
  */
-export function replan(tool, seen, saved, kept, isAway) {
+export function replan(tool, seen, saved, kept, isAway, locked = new Set()) {
   const intended = resultOf(seen, toolRuns(tool, seen, { isAway }).runs);
-  const all = new Set(kept);
+  const all = new Set([...kept, ...locked]);
   // A cell is someone else's when the placement it is part of isn't the one the director saw
   // (not only its text: a placement made shorter keeps its first cell's text).
   const changed = (key) => placementAt(saved, key) !== placementAt(seen, key);
@@ -434,9 +435,19 @@ export function replan(tool, seen, saved, kept, isAway) {
   });
   // What the cells will hold once these runs are made, against what the tool meant them to.
   const made = resultOf(result.week, result.runs);
-  const missed = [...intended.keys()].filter((key) => {
+  const notMade = [...intended.keys()].filter((key) => {
     const after = made.has(key) ? made.get(key) : slotAt(saved, key);
     return after !== intended.get(key);
-  }).length;
-  return { ...result, kept: all, missed };
+  });
+  // A cell left out because it is locked is said as locked, whatever else changed there; the
+  // slot is what it holds now, or else what the tool meant it to hold.
+  const lockedCells = notMade
+    .filter((key) => locked.has(key))
+    .map((key) => ({ key, slot: slotAt(saved, key) || intended.get(key) }));
+  return {
+    ...result,
+    kept: all,
+    missed: notMade.length - lockedCells.length,
+    lockedCells
+  };
 }
