@@ -1808,18 +1808,12 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /**
    * After Keep theirs, or when the saved week has changed under a tool (a fixed activity now in
-   * a cell it clears, say): the tool is worked out again on the saved week, leaving every cell
-   * someone else changed since the director looked as it is now, and the rest is made, as the
-   * same Undo step (coordinator, 2026-10-17). The line says what was left: "Cleared Monday,
-   * except 1 cell that changed".
-   */
-  /**
-   * After Keep theirs, or when the saved week has changed under a tool (a fixed activity now in
    * a cell it clears, say): the tool is worked out again on the server's week (tools.js replan),
    * never touching a cell someone else changed since the director looked or one kept in an
    * earlier round, and the rest is made as the same Undo step, before the edits that waited
-   * (coordinator, 2026-10-17). The line says what wasn't made: "Cleared Monday, except 1 cell
-   * someone else changed".
+   * (coordinator, 2026-10-17). The line says what wasn't made, counting activities (the camp's
+   * word) for both reasons: "Cleared Monday, except 1 activity that changed and 1 activity that
+   * is locked".
    */
   replanTool(entry) {
     const { tool, stepId } = entry;
@@ -1844,10 +1838,11 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.history.forget(stepId);
       this.historyVersion += 1;
       this.showServerAndWaiting();
+      const those = `those ${this.t.pIn("Activity")}`;
       this.say(
         result.lockedCells.length && !result.missed
-          ? `${label}: nothing done, those cells are locked.`
-          : `${label}: nothing done, someone else changed those cells first.`
+          ? `${label}: nothing done, ${those} are locked.`
+          : `${label}: nothing done, someone else changed ${those} first.`
       );
       this.saveNext();
       return;
@@ -1859,14 +1854,15 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     this.refreshLocks(stepId, serverRuns);
     this.historyVersion += 1;
+    // Both counts in one word, the camp's for activities (one word per idea).
+    const activities = (n, one, many) =>
+      `${n} ${n === 1 ? `${this.t.sIn("Activity")} that ${one}` : `${this.t.pIn("Activity")} that ${many}`}`;
     const lockedCount = result.lockedCells.length;
     const exceptions = [
       result.missed
-        ? `${result.missed} ${result.missed === 1 ? "cell that" : "cells that"} changed`
+        ? activities(result.missedPlacements, "changed", "changed")
         : null,
-      lockedCount
-        ? `${lockedCount} ${lockedCount === 1 ? `${this.t.sIn("Activity")} that is` : `${this.t.pIn("Activity")} that are`} locked`
-        : null
+      lockedCount ? activities(lockedCount, "is locked", "are locked") : null
     ].filter(Boolean);
     const except = exceptions.length
       ? `${label}, except ${exceptions.join(" and ")}`

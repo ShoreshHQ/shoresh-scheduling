@@ -415,8 +415,9 @@ function wholeOf(groups, cells) {
  * tool's result on `saved` (runs, words), `kept` (every cell kept in any round, for the next),
  * `lockedCells` (the placements left out only because a cell of theirs is locked, once each:
  * { key, slot }: its first cell and, for a copy, the activity that was to be copied there, else
- * what it holds now) and `missed`: the other cells the tool meant to change that, once these
- * runs are made, won't hold what it meant.
+ * what it holds now), `missed`: the other cells the tool meant to change that, once these
+ * runs are made, won't hold what it meant, and `missedPlacements`: how many placements those
+ * cells are part of (what the line counts, in the camp's word for activities).
  */
 export function replan(tool, seen, saved, kept, isAway, locked = new Set()) {
   const intended = resultOf(seen, toolRuns(tool, seen, { isAway }).runs);
@@ -470,25 +471,39 @@ export function replan(tool, seen, saved, kept, isAway, locked = new Set()) {
   const forLock = notMade.filter(
     (key) => locked.has(key) || (withLocks.has(key) && !othersWhole.has(key))
   );
+  const lockedCells = placementsOf(forLock, groups).map(({ key, group }) => ({
+    key: group ? group.keys[0] : key,
+    slot: group ? group.slot : slotAt(saved, key) || intended.get(key)
+  }));
+  const forLockSet = new Set(forLock);
+  const missedKeys = notMade.filter((key) => !forLockSet.has(key));
+  return {
+    ...result,
+    // Only the cells kept for someone else's change: a cell kept only because a lock took its
+    // placement out whole is worked out again from the locks in the next round, so it is said
+    // as locked there too, not as changed.
+    kept: tool.kind === "copy" && source ? othersWhole : others,
+    missed: missedKeys.length,
+    missedPlacements: placementsOf(missedKeys, groups).length,
+    lockedCells
+  };
+}
+
+/**
+ * The placements some cells are part of, once each, in the order first met: { key, group }, the
+ * cell first met and its placement (of `groups`; for a copy the one being copied there comes
+ * first), or no group for a cell outside every placement (counted on its own).
+ */
+function placementsOf(keys, groups) {
   const named = new Set();
-  const lockedCells = [];
-  forLock.forEach((key) => {
+  const found = [];
+  keys.forEach((key) => {
     if (named.has(key)) {
       return;
     }
-    // For a copy, the placement it was copying there comes first.
     const group = groups.find((x) => x.keys.includes(key));
-    const keys = group ? group.keys : [key];
-    keys.forEach((k) => named.add(k));
-    lockedCells.push({
-      key: keys[0],
-      slot: group ? group.slot : slotAt(saved, key) || intended.get(key)
-    });
+    (group ? group.keys : [key]).forEach((k) => named.add(k));
+    found.push({ key, group });
   });
-  return {
-    ...result,
-    kept: all,
-    missed: notMade.length - forLock.length,
-    lockedCells
-  };
+  return found;
 }

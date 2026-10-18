@@ -1247,7 +1247,7 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
         await flush();
         expect(saveRuns).toHaveBeenCalledTimes(1);
         expect(noticeOf(element)).toBe(
-          "Cleared Monday: nothing done, those cells are locked."
+          "Cleared Monday: nothing done, those activities are locked."
         );
         expect(q(element, '[data-id="undo"]').disabled).toBe(true);
       });
@@ -1347,6 +1347,81 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
         expect(toolNoticeOf(element)).not.toMatch(/except/);
         expect(q(element, '[data-id="notice"]')).toBeNull();
         expect(q(element, '[data-id="conflict"]')).toBeNull();
+      });
+
+      it("an edit waiting behind one sent again keeps its place and is saved after it", async () => {
+        const first = slow();
+        const saveRuns = jest
+          .fn()
+          .mockReturnValueOnce(first.promise)
+          .mockResolvedValueOnce(
+            savedLocked(undefined, ["1,,", "1,,"], ["", ""])
+          )
+          .mockResolvedValue(
+            savedLocked(WITH_SOCCER, ["1,,", "1,2,"], ["", ""])
+          );
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        element.runTool({
+          kind: "clear",
+          dates: ["2026-06-29"],
+          name: "Monday"
+        });
+        await flush();
+        // Bunk 2's Period 2 gets Soccer while the clear is still saving.
+        await typeInto(element, "1-1", "soccer");
+        expect(saveRuns).toHaveBeenCalledTimes(1);
+        first.answer(unlockedSince());
+        await flush();
+        // The clear, the clear sent again, then the edit that waited: none lost, in order.
+        expect(saveRuns).toHaveBeenCalledTimes(3);
+        expect(
+          [0, 1, 2].map((n) => [
+            bySent(saveRuns, n).groupId,
+            bySent(saveRuns, n).after
+          ])
+        ).toEqual([
+          ["g1", [""]],
+          ["g1", [""]],
+          ["g2", ["A:a3"]]
+        ]);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+        expect(q(element, '[data-id="notice"]')).toBeNull();
+      });
+
+      it("a lock still held on the server is still named when another one was taken off", async () => {
+        // Both bunks have Swim in Period 2, both locked when the director cleared Monday; someone
+        // unlocked Bunk 1's only.
+        const both = ["1,2,", "1,2,"];
+        const BUNK2_P2 = "2026-06-29|g2|t2";
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(savedLocked(WITH_SWIM, both, ["", ",1,"], [0]))
+          .mockResolvedValue(
+            savedLocked(WITH_SWIM, ["1,,", "1,2,"], ["", ",1,"])
+          );
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: both,
+          locks: [P2, BUNK2_P2]
+        });
+        element.runTool({
+          kind: "clear",
+          dates: ["2026-06-29"],
+          name: "Monday"
+        });
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(2);
+        const resent = saveRuns.mock.calls[1][0][0].runs;
+        const named = (groupId) =>
+          resent.find((run) => run.groupId === groupId).locksBefore;
+        // Bunk 1's lock is gone on the server: named unlocked. Bunk 2's is still there: named
+        // locked, as the director saw it.
+        expect(named("g1")).toEqual([""]);
+        expect(named("g2")).toEqual(["1"]);
       });
 
       it("a conflict with no lock taken off and nothing of anyone else's is still sent again only a few times", async () => {

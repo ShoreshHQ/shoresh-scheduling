@@ -475,7 +475,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       dropped for one cell. On **Keep theirs**, or when the saved week has changed under it (a
       fixed activity now in a cell it clears, say), it is worked out again on the saved week,
       leaving every cell someone else changed since the director looked as it is now, and the
-      rest is made as the same Undo step: _Cleared Monday, except 1 cell that changed ·
+      rest is made as the same Undo step: _Cleared Monday, except 1 activity that changed ·
       Undo_. **Use yours** makes all of it, as for any edit. While the question is open the line
       isn't shown, and edits wait. The re-plan (`tools.js` `replan`) works from two weeks only:
       the one the director made the tool on (kept with it, never replaced by anything newer)
@@ -485,9 +485,12 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       shorter or longer counts in every cell. A cell kept in any round stays kept in the next. A copy comes from the
       source day as the director saw it; a target whose source cell someone else changed is
       kept. A copied placement and what is there now go whole or not at all, so nothing is
-      cleared for a copy that can't come. "Except N" counts the cells the tool meant to change
-      that won't hold what it meant, in neutral words (_except 1 cell that changed_: a cell may
-      be kept only to keep a placement whole, or hold a fixed activity setup put there). Checked
+      cleared for a copy that can't come. "Except N" counts the placements holding the cells
+      the tool meant to change that won't hold what it meant, in the camp's word for
+      activities, the same word as for locked ones (_except 1 activity that changed_, also
+      _… and 1 activity that is locked_; coordinator, 2026-10-18, one word per idea; until then
+      it counted cells). A cell may be kept only to keep a placement whole, or hold a fixed
+      activity setup put there. Checked
       by `tools.property.test.js`: 3,000 seeded weeks of 4 or 5 days and 5 to 7 blocks,
       activities up to 3 blocks long, others making, lengthening, shortening and clearing
       placements and putting whole rows back, up to four rounds of Keep theirs or Use yours,
@@ -612,6 +615,13 @@ Manual Build passes none of these and behaves as before.
   as before, after its question if there is one. An edit sent again with nothing new to ask is
   given up after two more tries ("Not saved ... The <week word> kept changing"), rather than sent
   for ever; this guard also runs in Manual Build, which passes no locks.
+- **A lock someone took off is not a reason to drop an edit** (review of #67). When a conflict
+  comes back with nothing to ask (the cells hold what the director saw, nothing newly locked) and
+  a cell the edit touches was locked when the director made it but is no longer locked on the
+  server, the edit (or Undo, or Redo) is sent again at once, ahead of the edits waiting behind
+  it, naming those cells unlocked as they are now; every lock still held on the server is still
+  named as seen. Undo and Redo keep their place. Each resend takes at least one lock out of what
+  it names, so it ends.
 - **What an edit names as locked is what the director saw when they made it.** Each edit keeps
   the locks on screen at that moment (with the edits waiting before it made) and sends those as
   `locksBefore` whenever it is sent: first, after a wait behind a slow save, again after a
@@ -627,8 +637,12 @@ Manual Build passes none of these and behaves as before.
 - **A tool keeps the other person's locked cells and does the rest** (the same as decision 19's
   tools). Clear day, Clear week, and Copy day that meet a cell locked since the director looked do
   not drop whole: the locked cells are left out, the rest is made as the same Undo step, and the
-  notice says what was left: "Cleared Monday, except 1 cell that is locked", with the cells listed
-  as "1 stayed: Soccer · Bunk 1 · Monday (locked)." (a copy: "1 left out: …: locked.").
+  notice says what was left, counting activities (placements, once each, as the changed ones are
+  counted): "Cleared Monday, except 1 activity that is locked", with them listed as "1 stayed:
+  Soccer · Bunk 1 · Monday (locked)." (a copy: "1 left out: …: locked."). With nothing left to
+  do it says "Cleared Monday: nothing done, those activities are locked." A cell kept only
+  because a lock took its placement out whole is worked out again from the locks in each later
+  round, so a second round still says it as locked, not as changed.
 - **A longer activity stops at a locked cell**, as it stops at a filled one: it fills the blocks
   before the lock and is shown short ("(1 of 2)"), like a placement cut short in Manual Build.
 - **One unlock request per gesture.** A double-click on a locked cell (click, click, double-click),
