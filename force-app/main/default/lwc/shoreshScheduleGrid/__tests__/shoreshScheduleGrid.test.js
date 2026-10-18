@@ -106,4 +106,57 @@ describe("c-shoresh-schedule-grid", () => {
     const cells = [...third.querySelectorAll('[role="cell"]')];
     expect(cells.map((c) => c.getAttribute("aria-colindex"))).toEqual(["2"]);
   });
+
+  describe("locks and focus (Generated Schedule)", () => {
+    const flush = () => Promise.resolve().then(() => undefined);
+    function editable(cells) {
+      const element = createElement("c-shoresh-schedule-grid", {
+        is: ShoreshScheduleGrid
+      });
+      element.grid = { ...GRID, cells };
+      element.editable = true;
+      document.body.appendChild(element);
+      return element;
+    }
+
+    it("draws the lock with its words: Locked, or what the page says", async () => {
+      const element = editable([
+        { ...GRID.cells[0], locked: true },
+        { ...GRID.cells[2], locked: true, lockLabel: "Locked empty" },
+        GRID.cells[1]
+      ]);
+      await flush();
+      const lockOf = (key) =>
+        element.shadowRoot.querySelector(
+          `[data-cell="${key}"] .cell-lock lightning-icon`
+        );
+      expect(lockOf("0-0").alternativeText).toBe("Locked");
+      expect(lockOf("1-1").alternativeText).toBe("Locked empty");
+      expect(lockOf("1-0")).toBeNull();
+    });
+
+    it("says which cell focus reached, the cell's dot included", async () => {
+      const element = editable([
+        { ...GRID.cells[0], dot: "Twice in a day" },
+        GRID.cells[1]
+      ]);
+      const reached = jest.fn();
+      element.addEventListener("cellfocus", reached);
+      await flush();
+      const cell = element.shadowRoot.querySelector('[data-cell="1-0"]');
+      cell.dispatchEvent(
+        new CustomEvent("focusin", { bubbles: true, composed: true })
+      );
+      const dot = element.shadowRoot.querySelector(
+        '[data-cell="0-0"] c-shoresh-dot'
+      );
+      dot.dispatchEvent(
+        new CustomEvent("focusin", { bubbles: true, composed: true })
+      );
+      expect(reached.mock.calls.map((c) => c[0].detail.key)).toEqual([
+        "1-0",
+        "0-0"
+      ]);
+    });
+  });
 });

@@ -34,7 +34,8 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * the director's Lock keeps it through every build), "Locked" in assistive text.
  *
  * Editable, it says which cell keyboard focus has reached ("cellfocus", with the cell's key), so
- * the page can offer actions on it.
+ * the page can offer actions on it (a dot in the cell taking focus, tapped, counts as the cell).
+ * A locked cell's lock says `lockLabel` ("Locked" when not given) in assistive text.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
@@ -120,6 +121,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
           ariaSelected: this.editable && cell.selected ? "true" : null,
           handle: this.editable && cell.movable,
           dotOpen: Boolean(cell.dot) && cell.key === this.focusedKey,
+          lockText: cell.lockLabel || "Locked",
           colIndex: cell.column + 2,
           rowSpan: cell.length || 1
         }))
@@ -165,7 +167,9 @@ export default class ShoreshScheduleGrid extends LightningElement {
   }
 
   handleFocusIn(event) {
-    const key = event.target.dataset && event.target.dataset.cell;
+    // The cell itself, or something in it that takes focus (its dot, tapped).
+    const at = event.target.closest && event.target.closest("[data-cell]");
+    const key = at ? at.dataset.cell : null;
     if (this.editable && key) {
       this.activeKey = key;
       this.dispatchEvent(new CustomEvent("cellfocus", { detail: { key } }));

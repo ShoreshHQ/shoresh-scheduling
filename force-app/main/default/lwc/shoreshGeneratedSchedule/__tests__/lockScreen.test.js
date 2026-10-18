@@ -281,7 +281,7 @@ describe("locks on the Generated Schedule screen", () => {
     q(element, '[data-action="StartOver"]').click();
     await flush();
     expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
-      "Clears the 2 activity cells in Week 1, locked ones too. Fixed activities and recurring activities stay."
+      "Clears the 2 activity cells and every lock in Week 1. Fixed activities and recurring activities stay."
     );
   });
 
@@ -363,14 +363,15 @@ describe("locks on the Generated Schedule screen", () => {
     q(element, '[data-action="StartOver"]').click();
     await flush();
     expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
-      "There are no activity cells to clear in Week 1; its locks are cleared. Fixed activities and recurring activities stay."
+      "Clears every lock in Week 1; there are no activity cells to clear. Fixed activities and recurring activities stay."
     );
   });
 
-  it("a day that can't be read: no Lock menu (the server would refuse any change)", async () => {
+  it("a day that can't be read: the Lock menu offers nothing, held (the server would refuse)", async () => {
     const inputs = savedWeek();
     inputs.days[1] = { ...inputs.days[1], problem: "the grid has 3 rows" };
     const element = await render(inputs);
-    expect(menu(element)).toBeNull();
+    expect(menu(element).disabled).toBe(true);
+    expect(menuLabels(element)).toEqual([]);
   });
 });

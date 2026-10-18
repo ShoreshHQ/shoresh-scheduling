@@ -56,6 +56,17 @@ describe("weekCells", () => {
   });
 });
 
+describe("a lock left where the bunk is now away", () => {
+  it("is listed, so it can be unlocked; an away cell with no lock isn't", () => {
+    const at = (c) => c.groupId === "g2" && c.blockIds[0] === "b4";
+    expect(cellsWith([lock("g2", "b4")]).find(at)).toMatchObject({
+      filled: false,
+      locked: true
+    });
+    expect(cellsWith([]).find(at)).toBeUndefined();
+  });
+});
+
 describe("lockChoices", () => {
   it("a focused cell: Lock it, an Open one too (kept empty); then Unlock it", () => {
     const open = cell("g2", "b3", "Bunk 2 · Monday · Period 2", "Bunk 2");

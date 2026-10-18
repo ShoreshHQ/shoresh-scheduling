@@ -156,10 +156,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.focusAfterRender) {
       return;
     }
-    const { cellKey, selector } = this.focusAfterRender;
+    const { cellKey, selector, grid: toGrid } = this.focusAfterRender;
     this.focusAfterRender = null;
     const grid = this.template.querySelector('[data-id="grid"]');
-    if (grid && cellKey) {
+    if (grid && (cellKey || toGrid)) {
       grid.focusCell(cellKey);
       return;
     }
@@ -348,9 +348,25 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const [first] = this.stillNeeded;
     return first ? first.screen : null;
   }
-  /** Before the first Generate only: a week already generated is shown whatever setup lacks. */
+  /**
+   * Before the first Generate only (a week already generated is shown whatever setup lacks),
+   * and as the one message: not beside "No weeks yet", a load error or a conflict (as Manual
+   * Build's chain).
+   */
   get showStillNeeded() {
-    return !this.loading && !this.isGenerated && this.stillNeeded.length > 0;
+    return (
+      this.canChoose &&
+      !!this.loaded &&
+      !this.loading &&
+      !this.error &&
+      !this.conflict &&
+      !this.isGenerated &&
+      this.stillNeeded.length > 0
+    );
+  }
+  /** "Week 1 has no days Main runs.", unless what is still needed already says it. */
+  get showNoDays() {
+    return this.hasNoDays && !this.showStillNeeded;
   }
   handleStillNeeded(event) {
     event.preventDefault();
@@ -689,12 +705,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // not set up yet (an elective, a trip) stay, so they aren't counted (Filled counts them).
     const n = activityCells(this.week.days, this.week.isAway);
     const word = this.t.sIn("Activity");
-    const too = anyLocked ? ", locked ones too" : "";
-    let clears = `Clears the ${n} ${word} ${n === 1 ? "cell" : "cells"} in ${this.weekName}${too}.`;
-    if (!n) {
-      clears = anyLocked
-        ? `There are no ${word} cells to clear in ${this.weekName}; its locks are cleared.`
-        : `There are no ${word} cells to clear in ${this.weekName}.`;
+    const cells = `the ${n} ${word} ${n === 1 ? "cell" : "cells"}`;
+    let clears = `Clears ${cells} in ${this.weekName}.`;
+    if (n && anyLocked) {
+      clears = `Clears ${cells} and every lock in ${this.weekName}.`;
+    } else if (anyLocked) {
+      clears = `Clears every lock in ${this.weekName}; there are no ${word} cells to clear.`;
+    } else if (!n) {
+      clears = `There are no ${word} cells to clear in ${this.weekName}.`;
     }
     return `${clears} ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`;
   }
@@ -863,11 +881,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       group: grp ? { groupId: grp.key, name: grp.name } : null
     });
   }
-  get hasLockMenu() {
-    return this.lockMenu.length > 0;
-  }
+  /** The menu stays in the toolbar; with nothing to offer it is there, held. */
   get lockDisabled() {
-    return this.actionsDisabled;
+    return this.actionsDisabled || this.lockMenu.length === 0;
   }
 
   /** Lock or Unlock what the menu named, on the server, then show the week as saved. */
@@ -894,8 +910,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           notPlaced: []
         };
         this.announce(lockedText(choice));
-        // The menu was held while it saved, which drops focus: back to it.
-        this.focusAfterRender = { selector: '[data-id="lock-menu"]' };
+        // The menu was held while it saved, which drops focus: back to it, or to the grid when
+        // the menu has nothing left to offer (it is held then).
+        this.focusAfterRender = this.lockMenu.length
+          ? { selector: '[data-id="lock-menu"]' }
+          : { cellKey: this.focusedCellKey, grid: true };
       } else if (result.status === CONFLICT) {
         this.conflict = { message: statementOf(result.message) };
         this.focusAfterRender = { selector: '[data-id="reload"]' };
@@ -1026,6 +1045,16 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           )) ||
         null
     };
+    if (cell.open && result.locked && !this.week.isAway(grp.id, block.id)) {
+      // Kept empty on purpose (a Lock on an Open cell): not "Open", which is a cell to fill.
+      result = {
+        ...result,
+        text: "",
+        className: "cell cell_locked-empty",
+        title: "Locked empty",
+        lockLabel: "Locked empty"
+      };
+    }
     if (cell.open && this.week.isAway(grp.id, block.id)) {
       result = {
         ...result,
@@ -1099,7 +1128,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         label: "Open: nothing placed",
         className: "swatch swatch_open"
       },
-      { key: "away", label: "Not at camp", className: "swatch swatch_away" }
+      { key: "away", label: "Not at camp", className: "swatch swatch_away" },
+      { key: "locked", label: "Locked", icon: "utility:lock" }
     ];
   }
 

@@ -815,11 +815,11 @@ doesn't change this one.
     again: it now offers _Unlock Bunk 1 · Monday · Period 2_.
 14. **Lock a day or a bunk.** Choose _Lock Monday_: every Monday cell holding an activity gets the
     lock (Open cells and Lunch don't). In Group View the menu offers the bunk shown (_Lock Bunk
-    2_). **Rebuild** now says _Locked cells stay as they are._; **Start over** says _…, locked
-    ones too._ and clears them.
+    2_). **Rebuild** now says _Locked cells stay as they are._; **Start over** says _Clears the N
+    activity cells and every lock in Week 1._ The legend under the grid shows the lock.
 15. **Keep a cell empty.** Reach an Open cell (after Start over, any) and choose _Lock …_ on it:
-    it stays Open through every build, **Open** no longer counts it, and **Filled**'s total
-    drops by one.
+    it no longer says _Open_ (it shows only its lock: kept empty on purpose), it stays empty
+    through every build, **Open** no longer counts it, and **Filled**'s total drops by one.
 16. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). That comes
     with the editor Manual Build shares, and a hand edit will lock the cell it changes. Use
     Manual Build for a week built by hand.

@@ -24,7 +24,7 @@ export function lockedKeys(locks) {
  * Each cell of the week as the Lock menu weighs it: { dateValue, groupId, blockIds (the
  * placement's, or the one Open block), filled (holds something a lock can keep: not a fixed or
  * recurring activity), setTime, locked (any of its blocks) }. A cell where the group isn't at camp
- * and nothing is placed isn't listed: there is nothing to keep.
+ * and nothing is placed isn't listed (there is nothing to keep), unless a lock was left on it.
  */
 export function weekCells(days, locked, isAway) {
   const out = [];
@@ -35,7 +35,12 @@ export function weekCells(days, locked, isAway) {
     (day.groups || []).forEach((grp, g) => {
       groupCells(day, g).forEach((c) => {
         const blocks = day.blocks.slice(c.blockIndex, c.blockIndex + c.length);
-        if (!c.item && isAway(grp.id, blocks[0].id)) {
+        const isLocked = blocks.some((b) =>
+          locked.has(cellKey(day.dateValue, grp.id, b.id))
+        );
+        // Nothing to keep where the group isn't at camp and nothing is placed; but a lock left
+        // there (the group came to be away since) is listed, so it can be unlocked.
+        if (!c.item && isAway(grp.id, blocks[0].id) && !isLocked) {
           return;
         }
         out.push({
@@ -44,9 +49,7 @@ export function weekCells(days, locked, isAway) {
           blockIds: blocks.map((b) => b.id),
           filled: !!c.item && !SET_TIME.has(c.item.kind),
           setTime: !!c.item && SET_TIME.has(c.item.kind),
-          locked: blocks.some((b) =>
-            locked.has(cellKey(day.dateValue, grp.id, b.id))
-          )
+          locked: isLocked
         });
       });
     });

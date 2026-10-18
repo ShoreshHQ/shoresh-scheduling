@@ -77,28 +77,26 @@
             data-id="option"
           ></lightning-combobox>
         </div>
-        <template lwc:if={hasLockMenu}>
-          <div class="actions" role="group" aria-label="Lock">
-            <lightning-button-menu
-              class="lock-menu"
-              label="Lock"
-              icon-name="utility:lock"
-              alternative-text="Lock"
-              disabled={lockDisabled}
-              onselect={handleLockSelect}
-              data-id="lock-menu"
-            >
-              <template for:each={lockMenu} for:item="choice">
-                <lightning-menu-item
-                  key={choice.value}
-                  value={choice.value}
-                  label={choice.label}
-                  data-value={choice.value}
-                ></lightning-menu-item>
-              </template>
-            </lightning-button-menu>
-          </div>
-        </template>
+        <div class="actions">
+          <lightning-button-menu
+            class="lock-menu"
+            label="Lock"
+            icon-name="utility:lock"
+            alternative-text="Lock"
+            disabled={lockDisabled}
+            onselect={handleLockSelect}
+            data-id="lock-menu"
+          >
+            <template for:each={lockMenu} for:item="choice">
+              <lightning-menu-item
+                key={choice.value}
+                value={choice.value}
+                label={choice.label}
+                data-value={choice.value}
+              ></lightning-menu-item>
+            </template>
+          </lightning-button-menu>
+        </div>
         <span class="spacer"></span>
         <button
           type="button"
@@ -179,7 +177,7 @@
       </div>
     </template>
 
-    <template lwc:if={hasNoDays}>
+    <template lwc:if={showNoDays}>
       <p class="empty-state">{noDaysMessage}</p>
     </template>
 
@@ -340,7 +338,16 @@
         <div class="legend">
           <template for:each={legend} for:item="entry">
             <span key={entry.key} class="legend-entry">
-              <span class={entry.className}></span>
+              <template lwc:if={entry.icon}>
+                <lightning-icon
+                  class="legend-icon"
+                  icon-name={entry.icon}
+                  size="xx-small"
+                ></lightning-icon>
+              </template>
+              <template lwc:else>
+                <span class={entry.className}></span>
+              </template>
               {entry.label}
             </span>
           </template>

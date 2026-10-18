@@ -644,12 +644,19 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
 32. **The screen's side of locks** (G4 screen; `c/shoreshGeneratedSchedule`, `locks.js`):
     - **the lock icon** (`utility:lock`, slate: the design guide's colour for structure that
       stays put; "Locked" in assistive text) on every locked cell, in its top left corner (the
-      dot has the right), on every block of a locked placement;
+      dot has the right), on every block of a locked placement; the legend shows it (_Locked_), as the desktop's lists its
+      locked mark. **A cell locked empty** reads as kept empty, not as Open (coordinator,
+      2026-10-18): no _Open_ word and not Open's dashed look, just the cell and its lock,
+      _Locked empty_ in assistive text; Open names only cells still to fill;
     - **one Lock menu** in the toolbar (the word **Lock**, the lock icon), offering what applies
       now: the cell keyboard focus last reached (_Lock Bunk 3 · Monday · Period 2_, an Open
       cell too, to keep it empty; never a fixed or recurring activity), the day shown in Daily
       View (_Lock Monday_), the bunk shown in Group View (_Lock Bunk 3_) and the focused cell's
-      bunk's day (_Lock Bunk 3 · Monday_); each with _Unlock …_ when it has a locked cell. The
+      bunk's day (_Lock Bunk 3 · Monday_); each with _Unlock …_ when it has a locked cell. A lock left on an empty cell where the bunk has since
+      come to be away is listed too, so it can be unlocked (never newly locked). The menu
+      stays in the toolbar, held when it has nothing to offer (in Activity View, say), so the
+      toolbar doesn't shift and Unlock can't take the control away from under focus; after a
+      change focus returns to it, or to the grid when it has nothing left to offer. The
       shortcuts are offered only while they would lock a filled cell, as the server locks only
       those. A change is saved at once (`setLocks`), the week shown is the data module's answer
       (never patched), and it is said back: _Locked Monday._ A conflict is the G3 box with
@@ -660,14 +667,17 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
     - **the check on load** gets the locks too (`checkGeneratedWeek`): a cell locked empty is
       neither Open nor counted to fill, and an over-the-limit dot goes on an unlocked session
       first, as the engine places it (the same dots as the engine's full build, tested);
-    - **the confirms** say _Locked cells stay as they are._ (Rebuild) and _…, locked ones too._
-      (Start over) when the week has a lock;
+    - **the confirms** say _Locked cells stay as they are._ (Rebuild) and _Clears the 34 activity
+      cells and every lock in Week 1._ (Start over) when the week has a lock (_Clears every lock in
+      Week 1; there are no activity cells to clear._ when it has only locks);
     - **building waits for the basics**, as Manual Build does (#48; desktop `readiness.js`):
       before the first Generate, the desktop's one sentence of what is still needed (_One
       thing still needed before you can build the schedule: Activities._), each missing thing
       a link to its screen, and _Set up …_ for the first, in place of _Generate a schedule_
       (`c/shoreshSetupRules` `stillNeeded` / `stillNeededSentence`, the same as Manual Build's).
-      A week already generated opens whatever setup lacks since;
+      A week already generated opens whatever setup lacks since. It is the one message, as in
+      Manual Build's chain: not beside _No weeks yet_, a load error, a conflict, or _Week 1 has
+      no days Main runs._;
     - **hand editing** (place, move, swap, clear, length, typing, undo with `locksAfter`) comes
       with the shared week editor `c-shoresh-week-editor`, which Manual Build's session extracts
       from Manual Build after its part 4b (coordinator, 2026-10-18: one editor, no fork). Until
