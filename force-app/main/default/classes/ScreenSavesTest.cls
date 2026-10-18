@@ -11,7 +11,11 @@ private class ScreenSavesTest {
       List<SObject> refused = new List<SObject>{
         new Season__c(Id = season.Id, Camp__c = cedar.Id),
         new Program__c(Id = main.Id, CopiedFrom__c = other.Id),
-        new Program__c(Season__c = season.Id, Name = 'New', CopiedFrom__c = main.Id)
+        new Program__c(
+          Season__c = season.Id,
+          Name = 'New',
+          CopiedFrom__c = main.Id
+        )
       };
       for (SObject record : refused) {
         try {
@@ -38,7 +42,11 @@ private class ScreenSavesTest {
       // A new row names its parent; an existing one keeps it.
       SeasonSetupController.saveRecords(
         new List<SObject>{
-          new Program__c(Season__c = season.Id, Name = 'Added', SortOrder__c = 3),
+          new Program__c(
+            Season__c = season.Id,
+            Name = 'Added',
+            SortOrder__c = 3
+          ),
           new Program__c(Id = main.Id, Name = 'Main camp', Monday__c = true)
         }
       );
@@ -59,7 +67,9 @@ private class ScreenSavesTest {
       Group__c bunk = ShoreshTestData.groupIn(juniors.Id, 'Bunk 3');
 
       SeasonSetupController.saveRecords(
-        new List<SObject>{ new Group__c(Id = bunk.Id, Division__c = seniors.Id) }
+        new List<SObject>{
+          new Group__c(Id = bunk.Id, Division__c = seniors.Id)
+        }
       );
       Assert.areEqual(
         seniors.Id,

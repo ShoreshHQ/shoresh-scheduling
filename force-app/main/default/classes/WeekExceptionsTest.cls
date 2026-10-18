@@ -110,10 +110,7 @@ private class WeekExceptionsTest {
         ShoreshTestData.saveWeekExceptions(null, new List<Id>{ season.Id });
         Assert.fail('A season is not a week exception');
       } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'These screens can\'t delete that.',
-          e.getMessage()
-        );
+        Assert.areEqual('These screens can\'t delete that.', e.getMessage());
       }
       Assert.areEqual(1, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
     }
