@@ -44,7 +44,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    the group at every block it is at camp for, so they reserve more than the blank week
    places, which is the safe side. Everything else is Open. The same setup
    always gives the same grids. A program with no time blocks, no groups at camp, or no days
-   that week is refused with a sentence naming it. A fixed or recurring activity whose slot is
+   that week is refused with a sentence naming it, and so is a season with no activities
+   (desktop readiness.js; the screen offers Start only once nothing is still needed). A fixed or recurring activity whose slot is
    already taken (only possible with setup saved around the clash check) is not placed, and the
    screen lists it after Start (_Rest · Bunk 3 · Monday_) rather than leaving it to be found.
    `SetTimePlanReader` reads in system mode because it backs the clash check (ADR 0001 §6).

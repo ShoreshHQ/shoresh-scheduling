@@ -229,7 +229,10 @@ describe("c-shoresh-editable-table", () => {
       });
       await flush();
       const empty = element.shadowRoot.querySelector('[data-id="none-shown"]');
-      expect(empty.textContent.trim()).toBe("No time blocks yet.");
+      // The same empty state as every screen: an icon and a title (c-shoresh-empty-state).
+      expect(empty.querySelector("c-shoresh-empty-state").title).toBe(
+        "No time blocks yet."
+      );
       expect(rows(element).length).toBe(1);
       expect(field(element, 0, "Name").value).toBeUndefined();
       expect(field(element, 0, "Name").placeholder).toBe("Add Time block");
@@ -282,6 +285,23 @@ describe("c-shoresh-editable-table", () => {
       expect(typeof sent[0].onSaved).toBe("function");
       expect(typeof sent[0].onFailure).toBe("function");
       expect(typeof sent[0].onDone).toBe("function");
+    });
+
+    it("a time block can be added with no name: the server names it by its times", async () => {
+      // As shoreshProgram.blockColumns: Name not required (TimeBlockTriggerHandler fills it).
+      const columns = COLUMNS.map((c) => {
+        return c.fieldName === "Name" ? { ...c, required: false } : c;
+      });
+      const element = render({ columns, rows: ROWS });
+      const sent = listen(element);
+      await flush();
+      change(field(element, 2, "StartTime__c"), "13:30");
+      await flush();
+      expect(addButton(element).disabled).toBe(false);
+      allValid(element);
+      addButton(element).click();
+      expect(sent.length).toBe(1);
+      expect(sent[0].record.Name).toBeUndefined();
     });
 
     it("adds with its button, or when the director leaves it filled in", async () => {
@@ -753,6 +773,43 @@ describe("c-shoresh-editable-table", () => {
       expect(labels(0)).toEqual(["None", "Gym games"]);
       expect(labels(1)).toEqual(["None", "Soccer"]);
       expect(labels(2)).toEqual(["None", "Soccer", "Gym games"]);
+    });
+
+    it("a picklist can offer each row its own choices (optionsFor its saved record)", async () => {
+      const all = [
+        { label: "None", value: "" },
+        { label: "Swim", value: "a1" },
+        { label: "Hike (outdoor, choose another)", value: "a2" }
+      ];
+      const element = render({
+        objectApiName: "Activity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text" },
+          {
+            fieldName: "RainPlan__c",
+            label: "Rain plan",
+            type: "picklist",
+            excludeSelf: true,
+            options: all,
+            // Hike only where it is already held.
+            optionsFor: (saved) =>
+              all.filter(
+                (o) => o.value !== "a2" || saved[nsName("RainPlan__c")] === "a2"
+              )
+          }
+        ],
+        rows: [
+          { Id: "a1", Name: "Swim", RainPlan__c: "a2" },
+          { Id: "a3", Name: "Archery" }
+        ]
+      });
+      await flush();
+      const labels = (i) =>
+        field(element, i, "RainPlan__c").options.map((o) => o.label);
+      expect(labels(0)).toEqual(["None", "Hike (outdoor, choose another)"]);
+      expect(labels(1)).toEqual(["None", "Swim"]);
+      // The blank row: no saved record, so the column's indoor choices.
+      expect(labels(2)).toEqual(["None", "Swim"]);
     });
   });
 
@@ -1632,9 +1689,9 @@ describe("c-shoresh-editable-table", () => {
       });
       await flush();
       expect(
-        element.shadowRoot
-          .querySelector('[data-id="none-shown"]')
-          .textContent.trim()
+        element.shadowRoot.querySelector(
+          '[data-id="none-shown"] c-shoresh-empty-state'
+        ).title
       ).toBe("Nothing to show with this choice.");
     });
   });

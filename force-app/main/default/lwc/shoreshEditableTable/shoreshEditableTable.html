@@ -76,12 +76,10 @@
           <template for:each={bodyRows} for:item="row">
             <template lwc:if={row.isEmptyState}>
               <tr key={row.key} data-id="empty">
-                <td
-                  colspan={fullSpan}
-                  class="empty-state slds-text-align_center slds-text-color_weak"
-                  data-id="none-shown"
-                >
-                  {row.message}
+                <td colspan={fullSpan} data-id="none-shown">
+                  <c-shoresh-empty-state
+                    title={row.message}
+                  ></c-shoresh-empty-state>
                 </td>
               </tr>
             </template>

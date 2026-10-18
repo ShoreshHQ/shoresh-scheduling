@@ -414,6 +414,7 @@ export function buildProposal(input) {
     versions: last.versions,
     unmatched: last.unmatched,
     noWeeks: last.noWeeks,
+    fillWeeks: last.fillWeeks,
     asks: [...proposal.asks, ...last.asks]
   };
 }

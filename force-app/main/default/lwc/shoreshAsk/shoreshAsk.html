@@ -1,0 +1,42 @@
+<template>
+  <section
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="ask-title"
+    aria-describedby="ask-lines"
+    class="slds-modal slds-fade-in-open"
+    data-id="ask"
+    onkeydown={handleKeyDown}
+  >
+    <div class="slds-modal__container">
+      <div class="slds-modal__header">
+        <h2 id="ask-title" class="slds-modal__title">{heading}</h2>
+      </div>
+      <div class="slds-modal__content slds-p-around_medium" id="ask-lines">
+        <template for:each={lineItems} for:item="line">
+          <p key={line.key} class="slds-m-bottom_x-small">{line.text}</p>
+        </template>
+      </div>
+      <div class="slds-modal__footer">
+        <button
+          type="button"
+          class="slds-button slds-button_neutral"
+          onclick={handleNo}
+          data-id="no"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="slds-button slds-button_brand"
+          onclick={handleYes}
+          data-id="yes"
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </div>
+  </section>
+  <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

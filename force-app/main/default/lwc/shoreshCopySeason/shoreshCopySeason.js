@@ -2,7 +2,7 @@ import { LightningElement, api } from "lwc";
 import previewCopy from "@salesforce/apex/SeasonSetupController.previewCopy";
 import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { suggestedCopyName, suggestedCopyStart } from "c/shoreshSetupRules";
-import { errorMessage } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 
 /**
@@ -97,7 +97,10 @@ export default class ShoreshCopySeason extends LightningElement {
       }
     } catch (e) {
       if (asked === this.newStart) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          "Couldn't work out the copy. Nothing was changed.",
+          e
+        );
       }
     }
   }
@@ -113,7 +116,10 @@ export default class ShoreshCopySeason extends LightningElement {
       });
       this.dispatchEvent(new CustomEvent("copied", { detail: { seasonId } }));
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed(
+        `${this.terms.s("Season")} not copied. Nothing was saved.`,
+        e
+      );
     } finally {
       this.busy = false;
     }

@@ -218,7 +218,10 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       the season's week of that name; one week in the files and one in the season match;
       otherwise the review asks "Which week is last year's schedule?" (by name; "Leave it out"
       keeps the setup without a version). A season with no weeks keeps no version, and "Good to
-      know" says to add weeks first.
+      know" says to add weeks first. (Replaced 2026-10-17, desktop-parity cleanup, following Greg's
+      rule that an import adds what's missing: a season with no weeks gets them from its dates in
+      the same save, as "Fill in weeks" makes them, and the week question names each by its start
+      date; Undo removes them. Only a season whose dates give no weekdays still keeps no version.)
     - **Cells**: a fixed, recurring, or activity item set up (or matched) by the import, by its
       record; an elective, special day, special event, or trip as written, with no record (shown
       as "not set up yet" on the schedule page, ADR 0005); a two-block placement as `^` below it.

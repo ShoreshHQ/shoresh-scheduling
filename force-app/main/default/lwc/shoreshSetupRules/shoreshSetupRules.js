@@ -411,3 +411,203 @@ export function suggestedCopyStart(oldStartDate) {
   const date = new Date(Date.UTC(y, m - 1, d + 364));
   return date.toISOString().slice(0, 10);
 }
+
+function rainPlanOption(activity) {
+  return {
+    label: activity[ACTIVITY.Outdoor]
+      ? `${activity.Name} (outdoor, choose another)`
+      : activity.Name,
+    value: activity.Id
+  };
+}
+
+/** Every activity as a rain plan is named, outdoor ones "(outdoor, choose another)". */
+export function rainPlanOptions(activities) {
+  return activities.map(rainPlanOption);
+}
+
+/**
+ * What one activity's rain plan can be (Shoresh desktop ActivitiesScreen.jsx:336-341): indoor
+ * activities only, plus, for the activity that already holds an outdoor one, that one, so its
+ * row shows what it has. Saving it again is refused (ActivityTriggerHandler).
+ */
+export function rainPlanChoices(activities, held) {
+  return activities
+    .filter((a) => !a[ACTIVITY.Outdoor] || a.Id === held)
+    .map(rainPlanOption);
+}
+
+const RUN_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+function runsOnADay(program) {
+  return RUN_DAYS.some((day) => program[FIELD.Program[day]]);
+}
+
+/**
+ * What building a week still needs (Shoresh desktop readiness.js REQUIRED_AREAS: age divisions,
+ * groups, days, time blocks, activities; here also weeks and programs, which Salesforce needs to
+ * choose a week): [{ screen, label }] in that order, empty when building can start. Divisions,
+ * groups, days and time blocks are the chosen program's (the first one when none is chosen).
+ * Building waits for all of them (coordinator, 2026-10-17, like the desktop).
+ */
+export function stillNeeded(setup, terms, programId) {
+  if (!setup || !setup.season) {
+    return [];
+  }
+  const t = terms;
+  const needed = [];
+  const add = (screen, label) => needed.push({ screen, label });
+  if ((setup.weeks || []).length === 0) {
+    add("weeks", t.p("Week"));
+  }
+  const programs = setup.programs || [];
+  const entry = programs.find((p) => p.program.Id === programId) || programs[0];
+  if (!entry) {
+    add("programs", t.p("Program"));
+  } else {
+    const divisions = entry.divisions || [];
+    if (divisions.length === 0) {
+      add("divisions", t.p("Division"));
+    }
+    // As on the desktop, groups are needed until there are some, units or not.
+    if (divisions.every((d) => (d.groups || []).length === 0)) {
+      add("groups", t.p("Group"));
+    }
+    if (!runsOnADay(entry.program)) {
+      add("programs", "Days");
+    }
+    if ((entry.timeBlocks || []).length === 0) {
+      add("timeBlocks", t.p("TimeBlock"));
+    }
+  }
+  if ((setup.activities || []).length === 0) {
+    add("activities", t.p("Activity"));
+  }
+  return needed;
+}
+
+/**
+ * The desktop's sentence (readiness.js describeSetupGaps) as parts, each name a link to its
+ * screen: "One thing still needed before you can build the schedule: Bunks." or "3 things still
+ * needed before you can build the schedule: Units, Bunks and Periods." No article is built from a
+ * camp word, so "a week" reads "the schedule". [] when nothing is needed.
+ */
+export function stillNeededSentence(needed) {
+  if (!needed.length) {
+    return [];
+  }
+  const count = needed.length === 1 ? "One thing" : `${needed.length} things`;
+  const parts = [
+    {
+      key: "lead",
+      text: `${count} still needed before you can build the schedule: `
+    }
+  ];
+  needed.forEach((item, i) => {
+    if (i > 0) {
+      parts.push({
+        key: `sep${i}`,
+        text: i === needed.length - 1 ? " and " : ", "
+      });
+    }
+    parts.push({
+      key: `link${i}`,
+      link: true,
+      text: item.label,
+      screen: item.screen
+    });
+  });
+  parts.push({ key: "end", text: "." });
+  return parts;
+}
+
+/**
+ * Each setup menu item's mark (Shoresh desktop Sidebar.jsx renderItem): "needed" ("!") when an
+ * area building needs is empty, "done" ("✓") when an area has rows, none otherwise. Screen -> mark.
+ * The desktop has one program; here an area a program owns is done only when every program has
+ * it, so the menu never shows ✓ on what Manual Build still lists as needed (stillNeeded).
+ */
+export function menuMarks(setup) {
+  if (!setup || !setup.season) {
+    return {};
+  }
+  const programs = setup.programs || [];
+  const every = (test) => programs.length > 0 && programs.every(test);
+  const groupsOf = (p) => (p.divisions || []).flatMap((d) => d.groups || []);
+  const has = {
+    weeks: (setup.weeks || []).length > 0,
+    programs: every((p) => runsOnADay(p.program)),
+    divisions: every((p) => (p.divisions || []).length > 0),
+    groups: every((p) => groupsOf(p).length > 0),
+    timeBlocks: every((p) => (p.timeBlocks || []).length > 0),
+    activities: (setup.activities || []).length > 0,
+    locations: (setup.locations || []).length > 0,
+    fixedActivities: programs.some((p) => (p.fixedActivities || []).length > 0),
+    recurringActivities: programs.some(
+      (p) => (p.recurringActivities || []).length > 0
+    )
+  };
+  const required = new Set([
+    "weeks",
+    "programs",
+    "divisions",
+    "groups",
+    "timeBlocks",
+    "activities"
+  ]);
+  const marks = {};
+  Object.entries(has).forEach(([screen, filled]) => {
+    if (filled) {
+      marks[screen] = "done";
+    } else if (required.has(screen)) {
+      marks[screen] = "needed";
+    }
+  });
+  return marks;
+}
+
+/** Every week, bunk, activity, and location of the season: Id -> name. */
+function recordNames(setup) {
+  const names = new Map();
+  const add = (records) =>
+    (records || []).forEach((r) => names.set(r.Id, r.Name));
+  add(setup.weeks);
+  add(setup.activities);
+  add(setup.locations);
+  (setup.programs || []).forEach((entry) =>
+    (entry.divisions || []).forEach((d) => add(d.groups))
+  );
+  return names;
+}
+
+/**
+ * The question before turning something off for a week it is already placed in (Shoresh desktop
+ * ExclusionConfirmDialog.jsx, its words in the camp's, "cells" for the desktop's "slots"):
+ * { heading, lines, confirmLabel } for c-shoresh-ask. placed: RunsInController.placedInWeeks's
+ * answer ([{ target, week, cells }]), one item or several at once.
+ */
+export function turnOffQuestion(placed, setup, terms) {
+  const names = recordNames(setup || {});
+  const cells = (n) => `${n} ${n === 1 ? "cell" : "cells"}`;
+  const stay = "They stay until you change them.";
+  if (placed.length === 1) {
+    const [only] = placed;
+    const week = names.get(only.week) || `this ${terms.sIn("Week")}`;
+    return {
+      heading: `Turn off "${names.get(only.target) || "this one"}" for ${week}?`,
+      lines: [`Placed in ${cells(only.cells)} in ${week}.`, stay],
+      confirmLabel: "Turn off anyway"
+    };
+  }
+  return {
+    heading: "Turn these off?",
+    lines: [
+      ...placed.map(
+        (p) =>
+          `"${names.get(p.target) || "One of them"}": placed in ${cells(p.cells)} in ${names.get(p.week)}.`
+      ),
+      stay
+    ],
+    confirmLabel: "Turn off anyway"
+  };
+}
