@@ -186,18 +186,20 @@ function worse(a, b) {
  * first; 0, a fraction or anything else is refused rather than quietly built as option 1, so a
  * screen bug can't show the wrong week as if it were the one asked for.
  */
+// The last option a schedule can store (Schedule__c.EngineOption__c holds four digits).
+const LAST_OPTION = 9999;
+
 function optionOf(value) {
   if (value === undefined || value === null || value === "") {
     return 1;
   }
-  // A whole number, or plain decimal digits: never "1e3", "0x10" or " 2".
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value > 0 ? value : null;
-  }
-  if (typeof value === "string" && /^\d+$/.test(value) && Number(value) > 0) {
-    return Number(value);
-  }
-  return null;
+  // A whole number from 1 to LAST_OPTION, or those as plain decimal digits: never "1e3",
+  // "0x10" or " 2".
+  const option =
+    typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return Number.isInteger(option) && option > 0 && option <= LAST_OPTION
+    ? option
+    : null;
 }
 
 /**

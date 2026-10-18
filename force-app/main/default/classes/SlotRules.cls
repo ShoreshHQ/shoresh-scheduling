@@ -9,30 +9,36 @@ public with sharing class SlotRules {
   private Map<Id, Group__c> groups = new Map<Id, Group__c>();
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
 
-  public SlotRules(Schedule__c schedule, List<SlotEdits.Edit> edits) {
-    labels = CampLabels.forCamp(schedule.Program__r.Season__r.Camp__c);
-    Set<Id> activityIds = activityIdsIn(edits);
-    if (!activityIds.isEmpty()) {
-      activities = new Map<Id, Activity__c>(
-        [
-          SELECT Id, Name
-          FROM Activity__c
-          WHERE
-            Id IN :activityIds
-            AND Season__c = :schedule.Program__r.Season__c
-          WITH USER_MODE
-        ]
-      );
-    }
-    for (Group__c grp : ProgramReads.groupsOf(schedule.Program__c)) {
+  /** What the rules are checked against: the season, the camp's words, groups and time blocks. */
+  public class Setup {
+    public Id seasonId;
+    public CampLabels labels;
+    public List<Group__c> groups;
+    public List<TimeBlock__c> blocks;
+  }
+
+  /** The rules on setup already read, with the activities the edits place. */
+  public SlotRules(Setup setup, Set<Id> activityIds) {
+    Id seasonId = setup.seasonId;
+    labels = setup.labels;
+    activities = new Map<Id, Activity__c>(
+      [
+        SELECT Id, Name, Location__c
+        FROM Activity__c
+        WHERE Id IN :activityIds AND Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
+    for (Group__c grp : setup.groups) {
       groups.put(grp.Id, grp);
     }
-    for (TimeBlock__c block : ProgramReads.blocksOf(schedule.Program__c)) {
+    for (TimeBlock__c block : setup.blocks) {
       blocks.put(block.Id, block);
     }
   }
 
-  private static Set<Id> activityIdsIn(List<SlotEdits.Edit> edits) {
+  /** The activities a Manual Build save's edits place; refuses an edit that can't be read. */
+  public static Set<Id> activityIdsIn(List<SlotEdits.Edit> edits) {
     Set<Id> result = new Set<Id>();
     for (SlotEdits.Edit edit : edits) {
       if (edit == null || edit.runs == null || edit.runs.isEmpty()) {
@@ -89,10 +95,19 @@ public with sharing class SlotRules {
         return String.valueOf(i + 1);
       }
     }
-    Id activityId = SlotIds.activityIn(slot);
-    Activity__c activity = activityId == null
-      ? null
-      : activities.get(activityId);
+    Activity__c activity = seasonActivity(slot);
+    grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));
+    return String.valueOf(grid.items.size());
+  }
+
+  /** The season's activity a slot starts or carries on, or null. */
+  public Activity__c activityOf(String slot) {
+    return activities.get(SlotIds.activityIn(SlotIds.owner(slot)));
+  }
+
+  /** The season's activity a slot starts or carries on; refused when it isn't one of them. */
+  public Activity__c seasonActivity(String slot) {
+    Activity__c activity = activityOf(slot);
     if (activity == null) {
       throw new ShoreshException(
         'That ' +
@@ -100,8 +115,7 @@ public with sharing class SlotRules {
           ' was not found. It may have been deleted.'
       );
     }
-    grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));
-    return String.valueOf(grid.items.size());
+    return activity;
   }
 
   /**

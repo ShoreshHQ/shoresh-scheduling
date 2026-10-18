@@ -93,12 +93,25 @@ public with sharing class ScheduleViews {
     ScheduleView view = new ScheduleView();
     view.schedule = row(found[0]);
     view.status = found[0].Status__c;
-    List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
-    Set<String> stillThere = ScheduleRefs.stillThere(days);
-    for (ScheduleDays.DayGrid day : days) {
-      view.days.add(dayView(day, stillThere));
-    }
+    view.days = dayViews(ScheduleDays.read(scheduleId));
     return view;
+  }
+
+  /** Days as the screens show them, with anything deleted since marked gone. */
+  public static List<DayView> dayViews(List<ScheduleDays.DayGrid> days) {
+    return dayViews(days, ScheduleRefs.stillThere(days));
+  }
+
+  /** The same, with the records still there already known (their Ids). */
+  public static List<DayView> dayViews(
+    List<ScheduleDays.DayGrid> days,
+    Set<String> stillThere
+  ) {
+    List<DayView> views = new List<DayView>();
+    for (ScheduleDays.DayGrid day : days) {
+      views.add(dayView(day, stillThere));
+    }
+    return views;
   }
 
   private static VersionRow row(Schedule__c schedule) {

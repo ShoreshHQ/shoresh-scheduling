@@ -53,7 +53,7 @@ public with sharing class ProgramReads {
 
   public static List<TimeBlock__c> blocksOf(Id programId) {
     return [
-      SELECT Id, Name, StartTime__c, EndTime__c, PartOfDay__c
+      SELECT Id, Name, StartTime__c, EndTime__c, PartOfDay__c, SortOrder__c
       FROM TimeBlock__c
       WHERE Program__c = :programId
       WITH USER_MODE
@@ -63,7 +63,7 @@ public with sharing class ProgramReads {
 
   public static List<Group__c> groupsOf(Id programId) {
     return [
-      SELECT Id, Name, Availability__c, Division__c
+      SELECT Id, Name, Availability__c, Division__c, SortOrder__c
       FROM Group__c
       WHERE Division__r.Program__c = :programId
       WITH USER_MODE
