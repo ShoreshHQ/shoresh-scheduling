@@ -338,7 +338,11 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     `checkWeek` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
     clears as soon as its cause moves. A day that can't be read is left out. Inputs come from
     the setup records every screen already gets (`readActivities`, `readLocations`,
-    `readProgram`, field names from `c/shoreshSchema`), so the server sends nothing new.
+    `readProgram`, field names from `c/shoreshSchema`). The one exception is an activity added
+    from a slot ("Add <name>"): the setup the page was given doesn't have it, so the server sends
+    its setup record back with it (`ActivityOption.record`, read by
+    `SeasonSetupReader.activitiesOf`, the setup screen's own query), and the checks read it until
+    the setup is read again.
     - **One rules module with Generated Schedule.** Written here, then moved into
       `c/shoreshEngine` (#38, ADR 0010 §10) as the exported `checkWeek` (coordinator's call).
       Manual Build imports `checkWeek`, its readers and `reasonFor` from there and keeps no copy
