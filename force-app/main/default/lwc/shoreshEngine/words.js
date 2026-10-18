@@ -1,18 +1,19 @@
 import { buildTerms } from "c/shoreshTerms";
-import { BUSY, RULE } from "./week";
+import { BUSY, NO_FIT, RULE } from "./week";
 
 /**
  * The hover reason for one rule a placement bends, in camp words. Manual Build reuses these words
  * for its dots (ADR 0010), so both schedules say the same thing: keep them here, and change them
  * for both.
  *
- * rule: a RULE value, or BUSY (the group is busy at an overlapping time). activityName: the activity placed. groupName: the group the cell belongs to. placeName: the activity's place
+ * rule: a RULE value, BUSY (the group is busy at an overlapping time), or NO_FIT (a gap no
+ * activity's length fits). groupName: the group the cell belongs to. placeName: the activity's place
  * when it has one with a size set, else null. groupsAtOnce: the activity's limit. terms: the
  * camp's words (c/shoreshTerms); model words when left out.
  */
 export function reasonFor(
   rule,
-  { activityName, groupName, placeName, groupsAtOnce, terms } = {}
+  { groupName, placeName, groupsAtOnce, terms } = {}
 ) {
   const t = terms || buildTerms([]);
   switch (rule) {
@@ -32,8 +33,8 @@ export function reasonFor(
         : `With another ${t.sIn("Division")} at the same time`;
     case RULE.PLACE_CAPACITY:
       return `More ${t.pIn("Group")} at ${placeName} than fit`;
-    case RULE.SHORTER:
-      return `${activityName} is shorter than set up`;
+    case NO_FIT:
+      return `No ${t.sIn("Activity")} fits this ${t.sIn("Gap")}`;
     case BUSY:
       return "Already busy then";
     default:

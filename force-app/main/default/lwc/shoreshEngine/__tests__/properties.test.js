@@ -12,7 +12,8 @@ import {
   readLocations
 } from "c/shoreshEngine";
 import { buildTerms } from "c/shoreshTerms";
-import { camp } from "./data/camp";
+import { mulberry32 } from "../random";
+import { activity, block, camp, cellsOf, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
 import { problems } from "./data/check";
 
@@ -51,7 +52,6 @@ function checkedApart(spec, input, result) {
             .map((g) => g.id)
         ])
       ),
-      dotShorter: true,
       othersAt: (kind, id, d, blockId) =>
         spec.otherPrograms
           .filter(
@@ -125,5 +125,74 @@ describe("generateWeek on random small camps", () => {
     expect(bad.slice(0, 20)).toEqual([]);
     // The camps are tight enough that the never-blank pass really runs.
     expect(flagged).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Weekly maximums are soft (Greg, 2026-10-17): over them before anything else, smallest overage
+ * first. Random camps where only maximums press (one division, no places, no limit at once, every
+ * activity for everyone, one block long). A bunk two or more over on an activity is wrong when,
+ * at every cell that activity holds for it, another activity was there to take at most one over
+ * (at or under its maximum in the finished week, so at most one over when chosen, and not on that
+ * day). Counts only grow as the week fills, so the finished week shows what was available.
+ */
+describe("going over weekly maximums, on random camps", () => {
+  it("never puts a bunk 2+ over on an activity while one 1 over was free for the cell (300 seeds)", () => {
+    const bad = [];
+    let twoOver = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const r = mulberry32(seed * 7919);
+      const int = (lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
+      const acts = Array.from({ length: int(2, 5) }, (_, i) =>
+        activity(`a${i}`, {
+          max: r() < 0.15 ? null : int(0, 3),
+          atOnce: null,
+          priority: r() < 0.5 ? "High" : "Low"
+        })
+      );
+      const spec = {
+        groups: Array.from({ length: int(1, 4) }, (_, i) => group(`g${i}`)),
+        days: int(1, 5),
+        blocks: Array.from({ length: int(2, 5) }, (_, i) => block(i)),
+        activities: acts,
+        option: int(1, 5)
+      };
+      const result = generateWeek(camp(spec));
+      const cells = cellsOf(result.days);
+      for (const g of spec.groups) {
+        const count = (id) =>
+          cells.reduce(
+            (n, d) => n + d[g.id].filter((c) => c && c.id === id).length,
+            0
+          );
+        for (const a of acts) {
+          if (a.max === null || count(a.id) - a.max < 2) {
+            continue;
+          }
+          twoOver++;
+          const everyCellHadBetter = cells.every((d) =>
+            d[g.id].every(
+              (c) =>
+                !c ||
+                c.id !== a.id ||
+                acts.some(
+                  (b) =>
+                    b.id !== a.id &&
+                    (b.max === null || count(b.id) <= b.max) &&
+                    !d[g.id].some((x) => x && x.id === b.id)
+                )
+            )
+          );
+          if (everyCellHadBetter) {
+            bad.push(
+              `seed ${seed}: ${g.id} is ${count(a.id) - a.max} over on ${a.id}`
+            );
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+    // Not vacuous: the camps really do push bunks two or more over.
+    expect(twoOver).toBeGreaterThan(0);
   });
 });

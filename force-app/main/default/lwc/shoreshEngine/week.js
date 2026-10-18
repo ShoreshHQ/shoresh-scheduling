@@ -21,8 +21,7 @@ export const RULE = Object.freeze({
   ELIGIBILITY: "eligibility",
   GROUPS_AT_ONCE: "groupsAtOnce",
   SAME_DIVISION: "sameDivision",
-  PLACE_CAPACITY: "placeCapacity",
-  SHORTER: "shorterThanSetUp"
+  PLACE_CAPACITY: "placeCapacity"
 });
 
 /**
@@ -36,14 +35,15 @@ export const RELAX_ORDER = Object.freeze([
   RULE.ELIGIBILITY,
   RULE.GROUPS_AT_ONCE,
   RULE.SAME_DIVISION,
-  RULE.PLACE_CAPACITY,
-  RULE.SHORTER
+  RULE.PLACE_CAPACITY
 ]);
 // Most serious first, for comparing two bends.
 const SEVERITY = [...RELAX_ORDER].reverse();
 
-/** Not a rule that bends: the group holds something at an overlapping time. */
+/** Not rules that bend, but why a cell stays Open: the group holds something at an overlapping
+ * time, or no activity's length fits the gap. */
 export const BUSY = "busy";
+export const NO_FIT = "noFit";
 
 // Why nothing can go in a cell at all: no room for the activity's full length, or the group is
 // already somewhere at an overlapping time. These never give way.
@@ -156,15 +156,12 @@ export function scheduleWeek(model) {
   }
 
   let openSlotByKey = null; // the cells the generator fills, once the grid is read
-  // A placement shortened to fit a gap (the last bend): head cell -> its length.
-  const runLength = new Map();
 
   /** The blocks a placement of `act` at block `b` covers (its head and whatever of its tail fits). */
   function ownBlocks(act, g, d, b) {
     const own = [b];
     const idx = blockIdx(d, b);
-    const length = runLength.get(cellKey(g, d, b)) || act.span;
-    for (let i = 1; i < length; i++) {
+    for (let i = 1; i < act.span; i++) {
       const next = blocksOf(d)[idx + i];
       if (next) {
         own.push(next.id);
@@ -177,10 +174,7 @@ export function scheduleWeek(model) {
   let emptyCells = 0;
   const isOpenSlot = (k) => openSlotByKey && openSlotByKey.has(k);
 
-  function place(act, g, d, b, length) {
-    if (length && length !== act.span) {
-      runLength.set(cellKey(g, d, b), length);
-    }
+  function place(act, g, d, b) {
     assigned.set(cellKey(g, d, b), act.id);
     bump(usageCount, `${g}|${act.id}`, 1);
     bump(dailyUsage, `${g}|${d}|${act.id}`, 1);
@@ -222,7 +216,6 @@ export function scheduleWeek(model) {
         (u) => u.groupId === g
       );
     }
-    runLength.delete(cellKey(g, d, b));
   }
 
   // ── Pass 1: read the grid ──────────────────────────────────────────────────
@@ -431,8 +424,8 @@ export function scheduleWeek(model) {
    * reason it can't (the desktop's blockedBy order). With `all` true: null when it can't go here
    * at all (LENGTH or OVERLAP), else every rule it would bend ([] when none).
    */
-  function check(act, g, d, b, all, length) {
-    const span = length || act.span;
+  function check(act, g, d, b, all) {
+    const span = act.span;
     const found = [];
     const note = (code) => {
       if (!found.includes(code)) {
@@ -1290,10 +1283,12 @@ export function scheduleWeek(model) {
   }
 
   // Never blank (Greg, 2026-10-17): a cell nothing fits cleanly gets the least-bad activity, the
-  // one whose most serious bend is least serious (RELAX_ORDER), then high priority, then the one
-  // the group has had least, then the stable key. Last of all (coordinator, under Greg's rule), a
-  // multi-block activity may go in shorter than set up, as long as the gap allows. The only cells
-  // left Open are those where the group is busy at an overlapping time.
+  // one whose most serious bend is least serious (RELAX_ORDER). Weekly maximums are soft in
+  // practice (Greg: "I write 2 art periods, but I'd accept 3"), so going over one is tried before
+  // any other bend, and among those the smallest overage wins: a third Art for several bunks
+  // before a fifth for one. Then high priority, then the one the group has had least, then the
+  // stable key. An activity is never shortened (Greg): a cell where the group is busy at an
+  // overlapping time, or a gap no activity's length fits, stays Open.
   const openCells = [];
   function neverBlank() {
     for (const u of openSlots) {
@@ -1303,46 +1298,31 @@ export function scheduleWeek(model) {
       }
       let best = null;
       let bestRank = null;
-      const consider = (act, length) => {
-        const bends = check(
-          act,
-          u.groupId,
-          u.dayIndex,
-          u.blockId,
-          true,
-          length
-        );
+      for (const act of acts) {
+        const bends = check(act, u.groupId, u.dayIndex, u.blockId, true);
         if (bends === null) {
-          return false;
+          continue;
         }
-        if (length < act.span) {
-          bends.push(RULE.SHORTER);
-        }
+        const over = bends.includes(RULE.WEEKLY_MAX)
+          ? getCount(u.groupId, act.id) + 1 - act.max
+          : 0;
         const rank = [
           ...SEVERITY.map((rule) => (bends.includes(rule) ? 1 : 0)),
-          -length,
+          over,
           PRIORITY_RANK[act.priority],
           getCount(u.groupId, act.id),
           tieOf(u, act)
         ];
         if (!bestRank || lexLess(rank, bestRank)) {
-          best = { act, bends, length };
+          best = act;
           bestRank = rank;
-        }
-        return true;
-      };
-      for (const act of acts) {
-        // Its full length if that fits the gap, else the longest run that does.
-        let length = act.span;
-        while (length >= 1 && !consider(act, length)) {
-          length--;
         }
       }
       if (best) {
         // Its dots come from checkWeek on the finished week (checks.js), like any other cell's.
-        place(best.act, u.groupId, u.dayIndex, u.blockId, best.length);
+        place(best, u.groupId, u.dayIndex, u.blockId);
       } else {
-        openCells.push({ key: k, why: OVERLAP });
+        openCells.push({ key: k, why: LENGTH });
       }
     }
     for (const k of busyThen) {

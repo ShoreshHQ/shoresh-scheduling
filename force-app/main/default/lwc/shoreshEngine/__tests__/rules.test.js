@@ -95,9 +95,7 @@ describe("never blank (Greg, 2026-10-17)", () => {
       [RULE.ELIGIBILITY]: activity("z", { atOnce: null, eligible: ["g2"] }),
       [RULE.GROUPS_AT_ONCE]: activity("w", { atOnce: 1 }),
       [RULE.SAME_DIVISION]: activity("v", { atOnce: null, sameDivision: true }),
-      [RULE.PLACE_CAPACITY]: activity("u", { atOnce: null, location: "hut" }),
-      // Two blocks long, in a one-block gap (Bunk g1's second block is kept).
-      [RULE.SHORTER]: activity("t", { atOnce: null, span: 2 })
+      [RULE.PLACE_CAPACITY]: activity("u", { atOnce: null, location: "hut" })
     };
     const spec = (rules) => ({
       mode: "fillOpen",
@@ -241,7 +239,7 @@ describe("never blank (Greg, 2026-10-17)", () => {
     expect(result.openCells.map((c) => c.blockId)).toEqual(["b0", "b1"]);
   });
 
-  it("fills a gap too short for any activity with one shorter than set up, flagged, as the last bend", () => {
+  it("never shortens an activity: a gap no activity's length fits stays Open, saying so (Greg)", () => {
     const spec = {
       mode: "fillOpen",
       groups: [group("g1")],
@@ -255,20 +253,69 @@ describe("never blank (Greg, 2026-10-17)", () => {
     };
     const input = camp(spec);
     const result = generateWeek(input);
-    expect(cellsOf(result.days)[0].g1[1]).toEqual({
-      kind: "A",
-      id: "hike",
-      head: true
-    });
-    expect(flagAt(result, 0, "g1", "b1")).toMatchObject({
-      reason: "Twice in a day · hike is shorter than set up"
-    });
-    expect(flagAt(result, 0, "g1", "b1").bends).toEqual([
-      RULE.ONCE_A_DAY,
-      RULE.SHORTER
+    expect(at(result, 0, "g1", 1)).toBeNull();
+    expect(result.openCells).toEqual([
+      expect.objectContaining({
+        blockId: "b1",
+        reason: "No activity fits this gap"
+      })
     ]);
-    expect(result.openCells).toEqual([]);
     expect(problems(spec, input, result)).toEqual([]);
+  });
+
+  describe("weekly maximums are soft (Greg, 2026-10-17): over them before anything else, smallest overage first", () => {
+    it("a third session of each for one bunk, never a fifth of one", () => {
+      // 9 cells, three activities at 2 a week: three cells have to go over.
+      const result = run({
+        days: 3,
+        blocks: [block(0), block(1), block(2)],
+        activities: ["art", "swim", "hike"].map((id) =>
+          activity(id, { max: 2 })
+        )
+      });
+      const counts = {};
+      cellsOf(result.days).forEach((d) =>
+        d.g1.forEach((c) => {
+          counts[c.id] = (counts[c.id] || 0) + 1;
+        })
+      );
+      expect(counts).toEqual({ art: 3, swim: 3, hike: 3 });
+      expect(new Set(result.flags.map((f) => f.reason))).toEqual(
+        new Set(["Over its weekly limit"])
+      );
+    });
+
+    it("the smallest overage wins, not the activity used least", () => {
+      // Eight days of one block: art once a week, swim five times. Two cells go over: one more
+      // of each (1 over each), never two more art (2 over) because art has been used less.
+      const result = run({
+        days: 8,
+        activities: [activity("art", { max: 1 }), activity("swim", { max: 5 })]
+      });
+      const art = [0, 1, 2, 3, 4, 5, 6, 7].filter(
+        (d) => at(result, d, "g1", 0) === "art"
+      );
+      expect(art).toHaveLength(2);
+    });
+
+    it("going over a maximum comes before any other bend and before leaving a cell Open", () => {
+      // Arts is at its limit; swim would be a second group at a one-group activity.
+      const result = run({
+        mode: "fillOpen",
+        groups: [group("g1"), group("g2")],
+        days: 2,
+        activities: [
+          activity("arts", { max: 1, atOnce: null }),
+          activity("swim", { atOnce: 1 })
+        ],
+        cells: [
+          { day: 0, group: "g1", block: "b0", act: "arts" },
+          { day: 1, group: "g2", block: "b0", act: "swim" }
+        ]
+      });
+      expect(at(result, 1, "g1", 0)).toBe("arts");
+      expect(flagAt(result, 1, "g1", "b0").bends).toEqual([RULE.WEEKLY_MAX]);
+    });
   });
 
   it("says so clearly when there are no activities at all, and returns no grid", () => {

@@ -30,11 +30,13 @@ cells) and 0009 (names through `c/shoreshSchema`).
    the least-bad choice goes in with the bronze dot, and hover says which rule it bends. Rules
    give way in this order (coordinator): weekly max, then once a day, then who it's set up for,
    then groups at once, then the place's capacity last. **Same division only gives way just
-   before the place's capacity** (Greg, 2026-10-17). **Last of all, an activity may go in
-   shorter than set up** when a gap is too short for any activity at its full length, flagged
-   ("Hike is shorter than set up") (coordinator, 2026-10-17, under Greg's never-blank rule). The
-   only cells left Open are those where the group is busy at an overlapping time. Locks, fixed and recurring activities and
-   not-at-camp cells never give way. Not-at-camp cells stay hatched.
+   before the place's capacity** (Greg, 2026-10-17). **Weekly maximums are soft in practice:
+   go over them before anything else, smallest overage first, and show it** (Greg's correction,
+   2026-10-17: "I write 2 art periods, but I'd accept 3"). **An activity is never shortened** to
+   fit a gap (Greg, the same day, replacing the coordinator's earlier "shorter than set up"
+   bend): a gap no activity's length fits stays Open, which Greg expects to be practically
+   nonexistent in real camps. Locks, fixed and recurring activities and not-at-camp cells never
+   give way. Not-at-camp cells stay hatched.
 8. **Anyone with Shoresh Scheduler access** can generate.
 9. **"Early in the week: N by Wednesday" counts Wednesday** (Greg, 2026-10-17).
 
@@ -135,16 +137,19 @@ cells) and 0009 (names through `c/shoreshSchema`).
    once a day, who it's set up for, groups at once, same division only, the place's capacity);
    then high priority; then the one the group has had least; then the key. Same division only
    gives way just before the place's capacity (decision 7): it is a rule about sharing the
-   place. Last, a multi-block activity may go in shorter than set up, its longest run that fits
-   the gap (decision 7). Only a cell where the group is busy at an overlapping time stays Open,
-   listed in `openCells` ("Already busy then"). No activities at all, none running this week, no
-   days to build, or an option that can't be used returns an error result instead of a grid:
-   "No activities are set up yet.", "No activities run this week.", "This week has no days to
-   build.", "That option can't be built." (week and activity in the camp's own words).
+   place. Among the choices that only go over a weekly maximum (tried before any other bend),
+   the smallest overage wins, so a third Art for several bunks comes before a fifth for one
+   (decision 7); then high priority, then the one the group has had least, then the key. An
+   activity is never shortened. A cell stays Open, listed in `openCells`, only when the group is
+   busy at an overlapping time ("Already busy then") or no activity's length fits the gap ("No
+   activity fits this gap"). No activities at all, none running this week, no days to build,
+   or an option that can't be used returns an error result instead of a grid: "No activities
+   are set up yet.", "No activities run this week.", "This week has no days to build.", "That
+   option can't be built." (week and activity in the camp's own words).
    The hover reasons, in camp words: "Over its weekly limit", "Twice in a day", "Not set up for
    Bunk 3", "Over its limit of 2 bunks at once", "Shares Pool with another division" (or "With
    another division at the same time" for an activity with no place), "More bunks at Pool than
-   fit", "Hike is shorter than set up", and "Already busy then". Group, division, week and gap
+   fit", and "Already busy then". Group, division, week and gap
    are the camp's own words (`c/shoreshTerms`). They are written in one place (`reasonFor`,
    `words.js`); Manual Build part 3 will reuse them, so the dots say the same words on both
    schedules: change them there, deliberately, and for both.
@@ -168,8 +173,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
     placements of it, twice in a day dots both, too many at an activity or a place dots each
     one there; fixed and recurring activities count toward a place but never get a dot. So the
     same grid always gets the same dots, whatever order it was filled in, and anything kept
-    that breaks a rule is dotted too. Additions here: shorter than set up (only when the model
-    asks, as the engine does; Manual Build shortens by hand), other programs' groups (counted
+    that breaks a rule is dotted too. Additions here: other programs' groups (counted
     at places and activities, another division for same division only), and each dot's rule
     names (`bends`). `checkInputs.js` reads the season's records into its model (activities and
     places through the engine's own readers); the engine builds the same model from its inputs
@@ -192,7 +196,8 @@ cells) and 0009 (names through `c/shoreshSchema`).
   1,000 seeded weeks known to be feasible, with locks every fifth week), multi-block first
   (contiguous sessions, 3-block runs, the 30-case groups-at-once grid), overlapping blocks.
 - The rules one at a time (`rules.test.js`), including each step of the order rules give way,
-  overlapping blocks keeping the most cells, and the shorter-than-set-up bend.
+  overlapping blocks keeping the most cells, a gap no activity fits staying Open, and going over
+  weekly maximums first with the smallest overage.
 - `checkWeek`'s own tests (`checks.test.js`, `checks.property.test.js`), moved with it.
 - A seeded property test (`properties.test.js`, 300 random small camps with divisions,
   part-day groups, overlapping blocks, places, fixed activities, locks and kept cells from an
@@ -201,7 +206,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
   never blank (a cell left Open must have the group busy at an overlapping time); locked, fixed
   and not-at-camp cells untouched; deterministic; and the engine's dots are exactly what
   `checkWeek` says about its finished week, with checkWeek's model built from the camp, not by
-  the engine.
+  the engine. A second property test (300 camps where only weekly maximums press) checks that
+  no bunk is two or more over on an activity while another, at most one over, was free for
+  that cell.
 - Determinism (`determinism.test.js`): a pinned week, byte-identical rebuilds, 20 shuffled input
   orders, shuffled grid group order, no `Math.random`, different options, weeks and programs.
 - Performance (`performance.test.js`): 12 groups × 5 days × 8 blocks, a week that fits and one
@@ -209,7 +216,7 @@ cells) and 0009 (names through `c/shoreshSchema`).
   coordinator measured a 40 × 5 × 12 week that can't fit at 4–5 seconds, so the screen may need
   to run the build in pieces; nothing in G1 stops that.
 - Mutation check of the key guards (review practice): deliberate breakages of the rules, kept
-  cells, never-blank, the overlap choice, the shortened fill, the repair limit, the seed, input
+  cells, never-blank, the overlap choice, the smallest overage, the repair limit, the seed, input
   ordering and checkWeek's rules; every one makes a test fail (taking out the repair rollback
   makes the build loop forever).
 

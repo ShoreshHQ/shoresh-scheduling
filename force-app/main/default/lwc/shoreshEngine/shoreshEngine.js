@@ -15,9 +15,17 @@ import {
   readPartsOfDay,
   readSetTimeLocations
 } from "./setup";
-import { BUSY, RELAX_ORDER, RULE, lockKey, scheduleWeek } from "./week";
+import {
+  BUSY,
+  NO_FIT,
+  OVERLAP,
+  RELAX_ORDER,
+  RULE,
+  lockKey,
+  scheduleWeek
+} from "./week";
 
-export { BUSY, RELAX_ORDER, RULE, reasonFor, checkWeek };
+export { BUSY, NO_FIT, RELAX_ORDER, RULE, reasonFor, checkWeek };
 export { readActivities, readLocations, readProgram } from "./checkInputs";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
@@ -58,8 +66,8 @@ const DAY_NAMES = {
  *     bend a rule for always has one; so does anything kept that breaks a rule
  *   stillNeeded, spread, overlapping, cells: checkWeek's lines and counts, the same words as
  *     Manual Build ("Swim · Bunk 3: 1 still needed by Wednesday")
- *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open because the
- *     group is busy at an overlapping time ("Already busy then")
+ *   openCells: [{ date, groupId, blockId, reason }] for an at-camp cell left Open: the group is
+ *     busy at an overlapping time ("Already busy then"), or no activity's length fits the gap
  */
 export function generateWeek(input) {
   const t = input.terms || buildTerms([]);
@@ -126,9 +134,14 @@ export function generateWeek(input) {
     spread: checked.spread,
     overlapping: checked.overlapping,
     cells: checked.cells,
-    openCells: state.openCells.map(({ key }) => {
+    openCells: state.openCells.map(({ key, why }) => {
       const [groupId, d, blockId] = state.splitKey(key);
-      return { date: days[d].date, groupId, blockId, reason: reasonFor(BUSY) };
+      return {
+        date: days[d].date,
+        groupId,
+        blockId,
+        reason: reasonFor(why === OVERLAP ? BUSY : NO_FIT, { terms: t })
+      };
     })
   };
 }
@@ -150,7 +163,7 @@ function optionOf(value) {
  * checkWeek's model from the engine's inputs: the activities that run this week, the places,
  * each group's division, where fixed and recurring activities take place, who each activity
  * isn't set up for (and a group setup no longer has isn't set up for anything), not-at-camp
- * blocks, and shorter-than-set-up dotted (the engine's last bend).
+ * blocks.
  */
 export function checkModel(input, model) {
   const groupsInSetup = model.groups;
@@ -172,7 +185,6 @@ export function checkModel(input, model) {
     isAway: (groupId, blockId) =>
       groupsInSetup.has(groupId) &&
       !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
-    dotShorter: true,
     othersAt: (kind, id, d, blockId) =>
       (kind === "place" ? model.otherPlace : model.otherActivity).get(
         `${id}|${d}|${blockId}`

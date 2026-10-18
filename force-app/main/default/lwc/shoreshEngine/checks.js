@@ -7,9 +7,8 @@
  * - Bronze dots on placements, one rule at a time, in the order rules give way (week.js
  *   RELAX_ORDER), in reasonFor's words (words.js): over its weekly limit, twice in a day, not set
  *   up for the group, over its limit of groups at once, sharing a place with another division (an
- *   activity that is for one division at a time), more groups at a place than fit, shorter than
- *   set up (only when model.dotShorter: Generated Schedule's last bend; Manual Build shortens by
- *   hand); and a group busy in two time blocks that overlap. A rule broken by several placements
+ *   activity that is for one division at a time), more groups at a place than fit; and a group
+ *   busy in two time blocks that overlap. A rule broken by several placements
  *   dots all of them (over the limit dots each of that group's placements; twice in a day dots
  *   both). Fixed and recurring activities count toward a place but never get a dot.
  * - Still needed: each activity and group short of its weekly minimum ("Swim · Bunk 3: 2 still
@@ -316,24 +315,6 @@ function placeCapacity(ctx) {
   return { flags, clashes };
 }
 
-/** A multi-block activity placed shorter than set up (Generated Schedule's last bend). */
-function shorterThanSetUp(ctx) {
-  const flags = [];
-  if (ctx.dotShorter) {
-    ctx.placements.filter(isActivity).forEach((p) => {
-      const act = ctx.activities.get(p.id);
-      if (act && act.span && p.length < act.span) {
-        flags.push({
-          p,
-          rule: RULES.SHORTER,
-          reason: reasonFor(RULES.SHORTER, { activityName: act.name })
-        });
-      }
-    });
-  }
-  return { flags, clashes: [] };
-}
-
 /** A group with something in two time blocks whose times overlap (blocks that touch don't). */
 function busy(ctx) {
   const flags = [];
@@ -484,7 +465,7 @@ function filledCount(ctx) {
 /**
  * The week checked. model: { activities (readActivities), locations (readLocations), divisions
  * and setTimeLocations (readProgram), notFor: activity Id -> group Ids it isn't set up for,
- * isAway(groupId, blockId), dotShorter, othersAt(kind, id, dayIndex, blockId) }. words: { t (camp terms), dayName(dateValue) }.
+ * isAway(groupId, blockId), othersAt(kind, id, dayIndex, blockId) }. words: { t (camp terms), dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
@@ -505,7 +486,6 @@ export function checkWeek(days, model, words) {
     setTimeLocations: model.setTimeLocations || new Map(),
     notFor: (id) => notForSets.get(id) || new Set(),
     isAway: model.isAway || (() => false),
-    dotShorter: Boolean(model.dotShorter),
     // Other programs' groups (Generated Schedule, G5): kind "place" or "activity", its Id, and
     // "d|b"; Manual Build passes none.
     others: (kind, id, at) => {
@@ -537,7 +517,6 @@ export function checkWeek(days, model, words) {
     groupsAtOnce,
     sameDivision,
     placeCapacity,
-    shorterThanSetUp,
     busy
   ].map((rule) => rule(ctx));
 

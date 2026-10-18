@@ -155,11 +155,21 @@ export function problems(spec, input, result) {
         if (here && !cell && !lock.has(k) && !openCells.has(k)) {
           out.push(`blank: ${k}`);
         }
-        // A cell left Open really can't be filled: the group is busy at an overlapping time.
-        if (
-          openCells.has(k) &&
-          !(cell === null && peers[b].some((j) => row[j]))
+        // A cell left Open really can't be filled: the group is busy at an overlapping time, or
+        // no activity's length fits the run of Open, at-camp, unlocked cells starting there.
+        let gap = 0;
+        while (
+          b + gap < row.length &&
+          row[b + gap] === null &&
+          atCamp(group, blocks[b + gap].partOfDay) &&
+          !lock.has(`${day.dateValue}|${g.id}|${blocks[b + gap].id}`)
         ) {
+          gap++;
+        }
+        const busyThen = cell === null && peers[b].some((j) => row[j]);
+        const tooShort =
+          cell === null && spec.activities.every((a) => a.span > gap);
+        if (openCells.has(k) && !busyThen && !tooShort) {
           out.push(`listed as impossible but isn't: ${k}`);
         }
         if (!cell) {
@@ -212,10 +222,7 @@ export function problems(spec, input, result) {
           ) {
             len++;
           }
-          const shortened =
-            len < act.span &&
-            (flagged.get(k) || []).includes("shorterThanSetUp");
-          if (len !== act.span && !shortened) {
+          if (len !== act.span) {
             out.push(`multi-block run of ${len} for ${act.id}: ${k}`);
           }
         }
