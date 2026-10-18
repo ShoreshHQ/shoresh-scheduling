@@ -10,11 +10,34 @@
 private class ManualBuildTest {
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
 
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = build();
+    }
+    ids.put('Scheduler', scheduler.Id);
+    ShoreshTestData.keepIds(ids);
+  }
+
+  /** The camp setup built, with the program's time blocks set for the slot-save runs. */
   private static Map<String, Id> camp() {
-    Map<String, Id> ids = SetTimeTestData.camp();
+    Map<String, Id> ids = ShoreshTestData.keptIds();
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );
+    return ids;
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> ids) {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
+  private static Map<String, Id> build() {
+    Map<String, Id> ids = SetTimeTestData.camp();
     FixedActivity__c flagpole = SetTimeTestData.fixed(
       ids,
       'Flagpole',
@@ -105,8 +128,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aBlankWeekPlacesFixedAndRecurringAndLeavesTheRestOpen() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
 
@@ -140,8 +163,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aGroupAwayThatWeekIsLeftOut() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 3');
       ScheduleViews.DayView mon = monday(view.schedule);
@@ -152,8 +175,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void startingTwiceGivesTheSameDraft() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Assert.isNull(
         ManualBuildController.getDraft(ids.get('Main'), ids.get('Week 1'))
@@ -182,8 +205,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void theDraftNamesWhatToPlaceAndWhereGroupsAreAway() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Database.update(
         new Group__c(Id = ids.get('Group C'), Availability__c = 'MorningOnly'),
@@ -258,8 +281,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void twoPeopleOnDifferentGroupsOfTheSameDayBothSave() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -291,8 +314,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void theSameSlotChangedSinceComesBackAsAConflict() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -333,8 +356,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void undoOverSomeoneElsesNewerEditAsksToo() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -374,8 +397,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aMultiBlockPlacementAndItsRemoval() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -423,8 +446,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aRunIsMadeOnlyOnTheTimeBlocksItWasMadeOn() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -500,8 +523,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void fixedRecurringAndAwaySlotsCannotBeChanged() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Database.update(
         new Group__c(Id = ids.get('Group B'), Availability__c = 'MorningOnly'),
@@ -548,8 +571,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aVersionCannotBeChangedHere() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
@@ -570,8 +593,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void anActivityFromAnotherSeasonIsNotPlaced() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
@@ -599,8 +622,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aTypedNameAddsAnActivityOnceWithHandAddedStartingValues() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -646,8 +669,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aRunMayNotStartPartwayThroughSomeoneElsesPlacement() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -675,8 +698,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void editsAreMatchedByRecordNotSpellingAndEachConflictIsNamed() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -714,8 +737,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aDayThatCannotBeReadIsRefusedNotAConflict() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Id draftId = view.schedule.schedule.id;
@@ -743,8 +766,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void anActivityIsAddedOnlyFromAManualBuildDraft() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Test.startTest();
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
@@ -774,8 +797,8 @@ private class ManualBuildTest {
 
   @IsTest
   static void aWeekFromAnotherSeasonOrAProgramWithoutTimeBlocksIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+    Map<String, Id> ids = camp();
+    System.runAs(scheduler(ids)) {
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
       Week__c otherWeek = ShoreshTestData.weeks(other.Id, 1)[0];
       Program__c empty = ShoreshTestData.program(ids.get('Season'), 'Evenings');
@@ -817,10 +840,7 @@ private class ManualBuildTest {
 
   @IsTest
   static void someoneWithoutShoreshCannotStartAWeek() {
-    Map<String, Id> ids;
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
     System.runAs(ShoreshTestData.outsider()) {
       try {
         start(ids, 'Week 1');
