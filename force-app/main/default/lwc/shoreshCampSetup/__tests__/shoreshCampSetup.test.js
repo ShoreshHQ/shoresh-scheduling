@@ -386,6 +386,7 @@ describe("c-shoresh-camp-setup", () => {
         new CustomEvent("delete", { detail: { recordId: "a1", name } })
       );
       await flush();
+      await flush();
       const calls = LightningConfirm.open.mock.calls;
       return calls[calls.length - 1][0];
     };
@@ -398,6 +399,7 @@ describe("c-shoresh-camp-setup", () => {
     activities.dispatchEvent(
       new CustomEvent("delete", { detail: { recordId: "g3", name: "Bunk 3" } })
     );
+    await flush();
     await flush();
     expect(scheduleUses).toHaveBeenCalledWith({ recordId: "g3" });
     expect(LightningConfirm.open.mock.calls[0][0]).toMatchObject({
@@ -910,6 +912,61 @@ describe("c-shoresh-camp-setup", () => {
     saveRow.mockReset();
   });
 
+  it("a table always hears its row is done, even if telling it of a failure goes wrong", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    saveRow.mockRejectedValueOnce({ body: { message: "No." } });
+    const element = await render();
+    const { detail } = rowSave({
+      record: { sobjectType: "Week__c", Id: "w1", Name: "A" }
+    });
+    detail.onFailure = () => {
+      throw new Error("boom");
+    };
+    detail.onDone = jest.fn();
+    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(detail) })
+    );
+    await flush();
+    expect(detail.onDone).toHaveBeenCalled();
+  });
+
+  it("a season read still on its way is dropped once another camp with no season is chosen", async () => {
+    const other = { ...CAMP, Id: "c2", Name: "Camp Two" };
+    getCamps.mockResolvedValue(nsRecord([CAMP, other]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    let answer;
+    getSeasonSetup.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    saveRow.mockResolvedValueOnce(nsRecord({ id: "w1", changed: [] }));
+    q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+      new CustomEvent("save", {
+        detail: nsRecord(
+          rowSave({ record: { sobjectType: "Week__c", Id: "w1", Name: "A" } })
+            .detail
+        )
+      })
+    );
+    await flush();
+    getSeasons.mockResolvedValue(nsRecord([]));
+    const camps = [
+      ...element.shadowRoot.querySelectorAll("lightning-combobox")
+    ].find((c) => c.label === "Camp");
+    camps.dispatchEvent(new CustomEvent("change", { detail: { value: "c2" } }));
+    await flush();
+    answer(nsRecord(setupWith()));
+    await flush();
+    expect(q(element, 'c-shoresh-editable-table[data-id="weeks"]')).toBeNull();
+    getSeasonSetup.mockReset();
+  });
+
   it("an older read of the season that answers last is dropped", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
@@ -1225,6 +1282,59 @@ describe("c-shoresh-camp-setup", () => {
       expect(mergeLocations).toHaveBeenCalledTimes(1);
       answer();
       await flush();
+    });
+
+    it("merged, but the season couldn't be read back: said as done, not as a refusal", async () => {
+      const element = await asked();
+      mergeLocations.mockResolvedValueOnce();
+      getSeasonSetup.mockRejectedValueOnce({ body: { message: "Offline" } });
+      q(element, "c-shoresh-same-location").dispatchEvent(
+        new CustomEvent("merge", {
+          detail: { keepId: "l1", otherIds: ["l2"], groupsThatFit: 2 }
+        })
+      );
+      await flush();
+      expect(q(element, "c-shoresh-same-location")).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+        'Merged into "Pool", but the screen couldn\'t show it yet. Reload the page.'
+      );
+    });
+
+    it("a second click on Delete while its question is open asks nothing more", async () => {
+      const element = await asked();
+      q(element, "c-shoresh-same-location").dispatchEvent(
+        new CustomEvent("close")
+      );
+      await flush();
+      let answer;
+      LightningConfirm.open.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            answer = resolve;
+          })
+      );
+      const locations = q(
+        element,
+        'c-shoresh-editable-table[data-id="locations"]'
+      );
+      const del = new CustomEvent("delete", {
+        detail: { recordId: "l3", name: "Gym" }
+      });
+      locations.dispatchEvent(del);
+      await flush();
+      locations.dispatchEvent(
+        new CustomEvent("delete", { detail: { recordId: "l3", name: "Gym" } })
+      );
+      await flush();
+      expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
+      answer(false);
+      await flush();
+      LightningConfirm.open.mockResolvedValueOnce(false);
+      locations.dispatchEvent(
+        new CustomEvent("delete", { detail: { recordId: "l3", name: "Gym" } })
+      );
+      await flush();
+      expect(LightningConfirm.open).toHaveBeenCalledTimes(2);
     });
 
     it("speaks of locations in the camp's own word", async () => {

@@ -671,6 +671,13 @@ export default class ShoreshEditableTable extends LightningElement {
     return this.addRow.adding ? "Adding…" : "Add";
   }
 
+  /** Its spoken name: "Add Bunk", and "Adding Bunk…" while it is being added. */
+  get addName() {
+    return this.addRow.adding
+      ? `${this.addLabel.replace(/^Add\b/, "Adding")}…`
+      : this.addLabel;
+  }
+
   get addDisabled() {
     return this.busy || this.addRow.adding || !this.complete(this.addRow);
   }

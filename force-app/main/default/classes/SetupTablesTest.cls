@@ -68,10 +68,8 @@ private class SetupTablesTest {
     }
   }
 
-  /** A big season: the count reads every day in one query, whatever the number of days. */
-  @IsTest
-  static void aBigSeasonIsCountedInAFewQueries() {
-    ids = SetTimeTestData.camp();
+  /** 60 more versions of Week 2, each with 10 day parts naming Group A and Swim. */
+  private static void bigSeason() {
     String grid = [
       SELECT Grid__c
       FROM ScheduleDay__c
@@ -116,6 +114,13 @@ private class SetupTablesTest {
       }
     }
     Database.insert(days, AccessLevel.SYSTEM_MODE);
+  }
+
+  /** A big season: the text is read a few days at a time, in a capped number of queries. */
+  @IsTest
+  static void aBigSeasonIsCountedInBoundedQueries() {
+    ids = SetTimeTestData.camp();
+    bigSeason();
     System.runAs(ShoreshTestData.scheduler()) {
       Test.startTest();
       Integer before = Limits.getQueries();
@@ -124,11 +129,41 @@ private class SetupTablesTest {
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
-      // 601 days, none naming Soccer: every one read, in one query (plus finding the season).
+      // 601 days, none naming Soccer: every one read, 25 at a time (25 queries), plus 2.
       Assert.areEqual(0, count.schedules);
       Assert.isTrue(count.complete);
-      Assert.isTrue(used <= 3, 'Queries used: ' + used);
+      Assert.isTrue(used <= 30, 'Queries used: ' + used);
+      // Group A: a schedule found is not read again.
       Assert.areEqual(61, uses('Group A'));
+    }
+  }
+
+  /** Past any budget the count stops, and says it isn't complete; it never guesses. */
+  @IsTest
+  static void pastItsBudgetTheCountSaysItIsNotComplete() {
+    ids = SetTimeTestData.camp();
+    bigSeason();
+    System.runAs(ShoreshTestData.scheduler()) {
+      ScheduleUses.partsAtOnce = 10;
+      ScheduleUses.queryBudget = 2;
+      ScheduleUses.Count count = SetupTablesController.scheduleUses(
+        ids.get('Group A')
+      );
+      // Two reads of 10 days each: some schedules found, the rest not read.
+      Assert.isTrue(
+        count.schedules >= 1 && count.schedules < 61,
+        'Found: ' + count.schedules
+      );
+      Assert.isFalse(count.complete);
+      ScheduleUses.queryBudget = 90;
+      ScheduleUses.rowBudget = 100;
+      count = SetupTablesController.scheduleUses(ids.get('Soccer'));
+      Assert.areEqual(0, count.schedules);
+      Assert.isFalse(count.complete);
+      ScheduleUses.rowBudget = 40000;
+      ScheduleUses.textBudget = 1;
+      count = SetupTablesController.scheduleUses(ids.get('Swim'));
+      Assert.isFalse(count.complete);
     }
   }
 

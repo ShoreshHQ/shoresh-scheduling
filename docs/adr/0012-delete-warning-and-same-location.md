@@ -28,14 +28,16 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    restore either (coordinator, 2026-10-17).
 4. **Refusals stay.** Something else depending on it (who can do it, a rain plan, who a
    recurring activity covers) still refuses the delete with the existing messages.
-5. **Read in user mode:** a schedule the director can't see is not counted. The days are read
-   in one query, 200 at a time (a SOQL for loop), so the number of queries stays the same
-   however big the season is (a test with 601 days uses at most 3). If the season is past
-   40,000 day parts or 60 million characters of day text, the count stops and says it isn't complete, and the question says
-   _Bunk 3 is in 2 or more schedules. Delete anyway?_; if nothing was found by then, or the
-   count can't be made at all, _Shoresh couldn't count the schedules Bunk 3 is in. Delete
-   anyway?_. It is never left out quietly. The question opens without making the page busy,
-   so Cancel gives the focus back to the row's delete button.
+5. **Read in user mode:** a schedule the director can't see is not counted. The days are
+   listed first (their Ids only, one query), then their text is read 25 at a time, so even
+   days at the longest a part can be stay well inside memory, and a schedule already found is
+   not read again. The text reads are capped at 90 queries (with 40,000 days and 60 million
+   characters): past any of these the count stops and says it isn't complete, and the
+   question says _Bunk 3 is in 2 or more schedules. Delete anyway?_; if nothing was found by
+   then, or the count can't be made at all, _Shoresh couldn't count the schedules Bunk 3 is
+   in. Delete anyway?_. It is never left out quietly. Tests make the limits small to check
+   this. The question opens without making the page busy, so Cancel gives the focus back to
+   the row's delete button; a second click while it is open does nothing.
 
 ## "Same location?"
 
@@ -63,7 +65,9 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    (as the desktop reloads after a failed merge) and the question shows the places as they are
    now, keeping the director's choice and number, with why it was refused, focused, inside the
    question only. If fewer than two places are left, the question closes and the page says
-   why. Afterwards the cursor is back on the row's button, or on the kept place once merged.
+   why. Afterwards the cursor is back on the row's button, or on the kept place once merged. A
+   merge that went through but couldn't be read back says _Merged into "Pool", but the screen
+   couldn't show it yet. Reload the page._, never a refusal.
    Left out: the desktop's "You can undo this…" line (design guide: no explanatory text).
 9. **What moves** (`LocationMerge`, desktop D1: "merge is a delete that re-points"): every
    activity, fixed activity, and recurring activity at the other places; the next season's
@@ -82,8 +86,6 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
 
 ## Known limits
 
-- The count reads days 200 at a time; 200 days of very long text (each near the 131,072
-  character limit) could still run past Salesforce's memory limit before the count can stop.
-  Shoresh splits a day into parts long before that, so a part is normally a few thousand
-  characters. The stop at 40,000 parts or 60 million characters is not exercised by a test
-  (it needs that much data).
+- A season with more than about 2,250 day parts that a bunk or activity is in few of reaches
+  the 90-query cap; the question then says "or more" (or that it couldn't count), never a
+  number that might be short.

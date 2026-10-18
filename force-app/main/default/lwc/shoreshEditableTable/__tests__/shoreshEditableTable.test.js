@@ -1343,6 +1343,9 @@ describe("c-shoresh-editable-table", () => {
       expect(sent.map((d) => d.record.Name)).toEqual(["Period One", "Swim"]);
       expect(field(element, 2, "Name").disabled).toBe(true);
       expect(addButton(element).textContent.trim()).toBe("Adding…");
+      expect(addButton(element).getAttribute("aria-label")).toBe(
+        "Adding Time block…"
+      );
     });
 
     it("while the blank row is being added, its ticks and who wait too", async () => {

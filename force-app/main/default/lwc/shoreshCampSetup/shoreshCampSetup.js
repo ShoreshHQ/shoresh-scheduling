@@ -92,6 +92,8 @@ export default class ShoreshCampSetup extends LightningElement {
   sameLocationError = null;
   // Merging: the question's buttons wait.
   merging = false;
+  // A delete's question is open, or the delete is under way.
+  deleting = false;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -839,7 +841,19 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   async handleDeleteRecord(event) {
-    const { recordId, name } = event.detail;
+    // A second click while the question is open (or the delete is under way) does nothing.
+    if (this.deleting) {
+      return;
+    }
+    this.deleting = true;
+    try {
+      await this.askAndDelete(event.detail);
+    } finally {
+      this.deleting = false;
+    }
+  }
+
+  async askAndDelete({ recordId, name }) {
     // Asked without making the page busy: the row's delete button keeps the focus, so Cancel
     // gives it back there.
     const ok = await LightningConfirm.open(
@@ -945,13 +959,20 @@ export default class ShoreshCampSetup extends LightningElement {
     const asked = this.sameLocation.map((place) => place.id);
     this.merging = true;
     this.sameLocationError = null;
+    let merged = false;
     try {
       await mergeLocations({ keepId, otherIds, groupsThatFit });
+      merged = true;
       this.sameLocation = null;
       this.toast(`Merged into "${kept.name}".`);
       await this.loadSeason();
       this.locationsTable().focusRowOf(keepId);
     } catch (e) {
+      if (merged) {
+        // Done, but the screen couldn't read it back: said so, never shown as a refusal.
+        this.error = `Merged into "${kept.name}", but the screen couldn't show it yet. Reload the page.`;
+        return;
+      }
       const why = errorMessage(e);
       // The refusal says more than a failed reload would.
       await this.loadSeason().catch(() => null);
