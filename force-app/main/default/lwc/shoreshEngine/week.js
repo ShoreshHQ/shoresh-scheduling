@@ -89,6 +89,32 @@ export function lockKey(date, groupId, blockId) {
  *          otherPlace, otherActivity } (shoreshEngine.js builds it).
  */
 export function scheduleWeek(model) {
+  const steps = scheduleWeekSteps(model);
+  let step = steps.next();
+  while (!step.done) {
+    step = steps.next();
+  }
+  return step.value;
+}
+
+// How much of a build each pass is, roughly (a 40-bunk week that can't fit spends nearly all of
+// it in the two repairs): for the progress the screen shows, never for what is built.
+const SHARE = Object.freeze({
+  rounds: 0.03,
+  repair: 0.02,
+  minRepair: 0.45,
+  fillRepair: 0.48,
+  neverBlank: 0.02
+});
+
+/**
+ * The same build in steps (ADR 0010 §22): a generator that yields how far it has got (0 to 1)
+ * between pieces of work, each piece a cell or a minimum-repair pass, and returns what
+ * scheduleWeek returns. The screen runs a few steps at a time so the tab never freezes. The
+ * steps only say where the build is; they never change it, so a week built in steps is the
+ * same as one built at once.
+ */
+export function* scheduleWeekSteps(model) {
   const { days, groups, acts, eligibility, fit, setTimeLocation, locks } =
     model;
   const fillOpenOnly = model.mode === "fillOpen";
@@ -890,11 +916,13 @@ export function scheduleWeek(model) {
 
   // Greedy: the cells with the fewest choices first; in each, the activity that best keeps the
   // early goal, then the one the group has had least, then the stable key.
-  function runRound(slots, priority) {
+  function* runRound(slots, priority, from) {
     const slotsToFill = new Set(slots.map(keyOf));
     placeSpansFirst(slotsToFill, priority);
+    yield from;
     if (priority === "high") {
       placeScarceSessions(slotsToFill);
+      yield from;
     }
     const choices = new Map();
     const roundSlots = slots.filter((s) => {
@@ -907,6 +935,7 @@ export function scheduleWeek(model) {
       if (assigned.has(keyOf(slot))) {
         continue;
       }
+      yield from;
       const candidates = candidatesFor(slot, priority);
       if (!candidates.length) {
         continue;
@@ -986,7 +1015,7 @@ export function scheduleWeek(model) {
     return false;
   }
 
-  function repair() {
+  function* repair(from) {
     let filled = true;
     // Each productive sweep fills at least one cell, so this many sweeps is always enough; the
     // cap is a guard so a future edit can never freeze the browser.
@@ -996,6 +1025,7 @@ export function scheduleWeek(model) {
         if (assigned.has(keyOf(u))) {
           continue;
         }
+        yield from;
         liftBudget = REPAIR_LIFTS_PER_CELL;
         if (tryFill(u, REPAIR_DEPTH, new Set())) {
           filled = true;
@@ -1326,21 +1356,26 @@ export function scheduleWeek(model) {
     return false;
   }
 
-  function fillRepair() {
+  function* fillRepair(from) {
     repairWorkLeft = REPAIR_WORK_PER_PASS;
-    for (const u of openSlots) {
+    for (let i = 0; i < openSlots.length; i++) {
+      const u = openSlots[i];
       if (assigned.has(keyOf(u))) {
         continue;
       }
+      yield from + (SHARE.fillRepair * i) / openSlots.length;
       minRepairBudget = MIN_REPAIR_BUDGET;
       journal.length = 0;
       fillCell(u, FILL_REPAIR_DEPTH, new Set());
     }
   }
 
-  function minRepair() {
+  function* minRepair(from) {
+    const pairs = acts.length * model.groupIds.length || 1;
+    let pair = 0;
     for (const act of acts) {
       for (const groupId of model.groupIds) {
+        const at = from + (SHARE.minRepair * pair++) / pairs;
         if (!eligibility.get(act.id).has(groupId)) {
           continue;
         }
@@ -1350,6 +1385,7 @@ export function scheduleWeek(model) {
           pass <= getMin(act.id) && getCount(groupId, act.id) < getMin(act.id);
           pass++
         ) {
+          yield at;
           minRepairBudget = MIN_REPAIR_BUDGET;
           journal.length = 0;
           if (
@@ -1396,12 +1432,13 @@ export function scheduleWeek(model) {
   // stable key. An activity is never shortened (Greg): a cell where the group is busy at an
   // overlapping time, or a gap no activity's length fits, stays Open.
   const openCells = [];
-  function neverBlank(slots) {
+  function* neverBlank(slots, from) {
     for (const u of slots) {
       const k = keyOf(u);
       if (assigned.has(k)) {
         continue;
       }
+      yield from;
       let best = null;
       let bestRank = null;
       for (const act of acts) {
@@ -1444,7 +1481,7 @@ export function scheduleWeek(model) {
    * now. Each round frees at least one cell, so the rounds end. Then every cell still Open says
    * why: the group is busy then, or no activity's length fits.
    */
-  function finishOpen() {
+  function* finishOpen(from) {
     for (let round = 0; round <= freeSlots.length; round++) {
       const freed = [...busyThen.values()].filter((s) => !busyAt(s));
       if (!freed.length) {
@@ -1456,7 +1493,7 @@ export function scheduleWeek(model) {
         openSlotByKey.set(keyOf(s), s);
         emptyCells++;
       }
-      neverBlank(freed);
+      yield* neverBlank(freed, from);
     }
     for (const s of freeSlots) {
       if (!assigned.has(keyOf(s))) {
@@ -1465,16 +1502,23 @@ export function scheduleWeek(model) {
     }
   }
 
-  runRound(openSlots, "high");
-  runRound(
+  yield 0;
+  yield* runRound(openSlots, "high", 0);
+  yield* runRound(
     openSlots.filter((s) => !assigned.has(keyOf(s))),
-    "low"
+    "low",
+    SHARE.rounds / 2
   );
-  repair();
-  minRepair();
-  fillRepair();
-  neverBlank(openSlots);
-  finishOpen();
+  let at = SHARE.rounds;
+  yield at;
+  yield* repair(at);
+  at += SHARE.repair;
+  yield* minRepair(at);
+  at += SHARE.minRepair;
+  yield* fillRepair(at);
+  at += SHARE.fillRepair;
+  yield* neverBlank(openSlots, at);
+  yield* finishOpen(at);
 
   return {
     assigned,

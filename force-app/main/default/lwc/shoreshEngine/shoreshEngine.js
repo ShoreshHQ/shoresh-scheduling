@@ -22,7 +22,7 @@ import {
   RELAX_ORDER,
   RULE,
   lockKey,
-  scheduleWeek
+  scheduleWeekSteps
 } from "./week";
 
 export { BUSY, NO_FIT, RELAX_ORDER, RULE, reasonFor, checkWeek };
@@ -67,6 +67,22 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     busy at an overlapping time ("Already busy then"), or no activity's length fits the gap
  */
 export function generateWeek(input) {
+  const steps = generateWeekSteps(input);
+  let step = steps.next();
+  while (!step.done) {
+    step = steps.next();
+  }
+  return step.value;
+}
+
+/**
+ * generateWeek in steps (ADR 0010 §22): a generator that yields how far the build has got, a
+ * number from 0 to 1 that only goes up, and returns generateWeek's result. A screen runs a few
+ * steps at a time between paints so a big week never freezes the tab; the steps never change
+ * the week, so it is the same as generateWeek's. A week built twice (the minimum repair's
+ * leniency, below) spends the first half of the way on the first build.
+ */
+export function* generateWeekSteps(input) {
   const t = input.terms || buildTerms([]);
   const weekId = input.weekId || null;
   const activities = readActivities(
@@ -118,21 +134,28 @@ export function generateWeek(input) {
     ...otherPrograms(input.otherPrograms, days)
   };
   const words = { t, dayName: (date) => DAY_NAMES[weekdayOf(date)] || "" };
-  const build = (settings) => {
-    const state = scheduleWeek(settings);
+  function* build(settings, from, share) {
+    const steps = scheduleWeekSteps(settings);
+    let step = steps.next();
+    while (!step.done) {
+      yield from + share * step.value;
+      step = steps.next();
+    }
+    const state = step.value;
     const built = writeDays(settings, state);
+    yield from + share;
     return {
       state,
       built,
       checked: checkWeek(built, checkModel(input, settings, state), words)
     };
-  };
-  let chosen = build(model);
+  }
+  let chosen = yield* build(model, 0, 0.5);
   let ruleChecks = chosen.state.ruleChecks;
   if (chosen.state.leftForNeverBlank) {
     // The minimum repair left a cell for never-blank to fill. Keep that week only if it is no
     // worse: it meets more minimums, or as many with no more bends (ADR 0010).
-    const strict = build({ ...model, strictRepair: true });
+    const strict = yield* build({ ...model, strictRepair: true }, 0.5, 0.5);
     ruleChecks += strict.state.ruleChecks;
     if (worse(chosen.checked, strict.checked)) {
       chosen = strict;
