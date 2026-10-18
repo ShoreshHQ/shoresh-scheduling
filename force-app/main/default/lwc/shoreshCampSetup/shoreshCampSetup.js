@@ -595,8 +595,7 @@ export default class ShoreshCampSetup extends LightningElement {
       message:
         `Delete "${this.setup.season.Name}" and everything set up in it (${t.pIn("Week")}, ${t.pIn("Program")}, ` +
         `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")}, ` +
-        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")}, and saved schedules)? ` +
-        `This cannot be undone.`,
+        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")}, and saved schedules)?`,
       variant: "header",
       theme: "error"
     });
@@ -840,7 +839,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     return {
       label: "Delete",
-      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)} This cannot be undone.`,
+      message: `Delete "${name}"? Anything inside it is deleted too.${this.savedSchedulesNote(recordId)}`,
       variant: "header",
       theme: "warning"
     };
