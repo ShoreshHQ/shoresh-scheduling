@@ -97,7 +97,10 @@ export default class ShoreshCopySeason extends LightningElement {
       }
     } catch (e) {
       if (asked === this.newStart) {
-        this.error = failed("Couldn't work out the copy. Nothing was changed.", e);
+        this.error = failed(
+          "Couldn't work out the copy. Nothing was changed.",
+          e
+        );
       }
     }
   }

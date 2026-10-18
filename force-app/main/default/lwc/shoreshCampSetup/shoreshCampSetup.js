@@ -10,16 +10,12 @@ import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
-import placedInWeeks from "@salesforce/apex/SeasonSetupController.placedInWeeks";
+import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
-import {
-  menuMarks,
-  rainPlanOptions,
-  setupProblems
-} from "c/shoreshSetupRules";
+import { menuMarks, rainPlanOptions, setupProblems } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
@@ -641,20 +637,23 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!this.validInputs('[data-form="new-season"]')) {
       return;
     }
-    await this.run(async () => {
-      const [seasonId] = await saveRecords({
-        records: [
-          {
-            sobjectType: OBJECT.Season,
-            [SEASON.Camp]: this.campId,
-            [SEASON.Status]: "Planning",
-            ...this.newSeason
-          }
-        ]
-      });
-      this.screen = "roots";
-      await this.loadCamp(seasonId);
-    }, `${this.terms.s("Season")} not created. Nothing was saved.`);
+    await this.run(
+      async () => {
+        const [seasonId] = await saveRecords({
+          records: [
+            {
+              sobjectType: OBJECT.Season,
+              [SEASON.Camp]: this.campId,
+              [SEASON.Status]: "Planning",
+              ...this.newSeason
+            }
+          ]
+        });
+        this.screen = "roots";
+        await this.loadCamp(seasonId);
+      },
+      `${this.terms.s("Season")} not created. Nothing was saved.`
+    );
   }
 
   handleCancelNewSeason() {
@@ -673,10 +672,7 @@ export default class ShoreshCampSetup extends LightningElement {
     );
     this.mode = "screens";
     this.screen = "roots";
-    await this.run(
-      () => this.loadCamp(event.detail.seasonId),
-      this.openFailed
-    );
+    await this.run(() => this.loadCamp(event.detail.seasonId), this.openFailed);
   }
 
   /** After an import is saved: the season again, with what it added (the summary stays up). */
@@ -718,10 +714,13 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- weeks, programs, and everything inside ----------
 
   async handleFillWeeks() {
-    await this.run(async () => {
-      await addWeeksFromSeasonDates({ seasonId: this.seasonId });
-      await this.loadSeason();
-    }, `${this.terms.p("Week")} not added. Nothing was saved.`);
+    await this.run(
+      async () => {
+        await addWeeksFromSeasonDates({ seasonId: this.seasonId });
+        await this.loadSeason();
+      },
+      `${this.terms.p("Week")} not added. Nothing was saved.`
+    );
   }
 
   async handleAddProgram() {
@@ -744,12 +743,15 @@ export default class ShoreshCampSetup extends LightningElement {
   async handleSaveActivityDetails(event) {
     const { rules, whoCanDoIt, onFailure } = event.detail;
     let saved = false;
-    await this.run(async () => {
-      await saveActivityDetails({ rules, whoCanDoIt });
-      saved = true;
-      this.toast("Saved.");
-      await this.loadSeason();
-    }, `${this.terms.s("Activity")} details not saved. Your changes are still here.`);
+    await this.run(
+      async () => {
+        await saveActivityDetails({ rules, whoCanDoIt });
+        saved = true;
+        this.toast("Saved.");
+        await this.loadSeason();
+      },
+      `${this.terms.s("Activity")} details not saved. Your changes are still here.`
+    );
     if (!saved && onFailure) {
       onFailure();
     }

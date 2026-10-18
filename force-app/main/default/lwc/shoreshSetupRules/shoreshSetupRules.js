@@ -453,8 +453,7 @@ export function stillNeeded(setup, terms, programId) {
     add("weeks", t.p("Week"));
   }
   const programs = setup.programs || [];
-  const entry =
-    programs.find((p) => p.program.Id === programId) || programs[0];
+  const entry = programs.find((p) => p.program.Id === programId) || programs[0];
   if (!entry) {
     add("programs", t.p("Program"));
   } else {
@@ -489,7 +488,10 @@ export function stillNeededSentence(needed) {
   }
   const count = needed.length === 1 ? "One thing" : `${needed.length} things`;
   const parts = [
-    { key: "lead", text: `${count} still needed before you can build the schedule: ` }
+    {
+      key: "lead",
+      text: `${count} still needed before you can build the schedule: `
+    }
   ];
   needed.forEach((item, i) => {
     if (i > 0) {
@@ -498,7 +500,12 @@ export function stillNeededSentence(needed) {
         text: i === needed.length - 1 ? " and " : ", "
       });
     }
-    parts.push({ key: `link${i}`, link: true, text: item.label, screen: item.screen });
+    parts.push({
+      key: `link${i}`,
+      link: true,
+      text: item.label,
+      screen: item.screen
+    });
   });
   parts.push({ key: "end", text: "." });
   return parts;

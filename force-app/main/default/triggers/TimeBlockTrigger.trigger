@@ -6,11 +6,9 @@ trigger TimeBlockTrigger on TimeBlock__c(
   after delete,
   after undelete
 ) {
-  if (Trigger.isBefore) {
-    TimeBlockTriggerHandler.beforeSave(Trigger.new, Trigger.oldMap);
-    return;
-  }
-  SetTimeTriggers.timeBlocksChanged(
-    Trigger.isDelete ? Trigger.old : Trigger.new
+  TimeBlockTriggerHandler.handle(
+    Trigger.operationType,
+    Trigger.isDelete ? Trigger.old : Trigger.new,
+    Trigger.oldMap
   );
 }

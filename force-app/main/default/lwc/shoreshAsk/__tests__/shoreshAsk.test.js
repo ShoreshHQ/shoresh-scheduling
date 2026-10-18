@@ -6,7 +6,10 @@ const flush = () => Promise.resolve();
 async function render() {
   const element = createElement("c-shoresh-ask", { is: ShoreshAsk });
   element.heading = 'Turn off "Bunk 3" for Week 2?';
-  element.lines = ["Placed in 4 slots in Week 2.", "They stay until you change them."];
+  element.lines = [
+    "Placed in 4 slots in Week 2.",
+    "They stay until you change them."
+  ];
   element.confirmLabel = "Turn off anyway";
   document.body.appendChild(element);
   await flush();
@@ -27,12 +30,13 @@ describe("c-shoresh-ask", () => {
     const dialog = q(element, '[data-id="ask"]');
     expect(dialog.getAttribute("role")).toBe("dialog");
     expect(dialog.getAttribute("aria-modal")).toBe("true");
-    expect(q(element, "h2").textContent).toBe(
-      'Turn off "Bunk 3" for Week 2?'
-    );
+    expect(q(element, "h2").textContent).toBe('Turn off "Bunk 3" for Week 2?');
     expect(
       [...element.shadowRoot.querySelectorAll("p")].map((p) => p.textContent)
-    ).toEqual(["Placed in 4 slots in Week 2.", "They stay until you change them."]);
+    ).toEqual([
+      "Placed in 4 slots in Week 2.",
+      "They stay until you change them."
+    ]);
     expect(q(element, '[data-id="yes"]').textContent.trim()).toBe(
       "Turn off anyway"
     );
@@ -53,7 +57,9 @@ describe("c-shoresh-ask", () => {
     dialog.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
     );
-    expect(element.shadowRoot.activeElement).toBe(q(element, '[data-id="yes"]'));
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="yes"]')
+    );
     dialog.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
     );

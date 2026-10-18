@@ -763,10 +763,7 @@ private class ManualBuildTest {
       ]
       .Id;
       Test.startTest();
-      Assert.areEqual(
-        'Add activities first.',
-        startRefusal(programId, weekId)
-      );
+      Assert.areEqual('Add activities first.', startRefusal(programId, weekId));
       Test.stopTest();
       Assert.isNull(ManualDrafts.find(programId, weekId));
     }

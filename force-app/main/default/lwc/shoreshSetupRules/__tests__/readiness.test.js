@@ -2,6 +2,12 @@ import * as rules from "c/shoreshSetupRules";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 
+const terms = buildTerms([
+  { term: "Division", singular: "Unit", plural: "Units", isCustom: true },
+  { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
+  { term: "TimeBlock", singular: "Period", plural: "Periods", isCustom: true }
+]);
+
 // The desktop's required areas (readiness.js), its menu marks (Sidebar.jsx), and its rain plan
 // picker (ActivitiesScreen.jsx), in Salesforce's shape. Fixtures use bare names (nsRecord).
 const stillNeeded = (setup, programId) =>
@@ -9,12 +15,6 @@ const stillNeeded = (setup, programId) =>
 const menuMarks = (setup) => rules.menuMarks(nsRecord(setup));
 const rainPlanOptions = (activities) =>
   rules.rainPlanOptions(nsRecord(activities));
-
-const terms = buildTerms([
-  { term: "Division", singular: "Unit", plural: "Units", isCustom: true },
-  { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
-  { term: "TimeBlock", singular: "Period", plural: "Periods", isCustom: true }
-]);
 
 const main = {
   program: { Id: "p1", Name: "Main", Monday__c: true },

@@ -48,39 +48,21 @@ public with sharing class ActivityTriggerHandler {
     List<Activity__c> activities,
     Map<Id, Activity__c> before
   ) {
+    List<Activity__c> choosing = new List<Activity__c>();
     Set<Id> chosen = new Set<Id>();
     for (Activity__c activity : activities) {
-      Activity__c old = before == null ? null : before.get(activity.Id);
-      if (
-        activity.RainPlan__c != null &&
-        (old == null || old.RainPlan__c != activity.RainPlan__c)
-      ) {
+      if (choosesRainPlan(activity, before)) {
+        choosing.add(activity);
         chosen.add(activity.RainPlan__c);
       }
     }
-    if (chosen.isEmpty()) {
+    if (choosing.isEmpty()) {
       return;
     }
-    Map<Id, Boolean> outdoors = new Map<Id, Boolean>();
-    for (Activity__c rainPlan : [
-      SELECT Id, Outdoor__c
-      FROM Activity__c
-      WHERE Id IN :chosen
-      WITH SYSTEM_MODE
-    ]) {
-      outdoors.put(rainPlan.Id, rainPlan.Outdoor__c);
-    }
-    for (Activity__c activity : activities) {
-      if (activity.Id != null && chosen.contains(activity.Id)) {
-        outdoors.put(activity.Id, activity.Outdoor__c);
-      }
-    }
+    Map<Id, Boolean> outdoors = outdoorsAfterSave(chosen, activities);
     Map<Id, CampLabels> labelsBySeason;
-    for (Activity__c activity : activities) {
-      Activity__c old = before == null ? null : before.get(activity.Id);
-      Boolean changed =
-        old == null || old.RainPlan__c != activity.RainPlan__c;
-      if (changed && outdoors.get(activity.RainPlan__c) == true) {
+    for (Activity__c activity : choosing) {
+      if (outdoors.get(activity.RainPlan__c) == true) {
         if (labelsBySeason == null) {
           labelsBySeason = SetupSeasons.labelsBySeason(seasonsOf(activities));
         }
@@ -90,6 +72,39 @@ public with sharing class ActivityTriggerHandler {
         );
       }
     }
+  }
+
+  /** A rain plan set on a new activity, or changed on a saved one. */
+  private static Boolean choosesRainPlan(
+    Activity__c activity,
+    Map<Id, Activity__c> before
+  ) {
+    Activity__c old = before == null ? null : before.get(activity.Id);
+    return activity.RainPlan__c != null &&
+      (old == null ||
+      old.RainPlan__c != activity.RainPlan__c);
+  }
+
+  /** Whether each rain plan is outdoors as this save leaves it (its own change counts). */
+  private static Map<Id, Boolean> outdoorsAfterSave(
+    Set<Id> rainPlanIds,
+    List<Activity__c> saving
+  ) {
+    Map<Id, Boolean> outdoors = new Map<Id, Boolean>();
+    for (Activity__c rainPlan : [
+      SELECT Id, Outdoor__c
+      FROM Activity__c
+      WHERE Id IN :rainPlanIds
+      WITH SYSTEM_MODE
+    ]) {
+      outdoors.put(rainPlan.Id, rainPlan.Outdoor__c);
+    }
+    for (Activity__c activity : saving) {
+      if (activity.Id != null && rainPlanIds.contains(activity.Id)) {
+        outdoors.put(activity.Id, activity.Outdoor__c);
+      }
+    }
+    return outdoors;
   }
 
   /** The desktop's words, in the camp's: never an article built from a camp word. */

@@ -82,10 +82,7 @@ private class RainPlanIndoorsTest {
     System.runAs(ShoreshTestData.scheduler()) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
-          new Activity__c(
-            Id = ids.get('Soccer'),
-            RainPlan__c = ids.get('Swim')
-          )
+          new Activity__c(Id = ids.get('Soccer'), RainPlan__c = ids.get('Swim'))
         }
       );
     }
@@ -115,8 +112,7 @@ private class RainPlanIndoorsTest {
     }
     Assert.areEqual(
       'Bring cones',
-      [SELECT Notes__c FROM Activity__c WHERE Id = :ids.get('Soccer')]
-      .Notes__c
+      [SELECT Notes__c FROM Activity__c WHERE Id = :ids.get('Soccer')].Notes__c
     );
   }
 

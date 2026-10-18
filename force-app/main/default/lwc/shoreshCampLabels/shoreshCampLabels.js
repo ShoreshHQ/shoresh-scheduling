@@ -36,7 +36,10 @@ export default class ShoreshCampLabels extends LightningElement {
         plural: row.isCustom ? row.plural : ""
       }));
     } catch (e) {
-      this.error = failed("Couldn't open the camp words. Nothing was changed.", e);
+      this.error = failed(
+        "Couldn't open the camp words. Nothing was changed.",
+        e
+      );
     }
   }
 

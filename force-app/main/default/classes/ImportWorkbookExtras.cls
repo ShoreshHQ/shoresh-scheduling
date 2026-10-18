@@ -1,6 +1,7 @@
 /**
- * What only a camp workbook saves (slice 4c part D), beside its lists: weeks an item runs again
- * (a week off removed), and the camp's words. Both are logged so Undo last import puts them back
+ * What a camp workbook saves (slice 4c part D), beside its lists: weeks an item runs again
+ * (a week off removed), and the camp's words. Filling an empty season's weeks from its dates is
+ * shared with Import last year. Both are logged so Undo last import puts them back
  * (Greg: camp words are undone with the rest), unless edited since.
  */
 public with sharing class ImportWorkbookExtras {
@@ -66,7 +67,7 @@ public with sharing class ImportWorkbookExtras {
     return new ShoreshException(
       'This ' +
         CampLabels.forCamp(campId).singularInSentence('Season') +
-        '\'s dates changed after the workbook was read. Choose the file again.'
+        '\'s dates changed after the file was read. Choose the file again.'
     );
   }
 

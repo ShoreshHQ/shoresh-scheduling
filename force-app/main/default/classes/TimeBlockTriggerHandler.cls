@@ -7,6 +7,22 @@
 public with sharing class TimeBlockTriggerHandler {
   private static final Time NOON = Time.newInstance(12, 0, 0, 0);
 
+  /** Before a save: names and parts of day. After any change: the set-time check. */
+  public static void handle(
+    System.TriggerOperation operation,
+    List<TimeBlock__c> blocks,
+    Map<Id, TimeBlock__c> before
+  ) {
+    if (
+      operation == System.TriggerOperation.BEFORE_INSERT ||
+      operation == System.TriggerOperation.BEFORE_UPDATE
+    ) {
+      beforeSave(blocks, before);
+    } else {
+      SetTimeTriggers.timeBlocksChanged(blocks);
+    }
+  }
+
   public static void beforeSave(
     List<TimeBlock__c> blocks,
     Map<Id, TimeBlock__c> before

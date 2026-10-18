@@ -805,7 +805,10 @@ export default class ShoreshManualBuild extends LightningElement {
           name: option.name
         });
       } catch (e) {
-        this.error = failed(`"${option.name}" not added. Nothing was saved.`, e);
+        this.error = failed(
+          `"${option.name}" not added. Nothing was saved.`,
+          e
+        );
         return;
       }
       if (!this.draft.activities.some((a) => a.id === activity.id)) {

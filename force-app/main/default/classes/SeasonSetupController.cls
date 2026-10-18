@@ -113,21 +113,6 @@ public with sharing class SeasonSetupController {
     return ScreenSaves.save(records, extras);
   }
 
-  /**
-   * For weeks about to be unticked: how many slots each already has in that week's Manual Build
-   * and Generated Schedule, so the screen can ask first (desktop ExclusionConfirmDialog).
-   */
-  @AuraEnabled
-  public static List<PlacedInWeeks.Placed> placedInWeeks(
-    List<RunsIn.WeekOff> weeksOff
-  ) {
-    try {
-      return PlacedInWeeks.count(weeksOff);
-    } catch (Exception e) {
-      throw ScreenErrors.ofLoading(e);
-    }
-  }
-
   @AuraEnabled
   public static void deleteRecord(Id recordId) {
     if (

@@ -21,14 +21,18 @@ public with sharing class PlacedInWeeks {
     Set<Id> weekIds = new Set<Id>();
     Set<Id> locationIds = new Set<Id>();
     for (RunsIn.WeekOff ask : asks) {
-      if (ask.target == null || ask.week == null) {
-        continue;
-      }
-      weekIds.add(ask.week);
-      if (ask.target.getSObjectType() == Location__c.SObjectType) {
-        locationIds.add(ask.target);
+      if (ask.target != null && ask.week != null) {
+        weekIds.add(ask.week);
+        if (ask.target.getSObjectType() == Location__c.SObjectType) {
+          locationIds.add(ask.target);
+        }
       }
     }
+    return placedFor(asks, slotsByWeek(weekIds, locationsOf(locationIds)));
+  }
+
+  /** The activities at these locations: activity -> location. */
+  private static Map<Id, Id> locationsOf(Set<Id> locationIds) {
     Map<Id, Id> locationOf = new Map<Id, Id>();
     for (Activity__c activity : [
       SELECT Id, Location__c
@@ -38,7 +42,14 @@ public with sharing class PlacedInWeeks {
     ]) {
       locationOf.put(activity.Id, activity.Location__c);
     }
-    // week -> target -> slots
+    return locationOf;
+  }
+
+  /** week -> target -> slots, over the weeks' Manual Build and Generated Schedule drafts. */
+  private static Map<Id, Map<Id, Integer>> slotsByWeek(
+    Set<Id> weekIds,
+    Map<Id, Id> locationOf
+  ) {
     Map<Id, Map<Id, Integer>> byWeek = new Map<Id, Map<Id, Integer>>();
     for (ScheduleDay__c day : [
       SELECT Grid__c, Schedule__r.Week__c
@@ -55,10 +66,19 @@ public with sharing class PlacedInWeeks {
       }
       tally(day.Grid__c, locationOf, byWeek.get(weekId));
     }
+    return byWeek;
+  }
+
+  /** Each week off asked about whose target has slots placed that week. */
+  private static List<Placed> placedFor(
+    List<RunsIn.WeekOff> asks,
+    Map<Id, Map<Id, Integer>> byWeek
+  ) {
     List<Placed> result = new List<Placed>();
     for (RunsIn.WeekOff ask : asks) {
       Map<Id, Integer> counts = byWeek.get(ask.week);
-      Integer slots = counts == null || ask.target == null
+      Integer slots = counts == null ||
+        ask.target == null
         ? null
         : counts.get(ask.target);
       if (slots != null && slots > 0) {

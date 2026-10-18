@@ -10,7 +10,7 @@ import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
-import placedInWeeks from "@salesforce/apex/SeasonSetupController.placedInWeeks";
+import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -53,7 +53,7 @@ jest.mock(
   { virtual: true }
 );
 jest.mock(
-  "@salesforce/apex/SeasonSetupController.placedInWeeks",
+  "@salesforce/apex/RunsInController.placedInWeeks",
   () => apex(),
   { virtual: true }
 );
@@ -834,7 +834,12 @@ describe("c-shoresh-camp-setup", () => {
     const turnOff = (element, weeksOff, onFailure) => {
       q(element, '[data-screen="groups"] c-shoresh-program').dispatchEvent(
         new CustomEvent("save", {
-          detail: nsRecord({ records: [], weeksOff, weeksBackOn: [], onFailure })
+          detail: nsRecord({
+            records: [],
+            weeksOff,
+            weeksBackOn: [],
+            onFailure
+          })
         })
       );
     };
@@ -866,7 +871,11 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       expect(q(element, "c-shoresh-ask")).toBeNull();
       expect(sentTo(saveRowsAndWeeks)).toEqual([
-        { records: [], weeksOff: [{ target: "g3", week: "w1" }], weeksBackOn: [] }
+        {
+          records: [],
+          weeksOff: [{ target: "g3", week: "w1" }],
+          weeksBackOn: []
+        }
       ]);
     });
 
