@@ -603,10 +603,20 @@ Manual Build passes none of these and behaves as before.
 - After every answered save the editor takes the locks from, in this order: the saver's `locks`
   (the cells locked now); else the `locks` of each day in the schedule the server sent
   (`ScheduleViews`, every day must carry them); else what its own prediction says the edit left
-  (nothing when the edit was a conflict). So a conflict over a cell the server holds locked is
-  answered with that lock, and Use yours names it. An edit sent again after a conflict with
-  nothing new to ask is given up after two more tries ("Not saved ... kept changing") rather than
-  sent for ever.
+  (nothing when the edit was a conflict).
+- **Nobody's lock is covered unseen.** When a save comes back as a conflict and a cell the edit
+  touches is locked on the server but was not locked when the edit was made, the edit is not sent
+  again, not even by Use yours: it is dropped (no Undo step left, no lock shown for it) and said
+  as "<cell> is locked." (the same words as any other refusal, naming that cell). This holds for
+  an Undo and a Redo too. A conflict that changed no lock on the cells it touches is sent again
+  as before, after its question if there is one. An edit sent again with nothing new to ask is
+  given up after two more tries ("Not saved ... The <week word> kept changing"), rather than sent
+  for ever; this guard also runs in Manual Build, which passes no locks.
+- **A longer activity stops at a locked cell**, as it stops at a filled one: it fills the blocks
+  before the lock and is shown short ("(1 of 2)"), like a placement cut short in Manual Build.
+- **One unlock request per gesture.** A double-click on a locked cell (click, click, double-click),
+  or Enter right after a click, raises one `unlockrequest`; the same cell asked again after 600 ms
+  is a new gesture.
 
 ## Choices that are hard to undo after release
 

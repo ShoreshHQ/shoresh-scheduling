@@ -123,6 +123,30 @@ describe("foldRun: a hand edit", () => {
     expect(foldRun(foldRun(new Set(), first), second)).toEqual(locked(2, 3));
   });
 
+  it("the second run's row carries what the first run made, even past its own blocks", () => {
+    // Swim at Period 1 is lengthened over Period 2 (first), then Period 1 is given to someone
+    // else's activity (second): the second run's placement still reaches Period 2.
+    const week = [day(DAY, ITEMS, ["2,,", ",,"])];
+    const first = {
+      day: DAY,
+      groupId: "g1",
+      firstBlockId: "t2",
+      before: [""],
+      after: ["^A:a1"],
+      blockIds: ["t2"]
+    };
+    const second = {
+      day: DAY,
+      groupId: "g1",
+      firstBlockId: "t1",
+      before: ["A:a1"],
+      after: ["A:a2"],
+      blockIds: ["t1"]
+    };
+    noteRows(week, [first, second]);
+    expect(foldRun(new Set(), second)).toEqual(locked(1, 2));
+  });
+
   it("a run with no row noted is read on its own blocks", () => {
     const run = {
       day: DAY,
@@ -163,6 +187,15 @@ describe("marks and locksOfWeek", () => {
       ])
     );
     expect(locksOfWeek([monday, day("x", ITEMS, [",,", ",,"])])).toBeNull();
+    // A day the server could not read says nothing of locks, and does not stop the others being read.
+    const broken = { ...day("2026-07-01", ITEMS, [",,", ",,"]), problem: "x" };
+    expect(locksOfWeek([monday, broken])).toEqual(
+      new Set([
+        lockKey(DAY, "g1", "t2"),
+        lockKey(DAY, "g2", "t1"),
+        lockKey(DAY, "g2", "t3")
+      ])
+    );
     expect(locksOfWeek(undefined)).toBeNull();
   });
 });

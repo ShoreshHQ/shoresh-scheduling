@@ -14,6 +14,7 @@ const LABELS = [
 // Bunk 1 on Monday: Period 2 is the cell these tests work on.
 const P2 = "2026-06-29|g1|t2";
 const SWIM_AT_P2 = ["1,2,", "1,,"];
+const LUNCH_KEY = "2026-06-29|g1|t3";
 
 const flush = () =>
   [...Array(10)].reduce(
@@ -44,7 +45,7 @@ async function render(saveRuns, options = {}) {
   const element = createElement("c-shoresh-week-editor", {
     is: ShoreshWeekEditor
   });
-  element.terms = buildTerms(LABELS);
+  element.terms = buildTerms(options.labels || LABELS);
   element.setup = nsRecord(SETUP);
   element.weekName = "Week 1";
   element.programName = "Main";
@@ -105,6 +106,16 @@ async function press(target, key) {
 async function fromGrid(element, name, detail) {
   grid(element).dispatchEvent(new CustomEvent(name, { detail }));
   await flush();
+}
+
+/** Types a name into a cell and presses Enter, the way a director places an activity. */
+async function typeInto(element, key, text) {
+  await press(cell(element, key), "Enter");
+  const input = q(element, '[data-id="slot-input"]');
+  input.value = text;
+  input.dispatchEvent(new CustomEvent("input"));
+  await flush();
+  await press(input, "Enter");
 }
 
 async function placeSwim(element) {
@@ -355,25 +366,46 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
       expect(bySent(saveRuns, 1).locksAfter).toEqual([""]);
     });
 
-    it("a longer activity is not made over a locked cell, using the locks the host passed again", async () => {
+    it("a longer activity stops at a locked cell, using the locks the host passed again, and says it is short", async () => {
       const saveRuns = jest
         .fn()
-        .mockResolvedValue(saved(WITH_SWIM, SWIM_AT_P2));
+        .mockResolvedValue(saved(BOATING, ["1,2,", "1,,"]));
       const { element } = await render(saveRuns, { locks: [] });
       element.locks = ["2026-06-29|g1|t3"];
       await flush();
-      await press(cell(element, "0-1"), "Enter");
-      const input = q(element, '[data-id="slot-input"]');
-      input.value = "boating";
-      input.dispatchEvent(new CustomEvent("input"));
-      await flush();
-      await press(input, "Enter");
-      // Boating needs two blocks: Period 2 and Lunch, and Lunch is locked.
-      expect(saveRuns).not.toHaveBeenCalled();
-      // The notice names the cell that is locked, not the one the edit starts in.
-      expect(q(element, '[data-id="notice"]').textContent).toBe(
-        "Bunk 1 · Monday · Lunch is locked."
+      await typeInto(element, "0-1", "boating");
+      // Boating needs two blocks, Period 2 and Lunch; Lunch is locked empty, so it stops there.
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      const run = bySent(saveRuns, 0);
+      expect(run.after).toEqual(["A:a2"]);
+      expect(run.blockIds).toEqual(["t2"]);
+      expect(q(element, '[data-id="undo"]').title).toBe(
+        "Undo: Placed Boating · Bunk 1 · Monday · Period 2 (1 of 2)"
       );
+      // The locked cell is left as it was, locked empty.
+      expect(lockText(element, "0-2")).toBe("Locked empty");
+    });
+
+    it("a longer activity stops at a locked cell with the same words as at a filled one", async () => {
+      const filled = jest
+        .fn()
+        .mockResolvedValue(
+          saved([...WITH_SOCCER, BOATING[1]], ["1,3,2", "1,,"])
+        );
+      const first = await render(filled, {
+        items: WITH_SOCCER,
+        rows: ["1,,2", "1,,"]
+      });
+      await typeInto(first.element, "0-1", "boating");
+      const filledTitle = q(first.element, '[data-id="undo"]').title;
+      const lockedSaver = jest
+        .fn()
+        .mockResolvedValue(saved(BOATING, ["1,2,", "1,,"]));
+      const second = await render(lockedSaver, {
+        locks: ["2026-06-29|g1|t3"]
+      });
+      await typeInto(second.element, "0-1", "boating");
+      expect(q(second.element, '[data-id="undo"]').title).toBe(filledTitle);
     });
 
     it("no locks passed: no run carries any", async () => {
@@ -592,39 +624,186 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
       expect(lockText(element, "0-1")).toBeNull();
     });
 
-    it("Use yours after a conflict over a cell the server holds locked names that lock, and is made", async () => {
+    const P2_LOCKED = [",1,", ""];
+    const LOCKED_NOTICE = "Bunk 1 · Monday · Period 2 is locked.";
+    const noticeOf = (element) => q(element, '[data-id="notice"]').textContent;
+
+    it("a cell someone locked meanwhile is not covered by the edit, even when theirs is also changed: it is refused and said", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(
+          savedLocked(WITH_SOCCER, ["1,2,", "1,,"], P2_LOCKED, [0])
+        );
+      const { element, heard } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      // Sent once, no question, no second send over their lock.
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      expect(q(element, '[data-id="conflict"]')).toBeNull();
+      expect(noticeOf(element)).toBe(LOCKED_NOTICE);
+      // Their Soccer stands, shown locked as the server holds it; nothing is left to undo.
+      expect(cellText(element, "0-1")).toBe("Soccer");
+      expect(lockText(element, "0-1")).toBe("Locked");
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+      expect(heardNamed(heard, "saved")).toHaveLength(1);
+    });
+
+    it("a lock-only conflict on an Open cell (nothing else changed) is refused, not sent again", async () => {
+      // P3: the cell was locked empty on purpose by someone else.
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(
+          savedLocked(undefined, ["1,,", "1,,"], P2_LOCKED, [0])
+        );
+      const { element } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      expect(noticeOf(element)).toBe(LOCKED_NOTICE);
+      // Their lock stands: locked empty, not filled with Swim.
+      expect(cellText(element, "0-1")).toBe("");
+      expect(lockText(element, "0-1")).toBe("Locked empty");
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    });
+
+    it("Delete on a cell someone locked meanwhile does not clear it or unlock it", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(savedLocked(WITH_SWIM, SWIM_AT_P2, P2_LOCKED, [0]));
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      await press(cell(element, "0-1"), "Delete");
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      expect(noticeOf(element)).toBe(LOCKED_NOTICE);
+      expect(cellText(element, "0-1")).toBe("Swim");
+      expect(lockText(element, "0-1")).toBe("Locked");
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    });
+
+    it("an Undo that meets a lock someone placed meanwhile is refused, and leaves nothing to undo or redo", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        .mockResolvedValueOnce(
+          savedLocked(undefined, ["1,,", "1,,"], P2_LOCKED, [0])
+        );
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      await press(cell(element, "0-1"), "Delete");
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(2);
+      expect(noticeOf(element)).toBe(LOCKED_NOTICE);
+      expect(lockText(element, "0-1")).toBe("Locked empty");
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+      expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    });
+
+    it("a Redo that meets a lock someone placed meanwhile is refused too", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+        .mockResolvedValueOnce(
+          savedLocked(WITH_SWIM, SWIM_AT_P2, P2_LOCKED, [0])
+        );
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: [P2]
+      });
+      element.locks = [];
+      await flush();
+      await press(cell(element, "0-1"), "Delete");
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      q(element, '[data-id="redo"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(3);
+      expect(noticeOf(element)).toBe(LOCKED_NOTICE);
+      expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    });
+
+    it("a lock the edit already saw is not new: a conflict over a cell that stays locked still asks", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+        .mockResolvedValueOnce(
+          savedLocked(WITH_SOCCER, ["1,2,", "1,,"], P2_LOCKED, [0])
+        );
+      const { element } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      // The Undo saw P2 locked (the Swim edit locked it), and it still is: their Soccer is asked about.
+      expect(saveRuns).toHaveBeenCalledTimes(2);
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+    });
+
+    it("a longer activity's refusal names the cell that was locked, not the one it starts in", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(
+          savedLocked(BOATING, ["1,2,^", "1,,"], [",,1", ""], [0])
+        );
+      const { element } = await render(saveRuns, { locks: [] });
+      await typeInto(element, "0-1", "boating");
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      expect(bySent(saveRuns, 0).blockIds).toEqual(["t2", "t3"]);
+      expect(noticeOf(element)).toBe("Bunk 1 · Monday · Lunch is locked.");
+    });
+
+    it("a lock on a day the answer no longer has is not a lock refusal: the vanished day is what is said", async () => {
+      const answer = savedLocked(undefined, ["1,,", "1,,"], P2_LOCKED, [0]);
+      answer.schedule.days = [answer.schedule.days[1]];
+      answer.locks = [P2];
+      const saveRuns = jest.fn().mockResolvedValue(answer);
+      const { element } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      expect(saveRuns).toHaveBeenCalledTimes(1);
+      expect(noticeOf(element)).not.toContain("is locked");
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    });
+
+    it("locks taken back to none by the host mean runs carry no locks again", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(saved(WITH_SWIM, SWIM_AT_P2));
+      const { element } = await render(saveRuns, { locks: [P2] });
+      element.locks = undefined;
+      await flush();
+      await placeSwim(element);
+      expect(Object.keys(bySent(saveRuns, 0))).not.toContain("locksBefore");
+    });
+
+    it("a lock on a cell the edit does not touch does not stop it being sent again", async () => {
       const saveRuns = jest
         .fn()
         .mockResolvedValueOnce(
-          savedLocked(WITH_SOCCER, ["1,2,", "1,,"], [",1,", ""], [0])
+          savedLocked(undefined, ["1,,", "1,,"], [",,1", ""], [0])
         )
-        .mockResolvedValueOnce(savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,", ""]));
+        .mockResolvedValue(savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,1", ""]));
       const { element } = await render(saveRuns, { locks: [] });
       await placeSwim(element);
-      // Their Soccer is shown locked, as the server holds it.
-      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
-      expect(lockText(element, "0-1")).toBe("Locked");
-      await clickUseYours(element);
+      // Lunch was locked by someone else, but Swim only touches Period 2: sent again, made.
       expect(saveRuns).toHaveBeenCalledTimes(2);
-      expect(bySent(saveRuns, 1).locksBefore).toEqual(["1"]);
-      expect(q(element, '[data-id="conflict"]')).toBeNull();
+      expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
       expect(cellText(element, "0-1")).toBe("Swim");
+      expect(q(element, '[data-id="conflict"]')).toBeNull();
     });
 
-    it("a save that keeps coming back as a conflict is given up with a reason, not sent for ever", async () => {
+    it("the answer to a conflict that still asks about their change shows the question when no lock is new", async () => {
       const saveRuns = jest
         .fn()
         .mockResolvedValue(saved(WITH_SOCCER, ["1,2,", "1,,"], [0]));
       const { element } = await render(saveRuns, { locks: [] });
       await placeSwim(element);
-      await clickUseYours(element);
-      expect(saveRuns.mock.calls.length).toBeLessThanOrEqual(4);
-      expect(q(element, '[data-id="conflict"]')).toBeNull();
-      expect(q(element, '[data-id="notice"]').textContent).toMatch(
-        /Not saved: .*kept changing/
-      );
-      // Nothing is left to undo or redo for it.
-      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      expect(saveRuns).toHaveBeenCalledTimes(1);
     });
 
     it("Redo after Use yours restores the locks of what Use yours made, not of the first try", async () => {
@@ -704,6 +883,221 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
       expect(q(element, '[data-id="notice"]').textContent).toBe(
         "Bunk 1 · Monday · Period 2 is locked."
       );
+    });
+  });
+
+  describe("what Use yours and a conflict leave behind", () => {
+    const bySent = (saveRuns, n) => saveRuns.mock.calls[n][0][0].runs[0];
+    const LUNCH = "2026-06-29|g1|t3";
+
+    it("a save that keeps coming back as a conflict is given up with a reason, not sent for ever", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(saved(WITH_SOCCER, ["1,2,", "1,,"], [0]));
+      const { element } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      q(element, '[data-id="use-yours"]').click();
+      await flush();
+      // Sent, then sent again twice after the answers, and then given up: exactly three sends.
+      expect(saveRuns).toHaveBeenCalledTimes(3);
+      expect(q(element, '[data-id="conflict"]')).toBeNull();
+      expect(q(element, '[data-id="notice"]').textContent).toMatch(
+        /Not saved: .*kept changing/
+      );
+      // Nothing is left to undo or redo for it.
+      expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    });
+
+    it("a Redo sent again by Use yours carries the locks of what Use yours makes, not the first try's", async () => {
+      // Lunch is locked empty. Swim at Period 2 is placed, undone, and redone; their two-block
+      // Boating is in the way of the Redo, so Use yours clears Lunch too, and its lock goes.
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        .mockResolvedValueOnce(saved(BOATING, ["1,2,^", "1,,"], [0]))
+        .mockResolvedValue(saved(WITH_SWIM, SWIM_AT_P2));
+      const { element } = await render(saveRuns, { locks: [LUNCH] });
+      await placeSwim(element);
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      q(element, '[data-id="redo"]').click();
+      await flush();
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      q(element, '[data-id="use-yours"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(4);
+      const again = bySent(saveRuns, 3);
+      expect(again.after).toEqual(["A:a1", ""]);
+      expect(again.locksAfter).toEqual(["1", ""]);
+    });
+
+    it("an Undo sent again by Use yours still carries the locks from before its step", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+        .mockResolvedValueOnce(saved(WITH_SOCCER, ["1,2,", "1,,"], [0]))
+        .mockResolvedValue(saved(undefined, ["1,,", "1,,"]));
+      const { element } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      q(element, '[data-id="use-yours"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(3);
+      expect(bySent(saveRuns, 2).locksAfter).toEqual([""]);
+    });
+
+    it("the give-up notice uses the camp's word for the week, in Manual Build too (no locks passed)", async () => {
+      const labels = [
+        ...LABELS,
+        {
+          term: "Week",
+          singular: "Session",
+          plural: "Sessions",
+          isCustom: true
+        }
+      ];
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValue(saved(WITH_SOCCER, ["1,2,", "1,,"], [0]));
+      const { element } = await render(saveRuns, { labels });
+      await placeSwim(element);
+      q(element, '[data-id="use-yours"]').click();
+      await flush();
+      expect(saveRuns).toHaveBeenCalledTimes(3);
+      const text = q(element, '[data-id="notice"]').textContent;
+      expect(text).toContain("The Session kept changing");
+      expect(text).not.toContain("week");
+    });
+
+    it("the saved event says what kind of change it was: an edit, an Undo, a Redo", async () => {
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2))
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        .mockResolvedValueOnce(saved(WITH_SWIM, SWIM_AT_P2));
+      const { element, heard } = await render(saveRuns, { locks: [] });
+      await placeSwim(element);
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      q(element, '[data-id="redo"]').click();
+      await flush();
+      expect(heardNamed(heard, "saved").map((d) => d.kind)).toEqual([
+        "edit",
+        "undo",
+        "redo"
+      ]);
+    });
+
+    it("while an Undo still saves, the cell shows the locks it will restore, not a new hand edit's", async () => {
+      // Swim is unlocked on the server; Clear it, then Undo: the Undo restores "unlocked", so the
+      // cell must not show Locked while the Undo waits for its answer.
+      let answer;
+      const saveRuns = jest
+        .fn()
+        .mockResolvedValueOnce(saved(undefined, ["1,,", "1,,"]))
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            answer = resolve;
+          })
+        );
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      await press(cell(element, "0-1"), "Delete");
+      q(element, '[data-id="undo"]').click();
+      await flush();
+      expect(cellText(element, "0-1")).toBe("Swim");
+      expect(lockText(element, "0-1")).toBeNull();
+      answer(saved(WITH_SWIM, SWIM_AT_P2));
+      await flush();
+      expect(lockText(element, "0-1")).toBeNull();
+    });
+
+    it("a placement dragged out of the week is not removed if its cell was locked meanwhile", async () => {
+      const saveRuns = jest.fn();
+      const { element } = await render(saveRuns, {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks: []
+      });
+      await fromGrid(element, "celldragstart", { key: "0-1" });
+      element.locks = [P2];
+      await flush();
+      q(element, "c-shoresh-build-palette").dispatchEvent(
+        new CustomEvent("removedrop", { detail: { data: "Swim" } })
+      );
+      await flush();
+      expect(saveRuns).not.toHaveBeenCalled();
+      expect(cellText(element, "0-1")).toBe("Swim");
+      expect(q(element, '[data-id="notice"]').textContent).toBe(
+        "Bunk 1 · Monday · Period 2 is locked."
+      );
+    });
+  });
+
+  describe("an unlock request is one per gesture", () => {
+    const count = (heard) => heardNamed(heard, "unlockrequest").length;
+    const mouse = (element, key, name = "click") =>
+      cell(element, key).dispatchEvent(
+        new MouseEvent(name, { bubbles: true, composed: true })
+      );
+    async function lockedSwim(locks = [P2]) {
+      return render(jest.fn(), {
+        items: WITH_SWIM,
+        rows: SWIM_AT_P2,
+        locks
+      });
+    }
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it("a double-click (click, click, double-click) asks once", async () => {
+      const { element, heard } = await lockedSwim();
+      mouse(element, "0-1");
+      mouse(element, "0-1");
+      mouse(element, "0-1", "dblclick");
+      await flush();
+      expect(count(heard)).toBe(1);
+    });
+
+    it("a click and then Enter on the same cell right after asks once, and focus stays on it", async () => {
+      const { element, heard } = await lockedSwim();
+      mouse(element, "0-1");
+      await press(cell(element, "0-1"), "Enter");
+      expect(count(heard)).toBe(1);
+      expect(grid(element).shadowRoot.activeElement).toBe(cell(element, "0-1"));
+    });
+
+    it("a repeated ask puts focus back on the cell it is for", async () => {
+      const { element } = await lockedSwim();
+      mouse(element, "0-1");
+      grid(element).focusCell("1-1");
+      await flush();
+      await press(cell(element, "0-1"), "Enter");
+      expect(grid(element).shadowRoot.activeElement).toBe(cell(element, "0-1"));
+    });
+
+    it("a later gesture on the same cell asks again", async () => {
+      const { element, heard } = await lockedSwim();
+      const now = jest.spyOn(Date, "now");
+      now.mockReturnValue(1000);
+      mouse(element, "0-1");
+      now.mockReturnValue(1000 + 5000);
+      mouse(element, "0-1");
+      await flush();
+      expect(count(heard)).toBe(2);
+    });
+
+    it("a different locked cell right after asks too", async () => {
+      const { element, heard } = await lockedSwim([P2, LUNCH_KEY]);
+      mouse(element, "0-1");
+      mouse(element, "0-2");
+      await flush();
+      expect(count(heard)).toBe(2);
     });
   });
 
