@@ -25,6 +25,7 @@ import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
+import { foldRun, lockKey, marks } from "./locks";
 import {
   RULE,
   checkWeek,
@@ -66,6 +67,16 @@ function slotKey(slot) {
  * the slots: pickers, tools, checks, status and outcome.
  *
  * terms: the camp's words. setup: the season (SeasonSetupController.getSeasonSetup).
+ *
+ * What Generated Schedule adds, all off until the host passes it (Manual Build passes none):
+ * - locks: the locked cells ("date|groupId|blockId"). A locked cell shows its lock, can't be
+ *   dragged, dropped on, picked up or typed into; Enter or a click asks the host to unlock it
+ *   ("unlockrequest", with the slot) and keeps focus on the cell. Every run saved names the locks
+ *   the screen saw (locksBefore), and an Undo or Redo the locks to restore (locksAfter).
+ * - tools=false: the host's tools slot and "Add <name> to activities" are left out.
+ * - "cellfocus" says which cell keyboard focus reached; "saved" says each save's answer (the
+ *   host shows the schedule it carries, never a patched copy); "editstate" says whether edits are
+ *   saving (busy) or waiting (queueEmpty), so a host can hold a Rebuild.
  */
 export default class ShoreshWeekEditor extends LightningElement {
   @api terms;
@@ -77,6 +88,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api saveRuns;
   // True while the host is restoring or saving a version: edits wait (Restore would paint over them).
   @api restoring = false;
+  // Pass false (a host that owns its toolbar, Generated Schedule): no tools slot, no adding an
+  // activity by typing its name.
+  @api tools;
 
   // ManualBuildController's DraftView: { schedule, activities, away }, or null (not started).
   _draft = null;
@@ -122,8 +136,14 @@ export default class ShoreshWeekEditor extends LightningElement {
   // Bumped whenever history changes, so Undo and Redo show what they would do.
   historyVersion = 0;
   stepSeq = 0;
-  // What the host was last told by statechange.
+  // What the host was last told by statechange, and by editstate.
   told = null;
+  toldEditState = null;
+  // The locks the host passed, as a set (null: none passed, so runs carry none), as of the last
+  // save the editor knows of; and, for each Undo step, the locks before and after it.
+  lockBase = null;
+  _locks;
+  stepLocks = new Map();
 
   connectedCallback() {
     // The slot box sits where the slot was on screen; scrolling would leave it behind.
@@ -137,6 +157,35 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   get t() {
     return this.terms;
+  }
+
+  /** The locked cells ("date|groupId|blockId"): an array or a set. Leave unset for none. */
+  @api
+  get locks() {
+    return this._locks;
+  }
+  set locks(value) {
+    this._locks = value;
+    this.lockBase = value ? new Set(value) : null;
+  }
+
+  /** The locks with the edits still waiting made on top, or null when no locks were passed. */
+  get liveLocks() {
+    if (!this.lockBase) {
+      return null;
+    }
+    return this.queue.reduce(
+      (state, waiting) =>
+        waiting.edit.runs.reduce(
+          (now, run) => foldRun(now, run, waiting.locksTarget),
+          state
+        ),
+      this.lockBase
+    );
+  }
+
+  get showTools() {
+    return this.tools !== false;
   }
 
   // ---------- what the host is told ----------
@@ -206,6 +255,14 @@ export default class ShoreshWeekEditor extends LightningElement {
       groupKey: this._groupKey,
       busy: this.busy
     };
+    const queueEmpty = this._queue.length === 0;
+    const state = this.toldEditState;
+    if (!state || state.busy !== next.busy || state.queueEmpty !== queueEmpty) {
+      this.toldEditState = { busy: next.busy, queueEmpty };
+      this.dispatchEvent(
+        new CustomEvent("editstate", { detail: this.toldEditState })
+      );
+    }
     const told = this.told;
     if (told && Object.keys(next).every((name) => next[name] === told[name])) {
       return;
@@ -483,13 +540,27 @@ export default class ShoreshWeekEditor extends LightningElement {
       return null;
     }
     const saving = new Set(this.queue.map((entry) => entry.slotKey));
+    const locks = this.liveLocks;
     return {
       ...grid,
-      cells: grid.cells.map((cell) => this.decorate(cell, saving))
+      cells: grid.cells.map((cell) => this.decorate(cell, saving, locks))
     };
   }
 
-  decorate(cell, saving) {
+  /** Whether any time block of the placement a slot is part of is locked. */
+  isLockedSlot(slot, locks = this.liveLocks) {
+    if (!locks || !locks.size) {
+      return false;
+    }
+    const day = this.dayOf(slot);
+    const groupId = day.groups[slot.group].id;
+    const at = placement(day, slot.group, slot.block);
+    return day.blocks
+      .slice(at.first, at.first + at.length)
+      .some((block) => locks.has(lockKey(day.dateValue, groupId, block.id)));
+  }
+
+  decorate(cell, saving, locks) {
     let result = cell;
     if (cell.slot) {
       const here = placement(
@@ -503,6 +574,17 @@ export default class ShoreshWeekEditor extends LightningElement {
         movable: here.startsWith("A:"),
         dot: this.dotFor(cell.slot) || null
       };
+      if (this.isLockedSlot(cell.slot, locks)) {
+        result.locked = true;
+        result.movable = false;
+        if (cell.open && !this.isAwaySlot(cell.slot)) {
+          // Kept empty on purpose (a Lock on an Open cell): not "Open", which is a cell to fill.
+          result.text = "";
+          result.className = "cell cell_locked-empty";
+          result.title = "Locked empty";
+          result.lockLabel = "Locked empty";
+        }
+      }
       if (this.picked && this.picked.key === cell.key) {
         result.className = `${result.className} cell_picked`;
         result.selected = true;
@@ -687,6 +769,10 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.announce(reason);
       return;
     }
+    if (cell.locked) {
+      this.requestUnlock(cell);
+      return;
+    }
     const { rect } = event.detail;
     this.editor = {
       key: cell.key,
@@ -715,7 +801,59 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.announce(reason);
       return;
     }
+    if (cell.locked) {
+      this.refuseLocked(cell.slot);
+      return;
+    }
     this.change(cell.slot, cell.key, OPEN, 1);
+  }
+
+  /** A locked cell was asked to change: the host is asked to unlock it, and focus stays on it. */
+  requestUnlock(cell) {
+    this.dispatchEvent(
+      new CustomEvent("unlockrequest", {
+        detail: { slot: cell.slot, key: this.placementKeyOf(cell.slot) }
+      })
+    );
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    if (grid) {
+      grid.focusCell(cell.key);
+    }
+  }
+
+  refuseLocked(slot) {
+    this.refuse(`${this.slotName(slot)} is locked.`);
+  }
+
+  /** Whether runs (as edits make them: day, group, first, after) would change a locked cell. */
+  runsLocked(runs) {
+    const hit = runs.find((run) =>
+      run.after.some((s, i) =>
+        this.isLockedSlot({
+          day: run.day,
+          group: run.group,
+          block: run.first + i
+        })
+      )
+    );
+    if (hit) {
+      this.refuseLocked({ day: hit.day, group: hit.group, block: hit.first });
+    }
+    return !!hit;
+  }
+
+  /** Said to the host: the cell keyboard focus reached (the grid's key, and where it is). */
+  handleCellFocus(event) {
+    const cell = this.cellByKey(event.detail.key);
+    this.dispatchEvent(
+      new CustomEvent("cellfocus", {
+        detail: {
+          key: event.detail.key,
+          slot: cell ? cell.slot : null,
+          cell: cell && cell.slot ? this.placementKeyOf(cell.slot) : null
+        }
+      })
+    );
   }
 
   // ---------- the slot editor (type a name) ----------
@@ -769,6 +907,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     );
     const name = text.trim().replace(/\s+/g, " ");
     if (
+      this.showTools &&
       name &&
       !((this.draft && this.draft.activities) || []).some(
         (a) => loose(a.name) === typed
@@ -941,6 +1080,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       }
       return;
     }
+    if (this.runsLocked([{ day: slot.day, group: slot.group, ...run }])) {
+      return;
+    }
     let label =
       next === OPEN
         ? `Cleared ${this.slotName(slot, run.first)}`
@@ -982,7 +1124,40 @@ export default class ShoreshWeekEditor extends LightningElement {
     const step = { id: this.stepSeq, runs: serverRuns, label };
     this.history.record(step);
     this.historyVersion += 1;
+    this.recordLocks(step.id, serverRuns);
     this.send(serverRuns, label, key, step.id, runs[0]);
+  }
+
+  /**
+   * The locks before and after a step, kept with it (when locks were passed): Undo restores the
+   * ones from before, Redo the ones from after.
+   */
+  recordLocks(stepId, serverRuns) {
+    const before = this.liveLocks;
+    if (!before) {
+      return;
+    }
+    this.stepLocks.set(stepId, {
+      before,
+      after: serverRuns.reduce((now, run) => foldRun(now, run), before)
+    });
+    const kept = new Set(
+      [...this.history.undos, ...this.history.redos].map((step) => step.id)
+    );
+    [...this.stepLocks.keys()]
+      .filter((id) => !kept.has(id))
+      .forEach((id) => this.stepLocks.delete(id));
+  }
+
+  /** A step made differently (Use yours, a tool worked out again): its locks after follow. */
+  refreshLocks(stepId, serverRuns) {
+    const record = this.stepLocks.get(stepId);
+    if (record) {
+      this.stepLocks.set(stepId, {
+        before: record.before,
+        after: serverRuns.reduce((now, run) => foldRun(now, run), record.before)
+      });
+    }
   }
 
   /** Where an edit starts, for the "saving" shade: from its own run, or found from the server's. */
@@ -1045,6 +1220,11 @@ export default class ShoreshWeekEditor extends LightningElement {
       intent,
       slotKey: this.slotKeyOf(firstRun, serverRuns[0])
     };
+    const record = this.stepLocks.get(stepId);
+    if (record && kind !== "edit") {
+      // An Undo puts back the locks from before the step, a Redo the ones from after it.
+      entry.locksTarget = kind === "undo" ? record.before : record.after;
+    }
     this.queue = [...this.queue, entry];
     this.applyLocally(edit);
     // A dot the edit brought or took away, said with its save (a sighted director sees it).
@@ -1141,14 +1321,26 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.saving = true;
     const [entry] = this.queue;
     try {
-      const result = await this.saveRuns([entry.edit]);
+      const result = await this.saveRuns([this.withLocks(entry)]);
       if (result.status === "refused") {
         // The host's reason, as it would read from a server refusal.
         throw new Error(result.message);
       }
       this.queue = this.queue.slice(1);
       this.server = result.schedule;
+      this.lockBase = this.locksAfterSave(entry, result);
       this.showServerAndWaiting();
+      // The host shows the week the server sent (never a patched copy).
+      this.dispatchEvent(
+        new CustomEvent("saved", {
+          detail: {
+            schedule: result.schedule,
+            conflicts: result.conflicts,
+            label: entry.label,
+            kind: entry.kind
+          }
+        })
+      );
       if (result.conflicts.length) {
         this.askAboutConflict(entry);
       } else {
@@ -1190,6 +1382,39 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.saving = false;
     }
     this.saveNext();
+  }
+
+  /** The edit as the server takes it: with the locks the screen saw (and, for Undo or Redo, to restore). */
+  withLocks(entry) {
+    if (!this.lockBase) {
+      return entry.edit;
+    }
+    let state = this.lockBase;
+    const runs = entry.edit.runs.map((run) => {
+      const stamped = { ...run, locksBefore: marks(state, run) };
+      if (entry.locksTarget) {
+        stamped.locksAfter = marks(entry.locksTarget, run);
+      }
+      state = foldRun(state, run, entry.locksTarget);
+      return stamped;
+    });
+    return { ...entry.edit, runs };
+  }
+
+  /** The locks once a save is answered: the saver's own, else what the edit left (nothing if it wasn't made). */
+  locksAfterSave(entry, result) {
+    if (!this.lockBase) {
+      return null;
+    }
+    if (result.locks) {
+      return new Set(result.locks);
+    }
+    return result.conflicts.length
+      ? this.lockBase
+      : entry.edit.runs.reduce(
+          (now, run) => foldRun(now, run, entry.locksTarget),
+          this.lockBase
+        );
   }
 
   // ---------- undo and redo ----------
@@ -1477,6 +1702,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (!this.history.replace(stepId, step)) {
       this.history.ensure(step);
     }
+    this.refreshLocks(stepId, serverRuns);
     this.historyVersion += 1;
     const except = result.missed
       ? `${label}, except ${result.missed} ${result.missed === 1 ? "cell that" : "cells that"} changed`
@@ -1648,6 +1874,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       const reason = this.lockedReason(cell.slot);
       if (reason) {
         this.refuse(reason);
+      } else if (cell.locked) {
+        this.refuseLocked(cell.slot);
       }
       return;
     }
@@ -1660,6 +1888,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   handleCellClick(event) {
     if (this.picked) {
       this.handleCellSpace(event);
+      return;
+    }
+    const cell = this.cellByKey(event.detail.key);
+    if (cell && cell.locked) {
+      this.requestUnlock(cell);
     }
   }
 
@@ -1764,6 +1997,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.refuse(this.refusal(result.refused, name, result.at || cell.slot));
       return;
     }
+    if (this.runsLocked(result.runs)) {
+      return;
+    }
     const day = this.dayOf(cell.slot);
     const there = placement(day, cell.slot.group, cell.slot.block).slot;
     const label =
@@ -1777,7 +2013,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     const day = this.dayOf(slot);
     const name = this.nameOf(placement(day, slot.group, slot.block).slot, day);
     const result = removeEdit(this.schedule.days, slot);
-    if (result) {
+    if (result && !this.runsLocked(result.runs)) {
       this.commit(
         result.runs,
         `Cleared ${name} · ${this.slotName(slot)}`,
@@ -1814,6 +2050,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     if (result.refused) {
       this.refuse(this.refusal(result.refused, name, slot));
+      return;
+    }
+    if (this.runsLocked(result.runs)) {
       return;
     }
     const length = lastBlock - at.first + 1;
@@ -2010,6 +2249,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       if (!this.history.replace(entry.stepId, step)) {
         this.history.ensure(step);
       }
+      this.refreshLocks(entry.stepId, runs);
     }
     this.historyVersion += 1;
     // A note from an earlier question (a second question about the same edit) is kept.

@@ -579,6 +579,25 @@ The rules modules (`slotEdits`, `moves`, `history`, `conflicts`, `tools`, `count
 editor's folder with their tests, code unchanged: a Lightning component can only import files in
 its own folder, so the editor could not reach them where they were.
 
+### What Generated Schedule adds (all off until a host passes it)
+
+Manual Build passes none of these and behaves as before.
+
+- `locks` (cells as "date|groupId|blockId"): a locked cell shows its lock ("Locked", or "Locked
+  empty" for a cell kept empty on purpose), can't be dragged, dropped on, picked up or typed
+  into, and Enter or a click raises `unlockrequest` {slot, key} and keeps focus on the cell. The
+  editor works out beforehand what a hand edit does to locks, as the server does (a changed cell
+  is locked when it holds something, unlocked when left Open), so the lock shows at once. Every
+  run it saves names the locks the screen saw (`locksBefore`); an Undo or Redo also names the
+  locks to restore (`locksAfter`, one "1" or "" per time block), the ones from before or after
+  the step. No locks passed, no lock fields on the runs.
+- `tools`: passing false leaves out the host's `tools` slot and "Add <name> to activities".
+- `saved` {schedule, conflicts, label, kind} after each answered save (the host shows that
+  schedule, never a patched copy), `editstate` {busy, queueEmpty}, and `cellfocus` {key, slot,
+  cell} when keyboard focus reaches a cell.
+- A saver may answer with `locks` (the cells locked now); otherwise the editor carries on from
+  the host's last `locks` and the edits it has saved since.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
