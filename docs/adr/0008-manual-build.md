@@ -586,17 +586,27 @@ Manual Build passes none of these and behaves as before.
 - `locks` (cells as "date|groupId|blockId"): a locked cell shows its lock ("Locked", or "Locked
   empty" for a cell kept empty on purpose), can't be dragged, dropped on, picked up or typed
   into, and Enter or a click raises `unlockrequest` {slot, key} and keeps focus on the cell. The
-  editor works out beforehand what a hand edit does to locks, as the server does (a changed cell
-  is locked when it holds something, unlocked when left Open), so the lock shows at once. Every
+  editor works out beforehand what a hand edit does to locks, as the server does (the whole
+  placement of a changed cell is locked when it holds something, unlocked when left Open; what is
+  left of a placement made shorter stays locked; a fixed or recurring activity is never locked),
+  so the lock shows at once. Every
   run it saves names the locks the screen saw (`locksBefore`); an Undo or Redo also names the
   locks to restore (`locksAfter`, one "1" or "" per time block), the ones from before or after
   the step. No locks passed, no lock fields on the runs.
-- `tools`: passing false leaves out the host's `tools` slot and "Add <name> to activities".
+- `tools`: passing false leaves out the host's `tools` slot only. "Add <name> to activities"
+  stays, as on the desktop's generated schedule (review of #67; no decision from Greg to take it
+  away). Open point for when Generated is embedded: `ManualBuildActivities.add` works on a Manual
+  Build draft, so the host must give it a way to add on a Generated draft too.
 - `saved` {schedule, conflicts, label, kind} after each answered save (the host shows that
   schedule, never a patched copy), `editstate` {busy, queueEmpty}, and `cellfocus` {key, slot,
   cell} when keyboard focus reaches a cell.
-- A saver may answer with `locks` (the cells locked now); otherwise the editor carries on from
-  the host's last `locks` and the edits it has saved since.
+- After every answered save the editor takes the locks from, in this order: the saver's `locks`
+  (the cells locked now); else the `locks` of each day in the schedule the server sent
+  (`ScheduleViews`, every day must carry them); else what its own prediction says the edit left
+  (nothing when the edit was a conflict). So a conflict over a cell the server holds locked is
+  answered with that lock, and Use yours names it. An edit sent again after a conflict with
+  nothing new to ask is given up after two more tries ("Not saved ... kept changing") rather than
+  sent for ever.
 
 ## Choices that are hard to undo after release
 

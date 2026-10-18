@@ -543,8 +543,8 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
       const { element } = await render(jest.fn(), {
         locks: ["2026-06-29|g2|t3"]
       });
-      expect(cellText(element, "1-2")).not.toBe("");
-      expect(cell(element, "1-2").className).not.toMatch(/locked-empty/);
+      expect(cellText(element, "1-2")).toBe("Not at camp");
+      expect(lockText(element, "1-2")).toBe("Locked");
     });
   });
 
