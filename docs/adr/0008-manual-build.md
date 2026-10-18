@@ -344,6 +344,12 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Manual Build imports `checkWeek`, its readers and `reasonFor` from there and keeps no copy
       of any rule or its words (the activity list's and the typing box's words come from
       `reasonFor` too). The rule order is the order the engine's rules give way.
+    - **The activity list follows the same check** (`counts.js`): what is placed comes from
+      checkWeek's `placements`, its bronze dot from `bends` (any placement in view over its
+      weekly limit), and "still needed" from `stillNeededBy` (any group in view short). So in
+      Daily View an activity gets the dot when any bunk is over, as the grid's dots do, not
+      when the camp's total passes its limit times the bunks (coordinator, 2026-10-17). Only the
+      "2 placed (needs 3–5)" words are worked out here, from the setup numbers.
     - **The bronze dot** (`c-shoresh-dot`, no visible words) goes on a placement, never on a
       fixed or recurring activity or a not-set-up item. One dot per placement, its reasons
       joined by " · ", in this order: _Over its weekly limit_ (only on the sessions past the

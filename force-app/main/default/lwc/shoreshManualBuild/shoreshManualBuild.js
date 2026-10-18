@@ -1209,6 +1209,7 @@ export default class ShoreshManualBuild extends LightningElement {
   get chips() {
     return paletteChips(
       this.schedule,
+      this.checked,
       (this.draft && this.draft.activities) || [],
       this.isGroup ? this.groupKey : null,
       this.filter
