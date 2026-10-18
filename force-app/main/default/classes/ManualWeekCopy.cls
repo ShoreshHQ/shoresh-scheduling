@@ -11,14 +11,6 @@ public with sharing class ManualWeekCopy {
   // One edit per day of the new week: its runs go in together (one read of the day each).
   private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
 
-  /** One placement of the source day: where it starts, how long it runs, what it is. */
-  private class Placement {
-    ScheduleGrid grid;
-    Integer first;
-    Integer length = 1;
-    String slot;
-  }
-
   /** One group's row on the new week's day, kept up to date as copies go in. */
   private class Target {
     ScheduleDays.DayGrid day;
@@ -35,16 +27,7 @@ public with sharing class ManualWeekCopy {
     List<ScheduleDays.DayGrid> sourceDays,
     List<ScheduleDays.DayGrid> targetDays
   ) {
-    Map<String, ScheduleDays.DayGrid> byWeekday = new Map<String, ScheduleDays.DayGrid>();
-    for (ScheduleDays.DayGrid day : sourceDays) {
-      String weekday = BlankWeek.weekdayOf(day.day);
-      if (day.grid == null) {
-        // Never skipped silently: a day that can't be read is listed (ADR 0008 §25).
-        leftOut.add(weekday + ': could not be read (' + day.problem + ')');
-      } else if (!byWeekday.containsKey(weekday)) {
-        byWeekday.put(weekday, day);
-      }
-    }
+    Map<String, ScheduleDays.DayGrid> byWeekday = readableByWeekday(sourceDays);
     for (ScheduleDays.DayGrid target : targetDays) {
       ScheduleDays.DayGrid source = byWeekday.remove(
         BlankWeek.weekdayOf(target.day)
@@ -55,21 +38,32 @@ public with sharing class ManualWeekCopy {
         }
       }
     }
-    // A weekday the new week doesn't have: its activities are listed, not dropped.
+    listUnmatched(byWeekday);
+  }
+
+  /** The source's days by weekday; one that can't be read is listed, never skipped silently. */
+  private Map<String, ScheduleDays.DayGrid> readableByWeekday(
+    List<ScheduleDays.DayGrid> sourceDays
+  ) {
+    Map<String, ScheduleDays.DayGrid> byWeekday = new Map<String, ScheduleDays.DayGrid>();
+    for (ScheduleDays.DayGrid day : sourceDays) {
+      String weekday = BlankWeek.weekdayOf(day.day);
+      if (day.grid == null) {
+        leftOut.add(weekday + ': could not be read (' + day.problem + ')');
+      } else if (!byWeekday.containsKey(weekday)) {
+        byWeekday.put(weekday, day);
+      }
+    }
+    return byWeekday;
+  }
+
+  /** A weekday the new week doesn't have: its activities are listed, not dropped. */
+  private void listUnmatched(Map<String, ScheduleDays.DayGrid> byWeekday) {
     for (String weekday : byWeekday.keySet()) {
-      if (hasActivities(byWeekday.get(weekday).grid)) {
+      if (ManualWeekPlacements.hasActivities(byWeekday.get(weekday).grid)) {
         leftOut.add(weekday + ': not in this week');
       }
     }
-  }
-
-  private static Boolean hasActivities(ScheduleGrid grid) {
-    for (Integer g = 0; g < grid.groups.size(); g++) {
-      if (!placementsOf(grid, g).isEmpty()) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private void copyGroup(
@@ -82,13 +76,15 @@ public with sharing class ManualWeekCopy {
     target.day = day;
     target.g = SlotIds.indexOf(day.grid.groupIds(), groupId);
     target.row = target.g < 0 ? null : SlotIds.ofRow(day.grid, target.g);
-    for (Placement p : placementsOf(source, sg)) {
+    for (
+      ManualWeekPlacements.Placement p : ManualWeekPlacements.of(source, sg)
+    ) {
       String why = target.g < 0 ? 'not at camp this week' : whyNot(p, target);
       if (why == null) {
         add(p, target);
       } else {
         leftOut.add(
-          nameOf(source, p.slot) +
+          ManualWeekPlacements.nameOf(source, p.slot) +
             ' · ' +
             source.groups[sg].name +
             ' · ' +
@@ -100,36 +96,8 @@ public with sharing class ManualWeekCopy {
     }
   }
 
-  /** A group's placements on a source day, set-time items aside (this week has its own). */
-  private static List<Placement> placementsOf(ScheduleGrid grid, Integer g) {
-    List<Placement> result = new List<Placement>();
-    List<String> row = SlotIds.ofRow(grid, g);
-    for (Integer b = 0; b < row.size(); b++) {
-      String slot = row[b];
-      if (
-        slot == SlotIds.OPEN ||
-        SlotIds.isCarryOn(slot) ||
-        SlotIds.isSetTime(slot)
-      ) {
-        continue;
-      }
-      Placement p = new Placement();
-      p.grid = grid;
-      p.first = b;
-      p.slot = slot;
-      while (
-        b + p.length < row.size() &&
-        row[b + p.length] == ScheduleGrid.CARRIES_ON + slot
-      ) {
-        p.length++;
-      }
-      result.add(p);
-    }
-    return result;
-  }
-
   /** Why a placement can't go on the target row, or null when it can. */
-  private String whyNot(Placement p, Target target) {
+  private String whyNot(ManualWeekPlacements.Placement p, Target target) {
     String why = rules.whyNotItem(p.slot);
     if (why != null) {
       return why;
@@ -144,14 +112,20 @@ public with sharing class ManualWeekCopy {
         return 'not at camp then';
       }
       if (target.row[first + i] != SlotIds.OPEN) {
-        return nameOf(target.day.grid, target.row[first + i]) + ' is there';
+        return ManualWeekPlacements.nameOf(
+            target.day.grid,
+            target.row[first + i]
+          ) + ' is there';
       }
     }
     return null;
   }
 
   /** Where a placement's blocks start on the target day, or -1 if it lacks any of them in a row. */
-  private static Integer firstBlockOn(Placement p, Target target) {
+  private static Integer firstBlockOn(
+    ManualWeekPlacements.Placement p,
+    Target target
+  ) {
     List<String> blockIds = target.day.grid.blockIds();
     Integer first = SlotIds.indexOf(blockIds, p.grid.blocks[p.first].id);
     for (Integer i = 1; first >= 0 && i < p.length; i++) {
@@ -166,7 +140,7 @@ public with sharing class ManualWeekCopy {
   }
 
   /** The edit that puts a placement into Open cells (they are taken from here on). */
-  private void add(Placement p, Target target) {
+  private void add(ManualWeekPlacements.Placement p, Target target) {
     Integer first = firstBlockOn(p, target);
     SlotEdits.Run run = runFor(p, target.day, first);
     run.groupId = target.day.grid.groups[target.g].id;
@@ -185,7 +159,7 @@ public with sharing class ManualWeekCopy {
 
   /** The run that fills the placement's blocks on a day, from Open, starting at a block index. */
   private static SlotEdits.Run runFor(
-    Placement p,
+    ManualWeekPlacements.Placement p,
     ScheduleDays.DayGrid day,
     Integer first
   ) {
@@ -201,16 +175,5 @@ public with sharing class ManualWeekCopy {
       run.after.add(ScheduleGrid.CARRIES_ON + p.slot);
     }
     return run;
-  }
-
-  /** The name a grid gives what a slot holds. */
-  private static String nameOf(ScheduleGrid grid, String slot) {
-    String item = SlotIds.owner(slot);
-    for (ScheduleGrid.Item candidate : grid.items) {
-      if (SlotIds.of(candidate) == item) {
-        return candidate.name;
-      }
-    }
-    return item;
   }
 }
