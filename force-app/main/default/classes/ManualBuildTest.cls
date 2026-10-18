@@ -794,6 +794,28 @@ private class ManualBuildTest {
   }
 
   @IsTest
+  static void aSeasonWithNoActivitiesIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Empty Camp');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Id programId = [SELECT Id FROM Program__c WHERE Season__c = :season.Id]
+      .Id;
+      Id weekId = [
+        SELECT Id
+        FROM Week__c
+        WHERE Season__c = :season.Id
+        ORDER BY StartDate__c
+        LIMIT 1
+      ]
+      .Id;
+      Test.startTest();
+      Assert.areEqual('Add activities first.', startRefusal(programId, weekId));
+      Test.stopTest();
+      Assert.isNull(ManualDrafts.find(programId, weekId));
+    }
+  }
+
+  @IsTest
   static void someoneWithoutShoreshCannotStartAWeek() {
     Map<String, Id> ids;
     System.runAs(ShoreshTestData.scheduler()) {

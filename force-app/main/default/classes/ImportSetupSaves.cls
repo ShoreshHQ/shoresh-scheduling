@@ -57,6 +57,10 @@ public with sharing class ImportSetupSaves {
     SetTimeGuard.defer();
     Savepoint beforeSave = Database.setSavepoint();
     try {
+      // A season with no weeks gets them from its dates first, so last year's week has one to go
+      // to (Greg: an import adds what's missing; coordinator, 2026-10-17).
+      new ImportWorkbookExtras(writer, plan.seasonId, seasons[0].Camp__c)
+        .fillWeeks(plan.entries('fillWeeks'));
       new ImportStructureWrites(plan, writer).run();
       new ImportItemWrites(plan, writer).run();
       new ImportVersionWrites(plan, writer).run();

@@ -87,7 +87,10 @@
       </div>
 
       <template lwc:if={hasNoDays}>
-        <p class="empty">{noDaysMessage}</p>
+        <c-shoresh-empty-state
+          title={noDaysMessage}
+          data-id="no-days"
+        ></c-shoresh-empty-state>
       </template>
       <template lwc:else>
         <!-- Daily View: all groups for one day -->
@@ -210,14 +213,16 @@
     </template>
 
     <template lwc:elseif={showEmpty}>
-      <div class="empty-state" data-id="nothing-open">
-        <p>{emptyMessage}</p>
-      </div>
+      <c-shoresh-empty-state
+        title={emptyMessage}
+        data-id="nothing-open"
+      ></c-shoresh-empty-state>
     </template>
     <template lwc:elseif={cannotChoose}>
-      <div class="empty-state" data-id="nothing-open">
-        <p>{emptyMessage}</p>
-      </div>
+      <c-shoresh-empty-state
+        title={emptyMessage}
+        data-id="nothing-open"
+      ></c-shoresh-empty-state>
     </template>
   </div>
 </template>

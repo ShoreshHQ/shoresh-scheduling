@@ -292,8 +292,18 @@ describe("c-shoresh-program", () => {
     ]);
     expect(bareRecord(blocks.newRowDefaults)).toEqual({
       Program__c: "p1",
-      PartOfDay__c: "Morning"
+      PartOfDay__c: ""
     });
+    // As on the desktop: the name may be left blank (the time range is saved), and a new
+    // block's part of day follows its start time unless one is chosen.
+    const [name, , , partOfDay] = blocks.columns;
+    expect(name.required).toBeFalsy();
+    expect(partOfDay.required).toBeFalsy();
+    expect(partOfDay.options).toEqual([
+      { label: "From start time", value: "" },
+      { label: "Morning", value: "Morning" },
+      { label: "Afternoon", value: "Afternoon" }
+    ]);
     expect(bareName(blocks.objectApiName)).toBe("TimeBlock__c");
     const divisions = (await render("divisions")).shadowRoot.querySelector(
       "c-shoresh-editable-table"

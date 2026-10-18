@@ -153,7 +153,7 @@ describe("c-shoresh-schedules", () => {
     await flush();
     expect(openSchedule).not.toHaveBeenCalled();
     expect(q(element, "c-shoresh-versions").versions).toEqual([]);
-    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
+    expect(q(element, '[data-id="nothing-open"]').title).toContain(
       "Nothing saved for Week 2 yet"
     );
   });
@@ -186,7 +186,7 @@ describe("c-shoresh-schedules", () => {
   it("says when a week has nothing saved yet", async () => {
     getVersions.mockResolvedValue([]);
     const element = await render();
-    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
+    expect(q(element, '[data-id="nothing-open"]').title).toContain(
       "Nothing saved for Week 1 yet"
     );
     expect(openSchedule).not.toHaveBeenCalled();
@@ -195,7 +195,7 @@ describe("c-shoresh-schedules", () => {
   it("asks for weeks first when there are none", async () => {
     const element = await render({ ...SETUP, weeks: [] });
     expect(getVersions).not.toHaveBeenCalled();
-    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
+    expect(q(element, '[data-id="nothing-open"]').title).toContain(
       "No weeks yet"
     );
   });
@@ -273,7 +273,7 @@ describe("c-shoresh-schedules", () => {
       weekId: "w2"
     });
     expect(q(element, '[data-id="viewing"]')).toBeNull();
-    expect(q(element, '[data-id="nothing-open"]').textContent).toContain(
+    expect(q(element, '[data-id="nothing-open"]').title).toContain(
       "Nothing saved for Week 2 yet"
     );
     getVersions.mockResolvedValueOnce(VERSIONS);

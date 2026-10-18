@@ -1,0 +1,39 @@
+@import "c/shoreshTokens";
+
+/*
+ * The desktop's menu marks (Sidebar.jsx): a small "!" when an area building needs is empty, a
+ * "✓" when it has rows. Bronze is the caution hue but never text, so "!" is dark text on a
+ * bronze ring; green is for small marks only, so "✓" is just the mark. Red stays for errors.
+ */
+.slds-nav-vertical__action {
+  display: flex;
+  align-items: center;
+}
+
+.menu-label {
+  flex: 1 1 auto;
+}
+
+.menu-mark {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.menu-mark_needed {
+  border: 1.5px solid var(--shoresh-caution);
+  border-radius: 50%;
+  background: var(--shoresh-caution-tint);
+  color: var(--shoresh-text);
+}
+
+.menu-mark_done {
+  color: var(--shoresh-success);
+}

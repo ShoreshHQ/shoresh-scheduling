@@ -221,7 +221,10 @@ private class SetTimeSetupTest {
         'Summer 2027',
         Date.newInstance(2027, 6, 28)
       );
+      // Copying stays well inside a transaction's 100 queries (the rain plan check adds none).
+      Integer queries = Limits.getQueries();
       Test.stopTest();
+      Assert.isTrue(queries <= 70, 'Copy season used ' + queries + ' queries');
       FixedActivity__c flagpole = [
         SELECT
           CopiedFrom__c,

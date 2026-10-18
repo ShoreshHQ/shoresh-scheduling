@@ -27,7 +27,11 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    built in Apex. Validation rules (static text) avoid model terms. Salesforce's own messages
    name objects and fields, so screens never show them (`ScreenErrors`, audit 2026-10-17):
    common ones (in use elsewhere, no access, already used, required, too long) get a plain
-   sentence, anything else "Couldn't save. Try again." with the detail in the debug log. Once packaged,
+   sentence, anything else "Couldn't save. Try again." with the detail in the debug log.
+   (Since the desktop-parity cleanup, 2026-10-17: the server's message is the why, and the screen
+   puts what didn't happen and whether anything was lost in front of it, as the desktop's
+   writeErrorMessage.js does: _Bunks not saved. Your changes are still here._ + why. The unknown
+   why reads "Shoresh couldn't tell why. Try again.") Once packaged,
    only Shoresh support (subscriber login) can read that log, not the camp's own admin. (The import's
    undo refusal still adds the platform's text; it is changed with the import code.)
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
