@@ -124,6 +124,11 @@ function weekBlocks(view) {
   );
 }
 
+/** The block's name is just its time range, "9:00 AM – 9:45 AM" (TimeBlockTriggerHandler). */
+function isTimeRange(block) {
+  return block.name === `${clock(block.startTime)} – ${clock(block.endTime)}`;
+}
+
 function blockRows(blocks) {
   if (!blocks.length) {
     // No day could be read: one empty row, so each day's "Could not be read" still shows.
@@ -140,13 +145,15 @@ function blockRows(blocks) {
   return blocks.map((block, index) => ({
     key: refKey(block),
     name: block.name,
-    // Always two lines, "9:00 AM –" then "9:45 AM", as on the desktop.
-    timeLines: block.startTime
-      ? [
-          { key: "start", text: `${clock(block.startTime)} –` },
-          { key: "end", text: clock(block.endTime) }
-        ]
-      : [],
+    // Two lines, "9:00 AM –" then "9:45 AM", as on the desktop; none when the name already is
+    // the time range (a block saved without a name, desktop timeBlockLabel.js blockLabelParts).
+    timeLines:
+      block.startTime && !isTimeRange(block)
+        ? [
+            { key: "start", text: `${clock(block.startTime)} –` },
+            { key: "end", text: clock(block.endTime) }
+          ]
+        : [],
     gone: block.gone,
     style: `grid-row: ${index + 1} / span 1; grid-column: 1 / span 1;`
   }));

@@ -19,7 +19,8 @@ import {
   WEEKDAYS,
   foldName,
   looseKey,
-  tidy
+  tidy,
+  weeksToFill
 } from "c/shoreshImportEngine";
 import { NONE, readCell, unescapeCell } from "./cells";
 import { headingRowIndex, mapHeadings } from "./headings";
@@ -424,61 +425,6 @@ export function weeksByOrder(fileWeeks, season) {
   );
 }
 
-const DAY_MS = 86400000;
-
-function isoDay(time) {
-  return new Date(time).toISOString().slice(0, 10);
-}
-
-/**
- * Monday-to-Friday weeks covering the season's dates, as "Fill in weeks" makes them
- * (WeekCalendar.weekdayWeeks, which the save uses): short first and last weeks are kept.
- */
-export function weekdayWeeks(startDate, endDate) {
-  const result = [];
-  const end = Date.parse(`${endDate}T00:00:00Z`);
-  let cursor = Date.parse(`${startDate}T00:00:00Z`);
-  while (cursor <= end) {
-    // 0 = Monday ... 6 = Sunday.
-    const day = (new Date(cursor).getUTCDay() + 6) % 7;
-    if (day >= 5) {
-      cursor += (7 - day) * DAY_MS;
-      continue;
-    }
-    const friday = cursor + (4 - day) * DAY_MS;
-    result.push({ start: isoDay(cursor), end: isoDay(Math.min(friday, end)) });
-    cursor = friday + 3 * DAY_MS;
-  }
-  return result;
-}
-
-/**
- * Another season's workbook into a season with dates but no weeks yet (coordinator, following
- * Greg's "copy the weeks, update the dates"): the season's weeks are filled from its dates in
- * the same save, then paired by order. Keyed as weeks this save adds.
- */
-function weeksToFill(setup, t) {
-  const season = setup.season || {};
-  if (
-    (setup.weeks || []).length ||
-    !season[SEASON.StartDate] ||
-    !season[SEASON.EndDate]
-  ) {
-    return [];
-  }
-  return weekdayWeeks(season[SEASON.StartDate], season[SEASON.EndDate]).map(
-    (w, i) => ({
-      Id: `Week:${w.start}`,
-      Name: `${t.s("Week")} ${i + 1}`,
-      [WEEK.StartDate]: w.start,
-      [WEEK.EndDate]: w.end,
-      // In order, as "Fill in weeks" numbers them.
-      [WEEK.SortOrder]: i + 1,
-      filled: true
-    })
-  );
-}
-
 /** Why a week is left out, in the camp's words. */
 function leftOutReason(why, t) {
   return why === "noneLeft"
@@ -573,6 +519,9 @@ function readWeeks(sheet, setup, answers, t) {
   // Date matching or pairing by order is decided once, on every row whose dates can be read,
   // before any row is set aside (an overlap, a twin start), so setting one aside can't flip it.
   const byOrder = weeksByOrder(read, setup.season);
+  // Another season's workbook into a season with dates but no weeks yet (coordinator, following
+  // Greg's "copy the weeks, update the dates"): its weeks are filled from its dates in the same
+  // save, then paired by order.
   const toFill = byOrder ? weeksToFill(setup, t) : [];
   const seasonWeeks = toFill.length ? toFill : setup.weeks || [];
   // A season with only a first or a last day can't tell this season's weeks from another's:

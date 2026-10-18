@@ -201,9 +201,15 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
     seasonId,
     files: (extra.fileNames || []).join(", ").slice(0, 255),
     ...answersToKeep(proposal, extra.answers || {}),
+    // The season's weeks filled from its dates first (it had none), as "Fill in weeks" makes them.
+    fillWeeks: (proposal.fillWeeks || []).map((w) => ({
+      start: w[FIELD.Week.StartDate],
+      name: w.Name
+    })),
     versions: proposal.versions.map((v) => ({
       programKey: v.programKey,
       weekId: v.weekId,
+      weekKey: v.weekKey,
       name: v.name,
       days: v.days
     })),
@@ -514,7 +520,17 @@ export function importNotes(proposal, t) {
         text: `${n.name} is ${n.places.map((x) => `${article(kindWords[x.kind])} in ${x.program}`).join(" and ")}. Each is set up where it is.`
       })
     );
-  if (proposal.noWeeks && proposal.usable.length) {
+  const filled = proposal.fillWeeks || [];
+  if (filled.length) {
+    const count =
+      filled.length === 1
+        ? `its one ${t.sIn("Week")} is`
+        : `its ${filled.length} ${t.pIn("Week")} are`;
+    notes.push({
+      key: "fillWeeks",
+      text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so ${count} added from its dates, keeping last year's schedule as a ${t.sIn("Version")}.`
+    });
+  } else if (proposal.noWeeks && proposal.usable.length) {
     notes.push({
       key: "noWeeks",
       text: `The ${t.sIn("Season")} has no ${t.pIn("Week")} yet, so last year's schedule is not kept as a version. Add ${t.pIn("Week")} on the ${t.p("Week")} screen first to keep it.`

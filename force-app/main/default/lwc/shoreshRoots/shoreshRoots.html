@@ -2,16 +2,29 @@
   <div class="roots" data-id="roots">
     <h2 class="roots-title">Roots</h2>
 
-    <button
-      type="button"
-      class="roots-door roots-door_live"
+    <!-- The door to the schedules: both, side by side, never one picked for the director. -->
+    <div
+      class="roots-door"
+      role="group"
+      aria-labelledby="schedule-door-title"
       data-id="schedule-door"
-      data-screen="manualBuild"
-      onclick={handleOpen}
     >
-      <span>Build or generate the schedule</span>
-      <span aria-hidden="true">→</span>
-    </button>
+      <span id="schedule-door-title">Build or generate the schedule</span>
+      <span class="roots-door-ways">
+        <template for:each={scheduleDoors} for:item="door">
+          <button
+            key={door.screen}
+            type="button"
+            class="roots-door-way"
+            data-screen={door.screen}
+            onclick={handleOpen}
+          >
+            <span>{door.label}</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </template>
+      </span>
+    </div>
 
     <div class="roots-layout">
       <div class="roots-main">

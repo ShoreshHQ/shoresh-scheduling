@@ -155,15 +155,23 @@ describe("c-shoresh-roots", () => {
     );
   });
 
-  it("the schedule door opens Manual Build", async () => {
+  it("the schedule door offers both schedules, side by side, by name", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("navigate", handler);
     const door = element.shadowRoot.querySelector('[data-id="schedule-door"]');
     expect(door.textContent).toContain("Build or generate the schedule");
     expect(door.textContent).not.toContain("Coming");
-    door.click();
-    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "manualBuild" });
+    const ways = [...door.querySelectorAll("button")];
+    expect(ways.map((b) => b.textContent.replace("→", "").trim())).toEqual([
+      "Generated Schedule",
+      "Manual Build"
+    ]);
+    ways.forEach((b) => b.click());
+    expect(handler.mock.calls.map((c) => c[0].detail.screen)).toEqual([
+      "generatedSchedule",
+      "manualBuild"
+    ]);
   });
 
   it("Import last year opens the import screen", async () => {

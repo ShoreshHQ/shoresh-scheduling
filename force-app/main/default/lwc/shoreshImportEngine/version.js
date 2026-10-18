@@ -15,6 +15,7 @@
 import { FIELD } from "c/shoreshSchema";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
+import { weeksToFill } from "./weeks";
 
 const DAY_NUMBER = {
   Monday: 1,
@@ -76,7 +77,13 @@ function mapWeeks(labels, weeks, answers) {
       result.set(label, weeks[0]);
     } else {
       const id = `week|${label || "the file's week"}`;
-      asks.push({ id, type: "week", label, options: weeks.map((w) => w.Name) });
+      asks.push({
+        id,
+        type: "week",
+        label,
+        options: weeks.map((w) => w.Name),
+        starts: weeks.map((w) => w[WEEK.StartDate])
+      });
       const answer = answers[id];
       result.set(
         label,
@@ -218,7 +225,9 @@ function versionFor(t, week, label, context) {
     key: `${t.key}|${week.Id}`,
     programKey: t.key,
     programName: t.name,
-    weekId: week.Id,
+    // A week this import adds (the season had none) is named by its key, the rest by Id.
+    weekId: week.filled ? null : week.Id,
+    weekKey: week.filled ? week.Id : null,
     weekName: week.Name,
     name: context.name,
     days
@@ -251,7 +260,15 @@ function reasonFor(p, proposal) {
  */
 export function versionsFor(proposal, input) {
   const answers = input.answers || {};
-  const weeks = seasonWeeks(input.existing);
+  // A season with no weeks gets them from its dates, as "Fill in weeks" makes them, in the same
+  // save, instead of telling the director to add them first (Greg's rule for every import:
+  // anything missing is added; coordinator, 2026-10-17).
+  const saved = seasonWeeks(input.existing);
+  const filled =
+    saved.length || !input.existing || !input.terms
+      ? []
+      : weeksToFill(input.existing, input.terms);
+  const weeks = saved.length ? saved : filled;
   const labels = [...new Set(proposal.usable.map((p) => p.week))].sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true })
   );
@@ -306,6 +323,8 @@ export function versionsFor(proposal, input) {
     versions,
     unmatched: context.unmatched,
     asks: mapped.asks,
-    noWeeks: weeks.length === 0
+    noWeeks: weeks.length === 0,
+    // Only when last year's week is kept in one of them.
+    fillWeeks: versions.some((v) => v.weekKey) ? filled : []
   };
 }

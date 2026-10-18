@@ -382,7 +382,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -413,7 +415,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -447,7 +451,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -478,7 +484,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -631,7 +639,9 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
             </div>
 
@@ -669,8 +679,24 @@
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
-                <p class="slds-text-color_weak">{labels.noPrograms}</p>
+                <c-shoresh-empty-state
+                  title={labels.noPrograms}
+                ></c-shoresh-empty-state>
               </template>
+            </div>
+
+            <!-- Generated Schedule: a program's week built by Shoresh -->
+            <div
+              class={shown.generatedSchedule}
+              data-screen="generatedSchedule"
+            >
+              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                {labels.screens.generatedSchedule}
+              </h2>
+              <c-shoresh-generated-schedule
+                setup={setup}
+                terms={terms}
+              ></c-shoresh-generated-schedule>
             </div>
 
             <!-- Manual Build: a program's week built by hand -->
@@ -681,6 +707,7 @@
               <c-shoresh-manual-build
                 setup={setup}
                 terms={terms}
+                onnavigate={handleNavigate}
               ></c-shoresh-manual-build>
             </div>
 
@@ -707,6 +734,14 @@
           </template>
         </div>
       </div>
+    </template>
+    <template lwc:if={ask}>
+      <c-shoresh-ask
+        heading={ask.heading}
+        lines={ask.lines}
+        confirm-label={ask.confirmLabel}
+        onanswer={handleAnswer}
+      ></c-shoresh-ask>
     </template>
   </div>
 </template>

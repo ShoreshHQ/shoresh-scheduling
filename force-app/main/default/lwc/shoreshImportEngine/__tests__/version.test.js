@@ -2,6 +2,7 @@
 // not be placed and why, and the answers to remember.
 import {
   buildProposal,
+  importNotes,
   LEAVE_OUT,
   planFor,
   questionCards,
@@ -166,10 +167,55 @@ describe("the imported version", () => {
     expect(unplacedLines(left, terms)[0].why).toBe("no week was chosen for it");
   });
 
-  it("a season with no weeks keeps no version, and says so", () => {
+  it("a season with no weeks and no dates keeps no version, and says so", () => {
     const p = propose(samples("all-camp"), existingSetup(), answers);
     expect(p.versions).toEqual([]);
     expect(p.noWeeks).toBe(true);
+  });
+
+  it("a season with dates but no weeks gets its weeks added, and asks only which one by start date", () => {
+    const empty = existingSetup();
+    const dated = {
+      ...empty,
+      season: {
+        ...empty.season,
+        StartDate__c: "2027-06-28",
+        EndDate__c: "2027-07-09"
+      }
+    };
+    const p = propose(samples("all-camp"), dated, answers);
+    const card = questionCards(p, terms, answers).find((c) =>
+      c.id.startsWith("week|")
+    );
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Week 1 (starts Jun 28)",
+      "Week 2 (starts Jul 5)",
+      "Leave it out for now"
+    ]);
+    const chosen = propose(samples("all-camp"), dated, {
+      ...answers,
+      [card.id]: "Week 2"
+    });
+    expect(chosen.versions.map((v) => [v.weekId, v.weekKey])).toEqual([
+      [null, "Week:2027-07-05"]
+    ]);
+    // Both weeks are added, as "Fill in weeks" would add them, in the same save.
+    const plan = planFor(chosen, dated, "s", { answers });
+    expect(plan.fillWeeks).toEqual([
+      { start: "2027-06-28", name: "Week 1" },
+      { start: "2027-07-05", name: "Week 2" }
+    ]);
+    expect(plan.versions[0].weekKey).toBe("Week:2027-07-05");
+    expect(importNotes(chosen, terms).map((n) => n.key)).toContain("fillWeeks");
+    expect(importNotes(chosen, terms).map((n) => n.key)).not.toContain(
+      "noWeeks"
+    );
+    // Leaving last year's week out adds no weeks: nothing needs them.
+    const left = propose(samples("all-camp"), dated, {
+      ...answers,
+      [card.id]: LEAVE_OUT
+    });
+    expect(planFor(left, dated, "s", { answers }).fillWeeks).toEqual([]);
   });
 
   it("placements that cannot be placed are listed with the reason, never dropped", () => {

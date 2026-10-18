@@ -277,7 +277,7 @@ describe("c-shoresh-import", () => {
     await flush();
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
-      "Two things at Lunch for Bunk 1."
+      "Nothing was saved, and your answers are still here. Two things at Lunch for Bunk 1."
     );
     expect($(element, 'lightning-button[data-id="save"]')).not.toBeNull();
   });

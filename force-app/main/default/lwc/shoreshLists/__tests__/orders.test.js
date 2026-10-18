@@ -602,3 +602,51 @@ describe("Who can do it, in any order", () => {
     expect(results[0]).toEqual(["Activity chess d1"]);
   });
 });
+
+describe("a rain plan has to be indoors (desktop ActivitiesScreen.jsx save())", () => {
+  const read = (rows, s = setup()) =>
+    listProposal({
+      screenKey: "activities",
+      file: file(rows[0], rows.slice(1)),
+      setup: s,
+      terms,
+      answers: {}
+    });
+
+  it("a rain plan the file makes outdoors can't be saved, and says so before saving", () => {
+    const p = read([
+      ["Activity", "Outdoors", "Rain plan"],
+      ["Kayak", "Yes", "Canoe"],
+      ["Canoe", "Yes", ""]
+    ]);
+    const kayak = p.rows.find((r) => r.name === "Kayak");
+    expect(kayak.problems).toEqual(["Rain plan: has to be indoors"]);
+  });
+
+  it("an indoor rain plan, or one the import adds (indoors), is fine", () => {
+    const p = read([
+      ["Activity", "Outdoors", "Rain plan"],
+      ["Kayak", "Yes", "Archery"],
+      ["Canoe", "Yes", "Movies"]
+    ]);
+    expect(p.rows.flatMap((r) => r.problems)).toEqual([]);
+  });
+
+  it("an activity whose saved rain plan is outdoors says so even when the file leaves it out", () => {
+    const s = setup();
+    s.activities = [
+      { ...s.activities[0], RainPlan__c: "a2" },
+      { ...s.activities[1], Outdoor__c: true }
+    ];
+    const p = read(
+      [
+        ["Activity", "Length"],
+        ["Archery", "2"]
+      ],
+      s
+    );
+    expect(p.rows.find((r) => r.name === "Archery").problems).toEqual([
+      "Rain plan: has to be indoors"
+    ]);
+  });
+});

@@ -35,6 +35,7 @@ public with sharing class BlankWeek {
     Week__c week = ProgramReads.weekOf(weekId, program);
     BlankWeek blank = new BlankWeek();
     blank.blocks = checkedBlocks(program, ProgramReads.blocksOf(program.Id));
+    checkActivities(program);
     blank.groups = checkedGroups(
       program,
       week,
@@ -114,6 +115,25 @@ public with sharing class BlankWeek {
       );
     }
     return result;
+  }
+
+  /**
+   * Building waits for the basics, as on the desktop (readiness.js: activities are required),
+   * so a week is never started with nothing to place.
+   */
+  private static void checkActivities(Program__c program) {
+    Integer count = [
+      SELECT COUNT()
+      FROM Activity__c
+      WHERE Season__c = :program.Season__c
+      WITH USER_MODE
+    ];
+    if (count == 0) {
+      CampLabels labels = CampLabels.forCamp(program.Season__r.Camp__c);
+      throw new ShoreshException(
+        'Add ' + labels.pluralInSentence('Activity') + ' first.'
+      );
+    }
   }
 
   private static List<Group__c> checkedGroups(

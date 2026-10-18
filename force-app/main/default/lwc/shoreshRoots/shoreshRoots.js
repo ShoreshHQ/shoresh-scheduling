@@ -20,7 +20,8 @@ const CARDS = [
 ];
 
 /**
- * Roots, the home screen: a door to the schedule, "What has taken root" (one card per area, with
+ * Roots, the home screen: a door to the schedules (Generated Schedule and Manual Build side by
+ * side, by name: the two are equal, desktop navSections.js), "What has taken root" (one card per area, with
  * how many there are), and "Needs your attention". Every card and every attention item opens the
  * screen where it is fixed. Areas not built yet show as coming.
  *
@@ -120,6 +121,15 @@ export default class ShoreshRoots extends LightningElement {
         detail: { importId: this.lastImport.id, files: this.lastImport.files }
       })
     );
+  }
+
+  /** The two schedules, in the menu's order (by name). */
+  get scheduleDoors() {
+    const labels = screenLabels(this.terms);
+    return ["generatedSchedule", "manualBuild"].map((screen) => ({
+      screen,
+      label: labels[screen]
+    }));
   }
 
   handleOpen(event) {

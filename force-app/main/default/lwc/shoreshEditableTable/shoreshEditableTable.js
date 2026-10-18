@@ -27,8 +27,10 @@ const ADD = "add";
  *
  * columns: [{ fieldName, label, type: 'text'|'number'|'date'|'time'|'checkbox'|'picklist', options,
  *   required, min, excludeSelf }]  (min: smallest number allowed, for number columns;
- *   excludeSelf: a picklist of records leaves out the row's own record; savedOnly: the blank row
- *   shows the value as text, not a field to change)
+ *   excludeSelf: a picklist of records leaves out the row's own record; optionsFor(saved): the
+ *   choices one row offers, from its saved record ({} for the blank row), where they differ by
+ *   row (an outdoor rain plan only where it is held); options still names every value;
+ *   savedOnly: the blank row shows the value as text, not a field to change)
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen.
  *
@@ -749,11 +751,7 @@ export default class ShoreshEditableTable extends LightningElement {
           // The blank row never shows "Complete this field": its + stays greyed out instead.
           required: !!col.required && !draft.isNew,
           disabled: draft.isNew && !!draft.adding,
-          options: col.excludeSelf
-            ? (col.options || []).filter(
-                (option) => !option.value || option.value !== draft.original.Id
-              )
-            : col.options,
+          options: this.rowOptions(col, draft),
           isText: this.isTextColumn(col),
           sameName: col.fieldName === "Name" && sameNames.has(draft.key),
           canMerge: col.fieldName === "Name" && mergeable,
@@ -808,6 +806,17 @@ export default class ShoreshEditableTable extends LightningElement {
   /** "Everyone", or the names chosen. */
   whoSummary(column, draft) {
     return this.whoNames(column, draft.who);
+  }
+
+  /** A picklist's choices in one row: its own (optionsFor), less the row's own record. */
+  rowOptions(col, draft) {
+    const saved = draft.isNew ? {} : draft.original || {};
+    const options = col.optionsFor ? col.optionsFor(saved) : col.options;
+    return col.excludeSelf
+      ? (options || []).filter(
+          (option) => !option.value || option.value !== saved.Id
+        )
+      : options;
   }
 
   /** Names for these choices; with `known`, only those on screen (never a record Id). */

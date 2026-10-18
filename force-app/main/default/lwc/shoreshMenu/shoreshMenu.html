@@ -29,7 +29,31 @@
                   data-screen={item.key}
                   data-item={item.key}
                   onclick={handleClick}
-                  >{item.label}</a
+                  ><span class="menu-label">{item.label}</span
+                  ><template lwc:if={item.mark}
+                    ><span
+                      class={item.markClass}
+                      title={item.mark.label}
+                      aria-hidden="true"
+                      data-mark={item.mark.kind}
+                      ><template lwc:if={item.markIsDone}
+                        ><svg
+                          viewBox="0 0 16 16"
+                          width="12"
+                          height="12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          focusable="false"
+                        >
+                          <path d="M3 8.5 6.5 12 13 4.5"></path></svg></template
+                      ><template lwc:else>{item.mark.symbol}</template></span
+                    ><span class="slds-assistive-text"
+                      >{item.mark.label}</span
+                    ></template
+                  ></a
                 >
               </template>
             </li>

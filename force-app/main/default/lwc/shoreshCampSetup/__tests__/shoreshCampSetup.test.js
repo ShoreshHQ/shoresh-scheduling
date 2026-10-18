@@ -11,6 +11,8 @@ import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addW
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
+import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
+import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -42,6 +44,12 @@ jest.mock(
   () => apex(),
   { virtual: true }
 );
+jest.mock("@salesforce/apex/ImportController.undoImport", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/RunsInController.placedInWeeks", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/SetupTablesController.saveRow", () => apex(), {
   virtual: true
 });
@@ -1075,7 +1083,189 @@ describe("c-shoresh-camp-setup", () => {
       { row: 0, targets: ["d1"] }
     ]);
     expect(calls).toEqual(["failure", "done"]);
-    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(refusal);
+    // What didn't save and that nothing typed was lost, then why (desktop error shape).
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      `Recurring activities not saved. Your changes are still here. ${refusal}`
+    );
+  });
+
+  it("a row that saved but whose refresh failed never says it wasn't saved", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValueOnce(nsRecord(setupWith()));
+    saveRow.mockResolvedValue(nsRecord({ id: "l1", changed: [] }));
+    const element = await render();
+    getSeasonSetup.mockRejectedValue({ body: { message: "Offline." } });
+    const { detail, calls } = rowSave({
+      record: { sobjectType: "Location__c", Id: "l1", Name: "Pool" }
+    });
+    q(element, 'c-shoresh-editable-table[data-id="locations"]').dispatchEvent(
+      new CustomEvent("save", { detail: nsRecord(detail) })
+    );
+    await flush();
+    await flush();
+    expect(calls).toEqual(["saved", "done"]);
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      "Done, but the screen couldn't show it yet. Reload the page. Offline."
+    );
+  });
+
+  describe("turning something off for a week it is placed in (desktop ExclusionConfirmDialog)", () => {
+    const withBunk = () =>
+      setupWith({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main", Monday__c: true },
+            timeBlocks: [{ Id: "t1", Name: "Period 1" }],
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [{ Id: "g3", Name: "Bunk 3" }]
+              }
+            ]
+          }
+        ],
+        activities: [{ Id: "a1", Name: "Swim" }]
+      });
+    // What every table with weeks asks before a saved row's week is unticked (#44's hook).
+    const hookOf = (element) =>
+      q(element, '[data-screen="groups"] c-shoresh-program').beforeWeekOff;
+
+    beforeEach(() => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(withBunk()));
+    });
+
+    it("every table with weeks gets the same question", async () => {
+      const element = await render();
+      const hook = hookOf(element);
+      expect(typeof hook).toBe("function");
+      expect(
+        q(element, 'c-shoresh-editable-table[data-id="locations"]')
+          .beforeWeekOff
+      ).toBe(hook);
+      expect(
+        q(element, 'c-shoresh-editable-table[data-id="activities"]')
+          .beforeWeekOff
+      ).toBe(hook);
+    });
+
+    it("asks first, in the desktop's words, and Turn off anyway goes ahead", async () => {
+      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", cells: 4 }]);
+      const element = await render();
+      const answer = hookOf(element)({
+        recordId: "g3",
+        name: "Bunk 3",
+        weekId: "w1",
+        weekName: "Week 1"
+      });
+      await flush();
+      expect(sentTo(placedInWeeks)).toEqual([
+        { weeksOff: [{ target: "g3", week: "w1" }] }
+      ]);
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.heading).toBe('Turn off "Bunk 3" for Week 1?');
+      expect(ask.lines).toEqual([
+        "Placed in 4 cells in Week 1.",
+        "They stay until you change them."
+      ]);
+      expect(ask.confirmLabel).toBe("Turn off anyway");
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      await expect(answer).resolves.toBe(true);
+    });
+
+    it("Cancel answers no (the table puts the tick back); focus goes back to the tick", async () => {
+      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", cells: 1 }]);
+      const element = await render();
+      // Stands in for the tick, which had focus when it was clicked.
+      const tick = document.createElement("input");
+      tick.type = "checkbox";
+      document.body.appendChild(tick);
+      tick.focus();
+      const answer = hookOf(element)({ recordId: "g3", weekId: "w1" });
+      await flush();
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.lines[0]).toBe("Placed in 1 cell in Week 1.");
+      tick.blur();
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: false } }));
+      await flush();
+      await expect(answer).resolves.toBe(false);
+      expect(document.activeElement).toBe(tick);
+    });
+
+    it("with nothing placed, switches off without asking", async () => {
+      placedInWeeks.mockResolvedValue([]);
+      const element = await render();
+      const answer = hookOf(element)({ recordId: "g3", weekId: "w1" });
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      await expect(answer).resolves.toBe(true);
+    });
+
+    it("if the check of what is placed fails, nothing is turned off and it says so", async () => {
+      placedInWeeks.mockRejectedValue({
+        body: { message: "Shoresh couldn't tell why. Try again." }
+      });
+      const element = await render();
+      const answer = hookOf(element)({ recordId: "g3", weekId: "w1" });
+      await flush();
+      await expect(answer).resolves.toBe(false);
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+        "Not turned off. The week is ticked again. Shoresh couldn't tell why. Try again."
+      );
+    });
+
+    it("several at once are listed in one question", async () => {
+      placedInWeeks.mockResolvedValue([
+        { target: "g3", week: "w1", cells: 2 },
+        { target: "a1", week: "w1", cells: 3 }
+      ]);
+      const element = await render();
+      const component = element;
+      // Several only come from one call (a list import's weeks, say); the wording is shared.
+      const answer = hookOf(component)({ recordId: "g3", weekId: "w1" });
+      await flush();
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.heading).toBe("Turn these off?");
+      expect(ask.lines).toEqual([
+        '"Bunk 3": placed in 2 cells in Week 1.',
+        '"Swim": placed in 3 cells in Week 1.',
+        "They stay until you change them."
+      ]);
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: false } }));
+      await answer;
+    });
+  });
+
+  it("a delete or an Undo that worked never says it didn't, when only the refresh failed", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValueOnce(nsRecord(setupWith()));
+    LightningConfirm.open.mockResolvedValue(nsRecord(true));
+    deleteRecord.mockResolvedValue();
+    undoImport.mockResolvedValue({ removed: 1, restored: 0, kept: [] });
+    const element = await render();
+    getSeasonSetup.mockRejectedValue({ body: { message: "Offline." } });
+    const done =
+      "Done, but the screen couldn't show it yet. Reload the page. Offline.";
+    q(element, 'c-shoresh-editable-table[data-id="locations"]').dispatchEvent(
+      new CustomEvent("delete", { detail: { recordId: "l1", name: "Pool" } })
+    );
+    await flush();
+    expect(deleteRecord).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
+    q(element, "c-shoresh-roots").dispatchEvent(
+      new CustomEvent("undoimport", {
+        detail: { importId: "i1", files: "camp.xlsx" }
+      })
+    );
+    await flush();
+    expect(undoImport).toHaveBeenCalled();
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(done);
   });
 
   it("offers a changed fixed activity's fixes in Needs attention, and saves the one chosen", async () => {

@@ -25,15 +25,33 @@
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
 
-.roots-door_live {
-  width: 100%;
+/* Its two ways in, equal: the same look, side by side. */
+.roots-door-ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.roots-door-way {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--slds-g-color-accent-2, #0176d3);
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  font: inherit;
   cursor: pointer;
-  text-align: left;
   color: var(--slds-g-color-brand-base-30, #014486);
 }
 
-.roots-door_live:hover {
+.roots-door-way:hover {
   border-color: var(--slds-g-color-brand-base-50, #0176d3);
+}
+
+.roots-door-way:focus-visible {
+  outline: 2px solid var(--slds-g-color-brand-base-50, #0176d3);
+  outline-offset: 2px;
 }
 
 /* Cards beside the attention list; stacked (attention first) on a narrow screen. */

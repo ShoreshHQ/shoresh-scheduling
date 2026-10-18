@@ -11,12 +11,19 @@ import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addW
 import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
+import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
-import { setupProblems } from "c/shoreshSetupRules";
-import { errorMessage } from "c/shoreshErrors";
+import {
+  menuMarks,
+  rainPlanChoices,
+  rainPlanOptions,
+  setupProblems,
+  turnOffQuestion
+} from "c/shoreshSetupRules";
+import { failed } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
@@ -45,10 +52,20 @@ const SCREENS = [
   "activities",
   "fixedActivities",
   "recurringActivities",
+  "generatedSchedule",
   "manualBuild",
   "schedules",
   "import"
 ];
+
+/** The element with focus, looking inside components (their shadow roots). */
+function focusedElement() {
+  let element = document.activeElement;
+  while (element && element.shadowRoot && element.shadowRoot.activeElement) {
+    element = element.shadowRoot.activeElement;
+  }
+  return element;
+}
 
 const STATUS_OPTIONS = [
   { label: "Planning", value: "Planning" },
@@ -77,6 +94,8 @@ export default class ShoreshCampSetup extends LightningElement {
   screen = "roots";
   busy = false;
   error;
+  // A question before saving (c-shoresh-ask): { heading, lines, confirmLabel }.
+  ask;
 
   // Forms
   newCamp = { Name: "" };
@@ -100,9 +119,14 @@ export default class ShoreshCampSetup extends LightningElement {
   loadTicket = 0;
   /**
    * Asked before a week is unticked on a saved row: ({ recordId, name, weekId, weekName }) ->
-   * Promise<boolean>. None yet; the desktop's "Turn off … for Week 3?" plugs in here (PR #48).
+   * Promise<boolean>. The desktop's "Turn off … for Week 3?" when it is placed that week; false
+   * puts the tick back and saves nothing.
    */
-  beforeWeekOff = null;
+  beforeWeekOff = ({ recordId, weekId }) =>
+    this.turnOffAnyway(
+      [{ target: recordId, week: weekId }],
+      "Not turned off. The week is ticked again."
+    );
 
   connectedCallback() {
     this.loadCamps();
@@ -123,7 +147,7 @@ export default class ShoreshCampSetup extends LightningElement {
         : this.camps[0].Id;
       await this.loadCamp();
     } catch (e) {
-      this.showError(e);
+      this.showError(e, "Couldn't open the camp setup. Nothing was changed.");
     }
   }
 
@@ -199,7 +223,7 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- menu and screens ----------
 
   get menu() {
-    return menuSections(this.terms, !!this.setup);
+    return menuSections(this.terms, !!this.setup, menuMarks(this.setup));
   }
   get currentScreen() {
     return this.mode === "screens" ? this.screen : null;
@@ -263,7 +287,11 @@ export default class ShoreshCampSetup extends LightningElement {
     const { problem, action } = event.currentTarget.dataset;
     const found = this.problems.find((p) => p.key === problem);
     const chosen = found.actions.find((a) => a.key === action);
-    await this.saveAndReload(() => saveRecords({ records: [chosen.record] }));
+    await this.saveAndReload(
+      () => saveRecords({ records: [chosen.record] }),
+      null,
+      this.notSaved([chosen.record])
+    );
   }
   get hasScreenProblems() {
     return this.screenProblems.length > 0;
@@ -464,9 +492,11 @@ export default class ShoreshCampSetup extends LightningElement {
         label: t.s("RainPlan"),
         type: "picklist",
         excludeSelf: true,
-        options: [
+        options: [none, ...rainPlanOptions(activities)],
+        // Only the activity holding an outdoor rain plan shows it (desktop :339-341).
+        optionsFor: (saved) => [
           none,
-          ...activities.map((a) => ({ label: a.Name, value: a.Id }))
+          ...rainPlanChoices(activities, saved[ACTIVITY.RainPlan])
         ]
       },
       {
@@ -517,21 +547,21 @@ export default class ShoreshCampSetup extends LightningElement {
       problems: "Needs attention",
       seasonDates: `${t.s("Season")} dates`,
       addWeek: `Add ${t.s("Week")}`,
-      noWeeks: `No ${t.pIn("Week")} yet.`,
+      noWeeks: `No ${t.pIn("Week")} yet`,
       overlapsWeek: `Overlaps another ${t.sIn("Week")}`,
       fillWeeks: `Fill in ${t.pIn("Week")} from the ${t.sIn("Season")} dates`,
       addProgram: `Add ${t.s("Program")}`,
-      noPrograms: `No ${t.pIn("Program")} yet. Every ${t.sIn("Season")} needs at least one.`,
+      noPrograms: `No ${t.pIn("Program")} yet`,
       copiedFrom: `Copied from "${this.copiedFromName}".`,
       locationTypes: t.p("LocationType"),
       addLocationType: `Add ${t.s("LocationType")}`,
-      noLocationTypes: `No ${t.pIn("LocationType")} yet.`,
+      noLocationTypes: `No ${t.pIn("LocationType")} yet`,
       addLocation: `Add ${t.s("Location")}`,
-      noLocations: `No ${t.pIn("Location")} yet.`,
+      noLocations: `No ${t.pIn("Location")} yet`,
       sameLocation: `Same ${t.sIn("Location")}?`,
       catalogue: `${t.s("Activity")} catalogue`,
       addActivity: `Add ${t.s("Activity")}`,
-      noActivities: `No ${t.pIn("Activity")} yet.`
+      noActivities: `No ${t.pIn("Activity")} yet`
     };
   }
 
@@ -552,19 +582,20 @@ export default class ShoreshCampSetup extends LightningElement {
       const [campId] = await saveRecords({
         records: [{ sobjectType: OBJECT.Camp, Name: this.newCamp.Name }]
       });
+      this.changedOnServer = true;
       await this.loadCamps(campId);
-    });
+    }, "Camp not created. Nothing was saved.");
   }
 
   async handleCampChange(event) {
     this.campId = event.detail.value;
     this.seasonId = null;
-    await this.run(() => this.loadCamp());
+    await this.run(() => this.loadCamp(), this.openFailed);
   }
 
   async handleLabelsSaved() {
     this.toast("Saved. Shoresh screens now use your camp words.");
-    await this.run(() => this.loadCamp());
+    await this.run(() => this.loadCamp(), this.openFailed);
     // Stay on camp words, even before there is a season.
     this.screen = "campWords";
     this.mode = "screens";
@@ -575,7 +606,7 @@ export default class ShoreshCampSetup extends LightningElement {
   async handleSeasonChange(event) {
     this.seasonId = event.detail.value;
     this.mode = "screens";
-    await this.run(() => this.loadSeason());
+    await this.run(() => this.loadSeason(), this.openFailed);
   }
 
   handleSeasonField(event) {
@@ -607,7 +638,8 @@ export default class ShoreshCampSetup extends LightningElement {
       () => saveRecords({ records }),
       () => {
         this.seasonSubmitted = false;
-      }
+      },
+      `${this.terms.s("Season")} not saved. Your changes are still here.`
     );
   }
 
@@ -627,11 +659,12 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       await deleteRecord({ recordId: this.seasonId });
+      this.changedOnServer = true;
       this.toast(`Deleted "${this.setup.season.Name}".`);
       this.seasonId = null;
       this.screen = "roots";
       await this.loadCamp();
-    });
+    }, `"${this.setup.season.Name}" not deleted. Nothing was removed.`);
   }
 
   handleStartNewSeason() {
@@ -651,20 +684,24 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!this.validInputs('[data-form="new-season"]')) {
       return;
     }
-    await this.run(async () => {
-      const [seasonId] = await saveRecords({
-        records: [
-          {
-            sobjectType: OBJECT.Season,
-            [SEASON.Camp]: this.campId,
-            [SEASON.Status]: "Planning",
-            ...this.newSeason
-          }
-        ]
-      });
-      this.screen = "roots";
-      await this.loadCamp(seasonId);
-    });
+    await this.run(
+      async () => {
+        const [seasonId] = await saveRecords({
+          records: [
+            {
+              sobjectType: OBJECT.Season,
+              [SEASON.Camp]: this.campId,
+              [SEASON.Status]: "Planning",
+              ...this.newSeason
+            }
+          ]
+        });
+        this.changedOnServer = true;
+        this.screen = "roots";
+        await this.loadCamp(seasonId);
+      },
+      `${this.terms.s("Season")} not created. Nothing was saved.`
+    );
   }
 
   handleCancelNewSeason() {
@@ -683,7 +720,7 @@ export default class ShoreshCampSetup extends LightningElement {
     );
     this.mode = "screens";
     this.screen = "roots";
-    await this.run(() => this.loadCamp(event.detail.seasonId));
+    await this.run(() => this.loadCamp(event.detail.seasonId), this.openFailed);
   }
 
   /** After an import is saved: the season again, with what it added (the summary stays up). */
@@ -691,7 +728,7 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(async () => {
       await this.loadSeason();
       this.seasons = await getSeasons({ campId: this.campId });
-    });
+    }, this.openFailed);
   }
 
   /** Roots' Undo last import, confirmed first (desktop wording). */
@@ -709,9 +746,10 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       const result = await undoImport({ importId });
+      this.changedOnServer = true;
       this.toast(undoMessage(result));
       await this.loadSeason();
-    });
+    }, "That import could not be undone. Nothing was changed.");
   }
 
   handleImportClosed() {
@@ -725,10 +763,14 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- weeks, programs, and everything inside ----------
 
   async handleFillWeeks() {
-    await this.run(async () => {
-      await addWeeksFromSeasonDates({ seasonId: this.seasonId });
-      await this.loadSeason();
-    });
+    await this.run(
+      async () => {
+        await addWeeksFromSeasonDates({ seasonId: this.seasonId });
+        this.changedOnServer = true;
+        await this.loadSeason();
+      },
+      `${this.terms.p("Week")} not added. Nothing was saved.`
+    );
   }
 
   async handleAddProgram() {
@@ -741,18 +783,26 @@ export default class ShoreshCampSetup extends LightningElement {
         [FIELD.Program.SortOrder]: count + 1
       }
     ];
-    await this.saveAndReload(() => saveRecords({ records }));
+    await this.saveAndReload(
+      () => saveRecords({ records }),
+      null,
+      `${this.terms.s("Program")} not added. Nothing was saved.`
+    );
   }
 
   async handleSaveActivityDetails(event) {
     const { rules, whoCanDoIt, onFailure } = event.detail;
     let saved = false;
-    await this.run(async () => {
-      await saveActivityDetails({ rules, whoCanDoIt });
-      saved = true;
-      this.toast("Saved.");
-      await this.loadSeason();
-    });
+    await this.run(
+      async () => {
+        await saveActivityDetails({ rules, whoCanDoIt });
+        this.changedOnServer = true;
+        saved = true;
+        this.toast("Saved.");
+        await this.loadSeason();
+      },
+      `${this.terms.s("Activity")} details not saved. Your changes are still here.`
+    );
     if (!saved && onFailure) {
       onFailure();
     }
@@ -770,7 +820,8 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.saveAndReload(
       () => saveRecords({ records: detail.records }),
-      detail.onFailure
+      detail.onFailure,
+      this.notSaved(detail.records)
     );
   }
 
@@ -803,7 +854,11 @@ export default class ShoreshCampSetup extends LightningElement {
       onSaved(result);
       await this.loadSeason();
     } catch (e) {
-      this.showError(e);
+      // What didn't happen, then why; a row saved whose screen didn't refresh says so.
+      this.showError(
+        e,
+        answered ? this.refreshFailed : this.notSaved([record])
+      );
     }
     try {
       if (!answered) {
@@ -812,6 +867,60 @@ export default class ShoreshCampSetup extends LightningElement {
     } finally {
       // Always: the table may only send its next row once this one is done.
       onDone();
+    }
+  }
+
+  /**
+   * Turning a bunk, activity, or location off for a week it is already placed in asks first
+   * (Shoresh desktop ExclusionConfirmDialog.jsx, its words in the camp's). With nothing placed it
+   * just switches off. True to go ahead.
+   */
+  async turnOffAnyway(weeksOff, failedWhat = this.notSaved()) {
+    const asks = (weeksOff || [])
+      .filter((off) => off.target)
+      .map(({ target, week }) => ({ target, week }));
+    if (!asks.length) {
+      return true;
+    }
+    let placed = [];
+    this.busy = true;
+    try {
+      placed = await placedInWeeks({ weeksOff: asks });
+    } catch (e) {
+      this.showError(e, failedWhat);
+      return false;
+    } finally {
+      this.busy = false;
+    }
+    if (!placed.length) {
+      return true;
+    }
+    return this.askFirst(turnOffQuestion(placed, this.setup, this.terms));
+  }
+
+  /**
+   * Shows the question and waits for the answer: true for yes. Focus goes back to where it was
+   * (the table's Save, or the tick) when the question closes (WCAG 2.4.3).
+   */
+  askFirst(question) {
+    this.focusBack = focusedElement();
+    this.ask = question;
+    return new Promise((resolve) => {
+      this.answerAsk = resolve;
+    });
+  }
+
+  handleAnswer(event) {
+    const resolve = this.answerAsk;
+    const back = this.focusBack;
+    this.ask = null;
+    this.answerAsk = null;
+    this.focusBack = null;
+    if (back && back.isConnected && typeof back.focus === "function") {
+      back.focus();
+    }
+    if (resolve) {
+      resolve(event.detail.yes);
     }
   }
 
@@ -877,9 +986,10 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     await this.run(async () => {
       await deleteRecord({ recordId });
+      this.changedOnServer = true;
       this.toast(`Deleted "${name}".`);
       await this.loadSeason();
-    });
+    }, `"${name}" not deleted. Nothing was removed.`);
   }
 
   /**
@@ -1005,27 +1115,33 @@ export default class ShoreshCampSetup extends LightningElement {
 
   // ---------- helpers ----------
 
-  async saveAndReload(save, onFailure) {
+  /** A save, then the season again. what: what didn't happen if the save fails. */
+  async saveAndReload(save, onFailure, what = this.notSaved()) {
     let saved = false;
     await this.run(async () => {
       await save();
+      this.changedOnServer = true;
       saved = true;
       this.toast("Saved.");
       await this.loadSeason();
       this.seasons = await getSeasons({ campId: this.campId });
-    });
+    }, what);
     if (!saved && onFailure) {
       onFailure();
     }
   }
 
-  async run(work) {
+  /** Runs a server call; if it fails, says what didn't happen (what), then why. */
+  async run(work, what) {
     this.busy = true;
     this.error = null;
+    // Set by work once its change is saved, so a failure after it (the reload) never says
+    // the change wasn't made.
+    this.changedOnServer = false;
     try {
       await work();
     } catch (e) {
-      this.showError(e);
+      this.showError(e, this.changedOnServer ? this.refreshFailed : what);
     } finally {
       this.busy = false;
     }
@@ -1038,8 +1154,31 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
 
-  showError(e) {
-    this.error = errorMessage(e);
+  /** The change was saved, but showing the season again failed. */
+  get refreshFailed() {
+    return "Done, but the screen couldn't show it yet. Reload the page.";
+  }
+
+  /** Loading a camp or season. */
+  get openFailed() {
+    return "Couldn't open this. Nothing was changed.";
+  }
+
+  /**
+   * A save that didn't go through: what it was (the rows' kind in the camp's words, or the
+   * screen's name), and that what was typed is kept (ADR 0001 §9).
+   */
+  notSaved(records) {
+    const type = records && records.length ? records[0].sobjectType : null;
+    const kind = Object.keys(OBJECT).find((k) => OBJECT[k] === type);
+    const what = kind
+      ? this.terms.p(kind)
+      : screenLabels(this.terms)[this.screen] || "Your changes";
+    return `${what} not saved. Your changes are still here.`;
+  }
+
+  showError(e, what = this.openFailed) {
+    this.error = failed(what, e);
     if (this.mode === "loading") {
       this.mode = "screens";
     }
