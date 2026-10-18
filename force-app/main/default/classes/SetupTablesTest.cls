@@ -252,13 +252,17 @@ private class SetupTablesTest {
         CopiedFrom__c = other
       );
       Database.insert(copy, AccessLevel.SYSTEM_MODE);
-      {
-        SetupTablesController.mergeLocations(
-          ids.get('Pool'),
-          new List<Id>{ other },
-          2
-        );
-      }
+      // The merge gets its own limits, apart from setting up the camp, and stays well inside them.
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SetupTablesController.mergeLocations(
+        ids.get('Pool'),
+        new List<Id>{ other },
+        2
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isTrue(used <= 40, 'Queries for the merge: ' + used);
       Id pool = ids.get('Pool');
       Assert.areEqual(
         0,
@@ -337,13 +341,17 @@ private class SetupTablesTest {
       );
       flag.Location__c = other.Id;
       SetTimeTestData.save(new List<SObject>{ flag });
-      {
-        SetupTablesController.mergeLocations(
-          ids.get('Pool'),
-          new List<Id>{ other.Id },
-          3
-        );
-      }
+      // The merge gets its own limits, apart from setting up the camp, and stays well inside them.
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SetupTablesController.mergeLocations(
+        ids.get('Pool'),
+        new List<Id>{ other.Id },
+        3
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isTrue(used <= 40, 'Queries for the merge: ' + used);
       Assert.areEqual(
         ids.get('Pool'),
         [
@@ -425,6 +433,7 @@ private class SetupTablesTest {
           }
         )
       );
+      Test.startTest();
       {
         try {
           SetupTablesController.mergeLocations(
@@ -437,6 +446,7 @@ private class SetupTablesTest {
           Assert.isTrue(e.getMessage().contains('"Pool"'), e.getMessage());
         }
       }
+      Test.stopTest();
       Assert.areEqual(
         1,
         [SELECT COUNT() FROM Location__c WHERE Id = :other WITH SYSTEM_MODE]
@@ -461,6 +471,7 @@ private class SetupTablesTest {
       ids = SetTimeTestData.camp();
       Id other = secondPool();
       {
+        Test.startTest();
         List<List<Id>> refused = new List<List<Id>>{
           // Different names.
           new List<Id>{ ids.get('Pool'), ids.get('Gym') },
@@ -481,6 +492,16 @@ private class SetupTablesTest {
             Assert.isNotNull(e.getMessage());
           }
         }
+        // Someone else deletes "pool " (with its closed weeks, as the screens do).
+        Database.delete(
+          [
+            SELECT Id
+            FROM WeekException__c
+            WHERE Location__c = :other
+            WITH SYSTEM_MODE
+          ],
+          AccessLevel.SYSTEM_MODE
+        );
         Database.delete(other, AccessLevel.SYSTEM_MODE);
         try {
           SetupTablesController.mergeLocations(
