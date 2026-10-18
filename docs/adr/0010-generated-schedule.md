@@ -318,7 +318,9 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       blocks, groups, fixed and recurring activities and the season's activities. Unlike the
       Schedules page (`ScheduleRefs`, which looks for the record anywhere it can be seen), a
       record of another season or program counts as gone here; a Generated draft never holds one,
-      since a save refuses another season's activity;
+      since a save refuses another season's activity. The week a Lock or a hand edit answers
+      with is marked the same way (`GeneratedInputs.view`), so a note never comes and goes
+      between opening the week and changing it;
     - each day's locked cells (G4, §27), which the data module turns into the engine's locks.
       Other programs (G5): none yet.
 14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status

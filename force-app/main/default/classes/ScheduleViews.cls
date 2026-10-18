@@ -85,6 +85,14 @@ public with sharing class ScheduleViews {
 
   /** One schedule with its days, or null if it is not there (or not visible). */
   public static ScheduleView open(Id scheduleId) {
+    return open(scheduleId, null);
+  }
+
+  /**
+   * The same, with what still counts as there given (Generated Schedule: the program's setup,
+   * as GeneratedInputs reads it), or null to look each record up (ScheduleRefs).
+   */
+  public static ScheduleView open(Id scheduleId, Set<String> stillThere) {
     List<Schedule__c> found = [
       SELECT Id, Name, Status__c, Origin__c, VersionReason__c, CreatedDate
       FROM Schedule__c
@@ -97,7 +105,11 @@ public with sharing class ScheduleViews {
     ScheduleView view = new ScheduleView();
     view.schedule = row(found[0]);
     view.status = found[0].Status__c;
-    view.days = dayViews(ScheduleDays.read(scheduleId));
+    List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
+    view.days = dayViews(
+      days,
+      stillThere == null ? ScheduleRefs.stillThere(days) : stillThere
+    );
     return view;
   }
 

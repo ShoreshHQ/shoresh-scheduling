@@ -85,7 +85,7 @@ public with sharing class GeneratedInputs {
    * them again otherwise): the program's time blocks, groups, fixed and recurring activities,
    * and the season's activities.
    */
-  private static Set<String> stillThere(GeneratedSetup setup, Inputs inputs) {
+  public static Set<String> stillThere(GeneratedSetup setup, Inputs inputs) {
     List<SObject> records = new List<SObject>();
     records.addAll(setup.blocks);
     records.addAll(setup.groups);
@@ -97,6 +97,24 @@ public with sharing class GeneratedInputs {
       ids.add(record.Id);
     }
     return ids;
+  }
+
+  /**
+   * The Generated draft as the screen shows it after a lock or a hand edit, with "deleted since"
+   * worked out exactly as getInputs does (the program's setup now), so the same week always shows
+   * the same notes, whichever answer it came from.
+   */
+  public static ScheduleViews.ScheduleView view(Schedule__c draft) {
+    GeneratedSetup setup = new GeneratedSetup(draft.Program__c, draft.Week__c);
+    Inputs records = new Inputs();
+    records.activities = [
+      SELECT Id
+      FROM Activity__c
+      WHERE Season__c = :setup.program.Season__c
+      WITH USER_MODE
+    ];
+    readSetTime(records, setup.program.Id);
+    return ScheduleViews.open(draft.Id, stillThere(setup, records));
   }
 
   /** A blank week's days, read as a saved draft's days are. */
