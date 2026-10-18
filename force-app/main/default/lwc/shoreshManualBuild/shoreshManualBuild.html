@@ -124,6 +124,20 @@
             </button>
           </div>
         </template>
+        <template lwc:if={draft}>
+          <div class="divider" aria-hidden="true"></div>
+          <c-shoresh-versions
+            restore
+            versions={versions}
+            terms={terms}
+            busy={versionsBusy}
+            onopen={handleRestore}
+            onrename={handleRenameVersion}
+            ondelete={handleDeleteVersion}
+            onsave={handleSaveVersion}
+            data-id="versions"
+          ></c-shoresh-versions>
+        </template>
       </template>
     </div>
     <template lwc:if={showCounters}>
@@ -171,6 +185,19 @@
       {announcement}
     </div>
 
+    <template lwc:if={leftOut}>
+      <div class="not-placed" role="status" data-id="left-out">
+        <c-shoresh-dot
+          label="Left Open: it couldn't go there this week"
+          focusable
+        ></c-shoresh-dot>
+        <ul>
+          <template for:each={leftOut} for:item="line">
+            <li key={line}>{line}</li>
+          </template>
+        </ul>
+      </div>
+    </template>
     <template lwc:if={notPlaced}>
       <div class="not-placed" role="status" data-id="not-placed">
         <c-shoresh-dot
@@ -355,6 +382,23 @@
           onclick={handleStart}
           data-id="start-week"
         ></lightning-button>
+        <template lwc:if={hasWeekSources}>
+          <lightning-button-menu
+            label="Start from another week"
+            alternative-text="Start from another week"
+            disabled={starting}
+            onselect={handleStartFrom}
+            data-id="start-from"
+          >
+            <template for:each={weekSourceItems} for:item="source">
+              <lightning-menu-item
+                key={source.value}
+                value={source.value}
+                label={source.label}
+              ></lightning-menu-item>
+            </template>
+          </lightning-button-menu>
+        </template>
       </div>
     </template>
     <template lwc:elseif={cannotChoose}>

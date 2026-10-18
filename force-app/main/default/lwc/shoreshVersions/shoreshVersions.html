@@ -66,6 +66,18 @@
                 >
                   rename
                 </button>
+                <template lwc:if={canDelete}>
+                  <button
+                    type="button"
+                    class="link link_quiet"
+                    data-id={row.id}
+                    data-action="delete"
+                    onclick={handleDelete}
+                    onblur={handleDeleteBlur}
+                  >
+                    {row.deleteLabel}
+                  </button>
+                </template>
                 <button
                   type="button"
                   class="link"
@@ -73,12 +85,33 @@
                   data-action="open"
                   onclick={handleOpen}
                 >
-                  Open
+                  {actionLabel}
                 </button>
               </template>
             </div>
           </template>
         </div>
+        <template lwc:if={canSave}>
+          <div class="panel-foot" data-id="save-version">
+            <input
+              class="slds-input"
+              value={saveName}
+              maxlength="80"
+              placeholder="Name current version…"
+              aria-label="Name current version"
+              oninput={handleSaveInput}
+              onkeydown={handleSaveKey}
+              data-id="save-name"
+            />
+            <lightning-button
+              variant="brand"
+              label="Save version"
+              disabled={saveDisabled}
+              onclick={handleSave}
+              data-id="save-button"
+            ></lightning-button>
+          </div>
+        </template>
       </div>
     </template>
   </div>

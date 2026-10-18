@@ -3,6 +3,13 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
+import saveVersion from "@salesforce/apex/ManualBuildController.saveVersion";
+import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersion";
+import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
+import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
+import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
+import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { errorMessage } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
@@ -95,6 +102,10 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
+  // The week's versions (Versions), and what Start from another week can start from.
+  versions = [];
+  weekSources = [];
+  versionsWorking = false;
   // "Cleared Monday" after a day or week tool: { text, stepId }, shown with Undo while Undo
   // would take back that step.
   toolNotice = null;
@@ -233,6 +244,12 @@ export default class ShoreshManualBuild extends LightningElement {
           this.error = null;
         }
         this.show(draft, !again);
+        if (draft) {
+          this.loadVersions();
+        } else {
+          this.versions = [];
+          this.loadWeekSources();
+        }
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
@@ -277,6 +294,11 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /** Just after Start a blank week: fixed or recurring activities whose slot was taken. */
+  get leftOut() {
+    const lines = (this.draft && this.draft.leftOut) || [];
+    return lines.length ? lines : null;
+  }
+
   get notPlaced() {
     const lines = (this.draft && this.draft.notPlaced) || [];
     return lines.length ? lines : null;
@@ -303,6 +325,154 @@ export default class ShoreshManualBuild extends LightningElement {
     } finally {
       this.starting = false;
     }
+  }
+
+  // ---------- Start from another week ----------
+
+  get hasWeekSources() {
+    return this.weekSources.length > 0;
+  }
+
+  /** "Week 2 · Manual Build", "Week 1 · Before the trip (version)" */
+  get weekSourceItems() {
+    return this.weekSources.map((source) => ({
+      value: source.id,
+      label: `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})` : ""}`
+    }));
+  }
+
+  async loadWeekSources() {
+    const key = `${this.programId}|${this.weekId}`;
+    try {
+      const sources = await getWeekSources({
+        programId: this.programId,
+        weekId: this.weekId
+      });
+      if (key === `${this.programId}|${this.weekId}`) {
+        this.weekSources = sources || [];
+      }
+    } catch {
+      // Without the list, only Start a blank week is offered.
+      this.weekSources = [];
+    }
+  }
+
+  async handleStartFrom(event) {
+    const sourceId = event.detail.value;
+    const source = this.weekSources.find((s) => s.id === sourceId);
+    this.starting = true;
+    this.error = null;
+    try {
+      this.show(
+        await startFromWeek({
+          programId: this.programId,
+          weekId: this.weekId,
+          sourceId
+        }),
+        true
+      );
+      this.announce(
+        `Started ${this.weekName} from ${source ? source.weekName : ""}.`
+      );
+      this.loadVersions();
+    } catch (e) {
+      this.error = errorMessage(e);
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  // ---------- versions (desktop VersionsDropdown, useSnapshots) ----------
+
+  get versionsBusy() {
+    return this.versionsWorking || this.saving || this.queue.length > 0;
+  }
+
+  async loadVersions() {
+    const key = `${this.programId}|${this.weekId}`;
+    try {
+      const rows = await getVersions({
+        programId: this.programId,
+        weekId: this.weekId
+      });
+      if (key === `${this.programId}|${this.weekId}`) {
+        this.versions = rows || [];
+      }
+    } catch {
+      // The list shows as empty; the week itself is unaffected.
+      this.versions = [];
+    }
+  }
+
+  /** Runs a versions action, then reads the list again; refused ones say why. */
+  async versionsAction(work) {
+    this.versionsWorking = true;
+    this.error = null;
+    try {
+      await work();
+      return true;
+    } catch (e) {
+      this.error = errorMessage(e);
+      return false;
+    } finally {
+      this.versionsWorking = false;
+      this.loadVersions();
+    }
+  }
+
+  /** Save version: the week as it is now, kept under a name. */
+  async handleSaveVersion(event) {
+    const { name, onDone } = event.detail;
+    const saved = await this.versionsAction(() =>
+      saveVersion({ scheduleId: this.schedule.schedule.id, name })
+    );
+    if (saved) {
+      this.say(`Saved ${name}.`);
+    }
+    onDone(saved);
+  }
+
+  /**
+   * Restore: the version is copied into the week being built, after the week as it was is kept
+   * as "Before Restore" (the way back). Undo starts over, as on the desktop.
+   */
+  async handleRestore(event) {
+    const id = event.detail.id;
+    const version = this.versions.find((v) => v.id === id);
+    if (this.versionsBusy) {
+      return;
+    }
+    await this.versionsAction(async () => {
+      const draft = await restoreVersion({
+        scheduleId: this.schedule.schedule.id,
+        versionId: id
+      });
+      this.history.clear();
+      this.historyVersion += 1;
+      this.checksResetKey += 1;
+      this.toolNotice = null;
+      this.show(draft, false);
+      this.say(`Restored ${version ? version.name : ""}.`);
+    });
+  }
+
+  async handleDeleteVersion(event) {
+    const id = event.detail.id;
+    const version = this.versions.find((v) => v.id === id);
+    const done = await this.versionsAction(() =>
+      deleteVersion({ scheduleId: this.schedule.schedule.id, versionId: id })
+    );
+    if (done) {
+      this.say(`Deleted ${version ? version.name : ""}.`);
+    }
+  }
+
+  async handleRenameVersion(event) {
+    const { id, name, onDone } = event.detail;
+    const renamed = await this.versionsAction(() =>
+      renameSchedule({ scheduleId: id, name })
+    );
+    onDone(renamed);
   }
 
   get weekName() {

@@ -99,3 +99,12 @@
   gap: 4px;
   width: 100%;
 }
+
+/* Manual Build's footer: "Name current version…" and Save version (desktop VersionsDropdown). */
+.panel-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+}
