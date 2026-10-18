@@ -107,6 +107,11 @@ async function render(start, setup = SETUP) {
 }
 
 const q = (element, selector) => element.shadowRoot.querySelector(selector);
+// Inside the counters and their list (c-shoresh-week-checks).
+const qc = (element, selector) => {
+  const checks = q(element, "c-shoresh-week-checks");
+  return checks ? checks.shadowRoot.querySelector(selector) : null;
+};
 const cell = (element, key) =>
   q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
     `[data-cell="${key}"]`
@@ -119,17 +124,17 @@ const tipIn = (element, key) =>
 const tile = (el) =>
   [...el.querySelectorAll("span")].map((span) => span.textContent).join(" ");
 const counters = (element) =>
-  [...q(element, '[data-id="counters"]').querySelectorAll("button")].map(tile);
+  [...qc(element, '[data-id="counters"]').querySelectorAll("button")].map(tile);
 const listLines = (element) =>
   [
-    ...q(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
+    ...qc(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
   ].map((b) => b.textContent.trim());
 const lineButton = (element, text) =>
   [
-    ...q(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
+    ...qc(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
   ].find((b) => b.textContent.trim() === text);
 const acceptButton = (element, text) =>
-  q(element, `[data-id="counter-list"] [aria-label="Accept: ${text}"]`);
+  qc(element, `[data-id="counter-list"] [aria-label="Accept: ${text}"]`);
 
 /** Bunk 1's week in Group View (columns are days): Monday's items and rows, then Tuesday's. */
 async function bunkOneWeek(monday, tuesday, setup) {
@@ -178,16 +183,16 @@ describe("c-shoresh-manual-build: checks and counters", () => {
 
   it("any counter opens the one list, overlaps first; again, or Close, closes it", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
-    const overlapping = q(element, '[data-counter="overlapping"]');
+    const overlapping = qc(element, '[data-counter="overlapping"]');
     expect(overlapping.getAttribute("aria-expanded")).toBe("false");
     overlapping.click();
     await flush();
     expect(overlapping.getAttribute("aria-expanded")).toBe("true");
     expect(
-      q(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
+      qc(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
     ).toBe("true");
     expect(
-      q(element, '[data-id="counter-list"] ul').getAttribute("aria-label")
+      qc(element, '[data-id="counter-list"] ul').getAttribute("aria-label")
     ).toBe("Still to place");
     expect(listLines(element)).toEqual([
       "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
@@ -196,20 +201,20 @@ describe("c-shoresh-manual-build: checks and counters", () => {
       "Soccer · Bunk 1: 1 still needed",
       "Soccer · Bunk 2: 1 still needed"
     ]);
-    q(element, '[data-counter="stillNeeded"]').click();
+    qc(element, '[data-counter="stillNeeded"]').click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
     overlapping.click();
     await flush();
-    q(element, '[data-id="close-list"]').click();
+    qc(element, '[data-id="close-list"]').click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
   });
 
   it("Filled counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     // Two days; Bunk 1 has Period 2 and Lunch to fill, Bunk 2 only Period 2 (away at Lunch).
-    expect(tile(q(element, '[data-id="filled"]'))).toBe("2 of 6 Filled");
+    expect(tile(qc(element, '[data-id="filled"]'))).toBe("2 of 6 Filled");
   });
 
   it("a placement for a bunk it isn't set up for gets the dot", async () => {
@@ -245,17 +250,17 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     );
     // Nothing overlaps; no activity has an early-week goal, so Spread isn't shown (desktop).
     expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
-    const overlapping = q(element, '[data-counter="overlapping"]');
+    const overlapping = qc(element, '[data-counter="overlapping"]');
     expect(overlapping.getAttribute("aria-disabled")).toBe("true");
     overlapping.click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
     expect(overlapping.hasAttribute("aria-expanded")).toBe(false);
     expect(overlapping.className).not.toContain("counter_due");
-    expect(q(element, '[data-counter="stillNeeded"]').className).toContain(
+    expect(qc(element, '[data-counter="stillNeeded"]').className).toContain(
       "counter_due"
     );
-    expect(q(element, '[data-counter="spread"]')).toBeNull();
+    expect(qc(element, '[data-counter="spread"]')).toBeNull();
   });
 
   it("Still needed isn't shown when no activity has a weekly minimum", async () => {
@@ -301,15 +306,15 @@ describe("c-shoresh-manual-build: checks and counters", () => {
       draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]),
       NO_MINIMUMS
     );
-    q(element, '[data-counter="overlapping"]').click();
+    qc(element, '[data-counter="overlapping"]').click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).not.toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).not.toBeNull();
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
     });
     await press(cell(element, "1-1"), "Delete");
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
     // The clash comes back (Undo): its counter counts again, the list stays closed.
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
@@ -317,7 +322,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     await press(cell(element, "1-1"), "z", { ctrlKey: true });
     expect(counters(element)).toEqual(["2 Overlapping"]);
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
   });
 
   it("over its weekly limit: only the session past the limit gets the dot, the latest in the week", async () => {
@@ -392,7 +397,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     input.dispatchEvent(new CustomEvent("input"));
     await flush();
     await press(input, "Enter");
-    q(element, '[data-counter="stillNeeded"]').click();
+    qc(element, '[data-counter="stillNeeded"]').click();
     await flush();
     expect(listLines(element)).toContain("Kayak · Bunk 1: 1 still needed");
   });
@@ -400,7 +405,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
   it("Accept hides a still needed line for this visit; it comes back when its numbers change", async () => {
     // No overlap here: Soccer for Bunk 1 on Monday only.
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
-    q(element, '[data-counter="stillNeeded"]').click();
+    qc(element, '[data-counter="stillNeeded"]').click();
     await flush();
     expect(listLines(element)).toEqual([
       "Swim · Bunk 1: 1 still needed",
@@ -426,17 +431,17 @@ describe("c-shoresh-manual-build: checks and counters", () => {
 
   it("a line takes you to its bunk's week; an overlap's line puts focus on its cell", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
-    q(element, '[data-counter="stillNeeded"]').click();
+    qc(element, '[data-counter="stillNeeded"]').click();
     await flush();
     lineButton(element, "Soccer · Bunk 2: 1 still needed").click();
     await flush();
-    expect(q(element, '[data-id="counter-list"]')).toBeNull();
+    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
     expect(q(element, '[data-view="group"]').className).toContain("on");
     expect(
       q(element, '[data-id="edit-grid"]').getAttribute("aria-label") ||
         q(element, '[data-id="edit-grid"]').label
     ).toBe("Bunk 2");
-    q(element, '[data-counter="overlapping"]').click();
+    qc(element, '[data-counter="overlapping"]').click();
     await flush();
     lineButton(
       element,
@@ -539,12 +544,12 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     const start = draft();
     start.schedule.days = [];
     const element = await render(start);
-    expect(q(element, '[data-id="counters"]')).toBeNull();
+    expect(qc(element, '[data-id="counters"]')).toBeNull();
   });
 
   it("an open list marks its counters open and names the list they control", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
-    const needed = q(element, '[data-counter="stillNeeded"]');
+    const needed = qc(element, '[data-counter="stillNeeded"]');
     expect(needed.getAttribute("aria-controls")).toBeTruthy();
     expect(needed.className).not.toContain("counter_open");
     needed.click();

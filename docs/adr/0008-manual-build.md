@@ -386,6 +386,12 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       edit changes the dots of up to three placements, each of those cells shows a neutral grey
       outline that fades once (220ms), never bronze or red, even for a new problem. Undo, Redo,
       a reload, or switching view, day or bunk never pulse; with reduced motion there is none.
+    - **One component for both schedules:** the counters and the list below are
+      `c-shoresh-week-checks` (coordinator, 2026-10-17), so Generated Schedule (G3) shows the same
+      ones. It takes checkWeek's result (with `hasCoverageTargets` and `hasSpreadTargets`), a
+      `reset-key` (a week shown fresh closes the list and brings accepted lines back) and a
+      `route` ("manual"; the generated route's lighting of cells is to come). It raises `locate`
+      with the clicked line (the page takes the director there) and `accept`.
     - **Counters** under the toolbar, as the desktop's manual route shows them (ScheduleScreen.jsx,
       StatBadge; the desktop is the spec, coordinator 2026-10-17). Each is a tile, its number
       above its words. **Filled** _34 of 120_ (cells filled, of the cells to fill: at camp, not
