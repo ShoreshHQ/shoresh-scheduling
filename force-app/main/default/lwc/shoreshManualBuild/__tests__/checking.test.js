@@ -551,4 +551,27 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     expect(needed.className).toContain("counter_open");
   });
+
+  it("a director's edit that changes a few dots pulses those cells once; Undo doesn't", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,2,"])
+    });
+    await press(cell(element, "1-1"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "soccer";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(cell(element, "0-1").className).toContain("cell_pulse");
+    expect(cell(element, "1-1").className).toContain("cell_pulse");
+    expect(cell(element, "0-2").className).not.toContain("cell_pulse");
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
+    });
+    await press(cell(element, "1-1"), "z", { ctrlKey: true });
+    expect(cell(element, "0-1").className).not.toContain("cell_pulse");
+  });
 });

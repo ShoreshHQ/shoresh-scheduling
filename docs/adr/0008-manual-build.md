@@ -379,7 +379,13 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - **Screen readers hear what an edit did to the dots**, once, with its save: the first dot
       it brought (_Placed Soccer · Bunk 2 · Monday · Period 2. Soccer · Bunk 1: Over its limit
       of 1 Bunk at once, and 1 more_), or else the first it took away (_Soccer · Bunk 1: fine
-      now_). A sighted director sees the dot appear (WCAG 4.1.3).
+      now_). A sighted director sees the dot appear (WCAG 4.1.3). The desktop says nothing
+      here (only its drag steps are announced); this is added for screen-reader users
+      (coordinator, 2026-10-17).
+    - **A quiet pulse** (desktop `useFlagChangeAck`, `flag-changed-ack`): when a director's own
+      edit changes the dots of up to three placements, each of those cells shows a neutral grey
+      outline that fades once (220ms), never bronze or red, even for a new problem. Undo, Redo,
+      a reload, or switching view, day or bunk never pulse; with reduced motion there is none.
     - **Counters** under the toolbar, as the desktop's manual route shows them (ScheduleScreen.jsx,
       StatBadge; the desktop is the spec, coordinator 2026-10-17). Each is a tile, its number
       above its words. **Filled** _34 of 120_ (cells filled, of the cells to fill: at camp, not

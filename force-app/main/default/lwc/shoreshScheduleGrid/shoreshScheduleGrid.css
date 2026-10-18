@@ -248,3 +248,36 @@
   right: 6px;
   line-height: 0;
 }
+
+/* A quiet acknowledgement when an edit changed a cell's dot (desktop useFlagChangeAck,
+   scheduleGrid.css flag-changed-ack): a neutral grey outline that fades once, never bronze or
+   red, even when the new dot is a problem. None under reduced motion. */
+.cell_pulse .cell-inner::after {
+  content: "";
+  position: absolute;
+  inset: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--shoresh-text-secondary);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  animation: flag-changed-ack 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes flag-changed-ack {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell_pulse .cell-inner::after {
+    animation: none;
+    opacity: 0;
+  }
+}

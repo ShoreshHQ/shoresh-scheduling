@@ -98,6 +98,9 @@ export default class ShoreshManualBuild extends LightningElement {
   accepted = [];
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
+  // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
+  // useFlagChangeAck), only for a director's own edit and only when it touched a few.
+  pulseKeys = [];
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
@@ -259,6 +262,7 @@ export default class ShoreshManualBuild extends LightningElement {
     this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
       this.accepted = [];
+      this.pulseKeys = [];
       this.listOpen = false;
       this.dayIndex = 0;
       const all = groups(draft.schedule);
@@ -552,6 +556,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleView(event) {
     this.view = event.currentTarget.dataset.view;
     this.closeEditor();
+    this.pulseKeys = [];
     this.picked = null;
     if (this.view !== "activity") {
       this.activityId = null;
@@ -580,6 +585,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleDay(event) {
     this.dayIndex = Number(event.currentTarget.dataset.index);
     this.closeEditor();
+    this.pulseKeys = [];
     this.picked = null;
   }
 
@@ -596,6 +602,7 @@ export default class ShoreshManualBuild extends LightningElement {
   handleGroup(event) {
     this.groupKey = event.currentTarget.dataset.key;
     this.closeEditor();
+    this.pulseKeys = [];
     this.picked = null;
   }
 
@@ -635,6 +642,9 @@ export default class ShoreshManualBuild extends LightningElement {
         result.className = `${result.className} cell_picked`;
         result.selected = true;
       }
+      if (this.pulseKeys.includes(this.placementKeyOf(cell.slot))) {
+        result.className = `${result.className} cell_pulse`;
+      }
     }
     if (cell.slot && cell.open && this.isAwaySlot(cell.slot)) {
       const grp = this.dayOf(cell.slot).groups[cell.slot.group];
@@ -653,11 +663,14 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** The words of a placement's dot, if it has one (keyed by where it starts). */
   dotFor(slot) {
+    return this.checked.flags.get(this.placementKeyOf(slot));
+  }
+
+  /** The check's key for the placement a slot is in: "date|groupId|firstBlockId". */
+  placementKeyOf(slot) {
     const day = this.dayOf(slot);
     const first = placement(day, slot.group, slot.block).first;
-    return this.checked.flags.get(
-      `${day.dateValue}|${day.groups[slot.group].id}|${day.blocks[first].id}`
-    );
+    return `${day.dateValue}|${day.groups[slot.group].id}|${day.blocks[first].id}`;
   }
 
   get catalogue() {
@@ -1164,7 +1177,22 @@ export default class ShoreshManualBuild extends LightningElement {
     this.applyLocally(edit);
     // A dot the edit brought or took away, said with its save (a sighted director sees it).
     entry.news = this.dotNews(before, this.checked);
+    this.pulseKeys =
+      kind === "edit" ? this.dotChanges(before, this.checked) : [];
     this.saveNext();
+  }
+
+  /**
+   * The placements (still on the grid) whose dot changed, when they are few enough to be one
+   * edit's doing (desktop MAX_SINGLE_EDIT_CELLS, 3); otherwise none.
+   */
+  dotChanges(before, after) {
+    const keys = new Set([...before.flags.keys(), ...after.flags.keys()]);
+    const changed = [...keys].filter(
+      (key) => before.flags.get(key) !== after.flags.get(key)
+    );
+    const still = new Set(after.placements.map((p) => p.key));
+    return changed.length <= 3 ? changed.filter((key) => still.has(key)) : [];
   }
 
   /**
