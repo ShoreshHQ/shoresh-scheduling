@@ -202,37 +202,185 @@ private class GeneratedRefusalsTest {
       }
       GeneratedWeek.Save shortRow = request(read, GeneratedSaves.TRY_ANOTHER);
       shortRow.days[0].rows[0] = '1,';
-      String refused = GeneratedTestData.refusal(shortRow);
-      Assert.isTrue(
-        refused.startsWith('That change could not be read: '),
-        refused
+      // A broken grid is refused in plain words, never the format's own.
+      Assert.areEqual(
+        GeneratedTestData.UNREADABLE,
+        GeneratedTestData.refusal(shortRow)
       );
       Test.stopTest();
       Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
     }
   }
 
+  /** A first Generate built on the week as it was read, saved after setup changed. */
+  private static GeneratedWeek.Result generateFrom(
+    GeneratedInputs.Inputs read
+  ) {
+    return GeneratedTestData.save(
+      GeneratedTestData.filled(
+        request(read, GeneratedSaves.GENERATE),
+        'Gym games'
+      )
+    );
+  }
+
   @IsTest
-  static void aFirstGenerateAfterSetupChangedItsDaysIsAConflict() {
+  static void aFirstGenerateAfterSetupChangedTheWeekIsAConflictThatSaysWhat() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
-      // A time block added after the week was read: the blank week isn't what was built on.
-      ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
+      String reopen = ' changed since you opened this week. Open it again, then generate.';
       Test.startTest();
-      GeneratedWeek.Result result = GeneratedTestData.save(
-        GeneratedTestData.filled(
-          request(read, GeneratedSaves.GENERATE),
-          'Gym games'
-        )
+      // A time block added after the week was read.
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
+      GeneratedWeek.Result blocks = generateFrom(read);
+      Assert.isTrue(blocks.conflict);
+      Assert.areEqual('Main\'s time blocks on Monday' + reopen, blocks.message);
+      // A fixed activity added where the engine had placed one (not the director's doing).
+      read = GeneratedTestData.inputs();
+      Database.insert(
+        SetTimeTestData.fixed(ids, 'Assembly', 'Period 2'),
+        AccessLevel.SYSTEM_MODE
       );
-      Test.stopTest();
-      Assert.isTrue(result.conflict);
+      GeneratedWeek.Result setTime = generateFrom(read);
+      Assert.isTrue(setTime.conflict);
       Assert.areEqual(
-        'Main\'s time blocks or groups changed since you opened this week. Open it again, then generate.',
-        result.message
+        'Period 2 for Group A on Monday' + reopen,
+        setTime.message
       );
+      // The program no longer runs on Thursdays.
+      read = GeneratedTestData.inputs();
+      Database.update(
+        new Program__c(Id = ids.get('Main'), Thursday__c = false),
+        AccessLevel.SYSTEM_MODE
+      );
+      GeneratedWeek.Result days = generateFrom(read);
+      Assert.isTrue(days.conflict);
+      Assert.areEqual('Main\'s days' + reopen, days.message);
+      Test.stopTest();
       Assert.areEqual(0, GeneratedTestData.generatedDrafts());
+    }
+  }
+
+  @IsTest
+  static void nothingNewForAGroupAwayOrWhatIsClosedThisWeek() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = generated();
+      // After the week was generated: Group B is away, Soccer and the Gym are closed.
+      Database.insert(
+        new List<WeekException__c>{
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Group__c = ids.get('Group B')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Activity__c = ids.get('Soccer')
+          ),
+          new WeekException__c(
+            Week__c = ids.get('Week 1'),
+            Location__c = ids.get('Gym')
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
+      GeneratedWeek.Save awayGroup = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(
+        awayGroup.days[0],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_B,
+          GeneratedTestData.LUNCH
+        ),
+        'Swim'
+      );
+      Assert.areEqual(
+        'Group B isn\'t at camp in Week 1.',
+        GeneratedTestData.refusal(awayGroup)
+      );
+      GeneratedWeek.Save closed = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(closed.days[0], lunchA, 'Soccer');
+      Assert.areEqual(
+        'Soccer is closed in Week 1.',
+        GeneratedTestData.refusal(closed)
+      );
+      GeneratedWeek.Save closedPlace = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(closedPlace.days[0], lunchA, 'Gym games');
+      Assert.areEqual(
+        'Gym is closed in Week 1.',
+        GeneratedTestData.refusal(closedPlace)
+      );
+      // Leftovers may stay (Gym games in Period 2, Group B's row) or be cleared.
+      GeneratedWeek.Save kept = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(kept.days[0], lunchA, 'Swim');
+      GeneratedWeek.Result keptResult = GeneratedTestData.save(kept);
+      Assert.isFalse(keptResult.conflict);
+      GeneratedWeek.Save cleared = request(
+        GeneratedTestData.inputs(),
+        GeneratedSaves.TRY_ANOTHER
+      );
+      GeneratedTestData.setCell(
+        cleared.days[0],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_B,
+          GeneratedTestData.PERIOD_2
+        ),
+        ''
+      );
+      Assert.isFalse(GeneratedTestData.save(cleared).conflict);
+      Test.stopTest();
+      Assert.areEqual(
+        '',
+        GeneratedTestData.slots(
+          draftId,
+          GeneratedTestData.at(0, GeneratedTestData.GROUP_B)
+        )[
+          GeneratedTestData.PERIOD_2
+        ]
+      );
+    }
+  }
+
+  @IsTest
+  static void somethingNotSetUpYetStaysWhereItIs() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = generated();
+      // An elective in Group A's Monday Lunch, as an import could have left it.
+      ScheduleDays.DayGrid monday = ScheduleDays.read(draftId)[0];
+      monday.grid.items.add(new ScheduleGrid.Item('E', '', 'Chugim'));
+      monday.grid.rows[0][GeneratedTestData.LUNCH] = String.valueOf(
+        monday.grid.items.size()
+      );
+      ScheduleDaySaves.write(
+        draftId,
+        new List<ScheduleDaySaves.DaySave>{
+          new ScheduleDaySaves.DaySave(monday.day, monday.grid, monday.revision)
+        }
+      );
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
+      GeneratedWeek.Save cleared = request(read, GeneratedSaves.TRY_ANOTHER);
+      GeneratedTestData.setCell(cleared.days[0], lunchA, '');
+      GeneratedWeek.Save replaced = request(read, GeneratedSaves.TRY_ANOTHER);
+      GeneratedTestData.put(replaced.days[0], lunchA, 'Soccer');
+      for (
+        GeneratedWeek.Save refused : new List<GeneratedWeek.Save>{
+          cleared,
+          replaced
+        }
+      ) {
+        Assert.areEqual(
+          'Chugim stays where it is.',
+          GeneratedTestData.refusal(refused)
+        );
+      }
+      Test.stopTest();
+      Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
     }
   }
 
@@ -295,6 +443,10 @@ private class GeneratedRefusalsTest {
         ids.get('Week 1'),
         'Imported from last-summer.xlsx (made up)'
       );
+      Program__c evenings = ShoreshTestData.program(
+        ids.get('Season'),
+        'Evenings'
+      );
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       GeneratedWeek.Save onVersion = request(read, GeneratedSaves.REBUILD);
@@ -310,6 +462,10 @@ private class GeneratedRefusalsTest {
       GeneratedWeek.Save otherWeek = request(read, GeneratedSaves.REBUILD);
       otherWeek.weekId = ids.get('Week 2');
       Assert.areEqual(notHere, GeneratedTestData.refusal(otherWeek));
+      // Another program of the season, naming Main's draft.
+      GeneratedWeek.Save otherProgram = request(read, GeneratedSaves.REBUILD);
+      otherProgram.programId = evenings.Id;
+      Assert.areEqual(notHere, GeneratedTestData.refusal(otherProgram));
       Test.stopTest();
       Assert.areEqual(read.revision, GeneratedTestData.inputs().revision);
       // Only the imported version: nothing was kept before a refused Rebuild.
@@ -334,12 +490,23 @@ private class GeneratedRefusalsTest {
       noDays.days = null;
       GeneratedWeek.Save noBlocks = request(read, GeneratedSaves.TRY_ANOTHER);
       noBlocks.days[0].blockIds = null;
+      GeneratedWeek.Save noGroups = request(read, GeneratedSaves.TRY_ANOTHER);
+      noGroups.days[1].groupIds = null;
+      // A first save names no revision: there was nothing to have read.
+      GeneratedWeek.Save firstWithRevision = request(
+        read,
+        GeneratedSaves.GENERATE
+      );
+      firstWithRevision.scheduleId = null;
       for (
         GeneratedWeek.Save refused : new List<GeneratedWeek.Save>{
           generateAgain,
           rebuildNothing,
           unknownAction,
-          noDays
+          noDays,
+          noBlocks,
+          noGroups,
+          firstWithRevision
         }
       ) {
         Assert.areEqual(

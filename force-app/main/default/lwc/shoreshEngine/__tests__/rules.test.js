@@ -1139,13 +1139,18 @@ describe("Try another", () => {
       "0x10",
       " 2",
       "2.0",
-      Infinity
+      Infinity,
+      // A schedule stores four digits (EngineOption__c): an option it couldn't save isn't built.
+      10000,
+      "10000"
     ]) {
       expect(generateWeek({ ...camp(spec), option })).toEqual({
         ok: false,
         error: "That option can't be built."
       });
     }
+    expect(generateWeek({ ...camp(spec), option: 9999 }).ok).toBe(true);
+    expect(generateWeek({ ...camp(spec), option: "9999" }).ok).toBe(true);
     const first = generateWeek({ ...camp(spec), option: undefined });
     expect(first).toEqual(generateWeek(camp({ ...spec, option: 1 })));
   });

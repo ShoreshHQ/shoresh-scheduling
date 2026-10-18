@@ -17,6 +17,9 @@ private class GeneratedScheduleTest {
       Test.stopTest();
 
       Assert.isNull(read.scheduleId);
+      // The server's own Ids: the engine compares them exactly and seeds with them.
+      Assert.areEqual(ids.get('Main'), read.programId);
+      Assert.areEqual(ids.get('Week 1'), read.weekId);
       Assert.areEqual('', read.revision);
       Assert.isNull(read.option);
       // Main runs Monday to Thursday; Flagpole for everyone in Period 1, Rest for the Seniors
@@ -29,8 +32,53 @@ private class GeneratedScheduleTest {
       Assert.areEqual(ids.get('Flagpole'), monday.items[0].id);
       Assert.areEqual('1,,', monday.rows[GeneratedTestData.GROUP_A]);
       Assert.areEqual('1,,2', monday.rows[GeneratedTestData.GROUP_C]);
+      Assert.isTrue(read.notPlaced.isEmpty());
       // Reading saves nothing.
       Assert.areEqual(0, [SELECT COUNT() FROM Schedule__c WITH SYSTEM_MODE]);
+    }
+  }
+
+  @IsTest
+  static void aGroupAwayThatWeekIsNotSentToTheEngine() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Test.startTest();
+      // Group A is away in Week 3: the engine keeps a row of a group it isn't sent as it is.
+      GeneratedInputs.Inputs read = GeneratedScheduleController.getInputs(
+        ids.get('Main'),
+        ids.get('Week 3')
+      );
+      Test.stopTest();
+      Assert.areEqual(2, read.groups.size());
+      Assert.areEqual(ids.get('Group B'), read.groups[0].Id);
+      Assert.areEqual(2, read.days[0].groups.size());
+    }
+  }
+
+  @IsTest
+  static void aFixedActivityWhoseSlotIsTakenIsListedAsNotPlaced() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // Saved around the clash check (as only a save that skips it could): two fixed
+      // activities in Period 1.
+      SetTimeGuard.defer();
+      try {
+        Database.insert(
+          SetTimeTestData.fixed(ids, 'Assembly', 'Period 1'),
+          AccessLevel.SYSTEM_MODE
+        );
+      } finally {
+        SetTimeGuard.resume();
+      }
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      // One of the two for each group on each of the four days.
+      Assert.areEqual(12, read.notPlaced.size());
+      Assert.isTrue(
+        read.notPlaced[0].endsWith(' · Group A · Monday'),
+        read.notPlaced[0]
+      );
     }
   }
 
@@ -70,7 +118,19 @@ private class GeneratedScheduleTest {
       Assert.areEqual(1, swim.GroupsAtOnce__c);
       Assert.areEqual(2, swim.TimesPerWeekMax__c);
       Assert.areEqual(ids.get('Pool'), swim.Location__c);
-      Assert.isFalse(read.eligibilities.isEmpty());
+      // Who each is set up for: Swim for Group A, Gym games for the Juniors.
+      Set<String> who = new Set<String>();
+      for (ActivityEligibility__c row : read.eligibilities) {
+        who.add(row.Activity__c + '|' + row.Group__c + '|' + row.Division__c);
+      }
+      Assert.isTrue(
+        who.contains(ids.get('Swim') + '|' + ids.get('Group A') + '|null'),
+        String.valueOf(who)
+      );
+      Assert.isTrue(
+        who.contains(ids.get('Gym games') + '|null|' + ids.get('Juniors')),
+        String.valueOf(who)
+      );
       // Every place of the season, with how many groups fit.
       Map<Id, Location__c> places = new Map<Id, Location__c>(read.locations);
       Assert.areEqual(4, places.size());
@@ -78,6 +138,9 @@ private class GeneratedScheduleTest {
       Assert.areEqual(1, places.get(ids.get('Pool')).GroupsThatFit__c);
       Assert.areEqual(3, read.groups.size());
       Assert.areEqual('AllDay', read.groups[0].Availability__c);
+      Assert.areEqual(ids.get('Juniors'), read.groups[0].Division__c);
+      Assert.isNotNull(read.groups[0].SortOrder__c);
+      Assert.isNotNull(read.timeBlocks[0].SortOrder__c);
       Assert.areEqual(3, read.timeBlocks.size());
       Assert.areEqual(
         'Afternoon',
@@ -85,9 +148,49 @@ private class GeneratedScheduleTest {
       );
       Assert.areEqual(ids.get('Flagpole'), read.fixedActivities[0].Id);
       Assert.areEqual(ids.get('Rest'), read.recurringActivities[0].Id);
+      Assert.isNull(read.recurringActivities[0].Location__c);
       // Only this week's exceptions.
       Assert.areEqual(1, read.weekExceptions.size());
       Assert.areEqual(ids.get('Soccer'), read.weekExceptions[0].Activity__c);
+    }
+  }
+
+  @IsTest
+  static void everyRuleFieldTheEngineReadsIsSent() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // An activity with every rule the engine reads set away from the hand-add values.
+      Activity__c hike = ShoreshTestData.activity(
+        ids.get('Season'),
+        'Hike',
+        ids.get('Field A')
+      );
+      hike.Priority__c = 'High';
+      hike.NoWeeklyMax__c = true;
+      hike.TimesPerWeekMax__c = null;
+      hike.NoGroupLimit__c = true;
+      hike.GroupsAtOnce__c = null;
+      hike.SameDivisionOnly__c = true;
+      hike.EarlyWeekCount__c = 1;
+      hike.EarlyWeekByDay__c = 'Wednesday';
+      hike.Length__c = 2;
+      hike.TimesPerWeekMin__c = 3;
+      hike.SortOrder__c = 7;
+      Database.insert(hike, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Activity__c readHike = new Map<Id, Activity__c>(read.activities)
+        .get(hike.Id);
+      Assert.areEqual('High', readHike.Priority__c);
+      Assert.isTrue(readHike.NoWeeklyMax__c);
+      Assert.isTrue(readHike.NoGroupLimit__c);
+      Assert.isTrue(readHike.SameDivisionOnly__c);
+      Assert.areEqual(1, readHike.EarlyWeekCount__c);
+      Assert.areEqual('Wednesday', readHike.EarlyWeekByDay__c);
+      Assert.areEqual(2, readHike.Length__c);
+      Assert.areEqual(3, readHike.TimesPerWeekMin__c);
+      Assert.areEqual(7, readHike.SortOrder__c);
     }
   }
 
@@ -251,7 +354,8 @@ private class GeneratedScheduleTest {
         ]
       );
       Assert.areEqual(tried.revision, GeneratedTestData.inputs().revision);
-      Assert.areEqual(0, GeneratedTestData.versions());
+      // Only theirs kept a version (Before Try another); the refused one kept none.
+      Assert.areEqual(1, GeneratedTestData.versions());
     }
   }
 
@@ -310,8 +414,9 @@ private class GeneratedScheduleTest {
       );
       Test.stopTest();
 
-      // Try another and Fill the open cells keep no version.
-      Assert.isNull(tried.versionId);
+      // Rebuild, Try another and Start over replace the week, so each keeps it first (Try
+      // another as on the desktop); Fill the open cells only adds.
+      Assert.isNotNull(tried.versionId);
       Assert.isNull(filledOpen.versionId);
       Assert.isNotNull(rebuilt.versionId);
       Assert.isNotNull(startedOver.versionId);
@@ -352,6 +457,16 @@ private class GeneratedScheduleTest {
         WHERE Id = :startedOver.versionId
         WITH SYSTEM_MODE
       ];
+      Assert.areEqual(
+        'Before Try another',
+        [
+          SELECT Name
+          FROM Schedule__c
+          WHERE Id = :tried.versionId
+          WITH SYSTEM_MODE
+        ]
+        .Name
+      );
       Assert.areEqual('Before Start over', beforeStartOver.Name);
       Assert.areEqual(5, beforeStartOver.EngineOption__c);
       Assert.areEqual(
@@ -372,7 +487,7 @@ private class GeneratedScheduleTest {
         ]
       );
       Assert.areEqual(
-        2,
+        3,
         SchedulesController.getVersions(ids.get('Main'), ids.get('Week 1'))
           .size()
       );

@@ -39,8 +39,9 @@ export async function loadWeek(programId, weekId) {
     option: r.option || 1,
     notPlaced: r.notPlaced || [],
     input: {
-      programId,
-      weekId,
+      // The server's own Ids (18 characters): the engine compares them exactly and seeds with them.
+      programId: r.programId || programId,
+      weekId: r.weekId || weekId,
       days: r.days || [],
       groups: r.groups || [],
       timeBlocks: r.timeBlocks || [],

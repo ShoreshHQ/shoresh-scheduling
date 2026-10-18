@@ -1,20 +1,29 @@
 /**
  * What the server checks when a generated week is saved (GeneratedSaves). The engine runs in the
- * browser (ADR 0010), so the server re-checks what it cheaply can and refuses an impossible write:
- * fixed and recurring activities stay where they are; nothing is put where a group isn't at camp
- * (a leftover there may be cleared); only this season's activities are placed; something not set
- * up yet is kept, never newly placed. Rule bends (over a weekly limit and the rest) are allowed:
- * the engine marks them. The checks are Manual Build's own (SlotRules), on the cells that
- * changed. Fill the open cells changes only cells that were Open. That the days are the draft's
- * own is GeneratedFrames. Reads in user mode.
+ * browser (ADR 0010), so the server re-checks what it cheaply can and refuses an impossible write,
+ * on the cells that changed:
+ * - fixed and recurring activities stay where they are (Manual Build's SlotRules);
+ * - nothing is put where a group isn't at camp (SlotRules: part of day; GeneratedClosures: away
+ *   this week); a leftover there may be cleared;
+ * - only this season's activities, and none closed this week (GeneratedClosures);
+ * - something not set up yet (an elective, a trip) stays where it is, and is never newly placed;
+ * - Fill the open cells changes only cells that were Open.
+ * Rule bends (over a weekly limit and the rest) are allowed: the engine marks them. That the days
+ * are the draft's own is GeneratedFrames; the grids themselves, GeneratedGrids. Reads in user mode.
  */
 public with sharing class GeneratedChecks {
   private SlotRules rules;
+  private GeneratedClosures closures;
   // Fill the open cells: every filled cell stays as it is.
   private Boolean onlyOpen;
 
-  private GeneratedChecks(SlotRules rules, Boolean onlyOpen) {
+  private GeneratedChecks(
+    SlotRules rules,
+    GeneratedClosures closures,
+    Boolean onlyOpen
+  ) {
     this.rules = rules;
+    this.closures = closures;
     this.onlyOpen = onlyOpen;
   }
 
@@ -30,11 +39,12 @@ public with sharing class GeneratedChecks {
     Map<Date, GeneratedWeek.Day> byDate = GeneratedFrames.byDate(request.days);
     GeneratedChecks checks = new GeneratedChecks(
       new SlotRules(program, activityIds(request.days)),
+      new GeneratedClosures(request.weekId),
       request.action == GeneratedSaves.FILL_OPEN
     );
     List<ScheduleGrid> grids = new List<ScheduleGrid>();
     for (ScheduleDays.DayGrid day : days) {
-      ScheduleGrid now = built(day.grid, byDate.get(day.day));
+      ScheduleGrid now = GeneratedGrids.of(day.grid, byDate.get(day.day));
       checks.name(day.grid, now);
       for (Integer g = 0; g < now.groups.size(); g++) {
         checks.checkRow(SlotIds.ofRow(day.grid, g), now, g);
@@ -47,7 +57,7 @@ public with sharing class GeneratedChecks {
   private static Set<Id> activityIds(List<GeneratedWeek.Day> sent) {
     Set<Id> result = new Set<Id>();
     for (GeneratedWeek.Day day : sent) {
-      for (GeneratedWeek.Item item : items(day)) {
+      for (GeneratedWeek.Item item : GeneratedGrids.items(day)) {
         if (item?.kind == 'A') {
           result.add(SlotIds.activityIn('A:' + item.id));
         }
@@ -55,41 +65,6 @@ public with sharing class GeneratedChecks {
     }
     result.remove(null);
     return result;
-  }
-
-  private static List<GeneratedWeek.Item> items(GeneratedWeek.Day day) {
-    return day.items == null ? new List<GeneratedWeek.Item>() : day.items;
-  }
-
-  /** The day's frame (time blocks and groups as saved) with the items and rows sent. */
-  private static ScheduleGrid built(
-    ScheduleGrid before,
-    GeneratedWeek.Day sent
-  ) {
-    ScheduleGrid grid = new ScheduleGrid();
-    grid.blocks = before.blocks;
-    grid.groups = before.groups;
-    for (GeneratedWeek.Item item : items(sent)) {
-      if (item == null) {
-        throw GeneratedFrames.unreadable();
-      }
-      grid.items.add(new ScheduleGrid.Item(item.kind, item.id, item.name));
-    }
-    for (String row : sent.rows == null ? new List<String>() : sent.rows) {
-      grid.rows.add((row ?? '').split(',', -1));
-    }
-    try {
-      ScheduleGridRules.check(grid);
-    } catch (ScheduleGridRules.GridException e) {
-      throw new ShoreshException(
-        'That change could not be read: ' +
-          e.getMessage() +
-          '. Reload the page and try again.'
-      );
-    }
-    GeneratedFrames.tidy(grid);
-    grid.dropUnusedItems();
-    return grid;
   }
 
   /**
@@ -131,15 +106,26 @@ public with sharing class GeneratedChecks {
     if (onlyOpen && was != SlotIds.OPEN) {
       throw GeneratedFrames.unreadable();
     }
+    checkNotSetUpKept(was);
     rules.checkNotSetTime(was, slot);
     rules.checkAtCamp(slot, at[0], at[1]);
     if (slot == SlotIds.OPEN) {
       return;
     }
-    // Something not set up yet (an elective, a trip) can be kept, never newly placed.
+    // Something not set up yet is never newly placed.
     if (!SlotIds.owner(slot).startsWith('A:')) {
       throw GeneratedFrames.unreadable();
     }
-    rules.seasonActivity(slot);
+    closures.check(at[0], rules.seasonActivity(slot));
+  }
+
+  /** An elective, trip, special day or event from an import stays where it is (ADR 0010 §3). */
+  private static void checkNotSetUpKept(String was) {
+    String kind = SlotIds.owner(was).substringBefore(':');
+    if (ScheduleGridRules.NOT_SET_UP_KINDS.contains(kind)) {
+      throw new ShoreshException(
+        SlotIds.owner(was).substringAfter(':') + ' stays where it is.'
+      );
+    }
   }
 }

@@ -768,19 +768,32 @@ export default class ShoreshCampSetup extends LightningElement {
       (s) => s[S.Week] === recordId || s[S.Program] === recordId
     );
     const versions = mine.filter((s) => s[S.Status] === "Version").length;
-    const builds = mine.filter(
-      (s) => s[S.Status] === "Draft" && s[S.Origin] === "Manual"
-    ).length;
+    const drafts = (origin) =>
+      mine.filter((s) => s[S.Status] === "Draft" && s[S.Origin] === origin)
+        .length;
+    const builds = drafts("Manual");
+    const generated = drafts("Generated");
     const t = this.terms;
     const parts = [];
     if (builds) {
       parts.push(builds === 1 ? "its Manual Build" : `${builds} Manual Builds`);
     }
+    if (generated) {
+      parts.push(
+        generated === 1
+          ? "its Generated Schedule"
+          : `${generated} Generated Schedules`
+      );
+    }
     if (versions) {
       const word = versions === 1 ? t.sIn("Version") : t.pIn("Version");
       parts.push(`${versions} saved ${word}`);
     }
-    return parts.length ? ` That includes ${parts.join(" and ")}.` : "";
+    if (!parts.length) {
+      return "";
+    }
+    const last = parts.pop();
+    return ` That includes ${parts.length ? `${parts.join(", ")} and ` : ""}${last}.`;
   }
 
   async handleDeleteRecord(event) {

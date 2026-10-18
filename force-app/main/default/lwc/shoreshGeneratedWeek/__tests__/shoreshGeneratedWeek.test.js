@@ -53,12 +53,17 @@ const DAY = {
   rows: ["1,", "1,"]
 };
 
+const PROGRAM = "a0P000000000001AAA";
+const WEEK = "a0K000000000001AAA";
+
 const SERVER_INPUTS = {
+  programId: PROGRAM,
+  weekId: WEEK,
   scheduleId: null,
   revision: "",
   option: null,
   days: [DAY],
-  notPlaced: [],
+  notPlaced: ["Rest · Bunk 2 · Monday"],
   groups: [
     {
       Id: "a0G000000000001AAA",
@@ -96,7 +101,13 @@ const SERVER_INPUTS = {
   fixedActivities: [
     { Id: "a0F000000000001AAA", Name: "Flagpole", Location__c: null }
   ],
-  recurringActivities: [],
+  recurringActivities: [
+    {
+      Id: "a0R000000000001AAA",
+      Name: "Rest",
+      Location__c: "a0L000000000001AAA"
+    }
+  ],
   weekExceptions: [
     {
       Id: "a0W000000000001AAA",
@@ -106,20 +117,22 @@ const SERVER_INPUTS = {
   ]
 };
 
-const PROGRAM = "a0P000000000001AAA";
-const WEEK = "a0K000000000001AAA";
-
 describe("c/shoreshGeneratedWeek", () => {
   afterEach(() => jest.clearAllMocks());
 
   it("loads a week not generated yet as the engine's input, records as the server sends them", async () => {
     getInputs.mockResolvedValue(nsRecord(SERVER_INPUTS));
-    const loaded = await loadWeek(PROGRAM, WEEK);
+    // The screen may hold 15-character Ids; the engine gets the server's own.
+    const loaded = await loadWeek(PROGRAM.slice(0, 15), WEEK.slice(0, 15));
 
     expect(getInputs).toHaveBeenCalledWith({
-      programId: PROGRAM,
-      weekId: WEEK
+      programId: PROGRAM.slice(0, 15),
+      weekId: WEEK.slice(0, 15)
     });
+    expect(loaded.notPlaced).toEqual(["Rest · Bunk 2 · Monday"]);
+    expect(
+      loaded.input.recurringActivities[0][FIELD.RecurringActivity.Location]
+    ).toBe("a0L000000000001AAA");
     expect(loaded.scheduleId).toBeNull();
     expect(loaded.revision).toBe("");
     expect(loaded.option).toBe(1);

@@ -9,6 +9,12 @@
  */
 public with sharing class GeneratedInputs {
   public class Inputs {
+    // The program and week as the server has them (18-character Ids): the engine compares them
+    // exactly, and they make its seed.
+    @AuraEnabled
+    public Id programId;
+    @AuraEnabled
+    public Id weekId;
     // The Generated draft, or null when the week has not been generated yet.
     @AuraEnabled
     public Id scheduleId;
@@ -48,6 +54,8 @@ public with sharing class GeneratedInputs {
     Program__c program = ProgramReads.programOf(programId);
     Week__c week = ProgramReads.weekOf(weekId, program);
     Inputs inputs = new Inputs();
+    inputs.programId = program.Id;
+    inputs.weekId = week.Id;
     Schedule__c draft = GeneratedDrafts.find(programId, weekId);
     if (draft == null) {
       BlankWeek.Week blank = BlankWeek.build(programId, weekId);
@@ -62,7 +70,9 @@ public with sharing class GeneratedInputs {
         : draft.EngineOption__c.intValue();
       inputs.days = ScheduleViews.dayViews(days);
     }
-    inputs.groups = ProgramReads.groupsOf(programId);
+    // Groups away this week are left out, so the engine leaves their rows as they are (a row of a
+    // group it isn't sent is kept); GeneratedClosures refuses anything new there on save.
+    inputs.groups = ProgramReads.groupsAtCamp(programId, week.Id);
     inputs.timeBlocks = ProgramReads.blocksOf(programId);
     readSeason(inputs, program.Season__c);
     readSetTime(inputs, programId, week.Id);
