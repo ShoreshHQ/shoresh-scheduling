@@ -521,9 +521,11 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     // Someone sets Swim to once a week elsewhere; the week is read again (the window gets focus).
     getDraft.mockResolvedValue({
       ...start,
-      activityRecords: SETUP.activities.map((a) => {
-        return a.Id === "a1" ? { ...a, TimesPerWeekMax__c: 1 } : a;
-      }),
+      activityRecords: nsRecord(
+        SETUP.activities.map((a) => {
+          return a.Id === "a1" ? { ...a, TimesPerWeekMax__c: 1 } : a;
+        })
+      ),
       locationRecords: []
     });
     window.dispatchEvent(new CustomEvent("focus"));
