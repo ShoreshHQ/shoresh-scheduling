@@ -234,7 +234,16 @@
           <div class="legend">
             <template for:each={legend} for:item="entry">
               <span key={entry.key} class="legend-entry">
-                <span class={entry.className}></span>
+                <template lwc:if={entry.icon}>
+                  <lightning-icon
+                    class="legend-icon"
+                    icon-name={entry.icon}
+                    size="xx-small"
+                  ></lightning-icon>
+                </template>
+                <template lwc:else>
+                  <span class={entry.className}></span>
+                </template>
                 {entry.label}
               </span>
             </template>

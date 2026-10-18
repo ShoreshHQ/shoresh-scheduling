@@ -775,7 +775,8 @@ doesn't change this one.
    every cell where a bunk is at camp holds an activity. Lunch, Morning meeting and Library time
    are where setup puts them, and cells where a bunk isn't at camp are hatched, as in Manual Build.
 4. **The toolbar** now has **Rebuild**, **Fill the open cells**, **Try another**, an **Option**
-   picker showing 1, and on the right **Start over**.
+   picker showing 1, **Lock**, and on the right **Start over**. Below it, as in Manual Build: the
+   three views, **Undo** and **Redo**, and the activity list on the left of the grid.
 5. **The dots.** A cell that had to bend a rule (Shoresh never leaves a cell empty when something
    can go there) has the small bronze dot. Hold the pointer on it, or tap it, to see which rule,
    for example _Over its weekly limit_ or _Twice in a day_. If no cell has a dot, every rule was
@@ -831,10 +832,22 @@ doesn't change this one.
 15. **Keep a cell empty.** Reach an Open cell (after Start over, any) and choose _Lock …_ on it:
     it no longer says _Open_ (it shows only its lock: kept empty on purpose), it stays empty
     through every build, **Open** no longer counts it, and **Filled**'s total drops by one.
-16. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). That comes
-    with the editor Manual Build shares, and a hand edit will lock the cell it changes. Use
-    Manual Build for a week built by hand.
-17. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
+16. **Change a cell by hand.** Everything from sections 19 and 20 works here too: double-click
+    a cell (or Enter) and type a name, drag an activity from the list or from another cell,
+    Delete to clear, Shift with the arrows for length, Undo and Redo. Each change saves at once,
+    and the cell you changed gets the lock straight away (a cell you clear gets none: Rebuild
+    may fill it again). Click **Rebuild** → **Rebuild it**: your changed cells stay, the rest is
+    built again. After a build, **Undo** starts over (greyed out).
+17. **A locked cell.** Double-click a locked cell, or reach it and press Enter: nothing opens and
+    nothing unlocks. The line under the toolbar says _Bunk 1 · Monday · Period 2 is locked.
+    Unlock it from the Lock menu to change it._, and the **Lock** menu now offers _Unlock Bunk 1
+    · Monday · Period 2_. Choose it, then type into the cell as usual.
+18. **A new activity.** Double-click an Open cell, type a name the camp doesn't have (_Archery_),
+    and choose _Add "Archery" to activities_: it goes in the cell, and it is on the
+    **Activities** screen with the usual starting values.
+19. **While a change saves**, Rebuild, Try another, Lock and the pickers are greyed out for a
+    moment; they come back on their own.
+20. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
     version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
     **Versions**). Fill the open cells keeps none: it only adds.
 
@@ -892,8 +905,7 @@ This uses the made-up camp's Week 1 from sections 19 to 22.
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: changing cells by hand (next part), Versions on that screen, and
-  publishing. In Manual Build: publishing.
+- Generated Schedule: Versions on that screen, and publishing. In Manual Build: publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

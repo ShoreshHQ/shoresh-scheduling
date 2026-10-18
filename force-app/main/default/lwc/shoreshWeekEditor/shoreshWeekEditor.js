@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
+import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
@@ -84,6 +84,12 @@ function slotKey(slot) {
  * - "cellfocus" says which cell keyboard focus reached; "saved" says each save's answer (the
  *   host shows the schedule it carries, never a patched copy); "editstate" says whether edits are
  *   saving (busy) or waiting (queueEmpty), so a host can hold a Rebuild.
+ * - checkWith(days, locks): the host's own check of the week (Generated's engine check, with its
+ *   locks), used instead of the editor's: its flags draw the dots, and openReasons (cell key to
+ *   words) a dot on an Open cell. The editor only draws what it is given.
+ * - lit: the cells ("date|groupId|blockId") the host's counters light up.
+ * - addActivityWith({ scheduleId, name }): how "Add <name> to activities" adds on the host's draft
+ *   (Manual Build's draft when left out).
  */
 // How often an edit is sent again, with nothing new to ask, before it is given up.
 const MAX_RESENDS = 2;
@@ -102,6 +108,13 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api restoring = false;
   // Pass false (a host that owns its toolbar, Generated Schedule): no tools slot.
   @api tools;
+  // The host's check of the week: (days, locks) => checkWeek's answer, plus openReasons. Left out,
+  // the editor checks the week itself (Manual Build).
+  @api checkWith;
+  // Cells the host's counters light up ("date|groupId|blockId"), or nothing.
+  @api lit;
+  // Adds an activity on the host's draft: ({ scheduleId, name }) => the activity as offered.
+  @api addActivityWith;
 
   // ManualBuildController's DraftView: { schedule, activities, away }, or null (not started).
   _draft = null;
@@ -354,6 +367,15 @@ export default class ShoreshWeekEditor extends LightningElement {
     return true;
   }
 
+  /** Puts keyboard focus on a cell of the grid on screen (its grid key; the first cell without one). */
+  @api
+  focusCell(key) {
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    if (grid) {
+      grid.focusCell(key);
+    }
+  }
+
   /** A line on the quiet line, said by screen readers once (the host's own news). */
   @api
   setNotice(text) {
@@ -379,9 +401,25 @@ export default class ShoreshWeekEditor extends LightningElement {
     // Everything the checks read comes with the draft and is read again with the week (one
     // source): activities, places, the program's groups and divisions, where its fixed and
     // recurring activities are, the away blocks, and other programs at places and activities.
-    const inputs = [schedule, this.draft, this.t];
+    // A host's own check also reads the locks (the server's, with the edits waiting made).
+    const inputs = [
+      schedule,
+      this.draft,
+      this.t,
+      this.checkWith,
+      this.lockBase,
+      this._queue
+    ];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
+      return memo.result;
+    }
+    if (this.checkWith) {
+      memo.inputs = inputs;
+      memo.result = this.checkWith(
+        (schedule && schedule.days) || [],
+        this.liveLocks
+      );
       return memo.result;
     }
     const draft = this.draft || {};
@@ -580,7 +618,10 @@ export default class ShoreshWeekEditor extends LightningElement {
         ...cell,
         readOnly: this.lockedReason(cell.slot) !== null,
         movable: here.startsWith("A:"),
-        dot: this.dotFor(cell.slot) || null
+        dot:
+          this.dotFor(cell.slot) ||
+          (cell.open && this.openReasonFor(cell.slot)) ||
+          null
       };
       if (this.isLockedSlot(cell.slot, locks)) {
         result.locked = true;
@@ -614,7 +655,41 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (cell.slot && saving.has(slotKey(cell.slot))) {
       result = { ...result, className: `${result.className} cell_saving` };
     }
+    if (cell.slot && this.isLitSlot(cell.slot)) {
+      result = { ...result, className: `${result.className} cell_lit` };
+    }
     return result;
+  }
+
+  /** Why an Open cell is Open, when the host's check says (its dot's words). */
+  openReasonFor(slot) {
+    const reasons = this.checked.openReasons;
+    if (!reasons) {
+      return null;
+    }
+    const day = this.dayOf(slot);
+    return (
+      reasons.get(
+        lockKey(
+          day.dateValue,
+          day.groups[slot.group].id,
+          day.blocks[slot.block].id
+        )
+      ) || null
+    );
+  }
+
+  /** Whether the host's counters light up any block of the placement a slot is part of. */
+  isLitSlot(slot) {
+    if (!this.lit || !this.lit.size) {
+      return false;
+    }
+    const day = this.dayOf(slot);
+    const groupId = day.groups[slot.group].id;
+    const at = placement(day, slot.group, slot.block);
+    return day.blocks
+      .slice(at.first, at.first + at.length)
+      .some((block) => this.lit.has(lockKey(day.dateValue, groupId, block.id)));
   }
 
   /** The words of a placement's dot, if it has one (keyed by where it starts). */
@@ -688,7 +763,11 @@ export default class ShoreshWeekEditor extends LightningElement {
         label: "Open: nothing placed",
         className: "swatch swatch_open"
       },
-      { key: "away", label: "Not at camp", className: "swatch swatch_away" }
+      { key: "away", label: "Not at camp", className: "swatch swatch_away" },
+      // Only where cells can be locked (Generated Schedule).
+      ...(this.lockBase
+        ? [{ key: "locked", label: "Locked", icon: "utility:lock" }]
+        : [])
     ];
   }
 
@@ -1046,7 +1125,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     let activity = option.activity;
     if (option.kind === "add") {
       try {
-        activity = await addActivity({
+        const add = this.addActivityWith || addToManualBuild;
+        activity = await add({
           scheduleId: this.schedule.schedule.id,
           name: option.name
         });

@@ -25,20 +25,6 @@
         ></lightning-combobox>
       </template>
       <template lwc:if={showWeek}>
-        <div class="view-toggle" role="group" aria-label="View">
-          <template for:each={viewButtons} for:item="button">
-            <button
-              key={button.key}
-              type="button"
-              class={button.className}
-              aria-pressed={button.pressed}
-              data-view={button.key}
-              onclick={handleView}
-            >
-              {button.label}
-            </button>
-          </template>
-        </div>
         <div class="actions" role="group" aria-label="Build">
           <button
             type="button"
@@ -225,134 +211,29 @@
     </template>
 
     <template lwc:if={showWeek}>
-      <template lwc:if={isDaily}>
-        <div class="pills" data-id="day-pills">
-          <template for:each={dayPills} for:item="day">
-            <button
-              key={day.key}
-              type="button"
-              class={day.className}
-              aria-pressed={day.pressed}
-              data-index={day.index}
-              onclick={handleDay}
-            >
-              {day.label} <span class="pill-sub">{day.sub}</span>
-            </button>
-          </template>
-        </div>
-        <template lwc:if={dayProblem}>
-          <div
-            class="slds-notify slds-notify_alert slds-alert_warning"
-            role="alert"
-          >
-            {dayProblem}
-          </div>
-        </template>
-        <template lwc:elseif={grid}>
-          <c-shoresh-schedule-grid
-            data-id="grid"
-            grid={grid}
-            corner={corner}
-            label={dailyGridLabel}
-            editable
-            oncellfocus={handleCellFocus}
-          ></c-shoresh-schedule-grid>
-        </template>
-      </template>
-
-      <template lwc:if={isGroup}>
-        <div class="pills" data-id="group-pills">
-          <template for:each={groupPills} for:item="grp">
-            <button
-              key={grp.key}
-              type="button"
-              class={grp.className}
-              aria-pressed={grp.pressed}
-              data-key={grp.key}
-              onclick={handleGroup}
-            >
-              {grp.name}
-            </button>
-          </template>
-        </div>
-        <template lwc:if={grid}>
-          <c-shoresh-schedule-grid
-            data-id="grid"
-            grid={grid}
-            corner={corner}
-            label={groupGridLabel}
-            editable
-            oncellfocus={handleCellFocus}
-          ></c-shoresh-schedule-grid>
-        </template>
-      </template>
-
-      <template lwc:if={isActivity}>
-        <template lwc:if={selectedActivity}>
-          <div class="drill-head">
-            <button
-              type="button"
-              class="back"
-              onclick={handleAllActivities}
-              data-id="all-activities"
-            >
-              <span aria-hidden="true">← </span>{allActivitiesLabel}
-            </button>
-            <span class="drill-name">{selectedActivity.name}</span>
-            <template lwc:if={selectedActivity.location}>
-              <span class="drill-place">{selectedActivity.location}</span>
-            </template>
-          </div>
-          <c-shoresh-schedule-grid
-            data-id="activity-grid"
-            grid={activityGrid}
-            corner={corner}
-            label={selectedActivity.name}
-          ></c-shoresh-schedule-grid>
-        </template>
-        <template lwc:else>
-          <div class="cards" data-id="activity-cards">
-            <template for:each={activityCards} for:item="card">
-              <button
-                key={card.key}
-                type="button"
-                class="card"
-                data-key={card.key}
-                onclick={handleActivity}
-              >
-                <span class="card-name">{card.name}</span>
-                <template lwc:if={card.location}>
-                  <span class="card-place">{card.location}</span>
-                </template>
-                <template lwc:if={card.gone}>
-                  <span class="note">deleted since</span>
-                </template>
-                <span class="card-summary">{card.summary}</span>
-              </button>
-            </template>
-          </div>
-        </template>
-      </template>
-
-      <template lwc:if={showLegend}>
-        <div class="legend">
-          <template for:each={legend} for:item="entry">
-            <span key={entry.key} class="legend-entry">
-              <template lwc:if={entry.icon}>
-                <lightning-icon
-                  class="legend-icon"
-                  icon-name={entry.icon}
-                  size="xx-small"
-                ></lightning-icon>
-              </template>
-              <template lwc:else>
-                <span class={entry.className}></span>
-              </template>
-              {entry.label}
-            </span>
-          </template>
-        </div>
-      </template>
+      <!-- The week, drawn and edited by hand in the editor Manual Build uses (ADR 0010 §38). -->
+      <c-shoresh-week-editor
+        data-id="week-editor"
+        terms={terms}
+        setup={setup}
+        week-name={weekName}
+        program-name={programName}
+        save-runs={saveRuns}
+        restoring={editsWait}
+        tools={editorTools}
+        locks={editorLocks}
+        check-with={checkWith}
+        lit={lit}
+        add-activity-with={addActivityWith}
+        onstatechange={handleEditorState}
+        oneditstate={handleEditState}
+        onsaved={handleSaved}
+        onedited={handleEdited}
+        onerrorchange={handleEditorError}
+        onreload={handleEditorReload}
+        onunlockrequest={handleUnlockRequest}
+        oncellfocus={handleCellFocus}
+      ></c-shoresh-week-editor>
 
       <!-- The counts sit below the grid on the generated schedule (design guide). -->
       <div class="checks">

@@ -778,9 +778,8 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
       Manual Build's chain: not beside _No weeks yet_, a load error, a conflict, or _Week 1 has
       no days Main runs._;
     - **hand editing** (place, move, swap, clear, length, typing, undo with `locksAfter`) comes
-      with the shared week editor `c-shoresh-week-editor`, which Manual Build's session extracts
-      from Manual Build after its part 4b (coordinator, 2026-10-18: one editor, no fork). Until
-      then the Generated grid stays read-only, its cells reachable from the keyboard.
+      with the shared week editor `c-shoresh-week-editor` (coordinator, 2026-10-18: one editor,
+      no fork); see §38.
 
     Different from the desktop (`SlotCell.jsx`, `preplacedSlots.js`): there, a lock belongs to
     an activity (`is_locked`, set by nothing on screen), a locked cell has a bronze bar and no
@@ -811,6 +810,65 @@ keeps the locked cell in eight options (a run without them moves it), and a cell
 not counted as to fill; `saveEdits` naming the locks seen by day, group and block, and the week
 to go on with (also when someone else saved, with no revision); `setLocks` saved, conflict and
 refused; `saveWeek`'s locks after a save (none after Start over); `inputFor`.
+
+## Choices (hand editing in the week)
+
+38. **The week is drawn and edited in the shared week editor** (`c-shoresh-week-editor`, ADR
+    0008 "The week editor"), the same as Manual Build's: the activity list, typing a name, drag
+    and drop, Space to pick up, Shift+Up/Down for length, Undo and Redo, _Keep theirs / Use
+    yours_. The screen keeps its own toolbar (pickers, Rebuild, Fill the open cells, Try another,
+    Option, Lock, Start over; the editor's tools slot is left out, `tools` false), its counters
+    below the grid, its confirms and its conflict box. What it hands the editor:
+    - **its saver**: each hand edit goes through `saveEdits` (`GeneratedScheduleController.
+saveSlots`, §33), so every cell it changes is locked (decision 2). A run keeps the locks the
+      editor names as seen when the director made it (`locksBefore`; the data module fills them
+      in only for a run that names none). After each save the screen goes on with the week the
+      server sent (`saved`; days, locks and revision replaced together, never patched), so a
+      Rebuild after a hand edit builds on it;
+    - **its locks** (`locks`, the cells as "date|groupId|blockId"), the lock icon and _Locked_ /
+      _Locked empty_ as before (§37), and the legend's _Locked_;
+    - **its checks**: the editor's dots, counts and the _Open_ reasons are this screen's engine
+      check (`checkWith(days, locks)`, `checkGeneratedWeek` with the locks on screen), worked
+      out again as each edit is shown, so a dot follows an edit at once; the counters' lit cells
+      (`lit`);
+    - **the activities it offers** from the week's inputs (`editing.js` `activityOptions`: who
+      each is set up for, its length and weekly targets) and the blocks each bunk isn't at camp
+      for (`awayRows`, from the check's `isAway`).
+39. **Builds, Lock and the pickers wait while a hand edit saves** (the editor's `editstate`), and
+    edits wait while a build or a Lock is saved (the editor's "One moment" line). Coming back to
+    the window reads the week again only when the editor is settled (nothing saving, no typing
+    box, no question); the season read again while an edit saves reads the week once it is
+    saved. A read already on its way when a hand edit is made is set aside (`edited`). After a
+    build (Generate, Rebuild, Try another, Fill the open cells, Start over) Undo starts over: its
+    steps were made on the week the build replaced. A Lock or Unlock keeps Undo.
+40. **A locked cell asks for its Unlock, it doesn't unlock** (§37: nothing unlocks without the
+    director choosing Unlock). Enter or a click on a locked cell (the editor's `unlockrequest`)
+    makes the Lock menu offer that cell (_Unlock Bunk 3 · Monday · Period 2_), keeps focus on
+    the cell, and says _Bunk 3 · Monday · Period 2 is locked. Unlock it from the Lock menu to
+    change it._ The Lock menu's cell is the one keyboard focus last reached in the editor
+    (`cellfocus`). A hand edit that meets a lock someone made meanwhile ends in "<cell> is
+    locked." (coordinator call, ADR 0008), with no _keep theirs / use yours_ question.
+41. **"Add <name> to activities" works here too**, as on the desktop's generated schedule:
+    `GeneratedScheduleController.addActivity` → `ManualBuildActivities.addOnGenerated`, the same
+    as Manual Build's add (the season locked first, then the draft; a name the season has gives
+    that activity) on the Generated draft only (`GeneratedDrafts.lockedToEdit`: never a version,
+    a published schedule or Manual Build's draft). Its record joins the week's activities at once,
+    so the checks know it before the week is read again.
+
+## Tests (hand editing)
+
+`handEditing.test.js` drives the screen with the real editor: a hand edit through `saveSlots`
+naming the locks seen and shown locked at once; Rebuild after it building on the revision the
+hand edit returned; builds, Lock and the pickers held while it saves; locks and the legend; Enter
+on a locked cell offering its Unlock with focus kept; the cell reached offered by the Lock menu;
+an Unlock reaching the editor; the engine's Open reason drawn as a dot; a counter's lit cells; Add
+on the Generated draft (not Manual Build's) and known to the checks; a read on its way set aside;
+a refused hand edit said and the week read again; edits waiting during a Lock; the season read
+again after an edit saves. Each connection was taken away once and a test failed. `lockRule.
+test.js` and `GeneratedEditLocksTest` run the same cases (read from the Apex test) through the
+editor's lock rule and the server's, with the same answers. `GeneratedAddActivityTest` (as a
+scheduler): an add with hand-added values, the same name again, an existing name, within 15
+queries; refused from a version and from Manual Build's draft.
 
 ## Choices that are hard to undo after release
 

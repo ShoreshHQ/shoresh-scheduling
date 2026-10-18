@@ -1,12 +1,14 @@
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
+import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.addActivity";
 import { checkGeneratedWeek, generateWeek } from "c/shoreshEngine";
 import { nsRecord } from "shoresh-jest/namespace";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import {
   ACTION,
   CONFLICT,
+  addActivity,
   LOCK,
   REFUSED,
   SAVED,
@@ -35,6 +37,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/GeneratedScheduleController.setLocks",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/GeneratedScheduleController.addActivity",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -236,6 +243,39 @@ describe("c/shoreshGeneratedWeek locks", () => {
     ]);
     const sent = saveSlots.mock.calls[0][0].edits[0].runs[0];
     expect(sent.locksBefore).toEqual([""]);
+  });
+
+  it("keeps the locks a run already names (the week editor's, as the director saw them), and an Undo's locks to restore", async () => {
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      schedule: { days: [DAY] },
+      revision: "r"
+    });
+    // The loaded week has Bunk 1's Period 2 locked; the edit was made before that lock arrived.
+    const run = {
+      day: "2026-06-29",
+      groupId: G1,
+      blockIds: [B2],
+      locksBefore: [""],
+      locksAfter: ["1"]
+    };
+    await saveEdits(LOADED, [{ runs: [run] }]);
+    const sent = saveSlots.mock.calls[0][0].edits[0].runs[0];
+    expect(sent.locksBefore).toEqual([""]);
+    expect(sent.locksAfter).toEqual(["1"]);
+  });
+
+  it("adds an activity on the Generated draft through its own server call", async () => {
+    addActivityOnServer.mockResolvedValue({ id: SWIM, name: "Swim" });
+    const added = await addActivity({
+      scheduleId: "a0S000000000001AAA",
+      name: "Swim"
+    });
+    expect(addActivityOnServer).toHaveBeenCalledWith({
+      scheduleId: "a0S000000000001AAA",
+      name: "Swim"
+    });
+    expect(added.id).toBe(SWIM);
   });
 
   it("builds Start over without locks and every other build with them", () => {

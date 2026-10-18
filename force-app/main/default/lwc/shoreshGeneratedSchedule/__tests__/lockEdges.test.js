@@ -6,6 +6,7 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
+import { find, findAll } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import { buildTerms } from "c/shoreshTerms";
@@ -94,8 +95,8 @@ async function render(inputs, setup = SETUP) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
-const grid = (element) => q(element, '[data-id="grid"]');
+const q = (element, selector) => find(element, selector);
+const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cellAt = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);
 const menu = (element) => q(element, '[data-id="lock-menu"]');
@@ -250,9 +251,7 @@ describe("the Lock menu", () => {
     expect(offersCell()).toBe(false);
     await focusCell(element, "0-1");
     expect(offersCell()).toBe(true);
-    const pills = [
-      ...element.shadowRoot.querySelectorAll('[data-id="group-pills"] button')
-    ];
+    const pills = [...findAll(element, '[data-id="group-pills"] button')];
     pills[1].click();
     await flush();
     expect(offersCell()).toBe(false);

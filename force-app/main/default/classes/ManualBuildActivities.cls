@@ -1,12 +1,13 @@
 /**
- * "Add <name>" from a Manual Build slot (Greg, 2026-10-17): a new activity with the starting values
- * an activity added by hand gets on the Activities screen. A name the season already has (spaces
- * and capitals aside) gives that activity instead. Runs in user mode.
+ * "Add <name>" from a Manual Build slot (Greg, 2026-10-17), and from a Generated Schedule slot, as
+ * the desktop's generated schedule allows: a new activity with the starting values an activity
+ * added by hand gets on the Activities screen. A name the season already has (spaces and capitals
+ * aside) gives that activity instead. Runs in user mode.
  */
 public with sharing class ManualBuildActivities {
   private static final Integer NAME_LIMIT = 80;
 
-  /** The activity, as Manual Build offers it for the schedule's groups. */
+  /** The activity, as Manual Build offers it for the schedule's groups. From Manual Build's draft. */
   public static ManualBuildViews.ActivityOption add(
     Id scheduleId,
     String name
@@ -16,7 +17,28 @@ public with sharing class ManualBuildActivities {
     // new name at once (from any week or program of the season) get one activity, the second
     // finding the first one's.
     Id seasonId = lockedSeasonOf(scheduleId);
-    Schedule__c schedule = ManualDrafts.locked(scheduleId);
+    return addIn(seasonId, ManualDrafts.locked(scheduleId), trimmed);
+  }
+
+  /**
+   * The same from Generated Schedule's draft (GeneratedDrafts.lockedToEdit): a version, a
+   * published schedule or Manual Build's draft is refused there, as for its hand edits.
+   */
+  public static ManualBuildViews.ActivityOption addOnGenerated(
+    Id scheduleId,
+    String name
+  ) {
+    String trimmed = checkedName(name);
+    Id seasonId = lockedSeasonOf(scheduleId);
+    return addIn(seasonId, GeneratedDrafts.lockedToEdit(scheduleId), trimmed);
+  }
+
+  /** The activity named, made if the season has none by that name, for the schedule's groups. */
+  private static ManualBuildViews.ActivityOption addIn(
+    Id seasonId,
+    Schedule__c schedule,
+    String trimmed
+  ) {
     Id activityId = sameName(seasonId, trimmed);
     if (activityId == null) {
       activityId = create(seasonId, trimmed);

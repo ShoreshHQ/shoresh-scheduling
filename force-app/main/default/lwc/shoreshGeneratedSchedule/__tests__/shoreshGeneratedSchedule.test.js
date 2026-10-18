@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
+import { find, findAll } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import { buildTerms } from "c/shoreshTerms";
@@ -81,7 +82,7 @@ async function until(done, tries = 2000) {
   await until(done, tries - 1);
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const q = (element, selector) => find(element, selector);
 
 /** Until the screen has stopped building (the build runs in pieces, between timers). */
 const settle = (element) => until(() => !q(element, '[data-id="busy"]'));
@@ -114,11 +115,9 @@ async function built(inputs, extra) {
   return generateWeek({ ...loaded.input, terms, ...extra });
 }
 
-const qa = (element, selector) => [
-  ...element.shadowRoot.querySelectorAll(selector)
-];
+const qa = (element, selector) => findAll(element, selector);
 const action = (element, name) => q(element, `[data-action="${name}"]`);
-const grid = (element) => q(element, '[data-id="grid"]');
+const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cells = (element) => [
   ...grid(element).shadowRoot.querySelectorAll("[data-cell]")
 ];
@@ -627,7 +626,7 @@ describe("c-shoresh-generated-schedule", () => {
     const open = counter(element, "open");
     // Bunk 1's three periods on two days.
     expect(open.querySelector(".count").textContent).toBe("6");
-    q(element, '[data-id="grid"]');
+    q(element, '[data-id="edit-grid"]');
     open.click();
     await flush();
     const texts = [
@@ -752,16 +751,15 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-view="group"]').getAttribute("aria-pressed")).toBe(
       "true"
     );
-    // A still needed line names no cell: focus is on the bunk's pill, which says it is chosen.
-    const pill = element.shadowRoot.activeElement;
-    expect(pill.getAttribute("aria-pressed")).toBe("true");
-    expect(pill.closest('[data-id="group-pills"]')).not.toBeNull();
+    // A still needed line names no cell: focus goes to that bunk's week (a cell of its grid), as
+    // in Manual Build, never nowhere.
+    expect(grid(element).shadowRoot.activeElement).not.toBeNull();
     expect(
       cells(element).filter((c) => c.className.includes("cell_lit"))
     ).toHaveLength(0);
   });
 
-  it("cells can be reached from the keyboard but not changed (editing comes with locks)", async () => {
+  it("cells can be reached from the keyboard and changed by hand, never through a whole-week save", async () => {
     const element = await render();
     await generate(element);
     const frame = grid(element).shadowRoot.querySelector(
@@ -772,10 +770,15 @@ describe("c-shoresh-generated-schedule", () => {
     expect(all.filter((c) => c.getAttribute("tabindex") === "0")).toHaveLength(
       1
     );
-    all.forEach((c) => {
-      expect(c.getAttribute("aria-readonly")).toBe("true");
-      expect(c.getAttribute("draggable")).toBeNull();
-    });
+    // An activity can be changed by hand (the editor's grid); Flagpole stays where it is set up.
+    const swim = all.find(
+      (c) => c.querySelector(".cell-name").textContent === "Swim"
+    );
+    expect(swim.getAttribute("aria-readonly")).toBeNull();
+    const flagpole = all.find(
+      (c) => c.querySelector(".cell-name").textContent === "Flagpole"
+    );
+    expect(flagpole.getAttribute("aria-readonly")).toBe("true");
     const before = sent().days;
     all[1].dispatchEvent(
       new KeyboardEvent("keydown", { key: "Delete", bubbles: true })

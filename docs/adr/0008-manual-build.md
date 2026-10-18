@@ -598,8 +598,14 @@ Manual Build passes none of these and behaves as before.
   the step. No locks passed, no lock fields on the runs.
 - `tools`: passing false leaves out the host's `tools` slot only. "Add <name> to activities"
   stays, as on the desktop's generated schedule (review of #67; no decision from Greg to take it
-  away). Open point for when Generated is embedded: `ManualBuildActivities.add` works on a Manual
-  Build draft, so the host must give it a way to add on a Generated draft too.
+  away); `addActivityWith` is how a host adds on its own draft (Generated: ADR 0010 §41;
+  Manual Build's `ManualBuildController.addActivity` when left out).
+- `checkWith(days, locks)`: a host's own check of the week, used instead of the editor's
+  (Generated's engine check with the locks on screen): its flags draw the dots and its
+  `openReasons` a dot on an Open cell. `lit`: the cells the host's counters light up. The editor
+  only draws them. `focusCell(key)` puts focus on a grid cell for the host.
+- Generated Schedule doesn't unlock on `unlockrequest`: its Lock menu offers that cell's Unlock
+  (ADR 0010 §40).
 - `saved` {schedule, conflicts, label, kind} after each answered save (the host shows that
   schedule, never a patched copy), `editstate` {busy, queueEmpty}, and `cellfocus` {key, slot,
   cell} when keyboard focus reaches a cell.
