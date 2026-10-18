@@ -122,9 +122,13 @@ export default class ShoreshProgram extends LightningElement {
     return this.busy || !this.changed;
   }
 
+  /**
+   * As on Shoresh desktop: a blank name is saved as the time range ("9:00 AM – 9:45 AM"), and
+   * "From start time" saves the part of day the start falls in (TimeBlockTriggerHandler).
+   */
   get blockColumns() {
     return [
-      { fieldName: "Name", label: "Name", type: "text", required: true },
+      { fieldName: "Name", label: "Name", type: "text" },
       {
         fieldName: BLOCK.StartTime,
         label: "Start",
@@ -136,8 +140,8 @@ export default class ShoreshProgram extends LightningElement {
         fieldName: BLOCK.PartOfDay,
         label: "Part of day",
         type: "picklist",
-        required: true,
         options: [
+          { label: "From start time", value: "" },
           { label: "Morning", value: "Morning" },
           { label: "Afternoon", value: "Afternoon" }
         ]
@@ -354,7 +358,7 @@ export default class ShoreshProgram extends LightningElement {
   get blockDefaults() {
     return {
       [BLOCK.Program]: this.programId,
-      [BLOCK.PartOfDay]: "Morning"
+      [BLOCK.PartOfDay]: ""
     };
   }
 
@@ -407,22 +411,22 @@ export default class ShoreshProgram extends LightningElement {
     return {
       timeBlocks: `${t.p("TimeBlock")} in ${program}`,
       addTimeBlock: `Add ${t.s("TimeBlock")}`,
-      noTimeBlocks: `No ${t.pIn("TimeBlock")} yet.`,
+      noTimeBlocks: `No ${t.pIn("TimeBlock")} yet`,
       divisions: `${t.p("Division")} in ${program}`,
       addDivision: `Add ${t.s("Division")}`,
-      noDivisions: `No ${t.pIn("Division")} yet.`,
+      noDivisions: `No ${t.pIn("Division")} yet`,
       addGroup: `Add ${t.s("Group")}`,
-      noGroups: `No ${t.pIn("Group")} yet.`,
+      noGroups: `No ${t.pIn("Group")} yet`,
       groupsNeedDivisions: `${program} has no ${t.pIn("Division")} yet. Add them under ${t.p("Division")} first.`,
       name: `${t.s("Program")} name`,
       days: "Runs on",
       deleteProgram: `Delete this ${t.sIn("Program")}`,
       fixed: `${t.p("FixedActivity")} in ${program}`,
       addFixed: `Add ${t.s("FixedActivity")}`,
-      noFixed: `No ${t.pIn("FixedActivity")} yet.`,
+      noFixed: `No ${t.pIn("FixedActivity")} yet`,
       recurring: `${t.p("RecurringActivity")} in ${program}`,
       addRecurring: `Add ${t.s("RecurringActivity")}`,
-      noRecurring: `No ${t.pIn("RecurringActivity")} yet.`,
+      noRecurring: `No ${t.pIn("RecurringActivity")} yet`,
       needsBlocks: `${program} has no ${t.pIn("TimeBlock")} yet. Add them under ${t.p("TimeBlock")} first.`,
       leftOut: "Notes"
     };

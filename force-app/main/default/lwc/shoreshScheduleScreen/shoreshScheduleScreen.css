@@ -1,0 +1,216 @@
+/*
+ * The schedule screens' shared layout (desktop ScheduleScreen.jsx and its views): the toolbar, the
+ * view toggle, day and group pills, Activity View's cards, the legend. CSS only: import with
+ * @import "c/shoreshScheduleScreen"; (after "c/shoreshTokens"). Generated Schedule uses it; the
+ * same rules are still in Manual Build's own CSS until it moves over.
+ */
+.schedules {
+  position: relative;
+}
+
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.picker {
+  min-width: 12rem;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* The view toggle: one raised button in a grey track. */
+.view-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.view-button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  background: none;
+  color: var(--slds-g-color-neutral-base-10, #181818);
+}
+
+.view-button_on {
+  font-weight: 700;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  color: var(--slds-g-color-brand-base-50, #0176d3);
+  border-bottom-color: var(--slds-g-color-brand-base-50, #0176d3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* Day and group pills, centred above the grid. */
+.pills {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pill {
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--slds-g-color-brand-base-50, #0176d3);
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  color: var(--slds-g-color-brand-base-50, #0176d3);
+  cursor: pointer;
+}
+
+.pill_on {
+  background: var(--slds-g-color-brand-base-50, #0176d3);
+  color: var(--slds-g-color-neutral-base-100, #fff);
+}
+
+.pill-sub {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Activity View's cards. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-top: 4px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 8px;
+}
+
+.card:hover {
+  border-color: var(--slds-g-color-brand-base-50, #0176d3);
+}
+
+.card-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.card-place {
+  font-size: 11px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.card-summary {
+  font-size: 11px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+  font-family: var(--slds-g-font-family-monospace, monospace);
+}
+
+.drill-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.back {
+  padding: 4px 10px;
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: 6px;
+  background: var(--slds-g-color-neutral-base-100, #fff);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.drill-name {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.drill-place {
+  font-size: 12px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.legend-entry {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.swatch_activity {
+  background: var(--slds-g-color-brand-base-95, #eef4ff);
+  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
+}
+
+.swatch_set-time {
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-left: 3px solid var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.swatch_not-set-up {
+  border: 1.5px dashed var(--shoresh-caution);
+  background: var(--shoresh-caution-tint);
+}
+
+.swatch_open {
+  border: 1px dashed var(--slds-g-color-neutral-base-60, #939393);
+}
+
+.note {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--shoresh-text-secondary);
+}
+
+.empty-state {
+  padding: 60px 16px;
+  text-align: center;
+  color: var(--slds-g-color-neutral-base-30, #444);
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.swatch_away {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--slds-g-color-neutral-base-90, #e5e5e5) 0 2px,
+    var(--slds-g-color-neutral-base-100, #fff) 2px 4px
+  );
+  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}

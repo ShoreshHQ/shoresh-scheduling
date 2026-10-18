@@ -29,11 +29,14 @@ public with sharing class ImportUndoRestores {
     for (Schema.SObjectType kind : byKind.keySet()) {
       rows.addAll(restored(kind, byKind.get(kind)));
     }
-    List<Database.SaveResult> outcomes = Database.update(
-      rows,
-      false,
-      AccessLevel.USER_MODE
-    );
+    // Undo puts rain plans back as they were, even one made outdoors since (ADR 0006 §18).
+    ActivityTriggerHandler.checkRainPlans = false;
+    List<Database.SaveResult> outcomes;
+    try {
+      outcomes = Database.update(rows, false, AccessLevel.USER_MODE);
+    } finally {
+      ActivityTriggerHandler.checkRainPlans = true;
+    }
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (!outcomes[i].isSuccess()) {
         // Any refusal (a rule, a permission) stops the whole Undo with its reason.

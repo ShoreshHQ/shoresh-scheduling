@@ -213,7 +213,13 @@ function programCard(ask, t) {
     subject: nameList(ask.groups),
     preselected: ask.preselected,
     options: [
-      ...ask.options.map((name) => ({ value: name, label: name })),
+      ...ask.options.map((name, i) => {
+        const start = monthDay((ask.starts || [])[i]);
+        return {
+          value: name,
+          label: start ? `${name} (starts ${start})` : name
+        };
+      }),
       { value: "new", label: `A new ${t.sIn("Program")}` },
       { value: LEAVE_OUT, label: `Leave these ${t.pIn("Group")} out for now` }
     ]
@@ -323,7 +329,13 @@ function divisionCard(ask, t) {
     subject: ask.group,
     preselected: ask.preselected,
     options: [
-      ...ask.options.map((name) => ({ value: name, label: name })),
+      ...ask.options.map((name, i) => {
+        const start = monthDay((ask.starts || [])[i]);
+        return {
+          value: name,
+          label: start ? `${name} (starts ${start})` : name
+        };
+      }),
       { value: LEAVE_OUT, label: `Leave it out for now` }
     ],
     placeholder: `Choose a ${t.sIn("Division")}`
@@ -340,7 +352,13 @@ function whichGroupCard(ask, t) {
     subject: `${ask.name} in ${ask.file}`,
     subtitle: `There is more than one ${t.sIn("Group")} called ${ask.name}, and the file does not say its ${t.sIn("Division")}.`,
     options: [
-      ...ask.options.map((name) => ({ value: name, label: name })),
+      ...ask.options.map((name, i) => {
+        const start = monthDay((ask.starts || [])[i]);
+        return {
+          value: name,
+          label: start ? `${name} (starts ${start})` : name
+        };
+      }),
       leaveOut(`What the file has for ${ask.name} is not added.`)
     ]
   };
@@ -428,6 +446,17 @@ function ampmCard(ask) {
   };
 }
 
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
+
+/** "2027-06-28" -> "Jun 28". */
+function monthDay(iso) {
+  const [, m, d] = String(iso || "")
+    .split("-")
+    .map(Number);
+  return m && d ? `${MONTHS[m - 1]} ${d}` : "";
+}
+
+/** Each week by its name and start date ("Week 1 (starts Jun 28)"); its name is the answer. */
 function weekCard(ask, t) {
   return {
     id: ask.id,
@@ -439,7 +468,13 @@ function weekCard(ask, t) {
     subject: `Last year's schedule${ask.label ? ` (${ask.label})` : ""} as a version`,
     subtitle: `It is saved as a version for that ${t.sIn("Week")}, to look at on Schedules.`,
     options: [
-      ...ask.options.map((name) => ({ value: name, label: name })),
+      ...ask.options.map((name, i) => {
+        const start = monthDay((ask.starts || [])[i]);
+        return {
+          value: name,
+          label: start ? `${name} (starts ${start})` : name
+        };
+      }),
       leaveOut("Last year's schedule is not saved as a version this time.")
     ]
   };

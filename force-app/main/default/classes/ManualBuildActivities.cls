@@ -36,7 +36,7 @@ public with sharing class ManualBuildActivities {
         return option;
       }
     }
-    throw new ShoreshException('Couldn\'t add it. Try again.');
+    throw new ShoreshException('Shoresh couldn\'t tell why. Try again.');
   }
 
   private static Id lockedSeasonOf(Id scheduleId) {

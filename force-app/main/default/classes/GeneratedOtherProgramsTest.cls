@@ -101,7 +101,7 @@ private class GeneratedOtherProgramsTest {
     ScheduleGrid grid = teensGrid(ids);
     grid.items.add(item(ids, 'A', 'Swim'));
     grid.rows[0][0] = '1';
-    return teensDay(ids, status, day, grid);
+    return teensDay(ids, status, dayOn(day, grid));
   }
 
   /** Teens' day frame: its three time blocks, Teen 1 and Teen 2, nothing placed. */
@@ -138,8 +138,7 @@ private class GeneratedOtherProgramsTest {
   private static Id teensDay(
     Map<String, Id> ids,
     String status,
-    Date day,
-    ScheduleGrid grid
+    ScheduleDaySaves.DaySave day
   ) {
     Schedule__c schedule = new Schedule__c(
       Program__c = ids.get('Teens'),
@@ -152,11 +151,13 @@ private class GeneratedOtherProgramsTest {
     Database.insert(schedule, AccessLevel.SYSTEM_MODE);
     ScheduleDaySaves.write(
       schedule.Id,
-      new List<ScheduleDaySaves.DaySave>{
-        new ScheduleDaySaves.DaySave(day, grid, null)
-      }
+      new List<ScheduleDaySaves.DaySave>{ day }
     );
     return schedule.Id;
+  }
+
+  private static ScheduleDaySaves.DaySave dayOn(Date day, ScheduleGrid grid) {
+    return new ScheduleDaySaves.DaySave(day, grid, null);
   }
 
   /** "2026-06-29 10:30-11:15 Pool Swim x1", with names for Ids, for readable comparisons. */
@@ -369,11 +370,11 @@ private class GeneratedOtherProgramsTest {
       ScheduleGrid newest = teensGrid(ids);
       newest.items.add(item(ids, 'A', 'Soccer'));
       newest.rows[1][0] = '1';
-      teensDay(ids, 'Published', MONDAY, newest);
+      teensDay(ids, 'Published', dayOn(MONDAY, newest));
       ScheduleGrid version = teensGrid(ids);
       version.items.add(item(ids, 'A', 'Gym games'));
       version.rows[0][0] = '1';
-      teensDay(ids, 'Version', MONDAY, version);
+      teensDay(ids, 'Version', dayOn(MONDAY, version));
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Test.stopTest();
@@ -417,7 +418,7 @@ private class GeneratedOtherProgramsTest {
       grid.items.add(item(ids, 'F', 'Morning dip'));
       grid.rows[0] = new List<String>{ '1', '^', '2' };
       grid.rows[1] = new List<String>{ '3', '', '' };
-      teensDay(ids, 'Published', MONDAY, grid);
+      teensDay(ids, 'Published', dayOn(MONDAY, grid));
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Test.stopTest();
@@ -471,7 +472,7 @@ private class GeneratedOtherProgramsTest {
       grid.items.add(item(ids, 'A', 'Swim'));
       grid.rows[0] = new List<String>{ '1', '2', '' };
       grid.rows[1] = new List<String>{ '3', '', '' };
-      teensDay(ids, 'Published', MONDAY, grid);
+      teensDay(ids, 'Published', dayOn(MONDAY, grid));
       Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       Test.stopTest();
