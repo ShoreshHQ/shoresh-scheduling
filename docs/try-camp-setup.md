@@ -627,8 +627,10 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
 3. **Still needed** counts the activity-and-bunk pairs short of their weekly minimum. Its tile has
    a bronze border while the number is above 0. Click it: a **Still to place** list opens under
    the tiles, with every overlap first, then each pair still needed (_Bunk 1_'s lines first, then
-   _Bunk 2_'s, such as _Swim · Bunk 1: 1 still needed_), then the spread lines. Click any tile
-   again, or **Close**, to close it. Nothing on the grid is highlighted.
+   _Bunk 2_'s, such as _Swim · Bunk 1: 1 still needed_), then the spread lines. It sits over the
+   grid and scrolls if it is long. Click any tile again, or **Close** at its bottom, to close it.
+   Nothing on the grid is highlighted. When everything in it has been dealt with, it stays open
+   and says how many cells are still open (or _All placed_).
 4. **Overlapping** shows 0, grey, and does nothing when clicked. In Daily View, Thursday, place
    Soccer in Period 3 for Bunks 1, 2, 3 and 4 (pick Open cells). Each of the four gets a small
    bronze dot in its top corner, with no words beside it. Hold the pointer on a dot: _Over its

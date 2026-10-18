@@ -4,12 +4,12 @@ import { LightningElement, api } from "lwc";
  * A week's counters and its "Still to place" list (desktop ScheduleScreen's StatBadge row and
  * FindingsRail on the manual route), shared by Manual Build and Generated Schedule.
  *
- * checked: c/shoreshEngine checkWeek's result for the week shown, plus hasCoverageTargets and
- * hasSpreadTargets (some activity has a weekly minimum / an early-week goal; without one, that
- * counter isn't shown). resetKey: change it when a different week is shown fresh; the list closes
- * and accepted lines come back. route: "manual" (the default) or "generated"; the generated
- * route's own behaviour (lighting up the cells a counter concerns) is to come, and today both
- * behave alike.
+ * checked: c/shoreshEngine checkWeek's result for the week shown, as it comes (its
+ * hasCoverageTargets and hasSpreadTargets say whether Still needed and Spread across the week
+ * are shown). resetKey: change it when a different week is shown fresh; the list closes and
+ * accepted lines come back. route: "manual" (the default) or "generated"; the generated route's
+ * own behaviour (lighting up the cells a counter concerns) is to come, and today both behave
+ * alike.
  *
  * Events: locate (detail: the line, { key, kind, text, groupId, and for an overlap dateValue and
  * blockId }) when a line is clicked; the parent takes the director there. accept (detail: the
@@ -23,6 +23,10 @@ export default class ShoreshWeekChecks extends LightningElement {
   listOpen = false;
   // Lines accepted this visit (their keys carry their numbers, so a changed line comes back).
   accepted = [];
+  // The counter that opened the list (Close puts focus back on it).
+  opener = null;
+  // Where keyboard focus goes once the list has redrawn: { counter } or { line } (an index).
+  focusAfterRender = null;
   _resetKey;
 
   @api
@@ -111,51 +115,63 @@ export default class ShoreshWeekChecks extends LightningElement {
       }
     ]
       .filter(Boolean)
-      .map((c) => {
-        let className = c.count ? "counter counter_due" : "counter";
-        if (c.count && this.listOpen) {
-          className = `${className} counter_open`;
-        }
-        return {
-          ...c,
-          // A zero opens nothing, but stays in the tab order: a counter that drops to zero
-          // while it has focus keeps it (desktop disables it; focus would fall to the page).
-          unavailable: c.count === 0 ? "true" : null,
-          expanded: c.count ? String(this.listOpen) : null,
-          className
-        };
-      });
+      .map((c) => ({
+        ...c,
+        className: c.count ? "counter counter_due" : "counter",
+        // A zero opens nothing, but stays in the tab order: a counter that drops to zero
+        // while it has focus keeps it (desktop disables it; focus would fall to the page).
+        unavailable: c.count === 0 ? "true" : null,
+        expanded: c.count ? String(this.listOpen) : null,
+        controls: c.count && this.listOpen ? "counter-list" : null
+      }));
   }
 
   get openLines() {
-    const lines = this.listOpen ? this.lines : [];
+    const lines = this.lines;
     return lines.length
       ? lines.map((line) => ({
           ...line,
+          // Desktop FindingsRail's bar: bronze for overlaps and still needed, forest for spread.
+          className:
+            line.kind === "spread" ? "counter-line line_info" : "counter-line",
           acceptLabel: `Accept: ${line.text}`
         }))
       : null;
+  }
+
+  /** With nothing left to list (desktop railEmptyText): how many cells are still open. */
+  get emptyText() {
+    const cells = (this.checked && this.checked.cells) || {};
+    const open = (cells.total || 0) - (cells.filled || 0);
+    return open > 0 ? `${open} open` : "All placed";
   }
 
   handleCounter(event) {
     if (event.currentTarget.getAttribute("aria-disabled") === "true") {
       return;
     }
+    this.opener = event.currentTarget.dataset.counter;
     this.listOpen = !this.listOpen;
   }
 
+  /** Close: the list goes, and focus goes back to the counter that opened it. */
   handleCloseList() {
     this.listOpen = false;
+    this.focusAfterRender = { counter: this.opener || "overlapping" };
   }
 
+  /** Accept: the line goes for this visit, and focus moves to the line after it (or before). */
   handleAccept(event) {
-    const line = this.lines.find(
+    const lines = this.lines;
+    const index = lines.findIndex(
       (l) => l.key === event.currentTarget.dataset.key
     );
-    if (!line) {
+    if (index < 0) {
       return;
     }
+    const line = lines[index];
     this.accepted = [...this.accepted, line.key];
+    this.focusAfterRender = { line: index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
   }
 
@@ -172,9 +188,22 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
 
   renderedCallback() {
-    // A list with nothing left in it closes, so it doesn't open again by itself later.
-    if (this.listOpen && !this.lines.length) {
-      this.listOpen = false;
+    const focus = this.focusAfterRender;
+    if (!focus) {
+      return;
+    }
+    this.focusAfterRender = null;
+    let target = null;
+    if (focus.counter) {
+      target = this.template.querySelector(`[data-counter="${focus.counter}"]`);
+    } else {
+      const lines = [...this.template.querySelectorAll(".line-text")];
+      target =
+        lines[Math.min(focus.line, lines.length - 1)] ||
+        this.template.querySelector('[data-id="close-list"]');
+    }
+    if (target) {
+      target.focus();
     }
   }
 }
