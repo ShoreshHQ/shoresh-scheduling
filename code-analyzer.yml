@@ -40,5 +40,5 @@ suppressions:
       reason: "Test fakes a real browser keydown, which is composed."
   "main/default/lwc/shoreshManualBuild/__tests__":
     - rule_selector: "pmd:AvoidLwcBubblesComposedTrue"
-      max_suppressed_violations: 3
+      max_suppressed_violations: 5
       reason: "Tests fake real browser keydown and dblclick events, which are composed."
