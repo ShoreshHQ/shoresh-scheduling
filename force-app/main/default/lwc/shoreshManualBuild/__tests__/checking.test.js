@@ -2,6 +2,7 @@ import { createElement } from "lwc";
 import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
+import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { day, draft, schedule } from "./data/draftFixture";
@@ -313,5 +314,44 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(dotIn(element, "1-2").label).toBe(
       "Over its weekly limit · Twice in a day"
     );
+  });
+
+  it("an activity added from a slot is checked at once, from the record the server sends back", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
+    // Kayak is new: the setup this page was given doesn't have it.
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Kayak",
+      length: 1,
+      minPerWeek: 1,
+      maxPerWeek: 1,
+      notFor: [],
+      record: nsRecord({
+        Id: "a7",
+        Name: "Kayak",
+        TimesPerWeekMin__c: 1,
+        TimesPerWeekMax__c: 1,
+        GroupsAtOnce__c: 1,
+        NoGroupLimit__c: false
+      })
+    });
+    const kayak = { kind: "A", id: "a7", name: "Kayak", gone: false };
+    saveSlots.mockResolvedValueOnce({
+      conflicts: [],
+      schedule: schedule([FLAGPOLE, SOCCER, kayak], ["1,2,", "1,3,"])
+    });
+    await press(cell(element, "1-1"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "Kayak";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    q(element, '[data-counter="stillNeeded"]').click();
+    await flush();
+    expect(
+      [...q(element, '[data-id="counter-list"]').querySelectorAll("li")].map(
+        (li) => li.textContent
+      )
+    ).toContain("Kayak · Bunk 1: 1 still needed");
   });
 });

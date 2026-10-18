@@ -34,6 +34,10 @@ public with sharing class ManualBuildViews {
     // Groups it is not set up for (its "who can do it" leaves them out).
     @AuraEnabled
     public List<Id> notFor = new List<Id>();
+    // Only from "Add <name>": its setup record (SeasonSetupReader.activitiesOf), so the screen's
+    // checks know an activity added since the setup was read.
+    @AuraEnabled
+    public Activity__c record;
   }
 
   /** A group and the time blocks it is not at camp for. */

@@ -586,15 +586,23 @@ private class ManualBuildTest {
       Assert.areEqual(1, saved.TimesPerWeekMax__c);
       Assert.areEqual(ids.get('Season'), saved.Season__c);
       Assert.isTrue(added.notFor.isEmpty());
+      // Its setup record comes back too, as the setup screen reads it, for the screen's checks.
+      Assert.areEqual(added.id, added.record.Id);
+      Assert.areEqual(1, added.record.TimesPerWeekMin__c);
+      Assert.areEqual(1, added.record.TimesPerWeekMax__c);
+      Assert.areEqual(1, added.record.GroupsAtOnce__c);
+      Assert.isFalse(added.record.NoGroupLimit__c);
       // The same name again (spaces and capitals aside) is the same activity.
       Assert.areEqual(
         added.id,
         ManualBuildController.addActivity(draftId, 'artsand Crafts').id
       );
-      Assert.areEqual(
-        ids.get('Swim'),
-        ManualBuildController.addActivity(draftId, 'SWIM').id
+      ManualBuildViews.ActivityOption swim = ManualBuildController.addActivity(
+        draftId,
+        'SWIM'
       );
+      Assert.areEqual(ids.get('Swim'), swim.id);
+      Assert.areEqual(ids.get('Swim'), swim.record.Id);
     }
   }
 

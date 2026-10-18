@@ -97,6 +97,9 @@ export default class ShoreshManualBuild extends LightningElement {
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
+  // Setup records of activities added from a slot since the setup was read (the setup this page
+  // was given doesn't have them yet), so the checks know them too.
+  addedRecords = [];
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -112,6 +115,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
   set setup(value) {
     this._setup = value;
+    this.addedRecords = [];
     const programs = this.programOptions.map((o) => o.value);
     const weeks = this.weekOptions.map((o) => o.value);
     if (!programs.includes(this.programId)) {
@@ -315,6 +319,7 @@ export default class ShoreshManualBuild extends LightningElement {
     const inputs = [
       schedule,
       this._setup,
+      this.addedRecords,
       this.draft && this.draft.activities,
       this.draft && this.draft.away,
       this.programId,
@@ -335,7 +340,10 @@ export default class ShoreshManualBuild extends LightningElement {
     const result = checkWeek(
       (schedule && schedule.days) || [],
       {
-        activities: readActivities(setup.activities),
+        activities: readActivities([
+          ...(setup.activities || []),
+          ...this.addedRecords
+        ]),
         locations: readLocations(setup.locations),
         ...readProgram(entry),
         notFor: new Map(
@@ -898,6 +906,13 @@ export default class ShoreshManualBuild extends LightningElement {
       } catch (e) {
         this.error = errorMessage(e);
         return;
+      }
+      const known = [
+        ...((this._setup && this._setup.activities) || []),
+        ...this.addedRecords
+      ];
+      if (activity.record && !known.some((r) => r.Id === activity.id)) {
+        this.addedRecords = [...this.addedRecords, activity.record];
       }
       if (!this.draft.activities.some((a) => a.id === activity.id)) {
         this.draft = {
