@@ -28,6 +28,8 @@ export default class ShoreshProgram extends LightningElement {
   @api locations = [];
   /** The season's activities with who can do each, for what moving a group changes. */
   @api activities = [];
+  /** Asked before a week is unticked on a saved row (passed to the tables; see the table). */
+  @api beforeWeekOff;
 
   name;
   days = {};

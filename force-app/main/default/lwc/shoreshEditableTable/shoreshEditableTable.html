@@ -196,15 +196,17 @@
                         <span class="slds-m-right_x-small" data-id="who">
                           {cell.whoSummary}
                         </span>
-                        <lightning-button
-                          variant="base"
-                          label={cell.whoButton}
-                          title={cell.label}
+                        <button
+                          type="button"
+                          class="slds-button"
+                          aria-label={cell.whoName}
                           data-row-key={row.key}
                           data-id="who-toggle"
                           disabled={row.locked}
                           onclick={handleWhoToggle}
-                        ></lightning-button>
+                        >
+                          {cell.whoButton}
+                        </button>
                       </div>
                     </template>
                     <template lwc:elseif={cell.isPicklist}>
@@ -263,15 +265,22 @@
                 </template>
                 <td>
                   <template lwc:if={row.isNew}>
-                    <lightning-button
-                      class="add"
-                      label="Add"
-                      icon-name="utility:add"
+                    <button
+                      type="button"
+                      class="slds-button slds-button_neutral add"
+                      aria-label={addLabel}
                       title={addLabel}
                       data-id="add"
                       onclick={handleAdd}
                       disabled={addDisabled}
-                    ></lightning-button>
+                    >
+                      <lightning-icon
+                        class="slds-button__icon slds-button__icon_left"
+                        icon-name="utility:add"
+                        size="xx-small"
+                      ></lightning-icon
+                      >{addText}
+                    </button>
                   </template>
                   <template lwc:else>
                     <template lwc:if={row.notSaved}>
