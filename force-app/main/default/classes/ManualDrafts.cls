@@ -86,6 +86,7 @@ public with sharing class ManualDrafts {
         Status__c,
         Origin__c,
         Program__c,
+        Program__r.Id,
         Program__r.Season__c,
         Program__r.Season__r.Camp__c
       FROM Schedule__c

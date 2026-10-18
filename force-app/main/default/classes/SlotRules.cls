@@ -10,31 +10,25 @@ public with sharing class SlotRules {
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
 
   public SlotRules(Schedule__c schedule, List<SlotEdits.Edit> edits) {
-    this(
-      schedule.Program__c,
-      schedule.Program__r.Season__c,
-      schedule.Program__r.Season__r.Camp__c,
-      activityIdsIn(edits)
-    );
+    this(schedule.Program__r, activityIdsIn(edits));
   }
 
-  /** The same rules for a whole week's grids (Generated Schedule), with the activities it places. */
+  /**
+   * The same rules for a whole week's grids (Generated Schedule), with the activities it places.
+   * program: its Id, Season__c and Season__r.Camp__c.
+   */
   public SlotRules(Program__c program, Set<Id> activityIds) {
-    this(program.Id, program.Season__c, program.Season__r.Camp__c, activityIds);
-  }
-
-  private SlotRules(Id programId, Id seasonId, Id campId, Set<Id> activityIds) {
-    labels = CampLabels.forCamp(campId);
-    if (!activityIds.isEmpty()) {
-      activities = new Map<Id, Activity__c>(
-        [
-          SELECT Id, Name
-          FROM Activity__c
-          WHERE Id IN :activityIds AND Season__c = :seasonId
-          WITH USER_MODE
-        ]
-      );
-    }
+    Id seasonId = program.Season__c;
+    Id programId = program.Id;
+    labels = CampLabels.forCamp(program.Season__r.Camp__c);
+    activities = new Map<Id, Activity__c>(
+      [
+        SELECT Id, Name
+        FROM Activity__c
+        WHERE Id IN :activityIds AND Season__c = :seasonId
+        WITH USER_MODE
+      ]
+    );
     for (Group__c grp : ProgramReads.groupsOf(programId)) {
       groups.put(grp.Id, grp);
     }
@@ -107,8 +101,7 @@ public with sharing class SlotRules {
 
   /** The season's activity a slot starts or carries on, or null. */
   public Activity__c activityOf(String slot) {
-    Id activityId = SlotIds.activityIn(SlotIds.owner(slot));
-    return activityId == null ? null : activities.get(activityId);
+    return activities.get(SlotIds.activityIn(SlotIds.owner(slot)));
   }
 
   /** The season's activity a slot starts or carries on; refused when it isn't one of them. */

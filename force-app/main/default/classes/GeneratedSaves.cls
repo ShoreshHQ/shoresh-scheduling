@@ -4,7 +4,8 @@
  * check (ADR 0005 §9). If someone else saved the week since it was read, nothing is written and
  * the answer is a conflict, for the screen to say so; nothing is overwritten unseen. Rebuild and
  * Start over save the draft as a version first (Greg, 2026-10-17). The days are checked by
- * GeneratedChecks. Runs in user mode; the days are written by ScheduleDaySaves under the lock.
+ * GeneratedFrames and GeneratedChecks. Runs in user mode; the days are written by
+ * ScheduleDaySaves under the lock.
  */
 public with sharing class GeneratedSaves {
   public static final String GENERATE = 'Generate';
@@ -25,42 +26,31 @@ public with sharing class GeneratedSaves {
     FILL_OPEN,
     START_OVER
   };
-  // EngineOption__c holds four digits.
-  private static final Integer LAST_OPTION = 9999;
 
-  public static GeneratedWeek.Result save(GeneratedWeek.Save request) {
-    checkRequest(request);
-    Program__c program = ProgramReads.programOf(request.programId);
-    ProgramReads.weekOf(request.weekId, program);
-    return request.scheduleId == null
-      ? first(request, program)
-      : again(request, program);
+  private GeneratedWeek.Save request;
+  private Program__c program;
+
+  private GeneratedSaves(GeneratedWeek.Save request, Program__c program) {
+    this.request = request;
+    this.program = program;
   }
 
-  private static void checkRequest(GeneratedWeek.Save request) {
-    if (
-      request == null ||
-      request.days == null ||
-      !(request.action == GENERATE || ON_A_DRAFT.contains(request.action))
-    ) {
-      throw GeneratedChecks.unreadable();
+  public static GeneratedWeek.Result save(GeneratedWeek.Save request) {
+    if (request == null) {
+      throw GeneratedFrames.unreadable();
     }
-    if (
-      request.option == null ||
-      request.option < 1 ||
-      request.option > LAST_OPTION
-    ) {
-      throw new ShoreshException('That option can\'t be built.');
-    }
+    Boolean isFirst = request.scheduleId == null;
+    request.check(isFirst ? new Set<String>{ GENERATE } : ON_A_DRAFT);
+    Program__c program = ProgramReads.programOf(request.programId);
+    ProgramReads.weekOf(request.weekId, program);
+    GeneratedSaves saves = new GeneratedSaves(request, program);
+    return isFirst ? saves.first() : saves.again();
   }
 
   /** The week's first save makes its Generated draft, from a blank week as it is now. */
-  private static GeneratedWeek.Result first(
-    GeneratedWeek.Save request,
-    Program__c program
-  ) {
-    if (request.action != GENERATE || String.isNotEmpty(request.revision)) {
-      throw GeneratedChecks.unreadable();
+  private GeneratedWeek.Result first() {
+    if (String.isNotEmpty(request.revision)) {
+      throw GeneratedFrames.unreadable();
     }
     // Looked for again under the lock: a save that waited sees the one before it.
     GeneratedDrafts.lockProgram(program.Id);
@@ -71,7 +61,7 @@ public with sharing class GeneratedSaves {
       BlankWeek.build(program.Id, request.weekId).days
     );
     // The blank week was read before; if setup has changed its days since, build it again.
-    if (!GeneratedChecks.sameFrame(blank, request.days)) {
+    if (!GeneratedFrames.sameFrame(blank, request.days)) {
       return conflict();
     }
     List<ScheduleGrid> grids = GeneratedChecks.check(
@@ -99,33 +89,20 @@ public with sharing class GeneratedSaves {
   }
 
   /** A later save replaces the draft's days, if no one has saved them since they were read. */
-  private static GeneratedWeek.Result again(
-    GeneratedWeek.Save request,
-    Program__c program
-  ) {
-    if (!ON_A_DRAFT.contains(request.action)) {
-      throw GeneratedChecks.unreadable();
-    }
+  private GeneratedWeek.Result again() {
     Schedule__c draft = GeneratedDrafts.locked(
       request.scheduleId,
       program.Id,
       request.weekId
     );
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
-    String sent = request.revision == null ? '' : request.revision;
-    if (!GeneratedDrafts.revisionOf(days).equals(sent)) {
+    if (!GeneratedDrafts.revisionOf(days).equals(request.revision ?? '')) {
       return conflict();
     }
-    for (ScheduleDays.DayGrid day : days) {
-      if (day.grid == null) {
-        throw new ShoreshException(
-          'This day could not be read: ' + day.problem + '.'
-        );
-      }
-    }
+    GeneratedFrames.checkReadable(days);
     // Same revision, so the same days: anything else wasn't built from this draft.
-    if (!GeneratedChecks.sameFrame(days, request.days)) {
-      throw GeneratedChecks.unreadable();
+    if (!GeneratedFrames.sameFrame(days, request.days)) {
+      throw GeneratedFrames.unreadable();
     }
     List<ScheduleGrid> grids = GeneratedChecks.check(
       program,
@@ -135,7 +112,7 @@ public with sharing class GeneratedSaves {
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Id versionId = VERSION_FIRST.containsKey(request.action)
-        ? saveVersion(draft, days, VERSION_FIRST.get(request.action))
+        ? saveVersion(draft, days)
         : null;
       Database.update(
         new Schedule__c(Id = draft.Id, EngineOption__c = request.option),
@@ -150,15 +127,11 @@ public with sharing class GeneratedSaves {
   }
 
   /** The draft as it is now, kept as a version (Auto-saved) before it is replaced. */
-  private static Id saveVersion(
-    Schedule__c draft,
-    List<ScheduleDays.DayGrid> days,
-    String name
-  ) {
+  private Id saveVersion(Schedule__c draft, List<ScheduleDays.DayGrid> days) {
     Schedule__c version = new Schedule__c(
       Program__c = draft.Program__c,
       Week__c = draft.Week__c,
-      Name = name,
+      Name = VERSION_FIRST.get(request.action),
       Status__c = VERSION,
       Origin__c = GeneratedDrafts.GENERATED,
       VersionReason__c = AUTO_SAVED,

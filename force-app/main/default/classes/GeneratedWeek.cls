@@ -22,6 +22,17 @@ public with sharing class GeneratedWeek {
     public Integer option { get; set; }
     @AuraEnabled
     public List<Day> days { get; set; }
+
+    /** Refuses a save the screen could not have sent, or an option that can't be built. */
+    public void check(Set<String> actions) {
+      if (days == null || !actions.contains(action)) {
+        throw GeneratedFrames.unreadable();
+      }
+      // EngineOption__c holds four digits.
+      if (option == null || option < 1 || option > 9999) {
+        throw new ShoreshException('That option can\'t be built.');
+      }
+    }
   }
 
   /**
