@@ -376,7 +376,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       "2 placed" counts placements, not cells). **Overlapping** (always shown): one per cell
       that overlaps, a bunk in a time block where its placement breaks groups at once, one
       division at a time, place capacity, or is booked at an overlapping time, as the desktop's
-      `computeOverlaps` flags slots (checkWeek's `overlapCells`). **Still needed** (activity and
+      `computeOverlaps` flags slots (checkWeek's `overlapping`). **Still needed** (activity and
       bunk pairs short of the weekly minimum, shown only when some activity has one, desktop
       `hasCoverageTargets`) and **Spread across the week** (short of the early-week goal, by
       that day inclusive, only when the week has a day by then; shown only when some activity
