@@ -23,7 +23,7 @@ import {
   setupProblems,
   turnOffQuestion
 } from "c/shoreshSetupRules";
-import { failed } from "c/shoreshErrors";
+import { errorMessage, failed } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
@@ -1092,8 +1092,9 @@ export default class ShoreshCampSetup extends LightningElement {
       this.locationsTable().focusRowOf(keepId);
     } catch (e) {
       if (merged) {
-        // Done, but the screen couldn't read it back: said so, never shown as a refusal.
-        this.error = `Merged into "${kept.name}", but the screen couldn't show it yet. Reload the page.`;
+        // Done, but the screen couldn't read it back: said so (the page's usual words), never
+        // shown as a refusal.
+        this.showError(e, this.refreshFailed);
         return;
       }
       const why = errorMessage(e);

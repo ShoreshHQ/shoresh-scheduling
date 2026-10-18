@@ -1492,8 +1492,8 @@ describe("c-shoresh-camp-setup", () => {
       );
       await flush();
       expect(q(element, "c-shoresh-same-location")).toBeNull();
-      expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
-        'Merged into "Pool", but the screen couldn\'t show it yet. Reload the page.'
+      expect(q(element, '[data-id="error"]').textContent.trim()).toContain(
+        "Done, but the screen couldn't show it yet. Reload the page."
       );
     });
 
