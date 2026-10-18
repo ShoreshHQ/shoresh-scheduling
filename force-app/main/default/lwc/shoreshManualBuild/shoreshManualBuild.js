@@ -381,7 +381,7 @@ export default class ShoreshManualBuild extends LightningElement {
    */
   get lines() {
     const checked = this.checked;
-    const lines = (checked.overlapCells || []).map((cell) => ({
+    const lines = (checked.overlapping || []).map((cell) => ({
       key: `overlap|${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
       kind: "overlapping",
       text: cell.text,
