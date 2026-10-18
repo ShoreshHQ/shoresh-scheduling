@@ -1,5 +1,5 @@
 /**
- * Generated Schedule's locks on screen (ADR 0010 decision 3, G4 §29): which cells are locked, and
+ * Generated Schedule's locks on screen (ADR 0010 decision 3, G4 §37): which cells are locked, and
  * what the Lock menu offers. The server decides what a change does (c/shoreshGeneratedWeek
  * setLocks); this only says what is worth offering, so the menu never offers a change that would
  * do nothing. Pure: no server, no screen.

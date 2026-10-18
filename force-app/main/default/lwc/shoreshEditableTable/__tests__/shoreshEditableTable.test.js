@@ -1400,6 +1400,9 @@ describe("c-shoresh-editable-table", () => {
       expect(sent.map((d) => d.record.Name)).toEqual(["Period One", "Swim"]);
       expect(field(element, 2, "Name").disabled).toBe(true);
       expect(addButton(element).textContent.trim()).toBe("Adding…");
+      expect(addButton(element).getAttribute("aria-label")).toBe(
+        "Adding Time block…"
+      );
     });
 
     it("while the blank row is being added, its ticks and who wait too", async () => {
@@ -2317,6 +2320,72 @@ describe("c-shoresh-editable-table", () => {
       expect(bareRecord(moves.mock.calls.at(-1)[0].detail)).toEqual({
         moved: { d2: ["Bunk 2"] }
       });
+    });
+
+    it("offers a merge on saved rows whose saved names match, naming them all", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        columns: COLUMNS,
+        rows: named(["Pool", "Gym", " pool", "POOL"]),
+        flagSameNames: true,
+        mergeLabel: "Same location?"
+      });
+      const merges = jest.fn();
+      element.addEventListener("merge", merges);
+      await flush();
+      const buttons = () => [
+        ...element.shadowRoot.querySelectorAll('[data-id="merge"]')
+      ];
+      expect(buttons().map((b) => b.textContent.trim())).toEqual([
+        "Same location?",
+        "Same location?",
+        "Same location?"
+      ]);
+      // Each named for its row, so a screen reader can tell them apart.
+      expect(buttons().map((b) => b.getAttribute("aria-label"))).toEqual([
+        "Same location? Pool",
+        "Same location?  pool",
+        "Same location? POOL"
+      ]);
+      buttons()[1].click();
+      expect(merges.mock.calls[0][0].detail).toEqual({
+        recordIds: ["r2", "r0", "r3"]
+      });
+      // Typing a matching name is a heads-up only: nothing saved to merge yet.
+      change(field(element, 1, "Name"), "pool");
+      change(field(element, 4, "Name"), "Gym");
+      await flush();
+      expect(tags(element)).toEqual([true, true, true, true, false]);
+      expect(buttons().length).toBe(3);
+      // Afterwards: back to the row's button, its first field once merged, or the blank row.
+      const button = buttons()[1];
+      button.focus = jest.fn();
+      element.focusRowOf("r2");
+      expect(button.focus).toHaveBeenCalled();
+      const gym = field(element, 1, "Name");
+      gym.focus = jest.fn();
+      element.focusRowOf("r1");
+      expect(gym.focus).toHaveBeenCalled();
+      const blank = field(element, 4, "Name");
+      blank.focus = jest.fn();
+      element.focusRowOf("gone");
+      expect(blank.focus).toHaveBeenCalled();
+      // A row renamed to something else (not saved yet) is no longer offered a merge.
+      change(field(element, 0, "Name"), "Lake");
+      await flush();
+      expect(buttons().length).toBe(2);
+      // While the page is busy (a delete, an import), the buttons wait.
+      element.busy = true;
+      await flush();
+      expect(buttons().every((b) => b.disabled)).toBe(true);
+      const plain = render({
+        objectApiName: "Location__c",
+        columns: COLUMNS,
+        rows: named(["Pool", "pool"]),
+        flagSameNames: true
+      });
+      await flush();
+      expect(plain.shadowRoot.querySelector('[data-id="merge"]')).toBeNull();
     });
 
     it("matches names exactly as the import's looseKey does", async () => {

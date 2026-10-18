@@ -32,9 +32,11 @@ import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   RULE,
   checkWeek,
+  otherProgramsAt,
   reasonFor,
   readActivities,
   readLocations,
+  readOtherPrograms,
   readProgram
 } from "c/shoreshEngine";
 
@@ -361,7 +363,7 @@ export default class ShoreshManualBuild extends LightningElement {
     const schedule = this.schedule;
     // Everything the checks read comes with the draft and is read again with the week (one
     // source): activities, places, the program's groups and divisions, where its fixed and
-    // recurring activities are, and the away blocks.
+    // recurring activities are, the away blocks, and other programs at places and activities.
     const inputs = [schedule, this.draft, this.t];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
@@ -378,8 +380,9 @@ export default class ShoreshManualBuild extends LightningElement {
       row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
     );
     const activities = readActivities(draft.activityRecords);
+    const weekDays = (schedule && schedule.days) || [];
     const result = checkWeek(
-      (schedule && schedule.days) || [],
+      weekDays,
       {
         activities,
         locations: readLocations(draft.locationRecords),
@@ -390,7 +393,11 @@ export default class ShoreshManualBuild extends LightningElement {
             a.notFor || []
           ])
         ),
-        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`)
+        isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
+        othersAt: otherProgramsAt(
+          readOtherPrograms(draft.otherPrograms),
+          weekDays
+        )
       },
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );

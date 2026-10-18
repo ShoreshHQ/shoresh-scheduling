@@ -157,6 +157,14 @@ it or press **Escape**.
 7. Try deleting the **Pool** (trash can in the Locations table). Shoresh refuses: Swim happens
    there; choose another location for Swim first. Try deleting **Gym games**: refused,
    because it is Soccer's rain plan.
+8. **Same location?** On **Locations**, add _pool_ (lower case), groups that fit 2. Then on
+   **Activities** set Gym games' **Location** to _pool_. Back on **Locations**, both pools
+   have a bronze dot (point at it: _Same name as another_) and a **Same location?** button. Click it. The question
+   lists _Pool · Bunks that fit: 1 · 1 activity here_ and _pool · Bunks that fit: 2 · 1
+   activity here_, with **Bunks that fit** at 2. (If you renamed Location on Camp words, the
+   button and question use your word.) Choose _Pool_ and click **Merge**. One Pool is left,
+   fitting 2, and on **Activities** Gym games is now at the Pool. (**Keep separate** or
+   Escape leaves both as they are.) Put Gym games back in the Gym, and the Pool back to 1.
 
 ## 9. Weeks something doesn't run
 
@@ -315,7 +323,10 @@ save one), so first add a made-up one.
 10. **Cells cannot be changed here**, on purpose: placing and moving things comes with Manual
     Build.
 11. **Something deleted since the version was saved** still shows under its saved name, marked
-    _deleted since_. Try it: on **Activities**, delete _Art_, then open the version again.
+    _deleted since_. Try it: on **Activities**, delete _Art_. Shoresh asks first: _Art is in 1
+    schedule. Delete anyway?_ The number is every schedule using Art: drafts, saved versions,
+    and published ones, so it is 1 if you ran the script once, 2 after two runs, and so on. Confirm, then open the version again. Deleting a bunk asks the same way. Art
+    can be brought back from Salesforce's Recycle Bin.
 12. **Deleting the week takes its versions.** On **Weeks**, delete _Week 1_: the confirmation
     says _That includes 1 saved version._ Confirm, and the version goes with the week (as on
     the desktop). Once publishing exists, a week with a published schedule will not be
@@ -827,12 +838,36 @@ doesn't change this one.
     version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
     **Versions**). Fill the open cells keeps none: it only adds.
 
+## 24. Both schedules: another program at the same place
+
+This uses the made-up camp's Week 1 from sections 19 to 23. Main's Period 2 runs 9:50 to 10:35;
+the Pool fits 3 bunks.
+
+1. **Add a second program**, as in section 6: _Teens_, with one time block _Swim hour_ 10:00 to
+   10:30 AM (Morning), a unit _Teens_ and two bunks, _Teen 1_ and _Teen 2_, all day. Its times
+   don't line up with Main's, and that's fine.
+2. On **Fixed activities**, for Teens, add _Teen swim_: Swim hour, length 1, location Pool. Both
+   Teens bunks are at the Pool from 10:00 to 10:30, every day.
+3. Open **Manual Build**, Main, Week 1, Daily View, **Friday**. Place Swim for Bunk 4 in Period 2.
+   No dot: two Teens bunks and Bunk 4 make 3 at the Pool, which fits 3.
+4. Place Swim for Bunk 5 in Period 2 too. Both Main cells get the dot: _More bunks at Pool than
+   fit_. **Overlapping** goes up by 2. Teens isn't shown on Main's grid, but its bunks count.
+5. Clear Bunk 5's Swim: the dots go.
+6. On **Fixed activities**, untick **Week 1** for Teen swim. Back in Manual Build (reload), place
+   Swim for Bunk 5 again: no dot, because Teens doesn't swim that week.
+7. Open **Generated Schedule**, Main, Week 1, and click **Rebuild** (with Teen swim ticked
+   for Week 1 again): wherever the build puts Swim between 10:00 and 10:30, it puts at most one
+   Main bunk at the Pool, and nothing there gets a dot.
+8. Teens' own Manual Build week doesn't count until it is published (publishing comes later).
+   Only its fixed and recurring activities count meanwhile.
+9. Afterwards, delete the Teens program so the camp is as it was.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: changing cells by hand (next part), other programs sharing a
-  place, Versions on that screen, and publishing. In Manual Build: Versions on that screen,
+- Generated Schedule: changing cells by hand (next part), Versions on that screen,
+  and publishing. In Manual Build: Versions on that screen,
   restoring a version into it, Start from another week, and publishing.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your

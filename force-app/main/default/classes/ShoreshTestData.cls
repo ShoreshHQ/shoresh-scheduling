@@ -1,6 +1,12 @@
 /** Synthetic camp data for tests. No real campers, families, or staff. */
 @IsTest
 public class ShoreshTestData {
+  /**
+   * What the last fullSeason made, by name ('Season', 'Main', 'Week 1' to 'Week 6', 'Period 1',
+   * 'Lunch', 'Juniors', 'Group A', 'Group B'), so builders on top of it need not read them back.
+   */
+  public static Map<String, Id> lastSeasonIds;
+
   /** Saves week exceptions on their own, with failures as the screens show them. */
   public static void saveWeekExceptions(
     List<WeekException__c> toAdd,
@@ -101,19 +107,34 @@ public class ShoreshTestData {
 
   /** A fully set-up season: 6 weeks, a program with blocks, a division, two groups, one exception. */
   public static Season__c fullSeason(Id campId) {
-    Season__c season = season(campId, 'Summer 2026');
-    List<Week__c> weeks = weeks(season.Id, 6);
-    Program__c program = program(season.Id, 'Main');
-    timeBlock(program.Id, 'Period 1', 9);
-    timeBlock(program.Id, 'Lunch', 12);
-    Division__c division = division(program.Id, 'Juniors');
-    Group__c first = groupIn(division.Id, 'Group A');
-    groupIn(division.Id, 'Group B');
-    Database.insert(
-      new WeekException__c(Week__c = weeks[2].Id, Group__c = first.Id),
-      AccessLevel.SYSTEM_MODE
-    );
-    return season;
+    // The clash check runs once, at the end, as a screen save does, not after every insert.
+    SetTimeGuard.defer();
+    try {
+      Season__c season = season(campId, 'Summer 2026');
+      Map<String, Id> made = new Map<String, Id>{ 'Season' => season.Id };
+      List<Week__c> weeks = weeks(season.Id, 6);
+      for (Week__c week : weeks) {
+        made.put(week.Name, week.Id);
+      }
+      Program__c program = program(season.Id, 'Main');
+      made.put('Main', program.Id);
+      made.put('Period 1', timeBlock(program.Id, 'Period 1', 9).Id);
+      made.put('Lunch', timeBlock(program.Id, 'Lunch', 12).Id);
+      Division__c division = division(program.Id, 'Juniors');
+      made.put('Juniors', division.Id);
+      Group__c first = groupIn(division.Id, 'Group A');
+      made.put('Group A', first.Id);
+      made.put('Group B', groupIn(division.Id, 'Group B').Id);
+      Database.insert(
+        new WeekException__c(Week__c = weeks[2].Id, Group__c = first.Id),
+        AccessLevel.SYSTEM_MODE
+      );
+      SetTimeGuard.checkPending();
+      lastSeasonIds = made;
+      return season;
+    } finally {
+      SetTimeGuard.resume();
+    }
   }
 
   /**
@@ -166,18 +187,22 @@ public class ShoreshTestData {
       ),
       AccessLevel.SYSTEM_MODE
     );
-    Group__c groupA = [
-      SELECT Id
-      FROM Group__c
-      WHERE Name = 'Group A' AND Division__r.Program__r.Season__c = :seasonId
-      WITH SYSTEM_MODE
-    ];
-    Group__c groupAWithDivision = [
-      SELECT Division__c
-      FROM Group__c
-      WHERE Id = :groupA.Id
-      WITH SYSTEM_MODE
-    ];
+    // Group A and its division: as fullSeason made them, or read once.
+    Group__c groupAWithDivision;
+    if (lastSeasonIds != null && lastSeasonIds.get('Season') == seasonId) {
+      groupAWithDivision = new Group__c(
+        Id = lastSeasonIds.get('Group A'),
+        Division__c = lastSeasonIds.get('Juniors')
+      );
+    } else {
+      groupAWithDivision = [
+        SELECT Id, Division__c
+        FROM Group__c
+        WHERE Name = 'Group A' AND Division__r.Program__r.Season__c = :seasonId
+        WITH SYSTEM_MODE
+      ];
+    }
+    Group__c groupA = groupAWithDivision;
     Database.insert(
       new List<ActivityEligibility__c>{
         new ActivityEligibility__c(

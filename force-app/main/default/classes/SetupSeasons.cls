@@ -25,6 +25,31 @@ public with sharing class SetupSeasons {
     return result;
   }
 
+  /**
+   * Each season's camp labels, read the first time one is asked for. The checks need them only
+   * to word a refusal, so a save that is refused nowhere reads nothing for them.
+   */
+  public with sharing class LazyLabels {
+    private Set<Id> seasonIds;
+    private Map<Id, CampLabels> loaded;
+
+    public LazyLabels(Set<Id> seasonIds) {
+      this.seasonIds = new Set<Id>(seasonIds);
+    }
+
+    public CampLabels get(Id seasonId) {
+      if (loaded == null) {
+        loaded = labelsBySeason(seasonIds);
+      }
+      return loaded.get(seasonId);
+    }
+  }
+
+  /** labelsBySeason, read only if a label is needed. */
+  public static LazyLabels labelsWhenNeeded(Set<Id> seasonIds) {
+    return new LazyLabels(seasonIds);
+  }
+
   /** "This location belongs to a different season than the activity." */
   public static String otherSeason(
     CampLabels labels,

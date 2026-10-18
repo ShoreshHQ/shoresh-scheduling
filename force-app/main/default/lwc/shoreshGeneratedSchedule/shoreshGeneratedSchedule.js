@@ -1030,7 +1030,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const day = this.schedule.days[cell.slot.day];
     const grp = day.groups[cell.slot.group];
     const block = day.blocks[cell.slot.block];
-    // Changing cells by hand comes with the shared editor (ADR 0010 §32): read-only for now.
+    // Changing cells by hand comes with the shared editor (ADR 0010 §37): read-only for now.
     let result = {
       ...cell,
       readOnly: true,
