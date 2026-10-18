@@ -8,7 +8,7 @@
           label={programLabel}
           value={programId}
           options={programOptions}
-          disabled={isBusy}
+          disabled={pickerDisabled}
           onchange={handleProgram}
           data-id="program"
         ></lightning-combobox>
@@ -19,7 +19,7 @@
           label={weekLabel}
           value={weekId}
           options={weekOptions}
-          disabled={isBusy}
+          disabled={pickerDisabled}
           onchange={handleWeek}
           data-id="week"
         ></lightning-combobox>
@@ -76,6 +76,26 @@
             onchange={handleOption}
             data-id="option"
           ></lightning-combobox>
+        </div>
+        <div class="actions">
+          <lightning-button-menu
+            class="lock-menu"
+            label="Lock"
+            icon-name="utility:lock"
+            alternative-text="Lock"
+            disabled={lockDisabled}
+            onselect={handleLockSelect}
+            data-id="lock-menu"
+          >
+            <template for:each={lockMenu} for:item="choice">
+              <lightning-menu-item
+                key={choice.value}
+                value={choice.value}
+                label={choice.label}
+                data-value={choice.value}
+              ></lightning-menu-item>
+            </template>
+          </lightning-button-menu>
         </div>
         <span class="spacer"></span>
         <button
@@ -157,8 +177,37 @@
       </div>
     </template>
 
-    <template lwc:if={hasNoDays}>
+    <template lwc:if={showNoDays}>
       <p class="empty-state">{noDaysMessage}</p>
+    </template>
+
+    <!-- Building waits for the basics (desktop readiness.js), as in Manual Build. -->
+    <template lwc:if={showStillNeeded}>
+      <div class="still-needed-box" data-id="still-needed-box">
+        <p class="still-needed" data-id="still-needed">
+          <template for:each={stillNeededParts} for:item="part">
+            <template lwc:if={part.link}>
+              <a
+                key={part.key}
+                href="#"
+                data-screen={part.screen}
+                onclick={handleStillNeeded}
+                >{part.text}</a
+              >
+            </template>
+            <template lwc:else>
+              <span key={part.key}>{part.text}</span>
+            </template>
+          </template>
+        </p>
+        <lightning-button
+          variant="brand"
+          label={setUpFirstLabel}
+          data-screen={setUpFirstScreen}
+          onclick={handleStillNeeded}
+          data-id="set-up-first"
+        ></lightning-button>
+      </div>
     </template>
 
     <!-- Not generated yet (desktop: "Let the app propose one"). -->
@@ -206,6 +255,7 @@
             corner={corner}
             label={dailyGridLabel}
             editable
+            oncellfocus={handleCellFocus}
           ></c-shoresh-schedule-grid>
         </template>
       </template>
@@ -232,6 +282,7 @@
             corner={corner}
             label={groupGridLabel}
             editable
+            oncellfocus={handleCellFocus}
           ></c-shoresh-schedule-grid>
         </template>
       </template>
@@ -287,7 +338,16 @@
         <div class="legend">
           <template for:each={legend} for:item="entry">
             <span key={entry.key} class="legend-entry">
-              <span class={entry.className}></span>
+              <template lwc:if={entry.icon}>
+                <lightning-icon
+                  class="legend-icon"
+                  icon-name={entry.icon}
+                  size="xx-small"
+                ></lightning-icon>
+              </template>
+              <template lwc:else>
+                <span class={entry.className}></span>
+              </template>
               {entry.label}
             </span>
           </template>

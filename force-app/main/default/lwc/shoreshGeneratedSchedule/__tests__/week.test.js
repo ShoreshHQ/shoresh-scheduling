@@ -109,6 +109,21 @@ describe("openCells", () => {
     );
   });
 
+  it("a cell locked empty is neither listed nor room for an activity", () => {
+    // Bunk 2's Periods 2 and 3 are Open; with Period 2 locked empty, Period 3 is a one-block
+    // gap, so a two-block activity can't fit it.
+    const day = { ...DAY, rows: ["1,2,^,4", "1,3,,"] };
+    const locked = (dateValue, groupId, blockId) =>
+      groupId === "g2" && blockId === "b3";
+    const open = openCells([day], atCamp, terms, 2, locked);
+    expect(open.map((c) => c.blockId)).toEqual(["b4"]);
+    expect(open[0].reason).toBe("No activity fits this gap");
+    // Without the lock, Periods 2 and 3 make room for it.
+    expect(openCells([day], atCamp, terms, 2).every((c) => !c.reason)).toBe(
+      true
+    );
+  });
+
   it("skips a day that could not be read", () => {
     expect(openCells([{ ...DAY, problem: "bad row" }], atCamp, terms)).toEqual(
       []
