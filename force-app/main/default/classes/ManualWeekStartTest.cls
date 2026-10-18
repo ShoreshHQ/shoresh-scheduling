@@ -9,7 +9,16 @@ private class ManualWeekStartTest {
   private static final Date WEEK_1_MONDAY = Date.newInstance(2026, 6, 29);
 
   private static Map<String, Id> camp() {
-    Map<String, Id> ids = SetTimeTestData.camp();
+    // The clash check runs once, at the end, as a screen save does (SetTimeGuard), not after
+    // every insert: the setup leaves the test its queries.
+    SetTimeGuard.defer();
+    Map<String, Id> ids;
+    try {
+      ids = SetTimeTestData.camp();
+      SetTimeGuard.checkPending();
+    } finally {
+      SetTimeGuard.resume();
+    }
     SlotRunsTestData.useBlocks(
       new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
     );

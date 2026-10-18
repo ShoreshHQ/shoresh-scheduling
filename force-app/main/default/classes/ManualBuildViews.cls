@@ -119,6 +119,14 @@ public with sharing class ManualBuildViews {
 
   /** The draft opened for Manual Build. */
   public static DraftView open(Id scheduleId) {
+    return open(scheduleId, null);
+  }
+
+  /**
+   * The same; setup: the program's groups and time blocks already read in this request (a
+   * GeneratedSetup of the draft's program), or null to read them.
+   */
+  public static DraftView open(Id scheduleId, GeneratedSetup setup) {
     List<Schedule__c> found = [
       SELECT Program__c, Program__r.Season__c
       FROM Schedule__c
@@ -133,7 +141,9 @@ public with sharing class ManualBuildViews {
     Schedule__c schedule = found[0];
     DraftView view = new DraftView();
     view.schedule = ScheduleViews.open(scheduleId);
-    List<Group__c> groups = ProgramReads.groupsOf(schedule.Program__c);
+    List<Group__c> groups = setup == null
+      ? ProgramReads.groupsOf(schedule.Program__c)
+      : setup.groups;
     view.activities = options(schedule.Program__r.Season__c, groups);
     view.activityRecords = SeasonSetupReader.activitiesOf(
       schedule.Program__r.Season__c
@@ -156,7 +166,10 @@ public with sharing class ManualBuildViews {
       WITH USER_MODE
       ORDER BY Id
     ];
-    view.away = away(groups, ProgramReads.blocksOf(schedule.Program__c));
+    view.away = away(
+      groups,
+      setup == null ? ProgramReads.blocksOf(schedule.Program__c) : setup.blocks
+    );
     return view;
   }
 

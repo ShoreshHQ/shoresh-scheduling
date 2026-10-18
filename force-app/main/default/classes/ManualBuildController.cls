@@ -23,8 +23,12 @@ public with sharing class ManualBuildController {
     Id weekId
   ) {
     try {
-      ManualDrafts.Started started = ManualDrafts.start(programId, weekId);
-      ManualBuildViews.DraftView view = ManualBuildViews.open(started.draftId);
+      GeneratedSetup setup = new GeneratedSetup(programId, weekId);
+      ManualDrafts.Started started = ManualDrafts.start(setup);
+      ManualBuildViews.DraftView view = ManualBuildViews.open(
+        started.draftId,
+        setup
+      );
       view.notPlaced = started.notPlaced;
       return view;
     } catch (Exception e) {
@@ -127,12 +131,13 @@ public with sharing class ManualBuildController {
     Id sourceId
   ) {
     try {
-      ManualWeekStart.Started started = ManualWeekStart.start(
-        programId,
-        weekId,
-        sourceId
+      // The program's setup for the week, read once for everything the start does.
+      GeneratedSetup setup = new GeneratedSetup(programId, weekId);
+      ManualWeekStart.Started started = ManualWeekStart.start(setup, sourceId);
+      ManualBuildViews.DraftView view = ManualBuildViews.open(
+        started.draftId,
+        setup
       );
-      ManualBuildViews.DraftView view = ManualBuildViews.open(started.draftId);
       view.notPlaced = started.notPlaced;
       view.leftOut = started.leftOut;
       view.startedBySomeoneElse = !started.copied;

@@ -1,6 +1,7 @@
 # 0010: Generated Schedule
 
-Status: proposed (2026-10-17), part G1 of 5 (the engine). Design source: wiki
+Status: proposed (2026-10-17), parts G1 (the engine) and G2 (reading its inputs, saving the
+week) of 5. Design source: wiki
 `projects/shoresh-scheduling-sf` ("Generated Schedule round 1", Greg 2026-10-17, and the
 coordinator's technical calls the same day), `projects/shoresh-design-guide`,
 `projects/shoresh-scheduling-data-model`. Starting point: the desktop generator, Greg's own
@@ -288,6 +289,151 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
   ordering and checkWeek's rules; every one makes a test fail (taking out the repair rollback
   makes the build loop forever).
 
+## Choices (G2)
+
+13. **Reading the engine's inputs** (`GeneratedScheduleController.getInputs`, `GeneratedInputs`).
+    One call returns everything `generateWeek` needs for a program and week, every query in user
+    mode (`WITH USER_MODE`, so object and field access is checked):
+    - the week's days in Manual Build's day shape: the Generated draft's days when there is one,
+      otherwise a blank week built now and not saved (`BlankWeek`, the same as Manual Build's
+      Start a blank week: fixed and recurring activities placed where setup puts them, groups away
+      that week left out, with its "not placed" list). The set-time reader behind it runs in system
+      mode and is checked first by `SetTimeAccess` (ADR 0008 §3). Opening the screen saves nothing;
+    - the season's records as records (field names carry the package's prefix once it has one):
+      the program's groups at camp that week (division, availability, sort order) and time
+      blocks (part of day, sort order); the season's activities with every rule field the engine reads; who each is set
+      up for (`ActivityEligibility__c`); locations with groups that fit; the program's fixed and
+      recurring activities (for their places); this week's exceptions. Who a recurring activity
+      covers (`Coverage__c`) is already applied in the days, where it is placed, so it isn't sent
+      again;
+    - a group marked away this week after the draft was made keeps its row in the draft's days
+      but is not among the groups sent: the engine keeps the row of a group it isn't sent as it
+      is, and the save refuses anything new there (§18). The desktop leaves away groups out
+      before every build the same way;
+    - the program's and week's own Ids (18 characters), which the engine compares exactly and
+      seeds with, whatever Ids the screen was given;
+    - the draft's Id, what its days were saved at (`revision`, below) and the option it was built
+      with. Locks come in G4 (grid format v2); until then the data module sends none, and other
+      programs (G5) none.
+14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status
+    Draft, Origin Generated, named "Generated Schedule", beside Manual Build's (decision 1: two
+    separate schedules). It is made by the week's **first save** (Generate), not by opening the
+    week, under the program-row lock as `ManualDrafts.start` does: the save locks the program,
+    then looks again. Unlike Manual Build's Start, a second first save does not get the first
+    one's draft: it is a **conflict**, since taking it would replace someone's generated week
+    unseen. The first save also builds the blank week again under the lock and compares it with
+    what was sent (`GeneratedSetupChanges`); if setup has changed it since, that is a conflict
+    too, naming what changed (camp words), never a refusal that blames the director: _Main's
+    days changed …_, _Main's time blocks on Monday changed …_, _Main's groups on Monday
+    changed …_, or, for a fixed or recurring activity added, moved or removed, _Period 2 for
+    Group A on Monday changed since you opened this week. Open it again, then generate._
+15. **Saving a week** (`saveWeek`, `GeneratedSaves`): the whole week at once, for Generate,
+    Rebuild, Try another, Fill the open cells and Start over. The **schedule-level revision
+    check** (ADR 0005 §9): `revision` is every day's revision in one text
+    (`2026-06-29:3|2026-06-30:3|…`); the save locks the draft, reads its days and compares the
+    whole text. Any day saved by someone else since means **nothing is written** and the answer
+    is `conflict` with ADR 0005's sentence ("Someone else changed this schedule since you opened
+    it…"), for the screen to show. Otherwise the days are written through `ScheduleDaySaves` at
+    the revisions just read under the same lock, so its own check passes. A conflict is an
+    answer, not an error; a refusal (below) is an error with a sentence.
+16. **Rebuild, Try another and Start over keep a version first**, in the same all-or-nothing
+    save: Status Version, Origin Generated, `SourceSchedule__c` the draft, named "Before
+    Rebuild", "Before Try another" or "Before Start over", with the draft's days and option.
+    Greg's decision 2 names Start over; Rebuild and Try another follow the desktop, which keeps
+    an Auto-save before every build that replaces a week (`useGeneration.js`). Try another
+    can't count on building the old option again: setup may have changed since. **One new `VersionReason__c`
+    value: `AutoSaved` (label "Auto-saved")**, the desktop's word for a version the app keeps by
+    itself; neither Imported nor Saved by hand is true of it. Fill the open cells keeps no
+    version: it only adds (§18). A conflict or refusal keeps nothing.
+17. **The option is stored** (decision 4): **one new field, `Schedule__c.EngineOption__c`**
+    (Number, four digits): the option the week was last built with, also on the versions kept
+    before a rebuild, so the same option can be brought back. No existing field could hold it:
+    the name is the version's own and can be renamed, and the grid's format has no place for it.
+    It is the first of the data model's planned "engine fields" (what a generated schedule was
+    built from). Options run 1 to 9999, in the engine too (`optionOf`), so a week it builds can
+    always be saved; anything else is refused, by both, with "That option can't be built."
+18. **What the server checks on save** (`GeneratedFrames`, `GeneratedGrids`, `GeneratedChecks`,
+    `GeneratedClosures`), refusing the whole week with a sentence and writing nothing:
+    - the days sent are exactly the draft's days (each date once), each on its own time blocks
+      and groups, in order: the stored frame is kept, only items and rows are taken from the
+      screen, and they must make a readable grid (ADR 0005 §6; a broken one is refused in plain
+      words, never the format's own), stored one way (Open as empty, item numbers without
+      leading zeros, 18-character Ids). A draft with a day that can't be
+      read is refused, naming the day: _Monday could not be read: …_;
+    - only this program's and week's Generated draft: a version or published schedule ("A saved
+      version can't be changed."), Manual Build's draft or another week's are refused; Generate
+      is only a first save, the others need the draft;
+    - on every cell that changed, Manual Build's own rules (`SlotRules`, the same sentences):
+      fixed and recurring activities are not moved, covered, cleared or placed; nothing is put
+      where the group isn't at camp; an activity must be this season's. **A leftover where the
+      group isn't at camp may be cleared** (a full build does, ADR 0010 §3), never filled or
+      changed;
+    - this week's exceptions, read again under the lock (`GeneratedClosures`): nothing new for a
+      group away this week (_Group B isn't at camp in Week 1._), and no activity newly placed
+      that is closed this week or whose place is (_Soccer is closed in Week 1._, _Gym is closed
+      in Week 1._). Unchanged leftovers may stay or be cleared, as above;
+    - something not set up yet (elective, trip, special day or event from an import) stays where
+      it is, as the engine keeps it: changing or clearing it is refused (_Chugim stays where it
+      is._, Manual Build's words), and it is never newly placed;
+    - **Fill the open cells changes only cells that were Open** (the engine keeps every filled
+      cell, §3), so it can't replace a week without the version Rebuild keeps;
+    - names come from the server: an activity's from setup now, anything else's as saved.
+      Rule bends (over a weekly limit, twice a day, not set up for a group, groups at once, same
+      division, place capacity) are allowed: the engine flags them.
+19. **Permissions** (decision 8): the Shoresh Scheduler permission set gets
+    `GeneratedScheduleController` and `EngineOption__c` (read and edit). No new global members.
+20. **The data module** `c/shoreshGeneratedWeek` (no screen yet: G3):
+    - `loadWeek(programId, weekId)` gives `generateWeek`'s input (with the server's own Ids)
+      plus the draft, its revision, its option and the blank week's "not placed" list;
+    - `saveWeek(loaded, { action, option, days })` sends only what the server reads and
+      resolves to `saved` (with the new revision for the next save), `conflict` or `refused`,
+      each with its sentence.
+
+    It names no fields: records pass through as the server sends them.
+
+21. **Code layout (G2):** `GeneratedScheduleController` (two calls), `GeneratedInputs` (the
+    reader), `GeneratedDrafts` (find, lock, revision), `GeneratedWeek` (what is sent and returned),
+    `GeneratedSaves` (the save), `GeneratedSetupChanges` (what changed before a first save),
+    `GeneratedFrames`, `GeneratedGrids`, `GeneratedChecks` and `GeneratedClosures` (the checks).
+    Shared with Manual Build: `ProgramReads` (now also reads sort orders), `BlankWeek`,
+    `ScheduleViews.dayViews`, `SlotRules` (a second constructor, and `activityOf`/
+    `seasonActivity`; it reads activities' places too), `ScheduleDaySaves.CHANGED_SINCE`. Deleting
+    a week or program now names a Generated draft too: _That includes its Manual Build, its
+    Generated Schedule and 2 saved versions._ (`shoreshCampSetup.savedSchedulesNote`).
+
+## Tests (G2)
+
+`GeneratedScheduleTest` and `GeneratedRefusalsTest` (Apex, as a scheduler with the permission
+set; camp in `GeneratedTestData`): the inputs of a week not generated yet (blank week, the
+season's records with every rule field the engine reads, every place, only this week's
+exceptions, groups away left out, the "not placed" list, nothing saved); the first Generate
+making the draft beside Manual Build's; two first saves making one draft and the second told of
+it; a save over a newer one is a conflict and writes nothing; Rebuild, Try another and Start over
+keep a version first and Fill the open cells doesn't; names from setup; a first save after setup
+changed, as a conflict naming what changed; and each refusal above (including another
+program's request for this draft, and a first save naming a revision), each writing nothing;
+someone without Shoresh access can neither read nor save. Each new check was confirmed to fail
+its test when taken out (Jest; the Apex ones by reading, as the org was busy).
+Jest for `c/shoreshGeneratedWeek`, in the normal and namespaced runs, including one that feeds
+what it loads to the real `generateWeek` and sends what it built.
+
+## Not done in G2
+
+- Truly simultaneous first saves are not exercised (Apex tests run one at a time), as in ADR
+  0008; the test saves twice from the same read, and the code takes the program's lock before
+  looking again.
+- When locks are stored (G4), the server must refuse a save that changes a locked cell itself,
+  not leave it to the browser.
+- An away group's row keeps whatever it held, and those leftovers still count toward places
+  and groups at once in the engine. G3 shows the row; clearing it is the director's choice.
+
 ## Choices that are hard to undo after release
 
 None in G1: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
+
+G2:
+
+- The field `Schedule__c.EngineOption__c` (Number, 4 digits, no decimals).
+- The picklist value `VersionReason__c` `AutoSaved` ("Auto-saved").
+- The Generated draft's name "Generated Schedule" and the versions' names "Before Rebuild",
+  "Before Try another", "Before Start over" (stored text; versions can be renamed).

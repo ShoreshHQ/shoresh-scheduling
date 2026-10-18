@@ -39,6 +39,13 @@ public with sharing class ManualDrafts {
 
   /** Starts a blank week, or returns the draft someone already started. */
   public static Started start(Id programId, Id weekId) {
+    return start(new GeneratedSetup(programId, weekId));
+  }
+
+  /** The same, on the program's setup for the week already read (one read per request). */
+  public static Started start(GeneratedSetup setup) {
+    Id programId = setup.program.Id;
+    Id weekId = setup.week.Id;
     List<Program__c> locked = [
       SELECT Id
       FROM Program__c
@@ -56,7 +63,7 @@ public with sharing class ManualDrafts {
     if (existing != null) {
       return new Started(existing.Id);
     }
-    BlankWeek.Week week = BlankWeek.build(programId, weekId);
+    BlankWeek.Week week = setup.blankWeek();
     Savepoint beforeStart = Database.setSavepoint();
     try {
       Schedule__c draft = new Schedule__c(
@@ -90,6 +97,7 @@ public with sharing class ManualDrafts {
         Origin__c,
         Program__c,
         Week__c,
+        Program__r.Id,
         Program__r.Season__c,
         Program__r.Season__r.Camp__c
       FROM Schedule__c

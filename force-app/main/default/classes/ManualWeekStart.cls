@@ -30,9 +30,14 @@ public with sharing class ManualWeekStart {
    * of the program). If the week was started meanwhile, its draft is returned unchanged.
    */
   public static Started start(Id programId, Id weekId, Id sourceId) {
-    Schedule__c source = sourceOf(sourceId, programId);
+    return start(new GeneratedSetup(programId, weekId), sourceId);
+  }
+
+  /** The same, on the program's setup for the week, read once for the whole request. */
+  public static Started start(GeneratedSetup setup, Id sourceId) {
+    Schedule__c source = sourceOf(sourceId, setup.program.Id);
     Started result = new Started();
-    ManualDrafts.Started blank = ManualDrafts.start(programId, weekId);
+    ManualDrafts.Started blank = ManualDrafts.start(setup);
     result.draftId = blank.draftId;
     if (!blank.created) {
       // Someone else started the week (before, or while this waited for the lock): theirs stays
@@ -41,13 +46,16 @@ public with sharing class ManualWeekStart {
       return result;
     }
     result.notPlaced = blank.notPlaced;
-    ManualWeekCopy copy = new ManualWeekCopy(
-      new ManualWeekStart(programId, weekId)
-    );
+    ManualWeekCopy copy = new ManualWeekCopy(new ManualWeekStart(setup));
     copy.plan(ScheduleDays.read(source.Id), ScheduleDays.read(blank.draftId));
     result.leftOut = copy.leftOut;
     if (!copy.edits.isEmpty()) {
-      SlotEdits.Result saved = SlotSaves.make(blank.draftId, copy.edits);
+      ManualDrafts.locked(blank.draftId);
+      SlotEdits.Result saved = SlotSaves.make(
+        blank.draftId,
+        copy.edits,
+        setup.rules(SlotRules.activityIdsIn(copy.edits))
+      );
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
           'The week could not be copied. Reload the page and try again.'
@@ -82,30 +90,24 @@ public with sharing class ManualWeekStart {
   }
 
   /** Setup as it is for this week: what decides where a copied activity may go. */
-  private ManualWeekStart(Id programId, Id weekId) {
-    Program__c program = ProgramReads.programOf(programId);
+  private ManualWeekStart(GeneratedSetup setup) {
     activities = new Map<Id, Activity__c>(
       [
         SELECT Id, Location__c
         FROM Activity__c
-        WHERE Season__c = :program.Season__c
+        WHERE Season__c = :setup.program.Season__c
         WITH USER_MODE
       ]
     );
-    readClosures(weekId);
-    groups = new Map<Id, Group__c>(ProgramReads.groupsOf(programId));
-    blocks = new Map<Id, TimeBlock__c>(ProgramReads.blocksOf(programId));
+    readClosures(setup.exceptions);
+    groups = new Map<Id, Group__c>(setup.groups);
+    blocks = new Map<Id, TimeBlock__c>(setup.blocks);
   }
 
   /** Activities closed this week, themselves or by their place. */
-  private void readClosures(Id weekId) {
+  private void readClosures(List<WeekException__c> exceptions) {
     Set<Id> closedLocations = new Set<Id>();
-    for (WeekException__c mark : [
-      SELECT Activity__c, Location__c
-      FROM WeekException__c
-      WHERE Week__c = :weekId
-      WITH USER_MODE
-    ]) {
+    for (WeekException__c mark : exceptions) {
       if (mark.Activity__c != null) {
         closedActivities.add(mark.Activity__c);
       }

@@ -42,6 +42,10 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
 - **Salesforce skills** in `.claude/skills/` are a vetted copy of Salesforce's sf-skills
   (`.claude/skills/SOURCES.md`). Each starts with "Shoresh overrides (these win)": those lines and
   this file beat the skill text. Never install sf-skills plugins.
+- **Apex tests that act as a scheduler create their records inside the same `System.runAs`.** Under
+  sharing the scheduler can't see a camp the test's admin made, so such tests pass locally in review
+  and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries
+  and assert it for a realistic camp.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.

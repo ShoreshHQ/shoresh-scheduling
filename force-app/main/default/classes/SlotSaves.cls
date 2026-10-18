@@ -32,8 +32,27 @@ public with sharing class SlotSaves {
     List<SlotEdits.Edit> edits
   ) {
     Schedule__c schedule = ManualDrafts.locked(scheduleId);
+    return make(
+      scheduleId,
+      edits,
+      new SlotRules(
+        setupOf(schedule.Program__r),
+        SlotRules.activityIdsIn(edits)
+      )
+    );
+  }
+
+  /**
+   * The same, on setup already read (Start from another week: GeneratedSetup.rules). The draft
+   * must already be locked (ManualDrafts.locked) in this request.
+   */
+  public static SlotEdits.Result make(
+    Id scheduleId,
+    List<SlotEdits.Edit> edits,
+    SlotRules rules
+  ) {
     SlotSaves saves = new SlotSaves();
-    saves.rules = new SlotRules(schedule, edits);
+    saves.rules = rules;
     for (ScheduleDays.DayGrid day : ScheduleDays.read(scheduleId)) {
       saves.days.put(day.day, day);
     }
@@ -45,6 +64,16 @@ public with sharing class SlotSaves {
     }
     saves.write(scheduleId);
     return result;
+  }
+
+  /** program: its Id, Season__c and Season__r.Camp__c. */
+  private static SlotRules.Setup setupOf(Program__c program) {
+    SlotRules.Setup setup = new SlotRules.Setup();
+    setup.seasonId = program.Season__c;
+    setup.labels = CampLabels.forCamp(program.Season__r.Camp__c);
+    setup.groups = ProgramReads.groupsOf(program.Id);
+    setup.blocks = ProgramReads.blocksOf(program.Id);
+    return setup;
   }
 
   private void write(Id scheduleId) {
