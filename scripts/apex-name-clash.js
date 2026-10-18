@@ -176,7 +176,11 @@ function declarationsOf(code, blocks) {
     const isProperty =
       code[code.slice(at + m[2].length).search(/\S/) + at + m[2].length] ===
       "{";
-    if (!inParens && !isProperty && !/^\s*when\s/i.test(before)) {
+    // More names after commas, also in a for loop's start (`for (Integer i = 0, n = 1; ...)`).
+    const forStart =
+      inParens &&
+      /\bfor\s*\(\s*$/i.test(before.slice(0, before.lastIndexOf(m[1])));
+    if ((!inParens || forStart) && !isProperty && !/^\s*when\s/i.test(before)) {
       for (const more of moreDeclarators(code, at + m[2].length)) {
         decls.push({
           name: more.name,

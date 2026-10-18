@@ -302,7 +302,8 @@ describe("c-shoresh-camp-setup", () => {
     await openScreen(element, "groups");
     // Only these two parts: axe over the whole setup screen takes about 5 s on its own.
     await expect(q(element, '[data-id="problems"]')).toBeAccessible();
-    await expect(q(element, "c-shoresh-editable-table")).toBeAccessible();
+    // The Bunks screen itself: the other screens are on the page too, hidden.
+    await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
   });
 
   it("fills in weeks from the season dates", async () => {

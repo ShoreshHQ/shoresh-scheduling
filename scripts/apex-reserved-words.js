@@ -5,10 +5,11 @@
  * org's compiler says so ("Identifier name is reserved"): #46 (`number`), and earlier `into` in
  * import undo. Apex ignores case, so `Number` and `INTO` count too.
  *
- * The list is Salesforce's, from the Apex Developer Guide, Reserved Keywords (Winter '27):
+ * The list is Salesforce's, copied word for word and in order from the Apex Developer Guide,
+ * Reserved Keywords (Winter '27, API 68.0), retrieved 2026-10-18 (`sObject` lowercased):
  * https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_reserved_words.htm
  * Its "special keywords" (after, before, count, excludes, first, includes, last, order, sharing,
- * with) can be names, so they are not checked. Methods are not checked. Declarations are found
+ * with) can be names, so they are not checked. Enum values are checked; methods are not. Declarations are found
  * as in scripts/apex-name-clash.js (regular expressions, not a parser).
  *
  * Usage: node scripts/apex-reserved-words.js   (exit 1, listing each one, if any is found)
@@ -45,13 +46,25 @@ function scanApex(source, isTrigger = false) {
     .filter((d) => RESERVED.has(d.name.toLowerCase()))
     .map((d) => ({ line: d.line, name: d.name, kind: d.kind }));
   for (const m of code.matchAll(TYPE_DECL)) {
+    const at = m.index + m[0].lastIndexOf(m[2]);
+    const kind = m[1].toLowerCase();
     if (RESERVED.has(m[2].toLowerCase())) {
-      const at = m.index + m[0].lastIndexOf(m[2]);
-      hits.push({
-        line: lineAt(code, at),
-        name: m[2],
-        kind: m[1].toLowerCase()
-      });
+      hits.push({ line: lineAt(code, at), name: m[2], kind });
+    }
+    if (kind === "enum") {
+      // Enum values: `enum Sort { FIRST, NUMBER }`.
+      const open = code.indexOf("{", at);
+      const close = code.indexOf("}", open);
+      for (const v of code.slice(open + 1, close).matchAll(/[A-Za-z_]\w*/g)) {
+        if (RESERVED.has(v[0].toLowerCase())) {
+          const where = open + 1 + v.index;
+          hits.push({
+            line: lineAt(code, where),
+            name: v[0],
+            kind: "enum value"
+          });
+        }
+      }
     }
   }
   return hits.sort((a, b) => a.line - b.line);

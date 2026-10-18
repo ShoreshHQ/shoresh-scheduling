@@ -60,6 +60,18 @@ describe("Apex reserved-word check", () => {
     ).toEqual(["field number @2", "local into @4", "local group @6"]);
   });
 
+  it("finds a reserved word in a for loop's start and among enum values", () => {
+    expect(
+      found(`public class X {
+        public enum Sort { FIRST, Number, LAST }
+        static void run() {
+          for (Integer i = 0, into = 1; i < into; i++) {}
+          for (Integer j = 0; j < 2; j++) {}
+        }
+      }`)
+    ).toEqual(["enum Sort @2", "enum value Number @2", "local into @4"]);
+  });
+
   it("does not flag keywords used as keywords, comments, strings, queries or allowed words", () => {
     expect(
       found(`public with sharing class SetupReads {

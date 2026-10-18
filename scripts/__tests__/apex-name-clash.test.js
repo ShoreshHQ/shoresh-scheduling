@@ -112,6 +112,18 @@ describe("Apex name-clash check", () => {
     ).toEqual(["field campLabels", "local scheduleUses", "local inUse"]);
   });
 
+  it("finds a name declared after a comma in a for loop's start", () => {
+    expect(
+      names(`public class X {
+        static void run() {
+          for (Integer i = 0, campLabels = 1; i < 2; i++) {
+            CampLabels.forCamp(null);
+          }
+        }
+      }`)
+    ).toEqual(["local campLabels"]);
+  });
+
   it("keeps a switch-when binding to its own block, and commas in initializers out", () => {
     expect(
       names(`public class X {
