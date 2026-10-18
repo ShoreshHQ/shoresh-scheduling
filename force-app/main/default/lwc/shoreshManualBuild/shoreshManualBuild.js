@@ -320,6 +320,7 @@ export default class ShoreshManualBuild extends LightningElement {
         true
       );
       this.announce(`Started ${this.weekName}.`);
+      this.loadVersions();
     } catch (e) {
       this.error = errorMessage(e);
     } finally {
@@ -456,7 +457,19 @@ export default class ShoreshManualBuild extends LightningElement {
     });
   }
 
+  /** While a version is being restored or saved, edits wait (Restore would paint over them). */
+  refuseWhileRestoring() {
+    if (!this.versionsWorking) {
+      return false;
+    }
+    this.say("One moment: the week is being saved or restored.");
+    return true;
+  }
+
   async handleDeleteVersion(event) {
+    if (this.versionsBusy) {
+      return;
+    }
     const id = event.detail.id;
     const version = this.versions.find((v) => v.id === id);
     const done = await this.versionsAction(() =>
@@ -1164,6 +1177,9 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** A new change ({ day, group, first, before, after } runs): saved, and one Undo step. */
   commit(runs, label, key) {
+    if (this.refuseWhileRestoring()) {
+      return;
+    }
     const serverRuns = runs.map((run) => this.toServerRun(run));
     this.stepSeq += 1;
     const step = { id: this.stepSeq, runs: serverRuns, label };
@@ -1395,7 +1411,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleUndo() {
-    if (!this.canUndo) {
+    if (!this.canUndo || this.refuseWhileRestoring()) {
       return;
     }
     const { step, runs } = this.history.undo();
@@ -1412,7 +1428,7 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   handleRedo() {
-    if (this.cannotRedo) {
+    if (this.cannotRedo || this.refuseWhileRestoring()) {
       return;
     }
     const { step, runs } = this.history.redo();

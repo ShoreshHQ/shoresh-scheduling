@@ -28,6 +28,8 @@ public with sharing class ManualDrafts {
   /** A started week: the draft, and what Start a blank week could not place. */
   public class Started {
     public Id draftId;
+    // False when someone else had started the week already (their draft is returned).
+    public Boolean created = false;
     public List<String> notPlaced = new List<String>();
 
     private Started(Id draftId) {
@@ -67,6 +69,7 @@ public with sharing class ManualDrafts {
       Database.insert(draft, AccessLevel.USER_MODE);
       ScheduleDaySaves.write(draft.Id, week.days);
       Started started = new Started(draft.Id);
+      started.created = true;
       started.notPlaced = week.notPlaced;
       return started;
     } catch (Exception e) {

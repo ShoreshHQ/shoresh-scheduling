@@ -213,4 +213,34 @@ private class ManualWeekStartTest {
       );
     }
   }
+
+  @IsTest
+  static void aWeekdayTheNewWeekLacksIsListedNotDropped() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      // Week 2 starts on its Tuesday (a holiday Monday): it has no Monday.
+      Week__c weekTwo = [
+        SELECT Id, StartDate__c
+        FROM Week__c
+        WHERE Id = :ids.get('Week 2')
+        WITH SYSTEM_MODE
+      ];
+      Database.update(
+        new Week__c(Id = weekTwo.Id, StartDate__c = weekTwo.StartDate__c + 1),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      Id source = weekOneWithSwim(ids);
+      ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
+        ids.get('Main'),
+        ids.get('Week 2'),
+        source
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{ 'Monday: not in this week' },
+        view.leftOut
+      );
+    }
+  }
 }

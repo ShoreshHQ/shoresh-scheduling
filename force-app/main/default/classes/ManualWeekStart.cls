@@ -30,13 +30,13 @@ public with sharing class ManualWeekStart {
   public static Started start(Id programId, Id weekId, Id sourceId) {
     Schedule__c source = sourceOf(sourceId, programId);
     Started result = new Started();
-    Schedule__c existing = ManualDrafts.find(programId, weekId);
-    if (existing != null) {
-      result.draftId = existing.Id;
-      return result;
-    }
     ManualDrafts.Started blank = ManualDrafts.start(programId, weekId);
     result.draftId = blank.draftId;
+    if (!blank.created) {
+      // Someone else started the week (before, or while this waited for the lock): theirs stays
+      // as it is, nothing copied into it.
+      return result;
+    }
     result.notPlaced = blank.notPlaced;
     ManualWeekCopy copy = new ManualWeekCopy(
       new ManualWeekStart(programId, weekId)
@@ -47,7 +47,7 @@ public with sharing class ManualWeekStart {
       SlotEdits.Result saved = SlotSaves.save(blank.draftId, copy.edits);
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
-          'Someone else started this week at the same moment. Reload the page.'
+          'The week could not be copied. Reload the page and try again.'
         );
       }
     }

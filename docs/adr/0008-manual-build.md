@@ -534,7 +534,13 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       bunk is at camp, and only activities still in setup and running that week; anything else
       stays Open and is listed under the toolbar, never guessed (_Swim · Bunk 3 · Monday: not at
       camp then_; also _not at camp this week_, _not running this week_, _deleted from setup_,
-      _not set up yet_, _that day has no Period 5_, _Lunch is there_). The desktop's Duplicate
+      _not set up yet_, _that day has no Period 5_, _Lunch is there_). A whole source day is never
+      dropped silently either: one that can't be read, or a weekday the new week doesn't have
+      (a week starting on a Tuesday), is listed (_Monday: not in this week_). The copy goes in as
+      one edit per day. If someone else started the week first, even while this one waited for
+      the program's lock, their draft is returned as it is and nothing is copied into it. While
+      a version is being saved or restored, edits on the grid wait (_One moment: the week is
+      being saved or restored._), so Restore never paints over one. The desktop's Duplicate
       week is a whole-week clone with no choice of source; this is Greg's own.
     - **Checked by** `ManualVersionsTest` (save, a name needed, Restore with Before Restore,
       only the same week's versions, delete never the draft), `ManualWeekStartTest` (matched by

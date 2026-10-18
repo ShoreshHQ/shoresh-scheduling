@@ -8,6 +8,7 @@ import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion"
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { buildTerms } from "c/shoreshTerms";
 import { WITH_SWIM, draft } from "./data/draftFixture";
 
@@ -215,5 +216,43 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     expect(q(element, '[data-id="left-out"]').textContent).toContain(
       "Swim · Bunk 2 · Monday: not at camp then"
     );
+  });
+
+  it("while a version is being restored, edits wait and say so", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    let finish;
+    restoreVersion.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const panel = await versionsPanel(element);
+    panel.querySelector('[data-action="open"]').click();
+    await flush();
+    const grid = q(element, '[data-id="edit-grid"]');
+    grid.shadowRoot.querySelector('[data-cell="0-1"]').dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Delete",
+        bubbles: true,
+        composed: true
+      })
+    );
+    await flush();
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    finish(draft(WITH_SWIM, ["1,,", "1,,"]));
+    await flush();
+  });
+
+  it("Start a blank week reads the week's versions too (a Generated one can be restored)", async () => {
+    getWeekSources.mockResolvedValue([]);
+    const element = await render(null);
+    startBlankWeek.mockResolvedValue(draft(WITH_SWIM, ["1,,", "1,,"]));
+    getVersions.mockClear();
+    q(element, '[data-id="start-week"]').click();
+    await flush();
+    expect(getVersions).toHaveBeenCalledWith({ programId: "p1", weekId: "w1" });
   });
 });

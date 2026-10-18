@@ -8,6 +8,8 @@ public with sharing class ManualWeekCopy {
   private ManualWeekStart rules;
   public List<SlotEdits.Edit> edits = new List<SlotEdits.Edit>();
   public List<String> leftOut = new List<String>();
+  // One edit per day of the new week: its runs go in together (one read of the day each).
+  private Map<Date, SlotEdits.Edit> editByDay = new Map<Date, SlotEdits.Edit>();
 
   /** One placement of the source day: where it starts, how long it runs, what it is. */
   private class Placement {
@@ -36,12 +38,15 @@ public with sharing class ManualWeekCopy {
     Map<String, ScheduleDays.DayGrid> byWeekday = new Map<String, ScheduleDays.DayGrid>();
     for (ScheduleDays.DayGrid day : sourceDays) {
       String weekday = BlankWeek.weekdayOf(day.day);
-      if (day.grid != null && !byWeekday.containsKey(weekday)) {
+      if (day.grid == null) {
+        // Never skipped silently: a day that can't be read is listed (ADR 0008 §25).
+        leftOut.add(weekday + ': could not be read (' + day.problem + ')');
+      } else if (!byWeekday.containsKey(weekday)) {
         byWeekday.put(weekday, day);
       }
     }
     for (ScheduleDays.DayGrid target : targetDays) {
-      ScheduleDays.DayGrid source = byWeekday.get(
+      ScheduleDays.DayGrid source = byWeekday.remove(
         BlankWeek.weekdayOf(target.day)
       );
       if (source != null && target.grid != null) {
@@ -50,6 +55,21 @@ public with sharing class ManualWeekCopy {
         }
       }
     }
+    // A weekday the new week doesn't have: its activities are listed, not dropped.
+    for (String weekday : byWeekday.keySet()) {
+      if (hasActivities(byWeekday.get(weekday).grid)) {
+        leftOut.add(weekday + ': not in this week');
+      }
+    }
+  }
+
+  private static Boolean hasActivities(ScheduleGrid grid) {
+    for (Integer g = 0; g < grid.groups.size(); g++) {
+      if (!placementsOf(grid, g).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void copyGroup(
@@ -153,9 +173,14 @@ public with sharing class ManualWeekCopy {
     for (Integer i = 0; i < run.after.size(); i++) {
       target.row[first + i] = run.after[i];
     }
-    SlotEdits.Edit edit = new SlotEdits.Edit();
-    edit.runs = new List<SlotEdits.Run>{ run };
-    edits.add(edit);
+    SlotEdits.Edit edit = editByDay.get(run.day);
+    if (edit == null) {
+      edit = new SlotEdits.Edit();
+      edit.runs = new List<SlotEdits.Run>();
+      editByDay.put(run.day, edit);
+      edits.add(edit);
+    }
+    edit.runs.add(run);
   }
 
   /** The run that fills the placement's blocks on a day, from Open, starting at a block index. */

@@ -66,6 +66,15 @@ export default class ShoreshVersions extends LightningElement {
   get canSave() {
     return this.restore;
   }
+  get versionWord() {
+    return this.terms ? this.terms.sIn("Version") : "version";
+  }
+  get saveLabel() {
+    return `Save ${this.versionWord}`;
+  }
+  get savePlaceholder() {
+    return `Name current ${this.versionWord}…`;
+  }
   get saveDisabled() {
     return this.busy || !this.saveName.trim();
   }

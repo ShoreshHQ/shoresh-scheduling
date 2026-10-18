@@ -72,6 +72,7 @@
                     class="link link_quiet"
                     data-id={row.id}
                     data-action="delete"
+                    disabled={busy}
                     onclick={handleDelete}
                     onblur={handleDeleteBlur}
                   >
@@ -97,15 +98,15 @@
               class="slds-input"
               value={saveName}
               maxlength="80"
-              placeholder="Name current version…"
-              aria-label="Name current version"
+              placeholder={savePlaceholder}
+              aria-label={savePlaceholder}
               oninput={handleSaveInput}
               onkeydown={handleSaveKey}
               data-id="save-name"
             />
             <lightning-button
               variant="brand"
-              label="Save version"
+              label={saveLabel}
               disabled={saveDisabled}
               onclick={handleSave}
               data-id="save-button"
