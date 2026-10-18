@@ -21,6 +21,11 @@
                 <default>false</default>
                 <label>Saved by hand</label>
             </value>
+            <value>
+                <fullName>AutoSaved</fullName>
+                <default>false</default>
+                <label>Auto-saved</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

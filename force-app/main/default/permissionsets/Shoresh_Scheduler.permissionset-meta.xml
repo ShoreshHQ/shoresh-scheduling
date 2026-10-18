@@ -28,6 +28,10 @@
         <apexClass>RunsInController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>GeneratedScheduleController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <applicationVisibilities>
         <application>Shoresh</application>
         <visible>true</visible>
@@ -67,6 +71,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Import__c.UndoneAt__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Schedule__c.EngineOption__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

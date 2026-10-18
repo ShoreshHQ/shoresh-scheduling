@@ -384,6 +384,13 @@ describe("c-shoresh-camp-setup", () => {
               Program__c: "p1",
               Status__c: "Draft",
               Origin__c: "Manual"
+            },
+            {
+              Id: "s5",
+              Week__c: "w1",
+              Program__c: "p1",
+              Status__c: "Draft",
+              Origin__c: "Generated"
             }
           ]
         })
@@ -396,7 +403,7 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
-      "That includes its Manual Build and 2 saved versions."
+      "That includes its Manual Build, its Generated Schedule and 2 saved versions."
     );
   });
 
