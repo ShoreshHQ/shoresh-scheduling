@@ -1481,6 +1481,19 @@ export default class ShoreshWeekEditor extends LightningElement {
     return new Set([...lockedNow].filter((key) => !entry.seen.has(key)));
   }
 
+  /** The cells this edit touches that the director saw locked and the server no longer holds locked. */
+  unlockedSince(entry) {
+    if (!entry.seen || !this.lockBase) {
+      return new Set();
+    }
+    const touched = entry.edit.runs.flatMap((run) =>
+      run.blockIds.map((blockId) => lockKey(run.day, run.groupId, blockId))
+    );
+    return new Set(
+      touched.filter((key) => entry.seen.has(key) && !this.lockBase.has(key))
+    );
+  }
+
   /** Someone locked a cell this edit touches: the edit is dropped and the lock is named. */
   refuseNewlyLocked(entry, { run, block }) {
     this.abandon(entry);
@@ -1717,9 +1730,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * The cells a tool left out because they are locked, in the words of the other lists:
-   * "1 stayed: Swim · Bunk 1 · Monday (locked)." for a clear, "1 left out: Swim · Bunk 1 ·
-   * Tuesday: locked." for a copy. Null when none.
+   * The placements a tool left out because they are locked, in the words of the other lists:
+   * "1 stayed: Swim · Bunk 1 · Monday (locked)." for a clear (what stays in the cell), "1 left
+   * out: Swim · Bunk 1 · Tuesday: locked." for a copy (what was being copied there). Null when
+   * none.
    */
   lockedText(tool, week, cells) {
     const named = cells
@@ -1851,7 +1865,7 @@ export default class ShoreshWeekEditor extends LightningElement {
         ? `${result.missed} ${result.missed === 1 ? "cell that" : "cells that"} changed`
         : null,
       lockedCount
-        ? `${lockedCount} ${lockedCount === 1 ? "cell that is" : "cells that are"} locked`
+        ? `${lockedCount} ${lockedCount === 1 ? `${this.t.sIn("Activity")} that is` : `${this.t.pIn("Activity")} that are`} locked`
         : null
     ].filter(Boolean);
     const except = exceptions.length
@@ -2306,6 +2320,22 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     if (!made.rows.length) {
+      const unlocked = this.unlockedSince(entry);
+      if (unlocked.size) {
+        // Someone only took a lock off a cell this edit touches: nothing of theirs is covered,
+        // so it is sent again, as it was, naming those cells unlocked as they are now. Each time
+        // takes at least one lock out of what it names, so this ends.
+        this.queue = [
+          {
+            ...entry,
+            seen: new Set([...entry.seen].filter((key) => !unlocked.has(key)))
+          },
+          ...this.queue
+        ];
+        this.showServerAndWaiting();
+        this.saveNext();
+        return;
+      }
       if ((entry.resent || 0) >= MAX_RESENDS) {
         // Sent again and refused again with nothing new to ask: not a loop without end.
         this.abandon(entry);

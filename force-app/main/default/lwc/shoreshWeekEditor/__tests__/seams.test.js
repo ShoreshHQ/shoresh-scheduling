@@ -1166,11 +1166,72 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
         expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
         expect(q(element, '[data-id="conflict"]')).toBeNull();
         expect(toolNoticeOf(element)).toContain(
-          "Cleared Monday, except 1 cell that is locked. 1 stayed: Soccer · Bunk 1 · Monday (locked)."
+          "Cleared Monday, except 1 activity that is locked. 1 stayed: Soccer · Bunk 1 · Monday (locked)."
         );
         expect(cellText(element, "0-1")).toBe("Open");
         expect(cellText(element, "0-2")).toBe("Soccer");
         expect(lockText(element, "0-2")).toBe("Locked");
+      });
+
+      it("Clear day lists and counts a locked activity that runs two blocks once", async () => {
+        const items = [...BOATING, WITH_SOCCER[1]];
+        const rows = ["1,2,^", "1,3,"];
+        const saveRuns = jest
+          .fn()
+          // Someone locked both of Boating's cells: the first send comes back as a conflict.
+          .mockResolvedValueOnce(savedLocked(items, rows, [",1,1", ""], [0]))
+          .mockResolvedValue(
+            savedLocked(items, ["1,2,^", "1,,"], [",1,1", ""])
+          );
+        const { element } = await render(saveRuns, { items, rows, locks: [] });
+        element.runTool(CLEAR_MONDAY);
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(2);
+        expect(saveRuns.mock.calls[1][0][0].runs).toHaveLength(1);
+        expect(bySent(saveRuns, 1).groupId).toBe("g2");
+        expect(toolNoticeOf(element)).toContain(
+          "Cleared Monday, except 1 activity that is locked. 1 stayed: Boating · Bunk 1 · Monday (locked)."
+        );
+      });
+
+      it("Copy day names the activity that was being copied as left out, not what stays in the locked cell", async () => {
+        const COPY = {
+          kind: "copy",
+          from: "2026-06-29",
+          dates: ["2026-06-30"],
+          fromName: "Monday",
+          toName: "Tuesday"
+        };
+        const rows = ["1,2,", "1,3,"];
+        // Someone else put Soccer in Bunk 1's Tuesday Period 2 and locked it.
+        const theirs = (conflicts) => {
+          const result = savedLocked(BOTH, rows, ["", ""], conflicts);
+          result.schedule.days[1] = {
+            ...result.schedule.days[1],
+            items: WITH_SOCCER,
+            rows: conflicts.length ? ["1,2,", "1,,"] : ["1,2,", "1,2,"],
+            locks: [",1,", ""]
+          };
+          return result;
+        };
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(theirs([0]))
+          .mockResolvedValue(theirs([]));
+        const { element } = await render(saveRuns, {
+          items: BOTH,
+          rows,
+          locks: []
+        });
+        element.runTool(COPY);
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(2);
+        // Only Bunk 2's Soccer is copied; Bunk 1's locked cell is left as it is.
+        expect(saveRuns.mock.calls[1][0][0].runs).toHaveLength(1);
+        expect(bySent(saveRuns, 1).groupId).toBe("g2");
+        expect(toolNoticeOf(element)).toContain(
+          "Copied Monday to Tuesday, except 1 activity that is locked. 1 left out: Swim · Bunk 1 · Tuesday: locked."
+        );
       });
 
       it("Clear day with nothing left but locked cells says so and changes nothing", async () => {
@@ -1189,6 +1250,137 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
           "Cleared Monday: nothing done, those cells are locked."
         );
         expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+      });
+    });
+
+    describe("a lock someone took off meanwhile", () => {
+      // The answer when the server refuses an edit only because a cell it names locked has been
+      // unlocked since: Bunk 1's Monday Period 2 still holds Swim, with no lock.
+      const unlockedSince = () =>
+        savedLocked(WITH_SWIM, SWIM_AT_P2, ["", ""], [0]);
+
+      it("an Undo is sent again once naming the cell unlocked, and is made", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(
+            savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,", ""])
+          )
+          .mockResolvedValueOnce(unlockedSince())
+          .mockResolvedValue(savedLocked(undefined, ["1,,", "1,,"], ["", ""]));
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        q(element, '[data-id="undo"]').click();
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(3);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 2).locksBefore).toEqual([""]);
+        expect(bySent(saveRuns, 2).after).toEqual([""]);
+        expect(cellText(element, "0-1")).toBe("Open");
+        expect(q(element, '[data-id="notice"]')).toBeNull();
+        expect(q(element, '[data-id="conflict"]')).toBeNull();
+        expect(q(element, '[data-id="redo"]').disabled).toBe(false);
+      });
+
+      it("a Redo is sent again once naming the cell unlocked, and is made", async () => {
+        const saveRuns = jest
+          .fn()
+          // Delete clears Swim (and its lock); Undo puts both back.
+          .mockResolvedValueOnce(
+            savedLocked(undefined, ["1,,", "1,,"], ["", ""])
+          )
+          .mockResolvedValueOnce(
+            savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,", ""])
+          )
+          .mockResolvedValueOnce(unlockedSince())
+          .mockResolvedValue(savedLocked(undefined, ["1,,", "1,,"], ["", ""]));
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        element.runTool({
+          kind: "clear",
+          dates: ["2026-06-29"],
+          name: "Monday"
+        });
+        await flush();
+        q(element, '[data-id="undo"]').click();
+        await flush();
+        expect(lockText(element, "0-1")).toBe("Locked");
+        q(element, '[data-id="redo"]').click();
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(4);
+        expect(bySent(saveRuns, 2).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 3).locksBefore).toEqual([""]);
+        expect(bySent(saveRuns, 3).after).toEqual([""]);
+        expect(cellText(element, "0-1")).toBe("Open");
+        expect(q(element, '[data-id="notice"]')).toBeNull();
+        expect(q(element, '[data-id="undo"]').disabled).toBe(false);
+      });
+
+      it("an edit (here Clear day, which clears a cell the director saw locked) is sent again once naming it unlocked, and is made", async () => {
+        const resend = slow();
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(unlockedSince())
+          .mockReturnValueOnce(resend.promise);
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        element.runTool({
+          kind: "clear",
+          dates: ["2026-06-29"],
+          name: "Monday"
+        });
+        await flush();
+        expect(saveRuns).toHaveBeenCalledTimes(2);
+        // While it is sent again, the grid still shows it made.
+        expect(cellText(element, "0-1")).toBe("Open");
+        resend.answer(savedLocked(undefined, ["1,,", "1,,"], ["", ""]));
+        await flush();
+        expect(bySent(saveRuns, 0).locksBefore).toEqual(["1"]);
+        expect(bySent(saveRuns, 1).locksBefore).toEqual([""]);
+        expect(bySent(saveRuns, 1).after).toEqual([""]);
+        expect(cellText(element, "0-1")).toBe("Open");
+        expect(toolNoticeOf(element)).not.toMatch(/except/);
+        expect(q(element, '[data-id="notice"]')).toBeNull();
+        expect(q(element, '[data-id="conflict"]')).toBeNull();
+      });
+
+      it("a conflict with no lock taken off and nothing of anyone else's is still sent again only a few times", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValueOnce(
+            savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,", ""])
+          )
+          .mockResolvedValue(
+            savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,", ""], [0])
+          );
+        const { element } = await render(saveRuns, { locks: [] });
+        await placeSwim(element);
+        await typeInto(element, "1-1", "soccer");
+        // The first send and two more, all naming the locks as they are.
+        expect(saveRuns).toHaveBeenCalledTimes(4);
+        expect(bySent(saveRuns, 3).locksBefore).toEqual([""]);
+        expect(noticeOf(element)).toMatch(/kept changing/);
+      });
+
+      it("a lock someone added is still refused, never sent again over it", async () => {
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValue(
+            savedLocked(WITH_SWIM, SWIM_AT_P2, [",1,1", ""], [0])
+          );
+        const { element } = await render(saveRuns, {
+          items: WITH_SWIM,
+          rows: SWIM_AT_P2,
+          locks: [P2]
+        });
+        await typeInto(element, "0-2", "soccer");
+        expect(saveRuns).toHaveBeenCalledTimes(1);
+        expect(noticeOf(element)).toBe("Bunk 1 · Monday · Lunch is locked.");
       });
     });
 

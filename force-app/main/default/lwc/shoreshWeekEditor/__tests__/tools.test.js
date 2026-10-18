@@ -234,4 +234,141 @@ describe("worked out again after someone else's change (replan)", () => {
     expect(result.kept.has("2026-06-29|g1|t2")).toBe(true);
     expect(result.kept.has("2026-06-29|g1|t3")).toBe(true);
   });
+
+  describe("a cell someone locked meanwhile", () => {
+    const CLEAR = { kind: "clear", dates: ["2026-06-29"] };
+    const TUE = (g, t) => `2026-06-30|${g}|${t}`;
+    const MON = (g, t) => `2026-06-29|${g}|${t}`;
+
+    it("a copy that skips a whole placement for one locked cell counts its other cell as locked, not changed", () => {
+      // Monday Bunk 1 has Boating over Period 2 and Lunch; Tuesday Bunk 1's Lunch is locked.
+      // Nobody changed anything.
+      const days = week(["1,3,^", "1,,"], ["1,,", "1,,"]);
+      const result = replan(
+        COPY,
+        days,
+        days,
+        new Set(),
+        () => false,
+        new Set([TUE("g1", "t3")])
+      );
+      expect(result.runs).toEqual([]);
+      expect(result.missed).toBe(0);
+      expect(result.lockedCells).toEqual([
+        { key: TUE("g1", "t2"), slot: "A:a2" }
+      ]);
+    });
+
+    it("the same, alongside another bunk's activity that is copied", () => {
+      const days = week(["1,3,^", "1,4,"], ["1,,", "1,,"]);
+      const result = replan(
+        COPY,
+        days,
+        days,
+        new Set(),
+        () => false,
+        new Set([TUE("g1", "t3")])
+      );
+      expect(after(days, result.runs)[1]).toEqual([
+        ["F:f1", "", ""],
+        ["F:f1", "A:a3", ""]
+      ]);
+      expect(result.missed).toBe(0);
+      expect(result.lockedCells).toHaveLength(1);
+    });
+
+    it("a copy names the activity that was being copied, not what stays in the locked cell", () => {
+      // Monday Bunk 1 has Swim in Period 2; someone else put Soccer on Tuesday there and locked it.
+      const seen = week(["1,2,", "1,,"], ["1,,", "1,,"]);
+      const saved = week(["1,2,", "1,,"], ["1,4,", "1,,"]);
+      const result = replan(
+        COPY,
+        seen,
+        saved,
+        new Set(),
+        () => false,
+        new Set([TUE("g1", "t2")])
+      );
+      expect(result.runs).toEqual([]);
+      expect(result.missed).toBe(0);
+      expect(result.lockedCells).toEqual([
+        { key: TUE("g1", "t2"), slot: "A:a1" }
+      ]);
+    });
+
+    it("a clear names what stays in the locked cell", () => {
+      // The director saw Swim in Bunk 1's Monday Period 2; someone else made it Soccer and locked it.
+      const seen = week(["1,2,", "1,,"], ["1,,", "1,,"]);
+      const saved = week(["1,4,", "1,,"], ["1,,", "1,,"]);
+      const result = replan(
+        CLEAR,
+        seen,
+        saved,
+        new Set(),
+        () => false,
+        new Set([MON("g1", "t2")])
+      );
+      expect(result.missed).toBe(0);
+      expect(result.lockedCells).toEqual([
+        { key: MON("g1", "t2"), slot: "A:a3" }
+      ]);
+    });
+
+    it("a locked placement running two blocks is counted once, for a clear and for a copy", () => {
+      const days = week(["1,3,^", "1,4,"], ["1,,", "1,,"]);
+      const both = new Set([MON("g1", "t2"), MON("g1", "t3")]);
+      const cleared = replan(CLEAR, days, days, new Set(), () => false, both);
+      expect(cleared.missed).toBe(0);
+      expect(cleared.lockedCells).toEqual([
+        { key: MON("g1", "t2"), slot: "A:a2" }
+      ]);
+      expect(after(days, cleared.runs)[0][1]).toEqual(["F:f1", "", ""]);
+
+      const bothTuesday = new Set([TUE("g1", "t2"), TUE("g1", "t3")]);
+      const copied = replan(
+        COPY,
+        days,
+        days,
+        new Set(),
+        () => false,
+        bothTuesday
+      );
+      expect(copied.missed).toBe(0);
+      expect(copied.lockedCells).toEqual([
+        { key: TUE("g1", "t2"), slot: "A:a2" }
+      ]);
+    });
+
+    it("a clear skipping a two-block placement for one locked cell counts its other cell as locked", () => {
+      const days = week(["1,3,^", "1,,"], ["1,,", "1,,"]);
+      const result = replan(
+        CLEAR,
+        days,
+        days,
+        new Set(),
+        () => false,
+        new Set([MON("g1", "t3")])
+      );
+      expect(result.runs).toEqual([]);
+      expect(result.missed).toBe(0);
+      expect(result.lockedCells).toHaveLength(1);
+    });
+
+    it("a cell someone else changed beside a locked placement still counts as changed", () => {
+      // Bunk 1's Boating is locked; someone else changed Bunk 2's Period 2 from Soccer to Swim.
+      const seen = week(["1,3,^", "1,4,"], ["1,,", "1,,"]);
+      const saved = week(["1,3,^", "1,2,"], ["1,,", "1,,"]);
+      const result = replan(
+        CLEAR,
+        seen,
+        saved,
+        new Set(),
+        () => false,
+        new Set([MON("g1", "t2"), MON("g1", "t3")])
+      );
+      expect(result.runs).toEqual([]);
+      expect(result.missed).toBe(1);
+      expect(result.lockedCells).toHaveLength(1);
+    });
+  });
 });
