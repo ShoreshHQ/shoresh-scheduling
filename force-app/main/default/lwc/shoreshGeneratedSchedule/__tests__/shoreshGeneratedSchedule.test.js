@@ -572,6 +572,24 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-id="option"]').value).toBe("2");
   });
 
+  it("a bunk away this week keeps its row, but its empty cells aren't counted as Open", async () => {
+    // A saved week, nothing placed yet; Bunk 2 was marked away after the draft was made, so the
+    // server sends its row but not the bunk.
+    const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
+    inputs.groups = inputs.groups.slice(0, 1);
+    const element = await render(inputs);
+    const open = counter(element, "open");
+    // Bunk 1's three periods on two days.
+    expect(open.querySelector(".count").textContent).toBe("6");
+    q(element, '[data-id="grid"]');
+    open.click();
+    await flush();
+    const texts = [
+      ...checks(element).shadowRoot.querySelectorAll(".line-text")
+    ].map((b) => b.textContent);
+    expect(texts.every((t) => t.startsWith("Bunk 1 · "))).toBe(true);
+  });
+
   it("dots a cell that bends a rule, its words in assistive text, worked out again on load", async () => {
     // One activity, at most once a week, for four cells: never blank goes over the limit.
     const inputs = camp({

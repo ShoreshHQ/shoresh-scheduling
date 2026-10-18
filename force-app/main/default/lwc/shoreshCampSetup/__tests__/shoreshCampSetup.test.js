@@ -406,7 +406,7 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
-      "That includes its Generated Schedule, its Manual Build and 2 saved versions."
+      "That includes its Manual Build, its Generated Schedule and 2 saved versions."
     );
   });
 

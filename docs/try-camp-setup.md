@@ -720,9 +720,9 @@ doesn't change this one.
 13. **Not here yet:** changing cells by hand on this schedule (drag, type, Delete). Cells can be
     reached with the arrow keys so a dot's words show, but they can't be changed: a hand edit
     will lock the cell, and locks come in the next part. Use Manual Build for a week built by hand.
-14. **Versions.** Rebuild and Start over each keep the week as it was first, as a version named
-    _Before Rebuild_ or _Before Start over_ (Schedules page, **Versions**). Try another and Fill
-    the open cells keep none: any option can be brought back with **Option**.
+14. **Versions.** Rebuild, Try another and Start over each keep the week as it was first, as a
+    version named _Before Rebuild_, _Before Try another_ or _Before Start over_ (Schedules page,
+    **Versions**). Fill the open cells keeps none: it only adds.
 
 ## What is not here yet
 

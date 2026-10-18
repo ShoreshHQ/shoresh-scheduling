@@ -776,6 +776,9 @@ export default class ShoreshCampSetup extends LightningElement {
     const generated = drafts("Generated");
     const t = this.terms;
     const parts = [];
+    if (builds) {
+      parts.push(builds === 1 ? "its Manual Build" : `${builds} Manual Builds`);
+    }
     if (generated) {
       parts.push(
         generated === 1
@@ -783,18 +786,15 @@ export default class ShoreshCampSetup extends LightningElement {
           : `${generated} Generated Schedules`
       );
     }
-    if (builds) {
-      parts.push(builds === 1 ? "its Manual Build" : `${builds} Manual Builds`);
-    }
     if (versions) {
       const word = versions === 1 ? t.sIn("Version") : t.pIn("Version");
       parts.push(`${versions} saved ${word}`);
     }
-    const list =
-      parts.length > 2
-        ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-        : parts.join(" and ");
-    return parts.length ? ` That includes ${list}.` : "";
+    if (!parts.length) {
+      return "";
+    }
+    const last = parts.pop();
+    return ` That includes ${parts.length ? `${parts.join(", ")} and ` : ""}${last}.`;
   }
 
   async handleDeleteRecord(event) {

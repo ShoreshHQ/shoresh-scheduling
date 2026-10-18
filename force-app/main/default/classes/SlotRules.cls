@@ -23,7 +23,7 @@ public with sharing class SlotRules {
     labels = CampLabels.forCamp(program.Season__r.Camp__c);
     activities = new Map<Id, Activity__c>(
       [
-        SELECT Id, Name
+        SELECT Id, Name, Location__c
         FROM Activity__c
         WHERE Id IN :activityIds AND Season__c = :seasonId
         WITH USER_MODE

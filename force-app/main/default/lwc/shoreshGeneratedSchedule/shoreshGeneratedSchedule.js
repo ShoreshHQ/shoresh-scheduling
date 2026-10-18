@@ -332,11 +332,18 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (loaded) {
       const week = checkGeneratedWeek(this.engineInput(loaded.input.days));
       const all = [...readActivities(loaded.input.activities).values()];
+      const sent = new Set((loaded.input.groups || []).map((g) => g.Id));
       result = {
         ...week,
         checked: {
           ...week.checked,
-          openCells: openCells(week.days, week.isAway, this.t),
+          // A bunk away this week keeps its row but isn't sent (G2 §13): nothing can go in it.
+          openCells: openCells(
+            week.days,
+            (groupId, blockId) =>
+              !sent.has(groupId) || week.isAway(groupId, blockId),
+            this.t
+          ),
           // Which targets the camp has set (desktop hasCoverageTargets / hasSpreadTargets).
           hasCoverageTargets: all.some((a) => a.min > 0),
           hasSpreadTargets: all.some((a) => !!a.early)

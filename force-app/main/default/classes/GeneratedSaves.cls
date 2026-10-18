@@ -3,7 +3,8 @@
  * Rebuild, Try another, Fill the open cells, Start over), protected by the schedule-level revision
  * check (ADR 0005 §9). If someone else saved the week since it was read, nothing is written and
  * the answer is a conflict, for the screen to say so; nothing is overwritten unseen. Rebuild and
- * Start over save the draft as a version first (Greg, 2026-10-17). The days are checked by
+ * Start over save the draft as a version first (Greg, 2026-10-17), and so does Try another (as on
+ * the desktop, which keeps one before every build that replaces a week). The days are checked by
  * GeneratedFrames and GeneratedChecks. Runs in user mode; the days are written by
  * ScheduleDaySaves under the lock.
  */
@@ -15,9 +16,10 @@ public with sharing class GeneratedSaves {
   public static final String START_OVER = 'StartOver';
   public static final String AUTO_SAVED = 'AutoSaved';
   public static final String VERSION = 'Version';
-  // Rebuild and Start over keep what they replace, as a version with this name.
+  // What replaces the whole week keeps it first, as a version with this name.
   private static final Map<String, String> VERSION_FIRST = new Map<String, String>{
     REBUILD => 'Before Rebuild',
+    TRY_ANOTHER => 'Before Try another',
     START_OVER => 'Before Start over'
   };
   private static final Set<String> ON_A_DRAFT = new Set<String>{
@@ -60,9 +62,10 @@ public with sharing class GeneratedSaves {
     List<ScheduleDays.DayGrid> blank = GeneratedInputs.daysOf(
       BlankWeek.build(program.Id, request.weekId).days
     );
-    // The blank week was read before; if setup has changed its days since, build it again.
-    if (!GeneratedFrames.sameFrame(blank, request.days)) {
-      return conflict(GeneratedFrames.setupChanged(program));
+    // The blank week was read before; if setup has changed it since, the week is opened again.
+    String changed = GeneratedSetupChanges.of(program, blank, request.days);
+    if (changed != null) {
+      return conflict(changed);
     }
     List<ScheduleGrid> grids = GeneratedChecks.check(program, blank, request);
     Savepoint beforeSave = Database.setSavepoint();
