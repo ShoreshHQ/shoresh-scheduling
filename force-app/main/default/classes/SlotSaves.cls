@@ -19,12 +19,15 @@ public with sharing class SlotSaves {
   // Generated Schedule: what an edit fills is locked.
   private Boolean lockEdits = false;
 
-  /** Makes the edits that still fit, in order, and returns the schedule as it now is. */
+  /** Makes the edits that still fit, in order; the answer has the schedule as it now is. */
   public static SlotEdits.Result save(
     Id scheduleId,
     List<SlotEdits.Edit> edits
   ) {
-    return new SlotSaves().saveOn(ManualDrafts.locked(scheduleId), edits);
+    SlotEdits.Result result = new SlotSaves()
+      .saveOn(ManualDrafts.locked(scheduleId), edits);
+    result.schedule = ScheduleViews.open(scheduleId);
+    return result;
   }
 
   /**
@@ -39,10 +42,10 @@ public with sharing class SlotSaves {
   ) {
     SlotSaves saves = new SlotSaves();
     saves.lockEdits = true;
-    SlotEdits.Result result = saves.saveOn(
-      GeneratedDrafts.lockedToEdit(scheduleId),
-      edits
-    );
+    Schedule__c draft = GeneratedDrafts.lockedToEdit(scheduleId);
+    SlotEdits.Result result = saves.saveOn(draft, edits);
+    // Shown with "deleted since" as Generated Schedule's own reader works it out.
+    result.schedule = GeneratedInputs.view(draft);
     result.revision = GeneratedEdits.revisionAfter(
       saves.days,
       saves.changed,
@@ -70,7 +73,6 @@ public with sharing class SlotSaves {
       }
     }
     write(scheduleId);
-    result.schedule = ScheduleViews.open(scheduleId);
     return result;
   }
 

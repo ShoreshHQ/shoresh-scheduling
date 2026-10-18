@@ -37,7 +37,7 @@ public with sharing class GeneratedLocks {
       applyOne(days, change);
     }
     result.revision = write(draft.Id, days, before);
-    result.schedule = ScheduleViews.open(draft.Id);
+    result.schedule = GeneratedInputs.view(draft);
     return result;
   }
 

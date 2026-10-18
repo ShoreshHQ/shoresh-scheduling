@@ -265,8 +265,9 @@ private class GeneratedLocksTest {
   static void aBuildAroundALockedCellIsSavedAndKeepsTheLock() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      Id draftId = generatedWithALock(ids);
       Test.startTest();
+      // Locked inside the test's own query limit: setup alone uses much of the first one.
+      Id draftId = generatedWithALock(ids);
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       // Rebuild around it: saved, and the lock is still there (the server's, not the screen's).
       GeneratedWeek.Save around = GeneratedTestData.request(
@@ -359,9 +360,10 @@ private class GeneratedLocksTest {
   static void aHandEditOverALockItDidNotSeeIsAConflict() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      Id draftId = generatedWithALock(ids);
       useBlocks(ids);
       Test.startTest();
+      // Locked inside the test's own query limit: setup alone uses much of the first one.
+      Id draftId = generatedWithALock(ids);
       SlotEdits.Edit over = SlotRunsTestData.edit(
         SlotRunsTestData.at(
           GeneratedTestData.MONDAY,
@@ -848,6 +850,51 @@ private class GeneratedLocksTest {
       Assert.areEqual(
         PERIOD_2,
         locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+    }
+  }
+
+  @IsTest
+  static void aLockShowsDeletedSinceAsOpeningTheWeekDoes() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      // Group B moves to another program: still in Salesforce, no longer in Main's setup.
+      Program__c evenings = ShoreshTestData.program(
+        ids.get('Season'),
+        'Evenings'
+      );
+      Division__c elsewhere = ShoreshTestData.division(
+        evenings.Id,
+        'Evening campers'
+      );
+      Database.update(
+        new Group__c(Id = ids.get('Group B'), Division__c = elsewhere.Id),
+        AccessLevel.SYSTEM_MODE
+      );
+      Assert.isTrue(
+        GeneratedTestData.inputs()
+          .days[0]
+          .groups[GeneratedTestData.GROUP_B]
+          .gone
+      );
+      GeneratedWeek.Locked locked = setLocks(
+        draftId,
+        new List<GeneratedWeek.LockChange>{
+          cell(
+            GeneratedTestData.MONDAY,
+            ids.get('Group A'),
+            ids.get('Period 2')
+          )
+        }
+      );
+      // The same note after a Lock as on opening the week.
+      Assert.isTrue(
+        locked.schedule.days[0].groups[GeneratedTestData.GROUP_B].gone
+      );
+      Assert.isFalse(
+        locked.schedule.days[0].groups[GeneratedTestData.GROUP_A].gone
       );
     }
   }
