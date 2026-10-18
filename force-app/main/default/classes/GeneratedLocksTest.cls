@@ -484,6 +484,53 @@ private class GeneratedLocksTest {
   }
 
   @IsTest
+  static void unlockOnADayOrAGroupReachesACellLockedEmpty() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      List<String> lunchLocked = new List<String>{
+        '',
+        '',
+        ScheduleGridLocks.LOCKED
+      };
+      List<List<GeneratedWeek.LockChange>> unlocks = new List<List<GeneratedWeek.LockChange>>{
+        new List<GeneratedWeek.LockChange>{
+          change(GeneratedWeek.UNLOCK, GeneratedTestData.MONDAY, null)
+        },
+        new List<GeneratedWeek.LockChange>{
+          change(GeneratedWeek.UNLOCK, null, ids.get('Group A'))
+        },
+        new List<GeneratedWeek.LockChange>{
+          change(
+            GeneratedWeek.UNLOCK,
+            GeneratedTestData.MONDAY,
+            ids.get('Group A')
+          )
+        }
+      };
+      for (List<GeneratedWeek.LockChange> unlock : unlocks) {
+        // Lunch is Open for Group A on Monday: kept empty by a Lock on that one cell.
+        setLocks(
+          draftId,
+          new List<GeneratedWeek.LockChange>{
+            cell(GeneratedTestData.MONDAY, ids.get('Group A'), ids.get('Lunch'))
+          }
+        );
+        Assert.areEqual(
+          lunchLocked,
+          locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+        );
+        setLocks(draftId, unlock);
+        Assert.areEqual(
+          NONE,
+          locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+        );
+      }
+    }
+  }
+
+  @IsTest
   static void manualBuildNeverLocksAndGeneratedEditsDoNotReachIt() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();

@@ -191,6 +191,36 @@ describe("checkGeneratedWeek", () => {
     expect(locked).toBeGreaterThan(0);
   });
 
+  it("the weekly-limit dot goes on the unlocked session: Swim locked Friday, not Monday, limit 1", () => {
+    const input = camp({
+      groups: [group("g1")],
+      days: 5,
+      blocks: [block(0)],
+      activities: [activity("swim", { min: 0, max: 1, atOnce: 2 })]
+    });
+    const item = { kind: "A", id: input.activities[0].Id, name: "swim" };
+    // Swim on Monday and on Friday, as reloaded (no build state): only Friday is locked.
+    const days = input.days.map((day, d) => ({
+      ...day,
+      items: [item],
+      rows: [d === 0 || d === 4 ? "1" : ""]
+    }));
+    const monday = days[0].dateValue;
+    const friday = days[4].dateValue;
+    const locks = [{ date: friday, groupId: "g1", blockId: "b0" }];
+    const { checked } = checkGeneratedWeek({ ...input, days, locks });
+    const dotted = [...checked.flags.keys()];
+    expect(dotted).toContain(`${monday}|g1|b0`);
+    expect(dotted).not.toContain(`${friday}|g1|b0`);
+    // Locked on Monday instead: the dot moves to Friday.
+    const other = checkGeneratedWeek({
+      ...input,
+      days,
+      locks: [{ date: monday, groupId: "g1", blockId: "b0" }]
+    }).checked;
+    expect([...other.flags.keys()]).toEqual([`${friday}|g1|b0`]);
+  });
+
   it("a group setup no longer has: its placements count as kept, as the engine keeps them", () => {
     // Two groups in the grid, one of them gone from setup; one activity at most once a week,
     // placed twice for each.

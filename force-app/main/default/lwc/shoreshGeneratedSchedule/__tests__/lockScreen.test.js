@@ -302,6 +302,34 @@ describe("locks on the Generated Schedule screen", () => {
     expect(cellAt(element, "0-1").querySelector(".cell-lock")).toBeNull();
   });
 
+  it("lock a cell, Start over, then fill: the cleared lock no longer keeps the cell empty", async () => {
+    // Monday, Bunk 1, Period 3 is Open and locked: a build would leave it empty.
+    const element = await render(savedWeek([[",,1,", ",,,"]]));
+    saveWeekOnServer.mockResolvedValueOnce({
+      conflict: false,
+      scheduleId: SCHEDULE,
+      revision: "2026-06-29:2|2026-06-30:2",
+      locks: []
+    });
+    q(element, '[data-action="StartOver"]').click();
+    await flush();
+    q(element, '[data-id="confirm-go"]').click();
+    await until(() => saveWeekOnServer.mock.calls.length > 0);
+    await flush();
+    saveWeekOnServer.mockResolvedValueOnce({
+      conflict: false,
+      scheduleId: SCHEDULE,
+      revision: "2026-06-29:3|2026-06-30:3",
+      locks: []
+    });
+    q(element, '[data-action="FillOpen"]').click();
+    await until(() => saveWeekOnServer.mock.calls.length > 1);
+    const sent = saveWeekOnServer.mock.calls[1][0].request;
+    expect(sent.action).toBe("FillOpen");
+    // The cell the lock held empty is filled now (the server cleared the lock).
+    expect(sent.days[0].rows[0].split(",")[2]).not.toBe("");
+  });
+
   it("after a Lock is saved, focus is back on the Lock menu", async () => {
     const element = await render(savedWeek());
     const after = savedWeek([[",1,,", ",,,"]]);
