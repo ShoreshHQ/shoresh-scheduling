@@ -335,18 +335,20 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
 
 23. **Part 3: checks and counters** (Greg's decisions 2 to 4; desktop `computeFindings`,
     `computeOverlaps.js`; coordinator's answers 2026-10-17). Worked out live from the grid by
-    `checks.js` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
+    `checkWeek` (pure, one function per rule): nothing is stored, nothing is blocked, and a mark
     clears as soon as its cause moves. A day that can't be read is left out. Inputs come from
-    the setup records every screen already gets (`checkInputs.js`, field names from
-    `c/shoreshSchema`), so the server sends nothing new.
-    - **One rules module with Generated Schedule.** The words are the engine's (`reasonFor`,
-      #38), and the rule order is the order its rules give way. `checks.js` moves into
-      `c/shoreshEngine` as the exported `checkWeek` (coordinator's call), and Manual Build
-      imports it from there once #38 is on main.
+    the setup records every screen already gets (`readActivities`, `readLocations`,
+    `readProgram`, field names from `c/shoreshSchema`), so the server sends nothing new.
+    - **One rules module with Generated Schedule.** Written here, then moved into
+      `c/shoreshEngine` (#38, ADR 0010 §10) as the exported `checkWeek` (coordinator's call).
+      Manual Build imports `checkWeek`, its readers and `reasonFor` from there and keeps no copy
+      of any rule or its words (the activity list's and the typing box's words come from
+      `reasonFor` too). The rule order is the order the engine's rules give way.
     - **The bronze dot** (`c-shoresh-dot`, no visible words) goes on a placement, never on a
       fixed or recurring activity or a not-set-up item. One dot per placement, its reasons
-      joined by " · ", in this order: _Over its weekly limit_ (on all of that activity's
-      placements for that bunk that week, since picking "the extra one" would be arbitrary);
+      joined by " · ", in this order: _Over its weekly limit_ (only on the sessions past the
+      limit, the latest in the week: by date, then the first block's start time, then its place
+      in the day's blocks, then block Id; Greg's decision 12, 2026-10-17);
       _Twice in a day_ (on both); _Not set up for Bunk 2_; _Over its limit of 2 bunks at once_;
       _Shares Pool with another division_ (an activity for one division at a time, sharing its
       place with another division; or _With another division at the same time_ for one with no
@@ -369,10 +371,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       2 still needed_, _… by Wednesday_, _Swim · Monday · Period 2: Over its limit of 3 bunks at
       once_); a second click closes it. The grid isn't highlighted by the list (desktop).
     - **Waits for part 6:** an activity, place or bunk closed that week (a week exception).
-    - **Checked by** 16 scenario tests, a 2,000-week seeded property test against an
-      independent placement-by-placement oracle (every dot's words, both lists, the overlap
-      count's lines, Filled), mutations of each rule, and screen tests for the counters, the list, the
-      dots and their focus.
+    - **Checked by** `checkWeek`'s own tests in `c/shoreshEngine` (scenario tests and a seeded
+      property test against an independent placement-by-placement oracle: every dot's words,
+      both lists, the overlap count's lines, Filled), and screen tests here for the counters, the
+      list, the dots and their focus, and decision 12 (only the extra session is dotted).
 
 ## Choices that are hard to undo after release
 

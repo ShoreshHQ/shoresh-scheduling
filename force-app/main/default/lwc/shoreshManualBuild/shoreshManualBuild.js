@@ -27,8 +27,14 @@ import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
-import { checkWeek } from "./checks";
-import { readActivities, readLocations, readProgram } from "./checkInputs";
+import {
+  RULE,
+  checkWeek,
+  reasonFor,
+  readActivities,
+  readLocations,
+  readProgram
+} from "c/shoreshEngine";
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -303,7 +309,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- checks and counters ----------
 
-  /** The week checked (checks.js), worked out again only when the week or setup changes. */
+  /** The week checked (c/shoreshEngine checkWeek), worked out again only when the week or setup changes. */
   get checked() {
     const schedule = this.schedule;
     const inputs = [
@@ -757,7 +763,7 @@ export default class ShoreshManualBuild extends LightningElement {
         kind: "activity",
         label: a.name,
         activity: a,
-        tag: `Not set up for ${grp.name}`
+        tag: reasonFor(RULE.ELIGIBILITY, { groupName: grp.name })
       })
     );
     const name = text.trim().replace(/\s+/g, " ");

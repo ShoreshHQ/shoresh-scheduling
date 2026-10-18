@@ -4,10 +4,10 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { draft, schedule } from "./data/draftFixture";
+import { day, draft, schedule } from "./data/draftFixture";
 
-// The counters and the bronze dots on the Manual Build screen (checks.js does the working out;
-// checks.test.js covers every rule). Synthetic camp: draftFixture, with the setup below.
+// The counters and the bronze dots on the Manual Build screen (c/shoreshEngine's checkWeek does
+// the working out; its checks.test.js covers every rule). Synthetic camp: draftFixture, with the setup below.
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -78,7 +78,7 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render(start) {
+async function render(start, setup = SETUP) {
   getDraft.mockResolvedValue(start);
   saveSlots.mockImplementation(() =>
     Promise.resolve({ conflicts: [], schedule: start.schedule })
@@ -87,7 +87,7 @@ async function render(start) {
     is: ShoreshManualBuild
   });
   element.terms = buildTerms(LABELS);
-  element.setup = SETUP;
+  element.setup = setup;
   document.body.appendChild(element);
   await flush();
   return element;
@@ -104,6 +104,16 @@ const counters = (element) =>
   [...q(element, '[data-id="counters"]').querySelectorAll("button")].map((b) =>
     b.textContent.replace(/\s+/g, " ").trim()
   );
+
+/** Bunk 1's week in Group View (columns are days): Monday's items and rows, then Tuesday's. */
+async function bunkOneWeek(monday, tuesday, setup) {
+  const start = draft(...monday);
+  start.schedule.days[1] = day("2026-06-30", ...tuesday);
+  const element = await render(start, setup);
+  q(element, '[data-view="group"]').click();
+  await flush();
+  return element;
+}
 
 async function press(target, key, extra = {}) {
   target.dispatchEvent(
@@ -242,5 +252,46 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await press(cell(element, "1-1"), "z", { ctrlKey: true });
     expect(q(element, '[data-counter="overlapping"]')).not.toBeNull();
     expect(q(element, '[data-id="counter-list"]')).toBeNull();
+  });
+  it("over its weekly limit: only the session past the limit gets the dot, the latest in the week", async () => {
+    // Swim at most once a week: Monday's is fine, Tuesday's is the extra one (Greg, 2026-10-17).
+    const onceAWeek = nsRecord({
+      ...SETUP,
+      activities: SETUP.activities.map((a) => {
+        return a.Id === "a1" ? { ...a, TimesPerWeekMax__c: 1 } : a;
+      })
+    });
+    const element = await bunkOneWeek(
+      [
+        [FLAGPOLE, SWIM],
+        ["1,2,", "1,,"]
+      ],
+      [
+        [FLAGPOLE, SWIM],
+        ["1,2,", "1,,"]
+      ],
+      onceAWeek
+    );
+    expect(dotIn(element, "0-1")).toBeNull();
+    expect(dotIn(element, "1-1").label).toBe("Over its weekly limit");
+  });
+
+  it("the extra session is the latest one that day too; twice in a day still dots both", async () => {
+    // Swim at most twice: Monday Period 2, then Tuesday Period 2 and Lunch. Lunch is the extra one.
+    const element = await bunkOneWeek(
+      [
+        [FLAGPOLE, SWIM],
+        ["1,2,", "1,,"]
+      ],
+      [
+        [FLAGPOLE, SWIM],
+        ["1,2,2", "1,,"]
+      ]
+    );
+    expect(dotIn(element, "0-1")).toBeNull();
+    expect(dotIn(element, "1-1").label).toBe("Twice in a day");
+    expect(dotIn(element, "1-2").label).toBe(
+      "Over its weekly limit · Twice in a day"
+    );
   });
 });
