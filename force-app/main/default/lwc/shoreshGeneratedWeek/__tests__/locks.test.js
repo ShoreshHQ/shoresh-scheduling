@@ -1,7 +1,7 @@
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
-import { generateWeek } from "c/shoreshEngine";
+import { checkGeneratedWeek, generateWeek } from "c/shoreshEngine";
 import { nsRecord } from "shoresh-jest/namespace";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import {
@@ -284,6 +284,11 @@ describe("c/shoreshGeneratedWeek locks", () => {
     expect(nameAt(built.days[0], 1, 1)).toBe("");
     expect(built.cells).toEqual({ filled: 1, total: 1 });
     expect(built.openCells).toEqual([]);
+    // The screen's own check of the week as loaded counts it the same way.
+    expect(checkGeneratedWeek(loaded.input).checked.cells).toEqual({
+      filled: 1,
+      total: 1
+    });
   });
 
   it("locks a day, a group or a cell, says when the week changed since, and passes on a refusal", async () => {

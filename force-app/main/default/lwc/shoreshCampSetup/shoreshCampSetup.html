@@ -660,6 +660,20 @@
               </template>
             </div>
 
+            <!-- Generated Schedule: a program's week built by Shoresh -->
+            <div
+              class={shown.generatedSchedule}
+              data-screen="generatedSchedule"
+            >
+              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                {labels.screens.generatedSchedule}
+              </h2>
+              <c-shoresh-generated-schedule
+                setup={setup}
+                terms={terms}
+              ></c-shoresh-generated-schedule>
+            </div>
+
             <!-- Manual Build: a program's week built by hand -->
             <div class={shown.manualBuild} data-screen="manualBuild">
               <h2 class="slds-text-heading_medium slds-m-bottom_small">
