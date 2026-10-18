@@ -170,6 +170,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   lockBase = null;
   _locks;
   stepLocks = new Map();
+  // Each cell whose lock the director last set or removed from the Lock menu, with the newest
+  // step made by then (stepSeq): an Undo or Redo of that step or an earlier one leaves it as is.
+  lockChosenAt = new Map();
 
   connectedCallback() {
     // The slot box sits where the slot was on screen; scrolling would leave it behind.
@@ -193,6 +196,24 @@ export default class ShoreshWeekEditor extends LightningElement {
   set locks(value) {
     this._locks = value;
     this.lockBase = value ? new Set(value) : null;
+  }
+
+  /**
+   * The director set or removed these cells' locks from the Lock menu ("date|groupId|blockId"):
+   * an Undo or Redo of any step made before leaves them as they are (Greg, 2026-10-18).
+   */
+  @api
+  lockChosen(keys) {
+    [...(keys || [])].forEach((key) =>
+      this.lockChosenAt.set(key, this.stepSeq)
+    );
+  }
+
+  /** Undo and Redo start over: nothing of the steps before, nor of the Lock choices made after them, is kept. */
+  startHistoryOver() {
+    this.history.clear();
+    this.historyVersion += 1;
+    this.lockChosenAt.clear();
   }
 
   /** The locks with the edits still waiting made on top, or null when no locks were passed. */
@@ -338,16 +359,14 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.unrepeated = null;
     this.closeEditor();
     // Undo is for this visit to this week (Greg #10).
-    this.history.clear();
-    this.historyVersion += 1;
+    this.startHistoryOver();
     this.picked = null;
   }
 
   /** The week after a Restore: Undo starts over, as on the desktop. */
   @api
   restored(draft) {
-    this.history.clear();
-    this.historyVersion += 1;
+    this.startHistoryOver();
     this.toolNotice = null;
     this.show(draft, false);
   }
@@ -1242,9 +1261,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * The locks before and after a step, kept with it (when locks were passed): Undo takes back the
-   * locks the step itself changed, Redo makes them again (lockTarget). `taken`: the cells whose
-   * lock the director has since set or removed from the Lock menu, which the step no longer owns.
+   * The locks before and after a step, kept with it (when locks were passed): what an Undo or a
+   * Redo of it leaves (lockTarget).
    */
   recordLocks(stepId, serverRuns) {
     const before = this.liveLocks;
@@ -1253,15 +1271,20 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     this.stepLocks.set(stepId, {
       before,
-      after: serverRuns.reduce((now, run) => foldRun(now, run), before),
-      taken: new Set()
+      after: serverRuns.reduce((now, run) => foldRun(now, run), before)
     });
-    const kept = new Set(
-      [...this.history.undos, ...this.history.redos].map((step) => step.id)
+    const kept = [...this.history.undos, ...this.history.redos].map(
+      (step) => step.id
     );
+    const keptIds = new Set(kept);
     [...this.stepLocks.keys()]
-      .filter((id) => !kept.has(id))
+      .filter((id) => !keptIds.has(id))
       .forEach((id) => this.stepLocks.delete(id));
+    // A Lock choice made before every step still kept can no longer matter.
+    const oldest = Math.min(...kept);
+    [...this.lockChosenAt]
+      .filter(([, at]) => at < oldest)
+      .forEach(([key]) => this.lockChosenAt.delete(key));
   }
 
   /** A step made differently (Use yours, a tool worked out again): its locks after follow. */
@@ -1270,36 +1293,28 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (record) {
       this.stepLocks.set(stepId, {
         before: record.before,
-        after: serverRuns.reduce(
-          (now, run) => foldRun(now, run),
-          record.before
-        ),
-        taken: record.taken
+        after: serverRuns.reduce((now, run) => foldRun(now, run), record.before)
       });
     }
   }
 
   /**
-   * The locks an Undo or Redo of a step leaves, from the locks the director sees (`seen`): only
-   * the locks the step itself changed go back (Undo) or come again (Redo). A Lock the director set
-   * or removed from the Lock menu after the step stays as they left it, and the step gives up that
-   * cell for good, so a Redo after the Undo leaves it too (Greg, 2026-10-18).
+   * The locks an Undo or Redo of a step leaves: the step's own, from before it (Undo) or after it
+   * (Redo); but a cell whose lock the director set or removed from the Lock menu after the step
+   * was made keeps the lock it has now (`seen`), through the Undo and any Redo (Greg, 2026-10-18).
+   * Null when the step has no locks kept with it.
    */
-  lockTarget(record, kind, seen) {
-    const [from, to] =
-      kind === "undo"
-        ? [record.after, record.before]
-        : [record.before, record.after];
-    const target = new Set(seen);
-    new Set([...record.before, ...record.after]).forEach((key) => {
-      if (record.before.has(key) === record.after.has(key)) {
+  lockTarget(stepId, kind, seen) {
+    const record = this.stepLocks.get(stepId);
+    if (!record || kind === "edit") {
+      return null;
+    }
+    const target = new Set(kind === "undo" ? record.before : record.after);
+    this.lockChosenAt.forEach((at, key) => {
+      if (at < stepId) {
         return;
       }
-      if (record.taken.has(key) || seen.has(key) !== from.has(key)) {
-        record.taken.add(key);
-        return;
-      }
-      if (to.has(key)) {
+      if (seen.has(key)) {
         target.add(key);
       } else {
         target.delete(key);
@@ -1372,10 +1387,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       intent,
       slotKey: this.slotKeyOf(firstRun, serverRuns[0])
     };
-    const record = this.stepLocks.get(stepId);
-    if (record && kind !== "edit") {
-      // An Undo takes back the locks the step made, a Redo makes them again.
-      entry.locksTarget = this.lockTarget(record, kind, entry.seen);
+    const locksTarget = this.lockTarget(stepId, kind, entry.seen);
+    if (locksTarget) {
+      entry.locksTarget = locksTarget;
     }
     this.queue = [...this.queue, entry];
     this.applyLocally(edit);
@@ -1537,8 +1551,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       );
       this.queue = [];
       // What is saved is no longer known here: undoing could only guess.
-      this.history.clear();
-      this.historyVersion += 1;
+      this.startHistoryOver();
       // The host reads the week again.
       this.dispatchEvent(new CustomEvent("reload"));
     } finally {
@@ -2448,12 +2461,9 @@ export default class ShoreshWeekEditor extends LightningElement {
         const seen = new Set(
           [...entry.seen].filter((key) => !unlocked.has(key))
         );
-        // An Undo or Redo leaves those cells unlocked too: their locks are no longer the step's.
-        const record = this.stepLocks.get(entry.stepId);
+        // An Undo or Redo works out the locks it leaves again, by the same rule.
         const locksTarget =
-          record && entry.kind !== "edit"
-            ? this.lockTarget(record, entry.kind, seen)
-            : entry.locksTarget;
+          this.lockTarget(entry.stepId, entry.kind, seen) || entry.locksTarget;
         this.queue = [{ ...entry, seen, locksTarget }, ...this.queue];
         this.showServerAndWaiting();
         this.saveNext();
@@ -2579,11 +2589,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.historyVersion += 1;
     // A note from an earlier question (a second question about the same edit) is kept.
     // A Redo or Undo is sent with the locks of its step's record, which was just made again.
-    const record = this.stepLocks.get(entry.stepId);
-    let locksTarget = entry.locksTarget;
-    if (record && entry.kind !== "edit") {
-      locksTarget = this.lockTarget(record, entry.kind, entry.seen);
-    }
+    const locksTarget =
+      this.lockTarget(entry.stepId, entry.kind, entry.seen) ||
+      entry.locksTarget;
     const note = dropped.some((w) => w.kind === "redo")
       ? "Redo skipped."
       : entry.note || null;

@@ -701,9 +701,12 @@ taken out; the Apex tests run only in CI.
       Undoing a hand edit unlocks the cell again; undoing a clear brings no lock back that
       wasn't there. **Undo keeps a Lock the director set afterwards** (Greg, 2026-10-18): a Lock
       set or removed from the Lock menu after the step stays as the director left it, through
-      the Undo and a Redo after it; the step gives that cell's lock up for good. The screen keeps
-      each step's locks with it in its Undo history and works `locksAfter` out from the locks it
-      shows (`shoreshWeekEditor` `lockTarget`);
+      the Undo and a Redo after it. The screen keeps each step's locks with it in its Undo
+      history, and for each cell the point in that history of the director's latest Lock or
+      Unlock from the menu (the host names the cells each choice changed, `lockChosen`). An Undo
+      or Redo of a step leaves a cell chosen after the step as it is now, and every other cell
+      as the step's locks say; the same rule when it is sent again (`shoreshWeekEditor`
+      `lockTarget`);
     - the edit names the revision the screen read the week at. The answer's `revision` (with
       the week) is given only when nobody else saved the week in between; otherwise it is empty
       and the screen reads the week again before a whole-week save. So a lock or a hand edit

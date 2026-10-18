@@ -411,6 +411,54 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
   });
 
+  it("a Lock chosen from the menu after a hand edit stays when the edit is undone", async () => {
+    const element = await render(savedWeek({ rows: ["1,,,", "1,,,"] }));
+    const swimAt = ["1,,2,", "1,,,"];
+    saveSlots.mockResolvedValueOnce(slotAnswer(swimAt, [",,1,", ",,,"]));
+    // Swim typed into Bunk 1's Monday Period 2: saved and locked.
+    await press(cellAt(element, "0-2"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "swim";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(lockAt(element, "0-2")).toBe("Locked");
+    const choose = async (label, mondayLocks, revision) => {
+      setLocksOnServer.mockResolvedValueOnce(
+        slotAnswer(swimAt, mondayLocks, revision)
+      );
+      cellAt(element, "0-2").dispatchEvent(
+        new CustomEvent("focusin", { bubbles: true, composed: true })
+      );
+      await flush();
+      const item = [
+        ...element.shadowRoot.querySelectorAll("lightning-menu-item")
+      ].find((i) => i.label === label);
+      q(element, '[data-id="lock-menu"]').dispatchEvent(
+        new CustomEvent("select", { detail: { value: item.value } })
+      );
+      await flush();
+    };
+    // The director unlocks it, then locks it again from the Lock menu.
+    await choose(
+      "Unlock Bunk 1 · Monday · Period 2",
+      [",,,", ",,,"],
+      "2026-06-29:3|2026-06-30:1"
+    );
+    await choose(
+      "Lock Bunk 1 · Monday · Period 2",
+      [",,1,", ",,,"],
+      "2026-06-29:4|2026-06-30:1"
+    );
+    saveSlots.mockReturnValueOnce(new Promise(() => {}));
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    const [run] = saveSlots.mock.calls[1][0].edits[0].runs;
+    expect(run.after).toEqual([""]);
+    expect(run.locksAfter).toEqual(["1"]);
+    expect(lockAt(element, "0-2")).toBe("Locked empty");
+  });
+
   it("a dot follows the locks on screen while an edit saves: the over-limit dot skips the session just locked", async () => {
     // Swim (at most 2 a week) in Bunk 1's Period 1 on Monday and Tuesday; a third on Tuesday's
     // Period 2 is typed in and still saving. It is locked on screen, so the dot goes on the
