@@ -10,24 +10,35 @@ public with sharing class SlotRules {
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
 
   public SlotRules(Schedule__c schedule, List<SlotEdits.Edit> edits) {
-    labels = CampLabels.forCamp(schedule.Program__r.Season__r.Camp__c);
-    Set<Id> activityIds = activityIdsIn(edits);
+    this(
+      schedule.Program__c,
+      schedule.Program__r.Season__c,
+      schedule.Program__r.Season__r.Camp__c,
+      activityIdsIn(edits)
+    );
+  }
+
+  /** The same rules for a whole week's grids (Generated Schedule), with the activities it places. */
+  public SlotRules(Program__c program, Set<Id> activityIds) {
+    this(program.Id, program.Season__c, program.Season__r.Camp__c, activityIds);
+  }
+
+  private SlotRules(Id programId, Id seasonId, Id campId, Set<Id> activityIds) {
+    labels = CampLabels.forCamp(campId);
     if (!activityIds.isEmpty()) {
       activities = new Map<Id, Activity__c>(
         [
           SELECT Id, Name
           FROM Activity__c
-          WHERE
-            Id IN :activityIds
-            AND Season__c = :schedule.Program__r.Season__c
+          WHERE Id IN :activityIds AND Season__c = :seasonId
           WITH USER_MODE
         ]
       );
     }
-    for (Group__c grp : ProgramReads.groupsOf(schedule.Program__c)) {
+    for (Group__c grp : ProgramReads.groupsOf(programId)) {
       groups.put(grp.Id, grp);
     }
-    for (TimeBlock__c block : ProgramReads.blocksOf(schedule.Program__c)) {
+    for (TimeBlock__c block : ProgramReads.blocksOf(programId)) {
       blocks.put(block.Id, block);
     }
   }
@@ -89,10 +100,20 @@ public with sharing class SlotRules {
         return String.valueOf(i + 1);
       }
     }
-    Id activityId = SlotIds.activityIn(slot);
-    Activity__c activity = activityId == null
-      ? null
-      : activities.get(activityId);
+    Activity__c activity = seasonActivity(slot);
+    grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));
+    return String.valueOf(grid.items.size());
+  }
+
+  /** The season's activity a slot starts or carries on, or null. */
+  public Activity__c activityOf(String slot) {
+    Id activityId = SlotIds.activityIn(SlotIds.owner(slot));
+    return activityId == null ? null : activities.get(activityId);
+  }
+
+  /** The season's activity a slot starts or carries on; refused when it isn't one of them. */
+  public Activity__c seasonActivity(String slot) {
+    Activity__c activity = activityOf(slot);
     if (activity == null) {
       throw new ShoreshException(
         'That ' +
@@ -100,8 +121,7 @@ public with sharing class SlotRules {
           ' was not found. It may have been deleted.'
       );
     }
-    grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));
-    return String.valueOf(grid.items.size());
+    return activity;
   }
 
   /**
