@@ -734,6 +734,86 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
   });
 
+  it("once Reload's week is shown, edits save again", async () => {
+    const element = await render();
+    await conflictShown(element);
+    const read = slow();
+    getInputs.mockReturnValueOnce(read.promise);
+    q(element, '[data-id="reload"]').click();
+    await flush();
+    read.answer(savedWeek());
+    await flush();
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await clearSwim(element);
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(notice(element)).not.toBe(
+      "One moment: the week is being saved or restored."
+    );
+  });
+
+  it("another week picked while Reload reads: edits on it save once it shows, without waiting for Reload's read", async () => {
+    const WEEK_2 = "a0W000000000002AAA";
+    getInputs.mockResolvedValue(savedWeek());
+    const element = createElement("c-shoresh-generated-schedule", {
+      is: ShoreshGeneratedSchedule
+    });
+    element.terms = terms;
+    element.setup = {
+      ...SETUP,
+      weeks: [...SETUP.weeks, { Id: WEEK_2, Name: "Week 2" }]
+    };
+    document.body.appendChild(element);
+    await flush();
+    await conflictShown(element);
+    // Reload's read never answers.
+    getInputs.mockReturnValueOnce(new Promise(() => {}));
+    q(element, '[data-id="reload"]').click();
+    await flush();
+    getInputs.mockResolvedValueOnce(savedWeek());
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: WEEK_2 } })
+    );
+    await flush();
+    expect(textAt(element, "0-1")).toBe("Swim");
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await clearSwim(element);
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    // Week 2 was not what Reload asked for: it is not said to be as saved now.
+    expect(q(element, '[data-id="announce"]').textContent.trim()).not.toBe(
+      "Week 2 as saved now."
+    );
+  });
+
+  it("the season read again while Reload reads: edits wait for the week it brings, which is said to be as saved now", async () => {
+    const element = await render();
+    await conflictShown(element);
+    const reloadRead = slow();
+    getInputs.mockReturnValueOnce(reloadRead.promise);
+    q(element, '[data-id="reload"]').click();
+    await flush();
+    const seasonRead = slow();
+    getInputs.mockReturnValueOnce(seasonRead.promise);
+    element.setup = { ...SETUP };
+    await flush();
+    // Reload's own read answers first: it is no longer the latest, so edits still wait.
+    reloadRead.answer(savedWeek());
+    await flush();
+    await clearSwim(element);
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(notice(element)).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    seasonRead.answer(savedWeek());
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Week 1 as saved now."
+    );
+    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await clearSwim(element);
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+  });
+
   it("once the week shows, the build's bar, its error and a conflict sit under the toolbar", async () => {
     const element = await render();
     saveWeekOnServer.mockReturnValueOnce(new Promise(() => {}));

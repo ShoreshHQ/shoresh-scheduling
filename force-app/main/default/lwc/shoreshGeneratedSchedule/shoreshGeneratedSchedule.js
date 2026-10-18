@@ -80,8 +80,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   errorFromRead = false;
   // A save someone else's got in the way of: { message }.
   conflict;
-  // Reload is reading the week after a conflict: edits wait until it is on screen.
-  reloading = false;
+  // The week Reload is reading after a conflict ("program|week"): edits wait while any read is
+  // under way after it (Reload's, or one that took its place), until the latest lands or fails.
+  reloading = null;
   // The build under way: { action, progress (0-100, or null until a long build first reports) }.
   busy;
   // The confirm open: { action }.
@@ -273,6 +274,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loadedFor = null;
       this.reading = false;
       this.loading = false;
+      this.reloading = null;
       return false;
     }
     this.loadedFor = key;
@@ -293,6 +295,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.errorFromRead = false;
       }
       this.show(loaded, fresh);
+      // The week Reload asked for, read again (by Reload or a read that took its place).
+      if (!fresh && this.reloading === key) {
+        this.reloaded();
+      }
       return true;
     } catch (e) {
       if (ticket === this.loadTicket) {
@@ -306,6 +312,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       if (ticket === this.loadTicket) {
         this.loading = false;
         this.reading = false;
+        if (this.reloading) {
+          this.reloading = null;
+          this.resetChecks();
+        }
       }
     }
     return false;
@@ -722,19 +732,21 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.conflict = null;
-    this.reloading = true;
-    this.load(true).then((shown) => {
-      this.reloading = false;
-      this.resetChecks();
-      if (shown && !this.conflict && !this.errorFromRead) {
-        this.focusAfterRender = {
-          selector: this.isGenerated
-            ? `[data-action="${ACTION.REBUILD}"]`
-            : '[data-id="generate"]'
-        };
-        this.announce(`${this.weekName} as saved now.`);
-      }
-    });
+    this.reloading = this.loadedFor;
+    this.load(true);
+  }
+
+  /** Reload's week is on screen as saved now: focus to the main action, and said so. */
+  reloaded() {
+    if (this.conflict) {
+      return;
+    }
+    this.focusAfterRender = {
+      selector: this.isGenerated
+        ? `[data-action="${ACTION.REBUILD}"]`
+        : '[data-id="generate"]'
+    };
+    this.announce(`${this.weekName} as saved now.`);
   }
 
   // ---------- the confirm (Rebuild, Start over) ----------
@@ -1008,7 +1020,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // Edits wait while a build or a Lock is saved, or Reload reads the week (it is about to be
   // replaced).
   get editsWait() {
-    return this.isBusy || this.locking || this.reloading;
+    return this.isBusy || this.locking || !!this.reloading;
   }
 
   /**
