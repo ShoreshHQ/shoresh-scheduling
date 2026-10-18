@@ -65,4 +65,13 @@ describe("buildInPieces", () => {
     await nextTurn();
     expect(closed).toHaveBeenCalledTimes(1);
   });
+
+  it("finishes without the turns where a page may not message itself", async () => {
+    global.MessageChannel = class {
+      constructor() {
+        throw new Error("not allowed");
+      }
+    };
+    await expect(nextTurn()).resolves.toBeUndefined();
+  });
 });

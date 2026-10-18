@@ -183,6 +183,7 @@
               key={day.key}
               type="button"
               class={day.className}
+              aria-pressed={day.pressed}
               data-index={day.index}
               onclick={handleDay}
             >
@@ -216,6 +217,7 @@
               key={grp.key}
               type="button"
               class={grp.className}
+              aria-pressed={grp.pressed}
               data-key={grp.key}
               onclick={handleGroup}
             >
@@ -243,7 +245,7 @@
               onclick={handleAllActivities}
               data-id="all-activities"
             >
-              {allActivitiesLabel}
+              <span aria-hidden="true">← </span>{allActivitiesLabel}
             </button>
             <span class="drill-name">{selectedActivity.name}</span>
             <template lwc:if={selectedActivity.location}>

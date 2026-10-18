@@ -7,19 +7,25 @@ const SLICE_MS = 30;
 /**
  * The browser's turn: a message the page sends itself is handled as a task of its own, so the
  * browser paints and takes input before it (as React's scheduler does). No timer is involved.
- * Where there is no MessageChannel (Jest's jsdom), the next piece follows at once.
+ * Where there is no MessageChannel (Jest's jsdom), or it can't be used, the next piece follows
+ * at once.
  */
 export function nextTurn() {
   if (typeof MessageChannel === "undefined") {
     return Promise.resolve();
   }
   return new Promise((resolve) => {
-    const channel = new MessageChannel();
-    channel.port1.onmessage = () => {
-      channel.port1.close();
+    try {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => {
+        channel.port1.close();
+        resolve();
+      };
+      channel.port2.postMessage(null);
+    } catch {
+      // A page that may not message itself still finishes the build, just without the turns.
       resolve();
-    };
-    channel.port2.postMessage(null);
+    }
   });
 }
 

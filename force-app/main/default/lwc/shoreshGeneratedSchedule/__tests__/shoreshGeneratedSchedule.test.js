@@ -240,7 +240,7 @@ describe("c-shoresh-generated-schedule", () => {
     );
   });
 
-  it("Rebuild asks first, in words that keep locked cells, then builds the same option again", async () => {
+  it("Rebuild asks first, in the desktop's words without replacing edits, then builds the same option again", async () => {
     const element = await render();
     await generate(element);
     action(element, "Rebuild").click();
@@ -249,9 +249,9 @@ describe("c-shoresh-generated-schedule", () => {
     expect(dialog.getAttribute("role")).toBe("alertdialog");
     expect(dialog.textContent).toContain("Rebuild this schedule?");
     const body = q(element, '[data-id="confirm-body"]').textContent;
-    expect(body).toContain("Builds Week 1 again from your setup.");
-    expect(body).toContain("Locked cells stay as they are.");
-    expect(body).not.toMatch(/your edits|replaces/i);
+    expect(body).toBe("Builds Week 1 again from your setup.");
+    // Hand edits are locks and stay (decision 2): never "replaces your edits". Locks come in G4.
+    expect(body).not.toMatch(/your edits|replaces|lock/i);
     expect(q(element, '[data-id="confirm-note"]').textContent).toBe(
       "Saved to Versions first."
     );
@@ -267,6 +267,8 @@ describe("c-shoresh-generated-schedule", () => {
     // The next save goes from what this one was saved at.
     expect(sent(1).revision).toBe("2026-06-29:1|2026-06-30:1");
     expect(sent(1).scheduleId).toBe(SCHEDULE);
+    // Focus is back on Rebuild, not lost with the dialog.
+    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
   });
 
   it("Cancel and Escape close the confirm without building, focus back on the button", async () => {
@@ -325,6 +327,9 @@ describe("c-shoresh-generated-schedule", () => {
     await settle(element);
     expect(sent(1).action).toBe("TryAnother");
     expect(sent(1).option).toBe(2);
+    expect(element.shadowRoot.activeElement).toBe(
+      action(element, "TryAnother")
+    );
     const second = await built(inputs, { option: 2, mode: MODE.FULL });
     expect(sent(1).days.map((d) => d.rows)).toEqual(
       second.days.map((d) => d.rows)
@@ -395,7 +400,7 @@ describe("c-shoresh-generated-schedule", () => {
     );
     const body = q(element, '[data-id="confirm-body"]').textContent;
     expect(body).toMatch(
-      /^Clears all \d+ filled cells in Week 1, locked ones too\./
+      /^Clears all \d+ filled cells in Week 1\. Fixed activities and recurring activities stay\.$/
     );
     expect(q(element, '[data-id="confirm-go"]').textContent.trim()).toBe(
       "Start over"
@@ -428,6 +433,9 @@ describe("c-shoresh-generated-schedule", () => {
     const box = q(element, '[data-id="conflict"]');
     expect(box.getAttribute("role")).toBe("alert");
     expect(box.textContent).toContain(CONFLICT_SENTENCE);
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="reload"]')
+    );
     // Nothing shown as saved, and nothing can be built over it until it is reloaded.
     expect(grid(element)).toBeNull();
     expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
@@ -560,6 +568,10 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, '[data-view="group"]').getAttribute("aria-pressed")).toBe(
       "true"
     );
+    // A still needed line names no cell: focus is on the bunk's pill, which says it is chosen.
+    const pill = element.shadowRoot.activeElement;
+    expect(pill.getAttribute("aria-pressed")).toBe("true");
+    expect(pill.closest('[data-id="group-pills"]')).not.toBeNull();
     expect(
       cells(element).filter((c) => c.className.includes("cell_lit"))
     ).toHaveLength(0);

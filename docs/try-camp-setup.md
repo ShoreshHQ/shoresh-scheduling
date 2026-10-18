@@ -699,15 +699,15 @@ doesn't change this one.
    1: the very first week comes back, exactly as it was (the same week, option and setup always
    give the same schedule).
 8. **Rebuild.** Click it. A box asks _Rebuild this schedule?_, _Builds Week 1 again from your
-   setup. Locked cells stay as they are._ and _Saved to Versions first._ **Cancel** has the
-   focus; press Escape or click it and nothing changes. Click **Rebuild** again, then **Rebuild
-   it**: the week is built again with the same option. With no setup change since, it is the same
-   week. (Locks come in the next part; until then there is nothing locked.)
+   setup._ and _Saved to Versions first._ **Cancel** has the focus; press Escape or click it and
+   nothing changes. Click **Rebuild** again, then **Rebuild it**: the week is built again with
+   the same option. With no setup change since, it is the same week. (Locks come in the next
+   part, and with them a line saying locked cells stay.)
 9. **A setup change.** On **Activities**, open Swim and lower its most times a week by one. Back on
    Generated Schedule, **Rebuild** → **Rebuild it**: Swim now runs fewer times. Put Swim back
    afterwards.
-10. **Start over.** Click it. The box says _Clears all N filled cells in Week 1, locked ones too.
-    Fixed activities and recurring activities stay._ and _Saved to Versions first._ Click **Start
+10. **Start over.** Click it. The box says _Clears all N filled cells in Week 1. Fixed activities
+    and recurring activities stay._ and _Saved to Versions first._ Click **Start
     over**: every activity cell says **Open** again; Lunch, Morning meeting and Library time stay.
     **Open** now counts those cells.
 11. **Fill the open cells.** It is greyed out while nothing is Open. After step 10, click it: only

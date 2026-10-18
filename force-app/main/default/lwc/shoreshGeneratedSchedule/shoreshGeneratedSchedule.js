@@ -111,13 +111,19 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   renderedCallback() {
-    if (this.focusAfterRender) {
-      const { cellKey } = this.focusAfterRender;
-      this.focusAfterRender = null;
-      const grid = this.template.querySelector('[data-id="grid"]');
-      if (grid && cellKey) {
-        grid.focusCell(cellKey);
-      }
+    if (!this.focusAfterRender) {
+      return;
+    }
+    const { cellKey, selector } = this.focusAfterRender;
+    this.focusAfterRender = null;
+    const grid = this.template.querySelector('[data-id="grid"]');
+    if (grid && cellKey) {
+      grid.focusCell(cellKey);
+      return;
+    }
+    const target = selector && this.template.querySelector(selector);
+    if (target) {
+      target.focus();
     }
   }
 
@@ -457,8 +463,24 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     } finally {
       if (ticket === this.loadTicket) {
         this.busy = null;
+        this.focusAfterRender = { selector: this.focusAfterRun(action) };
       }
     }
+  }
+
+  /**
+   * Where focus goes once a build is over: the button that started it (the confirm's is gone,
+   * and the others were held while building); Reload after a conflict; Rebuild after the first
+   * Generate (its button is gone too).
+   */
+  focusAfterRun(action) {
+    if (this.conflict) {
+      return '[data-id="reload"]';
+    }
+    if (!this.isGenerated) {
+      return '[data-id="generate"]';
+    }
+    return `[data-action="${action === ACTION.GENERATE ? ACTION.REBUILD : action}"]`;
   }
 
   get busyText() {
@@ -495,12 +517,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
     const { filled } = this.checked.cells;
     const cells = `${filled} filled ${filled === 1 ? "cell" : "cells"}`;
+    // Locks come in G4, which adds "Locked cells stay as they are." to Rebuild and "locked ones
+    // too" to Start over (decision 2); until then there is nothing locked to speak of.
     return this.confirming.action === ACTION.START_OVER
-      ? `Clears all ${cells} in ${this.weekName}, locked ones too. ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`
-      : `Builds ${this.weekName} again from your setup. Locked cells stay as they are.`;
+      ? `Clears all ${cells} in ${this.weekName}. ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`
+      : `Builds ${this.weekName} again from your setup.`;
   }
   get confirmNote() {
-    return "Saved to Versions first.";
+    return `Saved to ${this.t.p("Version")} first.`;
   }
   get confirmLabel() {
     return this.confirming && this.confirming.action === ACTION.START_OVER
@@ -572,7 +596,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
     this.view = "group";
     this.groupKey = line.groupId;
-    this.focusAfterRender = { cellKey: this.cellKeyOf(line) };
+    // The cell the line names; else the bunk's own pill, so focus is never left nowhere.
+    this.focusAfterRender = {
+      cellKey: this.cellKeyOf(line),
+      selector: '[data-id="group-pills"] [aria-pressed="true"]'
+    };
   }
 
   /** In Group View, the grid cell covering a line's day and time block, if it names one. */
@@ -634,7 +662,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get dayPills() {
     return dayPillsOf(this.schedule).map((day) => ({
       ...day,
-      className: day.index === this.dayIndex ? "pill pill_on" : "pill"
+      className: day.index === this.dayIndex ? "pill pill_on" : "pill",
+      pressed: String(day.index === this.dayIndex)
     }));
   }
   get dayProblem() {
@@ -654,7 +683,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get groupPills() {
     return groups(this.schedule).map((grp) => ({
       ...grp,
-      className: grp.key === this.groupKey ? "pill pill_on" : "pill"
+      className: grp.key === this.groupKey ? "pill pill_on" : "pill",
+      pressed: String(grp.key === this.groupKey)
     }));
   }
   get groupGridLabel() {
@@ -732,7 +762,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return activityGrid(this.schedule, this.activityId);
   }
   get allActivitiesLabel() {
-    return `← All ${this.t.p("Activity")}`;
+    return `All ${this.t.p("Activity")}`;
   }
   handleActivity(event) {
     this.activityId = event.currentTarget.dataset.key;
