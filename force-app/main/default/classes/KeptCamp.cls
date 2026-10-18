@@ -14,7 +14,10 @@ public class KeptCamp {
     // which then never equal the 18-character text the code under test builds.
     Map<String, String> text = new Map<String, String>();
     for (String name : ids.keySet()) {
-      text.put(name, String.valueOf(ids.get(name)));
+      // A null id is kept as null: String.valueOf(null) is the text 'null', which keptIds
+      // could not turn back into an Id.
+      Id value = ids.get(name);
+      text.put(name, value == null ? null : String.valueOf(value));
     }
     Database.insert(
       new ContentVersion(
@@ -40,7 +43,8 @@ public class KeptCamp {
     );
     Map<String, Id> ids = new Map<String, Id>();
     for (String name : text.keySet()) {
-      ids.put(name, Id.valueOf((String) text.get(name)));
+      String value = (String) text.get(name);
+      ids.put(name, value == null ? null : Id.valueOf(value));
     }
     return ids;
   }

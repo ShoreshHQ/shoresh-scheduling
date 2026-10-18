@@ -186,6 +186,43 @@ private class ManualWeekStartTest {
   }
 
   @IsTest
+  static void theCampsWordForAWeekIsInTheLeftOutLine() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      // This camp calls a Week a Session.
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = ids.get('Camp'),
+          ModelTerm__c = 'Week',
+          Singular__c = 'Session',
+          Plural__c = 'Sessions'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      // Swim is closed in Week 2, the week being started.
+      Database.insert(
+        new WeekException__c(
+          Week__c = ids.get('Week 2'),
+          Activity__c = ids.get('Swim')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Id source = weekOneWithSwim(ids);
+      Test.startTest();
+      ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
+        ids.get('Main'),
+        ids.get('Week 2'),
+        source
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{ 'Swim · Group A · Monday: not running this Session' },
+        view.leftOut
+      );
+    }
+  }
+
+  @IsTest
   static void aVersionCanBeTheStartAndTheListShowsWhatCanBe() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();

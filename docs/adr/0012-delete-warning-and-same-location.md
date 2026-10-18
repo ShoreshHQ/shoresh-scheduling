@@ -25,7 +25,7 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    delete questions (and Delete season) no longer say "This cannot be undone.", which wasn't
    true; they name what goes with the record and stop there. A restore from the Recycle Bin is
    partial (a record's unticked weeks are deleted on their own), so they don't promise a
-   restore either (coordinator, 2026-10-17).
+   restore either (Greg confirmed, 2026-10-18).
 4. **Refusals stay.** Something else depending on it (who can do it, a rain plan, who a
    recurring activity covers) still refuses the delete with the existing messages.
 5. **Read in user mode:** a schedule the director can't see is not counted. The days are
