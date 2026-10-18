@@ -11,7 +11,12 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { WITH_SOCCER, WITH_SWIM, draft } from "./data/draftFixture";
+import { find } from "shoresh-jest/week-editor";
+import {
+  WITH_SOCCER,
+  WITH_SWIM,
+  draft
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 
 // Versions on Manual Build (Save version, Restore, rename, delete) and Start from another week.
 // Synthetic camp: draftFixture.
@@ -112,7 +117,7 @@ async function render(first) {
   return element;
 }
 
-const q = (element, selector) => element.shadowRoot.querySelector(selector);
+const q = (element, selector) => find(element, selector);
 const cellText = (element, key) =>
   q(element, '[data-id="edit-grid"]')
     .shadowRoot.querySelector(`[data-cell="${key}"]`)

@@ -4,14 +4,13 @@
 // compared by day, group, and time block Id, in the server's week as it was when the question
 // opened.
 // Each test that clicks Use yours calls it.
+import { find } from "shoresh-jest/week-editor";
 import { slots } from "../../slotEdits";
 
 /** "day|group|block" positions of each row of the open question. */
 export function listedCells(element) {
   return [
-    ...element.shadowRoot
-      .querySelector('[data-id="conflict"]')
-      .querySelectorAll(".conflict-row")
+    ...find(element, '[data-id="conflict"]').querySelectorAll(".conflict-row")
   ].map((row) => row.dataset.cell);
 }
 
@@ -100,7 +99,7 @@ export async function useYoursSendsWhatWasShown(
       return `${day.dateValue}|${day.groups[g].id}|${day.blocks[b].id}`;
     })
     .sort();
-  element.shadowRoot.querySelector('[data-id="use-yours"]').click();
+  find(element, '[data-id="use-yours"]').click();
   await flush();
   const sent = editCells(saveSlots.mock.calls[asked + 1], atQuestion).filter(
     (c) => c.before !== c.after

@@ -5,49 +5,12 @@
   position: relative;
 }
 
-.toolbar {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
 .picker {
   min-width: 12rem;
 }
 
 .spacer {
   flex: 1;
-}
-
-/* The view toggle: one raised button in a grey track. */
-.view-toggle {
-  display: flex;
-  gap: 2px;
-  background: var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
-  padding: 3px;
-}
-
-.view-button {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  background: none;
-  color: var(--slds-g-color-neutral-base-10, #181818);
-}
-
-.view-button_on {
-  font-weight: 700;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  border-bottom-color: var(--slds-g-color-brand-base-50, #0176d3);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .viewing {
@@ -75,151 +38,6 @@
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
 
-/* Day and group pills, centred above the grid. */
-.pills {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.pill {
-  padding: 5px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid var(--slds-g-color-brand-base-50, #0176d3);
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  cursor: pointer;
-}
-
-.pill_on {
-  background: var(--slds-g-color-brand-base-50, #0176d3);
-  color: var(--slds-g-color-neutral-base-100, #fff);
-}
-
-.pill-sub {
-  font-weight: 400;
-  opacity: 0.8;
-}
-
-/* Activity View's cards. */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 16px;
-  text-align: center;
-  cursor: pointer;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-top: 4px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
-}
-
-.card:hover {
-  border-color: var(--slds-g-color-brand-base-50, #0176d3);
-}
-
-.card-name {
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.card-place {
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.card-summary {
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-family: var(--slds-g-font-family-monospace, monospace);
-}
-
-.drill-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.back {
-  padding: 4px 10px;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 6px;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.drill-name {
-  font-weight: 600;
-  font-size: 18px;
-}
-
-.drill-place {
-  font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.legend {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.legend-entry {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-.swatch_activity {
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
-}
-
-.swatch_set-time {
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 3px solid var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.swatch_not-set-up {
-  border: 1.5px dashed var(--shoresh-caution);
-  background: var(--shoresh-caution-tint);
-}
-
-.swatch_open {
-  border: 1px dashed var(--slds-g-color-neutral-base-60, #939393);
-}
-
-.note {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--shoresh-text-secondary);
-}
-
 /*
  * What building still needs: the desktop's bronze-tinted box (ScheduleScreen.jsx), its one
  * sentence with links, and "Set up <first>". Bronze only as the tint and border, never text.
@@ -238,78 +56,11 @@
   margin-bottom: 0.75rem;
 }
 
-.swatch_away {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--slds-g-color-neutral-base-90, #e5e5e5) 0 2px,
-    var(--slds-g-color-neutral-base-100, #fff) 2px 4px
-  );
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-}
-
 /* A week not started yet: one button, centred. */
 .start {
   display: flex;
   justify-content: center;
   padding: 60px 16px;
-}
-
-/* Typing a name into a slot: a small panel under the slot. */
-.editor {
-  position: fixed;
-  z-index: 9000;
-  width: 18rem;
-  padding: 8px;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
-}
-
-.editor-where {
-  font-size: 11px;
-  color: var(--shoresh-text-secondary);
-  margin-bottom: 6px;
-}
-
-.options {
-  max-height: 16rem;
-  overflow-y: auto;
-  margin-top: 6px;
-}
-
-.option {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.option_on {
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-}
-
-.conflict-where {
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.conflict-choices {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 16px;
-}
-
-.conflict-choices dt {
-  color: var(--shoresh-text-secondary);
-}
-
-.conflict-choices dd {
-  font-weight: 600;
 }
 
 /* After Start a blank week: what could not be placed, with the "needs a look" dot. */
@@ -322,35 +73,11 @@
   font-size: 13px;
 }
 
-/* The activity list on the left of the grid, as on the desktop. */
-.build-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.build-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.undo-redo {
-  display: flex;
-  gap: 4px;
-}
-
 /* A refused move: a quiet line under the toolbar. */
 .notice {
   margin: -8px 0 12px;
   font-size: 13px;
   color: var(--slds-g-color-neutral-base-30, #444);
-}
-
-/* Each cell the question is about, one under another. */
-.conflict-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 /* Clear day, Copy day to… and Clear week, after Undo and Redo. */
