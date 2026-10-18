@@ -160,7 +160,8 @@ public with sharing class ScreenSaves {
     return ids;
   }
 
-  private static void refuseWhatCannotBeSaved(List<SObject> records) {
+  /** Refuses a kind or field these screens don't save, before anything is read or written. */
+  public static void refuseWhatCannotBeSaved(List<SObject> records) {
     for (SObject record : records) {
       refuseFieldsNotShown(record);
     }

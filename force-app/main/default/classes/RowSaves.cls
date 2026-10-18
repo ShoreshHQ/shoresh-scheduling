@@ -41,6 +41,8 @@ public with sharing class RowSaves {
     if (record == null) {
       throw ScreenErrors.of('These screens can\'t save that.');
     }
+    // Only fields the screens save are compared (and so read back as theirs).
+    ScreenSaves.refuseWhatCannotBeSaved(new List<SObject>{ record });
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Result result = record.Id == null

@@ -243,6 +243,22 @@ private class RowSavesTest {
   }
 
   @IsTest
+  static void fieldsTheScreensDontSaveAreNeitherComparedNorRead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      try {
+        save(
+          new Location__c(Id = ids.get('Pool'), Season__c = ids.get('Season')),
+          new Location__c(Season__c = null)
+        );
+        Assert.fail('Refused');
+      } catch (AuraHandledException e) {
+        Assert.areEqual('These screens can\'t change that.', e.getMessage());
+      }
+    }
+  }
+
+  @IsTest
   static void someoneWithoutAccessCannotSaveARow() {
     camp();
     System.runAs(ShoreshTestData.outsider()) {
