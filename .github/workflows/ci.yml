@@ -15,14 +15,14 @@ permissions:
 jobs:
   static:
     name: LWC Jest and Code Analyzer
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
@@ -43,7 +43,7 @@ jobs:
       - name: Salesforce Code Analyzer
         # Recommended rules; fails on moderate (3) or worse.
         run: sf code-analyzer run --workspace force-app --severity-threshold 3 --output-file code-analyzer.html
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: code-analyzer-report
@@ -52,7 +52,7 @@ jobs:
 
   scratch-org:
     name: Scratch org deploy and Apex tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     # Every pull request deploys to the one test org (scripts/renew-test-org.sh makes it).
     # Greg's rule: exactly two orgs, the Dev Hub and this test org; CI never creates one.
@@ -63,14 +63,14 @@ jobs:
     env:
       SFDX_AUTH_URL_CI: ${{ secrets.SFDX_AUTH_URL_CI }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check the shared test org secret is set
         run: |
           if [ -z "$SFDX_AUTH_URL_CI" ]; then
             echo "::error::The SFDX_AUTH_URL_CI secret is not set. Run scripts/renew-test-org.sh (see docs/ci-setup.md)."
             exit 1
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Install Salesforce CLI
