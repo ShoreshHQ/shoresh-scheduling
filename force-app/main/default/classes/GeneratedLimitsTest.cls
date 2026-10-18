@@ -8,11 +8,12 @@
 @IsTest
 private class GeneratedLimitsTest {
   // Each call is one request from the screen: Salesforce allows 100 queries in one. Measured
-  // in shoresh-test (2026-10-18), on the smaller camp: opening a week 18 (not generated yet) or
-  // 12, the first Generate 21, Fill the open cells 14, a Rebuild with its version 19. The bound
-  // is per request, whatever the week's size: no query runs per day, group or cell. Other
-  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse); the
-  // camp has two.
+  // in shoresh-test (2026-10-18) on this camp with its two other programs: opening a week 22
+  // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. Without
+  // them (the Rebuild test): a Rebuild with its version 19, opening the generated week 13. The
+  // bound is per request, whatever the week's size: no query runs per day, group or cell. Other
+  // programs (G5) add at most 4 to opening a week, whatever their number (OtherProgramUse;
+  // threeOtherProgramsUseNoMoreQueriesThanOne).
   private static final Integer MOST_QUERIES = 25;
   // Whether the camp has the two other programs. The Rebuild test leaves them out: its setup
   // (a first Generate and two reads) runs before Test.startTest() and would not leave room for
@@ -92,7 +93,7 @@ private class GeneratedLimitsTest {
       AccessLevel.SYSTEM_MODE
     );
     if (withOtherPrograms) {
-      addOtherPrograms(ids, season.Id, week);
+      addOtherPrograms(ids, week);
     }
     SetTimeGuard.checkPending();
     GeneratedTestData.ids = ids;
@@ -100,19 +101,24 @@ private class GeneratedLimitsTest {
   }
 
   // Two other programs, so a query run once per program would show.
+  private static void addOtherPrograms(Map<String, Id> ids, Week__c week) {
+    addOtherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+  }
+
+  /** The Hall, and the named other programs of the season (ids' Season). */
   private static void addOtherPrograms(
     Map<String, Id> ids,
-    Id seasonId,
-    Week__c week
+    Week__c week,
+    List<String> names
   ) {
     Location__c hall = new Location__c(
-      Season__c = seasonId,
+      Season__c = ids.get('Season'),
       Name = 'Hall',
-      GroupsThatFit__c = 10
+      GroupsThatFit__c = 20
     );
     Database.insert(hall, AccessLevel.SYSTEM_MODE);
     ids.put('Hall', hall.Id);
-    otherPrograms(ids, week, new List<String>{ 'Teens', 'Kids' });
+    otherPrograms(ids, week, names);
   }
 
   /**
@@ -355,9 +361,15 @@ private class GeneratedLimitsTest {
       Test.startTest();
       GeneratedWeek.Result result = GeneratedTestData.save(save);
       Integer used = Limits.getQueries();
+      // The week opened again, now generated, with the other programs.
+      GeneratedInputs.Inputs again = GeneratedTestData.inputs();
+      Integer reading = Limits.getQueries() - used;
       Test.stopTest();
       Assert.isFalse(result.conflict);
+      Assert.areEqual(result.scheduleId, again.scheduleId);
+      Assert.areEqual(8 * 2 + 2 + 1, again.otherPrograms.size());
       assertFew(used, 'The first Generate');
+      assertFew(reading, 'Opening a generated week');
     }
   }
 
@@ -432,6 +444,88 @@ private class GeneratedLimitsTest {
       Assert.isNotNull(edited.revision);
       assertFew(locking, 'Locking a whole day');
       assertFew(editing, 'A hand edit');
+    }
+  }
+
+  /**
+   * A season of its own for the one-or-three test: Main with 8 time blocks and 4 groups, the
+   * season's places and activities, the Hall, and the named other programs.
+   */
+  private static Map<String, Id> seasonWith(List<String> others) {
+    Camp__c camp = ShoreshTestData.camp('Camp ' + others.size());
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+    Program__c main = ShoreshTestData.program(season.Id, 'Main');
+    Database.insert(hoursOf(main.Id), AccessLevel.SYSTEM_MODE);
+    Division__c division = ShoreshTestData.division(main.Id, 'Juniors');
+    List<Group__c> groups = fourGroupsIn(division);
+    // ShoreshTestData.placesAndActivities sets Swim up for Group A.
+    groups[0].Name = 'Group A';
+    Database.insert(groups, AccessLevel.SYSTEM_MODE);
+    Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
+    ids.put('Season', season.Id);
+    ids.put('Main', main.Id);
+    ids.put('Week 1', week.Id);
+    addOtherPrograms(ids, week, others);
+    return ids;
+  }
+
+  @IsTest
+  static void threeOtherProgramsUseNoMoreQueriesThanOne() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      SetTimeGuard.defer();
+      Map<String, Id> one;
+      Map<String, Id> three;
+      try {
+        one = seasonWith(new List<String>{ 'Teens' });
+        three = seasonWith(new List<String>{ 'Teens', 'Kids', 'Tweens' });
+        SetTimeGuard.checkPending();
+      } finally {
+        SetTimeGuard.resume();
+      }
+      Test.startTest();
+      GeneratedInputs.Inputs readOne = GeneratedScheduleController.getInputs(
+        one.get('Main'),
+        one.get('Week 1')
+      );
+      Integer withOne = Limits.getQueries();
+      GeneratedInputs.Inputs readThree = GeneratedScheduleController.getInputs(
+        three.get('Main'),
+        three.get('Week 1')
+      );
+      Integer withThree = Limits.getQueries() - withOne;
+      Test.stopTest();
+      // Their times are the same, so their groups add up in one entry each: 4 groups or 12.
+      Assert.areEqual(4, readOne.otherPrograms[0].groups);
+      Assert.areEqual(12, readThree.otherPrograms[0].groups);
+      Assert.areEqual(
+        withOne,
+        withThree,
+        'Opening a week with three other programs used ' +
+          withThree +
+          ' queries, with one ' +
+          withOne +
+          ': a query runs per program'
+      );
+      assertFew(withOne, 'Opening a week with one other program');
+    }
+  }
+
+  @IsTest
+  static void openingManualBuildUsesFewQueries() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = bigCamp();
+      ManualBuildController.startBlankWeek(ids.get('Main'), ids.get('Week 1'));
+      Test.startTest();
+      ManualBuildViews.DraftView view = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      Integer used = Limits.getQueries();
+      Test.stopTest();
+      Assert.areEqual(5, view.schedule.days.size());
+      Assert.areEqual(8 * 2 + 2 + 1, view.otherPrograms.size());
+      assertFew(used, 'Opening Manual Build');
     }
   }
 }

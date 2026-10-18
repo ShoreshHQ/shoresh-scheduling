@@ -190,6 +190,75 @@ private class GeneratedOtherProgramsTest {
     return lines;
   }
 
+  /** described(), each line followed by the entry's names: "... x1 [Swim]". */
+  private static List<String> named(
+    List<OtherProgramUse.Entry> entries,
+    Map<String, Id> ids
+  ) {
+    List<String> lines = new List<String>();
+    for (OtherProgramUse.Entry entry : entries) {
+      lines.add(
+        described(new List<OtherProgramUse.Entry>{ entry }, ids)[0] +
+          ' [' +
+          String.join(entry.names, ', ') +
+          ']'
+      );
+    }
+    lines.sort();
+    return lines;
+  }
+
+  @IsTest
+  static void entriesNameWhatTheyAreDoingAndNothingTheUserCantRead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = campWithTeens();
+      // Teens' Morning dip at the Gym (fits 3) in Swim hour, every day.
+      FixedActivity__c dip = new FixedActivity__c(
+        Program__c = ids.get('Teens'),
+        Name = 'Morning dip',
+        TimeBlock__c = ids.get('Swim hour'),
+        Length__c = 1,
+        Location__c = ids.get('Gym')
+      );
+      insertAll(new List<SObject>{ dip });
+      ids.put('Morning dip', dip.Id);
+      checked();
+      // Kayak: an activity this user can no longer read (deleted since Teens published).
+      Activity__c kayak = ShoreshTestData.activity(
+        ids.get('Season'),
+        'Kayak',
+        ids.get('Pool')
+      );
+      Database.insert(kayak, AccessLevel.SYSTEM_MODE);
+      ids.put('Kayak', kayak.Id);
+      Database.delete(kayak, AccessLevel.SYSTEM_MODE);
+      // Published Monday: Teen 1 swims and Teen 2 has its Morning dip in Swim hour; Teen 2
+      // kayaks in the Afternoon.
+      ScheduleGrid grid = teensGrid(ids);
+      grid.items.add(item(ids, 'A', 'Swim'));
+      grid.items.add(item(ids, 'F', 'Morning dip'));
+      grid.items.add(item(ids, 'A', 'Kayak'));
+      grid.rows[0][0] = '1';
+      grid.rows[1][0] = '2';
+      grid.rows[1][1] = '3';
+      teensDay(ids, 'Published', dayOn(MONDAY, grid));
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Assert.areEqual(
+        new List<String>{
+          '2026-06-29 10:30-11:15 Gym - x1 [Morning dip]',
+          '2026-06-29 10:30-11:15 Pool Swim x1 [Swim]',
+          '2026-06-29 13:00-13:45 - Kayak x1 []',
+          '2026-06-30 10:30-11:15 Gym - x2 [Morning dip]',
+          '2026-07-01 10:30-11:15 Gym - x2 [Morning dip]',
+          '2026-07-02 10:30-11:15 Gym - x2 [Morning dip]'
+        },
+        named(read.otherPrograms, ids)
+      );
+    }
+  }
+
   @IsTest
   static void aSeasonWithOneProgramSendsNone() {
     System.runAs(ShoreshTestData.scheduler()) {

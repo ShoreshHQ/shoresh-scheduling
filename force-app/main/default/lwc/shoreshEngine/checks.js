@@ -231,16 +231,34 @@ function groupsAtOnce(ctx) {
       if (!act || act.atOnce === null || list.length + others <= act.atOnce) {
         return;
       }
+      const words = { groupsAtOnce: act.atOnce, terms: ctx.t };
       const reason = reasonFor(RULES.GROUPS_AT_ONCE, {
-        groupsAtOnce: act.atOnce,
-        terms: ctx.t
+        ...words,
+        otherProgram: others > 0
       });
       list.forEach((p) =>
-        flags.push({ p, rule: RULES.GROUPS_AT_ONCE, reason, b: blockOf(at) })
+        flags.push({
+          p,
+          rule: RULES.GROUPS_AT_ONCE,
+          reason,
+          b: blockOf(at),
+          words,
+          otherProgram: others > 0
+        })
       );
     });
   });
-  return flags;
+  // A placement over several blocks says it once: "with another program" if any block has them.
+  const withOthers = new Set(
+    flags.filter((f) => f.otherProgram).map((f) => f.p.key)
+  );
+  return flags.map((f) => ({
+    ...f,
+    whole: reasonFor(RULES.GROUPS_AT_ONCE, {
+      ...f.words,
+      otherProgram: withOthers.has(f.p.key)
+    })
+  }));
 }
 
 /** Where a placement takes place, if it is a place the camp has set up. */
@@ -323,16 +341,35 @@ function placeCapacity(ctx) {
       if (list.length + others <= place.fit || !movable.length) {
         return;
       }
-      const reason = reasonFor(RULES.PLACE_CAPACITY, {
-        placeName: place.name,
-        terms: ctx.t
-      });
+      const words = { placeName: place.name, terms: ctx.t };
+      const inUseBy = others > 0 ? ctx.otherNames(locationId, at) : [];
+      const reason = reasonFor(RULES.PLACE_CAPACITY, { ...words, inUseBy });
       movable.forEach((p) =>
-        flags.push({ p, rule: RULES.PLACE_CAPACITY, reason, b: blockOf(at) })
+        flags.push({
+          p,
+          rule: RULES.PLACE_CAPACITY,
+          reason,
+          b: blockOf(at),
+          words,
+          inUseBy
+        })
       );
     });
   });
-  return flags;
+  // A placement over several blocks says it once, naming what is there in any of them.
+  const names = new Map();
+  flags.forEach((f) => {
+    const set = names.get(f.p.key) || new Set();
+    f.inUseBy.forEach((name) => set.add(name));
+    names.set(f.p.key, set);
+  });
+  return flags.map((f) => ({
+    ...f,
+    whole: reasonFor(RULES.PLACE_CAPACITY, {
+      ...f.words,
+      inUseBy: [...names.get(f.p.key)].sort(compareText)
+    })
+  }));
 }
 
 /** A group with something in two time blocks whose times overlap (blocks that touch don't). */
@@ -485,7 +522,8 @@ function filledCount(ctx) {
  * and setTimeLocations (readProgram), notFor: activity Id -> group Ids it isn't set up for,
  * isAway(groupId, blockId), locked (placement keys the director locked), isLockedOpen(groupId,
  * dateValue, blockId) (a cell locked empty, not counted as to fill), othersAt(kind, id, dayIndex,
- * blockId) }. words: { t (camp terms), dayName(dateValue) }.
+ * blockId), otherNamesAt(locationId, dayIndex, blockId) }. words: { t (camp terms),
+ * dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
@@ -524,6 +562,15 @@ export function checkWeek(days, model, words) {
       const [d, b] = at.split("|").map(Number);
       return model.othersAt(kind, id, d, days[d].blocks[b].id) || 0;
     },
+    // What other programs are doing at a place in "d|b", by name (none for what the user
+    // can't read).
+    otherNames: (locationId, at) => {
+      if (!model.otherNamesAt) {
+        return [];
+      }
+      const [d, b] = at.split("|").map(Number);
+      return model.otherNamesAt(locationId, d, days[d].blocks[b].id) || [];
+    },
     t: words.t
   };
   const marks = [
@@ -542,7 +589,9 @@ export function checkWeek(days, model, words) {
   marks
     .flat()
     .sort((a, b) => RULE.indexOf(a.rule) - RULE.indexOf(b.rule))
-    .forEach(({ p, rule, reason, b }) => {
+    // whole: the placement's one sentence for a rule broken in several of its blocks; reason:
+    // this block's own (the Overlapping line for that cell).
+    .forEach(({ p, rule, reason, b, whole }) => {
       if (b !== undefined) {
         const key = `${p.d}|${b}|${p.groupId}`;
         const cell = cellMarks.get(key) || { p, b, rules: [], reasons: [] };
@@ -555,8 +604,9 @@ export function checkWeek(days, model, words) {
         cellMarks.set(key, cell);
       }
       const list = reasons.get(p.key) || [];
-      if (!list.includes(reason)) {
-        list.push(reason);
+      const said = whole || reason;
+      if (!list.includes(said)) {
+        list.push(said);
       }
       reasons.set(p.key, list);
       const rules = bends.get(p.key) || [];

@@ -121,6 +121,7 @@ public with sharing class OtherProgramGrids {
     Id placeId = places.get(itemId);
     entry.locationId = tally.isOff(placeId) ? null : placeId;
     entry.activityId = item.kind == 'A' ? itemId : null;
+    tally.name(entry, itemId);
   }
 
   /** A grid's Id text as an Id; null for one that isn't (skipped, never a failed screen). */

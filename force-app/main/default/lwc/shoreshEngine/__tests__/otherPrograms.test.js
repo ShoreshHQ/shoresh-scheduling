@@ -26,7 +26,7 @@ const at = (startTime, endTime, groups, extra = {}) => ({
   ...extra
 });
 const counted = (entries) => {
-  const othersAt = otherProgramsAt(entries, DAYS);
+  const { othersAt } = otherProgramsAt(entries, DAYS);
   return {
     place: othersAt("place", "pool", 0, "p2"),
     activity: othersAt("activity", "swim", 0, "p2")
@@ -69,6 +69,44 @@ describe("other programs, counted at their busiest moment", () => {
     ];
     expect(counted(entries)).toEqual({ place: 4, activity: 4 });
     expect(counted([...entries].reverse())).toEqual({ place: 4, activity: 4 });
+  });
+
+  it("one group leaving as another arrives is one, whichever is listed first", () => {
+    // The arriving group listed first: only ends counted before starts at the same minute
+    // keep this at one (a plain sort by time would see both there at 10:20).
+    const leaving = at("09:50", "10:20", 1);
+    const arriving = at("10:20", "10:50", 1);
+    expect(counted([arriving, leaving])).toEqual({ place: 1, activity: 1 });
+    expect(counted([leaving, arriving])).toEqual({ place: 1, activity: 1 });
+    // Two leaving as one arrives: two, never three.
+    const two = at("09:50", "10:20", 2);
+    expect(counted([arriving, two])).toEqual({ place: 2, activity: 2 });
+  });
+
+  it("names what they are doing at the place in the block, once each, in order", () => {
+    const { otherNamesAt } = otherProgramsAt(
+      [
+        at("10:00", "10:20", 1, { names: ["Teen swim"] }),
+        at("10:20", "10:45", 1, { names: ["Teen swim"] }),
+        at("10:00", "10:45", 1, {
+          activityId: null,
+          names: ["Lunch", "Choir"]
+        }),
+        // Before the block, and at another place: not named here.
+        at("09:00", "09:45", 1, { names: ["Diving"] }),
+        at("10:00", "10:45", 1, { locationId: "gym", names: ["Archery"] }),
+        // One the user can't read comes with no name, and names nothing.
+        at("10:00", "10:45", 1, { names: [] })
+      ],
+      DAYS
+    );
+    expect(otherNamesAt("pool", 0, "p2")).toEqual([
+      "Choir",
+      "Lunch",
+      "Teen swim"
+    ]);
+    expect(otherNamesAt("pool", 0, "p1")).toEqual(["Diving"]);
+    expect(otherNamesAt("lake", 0, "p2")).toEqual([]);
   });
 
   it("places and activities are counted apart", () => {
