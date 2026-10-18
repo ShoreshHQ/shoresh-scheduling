@@ -234,6 +234,7 @@ export function checkGeneratedWeek(input) {
       input.fixedActivities,
       input.recurringActivities
     ),
+    // The locks, so a cell locked empty isn't counted as one to fill (G4).
     locks: new Set(
       (input.locks || []).map((l) => lockKey(l.date, l.groupId, l.blockId))
     ),
@@ -363,7 +364,7 @@ export function checkModel(input, model, state) {
       !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
     locked: lockedPlacements(model, state),
     isLockedOpen: (groupId, date, blockId) =>
-      model.locks.has(lockKey(date, groupId, blockId)),
+      Boolean(model.locks) && model.locks.has(lockKey(date, groupId, blockId)),
     othersAt: (kind, id, d, blockId) =>
       (kind === "place" ? model.otherPlace : model.otherActivity).get(
         `${id}|${d}|${blockId}`

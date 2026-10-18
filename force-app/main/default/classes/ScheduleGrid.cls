@@ -1,6 +1,6 @@
 /**
  * One day of a schedule (or one part of a day), in Shoresh's compact grid format (repo
- * docs/adr/0005; version 2 adds locks, docs/adr/0010 §22). Stored in ScheduleDay__c.Grid__c as
+ * docs/adr/0005; version 2 adds locks, docs/adr/0010 §27). Stored in ScheduleDay__c.Grid__c as
  * JSON with four lists, and a fifth for locks:
  *
  *   "b": time blocks, in the order of the day: [id, name, start "HH:mm", end "HH:mm"]
