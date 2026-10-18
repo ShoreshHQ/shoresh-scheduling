@@ -33,8 +33,10 @@ the files the pull request changes and picks one of three:
 | `screen` | Only screens (`force-app/main/default/lwc/`) and static resources, plus any `docs` files                         | Deploys to the test org (proves it deploys); no Apex tests.        |
 | `full`   | Anything else: Apex, triggers, objects, fields, permission sets, tabs, CI, `scripts/`, `package.json`, `config/` | Deploys and runs every Apex test, as before.                       |
 
-When in doubt it picks `full`: a path not in the first two rows, or a failure to list the
-changed files, runs everything. The org check still reports under the same name, and passes,
+When in doubt it picks `full`: a path not in the first two rows, a failure to list the
+changed files, or the quick check itself failing runs everything. It uses the rules as they are
+on the base branch, so a pull request that edits `scripts/ci-pr-category.js` is still judged by
+the old rules (and, since it changes `scripts/`, gets `full`). The org check still reports under the same name, and passes,
 in every category; its log and summary say which category it chose and why.
 
 ### The nightly full run on main (the safety net)

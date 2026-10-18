@@ -72,12 +72,18 @@ jobs:
       - name: Decide from the changed files
         # docs: no org check needed; screen: deploy only; full: deploy and every Apex test.
         # scripts/ci-pr-category.js says full whenever in doubt. Nightly and by-hand runs: full.
+        # It runs the base branch's copy, so a pull request can't loosen the rules it is judged by.
         id: decide
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            node scripts/ci-pr-category.js "$BASE_REF" | tee -a "$GITHUB_OUTPUT"
+            if git show "origin/$BASE_REF:scripts/ci-pr-category.js" > "$RUNNER_TEMP/ci-pr-category.js"; then
+              node "$RUNNER_TEMP/ci-pr-category.js" "$BASE_REF" | tee -a "$GITHUB_OUTPUT"
+            else
+              echo "category=full" | tee -a "$GITHUB_OUTPUT"
+              echo "reason=the base branch has no scripts/ci-pr-category.js, so running everything" | tee -a "$GITHUB_OUTPUT"
+            fi
           else
             echo "category=full" | tee -a "$GITHUB_OUTPUT"
             echo "reason=$GITHUB_EVENT_NAME run: the full Apex suite on $GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
@@ -88,7 +94,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: pr-category
     # Pushes to main run only the quick checks; main's full Apex run is the nightly one.
-    if: github.event_name != 'push'
+    # !cancelled(): if the category check fails, this still runs, and runs everything.
+    if: ${{ !cancelled() && github.event_name != 'push' }}
     # Every pull request deploys to the one test org (scripts/renew-test-org.sh makes it).
     # Greg's rule: exactly two orgs, the Dev Hub and this test org; CI never creates one.
     # One run at a time, so two pull requests never deploy over each other. The others wait
@@ -97,13 +104,14 @@ jobs:
     # A docs-only pull request never touches the org, so it gets a group of its own and doesn't
     # wait in that line; the check still reports, and passes.
     concurrency:
-      group: ${{ needs.pr-category.outputs.category == 'docs' && format('no-test-org-{0}', github.run_id) || 'shared-test-org' }}
+      group: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.category == 'docs' && format('no-test-org-{0}', github.run_id) || 'shared-test-org' }}
       cancel-in-progress: false
       queue: max
     env:
       SFDX_AUTH_URL_CI: ${{ secrets.SFDX_AUTH_URL_CI }}
-      CATEGORY: ${{ needs.pr-category.outputs.category }}
-      REASON: ${{ needs.pr-category.outputs.reason }}
+      # Anything but a successful category check with an answer means full.
+      CATEGORY: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.category || 'full' }}
+      REASON: ${{ needs.pr-category.result == 'success' && needs.pr-category.outputs.reason || 'the category check did not finish, so running everything' }}
     steps:
       - name: What this change needs
         run: |

@@ -22,7 +22,7 @@ const NO_ORG_EFFECT = [
   /^prototypes\//,
   /^jest\//,
   /^\.vscode\//,
-  /^(?!force-app\/)[^/].*\.md$/,
+  /^(?!force-app\/|\.github\/)[^/].*\.md$/,
   /^(NOTICE|\.gitignore|\.gitleaksignore|\.prettierrc|\.prettierignore|eslint\.config\.js|code-analyzer\.yml|jest\.config\.js|jest\.namespaced\.config\.js)$/
 ];
 
