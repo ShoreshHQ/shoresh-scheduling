@@ -77,21 +77,23 @@
               >
                 Clear day
               </button>
-              <lightning-button-menu
-                label="Copy day to…"
-                alternative-text="Copy day to…"
-                menu-alignment="right"
-                data-id="copy-day"
-                onselect={handleCopyDay}
-              >
-                <template for:each={copyTargets} for:item="target">
-                  <lightning-menu-item
-                    key={target.value}
-                    value={target.value}
-                    label={target.label}
-                  ></lightning-menu-item>
-                </template>
-              </lightning-button-menu>
+              <template lwc:if={canCopyDay}>
+                <lightning-button-menu
+                  label="Copy day to…"
+                  alternative-text="Copy day to…"
+                  menu-alignment="right"
+                  data-id="copy-day"
+                  onselect={handleCopyDay}
+                >
+                  <template for:each={copyTargets} for:item="target">
+                    <lightning-menu-item
+                      key={target.value}
+                      value={target.value}
+                      label={target.label}
+                    ></lightning-menu-item>
+                  </template>
+                </lightning-button-menu>
+              </template>
             </template>
             <template lwc:if={isGroup}>
               <lightning-button-menu
@@ -129,14 +131,14 @@
         onlocate={handleLocate}
       ></c-shoresh-week-checks>
     </template>
-    <template lwc:if={toolNotice}>
+    <template lwc:if={toolNoticeText}>
       <p class="notice" data-id="tool-notice">
-        <span>{toolNotice} ·</span>
+        <span>{toolNoticeText} ·</span>
         <button
           type="button"
           class="slds-button tool-undo"
           data-id="tool-undo"
-          onclick={handleUndo}
+          onclick={handleToolUndo}
         >
           Undo
         </button>

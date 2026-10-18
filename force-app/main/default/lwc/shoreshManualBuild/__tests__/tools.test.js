@@ -33,7 +33,7 @@ const never = () => false;
 describe("Clear day and Clear week", () => {
   it("clears the day's activities for every bunk, leaving fixed ones and things not set up", () => {
     const days = week(["1,2,4", "1,4,5"], ["1,2,", "1,,"]);
-    const runs = clearEdit(days, [0]);
+    const runs = clearEdit(days, [0], null, never);
     expect(after(days, runs)[0]).toEqual([
       ["F:f1", "", ""],
       ["F:f1", "", "E:Chugim"]
@@ -44,7 +44,7 @@ describe("Clear day and Clear week", () => {
 
   it("clears one bunk's day only", () => {
     const days = week(["1,2,4", "1,4,"], ["1,,", "1,,"]);
-    const rows = after(days, clearEdit(days, [0], "g2"));
+    const rows = after(days, clearEdit(days, [0], "g2", never));
     expect(rows[0]).toEqual([
       ["F:f1", "A:a1", "A:a3"],
       ["F:f1", "", ""]
@@ -53,7 +53,7 @@ describe("Clear day and Clear week", () => {
 
   it("clears a placement running several blocks whole, in one run", () => {
     const days = week(["1,3,^", "1,,"], ["1,,", "1,,"]);
-    const runs = clearEdit(days, [0]);
+    const runs = clearEdit(days, [0], null, never);
     expect(runs).toEqual([
       {
         day: 0,
@@ -67,10 +67,41 @@ describe("Clear day and Clear week", () => {
 
   it("Clear week covers every day; nothing to clear gives null", () => {
     const days = week(["1,2,", "1,,"], ["1,,4", "1,,"]);
-    const rows = after(days, clearEdit(days, [0, 1]));
+    const rows = after(days, clearEdit(days, [0, 1], null, never));
     expect(rows[0][0]).toEqual(["F:f1", "", ""]);
     expect(rows[1][0]).toEqual(["F:f1", "", ""]);
-    expect(clearEdit(week(["1,,", "1,,"], ["1,,", "1,,"]), [0, 1])).toBeNull();
+    expect(
+      clearEdit(week(["1,,", "1,,"], ["1,,", "1,,"]), [0, 1], null, never)
+    ).toBeNull();
+  });
+});
+
+describe("only what Undo can put back changes", () => {
+  it("an activity deleted since, or placed where its bunk is no longer at camp, is not cleared", () => {
+    const days = week(["1,2,4", "1,4,"], ["1,,", "1,,"]);
+    days[0] = {
+      ...days[0],
+      items: ITEMS.map((i) => (i.id === "a1" ? { ...i, gone: true } : i))
+    };
+    // Bunk 1 is no longer at camp at Lunch.
+    const isAway = (d, g, b) => g === 0 && b === 2;
+    expect(clearEdit(days, [0], "g1", isAway)).toBeNull();
+    const rows = after(days, clearEdit(days, [0], null, isAway));
+    expect(rows[0][1]).toEqual(["F:f1", "", ""]);
+  });
+
+  it("a copy lists, and leaves, a deleted activity and something not set up yet", () => {
+    const days = week(["1,2,5", "1,,"], ["1,,", "1,,"]);
+    days[0] = {
+      ...days[0],
+      items: ITEMS.map((i) => (i.id === "a1" ? { ...i, gone: true } : i))
+    };
+    const { runs, leftOut } = copyDayEdit(days, 0, [1], never);
+    expect(runs).toEqual([]);
+    expect(leftOut.map((o) => [o.slot, o.why])).toEqual([
+      ["A:a1", LEFT_OUT.GONE],
+      ["E:Chugim", LEFT_OUT.NOT_SET_UP]
+    ]);
   });
 });
 
@@ -99,7 +130,14 @@ describe("Copy day to…", () => {
     const isAway = (d, g, b) => g === 1 && b === 2;
     const { runs, leftOut } = copyDayEdit(days, 0, [1], isAway);
     expect(leftOut).toEqual([
-      { day: 1, group: 0, block: 1, slot: "A:a1", why: LEFT_OUT.TAKEN },
+      {
+        day: 1,
+        group: 0,
+        block: 1,
+        slot: "A:a1",
+        why: LEFT_OUT.TAKEN,
+        blocking: "F:f1"
+      },
       { day: 1, group: 1, block: 2, slot: "A:a3", why: LEFT_OUT.AWAY }
     ]);
     expect(after(days, runs)[1]).toEqual([

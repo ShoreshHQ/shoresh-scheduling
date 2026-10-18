@@ -165,4 +165,44 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     await flush();
     expect(q(element, '[data-id="tools"]')).toBeNull();
   });
+
+  it("Undo on the line takes the copy back in one step and puts focus on the toolbar", async () => {
+    const element = await render(start(["1,2,", "1,3,"], ["1,,", "1,,"]));
+    await choose(element, "copy-day", "1");
+    q(element, '[data-id="tool-undo"]').click();
+    await flush();
+    expect(sentRuns(1).map((run) => [run.groupId, run.after])).toEqual([
+      ["g2", [""]],
+      ["g1", [""]]
+    ]);
+    const focused = element.shadowRoot.activeElement;
+    expect(["undo", "redo"]).toContain(focused && focused.dataset.id);
+  });
+
+  it("the line goes once Undo would take back something else", async () => {
+    const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="tool-notice"]')).not.toBeNull();
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+  });
+
+  it("what was left out is said with the save, for screen readers", async () => {
+    const element = await render(start(["1,2,", "1,,3"], ["1,3,", "1,,"]));
+    await choose(element, "copy-day", "1");
+    expect(q(element, '[data-id="announce"]').textContent).toContain(
+      "1 left out: Soccer · Bunk 2 · Tuesday: not at camp then."
+    );
+  });
+
+  it("a copy that changes nothing says the day already matches", async () => {
+    const element = await render(start(["1,2,", "1,,"], ["1,2,", "1,,"]));
+    await choose(element, "copy-day", "1");
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Tuesday already matches Monday."
+    );
+  });
 });

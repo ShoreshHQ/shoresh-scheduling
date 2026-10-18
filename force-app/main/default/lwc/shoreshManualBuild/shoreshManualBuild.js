@@ -95,8 +95,11 @@ export default class ShoreshManualBuild extends LightningElement {
   filter = "";
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
-  // "Cleared Monday" after a day or week tool, shown with Undo until the next change.
+  // "Cleared Monday" after a day or week tool: { text, stepId }, shown with Undo while Undo
+  // would take back that step.
   toolNotice = null;
+  // After the line's Undo, focus goes to the toolbar's (the line itself goes away).
+  focusUndoAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -264,6 +267,7 @@ export default class ShoreshManualBuild extends LightningElement {
     this.server = draft ? draft.schedule : null;
     if (fresh && draft) {
       this.checksResetKey += 1;
+      this.toolNotice = null;
       this.pulseKeys = [];
       this.dayIndex = 0;
       const all = groups(draft.schedule);
@@ -1179,7 +1183,9 @@ export default class ShoreshManualBuild extends LightningElement {
         const said = [this.unrepeated, fresh].filter(Boolean).join(" ");
         this.unrepeated = null;
         this.announce(
-          [entry.label, entry.news, said].filter(Boolean).join(". ")
+          [entry.label, entry.extra, entry.news, said]
+            .filter(Boolean)
+            .join(". ")
         );
       }
     } catch (e) {
@@ -1290,7 +1296,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** The days Copy day to… can copy to: the week's other days, and all of them at once. */
   get copyTargets() {
-    const others = this.dayPills
+    const others = this.readableDayPills
       .filter((d) => d.index !== this.dayIndex)
       .map((d) => ({ value: String(d.index), label: d.label }));
     return others.length > 1
@@ -1300,10 +1306,38 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** The days of the week, for Group View's Clear day (that bunk's day). */
   get clearDayTargets() {
-    return this.dayPills.map((d) => ({
+    return this.readableDayPills.map((d) => ({
       value: String(d.index),
       label: d.label
     }));
+  }
+
+  /** The days that can be read (a day that can't is never cleared or copied to). */
+  get readableDayPills() {
+    return this.dayPills.filter((d) => !this.schedule.days[d.index].problem);
+  }
+
+  get canCopyDay() {
+    return this.copyTargets.length > 0;
+  }
+
+  /** The line after a tool, while Undo would still take that step back. */
+  get toolNoticeText() {
+    // Read so the line follows Undo and Redo (History itself isn't watched).
+    const version = this.historyVersion;
+    const notice = this.toolNotice;
+    return version >= 0 && notice && this.history.lastId === notice.stepId
+      ? notice.text
+      : null;
+  }
+
+  handleToolUndo() {
+    this.handleUndo();
+    this.focusUndoAfterRender = true;
+  }
+
+  isAwayAt(day, group, block) {
+    return this.isAwaySlot({ day, group, block });
   }
 
   dayNameAt(index) {
@@ -1314,7 +1348,9 @@ export default class ShoreshManualBuild extends LightningElement {
   handleClearDay() {
     const name = this.dayNameAt(this.dayIndex);
     this.runTool(
-      clearEdit(this.schedule.days, [this.dayIndex]),
+      clearEdit(this.schedule.days, [this.dayIndex], null, (d, g, b) =>
+        this.isAwayAt(d, g, b)
+      ),
       `Cleared ${name}`,
       `Nothing to clear on ${name}.`
     );
@@ -1326,7 +1362,9 @@ export default class ShoreshManualBuild extends LightningElement {
     const grp = this.groupPills.find((pill) => pill.key === this.groupKey);
     const name = `${grp ? grp.name : ""} · ${this.dayNameAt(d)}`;
     this.runTool(
-      clearEdit(this.schedule.days, [d], this.groupKey),
+      clearEdit(this.schedule.days, [d], this.groupKey, (dd, g, b) =>
+        this.isAwayAt(dd, g, b)
+      ),
       `Cleared ${name}`,
       `Nothing to clear on ${name}.`
     );
@@ -1337,7 +1375,9 @@ export default class ShoreshManualBuild extends LightningElement {
     this.runTool(
       clearEdit(
         this.schedule.days,
-        this.schedule.days.map((day, i) => i)
+        this.schedule.days.map((day, i) => i),
+        null,
+        (d, g, b) => this.isAwayAt(d, g, b)
       ),
       `Cleared ${this.weekName}`,
       `Nothing to clear in ${this.weekName}.`
@@ -1362,10 +1402,12 @@ export default class ShoreshManualBuild extends LightningElement {
     );
     const to = value === "all" ? "every other day" : this.dayNameAt(targets[0]);
     const said = this.leftOutText(from, leftOut);
+    const fromName = this.dayNameAt(from);
+    const already = `${value === "all" ? "Every other day" : to} already matches ${fromName}.`;
     this.runTool(
       runs.length ? runs : null,
-      `Copied ${this.dayNameAt(from)} to ${to}`,
-      said || `Nothing to copy from ${this.dayNameAt(from)}.`,
+      `Copied ${fromName} to ${to}`,
+      said || already,
       said
     );
   }
@@ -1385,8 +1427,12 @@ export default class ShoreshManualBuild extends LightningElement {
           return `${target} has no ${source.blocks[o.block].name}`;
         case LEFT_OUT.NO_GROUP:
           return `not on ${target}`;
+        case LEFT_OUT.GONE:
+          return "deleted from setup";
+        case LEFT_OUT.NOT_SET_UP:
+          return "not set up yet";
         default:
-          return `${source.blocks[o.block].name} is already set up there`;
+          return `${this.nameOf(o.blocking, this.schedule.days[o.day])} is there`;
       }
     };
     const named = leftOut
@@ -1409,7 +1455,15 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     this.commit(runs, label, null);
-    this.toolNotice = extra ? `${label}. ${extra}` : label;
+    // What was left out is said with the save too (the line isn't read out by itself).
+    const entry = this.queue[this.queue.length - 1];
+    if (entry && extra) {
+      entry.extra = extra;
+    }
+    this.toolNotice = {
+      text: extra ? `${label}. ${extra}` : label,
+      stepId: this.stepSeq
+    };
   }
 
   // ---------- the activity list ----------
@@ -1936,6 +1990,17 @@ export default class ShoreshManualBuild extends LightningElement {
 
   renderedCallback() {
     // A list whose counter went to zero is closed, so it doesn't open again by itself later.
+    if (this.focusUndoAfterRender) {
+      this.focusUndoAfterRender = false;
+      const undo = this.template.querySelector('[data-id="undo"]');
+      const target =
+        undo && !undo.disabled
+          ? undo
+          : this.template.querySelector('[data-id="redo"]');
+      if (target) {
+        target.focus();
+      }
+    }
     if (this.focusAfterRender) {
       const { cellKey } = this.focusAfterRender;
       this.focusAfterRender = null;
