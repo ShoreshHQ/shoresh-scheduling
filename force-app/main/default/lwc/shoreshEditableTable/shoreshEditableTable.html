@@ -108,16 +108,20 @@
                         onchange={handleChange}
                       ></lightning-input>
                       <template lwc:if={cell.sameName}>
-                        <span class="same-name" data-id="same-name">
-                          <span class="same-name-dot" aria-hidden="true"></span
-                          >Same name as another
-                        </span>
+                        <c-shoresh-dot
+                          class="flag"
+                          data-id="same-name"
+                          label="Same name as another"
+                          focusable
+                        ></c-shoresh-dot>
                       </template>
                       <template lwc:if={cell.overlaps}>
-                        <span class="same-name" data-id="overlaps">
-                          <span class="same-name-dot" aria-hidden="true"></span
-                          >{cell.overlapLabel}
-                        </span>
+                        <c-shoresh-dot
+                          class="flag"
+                          data-id="overlaps"
+                          label={cell.overlapLabel}
+                          focusable
+                        ></c-shoresh-dot>
                       </template>
                     </template>
                     <template lwc:elseif={cell.isNumber}>

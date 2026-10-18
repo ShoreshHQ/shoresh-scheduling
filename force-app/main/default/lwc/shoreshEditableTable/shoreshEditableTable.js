@@ -47,9 +47,10 @@ const ADD = "add";
  *
  * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
  *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
- *   "Same name as another" tag. Every row counts, hidden or blank-row typing. A heads-up only.
+ *   "Same name as another" dot (c/shoreshDot: its words on hover, focus, or tap, and to
+ *   screen readers). Every row counts, hidden or blank-row typing. A heads-up only.
  * overlapLabel: a row whose StartDate__c to EndDate__c overlaps another row's gets the same dot
- *   with this tag ("Overlaps another week", in the camp's words). A heads-up only.
+ *   with these words ("Overlaps another week", in the camp's words). A heads-up only.
  *   sameNameScope / sameNamesElsewhere: when rows can move to another scope (a group's
  *   division), a row is compared within the scope its values now name, and against
  *   sameNamesElsewhere[scope] (names in other scopes' tables, and names moving in from them).

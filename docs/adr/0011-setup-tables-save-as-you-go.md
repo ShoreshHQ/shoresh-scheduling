@@ -87,9 +87,13 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
 
 ## Not changed
 
-- Time block names stay required. On the desktop a blank name becomes the time range.
-- The "Same name as another" tag keeps its words beside the dot. The design guide now says a
-  dot carries no words beside it (Greg, 2026-10-17); changing the tag is left to the screens'
-  copy work.
+- What a row must have comes from each screen's columns (`required`). A value left blank is
+  sent as nothing, never as the field's default, so the server can fill it in: the desktop
+  parity work makes a time block's name and part of day optional (a blank name becomes the
+  time range, a blank part of day follows the start time) with no change to the table.
+- "Same name as another" and the overlapping-weeks flag are now the shared bronze dot
+  (`c/shoreshDot`): no words beside it; the words show on hover, keyboard focus, or a tap, and
+  screen readers read them (design guide, Greg 2026-10-17). Coordinator, 2026-10-17: fix it
+  here, since this PR owns the table.
 - `saveRecords`, `saveRowsAndWeeks`, and `saveRowsWeeksAndWho` stay for the program form,
   Needs attention fixes, and tests.
