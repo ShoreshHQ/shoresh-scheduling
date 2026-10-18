@@ -90,8 +90,8 @@ describe("activity list counts", () => {
     expect(placed.find((c) => c.name === "Swim").label).toBe("0 placed");
   });
 
-  it("Daily View marks an activity over its limit when any bunk is, as the grid's dots do", () => {
-    // Bunk 1 has Soccer four times (its limit is 3); the camp's total of 4 is under 3 × 2 bunks.
+  it("Daily View weighs the camp's total against the targets times the bunks, as the desktop does", () => {
+    // Bunk 1 has Soccer four times (its limit is 3); the camp's 4 is within 2 to 3 × 2 bunks.
     const week = schedule(WITH_SOCCER, ["1,2,2", "1,,"]);
     week.days[1] = {
       ...week.days[1],
@@ -100,11 +100,13 @@ describe("activity list counts", () => {
     };
     const soccer = (list) =>
       [...list.stillNeeded, ...list.placed].find((c) => c.name === "Soccer");
-    expect(soccer(chips(week, null)).over).toBe(true);
+    const camp = chips(week, null);
+    expect(soccer(camp).label).toBe("4 placed (needs 4–6)");
+    expect(soccer(camp).over).toBe(false);
+    expect(camp.placed.map((c) => c.name)).toContain("Soccer");
+    // Group View counts the one bunk: Bunk 1 is over, Bunk 2 still needs its two.
     expect(soccer(chips(week, "g1")).over).toBe(true);
-    expect(soccer(chips(week, "g2")).over).toBe(false);
-    // Bunk 2 still needs its two, so the camp's list still has Soccer on top.
-    expect(chips(week, null).stillNeeded.map((c) => c.name)).toContain(
+    expect(chips(week, "g2").stillNeeded.map((c) => c.name)).toContain(
       "Soccer"
     );
   });

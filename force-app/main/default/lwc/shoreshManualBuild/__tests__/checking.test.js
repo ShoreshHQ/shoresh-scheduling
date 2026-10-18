@@ -87,7 +87,12 @@ const flush = () =>
   );
 
 async function render(start, setup = SETUP) {
-  getDraft.mockResolvedValue(start);
+  // The server sends the season's activity and location records with the week.
+  getDraft.mockResolvedValue({
+    ...start,
+    activityRecords: setup.activities,
+    locationRecords: setup.locations
+  });
   saveSlots.mockImplementation(() =>
     Promise.resolve({ conflicts: [], schedule: start.schedule })
   );

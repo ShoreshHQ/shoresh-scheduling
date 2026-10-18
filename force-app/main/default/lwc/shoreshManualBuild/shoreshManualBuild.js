@@ -101,9 +101,6 @@ export default class ShoreshManualBuild extends LightningElement {
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
-  // Setup records of activities added from a slot since the setup was read (the setup this page
-  // was given doesn't have them yet), so the checks know them too.
-  addedRecords = [];
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -119,7 +116,6 @@ export default class ShoreshManualBuild extends LightningElement {
   }
   set setup(value) {
     this._setup = value;
-    this.addedRecords = [];
     const programs = this.programOptions.map((o) => o.value);
     const weeks = this.weekOptions.map((o) => o.value);
     if (!programs.includes(this.programId)) {
@@ -322,15 +318,9 @@ export default class ShoreshManualBuild extends LightningElement {
   /** The week checked (c/shoreshEngine checkWeek), worked out again only when the week or setup changes. */
   get checked() {
     const schedule = this.schedule;
-    const inputs = [
-      schedule,
-      this._setup,
-      this.addedRecords,
-      this.draft && this.draft.activities,
-      this.draft && this.draft.away,
-      this.programId,
-      this.t
-    ];
+    // The draft carries the activities, places and away blocks the checks read (one source,
+    // read again with the week); setup gives the program's divisions and set-time places.
+    const inputs = [schedule, this.draft, this._setup, this.programId, this.t];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
       return memo.result;
@@ -343,15 +333,13 @@ export default class ShoreshManualBuild extends LightningElement {
     ((this.draft && this.draft.away) || []).forEach((row) =>
       row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
     );
-    const activities = readActivities([
-      ...(setup.activities || []),
-      ...this.addedRecords
-    ]);
+    const draft = this.draft || {};
+    const activities = readActivities(draft.activityRecords);
     const result = checkWeek(
       (schedule && schedule.days) || [],
       {
         activities,
-        locations: readLocations(setup.locations),
+        locations: readLocations(draft.locationRecords),
         ...readProgram(entry),
         notFor: new Map(
           ((this.draft && this.draft.activities) || []).map((a) => [
@@ -1028,17 +1016,16 @@ export default class ShoreshManualBuild extends LightningElement {
         this.error = errorMessage(e);
         return;
       }
-      const known = [
-        ...((this._setup && this._setup.activities) || []),
-        ...this.addedRecords
-      ];
-      if (activity.record && !known.some((r) => r.Id === activity.id)) {
-        this.addedRecords = [...this.addedRecords, activity.record];
-      }
+      // Its record joins the draft's, so the checks know it before the week is read again.
+      const records = this.draft.activityRecords || [];
       if (!this.draft.activities.some((a) => a.id === activity.id)) {
         this.draft = {
           ...this.draft,
-          activities: [...this.draft.activities, activity]
+          activities: [...this.draft.activities, activity],
+          activityRecords:
+            activity.record && !records.some((r) => r.Id === activity.id)
+              ? [...records, activity.record]
+              : records
         };
       }
     }
