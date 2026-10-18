@@ -105,8 +105,9 @@ cells) and 0009 (names through `c/shoreshSchema`).
      It holds both ways (a second division can't join a place a same-division-only activity
      holds, whatever arrives first) so the result can't depend on placement order. Another
      program's groups count as another division;
-   - a multi-block activity needs its whole length in consecutive Open, at-camp cells, and is one
-     session;
+   - a multi-block activity needs its whole length in consecutive Open, at-camp cells whose times
+     don't overlap each other (Wake-up 8:00–8:30 and P1 8:00–9:00 are one stretch of time, not two
+     periods), and is one session;
    - one placement per group across blocks whose clock times overlap (touching times don't).
      Where a group's Open cells overlap, the build first chooses which to fill, the same
      whatever order anything is filled in: none overlapping a kept cell; then, of every choice of
@@ -190,7 +191,11 @@ cells) and 0009 (names through `c/shoreshSchema`).
     function per rule, in the order rules give way, with `reasonFor`'s words. **Over its weekly
     limit dots only the sessions past the limit, the latest in the week** (by day, then start
     time, then place in the day, then Id; a limit of 2 and 3 sessions dots the 3rd) (Greg,
-    2026-10-17). Any other rule broken by several placements dots all of them: twice in a day
+    2026-10-17). **A locked session doesn't carry that dot while one the build placed can**: the
+    dots go on the latest unlocked sessions past the limit, and on locked ones only for as many
+    as there aren't enough unlocked ones for (coordinator, 2026-10-17: the director's choices
+    win). The engine tells checkWeek which placements it kept (`model.locked`); Manual Build has
+    no locks, so it is unaffected. Any other rule broken by several placements dots all of them: twice in a day
     dots both, too many at an activity or a place dots each one there; fixed and recurring activities count toward a place but never get a dot. So the
     same grid always gets the same dots, whatever order it was filled in, and anything kept
     that breaks a rule is dotted too. Each clash is one Overlapping line, even when another

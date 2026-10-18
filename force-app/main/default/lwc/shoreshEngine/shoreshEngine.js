@@ -122,7 +122,7 @@ export function generateWeek(input) {
     return {
       state,
       built,
-      checked: checkWeek(built, checkModel(input, settings), words)
+      checked: checkWeek(built, checkModel(input, settings, state), words)
     };
   };
   let chosen = build(model);
@@ -199,9 +199,9 @@ function optionOf(value) {
  * checkWeek's model from the engine's inputs: the activities that run this week, the places,
  * each group's division, where fixed and recurring activities take place, who each activity
  * isn't set up for (and a group setup no longer has isn't set up for anything), not-at-camp
- * blocks.
+ * blocks, and the activities it kept (locked, or every filled cell in "fill the open cells").
  */
-export function checkModel(input, model) {
+export function checkModel(input, model, state) {
   const groupsInSetup = model.groups;
   const parts = readPartsOfDay(input.timeBlocks);
   const notFor = new Map(
@@ -221,11 +221,26 @@ export function checkModel(input, model) {
     isAway: (groupId, blockId) =>
       groupsInSetup.has(groupId) &&
       !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
+    locked: lockedPlacements(model, state),
     othersAt: (kind, id, d, blockId) =>
       (kind === "place" ? model.otherPlace : model.otherActivity).get(
         `${id}|${d}|${blockId}`
       ) || 0
   };
+}
+
+/** The placements (head keys "date|groupId|firstBlockId") of activities the build kept. */
+function lockedPlacements(model, state) {
+  const keys = new Set();
+  if (state) {
+    for (const [k, cell] of state.keptCells) {
+      if (cell.head && cell.item.kind === "A") {
+        const [groupId, d, blockId] = state.splitKey(k);
+        keys.add(`${model.days[d].date}|${groupId}|${blockId}`);
+      }
+    }
+  }
+  return keys;
 }
 
 /** checkWeek's dots, one entry per cell of each dotted placement. */

@@ -299,6 +299,38 @@ describe("never blank (Greg, 2026-10-17)", () => {
       expect(result.stillNeeded).toEqual([]);
     });
 
+    it("a two-block activity never runs through two blocks that overlap in time", () => {
+      // Wake-up 8:00-8:30 and P1 8:00-9:00 are one stretch of time, not two periods.
+      const result = run({
+        groups: [group("g1")],
+        blocks: blocks.slice(0, 2),
+        activities: [hike]
+      });
+      expect(cellsOf(result.days)[0].g1).toEqual([null, null]);
+      expect(result.openCells.map((c) => [c.blockId, c.reason])).toEqual([
+        ["wake", "No activity fits this gap"],
+        ["p1", "No activity fits this gap"]
+      ]);
+    });
+
+    it("nor through 10:00-11:30, 11:00-11:45 and 11:00-12:00, which all overlap", () => {
+      const result = run({
+        groups: [group("g1")],
+        blocks: [
+          block(2, { id: "a", startTime: "10:00", endTime: "11:30" }),
+          block(3, { id: "b", startTime: "11:00", endTime: "11:45" }),
+          block(3, { id: "c", startTime: "11:00", endTime: "12:00" })
+        ],
+        activities: [hike]
+      });
+      expect(cellsOf(result.days)[0].g1).toEqual([null, null, null]);
+      expect(result.openCells.map((c) => c.reason)).toEqual([
+        "No activity fits this gap",
+        "No activity fits this gap",
+        "No activity fits this gap"
+      ]);
+    });
+
     it("a cell left out is filled after all when the overlapping one stays Open", () => {
       // Only a four-block activity: it fits nowhere, so Wake-up, left out for P1, isn't busy
       // after all, and every cell says no activity fits.
@@ -374,6 +406,29 @@ describe("never blank (Greg, 2026-10-17)", () => {
       expect(new Set(result.flags.map((f) => f.reason))).toEqual(
         new Set(["Over its weekly limit"])
       );
+    });
+
+    it("the dot goes on a session the build placed, not on a later locked one (the director's choice wins)", () => {
+      // Swim once a week, locked on Tuesday; Monday's swim is the build's and goes over.
+      const spec = {
+        days: 2,
+        activities: [activity("swim", { max: 1 })],
+        cells: [{ day: 1, group: "g1", block: "b0", act: "swim" }],
+        locks: [{ date: dateAt(1), groupId: "g1", blockId: "b0" }]
+      };
+      const result = run(spec);
+      expect(result.flags.map((f) => f.date)).toEqual([dateAt(0)]);
+      // Both kept: the latest carries it.
+      const allKept = run({
+        ...spec,
+        mode: "fillOpen",
+        cells: [
+          { day: 0, group: "g1", block: "b0", act: "swim" },
+          { day: 1, group: "g1", block: "b0", act: "swim" }
+        ],
+        locks: []
+      });
+      expect(allKept.flags.map((f) => f.date)).toEqual([dateAt(1)]);
     });
 
     it("the smallest overage wins, not the activity used least", () => {

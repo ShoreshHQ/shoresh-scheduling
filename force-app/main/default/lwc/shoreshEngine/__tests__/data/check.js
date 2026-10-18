@@ -176,12 +176,9 @@ export function problems(spec, input, result) {
           return;
         }
         for (const j of peers[b]) {
-          // One placement running through both blocks is still one placement.
-          let sameRun = j > b;
-          for (let i = b + 1; i <= j && sameRun; i++) {
-            sameRun = Boolean(row[i] && !row[i].head && row[i].id === cell.id);
-          }
-          if (j > b && row[j] && !sameRun) {
+          // Two overlapping blocks both filled, even by one multi-block placement running
+          // through them (two overlapping blocks are one stretch of time), unless both were kept.
+          if (j > b && row[j]) {
             const pk = `${day.dateValue}|${g.id}|${blocks[j].id}`;
             if (!(kept.has(k) && kept.has(pk))) {
               out.push(`overlapping blocks both filled: ${k}`);
@@ -246,8 +243,8 @@ export function problems(spec, input, result) {
     }
   });
 
-  // Over the weekly limit: exactly the sessions past it are dotted, the latest in the week (day,
-  // start time, place in the day, Id), whether the build placed them or they were kept.
+  // Over the weekly limit: exactly as many sessions as are past it are dotted, the latest in the
+  // week (day, start time, place in the day, Id), and not a kept one while an unkept one can be.
   for (const [ck, sessions] of counts) {
     const act = acts.get(ck.split("|")[1]);
     const ordered = [...sessions].sort(
@@ -257,8 +254,19 @@ export function problems(spec, input, result) {
         x.b - y.b ||
         (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)
     );
-    ordered.forEach((s, i) => {
-      const past = act.max != null && i >= act.max;
+    // The dots go on the latest unkept sessions; kept ones only when there aren't enough.
+    const extra = act.max == null ? 0 : Math.max(0, ordered.length - act.max);
+    const unkept = ordered.filter((x) => !kept.has(x.k));
+    const keptOnes = ordered.filter((x) => kept.has(x.k));
+    const fromKept = Math.max(0, extra - unkept.length);
+    const due = new Set(
+      [
+        ...unkept.slice(unkept.length - Math.min(extra, unkept.length)),
+        ...keptOnes.slice(keptOnes.length - fromKept)
+      ].map((x) => x.k)
+    );
+    ordered.forEach((s) => {
+      const past = due.has(s.k);
       const dotted = (flagged.get(s.k) || []).includes("weeklyMax");
       if (past !== dotted) {
         out.push(

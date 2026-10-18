@@ -52,6 +52,7 @@ function checkedApart(spec, input, result) {
             .map((g) => g.id)
         ])
       ),
+      locked: keptActivities(spec, input),
       othersAt: (kind, id, d, blockId) =>
         spec.otherPrograms
           .filter(
@@ -65,6 +66,30 @@ function checkedApart(spec, input, result) {
     },
     { t: buildTerms([]), dayName: () => "" }
   );
+}
+
+/** The activities the build keeps, by placement: locked ones, or every one in "fill the open cells". */
+function keptActivities(spec, input) {
+  const keys = new Set();
+  const locks = new Set(
+    (input.locks || []).map((l) => `${l.date}|${l.groupId}|${l.blockId}`)
+  );
+  for (const c of spec.cells || []) {
+    if ((c.kind || "A") !== "A") {
+      continue;
+    }
+    const date = input.days[c.day].dateValue;
+    const first = spec.blocks.findIndex((b) => b.id === c.block);
+    const act = spec.activities.find((a) => a.id === c.act);
+    const length = c.length || (act ? act.span : 1);
+    const run = spec.blocks
+      .slice(first, first + length)
+      .map((b) => `${date}|${c.group}|${b.id}`);
+    if (input.mode === "fillOpen" || run.some((k) => locks.has(k))) {
+      keys.add(`${date}|${c.group}|${c.block}`);
+    }
+  }
+  return keys;
 }
 
 /** Each dotted cell's words, from checkWeek's placements. */

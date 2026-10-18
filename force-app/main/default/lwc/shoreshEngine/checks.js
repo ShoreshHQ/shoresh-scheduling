@@ -162,16 +162,24 @@ function weeklyMax(ctx) {
   ).forEach((list) => {
     const act = ctx.activities.get(list[0].id);
     if (act && act.max !== null && list.length > act.max) {
-      // Only the sessions past the limit, the latest in the week (Greg, 2026-10-17).
-      inWeekOrder(ctx, list)
-        .slice(act.max)
-        .forEach((p) =>
-          flags.push({
-            p,
-            rule: RULES.WEEKLY_MAX,
-            reason: reasonFor(RULES.WEEKLY_MAX)
-          })
-        );
+      // Only the sessions past the limit, the latest in the week (Greg, 2026-10-17), and of
+      // those not a locked one while an unlocked one can carry the dot instead: the director's
+      // choices win (coordinator, 2026-10-17).
+      const ordered = inWeekOrder(ctx, list);
+      const extra = list.length - act.max;
+      const unlocked = ordered.filter((p) => !ctx.locked.has(p.key));
+      const locked = ordered.filter((p) => ctx.locked.has(p.key));
+      const fromLocked = Math.max(0, extra - unlocked.length);
+      [
+        ...unlocked.slice(unlocked.length - Math.min(extra, unlocked.length)),
+        ...locked.slice(locked.length - fromLocked)
+      ].forEach((p) =>
+        flags.push({
+          p,
+          rule: RULES.WEEKLY_MAX,
+          reason: reasonFor(RULES.WEEKLY_MAX)
+        })
+      );
     }
   });
   return { flags, clashes: [] };
@@ -502,7 +510,7 @@ function filledCount(ctx) {
 /**
  * The week checked. model: { activities (readActivities), locations (readLocations), divisions
  * and setTimeLocations (readProgram), notFor: activity Id -> group Ids it isn't set up for,
- * isAway(groupId, blockId), othersAt(kind, id, dayIndex, blockId) }. words: { t (camp terms), dayName(dateValue) }.
+ * isAway(groupId, blockId), locked (placement keys the director locked), othersAt(kind, id, dayIndex, blockId) }. words: { t (camp terms), dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
@@ -523,6 +531,7 @@ export function checkWeek(days, model, words) {
     setTimeLocations: model.setTimeLocations || new Map(),
     notFor: (id) => notForSets.get(id) || new Set(),
     isAway: model.isAway || (() => false),
+    locked: model.locked || new Set(),
     // Other programs' groups (Generated Schedule, G5): kind "place" or "activity", its Id, and
     // "d|b"; Manual Build passes none.
     others: (kind, id, at) => {

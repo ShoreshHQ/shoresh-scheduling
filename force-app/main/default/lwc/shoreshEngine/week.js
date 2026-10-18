@@ -553,8 +553,14 @@ export function scheduleWeek(model) {
       for (let i = 1; i < span; i++) {
         const next = blocksOf(d)[idx + i];
         const nk = next ? cellKey(g, d, next.id) : null;
-        // A multi-block activity needs its whole length in consecutive Open, at-camp cells.
-        if (!next || !openSlotByKey.has(nk) || assigned.has(nk)) {
+        // A multi-block activity needs its whole length in consecutive Open, at-camp cells whose
+        // times don't overlap each other (two overlapping blocks are one stretch of time, not two).
+        if (
+          !next ||
+          !openSlotByKey.has(nk) ||
+          assigned.has(nk) ||
+          own.some((o) => (peersByDay[d].get(o) || []).includes(next.id))
+        ) {
           return all ? null : LENGTH;
         }
         problems = placeProblems(act, group, d, next.id);
@@ -571,7 +577,7 @@ export function scheduleWeek(model) {
     for (const o of own) {
       for (const peer of peersByDay[d].get(o) || []) {
         const pk = cellKey(g, d, peer);
-        if (!own.includes(peer) && (assigned.has(pk) || keptKeys.has(pk))) {
+        if (assigned.has(pk) || keptKeys.has(pk)) {
           return all ? null : OVERLAP;
         }
       }
