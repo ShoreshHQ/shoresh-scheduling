@@ -126,6 +126,7 @@ public with sharing class OtherProgramSetTime {
         BlankWeek.clock(block.EndTime__c)
       );
       entry.locationId = item.locationId;
+      tally.name(entry, item.record.Id);
       for (Group__c grp : item.groupsIn(b)) {
         entry.groups += tally.isOff(grp.Id) ? 0 : 1;
       }

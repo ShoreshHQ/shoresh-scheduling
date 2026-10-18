@@ -233,7 +233,8 @@ function groupsAtOnce(ctx) {
       }
       const reason = reasonFor(RULES.GROUPS_AT_ONCE, {
         groupsAtOnce: act.atOnce,
-        terms: ctx.t
+        terms: ctx.t,
+        otherProgram: others > 0
       });
       list.forEach((p) =>
         flags.push({ p, rule: RULES.GROUPS_AT_ONCE, reason, b: blockOf(at) })
@@ -325,7 +326,8 @@ function placeCapacity(ctx) {
       }
       const reason = reasonFor(RULES.PLACE_CAPACITY, {
         placeName: place.name,
-        terms: ctx.t
+        terms: ctx.t,
+        inUseBy: others > 0 ? ctx.otherNames(locationId, at) : []
       });
       movable.forEach((p) =>
         flags.push({ p, rule: RULES.PLACE_CAPACITY, reason, b: blockOf(at) })
@@ -485,7 +487,8 @@ function filledCount(ctx) {
  * and setTimeLocations (readProgram), notFor: activity Id -> group Ids it isn't set up for,
  * isAway(groupId, blockId), locked (placement keys the director locked), isLockedOpen(groupId,
  * dateValue, blockId) (a cell locked empty, not counted as to fill), othersAt(kind, id, dayIndex,
- * blockId) }. words: { t (camp terms), dayName(dateValue) }.
+ * blockId), otherNamesAt(locationId, dayIndex, blockId) }. words: { t (camp terms),
+ * dayName(dateValue) }.
  *
  * Returns { flags: placement key "date|groupId|firstBlockId" -> its reasons ("A · B"), bends:
  * the same key -> its rules (RULE values and BUSY, in give-way order), placements,
@@ -523,6 +526,15 @@ export function checkWeek(days, model, words) {
       }
       const [d, b] = at.split("|").map(Number);
       return model.othersAt(kind, id, d, days[d].blocks[b].id) || 0;
+    },
+    // What other programs are doing at a place in "d|b", by name (none for what the user
+    // can't read).
+    otherNames: (locationId, at) => {
+      if (!model.otherNamesAt) {
+        return [];
+      }
+      const [d, b] = at.split("|").map(Number);
+      return model.otherNamesAt(locationId, d, days[d].blocks[b].id) || [];
     },
     t: words.t
   };

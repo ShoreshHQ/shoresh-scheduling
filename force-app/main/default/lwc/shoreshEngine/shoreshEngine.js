@@ -333,7 +333,9 @@ export function checkModel(input, model, state) {
     othersAt: (kind, id, d, blockId) =>
       (kind === "place" ? model.otherPlace : model.otherActivity).get(
         `${id}|${d}|${blockId}`
-      ) || 0
+      ) || 0,
+    otherNamesAt: (locationId, d, blockId) =>
+      model.otherPlaceNames.get(`${locationId}|${d}|${blockId}`) || []
   };
 }
 
@@ -388,30 +390,35 @@ function groupOrder(groups, days) {
 }
 
 /**
- * Other programs' groups for checkWeek's model (othersAt), on a week's days as Manual Build's
- * DayView has them: entries as generateWeek's `otherPrograms`, counted the same way, so both
- * schedules dot the same over-capacity places. The day index is the one into `days`.
+ * Other programs' groups for checkWeek's model (othersAt, otherNamesAt), on a week's days as
+ * Manual Build's DayView has them: entries as generateWeek's `otherPrograms`, counted and named
+ * the same way, so both schedules dot the same over-capacity places with the same words. The day
+ * index is the one into `days`.
  */
 export function otherProgramsAt(entries, days) {
   const read = readDays(days, new Map());
-  const { otherPlace, otherActivity } = otherPrograms(entries, read);
+  const { otherPlace, otherActivity, otherPlaceNames } = otherPrograms(
+    entries,
+    read
+  );
   const indexOf = new Map(read.map((day) => [day.date, day.index]));
-  return (kind, id, d, blockId) => {
+  const keyOf = (id, d, blockId) => {
     const index = days && days[d] ? indexOf.get(days[d].dateValue) : undefined;
-    if (index === undefined) {
-      return 0;
-    }
-    return (
+    return index === undefined ? null : `${id}|${index}|${blockId}`;
+  };
+  return {
+    othersAt: (kind, id, d, blockId) =>
       (kind === "place" ? otherPlace : otherActivity).get(
-        `${id}|${index}|${blockId}`
-      ) || 0
-    );
+        keyOf(id, d, blockId)
+      ) || 0,
+    otherNamesAt: (locationId, d, blockId) =>
+      otherPlaceNames.get(keyOf(locationId, d, blockId)) || []
   };
 }
 
 /**
  * The server's entries (OtherProgramUse.Entry: dateValue, startTime, endTime, locationId,
- * activityId, groups) in generateWeek's `otherPrograms` shape.
+ * activityId, groups, names) in generateWeek's `otherPrograms` shape.
  */
 export function readOtherPrograms(records) {
   return (records || []).map((r) => ({
@@ -420,7 +427,8 @@ export function readOtherPrograms(records) {
     endTime: r.endTime,
     locationId: r.locationId || null,
     activityId: r.activityId || null,
-    groups: r.groups
+    groups: r.groups,
+    names: r.names || []
   }));
 }
 
@@ -428,11 +436,13 @@ export function readOtherPrograms(records) {
  * Other programs' groups per place and per activity, on each of this program's blocks: the most
  * there at any one moment of the block, not the total of every entry overlapping it. Programs
  * keep their own time grids, so one group across two of their shorter blocks, or two groups one
- * after the other, is one group at a time (ADR 0010 §23).
+ * after the other, is one group at a time (ADR 0010 §23). And per place, the names of what they
+ * are doing there during the block, in alphabetical order.
  */
 function otherPrograms(entries, days) {
   const placeSpans = new Map();
   const activitySpans = new Map();
+  const placeNames = new Map();
   const addSpan = (spans, k, span) => {
     if (!spans.has(k)) {
       spans.set(k, []);
@@ -462,11 +472,12 @@ function otherPrograms(entries, days) {
           n
         ];
         if (entry.locationId) {
-          addSpan(
-            placeSpans,
-            `${entry.locationId}|${day.index}|${block.id}`,
-            span
-          );
+          const k = `${entry.locationId}|${day.index}|${block.id}`;
+          addSpan(placeSpans, k, span);
+          if (!placeNames.has(k)) {
+            placeNames.set(k, new Set());
+          }
+          (entry.names || []).forEach((name) => placeNames.get(k).add(name));
         }
         if (entry.activityId) {
           addSpan(
@@ -482,7 +493,10 @@ function otherPrograms(entries, days) {
     new Map([...spans].map(([k, list]) => [k, mostAtOnce(list)]));
   return {
     otherPlace: busiest(placeSpans),
-    otherActivity: busiest(activitySpans)
+    otherActivity: busiest(activitySpans),
+    otherPlaceNames: new Map(
+      [...placeNames].map(([k, names]) => [k, [...names].sort(compareText)])
+    )
   };
 }
 

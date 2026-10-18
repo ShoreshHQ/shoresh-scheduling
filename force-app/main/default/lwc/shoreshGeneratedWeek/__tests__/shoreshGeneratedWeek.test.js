@@ -420,7 +420,8 @@ describe("c/shoreshGeneratedWeek", () => {
             endTime: "11:00",
             locationId: "a0L000000000001AAA",
             activityId: "a0A000000000001AAA",
-            groups: 2
+            groups: 2,
+            names: ["Swim"]
           },
           {
             dateValue: "2026-06-29",
@@ -440,7 +441,8 @@ describe("c/shoreshGeneratedWeek", () => {
         endTime: "11:00",
         locationId: "a0L000000000001AAA",
         activityId: "a0A000000000001AAA",
-        groups: 2
+        groups: 2,
+        names: ["Swim"]
       },
       {
         date: "2026-06-29",
@@ -448,7 +450,8 @@ describe("c/shoreshGeneratedWeek", () => {
         endTime: "09:30",
         locationId: "a0L000000000001AAA",
         activityId: null,
-        groups: 1
+        groups: 1,
+        names: []
       }
     ]);
   });

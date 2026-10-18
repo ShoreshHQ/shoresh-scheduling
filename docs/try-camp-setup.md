@@ -828,15 +828,17 @@ doesn't change this one.
 This uses the made-up camp's Week 1 from sections 19 to 23. Main's Period 2 runs 9:50 to 10:35;
 the Pool fits 3 bunks.
 
-1. **Add a second program**, as in section 6: _Teens_, with one time block _Swim hour_ 10:00 to
-   10:30 AM (Morning), a unit _Teens_ and two bunks, _Teen 1_ and _Teen 2_, all day. Its times
-   don't line up with Main's, and that's fine.
+1. **Add a second program**, as in section 6 but **leave Friday ticked** (the steps below use
+   Friday): _Teens_, Monday to Friday, with one time block _Swim hour_ 10:00 to 10:30 AM
+   (Morning), a unit _Teens_ and two bunks, _Teen 1_ and _Teen 2_, all day. Its times don't line
+   up with Main's, and that's fine.
 2. On **Fixed activities**, for Teens, add _Teen swim_: Swim hour, length 1, location Pool. Both
    Teens bunks are at the Pool from 10:00 to 10:30, every day.
 3. Open **Manual Build**, Main, Week 1, Daily View, **Friday**. Place Swim for Bunk 4 in Period 2.
    No dot: two Teens bunks and Bunk 4 make 3 at the Pool, which fits 3.
-4. Place Swim for Bunk 5 in Period 2 too. Both Main cells get the dot: _More bunks at Pool than
-   fit_. **Overlapping** goes up by 2. Teens isn't shown on Main's grid, but its bunks count.
+4. Place Swim for Bunk 5 in Period 2 too. Both Main cells get the dot. Hover one: _More bunks at
+   Pool than fit · in use by Teen swim_, naming what Teens is doing there, as the desktop does.
+   **Overlapping** goes up by 2. Teens isn't shown on Main's grid, but its bunks count.
 5. Clear Bunk 5's Swim: the dots go.
 6. On **Fixed activities**, untick **Week 1** for Teen swim. Back in Manual Build (reload), place
    Swim for Bunk 5 again: no dot, because Teens doesn't swim that week.

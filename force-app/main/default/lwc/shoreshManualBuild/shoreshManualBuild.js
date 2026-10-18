@@ -394,10 +394,7 @@ export default class ShoreshManualBuild extends LightningElement {
           ])
         ),
         isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
-        othersAt: otherProgramsAt(
-          readOtherPrograms(draft.otherPrograms),
-          weekDays
-        )
+        ...otherProgramsAt(readOtherPrograms(draft.otherPrograms), weekDays)
       },
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );
