@@ -20,7 +20,8 @@ a general code review misses: the items Salesforce's AppExchange security review
   (`pr view`, `pr diff`, `run view`, `run download` of the `code-analyzer-report` artifact into the
   scratchpad), `npm run test:unit`, `npm run lint`, and local
   `sf code-analyzer run --workspace force-app --rule-selector "(pmd,eslint,retire-js,regex,cpd):Security" --output-file <scratchpad>/…`
-  (also `Recommended`). Output files go to the scratchpad, never the repo.
+  (also `Recommended`, and `AppExchange` with `Recommended:Security`, the security-review scan).
+  Output files go to the scratchpad, never the repo.
 - **Never** deploy, retrieve, run Apex or tests, open an org, or use any `sf` command other than
   `sf code-analyzer run` / `sf code-analyzer rules`. Never the `apexguru` engine or any cloud scan.
 - The skill files under `.claude/skills/` start with "Shoresh overrides (these win)"; follow them.
@@ -71,11 +72,14 @@ must be found even in records the user cannot see).
 8. **Tests.** No `SeeAllData=true`; synthetic data via `ShoreshTestData`. (platform-apex-test-generate)
    A test that acts as a scheduler (`System.runAs`) must create the records that scheduler works on
    inside the same `runAs`, or the org's sharing hides them and the test fails only in the org. A
-   test of a whole request must stay well under 100 SOQL queries for a realistic camp, and should
-   assert it (`Limits.getQueries()`).
-9. **Package hygiene (2GP).** Each new `global` member or `@namespaceAccessible` is permanent once
-   released: flag it. Packaged fields can't be deleted or retyped after release. Permission sets
-   least-privilege, never ViewAllData/ModifyAllData/ViewAllRecords/ModifyAllRecords.
+   test of a whole request must stay well under 100 SOQL queries for a realistic camp, and must
+   assert it (`Limits.getQueries()`). Camp words, labels and describe data are read once per
+   request, never per row or in a loop (#60).
+9. **Package hygiene (2GP).** Every new Apex class or trigger ships with its `-meta.xml` (CI:
+   `npm run check:meta`; without one it never deploys or compiles, #55). Each new `global`
+   member or `@namespaceAccessible` is permanent once released: flag it. Packaged fields can't be
+   deleted or retyped after release. Permission sets least-privilege, never
+   ViewAllData/ModifyAllData/ViewAllRecords/ModifyAllRecords.
    (platform-permission-set-generate, platform-custom-field-generate)
 10. **Secrets and endpoints.** No keys or tokens in code or metadata; callouts through Named
     Credentials over HTTPS. Rules `ApexSuggestUsingNamedCred`, `ApexInsecureEndpoint`, `ApexBadCrypto`.
@@ -90,8 +94,10 @@ must be found even in records the user cannot see).
     one word per idea (Age Division, Program, Location, Group; Fixed Event / Recurring Event, never
     "anchor"); banned words (ingestion, parsing, provenance, permission, …); errors name the
     specific thing that failed, calmly; no zero that asks for attention.
-15. **Scanner.** Read CI's `code-analyzer-report` for Security-category findings at any severity
-    (CI only fails at 3 or worse).
+15. **Scanner.** Read CI's `code-analyzer-report` (`code-analyzer.html`, and
+    `appexchange-security-review.html`, the security-review scan alone) for Security-category
+    findings at any severity (CI only fails at 3 or worse). A new suppression in
+    `code-analyzer.yml` needs one file, one rule, a limit and a reason.
 
 ## Report
 
