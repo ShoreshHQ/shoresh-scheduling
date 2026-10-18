@@ -135,7 +135,7 @@ row back as it was.
    because it is Soccer's rain plan.
 8. **Same location?** On **Locations**, add _pool_ (lower case), groups that fit 2. Then on
    **Activities** set Gym games' **Location** to _pool_. Back on **Locations**, both pools
-   say _Same name as another_ and have a **Same location?** button. Click it. The question
+   have a bronze dot (point at it: _Same name as another_) and a **Same location?** button. Click it. The question
    lists _Pool · 1 Bunk at once · 1 activity here_ and _pool · 2 Bunks at once · 1 activity
    here_, with **Bunks that fit** at 2. Choose _Pool_ and click **Merge**. One Pool is left,
    fitting 2, and on **Activities** Gym games is now at the Pool. (**Keep separate** or
