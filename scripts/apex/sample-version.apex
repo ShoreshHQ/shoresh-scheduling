@@ -13,7 +13,13 @@ if (camps.isEmpty()) {
   insert camps;
 }
 Camp__c camp = camps[0];
-List<Season__c> seasons = [SELECT Id FROM Season__c WHERE Camp__c = :camp.Id ORDER BY CreatedDate LIMIT 1];
+List<Season__c> seasons = [
+  SELECT Id
+  FROM Season__c
+  WHERE Camp__c = :camp.Id
+  ORDER BY CreatedDate
+  LIMIT 1
+];
 Id seasonId;
 if (seasons.isEmpty()) {
   Season__c season = new Season__c(
@@ -49,7 +55,12 @@ if (seasons.isEmpty()) {
   };
   List<TimeBlock__c> blocks = new List<TimeBlock__c>();
   for (Integer i = 0; i < blockSpecs.size(); i++) {
-    Time starts = Time.newInstance((Integer) blockSpecs[i][1], (Integer) blockSpecs[i][2], 0, 0);
+    Time starts = Time.newInstance(
+      (Integer) blockSpecs[i][1],
+      (Integer) blockSpecs[i][2],
+      0,
+      0
+    );
     blocks.add(
       new TimeBlock__c(
         Program__c = program.Id,
@@ -63,8 +74,16 @@ if (seasons.isEmpty()) {
   }
   insert blocks;
 
-  Division__c juniors = new Division__c(Program__c = program.Id, Name = 'Juniors', SortOrder__c = 1);
-  Division__c seniors = new Division__c(Program__c = program.Id, Name = 'Seniors', SortOrder__c = 2);
+  Division__c juniors = new Division__c(
+    Program__c = program.Id,
+    Name = 'Juniors',
+    SortOrder__c = 1
+  );
+  Division__c seniors = new Division__c(
+    Program__c = program.Id,
+    Name = 'Seniors',
+    SortOrder__c = 2
+  );
   insert new List<Division__c>{ juniors, seniors };
   List<Group__c> groups = new List<Group__c>();
   for (Integer i = 1; i <= 6; i++) {
@@ -80,19 +99,38 @@ if (seasons.isEmpty()) {
   insert groups;
 
   Map<String, Location__c> places = new Map<String, Location__c>();
-  for (String name : new List<String>{ 'Pool', 'Art room', 'Field', 'Gym', 'Lake', 'Dining hall', 'Library' }) {
-    places.put(name, new Location__c(Season__c = seasonId, Name = name, GroupsThatFit__c = (name == 'Dining hall' || name == 'Library') ? 6 : 3));
+  for (
+    String name : new List<String>{
+      'Pool',
+      'Art room',
+      'Field',
+      'Gym',
+      'Lake',
+      'Dining hall',
+      'Library'
+    }
+  ) {
+    places.put(
+      name,
+      new Location__c(
+        Season__c = seasonId,
+        Name = name,
+        GroupsThatFit__c = (name == 'Dining hall' || name == 'Library') ? 6 : 3
+      )
+    );
   }
   insert places.values();
 
   List<Activity__c> activities = new List<Activity__c>();
-  for (List<String> spec : new List<List<String>>{
-    new List<String>{ 'Swim', 'Pool' },
-    new List<String>{ 'Art', 'Art room' },
-    new List<String>{ 'Soccer', 'Field' },
-    new List<String>{ 'Gym games', 'Gym' },
-    new List<String>{ 'Boating', 'Lake' }
-  }) {
+  for (
+    List<String> spec : new List<List<String>>{
+      new List<String>{ 'Swim', 'Pool' },
+      new List<String>{ 'Art', 'Art room' },
+      new List<String>{ 'Soccer', 'Field' },
+      new List<String>{ 'Gym games', 'Gym' },
+      new List<String>{ 'Boating', 'Lake' }
+    }
+  ) {
     activities.add(
       new Activity__c(
         Season__c = seasonId,
@@ -132,7 +170,11 @@ if (seasons.isEmpty()) {
     Wednesday__c = true
   );
   insert new List<RecurringActivity__c>{ meeting, library };
-  insert new Coverage__c(Season__c = seasonId, RecurringActivity__c = library.Id, Division__c = juniors.Id);
+  insert new Coverage__c(
+    Season__c = seasonId,
+    RecurringActivity__c = library.Id,
+    Division__c = juniors.Id
+  );
 } else {
   seasonId = seasons[0].Id;
 }
@@ -149,9 +191,22 @@ if ([SELECT COUNT() FROM Week__c WHERE Season__c = :seasonId] == 0) {
 
 // ---------- the version: one grid per day ----------
 
-Program__c program = [SELECT Id FROM Program__c WHERE Season__c = :seasonId ORDER BY SortOrder__c LIMIT 1];
-Week__c week = [SELECT Id, StartDate__c FROM Week__c WHERE Season__c = :seasonId ORDER BY StartDate__c LIMIT 1];
-SetTimePlan plan = SetTimePlanReader.read(new Set<Id>{ seasonId }).get(seasonId);
+Program__c program = [
+  SELECT Id
+  FROM Program__c
+  WHERE Season__c = :seasonId
+  ORDER BY SortOrder__c
+  LIMIT 1
+];
+Week__c week = [
+  SELECT Id, StartDate__c
+  FROM Week__c
+  WHERE Season__c = :seasonId
+  ORDER BY StartDate__c
+  LIMIT 1
+];
+SetTimePlan plan = SetTimePlanReader.read(new Set<Id>{ seasonId })
+  .get(seasonId);
 SetTimePlan.ProgramPlan programPlan;
 for (SetTimePlan.Item item : plan.items) {
   if (item.program.program.Id == program.Id) {
@@ -160,7 +215,12 @@ for (SetTimePlan.Item item : plan.items) {
 }
 List<TimeBlock__c> blocks = programPlan.blocks;
 List<Group__c> groups = programPlan.groups;
-List<Activity__c> activities = [SELECT Id, Name, Length__c FROM Activity__c WHERE Season__c = :seasonId ORDER BY Name];
+List<Activity__c> activities = [
+  SELECT Id, Name, Length__c
+  FROM Activity__c
+  WHERE Season__c = :seasonId
+  ORDER BY Name
+];
 
 Schedule__c version = new Schedule__c(
   Program__c = program.Id,
@@ -179,7 +239,10 @@ for (Integer d = 0; d < 5; d++) {
   for (TimeBlock__c block : blocks) {
     grid.blocks.add(
       new ScheduleGrid.Block(block.Id, block.Name)
-        .at(String.valueOf(block.StartTime__c).left(5), String.valueOf(block.EndTime__c).left(5))
+        .at(
+          String.valueOf(block.StartTime__c).left(5),
+          String.valueOf(block.EndTime__c).left(5)
+        )
     );
   }
   Map<String, Integer> itemNumber = new Map<String, Integer>();
@@ -198,9 +261,20 @@ for (Integer d = 0; d < 5; d++) {
     if (!item.runDays().contains(weekday) || !item.weekIds.contains(week.Id)) {
       continue;
     }
-    String key = (item.term == 'FixedActivity' ? 'F' : 'R') + '|' + item.record.Id + '|' + item.name;
+    String key =
+      (item.term == 'FixedActivity' ? 'F' : 'R') +
+      '|' +
+      item.record.Id +
+      '|' +
+      item.name;
     if (!itemNumber.containsKey(key)) {
-      grid.items.add(new ScheduleGrid.Item(key.substringBefore('|'), item.record.Id, item.name));
+      grid.items.add(
+        new ScheduleGrid.Item(
+          key.substringBefore('|'),
+          item.record.Id,
+          item.name
+        )
+      );
       itemNumber.put(key, grid.items.size());
     }
     List<Integer> span = item.span();
@@ -213,19 +287,27 @@ for (Integer d = 0; d < 5; d++) {
   }
 
   // Things the import notes but cannot set up yet: [kind, name, day, first block, length, first group, last group].
-  for (List<Object> note : new List<List<Object>>{
-    new List<Object>{ 'E', 'Chugim', 1, 6, 1, 0, 5 },
-    new List<Object>{ 'T', 'Zoo trip', 3, 5, 2, 3, 5 },
-    new List<Object>{ 'D', 'Field day', 4, 0, 3, 0, 5 },
-    new List<Object>{ 'S', 'Color war', 4, 4, 2, 0, 5 }
-  }) {
+  for (
+    List<Object> note : new List<List<Object>>{
+      new List<Object>{ 'E', 'Chugim', 1, 6, 1, 0, 5 },
+      new List<Object>{ 'T', 'Zoo trip', 3, 5, 2, 3, 5 },
+      new List<Object>{ 'D', 'Field day', 4, 0, 3, 0, 5 },
+      new List<Object>{ 'S', 'Color war', 4, 4, 2, 0, 5 }
+    }
+  ) {
     if ((Integer) note[2] != d) {
       continue;
     }
-    grid.items.add(new ScheduleGrid.Item((String) note[0], '', (String) note[1]));
+    grid.items.add(
+      new ScheduleGrid.Item((String) note[0], '', (String) note[1])
+    );
     String position = String.valueOf(grid.items.size());
     for (Integer g = (Integer) note[5]; g <= (Integer) note[6]; g++) {
-      for (Integer b = (Integer) note[3]; b < (Integer) note[3] + (Integer) note[4]; b++) {
+      for (
+        Integer b = (Integer) note[3];
+        b < (Integer) note[3] + (Integer) note[4];
+        b++
+      ) {
         cells[g][b] = b == (Integer) note[3] ? position : '^';
       }
     }
@@ -238,8 +320,13 @@ for (Integer d = 0; d < 5; d++) {
       if (cells[g][b] != '' || (d == 0 && g == 5 && b == blocks.size() - 1)) {
         continue;
       }
-      Activity__c activity = activities[Math.mod(g + b + 2 * d, activities.size())];
-      Boolean twoBlocks = activity.Length__c == 2 && b + 1 < blocks.size() && cells[g][b + 1] == '';
+      Activity__c activity = activities[
+        Math.mod(g + b + 2 * d, activities.size())
+      ];
+      Boolean twoBlocks =
+        activity.Length__c == 2 &&
+        b + 1 < blocks.size() &&
+        cells[g][b + 1] == '';
       if (activity.Length__c == 2 && !twoBlocks) {
         activity = activities[Math.mod(g + b + 2 * d + 1, activities.size())];
       }
@@ -260,7 +347,13 @@ for (Integer d = 0; d < 5; d++) {
     grid.groups.add(new ScheduleGrid.GroupRef(groups[g].Id, groups[g].Name));
     grid.rows.add(cells[g]);
   }
-  saves.add(new ScheduleDaySaves.DaySave(week.StartDate__c.addDays(d), grid, null));
+  saves.add(
+    new ScheduleDaySaves.DaySave(week.StartDate__c.addDays(d), grid, null)
+  );
 }
 ScheduleDaySaves.write(version.Id, saves);
-System.debug('SAMPLE_VERSION ' + version.Id + ' in Sample Camp (made up), Sample summer, Week 1');
+System.debug(
+  'SAMPLE_VERSION ' +
+    version.Id +
+    ' in Sample Camp (made up), Sample summer, Week 1'
+);

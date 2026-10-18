@@ -13,12 +13,20 @@ private class ImportSetupSavesTest {
     'Friday'
   };
 
-  private static Map<String, Object> entry(List<Object> pairs) {
-    Map<String, Object> result = new Map<String, Object>();
-    for (Integer i = 0; i < pairs.size(); i += 2) {
-      result.put((String) pairs[i], pairs[i + 1]);
+  // The camp with a full season (ShoreshTestData.fullSeason) is built once for the class and
+  // read back with KeptCamp.keptIds() in the tests that start from it.
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      ShoreshTestData.fullSeason(camp.Id);
+      ids = new Map<String, Id>(ShoreshTestData.lastSeasonIds);
+      ids.put('Camp', camp.Id);
     }
-    return result;
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
   }
 
   private static Map<String, Object> emptyPlan(Id seasonId) {
@@ -42,17 +50,13 @@ private class ImportSetupSavesTest {
     return plan;
   }
 
-  private static void add(Map<String, Object> plan, String name, Object value) {
-    ((List<Object>) plan.get(name)).add(value);
-  }
-
   /** A new camp's week: Main, three blocks, Juniors and Seniors with two bunks each. */
   private static Map<String, Object> newCampPlan(Id seasonId) {
     Map<String, Object> plan = emptyPlan(seasonId);
-    add(
+    ImportTestPlans.add(
       plan,
       'programs',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'key',
           'P0',
@@ -71,10 +75,10 @@ private class ImportSetupSavesTest {
       new List<String>{ 'Period 2', '13:00', '13:45', 'Afternoon' }
     };
     for (Integer i = 0; i < blocks.size(); i++) {
-      add(
+      ImportTestPlans.add(
         plan,
         'timeBlocks',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'B|P0|' + i,
@@ -94,10 +98,10 @@ private class ImportSetupSavesTest {
         )
       );
     }
-    add(
+    ImportTestPlans.add(
       plan,
       'divisions',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'key',
           'D|P0|Juniors',
@@ -110,10 +114,10 @@ private class ImportSetupSavesTest {
         }
       )
     );
-    add(
+    ImportTestPlans.add(
       plan,
       'divisions',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'key',
           'D|P0|Seniors',
@@ -128,10 +132,10 @@ private class ImportSetupSavesTest {
     );
     for (Integer i = 1; i <= 4; i++) {
       String division = i <= 2 ? 'D|P0|Juniors' : 'D|P0|Seniors';
-      add(
+      ImportTestPlans.add(
         plan,
         'groups',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'G|Bunk ' + i,
@@ -145,10 +149,10 @@ private class ImportSetupSavesTest {
         )
       );
     }
-    add(
+    ImportTestPlans.add(
       plan,
       'locations',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'key',
           'L|Dining hall',
@@ -159,10 +163,10 @@ private class ImportSetupSavesTest {
         }
       )
     );
-    add(
+    ImportTestPlans.add(
       plan,
       'activities',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'key',
           'A|Swim',
@@ -183,10 +187,10 @@ private class ImportSetupSavesTest {
         }
       )
     );
-    add(
+    ImportTestPlans.add(
       plan,
       'activities',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'key',
           'A|Boating',
@@ -207,10 +211,10 @@ private class ImportSetupSavesTest {
         }
       )
     );
-    add(
+    ImportTestPlans.add(
       plan,
       'fixedActivities',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'programKey',
           'P0',
@@ -225,10 +229,10 @@ private class ImportSetupSavesTest {
         }
       )
     );
-    add(
+    ImportTestPlans.add(
       plan,
       'recurringActivities',
-      entry(
+      ImportTestPlans.entry(
         new List<Object>{
           'programKey',
           'P0',
@@ -320,9 +324,9 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void onlyWhatTheDirectorChoseChangesInAnExistingSeason() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       SeasonSetupReader.SeasonSetup before = SeasonSetupController.getSeasonSetup(
         season.Id
       );
@@ -330,10 +334,10 @@ private class ImportSetupSavesTest {
       Id juniors = main.divisions[0].division.Id;
       Id period1 = main.timeBlocks[0].Id;
       Map<String, Object> plan = emptyPlan(season.Id);
-      add(
+      ImportTestPlans.add(
         plan,
         'programs',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             main.program.Id,
@@ -344,10 +348,10 @@ private class ImportSetupSavesTest {
           }
         )
       );
-      add(
+      ImportTestPlans.add(
         plan,
         'timeBlocks',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             period1,
@@ -362,10 +366,10 @@ private class ImportSetupSavesTest {
           }
         )
       );
-      add(
+      ImportTestPlans.add(
         plan,
         'groups',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'G|Group C',
@@ -378,10 +382,10 @@ private class ImportSetupSavesTest {
           }
         )
       );
-      add(
+      ImportTestPlans.add(
         plan,
         'activities',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'A|Archery',
@@ -402,10 +406,10 @@ private class ImportSetupSavesTest {
           }
         )
       );
-      add(
+      ImportTestPlans.add(
         plan,
         'fixedActivities',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'programKey',
             main.program.Id,
@@ -449,9 +453,10 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void aRecordFromAnotherSeasonIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Camp__c camp = new Camp__c(Id = ids.get('Camp'));
+      Season__c other = new Season__c(Id = ids.get('Season'));
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       Id otherDivision = [
         SELECT Id
@@ -461,10 +466,10 @@ private class ImportSetupSavesTest {
       ]
       .Id;
       Map<String, Object> plan = emptyPlan(season.Id);
-      add(
+      ImportTestPlans.add(
         plan,
         'groups',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'G|Bunk 9',
@@ -497,10 +502,10 @@ private class ImportSetupSavesTest {
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       Map<String, Object> plan = newCampPlan(season.Id);
       // A second fixed activity in Lunch's block: every group would be in two places at once.
-      add(
+      ImportTestPlans.add(
         plan,
         'fixedActivities',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'programKey',
             'P0',
@@ -574,10 +579,10 @@ private class ImportSetupSavesTest {
       Camp__c camp = ShoreshTestData.camp('Big Pines (made up)');
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       Map<String, Object> plan = emptyPlan(season.Id);
-      add(
+      ImportTestPlans.add(
         plan,
         'programs',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'P0',
@@ -600,10 +605,10 @@ private class ImportSetupSavesTest {
           String.valueOf((start + 30) / 60).leftPad(2, '0') +
           ':' +
           String.valueOf(Math.mod(start + 30, 60)).leftPad(2, '0');
-        add(
+        ImportTestPlans.add(
           plan,
           'timeBlocks',
-          entry(
+          ImportTestPlans.entry(
             new List<Object>{
               'key',
               'B|' + b,
@@ -624,10 +629,10 @@ private class ImportSetupSavesTest {
         );
       }
       for (Integer d = 0; d < 8; d++) {
-        add(
+        ImportTestPlans.add(
           plan,
           'divisions',
-          entry(
+          ImportTestPlans.entry(
             new List<Object>{
               'key',
               'D|' + d,
@@ -641,10 +646,10 @@ private class ImportSetupSavesTest {
           )
         );
         for (Integer g = 0; g < 5; g++) {
-          add(
+          ImportTestPlans.add(
             plan,
             'groups',
-            entry(
+            ImportTestPlans.entry(
               new List<Object>{
                 'key',
                 'G|' +
@@ -668,10 +673,10 @@ private class ImportSetupSavesTest {
         }
       }
       for (Integer a = 0; a < 60; a++) {
-        add(
+        ImportTestPlans.add(
           plan,
           'activities',
-          entry(
+          ImportTestPlans.entry(
             new List<Object>{
               'key',
               'A|' + a,
@@ -694,10 +699,10 @@ private class ImportSetupSavesTest {
         );
       }
       for (Integer r = 0; r < 8; r++) {
-        add(
+        ImportTestPlans.add(
           plan,
           'recurringActivities',
-          entry(
+          ImportTestPlans.entry(
             new List<Object>{
               'programKey',
               'P0',
@@ -715,10 +720,10 @@ private class ImportSetupSavesTest {
           )
         );
       }
-      add(
+      ImportTestPlans.add(
         plan,
         'fixedActivities',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'programKey',
             'P0',
@@ -770,9 +775,10 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void changingARecordInAnotherSeasonIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Camp__c camp = new Camp__c(Id = ids.get('Camp'));
+      Season__c other = new Season__c(Id = ids.get('Season'));
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       TimeBlock__c block = [
         SELECT Id, EndTime__c
@@ -781,10 +787,10 @@ private class ImportSetupSavesTest {
         LIMIT 1
       ];
       Map<String, Object> plan = emptyPlan(season.Id);
-      add(
+      ImportTestPlans.add(
         plan,
         'timeBlocks',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             block.Id,
@@ -807,9 +813,10 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void whoNamingAnotherSeasonIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Camp__c camp = new Camp__c(Id = ids.get('Camp'));
+      Season__c other = new Season__c(Id = ids.get('Season'));
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       Id otherDivision = [
         SELECT Id
@@ -819,10 +826,10 @@ private class ImportSetupSavesTest {
       ]
       .Id;
       Map<String, Object> plan = emptyPlan(season.Id);
-      add(
+      ImportTestPlans.add(
         plan,
         'activities',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             'A|Archery',
@@ -853,9 +860,9 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void aGroupMovesToAnotherDivisionOfItsProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       Program__c main = [
         SELECT Id
         FROM Program__c
@@ -870,10 +877,10 @@ private class ImportSetupSavesTest {
         LIMIT 1
       ];
       Map<String, Object> plan = emptyPlan(season.Id);
-      add(
+      ImportTestPlans.add(
         plan,
         'groups',
-        entry(
+        ImportTestPlans.entry(
           new List<Object>{
             'key',
             groupA.Id,
@@ -899,9 +906,9 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void aGroupCannotMoveToAnotherProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       Program__c other = ShoreshTestData.program(season.Id, 'Afternoons');
       Division__c elsewhere = ShoreshTestData.division(other.Id, 'Seniors');
       Group__c groupA = [
@@ -932,9 +939,9 @@ private class ImportSetupSavesTest {
    */
   @IsTest
   static void aMoveThatMakesAClashIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       Program__c main = [
         SELECT Id
         FROM Program__c

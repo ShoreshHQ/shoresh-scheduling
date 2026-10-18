@@ -92,6 +92,8 @@ jobs:
   scratch-org:
     name: Scratch org deploy and Apex tests
     runs-on: ubuntu-24.04
+    # A hung run would hold the shared-test-org line for GitHub's 6-hour default.
+    timeout-minutes: 60
     needs: pr-category
     # Pushes to main run only the quick checks; main's full Apex run is the nightly one.
     # !cancelled(): if the category check fails, this still runs, and runs everything.

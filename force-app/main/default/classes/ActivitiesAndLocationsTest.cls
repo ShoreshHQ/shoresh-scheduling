@@ -5,6 +5,23 @@
  */
 @IsTest
 private class ActivitiesAndLocationsTest {
+  // Most tests start from the same season, built once for the class by the test runner (no
+  // runAs, as those tests always did) and read back in each test (sharedSeason()).
+  @TestSetup
+  static void setup() {
+    Map<String, Id> ids = new Map<String, Id>();
+    Season__c season = seasonWithEverything(ids);
+    ids.put('Season', season.Id);
+    ids.put('Camp', season.Camp__c);
+    KeptCamp.keepIds(ids);
+  }
+
+  /** The season setup built, with its places and activities in ids. */
+  private static Season__c sharedSeason(Map<String, Id> ids) {
+    ids.putAll(KeptCamp.keptIds());
+    return new Season__c(Id = ids.get('Season'), Camp__c = ids.get('Camp'));
+  }
+
   private static Season__c seasonWithEverything(Map<String, Id> ids) {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.fullSeason(camp.Id);
@@ -120,7 +137,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void whoCanDoItIsReplacedAndEmptyMeansEveryone() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Id division = [
       SELECT Id
       FROM Division__c
@@ -164,7 +181,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void detailsChangeOnlyTheirOwnFieldsAndClearWhatIsEmptied() {
     Map<String, Id> ids = new Map<String, Id>();
-    seasonWithEverything(ids);
+    sharedSeason(ids);
     Database.update(
       new Activity__c(
         Id = ids.get('Swim'),
@@ -207,7 +224,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void entriesThatMakeNoSenseAreRefused() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Activity__c base = ShoreshTestData.activity(season.Id, 'Art', null);
 
     Activity__c maxBelowMin = base.clone();
@@ -251,7 +268,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void everythingStaysInsideItsOwnSeason() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Map<String, Id> otherIds = new Map<String, Id>();
     Season__c other = ShoreshTestData.fullSeason(season.Camp__c);
     otherIds.putAll(ShoreshTestData.placesAndActivities(other.Id));
@@ -317,7 +334,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void locationTypeNamesAreUniqueInASeasonButMaySwap() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     String error = saveError(
       new LocationType__c(Season__c = season.Id, Name = '  field ')
     );
@@ -343,7 +360,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void deletingALocationTypeLeavesItsLocationsUntyped() {
     Map<String, Id> ids = new Map<String, Id>();
-    seasonWithEverything(ids);
+    sharedSeason(ids);
     SeasonSetupController.deleteRecord(ids.get('Field'));
     Assert.isNull(
       [SELECT LocationType__c FROM Location__c WHERE Id = :ids.get('Field A')]
@@ -354,7 +371,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void deletingSomethingStillInUseSaysWhatUsesIt() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Id groupA = groupNamed(season.Id, 'Group A');
 
     Assert.areEqual(
@@ -430,7 +447,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void inUseMessagesUseTheCampsWords() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Database.insert(
       new List<CampLabel__c>{
         new CampLabel__c(
@@ -457,7 +474,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void marksOnActivitiesAndLocationsAreSavedOncePerWeek() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Week__c week = [
       SELECT Id
       FROM Week__c
@@ -502,7 +519,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void aWholeSeasonWithActivitiesCanBeDeleted() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Week__c week = [
       SELECT Id
       FROM Week__c
@@ -527,7 +544,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void copyingASeasonBringsPlacesActivitiesAndWhoCanDoThem() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Week__c week = [
       SELECT Id
       FROM Week__c
@@ -660,7 +677,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void copyingMapsADivisionInWhoCanDoItToTheCopiedDivision() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Id copyId = SeasonSetupController.copySeason(
       season.Id,
       'Summer 2027',
@@ -682,6 +699,12 @@ private class ActivitiesAndLocationsTest {
 
   @IsTest
   static void aSchedulerDeletesASeasonWithActivitiesFromTheScreen() {
+    // The scheduler's season is the only one here, as before the class built a shared one: the
+    // counts below are of every activity and location.
+    Database.delete(
+      new Season__c(Id = KeptCamp.keptIds().get('Season')),
+      AccessLevel.SYSTEM_MODE
+    );
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = new Map<String, Id>();
       Season__c season = seasonWithEverything(ids);
@@ -694,7 +717,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void ownRainPlanRefusalUsesTheCampsWords() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Database.insert(
       new CampLabel__c(
         Camp__c = season.Camp__c,
@@ -715,7 +738,7 @@ private class ActivitiesAndLocationsTest {
   @IsTest
   static void aRefusedRowIsNamedInTheMessage() {
     Map<String, Id> ids = new Map<String, Id>();
-    Season__c season = seasonWithEverything(ids);
+    Season__c season = sharedSeason(ids);
     Activity__c art = ShoreshTestData.activity(season.Id, 'Art', null);
     art.GroupsAtOnce__c = 0;
     Assert.areEqual(

@@ -50,4 +50,23 @@ public class SlotRunsTestData {
     }
     return ids;
   }
+
+  /** What a group's slots hold on a day, as identities ('' Open, 'A:<Id>', '^A:<Id>'). */
+  public static List<String> slots(ScheduleViews.DayView day, Integer g) {
+    List<String> result = new List<String>();
+    String carrying = '';
+    for (String token : day.rows[g].split(',', -1)) {
+      if (token == '^') {
+        result.add('^' + carrying);
+      } else if (String.isBlank(token)) {
+        carrying = '';
+        result.add('');
+      } else {
+        ScheduleViews.Ref item = day.items[Integer.valueOf(token) - 1];
+        carrying = item.kind + ':' + item.id;
+        result.add(carrying);
+      }
+    }
+    return result;
+  }
 }

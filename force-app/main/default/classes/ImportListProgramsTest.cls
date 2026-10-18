@@ -13,9 +13,52 @@ private class ImportListProgramsTest {
     Id bunk1;
     TimeBlock__c period1;
     RecurringActivity__c meeting;
+    Id scheduler;
   }
 
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Camp c;
+    System.runAs(scheduler) {
+      c = build();
+    }
+    KeptCamp.keepIds(
+      new Map<String, Id>{
+        'Season' => c.season.Id,
+        'Main' => c.main.Id,
+        'Juniors' => c.juniors,
+        'Seniors' => c.seniors,
+        'Bunk 1' => c.bunk1,
+        'Period 1' => c.period1.Id,
+        'Meeting' => c.meeting.Id,
+        'Scheduler' => scheduler.Id
+      }
+    );
+  }
+
+  /** The camp setup built. */
   private static Camp camp() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    Camp c = new Camp();
+    c.season = new Season__c(Id = ids.get('Season'));
+    c.main = new Program__c(Id = ids.get('Main'));
+    c.juniors = ids.get('Juniors');
+    c.seniors = ids.get('Seniors');
+    c.bunk1 = ids.get('Bunk 1');
+    c.period1 = new TimeBlock__c(Id = ids.get('Period 1'));
+    c.meeting = new RecurringActivity__c(Id = ids.get('Meeting'));
+    c.scheduler = ids.get('Scheduler');
+    return c;
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Camp c) {
+    return new User(Id = c.scheduler);
+  }
+
+  private static Camp build() {
     Camp c = new Camp();
     c.season = ShoreshTestData.season(
       ShoreshTestData.camp('Cedar Ridge (made up)').Id,
@@ -98,8 +141,8 @@ private class ImportListProgramsTest {
 
   @IsTest
   static void addsAWholeNewProgramFromItsListsAndUndoRemovesIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       String teens = 'Program:Teens';
       ImportSetupSaves.Result result = save(
         plan(
@@ -190,8 +233,8 @@ private class ImportListProgramsTest {
 
   @IsTest
   static void changesTimesDaysAndWhoAndUndoPutsThemBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result result = save(
         plan(
           c.season.Id,
@@ -250,8 +293,8 @@ private class ImportListProgramsTest {
 
   @IsTest
   static void aGroupMovesWithinItsProgramOnlyAndNeverChangesProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       save(
         plan(
           c.season.Id,
@@ -298,8 +341,8 @@ private class ImportListProgramsTest {
 
   @IsTest
   static void undoPutsAMovedGroupBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result moved = save(
         plan(
           c.season.Id,
@@ -352,8 +395,8 @@ private class ImportListProgramsTest {
   // removes the Coverage rows the import made, so the activity keeps who it covers.
   @IsTest
   static void undoKeepsAnEditedRecurringActivityWithWhoItCovers() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       // Room for a Length of 2.
       ShoreshTestData.timeBlock(c.main.Id, 'Period 2', 10);
       ImportSetupSaves.Result result = save(
@@ -390,8 +433,8 @@ private class ImportListProgramsTest {
   // who rows the import made too.
   @IsTest
   static void undoKeepsARecurringActivityInUseWithWhoItCovers() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Id hikers = ShoreshTestData.division(c.main.Id, 'Hikers').Id;
       ImportSetupSaves.Result result = save(
         plan(
@@ -423,8 +466,8 @@ private class ImportListProgramsTest {
   // Coordinator, #20 review: an import that would make a clash is refused whole, naming both.
   @IsTest
   static void anImportThatMakesAClashIsRefusedWholeNamingBoth() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Map<String, Object> rest = withRefs(
         rec(
           'TimeBlock',

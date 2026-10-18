@@ -2,7 +2,31 @@
 private class RowSavesTest {
   private static Map<String, Id> ids;
 
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> built;
+    System.runAs(scheduler) {
+      built = SetTimeTestData.camp();
+    }
+    built.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(built);
+  }
+
+  /** The camp setup built. */
   private static Map<String, Id> camp() {
+    ids = KeptCamp.keptIds();
+    return ids;
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> kept) {
+    return new User(Id = kept.get('Scheduler'));
+  }
+
+  /** A camp of its own, made by whoever runs the test. */
+  private static Map<String, Id> build() {
     ids = SetTimeTestData.camp();
     return ids;
   }
@@ -27,8 +51,8 @@ private class RowSavesTest {
 
   @IsTest
   static void aNewRowIsSavedWithNothingToCompare() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       RowSaves.Result result = save(
         new Location__c(
           Season__c = ids.get('Season'),
@@ -49,8 +73,8 @@ private class RowSavesTest {
 
   @IsTest
   static void aChangeIsSavedWhenTheRowIsAsTheDirectorSawIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       RowSaves.Result result = save(
         new Location__c(Id = ids.get('Pool'), GroupsThatFit__c = 2),
         new Location__c(GroupsThatFit__c = 1)
@@ -62,8 +86,8 @@ private class RowSavesTest {
 
   @IsTest
   static void aFieldSomeoneElseChangedIsNotOverwritten() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       theyChange(new Location__c(Id = ids.get('Pool'), GroupsThatFit__c = 4));
       RowSaves.Result result = save(
         new Location__c(
@@ -97,8 +121,8 @@ private class RowSavesTest {
 
   @IsTest
   static void someoneElsesChangeToAnotherFieldStays() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       theyChange(new Location__c(Id = ids.get('Pool'), Notes__c = 'Theirs'));
       RowSaves.Result result = save(
         new Location__c(Id = ids.get('Pool'), GroupsThatFit__c = 2),
@@ -112,8 +136,8 @@ private class RowSavesTest {
 
   @IsTest
   static void theSameChangeMadeByBothIsNoConflict() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       theyChange(new Location__c(Id = ids.get('Pool'), Name = 'Big pool'));
       RowSaves.Result result = save(
         new Location__c(Id = ids.get('Pool'), Name = 'Big pool'),
@@ -125,8 +149,8 @@ private class RowSavesTest {
 
   @IsTest
   static void textIsComparedExactly() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       theyChange(new Location__c(Id = ids.get('Pool'), Name = 'pool'));
       RowSaves.Result result = save(
         new Location__c(Id = ids.get('Pool'), Name = 'Pool 1'),
@@ -144,8 +168,8 @@ private class RowSavesTest {
 
   @IsTest
   static void aRowSomeoneElseDeletedSaysSo() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       Id lake = save(
           new Location__c(
             Season__c = ids.get('Season'),
@@ -170,8 +194,8 @@ private class RowSavesTest {
 
   @IsTest
   static void whoARecurringActivityCoversIsCheckedToo() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       Id swim = SetTimeTestData.save(
         new List<SObject>{
           SetTimeTestData.recurring(ids, 'Bunk swim', 'Period 1')
@@ -227,8 +251,8 @@ private class RowSavesTest {
 
   @IsTest
   static void aRefusedRowSaveNamesTheRowAndSavesNothing() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       try {
         save(
           new Location__c(Id = ids.get('Pool'), GroupsThatFit__c = 0),
@@ -244,8 +268,8 @@ private class RowSavesTest {
 
   @IsTest
   static void fieldsTheScreensDontSaveAreNeitherComparedNorRead() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       try {
         save(
           new Location__c(Id = ids.get('Pool'), Season__c = ids.get('Season')),
@@ -260,8 +284,8 @@ private class RowSavesTest {
 
   @IsTest
   static void whoTheSameAsTheDirectorChoseIsNoConflict() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       Id swim = SetTimeTestData.save(
         new List<SObject>{
           SetTimeTestData.recurring(ids, 'Bunk swim', 'Period 1')
@@ -291,8 +315,8 @@ private class RowSavesTest {
 
   @IsTest
   static void weekTicksAndWhoAreForTheSavedRowOnly() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      camp();
+    camp();
+    System.runAs(scheduler(ids)) {
       Id swim = SetTimeTestData.save(
         new List<SObject>{
           SetTimeTestData.recurring(ids, 'Bunk swim', 'Period 1')
@@ -369,7 +393,7 @@ private class RowSavesTest {
 
   @IsTest
   static void someoneWithoutAccessCannotSaveARow() {
-    camp();
+    build();
     System.runAs(ShoreshTestData.outsider()) {
       try {
         save(
