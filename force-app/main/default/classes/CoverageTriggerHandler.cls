@@ -57,9 +57,10 @@ public with sharing class CoverageTriggerHandler {
   }
 
   private void check(Coverage__c row, RecurringActivity__c owner) {
-    CampLabels labels = labelsBySeason.get(owner.Program__r.Season__c);
     Id target = row.Division__c != null ? row.Division__c : row.Group__c;
     if (row.Season__c != owner.Program__r.Season__c) {
+      // Only a refusal needs the camp's words.
+      CampLabels labels = labelsBySeason.get(owner.Program__r.Season__c);
       row.addError(
         'This row belongs to a different ' +
           labels.singularInSentence('Season') +
@@ -70,6 +71,7 @@ public with sharing class CoverageTriggerHandler {
     } else if (
       programOf.containsKey(target) && programOf.get(target) != owner.Program__c
     ) {
+      CampLabels labels = labelsBySeason.get(owner.Program__r.Season__c);
       row.addError(
         'This ' +
           labels.singularInSentence(

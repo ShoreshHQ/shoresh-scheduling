@@ -64,6 +64,53 @@ private class SetupCostTest {
     Assert.isTrue(used <= 35, 'Queries for GeneratedTestData.camp(): ' + used);
   }
 
+  /** A save no check refuses reads none of the camp's words (only the duplicate-name check). */
+  @IsTest
+  static void aCleanSaveReadsNoCampWords() {
+    Map<String, Id> ids = SetTimeTestData.camp();
+    Test.startTest();
+    Integer before = Limits.getQueries();
+    Database.insert(
+      new LocationType__c(Season__c = ids.get('Season'), Name = 'Lake'),
+      AccessLevel.SYSTEM_MODE
+    );
+    Integer used = Limits.getQueries() - before;
+    Test.stopTest();
+    Assert.isTrue(used <= 1, 'Queries for a clean location type: ' + used);
+  }
+
+  /** Many refused rows in one save: the camp's words are read once, not once per row. */
+  @IsTest
+  static void manyRefusedRowsStayInsideTheLimit() {
+    Map<String, Id> ids = SetTimeTestData.camp();
+    Program__c other = ShoreshTestData.program(ids.get('Season'), 'Other');
+    TimeBlock__c otherBlock = ShoreshTestData.timeBlock(
+      other.Id,
+      'Elsewhere',
+      9
+    );
+    List<FixedActivity__c> rows = new List<FixedActivity__c>();
+    for (Integer i = 0; i < 60; i++) {
+      FixedActivity__c row = SetTimeTestData.fixed(ids, 'Row ' + i, 'Period 1');
+      row.TimeBlock__c = otherBlock.Id;
+      rows.add(row);
+    }
+    Test.startTest();
+    List<Database.SaveResult> results = Database.insert(
+      rows,
+      false,
+      AccessLevel.SYSTEM_MODE
+    );
+    Test.stopTest();
+    for (Database.SaveResult result : results) {
+      Assert.isFalse(result.isSuccess());
+      Assert.isTrue(
+        result.getErrors()[0].getMessage().contains('belongs to a different'),
+        result.getErrors()[0].getMessage()
+      );
+    }
+  }
+
   /** A refusal still words itself in the camp's words, read only then. */
   @IsTest
   static void aRefusalStillUsesTheCampsWords() {

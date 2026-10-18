@@ -6,6 +6,7 @@ public with sharing class SetTimeItemTriggerHandler {
   // What each time block and location named belongs to: its program, or its season.
   private Map<Id, Id> ownerOf;
   private String term;
+  private SetupSeasons.LazyLabels labelsBySeason;
 
   /** Before save: the checks above. After save: the clash check (SetTimeGuard). */
   public static void handle(
@@ -66,9 +67,15 @@ public with sharing class SetTimeItemTriggerHandler {
         WITH SYSTEM_MODE
       ]
     );
+    Set<Id> seasonIds = new Set<Id>();
+    for (Program__c program : programs.values()) {
+      seasonIds.add(program.Season__c);
+    }
     SetTimeItemTriggerHandler handler = new SetTimeItemTriggerHandler();
     handler.ownerOf = ownerOf;
     handler.term = term;
+    // One read for the whole save, and only if a row is refused (not once per refused row).
+    handler.labelsBySeason = SetupSeasons.labelsWhenNeeded(seasonIds);
     for (SObject item : items) {
       handler.check(
         item,
@@ -152,10 +159,7 @@ public with sharing class SetTimeItemTriggerHandler {
       return;
     }
     // Only a refusal needs the camp's words.
-    CampLabels labels = SetupSeasons.labelsBySeason(
-        new Set<Id>{ program.Season__c }
-      )
-      .get(program.Season__c);
+    CampLabels labels = labelsBySeason.get(program.Season__c);
     if (otherBlock) {
       item.addError(
         f.timeBlock,

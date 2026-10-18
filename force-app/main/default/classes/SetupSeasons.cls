@@ -29,7 +29,7 @@ public with sharing class SetupSeasons {
    * Each season's camp labels, read the first time one is asked for. The checks need them only
    * to word a refusal, so a save that is refused nowhere reads nothing for them.
    */
-  public class LazyLabels {
+  public with sharing class LazyLabels {
     private Set<Id> seasonIds;
     private Map<Id, CampLabels> loaded;
 
