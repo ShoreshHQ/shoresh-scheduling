@@ -44,6 +44,10 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    be renamed (the desktop renames only unnamed auto-saves); names are 1 to 80 characters. A
    blue strip says which version is on screen and that it is read-only. **Open** in Versions
    switches to another version.
+   On Manual Build (ADR 0008 §25) the same list's action is **Restore**, the desktop's word,
+   because there it copies the version into the week being built; it also has **delete** and
+   the "Name current version… · Save version" footer there. **Open** stays the Schedules
+   page's look-only word (one word per idea, coordinator 2026-10-17).
 4. **A version shows what was saved, not today's setup.** Each day stores the names of its
    time blocks, groups, and items as they were (as the data model has published rows copy
    names). Anything it points at that has been deleted since still shows under its saved name,

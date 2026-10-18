@@ -12,7 +12,6 @@
       <div class="panel" data-id="versions-panel">
         <div class="panel-head">
           <div class="panel-title">{title}</div>
-          <div class="panel-sub">{subtitle}</div>
         </div>
         <div class="panel-list">
           <template lwc:if={isEmpty}>
@@ -45,6 +44,7 @@
                   <div class="version-name">{row.name}</div>
                   <div class="version-meta">
                     {row.origin} ·
+                    <template lwc:if={row.autoSaved}>Auto-saved ·</template>
                     <lightning-formatted-date-time
                       value={row.savedAt}
                       month="short"
@@ -62,24 +62,65 @@
                   class="link link_quiet"
                   data-id={row.id}
                   data-action="rename"
+                  aria-label={row.renameName}
                   onclick={handleStartRename}
                 >
                   rename
                 </button>
+                <template lwc:if={canDelete}>
+                  <button
+                    type="button"
+                    class={row.deleteClass}
+                    data-id={row.id}
+                    data-action="delete"
+                    aria-label={row.deleteName}
+                    disabled={busy}
+                    onclick={handleDelete}
+                    onblur={handleDeleteBlur}
+                  >
+                    {row.deleteLabel}
+                  </button>
+                </template>
                 <button
                   type="button"
                   class="link"
                   data-id={row.id}
                   data-action="open"
+                  aria-label={row.actionName}
+                  disabled={actionDisabled}
                   onclick={handleOpen}
                 >
-                  Open
+                  {actionLabel}
                 </button>
               </template>
             </div>
           </template>
         </div>
+        <template lwc:if={canSave}>
+          <div class="panel-foot" data-id="save-version">
+            <input
+              class="slds-input"
+              value={saveName}
+              maxlength="80"
+              placeholder={savePlaceholder}
+              aria-label={savePlaceholder}
+              oninput={handleSaveInput}
+              onkeydown={handleSaveKey}
+              data-id="save-name"
+            />
+            <lightning-button
+              variant="brand"
+              label={saveLabel}
+              disabled={saveDisabled}
+              onclick={handleSave}
+              data-id="save-button"
+            ></lightning-button>
+          </div>
+        </template>
       </div>
     </template>
+    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+      {announcement}
+    </div>
   </div>
 </template>

@@ -14,6 +14,7 @@ public with sharing class GeneratedSetup {
   public List<Group__c> groups;
   public List<WeekException__c> exceptions;
   private CampLabels wordsRead;
+  private List<Activity__c> activitiesRead;
 
   public GeneratedSetup(Id programId, Id weekId) {
     program = ProgramReads.programOf(programId);
@@ -36,6 +37,14 @@ public with sharing class GeneratedSetup {
       WITH USER_MODE
       ORDER BY Id
     ];
+  }
+
+  /** The season's activities as setup reads them (SeasonSetupReader), read when first needed. */
+  public List<Activity__c> activityRecords() {
+    if (activitiesRead == null) {
+      activitiesRead = SeasonSetupReader.activitiesOf(program.Season__c);
+    }
+    return activitiesRead;
   }
 
   /** The camp's words, read when first needed. */
