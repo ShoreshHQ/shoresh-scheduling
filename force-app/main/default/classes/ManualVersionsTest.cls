@@ -69,11 +69,14 @@ private class ManualVersionsTest {
       Test.startTest();
       Id draftId = startWeek(ids, 'Week 1');
       place(draftId, 'Swim');
+      Integer queriesBefore = Limits.getQueries();
       Id versionId = ManualBuildController.saveVersion(
         draftId,
         '  Monday plan '
       );
+      Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
+      Assert.isTrue(queries <= 20, 'Save version used ' + queries + ' queries');
       Schedule__c version = [
         SELECT
           Name,
@@ -128,11 +131,15 @@ private class ManualVersionsTest {
       place(draftId, 'Swim');
       Id versionId = ManualBuildController.saveVersion(draftId, 'With Swim');
       placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      Integer queriesBefore = Limits.getQueries();
       ManualBuildViews.DraftView view = ManualBuildController.restoreVersion(
         draftId,
         versionId
       );
+      // A fixed number of queries, whatever the size of the week: well under 100.
+      Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
+      Assert.isTrue(queries <= 40, 'Restore used ' + queries + ' queries');
       Assert.areEqual(draftId, view.schedule.schedule.id);
       Assert.areEqual('Swim', mondayPeriod2(draftId));
       Schedule__c kept = [

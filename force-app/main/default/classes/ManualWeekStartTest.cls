@@ -64,12 +64,20 @@ private class ManualWeekStartTest {
       Map<String, Id> ids = camp();
       Test.startTest();
       Id source = weekOneWithSwim(ids);
+      Integer queriesBefore = Limits.getQueries();
       ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
         ids.get('Main'),
         ids.get('Week 2'),
         source
       );
+      // A fixed number of queries, whatever the size of the camp (nothing is read per day,
+      // group or placement): well under the limit of 100.
+      Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
+      Assert.isTrue(
+        queries <= 40,
+        'Start from another week used ' + queries + ' queries'
+      );
       Assert.areEqual('Swim', mondayPeriod2(view, 'Group A'));
       Assert.areEqual('', mondayPeriod2(view, 'Group B'));
       Assert.isTrue(view.leftOut.isEmpty(), String.join(view.leftOut, '; '));
