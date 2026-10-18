@@ -215,6 +215,44 @@ private class ManualBuildTest {
       Assert.areEqual(1, view.away.size());
       Assert.areEqual(ids.get('Group C'), view.away[0].groupId);
       Assert.areEqual(new List<Id>{ ids.get('Lunch') }, view.away[0].blockIds);
+      // The season's activity and location records come with the week, as the setup screen
+      // reads them, so the screen's checks are as fresh as the week.
+      Map<Id, Activity__c> records = new Map<Id, Activity__c>(
+        view.activityRecords
+      );
+      Assert.areEqual(view.activities.size(), records.size());
+      Assert.areEqual(2, records.get(ids.get('Swim')).TimesPerWeekMax__c);
+      Assert.isTrue(records.get(ids.get('Soccer')).NoWeeklyMax__c);
+      Assert.areEqual(
+        [
+          SELECT COUNT()
+          FROM Location__c
+          WHERE Season__c = :ids.get('Season')
+          WITH SYSTEM_MODE
+        ],
+        view.locationRecords.size()
+      );
+      // The program's groups with their divisions, and where its set-time items are.
+      Map<Id, Group__c> groupsById = new Map<Id, Group__c>(view.groupRecords);
+      Assert.isNotNull(groupsById.get(ids.get('Group C')).Division__c);
+      Assert.areEqual(
+        [
+          SELECT COUNT()
+          FROM FixedActivity__c
+          WHERE Program__c = :ids.get('Main')
+          WITH SYSTEM_MODE
+        ],
+        view.fixedActivityRecords.size()
+      );
+      Assert.areEqual(
+        [
+          SELECT COUNT()
+          FROM RecurringActivity__c
+          WHERE Program__c = :ids.get('Main')
+          WITH SYSTEM_MODE
+        ],
+        view.recurringActivityRecords.size()
+      );
     }
   }
 
@@ -586,15 +624,23 @@ private class ManualBuildTest {
       Assert.areEqual(1, saved.TimesPerWeekMax__c);
       Assert.areEqual(ids.get('Season'), saved.Season__c);
       Assert.isTrue(added.notFor.isEmpty());
+      // Its setup record comes back too, as the setup screen reads it, for the screen's checks.
+      Assert.areEqual(added.id, added.record.Id);
+      Assert.areEqual(1, added.record.TimesPerWeekMin__c);
+      Assert.areEqual(1, added.record.TimesPerWeekMax__c);
+      Assert.areEqual(1, added.record.GroupsAtOnce__c);
+      Assert.isFalse(added.record.NoGroupLimit__c);
       // The same name again (spaces and capitals aside) is the same activity.
       Assert.areEqual(
         added.id,
         ManualBuildController.addActivity(draftId, 'artsand Crafts').id
       );
-      Assert.areEqual(
-        ids.get('Swim'),
-        ManualBuildController.addActivity(draftId, 'SWIM').id
+      ManualBuildViews.ActivityOption swim = ManualBuildController.addActivity(
+        draftId,
+        'SWIM'
       );
+      Assert.areEqual(ids.get('Swim'), swim.id);
+      Assert.areEqual(ids.get('Swim'), swim.record.Id);
     }
   }
 

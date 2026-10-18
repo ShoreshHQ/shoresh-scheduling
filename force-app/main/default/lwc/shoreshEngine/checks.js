@@ -487,7 +487,9 @@ function filledCount(ctx) {
  * day's group order; rules in give-way order; text "Bunk 3 · Monday · Period 2: reason · reason"),
  * stillNeeded, spread (lines of text), stillNeededBy ([{ activityId, groupId,
  * missing }], entry i for line i), spreadBy ([{ activityId, groupId, missing, byDay }], byDay the
- * day's name as the line says it), cells: { filled, total } }.
+ * day's name as the line says it), cells: { filled, total }, hasCoverageTargets and
+ * hasSpreadTargets (some activity has a weekly minimum / an early-week goal: without one, the
+ * screens don't show that counter, desktop ScheduleScreen) }.
  */
 export function checkWeek(days, model, words) {
   const placements = placementsOf(days);
@@ -575,12 +577,17 @@ export function checkWeek(days, model, words) {
       };
     });
 
+  // Which targets the camp has set (desktop hasCoverageTargets / hasSpreadTargets): with none, a
+  // count of zero means nothing was checked, so the screens don't show that counter.
+  const activities = [...ctx.activities.values()];
   return {
     flags,
     bends,
     placements,
     overlapping,
     ...stillToPlace(ctx),
-    cells: filledCount(ctx)
+    cells: filledCount(ctx),
+    hasCoverageTargets: activities.some((a) => a.min > 0),
+    hasSpreadTargets: activities.some((a) => !!a.early)
   };
 }

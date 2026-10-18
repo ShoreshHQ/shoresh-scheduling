@@ -28,6 +28,11 @@ public with sharing class ManualBuildActivities {
       )
     ) {
       if (option.id == activityId) {
+        for (Activity__c record : SeasonSetupReader.activitiesOf(seasonId)) {
+          if (record.Id == activityId) {
+            option.record = record;
+          }
+        }
         return option;
       }
     }

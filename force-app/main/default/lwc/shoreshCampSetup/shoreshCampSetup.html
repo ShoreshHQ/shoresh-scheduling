@@ -372,6 +372,7 @@
               <template for:each={programs} for:item="item">
                 <c-shoresh-program
                   key={item.key}
+                  before-week-off={beforeWeekOff}
                   show="program"
                   entry={item.entry}
                   terms={terms}
@@ -404,6 +405,7 @@
               <template for:each={programs} for:item="item">
                 <c-shoresh-program
                   key={item.key}
+                  before-week-off={beforeWeekOff}
                   show="divisions"
                   entry={item.entry}
                   terms={terms}
@@ -436,6 +438,7 @@
               <template for:each={programs} for:item="item">
                 <c-shoresh-program
                   key={item.key}
+                  before-week-off={beforeWeekOff}
                   show="groups"
                   entry={item.entry}
                   terms={terms}
@@ -471,6 +474,7 @@
               <template for:each={programs} for:item="item">
                 <c-shoresh-program
                   key={item.key}
+                  before-week-off={beforeWeekOff}
                   show="timeBlocks"
                   entry={item.entry}
                   terms={terms}
@@ -542,6 +546,7 @@
                 weeks={setup.weeks}
                 week-exceptions={setup.weekExceptions}
                 weeks-heading="Open in"
+                before-week-off={beforeWeekOff}
                 week-phrase="is open in"
                 busy={busy}
                 onsave={handleSaveRecords}
@@ -576,6 +581,7 @@
                 weeks={setup.weeks}
                 week-exceptions={setup.weekExceptions}
                 weeks-heading="Runs in"
+                before-week-off={beforeWeekOff}
                 week-phrase="runs in"
                 busy={busy}
                 onsave={handleSaveRecords}
@@ -606,6 +612,7 @@
               <template for:each={programs} for:item="item">
                 <c-shoresh-program
                   key={item.key}
+                  before-week-off={beforeWeekOff}
                   data-id="fixed-activities"
                   show="fixedActivities"
                   entry={item.entry}
@@ -645,6 +652,7 @@
               <template for:each={programs} for:item="item">
                 <c-shoresh-program
                   key={item.key}
+                  before-week-off={beforeWeekOff}
                   data-id="recurring-activities"
                   show="recurringActivities"
                   entry={item.entry}
