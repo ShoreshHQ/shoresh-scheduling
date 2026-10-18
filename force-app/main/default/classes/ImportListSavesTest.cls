@@ -11,9 +11,50 @@ private class ImportListSavesTest {
     Id bunk1;
     Location__c gym;
     Activity__c archery;
+    Id scheduler;
   }
 
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Camp c;
+    System.runAs(scheduler) {
+      c = build();
+    }
+    ShoreshTestData.keepIds(
+      new Map<String, Id>{
+        'Season' => c.season.Id,
+        'Juniors' => c.juniors,
+        'Seniors' => c.seniors,
+        'Bunk 1' => c.bunk1,
+        'Gym' => c.gym.Id,
+        'Archery' => c.archery.Id,
+        'Scheduler' => scheduler.Id
+      }
+    );
+  }
+
+  /** The camp setup built. */
   private static Camp camp() {
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Camp c = new Camp();
+    c.season = new Season__c(Id = ids.get('Season'));
+    c.juniors = ids.get('Juniors');
+    c.seniors = ids.get('Seniors');
+    c.bunk1 = ids.get('Bunk 1');
+    c.gym = new Location__c(Id = ids.get('Gym'));
+    c.archery = new Activity__c(Id = ids.get('Archery'));
+    c.scheduler = ids.get('Scheduler');
+    return c;
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Camp c) {
+    return new User(Id = c.scheduler);
+  }
+
+  private static Camp build() {
     Camp c = new Camp();
     Camp__c record = ShoreshTestData.camp('Pine Hollow (made up)');
     c.season = ShoreshTestData.season(record.Id, 'Summer 2027');
@@ -78,8 +119,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void addsActivitiesWithANewLocationWhoAndARainPlanInTheSameList() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Test.startTest();
       ImportSetupSaves.Result result = save(
         plan(
@@ -138,8 +179,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void undoRemovesWhatTheListAddedEvenWithALinkBetweenThem() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result result = save(
         plan(
           c.season.Id,
@@ -180,8 +221,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void changesOnlyTheChosenFieldsAndUndoPutsThemAndWhoBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result result = save(
         plan(
           c.season.Id,
@@ -242,8 +283,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void undoKeepsAWhoListEditedSince() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result result = save(
         plan(
           c.season.Id,
@@ -279,8 +320,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void aNewLocationTypeIsUndoneButOneALocationWasGivenSinceIsKept() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result result = save(
         new Map<String, Object>{
           'seasonId' => c.season.Id,
@@ -317,8 +358,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void allOrNone() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Map<String, Object> bad = newActivity(
         'Canoeing',
         new Map<String, Object>(),
@@ -355,8 +396,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void refusesRecordsOfAnotherSeasonAndFieldsAListCannotWrite() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Season__c other = ShoreshTestData.season(
         ShoreshTestData.camp('Other (made up)').Id,
         'Elsewhere'
@@ -402,8 +443,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void changingWhoForSixtyActivitiesFitsInTheUndoLog() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       List<Group__c> bunks = new List<Group__c>();
       for (Integer i = 2; i <= 11; i++) {
         bunks.add(
@@ -473,8 +514,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void addsAGroupNamedInWhoCanDoItAndUndoRemovesIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       String key = 'Group:' + c.seniors + ':Middlers';
       ImportSetupSaves.Result result = save(
         plan(
@@ -524,8 +565,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void aRainPlanChangedToAnActivityTheListAddsIsUndone() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ImportSetupSaves.Result result = save(
         plan(
           c.season.Id,
@@ -573,8 +614,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void aListNeverRenamesNorChangesWhatItCanOnlyAdd() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Test.startTest();
       List<Map<String, Object>> attempts = new List<Map<String, Object>>{
         new Map<String, Object>{
@@ -614,8 +655,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void aListTooLongToUndoIsRefusedBeforeAnythingIsSaved() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       List<Location__c> places = new List<Location__c>();
       for (Integer i = 0; i < 5; i++) {
         places.add(
@@ -656,8 +697,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void refusesAnotherSeasonsRecordInALinkOrWhoList() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Season__c other = ShoreshTestData.season(
         ShoreshTestData.camp('Other (made up)').Id,
         'Elsewhere'
@@ -715,8 +756,8 @@ private class ImportListSavesTest {
 
   @IsTest
   static void refusesARecordSentAsAnotherKind() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       Test.startTest();
       try {
         save(
@@ -749,9 +790,9 @@ private class ImportListSavesTest {
    */
   @IsTest
   static void aListAndLogSpelledWithTheNamespaceAreReadTheSame() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    Camp c = camp();
+    System.runAs(scheduler(c)) {
       ShoreshSchema.simulatedPrefix = 'shoresh__';
-      Camp c = camp();
       Map<String, Object> sent = plan(
         c.season.Id,
         new List<Object>{

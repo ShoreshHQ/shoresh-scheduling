@@ -5,7 +5,29 @@
  */
 @IsTest
 private class RainPlanIndoorsTest {
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = build();
+    }
+    ids.put('Scheduler', scheduler.Id);
+    ShoreshTestData.keepIds(ids);
+  }
+
+  /** The camp setup built. */
   private static Map<String, Id> camp() {
+    return ShoreshTestData.keptIds();
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> ids) {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
+  private static Map<String, Id> build() {
     Camp__c camp = ShoreshTestData.camp('Test Camp');
     Season__c season = ShoreshTestData.fullSeason(camp.Id);
     // Swim (indoors), Soccer (outdoors, rain plan Gym games), Gym games (indoors).
@@ -25,12 +47,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anOutdoorRainPlanIsRefusedWithTheDesktopsWords() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       String message = refusal(
         new List<SObject>{
@@ -50,12 +69,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void aNewActivityWithAnOutdoorRainPlanIsRefused() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       Activity__c hike = ShoreshTestData.activity(
         ids.get('Season'),
@@ -72,12 +88,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void aRainPlanMadeOutdoorInTheSameSaveIsRefused() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       String message = refusal(
         new List<SObject>{
@@ -94,12 +107,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anIndoorRainPlanSaves() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
@@ -116,12 +126,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anActivityWhoseRainPlanWentOutdoorsSavesOnlyOnceItIsChanged() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       // Making Gym games outdoors is allowed, though it is Soccer's rain plan (as on the desktop).
       SeasonSetupController.saveRecords(
@@ -156,12 +163,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void anActivityWithAnOutdoorRainPlanCanStillBeUntickedForAWeek() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
@@ -204,12 +208,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void copyingASeasonKeepsARainPlanMadeOutdoorsSince() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       SeasonSetupController.saveRecords(
         new List<SObject>{
@@ -234,12 +235,9 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void aListImportGivingAnOutdoorRainPlanIsRefusedAndNothingIsSaved() {
-    // The scheduler makes the camp, so it is theirs to see under sharing.
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    // The scheduler made the camp in setup, so it is theirs to see under sharing.
+    User scheduler = scheduler(ids);
     System.runAs(scheduler) {
       Map<String, Object> plan = new Map<String, Object>{
         'seasonId' => ids.get('Season'),
@@ -279,11 +277,8 @@ private class RainPlanIndoorsTest {
 
   @IsTest
   static void theRefusalUsesTheCampsWords() {
-    User scheduler = ShoreshTestData.scheduler();
-    Map<String, Id> ids;
-    System.runAs(scheduler) {
-      ids = camp();
-    }
+    Map<String, Id> ids = camp();
+    User scheduler = scheduler(ids);
     Id campId = [SELECT Camp__c FROM Season__c WHERE Id = :ids.get('Season')]
     .Camp__c;
     Database.insert(

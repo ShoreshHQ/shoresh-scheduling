@@ -13,6 +13,27 @@ private class ImportSetupSavesTest {
     'Friday'
   };
 
+  // The camp with a full season (ShoreshTestData.fullSeason) is built once for the class and
+  // read back with ShoreshTestData.keptIds() in the tests that start from it.
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      ShoreshTestData.fullSeason(camp.Id);
+      ids = new Map<String, Id>(ShoreshTestData.lastSeasonIds);
+      ids.put('Camp', camp.Id);
+    }
+    ids.put('Scheduler', scheduler.Id);
+    ShoreshTestData.keepIds(ids);
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> ids) {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
   private static Map<String, Object> entry(List<Object> pairs) {
     Map<String, Object> result = new Map<String, Object>();
     for (Integer i = 0; i < pairs.size(); i += 2) {
@@ -320,9 +341,9 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void onlyWhatTheDirectorChoseChangesInAnExistingSeason() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       SeasonSetupReader.SeasonSetup before = SeasonSetupController.getSeasonSetup(
         season.Id
       );
@@ -449,9 +470,10 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void aRecordFromAnotherSeasonIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Camp__c camp = new Camp__c(Id = ids.get('Camp'));
+      Season__c other = new Season__c(Id = ids.get('Season'));
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       Id otherDivision = [
         SELECT Id
@@ -770,9 +792,10 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void changingARecordInAnotherSeasonIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Camp__c camp = new Camp__c(Id = ids.get('Camp'));
+      Season__c other = new Season__c(Id = ids.get('Season'));
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       TimeBlock__c block = [
         SELECT Id, EndTime__c
@@ -807,9 +830,10 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void whoNamingAnotherSeasonIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c other = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Camp__c camp = new Camp__c(Id = ids.get('Camp'));
+      Season__c other = new Season__c(Id = ids.get('Season'));
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       Id otherDivision = [
         SELECT Id
@@ -853,9 +877,9 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void aGroupMovesToAnotherDivisionOfItsProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       Program__c main = [
         SELECT Id
         FROM Program__c
@@ -899,9 +923,9 @@ private class ImportSetupSavesTest {
 
   @IsTest
   static void aGroupCannotMoveToAnotherProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       Program__c other = ShoreshTestData.program(season.Id, 'Afternoons');
       Division__c elsewhere = ShoreshTestData.division(other.Id, 'Seniors');
       Group__c groupA = [
@@ -932,9 +956,9 @@ private class ImportSetupSavesTest {
    */
   @IsTest
   static void aMoveThatMakesAClashIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
-      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler(ids)) {
+      Season__c season = new Season__c(Id = ids.get('Season'));
       Program__c main = [
         SELECT Id
         FROM Program__c

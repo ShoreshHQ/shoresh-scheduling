@@ -11,9 +11,47 @@ private class ImportWorkbookTest {
     List<Week__c> weeks;
     Activity__c swim;
     WeekException__c swimOffWeek2;
+    User scheduler;
   }
 
+  // The camp is built once for the class (setup) and read back in each test (camp()).
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Camp c;
+    System.runAs(scheduler) {
+      c = build();
+    }
+    Map<String, Id> ids = new Map<String, Id>{
+      'Camp' => c.camp.Id,
+      'Season' => c.season.Id,
+      'Swim' => c.swim.Id,
+      'Swim off Week 2' => c.swimOffWeek2.Id,
+      'Scheduler' => scheduler.Id
+    };
+    for (Week__c week : c.weeks) {
+      ids.put(week.Name, week.Id);
+    }
+    ShoreshTestData.keepIds(ids);
+  }
+
+  /** The camp setup built, with the scheduler it built it as. */
   private static Camp camp() {
+    Map<String, Id> ids = ShoreshTestData.keptIds();
+    Camp c = new Camp();
+    c.camp = new Camp__c(Id = ids.get('Camp'));
+    c.season = new Season__c(Id = ids.get('Season'));
+    c.weeks = new List<Week__c>();
+    for (String name : new List<String>{ 'Week 1', 'Week 2', 'Week 3' }) {
+      c.weeks.add(new Week__c(Id = ids.get(name)));
+    }
+    c.swim = new Activity__c(Id = ids.get('Swim'));
+    c.swimOffWeek2 = new WeekException__c(Id = ids.get('Swim off Week 2'));
+    c.scheduler = new User(Id = ids.get('Scheduler'));
+    return c;
+  }
+
+  private static Camp build() {
     Camp c = new Camp();
     c.camp = ShoreshTestData.camp('Birch Hollow (made up)');
     c.season = ShoreshTestData.season(c.camp.Id, 'Summer 2026');
@@ -145,8 +183,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void savesTheWorkbookAllTogetherAndUndoPutsItAllBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Assert.areEqual(1, result.added.get('Week'));
       Assert.areEqual(1, result.added.get('CampLabel'));
@@ -199,8 +237,8 @@ private class ImportWorkbookTest {
   /** An item edited since keeps the weeks it is off, and so does the week they are in. */
   @IsTest
   static void anItemEditedSinceKeepsItsWeeksOff() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Activity__c archery = [SELECT Id FROM Activity__c WHERE Name = 'Archery'];
       archery.Name = 'Archery range';
@@ -223,8 +261,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aCampWordEditedSinceIsKeptAndNamed() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       insert as user new CampLabel__c(
         Camp__c = c.camp.Id,
         ModelTerm__c = 'Division',
@@ -260,8 +298,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aScreenListCannotWriteWeeksOrWeeksOff() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       for (
         Map<String, Object> record : new List<Map<String, Object>>{
           rec(
@@ -299,8 +337,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aWeekCannotMoveAndAWeekOffMustBeInTheSeason() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       Season__c other = ShoreshTestData.season(c.camp.Id, 'Summer 2027');
       Week__c elsewhere = ShoreshTestData.weeks(other.Id, 1)[0];
       Activity__c far = ShoreshTestData.activity(other.Id, 'Far', null);
@@ -386,8 +424,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aTamperedRecordNamingAnotherObjectIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Contact someone = new Contact(LastName = 'Made Up');
       Database.insert(someone, AccessLevel.SYSTEM_MODE);
@@ -402,8 +440,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aTamperedRecordWithAFieldOffTheListIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Assert.isNotNull(result.importId);
       expectTamperedRefused(
@@ -416,8 +454,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aTamperedRecordInjectingQueryTextIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Id added = [SELECT Id FROM Week__c WHERE Name = 'Week 4'].Id;
       Assert.isNotNull(result.importId);
@@ -441,8 +479,8 @@ private class ImportWorkbookTest {
   /** A made-up kind, or a kind holding another object's record, would count as made by it. */
   @IsTest
   static void aTamperedRecordWithAnotherKindOrRecordIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Contact someone = new Contact(LastName = 'Made Up');
       Database.insert(someone, AccessLevel.SYSTEM_MODE);
@@ -474,8 +512,8 @@ private class ImportWorkbookTest {
   /** A week to put back with a target that isn't an Id, or that names the week as the item. */
   @IsTest
   static void aTamperedWeekToPutBackIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Assert.isNotNull(result.importId);
       expectTamperedRefused(
@@ -642,8 +680,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aWeekOffThatCantBePutBackIsNamedByItemAndWeek() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       delete as user new Activity__c(Id = c.swim.Id);
       Test.startTest();
@@ -655,8 +693,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aWeekOffToPutBackInAnotherSeasonOrWithoutAnItemNameIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       ImportSetupSaves.Result result = importWorkbook(c);
       Season__c other = ShoreshTestData.season(c.camp.Id, 'Summer 2027');
       Week__c elsewhere = ShoreshTestData.weeks(other.Id, 1)[0];
@@ -682,8 +720,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void shoreshsOwnWordIsNoCampWordAndUndoPutsTheCampsBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       insert as user new CampLabel__c(
         Camp__c = c.camp.Id,
         ModelTerm__c = 'Division',
@@ -719,8 +757,8 @@ private class ImportWorkbookTest {
 
   @IsTest
   static void aCampWordChosenAgainSinceIsKeptWhenUndoWouldPutOneBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp c = camp();
+    Camp c = camp();
+    System.runAs(c.scheduler) {
       insert as user new CampLabel__c(
         Camp__c = c.camp.Id,
         ModelTerm__c = 'Division',

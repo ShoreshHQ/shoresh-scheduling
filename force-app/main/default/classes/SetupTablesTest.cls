@@ -2,6 +2,23 @@
 private class SetupTablesTest {
   private static Map<String, Id> ids;
 
+  // The scheduler's camp is built once for the class (setup) and read back in most tests.
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> built;
+    System.runAs(scheduler) {
+      built = SetTimeTestData.camp();
+    }
+    built.put('Scheduler', scheduler.Id);
+    ShoreshTestData.keepIds(built);
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler() {
+    return new User(Id = ids.get('Scheduler'));
+  }
+
   /** A version of Main's week, with one day naming these groups and Swim. */
   private static Id scheduleNaming(
     String name,
@@ -54,8 +71,8 @@ private class SetupTablesTest {
   @IsTest
   static void aBunkOrActivityCountsTheSchedulesItIsIn() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       scheduleNaming('First', 1, new List<String>{ 'Group A', 'Group B' });
       scheduleNaming('Second', 2, new List<String>{ 'Group A' });
       {
@@ -123,8 +140,8 @@ private class SetupTablesTest {
   @IsTest
   static void aBigSeasonIsCountedInBoundedQueries() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       bigSeason();
       {
         Test.startTest();
@@ -148,8 +165,8 @@ private class SetupTablesTest {
   @IsTest
   static void pastItsBudgetTheCountSaysItIsNotComplete() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       bigSeason();
       {
         ScheduleUses.partsAtOnce = 10;
@@ -225,8 +242,8 @@ private class SetupTablesTest {
   @IsTest
   static void sameLocationMovesEverythingToTheKeptPlace() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       Id other = secondPool();
       RecurringActivity__c swim = SetTimeTestData.recurring(
         ids,
@@ -326,8 +343,8 @@ private class SetupTablesTest {
   @IsTest
   static void fixedActivitiesMoveAndPastedSpacesCount() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       Location__c other = new Location__c(
         Season__c = ids.get('Season'),
         Name = 'Pool\u00A0',
@@ -368,8 +385,8 @@ private class SetupTablesTest {
   @IsTest
   static void placesInAnotherSeasonAreNeverMerged() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       Season__c next = ShoreshTestData.season(ids.get('Camp'), 'Summer 2027');
       Location__c nextPool = new Location__c(
         Season__c = next.Id,
@@ -407,8 +424,8 @@ private class SetupTablesTest {
   @IsTest
   static void aMergeThatWouldCrowdThePlaceIsRefusedAndChangesNothing() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       Id other = secondPool();
       RecurringActivity__c first = SetTimeTestData.recurring(
         ids,
@@ -467,8 +484,8 @@ private class SetupTablesTest {
   @IsTest
   static void onlyNearDuplicatesInOneSeasonStillThereAreMerged() {
     // The camp is the scheduler's own, as when they set it up (sharing: they see what they own).
-    System.runAs(ShoreshTestData.scheduler()) {
-      ids = SetTimeTestData.camp();
+    ids = ShoreshTestData.keptIds();
+    System.runAs(scheduler()) {
       Id other = secondPool();
       {
         Test.startTest();

@@ -4,6 +4,34 @@
  */
 @IsTest
 private class ImportUndoTest {
+  // The camp most tests start from is built once for the class (setup) and read back in each
+  // test (keptSeason). The tests that need a full season still build their own.
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Season__c season;
+    System.runAs(scheduler) {
+      season = seasonWithWeek();
+    }
+    ShoreshTestData.keepIds(
+      new Map<String, Id>{
+        'Camp' => season.Camp__c,
+        'Season' => season.Id,
+        'Scheduler' => scheduler.Id
+      }
+    );
+  }
+
+  /** The season (with one week) setup built. */
+  private static Season__c keptSeason(Map<String, Id> kept) {
+    return new Season__c(Id = kept.get('Season'), Camp__c = kept.get('Camp'));
+  }
+
+  /** The scheduler setup built the camp as. */
+  private static User scheduler(Map<String, Id> kept) {
+    return new User(Id = kept.get('Scheduler'));
+  }
+
   private static Season__c seasonWithWeek() {
     Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
@@ -36,8 +64,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void lastYearsWeekIsSavedAsAVersion() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       Test.startTest();
       ImportSetupSaves.Result result = importWithVersion(season);
       Test.stopTest();
@@ -77,8 +106,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void answersAreRememberedAndForgotten() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       Map<String, Object> plan = ImportTestPlans.emptyPlan(season.Id);
       ImportTestPlans.add(
         plan,
@@ -104,8 +134,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void undoRemovesWhatTheImportAdded() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = importWithVersion(season);
       Test.startTest();
       ImportUndo.Result undone = ImportController.undoImport(result.importId);
@@ -134,8 +165,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void undoKeepsWhatWasEditedSince() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = importWithVersion(season);
       Activity__c swim = [
         SELECT Id
@@ -160,8 +192,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void undoKeepsWhatIsStillInUse() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = importWithVersion(season);
       Group__c bunk1 = [
         SELECT Id
@@ -206,7 +239,8 @@ private class ImportUndoTest {
 
   @IsTest
   static void undoPutsBackWhatTheImportChanged() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    // Its own camp (a full season), made by the scheduler setup made.
+    System.runAs(scheduler(ShoreshTestData.keptIds())) {
       Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       TimeBlock__c period1 = [
@@ -251,8 +285,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void onlyTheLastImportCanBeUndone() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result first = ImportController.saveSetup(
         JSON.serialize(ImportTestPlans.newCamp(season.Id))
       );
@@ -289,8 +324,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void aRenamedVersionAndWhatHoldsItAreKept() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = importWithVersion(season);
       Schedule__c version = [
         SELECT Id
@@ -338,8 +374,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void anImportedActivityUsedAsARainPlanIsKept() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = importWithVersion(season);
       Activity__c swim = [
         SELECT Id
@@ -372,7 +409,8 @@ private class ImportUndoTest {
 
   @IsTest
   static void numbersAndDaysArePutBack() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    // Its own camp (a full season), made by the scheduler setup made.
+    System.runAs(scheduler(ShoreshTestData.keptIds())) {
       Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Program__c main = [
@@ -425,7 +463,8 @@ private class ImportUndoTest {
 
   @IsTest
   static void aGroupMovedIntoANewDivisionGoesHomeAndTheDivisionGoes() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    // Its own camp (a full season), made by the scheduler setup made.
+    System.runAs(scheduler(ShoreshTestData.keptIds())) {
       Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Program__c main = [
@@ -498,8 +537,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void aVersionAloneIsRemoved() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result built = ImportController.saveSetup(
         JSON.serialize(ImportTestPlans.newCamp(season.Id))
       );
@@ -618,7 +658,8 @@ private class ImportUndoTest {
 
   @IsTest
   static void aRefusalStopsTheWholeUndoAndSaysWhy() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    // Its own camp (a full season), made by the scheduler setup made.
+    System.runAs(scheduler(ShoreshTestData.keptIds())) {
       Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Activity__c swim = ShoreshTestData.activity(season.Id, 'Swim', null);
@@ -663,7 +704,8 @@ private class ImportUndoTest {
 
   @IsTest
   static void aChangedRecordDeletedSinceIsNamed() {
-    System.runAs(ShoreshTestData.scheduler()) {
+    // Its own camp (a full season), made by the scheduler setup made.
+    System.runAs(scheduler(ShoreshTestData.keptIds())) {
       Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Activity__c swim = ShoreshTestData.activity(season.Id, 'Swim', null);
@@ -681,8 +723,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void importsInTheSameSecondGoByTheirNumber() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result first = ImportController.saveSetup(
         JSON.serialize(ImportTestPlans.newCamp(season.Id))
       );
@@ -721,8 +764,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void afterAnUndoNoEarlierImportCanBeUndone() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result first = ImportController.saveSetup(
         JSON.serialize(ImportTestPlans.newCamp(season.Id))
       );
@@ -773,8 +817,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void aProgramWithAPublishedScheduleIsKept() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = ImportController.saveSetup(
         JSON.serialize(ImportTestPlans.newCamp(season.Id))
       );
@@ -809,8 +854,9 @@ private class ImportUndoTest {
 
   @IsTest
   static void aPublishedImportedVersionKeepsItsProgram() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Season__c season = seasonWithWeek();
+    Map<String, Id> kept = ShoreshTestData.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
       ImportSetupSaves.Result result = importWithVersion(season);
       Schedule__c version = [
         SELECT Id, Name, Program__c
