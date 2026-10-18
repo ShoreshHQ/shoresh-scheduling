@@ -25,12 +25,12 @@ public with sharing class ActivityTriggerHandler {
     List<Activity__c> activities,
     Map<Id, Activity__c> before
   ) {
-    Targets targets = new Targets(activities);
-    Map<Id, Id> seasonByTarget = targets.seasons;
+    TargetRecords found = new TargetRecords(activities);
+    Map<Id, Id> seasonByTarget = found.seasons;
     if (seasonByTarget.isEmpty()) {
       return;
     }
-    refuseOutdoorRainPlans(activities, before, targets.outdoors);
+    refuseOutdoorRainPlans(activities, before, found.outdoors);
     Set<Id> seasonIds = new Set<Id>();
     for (Activity__c activity : activities) {
       seasonIds.add(activity.Season__c);
@@ -124,7 +124,7 @@ public with sharing class ActivityTriggerHandler {
 
   /**
    * Whether each rain plan is outdoors as this save leaves it (its own change counts). Read with
-   * the seasons check (Targets), so the rule costs no query of its own.
+   * the seasons check (TargetRecords), so the rule costs no query of its own.
    */
   private static Map<Id, Boolean> outdoorsAfterSave(
     Set<Id> rainPlanIds,
@@ -159,11 +159,11 @@ public with sharing class ActivityTriggerHandler {
    * The season of each location and rain plan named (Ids are unique across objects), and whether
    * each rain plan is outdoors as saved. Each list is read only when something names one.
    */
-  private with sharing class Targets {
+  private with sharing class TargetRecords {
     Map<Id, Id> seasons = new Map<Id, Id>();
     Map<Id, Boolean> outdoors = new Map<Id, Boolean>();
 
-    Targets(List<Activity__c> activities) {
+    TargetRecords(List<Activity__c> activities) {
       Set<Id> locationIds = new Set<Id>();
       Set<Id> rainPlanIds = new Set<Id>();
       for (Activity__c activity : activities) {
