@@ -492,7 +492,17 @@ private class SetupTablesTest {
             Assert.isNotNull(e.getMessage());
           }
         }
-        // Someone else deletes "pool " (with its closed weeks, as the screens do).
+        // Someone else deletes "pool ": first its activity (Diving) and closed weeks, which
+        // would otherwise stop the delete, as the screens' own refusal does.
+        Database.delete(
+          [
+            SELECT Id
+            FROM Activity__c
+            WHERE Location__c = :other
+            WITH SYSTEM_MODE
+          ],
+          AccessLevel.SYSTEM_MODE
+        );
         Database.delete(
           [
             SELECT Id
