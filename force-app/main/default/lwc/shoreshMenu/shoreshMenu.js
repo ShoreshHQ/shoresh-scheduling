@@ -21,7 +21,8 @@ export default class ShoreshMenu extends LightningElement {
           className: active
             ? "slds-nav-vertical__item slds-is-active"
             : "slds-nav-vertical__item",
-          ariaCurrent: active ? "page" : null
+          ariaCurrent: active ? "page" : null,
+          markClass: item.mark ? `menu-mark menu-mark_${item.mark.kind}` : null
         };
       })
     }));

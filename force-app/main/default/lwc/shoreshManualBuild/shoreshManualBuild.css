@@ -220,10 +220,11 @@
   color: var(--shoresh-text-secondary);
 }
 
-.empty-state {
+/* What building still needs: the desktop's one sentence, centred where Start would be. */
+.still-needed {
   padding: 60px 16px;
   text-align: center;
-  color: var(--slds-g-color-neutral-base-30, #444);
+  color: var(--shoresh-text);
   max-width: 40rem;
   margin: 0 auto;
 }

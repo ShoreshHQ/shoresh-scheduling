@@ -5,6 +5,7 @@ import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWee
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
 import { useYoursSendsWhatWasShown } from "./data/shownIsSent";
 
@@ -31,6 +32,20 @@ const SETUP = {
   activities: [],
   locations: []
 };
+// Everything building needs (desktop readiness.js), so Start a blank week is offered.
+const READY = {
+  ...SETUP,
+  programs: [
+    {
+      program: { Id: "p1", Name: "Main", Monday__c: true },
+      divisions: [
+        { division: { Id: "d1", Name: "Juniors" }, groups: [{ Id: "g1" }] }
+      ],
+      timeBlocks: [{ Id: "t1", Name: "Period 1" }]
+    }
+  ],
+  activities: [{ Id: "a1", Name: "Swim" }]
+};
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
@@ -49,12 +64,12 @@ function later() {
   return { promise, answer };
 }
 
-async function render() {
+async function render(setup = SETUP) {
   const element = createElement("c-shoresh-manual-build", {
     is: ShoreshManualBuild
   });
   element.terms = buildTerms(LABELS);
-  element.setup = SETUP;
+  element.setup = nsRecord(setup);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -105,7 +120,7 @@ describe("c-shoresh-manual-build", () => {
   it("a week not started offers Start a blank week, which opens it", async () => {
     getDraft.mockResolvedValue(null);
     startBlankWeek.mockResolvedValue(draft());
-    const element = await render();
+    const element = await render(READY);
     expect(getDraft).toHaveBeenCalledWith({ programId: "p1", weekId: "w1" });
     expect(grid(element)).toBeNull();
     const start = q(element, '[data-id="start-week"]');
@@ -121,13 +136,53 @@ describe("c-shoresh-manual-build", () => {
     expect(cellText(element, "0-1")).toBe("Open");
   });
 
+  it("waits for the basics: everything still needed in one sentence, each a link", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({
+      ...SETUP,
+      programs: [{ program: { Id: "p1", Name: "Main" } }]
+    });
+    expect(q(element, '[data-id="start-week"]')).toBeNull();
+    const needed = q(element, '[data-id="still-needed"]');
+    expect(needed.textContent).toBe(
+      "4 things still needed before you can build the schedule: Divisions, Days, Time blocks and Activities."
+    );
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const links = [...needed.querySelectorAll("a")];
+    expect(links.map((a) => [a.textContent, a.dataset.screen])).toEqual([
+      ["Divisions", "divisions"],
+      ["Days", "programs"],
+      ["Time blocks", "timeBlocks"],
+      ["Activities", "activities"]
+    ]);
+    links[1].click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "programs" });
+  });
+
+  it("one thing missing reads as one thing", async () => {
+    getDraft.mockResolvedValue(null);
+    const element = await render({ ...READY, activities: [] });
+    expect(q(element, '[data-id="still-needed"]').textContent).toBe(
+      "One thing still needed before you can build the schedule: Activities."
+    );
+  });
+
+  it("with no weeks or programs, says so instead of a week to choose", async () => {
+    const element = await render({ ...READY, weeks: [], programs: [] });
+    expect(getDraft).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="still-needed"]').textContent).toBe(
+      "2 things still needed before you can build the schedule: Weeks and Programs."
+    );
+  });
+
   it("Start a blank week names any fixed or recurring activity whose slot was taken", async () => {
     getDraft.mockResolvedValue(null);
     startBlankWeek.mockResolvedValue({
       ...draft(),
       notPlaced: ["Rest · Bunk 2 · Monday"]
     });
-    const element = await render();
+    const element = await render(READY);
     q(element, '[data-id="start-week"]').click();
     await flush();
     const note = q(element, '[data-id="not-placed"]');

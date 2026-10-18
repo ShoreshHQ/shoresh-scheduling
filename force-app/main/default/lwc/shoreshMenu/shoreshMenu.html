@@ -29,7 +29,16 @@
                   data-screen={item.key}
                   data-item={item.key}
                   onclick={handleClick}
-                  >{item.label}</a
+                  ><span class="menu-label">{item.label}</span
+                  ><template lwc:if={item.mark}
+                    ><span
+                      class={item.markClass}
+                      title={item.mark.label}
+                      aria-hidden="true"
+                      data-mark={item.mark.kind}
+                      >{item.mark.symbol}</span
+                    ><span class="slds-assistive-text">{item.mark.label}</span></template
+                  ></a
                 >
               </template>
             </li>

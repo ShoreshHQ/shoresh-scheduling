@@ -27,6 +27,7 @@ import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { paletteChips } from "./counts";
+import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 
 /** Names compared the way people mean them: spaces and capitals aside. */
 function loose(text) {
@@ -153,14 +154,24 @@ export default class ShoreshManualBuild extends LightningElement {
   get canChoose() {
     return !!this.programId && !!this.weekId;
   }
-  get cannotChoose() {
-    return !this.canChoose;
+  /** What building still needs (desktop readiness.js): Start waits for all of it. */
+  get stillNeeded() {
+    return stillNeeded(this._setup, this.t, this.programId);
   }
-  get chooseMessage() {
-    const t = this.t;
-    return this.programId
-      ? `No ${t.pIn("Week")} yet. Add them on the ${t.p("Week")} screen first.`
-      : `No ${t.pIn("Program")} yet. Add one on the ${t.p("Program")} screen first.`;
+  /** The desktop's one sentence, each missing thing a link to its screen. */
+  get stillNeededParts() {
+    return stillNeededSentence(this.stillNeeded);
+  }
+  get showStillNeeded() {
+    return !this.loading && !this.draft && this.stillNeeded.length > 0;
+  }
+  handleStillNeeded(event) {
+    event.preventDefault();
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: event.currentTarget.dataset.screen }
+      })
+    );
   }
 
   handleProgram(event) {
@@ -255,7 +266,13 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   get showStart() {
-    return this.canChoose && !this.loading && !this.draft && !this.error;
+    return (
+      this.canChoose &&
+      !this.loading &&
+      !this.draft &&
+      !this.error &&
+      this.stillNeeded.length === 0
+    );
   }
 
   async handleStart() {

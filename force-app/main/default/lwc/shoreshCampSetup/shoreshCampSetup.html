@@ -660,6 +660,7 @@
               <c-shoresh-manual-build
                 setup={setup}
                 terms={terms}
+                onnavigate={handleNavigate}
               ></c-shoresh-manual-build>
             </div>
 
@@ -686,6 +687,14 @@
           </template>
         </div>
       </div>
+    </template>
+    <template lwc:if={ask}>
+      <c-shoresh-ask
+        heading={ask.heading}
+        lines={ask.lines}
+        confirm-label={ask.confirmLabel}
+        onanswer={handleAnswer}
+      ></c-shoresh-ask>
     </template>
   </div>
 </template>

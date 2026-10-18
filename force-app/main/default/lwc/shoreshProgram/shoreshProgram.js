@@ -120,9 +120,13 @@ export default class ShoreshProgram extends LightningElement {
     return this.busy || !this.changed;
   }
 
+  /**
+   * As on Shoresh desktop: a blank name is saved as the time range ("9:00 AM – 9:45 AM"), and
+   * "From start time" saves the part of day the start falls in (TimeBlockTriggerHandler).
+   */
   get blockColumns() {
     return [
-      { fieldName: "Name", label: "Name", type: "text", required: true },
+      { fieldName: "Name", label: "Name", type: "text" },
       {
         fieldName: BLOCK.StartTime,
         label: "Start",
@@ -134,8 +138,8 @@ export default class ShoreshProgram extends LightningElement {
         fieldName: BLOCK.PartOfDay,
         label: "Part of day",
         type: "picklist",
-        required: true,
         options: [
+          { label: "From start time", value: "" },
           { label: "Morning", value: "Morning" },
           { label: "Afternoon", value: "Afternoon" }
         ]
@@ -354,7 +358,7 @@ export default class ShoreshProgram extends LightningElement {
   get blockDefaults() {
     return {
       [BLOCK.Program]: this.programId,
-      [BLOCK.PartOfDay]: "Morning"
+      [BLOCK.PartOfDay]: ""
     };
   }
 

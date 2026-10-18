@@ -10,11 +10,16 @@ import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
+import placedInWeeks from "@salesforce/apex/SeasonSetupController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
-import { setupProblems } from "c/shoreshSetupRules";
+import {
+  menuMarks,
+  rainPlanOptions,
+  setupProblems
+} from "c/shoreshSetupRules";
 import { errorMessage } from "c/shoreshErrors";
 import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
@@ -76,6 +81,8 @@ export default class ShoreshCampSetup extends LightningElement {
   screen = "roots";
   busy = false;
   error;
+  // A question before saving (c-shoresh-ask): { heading, lines, confirmLabel }.
+  ask;
 
   // Forms
   newCamp = { Name: "" };
@@ -174,7 +181,7 @@ export default class ShoreshCampSetup extends LightningElement {
   // ---------- menu and screens ----------
 
   get menu() {
-    return menuSections(this.terms, !!this.setup);
+    return menuSections(this.terms, !!this.setup, menuMarks(this.setup));
   }
   get currentScreen() {
     return this.mode === "screens" ? this.screen : null;
@@ -444,10 +451,7 @@ export default class ShoreshCampSetup extends LightningElement {
         label: t.s("RainPlan"),
         type: "picklist",
         excludeSelf: true,
-        options: [
-          none,
-          ...activities.map((a) => ({ label: a.Name, value: a.Id }))
-        ]
+        options: [none, ...rainPlanOptions(activities)]
       },
       {
         fieldName: ACTIVITY.GroupsAtOnce,
@@ -745,6 +749,12 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   async handleSaveRecords(event) {
     const { records, weeksOff, weeksBackOn, who, onFailure } = event.detail;
+    if (!(await this.turnOffAnyway(weeksOff))) {
+      if (onFailure) {
+        onFailure();
+      }
+      return;
+    }
     let save = () => saveRecords({ records });
     if (who) {
       save = () =>
@@ -756,6 +766,93 @@ export default class ShoreshCampSetup extends LightningElement {
       save = () => saveRowsAndWeeks({ records, weeksOff, weeksBackOn });
     }
     await this.saveAndReload(save, onFailure);
+  }
+
+  /**
+   * Turning a bunk, activity, or location off for a week it is already placed in asks first
+   * (Shoresh desktop ExclusionConfirmDialog.jsx, its words in the camp's). With nothing placed it
+   * just switches off. True to go ahead.
+   */
+  async turnOffAnyway(weeksOff) {
+    const asks = (weeksOff || [])
+      .filter((off) => off.target)
+      .map(({ target, week }) => ({ target, week }));
+    if (!asks.length) {
+      return true;
+    }
+    let placed = [];
+    this.busy = true;
+    try {
+      placed = await placedInWeeks({ weeksOff: asks });
+    } catch (e) {
+      this.showError(e);
+      return false;
+    } finally {
+      this.busy = false;
+    }
+    if (!placed.length) {
+      return true;
+    }
+    return this.askFirst(this.turnOffQuestion(placed));
+  }
+
+  /** The desktop's words: one bunk and week, or each of several. */
+  turnOffQuestion(placed) {
+    const names = this.recordNames();
+    const slots = (n) => `${n} ${n === 1 ? "slot" : "slots"}`;
+    const stay = "They stay until you change them.";
+    if (placed.length === 1) {
+      const [only] = placed;
+      const week = names.get(only.week) || `this ${this.terms.sIn("Week")}`;
+      return {
+        heading: `Turn off "${names.get(only.target)}" for ${week}?`,
+        lines: [`Placed in ${slots(only.slots)} in ${week}.`, stay],
+        confirmLabel: "Turn off anyway"
+      };
+    }
+    return {
+      heading: "Turn these off?",
+      lines: [
+        ...placed.map(
+          (p) =>
+            `"${names.get(p.target)}": placed in ${slots(p.slots)} in ${names.get(p.week)}.`
+        ),
+        stay
+      ],
+      confirmLabel: "Turn off anyway"
+    };
+  }
+
+  /** Every week, bunk, activity, and location of the season: Id -> name. */
+  recordNames() {
+    const setup = this.setup || {};
+    const names = new Map();
+    const add = (records) =>
+      (records || []).forEach((r) => names.set(r.Id, r.Name));
+    add(setup.weeks);
+    add(setup.activities);
+    add(setup.locations);
+    (setup.programs || []).forEach((entry) =>
+      (entry.divisions || []).forEach((d) => add(d.groups))
+    );
+    return names;
+  }
+
+  /** Shows the question and waits for the answer: true for yes. */
+  askFirst(question) {
+    this.ask = question;
+    return new Promise((resolve) => {
+      this.answerAsk = resolve;
+    });
+  }
+
+  handleAnswer(event) {
+    const resolve = this.answerAsk;
+    this.ask = null;
+    this.answerAsk = null;
+    if (resolve) {
+      resolve(event.detail.yes);
+    }
   }
 
   /**

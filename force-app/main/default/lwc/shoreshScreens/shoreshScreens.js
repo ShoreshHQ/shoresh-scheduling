@@ -72,17 +72,31 @@ export function canOpen(screen, hasSeason) {
   return !COMING.has(screen) && (hasSeason || WITHOUT_SEASON.has(screen));
 }
 
-/** The menu: sections, each with its items ({ key, label, coming, disabled }). */
-export function menuSections(t, hasSeason) {
+// The words on each mark (Shoresh desktop Sidebar.jsx: "Needed" on "!", "Done" on "✓").
+const MARKS = {
+  needed: { symbol: "!", label: "Needed" },
+  done: { symbol: "✓", label: "Done" }
+};
+
+/**
+ * The menu: sections, each with its items ({ key, label, coming, disabled, mark }). marks:
+ * screen -> "needed" | "done" (shoreshSetupRules.menuMarks); mark is { kind, symbol, label }.
+ */
+export function menuSections(t, hasSeason, marks = {}) {
   const labels = screenLabels(t);
   return SECTIONS.map((section) => ({
     key: section.key,
     title: section.title ? section.title(t) : null,
-    items: section.screens.map((screen) => ({
-      key: screen,
-      label: labels[screen],
-      coming: COMING.has(screen),
-      disabled: !canOpen(screen, hasSeason)
-    }))
+    items: section.screens.map((screen) => {
+      const disabled = !canOpen(screen, hasSeason);
+      const kind = disabled ? null : marks[screen];
+      return {
+        key: screen,
+        label: labels[screen],
+        coming: COMING.has(screen),
+        disabled,
+        mark: kind ? { kind, ...MARKS[kind] } : null
+      };
+    })
   }));
 }

@@ -411,3 +411,137 @@ export function suggestedCopyStart(oldStartDate) {
   const date = new Date(Date.UTC(y, m - 1, d + 364));
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * What a rain plan can be (Shoresh desktop ActivitiesScreen.jsx): indoor activities only. An
+ * outdoor one still chosen somewhere stays listed as "<name> (outdoors, choose another)", so that
+ * row shows what it has; saving it again is refused (ActivityTriggerHandler).
+ */
+export function rainPlanOptions(activities) {
+  const chosen = new Set(activities.map((a) => a[ACTIVITY.RainPlan]));
+  return activities
+    .filter((a) => !a[ACTIVITY.Outdoor] || chosen.has(a.Id))
+    .map((a) => ({
+      label: a[ACTIVITY.Outdoor]
+        ? `${a.Name} (outdoors, choose another)`
+        : a.Name,
+      value: a.Id
+    }));
+}
+
+const RUN_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+function runsOnADay(program) {
+  return RUN_DAYS.some((day) => program[FIELD.Program[day]]);
+}
+
+/**
+ * What building a week still needs (Shoresh desktop readiness.js REQUIRED_AREAS: age divisions,
+ * groups, days, time blocks, activities; here also weeks and programs, which Salesforce needs to
+ * choose a week): [{ screen, label }] in that order, empty when building can start. Divisions,
+ * groups, days and time blocks are the chosen program's (the first one when none is chosen).
+ * Building waits for all of them (coordinator, 2026-10-17, like the desktop).
+ */
+export function stillNeeded(setup, terms, programId) {
+  if (!setup || !setup.season) {
+    return [];
+  }
+  const t = terms;
+  const needed = [];
+  const add = (screen, label) => needed.push({ screen, label });
+  if ((setup.weeks || []).length === 0) {
+    add("weeks", t.p("Week"));
+  }
+  const programs = setup.programs || [];
+  const entry =
+    programs.find((p) => p.program.Id === programId) || programs[0];
+  if (!entry) {
+    add("programs", t.p("Program"));
+  } else {
+    const divisions = entry.divisions || [];
+    if (divisions.length === 0) {
+      add("divisions", t.p("Division"));
+    } else if (divisions.every((d) => (d.groups || []).length === 0)) {
+      add("groups", t.p("Group"));
+    }
+    if (!runsOnADay(entry.program)) {
+      add("programs", "Days");
+    }
+    if ((entry.timeBlocks || []).length === 0) {
+      add("timeBlocks", t.p("TimeBlock"));
+    }
+  }
+  if ((setup.activities || []).length === 0) {
+    add("activities", t.p("Activity"));
+  }
+  return needed;
+}
+
+/**
+ * The desktop's sentence (readiness.js describeSetupGaps) as parts, each name a link to its
+ * screen: "One thing still needed before you can build the schedule: Bunks." or "3 things still
+ * needed before you can build the schedule: Units, Bunks and Periods." No article is built from a
+ * camp word, so "a week" reads "the schedule". [] when nothing is needed.
+ */
+export function stillNeededSentence(needed) {
+  if (!needed.length) {
+    return [];
+  }
+  const count = needed.length === 1 ? "One thing" : `${needed.length} things`;
+  const parts = [
+    { key: "lead", text: `${count} still needed before you can build the schedule: ` }
+  ];
+  needed.forEach((item, i) => {
+    if (i > 0) {
+      parts.push({
+        key: `sep${i}`,
+        text: i === needed.length - 1 ? " and " : ", "
+      });
+    }
+    parts.push({ key: `link${i}`, link: true, text: item.label, screen: item.screen });
+  });
+  parts.push({ key: "end", text: "." });
+  return parts;
+}
+
+/**
+ * Each setup menu item's mark (Shoresh desktop Sidebar.jsx renderItem): "needed" ("!") when an
+ * area building needs is empty, "done" ("✓") when an area has rows, none otherwise. Screen -> mark.
+ */
+export function menuMarks(setup) {
+  if (!setup || !setup.season) {
+    return {};
+  }
+  const programs = setup.programs || [];
+  const divisions = programs.flatMap((p) => p.divisions || []);
+  const has = {
+    weeks: (setup.weeks || []).length > 0,
+    programs: programs.some((p) => runsOnADay(p.program)),
+    divisions: divisions.length > 0,
+    groups: divisions.some((d) => (d.groups || []).length > 0),
+    timeBlocks: programs.some((p) => (p.timeBlocks || []).length > 0),
+    activities: (setup.activities || []).length > 0,
+    locations: (setup.locations || []).length > 0,
+    fixedActivities: programs.some((p) => (p.fixedActivities || []).length > 0),
+    recurringActivities: programs.some(
+      (p) => (p.recurringActivities || []).length > 0
+    )
+  };
+  const required = new Set([
+    "weeks",
+    "programs",
+    "divisions",
+    "groups",
+    "timeBlocks",
+    "activities"
+  ]);
+  const marks = {};
+  Object.entries(has).forEach(([screen, filled]) => {
+    if (filled) {
+      marks[screen] = "done";
+    } else if (required.has(screen)) {
+      marks[screen] = "needed";
+    }
+  });
+  return marks;
+}

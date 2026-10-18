@@ -278,10 +278,23 @@
         ></lightning-button>
       </div>
     </template>
-    <template lwc:elseif={cannotChoose}>
-      <div class="empty-state" data-id="nothing-to-build">
-        <p>{chooseMessage}</p>
-      </div>
+    <template lwc:elseif={showStillNeeded}>
+      <p class="still-needed" data-id="still-needed">
+        <template for:each={stillNeededParts} for:item="part">
+          <template lwc:if={part.link}>
+            <a
+              key={part.key}
+              href="#"
+              data-screen={part.screen}
+              onclick={handleStillNeeded}
+              >{part.text}</a
+            >
+          </template>
+          <template lwc:else>
+            <span key={part.key}>{part.text}</span>
+          </template>
+        </template>
+      </p>
     </template>
 
     <!-- Typing a name into a slot -->

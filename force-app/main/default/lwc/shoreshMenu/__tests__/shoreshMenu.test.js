@@ -33,9 +33,9 @@ const terms = buildTerms([
 
 const flush = () => Promise.resolve();
 
-async function render(hasSeason = true, current = "roots") {
+async function render(hasSeason = true, current = "roots", marks = {}) {
   const element = createElement("c-shoresh-menu", { is: ShoreshMenu });
-  element.sections = menuSections(terms, hasSeason);
+  element.sections = menuSections(terms, hasSeason, marks);
   element.current = current;
   document.body.appendChild(element);
   await flush();
@@ -113,5 +113,32 @@ describe("c-shoresh-menu", () => {
     expect(canOpen("recurringActivities", false)).toBe(false);
     expect(canOpen("weeks", false)).toBe(false);
     expect(canOpen("weeks", true)).toBe(true);
+  });
+
+  it("shows the desktop's marks: ! (Needed) and ✓ (Done), read out as words", async () => {
+    const element = await render(true, "roots", {
+      groups: "needed",
+      weeks: "done"
+    });
+    const item = (screen) =>
+      element.shadowRoot.querySelector(`a[data-screen="${screen}"]`);
+    const mark = (screen) => item(screen).querySelector("[data-mark]");
+    expect(mark("groups").textContent).toBe("!");
+    expect(mark("groups").getAttribute("aria-hidden")).toBe("true");
+    expect(mark("groups").title).toBe("Needed");
+    expect(mark("groups").className).toContain("menu-mark_needed");
+    expect(mark("weeks").textContent).toBe("✓");
+    expect(mark("weeks").title).toBe("Done");
+    // Screen readers hear the entry's name, then its mark in words.
+    expect(item("groups").textContent).toBe("Bunks!Needed");
+    expect(
+      item("groups").querySelector(".slds-assistive-text").textContent
+    ).toBe("Needed");
+    expect(mark("locations")).toBeNull();
+  });
+
+  it("an entry that can't be opened shows no mark", async () => {
+    const element = await render(false, null, { groups: "needed" });
+    expect(element.shadowRoot.querySelector("[data-mark]")).toBeNull();
   });
 });

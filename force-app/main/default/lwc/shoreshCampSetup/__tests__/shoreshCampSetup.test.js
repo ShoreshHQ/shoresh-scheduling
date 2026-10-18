@@ -10,6 +10,7 @@ import deleteRecord from "@salesforce/apex/SeasonSetupController.deleteRecord";
 import addWeeksFromSeasonDates from "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates";
 import saveRowsAndWeeks from "@salesforce/apex/SeasonSetupController.saveRowsAndWeeks";
 import saveRowsWeeksAndWho from "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho";
+import placedInWeeks from "@salesforce/apex/SeasonSetupController.placedInWeeks";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -48,6 +49,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/SeasonSetupController.saveRowsWeeksAndWho",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/SeasonSetupController.placedInWeeks",
   () => apex(),
   { virtual: true }
 );
@@ -802,6 +808,114 @@ describe("c-shoresh-camp-setup", () => {
     await flush();
     expect(sentTo(saveRecords)).toContainEqual({
       records: [{ sobjectType: "FixedActivity__c", Id: "f1", Length__c: 3 }]
+    });
+  });
+
+  describe("turning something off for a week it is placed in (desktop ExclusionConfirmDialog)", () => {
+    const withBunk = () =>
+      setupWith({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main", Monday__c: true },
+            timeBlocks: [{ Id: "t1", Name: "Period 1" }],
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [{ Id: "g3", Name: "Bunk 3" }]
+              }
+            ]
+          }
+        ],
+        activities: [{ Id: "a1", Name: "Swim" }]
+      });
+    const turnOff = (element, weeksOff, onFailure) => {
+      q(element, '[data-screen="groups"] c-shoresh-program').dispatchEvent(
+        new CustomEvent("save", {
+          detail: nsRecord({ records: [], weeksOff, weeksBackOn: [], onFailure })
+        })
+      );
+    };
+
+    beforeEach(() => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(withBunk()));
+      saveRowsAndWeeks.mockResolvedValue(nsRecord([]));
+    });
+
+    it("asks first, in the desktop's words, and Turn off anyway saves", async () => {
+      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", slots: 4 }]);
+      const element = await render();
+      turnOff(element, [{ target: "g3", week: "w1" }]);
+      await flush();
+      expect(sentTo(placedInWeeks)).toEqual([
+        { weeksOff: [{ target: "g3", week: "w1" }] }
+      ]);
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.heading).toBe('Turn off "Bunk 3" for Week 1?');
+      expect(ask.lines).toEqual([
+        "Placed in 4 slots in Week 1.",
+        "They stay until you change them."
+      ]);
+      expect(ask.confirmLabel).toBe("Turn off anyway");
+      expect(saveRowsAndWeeks).not.toHaveBeenCalled();
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(sentTo(saveRowsAndWeeks)).toEqual([
+        { records: [], weeksOff: [{ target: "g3", week: "w1" }], weeksBackOn: [] }
+      ]);
+    });
+
+    it("Cancel saves nothing and keeps the typing", async () => {
+      placedInWeeks.mockResolvedValue([{ target: "g3", week: "w1", slots: 1 }]);
+      const element = await render();
+      const onFailure = jest.fn();
+      turnOff(element, [{ target: "g3", week: "w1" }], onFailure);
+      await flush();
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.lines[0]).toBe("Placed in 1 slot in Week 1.");
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: false } }));
+      await flush();
+      expect(saveRowsAndWeeks).not.toHaveBeenCalled();
+      expect(onFailure).toHaveBeenCalled();
+    });
+
+    it("with nothing placed, switches off without asking", async () => {
+      placedInWeeks.mockResolvedValue([]);
+      const element = await render();
+      turnOff(element, [{ target: "g3", week: "w1" }]);
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(saveRowsAndWeeks).toHaveBeenCalled();
+    });
+
+    it("a new row has nothing placed, so it isn't counted", async () => {
+      const element = await render();
+      turnOff(element, [{ row: 0, week: "w1" }]);
+      await flush();
+      expect(placedInWeeks).not.toHaveBeenCalled();
+      expect(saveRowsAndWeeks).toHaveBeenCalled();
+    });
+
+    it("several at once are listed in one question", async () => {
+      placedInWeeks.mockResolvedValue([
+        { target: "g3", week: "w1", slots: 2 },
+        { target: "a1", week: "w1", slots: 3 }
+      ]);
+      const element = await render();
+      turnOff(element, [
+        { target: "g3", week: "w1" },
+        { target: "a1", week: "w1" }
+      ]);
+      await flush();
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.heading).toBe("Turn these off?");
+      expect(ask.lines).toEqual([
+        '"Bunk 3": placed in 2 slots in Week 1.',
+        '"Swim": placed in 3 slots in Week 1.',
+        "They stay until you change them."
+      ]);
     });
   });
 
