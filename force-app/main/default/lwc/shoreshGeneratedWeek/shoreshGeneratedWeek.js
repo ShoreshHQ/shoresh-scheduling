@@ -139,20 +139,65 @@ export function locksOf(days) {
 }
 
 /**
+ * The week as a hand edit or a lock change left it: its days, their locks and the revision, all
+ * replaced together, so a later whole-week save is built on exactly what is saved.
+ */
+function withWeek(loaded, schedule, revision) {
+  const days = (schedule && schedule.days) || [];
+  return {
+    ...loaded,
+    revision,
+    input: { ...loaded.input, days, locks: locksOf(days) }
+  };
+}
+
+/** Whether a cell was locked in the week as loaded (the screen's view of it). */
+function lockedIn(loaded, run, blockId) {
+  return loaded.input.locks.some(
+    (lock) =>
+      lock.date === run.day &&
+      lock.groupId === run.groupId &&
+      lock.blockId === blockId
+  );
+}
+
+/** Each run names its cells' locks as the screen saw them, so nobody's Lock is lost unseen. */
+function withLocksSeen(loaded, edits) {
+  return (edits || []).map((edit) => ({
+    ...edit,
+    runs: (edit.runs || []).map((run) => ({
+      ...run,
+      locksBefore: (run.blockIds || []).map((blockId) => {
+        return lockedIn(loaded, run, blockId) ? "1" : "";
+      })
+    }))
+  }));
+}
+
+/**
  * Hand edits on the Generated draft, as Manual Build sends them (c/shoreshManualBuild
- * slotEdits.js runs). Every cell an edit fills is locked. Resolves to
- *   { status: SAVED, conflicts, schedule, revision }: conflicts as Manual Build's saveSlots
- *     (edits someone else's change got to first); revision for the next whole-week save
+ * slotEdits.js runs, each with its blockIds). Every cell an edit changes is locked when it holds
+ * something, unlocked when left Open; a run over a cell whose lock changed since is a conflict,
+ * like any cell someone else changed. Resolves to
+ *   { status: SAVED, conflicts, schedule, loaded }: conflicts as Manual Build's saveSlots;
+ *     loaded is the week to go on with, or null when someone else saved the week meanwhile
+ *     (then loadWeek again before a whole-week save)
  *   { status: REFUSED, message }
  */
 export async function saveEdits(loaded, edits) {
   try {
-    const result = await saveSlots({ scheduleId: loaded.scheduleId, edits });
+    const result = await saveSlots({
+      scheduleId: loaded.scheduleId,
+      edits: withLocksSeen(loaded, edits),
+      revision: loaded.revision
+    });
     return {
       status: SAVED,
       conflicts: result.conflicts || [],
       schedule: result.schedule,
-      revision: result.revision
+      loaded: result.revision
+        ? withWeek(loaded, result.schedule, result.revision)
+        : null
     };
   } catch (e) {
     return { status: REFUSED, message: errorMessage(e) };
@@ -161,20 +206,28 @@ export async function saveEdits(loaded, edits) {
 
 /**
  * Lock or unlock (decision 3): changes are [{ action: LOCK | UNLOCK, dateValue, groupId,
- * blockId }]: all three for a cell, dateValue alone for a day, groupId alone for a group. A lock
- * covers a whole placement; fixed and recurring activities are never locked. Resolves to
- *   { status: SAVED, schedule, revision } or { status: REFUSED, message }
+ * blockId }]: all three for a cell, dateValue alone for a day, groupId alone for a group, both
+ * for a group's day. A lock covers a whole placement; fixed and recurring activities are never
+ * locked. Resolves to
+ *   { status: SAVED, schedule, loaded }: loaded is the week to go on with
+ *   { status: CONFLICT, message }: someone else saved the week since it was loaded; nothing
+ *     changed
+ *   { status: REFUSED, message }
  */
 export async function setLocks(loaded, changes) {
   try {
     const result = await setLocksOnServer({
       scheduleId: loaded.scheduleId,
-      changes
+      changes,
+      revision: loaded.revision
     });
+    if (result.conflict) {
+      return { status: CONFLICT, message: result.message };
+    }
     return {
       status: SAVED,
       schedule: result.schedule,
-      revision: result.revision
+      loaded: withWeek(loaded, result.schedule, result.revision)
     };
   } catch (e) {
     return { status: REFUSED, message: errorMessage(e) };

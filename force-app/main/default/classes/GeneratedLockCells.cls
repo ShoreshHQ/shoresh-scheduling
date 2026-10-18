@@ -1,0 +1,116 @@
+/**
+ * The cells a lock change names, and the placements they belong to (GeneratedLocks), and what a
+ * hand edit locks (GeneratedEdits). A lock always covers a whole placement, the blocks a
+ * multi-block activity carries on into, as the engine keeps it; fixed and recurring activities
+ * are never locked.
+ */
+public with sharing class GeneratedLockCells {
+  /** Locks or unlocks every cell the change names; returns how many cells it named. */
+  public static Integer apply(
+    List<ScheduleDays.DayGrid> days,
+    GeneratedWeek.LockChange change
+  ) {
+    Integer named = 0;
+    for (ScheduleDays.DayGrid day : days) {
+      if (change.dateValue == null || change.dateValue == day.day) {
+        named += cellsIn(day.grid, change);
+      }
+    }
+    return named;
+  }
+
+  private static Integer cellsIn(
+    ScheduleGrid grid,
+    GeneratedWeek.LockChange change
+  ) {
+    Integer named = 0;
+    for (Integer g = 0; g < grid.groups.size(); g++) {
+      if (matches(grid.groups[g].id, change.groupId)) {
+        named += cellsInRow(grid, g, change);
+      }
+    }
+    return named;
+  }
+
+  private static Integer cellsInRow(
+    ScheduleGrid grid,
+    Integer g,
+    GeneratedWeek.LockChange change
+  ) {
+    Integer named = 0;
+    List<String> slots = SlotIds.ofRow(grid, g);
+    for (Integer b = 0; b < grid.blocks.size(); b++) {
+      if (matches(grid.blocks[b].id, change.blockId)) {
+        named++;
+        if (!SlotIds.isSetTime(slots[b])) {
+          setPlacement(grid, new List<Integer>{ g, b }, change);
+        }
+      }
+    }
+    return named;
+  }
+
+  /** Whether a record Id is the one named (any, when none is named). */
+  private static Boolean matches(String recordId, String named) {
+    return String.isBlank(named) ||
+      SlotIds.indexOf(new List<String>{ recordId }, named) == 0;
+  }
+
+  /** The cell and the rest of its placement: the blocks it carries on from and into. */
+  private static void setPlacement(
+    ScheduleGrid grid,
+    List<Integer> cell,
+    GeneratedWeek.LockChange change
+  ) {
+    for (Integer b : placementOf(grid, cell)) {
+      List<Integer> each = new List<Integer>{ cell[0], b };
+      if (change.locks()) {
+        ScheduleGridLocks.lock(grid, each);
+      } else {
+        ScheduleGridLocks.unlock(grid, each);
+      }
+    }
+  }
+
+  /**
+   * A hand edit on Generated Schedule changed this cell: the placement it now belongs to is
+   * locked when it holds something, unlocked when Open. Fixed and recurring activities always
+   * stay where setup puts them, so they are never locked.
+   */
+  public static void lockIfFilled(ScheduleGrid grid, List<Integer> cell) {
+    String slot = SlotIds.ofRow(grid, cell[0])[cell[1]];
+    if (SlotIds.isSetTime(slot)) {
+      return;
+    }
+    for (Integer b : placementOf(grid, cell)) {
+      List<Integer> each = new List<Integer>{ cell[0], b };
+      if (slot == SlotIds.OPEN) {
+        ScheduleGridLocks.unlock(grid, each);
+      } else {
+        ScheduleGridLocks.lock(grid, each);
+      }
+    }
+  }
+
+  /** The time block positions of the cell's placement: the blocks it carries on from and into. */
+  public static List<Integer> placementOf(
+    ScheduleGrid grid,
+    List<Integer> cell
+  ) {
+    List<String> row = grid.rows[cell[0]];
+    Integer first = cell[1];
+    while (first > 0 && row[first] == ScheduleGrid.CARRIES_ON) {
+      first--;
+    }
+    List<Integer> result = new List<Integer>{ first };
+    for (
+      Integer b = first + 1;
+      b < row.size() &&
+      row[b] == ScheduleGrid.CARRIES_ON;
+      b++
+    ) {
+      result.add(b);
+    }
+    return result;
+  }
+}

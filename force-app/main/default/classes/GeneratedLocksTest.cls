@@ -35,11 +35,36 @@ private class GeneratedLocksTest {
     return change;
   }
 
+  /** What the draft's days are saved at now, as a screen that just read them has it. */
+  private static String revisionNow(Id draftId) {
+    return GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
+  }
+
+  /** A lock change from a screen that has the week as it is now. */
   private static GeneratedWeek.Locked setLocks(
     Id draftId,
     List<GeneratedWeek.LockChange> changes
   ) {
-    return GeneratedScheduleController.setLocks(draftId, changes);
+    return GeneratedScheduleController.setLocks(
+      draftId,
+      changes,
+      revisionNow(draftId)
+    );
+  }
+
+  /** One hand edit from a screen that has the week as it is now. */
+  private static SlotEdits.Result handEdit(Id draftId, SlotEdits.Edit edit) {
+    return GeneratedScheduleController.saveSlots(
+      draftId,
+      new List<SlotEdits.Edit>{ edit },
+      revisionNow(draftId)
+    );
+  }
+
+  private static void useBlocks(Map<String, Id> ids) {
+    SlotRunsTestData.useBlocks(
+      new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
+    );
   }
 
   /** Locked cells of one day and group, as stored ('1' or ''). */
@@ -61,13 +86,7 @@ private class GeneratedLocksTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
-      SlotRunsTestData.useBlocks(
-        new List<Id>{
-          ids.get('Period 1'),
-          ids.get('Period 2'),
-          ids.get('Lunch')
-        }
-      );
+      useBlocks(ids);
       Test.startTest();
       // Swim by hand in Group A's Monday Lunch; Group B's Period 2 cleared by hand.
       SlotEdits.Result placed = GeneratedScheduleController.saveSlots(
@@ -91,7 +110,8 @@ private class GeneratedLocksTest {
             new List<String>{ GeneratedTestData.a('Gym games') },
             new List<String>{ '' }
           )
-        }
+        },
+        revisionNow(draftId)
       );
       Assert.isTrue(placed.conflicts.isEmpty());
       Assert.areEqual(
@@ -199,7 +219,7 @@ private class GeneratedLocksTest {
   }
 
   @IsTest
-  static void aBuildKeepsEveryLockedCellAndTheServerRefusesOneThatDoesNot() {
+  static void aBuildThatChangesALockedCellIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
@@ -224,6 +244,29 @@ private class GeneratedLocksTest {
         'Group A · Monday · Period 2 is locked.',
         GeneratedTestData.refusal(over)
       );
+      Assert.areEqual(read.revision, revisionNow(draftId));
+    }
+  }
+
+  /** Group A's Monday Period 2 (Gym games) locked. */
+  private static Id generatedWithALock(Map<String, Id> ids) {
+    Id draftId = GeneratedTestData.generated();
+    setLocks(
+      draftId,
+      new List<GeneratedWeek.LockChange>{
+        cell(GeneratedTestData.MONDAY, ids.get('Group A'), ids.get('Period 2'))
+      }
+    );
+    return draftId;
+  }
+
+  @IsTest
+  static void aBuildAroundALockedCellIsSavedAndKeepsTheLock() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = generatedWithALock(ids);
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       // Rebuild around it: saved, and the lock is still there (the server's, not the screen's).
       GeneratedWeek.Save around = GeneratedTestData.request(
         read,
@@ -252,8 +295,241 @@ private class GeneratedLocksTest {
       // The inputs carry the lock, for the engine to keep.
       Assert.areEqual(
         new List<String>{ ',1,', ',,', ',,' },
-        GeneratedTestData.inputs().days[0].locks
+        read.days[0].locks
       );
+    }
+  }
+
+  @IsTest
+  static void aStaleScreenNeitherLocksNorGoesOnFromSomeoneElsesSave() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      useBlocks(ids);
+      Test.startTest();
+      String seen = revisionNow(draftId);
+      // Someone else tries another option.
+      GeneratedTestData.save(
+        GeneratedTestData.filled(
+          GeneratedTestData.request(
+            GeneratedTestData.inputs(),
+            GeneratedSaves.TRY_ANOTHER,
+            2
+          ),
+          'Soccer'
+        )
+      );
+      GeneratedWeek.Locked locked = GeneratedScheduleController.setLocks(
+        draftId,
+        new List<GeneratedWeek.LockChange>{
+          change(GeneratedWeek.LOCK, GeneratedTestData.MONDAY, null)
+        },
+        seen
+      );
+      Assert.isTrue(locked.conflict);
+      Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, locked.message);
+      Assert.areEqual(
+        NONE,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      // A hand edit is still made (slot by slot, as Manual Build's), but gives no revision to
+      // build on: the screen reads the week again before a whole-week save.
+      SlotEdits.Result edited = GeneratedScheduleController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              GeneratedTestData.MONDAY,
+              ids.get('Group A'),
+              ids.get('Lunch')
+            ),
+            new List<String>{ '' },
+            new List<String>{ GeneratedTestData.a('Swim') }
+          )
+        },
+        seen
+      );
+      Assert.isTrue(edited.conflicts.isEmpty());
+      Assert.isNull(edited.revision);
+    }
+  }
+
+  @IsTest
+  static void aHandEditOverALockItDidNotSeeIsAConflict() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = generatedWithALock(ids);
+      useBlocks(ids);
+      Test.startTest();
+      SlotEdits.Edit over = SlotRunsTestData.edit(
+        SlotRunsTestData.at(
+          GeneratedTestData.MONDAY,
+          ids.get('Group A'),
+          ids.get('Period 2')
+        ),
+        new List<String>{ GeneratedTestData.a('Gym games') },
+        new List<String>{ GeneratedTestData.a('Soccer') }
+      );
+      Assert.areEqual(
+        new List<Integer>{ 0 },
+        handEdit(draftId, over).conflicts
+      );
+      Assert.areEqual(
+        GeneratedTestData.a('Gym games'),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
+        ]
+      );
+      // Naming the lock it saw, it is made, and the cell stays locked.
+      over.runs[0].locksBefore = new List<String>{ ScheduleGridLocks.LOCKED };
+      Assert.isTrue(handEdit(draftId, over).conflicts.isEmpty());
+      Assert.areEqual(
+        GeneratedTestData.a('Soccer'),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
+        ]
+      );
+      Assert.areEqual(
+        PERIOD_2,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+    }
+  }
+
+  @IsTest
+  static void aHandEditLocksWholePlacementsButNeverAFixedActivity() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      useBlocks(ids);
+      Test.startTest();
+      // A run over Flagpole (unchanged) and Period 2.
+      handEdit(
+        draftId,
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
+            GeneratedTestData.MONDAY,
+            ids.get('Group A'),
+            ids.get('Period 1')
+          ),
+          new List<String>{
+            'F:' + ids.get('Flagpole'),
+            GeneratedTestData.a('Gym games')
+          },
+          new List<String>{
+            'F:' + ids.get('Flagpole'),
+            GeneratedTestData.a('Swim')
+          }
+        )
+      );
+      Assert.areEqual(
+        PERIOD_2,
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+      // Made two blocks long by hand: both are locked.
+      SlotEdits.Edit longer = SlotRunsTestData.edit(
+        SlotRunsTestData.at(
+          GeneratedTestData.MONDAY,
+          ids.get('Group A'),
+          ids.get('Period 2')
+        ),
+        new List<String>{ GeneratedTestData.a('Swim'), '' },
+        new List<String>{
+          GeneratedTestData.a('Swim'),
+          '^' + GeneratedTestData.a('Swim')
+        }
+      );
+      longer.runs[0].locksBefore = new List<String>{
+        ScheduleGridLocks.LOCKED,
+        ''
+      };
+      Assert.isTrue(handEdit(draftId, longer).conflicts.isEmpty());
+      Assert.areEqual(
+        new List<String>{ '', '1', '1' },
+        locks(draftId, GeneratedTestData.at(0, GeneratedTestData.GROUP_A))
+      );
+    }
+  }
+
+  @IsTest
+  static void fillTheOpenCellsLeavesALockedOpenCellOpen() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      setLocks(
+        draftId,
+        new List<GeneratedWeek.LockChange>{
+          cell(GeneratedTestData.MONDAY, ids.get('Group A'), ids.get('Lunch'))
+        }
+      );
+      GeneratedWeek.Save fill = GeneratedTestData.request(
+        GeneratedTestData.inputs(),
+        GeneratedSaves.FILL_OPEN,
+        1
+      );
+      GeneratedTestData.put(
+        fill.days[0],
+        GeneratedTestData.at(0, GeneratedTestData.LUNCH),
+        'Swim'
+      );
+      Assert.areEqual(
+        'Group A · Monday · Lunch is locked.',
+        GeneratedTestData.refusal(fill)
+      );
+    }
+  }
+
+  @IsTest
+  static void manualBuildNeverLocksAndGeneratedEditsDoNotReachIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      useBlocks(ids);
+      Test.startTest();
+      Id manualId = ManualBuildController.startBlankWeek(
+          ids.get('Main'),
+          ids.get('Week 1')
+        )
+        .schedule.schedule.id;
+      SlotEdits.Edit edit = SlotRunsTestData.edit(
+        SlotRunsTestData.at(
+          GeneratedTestData.MONDAY,
+          ids.get('Group A'),
+          ids.get('Period 2')
+        ),
+        new List<String>{ '' },
+        new List<String>{ GeneratedTestData.a('Swim') }
+      );
+      ManualBuildController.saveSlots(
+        manualId,
+        new List<SlotEdits.Edit>{ edit }
+      );
+      ScheduleDay__c stored = [
+        SELECT GridFormatVersion__c, Grid__c
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :manualId AND Date__c = :GeneratedTestData.MONDAY
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual(1, stored.GridFormatVersion__c);
+      Assert.isFalse(stored.Grid__c.contains('"l"'));
+      String notHere = 'Only this week\'s Generated Schedule can be saved here. Reload the page.';
+      try {
+        handEdit(manualId, edit);
+        Assert.fail('A Generated hand edit reached Manual Build');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(notHere, e.getMessage());
+      }
+      try {
+        setLocks(
+          manualId,
+          new List<GeneratedWeek.LockChange>{
+            change(GeneratedWeek.LOCK, GeneratedTestData.MONDAY, null)
+          }
+        );
+        Assert.fail('Manual Build was locked');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(notHere, e.getMessage());
+      }
     }
   }
 
@@ -330,6 +606,18 @@ private class GeneratedLocksTest {
         },
         new List<GeneratedWeek.LockChange>{
           change(GeneratedWeek.LOCK, null, ids.get('Swim'))
+        },
+        // Lock and Unlock are spelled exactly.
+        new List<GeneratedWeek.LockChange>{
+          change('lock', GeneratedTestData.MONDAY, null)
+        },
+        // Neither a day nor a group: not one of the shortcuts.
+        new List<GeneratedWeek.LockChange>{
+          change(GeneratedWeek.LOCK, null, null)
+        },
+        // A time block alone (every group, every day): not one of the shortcuts.
+        new List<GeneratedWeek.LockChange>{
+          cell(null, null, ids.get('Period 2'))
         }
       };
       for (List<GeneratedWeek.LockChange> changes : unreadable) {

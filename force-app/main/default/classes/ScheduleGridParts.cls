@@ -16,7 +16,8 @@ public with sharing class ScheduleGridParts {
       return new List<String>{ whole };
     }
     List<String> parts = new List<String>();
-    Integer frameLength = emptyPart(grid).toText().length();
+    Integer frameLength =
+      emptyPart(grid).toText().length() + lockListLength(grid);
     if (frameLength >= partLimit) {
       throw new ScheduleGridRules.GridException(
         'its time blocks and items alone are too long to store'
@@ -45,6 +46,11 @@ public with sharing class ScheduleGridParts {
     }
     parts.add(part.toText());
     return parts;
+  }
+
+  /** A part with locks also carries ,"l":[] around its lock rows. */
+  private static Integer lockListLength(ScheduleGrid grid) {
+    return grid.locks.isEmpty() ? 0 : 7;
   }
 
   /** About how many characters one group adds to a part (a little over, never under). */

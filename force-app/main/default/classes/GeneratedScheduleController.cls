@@ -30,26 +30,29 @@ public with sharing class GeneratedScheduleController {
   @AuraEnabled
   public static SlotEdits.Result saveSlots(
     Id scheduleId,
-    List<SlotEdits.Edit> edits
+    List<SlotEdits.Edit> edits,
+    String revision
   ) {
     try {
       return SlotSaves.saveOnGenerated(
         scheduleId,
-        edits == null ? new List<SlotEdits.Edit>() : edits
+        edits == null ? new List<SlotEdits.Edit>() : edits,
+        revision
       );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
   }
 
-  /** Lock or unlock a cell, a day or a group (decision 3). */
+  /** Lock or unlock a cell, a day or a group (decision 3); a conflict if the week changed since. */
   @AuraEnabled
   public static GeneratedWeek.Locked setLocks(
     Id scheduleId,
-    List<GeneratedWeek.LockChange> changes
+    List<GeneratedWeek.LockChange> changes,
+    String revision
   ) {
     try {
-      return GeneratedLocks.apply(scheduleId, changes);
+      return GeneratedLocks.apply(scheduleId, changes, revision);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

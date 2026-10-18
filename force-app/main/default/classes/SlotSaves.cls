@@ -24,45 +24,53 @@ public with sharing class SlotSaves {
     Id scheduleId,
     List<SlotEdits.Edit> edits
   ) {
-    return saveOn(ManualDrafts.locked(scheduleId), edits, false);
+    return new SlotSaves().saveOn(ManualDrafts.locked(scheduleId), edits);
   }
 
-  /** The same, on a Generated draft: what each edit fills is locked. */
+  /**
+   * The same, on a Generated draft (GeneratedEdits): each run is made only if its locks are as
+   * the screen saw them, and what it changes is locked. seen: the revision the screen read the
+   * week at; the answer's revision is given only when nobody else saved the week since.
+   */
   public static SlotEdits.Result saveOnGenerated(
     Id scheduleId,
-    List<SlotEdits.Edit> edits
+    List<SlotEdits.Edit> edits,
+    String seen
   ) {
-    return saveOn(GeneratedDrafts.lockedToEdit(scheduleId), edits, true);
+    SlotSaves saves = new SlotSaves();
+    saves.lockEdits = true;
+    SlotEdits.Result result = saves.saveOn(
+      GeneratedDrafts.lockedToEdit(scheduleId),
+      edits
+    );
+    result.revision = GeneratedEdits.revisionAfter(
+      saves.days,
+      saves.changed,
+      seen
+    );
+    return result;
   }
 
-  private static SlotEdits.Result saveOn(
+  private SlotEdits.Result saveOn(
     Schedule__c schedule,
-    List<SlotEdits.Edit> edits,
-    Boolean lockEdits
+    List<SlotEdits.Edit> edits
   ) {
     Id scheduleId = schedule.Id;
-    SlotSaves saves = new SlotSaves();
-    saves.lockEdits = lockEdits;
-    saves.rules = new SlotRules(
+    rules = new SlotRules(
       setupOf(schedule.Program__r),
       SlotRules.activityIdsIn(edits)
     );
     for (ScheduleDays.DayGrid day : ScheduleDays.read(scheduleId)) {
-      saves.days.put(day.day, day);
+      days.put(day.day, day);
     }
     SlotEdits.Result result = new SlotEdits.Result();
     for (Integer i = 0; i < edits.size(); i++) {
-      if (!saves.apply(edits[i])) {
+      if (!apply(edits[i])) {
         result.conflicts.add(i);
       }
     }
-    saves.write(scheduleId);
+    write(scheduleId);
     result.schedule = ScheduleViews.open(scheduleId);
-    if (lockEdits) {
-      result.revision = GeneratedDrafts.revisionOf(
-        ScheduleDays.read(scheduleId)
-      );
-    }
     return result;
   }
 
@@ -143,18 +151,33 @@ public with sharing class SlotSaves {
         return false;
       }
     }
+    if (!locksAsSeen(run, grid, new List<Integer>{ g, first })) {
+      return false;
+    }
     // A run starts where a placement starts: starting inside one would cut off its first part.
     SlotRules.checkStartsClean(was[first]);
     Set<Integer> inRun = new Set<Integer>();
     for (Integer i = 0; i < run.after.size(); i++) {
-      List<Integer> cell = new List<Integer>{ g, first + i };
-      writeSlot(grid, cell, run.after[i]);
+      writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
       inRun.add(first + i);
-      if (lockEdits) {
-        ScheduleGridLocks.lockIfFilled(grid, cell);
-      }
+    }
+    if (lockEdits) {
+      GeneratedEdits.lockChanged(
+        grid,
+        was,
+        new List<Integer>{ g, first, run.after.size() }
+      );
     }
     return SlotRules.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
+  }
+
+  /** Generated Schedule: the run's locks are as the screen saw them (GeneratedEdits). */
+  private Boolean locksAsSeen(
+    SlotEdits.Run run,
+    ScheduleGrid grid,
+    List<Integer> at
+  ) {
+    return !lockEdits || GeneratedEdits.sawLocks(run, grid, at);
   }
 
   /** One slot (at: group and block positions) given what it should now hold. */

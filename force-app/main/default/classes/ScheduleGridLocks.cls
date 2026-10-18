@@ -34,15 +34,6 @@ public with sharing class ScheduleGridLocks {
     }
   }
 
-  /** A hand edit on Generated Schedule: a cell it fills is locked, one it leaves Open is not. */
-  public static void lockIfFilled(ScheduleGrid grid, List<Integer> cell) {
-    if (String.isBlank(grid.rows[cell[0]][cell[1]])) {
-      unlock(grid, cell);
-    } else {
-      lock(grid, cell);
-    }
-  }
-
   public static void unlock(ScheduleGrid grid, List<Integer> cell) {
     if (!grid.locks.isEmpty()) {
       grid.locks[cell[0]][cell[1]] = '';

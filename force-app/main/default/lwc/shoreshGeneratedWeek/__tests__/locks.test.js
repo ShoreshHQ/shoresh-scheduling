@@ -4,6 +4,7 @@ import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLo
 import { generateWeek } from "c/shoreshEngine";
 import { nsRecord } from "shoresh-jest/namespace";
 import {
+  CONFLICT,
   LOCK,
   REFUSED,
   SAVED,
@@ -121,37 +122,94 @@ describe("c/shoreshGeneratedWeek locks", () => {
     expect(loaded.input.locks).toEqual([
       { date: "2026-06-29", groupId: G1, blockId: B2 }
     ]);
-    for (const option of [1, 2, 3, 4, 5]) {
+    const options = [1, 2, 3, 4, 5, 6, 7, 8];
+    for (const option of options) {
       const built = generateWeek({ ...loaded.input, option });
       expect(built.ok).toBe(true);
       expect(nameAt(built.days[0], 0, 1)).toBe("Swim");
       expect(nameAt(built.days[0], 0, 0)).toBe("Flagpole");
     }
+    // Without the lock, some option puts something else there: the lock is what keeps it.
+    const moved = options.some(
+      (option) =>
+        nameAt(
+          generateWeek({ ...loaded.input, locks: [], option }).days[0],
+          0,
+          1
+        ) !== "Swim"
+    );
+    expect(moved).toBe(true);
   });
 
-  it("saves hand edits through the Generated draft and gives back the new revision", async () => {
+  const LOADED = {
+    scheduleId: "a0S000000000001AAA",
+    revision: "2026-06-29:2",
+    input: {
+      programId: "a0P000000000001AAA",
+      days: [DAY],
+      locks: locksOf([DAY])
+    }
+  };
+  const AFTER = {
+    ...DAY,
+    rows: ["1,2", "1,2"],
+    locks: [",1", ",1"]
+  };
+
+  it("saves hand edits naming the locks the screen saw, and goes on from the saved week", async () => {
     saveSlots.mockResolvedValue({
       conflicts: [],
-      schedule: { days: [DAY] },
+      schedule: { days: [AFTER] },
       revision: "2026-06-29:3"
     });
-    const edits = [{ runs: [{ day: "2026-06-29", groupId: G2 }] }];
-    const result = await saveEdits({ scheduleId: "a0S000000000001AAA" }, edits);
+    const edits = [
+      {
+        runs: [
+          { day: "2026-06-29", groupId: G1, blockIds: [B1, B2] },
+          { day: "2026-06-29", groupId: G2, blockIds: [B2] }
+        ]
+      }
+    ];
+    const result = await saveEdits(LOADED, edits);
     expect(saveSlots).toHaveBeenCalledWith({
       scheduleId: "a0S000000000001AAA",
-      edits
+      revision: "2026-06-29:2",
+      edits: [
+        {
+          runs: [
+            { ...edits[0].runs[0], locksBefore: ["", "1"] },
+            { ...edits[0].runs[1], locksBefore: [""] }
+          ]
+        }
+      ]
     });
-    expect(result).toEqual({
-      status: SAVED,
-      conflicts: [],
-      schedule: { days: [DAY] },
-      revision: "2026-06-29:3"
-    });
+    expect(result.status).toBe(SAVED);
+    expect(result.conflicts).toEqual([]);
+    // Days, locks and revision replaced together.
+    expect(result.loaded.revision).toBe("2026-06-29:3");
+    expect(result.loaded.input.days).toEqual([AFTER]);
+    expect(result.loaded.input.locks).toEqual([
+      { date: "2026-06-29", groupId: G1, blockId: B2 },
+      { date: "2026-06-29", groupId: G2, blockId: B2 }
+    ]);
+    expect(result.loaded.input.programId).toBe("a0P000000000001AAA");
   });
 
-  it("locks a day, a group or a cell, and passes on a refusal", async () => {
+  it("has no week to go on from when someone else saved it meanwhile", async () => {
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      schedule: { days: [AFTER] },
+      revision: null
+    });
+    const result = await saveEdits(LOADED, []);
+    expect(result.status).toBe(SAVED);
+    expect(result.loaded).toBeNull();
+  });
+
+  it("locks a day, a group or a cell, says when the week changed since, and passes on a refusal", async () => {
     setLocksOnServer.mockResolvedValue({
-      schedule: { days: [DAY] },
+      conflict: false,
+      schedule: { days: [AFTER] },
       revision: "2026-06-29:4"
     });
     const changes = [
@@ -159,23 +217,27 @@ describe("c/shoreshGeneratedWeek locks", () => {
       { action: LOCK, groupId: G2 },
       { action: LOCK, dateValue: "2026-06-29", groupId: G1, blockId: B2 }
     ];
-    const result = await setLocks(
-      { scheduleId: "a0S000000000001AAA" },
-      changes
-    );
+    const result = await setLocks(LOADED, changes);
     expect(setLocksOnServer).toHaveBeenCalledWith({
       scheduleId: "a0S000000000001AAA",
-      changes
+      changes,
+      revision: "2026-06-29:2"
     });
-    expect(result).toEqual({
-      status: SAVED,
-      schedule: { days: [DAY] },
-      revision: "2026-06-29:4"
+    expect(result.status).toBe(SAVED);
+    expect(result.loaded.revision).toBe("2026-06-29:4");
+    expect(result.loaded.input.locks).toHaveLength(2);
+    setLocksOnServer.mockResolvedValue({
+      conflict: true,
+      message: "Someone else changed this schedule since you opened it."
+    });
+    expect(await setLocks(LOADED, changes)).toEqual({
+      status: CONFLICT,
+      message: "Someone else changed this schedule since you opened it."
     });
     setLocksOnServer.mockRejectedValue({
       body: { message: "A saved version can't be changed." }
     });
-    expect(await setLocks({ scheduleId: "x" }, changes)).toEqual({
+    expect(await setLocks(LOADED, changes)).toEqual({
       status: REFUSED,
       message: "A saved version can't be changed."
     });

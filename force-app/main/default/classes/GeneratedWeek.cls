@@ -99,12 +99,17 @@ public with sharing class GeneratedWeek {
     public String action { get; set; }
 
     public Boolean locks() {
-      return action == LOCK;
+      return LOCK.equals(action);
     }
   }
 
-  /** The week after a lock change or a hand edit, and what its days are saved at now. */
+  /** The week after a lock change, and what its days are saved at now; or a conflict. */
   public class Locked {
+    // True when someone else saved the week since the screen read it: nothing was changed.
+    @AuraEnabled
+    public Boolean conflict = false;
+    @AuraEnabled
+    public String message;
     @AuraEnabled
     public ScheduleViews.ScheduleView schedule;
     @AuraEnabled

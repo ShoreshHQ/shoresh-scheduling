@@ -48,12 +48,12 @@ private class ScheduleGridLocksTest {
   @IsTest
   static void aCellFilledByHandIsLockedAndOneLeftOpenIsNot() {
     ScheduleGrid grid = day(1);
-    ScheduleGridLocks.lockIfFilled(grid, at(0, 0));
-    ScheduleGridLocks.lockIfFilled(grid, at(0, 1));
+    GeneratedLockCells.lockIfFilled(grid, at(0, 0));
+    GeneratedLockCells.lockIfFilled(grid, at(0, 1));
     Assert.isTrue(ScheduleGridLocks.isLocked(grid, 0, 0));
     Assert.isFalse(ScheduleGridLocks.isLocked(grid, 0, 1));
     grid.rows[0][0] = '';
-    ScheduleGridLocks.lockIfFilled(grid, at(0, 0));
+    GeneratedLockCells.lockIfFilled(grid, at(0, 0));
     Assert.isFalse(ScheduleGridLocks.hasAny(grid));
   }
 
@@ -86,7 +86,7 @@ private class ScheduleGridLocksTest {
     ScheduleGridParts.partLimit = frame.toText().length() + 200;
     List<String> parts = ScheduleGridParts.split(grid);
     Assert.isTrue(parts.size() > 2, 'split into ' + parts.size());
-    // A part with no lock is stored as version 1, without lock rows.
+    // A part with no lock is stored without lock rows (the day's format version is still 2).
     Assert.isFalse(parts[1].contains('"l"'), parts[1]);
     ScheduleGrid joined = ScheduleGridParts.join(parts);
     Assert.areEqual(grid.toText(), joined.toText());

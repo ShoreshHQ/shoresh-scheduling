@@ -451,20 +451,33 @@ what it loads to the real `generateWeek` and sends what it built.
     locks included.
 23. **Hand edits are locks** (decision 2). A hand edit on the Generated draft is Manual Build's
     slot save (`GeneratedScheduleController.saveSlots` → `SlotSaves.saveOnGenerated`: the same
-    runs, the same compare-and-set and _keep theirs or use yours_ conflicts, the same rules).
-    Every cell an edit fills is locked; a cell an edit leaves Open is unlocked, so the next build
-    fills it. This is G4's build call, for Greg to confirm: clearing a cell by hand reads as
-    "not this" rather than "keep this empty"; **Lock** an Open cell to keep it empty. The answer
-    also gives the new `revision`, for the
-    next whole-week save. Manual Build's own saves never lock.
+    runs, the same compare-and-set and _keep theirs or use yours_ conflicts, the same rules),
+    with `GeneratedEdits`:
+    - every cell an edit **changes** is locked when it holds something (its whole placement),
+      unlocked when left Open, so the next build fills it. Cells a run covers but doesn't change,
+      and fixed and recurring activities, are left as they are. This is G4's build call, for
+      Greg to confirm: clearing a cell by hand reads as "not this" rather than "keep this
+      empty"; **Lock** an Open cell to keep it empty;
+    - each run names its cells' locks as the screen saw them (`locksBefore`; the data module
+      fills it in): a cell whose lock is different now is a conflict like any cell someone else
+      changed, so nobody's Lock is removed or covered unseen;
+    - the edit names the revision the screen read the week at. The answer's `revision` (with
+      the week) is given only when nobody else saved the week in between; otherwise it is empty
+      and the screen reads the week again before a whole-week save. So a lock or a hand edit
+      never lets a stale screen's Rebuild replace someone else's build without a conflict.
+
+    Manual Build's own saves never lock and stay version 1.
+
 24. **Lock and Unlock** (decision 3; `GeneratedScheduleController.setLocks` → `GeneratedLocks`):
     a cell (date, group and time block), a whole day (date only) or a whole group (group only,
-    or with a date for its day). A lock covers the whole placement: locking or unlocking any
+    or with a date for its day; `Lock` and `Unlock` spelled exactly; nothing else is read). Like
+    a whole-week save it names the revision the screen read the week at, and is a conflict when
+    someone else saved the week since. A lock covers the whole placement: locking or unlocking any
     block of a multi-block activity does all of it, as the engine keeps it. Fixed and recurring
     activities are never locked: they always stay where setup puts them. A change that names no
     cell of the week, or isn't `Lock` or `Unlock`, is refused; so is a change to a version or to
-    Manual Build's draft. The days are written at their revisions under the draft's lock, so a
-    build made from the week before the change is a conflict.
+    Manual Build's draft. Only the days whose locks changed are written, at their revisions,
+    under the draft's lock (`GeneratedLocks`, `GeneratedLockCells`).
 25. **Builds keep locks; the server enforces them.** Rebuild, Try another and Fill the open
     cells keep every locked cell (the engine gets them as `locks`). On save the server keeps the
     stored locks whatever the screen sends, and refuses a build that changes a locked cell:
@@ -472,10 +485,11 @@ what it loads to the real `generateWeek` and sends what it built.
     **Start over** clears every lock, after keeping its "Before Start over" version, which keeps
     them.
 26. **The data module** (`c/shoreshGeneratedWeek`): `loadWeek` gives the engine the stored locks
-    (`locksOf`: `{ date, groupId, blockId }` from each day's `locks` rows); `saveEdits(loaded,
-edits)` and `setLocks(loaded, changes)` resolve to `saved` (with the week and its new
-    revision) or `refused`. `LOCK` and `UNLOCK` name the two changes. One word, **Lock**,
-    everywhere (decision 3).
+    (`locksOf`: `{ date, groupId, blockId }` from each day's `locks` rows). `saveEdits(loaded,
+edits)` adds each run's `locksBefore` and resolves to `saved` with the week to go on with
+    (its days, locks and revision replaced together; none when someone else saved meanwhile) or
+    `refused`; `setLocks(loaded, changes)` to `saved` with the week, `conflict` or `refused`.
+    `LOCK` and `UNLOCK` name the two changes. One word, **Lock**, everywhere (decision 3).
 27. **Not in this part: the screen.** G3 (#49) owns the Generated Schedule screen; whichever of
     the two merges second wires it: hand edits with Manual Build's editing (place, move, swap,
     clear, length, typing, undo), the lock icon on a locked cell (and as the action), Lock and
@@ -486,15 +500,21 @@ edits)` and `setLocks(loaded, changes)` resolve to `saved` (with the week and it
 ## Tests (G4)
 
 `ScheduleGridLocksTest`: a lock stored as version 2 and read back, the same text again once
-unlocked (version 1), a filled cell locked and an Open one not, unclear lock rows refused, locks
+unlocked (version 1), a changed cell locked and an Open one not, unclear lock rows refused, locks
 split and joined with their groups. `GeneratedLocksTest` (as a scheduler): a hand edit locks
-what it fills and unlocks what it leaves Open, and the answer carries the locks and the new
-revision; a day, a group and unlock; a lock on one block of a two-block activity locks both; a
-fixed or recurring activity is never locked; a build that changes a locked cell is refused, one
-around it is saved and keeps the lock, and the inputs carry it; Start over clears the locks and
-its version keeps them (version 2); changes that name nothing, an unknown action and a version
-are refused. Jest: `locksOf`, the locks reaching the real `generateWeek`, which keeps the locked
-cell in five options (and fails without them), `saveEdits` and `setLocks`.
+what it changes and unlocks what it leaves Open, with the locks and revision in the answer;
+whole placements but never Flagpole; a hand edit over a lock it didn't see is a conflict, and is
+made when it names it; a stale screen's lock is a conflict and its hand edit gets no revision; a
+day, a group, unlock; one block of a two-block activity locks both; a build that changes a
+locked cell is refused and one around it keeps the lock; Fill the open cells can't fill a locked
+Open cell; Start over clears the locks and its version keeps them (version 2); Manual Build's
+saves stay version 1, and Generated edits and locks don't reach its draft; changes that name
+nothing, unknown or misspelled actions, shapes §24 doesn't list and a version are refused.
+`GeneratedLimitsTest`: locking a whole day and a hand edit on the realistic week stay within the
+same 25 queries. Jest: `locksOf`; the locks reaching the real `generateWeek`, which keeps the
+locked cell in eight options (a run without them moves it); `saveEdits` naming the locks seen
+and going on from the saved week (or not, when someone else saved); `setLocks` saved, conflict
+and refused.
 
 ## Choices that are hard to undo after release
 

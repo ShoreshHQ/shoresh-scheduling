@@ -26,6 +26,10 @@ public with sharing class SlotEdits {
     // Required.
     @AuraEnabled
     public List<String> blockIds { get; set; }
+    // Generated Schedule only: each cell's lock as the screen saw it ('1' locked, '' not). A run
+    // whose cells are locked otherwise now is a conflict, so no one's Lock goes unseen.
+    @AuraEnabled
+    public List<String> locksBefore { get; set; }
 
     /** Whether it is well formed and inside a day of that many time blocks. */
     public Boolean fits(Integer first, Integer blockCount) {
@@ -57,7 +61,8 @@ public with sharing class SlotEdits {
     // The schedule as it is now, everyone's changes included.
     @AuraEnabled
     public ScheduleViews.ScheduleView schedule;
-    // Generated Schedule only: what the days are saved at now, for its next whole-week save.
+    // Generated Schedule only: what the days are saved at now, for its next whole-week save; none
+    // when someone else saved the week since the screen read it (it reads the week again).
     @AuraEnabled
     public String revision;
   }
