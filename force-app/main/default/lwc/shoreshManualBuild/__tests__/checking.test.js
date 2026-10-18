@@ -100,6 +100,8 @@ const cell = (element, key) =>
   );
 const dotIn = (element, key) =>
   cell(element, key).querySelector("c-shoresh-dot");
+const tipIn = (element, key) =>
+  dotIn(element, key).shadowRoot.querySelector('[data-id="dot-tip"]');
 const counters = (element) =>
   [...q(element, '[data-id="counters"]').querySelectorAll("button")].map((b) =>
     b.textContent.replace(/\s+/g, " ").trim()
@@ -229,8 +231,26 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     );
     await press(cell(element, "0-1"), " ");
     expect(cell(element, "0-1").className).toContain("cell_picked");
+    expect(tipIn(element, "0-1").textContent).toBe(
+      "Over its limit of 1 Bunk at once"
+    );
     await press(cell(element, "0-1"), "Escape");
     expect(cell(element, "0-1").className).not.toContain("cell_picked");
+    expect(tipIn(element, "0-1")).toBeNull();
+  });
+
+  it("the words follow real keyboard focus from cell to cell, and go when focus leaves the grid", async () => {
+    const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
+    cell(element, "0-1").focus();
+    await flush();
+    expect(dotIn(element, "0-1").open).toBe(true);
+    cell(element, "1-1").focus();
+    await flush();
+    expect(dotIn(element, "0-1").open).toBe(false);
+    expect(dotIn(element, "1-1").open).toBe(true);
+    cell(element, "1-1").blur();
+    await flush();
+    expect(dotIn(element, "1-1").open).toBe(false);
   });
 
   it("a list whose counter went to zero doesn't open again by itself", async () => {

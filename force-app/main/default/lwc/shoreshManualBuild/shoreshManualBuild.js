@@ -95,7 +95,7 @@ export default class ShoreshManualBuild extends LightningElement {
   // The counter whose list is open (stillNeeded, spread, overlapping), if any.
   openCounter = null;
   // The last check and what it was worked out from. Changed in place, so updating it while the
-  // page renders doesn't ask for another render.
+  // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
