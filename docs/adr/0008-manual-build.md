@@ -707,7 +707,7 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    publishes nothing: the screen compares the preview's revisions with its own, shows the
    refusal below and reads the week again. Publish sends back the preview's revisions and the
    published schedule it showed. Someone saved the week since: refused, _Someone else changed this week
-   since, so nothing was published. Look it over, then publish again._, and the week is read
+   since, so nothing was published._, and the week is read
    again. Someone published since: _Someone else published this week since, so nothing was
    replaced. …_ Two first publishes at the same moment: the key's uniqueness refuses the second
    the same way. Publish locks the draft (its drafts class) and then the week's published rows,
@@ -732,7 +732,7 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    0002). The week then has no published schedule, and publishing again later is a first publish.
    It names the published schedule the screen showed; one published or unpublished since:
    refused, nothing written, _Someone else published or unpublished this week since, so nothing
-   was unpublished. Look it over, then try again._, and the week is read again. Draft saves don't
+   was unpublished._, and the week is read again. Draft saves don't
    refuse it: it doesn't touch the draft. While it runs (and while its question is open) edits,
    Versions and the pickers wait, as for Publish; focus then returns to Unpublish, or to Publish
    once Unpublish is gone. It takes any locked draft, like publish, so Generated reuses it as is.

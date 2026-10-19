@@ -65,6 +65,8 @@ export default class ShoreshManualBuild extends LightningElement {
   // An edit is saving or waiting to (the editor says).
   editBusy = false;
   loadTicket = 0;
+  // Reads of the week on their way (a reload whose answer is dropped is read again).
+  reads = 0;
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
@@ -298,6 +300,7 @@ export default class ShoreshManualBuild extends LightningElement {
         this.weekEditor.clear();
       }
     }
+    this.reads += 1;
     try {
       const draft = await getDraft({
         programId: this.programId,
@@ -335,6 +338,7 @@ export default class ShoreshManualBuild extends LightningElement {
         this.loadedFor = again ? key : null;
       }
     } finally {
+      this.reads -= 1;
       if (ticket === this.loadTicket) {
         this.loading = false;
       }
@@ -754,26 +758,46 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** Refused when the week was published or unpublished since the screen showed it. */
   async unpublishNow(ask) {
-    // A reload already on its way read the week before this: its answer must not show it
-    // published again.
+    const reload = this.dropReload();
+    try {
+      const result = await unpublish({
+        scheduleId: this.schedule.schedule.id,
+        seenPublishedId: ask.publishedId
+      });
+      if (ask.week !== this.weekKey) {
+        return;
+      }
+      if (result.publishedChanged) {
+        reload.done = true;
+        this.refusePublish(
+          `Someone else published or unpublished this ${this.t.sIn("Week")} since, so nothing was unpublished.`
+        );
+        return;
+      }
+      this.publishState = null;
+      this.say(`Unpublished ${this.weekName}.`);
+      // The copy is a version now: Versions lists it straight away.
+      await this.loadVersions();
+    } finally {
+      this.readAgain(reload, ask.week);
+    }
+  }
+
+  /**
+   * A reload already on its way read the week before Publish or Unpublish: its answer must not
+   * show the old publish state again. It is dropped, and the week is read again once the answer
+   * is in, so what the reload was for (a failed save, other people's changes) is still shown.
+   */
+  dropReload() {
+    const dropped = this.reads > 0;
     this.loadTicket += 1;
-    const result = await unpublish({
-      scheduleId: this.schedule.schedule.id,
-      seenPublishedId: ask.publishedId
-    });
-    if (ask.week !== this.weekKey) {
-      return;
+    return { dropped, done: false };
+  }
+
+  readAgain(reload, week) {
+    if (reload.dropped && !reload.done && week === this.weekKey) {
+      this.load(true);
     }
-    if (result.publishedChanged) {
-      this.refusePublish(
-        `Someone else published or unpublished this ${this.t.sIn("Week")} since, so nothing was unpublished. Look it over, then try again.`
-      );
-      return;
-    }
-    this.publishState = null;
-    this.say(`Unpublished ${this.weekName}.`);
-    // The copy is a version now: Versions lists it straight away.
-    await this.loadVersions();
   }
 
   /**
@@ -781,39 +805,42 @@ export default class ShoreshManualBuild extends LightningElement {
    * answer is always shown, unless another week (week, program) is shown by then.
    */
   async publishNow(preview, week) {
-    // A reload already on its way read the week before this publish: its answer must not
-    // replace what the publish shows.
-    this.loadTicket += 1;
-    const result = await publish({
-      scheduleId: this.schedule.schedule.id,
-      seenRevisions: preview.revisions,
-      seenPublishedId: preview.published ? preview.published.id : null
-    });
-    if (week !== this.weekKey) {
-      return;
-    }
-    if (result.draftChanged || result.publishedChanged) {
-      this.refusePublish(
-        result.draftChanged
-          ? this.draftChangedText
-          : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced. Look it over, then publish again.`
+    const reload = this.dropReload();
+    try {
+      const result = await publish({
+        scheduleId: this.schedule.schedule.id,
+        seenRevisions: preview.revisions,
+        seenPublishedId: preview.published ? preview.published.id : null
+      });
+      if (week !== this.weekKey) {
+        return;
+      }
+      if (result.draftChanged || result.publishedChanged) {
+        reload.done = true;
+        this.refusePublish(
+          result.draftChanged
+            ? this.draftChangedText
+            : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced.`
+        );
+        return;
+      }
+      this.publishState = { ...result.published, changedSince: false };
+      this.say(
+        result.unchanged
+          ? `${this.weekName} is already published as it is.`
+          : `Published ${this.weekName}.`
       );
-      return;
-    }
-    this.publishState = { ...result.published, changedSince: false };
-    this.say(
-      result.unchanged
-        ? `${this.weekName} is already published as it is.`
-        : `Published ${this.weekName}.`
-    );
-    if (!result.unchanged) {
-      // A published schedule it replaced is a version now: Versions lists it straight away.
-      await this.loadVersions();
+      if (!result.unchanged) {
+        // A published schedule it replaced is a version now: Versions lists it straight away.
+        await this.loadVersions();
+      }
+    } finally {
+      this.readAgain(reload, week);
     }
   }
 
   get draftChangedText() {
-    return `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published. Look it over, then publish again.`;
+    return `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published.`;
   }
 
   /** Nothing was published: what changed is shown, and the director looks again. */

@@ -938,7 +938,6 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
 - Generated Schedule: Versions on that screen, and publishing.
-- The Schedules page does not show the published schedule yet.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).
