@@ -106,6 +106,22 @@ public with sharing class GeneratedLockCells {
     }
   }
 
+  /**
+   * Every placed cell of these days locked, as a hand edit locks it (lockIfFilled): Open cells
+   * stay unlocked, so a Rebuild fills around the rest; fixed and recurring activities are never
+   * locked. A Manual Build version restored on Generated Schedule (ManualVersions).
+   */
+  public static void lockPlaced(List<ScheduleDays.DayGrid> days) {
+    for (ScheduleDays.DayGrid day : days) {
+      for (Integer g = 0; g < day.grid.rows.size(); g++) {
+        for (Integer b = 0; b < day.grid.rows[g].size(); b++) {
+          lockIfFilled(day.grid, new List<Integer>{ g, b });
+        }
+      }
+      ScheduleGridLocks.tidy(day.grid);
+    }
+  }
+
   /** The time block positions of the cell's placement: the blocks it carries on from and into. */
   public static List<Integer> placementOf(
     ScheduleGrid grid,

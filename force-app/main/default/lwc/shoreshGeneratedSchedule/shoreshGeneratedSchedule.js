@@ -4,6 +4,7 @@ import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
 import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
+import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew";
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
@@ -121,6 +122,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   editBusy = false;
   // What the editor is to be told once it is drawn: "fresh", "rebuilt" or "again" (show).
   editorNews = null;
+  // Said on the editor's line once it is first drawn (a Restore on a week not generated yet).
+  sayWhenShown = null;
   // The week to go on with from the hand edit just saved, until the editor says it is saved.
   lastSaved = null;
   // The locks as the editor takes them (cell keys), worked out once per week loaded.
@@ -146,6 +149,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   focusOn = null;
   // The week's versions (SchedulesController.getVersions rows), read with the week.
   versions = [];
+  // Each read of the list moves this on; only the latest one's answer is shown.
+  versionsTicket = 0;
   // A Save version, Restore, rename or delete is on its way.
   versionsWorking = false;
   // The version just restored and the revision it was restored at: "on screen now" until the
@@ -210,6 +215,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       const how = this.editorNews;
       this.editorNews = null;
       this.tellEditor(how);
+    }
+    if (this.sayWhenShown && this.weekEditor) {
+      this.weekEditor.say(this.sayWhenShown);
+      this.sayWhenShown = null;
     }
     // Publish and Unpublish are held while they work and while the week is read again, so focus
     // fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3), unless the
@@ -352,6 +361,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.error = null;
       this.conflict = null;
       this.versions = [];
+      this.sayWhenShown = null;
+      // A list still on its way for the last week is not this one's.
+      this.versionsTicket += 1;
       this.restored = null;
       // Another week: a publish question open for the last one goes (nothing was sent).
       this.publishState = null;
@@ -399,9 +411,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   show(loaded, fresh) {
     this.loaded = loaded;
     this.publishState = loaded.published || null;
-    if (loaded.scheduleId) {
-      this.loadVersions();
-    }
+    // A week not generated yet lists its versions too: any of them can be restored here
+    // (Greg's decision 9).
+    this.loadVersions();
     if (fresh) {
       this.triedUpTo = loaded.option || 1;
       this.view = "day";
@@ -1593,21 +1605,32 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   async loadVersions() {
-    const week = this.loadedFor;
+    this.versionsTicket += 1;
+    const ticket = this.versionsTicket;
+    // An older read answering after a newer one (or after another week was chosen) is dropped.
+    const latest = () => ticket === this.versionsTicket;
     try {
       const rows = await getVersions({
         programId: this.programId,
         weekId: this.weekId
       });
-      if (week === this.loadedFor) {
+      if (latest()) {
         this.versions = rows || [];
       }
     } catch {
       // The list shows as empty; the week itself is unaffected.
-      if (week === this.loadedFor) {
+      if (latest()) {
         this.versions = [];
       }
     }
+  }
+
+  /**
+   * A week not generated yet shows its versions under "Let the app propose one", when it has
+   * any (desktop ScheduleScreen: earlier versions stay reachable when no week is on screen).
+   */
+  get showStartVersions() {
+    return this.showStart && this.versions.length > 0;
   }
 
   /**
@@ -1670,11 +1693,18 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // Reads wait while it runs; one for another week (or the screen gone) drops its answer.
     const ticket = this.loadTicket;
     await this.versionsAction(async () => {
-      const done = await restoreVersion({
-        scheduleId: loaded.scheduleId,
-        versionId: id,
-        seenRevisions: loaded.revision
-      });
+      // A week not generated yet: the version becomes its Generated Schedule (decision 9).
+      const done = loaded.scheduleId
+        ? await restoreVersion({
+            scheduleId: loaded.scheduleId,
+            versionId: id,
+            seenRevisions: loaded.revision
+          })
+        : await restoreVersionAsNew({
+            programId: this.programId,
+            weekId: this.weekId,
+            versionId: id
+          });
       if (ticket !== this.loadTicket) {
         return;
       }
@@ -1714,7 +1744,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // Undo starts over: its steps were made on the week it replaced.
     this.showInEditor("rebuilt");
     this.restored = { id, revision: week.revision };
-    this.say(`Restored ${name}.`);
+    const text = `Restored ${name}.`;
+    if (this.weekEditor) {
+      this.say(text);
+    } else {
+      // A week not generated yet: the editor is drawn for it now, and says it there.
+      this.sayWhenShown = text;
+    }
   }
 
   get restoreRefusedText() {

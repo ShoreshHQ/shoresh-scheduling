@@ -994,14 +994,19 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (sections 23 and 2
    _Before the trip_ says _on screen now_ until you change the week, and Undo starts over.
 4. The week as it was before the Restore is kept at the top as _Before Restore_ (_Auto-saved_):
    **Restore** it to get the lock and the other option back.
-5. **Restore** a version saved on **Manual Build**: its cells come in with no locks (Manual Build
-   never locks), so a **Rebuild** after it can change any of them. Lock what should stay first.
+5. **Restore** a version saved on **Manual Build**: every cell you placed there comes in locked
+   (a hand choice is a lock, Greg's decision of 2026-10-19), and the Open cells don't. Click
+   **Rebuild**: it fills only the Open cells around them.
 6. **rename** a version, or one named _Published Oct 18, …_: type the new name and **Save**. A copy
    that was ever published has no **delete**; the others ask _Delete?_ on the first click and go
    on the second.
 7. While **Rebuild** runs, a hand edit saves, a Lock saves or a Publish is on its way, the list's
    buttons are greyed out; while a Restore runs, the build buttons, **Lock**, **Publish**, the
    pickers and hand edits wait (_One moment: the week is being saved or restored._).
+8. Pick a week not generated yet whose **Manual Build** has a saved version (save one there
+   first). Under _Let the app propose one_ is **Versions**, with **Restore** and **rename** only.
+   **Restore** a version: the week appears built from it, its placed cells locked, and the version
+   says _on screen now_.
 
 ## What is not here yet
 

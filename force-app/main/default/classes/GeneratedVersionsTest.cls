@@ -4,7 +4,8 @@
  * (ManualVersions) with Generated's draft. Save version keeps the week's cells, locks and option;
  * Restore brings them back after keeping the week as "Before Restore", and is refused when the
  * week was saved since; the restored locks hold through a Rebuild; a Manual Build version can be
- * restored here; a version that was ever published is never deleted. Camp and helpers:
+ * restored here, its placed cells locked (Greg, 2026-10-19); a week not generated yet can start
+ * from a version; a version that was ever published is never deleted. Camp and helpers:
  * GeneratedTestData (Group A, Group B, Group C; Period 1 with Flagpole, Period 2 with Gym games
  * once generated, Lunch with Rest for Group C on Mondays).
  */
@@ -281,19 +282,24 @@ private class GeneratedVersionsTest {
     }
   }
 
+  private static Boolean lockedAt(Id scheduleId, Integer g, Integer b) {
+    return ScheduleGridLocks.isLocked(
+      ScheduleDays.read(scheduleId)[0].grid,
+      g,
+      b
+    );
+  }
+
   @IsTest
-  static void aManualBuildVersionCanBeRestoredHere() {
+  static void aManualBuildVersionComesInWithItsPlacedCellsLocked() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
       lockPeriod2(draftId, GeneratedWeek.LOCK);
-      Id manualId = ManualBuildController.startBlankWeek(
-          ids.get('Main'),
-          ids.get('Week 1')
-        )
-        .schedule.schedule.id;
-      Id manualVersion = ManualBuildController.saveVersion(manualId, 'By hand');
+      // Swim placed by hand in Group A's Monday Period 2; Group B's Period 2 left Open.
+      Id manualVersion = manualVersionWithSwim(ids);
+      Id manualId = version(manualVersion).SourceSchedule__c;
       String manualBefore = revisionNow(manualId);
       Boolean restored = GeneratedScheduleController.restoreVersion(
         draftId,
@@ -303,12 +309,31 @@ private class GeneratedVersionsTest {
       Test.stopTest();
       Assert.isTrue(restored);
       GeneratedInputs.Inputs after = GeneratedTestData.inputs();
-      // Manual Build's week as it was saved (Flagpole only), with no lock: it has none.
+      // Manual Build's week as it was saved.
       Assert.areEqual(
         GeneratedTestData.slots(manualVersion, GeneratedTestData.at(0, 0)),
         GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))
       );
-      Assert.isFalse(period2Locked(draftId));
+      Assert.areEqual(
+        GeneratedTestData.a('Swim'),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
+        ]
+      );
+      // A hand choice is a lock (Greg, 2026-10-19): the placed cell comes in locked, so a
+      // Rebuild fills around it; an Open cell and a fixed or recurring activity do not.
+      Assert.isTrue(period2Locked(draftId));
+      Assert.isFalse(
+        lockedAt(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2)
+      );
+      Assert.isFalse(
+        lockedAt(draftId, GeneratedTestData.GROUP_A, GeneratedTestData.PERIOD_1)
+      );
+      Assert.isFalse(
+        lockedAt(draftId, GeneratedTestData.GROUP_C, GeneratedTestData.LUNCH)
+      );
+      // The version itself is unchanged: Manual Build never locks.
+      Assert.isFalse(period2Locked(manualVersion));
       // A version with no option leaves the week's own.
       Assert.areEqual(1, after.option);
       // Manual Build's draft is untouched; Before Restore is a Generated version, with the lock.
@@ -316,6 +341,104 @@ private class GeneratedVersionsTest {
       Schedule__c keptFirst = beforeRestore()[0];
       Assert.areEqual('Generated', keptFirst.Origin__c);
       Assert.isTrue(period2Locked(keptFirst.Id));
+    }
+  }
+
+  /** Manual Build's Week 1 with Swim placed by hand in Group A's Monday Period 2, as a version. */
+  private static Id manualVersionWithSwim(Map<String, Id> ids) {
+    SlotRunsTestData.useBlocks(
+      new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
+    );
+    Id manualId = ManualBuildController.startBlankWeek(
+        ids.get('Main'),
+        ids.get('Week 1')
+      )
+      .schedule.schedule.id;
+    ManualBuildController.saveSlots(
+      manualId,
+      new List<SlotEdits.Edit>{
+        SlotRunsTestData.edit(
+          SlotRunsTestData.at(
+            GeneratedTestData.MONDAY,
+            ids.get('Group A'),
+            ids.get('Period 2')
+          ),
+          new List<String>{ '' },
+          new List<String>{ GeneratedTestData.a('Swim') }
+        )
+      }
+    );
+    return ManualBuildController.saveVersion(manualId, 'By hand');
+  }
+
+  @IsTest
+  static void aWeekNotGeneratedYetCanStartFromAVersion() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id manualVersion = manualVersionWithSwim(ids);
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      Boolean started = GeneratedScheduleController.restoreVersionAsNew(
+        ids.get('Main'),
+        ids.get('Week 1'),
+        manualVersion
+      );
+      Integer used = Limits.getQueries() - before;
+      // Once the week has its Generated Schedule, a second start is refused, nothing changed.
+      String startedAt = GeneratedTestData.inputs().revision;
+      Boolean again = GeneratedScheduleController.restoreVersionAsNew(
+        ids.get('Main'),
+        ids.get('Week 1'),
+        manualVersion
+      );
+      Assert.isTrue(started);
+      Assert.isFalse(again);
+      Assert.isTrue(used <= 25, 'Restore on a new week used ' + used);
+      GeneratedInputs.Inputs after = GeneratedTestData.inputs();
+      Id draftId = after.scheduleId;
+      Assert.isNotNull(draftId);
+      Assert.areEqual(1, GeneratedTestData.generatedDrafts());
+      Assert.areEqual(startedAt, after.revision);
+      Assert.areEqual(
+        GeneratedTestData.slots(manualVersion, GeneratedTestData.at(0, 0)),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))
+      );
+      // The hand-placed Swim is locked; the Open cell next to it is not. Nothing was kept first.
+      Assert.isTrue(period2Locked(draftId));
+      Assert.isFalse(
+        lockedAt(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2)
+      );
+      Assert.areEqual(1, after.option);
+      Assert.isTrue(beforeRestore().isEmpty());
+      // Read inside the test's own limits: the camp and Manual Build's version used most before.
+      Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void aVersionOfAnotherWeekStartsNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id manualVersion = manualVersionWithSwim(ids);
+      Test.startTest();
+      String refused;
+      try {
+        GeneratedScheduleController.restoreVersionAsNew(
+          ids.get('Main'),
+          ids.get('Week 2'),
+          manualVersion
+        );
+      } catch (AuraHandledException e) {
+        refused = e.getMessage();
+      }
+      Test.stopTest();
+      Assert.isNotNull(refused);
+      Assert.isTrue(
+        refused.endsWith('was not found. It may have been deleted.'),
+        refused
+      );
+      // The draft made for it is taken back.
+      Assert.isNull(GeneratedDrafts.find(ids.get('Main'), ids.get('Week 2')));
     }
   }
 

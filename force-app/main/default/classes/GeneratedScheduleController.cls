@@ -169,6 +169,23 @@ public with sharing class GeneratedScheduleController {
     }
   }
 
+  /**
+   * Restore on a week not generated yet: the version becomes the week's Generated Schedule (Greg's
+   * decision 9). False, with nothing changed, when the week was generated meanwhile.
+   */
+  @AuraEnabled
+  public static Boolean restoreVersionAsNew(
+    Id programId,
+    Id weekId,
+    Id versionId
+  ) {
+    try {
+      return GeneratedDrafts.startFrom(programId, weekId, versionId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** Delete: a version of the week goes for good; one ever published is kept as history. */
   @AuraEnabled
   public static void deleteVersion(Id scheduleId, Id versionId) {

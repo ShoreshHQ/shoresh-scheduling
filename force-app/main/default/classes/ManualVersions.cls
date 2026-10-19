@@ -50,7 +50,9 @@ public with sharing class ManualVersions {
   /**
    * The same, into a draft its screen has locked (Generated: GeneratedDrafts.lockedToEdit). The
    * version's days come as they are, locks included (ADR 0010 §32, §43); a Generated draft also
-   * takes the version's option when it has one.
+   * takes the version's option when it has one. A Manual Build version restored into a Generated
+   * draft comes in with its placed cells locked: each was a hand choice, and a hand choice is a
+   * lock (Greg, 2026-10-19; ADR 0010 §50).
    */
   public static Id restoreInto(
     Schedule__c draft,
@@ -66,6 +68,7 @@ public with sharing class ManualVersions {
     List<ScheduleDays.DayGrid> restored = readable(
       ScheduleDays.read(version.Id)
     );
+    lockHandChoices(draft, version, restored);
     Savepoint beforeRestore = Database.setSavepoint();
     try {
       Id kept = null;
@@ -145,7 +148,8 @@ public with sharing class ManualVersions {
         Program__c,
         Week__c,
         PublishedAt__c,
-        EngineOption__c
+        EngineOption__c,
+        Origin__c
       FROM Schedule__c
       WHERE Id = :versionId
       WITH USER_MODE
@@ -209,6 +213,20 @@ public with sharing class ManualVersions {
     }
     Database.insert(version, AccessLevel.USER_MODE);
     return version.Id;
+  }
+
+  /**
+   * A Manual Build version restored on Generated Schedule: its placed cells come in locked, since
+   * a hand choice is a lock (Greg, 2026-10-19; ADR 0010 §32).
+   */
+  private static void lockHandChoices(
+    Schedule__c draft,
+    Schedule__c version,
+    List<ScheduleDays.DayGrid> days
+  ) {
+    if (isGenerated(draft) && version.Origin__c == ManualDrafts.MANUAL) {
+      GeneratedLockCells.lockPlaced(days);
+    }
   }
 
   /** A Generated week goes on from the version's option, when it has one (ADR 0010 §17). */

@@ -18,8 +18,9 @@ const AUTO_SAVED = "AutoSaved";
  * version…", Save version).
  *
  * versions: SchedulesController.getVersions rows. openId: the version on screen. restore: Manual
- * Build's list (Restore, delete, Save version). A version that was once the week's published
- * schedule says so and has no delete (it is kept as history).
+ * Build's list (Restore, delete, Save version); noDraft: Restore and rename only (Generated
+ * Schedule before its week is generated). A version that was once the week's published schedule
+ * says so and has no delete (it is kept as history).
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
  * delete { id }, save { name, onDone(saved) }
  */
@@ -29,6 +30,9 @@ export default class ShoreshVersions extends LightningElement {
   @api terms;
   @api busy = false;
   @api restore = false;
+  // Generated Schedule before its week is generated: Restore and rename only (nothing to save
+  // as a version, and no week to delete one from).
+  @api noDraft = false;
 
   isOpen = false;
   renamingId;
@@ -111,7 +115,7 @@ export default class ShoreshVersions extends LightningElement {
         meta: showSaved ? `${meta} · ` : meta,
         showSaved,
         // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
-        deletable: this.restore && !version.publishedAt,
+        deletable: this.restore && !this.noDraft && !version.publishedAt,
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
         deleteLabel: confirming ? "Delete?" : "delete",
@@ -133,7 +137,7 @@ export default class ShoreshVersions extends LightningElement {
     return this.restore && this.busy;
   }
   get canSave() {
-    return this.restore;
+    return this.restore && !this.noDraft;
   }
   get versionWord() {
     return this.terms ? this.terms.sIn("Version") : "version";

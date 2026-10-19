@@ -145,6 +145,20 @@
           onclick={handleGenerate}
           data-id="generate"
         ></lightning-button>
+        <!-- Its versions, when it has any: any of them can be restored here (decision 9). With
+             no week here yet there is nothing to save as a version or delete from. -->
+        <template lwc:if={showStartVersions}>
+          <c-shoresh-versions
+            restore
+            no-draft
+            versions={versions}
+            terms={terms}
+            busy={versionsBusy}
+            onopen={handleRestore}
+            onrename={handleRenameVersion}
+            data-id="versions"
+          ></c-shoresh-versions>
+        </template>
       </div>
     </template>
 

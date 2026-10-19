@@ -18,6 +18,7 @@ import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
 import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
+import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew";
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
@@ -69,6 +70,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/GeneratedScheduleController.restoreVersion",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew",
   () => apex(),
   { virtual: true }
 );
@@ -298,13 +304,77 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(history).toContain("Restore");
   });
 
-  it("a week not generated yet has no Versions and reads none", async () => {
+  /** The week as it is before it is generated: no Generated Schedule yet. */
+  const notGenerated = () => {
     const inputs = week();
     inputs.scheduleId = null;
     inputs.revision = "";
-    const element = await render(inputs);
+    return inputs;
+  };
+
+  it("a week not generated yet lists its versions under Let the app propose one (decision 9)", async () => {
+    const element = await render(notGenerated());
+    expect(getVersions).toHaveBeenCalledWith({
+      programId: PROGRAM,
+      weekId: WEEK
+    });
+    const list = versions(element);
+    expect(list).not.toBeNull();
+    expect(q(element, '[data-id="start"]').contains(list)).toBe(true);
+    expect(list.restore).toBe(true);
+    await openList(element);
+    // Restore and rename; nothing to save as a version, and no week to delete one from.
+    const [mine] = rows(element);
+    expect(mine).toContain("Restore");
+    expect(mine).toContain("rename");
+    expect(mine).not.toContain("delete");
+    expect(
+      list.shadowRoot.querySelector('[data-id="save-version"]')
+    ).toBeNull();
+  });
+
+  it("…and none when it has no versions, as on the desktop", async () => {
+    getInputs.mockResolvedValue(notGenerated());
+    const element = createElement("c-shoresh-generated-schedule", {
+      is: ShoreshGeneratedSchedule
+    });
+    getVersions.mockResolvedValue([]);
+    element.terms = terms;
+    element.setup = SETUP;
+    document.body.appendChild(element);
+    await flush();
+    expect(getVersions).toHaveBeenCalled();
     expect(versions(element)).toBeNull();
-    expect(getVersions).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="start"]')).not.toBeNull();
+  });
+
+  it("Restore on a week not generated yet makes it the week's Generated Schedule and shows it", async () => {
+    const element = await render(notGenerated());
+    restoreVersionAsNew.mockResolvedValue(true);
+    getInputs.mockResolvedValue(week({ locked: true, revision: RESTORED_AT }));
+    await restore(element);
+    await flush();
+    expect(restoreVersionAsNew).toHaveBeenCalledWith({
+      programId: PROGRAM,
+      weekId: WEEK,
+      versionId: MINE
+    });
+    expect(restoreVersion).not.toHaveBeenCalled();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="start"]')).toBeNull();
+    expect(lockAt(element, "0-1")).toBe("Locked");
+    expect(versions(element).openId).toBe(MINE);
+    expect(notice(element)).toBe("Restored Before the trip.");
+  });
+
+  it("…refused when the week was generated meanwhile: nothing changed, Reload offered", async () => {
+    const element = await render(notGenerated());
+    restoreVersionAsNew.mockResolvedValue(false);
+    await restore(element);
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="conflict"]').textContent).toContain(
+      "nothing was restored."
+    );
   });
 
   it("Save version keeps the week under the name, reads the list again and says so", async () => {
@@ -533,6 +603,24 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(notice(element)).toBe("Restored Before the trip.");
     // The read that failed was read again: its error doesn't stay up beside the restored week.
     expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("…once only: a later read of the week is shown as any read is (Undo kept)", async () => {
+    const element = await render(week());
+    restoreVersion.mockResolvedValue(true);
+    getInputs
+      .mockRejectedValueOnce({ body: { message: "Timed out." } })
+      .mockResolvedValue(week({ revision: RESTORED_AT }));
+    await restore(element);
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(3);
+    await undoStep(element);
+    // Coming back to the window reads the week again: not a Restore, so Undo stays.
+    getInputs.mockResolvedValue(week({ revision: "2026-06-29:2" }));
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(4);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(false);
   });
 
   it("…but if the week still can't be read, the error stays", async () => {
@@ -862,6 +950,31 @@ describe("Versions on the Generated Schedule screen", () => {
     await flush();
     expect(versions(element).versions).toEqual([]);
     expect(versions(element).openId).toBeFalsy();
+  });
+
+  it("an older read of the list answering after a newer one is not shown", async () => {
+    const late = slow();
+    getInputs.mockResolvedValue(week());
+    getVersions.mockReturnValueOnce(late.promise);
+    const element = createElement("c-shoresh-generated-schedule", {
+      is: ShoreshGeneratedSchedule
+    });
+    element.terms = terms;
+    element.setup = SETUP;
+    document.body.appendChild(element);
+    await flush();
+    // Save version reads the list again; that newer answer comes first.
+    const saved = [
+      { ...VERSIONS[0], id: "a0S000000000023AAA", name: "Rainy Monday" },
+      ...VERSIONS
+    ];
+    getVersions.mockResolvedValue(saved);
+    saveVersion.mockResolvedValue("a0S000000000023AAA");
+    await fire(element, "save", { name: "Rainy Monday", onDone: () => {} });
+    expect(versions(element).versions).toEqual(saved);
+    late.answer(VERSIONS);
+    await flush();
+    expect(versions(element).versions).toEqual(saved);
   });
 
   it("a list read for the week before is not shown for this one", async () => {
