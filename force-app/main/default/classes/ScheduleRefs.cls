@@ -4,16 +4,45 @@
  */
 public with sharing class ScheduleRefs {
   public static Set<String> stillThere(List<ScheduleDays.DayGrid> days) {
+    return stillThere(days, null);
+  }
+
+  /**
+   * The same, when some records are already known to be there (the Generated screen has just read
+   * its program's setup): they are kept and only the rest are looked for, so both screens give one
+   * answer, a record that exists is never marked deleted.
+   */
+  public static Set<String> stillThere(
+    List<ScheduleDays.DayGrid> days,
+    Set<String> known
+  ) {
     Set<Id> ids = new Set<Id>();
     for (ScheduleDays.DayGrid day : days) {
       if (day.grid != null) {
         collect(day.grid, ids);
       }
     }
-    Set<String> found = new Set<String>();
+    Set<String> found = known == null ? new Set<String>() : known.clone();
+    ids = unknown(ids, found);
     if (ids.isEmpty()) {
       return found;
     }
+    lookUp(ids, found);
+    return found;
+  }
+
+  /** The Ids not already known to be there. */
+  private static Set<Id> unknown(Set<Id> ids, Set<String> known) {
+    Set<Id> rest = new Set<Id>();
+    for (Id id : ids) {
+      if (!known.contains(String.valueOf(id))) {
+        rest.add(id);
+      }
+    }
+    return rest;
+  }
+
+  private static void lookUp(Set<Id> ids, Set<String> found) {
     for (TimeBlock__c row : [
       SELECT Id
       FROM TimeBlock__c
@@ -54,7 +83,6 @@ public with sharing class ScheduleRefs {
     ]) {
       found.add(row.Id);
     }
-    return found;
   }
 
   /** Whether the text is the Id of a record found still there (15 or 18 characters). */

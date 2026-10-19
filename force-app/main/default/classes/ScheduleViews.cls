@@ -99,8 +99,8 @@ public with sharing class ScheduleViews {
   }
 
   /**
-   * The same, with what still counts as there given (Generated Schedule: the program's setup,
-   * as GeneratedInputs reads it), or null to look each record up (ScheduleRefs).
+   * The same, with some records already known to be there (Generated Schedule: the program's
+   * setup, as GeneratedInputs reads it), or null to look each record up (ScheduleRefs).
    */
   public static ScheduleView open(Id scheduleId, Set<String> stillThere) {
     List<Schedule__c> found = [
@@ -124,10 +124,7 @@ public with sharing class ScheduleViews {
     view.status = found[0].Status__c;
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
     view.revisions = ScheduleDays.stamp(days);
-    view.days = dayViews(
-      days,
-      stillThere == null ? ScheduleRefs.stillThere(days) : stillThere
-    );
+    view.days = dayViews(days, stillThere);
     return view;
   }
 
@@ -136,14 +133,18 @@ public with sharing class ScheduleViews {
     return dayViews(days, ScheduleRefs.stillThere(days));
   }
 
-  /** The same, with the records still there already known (their Ids). */
+  /**
+   * The same, with some records still there already known (their Ids); any other record a day
+   * points at is looked for, so whichever screen asks, a record that exists is never "deleted".
+   */
   public static List<DayView> dayViews(
     List<ScheduleDays.DayGrid> days,
     Set<String> stillThere
   ) {
     List<DayView> views = new List<DayView>();
+    Set<String> there = ScheduleRefs.stillThere(days, stillThere);
     for (ScheduleDays.DayGrid day : days) {
-      views.add(dayView(day, stillThere));
+      views.add(dayView(day, there));
     }
     return views;
   }

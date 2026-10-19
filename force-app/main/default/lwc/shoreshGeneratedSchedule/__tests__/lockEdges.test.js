@@ -258,6 +258,27 @@ describe("the Lock menu", () => {
   });
 });
 
+describe("a deleted bunk", () => {
+  it("its Group View pill says deleted since, as on the Schedules page", async () => {
+    const inputs = savedWeek();
+    inputs.days = inputs.days.map((day) => ({
+      ...day,
+      groups: [
+        ...day.groups,
+        { id: "a0G000000000099AAA", name: "Bunk 9", gone: true }
+      ],
+      rows: [...day.rows, ",,,"]
+    }));
+    const element = await render(inputs);
+    q(element, '[data-view="group"]').click();
+    await flush();
+    const pills = [...findAll(element, '[data-id="group-pills"] button')].map(
+      (b) => b.textContent.replace(/\s+/g, " ").trim()
+    );
+    expect(pills).toEqual(["Bunk 1", "Bunk 2", "Bunk 9 deleted since"]);
+  });
+});
+
 describe("the gate is the one message", () => {
   it("no weeks: only the screen's own No weeks yet", async () => {
     const element = await render(

@@ -98,9 +98,10 @@ public with sharing class GeneratedInputs {
   }
 
   /**
-   * What a day may point at that is still there, from the records just read (ScheduleRefs reads
-   * them again otherwise): the program's time blocks, groups, fixed and recurring activities,
-   * and the season's activities.
+   * What a day may point at that is known to be there, from the records just read (so most of
+   * the week needs no extra query): the program's time blocks, groups, fixed and recurring
+   * activities, and the season's activities. A record outside these is looked for by
+   * ScheduleViews, as the Schedules page does: only a record that is gone is "deleted since".
    */
   public static Set<String> stillThere(GeneratedSetup setup, Inputs inputs) {
     List<SObject> records = new List<SObject>();
