@@ -983,13 +983,14 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (sections 23 and 2
 1. Open **Generated Schedule**, Week 1. After **Start over**, set off by a thin line, is
    **Versions** (then **Publish**). Click it: the week's versions, newest first, from both
    screens: _Before Rebuild_ (_Generated Schedule · Auto-saved_), anything saved on Manual Build
-   (_Manual Build_), and the copies no longer published, named _Published Oct 18, …_ and marked
-   _Published_.
+   (_Manual Build_), and the copies no longer published, named _Published Oct 18, …_ (the name
+   says it: they have no **delete**).
 2. Type _Before the trip_ in _Name current version…_ and click **Save version**. It says _Saved
    Before the trip._ and the list shows it at the top.
 3. Lock a cell (the **Lock** menu), then **Try another**. Open **Versions** and click **Restore**
    beside _Before the trip_. The week goes back to how it was when you saved it, with the option it
-   was built with and its locks as they were then (here: none, so the lock you just made is gone).
+   was built with and its locks as they were then: the lock you just made is gone, and locks made
+   before you saved it (sections 23 and 27) are back.
    _Before the trip_ says _on screen now_ until you change the week, and Undo starts over.
 4. The week as it was before the Restore is kept at the top as _Before Restore_ (_Auto-saved_):
    **Restore** it to get the lock and the other option back.

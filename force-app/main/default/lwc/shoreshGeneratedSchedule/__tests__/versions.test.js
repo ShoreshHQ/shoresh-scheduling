@@ -232,6 +232,30 @@ async function openList(element) {
   await flush();
 }
 
+const PUBLISHED = {
+  id: "a0S000000000009AAA",
+  publishedAt: "2026-10-18T14:04:00.000Z",
+  publishedBy: "Pat",
+  origin: "Generated"
+};
+
+/** Swim cleared from Period 1 by hand and saved: a step Undo could take back. */
+async function undoStep(element) {
+  const cleared = week();
+  saveSlots.mockResolvedValue({
+    conflicts: [],
+    revision: "2026-06-29:2",
+    schedule: {
+      schedule: { id: SCHEDULE },
+      days: cleared.days.map((day) => ({ ...day, rows: ["1,"], locks: [] }))
+    }
+  });
+  await press(cellAt(element, "0-1"), "Delete");
+  await until(() => saveSlots.mock.calls.length > 0);
+  await flush();
+  expect(q(element, '[data-id="undo"]').disabled).toBe(false);
+}
+
 describe("Versions on the Generated Schedule screen", () => {
   afterEach(() => {
     while (document.body.firstChild) {
@@ -490,6 +514,87 @@ describe("Versions on the Generated Schedule screen", () => {
     await flush();
     expect(getInputs).toHaveBeenCalledTimes(3);
     expect(lockAt(element, "0-1")).toBe("Locked");
+  });
+
+  it("…and then it is shown as the restored week: Undo started over, on screen now, said so", async () => {
+    const element = await render(week());
+    await undoStep(element);
+    restoreVersion.mockResolvedValue(true);
+    getInputs
+      .mockRejectedValueOnce({ body: { message: "Timed out." } })
+      .mockResolvedValue(week({ revision: RESTORED_AT }));
+    await restore(element);
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(3);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    expect(versions(element).openId).toBe(MINE);
+    expect(notice(element)).toBe("Restored Before the trip.");
+  });
+
+  it("the season read again while a Restore reads the week reads it once more after", async () => {
+    const element = await render(week());
+    await undoStep(element);
+    restoreVersion.mockResolvedValue(true);
+    const reading = slow();
+    getInputs.mockReturnValueOnce(reading.promise);
+    await restore(element);
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    element.setup = { ...SETUP };
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    getInputs.mockResolvedValue(week({ locked: true, revision: RESTORED_AT }));
+    reading.answer(week({ revision: RESTORED_AT }));
+    await flush();
+    // The week shown is the one read after the season was: never one asked for before it.
+    expect(getInputs).toHaveBeenCalledTimes(3);
+    expect(lockAt(element, "0-1")).toBe("Locked");
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+    expect(versions(element).openId).toBe(MINE);
+  });
+
+  it("a Restore's read failing after the screen moved on to another week reads nothing more", async () => {
+    const element = await render(week());
+    restoreVersion.mockResolvedValue(true);
+    const reading = slow();
+    getInputs.mockReturnValueOnce(reading.promise);
+    await restore(element);
+    getInputs.mockResolvedValue(week());
+    element.setup = {
+      ...SETUP,
+      weeks: [{ Id: "a0K000000000002AAA", Name: "Week 2" }]
+    };
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(3);
+    reading.answer(Promise.reject({ body: { message: "Timed out." } }));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(3);
+  });
+
+  it("a refused Restore takes focus to Reload", async () => {
+    const element = await render(week());
+    restoreVersion.mockResolvedValue(false);
+    await restore(element);
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="reload"]')
+    );
+  });
+
+  it("after a Restore, the published line and the counts are the restored week's", async () => {
+    const inputs = week();
+    inputs.published = { ...PUBLISHED, changedSince: false };
+    const element = await render(inputs);
+    expect(q(element, '[data-id="changed-since"]')).toBeNull();
+    const before = q(element, "c-shoresh-week-checks").resetKey;
+    restoreVersion.mockResolvedValue(true);
+    const restored = week({ revision: RESTORED_AT });
+    restored.published = { ...PUBLISHED, changedSince: true };
+    getInputs.mockResolvedValue(restored);
+    await restore(element);
+    expect(q(element, '[data-id="changed-since"]')).not.toBeNull();
+    // The counts start over (nothing lit from the week it replaced).
+    expect(q(element, "c-shoresh-week-checks").resetKey).toBeGreaterThan(
+      before
+    );
   });
 
   it("hand edits all saved during a Save version don't read the week until it is over", async () => {

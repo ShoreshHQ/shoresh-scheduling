@@ -151,6 +151,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // The version just restored and the revision it was restored at: "on screen now" until the
   // week is saved again (an edit, a Lock, a build), as on the desktop.
   restored = null;
+  // A Restore done whose week couldn't be read just after it ({ id, name }): the next read of
+  // this week shows it as the restored week (Undo started over, on screen now, said so).
+  restoreUnread = null;
 
   @api
   get setup() {
@@ -408,6 +411,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.focusedCellKey = null;
       this.focusedSlot = null;
       this.resetChecks();
+    }
+    const unread = this.restoreUnread;
+    this.restoreUnread = null;
+    if (unread && !fresh) {
+      this.showRestored(unread, loaded);
+      return;
     }
     this.showInEditor(fresh ? "fresh" : "again");
   }
@@ -1675,21 +1684,36 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.focusAfterRender = { selector: '[data-id="reload"]' };
         return;
       }
-      // Restored: if the week can't be read now, it is read again once this is over.
-      this.readAfterRun = true;
-      const week = await loadWeek(this.programId, this.weekId);
+      const restored = { id, name: version ? version.name : "" };
+      let week;
+      try {
+        week = await loadWeek(this.programId, this.weekId);
+      } catch (e) {
+        // Restored, but the week can't be read now: it is read again once this is over, and
+        // shown then as the restored week.
+        if (ticket === this.loadTicket) {
+          this.readAfterRun = true;
+          this.restoreUnread = restored;
+        }
+        throw e;
+      }
       if (ticket !== this.loadTicket) {
         return;
       }
-      this.readAfterRun = false;
+      // A read asked for meanwhile (the season read again) is still done after this.
       this.loaded = week;
       this.publishState = week.published || null;
-      this.resetChecks();
-      // A whole new week: Undo starts over (its steps were made on the week it replaced).
-      this.showInEditor("rebuilt");
-      this.restored = { id, revision: week.revision };
-      this.say(`Restored ${version ? version.name : ""}.`);
+      this.showRestored(restored, week);
     });
+  }
+
+  /** The week a Restore made, as read: a whole new week (Undo starts over), on screen now. */
+  showRestored({ id, name }, week) {
+    this.resetChecks();
+    // Undo starts over: its steps were made on the week it replaced.
+    this.showInEditor("rebuilt");
+    this.restored = { id, revision: week.revision };
+    this.say(`Restored ${name}.`);
   }
 
   get restoreRefusedText() {
