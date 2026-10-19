@@ -394,12 +394,17 @@ private class GeneratedLimitsTest {
   @IsTest
   static void aRebuildUsesFewQueries() {
     System.runAs(KeptCamp.scheduler(sharedCamp())) {
-      Id draftId = GeneratedTestData.save(
-          built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
-        )
-        .scheduleId;
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      GeneratedWeek.Result first = GeneratedTestData.save(
+        built(read, GeneratedSaves.GENERATE)
+      );
+      Id draftId = first.scheduleId;
+      // The week as the screen has it after Generate (no second read: the setup's queries and
+      // this test's share one limit).
+      read.scheduleId = first.scheduleId;
+      read.revision = first.revision;
       GeneratedWeek.Save rebuild = GeneratedTestData.request(
-        GeneratedTestData.inputs(),
+        read,
         GeneratedSaves.REBUILD,
         2
       );
@@ -413,6 +418,35 @@ private class GeneratedLimitsTest {
       Assert.areEqual(draftId, again.scheduleId);
       assertFew(used, 'A Rebuild (with its version)');
       assertFew(reading, 'Opening a generated week');
+    }
+  }
+
+  @IsTest
+  static void aPublishedWeekOpensAndRebuildsInFewQueries() {
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
+      Id draftId = GeneratedTestData.save(
+          built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
+        )
+        .scheduleId;
+      SchedulePublish.Preview preview = GeneratedScheduleController.previewPublish(
+        draftId
+      );
+      GeneratedScheduleController.publish(draftId, preview.revisions, null);
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Integer reading = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      GeneratedWeek.Result result = GeneratedTestData.save(
+        GeneratedTestData.request(read, GeneratedSaves.REBUILD, 1)
+      );
+      Integer rebuilding = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isFalse(read.published.changedSince);
+      Assert.isFalse(result.conflict);
+      Assert.isFalse(result.published.changedSince);
+      assertFew(reading, 'Opening a published week');
+      assertFew(rebuilding, 'A Rebuild of a published week (with its version)');
     }
   }
 

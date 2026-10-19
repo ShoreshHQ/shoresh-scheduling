@@ -151,6 +151,7 @@ const PUBLISHED = {
   id: "pub1",
   publishedAt: "2026-10-18T10:00:00.000Z",
   publishedBy: "Pat Director",
+  origin: "Manual",
   changedSince: false
 };
 const FIRST_PREVIEW = {
@@ -260,8 +261,22 @@ describe("c-shoresh-manual-build: Publish", () => {
       "lightning-formatted-date-time"
     );
     expect(date.value).toBe(PUBLISHED.publishedAt);
-    expect(date.previousSibling.textContent).toBe("Published ");
+    expect(date.previousSibling.textContent).toBe(
+      "Published from Manual Build "
+    );
     expect(date.nextSibling.textContent).toBe(" by Pat Director");
+  });
+
+  it("the line names the screen the week was published from (Greg, 2026-10-19)", async () => {
+    const element = await render(
+      finished({ ...PUBLISHED, origin: "Generated", changedSince: true })
+    );
+    const line = q(element, '[data-id="published"]');
+    expect(
+      line.querySelector("lightning-formatted-date-time").previousSibling
+        .textContent
+    ).toBe("Published from Generated Schedule ");
+    expect(line.textContent).toContain(" · changed since");
   });
 
   it("a week with no days offers no Publish", async () => {

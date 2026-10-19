@@ -339,6 +339,43 @@
         >
           Start over
         </button>
+        <!-- Publish, last on the toolbar, as on Manual Build: when the week was published, then
+             Unpublish (only while it is) and Publish. -->
+        <div class="publish" slot="tools" data-id="publish-area">
+          <template lwc:if={publishState}>
+            <span class="published" data-id="published">
+              {publishedWord}<lightning-formatted-date-time
+                value={publishState.publishedAt}
+                month="short"
+                day="numeric"
+                hour="numeric"
+                minute="2-digit"
+              ></lightning-formatted-date-time
+              >{publishedBy}
+              <template lwc:if={publishState.changedSince}>
+                <span data-id="changed-since"> · changed since</span>
+              </template>
+            </span>
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              data-id="unpublish"
+              disabled={publishDisabled}
+              onclick={handleUnpublish}
+            >
+              Unpublish
+            </button>
+          </template>
+          <button
+            type="button"
+            class="slds-button slds-button_brand"
+            data-id="publish"
+            disabled={publishDisabled}
+            onclick={handlePublish}
+          >
+            Publish
+          </button>
+        </div>
       </c-shoresh-week-editor>
 
       <!-- The counts sit below the grid on the generated schedule (design guide). -->
@@ -351,6 +388,25 @@
           onhighlight={handleHighlight}
         ></c-shoresh-week-checks>
       </div>
+    </template>
+
+    <template lwc:if={publishAsk}>
+      <c-shoresh-ask
+        heading={publishAsk.heading}
+        lines={publishAsk.lines}
+        confirm-label={publishAsk.confirmLabel}
+        onanswer={handlePublishAnswer}
+        data-id="publish-ask"
+      ></c-shoresh-ask>
+    </template>
+    <template lwc:if={unpublishAsk}>
+      <c-shoresh-ask
+        heading={unpublishAsk.heading}
+        lines={unpublishAsk.lines}
+        confirm-label="Unpublish"
+        onanswer={handleUnpublishAnswer}
+        data-id="unpublish-ask"
+      ></c-shoresh-ask>
     </template>
 
     <template lwc:if={cannotChoose}>

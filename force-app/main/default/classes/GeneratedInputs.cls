@@ -4,7 +4,8 @@
  * none yet: fixed and recurring activities placed, groups away that week left out), and the
  * season's records as the engine reads them. Records go to the screen as records, so their field
  * names carry the package's prefix once it has one (ADR 0009), plus other programs' use of the
- * season's places and activities that week (OtherProgramUse). Every query runs in user mode,
+ * season's places and activities that week (OtherProgramUse), and the week's published schedule
+ * beside the draft. Every query runs in user mode,
  * which checks object and field access; the set-time reader behind a blank week is checked first
  * by SetTimeAccess (ADR 0008 §3).
  */
@@ -53,6 +54,10 @@ public with sharing class GeneratedInputs {
     // schedule, or their fixed and recurring activities), by date and clock time (G5).
     @AuraEnabled
     public List<OtherProgramUse.Entry> otherPrograms { get; set; }
+    // The week's published schedule (when, by whom, and whether the draft differs from it), or
+    // null when the week has none or has not been generated yet (ADR 0010 "Publish").
+    @AuraEnabled
+    public SchedulePublish.PublishState published;
   }
 
   public static Inputs read(Id programId, Id weekId) {
@@ -82,6 +87,11 @@ public with sharing class GeneratedInputs {
       inputs.option = draft.EngineOption__c == null
         ? null
         : draft.EngineOption__c.intValue();
+      inputs.published = SchedulePublish.stateOf(
+        setup.program.Id,
+        setup.week.Id,
+        days
+      );
     }
     inputs.days = ScheduleViews.dayViews(days, stillThere(setup, inputs));
     return inputs;

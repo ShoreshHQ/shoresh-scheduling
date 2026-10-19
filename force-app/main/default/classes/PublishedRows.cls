@@ -9,7 +9,13 @@ public with sharing class PublishedRows {
    */
   public static List<Schedule__c> locked(Id programId, Id weekId) {
     return [
-      SELECT Id, Name, PublishedAt__c, PublishedBy__r.Name, CreatedDate
+      SELECT
+        Id,
+        Name,
+        PublishedAt__c,
+        PublishedBy__r.Name,
+        Origin__c,
+        CreatedDate
       FROM Schedule__c
       WHERE
         Program__c = :programId

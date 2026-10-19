@@ -158,6 +158,8 @@ private class SchedulePublishTest {
       Assert.isFalse(view.published.changedSince);
       Assert.isNotNull(view.published.publishedAt);
       Assert.isNotNull(view.published.publishedBy);
+      // The Published line names the screen it was published from (Greg, 2026-10-19).
+      Assert.areEqual('Manual', view.published.origin);
     }
   }
 
@@ -336,6 +338,7 @@ private class SchedulePublishTest {
       Assert.isFalse(preview.published.changedSince);
       Assert.isTrue(result.unchanged);
       Assert.areEqual(publishedId, result.published.id);
+      Assert.areEqual('Manual', result.published.origin);
       Assert.areEqual(1, publishedSchedules().size());
     }
   }

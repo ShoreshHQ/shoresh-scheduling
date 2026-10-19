@@ -170,6 +170,39 @@ describe("c/shoreshGeneratedWeek", () => {
     expect(loaded.scheduleId).toBe("a0S000000000001AAA");
     expect(loaded.revision).toBe("2026-06-29:3");
     expect(loaded.option).toBe(4);
+    // Nothing published for the week.
+    expect(loaded.published).toBeNull();
+  });
+
+  it("passes on the week's published schedule, beside the draft as loaded and as saved", async () => {
+    const published = {
+      id: "a0S000000000009AAA",
+      publishedAt: "2026-10-18T14:04:00.000Z",
+      publishedBy: "Pat",
+      changedSince: true
+    };
+    getInputs.mockResolvedValue(
+      nsRecord({
+        ...SERVER_INPUTS,
+        scheduleId: "a0S000000000001AAA",
+        revision: "2026-06-29:3",
+        published
+      })
+    );
+    const loaded = await loadWeek(PROGRAM, WEEK);
+    expect(loaded.published).toEqual(published);
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: "a0S000000000001AAA",
+      revision: "2026-06-29:4",
+      published: { ...published, changedSince: false }
+    });
+    const saved = await saveWeek(loaded, {
+      action: ACTION.REBUILD,
+      option: 1,
+      days: [DAY]
+    });
+    expect(saved.published).toEqual({ ...published, changedSince: false });
   });
 
   it("passes on a week that can't be opened", async () => {
