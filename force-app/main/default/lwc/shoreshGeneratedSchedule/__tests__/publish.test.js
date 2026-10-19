@@ -17,7 +17,7 @@ import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { PROGRAM, SCHEDULE, SMALL, WEEK, camp } from "./data/camp";
+import { PROGRAM, SCHEDULE, SMALL, WEEK, WEEK_2, camp } from "./data/camp";
 import { nextTurn } from "../pieces";
 
 const apex = () => ({ default: jest.fn() });
@@ -85,6 +85,7 @@ const PUBLISHED = {
   id: PUBLISHED_ID,
   publishedAt: "2026-10-18T14:04:00.000Z",
   publishedBy: "Pat",
+  origin: "Generated",
   changedSince: false
 };
 
@@ -152,6 +153,39 @@ function cleanWeek({ published = null, maxSwim = 5 } = {}) {
   }));
   inputs.published = published;
   return inputs;
+}
+
+/**
+ * Two bunks, one day, each with Swim once in Period 1, where Swim wants 2 a week: nothing Open, no
+ * dots, and two still needed lines.
+ */
+function owedWeek() {
+  const inputs = camp({
+    bunks: [{ name: "Bunk 1" }, { name: "Bunk 2" }],
+    days: 1,
+    blocks: [
+      { name: "Flag", start: "08:30", end: "09:00" },
+      { name: "Period 1", start: "09:00", end: "10:00" }
+    ],
+    activities: [{ name: "Swim", min: 2, max: 5, atOnce: 2 }],
+    scheduleId: SCHEDULE
+  });
+  inputs.days = inputs.days.map((day) => ({
+    ...day,
+    items: [
+      ...day.items,
+      { kind: "A", id: inputs.activities[0].Id, name: "Swim", gone: false }
+    ],
+    rows: ["1,2", "1,2"]
+  }));
+  return inputs;
+}
+
+/** The season read again with only Week 2 in it: the screen moves on to Week 2. */
+async function showWeek2(element, inputs) {
+  getInputs.mockResolvedValue(inputs);
+  element.setup = { ...SETUP, weeks: [{ Id: WEEK_2, Name: "Week 2" }] };
+  await flush();
 }
 
 function preview({
@@ -257,7 +291,10 @@ describe("Publish on the Generated Schedule screen", () => {
       seenPublishedId: null
     });
     expect(notice(element)).toBe("Published Week 1.");
-    expect(publishedLine(element).textContent).toContain("Published ");
+    // It names the screen it was published from (Greg, 2026-10-19).
+    expect(publishedLine(element).textContent).toContain(
+      "Published from Generated Schedule "
+    );
     expect(publishedLine(element).textContent).toContain(" by Pat");
     expect(q(element, '[data-id="changed-since"]')).toBeNull();
     expect(unpublishButton(element)).not.toBeNull();
@@ -744,5 +781,107 @@ describe("Publish on the Generated Schedule screen", () => {
     held.answer(preview());
     await flush();
     expect(document.activeElement).toBe(elsewhere);
+  });
+
+  // A publish or unpublish whose answer comes back once another week is shown: it was for the
+  // week it was asked from, so the week shown now keeps its own published line and words.
+  it("a publish still under way when another week is shown leaves that week as it is", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockResolvedValue(preview());
+    publish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    expect(publish).toHaveBeenCalledTimes(1);
+    await showWeek2(element, cleanWeek());
+    expect(publishedLine(element)).toBeNull();
+    held.answer({ published: PUBLISHED, unchanged: false });
+    await flush();
+    // Week 2 was not published: no line, no "Published", and its Publish is free.
+    expect(publishedLine(element)).toBeNull();
+    expect(notice(element) || "").not.toContain("Published");
+    expect(publishButton(element).disabled).toBe(false);
+  });
+
+  it("a publish that fails once another week is shown says nothing on that week", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    await showWeek2(element, cleanWeek());
+    held.answer(Promise.reject({ body: { message: "Too late." } }));
+    await flush();
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+    expect(publishButton(element).disabled).toBe(false);
+  });
+
+  it("an unpublish still under way when another week is shown leaves that week's published line", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    const held = slow();
+    unpublish.mockReturnValue(held.promise);
+    unpublishButton(element).click();
+    await flush();
+    await answer(unpublishAsk(element), true);
+    expect(unpublish).toHaveBeenCalledTimes(1);
+    const week2Published = {
+      ...PUBLISHED,
+      id: "a0S000000000019AAA",
+      publishedBy: "Sam"
+    };
+    await showWeek2(element, cleanWeek({ published: week2Published }));
+    expect(publishedLine(element).textContent).toContain(" by Sam");
+    held.answer({ publishedChanged: false });
+    await flush();
+    // Week 2 is still published: its line and Unpublish stay, and nothing says "Unpublished".
+    expect(publishedLine(element).textContent).toContain(" by Sam");
+    expect(unpublishButton(element)).not.toBeNull();
+    expect(notice(element) || "").not.toContain("Unpublished");
+  });
+
+  // The box counts what the counters count now, the lines the director accepted aside (as on
+  // Manual Build), not the week's checks alone.
+  it("asks with the counters' own lines: one of two still needed lines accepted leaves 1", async () => {
+    const element = await render(owedWeek());
+    const checks = q(element, "c-shoresh-week-checks");
+    const counter = () =>
+      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]');
+    expect(counter().textContent).toContain("2");
+    counter().click();
+    await flush();
+    const accepts = [
+      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
+    ];
+    expect(accepts).toHaveLength(2);
+    accepts[0].click();
+    await flush();
+    expect(counter().textContent).toContain("1");
+    previewPublish.mockResolvedValue(preview());
+    await clickPublish(element);
+    // The week's checks alone would say 2; the box says what the counter shows.
+    expect(ask(element).lines).toEqual(["Still needed: 1"]);
+    await answer(ask(element), false);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("a week whose still needed lines were all accepted publishes at once, as its counters say", async () => {
+    const element = await render(owedWeek());
+    const checks = q(element, "c-shoresh-week-checks");
+    const counter = () =>
+      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]');
+    counter().click();
+    await flush();
+    const accepts = [
+      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
+    ];
+    accepts[0].click();
+    await flush();
+    accepts[1].click();
+    await flush();
+    expect(counter().textContent).toContain("0");
+    previewPublish.mockResolvedValue(preview());
+    publish.mockResolvedValue({ published: PUBLISHED, unchanged: false });
+    await clickPublish(element);
+    expect(ask(element)).toBeNull();
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(notice(element)).toBe("Published Week 1.");
   });
 });

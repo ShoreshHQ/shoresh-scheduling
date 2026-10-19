@@ -28,6 +28,10 @@ public with sharing class SchedulePublish {
     // Who published it (their name), or null when that can't be read.
     @AuraEnabled
     public String publishedBy;
+    // The screen it was published from, as its Origin__c records it (Greg, 2026-10-19): 'Manual'
+    // (Manual Build) or 'Generated' (Generated Schedule); null for one published before Origin.
+    @AuraEnabled
+    public String origin;
     // The draft no longer matches what was published.
     @AuraEnabled
     public Boolean changedSince = false;
@@ -256,7 +260,7 @@ public with sharing class SchedulePublish {
   /** The week's current published schedule (the newest, should there be more), or null. */
   private static Schedule__c publishedOf(Id programId, Id weekId) {
     List<Schedule__c> found = [
-      SELECT Id, PublishedAt__c, PublishedBy__r.Name, CreatedDate
+      SELECT Id, PublishedAt__c, PublishedBy__r.Name, Origin__c, CreatedDate
       FROM Schedule__c
       WHERE
         Program__c = :programId
@@ -277,6 +281,7 @@ public with sharing class SchedulePublish {
       ? published.CreatedDate
       : published.PublishedAt__c;
     state.publishedBy = published.PublishedBy__r?.Name;
+    state.origin = published.Origin__c;
     return state;
   }
 

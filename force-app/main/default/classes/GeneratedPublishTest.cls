@@ -164,6 +164,8 @@ private class GeneratedPublishTest {
       Assert.isFalse(justPublished.published.changedSince);
       Assert.isNotNull(justPublished.published.publishedAt);
       Assert.isNotNull(justPublished.published.publishedBy);
+      // The Published line names the screen it was published from (Greg, 2026-10-19).
+      Assert.areEqual('Generated', justPublished.published.origin);
       Assert.isFalse(locked.published.changedSince);
       Assert.isTrue(edited.published.changedSince);
       // Later edits don't touch the published copy.

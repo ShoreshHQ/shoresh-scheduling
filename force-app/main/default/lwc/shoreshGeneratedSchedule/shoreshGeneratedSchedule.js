@@ -3,7 +3,7 @@ import previewPublish from "@salesforce/apex/GeneratedScheduleController.preview
 import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import { errorMessage, failed } from "c/shoreshErrors";
-import { publishQuestion } from "c/shoreshPublish";
+import { publishQuestion, publishedWord } from "c/shoreshPublish";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
@@ -1501,9 +1501,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.load(true);
   }
 
-  /** "Published " before the date: a template drops the space after a word on its own. */
+  /** "Published from Manual Build " before the date (c/shoreshPublish). */
   get publishedWord() {
-    return "Published ";
+    return publishedWord(this.publishState);
   }
 
   get publishedBy() {

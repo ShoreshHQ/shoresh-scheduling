@@ -1,5 +1,5 @@
 /**
- * Publish's words, for any schedule that publishes (Manual Build now; Generated Schedule next):
+ * Publish's words, for any schedule that publishes (Manual Build and Generated Schedule):
  * what to ask before publishing, from the server's preview (SchedulePublish.Preview) and the
  * week's checks (c/shoreshEngine checkWeek, as the counters show them). Problems are shown, never
  * a reason to refuse: a week with Open cells or dots can still be published (Greg, Manual Build
@@ -11,6 +11,19 @@
  *   { kind: "ask", heading, lines, confirmLabel }: for c-shoresh-ask.
  */
 import { buildTerms } from "c/shoreshTerms";
+
+// The screen a published schedule was published from, by the Origin__c its copy records.
+const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
+
+/**
+ * The Published line's words before the date, on both screens (Greg, 2026-10-19): "Published from
+ * Manual Build " (a template drops the space after a word on its own). published: the server's
+ * PublishState. One whose screen isn't known (published before Origin was kept) says "Published ".
+ */
+export function publishedWord(published) {
+  const screen = published && SCREENS[published.origin];
+  return screen ? `Published from ${screen} ` : "Published ";
+}
 
 /** "1 cell", "3 cells". */
 function cells(count) {

@@ -917,7 +917,8 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
    1?_ with what is still to do (_12 of 40 cells still Open._, _2 activities need a look._,
    _Still needed: 3_). **Cancel** publishes nothing; **Publish** goes ahead (nothing is ever
    blocked). A week with nothing left to do publishes at once.
-3. It says _Published Week 1._ Next to the button: _Published Oct 18, 10:04 AM by_ your name.
+3. It says _Published Week 1._ Next to the button: _Published from Manual Build Oct 18, 10:04 AM by_
+   your name.
 4. Change a cell. The line now ends _· changed since_: the published copy did not change.
 5. Click **Publish** again. The box says _Publish Week 1 again?_ and lists each cell that changes,
    such as _Bunk 1 · Monday · Period 2: Swim → Archery_. **Publish** replaces the published
@@ -951,13 +952,14 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (section 23).
 
 1. Open **Generated Schedule**, Week 1 (generate it first if it isn't). Last on the toolbar, after
    **Start over**, is a blue **Publish** button. If Week 1 was published from Manual Build in
-   section 26, it already says _Published Oct 18, … by_ your name _· changed since_, with
+   section 26, it already says _Published from Manual Build Oct 18, … by_ your name _· changed since_, with
    **Unpublish** beside it: a week has one published schedule, whichever screen published it.
 2. Click **Publish**. If cells are still Open or an activity has a dot, a box asks first, as on
    Manual Build (_Publish Week 1?_ or, when replacing, _Publish Week 1 again?_ with each cell that
    changes, then what is still to do). **Cancel** publishes nothing; **Publish** goes ahead. A
    finished week published for the first time goes at once.
-3. It says _Published Week 1._ and the line beside the button shows when and by whom.
+3. It says _Published Week 1._ and the line beside the button now reads _Published from Generated
+   Schedule_, then when and by whom. Back on **Manual Build**, Week 1 says the same.
 4. Click **Rebuild** and confirm, then **Publish** (and **Publish** in the box, if it asks).
    Click **Rebuild** again and confirm: nothing was locked or changed by hand since the last
    build, so the same setup builds the same week, and the line still has no _· changed since_.

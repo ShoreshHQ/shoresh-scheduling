@@ -923,7 +923,8 @@ _Published <date, time>_, never deleted). The desktop has no Publish. What diffe
     look._), then Overlapping, Still needed and Spread across the week above 0. The _not placed_
     list only exists before the first Generate, when there is nothing to publish.
 45. **Toolbar.** **Publish** (brand) is last in the editor's toolbar, after Start over, with
-    **Unpublish** and _Published Oct 18, 10:04 AM by Pat_ (· _changed since_) before it, as on
+    **Unpublish** and _Published from Generated Schedule Oct 18, 10:04 AM by Pat_ (· _changed since_;
+    the screen it was published from, ADR 0008 part 5 item 12) before it, as on
     Manual Build. The published state comes with the week (`getInputs`, one query, two when the
     week is published), and with every build's answer (`saveWeek` works it out beside the week
     as saved, at most two queries), so a Rebuild that builds the same week is not _changed
