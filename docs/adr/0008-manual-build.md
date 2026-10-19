@@ -691,13 +691,16 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    activity renamed since is a change; locks are not). The screen adds what its counters and dots
    show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look.",
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
-   two only when the camp has those targets). It asks (c-shoresh-ask, _Publish Week 1?_ or
+   two only when the camp has those targets; lines the director accepted are not counted, as the
+   counters don't count them). It asks (c-shoresh-ask, _Publish Week 1?_ or
    _Publish Week 1 again?_, **Publish**/Cancel) whenever there is a change or a problem to show;
    a first publish with nothing to show goes at once; a week already published as it is says
    _Week 1 is already published as it is._ and writes nothing (the server agrees: same cells,
    no new copy). Never blocked (round 1 #2 to #4).
-4. **Nothing published unseen.** Publish sends back the preview's revisions and the published
-   schedule it showed. Someone saved the week since: refused, _Someone else changed this week
+4. **Nothing published unseen.** A preview of a week someone saved since the screen read it
+   publishes nothing: the screen compares the preview's revisions with its own, shows the
+   refusal below and reads the week again. Publish sends back the preview's revisions and the
+   published schedule it showed. Someone saved the week since: refused, _Someone else changed this week
    since, so nothing was published. Look it over, then publish again._, and the week is read
    again. Someone published since: _Someone else published this week since, so nothing was
    replaced. …_ Two first publishes at the same moment: the key's uniqueness refuses the second

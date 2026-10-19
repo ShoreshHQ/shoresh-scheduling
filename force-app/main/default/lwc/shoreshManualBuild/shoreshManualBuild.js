@@ -634,9 +634,18 @@ export default class ShoreshManualBuild extends LightningElement {
       if (week !== this.weekKey) {
         return;
       }
+      // Someone else saved the week since this screen read it: what would be published isn't
+      // what is shown. Nothing is published; the week is read again for the director to see.
+      if (preview.revisions !== (this.server ? this.server.revisions : null)) {
+        this.refusePublish(this.draftChangedText);
+        return;
+      }
+      const checks = this.template.querySelector("c-shoresh-week-checks");
       const question = publishQuestion({
         preview,
         checked: this.checked,
+        // What the counters count now (lines the director accepted aside).
+        counts: checks ? checks.counts : null,
         weekName: this.weekName,
         t: this.t
       });
@@ -653,6 +662,11 @@ export default class ShoreshManualBuild extends LightningElement {
     } finally {
       if (!this.publishAsk) {
         this.publishing = false;
+        // Publish was disabled while it worked, so focus fell from it: it goes back once Publish
+        // is drawn enabled again (WCAG 2.4.3), unless another week is shown by then.
+        if (week === this.weekKey) {
+          this.focusPublish = true;
+        }
       }
     }
   }
@@ -688,13 +702,11 @@ export default class ShoreshManualBuild extends LightningElement {
       return;
     }
     if (result.draftChanged || result.publishedChanged) {
-      // Nothing was published: what changed is shown, and the director looks again.
-      this.weekEditor.setNotice(
+      this.refusePublish(
         result.draftChanged
-          ? `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published. Look it over, then publish again.`
+          ? this.draftChangedText
           : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced. Look it over, then publish again.`
       );
-      this.load(true);
       return;
     }
     this.publishState = { ...result.published, changedSince: false };
@@ -703,6 +715,20 @@ export default class ShoreshManualBuild extends LightningElement {
         ? `${this.weekName} is already published as it is.`
         : `Published ${this.weekName}.`
     );
+    if (!result.unchanged) {
+      // A published schedule it replaced is a version now: Versions lists it straight away.
+      await this.loadVersions();
+    }
+  }
+
+  get draftChangedText() {
+    return `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published. Look it over, then publish again.`;
+  }
+
+  /** Nothing was published: what changed is shown, and the director looks again. */
+  refusePublish(text) {
+    this.weekEditor.setNotice(text);
+    this.load(true);
   }
 
   get publishedBy() {

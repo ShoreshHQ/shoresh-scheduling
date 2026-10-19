@@ -18,9 +18,10 @@ function cells(count) {
 
 /**
  * What is still to do: Open cells, placements with a dot, then the counters (each line only when
- * it is above 0), as the screen's counters and dots show them.
+ * it is above 0), as the screen's counters and dots show them. counts: what the counters count
+ * now (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
  */
-export function problemLines(checked) {
+export function problemLines(checked, counts) {
   if (!checked) {
     return [];
   }
@@ -37,29 +38,31 @@ export function problemLines(checked) {
       `${dotted} ${dotted === 1 ? "activity needs" : "activities need"} a look.`
     );
   }
-  const overlapping = (checked.overlapping || []).length;
+  const { overlapping, stillNeeded, spread } = counts || {
+    overlapping: (checked.overlapping || []).length,
+    stillNeeded: checked.hasCoverageTargets
+      ? (checked.stillNeeded || []).length
+      : 0,
+    spread: checked.hasSpreadTargets ? (checked.spread || []).length : 0
+  };
   if (overlapping > 0) {
     lines.push(`Overlapping: ${overlapping}`);
   }
-  const stillNeeded = checked.hasCoverageTargets
-    ? (checked.stillNeeded || []).length
-    : 0;
   if (stillNeeded > 0) {
     lines.push(`Still needed: ${stillNeeded}`);
   }
-  const spread = checked.hasSpreadTargets ? (checked.spread || []).length : 0;
   if (spread > 0) {
     lines.push(`Spread across the week: ${spread}`);
   }
   return lines;
 }
 
-export function publishQuestion({ preview, checked, weekName, t }) {
+export function publishQuestion({ preview, checked, counts, weekName, t }) {
   const replacing = !!preview.published;
   if (replacing && preview.changeCount === 0) {
     return { kind: "same" };
   }
-  const problems = problemLines(checked);
+  const problems = problemLines(checked, counts);
   if (!replacing && problems.length === 0) {
     return { kind: "now" };
   }

@@ -71,6 +71,24 @@ describe("c/shoreshPublish", () => {
     ).toEqual([]);
   });
 
+  it("counts the counters' lines as they show them, accepted lines aside", () => {
+    const shortOfTargets = { ...CLEAN, stillNeeded: ["a", "b"], spread: ["c"] };
+    const allAccepted = { overlapping: 0, stillNeeded: 0, spread: 0 };
+    expect(problemLines(shortOfTargets, allAccepted)).toEqual([]);
+    expect(
+      problemLines(shortOfTargets, { ...allAccepted, stillNeeded: 1 })
+    ).toEqual(["Still needed: 1"]);
+    expect(
+      publishQuestion({
+        preview: FIRST,
+        checked: shortOfTargets,
+        counts: allAccepted,
+        weekName: "Week 1",
+        t
+      })
+    ).toEqual({ kind: "now" });
+  });
+
   it("publishes a finished week's first publish at once", () => {
     expect(
       publishQuestion({ preview: FIRST, checked: CLEAN, weekName: "Week 1", t })

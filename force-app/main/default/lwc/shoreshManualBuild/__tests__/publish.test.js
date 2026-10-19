@@ -121,6 +121,12 @@ const FINISHED_ITEMS = [
   { kind: "A", id: "a8", name: "Crafts", gone: false },
   { kind: "A", id: "a9", name: "Archery", gone: false }
 ];
+// The week's revisions as the screen read it; a preview of the same week sends the same.
+const REV = "2026-06-29:1,2026-06-30:1";
+/** A week as the screen reads it, with its revisions. */
+function read(start) {
+  return { ...start, schedule: { ...start.schedule, revisions: REV } };
+}
 function finished(published = null) {
   const base = draft();
   return {
@@ -129,7 +135,7 @@ function finished(published = null) {
     published,
     schedule: {
       ...base.schedule,
-      revisions: "2026-06-29:1,2026-06-30:1",
+      revisions: REV,
       days: [
         day("2026-06-29", FINISHED_ITEMS, ["1,2,3", "1,3,"]),
         day("2026-06-30", FINISHED_ITEMS, ["1,3,2", "1,2,"])
@@ -144,7 +150,7 @@ const PUBLISHED = {
   changedSince: false
 };
 const FIRST_PREVIEW = {
-  revisions: "r1",
+  revisions: REV,
   published: null,
   changes: [],
   changeCount: 0
@@ -233,7 +239,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(ask(element)).toBeNull();
     expect(publish).toHaveBeenCalledWith({
       scheduleId: "d1",
-      seenRevisions: "r1",
+      seenRevisions: REV,
       seenPublishedId: null
     });
     expect(notice(element)).toBe("Published Week 1.");
@@ -245,7 +251,7 @@ describe("c-shoresh-manual-build: Publish", () => {
   });
 
   it("asks first when the week still has Open cells, naming them; Cancel publishes nothing", async () => {
-    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render(read(draft(WITH_SWIM, ["1,2,", "1,,"])));
     previewPublish.mockResolvedValue(FIRST_PREVIEW);
     await clickPublish(element);
     expect(ask(element).heading).toBe("Publish Week 1?");
@@ -265,7 +271,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     );
     expect(q(element, '[data-id="changed-since"]')).not.toBeNull();
     previewPublish.mockResolvedValue({
-      revisions: "r2",
+      revisions: REV,
       published: PUBLISHED,
       changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
       changeCount: 1
@@ -284,7 +290,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     await answer(element, true);
     expect(publish).toHaveBeenCalledWith({
       scheduleId: "d1",
-      seenRevisions: "r2",
+      seenRevisions: REV,
       seenPublishedId: "pub1"
     });
     expect(notice(element)).toBe("Published Week 1.");
@@ -294,7 +300,7 @@ describe("c-shoresh-manual-build: Publish", () => {
   it("a week already published as it is says so and publishes nothing", async () => {
     const element = await render(finished(PUBLISHED));
     previewPublish.mockResolvedValue({
-      revisions: "r2",
+      revisions: REV,
       published: PUBLISHED,
       changes: [],
       changeCount: 0
@@ -424,7 +430,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     await flush();
     expect(getDraft).toHaveBeenCalledTimes(1);
     preview.resolve({
-      revisions: "r2",
+      revisions: REV,
       published: PUBLISHED,
       changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
       changeCount: 1
@@ -455,7 +461,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     await clickPublish(element);
     await chooseWeek2(element, finished());
     preview.resolve({
-      revisions: "r2",
+      revisions: REV,
       published: PUBLISHED,
       changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
       changeCount: 1
@@ -500,7 +506,7 @@ describe("c-shoresh-manual-build: Publish", () => {
   });
 
   it("focus goes back to Publish when the question closes", async () => {
-    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render(read(draft(WITH_SWIM, ["1,2,", "1,,"])));
     previewPublish.mockResolvedValue(FIRST_PREVIEW);
     await clickPublish(element);
     expect(ask(element)).not.toBeNull();
@@ -515,5 +521,116 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="publish"]')
     );
+  });
+
+  it("a week someone else saved since the screen read it is shown first, not published", async () => {
+    const element = await render(finished());
+    // The server's week is newer than the one on screen.
+    previewPublish.mockResolvedValue({
+      ...FIRST_PREVIEW,
+      revisions: "2026-06-29:2,2026-06-30:1"
+    });
+    await clickPublish(element);
+    expect(publish).not.toHaveBeenCalled();
+    expect(ask(element)).toBeNull();
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published. Look it over, then publish again."
+    );
+    // The week is read again, for the director to see.
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="publish"]').disabled).toBe(false);
+  });
+
+  it("publishing again lists the schedule it replaced in Versions straight away", async () => {
+    const element = await render(
+      finished({ ...PUBLISHED, changedSince: true })
+    );
+    expect(q(element, '[data-id="versions"]').versions).toEqual([]);
+    previewPublish.mockResolvedValue({
+      revisions: REV,
+      published: PUBLISHED,
+      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
+      changeCount: 1
+    });
+    publish.mockResolvedValue({
+      ...DONE,
+      published: { ...PUBLISHED, id: "pub2" }
+    });
+    const replaced = {
+      id: "pub1",
+      name: "Published schedule",
+      createdDate: "2026-10-18T10:00:00Z"
+    };
+    getVersions.mockResolvedValue([replaced]);
+    await clickPublish(element);
+    await answer(element, true);
+    expect(notice(element)).toBe("Published Week 1.");
+    expect(q(element, '[data-id="versions"]').versions).toEqual([replaced]);
+  });
+
+  it("a week whose still needed lines were all accepted publishes at once, as its counters say", async () => {
+    // Archery wants 3 a week: Bunk 1 has 2 and Bunk 2 has 1, so two still needed lines.
+    const element = await render({
+      ...finished(),
+      activityRecords: nsRecord([
+        { Id: "a8", Name: "Crafts", NoGroupLimit__c: true },
+        {
+          Id: "a9",
+          Name: "Archery",
+          TimesPerWeekMin__c: 3,
+          NoGroupLimit__c: true
+        }
+      ]),
+      groupRecords: nsRecord([
+        { Id: "g1", Name: "Bunk 1", Division__c: "d1" },
+        { Id: "g2", Name: "Bunk 2", Division__c: "d1" }
+      ])
+    });
+    const checks = q(element, "c-shoresh-week-checks");
+    checks.shadowRoot.querySelector('[data-counter="stillNeeded"]').click();
+    await flush();
+    const accepts = [
+      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
+    ];
+    expect(accepts).toHaveLength(2);
+    accepts[0].click();
+    await flush();
+    accepts[1].click();
+    await flush();
+    expect(
+      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]')
+        .textContent
+    ).toContain("0");
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue(DONE);
+    await clickPublish(element);
+    expect(ask(element)).toBeNull();
+    expect(publish).toHaveBeenCalled();
+    expect(notice(element)).toBe("Published Week 1.");
+  });
+
+  it("focus goes back to Publish when it finishes without asking: published, already published, or failed", async () => {
+    const element = await render(finished());
+    const publishButton = () => q(element, '[data-id="publish"]');
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue(DONE);
+    await clickPublish(element);
+    expect(notice(element)).toBe("Published Week 1.");
+    expect(element.shadowRoot.activeElement).toBe(publishButton());
+    publishButton().blur();
+    previewPublish.mockResolvedValue({
+      revisions: REV,
+      published: PUBLISHED,
+      changes: [],
+      changeCount: 0
+    });
+    await clickPublish(element);
+    expect(notice(element)).toBe("Week 1 is already published as it is.");
+    expect(element.shadowRoot.activeElement).toBe(publishButton());
+    publishButton().blur();
+    previewPublish.mockRejectedValue({ body: { message: "No access." } });
+    await clickPublish(element);
+    expect(q(element, '[data-id="build-error"]')).not.toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(publishButton());
   });
 });
