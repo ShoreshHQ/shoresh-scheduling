@@ -45,6 +45,7 @@
                   <div class="version-meta">
                     {row.origin} ·
                     <template lwc:if={row.autoSaved}>Auto-saved ·</template>
+                    <template lwc:if={row.wasPublished}>Published ·</template>
                     <lightning-formatted-date-time
                       value={row.savedAt}
                       month="short"
@@ -67,7 +68,7 @@
                 >
                   rename
                 </button>
-                <template lwc:if={canDelete}>
+                <template lwc:if={row.deletable}>
                   <button
                     type="button"
                     class={row.deleteClass}

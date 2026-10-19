@@ -16,6 +16,10 @@ public with sharing class ScheduleViews {
     public String reason;
     @AuraEnabled
     public Datetime savedAt;
+    // When it was the week's published schedule (one replaced since is kept as history), or
+    // null for a version that never was.
+    @AuraEnabled
+    public Datetime publishedAt;
   }
 
   public class ScheduleView {
@@ -71,7 +75,7 @@ public with sharing class ScheduleViews {
   public static List<VersionRow> versions(Id programId, Id weekId) {
     List<VersionRow> rows = new List<VersionRow>();
     for (Schedule__c schedule : [
-      SELECT Id, Name, Origin__c, VersionReason__c, CreatedDate
+      SELECT Id, Name, Origin__c, VersionReason__c, PublishedAt__c, CreatedDate
       FROM Schedule__c
       WHERE
         Program__c = :programId
@@ -97,7 +101,14 @@ public with sharing class ScheduleViews {
    */
   public static ScheduleView open(Id scheduleId, Set<String> stillThere) {
     List<Schedule__c> found = [
-      SELECT Id, Name, Status__c, Origin__c, VersionReason__c, CreatedDate
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Origin__c,
+        VersionReason__c,
+        PublishedAt__c,
+        CreatedDate
       FROM Schedule__c
       WHERE Id = :scheduleId
       WITH USER_MODE
@@ -141,6 +152,7 @@ public with sharing class ScheduleViews {
     row.origin = schedule.Origin__c;
     row.reason = schedule.VersionReason__c;
     row.savedAt = schedule.CreatedDate;
+    row.publishedAt = schedule.PublishedAt__c;
     return row;
   }
 

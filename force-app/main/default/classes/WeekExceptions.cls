@@ -132,14 +132,18 @@ public with sharing class WeekExceptions {
         true,
         AccessLevel.USER_MODE
       );
-      // A week's drafts and versions go with it, as in Shoresh desktop. A published schedule
-      // stays, and the week's own delete check refuses the delete (history is kept).
+      // A week's drafts and versions go with it, as in Shoresh desktop. A published schedule,
+      // and one published once and replaced since, stays, and the week's own delete check
+      // refuses the delete (history is kept).
       if (recordId.getSObjectType() == Week__c.SObjectType) {
         Database.delete(
           [
             SELECT Id
             FROM Schedule__c
-            WHERE Week__c = :recordId AND Status__c != 'Published'
+            WHERE
+              Week__c = :recordId
+              AND Status__c != 'Published'
+              AND PublishedAt__c = NULL
             WITH USER_MODE
           ],
           true,

@@ -10,7 +10,7 @@ ignores:
 # file or folder, one rule, and a limit, so a new hit of the same rule elsewhere still fails CI. Paths
 # are relative to the scanned folder (CI runs with --workspace force-app).
 suppressions:
-  # Key__c / QuestionKey__c are duplicate-check lookup keys built from visible values (names, dates),
+  # Key__c / QuestionKey__c / PublishKey__c are duplicate-check lookup keys built from visible values (names, dates),
   # not secrets, so ProtectSensitiveData does not apply.
   "main/default/objects/CampLabel__c/fields/Key__c.field-meta.xml":
     - rule_selector: "pmd:ProtectSensitiveData"
@@ -28,6 +28,10 @@ suppressions:
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1
       reason: "Lookup key made from the location type's name, not a secret."
+  "main/default/objects/Schedule__c/fields/PublishKey__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Program and week, so a week has one published schedule; not a secret."
   "main/default/objects/Week__c/fields/Key__c.field-meta.xml":
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1

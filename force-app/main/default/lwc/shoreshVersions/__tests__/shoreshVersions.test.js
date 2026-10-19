@@ -193,6 +193,27 @@ describe("c-shoresh-versions", () => {
       );
     });
 
+    it("a version that was once the published schedule says so and can't be deleted", async () => {
+      const element = await renderRestore([
+        {
+          id: "p1",
+          name: "Published schedule",
+          origin: "Manual",
+          savedAt: "2026-10-16T17:00:00.000Z",
+          publishedAt: "2026-10-16T17:00:00.000Z"
+        },
+        ...VERSIONS
+      ]);
+      const [published, other] = qa(element, ".version");
+      expect(published.textContent).toContain("Published ·");
+      expect(published.querySelector('[data-action="delete"]')).toBeNull();
+      // It can still be restored and renamed, like any version.
+      expect(published.querySelector('[data-action="open"]')).not.toBeNull();
+      expect(published.querySelector('[data-action="rename"]')).not.toBeNull();
+      expect(other.textContent).not.toContain("Published ·");
+      expect(other.querySelector('[data-action="delete"]')).not.toBeNull();
+    });
+
     it("Delete? looks different, is said aloud, and blur takes it back", async () => {
       const element = await renderRestore();
       const handler = jest.fn();

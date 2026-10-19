@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>PublishedAt__c</fullName>
+    <description
+  >When this schedule was published. It stays filled after a newer publish replaces it, so the week keeps it as history.</description>
+    <label>Published At</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

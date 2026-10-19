@@ -7,17 +7,21 @@ import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersio
 import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
+import previewPublish from "@salesforce/apex/ManualBuildController.previewPublish";
+import publish from "@salesforce/apex/ManualBuildController.publish";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { errorMessage, failed } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
+import { publishQuestion } from "c/shoreshPublish";
 
 /**
  * Manual Build (desktop: the Manual schedule): a program's week built by hand. This screen
  * chooses the program and week, opens or starts it (a week not started yet offers "Start a blank
  * week" or "Start from another week"), keeps its versions (Save, Restore), counts what the week
- * still needs, and offers Clear day, Clear week and Copy day. The week itself is drawn and edited
+ * still needs, offers Clear day, Clear week and Copy day, and publishes the week (Publish: what
+ * would change and what is still to do are shown first; SchedulePublish). The week itself is drawn and edited
  * by c-shoresh-week-editor (drag, type, keyboard, Undo and Redo, "keep theirs or use yours");
  * this screen hands it the week, saves what it sends through saveRuns, and hears what changed.
  *
@@ -55,6 +59,12 @@ export default class ShoreshManualBuild extends LightningElement {
   restoreRefused = false;
   // A week shown before the editor was drawn: given to it as soon as it is.
   waiting = null;
+  // The week's published schedule ({ id, publishedAt, publishedBy, changedSince }), or null.
+  publishState = null;
+  // A preview or publish is on its way.
+  publishing = false;
+  // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview }.
+  publishAsk = null;
 
   @api
   get setup() {
@@ -152,6 +162,10 @@ export default class ShoreshManualBuild extends LightningElement {
     this.restoredId = null;
     this.restoreRefused = false;
     this.loading = false;
+    // The week is no longer what was published (a reload says exactly).
+    if (this.publishState && !this.publishState.changedSince) {
+      this.publishState = { ...this.publishState, changedSince: true };
+    }
   }
 
   handleEditorError(event) {
@@ -304,6 +318,7 @@ export default class ShoreshManualBuild extends LightningElement {
       this.draft &&
       !this.versionsWorking &&
       !this.starting &&
+      !this.publishing &&
       this.weekEditor &&
       this.weekEditor.settled
     ) {
@@ -316,6 +331,7 @@ export default class ShoreshManualBuild extends LightningElement {
       this.checksResetKey += 1;
     }
     this.draft = draft;
+    this.publishState = (draft && draft.published) || null;
     if (this.weekEditor) {
       this.weekEditor.show(draft, fresh);
     } else {
@@ -346,7 +362,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** The week and program can't change while a start or a Restore is on its way. */
   get pickersLocked() {
-    return this.starting || this.versionsWorking;
+    return this.starting || this.versionsWorking || this.publishing;
   }
 
   /**
@@ -530,6 +546,7 @@ export default class ShoreshManualBuild extends LightningElement {
       }
       this.checksResetKey += 1;
       this.draft = draft;
+      this.publishState = draft.published || null;
       this.weekEditor.restored(draft);
       this.restoredId = id;
       this.say(`Restored ${version ? version.name : ""}.`);
@@ -566,6 +583,107 @@ export default class ShoreshManualBuild extends LightningElement {
       renameSchedule({ scheduleId: id, name })
     );
     onDone(renamed);
+  }
+
+  // ---------- Publish (Greg, Manual Build round 1 #1, round 2 #4; ADR 0008 part 5) ----------
+
+  get canPublish() {
+    return !!this.draft && !this.hasNoDays;
+  }
+  /** Publish waits while an edit saves or a Restore runs (it would publish a week in between). */
+  get publishDisabled() {
+    return this.publishing || this.versionsBusy;
+  }
+
+  /**
+   * Publish: the server's preview says what would change; with the week's checks, that decides
+   * whether to ask first (c/shoreshPublish). A week already published as it is needs nothing.
+   */
+  async handlePublish() {
+    if (this.editBusy) {
+      this.say("One moment: an edit is still saving.");
+      return;
+    }
+    const ticket = this.loadTicket;
+    this.publishing = true;
+    this.error = null;
+    try {
+      const preview = await previewPublish({
+        scheduleId: this.schedule.schedule.id
+      });
+      if (ticket !== this.loadTicket) {
+        return;
+      }
+      const question = publishQuestion({
+        preview,
+        checked: this.checked,
+        weekName: this.weekName,
+        t: this.t
+      });
+      if (question.kind === "same") {
+        this.publishState = { ...preview.published, changedSince: false };
+        this.say(`${this.weekName} is already published as it is.`);
+      } else if (question.kind === "now") {
+        await this.publishNow(preview, ticket);
+      } else {
+        this.publishAsk = { ...question, preview };
+      }
+    } catch (e) {
+      this.error = failed(`${this.weekName} was not published.`, e);
+    } finally {
+      if (!this.publishAsk) {
+        this.publishing = false;
+      }
+    }
+  }
+
+  async handlePublishAnswer(event) {
+    const ask = this.publishAsk;
+    this.publishAsk = null;
+    try {
+      if (event.detail.yes) {
+        // The server refuses it if the week changed since the preview.
+        await this.publishNow(ask.preview, this.loadTicket);
+      }
+    } catch (e) {
+      this.error = failed(`${this.weekName} was not published.`, e);
+    } finally {
+      this.publishing = false;
+    }
+  }
+
+  /** Publishes the week the preview showed; a week or publish changed since is refused. */
+  async publishNow(preview, ticket) {
+    const result = await publish({
+      scheduleId: this.schedule.schedule.id,
+      seenRevisions: preview.revisions,
+      seenPublishedId: preview.published ? preview.published.id : null
+    });
+    if (ticket !== this.loadTicket) {
+      return;
+    }
+    if (result.draftChanged || result.publishedChanged) {
+      // Nothing was published: what changed is shown, and the director looks again.
+      this.weekEditor.setNotice(
+        result.draftChanged
+          ? `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published. Look it over, then publish again.`
+          : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced. Look it over, then publish again.`
+      );
+      this.load(true);
+      return;
+    }
+    this.publishState = { ...result.published, changedSince: false };
+    this.say(
+      result.unchanged
+        ? `${this.weekName} is already published as it is.`
+        : `Published ${this.weekName}.`
+    );
+  }
+
+  get publishedBy() {
+    return this.publishState && this.publishState.publishedBy
+      ? ` by ${this.publishState.publishedBy}`
+      : "";
   }
 
   get weekName() {

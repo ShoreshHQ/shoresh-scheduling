@@ -17,7 +17,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    its weekly limit, not set up for a bunk, twice in a day).
 4. In two (coordinator, 2026-10-17): **4a** Clear day, Clear week, Copy day to…; **4b** Versions
    on this screen (Save version, Restore, rename, delete) and Start from another week.
-5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`).
+5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`); see "Choices (part 5)".
 6. Setup changed since the week started: dots and "Update to match setup".
 
 ## Choices (part 1)
@@ -659,13 +659,69 @@ Manual Build passes none of these and behaves as before.
   or Enter right after a click, raises one `unlockrequest`; the same cell asked again after 600 ms
   is a new gesture.
 
+## Choices (part 5: Publish)
+
+The desktop has no publish (behaviour index, "Publish"; desktop
+`docs/adr/2026-07-28-plural-candidate-schedules-per-camp.md`): it never names one schedule final.
+So the spec is Greg's: Manual Build round 1 #1 (both schedules get Publish; it copies the draft as
+the week's published schedule; publishing again replaces it after a confirm showing what changes;
+later draft edits don't touch the copy), round 2 #4 (anyone with Shoresh Scheduler access can
+publish; `ScheduleEntry__c` waits until something reads it), wiki decision 0002 (one published
+schedule per week; the earlier one is kept as history) and the data model (`PublishedAt__c`,
+`PublishedBy__c`, `PublishKey__c`; "Protecting history").
+
+1. **Publish copies the draft** (`SchedulePublish.publish`): a new `Schedule__c` with Status
+   Published, the draft's Origin, `SourceSchedule__c` the draft, `PublishedAt__c` now,
+   `PublishedBy__c` the user, `PublishKey__c` "programId:weekId", named the camp's word for
+   _Published schedule_, with the draft's days copied exactly (grid text and all). No
+   `ScheduleEntry__c` rows yet (round 2 #4).
+2. **Publishing again replaces it**: every published schedule of the week becomes a Version
+   (Status Version, key cleared, `PublishedAt__c` kept), in the same transaction as the new copy.
+   It shows in Versions marked _Published_, can be restored and renamed, and is never deleted
+   (`ManualVersions.remove` refuses: "… was the published schedule, which is kept as history,
+   so it can't be deleted."; the list shows no **delete** for it). `PublishedHistory` and the
+   week delete (`WeekExceptions`) count Status Published **or** `PublishedAt__c`, so a week,
+   program or season with a replaced published schedule is still kept (ADR 0005 §10 asked for
+   this).
+3. **What is shown first** (coordinator call under "show problems, never resolve silently").
+   Publish asks the server for a preview (`previewPublish`): the published schedule it would
+   replace and each cell that would change, "Bunk 1 · Monday · Period 2: Swim → Archery",
+   neighbouring blocks with the same change on one line ("Period 1–Period 2"), at most 30 lines
+   plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
+   activity renamed since is a change; locks are not). The screen adds what its counters and dots
+   show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look.",
+   "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
+   two only when the camp has those targets). It asks (c-shoresh-ask, _Publish Week 1?_ or
+   _Publish Week 1 again?_, **Publish**/Cancel) whenever there is a change or a problem to show;
+   a first publish with nothing to show goes at once; a week already published as it is says
+   _Week 1 is already published as it is._ and writes nothing (the server agrees: same cells,
+   no new copy). Never blocked (round 1 #2 to #4).
+4. **Nothing published unseen.** Publish sends back the preview's revisions and the published
+   schedule it showed. Someone saved the week since: refused, _Someone else changed this week
+   since, so nothing was published. Look it over, then publish again._, and the week is read
+   again. Someone published since: _Someone else published this week since, so nothing was
+   replaced. …_ Two first publishes at the same moment: the key's uniqueness refuses the second
+   the same way. Publish locks the draft (its drafts class) and then the week's published rows,
+   never the program, so it can't deadlock with a Generated save (program, then draft).
+5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves or
+   a Restore runs; beside it _Published Oct 18, 10:04 by Pat_ and, once the draft differs,
+   _· changed since_ (from `DraftView.published`, worked out on the server by the same
+   comparison; an edit on screen marks it at once).
+6. **For Generated Schedule next**: `SchedulePublish` takes any locked draft (Generated's
+   `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
+   wiring Generated is a controller method pair and the same toolbar button. Not wired here.
+7. Reads: preview at most 15 queries, publish at most 25 (asserted in `SchedulePublishTest`);
+   opening Manual Build adds one query (three when the week is published).
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
 the screen and the server. Part 4b adds the `VersionReason__c` value **AutoSaved**
 ("Auto-saved"), the same one Generated Schedule G2 (#46) adds; whichever merges second keeps
-the one value.
+the one value. Part 5 adds `Schedule__c.PublishedAt__c` (date/time), `PublishedBy__c` (lookup to
+User, cleared if the user is deleted) and `PublishKey__c` (text 40, unique, case-sensitive:
+"programId:weekId" while published, cleared when replaced), as the data model names them.
 
 ## Not done here
 

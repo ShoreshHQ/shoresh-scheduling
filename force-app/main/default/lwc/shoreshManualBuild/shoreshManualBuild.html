@@ -112,6 +112,35 @@
           data-id="versions"
         ></c-shoresh-versions>
       </template>
+      <template lwc:if={canPublish}>
+        <div class="publish" slot="tools" data-id="publish-area">
+          <template lwc:if={publishState}>
+            <span class="published" data-id="published">
+              Published
+              <lightning-formatted-date-time
+                value={publishState.publishedAt}
+                month="short"
+                day="numeric"
+                hour="numeric"
+                minute="2-digit"
+              ></lightning-formatted-date-time
+              >{publishedBy}
+              <template lwc:if={publishState.changedSince}>
+                <span data-id="changed-since"> · changed since</span>
+              </template>
+            </span>
+          </template>
+          <button
+            type="button"
+            class="slds-button slds-button_brand"
+            data-id="publish"
+            disabled={publishDisabled}
+            onclick={handlePublish}
+          >
+            Publish
+          </button>
+        </div>
+      </template>
       <template lwc:if={showCounters}>
         <c-shoresh-week-checks
           slot="checks"
@@ -235,5 +264,14 @@
         </div>
       </template>
     </c-shoresh-week-editor>
+    <template lwc:if={publishAsk}>
+      <c-shoresh-ask
+        heading={publishAsk.heading}
+        lines={publishAsk.lines}
+        confirm-label={publishAsk.confirmLabel}
+        onanswer={handlePublishAnswer}
+        data-id="publish-ask"
+      ></c-shoresh-ask>
+    </template>
   </div>
 </template>

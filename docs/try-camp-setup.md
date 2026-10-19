@@ -906,11 +906,33 @@ This uses the made-up camp's Week 1 from sections 19 to 22.
    the toolbar, such as _Swim · Bunk 6 · Monday: not at camp then_ (or _not running this week_ if
    Swim is closed in Week 2 on the Activities screen), and those cells are Open.
 
+## 26. Manual Build: Publish
+
+This uses the made-up camp's Week 1 from sections 19 to 25.
+
+1. Open **Manual Build**, Week 1. Last on the toolbar, after **Versions**, is a blue **Publish**
+   button.
+2. Click **Publish**. If the week still has Open cells or dots, a box asks first: _Publish Week
+   1?_ with what is still to do (_12 of 40 cells still Open._, _2 activities need a look._,
+   _Still needed: 3_). **Cancel** publishes nothing; **Publish** goes ahead (nothing is ever
+   blocked). A week with nothing left to do publishes at once.
+3. It says _Published Week 1._ Next to the button: _Published Oct 18, 10:04 by_ your name.
+4. Change a cell. The line now ends _· changed since_: the published copy did not change.
+5. Click **Publish** again. The box says _Publish Week 1 again?_ and lists each cell that changes,
+   such as _Bunk 1 · Monday · Period 2: Swim → Archery_. **Publish** replaces the published
+   schedule.
+6. Open **Versions**: the schedule it replaced is there, marked _Published_, with **Restore** and
+   **rename** but no **delete** (it is kept as history). Week 1 can no longer be deleted on the
+   Camp setup screen, because it has a published schedule.
+7. Click **Publish** with nothing changed: _Week 1 is already published as it is._ Nothing else
+   happens.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: Versions on that screen, and publishing. In Manual Build: publishing.
+- Generated Schedule: Versions on that screen, and publishing.
+- The Schedules page does not show the published schedule yet.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

@@ -1,8 +1,9 @@
 /**
  * Server side of Manual Build (desktop: the Manual schedule screen): open a program's draft for a
  * week, start a blank week, save slot edits (each made only if its slots still hold what the
- * director saw), add an activity typed into a slot, and its versions: Save version, Restore, Delete
- * (ManualVersions). Every query runs in user mode and every write uses user-mode DML.
+ * director saw), add an activity typed into a slot, its versions: Save version, Restore, Delete
+ * (ManualVersions), and Publish (SchedulePublish). Every query runs in user mode and every write
+ * uses user-mode DML.
  */
 public with sharing class ManualBuildController {
   /** The program's Manual Build draft for the week, or null when it has not been started. */
@@ -102,6 +103,41 @@ public with sharing class ManualBuildController {
   public static void deleteVersion(Id scheduleId, Id versionId) {
     try {
       ManualVersions.remove(scheduleId, versionId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * What publishing the week now would do: the published schedule it replaces (if any) and the
+   * cells that would change, shown to the director before Publish.
+   */
+  @AuraEnabled
+  public static SchedulePublish.Preview previewPublish(Id scheduleId) {
+    try {
+      return SchedulePublish.preview(ManualDrafts.locked(scheduleId));
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Publish: the week as the preview showed it becomes its published schedule. Refused, with
+   * nothing changed, when the week (seenRevisions) or its published schedule (seenPublishedId)
+   * changed since the preview.
+   */
+  @AuraEnabled
+  public static SchedulePublish.Result publish(
+    Id scheduleId,
+    String seenRevisions,
+    Id seenPublishedId
+  ) {
+    try {
+      return SchedulePublish.publish(
+        ManualDrafts.locked(scheduleId),
+        seenRevisions,
+        seenPublishedId
+      );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

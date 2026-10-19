@@ -1,8 +1,8 @@
 /**
  * What the Manual Build screen needs besides the draft itself: the season's activities to place
  * (with the groups each is not set up for), and the slots where a group is not at camp (a
- * morning-only or afternoon-only group), and other programs' use of places and activities that
- * week. Worked out from today's setup. Runs in user mode.
+ * morning-only or afternoon-only group), other programs' use of places and activities that
+ * week, and the week's published schedule. Worked out from today's setup. Runs in user mode.
  */
 public with sharing class ManualBuildViews {
   public class DraftView {
@@ -46,6 +46,10 @@ public with sharing class ManualBuildViews {
     // nothing changed (the rest of this view is empty).
     @AuraEnabled
     public Boolean changedSince = false;
+    // The week's published schedule (when, by whom, and whether the draft has changed since),
+    // or null when the week has not been published.
+    @AuraEnabled
+    public SchedulePublish.PublishState published;
   }
 
   public class ActivityOption {
@@ -218,6 +222,11 @@ public with sharing class ManualBuildViews {
     view.away = away(read.groups, read.blocks);
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
+    view.published = SchedulePublish.stateOf(
+      read.program.Id,
+      read.week.Id,
+      read.scheduleId
+    );
     return view;
   }
 

@@ -119,6 +119,9 @@ import scheduleObject from "@salesforce/schema/Schedule__c";
 import scheduleEngineOption from "@salesforce/schema/Schedule__c.EngineOption__c";
 import scheduleOrigin from "@salesforce/schema/Schedule__c.Origin__c";
 import scheduleProgram from "@salesforce/schema/Schedule__c.Program__c";
+import schedulePublishKey from "@salesforce/schema/Schedule__c.PublishKey__c";
+import schedulePublishedAt from "@salesforce/schema/Schedule__c.PublishedAt__c";
+import schedulePublishedBy from "@salesforce/schema/Schedule__c.PublishedBy__c";
 import scheduleSourceSchedule from "@salesforce/schema/Schedule__c.SourceSchedule__c";
 import scheduleStatus from "@salesforce/schema/Schedule__c.Status__c";
 import scheduleVersionReason from "@salesforce/schema/Schedule__c.VersionReason__c";
@@ -315,6 +318,9 @@ export const FIELD = Object.freeze({
     EngineOption: scheduleEngineOption.fieldApiName,
     Origin: scheduleOrigin.fieldApiName,
     Program: scheduleProgram.fieldApiName,
+    PublishKey: schedulePublishKey.fieldApiName,
+    PublishedAt: schedulePublishedAt.fieldApiName,
+    PublishedBy: schedulePublishedBy.fieldApiName,
     SourceSchedule: scheduleSourceSchedule.fieldApiName,
     Status: scheduleStatus.fieldApiName,
     VersionReason: scheduleVersionReason.fieldApiName,
@@ -420,6 +426,7 @@ export const PARENT = Object.freeze({
   }),
   Schedule: Object.freeze({
     Program: FIELD.Schedule.Program.replace(/__c$/, "__r"),
+    PublishedBy: FIELD.Schedule.PublishedBy.replace(/__c$/, "__r"),
     SourceSchedule: FIELD.Schedule.SourceSchedule.replace(/__c$/, "__r"),
     Week: FIELD.Schedule.Week.replace(/__c$/, "__r")
   }),
@@ -520,6 +527,9 @@ export const CHILDREN = Object.freeze({
     EndingRecurringActivities: `${NAMESPACE_PREFIX}EndingRecurringActivities__r`,
     FixedActivities: `${NAMESPACE_PREFIX}FixedActivities__r`,
     RecurringActivities: `${NAMESPACE_PREFIX}RecurringActivities__r`
+  }),
+  User: Object.freeze({
+    PublishedSchedules: `${NAMESPACE_PREFIX}PublishedSchedules__r`
   }),
   Week: Object.freeze({
     Schedules: `${NAMESPACE_PREFIX}Schedules__r`,

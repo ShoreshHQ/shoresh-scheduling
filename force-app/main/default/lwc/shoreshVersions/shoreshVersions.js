@@ -18,7 +18,8 @@ const AUTO_SAVED = "AutoSaved";
  * version…", Save version).
  *
  * versions: SchedulesController.getVersions rows. openId: the version on screen. restore: Manual
- * Build's list (Restore, delete, Save version).
+ * Build's list (Restore, delete, Save version). A version that was once the week's published
+ * schedule says so and has no delete (it is kept as history).
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
  * delete { id }, save { name, onDone(saved) }
  */
@@ -99,6 +100,9 @@ export default class ShoreshVersions extends LightningElement {
         ...version,
         origin: ORIGINS[version.origin] || version.origin,
         autoSaved: version.reason === AUTO_SAVED,
+        // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
+        wasPublished: !!version.publishedAt,
+        deletable: this.restore && !version.publishedAt,
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
         deleteLabel: confirming ? "Delete?" : "delete",
@@ -118,9 +122,6 @@ export default class ShoreshVersions extends LightningElement {
   /** Restore waits while an edit is saving (it would paint over it); Open never does. */
   get actionDisabled() {
     return this.restore && this.busy;
-  }
-  get canDelete() {
-    return this.restore;
   }
   get canSave() {
     return this.restore;
