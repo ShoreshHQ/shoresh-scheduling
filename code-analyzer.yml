@@ -36,6 +36,12 @@ suppressions:
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1
       reason: "Season and start date, used to stop duplicate weeks, not a secret."
+  # Design rule, not security: the engine's inputs go to the screen as one answer (one request when
+  # a week opens); splitting them would add a round trip for nothing.
+  "main/default/classes/GeneratedInputs.cls":
+    - rule_selector: "pmd:TooManyFields"
+      max_suppressed_violations: 1
+      reason: "One answer carrying everything the engine and screen need for a week."
   # Jest tests fake real browser keyboard and mouse events, which are bubbling and composed in a
   # browser; components themselves never fire composed events.
   "main/default/lwc/shoreshAsk/__tests__":

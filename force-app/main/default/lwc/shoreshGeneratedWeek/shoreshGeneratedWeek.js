@@ -31,11 +31,13 @@ export const REFUSED = "refused";
  * prefix (ADR 0009).
  *
  * loadWeek resolves to
- *   { scheduleId, revision, option, notPlaced, input }
+ *   { scheduleId, revision, option, notPlaced, published, input }
  *   scheduleId: the Generated draft, or null before the week's first save
  *   revision: what the draft was saved at; saveWeek sends it back
  *   option: the option the draft was built with (1 when it has none yet)
  *   notPlaced: a blank week's fixed or recurring activities whose slot was taken
+ *   published: the week's published schedule beside the draft ({ id, publishedAt, publishedBy,
+ *     changedSince }), or null when it has none (or nothing is generated yet)
  *   input: generateWeek's input, without option, mode and terms (the screen adds them)
  * and rejects when the week can't be opened (errorMessage gives the sentence).
  */
@@ -46,6 +48,7 @@ export async function loadWeek(programId, weekId) {
     revision: r.revision || "",
     option: r.option || 1,
     notPlaced: r.notPlaced || [],
+    published: r.published || null,
     input: {
       // The server's own Ids (18 characters): the engine compares them exactly and seeds with them.
       programId: r.programId || programId,
@@ -70,9 +73,10 @@ export async function loadWeek(programId, weekId) {
 /**
  * Saves the week the engine built (its result's days) over what was loaded.
  * Resolves to one of
- *   { status: SAVED, scheduleId, revision, versionId, loaded }: loaded is the week to go on
- *     with (what was built, the new revision, the locks kept: none after Start over); versionId
- *     is the version Rebuild, Try another or Start over kept first, or null
+ *   { status: SAVED, scheduleId, revision, versionId, published, loaded }: loaded is the week
+ *     to go on with (what was built, the new revision, the locks kept: none after Start over);
+ *     versionId is the version Rebuild, Try another or Start over kept first, or null;
+ *     published is the week's published schedule beside the week as saved now, or null
  *   { status: CONFLICT, message }: someone else saved the week since; nothing was written
  *   { status: REFUSED, message }: the server refused it (a fixed activity moved, ...)
  */
@@ -100,6 +104,7 @@ export async function saveWeek(loaded, { action, option, days }) {
     scheduleId: result.scheduleId,
     revision: result.revision,
     versionId: result.versionId || null,
+    published: result.published || null,
     // The week to go on with: what was built, at the new revision, with the locks the server
     // kept (none after Start over), replaced together.
     loaded: {

@@ -721,14 +721,15 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    never the program, so it can't deadlock with a Generated save (program, then draft).
 5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves,
    a Restore runs or the week is being read again (so its question is never worked out from a
-   view about to be replaced; Unpublish waits the same way); beside it _Published Oct 18, 10:04 by Pat_ and, once the draft differs,
+   view about to be replaced; Unpublish waits the same way); beside it _Published from Manual Build Oct 18, 10:04 AM by Pat_ (item 12) and, once the draft differs,
    _· changed since_ (from `DraftView.published`, worked out on the server by the same
    comparison; an edit on screen marks it at once). While a publish is on its way (and while its
    question is open) edits, Versions and the week and program pickers wait, so its answer,
    published or refused, is always shown; when the question closes, focus returns to Publish.
 6. **For Generated Schedule next**: `SchedulePublish` takes any locked draft (Generated's
    `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
-   wiring Generated is a controller method pair and the same toolbar button. Not wired here.
+   wiring Generated is a controller method pair and the same toolbar button. Wired since (ADR
+   0010 "Choices (Publish)").
 7. Reads: preview at most 15 queries, publish at most 25, unpublish at most 10 (asserted in
    `SchedulePublishTest`); opening Manual Build adds one query (three when the week is published).
 8. **Unpublish** (Greg, 2026-10-18). **Unpublish** (neutral button) sits beside **Publish**, shown
@@ -767,6 +768,16 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
     unpublished) is named in Versions by when it was published, _Published Oct 18, 2:40 PM_
     (items 2 and 8), so the week's history reads as a list of publishes rather than several
     _Published schedule_ rows.
+12. **Greg's decision (2026-10-19)**: the Published line names the screen the week was published
+    from, on both screens. Greg said "from Generated"; the builder used the screen's full name, as
+    Versions does: _Published from Manual Build Oct 18, 10:04 AM by Pat · changed since_,
+    or _Published from Generated Schedule …_. A week has one published schedule whichever screen
+    published it, so Manual Build can show one published from Generated Schedule and the other
+    way round. The screen comes from what the published copy already records, its `Origin__c`
+    (Publish copies the draft's: Manual or Generated), sent as `PublishState.origin`; no new
+    field and no extra query. The screen names are fixed words (as in Versions), not camp words.
+    One whose `Origin__c` names neither screen (made before Publish, with no Origin) says
+    _Published Oct 18, …_ as before (`c/shoreshPublish` `publishedWord`).
 
 ## Choices (part 6: setup changed since the week started)
 

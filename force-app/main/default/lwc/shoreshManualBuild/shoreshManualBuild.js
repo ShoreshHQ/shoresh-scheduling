@@ -17,7 +17,7 @@ import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule"
 import { errorMessage, failed } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
-import { publishQuestion } from "c/shoreshPublish";
+import { publishQuestion, publishedWord } from "c/shoreshPublish";
 
 /**
  * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
@@ -922,9 +922,9 @@ export default class ShoreshManualBuild extends LightningElement {
     this.load(true);
   }
 
-  /** "Published " before the date: a template drops the space after a word on its own. */
+  /** "Published from Manual Build " before the date (c/shoreshPublish). */
   get publishedWord() {
-    return "Published ";
+    return publishedWord(this.publishState);
   }
 
   get publishedBy() {

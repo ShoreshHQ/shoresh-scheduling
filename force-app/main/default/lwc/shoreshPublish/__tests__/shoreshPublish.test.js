@@ -1,4 +1,4 @@
-import { problemLines, publishQuestion } from "c/shoreshPublish";
+import { problemLines, publishQuestion, publishedWord } from "c/shoreshPublish";
 import { buildTerms } from "c/shoreshTerms";
 
 // What to ask before publishing, from the server's preview and the week's checks.
@@ -220,5 +220,18 @@ describe("c/shoreshPublish", () => {
         t
       })
     ).toEqual({ kind: "same" });
+  });
+
+  it("names the screen a week was published from, as its copy records it", () => {
+    expect(publishedWord({ origin: "Manual" })).toBe(
+      "Published from Manual Build "
+    );
+    expect(publishedWord({ origin: "Generated" })).toBe(
+      "Published from Generated Schedule "
+    );
+    // Published before Origin was kept, or by an import: no screen to name.
+    expect(publishedWord({ origin: null })).toBe("Published ");
+    expect(publishedWord({ origin: "Imported" })).toBe("Published ");
+    expect(publishedWord(null)).toBe("Published ");
   });
 });
