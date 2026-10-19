@@ -222,6 +222,11 @@ public with sharing class SchedulePublish {
         PublishedBy__c = UserInfo.getUserId(),
         PublishKey__c = keyOf(draft.Program__c, draft.Week__c)
       );
+      // A Generated week's copy keeps the option it was built with, so restoring it later takes
+      // that option back (ADR 0010 §49, §50). Manual Build's locked draft doesn't read it.
+      if (draft.Origin__c == GeneratedDrafts.GENERATED) {
+        copy.EngineOption__c = draft.EngineOption__c;
+      }
       Database.insert(copy, AccessLevel.USER_MODE);
       List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
       for (ScheduleDays.DayGrid day : days) {
