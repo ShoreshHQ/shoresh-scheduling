@@ -314,6 +314,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return false;
     }
     this.loadedFor = key;
+    // Publish and Unpublish are disabled while the week is read: one focused gets focus back
+    // (as on Manual Build).
+    const focused = this.template.activeElement;
+    const focusedId = focused && focused.dataset ? focused.dataset.id : null;
+    if (focusedId === "publish" || focusedId === "unpublish") {
+      this.focusOn = focusedId;
+    }
     this.reading = true;
     if (fresh) {
       this.loaded = null;

@@ -205,6 +205,16 @@ async function press(target, key) {
   );
   await flush();
 }
+/**
+ * A browser drops focus to the page from a button that is disabled; jsdom keeps it there (and
+ * won't blur a disabled button), so focus is moved off and its holder removed.
+ */
+function dropFocus() {
+  const away = document.createElement("button");
+  document.body.appendChild(away);
+  away.focus();
+  document.body.removeChild(away);
+}
 async function clickPublish(element) {
   publishButton(element).click();
   await flush();
@@ -456,6 +466,135 @@ describe("Publish on the Generated Schedule screen", () => {
     await flush();
     expect(getInputs).toHaveBeenCalledTimes(2);
     expect(publishButton(element).disabled).toBe(true);
+  });
+
+  it("Unpublish waits while a build, a hand edit, a Lock or a read of the week is on its way", async () => {
+    // A build.
+    let element = await render(cleanWeek({ published: PUBLISHED }));
+    saveWeekOnServer.mockReturnValue(new Promise(() => {}));
+    action(element, "TryAnother").click();
+    await until(() => saveWeekOnServer.mock.calls.length > 0);
+    expect(unpublishButton(element).disabled).toBe(true);
+    // The button is held, and so is what it does: no question is asked.
+    unpublishButton(element).dispatchEvent(new CustomEvent("click"));
+    await flush();
+    expect(unpublishAsk(element)).toBeNull();
+    document.body.removeChild(element);
+
+    // A hand edit.
+    element = await render(cleanWeek({ published: PUBLISHED }));
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    await press(cellAt(element, "0-1"), "Delete");
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(unpublishButton(element).disabled).toBe(true);
+    document.body.removeChild(element);
+
+    // A Lock.
+    element = await render(cleanWeek({ published: PUBLISHED }));
+    setLocksOnServer.mockReturnValue(new Promise(() => {}));
+    const item = [
+      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
+    ].find((i) => i.label.startsWith("Lock "));
+    q(element, '[data-id="lock-menu"]').dispatchEvent(
+      new CustomEvent("select", { detail: { value: item.value } })
+    );
+    await flush();
+    expect(setLocksOnServer).toHaveBeenCalledTimes(1);
+    expect(unpublishButton(element).disabled).toBe(true);
+    document.body.removeChild(element);
+
+    // A read of the week, coming back to the window.
+    element = await render(cleanWeek({ published: PUBLISHED }));
+    getInputs.mockReturnValue(new Promise(() => {}));
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(unpublishButton(element).disabled).toBe(true);
+  });
+
+  it("Unpublish does nothing while it is held, even if its click arrives", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    getInputs.mockReturnValue(new Promise(() => {}));
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    // A disabled button gets no click from a person; the handler must still refuse one.
+    const button = unpublishButton(element);
+    button.disabled = false;
+    button.click();
+    await flush();
+    expect(unpublishAsk(element)).toBeNull();
+  });
+
+  it("a week someone else saved between the preview and Publish publishes nothing, says so and reads it again", async () => {
+    const element = await render(cleanWeek());
+    previewPublish.mockResolvedValue(preview());
+    publish.mockResolvedValue({ draftChanged: true, publishedChanged: false });
+    getInputs.mockClear();
+    await clickPublish(element);
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published."
+    );
+    expect(publishedLine(element)).toBeNull();
+    expect(getInputs).toHaveBeenCalledTimes(1);
+  });
+
+  it("a publish the server finds already published as it is says so", async () => {
+    // The preview saw changes, but by the time Publish arrived the published copy matched.
+    const element = await render(cleanWeek());
+    previewPublish.mockResolvedValue(preview());
+    publish.mockResolvedValue({
+      published: PUBLISHED,
+      draftChanged: false,
+      publishedChanged: false,
+      unchanged: true
+    });
+    await clickPublish(element);
+    expect(notice(element)).toBe("Week 1 is already published as it is.");
+    expect(publishedLine(element)).not.toBeNull();
+  });
+
+  it("a failed Unpublish says the week was not unpublished", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublish.mockRejectedValue({ body: { message: "Something went wrong." } });
+    unpublishButton(element).click();
+    await flush();
+    await answer(unpublishAsk(element), true);
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "Week 1 was not unpublished."
+    );
+    expect(unpublishButton(element).disabled).toBe(false);
+  });
+
+  it("focus goes back to Publish after the week is read again on coming back to the window", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    publishButton(element).focus();
+    expect(element.shadowRoot.activeElement).toBe(publishButton(element));
+    const held = slow();
+    getInputs.mockReturnValue(held.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(publishButton(element).disabled).toBe(true);
+    dropFocus();
+    expect(element.shadowRoot.activeElement).toBeNull();
+    held.answer(cleanWeek({ published: PUBLISHED }));
+    await flush();
+    expect(publishButton(element).disabled).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(publishButton(element));
+  });
+
+  it("focus goes back to Unpublish after the week is read again on coming back to the window", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublishButton(element).focus();
+    const held = slow();
+    getInputs.mockReturnValue(held.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(unpublishButton(element).disabled).toBe(true);
+    dropFocus();
+    expect(element.shadowRoot.activeElement).toBeNull();
+    held.answer(cleanWeek({ published: PUBLISHED }));
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(unpublishButton(element));
   });
 
   it("a hand edit marks the week changed since it was published, at once", async () => {
