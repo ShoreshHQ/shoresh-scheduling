@@ -5,7 +5,8 @@
  * share one line, named as the rest of the app names a run of blocks ("Period 1 – Period 2", or
  * "9:00 AM – 10:30 AM" when a block is named by its times; BlockRange). A cell is matched by its
  * group's and time block's records, so a renamed bunk or block is the same cell; one only one side has is Open on the other. An activity
- * renamed since is a change (its new name is what would be published). Locks are not compared:
+ * renamed since is a change (its new name is what would be published), and so is a bunk or
+ * block renamed since: one line each, first (PublishedRenames). Locks are not compared:
  * they are how a draft is built, not what campers do. Same days, same lines.
  */
 public with sharing class PublishedChanges {
@@ -18,7 +19,8 @@ public with sharing class PublishedChanges {
     public Integer moreLines = 0;
     private Integer mostLines;
 
-    private void add(String line, Integer cells) {
+    // A line, and how many cells (or renames) it covers.
+    public void add(String line, Integer cells) {
       count += cells;
       if (lines.size() < mostLines) {
         lines.add(line);
@@ -42,6 +44,7 @@ public with sharing class PublishedChanges {
     dates.sort();
     Changes result = new Changes();
     result.mostLines = mostLines;
+    PublishedRenames.addTo(result, published, draft);
     for (Date day : dates) {
       new DayCompare(
           WeekCalendar.weekdayName(day),

@@ -996,4 +996,52 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     // A live region is read out when its words change: they did.
     expect(second).not.toBe(first);
   });
+
+  // ---------- review round 4 ----------
+
+  it("a save before the first check answers reads again, and the check from before the edit is dropped", async () => {
+    // The week's first check is slow; it read the week before the edit.
+    const first = pending();
+    getSetupChanges.mockReturnValueOnce(first.promise);
+    const element = await render();
+    await saved(element);
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+    first.resolve(NOTHING);
+    await flush();
+    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+  });
+
+  it("an update whose answer comes after another week is chosen leaves that week as it is", async () => {
+    const element = await render(PREVIEW, swimWeek(), TWO_WEEKS);
+    await openUpdate(element);
+    const working = pending();
+    updateToMatchSetup.mockReturnValueOnce(working.promise);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    // Week 2 is chosen and shown while Week 1's update is on its way.
+    getDraft.mockResolvedValueOnce(draft([FLAGPOLE, BOATING], ["1,2,", "1,,"]));
+    getSetupChanges.mockResolvedValue(NOTHING);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Boating");
+    working.resolve(made());
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Boating");
+    const notice = q(element, '[data-id="notice"]');
+    expect(notice ? notice.textContent : "").not.toContain("Updated");
+  });
+
+  it("Update to match setup says the week matches when a fresh read finds nothing to change", async () => {
+    const element = await render();
+    // Setup was put back since the line was shown.
+    getSetupChanges.mockResolvedValue(NOTHING);
+    await openUpdate(element);
+    expect(dialog(element)).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Week 1 matches setup."
+    );
+  });
 });

@@ -490,16 +490,108 @@ private class SetupMatchTest {
       Test.stopTest();
       // The published week says Swim; the screen says Swimming: a change to publish, shown.
       Assert.isTrue(view.published.changedSince);
-      Assert.areEqual(1, preview.changeCount, JSON.serialize(preview));
-      Assert.isTrue(
-        preview.changes[0].endsWith('Swim → Swimming'),
-        preview.changes[0]
+      Assert.areEqual(
+        new List<String>{
+          'Renamed: Group A → Bunk Aleph',
+          'Renamed: Period 2 → Second period',
+          'Bunk Aleph · Monday · Second period: Swim → Swimming'
+        },
+        preview.changes
       );
+      Assert.areEqual(3, preview.changeCount);
       Assert.isFalse(result.unchanged);
       ScheduleGrid copy = ScheduleDays.read(result.published.id)[0].grid;
       Assert.areEqual('Bunk Aleph', copy.groups[0].name);
       Assert.areEqual('Second period', copy.blocks[1].name);
       Assert.areEqual('Swimming', copy.items[0].name);
+    }
+  }
+
+  @IsTest
+  static void aBunkAndABlockRenamedAloneArePublishedToo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      SchedulePublish.Preview first = ManualBuildController.previewPublish(
+        draftId
+      );
+      ManualBuildController.publish(draftId, first.revisions, null);
+      Database.update(
+        new List<SObject>{
+          new TimeBlock__c(Id = ids.get('Period 2'), Name = 'Second period'),
+          new Group__c(Id = ids.get('Group A'), Name = 'Bunk Aleph')
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      ManualBuildViews.DraftView view = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        draftId
+      );
+      SchedulePublish.Result result = ManualBuildController.publish(
+        draftId,
+        preview.revisions,
+        preview.published.id
+      );
+      Test.stopTest();
+      // No cell holds anything else, but staff would read the old names: a change to publish.
+      Assert.isTrue(view.published.changedSince);
+      Assert.areEqual(
+        new List<String>{
+          'Renamed: Group A → Bunk Aleph',
+          'Renamed: Period 2 → Second period'
+        },
+        preview.changes
+      );
+      Assert.areEqual(2, preview.changeCount);
+      Assert.isFalse(result.unchanged);
+      ScheduleGrid copy = ScheduleDays.read(result.published.id)[0].grid;
+      Assert.areEqual('Bunk Aleph', copy.groups[0].name);
+      Assert.areEqual('Second period', copy.blocks[1].name);
+    }
+  }
+
+  @IsTest
+  static void aSaveMarksGoneOnlyWhatWasDeletedFromSetup() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      started(ids);
+      Database.delete(ids.get('Swim'), AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      // An edit elsewhere in the week: its answer is what the screen shows next.
+      SlotEdits.Result result = ManualBuildController.saveSlots(
+        draft,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY,
+              ids.get('Group B'),
+              ids.get('Period 1')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + ids.get('Gym games') }
+          )
+        }
+      );
+      Test.stopTest();
+      Assert.isTrue(result.conflicts.isEmpty());
+      ScheduleViews.DayView monday = result.schedule.days[0];
+      List<String> gone = new List<String>();
+      List<ScheduleViews.Ref> refs = new List<ScheduleViews.Ref>();
+      refs.addAll(monday.blocks);
+      refs.addAll(monday.groups);
+      refs.addAll(monday.items);
+      for (ScheduleViews.Ref ref : refs) {
+        if (ref.gone) {
+          gone.add(ref.name);
+        }
+      }
+      Assert.areEqual(new List<String>{ 'Swim' }, gone);
+      Assert.isTrue(monday.groups.size() >= 3, JSON.serialize(monday.groups));
+      Assert.isTrue(monday.items.size() >= 2, JSON.serialize(monday.items));
     }
   }
 

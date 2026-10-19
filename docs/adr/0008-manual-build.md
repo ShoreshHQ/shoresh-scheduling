@@ -702,7 +702,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    one), at most 30 lines
    plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
    activity renamed since is a change, since a Manual Build draft is published by setup's names
-   now, as the screen shows it (`ManualBuildNamesNow`, part 6 item 2); locks are not). The screen adds what its counters and dots
+   now, as the screen shows it (`ManualBuildNamesNow`, part 6 item 2); so is a bunk or time block
+   renamed since, one line each for the week, first: "Renamed: Group A → Bunk A" (`PublishedRenames`; review round 4:
+   otherwise a rename alone would never reach staff); locks are not). The screen adds what its counters and dots
    show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
    two only when the camp has those targets; lines the director accepted are not counted, as the

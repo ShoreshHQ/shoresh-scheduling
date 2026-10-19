@@ -384,4 +384,36 @@ private class GeneratedPublishTest {
       Assert.areEqual(0, publishedHistory().size());
     }
   }
+
+  @IsTest
+  static void aGeneratedWeekPublishesTheNamesItWasSavedWith() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      // Renamed in setup since: Generated Schedule shows the week by its saved names, so
+      // Publish puts those out (only Manual Build shows setup's names now).
+      Database.update(
+        new List<SObject>{
+          new Activity__c(Id = ids.get('Gym games'), Name = 'Gym'),
+          new Group__c(Id = ids.get('Group A'), Name = 'Bunk Aleph')
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      SchedulePublish.Result result = publishNow(draftId);
+      SchedulePublish.Preview again = GeneratedScheduleController.previewPublish(
+        draftId
+      );
+      Test.stopTest();
+      ScheduleGrid copy = ScheduleDays.read(result.published.id)[0].grid;
+      Assert.areEqual('Group A', copy.groups[0].name);
+      Set<String> placed = new Set<String>();
+      for (ScheduleGrid.Item item : copy.items) {
+        placed.add(item.name);
+      }
+      Assert.isTrue(placed.contains('Gym games'), String.valueOf(placed));
+      Assert.isFalse(placed.contains('Gym'), String.valueOf(placed));
+      Assert.areEqual(0, again.changeCount, JSON.serialize(again.changes));
+    }
+  }
 }

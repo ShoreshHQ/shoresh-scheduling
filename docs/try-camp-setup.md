@@ -985,7 +985,9 @@ say).
 1. In another tab, rename Swim to _Swimming_ on **Activities**. Come back to Manual Build: the
    cell says _Swimming_, with no dot. A rename is not a problem. Place any activity in another
    cell: Swimming still says _Swimming_. If the week was published, **Publish** now lists
-   _Swim → Swimming_: the published copy gets the name you see.
+   _Swim → Swimming_: the published copy gets the name you see. Rename only a bunk (say Bunk 2
+   to _Bunk Bet_) and **Publish** lists _Renamed: Bunk 2 → Bunk Bet_, so the new name is
+   published too.
 2. Add a fixed activity _Assembly_ in Period 6 for everyone (on **Fixed activities**; Period 6
    is free every day on the sample camp). Come back: every Open Period 6 cell has the bronze
    dot; hover one: _Assembly is set up here now_. Above the grid, a bronze box: the dot, _Week 1

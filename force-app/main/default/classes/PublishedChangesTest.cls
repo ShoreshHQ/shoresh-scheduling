@@ -163,6 +163,39 @@ private class PublishedChangesTest {
   }
 
   @IsTest
+  static void aBunkOrBlockRenamedSinceIsOneChangeForTheWeek() {
+    List<List<String>> rows = new List<List<String>>{
+      row('1', '', '3'),
+      row('', '', '3')
+    };
+    List<ScheduleDays.DayGrid> renamed = new List<ScheduleDays.DayGrid>{
+      day(MONDAY, items(), rows),
+      day(MONDAY.addDays(1), items(), rows)
+    };
+    for (ScheduleDays.DayGrid each : renamed) {
+      each.grid.groups[1].name = 'group b';
+      each.grid.blocks[2].name = 'Third period';
+    }
+    PublishedChanges.Changes changes = PublishedChanges.between(
+      new List<ScheduleDays.DayGrid>{
+        day(MONDAY, items(), rows),
+        day(MONDAY.addDays(1), items(), rows)
+      },
+      renamed,
+      30
+    );
+    // Same cells, but staff would read the old names: once each, even in case only.
+    Assert.areEqual(
+      new List<String>{
+        'Renamed: Group B → group b',
+        'Renamed: Period 3 → Third period'
+      },
+      changes.lines
+    );
+    Assert.areEqual(2, changes.count);
+  }
+
+  @IsTest
   static void aDayOnlyOneSideHasIsOpenOnTheOther() {
     ScheduleDays.DayGrid tuesday = day(
       MONDAY.addDays(1),

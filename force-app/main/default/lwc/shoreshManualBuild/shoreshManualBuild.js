@@ -1029,15 +1029,16 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /**
    * After a save: read again when the week differed from setup (an edit may have settled a
-   * difference) or an activity is closed this week (placing one makes a new difference).
+   * difference) or an activity is closed this week (placing one makes a new difference), or
+   * when no read has answered yet (the one on its way read the week before this edit).
    */
   handleSaved() {
     const preview = this.setupPreview;
-    if (
-      preview &&
-      ((preview.changes || []).length > 0 ||
-        (preview.closedActivityIds || []).length > 0)
-    ) {
+    const again = preview
+      ? (preview.changes || []).length > 0 ||
+        (preview.closedActivityIds || []).length > 0
+      : !!this.schedule;
+    if (again) {
       this.loadSetupChanges();
     }
   }
