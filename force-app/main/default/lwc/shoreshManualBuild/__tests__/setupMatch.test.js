@@ -170,6 +170,17 @@ const cell = (element, key) =>
   );
 const dotIn = (element, key) =>
   cell(element, key).querySelector("c-shoresh-dot");
+/** Delete on a cell, as the keyboard sends it. */
+const clearCell = (element, key) =>
+  cell(element, key).dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "Delete",
+      bubbles: true,
+      composed: true
+    })
+  );
+const cellText = (element, key) =>
+  cell(element, key).querySelector(".cell-name").textContent;
 const dialog = (element) => q(element, '[data-id="setup-match"]');
 const inDialog = (element, selector) =>
   dialog(element).shadowRoot.querySelector(selector);
@@ -431,6 +442,99 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(q(element, '[data-id="update-to-match"]')).not.toBeNull();
   });
 
+  it("a read that works after a failed one clears the couldn't-check message", async () => {
+    const element = await render();
+    getSetupChanges.mockRejectedValueOnce({ body: { message: "No access." } });
+    await saved(element);
+    expect(editorText(element)).toBe(
+      "Shoresh couldn't check Week 1 against setup. No access."
+    );
+    getSetupChanges.mockResolvedValue(NOTHING);
+    await saved(element);
+    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(editorText(element)).toBeNull();
+  });
+
+  it("a read that works leaves any other error on screen", async () => {
+    const element = await render();
+    q(element, "c-shoresh-week-editor").dispatchEvent(
+      new CustomEvent("errorchange", {
+        detail: { message: "Bunk 1 is busy then." }
+      })
+    );
+    await saved(element);
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+    expect(editorText(element)).toBe("Bunk 1 is busy then.");
+  });
+
+  it("Update to match setup says why when the week can't be compared now, never that it matches", async () => {
+    const element = await render();
+    const problem = "No Bunks of Main are at camp in Week 1.";
+    getSetupChanges.mockResolvedValue({ ...NOTHING, problem });
+    await openUpdate(element);
+    expect(dialog(element)).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(problem);
+    expect(q(element, '[data-id="setup-changed"] c-shoresh-dot').label).toBe(
+      problem
+    );
+  });
+
+  it("setup changed again and nothing is left to change: the list closes and says why", async () => {
+    const element = await render();
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValue({ refused: "setupChanged" });
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-key="k1"]').click();
+    await flush();
+    expect(dialog(element)).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Setup changed again since you looked, so nothing was updated. Week 1 matches setup now."
+    );
+  });
+
+  it("a reload already on its way doesn't paint the week as it was over the update", async () => {
+    const element = await render();
+    // Coming back to the window reads the week again; that read is slow.
+    const old = pending();
+    getDraft.mockReturnValueOnce(old.promise);
+    window.dispatchEvent(new FocusEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValue({
+      refused: null,
+      view: draft([FLAGPOLE], ["1,,", "1,1,"])
+    });
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Open");
+    // The old read, Swim and all, arrives after the update: it is dropped.
+    old.resolve(swimWeek());
+    await flush();
+    expect(cellText(element, "0-1")).toBe("Open");
+    expect(cellText(element, "1-1")).toBe("Flagpole");
+  });
+
+  it("Update to match setup waits while an edit is still saving", async () => {
+    const element = await render();
+    saveSlots.mockReturnValue(pending().promise);
+    clearCell(element, "0-1");
+    await flush();
+    const button = q(element, '[data-id="update-to-match"]');
+    expect(button.disabled).toBe(true);
+    // Pressed anyway (the button drawn before the edit began): it still waits, and says so.
+    getSetupChanges.mockClear();
+    button.disabled = false;
+    button.click();
+    await flush();
+    expect(getSetupChanges).not.toHaveBeenCalled();
+    expect(dialog(element)).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "One moment: an edit is still saving."
+    );
+  });
+
   it("drops an older answer that arrives after a newer one", async () => {
     const element = await render();
     const first = pending();
@@ -502,13 +606,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       conflicts: [],
       schedule: draft([FLAGPOLE, SWIM], ["1,,", "1,,"]).schedule
     });
-    cell(element, "0-1").dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "Delete",
-        bubbles: true,
-        composed: true
-      })
-    );
+    clearCell(element, "0-1");
     await flush();
     expect(q(element, '[data-id="undo"]').disabled).toBe(false);
     await openUpdate(element);

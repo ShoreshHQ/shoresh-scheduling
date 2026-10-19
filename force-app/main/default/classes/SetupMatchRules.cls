@@ -13,6 +13,8 @@ public with sharing class SetupMatchRules {
   private GeneratedSetup setup;
   public Map<Id, Activity__c> activities;
   public Set<Id> closed = new Set<Id>();
+  // An activity closed only by its place: the place's name, which its dot names.
+  private Map<Id, String> closedBy = new Map<Id, String>();
   private Map<Id, Group__c> groups;
   private Set<Id> away;
   private Map<Id, TimeBlock__c> blocks;
@@ -23,18 +25,22 @@ public with sharing class SetupMatchRules {
     groups = new Map<Id, Group__c>(setup.groups);
     away = setup.away();
     blocks = new Map<Id, TimeBlock__c>(setup.blocks);
-    Set<Id> closedPlaces = new Set<Id>();
+    Map<Id, String> closedPlaces = new Map<Id, String>();
     for (WeekException__c mark : setup.exceptions) {
       if (mark.Activity__c != null) {
         closed.add(mark.Activity__c);
       }
       if (mark.Location__c != null) {
-        closedPlaces.add(mark.Location__c);
+        closedPlaces.put(mark.Location__c, mark.Location__r.Name);
       }
     }
     for (Activity__c activity : activities.values()) {
-      if (closedPlaces.contains(activity.Location__c)) {
+      if (
+        closedPlaces.containsKey(activity.Location__c) &&
+        !closed.contains(activity.Id)
+      ) {
         closed.add(activity.Id);
+        closedBy.put(activity.Id, closedPlaces.get(activity.Location__c));
       }
     }
   }
@@ -54,9 +60,15 @@ public with sharing class SetupMatchRules {
     if (activityId == null || !activities.containsKey(activityId)) {
       return DELETED;
     }
-    return closed.contains(activityId)
-      ? 'Not running this ' + setup.labels().singularInSentence('Week')
-      : null;
+    if (!closed.contains(activityId)) {
+      return null;
+    }
+    // Closed by its place: the place is named, as the desktop and Generated Schedule name it
+    // ("Pool is closed this week"); the activity's own mark is on its cell already.
+    String week = setup.labels().singularInSentence('Week');
+    return closedBy.containsKey(activityId)
+      ? closedBy.get(activityId) + ' is closed this ' + week
+      : 'Not running this ' + week;
   }
 
   /** Why a group's row is not in the week now: away this week, or no longer in the program. */

@@ -225,6 +225,36 @@ private class SetupMatchTest {
   }
 
   @IsTest
+  static void anActivityClosedByItsPlaceGetsADotNamingThePlace() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      Database.insert(
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Location__c = ids.get('Pool')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      // Swim is at the Pool: the dot says the Pool is what is closed.
+      Assert.areEqual(
+        'Pool is closed this week',
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 2'))
+      );
+      Assert.areEqual(
+        new List<Id>{ ids.get('Swim') },
+        preview.closedActivityIds
+      );
+    }
+  }
+
+  @IsTest
   static void aFixedActivityAddedSinceCanBePlacedOneCellAtATime() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();

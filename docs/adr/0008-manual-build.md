@@ -790,7 +790,9 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    answer (product principle: same inputs, same output).
 2. **Dots** (`SetupMatchDots`): every cell of a placement that would not stay as it is, and every
    Open cell a fixed or recurring activity is now set up in, gets the bronze dot with why:
-   _Deleted from setup_, _Not running this week_ (camp word), _Not at camp this week_, _No longer
+   _Deleted from setup_, _Not running this week_ (camp word; an activity closed by its place
+   names the place instead, _Pool is closed this week_, as the desktop's computeWeekClosures.js
+   and Generated Schedule do), _Not at camp this week_, _No longer
    in Main_, _Period 5 is no longer set up_, _Its periods changed_ (a block added inside a
    placement), _Not at camp then_ (a bunk now mornings only), _Lunch is set up here now_, _Not
    set up here now_ (a fixed or recurring activity moved or ended), _Not a day of Main now_.

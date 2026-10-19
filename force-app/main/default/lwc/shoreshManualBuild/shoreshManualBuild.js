@@ -97,6 +97,9 @@ export default class ShoreshManualBuild extends LightningElement {
   // What setup changed since the week started (SetupMatch.Preview), for the week shown, or null.
   setupPreview = null;
   setupTicket = 0;
+  // The "couldn't check against setup" message while it is shown, so a later read that works
+  // clears it and nothing else.
+  setupError = null;
   // "Update to match setup" is open ({ notice }), or null; an update is on its way.
   setupAsk = null;
   setupWorking = false;
@@ -999,6 +1002,11 @@ export default class ShoreshManualBuild extends LightningElement {
         return null;
       }
       this.setupPreview = preview;
+      // Checked now: a "couldn't check" from an earlier read goes (any other error stays).
+      if (this.error && this.error === this.setupError) {
+        this.error = null;
+      }
+      this.setupError = null;
       return preview;
     } catch (e) {
       // Said, never hidden: the dots and the box stay as last read rather than vanishing, which
@@ -1008,6 +1016,7 @@ export default class ShoreshManualBuild extends LightningElement {
           `Shoresh couldn't check ${this.weekName} against setup.`,
           e
         );
+        this.setupError = this.error;
       }
       return null;
     }
@@ -1086,7 +1095,10 @@ export default class ShoreshManualBuild extends LightningElement {
       if (week !== this.weekKey || !preview) {
         return;
       }
-      if (preview.changes.length) {
+      if (preview.problem) {
+        // Can't be compared now: said, never "matches" (the box says the same).
+        this.say(preview.problem);
+      } else if (preview.changes.length) {
         this.setupAsk = { notice: null };
       } else {
         this.say(`${this.weekName} matches setup.`);
@@ -1140,13 +1152,18 @@ export default class ShoreshManualBuild extends LightningElement {
       }
       if (result.refused === "setupChanged") {
         const fresh = await this.loadSetupChanges();
+        const again =
+          "Setup changed again since you looked, so nothing was updated.";
         this.setupAsk =
           fresh && fresh.changes.length
-            ? {
-                notice:
-                  "Setup changed again since you looked, so nothing was updated. This is what it would change now."
-              }
+            ? { notice: `${again} This is what it would change now.` }
             : null;
+        if (fresh && !this.setupAsk) {
+          // Nothing left to change (or it can't be compared now): the list closes, and says why.
+          this.say(
+            `${again} ${fresh.problem || `${this.weekName} matches setup now.`}`
+          );
+        }
         return;
       }
       this.checksResetKey += 1;

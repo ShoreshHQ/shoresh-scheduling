@@ -170,10 +170,11 @@
           <c-shoresh-dot label={setupChangedText}></c-shoresh-dot>
           <span aria-hidden="true">{setupChangedText}</span>
           <template lwc:if={canUpdateToMatch}>
+            <!-- Waits for an edit still saving too: what it compares is the week as saved. -->
             <button
               type="button"
               class="slds-button slds-button_neutral"
-              disabled={editsWait}
+              disabled={versionsBusy}
               data-id="update-to-match"
               onclick={handleSetupMatch}
             >
