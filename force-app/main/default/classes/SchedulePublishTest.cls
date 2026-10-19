@@ -122,8 +122,8 @@ private class SchedulePublishTest {
       );
       Integer publishQueries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
-      Assert.isTrue(previewQueries <= 15, 'Preview used ' + previewQueries);
-      Assert.isTrue(publishQueries <= 25, 'Publish used ' + publishQueries);
+      Assert.isTrue(previewQueries <= 6, 'Preview used ' + previewQueries);
+      Assert.isTrue(publishQueries <= 15, 'Publish used ' + publishQueries);
       // The week's first publish: nothing to replace, so no changes to show.
       Assert.isNull(preview.published);
       Assert.areEqual(0, preview.changeCount);
@@ -465,7 +465,7 @@ private class SchedulePublishTest {
       );
       Test.stopTest();
       Assert.isTrue(
-        unpublishQueries <= 10,
+        unpublishQueries <= 8,
         'Unpublish used ' + unpublishQueries
       );
       Assert.isFalse(result.publishedChanged);
