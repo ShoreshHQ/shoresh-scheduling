@@ -1,8 +1,21 @@
 /**
  * Schedules: a schedule's week must be in the same season as its program, so a version can
- * never belong to another season's week.
+ * never belong to another season's week; published history is kept (PublishedGuard).
  */
 public with sharing class ScheduleTriggerHandler {
+  public static void handle(
+    TriggerOperation operation,
+    List<Schedule__c> news,
+    Map<Id, Schedule__c> oldMap
+  ) {
+    if (operation == TriggerOperation.BEFORE_DELETE) {
+      PublishedGuard.refuseScheduleDeletes(oldMap.values());
+      return;
+    }
+    PublishedGuard.checkSchedules(news, oldMap);
+    beforeSave(news);
+  }
+
   public static void beforeSave(List<Schedule__c> schedules) {
     Set<Id> programIds = new Set<Id>();
     Set<Id> weekIds = new Set<Id>();

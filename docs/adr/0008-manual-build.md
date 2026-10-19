@@ -17,7 +17,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
    its weekly limit, not set up for a bunk, twice in a day).
 4. In two (coordinator, 2026-10-17): **4a** Clear day, Clear week, Copy day to…; **4b** Versions
    on this screen (Save version, Restore, rename, delete) and Start from another week.
-5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`).
+5. Publish (`PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`); see "Choices (part 5)".
 6. Setup changed since the week started: dots and "Update to match setup".
 
 ## Choices (part 1)
@@ -539,8 +539,13 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       desktop's inline _Delete?_; its days go with it. Only a version of the draft's week; never
       the draft.
     - **Start from another week**, beside Start a blank week while the week has no Manual
-      Build: a menu of the program's other weeks' Manual Build and every version of the program
-      (_Week 2 · Manual Build_, _Week 1 · Before the trip (version)_). The week starts as Start
+      Build: a menu of the program's other weeks' Manual Build, each week's published schedule
+      (part 5; named in the camp's word today) and every version of the program, published
+      schedules replaced since among them (_Week 2 · Manual Build_, _Week 1 · Published
+      schedule_, _Week 1 · Before the trip (version) · Jun 29, 9:00 AM_). A version shows when
+      it was saved after its name, as Versions does, so two with the same name can be told apart
+      (coordinator, 2026-10-19); a copy still named by when it was published (part 5 item 11)
+      shows no second time, since its name already says it. The week starts as Start
       a blank week does (fixed and recurring activities from this week's own setup), then each
       day takes the activities of the source day with the same weekday (in a week longer than
       seven days, first Monday from first Monday, second from second), bunk by bunk, at the
@@ -567,7 +572,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       versions, an unreadable day refused, a draft with no days, delete never the draft),
       `ManualWeekStartTest` (matched by weekday, a second Monday, a placement several blocks
       long, a bunk away that week or then, closed, deleted, already there, an unreadable day,
-      a week already started, what can and can't be the start), `versions.test.js` and
+      a week already started, what can and can't be the start, a published schedule and the ones
+      it replaced), `versions.test.js` and
       `shoreshVersions.test.js` (the list, Restore and its guards, Save version, Delete?, focus,
       Start from another week and its guards).
 
@@ -659,13 +665,118 @@ Manual Build passes none of these and behaves as before.
   or Enter right after a click, raises one `unlockrequest`; the same cell asked again after 600 ms
   is a new gesture.
 
+## Choices (part 5: Publish)
+
+The desktop has no publish (behaviour index, "Publish"; desktop
+`docs/adr/2026-07-28-plural-candidate-schedules-per-camp.md`): it never names one schedule final.
+So the spec is Greg's: Manual Build round 1 #1 (both schedules get Publish; it copies the draft as
+the week's published schedule; publishing again replaces it after a confirm showing what changes;
+later draft edits don't touch the copy), round 2 #4 (anyone with Shoresh Scheduler access can
+publish; `ScheduleEntry__c` waits until something reads it), wiki decision 0002 (one published
+schedule per week; the earlier one is kept as history) and the data model (`PublishedAt__c`,
+`PublishedBy__c`, `PublishKey__c`; "Protecting history").
+
+1. **Publish copies the draft** (`SchedulePublish.publish`): a new `Schedule__c` with Status
+   Published, the draft's Origin, `SourceSchedule__c` the draft, `PublishedAt__c` now,
+   `PublishedBy__c` the user, `PublishKey__c` "programId:weekId", named the camp's word for
+   _Published schedule_, with the draft's days copied exactly (grid text and all). No
+   `ScheduleEntry__c` rows yet (round 2 #4).
+2. **Publishing again replaces it**: every published schedule of the week becomes a Version
+   (Status Version, key cleared, `PublishedAt__c` kept), in the same transaction as the new copy.
+   It is named by when it was published (Greg, 2026-10-19): _Published Oct 18, 2:40 PM_, in the
+   user's time zone and as their locale writes the time (a 24-hour clock where it uses one), as
+   the screen shows _Published …_ beside Publish; the same moment always gives the same name. One
+   someone renamed while it was published keeps their name (`PublishedRows.keepAsHistory`).
+   It shows in Versions marked _Published_, can be restored and renamed, and is never deleted
+   (`ManualVersions.remove` refuses: "… was the published schedule, which is kept as history,
+   so it can't be deleted."; the list shows no **delete** for it). `PublishedHistory` and the
+   week delete (`WeekExceptions`) count Status Published **or** `PublishedAt__c`, so a week,
+   program or season with a replaced published schedule is still kept (ADR 0005 §10 asked for
+   this).
+3. **What is shown first** (coordinator call under "show problems, never resolve silently").
+   Publish asks the server for a preview (`previewPublish`): the published schedule it would
+   replace and each cell that would change, "Bunk 1 · Monday · Period 2: Swim → Archery",
+   neighbouring blocks with the same change on one line, named as the rest of the app names a
+   run of blocks ("Period 1 – Period 2", as c/shoreshSetupRules does; "9:00 AM – 10:45 AM" when
+   either end is a block named by its own times, as `TimeBlockTriggerHandler.rangeLabel` names
+   one), at most 30 lines
+   plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
+   activity renamed since is a change; locks are not). The screen adds what its counters and dots
+   show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
+   "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
+   two only when the camp has those targets; lines the director accepted are not counted, as the
+   counters don't count them). It asks (c-shoresh-ask, _Publish Week 1?_ or
+   _Publish Week 1 again?_, **Publish**/Cancel) whenever there is a change or a problem to show;
+   a first publish with nothing to show goes at once; a week already published as it is says
+   _Week 1 is already published as it is._ and writes nothing (the server agrees: same cells,
+   no new copy). Never blocked (round 1 #2 to #4).
+4. **Nothing published unseen.** A preview of a week someone saved since the screen read it
+   publishes nothing: the screen compares the preview's revisions with its own, shows the
+   refusal below and reads the week again. Publish sends back the preview's revisions and the
+   published schedule it showed. Someone saved the week since: refused, _Someone else changed this week
+   since, so nothing was published._, and the week is read
+   again. Someone published since: _Someone else published this week since, so nothing was
+   replaced. …_ Two first publishes at the same moment: the key's uniqueness refuses the second
+   the same way. Publish locks the draft (its drafts class) and then the week's published rows,
+   never the program, so it can't deadlock with a Generated save (program, then draft).
+5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves,
+   a Restore runs or the week is being read again (so its question is never worked out from a
+   view about to be replaced; Unpublish waits the same way); beside it _Published Oct 18, 10:04 by Pat_ and, once the draft differs,
+   _· changed since_ (from `DraftView.published`, worked out on the server by the same
+   comparison; an edit on screen marks it at once). While a publish is on its way (and while its
+   question is open) edits, Versions and the week and program pickers wait, so its answer,
+   published or refused, is always shown; when the question closes, focus returns to Publish.
+6. **For Generated Schedule next**: `SchedulePublish` takes any locked draft (Generated's
+   `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
+   wiring Generated is a controller method pair and the same toolbar button. Not wired here.
+7. Reads: preview at most 15 queries, publish at most 25, unpublish at most 10 (asserted in
+   `SchedulePublishTest`); opening Manual Build adds one query (three when the week is published).
+8. **Unpublish** (Greg, 2026-10-18). **Unpublish** (neutral button) sits beside **Publish**, shown
+   only while the week has a published schedule. It asks first (c-shoresh-ask, _Unpublish Week
+   1?_ / _Nothing will be published for this week._, **Unpublish**/Cancel, Cancel focused); then
+   `SchedulePublish.unpublish` turns the week's published schedule into a version exactly as a
+   replaced one (Status Version, key cleared, `PublishedAt__c` and `PublishedBy__c` kept, named by
+   when it was published as in item 2), so it is
+   in Versions marked _Published_, can be restored and renamed, and is never deleted (decision
+   0002). The week then has no published schedule, and publishing again later is a first publish.
+   It names the published schedule the screen showed; one published or unpublished since:
+   refused, nothing written, _Someone else published or unpublished this week since, so nothing
+   was unpublished._, and the week is read again. Draft saves don't
+   refuse it: it doesn't touch the draft. While it runs (and while its question is open) edits,
+   Versions and the pickers wait, as for Publish; focus then returns to Unpublish, or to Publish
+   once Unpublish is gone. It takes any locked draft, like publish, so Generated reuses it as is.
+9. **Published history is kept at the data level** (`PublishedGuard`, before triggers on
+   `Schedule__c` and `ScheduleDay__c`). A schedule that is or was published (Status Published or
+   any of `PublishedAt__c`, `PublishedBy__c`, `PublishKey__c` set), and its days, change only
+   inside Shoresh's Publish, Unpublish and rename (`SchedulePublish` and
+   `SchedulesController.renameSchedule` call `PublishedGuard.allow()` and `done()` around their
+   writes). Anything else, a
+   record page, list view, import or the API, in user or system mode, is refused in the camp's
+   words: _"Published schedule" is the published schedule, which is kept as history, so only
+   Publish, Unpublish and rename in Shoresh can change it._ (_was the_ for one kept as history; _…
+   so it can't be deleted._; _… so its days can't be changed._). Making a schedule published any
+   other way is refused too (_Only Publish in Shoresh can make the published schedule._). One is
+   never deleted, not even by Shoresh. Field permissions stay editable because Publish writes in
+   user mode. Checking days costs at most one query per schedule per transaction (a schedule
+   found not to be history is remembered until it is updated).
+10. **Greg's other answers (2026-10-18)**: the Schedules page keeps showing the newest version, as
+    it does (it doesn't switch to the published schedule); a first publish with nothing to show
+    publishes at once (no question), as built in item 3; published schedules replaced by a later
+    publish stay as history (item 2), and so do unpublished ones (item 8).
+11. **Greg's decision (2026-10-19)**: a copy that is no longer the published one (replaced or
+    unpublished) is named in Versions by when it was published, _Published Oct 18, 2:40 PM_
+    (items 2 and 8), so the week's history reads as a list of publishes rather than several
+    _Published schedule_ rows.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
 `Status__c` Draft and `Origin__c` Manual. The slot identity is not stored, only sent between
 the screen and the server. Part 4b adds the `VersionReason__c` value **AutoSaved**
 ("Auto-saved"), the same one Generated Schedule G2 (#46) adds; whichever merges second keeps
-the one value.
+the one value. Part 5 adds `Schedule__c.PublishedAt__c` (date/time), `PublishedBy__c` (lookup to
+User, cleared if the user is deleted) and `PublishKey__c` (text 40, unique, case-sensitive:
+"programId:weekId" while published, cleared when replaced), as the data model names them.
 
 ## Not done here
 

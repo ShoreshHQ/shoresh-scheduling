@@ -1248,10 +1248,13 @@ export default class ShoreshWeekEditor extends LightningElement {
     return serverRuns;
   }
 
-  /** A new change ({ day, group, first, before, after } runs): saved, and one Undo step. */
+  /**
+   * A new change ({ day, group, first, before, after } runs): saved, and one Undo step. False
+   * when it was refused (edits wait while the host restores or publishes): nothing was made.
+   */
   commit(runs, label, key) {
     if (this.refuseWhileRestoring()) {
-      return;
+      return false;
     }
     const serverRuns = this.toServerRuns(runs);
     this.stepSeq += 1;
@@ -1260,6 +1263,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.historyVersion += 1;
     this.recordLocks(step.id, serverRuns);
     this.send(serverRuns, label, key, step.id, runs[0]);
+    return true;
   }
 
   /**
@@ -1923,7 +1927,10 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.say(this.toolNothing(tool, said));
       return;
     }
-    this.commit(result.runs, label, null);
+    if (!this.commit(result.runs, label, null)) {
+      // Refused: nothing is said as done, and no Undo is offered for it.
+      return;
+    }
     const entry = this.queue[this.queue.length - 1];
     if (entry && entry.stepId === this.stepSeq) {
       // The week as the director saw it goes with the change, for working it out again.

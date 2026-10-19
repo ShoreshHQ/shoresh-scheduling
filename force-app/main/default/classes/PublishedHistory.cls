@@ -2,8 +2,8 @@
  * Protects history: a season, program, or week with any published schedule cannot be deleted
  * (data model, "Protecting history"). Deleting a season removes its programs and weeks without
  * running their own delete checks, so the season check looks at schedules under the season's
- * programs too. Until publishing is built (with PublishedAt__c, which also marks schedules that
- * were published once and replaced since), a published schedule is one with Status Published.
+ * programs too. Published history is the week's published schedule (Status Published) and any
+ * published once and replaced since (a version that keeps its PublishedAt__c; SchedulePublish).
  */
 public with sharing class PublishedHistory {
   public interface Finder {
@@ -64,7 +64,8 @@ public with sharing class PublishedHistory {
         SELECT Program__c, Week__c, Program__r.Season__c
         FROM Schedule__c
         WHERE
-          Status__c = 'Published'
+          (Status__c = 'Published'
+          OR PublishedAt__c != NULL)
           AND (Program__c IN :recordIds
           OR Week__c IN :recordIds
           OR Program__r.Season__c IN :recordIds)

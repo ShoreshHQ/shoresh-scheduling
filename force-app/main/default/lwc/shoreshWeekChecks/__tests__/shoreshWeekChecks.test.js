@@ -159,6 +159,75 @@ describe("c-shoresh-week-checks", () => {
     expect(q(element, '[data-id="close-list"]')).not.toBeNull();
   });
 
+  it("counts says what each counter counts, accepted lines aside (Publish asks with it)", async () => {
+    const everything = {
+      ...CHECKED,
+      overlapping: [
+        ...CHECKED.overlapping,
+        {
+          dateValue: "2026-06-30",
+          groupId: "g2",
+          blockId: "t1",
+          rules: ["groupsAtOnce"],
+          text: "Bunk 2 · Tuesday · Period 1: Over its limit of 1 Bunk at once"
+        }
+      ],
+      spread: [
+        "Swim · Bunk 1: 1 more needed by Tuesday",
+        "Archery · Bunk 2: 1 more needed by Wednesday",
+        "Crafts · Bunk 1: 1 more needed by Tuesday"
+      ],
+      spreadBy: [
+        { activityId: "a1", groupId: "g1", missing: 1, byDay: 2 },
+        { activityId: "a9", groupId: "g2", missing: 1, byDay: 3 },
+        { activityId: "a8", groupId: "g1", missing: 1, byDay: 2 }
+      ],
+      hasSpreadTargets: true
+    };
+    const element = render({ checked: everything });
+    await flush();
+    expect(element.counts).toEqual({
+      overlapping: 2,
+      stillNeeded: 1,
+      spread: 3
+    });
+    expect(q(element, '[data-counter="spread"]').textContent).toContain("3");
+    q(element, '[data-counter="spread"]').click();
+    await flush();
+    q(
+      element,
+      '[aria-label="Accept: Archery · Bunk 2: 1 more needed by Wednesday"]'
+    ).click();
+    await flush();
+    expect(element.counts).toEqual({
+      overlapping: 2,
+      stillNeeded: 1,
+      spread: 2
+    });
+    // The generated route's Open cells are not overlaps.
+    element.remove();
+    const generated = render({
+      checked: {
+        ...everything,
+        openCells: [
+          {
+            dateValue: "2026-06-29",
+            groupId: "g2",
+            blockId: "t3",
+            text: "Bunk 2 · Monday · Period 3: Already busy then"
+          }
+        ]
+      },
+      route: "generated"
+    });
+    await flush();
+    expect(generated.counts).toEqual({
+      overlapping: 2,
+      stillNeeded: 1,
+      spread: 3
+    });
+  });
+
   describe("the generated route", () => {
     const GENERATED = {
       ...CHECKED,

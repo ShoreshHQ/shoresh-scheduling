@@ -1,8 +1,8 @@
 /**
  * What the Manual Build screen needs besides the draft itself: the season's activities to place
  * (with the groups each is not set up for), and the slots where a group is not at camp (a
- * morning-only or afternoon-only group), and other programs' use of places and activities that
- * week. Worked out from today's setup. Runs in user mode.
+ * morning-only or afternoon-only group), other programs' use of places and activities that
+ * week, and the week's published schedule. Worked out from today's setup. Runs in user mode.
  */
 public with sharing class ManualBuildViews {
   public class DraftView {
@@ -46,6 +46,10 @@ public with sharing class ManualBuildViews {
     // nothing changed (the rest of this view is empty).
     @AuraEnabled
     public Boolean changedSince = false;
+    // The week's published schedule (when, by whom, and whether the draft has changed since),
+    // or null when the week has not been published.
+    @AuraEnabled
+    public SchedulePublish.PublishState published;
   }
 
   public class ActivityOption {
@@ -71,7 +75,10 @@ public with sharing class ManualBuildViews {
     public Activity__c record;
   }
 
-  /** A schedule a week can start from: another week's Manual Build, or a version. */
+  /**
+   * A schedule a week can start from: another week's Manual Build, a week's published schedule,
+   * or a version (a published schedule replaced since is one).
+   */
   public class WeekSource {
     @AuraEnabled
     public Id id;
@@ -83,19 +90,37 @@ public with sharing class ManualBuildViews {
     public String name;
     @AuraEnabled
     public Boolean isVersion;
+    // The week's published schedule now (not one replaced since).
+    @AuraEnabled
+    public Boolean isPublished;
     @AuraEnabled
     public Datetime savedAt;
+    // Still named by when it was published ("Published Oct 18, 2:40 PM"): PublishedRows.
+    @AuraEnabled
+    public Boolean namedByPublish;
   }
 
-  /** The program's other weeks' Manual Build drafts and all its versions, by week, newest first. */
+  /**
+   * The program's other weeks' Manual Build drafts, each week's published schedule and all its
+   * versions (the published schedules replaced since among them), by week, newest first.
+   */
   public static List<WeekSource> weekSources(Id programId, Id weekId) {
     List<WeekSource> result = new List<WeekSource>();
     for (Schedule__c schedule : [
-      SELECT Id, Name, Status__c, Origin__c, Week__c, Week__r.Name, CreatedDate
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Origin__c,
+        Week__c,
+        Week__r.Name,
+        PublishedAt__c,
+        CreatedDate
       FROM Schedule__c
       WHERE
         Program__c = :programId
         AND (Status__c = 'Version'
+        OR Status__c = :SchedulePublish.PUBLISHED
         OR (Status__c = 'Draft'
         AND Origin__c = 'Manual'
         AND Week__c != :weekId))
@@ -108,7 +133,9 @@ public with sharing class ManualBuildViews {
       source.weekName = schedule.Week__r.Name;
       source.name = schedule.Name;
       source.isVersion = schedule.Status__c == 'Version';
+      source.isPublished = schedule.Status__c == SchedulePublish.PUBLISHED;
       source.savedAt = schedule.CreatedDate;
+      source.namedByPublish = PublishedRows.namedByPublish(schedule);
       result.add(source);
     }
     return result;
@@ -218,6 +245,11 @@ public with sharing class ManualBuildViews {
     view.away = away(read.groups, read.blocks);
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
+    view.published = SchedulePublish.stateOf(
+      read.program.Id,
+      read.week.Id,
+      read.scheduleId
+    );
     return view;
   }
 

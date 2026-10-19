@@ -249,6 +249,74 @@ private class ManualWeekStartTest {
     }
   }
 
+  /** Previews and publishes, as the screen does; the published schedule's id. */
+  private static Id publishNow(Id draftId) {
+    SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+      draftId
+    );
+    return ManualBuildController.publish(
+        draftId,
+        preview.revisions,
+        preview.published == null ? null : preview.published.id
+      )
+      .published.id;
+  }
+
+  @IsTest
+  static void theListOffersTheWeeksPublishedScheduleAndTheOnesItReplaced() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = weekOneWithSwim(ids);
+      Id current = publishNow(draftId);
+      // One Week 1 had published before, replaced since: a version that keeps when it was
+      // published, as SchedulePublish leaves it (written directly: a second publish would leave
+      // the test too few queries).
+      Datetime publishedAt = Datetime.now().addDays(-1);
+      Schedule__c replaced = new Schedule__c(
+        Program__c = ids.get('Main'),
+        Week__c = ids.get('Week 1'),
+        Name = PublishedRows.historyName(publishedAt),
+        Status__c = ManualVersions.VERSION,
+        Origin__c = ManualDrafts.MANUAL,
+        PublishedAt__c = publishedAt
+      );
+      PublishedGuard.allow();
+      Database.insert(replaced, AccessLevel.SYSTEM_MODE);
+      PublishedGuard.done();
+      Test.startTest();
+      List<ManualBuildViews.WeekSource> sources = ManualBuildController.getWeekSources(
+        ids.get('Main'),
+        ids.get('Week 2')
+      );
+      ManualBuildViews.DraftView view = ManualBuildController.startFromWeek(
+        ids.get('Main'),
+        ids.get('Week 2'),
+        current
+      );
+      Test.stopTest();
+      Map<Id, ManualBuildViews.WeekSource> byId = new Map<Id, ManualBuildViews.WeekSource>();
+      for (ManualBuildViews.WeekSource source : sources) {
+        byId.put(source.id, source);
+      }
+      Assert.areEqual(
+        new Set<Id>{ draftId, replaced.Id, current },
+        byId.keySet()
+      );
+      // The published schedule now is labelled as such; the one it replaced is a version.
+      Assert.isTrue(byId.get(current).isPublished);
+      Assert.isFalse(byId.get(current).isVersion);
+      Assert.isTrue(byId.get(replaced.Id).isVersion);
+      Assert.isFalse(byId.get(replaced.Id).isPublished);
+      Assert.isFalse(byId.get(draftId).isPublished);
+      // Its name says when it was published, so the list doesn't add when it was saved.
+      Assert.isTrue(byId.get(replaced.Id).namedByPublish);
+      Assert.isFalse(byId.get(draftId).namedByPublish);
+      Assert.areEqual('Week 1', byId.get(current).weekName);
+      // Week 2 starts as Week 1 was published.
+      Assert.areEqual('Swim', mondayPeriod2(view, 'Group A'));
+    }
+  }
+
   @IsTest
   static void aWeekAlreadyStartedIsLeftAsItIs() {
     System.runAs(ShoreshTestData.scheduler()) {

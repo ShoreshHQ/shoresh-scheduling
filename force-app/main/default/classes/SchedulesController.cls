@@ -49,12 +49,16 @@ public with sharing class SchedulesController {
       );
     }
     String trimmed = checkedName(name, found[0].Program__r.Season__r.Camp__c);
+    // A published schedule, or one kept as history, can be renamed here and only here.
+    PublishedGuard.allow();
     try {
       UserModeWrites.save(
         new List<SObject>{ new Schedule__c(Id = scheduleId, Name = trimmed) }
       );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
+    } finally {
+      PublishedGuard.done();
     }
   }
 

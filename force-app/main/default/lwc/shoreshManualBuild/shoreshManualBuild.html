@@ -7,7 +7,7 @@
       week-name={weekName}
       program-name={programName}
       save-runs={saveRuns}
-      restoring={versionsWorking}
+      restoring={editsWait}
       onstatechange={handleEditorState}
       onedited={handleEdited}
       onerrorchange={handleEditorError}
@@ -45,6 +45,7 @@
               <button
                 type="button"
                 class="slds-button slds-button_neutral"
+                disabled={editsWait}
                 data-id="clear-day"
                 onclick={handleClearDay}
               >
@@ -56,6 +57,7 @@
                 label="Copy day to…"
                 alternative-text="Copy day to…"
                 menu-alignment="right"
+                disabled={editsWait}
                 data-id="copy-day"
                 onselect={handleCopyDay}
               >
@@ -74,6 +76,7 @@
               label="Clear day"
               alternative-text="Clear day"
               menu-alignment="right"
+              disabled={editsWait}
               data-id="clear-group-day"
               onselect={handleClearGroupDay}
             >
@@ -89,6 +92,7 @@
           <button
             type="button"
             class="slds-button slds-button_neutral"
+            disabled={editsWait}
             data-id="clear-week"
             onclick={handleClearWeek}
           >
@@ -111,6 +115,45 @@
           onsave={handleSaveVersion}
           data-id="versions"
         ></c-shoresh-versions>
+      </template>
+      <template lwc:if={canPublish}>
+        <div class="publish" slot="tools" data-id="publish-area">
+          <template lwc:if={publishState}>
+            <span class="published" data-id="published">
+              {publishedWord}<lightning-formatted-date-time
+                value={publishState.publishedAt}
+                month="short"
+                day="numeric"
+                hour="numeric"
+                minute="2-digit"
+              ></lightning-formatted-date-time
+              >{publishedBy}
+              <template lwc:if={publishState.changedSince}>
+                <span data-id="changed-since"> · changed since</span>
+              </template>
+            </span>
+          </template>
+          <template lwc:if={publishState}>
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              data-id="unpublish"
+              disabled={publishDisabled}
+              onclick={handleUnpublish}
+            >
+              Unpublish
+            </button>
+          </template>
+          <button
+            type="button"
+            class="slds-button slds-button_brand"
+            data-id="publish"
+            disabled={publishDisabled}
+            onclick={handlePublish}
+          >
+            Publish
+          </button>
+        </div>
       </template>
       <template lwc:if={showCounters}>
         <c-shoresh-week-checks
@@ -235,5 +278,23 @@
         </div>
       </template>
     </c-shoresh-week-editor>
+    <template lwc:if={publishAsk}>
+      <c-shoresh-ask
+        heading={publishAsk.heading}
+        lines={publishAsk.lines}
+        confirm-label={publishAsk.confirmLabel}
+        onanswer={handlePublishAnswer}
+        data-id="publish-ask"
+      ></c-shoresh-ask>
+    </template>
+    <template lwc:if={unpublishAsk}>
+      <c-shoresh-ask
+        heading={unpublishAsk.heading}
+        lines={unpublishAsk.lines}
+        confirm-label="Unpublish"
+        onanswer={handleUnpublishAnswer}
+        data-id="unpublish-ask"
+      ></c-shoresh-ask>
+    </template>
   </div>
 </template>

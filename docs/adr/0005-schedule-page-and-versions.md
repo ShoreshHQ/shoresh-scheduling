@@ -65,7 +65,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    - `ScheduleDay__c`, detail of `Schedule__c`: `Date__c`, `Part__c` (from 1),
      `Grid__c` (long text, 131,072), `GridFormatVersion__c`, `Revision__c`. Auto-numbered
      (`SD-000000`), not reportable or searchable (the grid is not meant for reports).
-   - Not built yet: `PublishedAt__c`, `PublishedBy__c`, `PublishKey__c`, the engine fields,
+   - `PublishedAt__c`, `PublishedBy__c`, `PublishKey__c` came with Publish (ADR 0008 part 5).
+   - Not built yet: the engine fields,
      `Assignments__c`, `RainyDay__c`, `ScheduleEntry__c`, `Assignment__c`.
 6. **The compact grid format, version 1** (`ScheduleGrid`, checked by `ScheduleGridRules` and `ScheduleGridFrameRules`).
    JSON with four lists, written in a fixed order so the same day always gives the same text:
@@ -123,8 +124,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       point at its weeks through a restrict-delete lookup, platform check (a));
     - a week, program, or season with a **published** schedule is refused with the existing
       "kept as history" message. `PublishedHistory` now looks for schedules with Status
-      Published (replacing slice 1's stand-in); when publishing is built, it should look at
-      `PublishedAt__c` so a schedule published once and replaced since still counts.
+      Published (replacing slice 1's stand-in), and since Publish (ADR 0008 part 5) also at
+      `PublishedAt__c`, so a schedule published once and replaced since still counts.
     - Copy season does not copy schedules (they belong to dated weeks).
 11. **A sample version for trying it** (`scripts/make-sample-version.sh`, anonymous Apex in
     `scripts/apex/sample-version.apex`, not part of the app): sets up an invented camp ("Sample

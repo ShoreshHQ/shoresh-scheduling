@@ -7,17 +7,40 @@ import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersio
 import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
+import previewPublish from "@salesforce/apex/ManualBuildController.previewPublish";
+import publish from "@salesforce/apex/ManualBuildController.publish";
+import unpublish from "@salesforce/apex/ManualBuildController.unpublish";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { errorMessage, failed } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
+import { publishQuestion } from "c/shoreshPublish";
+
+/**
+ * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
+ * name can be told apart. Empty when unknown, or when the name already says it (a copy kept when
+ * the week was published again or unpublished: "Published Oct 18, 2:40 PM").
+ */
+function savedWhen(source) {
+  if (!source.savedAt || source.namedByPublish) {
+    return "";
+  }
+  return ` · ${new Date(source.savedAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  })}`;
+}
 
 /**
  * Manual Build (desktop: the Manual schedule): a program's week built by hand. This screen
  * chooses the program and week, opens or starts it (a week not started yet offers "Start a blank
  * week" or "Start from another week"), keeps its versions (Save, Restore), counts what the week
- * still needs, and offers Clear day, Clear week and Copy day. The week itself is drawn and edited
+ * still needs, offers Clear day, Clear week and Copy day, and publishes the week (Publish: what
+ * would change and what is still to do are shown first; Unpublish asks first; SchedulePublish).
+ * The week itself is drawn and edited
  * by c-shoresh-week-editor (drag, type, keyboard, Undo and Redo, "keep theirs or use yours");
  * this screen hands it the week, saves what it sends through saveRuns, and hears what changed.
  *
@@ -43,6 +66,8 @@ export default class ShoreshManualBuild extends LightningElement {
   // An edit is saving or waiting to (the editor says).
   editBusy = false;
   loadTicket = 0;
+  // Reads of the week on their way (a reload whose answer is dropped is read again).
+  reads = 0;
   // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
@@ -55,6 +80,16 @@ export default class ShoreshManualBuild extends LightningElement {
   restoreRefused = false;
   // A week shown before the editor was drawn: given to it as soon as it is.
   waiting = null;
+  // The week's published schedule ({ id, publishedAt, publishedBy, changedSince }), or null.
+  publishState = null;
+  // A preview, publish or unpublish is on its way (or its question is open).
+  publishing = false;
+  // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview, week }.
+  publishAsk = null;
+  // The question before unpublishing: { heading, lines, publishedId, week }.
+  unpublishAsk = null;
+  // Where focus goes back to once it is drawn enabled again ("publish" or "unpublish"), or null.
+  focusOn = null;
 
   @api
   get setup() {
@@ -88,6 +123,33 @@ export default class ShoreshManualBuild extends LightningElement {
       this.waiting = null;
       this.weekEditor.show(draft, fresh);
     }
+    // Publish and Unpublish are disabled while they work and while the week is read again, so
+    // focus fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3), unless
+    // the director has put it somewhere else meanwhile.
+    if (this.focusOn && !this.publishDisabled) {
+      // Unpublish is gone once the week has nothing published: Publish then.
+      const button =
+        this.template.querySelector(`[data-id="${this.focusOn}"]`) ||
+        this.template.querySelector('[data-id="publish"]');
+      this.focusOn = null;
+      if (button && this.focusIsLost()) {
+        button.focus();
+      }
+    }
+  }
+
+  /**
+   * Focus fell to the page (or stayed on Publish or Unpublish while they were disabled), rather
+   * than being on something the director chose since.
+   */
+  focusIsLost() {
+    const inside = this.template.activeElement;
+    if (inside) {
+      const id = inside.dataset ? inside.dataset.id : null;
+      return id === "publish" || id === "unpublish";
+    }
+    const page = document.activeElement;
+    return !page || page === document.body;
   }
 
   get t() {
@@ -152,6 +214,10 @@ export default class ShoreshManualBuild extends LightningElement {
     this.restoredId = null;
     this.restoreRefused = false;
     this.loading = false;
+    // The week is no longer what was published (a reload says exactly).
+    if (this.publishState && !this.publishState.changedSince) {
+      this.publishState = { ...this.publishState, changedSince: true };
+    }
   }
 
   handleEditorError(event) {
@@ -252,6 +318,13 @@ export default class ShoreshManualBuild extends LightningElement {
         this.weekEditor.clear();
       }
     }
+    // Publish and Unpublish are disabled while the week is read: one focused gets focus back.
+    const focused = this.template.activeElement;
+    const focusedId = focused && focused.dataset ? focused.dataset.id : null;
+    if (focusedId === "publish" || focusedId === "unpublish") {
+      this.focusOn = focusedId;
+    }
+    this.reads += 1;
     try {
       const draft = await getDraft({
         programId: this.programId,
@@ -289,6 +362,7 @@ export default class ShoreshManualBuild extends LightningElement {
         this.loadedFor = again ? key : null;
       }
     } finally {
+      this.reads -= 1;
       if (ticket === this.loadTicket) {
         this.loading = false;
       }
@@ -304,6 +378,7 @@ export default class ShoreshManualBuild extends LightningElement {
       this.draft &&
       !this.versionsWorking &&
       !this.starting &&
+      !this.publishing &&
       this.weekEditor &&
       this.weekEditor.settled
     ) {
@@ -316,6 +391,7 @@ export default class ShoreshManualBuild extends LightningElement {
       this.checksResetKey += 1;
     }
     this.draft = draft;
+    this.publishState = (draft && draft.published) || null;
     if (this.weekEditor) {
       this.weekEditor.show(draft, fresh);
     } else {
@@ -344,9 +420,9 @@ export default class ShoreshManualBuild extends LightningElement {
     );
   }
 
-  /** The week and program can't change while a start or a Restore is on its way. */
+  /** The week and program can't change while a start, a Restore or a publish is on its way. */
   get pickersLocked() {
-    return this.starting || this.versionsWorking;
+    return this.starting || this.versionsWorking || this.publishing;
   }
 
   /**
@@ -394,11 +470,16 @@ export default class ShoreshManualBuild extends LightningElement {
     return this.weekSources.length > 0;
   }
 
-  /** "Week 2 · Manual Build", "Week 1 · Before the trip (version)" */
+  /**
+   * "Week 2 · Manual Build", "Week 1 · Published schedule" (the week's published schedule now,
+   * in the camp's word), "Week 1 · Before the trip (version)".
+   */
   get weekSourceItems() {
     return this.weekSources.map((source) => ({
       value: source.id,
-      label: `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})` : ""}`
+      label: source.isPublished
+        ? `${source.weekName} · ${this.t.s("PublishedSchedule")}`
+        : `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})${savedWhen(source)}` : ""}`
     }));
   }
 
@@ -445,8 +526,17 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- versions (desktop VersionsDropdown, useSnapshots) ----------
 
+  /** Versions wait while a version action, an edit's save or a publish is on its way. */
   get versionsBusy() {
-    return this.versionsWorking || this.editBusy;
+    return this.versionsWorking || this.editBusy || this.publishing;
+  }
+
+  /**
+   * Edits wait while a version is restored or saved (Restore would paint over them) and while a
+   * publish is on its way (its answer, published or refused, is for the week as it was).
+   */
+  get editsWait() {
+    return this.versionsWorking || this.publishing;
   }
 
   async loadVersions() {
@@ -530,6 +620,7 @@ export default class ShoreshManualBuild extends LightningElement {
       }
       this.checksResetKey += 1;
       this.draft = draft;
+      this.publishState = draft.published || null;
       this.weekEditor.restored(draft);
       this.restoredId = id;
       this.say(`Restored ${version ? version.name : ""}.`);
@@ -566,6 +657,241 @@ export default class ShoreshManualBuild extends LightningElement {
       renameSchedule({ scheduleId: id, name })
     );
     onDone(renamed);
+  }
+
+  // ---------- Publish (Greg, Manual Build round 1 #1, round 2 #4; ADR 0008 part 5) ----------
+
+  get canPublish() {
+    return !!this.draft && !this.hasNoDays;
+  }
+  /**
+   * Publish and Unpublish wait while an edit saves or a Restore runs (it would publish a week in
+   * between), and while the week is read again (after a failed save, or coming back to the
+   * window): the question is worked out from what the screen shows, so it waits for the week as
+   * it is.
+   */
+  get publishDisabled() {
+    return this.publishing || this.versionsBusy || this.reads > 0;
+  }
+
+  /**
+   * Publish: the server's preview says what would change; with the week's checks, that decides
+   * whether to ask first (c/shoreshPublish). A week already published as it is needs nothing.
+   */
+  async handlePublish() {
+    if (this.editBusy) {
+      this.say("One moment: an edit is still saving.");
+      return;
+    }
+    // Edits, Restore and the pickers wait while publishing, so the answer is for this week; one
+    // for a week no longer shown is dropped.
+    const week = this.weekKey;
+    this.publishing = true;
+    this.error = null;
+    try {
+      const preview = await previewPublish({
+        scheduleId: this.schedule.schedule.id
+      });
+      if (week !== this.weekKey) {
+        return;
+      }
+      // Someone else saved the week since this screen read it: what would be published isn't
+      // what is shown. Nothing is published; the week is read again for the director to see.
+      if (preview.revisions !== (this.server ? this.server.revisions : null)) {
+        this.refusePublish(this.draftChangedText);
+        return;
+      }
+      const checks = this.template.querySelector("c-shoresh-week-checks");
+      const question = publishQuestion({
+        preview,
+        checked: this.checked,
+        // What the counters count now (lines the director accepted aside).
+        counts: checks ? checks.counts : null,
+        weekName: this.weekName,
+        t: this.t
+      });
+      if (question.kind === "same") {
+        this.publishState = { ...preview.published, changedSince: false };
+        this.say(`${this.weekName} is already published as it is.`);
+      } else if (question.kind === "now") {
+        await this.publishNow(preview, week);
+      } else {
+        this.publishAsk = { ...question, preview, week };
+      }
+    } catch (e) {
+      this.error = failed(`${this.weekName} was not published.`, e);
+    } finally {
+      if (!this.publishAsk) {
+        this.publishing = false;
+        // Publish was disabled while it worked, so focus fell from it: it goes back once Publish
+        // is drawn enabled again (WCAG 2.4.3), unless another week is shown by then.
+        if (week === this.weekKey) {
+          this.focusOn = "publish";
+        }
+      }
+    }
+  }
+
+  async handlePublishAnswer(event) {
+    const ask = this.publishAsk;
+    this.publishAsk = null;
+    try {
+      if (event.detail.yes) {
+        // The server refuses it if the week changed since the preview.
+        await this.publishNow(ask.preview, ask.week);
+      }
+    } catch (e) {
+      this.error = failed(`${this.weekName} was not published.`, e);
+    } finally {
+      this.publishing = false;
+      // The question is gone: focus goes back to where it started (WCAG 2.4.3).
+      this.focusOn = "publish";
+    }
+  }
+
+  /**
+   * Unpublish (Greg, 2026-10-18): asks first, Cancel focused. The week then has no published
+   * schedule; the one it had is kept in Versions, marked Published, as one replaced is.
+   */
+  handleUnpublish() {
+    if (!this.publishState) {
+      return;
+    }
+    this.publishing = true;
+    this.error = null;
+    this.unpublishAsk = {
+      heading: `Unpublish ${this.weekName}?`,
+      lines: [`Nothing will be published for this ${this.t.sIn("Week")}.`],
+      publishedId: this.publishState.id,
+      week: this.weekKey
+    };
+  }
+
+  async handleUnpublishAnswer(event) {
+    const ask = this.unpublishAsk;
+    this.unpublishAsk = null;
+    try {
+      if (event.detail.yes) {
+        await this.unpublishNow(ask);
+      }
+    } catch (e) {
+      this.error = failed(`${this.weekName} was not unpublished.`, e);
+    } finally {
+      this.publishing = false;
+      // Back to Unpublish (WCAG 2.4.3), or to Publish once the week has nothing published.
+      if (ask.week === this.weekKey) {
+        this.focusOn = "unpublish";
+      }
+    }
+  }
+
+  /** Refused when the week was published or unpublished since the screen showed it. */
+  async unpublishNow(ask) {
+    const reload = this.dropReload();
+    try {
+      const result = await unpublish({
+        scheduleId: this.schedule.schedule.id,
+        seenPublishedId: ask.publishedId
+      });
+      if (ask.week !== this.weekKey) {
+        return;
+      }
+      if (result.publishedChanged) {
+        reload.done = true;
+        this.refusePublish(
+          `Someone else published or unpublished this ${this.t.sIn("Week")} since, so nothing was unpublished.`
+        );
+        return;
+      }
+      this.publishState = null;
+      this.say(`Unpublished ${this.weekName}.`);
+      // The copy is a version now: Versions lists it straight away.
+      await this.loadVersions();
+    } finally {
+      this.readAgain(reload, ask.week);
+    }
+  }
+
+  /**
+   * A reload already on its way read the week before Publish or Unpublish: its answer must not
+   * show the old publish state again. It is dropped, and the week is read again once the answer
+   * is in, so what the reload was for (a failed save, other people's changes) is still shown.
+   */
+  dropReload() {
+    const dropped = this.reads > 0;
+    this.loadTicket += 1;
+    return { dropped, done: false };
+  }
+
+  readAgain(reload, week) {
+    if (reload.dropped && !reload.done && week === this.weekKey) {
+      this.load(true);
+    }
+  }
+
+  /**
+   * Publishes the week the preview showed; a week or publish changed since is refused. The
+   * answer is always shown, unless another week (week, program) is shown by then.
+   */
+  async publishNow(preview, week) {
+    const reload = this.dropReload();
+    try {
+      const result = await publish({
+        scheduleId: this.schedule.schedule.id,
+        seenRevisions: preview.revisions,
+        seenPublishedId: preview.published ? preview.published.id : null
+      });
+      if (week !== this.weekKey) {
+        return;
+      }
+      if (result.draftChanged || result.publishedChanged) {
+        reload.done = true;
+        this.refusePublish(
+          result.draftChanged
+            ? this.draftChangedText
+            : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced.`
+        );
+        return;
+      }
+      this.publishState = { ...result.published, changedSince: false };
+      this.say(
+        result.unchanged
+          ? `${this.weekName} is already published as it is.`
+          : `Published ${this.weekName}.`
+      );
+      if (!result.unchanged) {
+        // A published schedule it replaced is a version now: Versions lists it straight away.
+        await this.loadVersions();
+      }
+    } finally {
+      this.readAgain(reload, week);
+    }
+  }
+
+  get draftChangedText() {
+    return `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published.`;
+  }
+
+  /** Nothing was published: what changed is shown, and the director looks again. */
+  refusePublish(text) {
+    this.weekEditor.setNotice(text);
+    this.load(true);
+  }
+
+  /** "Published " before the date: a template drops the space after a word on its own. */
+  get publishedWord() {
+    return "Published ";
+  }
+
+  get publishedBy() {
+    return this.publishState && this.publishState.publishedBy
+      ? ` by ${this.publishState.publishedBy}`
+      : "";
+  }
+
+  /** The program and week shown. */
+  get weekKey() {
+    return `${this.programId}|${this.weekId}`;
   }
 
   get weekName() {

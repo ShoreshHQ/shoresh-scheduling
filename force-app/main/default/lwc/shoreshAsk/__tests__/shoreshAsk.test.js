@@ -46,7 +46,7 @@ describe("c-shoresh-ask", () => {
     expect(element.shadowRoot.activeElement).toBe(q(element, '[data-id="no"]'));
   });
 
-  it("answers yes, no, or no on Escape; Tab stays on the two buttons", async () => {
+  it("answers yes, no, or no on Escape; Tab stays on the lines and the two buttons", async () => {
     const element = await render();
     const answers = [];
     element.addEventListener("answer", (e) => answers.push(e.detail.yes));
@@ -66,6 +66,12 @@ describe("c-shoresh-ask", () => {
     dialog.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
     );
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="lines"]')
+    );
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
+    );
     expect(element.shadowRoot.activeElement).toBe(q(element, '[data-id="no"]'));
     dialog.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -75,8 +81,19 @@ describe("c-shoresh-ask", () => {
       })
     );
     expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="yes"]')
+      q(element, '[data-id="lines"]')
     );
+  });
+
+  it("lets a long list of lines be scrolled with the keyboard", async () => {
+    const element = await render();
+    const lines = q(element, '[data-id="lines"]');
+    // A named, focusable scroll region: arrow keys scroll it once it has focus.
+    expect(lines.getAttribute("tabindex")).toBe("0");
+    expect(lines.getAttribute("role")).toBe("region");
+    expect(lines.getAttribute("aria-labelledby")).toBe(q(element, "h2").id);
+    lines.focus();
+    expect(element.shadowRoot.activeElement).toBe(lines);
   });
 
   it("Escape is used up by the question, so it doesn't also close what is behind it", async () => {

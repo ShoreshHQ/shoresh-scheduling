@@ -404,13 +404,34 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
         name: "Manual Build",
         isVersion: false
       },
+      {
+        id: "pub1",
+        weekName: "Week 1",
+        // Named in the camp's word when it was published; labelled in today's.
+        name: "Posted plan",
+        isVersion: false,
+        isPublished: true
+      },
+      {
+        id: "v2",
+        weekName: "Week 1",
+        name: "Published schedule",
+        isVersion: true,
+        isPublished: false
+      },
       { id: "v1", weekName: "Week 1", name: "Before the trip", isVersion: true }
     ]);
     const element = await render(null);
     const menu = q(element, '[data-id="start-from"]');
+    // The week's published schedule now, and the one it replaced (a version).
     expect(
       [...menu.querySelectorAll("lightning-menu-item")].map((i) => i.label)
-    ).toEqual(["Week 2 · Manual Build", "Week 1 · Before the trip (version)"]);
+    ).toEqual([
+      "Week 2 · Manual Build",
+      "Week 1 · Published schedule",
+      "Week 1 · Published schedule (version)",
+      "Week 1 · Before the trip (version)"
+    ]);
     startFromWeek.mockResolvedValue({
       ...draft(WITH_SWIM, ["1,2,", "1,,"]),
       leftOut: ["Swim · Bunk 2 · Monday: not at camp then"]
@@ -425,6 +446,66 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     expect(q(element, '[data-id="left-out"]').textContent).toContain(
       "Swim · Bunk 2 · Monday: not at camp then"
     );
+  });
+
+  it("versions with the same name are told apart by when they were saved", async () => {
+    // Published twice, then unpublished: two kept copies with the same name.
+    const first = new Date(2026, 5, 29, 9, 0).toISOString();
+    const second = new Date(2026, 6, 2, 14, 30).toISOString();
+    getWeekSources.mockResolvedValue([
+      {
+        id: "v3",
+        weekName: "Week 1",
+        name: "Published schedule",
+        isVersion: true,
+        savedAt: second
+      },
+      {
+        id: "v2",
+        weekName: "Week 1",
+        name: "Published schedule",
+        isVersion: true,
+        savedAt: first
+      }
+    ]);
+    const element = await render(null);
+    const when = (iso) =>
+      new Date(iso).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    const labels = [
+      ...q(element, '[data-id="start-from"]').querySelectorAll(
+        "lightning-menu-item"
+      )
+    ].map((i) => i.label);
+    expect(labels).toEqual([
+      `Week 1 · Published schedule (version) · ${when(second)}`,
+      `Week 1 · Published schedule (version) · ${when(first)}`
+    ]);
+    expect(labels[0]).not.toBe(labels[1]);
+  });
+
+  it("a copy named by when it was published isn't given the time again", async () => {
+    getWeekSources.mockResolvedValue([
+      {
+        id: "v3",
+        weekName: "Week 1",
+        name: "Published Oct 18, 2:40 PM",
+        isVersion: true,
+        savedAt: "2026-10-18T18:40:00.000Z",
+        namedByPublish: true
+      }
+    ]);
+    const element = await render(null);
+    const labels = [
+      ...q(element, '[data-id="start-from"]').querySelectorAll(
+        "lightning-menu-item"
+      )
+    ].map((i) => i.label);
+    expect(labels).toEqual(["Week 1 · Published Oct 18, 2:40 PM (version)"]);
   });
 
   it("says so when someone else had started the week (nothing copied)", async () => {

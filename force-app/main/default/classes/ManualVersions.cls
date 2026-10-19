@@ -87,16 +87,32 @@ public with sharing class ManualVersions {
     }
   }
 
-  /** Delete: a version of the draft's week goes for good (its days with it). */
+  /**
+   * Delete: a version of the draft's week goes for good (its days with it). One that was the
+   * week's published schedule once is kept as history (wiki decision 0002), and refused.
+   */
   public static void remove(Id draftId, Id versionId) {
     Schedule__c draft = ManualDrafts.locked(draftId);
-    Database.delete(versionOf(versionId, draft), true, AccessLevel.USER_MODE);
+    Schedule__c version = versionOf(versionId, draft);
+    if (version.PublishedAt__c != null) {
+      CampLabels labels = CampLabels.forCamp(
+        draft.Program__r.Season__r.Camp__c
+      );
+      throw new ShoreshException(
+        '"' +
+          version.Name +
+          '" was the ' +
+          labels.singularInSentence('PublishedSchedule') +
+          ', which is kept as history, so it can\'t be deleted.'
+      );
+    }
+    Database.delete(version, true, AccessLevel.USER_MODE);
   }
 
   /** A version of the draft's program and week, or refused. */
   private static Schedule__c versionOf(Id versionId, Schedule__c draft) {
     List<Schedule__c> found = [
-      SELECT Id, Status__c, Program__c, Week__c
+      SELECT Id, Name, Status__c, Program__c, Week__c, PublishedAt__c
       FROM Schedule__c
       WHERE Id = :versionId
       WITH USER_MODE

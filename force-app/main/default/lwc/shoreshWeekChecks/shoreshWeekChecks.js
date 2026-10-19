@@ -177,6 +177,21 @@ export default class ShoreshWeekChecks extends LightningElement {
       });
   }
 
+  /**
+   * What the counters count now, accepted lines aside: { overlapping, stillNeeded, spread }
+   * (Publish asks with these, so its box and the counters agree).
+   */
+  @api
+  get counts() {
+    const lines = this.lines;
+    const count = (kind) => lines.filter((line) => line.kind === kind).length;
+    return {
+      overlapping: count("overlapping"),
+      stillNeeded: count("stillNeeded"),
+      spread: count("spread")
+    };
+  }
+
   /** The lines the list shows: on the generated route, only the chosen counter's. */
   get shownLines() {
     const lines = this.lines;

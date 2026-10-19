@@ -13,7 +13,15 @@
       <div class="slds-modal__header">
         <h2 id="ask-title" class="slds-modal__title">{heading}</h2>
       </div>
-      <div class="slds-modal__content slds-p-around_medium" id="ask-lines">
+      <!-- Focusable, so a list longer than the screen scrolls with the keyboard too (WCAG 2.1.1). -->
+      <div
+        class="slds-modal__content slds-p-around_medium"
+        id="ask-lines"
+        role="region"
+        aria-labelledby="ask-title"
+        tabindex="0"
+        data-id="lines"
+      >
         <template for:each={lineItems} for:item="line">
           <p key={line.key} class="slds-m-bottom_x-small">{line.text}</p>
         </template>

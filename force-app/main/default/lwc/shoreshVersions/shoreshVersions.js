@@ -18,7 +18,8 @@ const AUTO_SAVED = "AutoSaved";
  * version…", Save version).
  *
  * versions: SchedulesController.getVersions rows. openId: the version on screen. restore: Manual
- * Build's list (Restore, delete, Save version).
+ * Build's list (Restore, delete, Save version). A version that was once the week's published
+ * schedule says so and has no delete (it is kept as history).
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
  * delete { id }, save { name, onDone(saved) }
  */
@@ -95,10 +96,22 @@ export default class ShoreshVersions extends LightningElement {
   get rows() {
     return this._versions.map((version) => {
       const confirming = version.id === this.deletingId;
+      // "Manual · Auto-saved · " then when it was saved. Once the week's published schedule:
+      // "Published", unless the name already says it and when ("Published Oct 18, 2:40 PM").
+      const showSaved = !version.namedByPublish;
+      const meta = [
+        ORIGINS[version.origin] || version.origin,
+        version.reason === AUTO_SAVED ? "Auto-saved" : null,
+        version.publishedAt && showSaved ? "Published" : null
+      ]
+        .filter(Boolean)
+        .join(" · ");
       return {
         ...version,
-        origin: ORIGINS[version.origin] || version.origin,
-        autoSaved: version.reason === AUTO_SAVED,
+        meta: showSaved ? `${meta} · ` : meta,
+        showSaved,
+        // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
+        deletable: this.restore && !version.publishedAt,
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,
         deleteLabel: confirming ? "Delete?" : "delete",
@@ -118,9 +131,6 @@ export default class ShoreshVersions extends LightningElement {
   /** Restore waits while an edit is saving (it would paint over it); Open never does. */
   get actionDisabled() {
     return this.restore && this.busy;
-  }
-  get canDelete() {
-    return this.restore;
   }
   get canSave() {
     return this.restore;
