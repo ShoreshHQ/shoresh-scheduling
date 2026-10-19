@@ -1,7 +1,8 @@
 /**
  * Server side of Generated Schedule (ADR 0010): what the engine needs to build a program's week,
- * saving the week it built, hand edits and locks, and Publish and Unpublish (SchedulePublish, as
- * on Manual Build). Anyone with the Shoresh Scheduler permission set can generate
+ * saving the week it built, hand edits and locks, its versions (Save version, Restore, Delete:
+ * ManualVersions, as on Manual Build), and Publish and Unpublish (SchedulePublish, as on Manual
+ * Build). Anyone with the Shoresh Scheduler permission set can generate
  * (Greg, 2026-10-17). Every query runs in user mode and every write uses user-mode DML.
  */
 public with sharing class GeneratedScheduleController {
@@ -124,6 +125,57 @@ public with sharing class GeneratedScheduleController {
       return SchedulePublish.unpublish(
         GeneratedDrafts.lockedToEdit(scheduleId),
         seenPublishedId
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Save version: the Generated week as it is now, locks and option too, kept under a name. */
+  @AuraEnabled
+  public static Id saveVersion(Id scheduleId, String name) {
+    try {
+      return ManualVersions.saveOf(
+        GeneratedDrafts.lockedToEdit(scheduleId),
+        name
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Restore: the version's days, locks included, become the Generated week's (the week kept first
+   * as "Before Restore"). False, with nothing changed, when someone saved the week since the
+   * screen read it (seenRevisions); the screen then offers Reload.
+   */
+  @AuraEnabled
+  public static Boolean restoreVersion(
+    Id scheduleId,
+    Id versionId,
+    String seenRevisions
+  ) {
+    try {
+      ManualVersions.restoreInto(
+        GeneratedDrafts.lockedToEdit(scheduleId),
+        versionId,
+        seenRevisions
+      );
+      return true;
+    } catch (ManualVersions.ChangedSinceException e) {
+      return false;
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /** Delete: a version of the week goes for good; one ever published is kept as history. */
+  @AuraEnabled
+  public static void deleteVersion(Id scheduleId, Id versionId) {
+    try {
+      ManualVersions.removeFrom(
+        GeneratedDrafts.lockedToEdit(scheduleId),
+        versionId
       );
     } catch (Exception e) {
       throw ScreenErrors.of(e);

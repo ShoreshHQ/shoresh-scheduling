@@ -2,6 +2,11 @@ import { LightningElement, api } from "lwc";
 import previewPublish from "@salesforce/apex/GeneratedScheduleController.previewPublish";
 import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
+import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
+import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
+import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
+import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { errorMessage, failed } from "c/shoreshErrors";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
@@ -64,6 +69,11 @@ function statementOf(message) {
  * change and what is still to do are shown first (a clean first publish goes at once); Unpublish
  * asks first. They wait while a build, a read, a hand edit or a Lock is under way, and those wait
  * while a publish is (SchedulePublish).
+ *
+ * Versions work as on Manual Build (c-shoresh-versions; ADR 0010 "Versions"): Save version, and
+ * Restore, which keeps the week first as "Before Restore" and brings back the version's cells,
+ * locks and option; rename; delete, never for a copy that was ever published. They wait for
+ * builds, reads, hand edits, Lock and Publish, and those wait for them.
  *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
  */
@@ -134,6 +144,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   unpublishAsk = null;
   // Where focus goes back to once it is drawn enabled again ("publish" or "unpublish"), or null.
   focusOn = null;
+  // The week's versions (SchedulesController.getVersions rows), read with the week.
+  versions = [];
+  // A Save version, Restore, rename or delete is on its way.
+  versionsWorking = false;
+  // The version just restored and the revision it was restored at: "on screen now" until the
+  // week is saved again (an edit, a Lock, a build), as on the desktop.
+  restored = null;
 
   @api
   get setup() {
@@ -160,7 +177,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.confirming ||
         this.locking ||
         this.editBusy ||
-        this.publishing)
+        this.publishing ||
+        this.versionsWorking)
     ) {
       this.readAfterRun = true;
       return;
@@ -330,6 +348,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loaded = null;
       this.error = null;
       this.conflict = null;
+      this.versions = [];
+      this.restored = null;
       // Another week: a publish question open for the last one goes (nothing was sent).
       this.publishState = null;
       this.publishAsk = null;
@@ -376,6 +396,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   show(loaded, fresh) {
     this.loaded = loaded;
     this.publishState = loaded.published || null;
+    if (loaded.scheduleId) {
+      this.loadVersions();
+    }
     if (fresh) {
       this.triedUpTo = loaded.option || 1;
       this.view = "day";
@@ -399,6 +422,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       !this.confirming &&
       !this.conflict &&
       !this.publishing &&
+      !this.versionsWorking &&
       (!this.weekEditor || this.weekEditor.settled)
     ) {
       this.load(true);
@@ -570,15 +594,25 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get isBusy() {
     return !!this.busy;
   }
-  /** The program and week pickers wait for a build, a Lock, a hand edit or a publish under way. */
+  /**
+   * The program and week pickers wait for a build, a Lock, a hand edit, a publish or a versions
+   * action under way.
+   */
   get pickerDisabled() {
-    return this.isBusy || this.locking || this.editBusy || this.publishing;
+    return (
+      this.isBusy ||
+      this.locking ||
+      this.editBusy ||
+      this.publishing ||
+      this.versionsWorking
+    );
   }
   get actionsDisabled() {
     // Also while the week is being read (Reload, coming back to the window): a build started
     // then would build on the week the read is about to replace. And while a hand edit saves:
     // a build then would replace the week the edit is being saved into. And while a publish
-    // is on its way: its answer, published or refused, is for the week as it was.
+    // is on its way: its answer, published or refused, is for the week as it was. And while a
+    // version is saved, restored, renamed or deleted: a Restore replaces the week.
     return (
       this.isBusy ||
       !!this.conflict ||
@@ -586,7 +620,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.reading ||
       this.locking ||
       this.editBusy ||
-      this.publishing
+      this.publishing ||
+      this.versionsWorking
     );
   }
   get cannotFill() {
@@ -706,6 +741,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.resetChecks();
         // A whole new week: Undo starts over (its steps were made on the week it replaced).
         this.showInEditor("rebuilt");
+        // Rebuild, Try another and Start over kept a version first: Versions lists it.
+        this.loadVersions();
         const { filled, total } = this.checked.cells;
         this.announce(`Filled ${filled} of ${total}.`);
       } else if (saved.status === CONFLICT) {
@@ -1083,7 +1120,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // Edits wait while a build or a Lock is saved, or Reload reads the week (it is about to be
   // replaced), and while a publish is on its way (its answer is for the week as it was).
   get editsWait() {
-    return this.isBusy || this.locking || !!this.reloading || this.publishing;
+    return (
+      this.isBusy ||
+      this.locking ||
+      !!this.reloading ||
+      this.publishing ||
+      this.versionsWorking
+    );
   }
 
   /**
@@ -1252,7 +1295,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       !this.locking &&
       !this.confirming &&
       !this.conflict &&
-      !this.publishing
+      !this.publishing &&
+      !this.versionsWorking
     ) {
       this.readAfterRun = false;
       this.load(true);
@@ -1265,6 +1309,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    */
   handleEdited() {
     this.loadTicket += 1;
+    // No longer the version just restored.
+    this.restored = null;
     this.reading = false;
     this.loading = false;
     if (this.publishState && !this.publishState.changedSince) {
@@ -1415,6 +1461,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.publishState = { ...result.published, changedSince: false };
+    // A published schedule it replaced is a version now: Versions lists it straight away.
+    this.loadVersions();
     this.say(
       result.unchanged
         ? `${this.weekName} is already published as it is.`
@@ -1474,6 +1522,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.publishState = null;
+    // The copy is a version now, marked Published: Versions lists it straight away.
+    this.loadVersions();
     this.say(`Unpublished ${this.weekName}.`);
   }
 
@@ -1516,5 +1566,160 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return this.publishState && this.publishState.publishedBy
       ? ` by ${this.publishState.publishedBy}`
       : "";
+  }
+
+  // ---------- Versions (as Manual Build: desktop VersionsDropdown, useSnapshots) ----------
+
+  /** Versions wait while anything else changes or reads the week, and while one of theirs runs. */
+  get versionsBusy() {
+    return this.actionsDisabled;
+  }
+
+  /** "on screen now": the version just restored, while the week is still as it was restored. */
+  get restoredId() {
+    const restored = this.restored;
+    return restored && this.loaded && this.loaded.revision === restored.revision
+      ? restored.id
+      : null;
+  }
+
+  async loadVersions() {
+    const week = this.loadedFor;
+    try {
+      const rows = await getVersions({
+        programId: this.programId,
+        weekId: this.weekId
+      });
+      if (week === this.loadedFor) {
+        this.versions = rows || [];
+      }
+    } catch {
+      // The list shows as empty; the week itself is unaffected.
+      if (week === this.loadedFor) {
+        this.versions = [];
+      }
+    }
+  }
+
+  /**
+   * Runs a versions action, then reads the list again before it is done (so the list never shows
+   * a version just deleted as if it were there); refused ones say why. A read asked for meanwhile
+   * (the season read again) is done after it.
+   */
+  async versionsAction(work) {
+    this.versionsWorking = true;
+    this.error = null;
+    this.errorFromRead = false;
+    try {
+      await work();
+      return true;
+    } catch (e) {
+      this.error = errorMessage(e);
+      return false;
+    } finally {
+      await this.loadVersions();
+      this.versionsWorking = false;
+      const readNow = this.readAfterRun && !this.conflict;
+      this.readAfterRun = false;
+      if (readNow) {
+        this.load(true);
+      }
+    }
+  }
+
+  /** Save version: the week as it is now (its locks and option too), kept under a name. */
+  async handleSaveVersion(event) {
+    const { name, onDone } = event.detail;
+    if (this.versionsBusy) {
+      onDone(false);
+      return;
+    }
+    const scheduleId = this.loaded.scheduleId;
+    const saved = await this.versionsAction(() =>
+      saveVersion({ scheduleId, name })
+    );
+    if (saved) {
+      this.say(`Saved ${name}.`);
+    }
+    onDone(saved);
+  }
+
+  /**
+   * Restore: the version's cells, locks and option become the week's, after the week as it was
+   * is kept as "Before Restore" (the way back), then the week is read again. Undo starts over, as
+   * on the desktop. Someone else's save since this screen read the week: nothing is restored, and
+   * the box offers Reload, as for any save.
+   */
+  async handleRestore(event) {
+    const id = event.detail.id;
+    const version = this.versions.find((v) => v.id === id);
+    if (this.versionsBusy) {
+      this.say("One moment: an edit is still saving.");
+      return;
+    }
+    const loaded = this.loaded;
+    // Reads wait while it runs; one for another week (or the screen gone) drops its answer.
+    const ticket = this.loadTicket;
+    await this.versionsAction(async () => {
+      const done = await restoreVersion({
+        scheduleId: loaded.scheduleId,
+        versionId: id,
+        seenRevisions: loaded.revision
+      });
+      if (ticket !== this.loadTicket) {
+        return;
+      }
+      if (!done) {
+        // Nothing was changed: someone else's newer week is never replaced unseen.
+        this.conflict = { message: this.restoreRefusedText };
+        this.focusAfterRender = { selector: '[data-id="reload"]' };
+        return;
+      }
+      // Restored: if the week can't be read now, it is read again once this is over.
+      this.readAfterRun = true;
+      const week = await loadWeek(this.programId, this.weekId);
+      if (ticket !== this.loadTicket) {
+        return;
+      }
+      this.readAfterRun = false;
+      this.loaded = week;
+      this.publishState = week.published || null;
+      this.resetChecks();
+      // A whole new week: Undo starts over (its steps were made on the week it replaced).
+      this.showInEditor("rebuilt");
+      this.restored = { id, revision: week.revision };
+      this.say(`Restored ${version ? version.name : ""}.`);
+    });
+  }
+
+  get restoreRefusedText() {
+    return `Someone else changed this ${this.t.sIn("Week")} since you opened it, so nothing was restored.`;
+  }
+
+  async handleDeleteVersion(event) {
+    if (this.versionsBusy) {
+      return;
+    }
+    const id = event.detail.id;
+    const version = this.versions.find((v) => v.id === id);
+    const scheduleId = this.loaded.scheduleId;
+    const done = await this.versionsAction(() =>
+      deleteVersion({ scheduleId, versionId: id })
+    );
+    if (done) {
+      this.say(`Deleted ${version ? version.name : ""}.`);
+    }
+  }
+
+  async handleRenameVersion(event) {
+    const { id, name, onDone } = event.detail;
+    if (this.versionsBusy) {
+      onDone(false);
+      return;
+    }
+    const renamed = await this.versionsAction(() =>
+      renameSchedule({ scheduleId: id, name })
+    );
+    onDone(renamed);
   }
 }

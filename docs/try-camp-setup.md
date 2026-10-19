@@ -973,15 +973,39 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (section 23).
 6. While **Rebuild** runs, **Publish** and **Unpublish** are greyed out; while the Publish box is
    open, **Rebuild**, **Lock**, the pickers and hand edits wait.
 7. Click **Unpublish**, then **Unpublish** in the box: _Unpublished Week 1._ The copies that are
-   no longer published are listed, named _Published Oct 18, …_, in **Manual Build**'s
-   **Versions** for Week 1 (with _Generated Schedule_ under the name) until Generated Schedule
-   gets its own Versions.
+   no longer published are listed, named _Published Oct 18, …_, in **Versions** on both screens
+   (section 28).
+
+## 28. Generated Schedule: Versions
+
+This uses the made-up camp's Week 1 on **Generated Schedule** (sections 23 and 27).
+
+1. Open **Generated Schedule**, Week 1. After **Start over**, set off by a thin line, is
+   **Versions** (then **Publish**). Click it: the week's versions, newest first, from both
+   screens: _Before Rebuild_ (_Generated Schedule · Auto-saved_), anything saved on Manual Build
+   (_Manual Build_), and the copies no longer published, named _Published Oct 18, …_ and marked
+   _Published_.
+2. Type _Before the trip_ in _Name current version…_ and click **Save version**. It says _Saved
+   Before the trip._ and the list shows it at the top.
+3. Lock a cell (the **Lock** menu), then **Try another**. Open **Versions** and click **Restore**
+   beside _Before the trip_. The week goes back to how it was when you saved it, with the option it
+   was built with and its locks as they were then (here: none, so the lock you just made is gone).
+   _Before the trip_ says _on screen now_ until you change the week, and Undo starts over.
+4. The week as it was before the Restore is kept at the top as _Before Restore_ (_Auto-saved_):
+   **Restore** it to get the lock and the other option back.
+5. **Restore** a version saved on **Manual Build**: its cells come in with no locks (Manual Build
+   never locks), so a **Rebuild** after it can change any of them. Lock what should stay first.
+6. **rename** a version, or one named _Published Oct 18, …_: type the new name and **Save**. A copy
+   that was ever published has no **delete**; the others ask _Delete?_ on the first click and go
+   on the second.
+7. While **Rebuild** runs, a hand edit saves, a Lock saves or a Publish is on its way, the list's
+   buttons are greyed out; while a Restore runs, the build buttons, **Lock**, **Publish**, the
+   pickers and hand edits wait (_One moment: the week is being saved or restored._).
 
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: Versions on that screen.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

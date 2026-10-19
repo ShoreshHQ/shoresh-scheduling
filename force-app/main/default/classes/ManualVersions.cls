@@ -4,6 +4,9 @@
  * (from Manual Build or Generated Schedule, Greg's decision 9) into the draft, after keeping the
  * draft as it was as an automatic version ("Before Restore"), the desktop's way back; Delete
  * takes a version away. The draft is locked while any of these runs. Runs in user mode.
+ * Generated Schedule's Versions use the same path (ADR 0010 "Choices (Versions)"): its screen
+ * hands in its own locked draft (GeneratedDrafts.lockedToEdit), and a version keeps the option
+ * the week was built with, so Restore brings it back.
  */
 public with sharing class ManualVersions {
   public static final String VERSION = 'Version';
@@ -13,7 +16,12 @@ public with sharing class ManualVersions {
 
   /** Save version: the draft as it is now, kept under a name. Returns the version's Id. */
   public static Id save(Id draftId, String name) {
-    Schedule__c draft = ManualDrafts.locked(draftId);
+    return saveOf(ManualDrafts.locked(draftId), name);
+  }
+
+  /** The same, for a draft its screen has locked (Generated: GeneratedDrafts.lockedToEdit). */
+  public static Id saveOf(Schedule__c draft, String name) {
+    Id draftId = draft.Id;
     String named = SchedulesController.checkedName(
       name,
       draft.Program__r.Season__r.Camp__c
@@ -36,7 +44,20 @@ public with sharing class ManualVersions {
    * version's Id (null when the draft had no days to keep).
    */
   public static Id restore(Id draftId, Id versionId, String seenRevisions) {
-    Schedule__c draft = ManualDrafts.locked(draftId);
+    return restoreInto(ManualDrafts.locked(draftId), versionId, seenRevisions);
+  }
+
+  /**
+   * The same, into a draft its screen has locked (Generated: GeneratedDrafts.lockedToEdit). The
+   * version's days come as they are, locks included (ADR 0010 §32, §43); a Generated draft also
+   * takes the version's option when it has one.
+   */
+  public static Id restoreInto(
+    Schedule__c draft,
+    Id versionId,
+    String seenRevisions
+  ) {
+    Id draftId = draft.Id;
     Schedule__c version = versionOf(versionId, draft);
     List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
     if (ScheduleDays.stamp(current) != seenRevisions) {
@@ -80,6 +101,7 @@ public with sharing class ManualVersions {
         true,
         AccessLevel.USER_MODE
       );
+      takeOption(draft, version);
       return kept;
     } catch (Exception e) {
       Database.rollback(beforeRestore);
@@ -92,7 +114,11 @@ public with sharing class ManualVersions {
    * week's published schedule once is kept as history (wiki decision 0002), and refused.
    */
   public static void remove(Id draftId, Id versionId) {
-    Schedule__c draft = ManualDrafts.locked(draftId);
+    removeFrom(ManualDrafts.locked(draftId), versionId);
+  }
+
+  /** The same, from a draft its screen has locked (Generated: GeneratedDrafts.lockedToEdit). */
+  public static void removeFrom(Schedule__c draft, Id versionId) {
     Schedule__c version = versionOf(versionId, draft);
     if (version.PublishedAt__c != null) {
       CampLabels labels = CampLabels.forCamp(
@@ -112,7 +138,14 @@ public with sharing class ManualVersions {
   /** A version of the draft's program and week, or refused. */
   private static Schedule__c versionOf(Id versionId, Schedule__c draft) {
     List<Schedule__c> found = [
-      SELECT Id, Name, Status__c, Program__c, Week__c, PublishedAt__c
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Program__c,
+        Week__c,
+        PublishedAt__c,
+        EngineOption__c
       FROM Schedule__c
       WHERE Id = :versionId
       WITH USER_MODE
@@ -170,7 +203,33 @@ public with sharing class ManualVersions {
       VersionReason__c = reason,
       SourceSchedule__c = draft.Id
     );
+    // A Generated week's version keeps the option it was built with, as Rebuild's does (§16).
+    if (isGenerated(draft)) {
+      version.EngineOption__c = draft.EngineOption__c;
+    }
     Database.insert(version, AccessLevel.USER_MODE);
     return version.Id;
+  }
+
+  /** A Generated week goes on from the version's option, when it has one (ADR 0010 §17). */
+  private static void takeOption(Schedule__c draft, Schedule__c version) {
+    if (
+      isGenerated(draft) &&
+      version.EngineOption__c != null &&
+      version.EngineOption__c != draft.EngineOption__c
+    ) {
+      Database.update(
+        new Schedule__c(
+          Id = draft.Id,
+          EngineOption__c = version.EngineOption__c
+        ),
+        AccessLevel.USER_MODE
+      );
+    }
+  }
+
+  /** A Generated Schedule draft (its lock read EngineOption__c; Manual Build's doesn't). */
+  private static Boolean isGenerated(Schedule__c draft) {
+    return draft.Origin__c == GeneratedDrafts.GENERATED;
   }
 }

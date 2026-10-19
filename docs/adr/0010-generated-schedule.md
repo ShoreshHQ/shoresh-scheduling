@@ -939,8 +939,8 @@ _Published <date, time>_, never deleted). The desktop has no Publish. What diffe
     other two of ADR 0008 item 4) goes on the editor's line and the week is read again. Focus
     returns to Publish (or Unpublish) once it is enabled again.
 47. **Where the copies go.** A replaced or unpublished copy is a version of the week (Status
-    Version, `PublishedAt__c` kept). Until Generated gets its own Versions (the next part), it
-    shows in Manual Build's **Versions** for that week (it lists every version of the week,
+    Version, `PublishedAt__c` kept). It shows in this screen's **Versions** (§48) and in Manual
+    Build's **Versions** for that week (it lists every version of the week,
     with _Generated Schedule_ under the name) and on the Schedules page, and Start from another week can
     start from it.
 
@@ -964,6 +964,80 @@ hand edits all saved read nothing, and the read owed is done after; focus back, 
 director moved it. Each connection was taken away once and a test failed (checked again after a
 review found five holds no test caught).
 
+## Choices (Versions)
+
+Versions come to the Generated screen through Manual Build's server path (ADR 0008 part 4b,
+`ManualVersions`) and its list (`c-shoresh-versions`, Manual Build form), with the same words and
+the same rules: the desktop's Versions dropdown (`VersionsDropdown.jsx`, `useSnapshots.js`), with
+Greg's decision 9 (any version of the week restores on either screen) and his decision that a
+copy that was ever published is never deleted (decision 0002, `PublishedGuard`). What differs:
+
+48. **The server path.** `GeneratedScheduleController.saveVersion`, `restoreVersion` and
+    `deleteVersion` call `ManualVersions.saveOf`, `restoreInto` and `removeFrom` with Generated's
+    draft, locked by `GeneratedDrafts.lockedToEdit` (never a version, a published schedule or
+    Manual Build's draft: _A saved version can't be changed._ / _Only this week's Generated
+    Schedule can be saved here. Reload the page._). Manual Build's `save`, `restore` and `remove`
+    now hand their own locked draft to the same three, so Manual Build behaves exactly as before.
+    Rename is `SchedulesController.renameSchedule`, as everywhere. The list is
+    `SchedulesController.getVersions`: every version of the program's week, from either screen.
+49. **What a version keeps.** A day is copied as it is, locks included (§32), and a Generated
+    version also keeps the option the week was built with (`EngineOption__c`, §17), as Rebuild's
+    _Before Rebuild_ does. Save version: Status Version, Origin Generated, VersionReason Saved by
+    hand, `SourceSchedule__c` the draft.
+50. **Restore** keeps the week first as _Before Restore_ (Auto-saved, with its locks and option),
+    then the version's days replace the week's, **its locks with them**: the locks on screen
+    before are in _Before Restore_, not carried over. That is §32 and §43 as written ("restoring a
+    replaced copy later brings its locks back"); a Restore is the director's own choice of a
+    whole week, not something generated, so the version's locks are the director's locks. The
+    week takes the version's option when it has one (a Manual Build version has none: the week
+    keeps its own). A Manual Build version has no locks (Manual Build never locks, §33), so after
+    restoring one every cell can be changed by the next Rebuild. As on Manual Build, the screen
+    sends back the revision it read the week at; a week saved since is refused with nothing
+    changed (`restoreVersion` answers false) and the screen shows its conflict box: _Someone else
+    changed this week since you opened it, so nothing was restored._ · **Reload**. Otherwise the
+    screen reads the week again (`getInputs`) and shows it as a build's answer is shown: Undo
+    starts over (desktop), the counters start over, and the version is _on screen now_ while the
+    week is still at the revision it was restored at.
+51. **After a Restore everything else follows the week as saved.** A Rebuild, Try another or Fill
+    the open cells keeps the restored locks and the server refuses one that changes them (§35); a
+    build, Lock or hand edit from a screen that read the week before the Restore is a conflict;
+    Publish compares the restored week with the published one (restoring the copy that is
+    published leaves no _· changed since_); Start over still clears every lock after its own
+    version.
+52. **Waiting.** Versions (Restore, Save version, rename, delete) wait while a build, a read of
+    the week, a hand edit's save, a Lock, a publish or a conflict is out (`versionsBusy` is
+    `actionsDisabled`). While a versions action is on its way, the builds, Lock, Publish and
+    Unpublish, the pickers, hand edits (the editor's _One moment: the week is being saved or
+    restored._) and the read on coming back to the window wait; the season read again meanwhile
+    reads the week once it is over. The list is read with the week, after each build (Rebuild,
+    Try another and Start over keep a version), after Publish and Unpublish (a copy becomes a
+    version), and after each versions action; a list read for another week is dropped.
+53. **Toolbar.** After **Start over**, set off by a divider as on the desktop ("Versions and
+    export", `ScheduleScreen.jsx`) and on Manual Build, then **Publish** last (§45). Shown once
+    the week has a Generated draft; a week not generated yet has no Versions here (it has nothing
+    to restore into).
+54. Reads: Save version 8 queries, Restore 14, delete 3 (measured in shoresh-test, 2026-10-19);
+    `GeneratedVersionsTest` asserts Save version at most 15 and Restore at most 20.
+
+## Tests (Versions)
+
+`GeneratedVersionsTest` (as a scheduler, records made inside `System.runAs`): Save version keeps
+the cells, the lock and the option; Restore brings back the version as it was (its cells, its
+option, its locks: none, so the lock made since is gone) after keeping _Before Restore_ with the
+lock and option it had; a week saved since is refused with nothing written; a restored lock comes
+back and a Rebuild that changes its cell is refused; a build from before the Restore is a
+conflict; a Manual Build version restores here with no locks and the week's own option, leaving
+Manual Build's draft alone; a copy unpublished is listed as _Published …_, can be renamed and is
+never deleted, while a plain version is; restoring the copy that is published leaves it not
+changed since; Manual Build's draft and a version are refused by all three calls. Mutation
+checks in the org: taking away the option on Restore, the option on a version, or the refusal's
+answer each failed a test. Jest `versions.test.js` drives the screen: the list in the toolbar
+and its order; the published copy without delete; Save version, Restore (the revision sent, the
+week read again with its locks and option, Undo started over, on screen now until the week is
+saved again), a refused Restore with Reload, delete, rename, refusals; every hold both ways; the
+list read again after a build, Publish and Unpublish; a list for another week dropped. Each
+connection was taken away once and a test failed.
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -978,6 +1052,9 @@ G2:
 G5: none (no objects, fields or global members).
 
 Publish: none (no objects, fields or global members; `revisionOf`'s text is never stored).
+
+Versions: none (no objects, fields, picklist values or global members; the name "Before Restore"
+is Manual Build's, ADR 0008 part 4b).
 
 G4:
 

@@ -339,6 +339,22 @@
         >
           Start over
         </button>
+        <!-- Versions, set off by a divider as on the desktop and Manual Build: Restore, rename,
+             delete and Save version. -->
+        <div class="divider" slot="tools" aria-hidden="true"></div>
+        <c-shoresh-versions
+          slot="tools"
+          restore
+          versions={versions}
+          open-id={restoredId}
+          terms={terms}
+          busy={versionsBusy}
+          onopen={handleRestore}
+          onrename={handleRenameVersion}
+          ondelete={handleDeleteVersion}
+          onsave={handleSaveVersion}
+          data-id="versions"
+        ></c-shoresh-versions>
         <!-- Publish, last on the toolbar, as on Manual Build: when the week was published, then
              Unpublish (only while it is) and Publish. -->
         <div class="publish" slot="tools" data-id="publish-area">

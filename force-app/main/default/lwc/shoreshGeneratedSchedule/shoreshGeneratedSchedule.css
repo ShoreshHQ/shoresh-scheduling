@@ -124,6 +124,13 @@
   --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
 }
 
+/* Sets Versions off from the build actions, as on Manual Build and the desktop. */
+.divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--slds-g-color-border-base-1, #c9c9c9);
+}
+
 /* Publish, last on the toolbar: when the week was published, then the buttons (as Manual Build). */
 .publish {
   display: flex;
