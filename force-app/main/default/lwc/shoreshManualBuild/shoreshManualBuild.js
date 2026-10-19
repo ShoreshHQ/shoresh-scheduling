@@ -63,8 +63,10 @@ export default class ShoreshManualBuild extends LightningElement {
   publishState = null;
   // A preview or publish is on its way.
   publishing = false;
-  // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview }.
+  // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview, week }.
   publishAsk = null;
+  // The question just closed: focus goes back to Publish once it is drawn enabled again.
+  focusPublish = false;
 
   @api
   get setup() {
@@ -97,6 +99,13 @@ export default class ShoreshManualBuild extends LightningElement {
       const { draft, fresh } = this.waiting;
       this.waiting = null;
       this.weekEditor.show(draft, fresh);
+    }
+    if (this.focusPublish && !this.publishing) {
+      this.focusPublish = false;
+      const button = this.template.querySelector('[data-id="publish"]');
+      if (button) {
+        button.focus();
+      }
     }
   }
 
@@ -360,7 +369,7 @@ export default class ShoreshManualBuild extends LightningElement {
     );
   }
 
-  /** The week and program can't change while a start or a Restore is on its way. */
+  /** The week and program can't change while a start, a Restore or a publish is on its way. */
   get pickersLocked() {
     return this.starting || this.versionsWorking || this.publishing;
   }
@@ -461,8 +470,17 @@ export default class ShoreshManualBuild extends LightningElement {
 
   // ---------- versions (desktop VersionsDropdown, useSnapshots) ----------
 
+  /** Versions wait while a version action, an edit's save or a publish is on its way. */
   get versionsBusy() {
-    return this.versionsWorking || this.editBusy;
+    return this.versionsWorking || this.editBusy || this.publishing;
+  }
+
+  /**
+   * Edits wait while a version is restored or saved (Restore would paint over them) and while a
+   * publish is on its way (its answer, published or refused, is for the week as it was).
+   */
+  get editsWait() {
+    return this.versionsWorking || this.publishing;
   }
 
   async loadVersions() {
@@ -604,14 +622,16 @@ export default class ShoreshManualBuild extends LightningElement {
       this.say("One moment: an edit is still saving.");
       return;
     }
-    const ticket = this.loadTicket;
+    // Edits, Restore and the pickers wait while publishing, so the answer is for this week; one
+    // for a week no longer shown is dropped.
+    const week = this.weekKey;
     this.publishing = true;
     this.error = null;
     try {
       const preview = await previewPublish({
         scheduleId: this.schedule.schedule.id
       });
-      if (ticket !== this.loadTicket) {
+      if (week !== this.weekKey) {
         return;
       }
       const question = publishQuestion({
@@ -624,9 +644,9 @@ export default class ShoreshManualBuild extends LightningElement {
         this.publishState = { ...preview.published, changedSince: false };
         this.say(`${this.weekName} is already published as it is.`);
       } else if (question.kind === "now") {
-        await this.publishNow(preview, ticket);
+        await this.publishNow(preview, week);
       } else {
-        this.publishAsk = { ...question, preview };
+        this.publishAsk = { ...question, preview, week };
       }
     } catch (e) {
       this.error = failed(`${this.weekName} was not published.`, e);
@@ -643,23 +663,28 @@ export default class ShoreshManualBuild extends LightningElement {
     try {
       if (event.detail.yes) {
         // The server refuses it if the week changed since the preview.
-        await this.publishNow(ask.preview, this.loadTicket);
+        await this.publishNow(ask.preview, ask.week);
       }
     } catch (e) {
       this.error = failed(`${this.weekName} was not published.`, e);
     } finally {
       this.publishing = false;
+      // The question is gone: focus goes back to where it started (WCAG 2.4.3).
+      this.focusPublish = true;
     }
   }
 
-  /** Publishes the week the preview showed; a week or publish changed since is refused. */
-  async publishNow(preview, ticket) {
+  /**
+   * Publishes the week the preview showed; a week or publish changed since is refused. The
+   * answer is always shown, unless another week (week, program) is shown by then.
+   */
+  async publishNow(preview, week) {
     const result = await publish({
       scheduleId: this.schedule.schedule.id,
       seenRevisions: preview.revisions,
       seenPublishedId: preview.published ? preview.published.id : null
     });
-    if (ticket !== this.loadTicket) {
+    if (week !== this.weekKey) {
       return;
     }
     if (result.draftChanged || result.publishedChanged) {
@@ -684,6 +709,11 @@ export default class ShoreshManualBuild extends LightningElement {
     return this.publishState && this.publishState.publishedBy
       ? ` by ${this.publishState.publishedBy}`
       : "";
+  }
+
+  /** The program and week shown. */
+  get weekKey() {
+    return `${this.programId}|${this.weekId}`;
   }
 
   get weekName() {

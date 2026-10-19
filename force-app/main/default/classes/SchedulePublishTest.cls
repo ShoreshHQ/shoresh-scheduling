@@ -262,6 +262,49 @@ private class SchedulePublishTest {
   }
 
   @IsTest
+  static void aWeekWhoseOnlyHistoryIsAReplacedCopyIsNotDeleted() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id firstId = publishNow(draftId).published.id;
+      // What follows gets its own limits: an edit, a second publish and the delete.
+      Test.startTest();
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      Id secondId = publishNow(draftId).published.id;
+      // The current published copy is gone (Salesforce's own Delete), leaving the replaced one.
+      Database.delete(secondId, true, AccessLevel.SYSTEM_MODE);
+      String message;
+      try {
+        // The setup screens' week delete: drafts and versions go with the week, history doesn't.
+        WeekExceptions.deleteWithWeeks(ids.get('Week 1'));
+      } catch (Exception e) {
+        message = e.getMessage();
+      }
+      Test.stopTest();
+      Assert.isNotNull(message, 'The week was deleted with its history');
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Schedule__c WHERE Id = :firstId WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM Week__c
+          WHERE Id = :ids.get('Week 1')
+          WITH SYSTEM_MODE
+        ]
+      );
+      // All or none: the draft is still there too.
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Schedule__c WHERE Id = :draftId WITH SYSTEM_MODE]
+      );
+    }
+  }
+
+  @IsTest
   static void publishingTheWeekAsItIsAgainChangesNothing() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();

@@ -69,7 +69,8 @@ export function publishQuestion({ preview, checked, weekName, t }) {
       `This replaces the ${t.sIn("PublishedSchedule")}. ${cells(preview.changeCount)} ${preview.changeCount === 1 ? "changes" : "change"}:`
     );
     lines.push(...preview.changes);
-    const more = preview.changeCount - preview.changes.length;
+    // Lines not listed (a line can cover several cells, so not changeCount less those shown).
+    const more = preview.moreLines || 0;
     if (more > 0) {
       lines.push(`…and ${more} more.`);
     }

@@ -11,14 +11,18 @@ public with sharing class PublishedChanges {
   public class Changes {
     // The first lines, in day, then group, then time block order.
     public List<String> lines = new List<String>();
-    // Every change, listed or not.
+    // Every changed cell, listed or not (a line can cover several neighbouring cells).
     public Integer count = 0;
+    // The lines past mostLines, not listed ("…and N more.").
+    public Integer moreLines = 0;
     private Integer mostLines;
 
-    private void add(String line) {
-      count++;
+    private void add(String line, Integer cells) {
+      count += cells;
       if (lines.size() < mostLines) {
         lines.add(line);
+      } else {
+        moreLines++;
       }
     }
   }
@@ -105,10 +109,12 @@ public with sharing class PublishedChanges {
 
     private void addTo(Changes result) {
       if (was != null && was.grid == null) {
-        // Nothing to compare against: the whole day is replaced, and said once.
+        // Nothing to compare against: the whole day is replaced, and said once. Every cell of
+        // the day being published counts (at least one: the day changes even when it is empty).
         result.add(
           dayName +
-          ': the published day could not be read, so all of it is replaced'
+          ': the published day could not be read, so all of it is replaced',
+          Math.max(1, groupIds.size() * blockIds.size())
         );
         return;
       }
@@ -124,15 +130,16 @@ public with sharing class PublishedChanges {
         String change = changeAt(groupId + '|' + blockId);
         if (run != null && run.continuesWith(change)) {
           run.last = blockId;
+          run.cells++;
           continue;
         }
         if (run != null) {
-          result.add(lineOf(groupId, run));
+          result.add(lineOf(groupId, run), run.cells);
         }
         run = change == null ? null : new Run(blockId, change);
       }
       if (run != null) {
-        result.add(lineOf(groupId, run));
+        result.add(lineOf(groupId, run), run.cells);
       }
     }
 
@@ -166,6 +173,8 @@ public with sharing class PublishedChanges {
     private String first;
     private String last;
     private String change;
+    // How many time blocks (cells) the run covers.
+    private Integer cells = 1;
 
     private Run(String blockId, String change) {
       this.first = blockId;

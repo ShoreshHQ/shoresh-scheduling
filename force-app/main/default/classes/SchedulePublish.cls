@@ -39,12 +39,15 @@ public with sharing class SchedulePublish {
     // The published schedule it would replace, or null for the week's first publish.
     @AuraEnabled
     public PublishState published;
-    // The cells that would change from the published schedule (at most MOST_LINES of them),
-    // and how many there are in all.
+    // The lines saying what would change from the published schedule (at most MOST_LINES of
+    // them; neighbouring cells with the same change share one), how many cells change in all,
+    // and how many lines are not listed.
     @AuraEnabled
     public List<String> changes = new List<String>();
     @AuraEnabled
     public Integer changeCount = 0;
+    @AuraEnabled
+    public Integer moreLines = 0;
   }
 
   /** A publish done, or refused because the week or its published schedule changed since. */
@@ -93,6 +96,7 @@ public with sharing class SchedulePublish {
     );
     result.changes = changes.lines;
     result.changeCount = changes.count;
+    result.moreLines = changes.moreLines;
     result.published.changedSince = changes.count > 0;
     return result;
   }

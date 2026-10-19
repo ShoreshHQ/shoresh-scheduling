@@ -108,7 +108,7 @@ describe("c/shoreshPublish", () => {
 
   it("says how many more changes there are than it lists, then what is still to do", () => {
     const question = publishQuestion({
-      preview: { ...AGAIN, changeCount: 31 },
+      preview: { ...AGAIN, changeCount: 31, moreLines: 30 },
       checked: { ...CLEAN, overlapping: [{}, {}] },
       weekName: "Week 1",
       t: buildTerms([
@@ -125,6 +125,26 @@ describe("c/shoreshPublish", () => {
       "Bunk 1 · Monday · Period 2: Swim → Soccer",
       "…and 30 more.",
       "Overlapping: 2"
+    ]);
+  });
+
+  it("counts cells but says how many more lines there are, when lines cover several cells", () => {
+    // One line covers Period 1–Period 3 (3 cells); 4 more lines, 6 cells, aren't listed.
+    const question = publishQuestion({
+      preview: {
+        ...AGAIN,
+        changes: ["Bunk 1 · Monday · Period 1–Period 3: Swim → Soccer"],
+        changeCount: 9,
+        moreLines: 4
+      },
+      checked: CLEAN,
+      weekName: "Week 1",
+      t
+    });
+    expect(question.lines).toEqual([
+      "This replaces the published schedule. 9 cells change:",
+      "Bunk 1 · Monday · Period 1–Period 3: Swim → Soccer",
+      "…and 4 more."
     ]);
   });
 

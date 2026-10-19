@@ -114,6 +114,8 @@ private class PublishedChangesTest {
       new List<String>{ 'Group A · Monday · Period 1–Period 2: Open → Swim' },
       changes.lines
     );
+    // One line, two cells: the count is of cells (the screen says "2 cells change").
+    Assert.areEqual(2, changes.count);
   }
 
   @IsTest
@@ -206,6 +208,8 @@ private class PublishedChangesTest {
       },
       changes.lines
     );
+    // Every cell of the day being published: 2 groups × 3 time blocks.
+    Assert.areEqual(6, changes.count);
   }
 
   @IsTest
@@ -229,6 +233,7 @@ private class PublishedChangesTest {
     );
     Assert.areEqual(4, changes.count);
     Assert.areEqual(2, changes.lines.size());
+    Assert.areEqual(2, changes.moreLines);
   }
 
   @IsTest

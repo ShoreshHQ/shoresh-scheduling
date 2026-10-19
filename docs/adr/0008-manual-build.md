@@ -706,7 +706,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
 5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves or
    a Restore runs; beside it _Published Oct 18, 10:04 by Pat_ and, once the draft differs,
    _· changed since_ (from `DraftView.published`, worked out on the server by the same
-   comparison; an edit on screen marks it at once).
+   comparison; an edit on screen marks it at once). While a publish is on its way (and while its
+   question is open) edits, Versions and the week and program pickers wait, so its answer,
+   published or refused, is always shown; when the question closes, focus returns to Publish.
 6. **For Generated Schedule next**: `SchedulePublish` takes any locked draft (Generated's
    `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
    wiring Generated is a controller method pair and the same toolbar button. Not wired here.
