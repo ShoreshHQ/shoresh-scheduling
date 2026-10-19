@@ -508,4 +508,102 @@ describe("Publish on the Generated Schedule screen", () => {
     await flush();
     expect(element.shadowRoot.activeElement).toBe(publishButton(element));
   });
+
+  it("a week already published as it is is no longer changed since", async () => {
+    // As after a hand edit that was undone: the published copy matches the week again.
+    const element = await render(
+      cleanWeek({ published: { ...PUBLISHED, changedSince: true } })
+    );
+    expect(q(element, '[data-id="changed-since"]')).not.toBeNull();
+    previewPublish.mockResolvedValue(preview({ published: PUBLISHED }));
+    await clickPublish(element);
+    expect(notice(element)).toBe("Week 1 is already published as it is.");
+    expect(q(element, '[data-id="changed-since"]')).toBeNull();
+    expect(publishedLine(element)).not.toBeNull();
+  });
+
+  it("while the Publish box is open, builds, Lock and the pickers wait, and the week isn't read again until it is answered", async () => {
+    const element = await render(openWeek());
+    previewPublish.mockResolvedValue(preview());
+    await clickPublish(element);
+    expect(ask(element)).not.toBeNull();
+    expect(action(element, "Rebuild").disabled).toBe(true);
+    expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(q(element, '[data-id="week"]').disabled).toBe(true);
+    getInputs.mockClear();
+    // The season read again, and coming back to the window.
+    element.setup = { ...SETUP };
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getInputs).not.toHaveBeenCalled();
+    await answer(ask(element), false);
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    expect(action(element, "Rebuild").disabled).toBe(false);
+  });
+
+  it("the season read again while a publish is on its way waits for it, then reads the week", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    publish.mockResolvedValue({ published: PUBLISHED });
+    await clickPublish(element);
+    getInputs.mockClear();
+    element.setup = { ...SETUP };
+    await flush();
+    expect(getInputs).not.toHaveBeenCalled();
+    held.answer(preview());
+    await flush();
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(getInputs).toHaveBeenCalledTimes(1);
+  });
+
+  it("coming back to the window while a publish is on its way doesn't read the week", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    publish.mockResolvedValue({ published: PUBLISHED });
+    await clickPublish(element);
+    getInputs.mockClear();
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getInputs).not.toHaveBeenCalled();
+    held.answer(preview());
+    await flush();
+    expect(getInputs).not.toHaveBeenCalled();
+  });
+
+  it("hand edits all saved during a publish don't read the week until it is over", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    publish.mockResolvedValue({ published: PUBLISHED });
+    await clickPublish(element);
+    getInputs.mockClear();
+    // The season was read again (a read is owed), then the editor says its saves are done.
+    element.setup = { ...SETUP };
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("editstate", {
+        detail: { busy: false, queueEmpty: true }
+      })
+    );
+    await flush();
+    expect(getInputs).not.toHaveBeenCalled();
+    held.answer(preview());
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(1);
+  });
+
+  it("focus stays where the director put it while Publish was held", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    publish.mockResolvedValue({ published: PUBLISHED });
+    await clickPublish(element);
+    const elsewhere = document.createElement("button");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    held.answer(preview());
+    await flush();
+    expect(document.activeElement).toBe(elsewhere);
+  });
 });

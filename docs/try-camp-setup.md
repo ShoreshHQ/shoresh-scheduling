@@ -958,11 +958,14 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (section 23).
    changes, then what is still to do). **Cancel** publishes nothing; **Publish** goes ahead. A
    finished week published for the first time goes at once.
 3. It says _Published Week 1._ and the line beside the button shows when and by whom.
-4. Lock a cell (the **Lock** menu). The line does not change: a lock alone isn't a change to the
-   published schedule. Click **Publish**: _Week 1 is already published as it is._
-5. Right after publishing, click **Rebuild** and confirm: the same setup builds the same week, so
-   the line still has no _· changed since_. Then change a cell by hand: the line ends
-   _· changed since_ at once.
+4. Click **Rebuild** and confirm, then **Publish** (and **Publish** in the box, if it asks).
+   Click **Rebuild** again and confirm: nothing was locked or changed by hand since the last
+   build, so the same setup builds the same week, and the line still has no _· changed since_.
+   (A lock or a hand edit made since a build can change how Rebuild builds the rest of the week;
+   the line then rightly ends _· changed since_.)
+5. Lock a cell (the **Lock** menu). The line does not change: a lock alone isn't a change to the
+   published schedule. Click **Publish**: _Week 1 is already published as it is._ Then change a
+   cell by hand: the line ends _· changed since_ at once.
 6. While **Rebuild** runs, **Publish** and **Unpublish** are greyed out; while the Publish box is
    open, **Rebuild**, **Lock**, the pickers and hand edits wait.
 7. Click **Unpublish**, then **Unpublish** in the box: _Unpublished Week 1._ The copies that are

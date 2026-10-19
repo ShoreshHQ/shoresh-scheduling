@@ -75,14 +75,24 @@ private class GeneratedPublishTest {
     ];
   }
 
-  private static String refusal(Id scheduleId) {
-    try {
-      GeneratedScheduleController.previewPublish(scheduleId);
-    } catch (AuraHandledException e) {
-      return e.getMessage();
+  /** What previewPublish, publish and unpublish each say for this schedule (null: not refused). */
+  private static List<String> refusals(Id scheduleId) {
+    List<String> messages = new List<String>();
+    for (Integer call = 0; call < 3; call++) {
+      try {
+        if (call == 0) {
+          GeneratedScheduleController.previewPublish(scheduleId);
+        } else if (call == 1) {
+          GeneratedScheduleController.publish(scheduleId, 'seen', null);
+        } else {
+          GeneratedScheduleController.unpublish(scheduleId, null);
+        }
+        messages.add(null);
+      } catch (AuraHandledException e) {
+        messages.add(e.getMessage());
+      }
     }
-    Assert.fail('Expected the preview to be refused');
-    return null;
+    return messages;
   }
 
   @IsTest
@@ -355,12 +365,18 @@ private class GeneratedPublishTest {
           ids.get('Week 1')
         )
         .schedule.schedule.id;
-      String fromVersion = refusal(versionId);
-      String fromManual = refusal(manualId);
+      List<String> fromVersion = refusals(versionId);
+      List<String> fromManual = refusals(manualId);
       Test.stopTest();
-      Assert.areEqual('A saved version can\'t be changed.', fromVersion);
+      // Preview, Publish and Unpublish each refuse them.
+      String versionRefused = 'A saved version can\'t be changed.';
       Assert.areEqual(
-        'Only this week\'s Generated Schedule can be saved here. Reload the page.',
+        new List<String>{ versionRefused, versionRefused, versionRefused },
+        fromVersion
+      );
+      String manualRefused = 'Only this week\'s Generated Schedule can be saved here. Reload the page.';
+      Assert.areEqual(
+        new List<String>{ manualRefused, manualRefused, manualRefused },
         fromManual
       );
       Assert.areEqual(0, publishedHistory().size());

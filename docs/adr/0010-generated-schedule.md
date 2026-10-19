@@ -952,13 +952,16 @@ changes it; a build answers with it (a Rebuild that builds the same week is not 
 or with none; publishing again lists _Group A · Monday · Lunch: Open → Swim_ and Unpublish keeps
 both copies as history named _Published …_ (within 10 queries); Generated replaces Manual
 Build's published schedule; a week saved since the preview publishes nothing; a version and
-Manual Build's draft are refused. `GeneratedLimitsTest`: a published week opens and rebuilds
+Manual Build's draft are refused by the preview, Publish and Unpublish alike. `GeneratedLimitsTest`: a published week opens and rebuilds
 within 25 queries. Jest `publish.test.js` drives the screen: at once when finished; asks with
 Open cells and with a dot; again with the changes; already published; the three refusals with
 a read again; Unpublish's question, Cancel and refusal; builds, Lock, a hand edit and the pickers
 held while it works, and it held while a build, a hand edit, a Lock or a read is out; _changed
-since_ after a hand edit and as a build answers; focus back. Each connection was taken away once
-(13 of them) and a test failed.
+since_ after a hand edit and as a build answers, and cleared by _already published as it is_;
+while a publish is out or its box is open, the season read again, coming back to the window and
+hand edits all saved read nothing, and the read owed is done after; focus back, unless the
+director moved it. Each connection was taken away once and a test failed (checked again after a
+review found five holds no test caught).
 
 ## Choices that are hard to undo after release
 
