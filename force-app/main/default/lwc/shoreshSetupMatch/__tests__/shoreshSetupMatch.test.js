@@ -190,6 +190,73 @@ describe("c-shoresh-setup-match", () => {
     );
   });
 
+  it("keeps focus inside the dialog, on the list, while an update is on its way", async () => {
+    const { element } = await render();
+    q(element, '[data-id="update-all"]').focus();
+    element.busy = true;
+    await flush();
+    // Its button waits (disabled): focus waits on the list rather than falling to the page.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="changes"]')
+    );
+    // Tab stays there: every button waits.
+    await press(element, "Tab");
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="changes"]')
+    );
+    // The update done (the list as it was, none gone): focus goes to the first row's Update.
+    element.busy = false;
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="update-one"]')
+    );
+  });
+
+  it("leaves focus on the list when the director put it there", async () => {
+    const { element } = await render();
+    q(element, '[data-id="changes"]').focus();
+    element.notice = "Setup changed again since you looked.";
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="changes"]')
+    );
+  });
+
+  it("asks for no update while one is on its way, even from a button drawn before", async () => {
+    const { element, heard } = await render({ busy: true });
+    const all = q(element, '[data-id="update-all"]');
+    const one = q(element, '[data-id="update-one"]');
+    all.disabled = false;
+    one.disabled = false;
+    all.click();
+    one.click();
+    expect(heard).toEqual([]);
+  });
+
+  it("reads the same words out again each time it is told to", async () => {
+    const { element } = await render({
+      announcement: "Updated to match setup.",
+      said: 1
+    });
+    const live = q(element, '[data-id="announce"]');
+    const first = live.textContent;
+    element.said = 2;
+    await flush();
+    const second = live.textContent;
+    expect(first.trim()).toBe("Updated to match setup.");
+    expect(second.trim()).toBe("Updated to match setup.");
+    // Changed words are what a screen reader reads out from a live region.
+    expect(second).not.toBe(first);
+    element.notice = "Setup changed again since you looked.";
+    element.said = 3;
+    await flush();
+    const third = live.textContent;
+    element.said = 4;
+    await flush();
+    expect(live.textContent.trim()).toBe(third.trim());
+    expect(live.textContent).not.toBe(third);
+  });
+
   it("is accessible", async () => {
     const { element } = await render();
     await expect(element).toBeAccessible();

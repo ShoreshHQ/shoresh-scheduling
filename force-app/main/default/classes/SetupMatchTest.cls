@@ -93,9 +93,20 @@ private class SetupMatchTest {
   ) {
     return SetupMatchController.updateToMatchSetup(
       draftId,
-      keys,
-      preview.revisions
+      ask(keys, preview.revisions, false)
     );
+  }
+
+  private static SetupMatch.Ask ask(
+    List<String> keys,
+    String seenRevisions,
+    Boolean versionKept
+  ) {
+    SetupMatch.Ask ask = new SetupMatch.Ask();
+    ask.keys = keys;
+    ask.seenRevisions = seenRevisions;
+    ask.versionKept = versionKept;
+    return ask;
   }
 
   private static Integer versionsNamed(Map<String, Id> ids, String name) {
@@ -188,6 +199,46 @@ private class SetupMatchTest {
         SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 2')
       );
       // The way back: the week as it was, Swim and all.
+      Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
+      Assert.isTrue(
+        SetupMatchController.getSetupChanges(draftId).changes.isEmpty()
+      );
+    }
+  }
+
+  @IsTest
+  static void oneOpeningOfTheListKeepsOneVersionWhateverItsUpdates() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      place('Group B', 'Period 1', 'Soccer');
+      Database.delete(ids.get('Swim'), AccessLevel.SYSTEM_MODE);
+      Database.delete(ids.get('Soccer'), AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Assert.areEqual(2, preview.changes.size(), JSON.serialize(preview));
+      // The list's first update keeps the week as it was ...
+      SetupMatch.Updated first = makeChanges(
+        draftId,
+        new List<String>{
+          SetupMatchTestData.changeAt(preview, 'Group A · Monday · Period 2')
+            .key
+        },
+        preview
+      );
+      Assert.isNull(first.refused);
+      Assert.isTrue(first.kept);
+      // ... and the next one in the same opening keeps none.
+      SetupMatch.Preview left = SetupMatchController.getSetupChanges(draftId);
+      SetupMatch.Updated second = SetupMatchController.updateToMatchSetup(
+        draftId,
+        ask(SetupMatchTestData.keysOf(left), left.revisions, true)
+      );
+      Test.stopTest();
+      Assert.isNull(second.refused);
+      Assert.isFalse(second.kept);
       Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
       Assert.isTrue(
         SetupMatchController.getSetupChanges(draftId).changes.isEmpty()
@@ -744,6 +795,45 @@ private class SetupMatchTest {
       Assert.areEqual('Assembly', change.lines[0].before);
       Assert.areEqual('Open', change.lines[0].after);
       Assert.isFalse(change.takesChoices);
+    }
+  }
+
+  @IsTest
+  static void aFixedActivityWhoseGroupChangedSaysWhyItsGroupChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      // Start places Assembly in every group's Lunch.
+      addFixed(ids, 'Assembly', 'Lunch');
+      Id draftId = started(ids);
+      // Group A is away this week; Group B is now at camp mornings only.
+      Database.insert(
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Group__c = ids.get('Group A')
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Database.update(
+        new Group__c(Id = ids.get('Group B'), Availability__c = 'MorningOnly'),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      Map<String, String> dots = SetupMatchTestData.dotsOf(preview);
+      // Not "Not set up here now": Assembly still is; the group changed.
+      Assert.areEqual(
+        'Not at camp this week',
+        dots.get(mondayKey(ids, 'Group A', 'Lunch')),
+        JSON.serialize(dots)
+      );
+      Assert.areEqual(
+        'Not at camp then',
+        dots.get(mondayKey(ids, 'Group B', 'Lunch'))
+      );
+      Assert.isFalse(dots.containsKey(mondayKey(ids, 'Group C', 'Lunch')));
     }
   }
 

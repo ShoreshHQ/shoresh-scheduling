@@ -10,7 +10,8 @@
  * that differs gets a dot saying why, and the differences are listed as changes the director
  * can make one at a time or all at once, each shown before it is made. Nothing changes unless
  * the director chooses it. A change that takes away the director's own placement keeps the week
- * as it was first, as an automatic version (the desktop's way back before a restore). Runs in
+ * as it was first, as an automatic version (the desktop's way back before a restore), once per
+ * opening of the list. Runs in
  * user mode.
  */
 public with sharing class SetupMatch {
@@ -80,6 +81,19 @@ public with sharing class SetupMatch {
     public String problem;
   }
 
+  /**
+   * What an update asks for: the keys chosen, the week's revisions the list was worked out on,
+   * and whether an earlier update in this opening of the list kept a version already.
+   */
+  public class Ask {
+    @AuraEnabled
+    public List<String> keys;
+    @AuraEnabled
+    public String seenRevisions;
+    @AuraEnabled
+    public Boolean versionKept;
+  }
+
   /** An update's answer: refused (CHANGED_SINCE or SETUP_CHANGED, nothing changed) or made. */
   public class Updated {
     @AuraEnabled
@@ -87,6 +101,9 @@ public with sharing class SetupMatch {
     // The draft as it is now, when the update was made.
     @AuraEnabled
     public ManualBuildViews.DraftView view;
+    // This update kept the week as it was first (BEFORE_UPDATE).
+    @AuraEnabled
+    public Boolean kept = false;
   }
 
   /** The week compared with setup, day by day. */
@@ -97,6 +114,8 @@ public with sharing class SetupMatch {
     // What the director chose, and whether it takes away a placement of theirs.
     private Set<String> chosen;
     private Boolean takesChoices = false;
+    // An earlier update in the same opening of the list kept the week as it was already.
+    private Boolean versionKept = false;
   }
 
   /** What setup changed since the Manual Build draft's week started. */
@@ -110,19 +129,19 @@ public with sharing class SetupMatch {
   }
 
   /**
-   * Makes the chosen changes (their keys, from a preview of the week at seenRevisions). Refused,
-   * with nothing changed, when anyone saved a day since (CHANGED_SINCE), or when setup changed
-   * since so a chosen change is no longer the one shown (SETUP_CHANGED).
+   * Makes the chosen changes (their keys, from a preview of the week at ask.seenRevisions).
+   * Refused, with nothing changed, when anyone saved a day since (CHANGED_SINCE), or when setup
+   * changed since so a chosen change is no longer the one shown (SETUP_CHANGED). One opening of
+   * the list keeps at most one version (ask.versionKept: an earlier update in it kept one), so
+   * the way back is the week as it was before the list's first change that took a placement of
+   * the director's.
    */
-  public static Updated make(
-    Id draftId,
-    List<String> keys,
-    String seenRevisions
-  ) {
+  public static Updated make(Id draftId, Ask asked) {
+    Ask ask = asked == null ? new Ask() : asked;
     Schedule__c draft = ManualDrafts.locked(draftId);
     List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
     Updated result = new Updated();
-    if (ScheduleDays.stamp(current) != seenRevisions) {
+    if (ScheduleDays.stamp(current) != ask.seenRevisions) {
       result.refused = CHANGED_SINCE;
       return result;
     }
@@ -134,7 +153,9 @@ public with sharing class SetupMatch {
     if (plan.preview.problem != null) {
       throw new ShoreshException(plan.preview.problem);
     }
-    plan.chosen = new Set<String>(keys == null ? new List<String>() : keys);
+    plan.chosen = new Set<String>(
+      ask.keys == null ? new List<String>() : ask.keys
+    );
     Set<String> offered = new Set<String>();
     for (Change change : plan.preview.changes) {
       offered.add(change.key);
@@ -146,12 +167,14 @@ public with sharing class SetupMatch {
       result.refused = SETUP_CHANGED;
       return result;
     }
-    write(draft, plan);
+    plan.versionKept = ask.versionKept == true;
+    result.kept = write(draft, plan);
     result.view = ManualBuildViews.open(draftId);
     return result;
   }
 
-  private static void write(Schedule__c draft, Plan plan) {
+  /** Makes the chosen changes; returns whether it kept the week as it was first. */
+  private static Boolean write(Schedule__c draft, Plan plan) {
     Set<String> chosen = plan.chosen;
     Map<Date, Integer> revisions = new Map<Date, Integer>();
     for (ScheduleDays.DayGrid day : plan.current) {
@@ -175,9 +198,10 @@ public with sharing class SetupMatch {
         );
       }
     }
+    Boolean keep = plan.takesChoices && !plan.versionKept;
     Savepoint beforeUpdate = Database.setSavepoint();
     try {
-      if (plan.takesChoices) {
+      if (keep) {
         ManualVersions.keepAutomatically(draft, BEFORE_UPDATE, plan.current);
       }
       ScheduleDaySaves.write(draft.Id, saves);
@@ -197,6 +221,7 @@ public with sharing class SetupMatch {
       Database.rollback(beforeUpdate);
       throw e;
     }
+    return keep;
   }
 
   /** Each readable day of the draft beside the day setup makes now, in date order. */

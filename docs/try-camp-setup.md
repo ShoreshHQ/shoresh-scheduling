@@ -954,25 +954,30 @@ say).
    cell says _Swimming_, with no dot. A rename is not a problem.
 2. Add a fixed activity _Assembly_ in Period 6 for everyone (on **Fixed activities**; Period 6
    is free every day on the sample camp). Come back: every Open Period 6 cell has the bronze
-   dot; hover one: _Assembly is set up here now_. Above the grid, a bronze box: the dot, _Setup
-   changed since this week started_, and **Update to match setup**.
+   dot; hover one: _Assembly is set up here now_. Above the grid, a bronze box: the dot, _Week 1
+   doesn't match setup_, and **Update to match setup**.
 3. Click **Update to match setup**. A box lists each change before anything happens, one row
    per cell: _Bunk 1 · Monday · Period 6_ · _Open → Assembly_ · _Assembly is set up here now_,
-   each with its own **Update**. **Cancel** is highlighted and changes nothing.
+   each with its own **Update**. **Cancel** is highlighted and changes nothing. While the box is
+   open, the week and program pickers, **Versions** and **Publish** are greyed out.
 4. Click **Update** on one row: that one cell gets Assembly; the row goes and the rest stay.
    No version is kept (nothing of yours was taken).
-5. Add an activity _Archery_ on **Activities** (any place) and put it in Bunk 2's Tuesday
-   Period 3. Then delete Archery on **Activities** (it asks first). Come back: that cell has the
-   dot _Deleted from setup_. Open **Update to match setup**: its row reads _Bunk 2 · Tuesday ·
-   Period 3_ · _Archery → Open_ · _Deleted from setup_. Click **Update all**: everything listed
-   is made, the box closes, and **Versions** has _Before Update to match setup_ (the week as it
-   was, Archery included).
+5. Add an activity _Archery_ on **Activities** (any place) and put it in Bunk 2's and Bunk 3's
+   Tuesday Period 3. Then delete Archery on **Activities** (it asks first). Come back: both
+   cells have the dot _Deleted from setup_. Open **Update to match setup**: one row reads
+   _Bunk 2 · Tuesday · Period 3_ · _Archery → Open_ · _Deleted from setup_. Click its
+   **Update**, then **Update** on Bunk 3's Archery row. Then click **Update all**: everything
+   left is made and the box closes. **Versions** has one _Before Update to match setup_ (the
+   week as it was before the first Archery row, both Archerys included), not one per row.
 6. Add _Period 7_ at 2:50 PM on **Time blocks** (after Period 6, which ends at 2:45). Come back:
    one row per day, _Monday: Period 7 added_. **Update all**: each day gets the new Period, and
    your activities stay where they were.
-7. With the box open, change the same week in another tab and then click **Update all**: it
-   says _Someone else changed this week since, so nothing was updated._ and shows the week as it
-   is now.
+7. Add a fixed activity _Flag lowering_ in Period 7 for everyone. Come back: the box is there
+   again. Click **Update to match setup** and leave the box open. In another tab open the same
+   week's Manual Build and put any activity in an Open cell before Period 7. Back in the first tab
+   (the box is still open: coming back doesn't reread the week while it is), click
+   **Update all**: it says _Someone else changed this week since, so nothing was updated._ and
+   shows the week as it is now, with the activity you just placed.
 
 ## What is not here yet
 

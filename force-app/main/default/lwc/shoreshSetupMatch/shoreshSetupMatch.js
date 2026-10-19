@@ -9,10 +9,11 @@ import { LightningElement, api } from "lwc";
  * c-shoresh-ask; Tab stays inside and Escape cancels.
  *
  * changes: SetupMatch.Change rows. busy: an update is on its way (the buttons, Cancel and Escape
- * wait: the update's answer is for the list as it was). notice: a line above the list ("Setup
- * changed again since you looked…"). announcement: words for screen readers only ("Updated to
- * match setup."). Both are read out from a live region that is always in the dialog, so its
- * words are heard when they change.
+ * wait: the update's answer is for the list as it was; focus waits on the list itself, inside the
+ * dialog). notice: a line above the list ("Setup changed again since you looked…").
+ * announcement: words for screen readers only ("Updated to match setup."). Both are read out
+ * from a live region that is always in the dialog; said: change it to have them read out again,
+ * even the same words as last time (a second update of one row).
  *
  * Fires: update { keys }, close.
  */
@@ -22,11 +23,19 @@ export default class ShoreshSetupMatch extends LightningElement {
   @api busy = false;
   @api notice;
   @api announcement;
+  @api said = 0;
 
   focused = false;
+  // Focus was moved to the list while an update was on its way.
+  parked = false;
 
+  /**
+   * The live region's words. A screen reader reads a live region out when its words change, so
+   * each "said" alternates a trailing no-break space: the same words again still change it.
+   */
   get spoken() {
-    return this.notice || this.announcement || "";
+    const words = this.notice || this.announcement || "";
+    return words && this.said % 2 ? `${words}\u00a0` : words;
   }
 
   get rows() {
@@ -51,11 +60,19 @@ export default class ShoreshSetupMatch extends LightningElement {
       this.focusOn('[data-id="close"]');
       return;
     }
-    // The row just updated is gone: focus goes to the next one, or Cancel (WCAG 2.4.3).
-    if (
-      !this.template.activeElement &&
-      !this.focusOn('[data-id="update-one"]')
-    ) {
+    const at = this.template.activeElement;
+    if (this.busy) {
+      // Every button waits: focus waits on the list, so it never leaves the dialog (WCAG 2.4.3).
+      if (!at || at.disabled) {
+        this.parked = this.focusOn('[data-id="changes"]');
+      }
+      return;
+    }
+    // The row just updated is gone, or focus waited on the list for the update: focus goes to
+    // the first row's Update, or Cancel. Focus the director put on the list stays there.
+    const waited = this.parked && at && at.dataset.id === "changes";
+    this.parked = false;
+    if ((!at || waited) && !this.focusOn('[data-id="update-one"]')) {
       this.focusOn('[data-id="close"]');
     }
   }
@@ -100,6 +117,9 @@ export default class ShoreshSetupMatch extends LightningElement {
   }
 
   update(keys) {
+    if (this.busy) {
+      return;
+    }
     this.dispatchEvent(new CustomEvent("update", { detail: { keys } }));
   }
 

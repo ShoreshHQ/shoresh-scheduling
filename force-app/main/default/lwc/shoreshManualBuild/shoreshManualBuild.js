@@ -100,9 +100,12 @@ export default class ShoreshManualBuild extends LightningElement {
   // The "couldn't check against setup" message while it is shown, so a later read that works
   // clears it and nothing else.
   setupError = null;
-  // "Update to match setup" is open ({ notice }), or null; an update is on its way.
+  // "Update to match setup" is open, or null: { notice, announcement, said (counts each time
+  // its words are to be read out, even the same words again), kept (an update in this opening
+  // kept the week as it was, so the next keeps none) }. setupWorking: an update is on its way.
   setupAsk = null;
   setupWorking = false;
+  setupSaid = 0;
   // The setup dots as the editor takes them, worked out once per preview.
   setupDotsMemo = { preview: null, dots: null };
 
@@ -329,6 +332,8 @@ export default class ShoreshManualBuild extends LightningElement {
       this.restoreRefused = false;
       this.waiting = null;
       this.setupPreview = null;
+      // A read of the last week's setup changes still on its way is dropped.
+      this.setupTicket += 1;
       this.setupAsk = null;
       // The editor lets go of the old week: its notice, box, Undo and what was picked up.
       if (this.weekEditor) {
@@ -1066,11 +1071,12 @@ export default class ShoreshManualBuild extends LightningElement {
   get setupProblem() {
     return this.setupPreview ? this.setupPreview.problem : null;
   }
+  /**
+   * True whether setup changed since the week started or an activity closed this week was placed
+   * by hand (still allowed, as on the desktop, with its "Not running this week" dot).
+   */
   get setupChangedText() {
-    return (
-      this.setupProblem ||
-      `Setup changed since this ${this.t.sIn("Week")} started`
-    );
+    return this.setupProblem || `${this.weekName} doesn't match setup`;
   }
   get canUpdateToMatch() {
     return this.setupChanges.length > 0 && !this.setupProblem;
@@ -1099,7 +1105,8 @@ export default class ShoreshManualBuild extends LightningElement {
         // Can't be compared now: said, never "matches" (the box says the same).
         this.say(preview.problem);
       } else if (preview.changes.length) {
-        this.setupAsk = { notice: null };
+        // A new opening of the list: its first update that takes a placement keeps a version.
+        this.setupAsk = { notice: null, kept: false };
       } else {
         this.say(`${this.weekName} matches setup.`);
       }
@@ -1124,9 +1131,10 @@ export default class ShoreshManualBuild extends LightningElement {
   async handleSetupUpdate(event) {
     const keys = event.detail.keys;
     const preview = this.setupPreview;
-    if (!preview || !keys.length || this.setupWorking) {
+    if (!preview || !keys.length || this.setupWorking || !this.setupAsk) {
       return;
     }
+    let kept = this.setupAsk.kept;
     // A reload already on its way read the week before this update: its answer must not
     // replace the updated week. A change of week while it runs drops this answer.
     this.loadTicket += 1;
@@ -1136,8 +1144,7 @@ export default class ShoreshManualBuild extends LightningElement {
     try {
       const result = await updateToMatchSetup({
         scheduleId: this.schedule.schedule.id,
-        keys,
-        seenRevisions: preview.revisions
+        ask: { keys, seenRevisions: preview.revisions, versionKept: kept }
       });
       if (ticket !== this.loadTicket) {
         return;
@@ -1156,7 +1163,11 @@ export default class ShoreshManualBuild extends LightningElement {
           "Setup changed again since you looked, so nothing was updated.";
         this.setupAsk =
           fresh && fresh.changes.length
-            ? { notice: `${again} This is what it would change now.` }
+            ? this.setupAskWith(
+                `${again} This is what it would change now.`,
+                null,
+                kept
+              )
             : null;
         if (fresh && !this.setupAsk) {
           // Nothing left to change (or it can't be compared now): the list closes, and says why.
@@ -1172,6 +1183,12 @@ export default class ShoreshManualBuild extends LightningElement {
       // Undo starts over, as after Restore: what it would undo is no longer the week.
       this.weekEditor.restored(result.view);
       this.restoredId = null;
+      this.restoreRefused = false;
+      kept = kept || !!result.kept;
+      if (result.kept) {
+        // Versions lists the week as it was, kept just now.
+        this.loadVersions();
+      }
       const done =
         keys.length === 1
           ? "Updated to match setup."
@@ -1182,7 +1199,7 @@ export default class ShoreshManualBuild extends LightningElement {
       // the dialog.
       this.setupAsk =
         !all && fresh && fresh.changes.length
-          ? { notice: null, announcement: done }
+          ? this.setupAskWith(null, done, kept)
           : null;
       if (!this.setupAsk) {
         this.say(done);
@@ -1196,6 +1213,12 @@ export default class ShoreshManualBuild extends LightningElement {
         this.focusOn = "update-to-match";
       }
     }
+  }
+
+  /** The list, open again with words to read out (read out even when the same as last time). */
+  setupAskWith(notice, announcement, kept) {
+    this.setupSaid += 1;
+    return { notice, announcement, kept, said: this.setupSaid };
   }
 
   // ---------- day and week tools (Greg, Manual Build round 2, decisions 6 and 7) ----------

@@ -795,7 +795,14 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    and Generated Schedule do), _Not at camp this week_, _No longer
    in Main_, _Period 5 is no longer set up_, _Its periods changed_ (a block added inside a
    placement), _Not at camp then_ (a bunk now mornings only), _Lunch is set up here now_, _Not
-   set up here now_ (a fixed or recurring activity moved or ended), _Not a day of Main now_.
+   set up here now_ (a fixed or recurring activity moved or ended), _Not a day of Main now_. A
+   fixed or recurring activity's own cell says why when its group or time blocks changed, in the
+   same words (_Not at camp this week_, _Not at camp then_, _Period 5 is no longer set up_);
+   _Not set up here now_ only when the activity itself moved or ended. **An activity closed this
+   week can still be placed by hand** (coordinator call, review round 3), as on the desktop,
+   which marks it ("is marked closed this week", `src/utils/computeWeekClosures.js`) rather than
+   refusing it: its cell gets _Not running this week_, and the box and the list offer to take it
+   out again. The director sees it and chooses; nothing is resolved silently.
    The words join any other dot on the placement after " · " (_Not set up for Bunk 2 · Deleted
    from setup_). The editor takes them as `setupDots` (cell key to words); that is its only
    change. Cells are compared by record Id, so a rename is never a dot: Manual Build shows the
@@ -820,14 +827,21 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
 4. **Shown first, chosen by the director.** The screen asks for the changes on its own request
    (`SetupMatchController.getSetupChanges`), whenever the week is read, after a Restore or an
    update, and after a save while the week differs from setup or a closed activity exists
-   (placing one makes a new difference). A bronze box above the grid says _Setup changed since
-   this week started_ with **Update to match setup**. That opens `c-shoresh-setup-match`, read
+   (placing one makes a new difference). A bronze box above the grid says _Week 1 doesn't match
+   setup_ with **Update to match setup**: true whatever made the difference ("setup changed
+   since this week started" would not be after a closed activity was placed by hand). A late
+   answer for the week shown before is dropped once another week is chosen. That opens `c-shoresh-setup-match`, read
    fresh: every change, each with its own **Update** (the "per slot" of round 1 #5), and
    **Update all** for every change listed; **Cancel** first, as on c-shoresh-ask. Edits,
-   Versions, Publish and the pickers wait while it is open; while an update is on its way,
-   Cancel and Escape wait too (its answer is for the list as it was). After one change the list
-   stays with what is left and says so from a live region inside the dialog (the refusal below
-   too); after Update all it closes. If the changes can't be read, the dots and the box stay as
+   Versions, Publish, the pickers and the reread on coming back to the window wait while it is
+   read, open or updating; while an update is on its way, Cancel and Escape wait too (its answer
+   is for the list as it was), and focus waits on the list itself, never leaving the dialog.
+   After one change the list stays with what is left and says so from a live region inside the
+   dialog (the refusal below too), read out each time even when the words are the same as the
+   last; focus goes to the first row's Update. After Update all it closes, says how many changes
+   were made, and focus goes back to **Update to match setup**, or on to **Publish** when the
+   box is gone with nothing left. After an update the publish line, the checks and Versions are
+   those of the week as it is now (no longer a version restored; a version just kept listed). If the changes can't be read, the dots and the box stay as
    last read and the screen says it couldn't check (never a week that only looks as if it
    matched).
 5. **Nothing changed unseen** (`SetupMatch.make`, under the draft's lock): each change's key is
@@ -838,8 +852,13 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    offered now): refused, nothing changed, and the list shows what it would change now (_Setup
    changed again since you looked, so nothing was updated. …_). A change that takes away or
    replaces one of the director's own placements first keeps the week as it was as an automatic
-   version, _Before Update to match setup_ (VersionReason Auto-saved, as before Restore). Undo
-   starts over afterwards, as after Restore. The published copy is never touched.
+   version, _Before Update to match setup_ (VersionReason Auto-saved, as before Restore), **once
+   per opening of the list** (coordinator call, review round 3): the first update in that
+   opening that takes a placement keeps it, and later ones in the same opening keep none (the
+   screen sends `versionKept`; the server answers `kept`), so updating row by row leaves one way
+   back, the week as it was before the list's first such change, not one version per row.
+   Opening the list again starts a new opening. Undo starts over afterwards, as after Restore.
+   The published copy is never touched.
 6. **The week can't be laid out from setup now** (no time blocks, no group at camp this week,
    no day it runs, no access to its set-time items): the box says why in Start's own words and
    offers no update; nothing is guessed.
@@ -852,12 +871,15 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    shown until made, then the new times and name); a bunk away this week (one change a day); a
    bunk no longer in the program; a time block no longer set up; one added inside a placement; a
    fixed activity ended; a day the program no longer runs; a bunk now mornings only; a week saved
-   since; setup changed again since; only a Manual Build draft. Screen:
+   since; setup changed again since; only a Manual Build draft; one version per opening of the
+   list; a fixed activity whose group is away or now mornings only. Screen:
    `setupMatch.test.js` (dots, joined words, a dot on any block of a longer placement, said once,
    the box, the list read fresh, per-change and Update all, Cancel and where focus goes, both
-   refusals, a failed update or read, an older answer dropped, another week, when it reads again,
-   Undo starting over) and `shoreshSetupMatch.test.js` (the list,
-   focus, Tab, Escape, busy, accessibility).
+   refusals, a failed update or read, an older answer dropped, another week and a late answer for
+   the last one, when it reads again, Undo starting over, what waits while the list is read,
+   open or updating, focus and words after Update all, the publish line, checks and Versions
+   after an update, one version per opening) and `shoreshSetupMatch.test.js` (the list, focus,
+   Tab, Escape, busy and focus while busy, the same words read out again, accessibility).
 
 ## Choices that are hard to undo after release
 

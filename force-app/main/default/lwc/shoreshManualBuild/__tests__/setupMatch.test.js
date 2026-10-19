@@ -142,6 +142,53 @@ function swimWeek() {
   return draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);
 }
 
+const TWO_PROGRAMS = nsRecord({
+  ...SETUP,
+  weeks: [
+    { Id: "w1", Name: "Week 1" },
+    { Id: "w2", Name: "Week 2" }
+  ],
+  programs: [
+    ...SETUP.programs,
+    {
+      ...SETUP.programs[0],
+      program: { Id: "p2", Name: "Teens" }
+    }
+  ]
+});
+const THREE_CHANGES = {
+  ...PREVIEW,
+  changes: [
+    SWIM_DELETED,
+    FLAGPOLE_NOW,
+    { ...FLAGPOLE_NOW, key: "k3", lines: [{ ...FLAGPOLE_NOW.lines[0] }] }
+  ]
+};
+/** What is left after one change: the given rows. */
+const leaving = (...changes) => ({
+  ...PREVIEW,
+  revisions: `left-${changes.length}`,
+  changes
+});
+const VERSION = {
+  id: "v1",
+  name: "Before the trip",
+  origin: "Manual",
+  reason: "Saved",
+  savedAt: "2026-10-17T13:00:00.000Z",
+  publishedAt: null
+};
+const PUBLISHED = {
+  id: "pub1",
+  publishedAt: "2026-10-18T10:00:00.000Z",
+  publishedBy: "Pat Director",
+  changedSince: false
+};
+const made = (published = null) => ({
+  refused: null,
+  kept: false,
+  view: { ...draft([FLAGPOLE], ["1,,", "1,1,"]), published }
+});
 const TWO_WEEKS = nsRecord({
   ...SETUP,
   weeks: [
@@ -181,6 +228,11 @@ const clearCell = (element, key) =>
   );
 const cellText = (element, key) =>
   cell(element, key).querySelector(".cell-name").textContent;
+/** The week and program pickers, and whether each is locked. */
+const pickersLocked = (element) =>
+  ['[data-id="week"]', '[data-id="program"]'].map(
+    (selector) => q(element, selector).disabled
+  );
 const dialog = (element) => q(element, '[data-id="setup-match"]');
 const inDialog = (element, selector) =>
   dialog(element).shadowRoot.querySelector(selector);
@@ -248,11 +300,13 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
   });
 
-  it("says setup changed, in the camp's words, with Update to match setup", async () => {
+  it("says the week doesn't match setup, with Update to match setup", async () => {
     const element = await render();
     const line = q(element, '[data-id="setup-changed"]');
+    // Never "setup changed": an activity closed this week placed by hand differs from setup
+    // too, with setup unchanged.
     expect(line.querySelector("c-shoresh-dot").label).toBe(
-      "Setup changed since this Session started"
+      "Week 1 doesn't match setup"
     );
     expect(q(element, '[data-id="update-to-match"]').textContent.trim()).toBe(
       "Update to match setup"
@@ -314,8 +368,11 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(updateToMatchSetup).toHaveBeenCalledWith({
       scheduleId: "d1",
-      keys: ["k1"],
-      seenRevisions: PREVIEW.revisions
+      ask: {
+        keys: ["k1"],
+        seenRevisions: PREVIEW.revisions,
+        versionKept: false
+      }
     });
     // The week as the server now has it: Swim is gone, and its dot with it.
     expect(dotIn(element, "0-1")).toBeNull();
@@ -336,8 +393,11 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(updateToMatchSetup).toHaveBeenCalledWith({
       scheduleId: "d1",
-      keys: ["k1", "k2"],
-      seenRevisions: PREVIEW.revisions
+      ask: {
+        keys: ["k1", "k2"],
+        seenRevisions: PREVIEW.revisions,
+        versionKept: false
+      }
     });
     expect(dialog(element)).toBeNull();
     expect(q(element, '[data-id="setup-changed"]')).toBeNull();
@@ -676,5 +736,245 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       start
     );
     expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
+  });
+  // ---------- review round 3 ----------
+
+  it("a late answer for the last week never shows on the week chosen next", async () => {
+    const element = await render(PREVIEW, swimWeek(), TWO_WEEKS);
+    const late = pending();
+    getSetupChanges.mockReturnValueOnce(late.promise);
+    await saved(element);
+    // Week 2 is chosen; its draft is still being read when Week 1's late answer arrives.
+    const week2 = pending();
+    getDraft.mockReturnValueOnce(week2.promise);
+    getSetupChanges.mockReturnValue(pending().promise);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    late.resolve(PREVIEW);
+    await flush();
+    week2.resolve(swimWeek());
+    await flush();
+    expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
+    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(dotIn(element, "0-1")).toBeNull();
+  });
+
+  it("week and program stay put, and Versions waits, while the list is open", async () => {
+    const element = await render(PREVIEW, swimWeek(), TWO_PROGRAMS);
+    expect(pickersLocked(element)).toEqual([false, false]);
+    await openUpdate(element);
+    expect(pickersLocked(element)).toEqual([true, true]);
+    expect(q(element, '[data-id="versions"]').busy).toBe(true);
+    expect(q(element, '[data-id="publish"]').disabled).toBe(true);
+    inDialog(element, '[data-id="close"]').click();
+    await flush();
+    expect(pickersLocked(element)).toEqual([false, false]);
+    expect(q(element, '[data-id="versions"]').busy).toBe(false);
+  });
+
+  it("week and program stay put while the list is read and while an update is on its way", async () => {
+    const element = await render(PREVIEW, swimWeek(), TWO_PROGRAMS);
+    // Reading the list fresh.
+    const reading = pending();
+    getSetupChanges.mockReturnValueOnce(reading.promise);
+    q(element, '[data-id="update-to-match"]').click();
+    await flush();
+    expect(pickersLocked(element)).toEqual([true, true]);
+    expect(q(element, '[data-id="versions"]').busy).toBe(true);
+    expect(q(element, "c-shoresh-week-editor").restoring).toBe(true);
+    // Coming back to the window meanwhile doesn't read the week again.
+    window.dispatchEvent(new FocusEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    reading.resolve(PREVIEW);
+    await flush();
+    // An update on its way.
+    const working = pending();
+    updateToMatchSetup.mockReturnValueOnce(working.promise);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    expect(pickersLocked(element)).toEqual([true, true]);
+    expect(q(element, '[data-id="versions"]').busy).toBe(true);
+    getSetupChanges.mockResolvedValue(NOTHING);
+    working.resolve(made());
+    await flush();
+    expect(pickersLocked(element)).toEqual([false, false]);
+  });
+
+  it("coming back to the window doesn't read the week again while the list is open or an update is on its way", async () => {
+    const element = await render();
+    await openUpdate(element);
+    window.dispatchEvent(new FocusEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    const working = pending();
+    updateToMatchSetup.mockReturnValueOnce(working.promise);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    window.dispatchEvent(new FocusEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    getSetupChanges.mockResolvedValue(NOTHING);
+    working.resolve(made());
+    await flush();
+    window.dispatchEvent(new FocusEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it("Update all with nothing left: focus goes to Publish, and it says how many were made", async () => {
+    const element = await render();
+    await openUpdate(element);
+    inDialog(element, '[data-id="update-all"]').focus();
+    updateToMatchSetup.mockResolvedValue(made());
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    expect(dialog(element)).toBeNull();
+    // Update to match setup is gone with the box: focus goes on to Publish, not the page.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="publish"]')
+    );
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Updated 2 changes to match setup."
+    );
+  });
+
+  it("Update all with changes left: focus goes back to Update to match setup", async () => {
+    const element = await render();
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValue(made());
+    getSetupChanges.mockResolvedValue(leaving(FLAGPOLE_NOW));
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    expect(dialog(element)).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="update-to-match"]')
+    );
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Updated 2 changes to match setup."
+    );
+  });
+
+  it("after an update: publish state, the checks and Versions are as the week is now", async () => {
+    getVersions.mockResolvedValue([VERSION]);
+    const element = await render(PREVIEW, {
+      ...swimWeek(),
+      published: PUBLISHED
+    });
+    // Restored first: Versions marks that version as the week shown.
+    restoreVersion.mockResolvedValue({ ...swimWeek(), published: PUBLISHED });
+    const versions = q(element, '[data-id="versions"]');
+    versions.shadowRoot.querySelector('[data-id="versions-button"]').click();
+    await flush();
+    versions.shadowRoot.querySelector('[data-action="open"]').click();
+    await flush();
+    expect(versions.openId).toBe("v1");
+    expect(q(element, '[data-id="changed-since"]')).toBeNull();
+    const checksKey = q(element, "c-shoresh-week-checks").resetKey;
+    getSetupChanges.mockResolvedValue(PREVIEW);
+    await openUpdate(element);
+    getVersions.mockClear();
+    updateToMatchSetup.mockResolvedValue({
+      ...made({ ...PUBLISHED, changedSince: true }),
+      kept: true
+    });
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    // The published copy is untouched, and the week now differs from it.
+    expect(q(element, '[data-id="changed-since"]')).not.toBeNull();
+    // The checks start over on the week as it is now.
+    expect(q(element, "c-shoresh-week-checks").resetKey).not.toBe(checksKey);
+    // No longer the version restored; the version just kept is listed.
+    expect(versions.openId).toBeNull();
+    expect(getVersions).toHaveBeenCalledTimes(1);
+  });
+
+  it("after an update, a refused Restore's line goes: the week shown is the week as it is now", async () => {
+    getVersions.mockResolvedValue([VERSION]);
+    const element = await render();
+    restoreVersion.mockResolvedValue({ changedSince: true });
+    const versions = q(element, '[data-id="versions"]');
+    versions.shadowRoot.querySelector('[data-id="versions-button"]').click();
+    await flush();
+    versions.shadowRoot.querySelector('[data-action="open"]').click();
+    await flush();
+    expect(q(element, '[data-id="restore-refused"]')).not.toBeNull();
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValue(made());
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-id="update-all"]').click();
+    await flush();
+    expect(q(element, '[data-id="restore-refused"]')).toBeNull();
+  });
+
+  it("one opening of the list keeps one version: the first update that keeps one, then none", async () => {
+    const element = await render(THREE_CHANGES);
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValueOnce({ ...made(), kept: true });
+    getSetupChanges.mockResolvedValue(
+      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2])
+    );
+    inDialog(element, '[data-key="k1"]').click();
+    await flush();
+    updateToMatchSetup.mockResolvedValueOnce(made());
+    getSetupChanges.mockResolvedValue(leaving(THREE_CHANGES.changes[2]));
+    inDialog(element, '[data-key="k2"]').click();
+    await flush();
+    expect(
+      updateToMatchSetup.mock.calls.map(([args]) => args.ask.versionKept)
+    ).toEqual([false, true]);
+    // Opened again: a new opening, whose first update may keep one again.
+    inDialog(element, '[data-id="close"]').click();
+    await flush();
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValueOnce(made());
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-key="k3"]').click();
+    await flush();
+    expect(updateToMatchSetup.mock.calls[2][0].ask.versionKept).toBe(false);
+  });
+
+  it("a version kept is remembered when setup changed again and the list stays open", async () => {
+    const element = await render(THREE_CHANGES);
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValueOnce({ ...made(), kept: true });
+    getSetupChanges.mockResolvedValue(
+      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2])
+    );
+    inDialog(element, '[data-key="k1"]').click();
+    await flush();
+    updateToMatchSetup.mockResolvedValueOnce({ refused: "setupChanged" });
+    inDialog(element, '[data-key="k2"]').click();
+    await flush();
+    updateToMatchSetup.mockResolvedValueOnce(made());
+    inDialog(element, '[data-key="k3"]').click();
+    await flush();
+    expect(
+      updateToMatchSetup.mock.calls.map(([args]) => args.ask.versionKept)
+    ).toEqual([false, true, true]);
+  });
+
+  it("a second one-row update is read out again, though its words are the same", async () => {
+    const element = await render(THREE_CHANGES);
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValue(made());
+    getSetupChanges.mockResolvedValue(
+      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2])
+    );
+    inDialog(element, '[data-key="k1"]').click();
+    await flush();
+    const first = inDialog(element, '[data-id="announce"]').textContent;
+    getSetupChanges.mockResolvedValue(leaving(THREE_CHANGES.changes[2]));
+    inDialog(element, '[data-key="k2"]').click();
+    await flush();
+    const second = inDialog(element, '[data-id="announce"]').textContent;
+    expect(first.trim()).toBe("Updated to match setup.");
+    expect(second.trim()).toBe("Updated to match setup.");
+    // A live region is read out when its words change: they did.
+    expect(second).not.toBe(first);
   });
 });

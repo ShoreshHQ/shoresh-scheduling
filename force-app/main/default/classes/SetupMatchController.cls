@@ -17,19 +17,19 @@ public with sharing class SetupMatchController {
   }
 
   /**
-   * "Update to match setup": the chosen changes (keys from getSetupChanges, worked out on the
-   * week at seenRevisions) are made, and the draft is sent back as it is now. Refused, with
+   * "Update to match setup": the chosen changes (ask.keys from getSetupChanges, worked out on the
+   * week at ask.seenRevisions) are made, and the draft is sent back as it is now. Refused, with
    * nothing changed, when someone saved the week since, or setup changed so a chosen change is
-   * no longer the one shown.
+   * no longer the one shown. ask.versionKept: an earlier update in this opening of the list
+   * already kept the week as it was, so this one keeps none.
    */
   @AuraEnabled
   public static SetupMatch.Updated updateToMatchSetup(
     Id scheduleId,
-    List<String> keys,
-    String seenRevisions
+    SetupMatch.Ask ask
   ) {
     try {
-      return SetupMatch.make(scheduleId, keys, seenRevisions);
+      return SetupMatch.make(scheduleId, ask);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
