@@ -271,13 +271,14 @@ private class ManualWeekStartTest {
       // One Week 1 had published before, replaced since: a version that keeps when it was
       // published, as SchedulePublish leaves it (written directly: a second publish would leave
       // the test too few queries).
+      Datetime publishedAt = Datetime.now().addDays(-1);
       Schedule__c replaced = new Schedule__c(
         Program__c = ids.get('Main'),
         Week__c = ids.get('Week 1'),
-        Name = 'Published Jun 28, 2:40 PM',
+        Name = PublishedRows.historyName(publishedAt),
         Status__c = ManualVersions.VERSION,
         Origin__c = ManualDrafts.MANUAL,
-        PublishedAt__c = Datetime.now().addDays(-1)
+        PublishedAt__c = publishedAt
       );
       PublishedGuard.allow();
       Database.insert(replaced, AccessLevel.SYSTEM_MODE);
@@ -307,6 +308,9 @@ private class ManualWeekStartTest {
       Assert.isTrue(byId.get(replaced.Id).isVersion);
       Assert.isFalse(byId.get(replaced.Id).isPublished);
       Assert.isFalse(byId.get(draftId).isPublished);
+      // Its name says when it was published, so the list doesn't add when it was saved.
+      Assert.isTrue(byId.get(replaced.Id).namedByPublish);
+      Assert.isFalse(byId.get(draftId).namedByPublish);
       Assert.areEqual('Week 1', byId.get(current).weekName);
       // Week 2 starts as Week 1 was published.
       Assert.areEqual('Swim', mondayPeriod2(view, 'Group A'));

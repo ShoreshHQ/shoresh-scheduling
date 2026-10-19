@@ -488,6 +488,26 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     expect(labels[0]).not.toBe(labels[1]);
   });
 
+  it("a copy named by when it was published isn't given the time again", async () => {
+    getWeekSources.mockResolvedValue([
+      {
+        id: "v3",
+        weekName: "Week 1",
+        name: "Published Oct 18, 2:40 PM",
+        isVersion: true,
+        savedAt: "2026-10-18T18:40:00.000Z",
+        namedByPublish: true
+      }
+    ]);
+    const element = await render(null);
+    const labels = [
+      ...q(element, '[data-id="start-from"]').querySelectorAll(
+        "lightning-menu-item"
+      )
+    ].map((i) => i.label);
+    expect(labels).toEqual(["Week 1 · Published Oct 18, 2:40 PM (version)"]);
+  });
+
   it("says so when someone else had started the week (nothing copied)", async () => {
     getWeekSources.mockResolvedValue([
       { id: "d9", weekName: "Week 2", name: "Manual Build", isVersion: false }

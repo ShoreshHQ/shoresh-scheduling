@@ -500,6 +500,8 @@ private class SchedulePublishTest {
       )[0];
       Assert.areEqual(publishedId, row.id);
       Assert.isNotNull(row.publishedAt);
+      // Its name already says when it was published: Versions doesn't say it again.
+      Assert.isTrue(row.namedByPublish);
     }
   }
 
@@ -521,6 +523,23 @@ private class SchedulePublishTest {
   }
 
   @IsTest
+  static void aCopyIsNamedOnATwentyFourHourClockWhereTheUsersLocaleUsesOne() {
+    // ADR 0008 item 11: a user whose locale writes 1 PM as 13:00 (en_GB) gets "14:40".
+    User british = ShoreshTestData.scheduler();
+    british.LocaleSidKey = 'en_GB';
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Database.update(british, AccessLevel.SYSTEM_MODE);
+    }
+    System.runAs(british) {
+      Datetime published = Datetime.newInstanceGmt(2026, 10, 18, 18, 40, 0);
+      Assert.areEqual(
+        'Published Oct 18, 14:40',
+        PublishedRows.historyName(published)
+      );
+    }
+  }
+
+  @IsTest
   static void aPublishedCopySomeoneRenamedKeepsTheirNameWhenReplaced() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
@@ -536,6 +555,20 @@ private class SchedulePublishTest {
         'Opening week',
         [SELECT Name FROM Schedule__c WHERE Id = :firstId WITH SYSTEM_MODE].Name
       );
+      // Their name doesn't say when it was published: Versions still says it.
+      Boolean listed = false;
+      for (
+        ScheduleViews.VersionRow row : SchedulesController.getVersions(
+          ids.get('Main'),
+          ids.get('Week 1')
+        )
+      ) {
+        if (row.id == firstId) {
+          listed = true;
+          Assert.isFalse(row.namedByPublish);
+        }
+      }
+      Assert.isTrue(listed);
     }
   }
 

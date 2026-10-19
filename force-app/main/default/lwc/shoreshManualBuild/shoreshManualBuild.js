@@ -19,13 +19,14 @@ import { publishQuestion } from "c/shoreshPublish";
 
 /**
  * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
- * name (copies kept each time the week was published) can be told apart. Empty when unknown.
+ * name can be told apart. Empty when unknown, or when the name already says it (a copy kept when
+ * the week was published again or unpublished: "Published Oct 18, 2:40 PM").
  */
-function savedWhen(savedAt) {
-  if (!savedAt) {
+function savedWhen(source) {
+  if (!source.savedAt || source.namedByPublish) {
     return "";
   }
-  return ` · ${new Date(savedAt).toLocaleString(undefined, {
+  return ` · ${new Date(source.savedAt).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -122,7 +123,9 @@ export default class ShoreshManualBuild extends LightningElement {
       this.waiting = null;
       this.weekEditor.show(draft, fresh);
     }
-    if (this.focusOn && !this.publishing) {
+    // Publish and Unpublish are disabled while they work and while the week is read again, so
+    // focus fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3).
+    if (this.focusOn && !this.publishDisabled) {
       // Unpublish is gone once the week has nothing published: Publish then.
       const button =
         this.template.querySelector(`[data-id="${this.focusOn}"]`) ||
@@ -300,6 +303,12 @@ export default class ShoreshManualBuild extends LightningElement {
         this.weekEditor.clear();
       }
     }
+    // Publish and Unpublish are disabled while the week is read: one focused gets focus back.
+    const focused = this.template.activeElement;
+    const focusedId = focused && focused.dataset ? focused.dataset.id : null;
+    if (focusedId === "publish" || focusedId === "unpublish") {
+      this.focusOn = focusedId;
+    }
     this.reads += 1;
     try {
       const draft = await getDraft({
@@ -455,7 +464,7 @@ export default class ShoreshManualBuild extends LightningElement {
       value: source.id,
       label: source.isPublished
         ? `${source.weekName} · ${this.t.s("PublishedSchedule")}`
-        : `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})${savedWhen(source.savedAt)}` : ""}`
+        : `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})${savedWhen(source)}` : ""}`
     }));
   }
 

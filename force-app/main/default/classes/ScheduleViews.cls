@@ -20,6 +20,9 @@ public with sharing class ScheduleViews {
     // null for a version that never was.
     @AuraEnabled
     public Datetime publishedAt;
+    // Still named by when it was published ("Published Oct 18, 2:40 PM"): PublishedRows.
+    @AuraEnabled
+    public Boolean namedByPublish;
   }
 
   public class ScheduleView {
@@ -153,6 +156,7 @@ public with sharing class ScheduleViews {
     row.reason = schedule.VersionReason__c;
     row.savedAt = schedule.CreatedDate;
     row.publishedAt = schedule.PublishedAt__c;
+    row.namedByPublish = PublishedRows.namedByPublish(schedule);
     return row;
   }
 

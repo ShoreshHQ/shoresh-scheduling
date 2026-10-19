@@ -302,7 +302,11 @@ describe("c-shoresh-manual-build: Publish", () => {
   });
 
   it("a week already published as it is says so and publishes nothing", async () => {
-    const element = await render(finished(PUBLISHED));
+    // Marked changed since (an edit, then its undo): the server finds nothing changed.
+    const element = await render(
+      finished({ ...PUBLISHED, changedSince: true })
+    );
+    expect(q(element, '[data-id="changed-since"]')).not.toBeNull();
     previewPublish.mockResolvedValue({
       revisions: REV,
       published: PUBLISHED,
@@ -313,6 +317,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(ask(element)).toBeNull();
     expect(publish).not.toHaveBeenCalled();
     expect(notice(element)).toBe("Week 1 is already published as it is.");
+    expect(q(element, '[data-id="changed-since"]')).toBeNull();
   });
 
   it("refused because someone changed the week since: says nothing was published and reads it again", async () => {
@@ -793,6 +798,61 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="build-error"]')).not.toBeNull();
     expect(element.shadowRoot.activeElement).toBe(publishButton());
   });
+
+  it("focus goes back to Publish once a refused publish has read the week again", async () => {
+    const element = await render(finished());
+    const publishButton = () => q(element, '[data-id="publish"]');
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue({
+      published: null,
+      draftChanged: true,
+      publishedChanged: false,
+      unchanged: false
+    });
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    await clickPublish(element);
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published."
+    );
+    // Still disabled while the week is read again: focus can't land yet.
+    expect(publishButton().disabled).toBe(true);
+    console.log(
+      "DURING",
+      String(
+        element.shadowRoot.activeElement &&
+          element.shadowRoot.activeElement.dataset.id
+      ),
+      document.activeElement.tagName
+    );
+    reload.resolve(finished());
+    await flush();
+    expect(publishButton().disabled).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(publishButton());
+  });
+
+  it("focus on Publish comes back after the week is read again on returning to the window", async () => {
+    const element = await render(finished());
+    const publishButton = () => q(element, '[data-id="publish"]');
+    publishButton().focus();
+    expect(element.shadowRoot.activeElement).toBe(publishButton());
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(publishButton().disabled).toBe(true);
+    // A browser moves focus off a button that becomes disabled (to the page); jsdom doesn't, so
+    // focus goes to the page here the way it can in jsdom: its element is taken away.
+    const elsewhere = document.createElement("input");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    elsewhere.remove();
+    expect(element.shadowRoot.activeElement).toBeNull();
+    reload.resolve(finished());
+    await flush();
+    expect(publishButton().disabled).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(publishButton());
+  });
 });
 
 describe("c-shoresh-manual-build: Unpublish", () => {
@@ -918,6 +978,20 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(q(element, '[data-id="published"]').textContent).toContain(
       "by Sam Counselor"
     );
+  });
+
+  it("focus goes back to Unpublish once a refused unpublish has read the week again", async () => {
+    const element = await render(finished(PUBLISHED));
+    unpublish.mockResolvedValue({ ...UNPUBLISHED, publishedChanged: true });
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    expect(unpublishButton(element).disabled).toBe(true);
+    reload.resolve(finished({ ...PUBLISHED, id: "pub2" }));
+    await flush();
+    expect(unpublishButton(element).disabled).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(unpublishButton(element));
   });
 
   it("a failure says the week was not unpublished and keeps it as published", async () => {

@@ -43,16 +43,17 @@
                 <div class="version-text">
                   <div class="version-name">{row.name}</div>
                   <div class="version-meta">
-                    {row.origin} ·
-                    <template lwc:if={row.autoSaved}>Auto-saved ·</template>
-                    <template lwc:if={row.wasPublished}>Published ·</template>
-                    <lightning-formatted-date-time
-                      value={row.savedAt}
-                      month="short"
-                      day="numeric"
-                      hour="numeric"
-                      minute="2-digit"
-                    ></lightning-formatted-date-time>
+                    {row.meta}
+                    <template lwc:if={row.showSaved}>
+                      <lightning-formatted-date-time
+                        value={row.savedAt}
+                        month="short"
+                        day="numeric"
+                        hour="numeric"
+                        minute="2-digit"
+                        data-id="saved-at"
+                      ></lightning-formatted-date-time>
+                    </template>
                   </div>
                 </div>
                 <template lwc:if={row.onScreen}>

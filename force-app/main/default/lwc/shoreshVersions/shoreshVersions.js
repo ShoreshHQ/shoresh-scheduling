@@ -96,12 +96,21 @@ export default class ShoreshVersions extends LightningElement {
   get rows() {
     return this._versions.map((version) => {
       const confirming = version.id === this.deletingId;
+      // "Manual · Auto-saved · " then when it was saved. Once the week's published schedule:
+      // "Published", unless the name already says it and when ("Published Oct 18, 2:40 PM").
+      const showSaved = !version.namedByPublish;
+      const meta = [
+        ORIGINS[version.origin] || version.origin,
+        version.reason === AUTO_SAVED ? "Auto-saved" : null,
+        version.publishedAt && showSaved ? "Published" : null
+      ]
+        .filter(Boolean)
+        .join(" · ");
       return {
         ...version,
-        origin: ORIGINS[version.origin] || version.origin,
-        autoSaved: version.reason === AUTO_SAVED,
+        meta: showSaved ? `${meta} · ` : meta,
+        showSaved,
         // Once the week's published schedule: kept as history, so never deleted (SchedulePublish).
-        wasPublished: !!version.publishedAt,
         deletable: this.restore && !version.publishedAt,
         onScreen: version.id === this.openId,
         renaming: version.id === this.renamingId,

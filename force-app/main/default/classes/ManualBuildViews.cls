@@ -95,6 +95,9 @@ public with sharing class ManualBuildViews {
     public Boolean isPublished;
     @AuraEnabled
     public Datetime savedAt;
+    // Still named by when it was published ("Published Oct 18, 2:40 PM"): PublishedRows.
+    @AuraEnabled
+    public Boolean namedByPublish;
   }
 
   /**
@@ -104,7 +107,15 @@ public with sharing class ManualBuildViews {
   public static List<WeekSource> weekSources(Id programId, Id weekId) {
     List<WeekSource> result = new List<WeekSource>();
     for (Schedule__c schedule : [
-      SELECT Id, Name, Status__c, Origin__c, Week__c, Week__r.Name, CreatedDate
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Origin__c,
+        Week__c,
+        Week__r.Name,
+        PublishedAt__c,
+        CreatedDate
       FROM Schedule__c
       WHERE
         Program__c = :programId
@@ -124,6 +135,7 @@ public with sharing class ManualBuildViews {
       source.isVersion = schedule.Status__c == 'Version';
       source.isPublished = schedule.Status__c == SchedulePublish.PUBLISHED;
       source.savedAt = schedule.CreatedDate;
+      source.namedByPublish = PublishedRows.namedByPublish(schedule);
       result.add(source);
     }
     return result;

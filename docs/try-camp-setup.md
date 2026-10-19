@@ -329,8 +329,8 @@ save one), so first add a made-up one.
     can be brought back from Salesforce's Recycle Bin.
 12. **Deleting the week takes its versions.** On **Weeks**, delete _Week 1_: the confirmation
     says _That includes 1 saved version._ Confirm, and the version goes with the week (as on
-    the desktop). Once publishing exists, a week with a published schedule will not be
-    deletable. Run the script again for a new Week 1 and version.
+    the desktop). A week with a published schedule can't be deleted (section 26, step 6). Run
+    the script again for a new Week 1 and version.
 
 ## 14. Import last year
 
@@ -916,22 +916,31 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
    1?_ with what is still to do (_12 of 40 cells still Open._, _2 activities need a look._,
    _Still needed: 3_). **Cancel** publishes nothing; **Publish** goes ahead (nothing is ever
    blocked). A week with nothing left to do publishes at once.
-3. It says _Published Week 1._ Next to the button: _Published Oct 18, 10:04 by_ your name.
+3. It says _Published Week 1._ Next to the button: _Published Oct 18, 10:04 AM by_ your name.
 4. Change a cell. The line now ends _· changed since_: the published copy did not change.
 5. Click **Publish** again. The box says _Publish Week 1 again?_ and lists each cell that changes,
    such as _Bunk 1 · Monday · Period 2: Swim → Archery_. **Publish** replaces the published
    schedule.
-6. Open **Versions**: the schedule it replaced is there, marked _Published_, with **Restore** and
-   **rename** but no **delete** (it is kept as history). Week 1 can no longer be deleted on the
-   Camp setup screen, because it has a published schedule.
+6. Open **Versions**: the schedule it replaced is there, named by when it was published
+   (_Published Oct 18, 10:04 AM_, the time from step 3), with just _Manual Build_ under the name
+   (no second date), and **Restore** and **rename** but no **delete** (it is kept as history).
+   On **Weeks**, delete _Week 1_: it is refused with _"Week 1" has published schedules, which
+   are kept as history, so this week can't be deleted._ Nothing is deleted.
 7. Click **Publish** with nothing changed: _Week 1 is already published as it is._ Nothing else
    happens.
 8. Click **Unpublish** (beside **Publish**, there only while the week is published). A box asks
    _Unpublish Week 1?_ with _Nothing will be published for this week._ **Cancel** is highlighted
    and changes nothing. Click **Unpublish**: it says _Unpublished Week 1._, the _Published …_ line
-   and the **Unpublish** button go, and **Versions** lists the copy marked _Published_, with
-   **Restore** and **rename** but no **delete**.
+   and the **Unpublish** button go, and **Versions** lists the copy named _Published Oct 18, …_
+   (when step 5 published it), with **Restore** and **rename** but no **delete**. Under
+   **Start from another week** on Week 2 it reads _Week 1 · Published Oct 18, … (version)_.
 9. Click **Publish** again: with nothing left to do, it publishes at once, as a first publish.
+10. In **Versions**, **rename** one of the _Published Oct 18, …_ copies to _Opening week_. The
+    line under it now says _Manual Build · Published ·_ and the date, since the name no longer
+    says when it was published.
+11. Switch to another browser tab and come back. Manual Build reads the week again (to show
+    anyone else's changes): **Publish** and **Unpublish** are greyed out for that moment, then
+    work again. If you had tabbed to **Publish**, it still has the focus outline afterwards.
 
 ## What is not here yet
 

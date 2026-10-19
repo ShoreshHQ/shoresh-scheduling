@@ -72,13 +72,22 @@ public with sharing class PublishedRows {
    * shows "Published Oct 18, 2:40 PM" beside Publish (short month, day, hour and minutes; a
    * 24-hour clock where the user's locale uses one). The same moment always gives the same name.
    */
-  @TestVisible
-  private static String historyName(Datetime publishedAt) {
+  public static String historyName(Datetime publishedAt) {
     // The user's locale writes 1 PM as "13" only on a 24-hour clock.
     Boolean twentyFourHour = Datetime.newInstance(2000, 1, 1, 13, 5, 0)
       .format()
       .contains('13');
     return 'Published ' +
       publishedAt.format(twentyFourHour ? 'MMM d, H:mm' : 'MMM d, h:mm a');
+  }
+
+  /**
+   * Still named as it was kept (historyName, in this user's time zone and locale): the name
+   * already says it was published and when, so Versions and Start from another week don't say it
+   * again. One someone renamed, or kept for someone in another time zone, is not.
+   */
+  public static Boolean namedByPublish(Schedule__c schedule) {
+    return schedule.PublishedAt__c != null &&
+      schedule.Name == historyName(schedule.PublishedAt__c);
   }
 }

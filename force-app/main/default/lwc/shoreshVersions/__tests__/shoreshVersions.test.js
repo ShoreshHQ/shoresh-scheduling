@@ -214,6 +214,36 @@ describe("c-shoresh-versions", () => {
       expect(other.querySelector('[data-action="delete"]')).not.toBeNull();
     });
 
+    it("a copy named by when it was published doesn't say Published or the time again", async () => {
+      const element = await renderRestore([
+        {
+          id: "p2",
+          name: "Published Oct 16, 1:00 PM",
+          origin: "Manual",
+          savedAt: "2026-10-16T17:00:00.000Z",
+          publishedAt: "2026-10-16T17:00:00.000Z",
+          namedByPublish: true
+        },
+        {
+          id: "p1",
+          name: "Opening week",
+          origin: "Manual",
+          savedAt: "2026-10-15T17:00:00.000Z",
+          publishedAt: "2026-10-15T17:00:00.000Z",
+          namedByPublish: false
+        }
+      ]);
+      const [named, renamed] = qa(element, ".version");
+      const meta = (row) => row.querySelector(".version-meta").textContent;
+      expect(meta(named).trim()).toBe("Manual Build");
+      expect(named.querySelector('[data-id="saved-at"]')).toBeNull();
+      // Renamed while published: its name doesn't say it, so the line still does.
+      expect(meta(renamed)).toBe("Manual Build · Published · ");
+      expect(renamed.querySelector('[data-id="saved-at"]')).not.toBeNull();
+      // Still kept: never deleted.
+      expect(named.querySelector('[data-action="delete"]')).toBeNull();
+    });
+
     it("Delete? looks different, is said aloud, and blur takes it back", async () => {
       const element = await renderRestore();
       const handler = jest.fn();
