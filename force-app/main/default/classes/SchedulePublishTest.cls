@@ -529,6 +529,44 @@ private class SchedulePublishTest {
   }
 
   @IsTest
+  static void oneUnpublishedThatWasPublishedBeforePublishingWasBuiltStaysHistory() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      Id oldId = ManualBuildController.saveVersion(draftId, 'Opening week');
+      // Published before publishing was built: Status only, nothing else set.
+      PublishedGuard.allow();
+      Database.update(
+        new Schedule__c(Id = oldId, Status__c = 'Published'),
+        AccessLevel.USER_MODE
+      );
+      PublishedGuard.done();
+      Test.startTest();
+      ManualBuildController.unpublish(draftId, oldId);
+      String message;
+      try {
+        ManualBuildController.deleteVersion(draftId, oldId);
+      } catch (AuraHandledException e) {
+        message = e.getMessage();
+      }
+      Test.stopTest();
+      // Kept as history with when it was made as when it was published, as it showed.
+      Assert.areEqual(
+        '"Opening week" was the published schedule, which is kept as history, so it can\'t be deleted.',
+        message
+      );
+      Schedule__c kept = [
+        SELECT Status__c, PublishedAt__c, CreatedDate
+        FROM Schedule__c
+        WHERE Id = :oldId
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual('Version', kept.Status__c);
+      Assert.areEqual(kept.CreatedDate, kept.PublishedAt__c);
+    }
+  }
+
+  @IsTest
   static void publishingAgainAfterUnpublishIsAFirstPublish() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();

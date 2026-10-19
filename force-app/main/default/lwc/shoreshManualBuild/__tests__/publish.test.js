@@ -651,6 +651,25 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
+  it("a reload started before Publish doesn't take the published schedule away", async () => {
+    const element = await render(finished());
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="publish"]').disabled).toBe(false);
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue(DONE);
+    await clickPublish(element);
+    expect(q(element, '[data-id="published"]')).not.toBeNull();
+    // The reload read the week before it was published: its answer isn't shown.
+    reload.resolve(finished());
+    await flush();
+    expect(q(element, '[data-id="published"]')).not.toBeNull();
+    expect(q(element, '[data-id="unpublish"]')).not.toBeNull();
+  });
+
   it("focus goes back to Publish when it finishes without asking: published, already published, or failed", async () => {
     const element = await render(finished());
     const publishButton = () => q(element, '[data-id="publish"]');
@@ -812,6 +831,26 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     );
     expect(q(element, '[data-id="published"]')).not.toBeNull();
     expect(unpublishButton(element).disabled).toBe(false);
+  });
+
+  it("a reload started before Unpublish doesn't bring the published schedule back", async () => {
+    const element = await render(finished(PUBLISHED));
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    // Coming back to the window reads the week again; Unpublish is still there meanwhile.
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    expect(unpublishButton(element).disabled).toBe(false);
+    unpublish.mockResolvedValue(UNPUBLISHED);
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    expect(unpublishButton(element)).toBeNull();
+    // The reload read the week before it was unpublished: its answer isn't shown.
+    reload.resolve(finished(PUBLISHED));
+    await flush();
+    expect(unpublishButton(element)).toBeNull();
+    expect(q(element, '[data-id="published"]')).toBeNull();
   });
 
   it("an answer that comes after another week is shown isn't shown on that week", async () => {

@@ -448,6 +448,46 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     );
   });
 
+  it("versions with the same name are told apart by when they were saved", async () => {
+    // Published twice, then unpublished: two kept copies with the same name.
+    const first = new Date(2026, 5, 29, 9, 0).toISOString();
+    const second = new Date(2026, 6, 2, 14, 30).toISOString();
+    getWeekSources.mockResolvedValue([
+      {
+        id: "v3",
+        weekName: "Week 1",
+        name: "Published schedule",
+        isVersion: true,
+        savedAt: second
+      },
+      {
+        id: "v2",
+        weekName: "Week 1",
+        name: "Published schedule",
+        isVersion: true,
+        savedAt: first
+      }
+    ]);
+    const element = await render(null);
+    const when = (iso) =>
+      new Date(iso).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    const labels = [
+      ...q(element, '[data-id="start-from"]').querySelectorAll(
+        "lightning-menu-item"
+      )
+    ].map((i) => i.label);
+    expect(labels).toEqual([
+      `Week 1 · Published schedule (version) · ${when(second)}`,
+      `Week 1 · Published schedule (version) · ${when(first)}`
+    ]);
+    expect(labels[0]).not.toBe(labels[1]);
+  });
+
   it("says so when someone else had started the week (nothing copied)", async () => {
     getWeekSources.mockResolvedValue([
       { id: "d9", weekName: "Week 2", name: "Manual Build", isVersion: false }

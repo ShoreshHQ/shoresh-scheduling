@@ -18,6 +18,22 @@ import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import { publishQuestion } from "c/shoreshPublish";
 
 /**
+ * " · Jun 29, 9:00 AM": when a version was saved, as Versions shows it, so versions with the same
+ * name (copies kept each time the week was published) can be told apart. Empty when unknown.
+ */
+function savedWhen(savedAt) {
+  if (!savedAt) {
+    return "";
+  }
+  return ` · ${new Date(savedAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  })}`;
+}
+
+/**
  * Manual Build (desktop: the Manual schedule): a program's week built by hand. This screen
  * chooses the program and week, opens or starts it (a week not started yet offers "Start a blank
  * week" or "Start from another week"), keeps its versions (Save, Restore), counts what the week
@@ -435,7 +451,7 @@ export default class ShoreshManualBuild extends LightningElement {
       value: source.id,
       label: source.isPublished
         ? `${source.weekName} · ${this.t.s("PublishedSchedule")}`
-        : `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})` : ""}`
+        : `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})${savedWhen(source.savedAt)}` : ""}`
     }));
   }
 
@@ -738,6 +754,9 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** Refused when the week was published or unpublished since the screen showed it. */
   async unpublishNow(ask) {
+    // A reload already on its way read the week before this: its answer must not show it
+    // published again.
+    this.loadTicket += 1;
     const result = await unpublish({
       scheduleId: this.schedule.schedule.id,
       seenPublishedId: ask.publishedId
@@ -762,6 +781,9 @@ export default class ShoreshManualBuild extends LightningElement {
    * answer is always shown, unless another week (week, program) is shown by then.
    */
   async publishNow(preview, week) {
+    // A reload already on its way read the week before this publish: its answer must not
+    // replace what the publish shows.
+    this.loadTicket += 1;
     const result = await publish({
       scheduleId: this.schedule.schedule.id,
       seenRevisions: preview.revisions,

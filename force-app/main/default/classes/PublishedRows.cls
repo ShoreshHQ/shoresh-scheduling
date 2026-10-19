@@ -48,6 +48,10 @@ public with sharing class PublishedRows {
         new Schedule__c(
           Id = old.Id,
           Status__c = ManualVersions.VERSION,
+          // One published before publishing was built (Status only) keeps when it was made.
+          PublishedAt__c = old.PublishedAt__c == null
+            ? old.CreatedDate
+            : old.PublishedAt__c,
           PublishKey__c = null
         )
       );
