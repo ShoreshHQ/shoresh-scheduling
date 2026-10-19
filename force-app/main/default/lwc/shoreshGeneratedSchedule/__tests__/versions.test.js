@@ -333,6 +333,8 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="build-error"]').textContent).toContain(
       "Give the version a name."
     );
+    // Nothing was saved, so nothing says it was.
+    expect(notice(element) || "").not.toContain("Saved");
   });
 
   it("Restore sends the revision the week was read at, then shows the week read again with its locks and option", async () => {
@@ -529,6 +531,60 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
     expect(versions(element).openId).toBe(MINE);
     expect(notice(element)).toBe("Restored Before the trip.");
+    // The read that failed was read again: its error doesn't stay up beside the restored week.
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("…but if the week still can't be read, the error stays", async () => {
+    const element = await render(week());
+    restoreVersion.mockResolvedValue(true);
+    getInputs.mockRejectedValue({ body: { message: "Timed out." } });
+    await restore(element);
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(3);
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "Timed out."
+    );
+  });
+
+  it("a Restore answering after the screen moved on to another week shows nothing there", async () => {
+    const element = await render(week());
+    const held = slow();
+    restoreVersion.mockReturnValue(held.promise);
+    await restore(element);
+    getInputs.mockResolvedValue(week());
+    element.setup = {
+      ...SETUP,
+      weeks: [{ Id: "a0K000000000002AAA", Name: "Week 2" }]
+    };
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    // Refused for Week 1: Week 2 gets no Reload box for it.
+    held.answer(false);
+    await flush();
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+  });
+
+  it("a Restore's read answering after the screen moved on to another week shows nothing there", async () => {
+    const element = await render(week());
+    restoreVersion.mockResolvedValue(true);
+    const reading = slow();
+    getInputs.mockReturnValueOnce(reading.promise);
+    await restore(element);
+    getInputs.mockResolvedValue(week());
+    element.setup = {
+      ...SETUP,
+      weeks: [{ Id: "a0K000000000002AAA", Name: "Week 2" }]
+    };
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(3);
+    // Week 1 as restored (with its lock) is never put on Week 2's screen.
+    reading.answer(week({ locked: true, revision: RESTORED_AT }));
+    await flush();
+    expect(lockAt(element, "0-1")).toBeNull();
+    expect(versions(element).openId).toBeFalsy();
+    expect(notice(element) || "").not.toContain("Restored");
   });
 
   it("the season read again while a Restore reads the week reads it once more after", async () => {
@@ -756,6 +812,8 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="build-error"]').textContent).toContain(
       "kept as history"
     );
+    // Nothing was deleted, so nothing says it was.
+    expect(notice(element) || "").not.toContain("Deleted");
   });
 
   it("rename renames the version and reads the list again", async () => {
@@ -774,6 +832,19 @@ describe("Versions on the Generated Schedule screen", () => {
     });
     expect(onDone).toHaveBeenCalledWith(true);
     expect(getVersions).toHaveBeenCalledTimes(1);
+  });
+
+  it("a refused rename says why and keeps the name typed", async () => {
+    const element = await render();
+    renameSchedule.mockRejectedValue({
+      body: { message: "Give the version a name." }
+    });
+    const onDone = jest.fn();
+    await fire(element, "rename", { id: HISTORY, name: " ", onDone });
+    expect(onDone).toHaveBeenCalledWith(false);
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "Give the version a name."
+    );
   });
 
   it("another week shows none of this week's versions, and nothing as on screen now", async () => {

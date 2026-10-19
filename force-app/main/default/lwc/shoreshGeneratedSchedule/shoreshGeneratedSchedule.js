@@ -1690,11 +1690,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         week = await loadWeek(this.programId, this.weekId);
       } catch (e) {
         // Restored, but the week can't be read now: it is read again once this is over, and
-        // shown then as the restored week.
+        // shown then as the restored week (its error goes once that read works).
         if (ticket === this.loadTicket) {
           this.readAfterRun = true;
           this.restoreUnread = restored;
         }
+        this.errorFromRead = true;
         throw e;
       }
       if (ticket !== this.loadTicket) {
