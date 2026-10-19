@@ -274,7 +274,7 @@ private class ManualWeekStartTest {
       Schedule__c replaced = new Schedule__c(
         Program__c = ids.get('Main'),
         Week__c = ids.get('Week 1'),
-        Name = 'Published schedule',
+        Name = 'Published Jun 28, 2:40 PM',
         Status__c = ManualVersions.VERSION,
         Origin__c = ManualDrafts.MANUAL,
         PublishedAt__c = Datetime.now().addDays(-1)

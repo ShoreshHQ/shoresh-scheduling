@@ -213,6 +213,12 @@ private class SchedulePublishTest {
       Assert.areEqual('Version', published[0].Status__c);
       Assert.isNotNull(published[0].PublishedAt__c);
       Assert.isNull(published[0].PublishKey__c);
+      // Named by when it was published (Greg, 2026-10-19), as the screen shows it.
+      Assert.areEqual(
+        'Published ' + published[0].PublishedAt__c.format('MMM d, h:mm a'),
+        published[0].Name
+      );
+      Assert.areEqual('Published schedule', published[1].Name);
       Assert.areEqual('Swim', mondayPeriod2(firstId));
       Assert.areEqual(result.published.id, published[1].Id);
       Assert.areEqual('Published', published[1].Status__c);
@@ -250,13 +256,17 @@ private class SchedulePublishTest {
         new Set<Id>{ ids.get('Week 1') }
       );
       Test.stopTest();
+      Schedule__c first = [
+        SELECT Name, PublishedAt__c
+        FROM Schedule__c
+        WHERE Id = :firstId
+        WITH SYSTEM_MODE
+      ];
       Assert.areEqual(
-        '"Published schedule" was the published schedule, which is kept as history, so it can\'t be deleted.',
+        '"Published ' +
+          first.PublishedAt__c.format('MMM d, h:mm a') +
+          '" was the published schedule, which is kept as history, so it can\'t be deleted.',
         message
-      );
-      Assert.areEqual(
-        1,
-        [SELECT COUNT() FROM Schedule__c WHERE Id = :firstId WITH SYSTEM_MODE]
       );
       Assert.isTrue(protectedIds.contains(ids.get('Week 1')));
     }
@@ -476,6 +486,10 @@ private class SchedulePublishTest {
       Assert.isNotNull(history[0].PublishedAt__c);
       Assert.isNotNull(history[0].PublishedBy__c);
       Assert.isNull(history[0].PublishKey__c);
+      Assert.areEqual(
+        'Published ' + history[0].PublishedAt__c.format('MMM d, h:mm a'),
+        history[0].Name
+      );
       Assert.areEqual('Swim', mondayPeriod2(publishedId));
       // The draft is as it was.
       Assert.areEqual('Swim', mondayPeriod2(draftId));
@@ -486,6 +500,42 @@ private class SchedulePublishTest {
       )[0];
       Assert.areEqual(publishedId, row.id);
       Assert.isNotNull(row.publishedAt);
+    }
+  }
+
+  @IsTest
+  static void aCopyNoLongerPublishedIsNamedByWhenItWasPublished() {
+    // Greg, 2026-10-19: in the user's time zone (the scheduler's is New York) and locale (en_US).
+    System.runAs(ShoreshTestData.scheduler()) {
+      Datetime published = Datetime.newInstanceGmt(2026, 10, 18, 18, 40, 0);
+      Assert.areEqual(
+        'Published Oct 18, 2:40 PM',
+        PublishedRows.historyName(published)
+      );
+      // The same moment, the same name.
+      Assert.areEqual(
+        PublishedRows.historyName(published),
+        PublishedRows.historyName(published)
+      );
+    }
+  }
+
+  @IsTest
+  static void aPublishedCopySomeoneRenamedKeepsTheirNameWhenReplaced() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id firstId = publishNow(draftId).published.id;
+      SchedulesController.renameSchedule(firstId, 'Opening week');
+      Test.startTest();
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      publishNow(draftId);
+      Test.stopTest();
+      Assert.areEqual(
+        'Opening week',
+        [SELECT Name FROM Schedule__c WHERE Id = :firstId WITH SYSTEM_MODE].Name
+      );
     }
   }
 

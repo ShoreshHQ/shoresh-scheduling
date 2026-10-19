@@ -169,7 +169,7 @@ public with sharing class SchedulePublish {
     }
     PublishedGuard.allow();
     try {
-      PublishedRows.keepAsHistory(published);
+      PublishedRows.keepAsHistory(published, publishedName(draft));
     } finally {
       PublishedGuard.done();
     }
@@ -189,12 +189,12 @@ public with sharing class SchedulePublish {
     // Published history changes only here, in Unpublish and in rename.
     PublishedGuard.allow();
     try {
-      PublishedRows.keepAsHistory(replaced);
+      String name = publishedName(draft);
+      PublishedRows.keepAsHistory(replaced, name);
       Schedule__c copy = new Schedule__c(
         Program__c = draft.Program__c,
         Week__c = draft.Week__c,
-        Name = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c)
-          .singular('PublishedSchedule'),
+        Name = name,
         Status__c = PUBLISHED,
         Origin__c = draft.Origin__c,
         SourceSchedule__c = draft.Id,
@@ -221,6 +221,15 @@ public with sharing class SchedulePublish {
     } finally {
       PublishedGuard.done();
     }
+  }
+
+  /**
+   * The name Publish gives the week's published schedule: the camp's word for it. Once replaced
+   * or unpublished, one still so named is named by when it was published (PublishedRows).
+   */
+  private static String publishedName(Schedule__c draft) {
+    return CampLabels.forCamp(draft.Program__r.Season__r.Camp__c)
+      .singular('PublishedSchedule');
   }
 
   /** Program and week, as PublishKey__c holds them: one published schedule per week. */

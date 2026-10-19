@@ -9,7 +9,7 @@ public with sharing class PublishedRows {
    */
   public static List<Schedule__c> locked(Id programId, Id weekId) {
     return [
-      SELECT Id, PublishedAt__c, PublishedBy__r.Name, CreatedDate
+      SELECT Id, Name, PublishedAt__c, PublishedBy__r.Name, CreatedDate
       FROM Schedule__c
       WHERE
         Program__c = :programId
@@ -39,23 +39,46 @@ public with sharing class PublishedRows {
 
   /**
    * The week's published schedules become history: versions that keep when they were published,
-   * and give up the key. Within PublishedGuard.allow().
+   * and give up the key. One still named as Publish named it (publishedName, the camp's word) is
+   * named by when it was published (Greg, 2026-10-19): "Published Oct 18, 2:40 PM". One someone
+   * renamed keeps their name. Within PublishedGuard.allow().
    */
-  public static void keepAsHistory(List<Schedule__c> published) {
+  public static void keepAsHistory(
+    List<Schedule__c> published,
+    String publishedName
+  ) {
     List<Schedule__c> history = new List<Schedule__c>();
     for (Schedule__c old : published) {
-      history.add(
-        new Schedule__c(
-          Id = old.Id,
-          Status__c = ManualVersions.VERSION,
-          // One published before publishing was built (Status only) keeps when it was made.
-          PublishedAt__c = old.PublishedAt__c == null
-            ? old.CreatedDate
-            : old.PublishedAt__c,
-          PublishKey__c = null
-        )
+      // One published before publishing was built (Status only) keeps when it was made.
+      Datetime publishedAt = old.PublishedAt__c == null
+        ? old.CreatedDate
+        : old.PublishedAt__c;
+      Schedule__c kept = new Schedule__c(
+        Id = old.Id,
+        Status__c = ManualVersions.VERSION,
+        PublishedAt__c = publishedAt,
+        PublishKey__c = null
       );
+      if (old.Name == publishedName) {
+        kept.Name = historyName(publishedAt);
+      }
+      history.add(kept);
     }
     Database.update(history, AccessLevel.USER_MODE);
+  }
+
+  /**
+   * "Published Oct 18, 2:40 PM": when it was published, in the user's time zone, as the screen
+   * shows "Published Oct 18, 2:40 PM" beside Publish (short month, day, hour and minutes; a
+   * 24-hour clock where the user's locale uses one). The same moment always gives the same name.
+   */
+  @TestVisible
+  private static String historyName(Datetime publishedAt) {
+    // The user's locale writes 1 PM as "13" only on a 24-hour clock.
+    Boolean twentyFourHour = Datetime.newInstance(2000, 1, 1, 13, 5, 0)
+      .format()
+      .contains('13');
+    return 'Published ' +
+      publishedAt.format(twentyFourHour ? 'MMM d, H:mm' : 'MMM d, h:mm a');
   }
 }

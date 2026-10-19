@@ -680,6 +680,10 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    `ScheduleEntry__c` rows yet (round 2 #4).
 2. **Publishing again replaces it**: every published schedule of the week becomes a Version
    (Status Version, key cleared, `PublishedAt__c` kept), in the same transaction as the new copy.
+   It is named by when it was published (Greg, 2026-10-19): _Published Oct 18, 2:40 PM_, in the
+   user's time zone and as their locale writes the time (a 24-hour clock where it uses one), as
+   the screen shows _Published …_ beside Publish; the same moment always gives the same name. One
+   someone renamed while it was published keeps their name (`PublishedRows.keepAsHistory`).
    It shows in Versions marked _Published_, can be restored and renamed, and is never deleted
    (`ManualVersions.remove` refuses: "… was the published schedule, which is kept as history,
    so it can't be deleted."; the list shows no **delete** for it). `PublishedHistory` and the
@@ -712,8 +716,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    replaced. …_ Two first publishes at the same moment: the key's uniqueness refuses the second
    the same way. Publish locks the draft (its drafts class) and then the week's published rows,
    never the program, so it can't deadlock with a Generated save (program, then draft).
-5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves or
-   a Restore runs; beside it _Published Oct 18, 10:04 by Pat_ and, once the draft differs,
+5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves,
+   a Restore runs or the week is being read again (so its question is never worked out from a
+   view about to be replaced; Unpublish waits the same way); beside it _Published Oct 18, 10:04 by Pat_ and, once the draft differs,
    _· changed since_ (from `DraftView.published`, worked out on the server by the same
    comparison; an edit on screen marks it at once). While a publish is on its way (and while its
    question is open) edits, Versions and the week and program pickers wait, so its answer,
@@ -727,7 +732,8 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    only while the week has a published schedule. It asks first (c-shoresh-ask, _Unpublish Week
    1?_ / _Nothing will be published for this week._, **Unpublish**/Cancel, Cancel focused); then
    `SchedulePublish.unpublish` turns the week's published schedule into a version exactly as a
-   replaced one (Status Version, key cleared, `PublishedAt__c` and `PublishedBy__c` kept), so it is
+   replaced one (Status Version, key cleared, `PublishedAt__c` and `PublishedBy__c` kept, named by
+   when it was published as in item 2), so it is
    in Versions marked _Published_, can be restored and renamed, and is never deleted (decision
    0002). The week then has no published schedule, and publishing again later is a first publish.
    It names the published schedule the screen showed; one published or unpublished since:
@@ -754,6 +760,10 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
     it does (it doesn't switch to the published schedule); a first publish with nothing to show
     publishes at once (no question), as built in item 3; published schedules replaced by a later
     publish stay as history (item 2), and so do unpublished ones (item 8).
+11. **Greg's decision (2026-10-19)**: a copy that is no longer the published one (replaced or
+    unpublished) is named in Versions by when it was published, _Published Oct 18, 2:40 PM_
+    (items 2 and 8), so the week's history reads as a list of publishes rather than several
+    _Published schedule_ rows.
 
 ## Choices that are hard to undo after release
 

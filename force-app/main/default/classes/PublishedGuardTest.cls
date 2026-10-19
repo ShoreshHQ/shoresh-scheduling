@@ -137,12 +137,19 @@ private class PublishedGuardTest {
       AccessLevel.SYSTEM_MODE
     );
     Test.stopTest();
+    // Named by when it was published once unpublished (SchedulePublishTest has the wording).
+    String name = reread(historyId).Name;
+    Assert.isTrue(name.startsWith('Published '), name);
     Assert.areEqual(
-      '"Published schedule" was the published schedule, which is kept as history, so only Publish, Unpublish and rename in Shoresh can change it.',
+      '"' +
+        name +
+        '" was the published schedule, which is kept as history, so only Publish, Unpublish and rename in Shoresh can change it.',
       refusal(cleared)
     );
     Assert.areEqual(
-      '"Published schedule" was the published schedule, which is kept as history, so it can\'t be deleted.',
+      '"' +
+        name +
+        '" was the published schedule, which is kept as history, so it can\'t be deleted.',
       refusal(deleted)
     );
     Assert.isNotNull(reread(historyId).PublishedAt__c);

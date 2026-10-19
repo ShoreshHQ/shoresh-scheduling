@@ -640,9 +640,14 @@ export default class ShoreshManualBuild extends LightningElement {
   get canPublish() {
     return !!this.draft && !this.hasNoDays;
   }
-  /** Publish waits while an edit saves or a Restore runs (it would publish a week in between). */
+  /**
+   * Publish and Unpublish wait while an edit saves or a Restore runs (it would publish a week in
+   * between), and while the week is read again (after a failed save, or coming back to the
+   * window): the question is worked out from what the screen shows, so it waits for the week as
+   * it is.
+   */
   get publishDisabled() {
-    return this.publishing || this.versionsBusy;
+    return this.publishing || this.versionsBusy || this.reads > 0;
   }
 
   /**
