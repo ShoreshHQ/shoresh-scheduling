@@ -262,6 +262,31 @@ describe("c-shoresh-schedules", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("a deleted bunk's Group View pill says deleted since, as on Generated Schedule", async () => {
+    getVersions.mockResolvedValue(VERSIONS);
+    openSchedule.mockImplementation((args) =>
+      answerFor(args).then((view) => ({
+        ...view,
+        days: view.days.map((day) => ({
+          ...day,
+          groups: day.groups.map((grp) => ({
+            ...grp,
+            gone: grp.id === "g2"
+          }))
+        }))
+      }))
+    );
+    const element = await render();
+    q(element, '[data-view="group"]').click();
+    await flush();
+    expect(
+      qa(element, '[data-id="group-pills"] button').map((b) =>
+        b.textContent.replace(/\s+/g, " ").trim()
+      )
+    ).toEqual(["Bunk 1", "Bunk 2 deleted since"]);
+    await expect(element).toBeAccessible();
+  });
+
   it("another week opens its own newest version, or says it has none", async () => {
     getVersions.mockResolvedValueOnce(VERSIONS);
     openSchedule.mockImplementation(answerFor);

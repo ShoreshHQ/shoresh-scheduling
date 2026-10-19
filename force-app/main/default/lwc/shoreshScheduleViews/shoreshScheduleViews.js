@@ -92,7 +92,10 @@ export function days(view) {
   }));
 }
 
-/** Every group in the week, in order, for the group pills. */
+/**
+ * Every group in the week, in order, for the group pills. A deleted one says so on its pill, as
+ * its column does in Daily View, on every screen that shows the pills.
+ */
 export function groups(view) {
   const seen = new Map();
   readable(view).forEach((day) =>
@@ -101,7 +104,8 @@ export function groups(view) {
         seen.set(refKey(grp), {
           key: refKey(grp),
           name: grp.name,
-          gone: grp.gone
+          gone: grp.gone,
+          note: grp.gone ? "deleted since" : null
         });
       }
     })
