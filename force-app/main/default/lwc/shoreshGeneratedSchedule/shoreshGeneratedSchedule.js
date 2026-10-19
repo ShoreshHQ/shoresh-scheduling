@@ -308,6 +308,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!key) {
       this.loaded = null;
       this.loadedFor = null;
+      this.publishing = false;
       this.reading = false;
       this.loading = false;
       this.reloading = null;
@@ -1479,10 +1480,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    * season read again) is done now.
    */
   publishDone(week, button) {
-    this.publishing = false;
+    // An answer for a week no longer shown leaves the week shown as it is: showing it reset
+    // the flag, and a publish asked from it since is still on its way.
     if (week !== this.loadedFor) {
       return;
     }
+    this.publishing = false;
     this.focusOn = button;
     const readNow = this.readAfterRun && !this.conflict;
     this.readAfterRun = false;

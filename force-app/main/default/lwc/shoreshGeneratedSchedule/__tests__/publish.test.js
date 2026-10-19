@@ -437,11 +437,16 @@ describe("Publish on the Generated Schedule screen", () => {
     unpublishButton(element).click();
     await flush();
     getInputs.mockClear();
+    // Read again, the week has nothing published (someone else unpublished it).
+    getInputs.mockResolvedValue(cleanWeek());
     await answer(unpublishAsk(element), true);
     expect(notice(element)).toBe(
       "Someone else published or unpublished this week since, so nothing was unpublished."
     );
     expect(getInputs).toHaveBeenCalledTimes(1);
+    // The line follows the week as read, not the one shown before.
+    expect(publishedLine(element)).toBeNull();
+    expect(unpublishButton(element)).toBeNull();
   });
 
   it("builds, Lock, edits and the week picker wait while a publish is on its way", async () => {
@@ -783,6 +788,24 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(document.activeElement).toBe(elsewhere);
   });
 
+  it("focus stays on the week picker when the director moved there while Publish was held", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    publish.mockResolvedValue({ published: PUBLISHED });
+    await clickPublish(element);
+    // Inside the screen this time: a keyboard user tabbed on to the week picker.
+    const picker = q(element, '[data-id="week"]');
+    picker.tabIndex = 0;
+    picker.focus();
+    expect(element.shadowRoot.activeElement).toBe(picker);
+    const back = jest.spyOn(publishButton(element), "focus");
+    held.answer(preview());
+    await flush();
+    expect(back).not.toHaveBeenCalled();
+    expect(element.shadowRoot.activeElement).toBe(picker);
+  });
+
   // A publish or unpublish whose answer comes back once another week is shown: it was for the
   // week it was asked from, so the week shown now keeps its own published line and words.
   it("a publish still under way when another week is shown leaves that week as it is", async () => {
@@ -811,6 +834,99 @@ describe("Publish on the Generated Schedule screen", () => {
     held.answer(Promise.reject({ body: { message: "Too late." } }));
     await flush();
     expect(q(element, '[data-id="build-error"]')).toBeNull();
+    expect(publishButton(element).disabled).toBe(false);
+  });
+
+  it("a failed publish after the Publish box was answered says nothing once another week is shown", async () => {
+    const element = await render(openWeek());
+    previewPublish.mockResolvedValue(preview());
+    const held = slow();
+    publish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    await answer(ask(element), true);
+    expect(publish).toHaveBeenCalledTimes(1);
+    await showWeek2(element, cleanWeek());
+    held.answer(Promise.reject({ body: { message: "Too late." } }));
+    await flush();
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("a failed unpublish after its box was answered says nothing once another week is shown", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    const held = slow();
+    unpublish.mockReturnValue(held.promise);
+    unpublishButton(element).click();
+    await flush();
+    await answer(unpublishAsk(element), true);
+    expect(unpublish).toHaveBeenCalledTimes(1);
+    await showWeek2(element, cleanWeek());
+    held.answer(Promise.reject({ body: { message: "Too late." } }));
+    await flush();
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("a preview that answers once another week is shown refuses nothing on that week", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    await showWeek2(element, cleanWeek());
+    getInputs.mockClear();
+    // Week 1's preview, with revisions Week 2 doesn't have.
+    held.answer(preview({ revisions: "2026-07-06:5" }));
+    await flush();
+    expect(notice(element) || "").not.toContain("nothing was published");
+    expect(getInputs).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(ask(element)).toBeNull();
+  });
+
+  it("the pickers are free again when the week asked from leaves the season while its publish is on its way", async () => {
+    const element = await render(cleanWeek());
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    // The season read again with no weeks in it, and a second program: no week is shown, and
+    // the program picker is there to choose with.
+    element.setup = {
+      ...SETUP,
+      weeks: [],
+      programs: [
+        ...SETUP.programs,
+        {
+          ...SETUP.programs[0],
+          program: { Id: "a0P000000000002AAA", Name: "Day" }
+        }
+      ]
+    };
+    await flush();
+    held.answer(preview());
+    await flush();
+    expect(q(element, '[data-id="program"]').disabled).toBe(false);
+  });
+
+  it("a publish over for the last week leaves a publish asked from the week shown on its way", async () => {
+    const element = await render(cleanWeek());
+    const held1 = slow();
+    previewPublish.mockReturnValueOnce(held1.promise);
+    await clickPublish(element);
+    await showWeek2(element, cleanWeek());
+    // Week 2's own publish, its preview still out.
+    const held2 = slow();
+    previewPublish.mockReturnValueOnce(held2.promise);
+    await clickPublish(element);
+    expect(previewPublish).toHaveBeenCalledTimes(2);
+    expect(publishButton(element).disabled).toBe(true);
+    // Week 1's preview answers last: Week 2's publish is still on its way.
+    held1.answer(preview());
+    await flush();
+    expect(publishButton(element).disabled).toBe(true);
+    expect(q(element, '[data-id="week"]').disabled).toBe(true);
+    expect(action(element, "Rebuild").disabled).toBe(true);
+    publish.mockResolvedValue({ published: PUBLISHED, unchanged: false });
+    held2.answer(preview());
+    await flush();
+    expect(notice(element)).toBe("Published Week 2.");
     expect(publishButton(element).disabled).toBe(false);
   });
 

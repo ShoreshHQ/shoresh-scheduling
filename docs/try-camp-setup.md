@@ -959,7 +959,9 @@ This uses the made-up camp's Week 1 on **Generated Schedule** (section 23).
    changes, then what is still to do). **Cancel** publishes nothing; **Publish** goes ahead. A
    finished week published for the first time goes at once.
 3. It says _Published Week 1._ and the line beside the button now reads _Published from Generated
-   Schedule_, then when and by whom. Back on **Manual Build**, Week 1 says the same.
+   Schedule_, then when and by whom. Back on **Manual Build**, Week 1's line also reads
+   _Published from Generated Schedule …_, ending _· changed since_: Manual Build's own Week 1
+   (built by hand from section 19 on) differs from the one just published.
 4. Click **Rebuild** and confirm, then **Publish** (and **Publish** in the box, if it asks).
    Click **Rebuild** again and confirm: nothing was locked or changed by hand since the last
    build, so the same setup builds the same week, and the line still has no _· changed since_.

@@ -769,7 +769,8 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
     (items 2 and 8), so the week's history reads as a list of publishes rather than several
     _Published schedule_ rows.
 12. **Greg's decision (2026-10-19)**: the Published line names the screen the week was published
-    from, on both screens: _Published from Manual Build Oct 18, 10:04 AM by Pat · changed since_,
+    from, on both screens. Greg said "from Generated"; the builder used the screen's full name, as
+    Versions does: _Published from Manual Build Oct 18, 10:04 AM by Pat · changed since_,
     or _Published from Generated Schedule …_. A week has one published schedule whichever screen
     published it, so Manual Build can show one published from Generated Schedule and the other
     way round. The screen comes from what the published copy already records, its `Origin__c`
