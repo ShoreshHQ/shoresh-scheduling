@@ -11,21 +11,6 @@ private class SetupMatchTest {
   private static Id draft;
   private static Map<String, Id> campIds;
 
-  private static Map<String, Id> camp() {
-    SetTimeGuard.defer();
-    Map<String, Id> ids;
-    try {
-      ids = SetTimeTestData.camp();
-      SetTimeGuard.checkPending();
-    } finally {
-      SetTimeGuard.resume();
-    }
-    SlotRunsTestData.useBlocks(
-      new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
-    );
-    return ids;
-  }
-
   /** Week 1's Manual Build, with Swim in Group A's Monday Period 2. */
   private static Id started(Map<String, Id> ids) {
     campIds = ids;
@@ -121,24 +106,10 @@ private class SetupMatchTest {
     ];
   }
 
-  /** Setup saved around the clash check, as a screen save defers it. */
-  private static void saveDeferred(SObject record, Boolean remove) {
-    SetTimeGuard.defer();
-    try {
-      if (remove) {
-        Database.delete(record, AccessLevel.SYSTEM_MODE);
-      } else {
-        Database.update(record, AccessLevel.SYSTEM_MODE);
-      }
-    } finally {
-      SetTimeGuard.resume();
-    }
-  }
-
   @IsTest
   static void aWeekAsSetupMakesItShowsNothing() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Test.startTest();
       Integer before = Limits.getQueries();
@@ -160,7 +131,7 @@ private class SetupMatchTest {
   @IsTest
   static void aDeletedActivityGetsADotAndUpdateClearsItAfterKeepingAVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Database.delete(ids.get('Swim'), AccessLevel.SYSTEM_MODE);
       Test.startTest();
@@ -209,7 +180,7 @@ private class SetupMatchTest {
   @IsTest
   static void oneOpeningOfTheListKeepsOneVersionWhateverItsUpdates() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       place('Group B', 'Period 1', 'Soccer');
       Database.delete(ids.get('Swim'), AccessLevel.SYSTEM_MODE);
@@ -249,7 +220,7 @@ private class SetupMatchTest {
   @IsTest
   static void anActivityClosedThisWeekGetsADotInTheCampsWords() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Database.insert(
         new WeekException__c(
@@ -278,7 +249,7 @@ private class SetupMatchTest {
   @IsTest
   static void anActivityClosedByItsPlaceGetsADotNamingThePlace() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Database.insert(
         new WeekException__c(
@@ -308,7 +279,7 @@ private class SetupMatchTest {
   @IsTest
   static void aFixedActivityAddedSinceCanBePlacedOneCellAtATime() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Test.startTest();
       addFixed(ids, 'Assembly', 'Period 1');
@@ -368,7 +339,7 @@ private class SetupMatchTest {
   @IsTest
   static void aFixedActivityWhereTheDirectorPlacedSomethingSaysWhatGoes() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Test.startTest();
       addFixed(ids, 'Assembly', 'Period 2');
@@ -401,7 +372,7 @@ private class SetupMatchTest {
   @IsTest
   static void aRenameShowsTheNewNameWithNoDot() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Database.update(
         new List<SObject>{
@@ -432,7 +403,7 @@ private class SetupMatchTest {
   @IsTest
   static void aRenameStillShowsAfterAnEdit() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       started(ids);
       rename(ids);
       Test.startTest();
@@ -467,7 +438,7 @@ private class SetupMatchTest {
   @IsTest
   static void aRenameIsWhatPublishPutsOut() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       SchedulePublish.Preview first = ManualBuildController.previewPublish(
         draftId
@@ -510,7 +481,7 @@ private class SetupMatchTest {
   @IsTest
   static void aBunkAndABlockRenamedAloneArePublishedToo() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       SchedulePublish.Preview first = ManualBuildController.previewPublish(
         draftId
@@ -557,7 +528,7 @@ private class SetupMatchTest {
   @IsTest
   static void aSaveMarksGoneOnlyWhatWasDeletedFromSetup() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       started(ids);
       Database.delete(ids.get('Swim'), AccessLevel.SYSTEM_MODE);
       Test.startTest();
@@ -610,7 +581,7 @@ private class SetupMatchTest {
   @IsTest
   static void aTimeBlockAddedIsOneChangeForTheDayAndKeepsWhatFits() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Test.startTest();
       ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
@@ -649,7 +620,7 @@ private class SetupMatchTest {
   @IsTest
   static void aGroupAwayThisWeekIsOneChangeForTheDayNamingWhatGoes() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Database.insert(
         new WeekException__c(
@@ -690,7 +661,7 @@ private class SetupMatchTest {
   @IsTest
   static void aGroupNowAtCampMorningsOnlyLosesItsAfternoon() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       place('Group B', 'Lunch', 'Soccer');
       Database.update(
@@ -715,7 +686,7 @@ private class SetupMatchTest {
   @IsTest
   static void aWeekSavedSinceThePreviewIsNotUpdated() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Test.startTest();
       addFixed(ids, 'Assembly', 'Period 1');
@@ -742,7 +713,7 @@ private class SetupMatchTest {
   @IsTest
   static void setupChangedAgainSinceThePreviewIsNotUpdated() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Test.startTest();
       Id assembly = addFixed(ids, 'Assembly', 'Period 1');
@@ -787,7 +758,7 @@ private class SetupMatchTest {
   @IsTest
   static void onlyAManualBuildDraftIsCompared() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Id versionId = ManualBuildController.saveVersion(draftId, 'Kept');
       Test.startTest();
@@ -804,17 +775,16 @@ private class SetupMatchTest {
   @IsTest
   static void aTimeBlockAtNewTimesIsOneChangeForTheDayAndUpdateTakesThem() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       // Renamed and moved half an hour, in the same order.
-      saveDeferred(
+      SetupMatchTestData.saveDeferred(
         new TimeBlock__c(
           Id = ids.get('Period 2'),
           Name = 'Second period',
           StartTime__c = Time.newInstance(10, 30, 0, 0),
           EndTime__c = Time.newInstance(11, 15, 0, 0)
-        ),
-        false
+        )
       );
       ManualBuildViews.DraftView view = ManualBuildController.getDraft(
         ids.get('Main'),
@@ -862,7 +832,7 @@ private class SetupMatchTest {
   @IsTest
   static void aGroupNoLongerInTheProgramSaysSo() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       // Group C has nothing else that would stop its delete.
       place('Group C', 'Period 2', 'Soccer');
@@ -886,9 +856,11 @@ private class SetupMatchTest {
   @IsTest
   static void aTimeBlockNoLongerSetUpSaysSo() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
-      saveDeferred(new TimeBlock__c(Id = ids.get('Period 2')), true);
+      SetupMatchTestData.deleteDeferred(
+        new TimeBlock__c(Id = ids.get('Period 2'))
+      );
       Test.startTest();
       SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
         draftId
@@ -908,7 +880,7 @@ private class SetupMatchTest {
   @IsTest
   static void aTimeBlockAddedInsideAPlacementSaysItsBlocksChanged() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       // Soccer runs Period 2 and Lunch for Group B; a period at 11 goes between them.
       SlotEdits.Result result = ManualBuildController.saveSlots(
@@ -951,11 +923,11 @@ private class SetupMatchTest {
   @IsTest
   static void aFixedActivityEndedSinceIsNotSetUpThereNow() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       // Start places Assembly in every group's Period 1.
       Id assembly = addFixed(ids, 'Assembly', 'Period 1');
       Id draftId = started(ids);
-      saveDeferred(new FixedActivity__c(Id = assembly), true);
+      SetupMatchTestData.deleteDeferred(new FixedActivity__c(Id = assembly));
       Test.startTest();
       SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
         draftId
@@ -979,7 +951,7 @@ private class SetupMatchTest {
   @IsTest
   static void aFixedActivityWhoseGroupChangedSaysWhyItsGroupChanged() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       // Start places Assembly in every group's Lunch.
       addFixed(ids, 'Assembly', 'Lunch');
       Id draftId = started(ids);
@@ -1018,11 +990,11 @@ private class SetupMatchTest {
   @IsTest
   static void aDayTheProgramNoLongerRunsIsOneChange() {
     System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
+      Map<String, Id> ids = SetupMatchTestData.camp();
       Id draftId = started(ids);
       Program__c main = new Program__c(Id = ids.get('Main'));
       main.put(SetTimePlan.dayField(Program__c.SObjectType, 'Monday'), false);
-      saveDeferred(main, false);
+      SetupMatchTestData.saveDeferred(main);
       Test.startTest();
       SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
         draftId
@@ -1036,6 +1008,92 @@ private class SetupMatchTest {
         SetupMatchTestData.dotsOf(preview)
           .get(mondayKey(ids, 'Group A', 'Period 2'))
       );
+    }
+  }
+
+  @IsTest
+  static void aWeekThatCantBeLaidOutFromSetupSaysWhyAndUpdatesNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetupMatchTestData.camp();
+      Id draftId = started(ids);
+      // Main has no time blocks now: the week can't be laid out from setup to compare.
+      SetupMatchTestData.deleteDeferred(
+        new TimeBlock__c(Id = ids.get('Period 1'))
+      );
+      SetupMatchTestData.deleteDeferred(
+        new TimeBlock__c(Id = ids.get('Period 2'))
+      );
+      SetupMatchTestData.deleteDeferred(
+        new TimeBlock__c(Id = ids.get('Lunch'))
+      );
+      String why = 'Add time blocks to Main first.';
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      String refused = SetupMatchTestData.refusalOf(draftId, preview);
+      Test.stopTest();
+      // Said, never "matches" and never guessed at: no changes, no dots.
+      Assert.areEqual(why, preview.problem);
+      Assert.isTrue(preview.changes.isEmpty(), JSON.serialize(preview));
+      Assert.isTrue(preview.dots.isEmpty(), JSON.serialize(preview));
+      Assert.areEqual(why, refused);
+      // Nothing was saved: the week is as it was.
+      Assert.areEqual(
+        preview.revisions,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+    }
+  }
+
+  @IsTest
+  static void newTimesTakenByAnUpdateArePublished() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetupMatchTestData.camp();
+      Id draftId = started(ids);
+      SchedulePublish.Preview first = ManualBuildController.previewPublish(
+        draftId
+      );
+      ManualBuildController.publish(draftId, first.revisions, null);
+      // Period 2 moves half an hour, name unchanged.
+      SetupMatchTestData.saveDeferred(
+        new TimeBlock__c(
+          Id = ids.get('Period 2'),
+          StartTime__c = Time.newInstance(10, 30, 0, 0),
+          EndTime__c = Time.newInstance(11, 15, 0, 0)
+        )
+      );
+      Test.startTest();
+      SetupMatch.Preview changes = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Assert.isNull(
+        makeChanges(draftId, SetupMatchTestData.keysOf(changes), changes)
+          .refused
+      );
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        draftId
+      );
+      SchedulePublish.Result result = ManualBuildController.publish(
+        draftId,
+        preview.revisions,
+        preview.published.id
+      );
+      Test.stopTest();
+      // No cell holds anything else, but staff would keep the old times: a change to publish.
+      Assert.areEqual(
+        new List<String>{
+          'New times: Period 2, 10:00 AM – 10:45 AM → 10:30 AM – 11:15 AM'
+        },
+        preview.changes
+      );
+      Assert.areEqual(1, preview.changeCount);
+      Assert.areEqual(1, preview.retimeCount);
+      Assert.areEqual(0, preview.renameCount);
+      Assert.isFalse(result.unchanged);
+      ScheduleGrid copy = ScheduleDays.read(result.published.id)[0].grid;
+      Assert.areEqual('10:30', copy.blocks[1].startTime);
+      Assert.areEqual('11:15', copy.blocks[1].endTime);
     }
   }
 }

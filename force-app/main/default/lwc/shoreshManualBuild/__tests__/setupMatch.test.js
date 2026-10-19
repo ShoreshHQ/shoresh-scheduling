@@ -957,6 +957,64 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(updateToMatchSetup.mock.calls[2][0].ask.versionKept).toBe(false);
   });
 
+  it("one opening keeps one version past the second update: every later one keeps none", async () => {
+    const fourth = {
+      ...FLAGPOLE_NOW,
+      key: "k4",
+      lines: [{ ...FLAGPOLE_NOW.lines[0] }]
+    };
+    const element = await render({
+      ...THREE_CHANGES,
+      changes: [...THREE_CHANGES.changes, fourth]
+    });
+    await openUpdate(element);
+    updateToMatchSetup.mockResolvedValueOnce({ ...made(), kept: true });
+    getSetupChanges.mockResolvedValue(
+      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2], fourth)
+    );
+    inDialog(element, '[data-key="k1"]').click();
+    await flush();
+    // The second and third keep none, so their answers say kept: false.
+    updateToMatchSetup.mockResolvedValueOnce(made());
+    getSetupChanges.mockResolvedValue(
+      leaving(THREE_CHANGES.changes[2], fourth)
+    );
+    inDialog(element, '[data-key="k2"]').click();
+    await flush();
+    updateToMatchSetup.mockResolvedValueOnce(made());
+    getSetupChanges.mockResolvedValue(leaving(fourth));
+    inDialog(element, '[data-key="k3"]').click();
+    await flush();
+    updateToMatchSetup.mockResolvedValueOnce(made());
+    getSetupChanges.mockResolvedValue(NOTHING);
+    inDialog(element, '[data-key="k4"]').click();
+    await flush();
+    expect(
+      updateToMatchSetup.mock.calls.map(([args]) => args.ask.versionKept)
+    ).toEqual([false, true, true, true]);
+  });
+
+  it("Update to match setup still opens when the week is read again while it reads", async () => {
+    const element = await render();
+    // Coming back to the window reads the week again; that read is slow.
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    window.dispatchEvent(new FocusEvent("focus"));
+    await flush();
+    // Pressed meanwhile: its read of the setup changes is slow too.
+    const asked = pending();
+    getSetupChanges.mockReturnValueOnce(asked.promise);
+    q(element, '[data-id="update-to-match"]').click();
+    await flush();
+    // The week arrives first and reads the setup changes again, overtaking the click's read.
+    reload.resolve(swimWeek());
+    await flush();
+    asked.resolve(PREVIEW);
+    await flush();
+    expect(dialog(element)).not.toBeNull();
+    expect(rowsIn(element)).toHaveLength(2);
+  });
+
   it("a version kept is remembered when setup changed again and the list stays open", async () => {
     const element = await render(THREE_CHANGES);
     await openUpdate(element);

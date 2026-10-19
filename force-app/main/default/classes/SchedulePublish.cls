@@ -54,6 +54,12 @@ public with sharing class SchedulePublish {
     public Integer changeCount = 0;
     @AuraEnabled
     public Integer moreLines = 0;
+    // Of changeCount: the bunks and time blocks renamed, and the time blocks at new times (the
+    // rest are cells).
+    @AuraEnabled
+    public Integer renameCount = 0;
+    @AuraEnabled
+    public Integer retimeCount = 0;
   }
 
   /** A publish done, or refused because the week or its published schedule changed since. */
@@ -130,6 +136,8 @@ public with sharing class SchedulePublish {
     result.changes = changes.lines;
     result.changeCount = changes.count;
     result.moreLines = changes.moreLines;
+    result.renameCount = changes.renames;
+    result.retimeCount = changes.retimes;
     result.published.changedSince = changes.count > 0;
     return result;
   }

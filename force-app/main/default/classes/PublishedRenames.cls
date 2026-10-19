@@ -2,10 +2,14 @@
  * The bunks and time blocks a draft names differently from the published schedule it would
  * replace (PublishedChanges), as lines a director reads: "Renamed: Group A → Bunk A". Each once
  * for the week, groups first, then time blocks, in the draft's order; a name is the one on its
- * first day. Compared exactly: a name's case is part of what campers read. Same days, same lines.
+ * first day. Then each time block at other times than published on any day (Update to match setup
+ * moves them; staff would keep the old times): "New times: Period 2, 9:00 AM – 9:45 AM → 9:30 AM –
+ * 10:15 AM", once for the week, by its first such day. A block named by its times says its new
+ * times in its rename already. Compared exactly: a name's case is part of what campers read.
+ * Same days, same lines.
  */
 public with sharing class PublishedRenames {
-  /** Each rename, a line and one change. */
+  /** Each rename, then each time block's new times: a line and one change each. */
   public static void addTo(
     PublishedChanges.Changes changes,
     List<ScheduleDays.DayGrid> published,
@@ -18,6 +22,14 @@ public with sharing class PublishedRenames {
       String nowName = now.names.get(key);
       if (wasName != null && nowName != null && !wasName.equals(nowName)) {
         changes.add('Renamed: ' + wasName + ' → ' + nowName, 1);
+        changes.renames++;
+      }
+    }
+    for (String key : now.keys) {
+      String line = key.startsWith('b|') ? now.newTimes(key, was) : null;
+      if (line != null) {
+        changes.add(line, 1);
+        changes.retimes++;
       }
     }
   }
@@ -26,6 +38,9 @@ public with sharing class PublishedRenames {
   private class Names {
     private List<String> keys = new List<String>();
     private Map<String, String> names = new Map<String, String>();
+    // Each time block on each day it is in: "b|id|date".
+    private Map<String, ScheduleGrid.Block> blocksOn = new Map<String, ScheduleGrid.Block>();
+    private List<Date> dates = new List<Date>();
 
     private Names(List<ScheduleDays.DayGrid> days) {
       List<ScheduleDays.DayGrid> sorted = byDate(days);
@@ -34,11 +49,13 @@ public with sharing class PublishedRenames {
         if (day.grid == null) {
           continue;
         }
+        dates.add(day.day);
         for (ScheduleGrid.GroupRef grp : day.grid.groups) {
           add(keys, 'g|' + grp.id, grp.name);
         }
         for (ScheduleGrid.Block block : day.grid.blocks) {
           add(blockKeys, 'b|' + block.id, block.name);
+          blocksOn.put('b|' + block.id + '|' + day.day, block);
         }
       }
       keys.addAll(blockKeys);
@@ -49,6 +66,30 @@ public with sharing class PublishedRenames {
         keyList.add(key);
         names.put(key, name);
       }
+    }
+
+    /**
+     * "New times: Period 2, 9:00 AM – 9:45 AM → 9:30 AM – 10:15 AM" for the first day this time
+     * block's times differ from was's, or null when they never do (or a side has no times).
+     */
+    private String newTimes(String key, Names was) {
+      for (Date onDay : dates) {
+        ScheduleGrid.Block nowBlock = blocksOn.get(key + '|' + onDay);
+        ScheduleGrid.Block wasBlock = was.blocksOn.get(key + '|' + onDay);
+        if (nowBlock == null || wasBlock == null) {
+          continue;
+        }
+        String nowTimes = BlockRange.timesOf(nowBlock);
+        String wasTimes = BlockRange.timesOf(wasBlock);
+        if (nowTimes == null || wasTimes == null || nowTimes.equals(wasTimes)) {
+          continue;
+        }
+        // Named by its times: its rename says the new times.
+        return nowTimes.equals(nowBlock.name)
+          ? null
+          : 'New times: ' + nowBlock.name + ', ' + wasTimes + ' → ' + nowTimes;
+      }
+      return null;
     }
   }
 

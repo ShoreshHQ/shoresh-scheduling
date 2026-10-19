@@ -703,8 +703,15 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
    activity renamed since is a change, since a Manual Build draft is published by setup's names
    now, as the screen shows it (`ManualBuildNamesNow`, part 6 item 2); so is a bunk or time block
-   renamed since, one line each for the week, first: "Renamed: Group A → Bunk A" (`PublishedRenames`; review round 4:
-   otherwise a rename alone would never reach staff); locks are not). The screen adds what its counters and dots
+   renamed since, one line each for the week, first, counted as one change each:
+   "Renamed: Group A → Bunk Aleph" (`PublishedRenames`; review round 4, wording kept by
+   coordinator call in review round 5: otherwise a rename alone would never reach staff); so is a
+   time block at new times (Update to match setup moves them, review round 5), one line for the
+   week after the renames: "New times: Period 2, 10:00 AM – 10:45 AM → 10:30 AM – 11:15 AM" (a
+   block named by its times says them in its rename instead); locks are not). The question's
+   first line counts each kind in plain words, never a rename as a cell: "This replaces the
+   published schedule. 1 cell and 1 name change:", "… 1 time block changes:" (the camp's word;
+   `renameCount` and `retimeCount` of `changeCount`). The screen adds what its counters and dots
    show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
    two only when the camp has those targets; lines the director accepted are not counted, as the

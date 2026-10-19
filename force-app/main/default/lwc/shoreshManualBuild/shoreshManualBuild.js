@@ -97,6 +97,8 @@ export default class ShoreshManualBuild extends LightningElement {
   // What setup changed since the week started (SetupMatch.Preview), for the week shown, or null.
   setupPreview = null;
   setupTicket = 0;
+  // The newest read of it (a promise), or null.
+  setupRead = null;
   // The "couldn't check against setup" message while it is shown, so a later read that works
   // clears it and nothing else.
   setupError = null;
@@ -990,7 +992,14 @@ export default class ShoreshManualBuild extends LightningElement {
    * no more). An answer for a week no longer shown, or older than the latest ask, is dropped.
    * Returns the preview, or null.
    */
-  async loadSetupChanges() {
+  loadSetupChanges() {
+    const read = this.readSetupChanges();
+    // The newest read, for one that finds it was overtaken (handleSetupMatch).
+    this.setupRead = read;
+    return read;
+  }
+
+  async readSetupChanges() {
     const scheduleId =
       this.schedule && this.schedule.schedule
         ? this.schedule.schedule.id
@@ -1098,7 +1107,10 @@ export default class ShoreshManualBuild extends LightningElement {
     const week = this.weekKey;
     this.setupWorking = true;
     try {
-      const preview = await this.loadSetupChanges();
+      const preview = await this.newestSetupChanges(
+        this.loadSetupChanges(),
+        week
+      );
       if (week !== this.weekKey || !preview) {
         return;
       }
@@ -1117,6 +1129,18 @@ export default class ShoreshManualBuild extends LightningElement {
         this.focusOn = "update-to-match";
       }
     }
+  }
+
+  /**
+   * A read's answer, or, when a newer read overtook it (the week read again on coming back to the
+   * window), that read's: the one shown. So a click waits for it rather than doing nothing.
+   */
+  async newestSetupChanges(read, week) {
+    const preview = await read;
+    if (!preview && week === this.weekKey && this.setupRead !== read) {
+      return this.newestSetupChanges(this.setupRead, week);
+    }
+    return preview;
   }
 
   handleSetupClose() {
