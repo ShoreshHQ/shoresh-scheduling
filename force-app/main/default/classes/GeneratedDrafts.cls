@@ -1,7 +1,8 @@
 /**
  * Generated Schedule's draft: one per program and week (Status Draft, Origin Generated), beside
  * Manual Build's (Greg, 2026-10-17: two separate schedules). It is made by the first save of a
- * generated week, under the program's lock, as ManualDrafts.start does. Runs in user mode.
+ * generated week, or by a Restore on a week not generated yet (startFrom), under the program's
+ * lock, as ManualDrafts.start does. Runs in user mode.
  */
 public with sharing class GeneratedDrafts {
   public static final String GENERATED = 'Generated';
@@ -95,6 +96,38 @@ public with sharing class GeneratedDrafts {
       throw notHere(draft);
     }
     return draft;
+  }
+
+  /**
+   * Restore on a week not generated yet (Greg's decision 9: any version opens here): the version
+   * becomes the week's Generated draft, as ManualVersions.restoreInto brings it into one (its
+   * option, its locks, the placed cells of a version it didn't build locked). There is nothing to keep
+   * first. False, with nothing written, when the week got its Generated draft meanwhile; the
+   * screen then offers Reload.
+   */
+  public static Boolean startFrom(Id programId, Id weekId, Id versionId) {
+    lockProgram(programId);
+    if (find(programId, weekId) != null) {
+      return false;
+    }
+    Savepoint beforeStart = Database.setSavepoint();
+    try {
+      Schedule__c draft = new Schedule__c(
+        Program__c = programId,
+        Week__c = weekId,
+        Name = NAME,
+        Status__c = ManualDrafts.DRAFT,
+        Origin__c = GENERATED,
+        EngineOption__c = 1
+      );
+      Database.insert(draft, AccessLevel.USER_MODE);
+      // A new draft has no days, so the revision it was "seen" at is empty.
+      ManualVersions.restoreInto(lockedToEdit(draft.Id), versionId, '');
+      return true;
+    } catch (Exception e) {
+      Database.rollback(beforeStart);
+      throw e;
+    }
   }
 
   private static ShoreshException notHere(Schedule__c draft) {
