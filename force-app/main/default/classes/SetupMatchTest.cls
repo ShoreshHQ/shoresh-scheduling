@@ -605,19 +605,21 @@ private class SetupMatchTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
       Id draftId = started(ids);
-      Database.delete(ids.get('Group A'), AccessLevel.SYSTEM_MODE);
+      // Group C has nothing else that would stop its delete.
+      place('Group C', 'Period 2', 'Soccer');
+      Database.delete(ids.get('Group C'), AccessLevel.SYSTEM_MODE);
       Test.startTest();
       SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
         draftId
       );
       Test.stopTest();
       SetupMatch.Change monday = SetupMatchTestData.mondayChange(preview);
-      Assert.areEqual('Monday: Group A no longer in Main', monday.summary);
-      Assert.areEqual('Swim', monday.lines[0].before);
+      Assert.areEqual('Monday: Group C no longer in Main', monday.summary);
+      Assert.areEqual('Soccer', monday.lines[0].before);
       Assert.areEqual(
         'No longer in Main',
         SetupMatchTestData.dotsOf(preview)
-          .get(mondayKey(ids, 'Group A', 'Period 2'))
+          .get(mondayKey(ids, 'Group C', 'Period 2'))
       );
     }
   }
@@ -645,7 +647,7 @@ private class SetupMatchTest {
   }
 
   @IsTest
-  static void aTimeBlockAddedInsideAPlacementSaysItsPeriodsChanged() {
+  static void aTimeBlockAddedInsideAPlacementSaysItsBlocksChanged() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();
       Id draftId = started(ids);
@@ -676,11 +678,11 @@ private class SetupMatchTest {
       Test.stopTest();
       Map<String, String> dots = SetupMatchTestData.dotsOf(preview);
       Assert.areEqual(
-        'Its periods changed',
+        'Its time blocks changed',
         dots.get(mondayKey(ids, 'Group B', 'Period 2'))
       );
       Assert.areEqual(
-        'Its periods changed',
+        'Its time blocks changed',
         dots.get(mondayKey(ids, 'Group B', 'Lunch'))
       );
       Assert.isFalse(dots.containsKey(mondayKey(ids, 'Group A', 'Period 2')));
