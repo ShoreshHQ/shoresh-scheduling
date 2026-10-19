@@ -372,6 +372,30 @@ private class GeneratedVersionsTest {
   }
 
   @IsTest
+  static void anImportedVersionComesInWithItsPlacedCellsLocked() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      // An imported week (Origin Imported): made by hand somewhere else, so not generated here.
+      Id imported = manualVersionWithSwim(ids);
+      update new Schedule__c(Id = imported, Origin__c = 'Imported');
+      Boolean restored = GeneratedScheduleController.restoreVersion(
+        draftId,
+        imported,
+        revisionNow(draftId)
+      );
+      Test.stopTest();
+      Assert.isTrue(restored);
+      // Its placed cell is a hand choice, so it comes in locked; its Open cell does not.
+      Assert.isTrue(period2Locked(draftId));
+      Assert.isFalse(
+        lockedAt(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2)
+      );
+    }
+  }
+
+  @IsTest
   static void aWeekNotGeneratedYetCanStartFromAVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
@@ -489,6 +513,45 @@ private class GeneratedVersionsTest {
       Assert.areEqual(
         0,
         [SELECT COUNT() FROM Schedule__c WHERE Id = :plain WITH SYSTEM_MODE]
+      );
+    }
+  }
+
+  @IsTest
+  static void aPublishedCopyRestoresWithTheOptionItWasBuiltWith() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      // Option 1, Gym games in Period 2, published.
+      Id draftId = GeneratedTestData.generated();
+      SchedulePublish.Preview preview = GeneratedScheduleController.previewPublish(
+        draftId
+      );
+      SchedulePublish.Result published = GeneratedScheduleController.publish(
+        draftId,
+        preview.revisions,
+        null
+      );
+      Test.startTest();
+      // Try another moves the week on to option 3; Unpublish keeps option 1's copy as history.
+      tryAnother(3, 'Soccer');
+      GeneratedScheduleController.unpublish(draftId, published.published.id);
+      Id copyId = published.published.id;
+      Boolean restored = GeneratedScheduleController.restoreVersion(
+        draftId,
+        copyId,
+        revisionNow(draftId)
+      );
+      Test.stopTest();
+      Assert.isTrue(restored);
+      Assert.areEqual(1, version(copyId).EngineOption__c);
+      // The week takes the copy's option back with its cells (ADR 0010 §49, §50).
+      GeneratedInputs.Inputs after = GeneratedTestData.inputs();
+      Assert.areEqual(1, after.option);
+      Assert.areEqual(
+        GeneratedTestData.a('Gym games'),
+        GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0))[
+          GeneratedTestData.PERIOD_2
+        ]
       );
     }
   }

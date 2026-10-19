@@ -50,9 +50,9 @@ public with sharing class ManualVersions {
   /**
    * The same, into a draft its screen has locked (Generated: GeneratedDrafts.lockedToEdit). The
    * version's days come as they are, locks included (ADR 0010 §32, §43); a Generated draft also
-   * takes the version's option when it has one. A Manual Build version restored into a Generated
-   * draft comes in with its placed cells locked: each was a hand choice, and a hand choice is a
-   * lock (Greg, 2026-10-19; ADR 0010 §50).
+   * takes the version's option when it has one. A version Generated Schedule didn't build (Manual
+   * Build's or an imported one) restored into a Generated draft comes in with its placed cells
+   * locked: each was a hand choice, and a hand choice is a lock (Greg, 2026-10-19; ADR 0010 §50).
    */
   public static Id restoreInto(
     Schedule__c draft,
@@ -216,15 +216,16 @@ public with sharing class ManualVersions {
   }
 
   /**
-   * A Manual Build version restored on Generated Schedule: its placed cells come in locked, since
-   * a hand choice is a lock (Greg, 2026-10-19; ADR 0010 §32).
+   * A version not built by Generated Schedule (Manual Build's, an imported one, or one from before
+   * Origin) restored on Generated Schedule: its placed cells come in locked, since none was
+   * generated and a hand choice is a lock (Greg, 2026-10-19; ADR 0010 §32, §50).
    */
   private static void lockHandChoices(
     Schedule__c draft,
     Schedule__c version,
     List<ScheduleDays.DayGrid> days
   ) {
-    if (isGenerated(draft) && version.Origin__c == ManualDrafts.MANUAL) {
+    if (isGenerated(draft) && version.Origin__c != GeneratedDrafts.GENERATED) {
       GeneratedLockCells.lockPlaced(days);
     }
   }

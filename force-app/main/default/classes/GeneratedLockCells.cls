@@ -109,7 +109,7 @@ public with sharing class GeneratedLockCells {
   /**
    * Every placed cell of these days locked, as a hand edit locks it (lockIfFilled): Open cells
    * stay unlocked, so a Rebuild fills around the rest; fixed and recurring activities are never
-   * locked. A Manual Build version restored on Generated Schedule (ManualVersions).
+   * locked. A version Generated Schedule didn't build, restored there (ManualVersions).
    */
   public static void lockPlaced(List<ScheduleDays.DayGrid> days) {
     for (ScheduleDays.DayGrid day : days) {

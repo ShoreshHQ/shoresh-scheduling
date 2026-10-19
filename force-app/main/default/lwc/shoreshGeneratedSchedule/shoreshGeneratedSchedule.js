@@ -135,6 +135,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // The cells the open counter lights up ("date|groupId|blockId"), generated route.
   lit = new Set();
   focusAfterRender = null;
+  // Where focus goes once a versions action is over (its control may be gone meanwhile).
+  focusAfterVersions = null;
   // The last check and what it was worked out from (changed in place: never @track it).
   checkMemo = { inputs: null, result: null };
   // The week's published schedule ({ id, publishedAt, publishedBy, changedSince }), or null.
@@ -1642,6 +1644,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.versionsWorking = true;
     this.error = null;
     this.errorFromRead = false;
+    this.focusAfterVersions = null;
     try {
       await work();
       return true;
@@ -1650,6 +1653,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return false;
     } finally {
       await this.loadVersions();
+      if (this.focusAfterVersions) {
+        // Set as the hold ends, so the render that enables its button focuses it.
+        this.focusAfterRender = { selector: this.focusAfterVersions };
+        this.focusAfterVersions = null;
+      }
       this.versionsWorking = false;
       const readNow = this.readAfterRun && !this.conflict;
       this.readAfterRun = false;
@@ -1735,6 +1743,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loaded = week;
       this.publishState = week.published || null;
       this.showRestored(restored, week);
+      if (!loaded.scheduleId) {
+        // On a week not generated yet the Versions list goes with the start: focus goes to
+        // Rebuild, as after a first Generate.
+        this.focusAfterVersions = `[data-action="${ACTION.REBUILD}"]`;
+      }
     });
   }
 

@@ -994,11 +994,14 @@ copy that was ever published is never deleted (decision 0002, `PublishedGuard`).
     replaced copy later brings its locks back"); a Restore is the director's own choice of a
     whole week, not something generated, so the version's locks are the director's locks. The
     week takes the version's option when it has one (a Manual Build version has none: the week
-    keeps its own). A Manual Build version has no locks (Manual Build never locks, §33), but every
+    keeps its own; a _Published …_ copy of a Generated week keeps the option it was published
+    with, `SchedulePublish`). A Manual Build version has no locks (Manual Build never locks, §33), but every
     cell placed in it was placed by hand, so it comes in with its placed cells locked (Greg's
     decision, 2026-10-19, §32; `GeneratedLockCells.lockPlaced`, as a hand edit locks:
     `GeneratedLockCells.lockIfFilled`); its Open cells stay unlocked, so the next Rebuild fills
-    only those. As on Manual Build, the screen
+    only those. The same holds for any version Generated Schedule didn't build (Origin not
+    Generated: an imported week, one copied, or one from before Origin), for the same reason: none of
+    its cells was generated. (Applied by the review of #74; Greg to confirm for imported weeks.) As on Manual Build, the screen
     sends back the revision it read the week at; a week saved since is refused with nothing
     changed (`restoreVersion` answers false) and the screen shows its conflict box: _Someone else
     changed this week since you opened it, so nothing was restored._ · **Reload**. Otherwise the
@@ -1027,8 +1030,9 @@ copy that was ever published is never deleted (decision 0002, `PublishedGuard`).
     is on screen, `ScheduleScreen.jsx`), since any version opens on either screen (Greg's
     decision 9). There **Restore** makes the version the week's Generated draft
     (`GeneratedScheduleController.restoreVersionAsNew` → `GeneratedDrafts.startFrom`: under the
-    program's lock, as a first Generate; the same copy as §50, a Manual Build version's placed
-    cells locked; nothing to keep first) and the week is shown as after any Restore. When the
+    program's lock, as a first Generate; the same copy as §50, the placed cells of a version
+    Generated Schedule didn't build locked; nothing to keep first) and the week is shown as after any Restore, focus going to Rebuild
+    (the list went with the start), as after a first Generate. When the
     week was generated meanwhile nothing is written (`false`) and the screen shows the conflict
     box with **Reload**. Rename works there; Save version and delete don't show (there is no week
     yet to save, or to delete a version from; `c-shoresh-versions` `no-draft`).
@@ -1045,7 +1049,9 @@ lock and option it had; a week saved since is refused with nothing written; a re
 back and a Rebuild that changes its cell is refused; a build from before the Restore is a
 conflict; a Manual Build version restores here with its placed cell locked (its Open cell, the
 fixed Flagpole and the recurring Rest not) and the week's own option, leaving Manual Build's
-draft alone; a week not generated yet starts from a version (its placed cell locked, nothing
+draft alone; an imported version restores with its placed cell locked too; a
+_Published …_ copy of option 1, unpublished after Try another moved the week to option 3,
+restores with option 1 and its cells; a week not generated yet starts from a version (its placed cell locked, nothing
 kept first), a second start is refused with nothing changed, and a version of another week
 starts nothing; a copy unpublished is listed as _Published …_, can be renamed and is
 never deleted, while a plain version is; restoring the copy that is published leaves it not
@@ -1058,7 +1064,8 @@ saved again), a refused Restore with Reload, delete, rename, refusals; every hol
 list read again after a build, Publish and Unpublish; a list for another week, or an older
 list answering late, dropped; a week not generated yet lists its versions (Restore and rename,
 no Save version or delete; none shown when it has none), Restore there makes it the week's
-Generated Schedule, and a refused one offers Reload; a Restore whose week is read late is shown
+Generated Schedule (focus on Rebuild after), its list waits while that Restore is on its way and
+renames, and a refused one offers Reload; a Restore whose week is read late is shown
 as restored once only. Each connection was taken away once and a test failed.
 
 ## Choices that are hard to undo after release

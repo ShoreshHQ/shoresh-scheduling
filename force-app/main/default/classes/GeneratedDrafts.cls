@@ -101,7 +101,7 @@ public with sharing class GeneratedDrafts {
   /**
    * Restore on a week not generated yet (Greg's decision 9: any version opens here): the version
    * becomes the week's Generated draft, as ManualVersions.restoreInto brings it into one (its
-   * option, its locks, a Manual Build version's placed cells locked). There is nothing to keep
+   * option, its locks, the placed cells of a version it didn't build locked). There is nothing to keep
    * first. False, with nothing written, when the week got its Generated draft meanwhile; the
    * screen then offers Reload.
    */

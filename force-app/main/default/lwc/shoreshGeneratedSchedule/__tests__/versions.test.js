@@ -365,6 +365,33 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(lockAt(element, "0-1")).toBe("Locked");
     expect(versions(element).openId).toBe(MINE);
     expect(notice(element)).toBe("Restored Before the trip.");
+    // The list and its button went with the start: focus goes to Rebuild, as after Generate.
+    await until(
+      () => element.shadowRoot.activeElement === action(element, "Rebuild")
+    );
+    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+  });
+
+  it("…the list there waits while its Restore is on its way", async () => {
+    const element = await render(notGenerated());
+    expect(versions(element).busy).toBe(false);
+    restoreVersionAsNew.mockReturnValue(new Promise(() => {}));
+    await restore(element);
+    expect(versions(element).busy).toBe(true);
+  });
+
+  it("…and renames a version there", async () => {
+    const element = await render(notGenerated());
+    renameSchedule.mockResolvedValue(undefined);
+    getVersions.mockClear();
+    const onDone = jest.fn();
+    await fire(element, "rename", { id: MINE, name: "Trip week", onDone });
+    expect(renameSchedule).toHaveBeenCalledWith({
+      scheduleId: MINE,
+      name: "Trip week"
+    });
+    expect(onDone).toHaveBeenCalledWith(true);
+    expect(getVersions).toHaveBeenCalledTimes(1);
   });
 
   it("…refused when the week was generated meanwhile: nothing changed, Reload offered", async () => {
