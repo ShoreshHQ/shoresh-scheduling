@@ -915,6 +915,30 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(notice(element)).toBe("Deleted Before the trip.");
   });
 
+  it("after a delete, focus goes to the next version once the list without it is back", async () => {
+    const element = await render();
+    deleteVersion.mockResolvedValue(undefined);
+    const list = slow();
+    getVersions.mockReturnValueOnce(list.promise);
+    await openList(element);
+    const panel = versions(element).shadowRoot;
+    const del = panel.querySelector('[data-action="delete"]');
+    del.click();
+    await flush();
+    del.click();
+    await flush();
+    // Deleted on the server, the list not back yet: still busy, so focus waits for it.
+    expect(deleteVersion).toHaveBeenCalled();
+    expect(versions(element).busy).toBe(true);
+    list.answer([VERSIONS[1]]);
+    await flush();
+    const restoreNext = panel.querySelector('[data-action="open"]');
+    expect(restoreNext.getAttribute("aria-label")).toBe(
+      "Restore Published Oct 18, 10:04 AM"
+    );
+    expect(panel.activeElement).toBe(restoreNext);
+  });
+
   it("a refused delete says why", async () => {
     const element = await render();
     deleteVersion.mockRejectedValue({

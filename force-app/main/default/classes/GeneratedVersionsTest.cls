@@ -396,6 +396,44 @@ private class GeneratedVersionsTest {
   }
 
   @IsTest
+  static void anOpenCellLockedToKeepItEmptyStaysLocked() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Test.startTest();
+      // A Generated week with Group B's Period 2 locked empty, restored on Manual Build and
+      // saved there again: a Manual Build version that carries that lock (ADR 0010 §32).
+      Id manualVersion = manualVersionWithSwim(ids);
+      ScheduleDays.DayGrid monday = ScheduleDays.read(manualVersion)[0];
+      ScheduleGridLocks.lock(
+        monday.grid,
+        new List<Integer>{
+          GeneratedTestData.GROUP_B,
+          GeneratedTestData.PERIOD_2
+        }
+      );
+      ScheduleDaySaves.write(
+        manualVersion,
+        new List<ScheduleDaySaves.DaySave>{
+          new ScheduleDaySaves.DaySave(monday.day, monday.grid, monday.revision)
+        }
+      );
+      Boolean restored = GeneratedScheduleController.restoreVersion(
+        draftId,
+        manualVersion,
+        revisionNow(draftId)
+      );
+      Test.stopTest();
+      Assert.isTrue(restored);
+      // The placed cell comes in locked; the Open cell keeps its lock, so a Rebuild leaves it empty.
+      Assert.isTrue(period2Locked(draftId));
+      Assert.isTrue(
+        lockedAt(draftId, GeneratedTestData.GROUP_B, GeneratedTestData.PERIOD_2)
+      );
+    }
+  }
+
+  @IsTest
   static void aWeekNotGeneratedYetCanStartFromAVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();

@@ -685,7 +685,9 @@ taken out; the Apex tests run only in CI.
     locks included, with one exception (**Greg's decision, 2026-10-19**): a Manual Build version
     restored on Generated Schedule brings its placed (filled) cells in **locked**, since each was
     a hand choice and a hand choice is a lock (decision 2), so a Rebuild fills only around them.
-    Its Open cells stay unlocked, and fixed and recurring activities are never locked (§34).
+    Its Open cells are left as they are (an Open cell locked to keep it empty, which a Generated
+    version taken through Manual Build can carry, stays locked), and fixed and recurring
+    activities are never locked (§34).
     Restoring a Generated version keeps that version's own locks, as before (§50).
 33. **Hand edits are locks** (decision 2). A hand edit on the Generated draft is Manual Build's
     slot save (`GeneratedScheduleController.saveSlots` → `SlotSaves.saveOnGenerated`: the same
@@ -998,8 +1000,9 @@ copy that was ever published is never deleted (decision 0002, `PublishedGuard`).
     with, `SchedulePublish`). A Manual Build version has no locks (Manual Build never locks, §33), but every
     cell placed in it was placed by hand, so it comes in with its placed cells locked (Greg's
     decision, 2026-10-19, §32; `GeneratedLockCells.lockPlaced`, as a hand edit locks:
-    `GeneratedLockCells.lockIfFilled`); its Open cells stay unlocked, so the next Rebuild fills
-    only those. The same holds for any version Generated Schedule didn't build (Origin not
+    `GeneratedLockCells.lockIfFilled`); its unlocked Open cells stay unlocked, so the next Rebuild
+    fills only those, and an Open cell locked to keep it empty stays locked (a Generated version
+    restored on Manual Build and saved there again keeps that lock, §32). The same holds for any version Generated Schedule didn't build (Origin not
     Generated: an imported week, one copied, or one from before Origin), for the same reason: none of
     its cells was generated. (Applied by the review of #74; Greg to confirm for imported weeks.) As on Manual Build, the screen
     sends back the revision it read the week at; a week saved since is refused with nothing
@@ -1049,7 +1052,8 @@ lock and option it had; a week saved since is refused with nothing written; a re
 back and a Rebuild that changes its cell is refused; a build from before the Restore is a
 conflict; a Manual Build version restores here with its placed cell locked (its Open cell, the
 fixed Flagpole and the recurring Rest not) and the week's own option, leaving Manual Build's
-draft alone; an imported version restores with its placed cell locked too; a
+draft alone; an imported version restores with its placed cell locked too; an Open cell a
+version not built here carries locked to keep it empty stays locked; a
 _Published …_ copy of option 1, unpublished after Try another moved the week to option 3,
 restores with option 1 and its cells; a week not generated yet starts from a version (its placed cell locked, nothing
 kept first), a second start is refused with nothing changed, and a version of another week
