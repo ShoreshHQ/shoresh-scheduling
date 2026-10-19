@@ -955,6 +955,87 @@ describe("Publish on the Generated Schedule screen", () => {
 
   // The box counts what the counters count now, the lines the director accepted aside (as on
   // Manual Build), not the week's checks alone.
+  it("an open Publish box goes when another week is shown", async () => {
+    const element = await render(openWeek());
+    previewPublish.mockResolvedValue(preview());
+    await clickPublish(element);
+    expect(ask(element).heading).toBe("Publish Week 1?");
+    await showWeek2(element, cleanWeek());
+    expect(ask(element)).toBeNull();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("an open Unpublish box goes when another week is shown", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublishButton(element).click();
+    await flush();
+    expect(unpublishAsk(element).heading).toBe("Unpublish Week 1?");
+    await showWeek2(element, cleanWeek({ published: PUBLISHED }));
+    expect(unpublishAsk(element)).toBeNull();
+    expect(unpublish).not.toHaveBeenCalled();
+  });
+
+  it("an open Publish box goes when the season read again leaves no week to show", async () => {
+    const element = await render(openWeek());
+    previewPublish.mockResolvedValue(preview());
+    await clickPublish(element);
+    expect(ask(element)).not.toBeNull();
+    element.setup = { ...SETUP, weeks: [] };
+    await flush();
+    expect(ask(element)).toBeNull();
+  });
+
+  it("an open Unpublish box goes when the season read again leaves no week to show", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublishButton(element).click();
+    await flush();
+    expect(unpublishAsk(element)).not.toBeNull();
+    element.setup = { ...SETUP, weeks: [] };
+    await flush();
+    expect(unpublishAsk(element)).toBeNull();
+  });
+
+  it("pressing Publish again clears the last publish's error", async () => {
+    const element = await render(cleanWeek());
+    previewPublish.mockRejectedValueOnce({
+      body: { message: "Something went wrong." }
+    });
+    await clickPublish(element);
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "Week 1 was not published."
+    );
+    previewPublish.mockResolvedValue(preview());
+    publish.mockResolvedValue({
+      published: PUBLISHED,
+      draftChanged: false,
+      publishedChanged: false,
+      unchanged: false
+    });
+    await clickPublish(element);
+    expect(notice(element)).toBe("Published Week 1.");
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
+  it("pressing Unpublish again clears the last unpublish's error", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublish.mockRejectedValueOnce({
+      body: { message: "Something went wrong." }
+    });
+    unpublishButton(element).click();
+    await flush();
+    await answer(unpublishAsk(element), true);
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "Week 1 was not unpublished."
+    );
+    unpublish.mockResolvedValue({ publishedChanged: false });
+    unpublishButton(element).click();
+    await flush();
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+    await answer(unpublishAsk(element), true);
+    expect(notice(element)).toBe("Unpublished Week 1.");
+    expect(q(element, '[data-id="build-error"]')).toBeNull();
+  });
+
   it("asks with the counters' own lines: one of two still needed lines accepted leaves 1", async () => {
     const element = await render(owedWeek());
     const checks = q(element, "c-shoresh-week-checks");

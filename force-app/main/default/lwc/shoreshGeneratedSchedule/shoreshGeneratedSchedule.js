@@ -309,6 +309,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loaded = null;
       this.loadedFor = null;
       this.publishing = false;
+      // No week shown: a publish question open for the last one goes (nothing was sent).
+      this.publishAsk = null;
+      this.unpublishAsk = null;
       this.reading = false;
       this.loading = false;
       this.reloading = null;
