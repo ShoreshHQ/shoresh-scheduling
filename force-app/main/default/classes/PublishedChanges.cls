@@ -2,8 +2,9 @@
  * What changes when a week is published again: each cell (a group, a day, a time block) whose
  * activity differs between the published schedule and the draft, as a line a director reads
  * ("Group A · Monday · Period 2: Swim → Archery"). Neighbouring time blocks with the same change
- * share one line ("Period 1–Period 2"). A cell is matched by its group's and time block's records, so a
- * renamed bunk or block is the same cell; one only one side has is Open on the other. An activity
+ * share one line, named as the rest of the app names a run of blocks ("Period 1 – Period 2", or
+ * "9:00 AM – 10:30 AM" when a block is named by its times; BlockRange). A cell is matched by its
+ * group's and time block's records, so a renamed bunk or block is the same cell; one only one side has is Open on the other. An activity
  * renamed since is a change (its new name is what would be published). Locks are not compared:
  * they are how a draft is built, not what campers do. Same days, same lines.
  */
@@ -70,7 +71,7 @@ public with sharing class PublishedChanges {
     private List<String> groupIds = new List<String>();
     private Map<String, String> groupNames = new Map<String, String>();
     private List<String> blockIds = new List<String>();
-    private Map<String, String> blockNames = new Map<String, String>();
+    private Map<String, ScheduleGrid.Block> blocks = new Map<String, ScheduleGrid.Block>();
     private Map<String, PublishedCells.Item> wasCells;
     private Map<String, PublishedCells.Item> nowCells;
 
@@ -100,9 +101,9 @@ public with sharing class PublishedChanges {
         }
       }
       for (ScheduleGrid.Block block : grid.blocks) {
-        if (!blockNames.containsKey(block.id)) {
+        if (!blocks.containsKey(block.id)) {
           blockIds.add(block.id);
-          blockNames.put(block.id, block.name);
+          blocks.put(block.id, block);
         }
       }
     }
@@ -155,14 +156,11 @@ public with sharing class PublishedChanges {
     }
 
     private String lineOf(String groupId, Run run) {
-      String blocks = run.first == run.last
-        ? blockNames.get(run.first)
-        : blockNames.get(run.first) + '–' + blockNames.get(run.last);
       return groupNames.get(groupId) +
         ' · ' +
         dayName +
         ' · ' +
-        blocks +
+        BlockRange.of(blocks.get(run.first), blocks.get(run.last)) +
         ': ' +
         run.change;
     }

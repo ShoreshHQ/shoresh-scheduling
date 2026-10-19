@@ -828,6 +828,8 @@ private class ImportUndoTest {
         FROM Program__c
         WHERE Season__c = :season.Id
       ];
+      // Written directly, as Publish would (PublishedGuard).
+      PublishedGuard.allow();
       Database.insert(
         new Schedule__c(
           Program__c = main.Id,
@@ -864,7 +866,10 @@ private class ImportUndoTest {
         WHERE Program__r.Season__c = :season.Id
       ];
       version.Status__c = 'Published';
+      // Written directly, as Publish would (PublishedGuard).
+      PublishedGuard.allow();
       Database.update(version, AccessLevel.SYSTEM_MODE);
+      PublishedGuard.done();
       Test.startTest();
       ImportUndo.Result undone = ImportController.undoImport(result.importId);
       Test.stopTest();

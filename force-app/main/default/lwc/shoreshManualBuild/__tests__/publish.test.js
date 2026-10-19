@@ -4,6 +4,7 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import previewPublish from "@salesforce/apex/ManualBuildController.previewPublish";
 import publish from "@salesforce/apex/ManualBuildController.publish";
+import unpublish from "@salesforce/apex/ManualBuildController.unpublish";
 import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersion";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import { buildTerms } from "c/shoreshTerms";
@@ -75,6 +76,9 @@ jest.mock(
   }
 );
 jest.mock("@salesforce/apex/ManualBuildController.publish", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/ManualBuildController.unpublish", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/SchedulesController.getVersions", () => apex(), {
@@ -670,5 +674,163 @@ describe("c-shoresh-manual-build: Publish", () => {
     await clickPublish(element);
     expect(q(element, '[data-id="build-error"]')).not.toBeNull();
     expect(element.shadowRoot.activeElement).toBe(publishButton());
+  });
+});
+
+describe("c-shoresh-manual-build: Unpublish", () => {
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+  });
+
+  const unpublishButton = (element) => q(element, '[data-id="unpublish"]');
+  const unpublishAsk = (element) => q(element, '[data-id="unpublish-ask"]');
+  async function clickUnpublish(element) {
+    unpublishButton(element).click();
+    await flush();
+  }
+  async function answerUnpublish(element, yes) {
+    unpublishAsk(element).dispatchEvent(
+      new CustomEvent("answer", { detail: { yes } })
+    );
+    await flush();
+  }
+  const UNPUBLISHED = {
+    published: null,
+    draftChanged: false,
+    publishedChanged: false,
+    unchanged: false
+  };
+
+  it("is offered beside Publish only while the week has a published schedule", async () => {
+    const element = await render(finished());
+    expect(unpublishButton(element)).toBeNull();
+    element.remove();
+    const published = await render(finished(PUBLISHED));
+    expect(unpublishButton(published).textContent.trim()).toBe("Unpublish");
+    expect(unpublishButton(published).parentElement).toBe(
+      q(published, '[data-id="publish"]').parentElement
+    );
+  });
+
+  it("asks first, with Cancel focused; Cancel unpublishes nothing and focus goes back", async () => {
+    const element = await render(finished(PUBLISHED));
+    await clickUnpublish(element);
+    const asked = unpublishAsk(element);
+    expect(asked.heading).toBe("Unpublish Week 1?");
+    expect(asked.lines).toEqual(["Nothing will be published for this week."]);
+    expect(asked.confirmLabel).toBe("Unpublish");
+    expect(asked.shadowRoot.activeElement).toBe(
+      asked.shadowRoot.querySelector('[data-id="no"]')
+    );
+    // Publish, Unpublish and Versions wait for the answer.
+    expect(q(element, '[data-id="publish"]').disabled).toBe(true);
+    expect(unpublishButton(element).disabled).toBe(true);
+    expect(q(element, '[data-id="versions"]').busy).toBe(true);
+    await answerUnpublish(element, false);
+    expect(unpublish).not.toHaveBeenCalled();
+    expect(unpublishAsk(element)).toBeNull();
+    expect(q(element, '[data-id="published"]')).not.toBeNull();
+    expect(unpublishButton(element).disabled).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(unpublishButton(element));
+  });
+
+  it("unpublishes the published schedule shown, and lists it in Versions straight away", async () => {
+    const element = await render(finished(PUBLISHED));
+    unpublish.mockResolvedValue(UNPUBLISHED);
+    const kept = {
+      id: "pub1",
+      name: "Published schedule",
+      publishedAt: PUBLISHED.publishedAt
+    };
+    getVersions.mockResolvedValue([kept]);
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    expect(unpublish).toHaveBeenCalledWith({
+      scheduleId: "d1",
+      seenPublishedId: "pub1"
+    });
+    expect(notice(element)).toBe("Unpublished Week 1.");
+    // Nothing published now: no line saying when, no Unpublish; Publish is there.
+    expect(q(element, '[data-id="published"]')).toBeNull();
+    expect(unpublishButton(element)).toBeNull();
+    expect(q(element, '[data-id="versions"]').versions).toEqual([kept]);
+    expect(q(element, '[data-id="publish"]').disabled).toBe(false);
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="publish"]')
+    );
+  });
+
+  it("publishing after unpublishing is a first publish: it goes at once", async () => {
+    const element = await render(finished(PUBLISHED));
+    unpublish.mockResolvedValue(UNPUBLISHED);
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue({
+      ...DONE,
+      published: { ...PUBLISHED, id: "pub2" }
+    });
+    await clickPublish(element);
+    expect(ask(element)).toBeNull();
+    expect(publish).toHaveBeenCalledWith({
+      scheduleId: "d1",
+      seenRevisions: REV,
+      seenPublishedId: null
+    });
+    expect(notice(element)).toBe("Published Week 1.");
+    expect(unpublishButton(element)).not.toBeNull();
+  });
+
+  it("refused because the week was published or unpublished since: says nothing was unpublished and reads it again", async () => {
+    const element = await render(finished(PUBLISHED));
+    unpublish.mockResolvedValue({ ...UNPUBLISHED, publishedChanged: true });
+    getDraft.mockResolvedValue(
+      finished({ ...PUBLISHED, id: "pub2", publishedBy: "Sam Counselor" })
+    );
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    expect(notice(element)).toBe(
+      "Someone else published or unpublished this week since, so nothing was unpublished. Look it over, then try again."
+    );
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    // What the server says now is shown.
+    expect(q(element, '[data-id="published"]').textContent).toContain(
+      "by Sam Counselor"
+    );
+  });
+
+  it("a failure says the week was not unpublished and keeps it as published", async () => {
+    const element = await render(finished(PUBLISHED));
+    unpublish.mockRejectedValue({ body: { message: "No access." } });
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    expect(q(element, '[data-id="build-error"]').textContent).toContain(
+      "Week 1 was not unpublished."
+    );
+    expect(q(element, '[data-id="published"]')).not.toBeNull();
+    expect(unpublishButton(element).disabled).toBe(false);
+  });
+
+  it("an answer that comes after another week is shown isn't shown on that week", async () => {
+    const element = await render(finished(PUBLISHED));
+    const sent = pending();
+    unpublish.mockReturnValue(sent.promise);
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    // Week 2 (published too) shown, even if a change got past the locked picker.
+    getDraft.mockResolvedValue(finished({ ...PUBLISHED, id: "pub9" }));
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    sent.resolve(UNPUBLISHED);
+    await flush();
+    // Week 2 is still shown as published, and nothing says it was unpublished.
+    expect(q(element, '[data-id="published"]')).not.toBeNull();
+    expect(unpublishButton(element)).not.toBeNull();
+    expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 });

@@ -111,7 +111,7 @@ private class PublishedChangesTest {
       )
     );
     Assert.areEqual(
-      new List<String>{ 'Group A · Monday · Period 1–Period 2: Open → Swim' },
+      new List<String>{ 'Group A · Monday · Period 1 – Period 2: Open → Swim' },
       changes.lines
     );
     // One line, two cells: the count is of cells (the screen says "2 cells change").
@@ -254,5 +254,54 @@ private class PublishedChangesTest {
       locked
     );
     Assert.areEqual(0, changes.count);
+  }
+
+  @IsTest
+  static void blocksNamedByTheirTimesAreARunOfTimes() {
+    // Blocks saved without a name are named by their times (TimeBlockTriggerHandler).
+    ScheduleDays.DayGrid published = day(
+      MONDAY,
+      items(),
+      new List<List<String>>{ row('', '', '3'), row('', '', '3') }
+    );
+    ScheduleDays.DayGrid draft = day(
+      MONDAY,
+      items(),
+      new List<List<String>>{ row('1', '^', '3'), row('', '', '3') }
+    );
+    for (
+      ScheduleDays.DayGrid each : new List<ScheduleDays.DayGrid>{
+        published,
+        draft
+      }
+    ) {
+      each.grid.blocks[0].name = '9:00 AM – 9:45 AM';
+      each.grid.blocks[1].name = '10:00 AM – 10:45 AM';
+    }
+    Assert.areEqual(
+      new List<String>{ 'Group A · Monday · 9:00 AM – 10:45 AM: Open → Swim' },
+      between(published, draft).lines
+    );
+  }
+
+  @IsTest
+  static void aRunIsNamedLikeTheRestOfTheApp() {
+    ScheduleGrid.Block first = new ScheduleGrid.Block('b1', 'Period 1')
+      .at('09:00', '09:45');
+    ScheduleGrid.Block timed = new ScheduleGrid.Block(
+        'b2',
+        '10:00 AM – 10:45 AM'
+      )
+      .at('10:00', '10:45');
+    ScheduleGrid.Block lunch = new ScheduleGrid.Block('b3', 'Lunch')
+      .at('12:00', '12:45');
+    // One block: its name.
+    Assert.areEqual('Period 1', BlockRange.of(first, first));
+    Assert.areEqual('10:00 AM – 10:45 AM', BlockRange.of(timed, timed));
+    // Named blocks: "first – last", spaced as elsewhere.
+    Assert.areEqual('Period 1 – Lunch', BlockRange.of(first, lunch));
+    // Either end named by its times: the run's times.
+    Assert.areEqual('9:00 AM – 10:45 AM', BlockRange.of(first, timed));
+    Assert.areEqual('10:00 AM – 12:45 PM', BlockRange.of(timed, lunch));
   }
 }

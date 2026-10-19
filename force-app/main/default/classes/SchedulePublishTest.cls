@@ -2,7 +2,8 @@
  * Publish on Manual Build, as a scheduler with the Shoresh Scheduler permission set (Greg,
  * Manual Build round 1 #1 and round 2 #4): the draft is copied as the week's published schedule;
  * publishing again replaces it after a preview of what changes, and the one replaced stays as
- * history; later edits don't touch the copy. Synthetic camp (SetTimeTestData): Group A and
+ * history; later edits don't touch the copy. Unpublish (Greg, 2026-10-18) leaves the week with
+ * none, the copy kept as history the same way. Synthetic camp (SetTimeTestData): Group A and
  * Group B (Juniors), Group C (Seniors); Period 1, Period 2, Lunch; Main runs Monday to Thursday.
  */
 @IsTest
@@ -243,8 +244,8 @@ private class SchedulePublishTest {
       } catch (AuraHandledException e) {
         message = e.getMessage();
       }
-      // Even with the current one gone, the week still has published history.
-      Database.delete(secondId, true, AccessLevel.SYSTEM_MODE);
+      // Even with the current one unpublished, the week still has published history.
+      ManualBuildController.unpublish(draftId, secondId);
       Set<Id> protectedIds = PublishedHistory.finder.withPublishedHistory(
         new Set<Id>{ ids.get('Week 1') }
       );
@@ -272,8 +273,8 @@ private class SchedulePublishTest {
       Test.startTest();
       placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
       Id secondId = publishNow(draftId).published.id;
-      // The current published copy is gone (Salesforce's own Delete), leaving the replaced one.
-      Database.delete(secondId, true, AccessLevel.SYSTEM_MODE);
+      // The current published copy is unpublished, leaving only copies kept as history.
+      ManualBuildController.unpublish(draftId, secondId);
       String message;
       try {
         // The setup screens' week delete: drafts and versions go with the week, history doesn't.
@@ -428,6 +429,198 @@ private class SchedulePublishTest {
         'There is nothing to publish yet, so nothing was published.',
         message
       );
+    }
+  }
+
+  @IsTest
+  static void unpublishKeepsThePublishedScheduleAsHistoryAndLeavesTheWeekWithNone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id publishedId = publishNow(draftId).published.id;
+      Test.startTest();
+      Integer queriesBefore = Limits.getQueries();
+      SchedulePublish.Result result = ManualBuildController.unpublish(
+        draftId,
+        publishedId
+      );
+      Integer unpublishQueries = Limits.getQueries() - queriesBefore;
+      ManualBuildViews.DraftView view = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      Test.stopTest();
+      Assert.isTrue(
+        unpublishQueries <= 10,
+        'Unpublish used ' + unpublishQueries
+      );
+      Assert.isFalse(result.publishedChanged);
+      Assert.isNull(result.published);
+      // The week has no published schedule: nothing for other systems to read.
+      Assert.isNull(view.published);
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE Week__c = :ids.get('Week 1') AND Status__c = 'Published'
+          WITH SYSTEM_MODE
+        ]
+      );
+      // The copy is a version that keeps when it was published, and gives up the week's key.
+      List<Schedule__c> history = publishedSchedules();
+      Assert.areEqual(1, history.size());
+      Assert.areEqual(publishedId, history[0].Id);
+      Assert.areEqual('Version', history[0].Status__c);
+      Assert.isNotNull(history[0].PublishedAt__c);
+      Assert.isNotNull(history[0].PublishedBy__c);
+      Assert.isNull(history[0].PublishKey__c);
+      Assert.areEqual('Swim', mondayPeriod2(publishedId));
+      // The draft is as it was.
+      Assert.areEqual('Swim', mondayPeriod2(draftId));
+      // In Versions, marked as once published.
+      ScheduleViews.VersionRow row = SchedulesController.getVersions(
+        ids.get('Main'),
+        ids.get('Week 1')
+      )[0];
+      Assert.areEqual(publishedId, row.id);
+      Assert.isNotNull(row.publishedAt);
+    }
+  }
+
+  @IsTest
+  static void anUnpublishedCopyCanBeRenamedAndRestoredButNotDeleted() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id publishedId = publishNow(draftId).published.id;
+      ManualBuildController.unpublish(draftId, publishedId);
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      Test.startTest();
+      SchedulesController.renameSchedule(publishedId, 'Opening week');
+      String message;
+      try {
+        ManualBuildController.deleteVersion(draftId, publishedId);
+      } catch (AuraHandledException e) {
+        message = e.getMessage();
+      }
+      ManualBuildController.restoreVersion(
+        draftId,
+        publishedId,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        '"Opening week" was the published schedule, which is kept as history, so it can\'t be deleted.',
+        message
+      );
+      Schedule__c kept = [
+        SELECT Name, PublishedAt__c
+        FROM Schedule__c
+        WHERE Id = :publishedId
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual('Opening week', kept.Name);
+      Assert.isNotNull(kept.PublishedAt__c);
+      Assert.areEqual('Swim', mondayPeriod2(draftId));
+    }
+  }
+
+  @IsTest
+  static void publishingAgainAfterUnpublishIsAFirstPublish() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id firstId = publishNow(draftId).published.id;
+      ManualBuildController.unpublish(draftId, firstId);
+      Test.startTest();
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        draftId
+      );
+      SchedulePublish.Result result = ManualBuildController.publish(
+        draftId,
+        preview.revisions,
+        null
+      );
+      Test.stopTest();
+      // Nothing published to replace: no changes to show, published at once by the screen.
+      Assert.isNull(preview.published);
+      Assert.areEqual(0, preview.changeCount);
+      Assert.isFalse(result.publishedChanged);
+      Assert.isFalse(result.unchanged);
+      List<Schedule__c> published = publishedSchedules();
+      Assert.areEqual(2, published.size());
+      Assert.areEqual(firstId, published[0].Id);
+      Assert.areEqual('Version', published[0].Status__c);
+      Assert.areEqual(result.published.id, published[1].Id);
+      Assert.areEqual('Published', published[1].Status__c);
+      Assert.areEqual(
+        SchedulePublish.keyOf(ids.get('Main'), ids.get('Week 1')),
+        published[1].PublishKey__c
+      );
+    }
+  }
+
+  @IsTest
+  static void unpublishIsRefusedWhenTheWeekWasPublishedOrUnpublishedSince() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id firstId = publishNow(draftId).published.id;
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      Test.startTest();
+      // Someone else published again after this screen showed the first.
+      Id secondId = publishNow(draftId).published.id;
+      SchedulePublish.Result stale = ManualBuildController.unpublish(
+        draftId,
+        firstId
+      );
+      // Someone else unpublished it after this screen showed it.
+      ManualBuildController.unpublish(draftId, secondId);
+      SchedulePublish.Result gone = ManualBuildController.unpublish(
+        draftId,
+        secondId
+      );
+      Test.stopTest();
+      Assert.isTrue(stale.publishedChanged);
+      Assert.isTrue(gone.publishedChanged);
+      // The stale one changed nothing: the second stayed published until it was unpublished.
+      List<Schedule__c> history = publishedSchedules();
+      Assert.areEqual(2, history.size());
+      Assert.areEqual('Version', history[0].Status__c);
+      Assert.areEqual('Version', history[1].Status__c);
+      Assert.isNotNull(history[1].PublishedAt__c);
+    }
+  }
+
+  @IsTest
+  static void aStaleUnpublishLeavesThePublishedScheduleAlone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = startWeek(ids);
+      placeOver(draftId, '', 'Swim');
+      Id firstId = publishNow(draftId).published.id;
+      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
+      Test.startTest();
+      Id secondId = publishNow(draftId).published.id;
+      SchedulePublish.Result result = ManualBuildController.unpublish(
+        draftId,
+        firstId
+      );
+      Test.stopTest();
+      Assert.isTrue(result.publishedChanged);
+      Schedule__c current = [
+        SELECT Status__c, PublishKey__c
+        FROM Schedule__c
+        WHERE Id = :secondId
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual('Published', current.Status__c);
+      Assert.isNotNull(current.PublishKey__c);
     }
   }
 }

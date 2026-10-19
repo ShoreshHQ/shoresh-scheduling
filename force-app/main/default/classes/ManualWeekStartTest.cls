@@ -279,7 +279,9 @@ private class ManualWeekStartTest {
         Origin__c = ManualDrafts.MANUAL,
         PublishedAt__c = Datetime.now().addDays(-1)
       );
+      PublishedGuard.allow();
       Database.insert(replaced, AccessLevel.SYSTEM_MODE);
+      PublishedGuard.done();
       Test.startTest();
       List<ManualBuildViews.WeekSource> sources = ManualBuildController.getWeekSources(
         ids.get('Main'),

@@ -689,7 +689,10 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
 3. **What is shown first** (coordinator call under "show problems, never resolve silently").
    Publish asks the server for a preview (`previewPublish`): the published schedule it would
    replace and each cell that would change, "Bunk 1 · Monday · Period 2: Swim → Archery",
-   neighbouring blocks with the same change on one line ("Period 1–Period 2"), at most 30 lines
+   neighbouring blocks with the same change on one line, named as the rest of the app names a
+   run of blocks ("Period 1 – Period 2", as c/shoreshSetupRules does; "9:00 AM – 10:45 AM" when
+   either end is a block named by its own times, as `TimeBlockTriggerHandler.rangeLabel` names
+   one), at most 30 lines
    plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
    activity renamed since is a change; locks are not). The screen adds what its counters and dots
    show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
@@ -718,8 +721,39 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
 6. **For Generated Schedule next**: `SchedulePublish` takes any locked draft (Generated's
    `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
    wiring Generated is a controller method pair and the same toolbar button. Not wired here.
-7. Reads: preview at most 15 queries, publish at most 25 (asserted in `SchedulePublishTest`);
-   opening Manual Build adds one query (three when the week is published).
+7. Reads: preview at most 15 queries, publish at most 25, unpublish at most 10 (asserted in
+   `SchedulePublishTest`); opening Manual Build adds one query (three when the week is published).
+8. **Unpublish** (Greg, 2026-10-18). **Unpublish** (neutral button) sits beside **Publish**, shown
+   only while the week has a published schedule. It asks first (c-shoresh-ask, _Unpublish Week
+   1?_ / _Nothing will be published for this week._, **Unpublish**/Cancel, Cancel focused); then
+   `SchedulePublish.unpublish` turns the week's published schedule into a version exactly as a
+   replaced one (Status Version, key cleared, `PublishedAt__c` and `PublishedBy__c` kept), so it is
+   in Versions marked _Published_, can be restored and renamed, and is never deleted (decision
+   0002). The week then has no published schedule, and publishing again later is a first publish.
+   It names the published schedule the screen showed; one published or unpublished since:
+   refused, nothing written, _Someone else published or unpublished this week since, so nothing
+   was unpublished. Look it over, then try again._, and the week is read again. Draft saves don't
+   refuse it: it doesn't touch the draft. While it runs (and while its question is open) edits,
+   Versions and the pickers wait, as for Publish; focus then returns to Unpublish, or to Publish
+   once Unpublish is gone. It takes any locked draft, like publish, so Generated reuses it as is.
+9. **Published history is kept at the data level** (`PublishedGuard`, before triggers on
+   `Schedule__c` and `ScheduleDay__c`). A schedule that is or was published (Status Published or
+   any of `PublishedAt__c`, `PublishedBy__c`, `PublishKey__c` set), and its days, change only
+   inside Shoresh's Publish, Unpublish and rename (`SchedulePublish` and
+   `SchedulesController.renameSchedule` call `PublishedGuard.allow()` and `done()` around their
+   writes). Anything else, a
+   record page, list view, import or the API, in user or system mode, is refused in the camp's
+   words: _"Published schedule" is the published schedule, which is kept as history, so only
+   Publish, Unpublish and rename in Shoresh can change it._ (_was the_ for one kept as history; _…
+   so it can't be deleted._; _… so its days can't be changed._). Making a schedule published any
+   other way is refused too (_Only Publish in Shoresh can make the published schedule._). One is
+   never deleted, not even by Shoresh. Field permissions stay editable because Publish writes in
+   user mode. Checking days costs at most one query per schedule per transaction (a schedule
+   found not to be history is remembered until it is updated).
+10. **Greg's other answers (2026-10-18)**: the Schedules page keeps showing the newest version, as
+    it does (it doesn't switch to the published schedule); a first publish with nothing to show
+    publishes at once (no question), as built in item 3; published schedules replaced by a later
+    publish stay as history (item 2), and so do unpublished ones (item 8).
 
 ## Choices that are hard to undo after release
 

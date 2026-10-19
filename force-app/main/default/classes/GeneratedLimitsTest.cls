@@ -185,6 +185,8 @@ private class GeneratedLimitsTest {
     }
     Database.insert(blocks, AccessLevel.SYSTEM_MODE);
     Database.insert(divisions, AccessLevel.SYSTEM_MODE);
+    // Written directly, as Publish would (PublishedGuard), days and all.
+    PublishedGuard.allow();
     Database.insert(published, AccessLevel.SYSTEM_MODE);
     List<Group__c> groups = new List<Group__c>();
     for (Division__c division : divisions) {
@@ -225,6 +227,7 @@ private class GeneratedLimitsTest {
     }
     Database.insert(setTime, AccessLevel.SYSTEM_MODE);
     Database.insert(days, AccessLevel.SYSTEM_MODE);
+    PublishedGuard.done();
   }
 
   private static List<TimeBlock__c> hoursOf(Id programId) {

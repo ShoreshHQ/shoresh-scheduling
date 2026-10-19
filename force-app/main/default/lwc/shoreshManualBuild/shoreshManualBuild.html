@@ -130,6 +130,17 @@
               </template>
             </span>
           </template>
+          <template lwc:if={publishState}>
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              data-id="unpublish"
+              disabled={publishDisabled}
+              onclick={handleUnpublish}
+            >
+              Unpublish
+            </button>
+          </template>
           <button
             type="button"
             class="slds-button slds-button_brand"
@@ -271,6 +282,15 @@
         confirm-label={publishAsk.confirmLabel}
         onanswer={handlePublishAnswer}
         data-id="publish-ask"
+      ></c-shoresh-ask>
+    </template>
+    <template lwc:if={unpublishAsk}>
+      <c-shoresh-ask
+        heading={unpublishAsk.heading}
+        lines={unpublishAsk.lines}
+        confirm-label="Unpublish"
+        onanswer={handleUnpublishAnswer}
+        data-id="unpublish-ask"
       ></c-shoresh-ask>
     </template>
   </div>

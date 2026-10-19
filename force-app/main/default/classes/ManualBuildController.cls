@@ -2,7 +2,7 @@
  * Server side of Manual Build (desktop: the Manual schedule screen): open a program's draft for a
  * week, start a blank week, save slot edits (each made only if its slots still hold what the
  * director saw), add an activity typed into a slot, its versions: Save version, Restore, Delete
- * (ManualVersions), and Publish (SchedulePublish). Every query runs in user mode and every write
+ * (ManualVersions), and Publish and Unpublish (SchedulePublish). Every query runs in user mode and every write
  * uses user-mode DML.
  */
 public with sharing class ManualBuildController {
@@ -136,6 +136,26 @@ public with sharing class ManualBuildController {
       return SchedulePublish.publish(
         ManualDrafts.locked(scheduleId),
         seenRevisions,
+        seenPublishedId
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Unpublish: the week's published schedule (the one the screen showed, seenPublishedId) is
+   * kept as history in Versions and the week has none. Refused, with nothing changed, when the
+   * week was published or unpublished since.
+   */
+  @AuraEnabled
+  public static SchedulePublish.Result unpublish(
+    Id scheduleId,
+    Id seenPublishedId
+  ) {
+    try {
+      return SchedulePublish.unpublish(
+        ManualDrafts.locked(scheduleId),
         seenPublishedId
       );
     } catch (Exception e) {

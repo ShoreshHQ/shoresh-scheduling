@@ -4,6 +4,8 @@
  * Publishing again replaces it: the one it replaces becomes a version (it keeps PublishedAt__c,
  * so it stays history and can't be deleted), and the new one takes PublishKey__c, which
  * Salesforce keeps unique per program and week. Later edits to the draft don't touch the copy.
+ * Unpublish (Greg, 2026-10-18) turns the published schedule into such a version, leaving the
+ * week with none. Only these (and rename) change published history (PublishedGuard).
  *
  * Works on any locked draft (Manual Build's today; Generated Schedule's next): the caller locks
  * it through its own drafts class, which refuses anything else. A publish names the draft's
@@ -121,11 +123,11 @@ public with sharing class SchedulePublish {
       return result;
     }
     readable(days);
-    List<Schedule__c> published = lockedPublished(
+    List<Schedule__c> published = PublishedRows.locked(
       draft.Program__c,
       draft.Week__c
     );
-    Schedule__c replaced = newest(published);
+    Schedule__c replaced = PublishedRows.newest(published);
     if ((replaced == null ? null : replaced.Id) != seenPublishedId) {
       result.publishedChanged = true;
       return result;
@@ -146,6 +148,35 @@ public with sharing class SchedulePublish {
   }
 
   /**
+   * Unpublish (Greg, 2026-10-18; ADR 0008 part 5): the week has no published schedule any more.
+   * The one it had is kept as history exactly as one replaced by publishing again: a version that
+   * keeps PublishedAt__c, so it can be restored and renamed but never deleted, and publishing
+   * again later works as a first publish. Works on any locked draft, like publish.
+   * seenPublishedId: the published schedule the screen showed; the week published or unpublished
+   * since: refused, and nothing is written. Draft saves don't refuse it: it doesn't touch the
+   * draft.
+   */
+  public static Result unpublish(Schedule__c draft, Id seenPublishedId) {
+    Result result = new Result();
+    List<Schedule__c> published = PublishedRows.locked(
+      draft.Program__c,
+      draft.Week__c
+    );
+    Schedule__c current = PublishedRows.newest(published);
+    if (current == null || current.Id != seenPublishedId) {
+      result.publishedChanged = true;
+      return result;
+    }
+    PublishedGuard.allow();
+    try {
+      PublishedRows.keepAsHistory(published);
+    } finally {
+      PublishedGuard.done();
+    }
+    return result;
+  }
+
+  /**
    * The draft's days copied as the week's published schedule, the ones replaced kept as history:
    * all or nothing. False (nothing written) when someone else's publish took the week's key.
    */
@@ -155,19 +186,10 @@ public with sharing class SchedulePublish {
     List<ScheduleDays.DayGrid> days
   ) {
     Savepoint beforePublish = Database.setSavepoint();
+    // Published history changes only here, in Unpublish and in rename.
+    PublishedGuard.allow();
     try {
-      // History now: versions that keep when they were published, and give up the key.
-      List<Schedule__c> history = new List<Schedule__c>();
-      for (Schedule__c old : replaced) {
-        history.add(
-          new Schedule__c(
-            Id = old.Id,
-            Status__c = ManualVersions.VERSION,
-            PublishKey__c = null
-          )
-        );
-      }
-      Database.update(history, AccessLevel.USER_MODE);
+      PublishedRows.keepAsHistory(replaced);
       Schedule__c copy = new Schedule__c(
         Program__c = draft.Program__c,
         Week__c = draft.Week__c,
@@ -196,6 +218,8 @@ public with sharing class SchedulePublish {
     } catch (Exception e) {
       Database.rollback(beforePublish);
       throw e;
+    } finally {
+      PublishedGuard.done();
     }
   }
 
@@ -218,40 +242,6 @@ public with sharing class SchedulePublish {
       LIMIT 1
     ];
     return found.isEmpty() ? null : found[0];
-  }
-
-  /**
-   * Every published schedule of the week (one, unless some were made another way), locked until
-   * this publish ends. Salesforce allows no ORDER BY with a lock, so the newest is found here.
-   */
-  private static List<Schedule__c> lockedPublished(Id programId, Id weekId) {
-    return [
-      SELECT Id, PublishedAt__c, PublishedBy__r.Name, CreatedDate
-      FROM Schedule__c
-      WHERE
-        Program__c = :programId
-        AND Week__c = :weekId
-        AND Status__c = :PUBLISHED
-      WITH USER_MODE
-      LIMIT 200
-      FOR UPDATE
-    ];
-  }
-
-  /** The newest of them (latest made; the higher Id on a tie), or null for none. */
-  private static Schedule__c newest(List<Schedule__c> schedules) {
-    Schedule__c result = null;
-    for (Schedule__c schedule : schedules) {
-      if (
-        result == null ||
-        schedule.CreatedDate > result.CreatedDate ||
-        (schedule.CreatedDate == result.CreatedDate &&
-        String.valueOf(schedule.Id).compareTo(String.valueOf(result.Id)) > 0)
-      ) {
-        result = schedule;
-      }
-    }
-    return result;
   }
 
   private static PublishState stateFor(Schedule__c published) {

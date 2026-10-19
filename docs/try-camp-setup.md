@@ -926,6 +926,12 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
    Camp setup screen, because it has a published schedule.
 7. Click **Publish** with nothing changed: _Week 1 is already published as it is._ Nothing else
    happens.
+8. Click **Unpublish** (beside **Publish**, there only while the week is published). A box asks
+   _Unpublish Week 1?_ with _Nothing will be published for this week._ **Cancel** is highlighted
+   and changes nothing. Click **Unpublish**: it says _Unpublished Week 1._, the _Published …_ line
+   and the **Unpublish** button go, and **Versions** lists the copy marked _Published_, with
+   **Restore** and **rename** but no **delete**.
+9. Click **Publish** again: with nothing left to do, it publishes at once, as a first publish.
 
 ## What is not here yet
 

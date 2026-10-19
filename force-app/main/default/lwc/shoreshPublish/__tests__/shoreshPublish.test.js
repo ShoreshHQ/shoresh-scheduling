@@ -147,11 +147,11 @@ describe("c/shoreshPublish", () => {
   });
 
   it("counts cells but says how many more lines there are, when lines cover several cells", () => {
-    // One line covers Period 1–Period 3 (3 cells); 4 more lines, 6 cells, aren't listed.
+    // One line covers Period 1 – Period 3 (3 cells); 4 more lines, 6 cells, aren't listed.
     const question = publishQuestion({
       preview: {
         ...AGAIN,
-        changes: ["Bunk 1 · Monday · Period 1–Period 3: Swim → Soccer"],
+        changes: ["Bunk 1 · Monday · Period 1 – Period 3: Swim → Soccer"],
         changeCount: 9,
         moreLines: 4
       },
@@ -161,7 +161,7 @@ describe("c/shoreshPublish", () => {
     });
     expect(question.lines).toEqual([
       "This replaces the published schedule. 9 cells change:",
-      "Bunk 1 · Monday · Period 1–Period 3: Swim → Soccer",
+      "Bunk 1 · Monday · Period 1 – Period 3: Swim → Soccer",
       "…and 4 more."
     ]);
   });

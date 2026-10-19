@@ -148,11 +148,17 @@ private class GeneratedOtherProgramsTest {
       Origin__c = 'Manual',
       VersionReason__c = status == 'Version' ? 'Imported' : null
     );
-    Database.insert(schedule, AccessLevel.SYSTEM_MODE);
-    ScheduleDaySaves.write(
-      schedule.Id,
-      new List<ScheduleDaySaves.DaySave>{ day }
-    );
+    // Written directly, as Publish would write a published one (PublishedGuard).
+    PublishedGuard.allow();
+    try {
+      Database.insert(schedule, AccessLevel.SYSTEM_MODE);
+      ScheduleDaySaves.write(
+        schedule.Id,
+        new List<ScheduleDaySaves.DaySave>{ day }
+      );
+    } finally {
+      PublishedGuard.done();
+    }
     return schedule.Id;
   }
 
@@ -628,6 +634,8 @@ private class GeneratedOtherProgramsTest {
         Status__c = 'Published',
         Origin__c = 'Manual'
       );
+      // Written directly, as Publish would (PublishedGuard).
+      PublishedGuard.allow();
       Database.insert(published, AccessLevel.SYSTEM_MODE);
       Database.insert(
         new ScheduleDay__c(

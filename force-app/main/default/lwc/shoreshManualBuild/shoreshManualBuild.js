@@ -9,6 +9,7 @@ import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSource
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
 import previewPublish from "@salesforce/apex/ManualBuildController.previewPublish";
 import publish from "@salesforce/apex/ManualBuildController.publish";
+import unpublish from "@salesforce/apex/ManualBuildController.unpublish";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { errorMessage, failed } from "c/shoreshErrors";
@@ -21,7 +22,8 @@ import { publishQuestion } from "c/shoreshPublish";
  * chooses the program and week, opens or starts it (a week not started yet offers "Start a blank
  * week" or "Start from another week"), keeps its versions (Save, Restore), counts what the week
  * still needs, offers Clear day, Clear week and Copy day, and publishes the week (Publish: what
- * would change and what is still to do are shown first; SchedulePublish). The week itself is drawn and edited
+ * would change and what is still to do are shown first; Unpublish asks first; SchedulePublish).
+ * The week itself is drawn and edited
  * by c-shoresh-week-editor (drag, type, keyboard, Undo and Redo, "keep theirs or use yours");
  * this screen hands it the week, saves what it sends through saveRuns, and hears what changed.
  *
@@ -61,12 +63,14 @@ export default class ShoreshManualBuild extends LightningElement {
   waiting = null;
   // The week's published schedule ({ id, publishedAt, publishedBy, changedSince }), or null.
   publishState = null;
-  // A preview or publish is on its way.
+  // A preview, publish or unpublish is on its way (or its question is open).
   publishing = false;
   // The question before publishing (c-shoresh-ask): { heading, lines, confirmLabel, preview, week }.
   publishAsk = null;
-  // The question just closed: focus goes back to Publish once it is drawn enabled again.
-  focusPublish = false;
+  // The question before unpublishing: { heading, lines, publishedId, week }.
+  unpublishAsk = null;
+  // Where focus goes back to once it is drawn enabled again ("publish" or "unpublish"), or null.
+  focusOn = null;
 
   @api
   get setup() {
@@ -100,9 +104,12 @@ export default class ShoreshManualBuild extends LightningElement {
       this.waiting = null;
       this.weekEditor.show(draft, fresh);
     }
-    if (this.focusPublish && !this.publishing) {
-      this.focusPublish = false;
-      const button = this.template.querySelector('[data-id="publish"]');
+    if (this.focusOn && !this.publishing) {
+      // Unpublish is gone once the week has nothing published: Publish then.
+      const button =
+        this.template.querySelector(`[data-id="${this.focusOn}"]`) ||
+        this.template.querySelector('[data-id="publish"]');
+      this.focusOn = null;
       if (button) {
         button.focus();
       }
@@ -670,7 +677,7 @@ export default class ShoreshManualBuild extends LightningElement {
         // Publish was disabled while it worked, so focus fell from it: it goes back once Publish
         // is drawn enabled again (WCAG 2.4.3), unless another week is shown by then.
         if (week === this.weekKey) {
-          this.focusPublish = true;
+          this.focusOn = "publish";
         }
       }
     }
@@ -689,8 +696,65 @@ export default class ShoreshManualBuild extends LightningElement {
     } finally {
       this.publishing = false;
       // The question is gone: focus goes back to where it started (WCAG 2.4.3).
-      this.focusPublish = true;
+      this.focusOn = "publish";
     }
+  }
+
+  /**
+   * Unpublish (Greg, 2026-10-18): asks first, Cancel focused. The week then has no published
+   * schedule; the one it had is kept in Versions, marked Published, as one replaced is.
+   */
+  handleUnpublish() {
+    if (!this.publishState) {
+      return;
+    }
+    this.publishing = true;
+    this.error = null;
+    this.unpublishAsk = {
+      heading: `Unpublish ${this.weekName}?`,
+      lines: [`Nothing will be published for this ${this.t.sIn("Week")}.`],
+      publishedId: this.publishState.id,
+      week: this.weekKey
+    };
+  }
+
+  async handleUnpublishAnswer(event) {
+    const ask = this.unpublishAsk;
+    this.unpublishAsk = null;
+    try {
+      if (event.detail.yes) {
+        await this.unpublishNow(ask);
+      }
+    } catch (e) {
+      this.error = failed(`${this.weekName} was not unpublished.`, e);
+    } finally {
+      this.publishing = false;
+      // Back to Unpublish (WCAG 2.4.3), or to Publish once the week has nothing published.
+      if (ask.week === this.weekKey) {
+        this.focusOn = "unpublish";
+      }
+    }
+  }
+
+  /** Refused when the week was published or unpublished since the screen showed it. */
+  async unpublishNow(ask) {
+    const result = await unpublish({
+      scheduleId: this.schedule.schedule.id,
+      seenPublishedId: ask.publishedId
+    });
+    if (ask.week !== this.weekKey) {
+      return;
+    }
+    if (result.publishedChanged) {
+      this.refusePublish(
+        `Someone else published or unpublished this ${this.t.sIn("Week")} since, so nothing was unpublished. Look it over, then try again.`
+      );
+      return;
+    }
+    this.publishState = null;
+    this.say(`Unpublished ${this.weekName}.`);
+    // The copy is a version now: Versions lists it straight away.
+    await this.loadVersions();
   }
 
   /**

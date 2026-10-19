@@ -80,6 +80,8 @@ private class ScheduleDeleteTest {
   static void aWeekWithAPublishedScheduleIsKept() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = campWithVersion();
+      // Written directly, as Publish would (PublishedGuard).
+      PublishedGuard.allow();
       Database.insert(
         new Schedule__c(
           Program__c = ids.get('Program'),
@@ -106,6 +108,8 @@ private class ScheduleDeleteTest {
   @IsTest
   static void aProgramOrSeasonWithAPublishedScheduleIsKept() {
     Map<String, Id> ids = campWithVersion();
+    // Written directly, as Publish would (PublishedGuard).
+    PublishedGuard.allow();
     Database.update(
       new Schedule__c(Id = ids.get('Version'), Status__c = 'Published'),
       AccessLevel.SYSTEM_MODE
