@@ -107,14 +107,11 @@ public with sharing class GeneratedDrafts {
   }
 
   /**
-   * What the draft's days were last saved at, as one piece of text ("2026-06-29:3|..."): the
+   * What the draft's days were last saved at, as one piece of text ("2026-06-29:3,..."): the
    * schedule-level revision check (ADR 0005 §9) compares it whole. Empty when there is no draft.
+   * It is ScheduleDays.stamp, so a publish preview's revisions can be compared with it.
    */
   public static String revisionOf(List<ScheduleDays.DayGrid> days) {
-    List<String> parts = new List<String>();
-    for (ScheduleDays.DayGrid day : days) {
-      parts.add(String.valueOf(day.day) + ':' + day.revision);
-    }
-    return String.join(parts, '|');
+    return ScheduleDays.stamp(days);
   }
 }

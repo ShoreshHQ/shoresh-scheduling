@@ -269,7 +269,7 @@ private class GeneratedScheduleTest {
       Assert.areEqual(result.scheduleId, again.scheduleId);
       Assert.areEqual(result.revision, again.revision);
       Assert.areEqual(
-        '2026-06-29:1|2026-06-30:1|2026-07-01:1|2026-07-02:1',
+        '2026-06-29:1,2026-06-30:1,2026-07-01:1,2026-07-02:1',
         again.revision
       );
       Assert.areEqual(3, again.option);

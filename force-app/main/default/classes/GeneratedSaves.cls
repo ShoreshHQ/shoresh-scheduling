@@ -94,7 +94,9 @@ public with sharing class GeneratedSaves {
       );
       Database.insert(draft, AccessLevel.USER_MODE);
       ScheduleDaySaves.write(draft.Id, daySaves(blank, grids, false));
-      return saved(draft.Id, blank, null);
+      GeneratedWeek.Result result = saved(draft.Id, blank, null);
+      result.published = publishedBeside(blank, grids);
+      return result;
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;
@@ -125,11 +127,30 @@ public with sharing class GeneratedSaves {
       ScheduleDaySaves.write(draft.Id, daySaves(days, grids, true));
       GeneratedWeek.Result result = saved(draft.Id, days, versionId);
       result.locks = GeneratedLockCells.lockedIn(days, grids);
+      result.published = publishedBeside(days, grids);
       return result;
     } catch (Exception e) {
       Database.rollback(beforeSave);
       throw e;
     }
+  }
+
+  /**
+   * The week's published schedule beside the days as just written (the grids), or null when the
+   * week has none: two queries, and only one when there is none.
+   */
+  private SchedulePublish.PublishState publishedBeside(
+    List<ScheduleDays.DayGrid> days,
+    List<ScheduleGrid> grids
+  ) {
+    List<ScheduleDays.DayGrid> written = new List<ScheduleDays.DayGrid>();
+    for (Integer i = 0; i < days.size(); i++) {
+      ScheduleDays.DayGrid day = new ScheduleDays.DayGrid();
+      day.day = days[i].day;
+      day.grid = grids[i];
+      written.add(day);
+    }
+    return SchedulePublish.stateOf(program.Id, request.weekId, written);
   }
 
   /** The draft as it is now, kept as a version (Auto-saved) before it is replaced. */

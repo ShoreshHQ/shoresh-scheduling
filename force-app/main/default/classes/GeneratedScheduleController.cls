@@ -1,6 +1,7 @@
 /**
  * Server side of Generated Schedule (ADR 0010): what the engine needs to build a program's week,
- * and saving the week it built. Anyone with the Shoresh Scheduler permission set can generate
+ * saving the week it built, hand edits and locks, and Publish and Unpublish (SchedulePublish, as
+ * on Manual Build). Anyone with the Shoresh Scheduler permission set can generate
  * (Greg, 2026-10-17). Every query runs in user mode and every write uses user-mode DML.
  */
 public with sharing class GeneratedScheduleController {
@@ -69,6 +70,61 @@ public with sharing class GeneratedScheduleController {
   ) {
     try {
       return GeneratedLocks.apply(scheduleId, changes, revision);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * What publishing the week now would do (Manual Build's preview, ADR 0008 part 5): the
+   * published schedule it replaces (if any) and the cells that would change.
+   */
+  @AuraEnabled
+  public static SchedulePublish.Preview previewPublish(Id scheduleId) {
+    try {
+      return SchedulePublish.preview(GeneratedDrafts.lockedToEdit(scheduleId));
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Publish: the week as the preview showed it, locks and all, becomes its published schedule.
+   * Refused, with nothing changed, when the week (seenRevisions) or its published schedule
+   * (seenPublishedId) changed since the preview.
+   */
+  @AuraEnabled
+  public static SchedulePublish.Result publish(
+    Id scheduleId,
+    String seenRevisions,
+    Id seenPublishedId
+  ) {
+    try {
+      return SchedulePublish.publish(
+        GeneratedDrafts.lockedToEdit(scheduleId),
+        seenRevisions,
+        seenPublishedId
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
+  /**
+   * Unpublish: the week's published schedule (the one the screen showed) is kept as history and
+   * the week has none. Refused, with nothing changed, when the week was published or unpublished
+   * since.
+   */
+  @AuraEnabled
+  public static SchedulePublish.Result unpublish(
+    Id scheduleId,
+    Id seenPublishedId
+  ) {
+    try {
+      return SchedulePublish.unpublish(
+        GeneratedDrafts.lockedToEdit(scheduleId),
+        seenPublishedId
+      );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

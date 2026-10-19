@@ -123,3 +123,15 @@
 .legend-icon {
   --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
 }
+
+/* Publish, last on the toolbar: when the week was published, then the buttons (as Manual Build). */
+.publish {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.published {
+  font-size: 12px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}

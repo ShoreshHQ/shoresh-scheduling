@@ -7,7 +7,7 @@
  * Unpublish (Greg, 2026-10-18) turns the published schedule into such a version, leaving the
  * week with none. Only these (and rename) change published history (PublishedGuard).
  *
- * Works on any locked draft (Manual Build's today; Generated Schedule's next): the caller locks
+ * Works on any locked draft (Manual Build's and Generated Schedule's): the caller locks
  * it through its own drafts class, which refuses anything else. A publish names the draft's
  * revisions and the published schedule it was shown (preview), so a week someone changed since,
  * or a schedule someone else published since, is never published or replaced unseen. Runs in
@@ -70,14 +70,30 @@ public with sharing class SchedulePublish {
   /** The week's published schedule beside the draft, or null when the week has none. */
   public static PublishState stateOf(Id programId, Id weekId, Id draftId) {
     Schedule__c published = publishedOf(programId, weekId);
-    if (published == null) {
-      return null;
-    }
+    return published == null
+      ? null
+      : stateBeside(published, ScheduleDays.read(draftId));
+  }
+
+  /**
+   * The same, beside the draft's days as the caller already has them (a screen that has just read
+   * or saved them), so they are not read again.
+   */
+  public static PublishState stateOf(
+    Id programId,
+    Id weekId,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
+    Schedule__c published = publishedOf(programId, weekId);
+    return published == null ? null : stateBeside(published, draftDays);
+  }
+
+  private static PublishState stateBeside(
+    Schedule__c published,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
     PublishState state = stateFor(published);
-    state.changedSince = !same(
-      ScheduleDays.read(published.Id),
-      ScheduleDays.read(draftId)
-    );
+    state.changedSince = !same(ScheduleDays.read(published.Id), draftDays);
     return state;
   }
 

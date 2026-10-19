@@ -728,7 +728,8 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    published or refused, is always shown; when the question closes, focus returns to Publish.
 6. **For Generated Schedule next**: `SchedulePublish` takes any locked draft (Generated's
    `GeneratedDrafts.lockedToEdit` gives one), and `c/shoreshPublish` takes any checks result, so
-   wiring Generated is a controller method pair and the same toolbar button. Not wired here.
+   wiring Generated is a controller method pair and the same toolbar button. Wired since (ADR
+   0010 "Choices (Publish)").
 7. Reads: preview at most 15 queries, publish at most 25, unpublish at most 10 (asserted in
    `SchedulePublishTest`); opening Manual Build adds one query (three when the week is published).
 8. **Unpublish** (Greg, 2026-10-18). **Unpublish** (neutral button) sits beside **Publish**, shown

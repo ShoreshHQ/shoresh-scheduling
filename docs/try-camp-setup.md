@@ -945,11 +945,36 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
     anyone else's changes): **Publish** and **Unpublish** are greyed out for that moment, then
     work again. If you had tabbed to **Publish**, it still has the focus outline afterwards.
 
+## 27. Generated Schedule: Publish
+
+This uses the made-up camp's Week 1 on **Generated Schedule** (section 23).
+
+1. Open **Generated Schedule**, Week 1 (generate it first if it isn't). Last on the toolbar, after
+   **Start over**, is a blue **Publish** button. If Week 1 was published from Manual Build in
+   section 26, it already says _Published Oct 18, … by_ your name _· changed since_, with
+   **Unpublish** beside it: a week has one published schedule, whichever screen published it.
+2. Click **Publish**. If cells are still Open or an activity has a dot, a box asks first, as on
+   Manual Build (_Publish Week 1?_ or, when replacing, _Publish Week 1 again?_ with each cell that
+   changes, then what is still to do). **Cancel** publishes nothing; **Publish** goes ahead. A
+   finished week published for the first time goes at once.
+3. It says _Published Week 1._ and the line beside the button shows when and by whom.
+4. Lock a cell (the **Lock** menu). The line does not change: a lock alone isn't a change to the
+   published schedule. Click **Publish**: _Week 1 is already published as it is._
+5. Right after publishing, click **Rebuild** and confirm: the same setup builds the same week, so
+   the line still has no _· changed since_. Then change a cell by hand: the line ends
+   _· changed since_ at once.
+6. While **Rebuild** runs, **Publish** and **Unpublish** are greyed out; while the Publish box is
+   open, **Rebuild**, **Lock**, the pickers and hand edits wait.
+7. Click **Unpublish**, then **Unpublish** in the box: _Unpublished Week 1._ The copies that are
+   no longer published are listed, named _Published Oct 18, …_, in **Manual Build**'s
+   **Versions** for Week 1 (with _Generated Schedule_ under the name) until Generated Schedule
+   gets its own Versions.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
 - Special events are in the menu, marked Coming.
-- Generated Schedule: Versions on that screen, and publishing.
+- Generated Schedule: Versions on that screen.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

@@ -84,6 +84,10 @@ public with sharing class GeneratedWeek {
     // The locked cells after the save: the stored ones, kept; none after Start over.
     @AuraEnabled
     public List<Cell> locks = new List<Cell>();
+    // After a save: the week's published schedule beside the week as saved now (so a Rebuild
+    // that changed nothing isn't "changed since"), or null when the week has none.
+    @AuraEnabled
+    public SchedulePublish.PublishState published;
   }
 
   /**

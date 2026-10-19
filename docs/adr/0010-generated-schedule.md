@@ -339,7 +339,8 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
 15. **Saving a week** (`saveWeek`, `GeneratedSaves`): the whole week at once, for Generate,
     Rebuild, Try another, Fill the open cells and Start over. The **schedule-level revision
     check** (ADR 0005 §9): `revision` is every day's revision in one text
-    (`2026-06-29:3|2026-06-30:3|…`); the save locks the draft, reads its days and compares the
+    (`2026-06-29:3,2026-06-30:3,…`, the same text as `ScheduleDays.stamp`, so a publish preview's
+    revisions compare with it, §42); the save locks the draft, reads its days and compares the
     whole text. Any day saved by someone else since means **nothing is written** and the answer
     is `conflict` with ADR 0005's sentence ("Someone else changed this schedule since you opened
     it…"), for the screen to show. Otherwise the days are written through `ScheduleDaySaves` at
@@ -892,6 +893,73 @@ editor's lock rule and the server's, with the same answers. `GeneratedAddActivit
 scheduler): an add with hand-added values, the same name again, an existing name, within 15
 queries; refused from a version and from Manual Build's draft.
 
+## Choices (Publish)
+
+Publish and Unpublish come to the Generated screen through Manual Build's server path (ADR 0008
+part 5, `SchedulePublish`), with the same behaviour and words, as Greg's decisions give them
+(Manual Build round 1 #1 to #4, round 2 #4; 2026-10-18 and 2026-10-19 in the build log: a clean
+first publish goes at once; Unpublish asks; copies no longer published are kept as history, named
+_Published <date, time>_, never deleted). The desktop has no Publish. What differs here:
+
+42. **The server path.** `GeneratedScheduleController.previewPublish`, `publish` and
+    `unpublish` call `SchedulePublish` with Generated's draft, locked by
+    `GeneratedDrafts.lockedToEdit` (never a version, a published schedule or Manual Build's
+    draft: _A saved version can't be changed._ / _Only this week's Generated Schedule can be
+    saved here. Reload the page._). The copy's Origin is Generated. One published schedule per
+    week (decision 0002), whichever schedule published it: publishing Generated replaces one
+    Manual Build published, and the other way round; the box lists the cells that change, as
+    for any publish again. `GeneratedDrafts.revisionOf` is now `ScheduleDays.stamp` (a comma
+    between days instead of `|`), so the screen compares the preview's revisions with the
+    revision it read the week at; the text is only sent between screen and server, never stored.
+43. **Locks go with the published copy** (§32: a copy keeps a day as it is, locks included), so
+    restoring a replaced copy later brings its locks back. A lock alone is **not** a change to
+    publish (`PublishedChanges` compares cells, not locks: other systems read what campers do,
+    not how the week was built): locking a cell after publishing doesn't add _· changed
+    since_, and Publish then says _Week 1 is already published as it is._
+44. **What is still to do** is the screen's own check, the same one its counters show
+    (`c/shoreshPublish` `problemLines` with this screen's `checked` and the counters' `counts`):
+    the Open cells as the Open counter counts them (a cell locked empty is not Open, §31, and an
+    Open cell with a reason dot is one of them), every placement with a dot (_N activities need a
+    look._), then Overlapping, Still needed and Spread across the week above 0. The _not placed_
+    list only exists before the first Generate, when there is nothing to publish.
+45. **Toolbar.** **Publish** (brand) is last in the editor's toolbar, after Start over, with
+    **Unpublish** and _Published Oct 18, 10:04 AM by Pat_ (· _changed since_) before it, as on
+    Manual Build. The published state comes with the week (`getInputs`, one query, two when the
+    week is published), and with every build's answer (`saveWeek` works it out beside the week
+    as saved, at most two queries), so a Rebuild that builds the same week is not _changed
+    since_; a hand edit marks it at once; a Lock leaves it.
+46. **Waiting.** Publish and Unpublish wait while a build (Generate, Rebuild, Try another, Fill
+    the open cells, Start over), a read of the week (Reload, coming back to the window), a hand
+    edit's save, a Lock or a conflict is out, so the question is worked out from the week as
+    saved. While a preview, a publish or an unpublish is on its way, or its question is open,
+    every build, Lock, hand edit (the editor's "One moment" line), the pickers and the read on
+    coming back to the window wait; the season read again meanwhile reads the week once it is
+    over. A refusal (_Someone else changed this week since, so nothing was published._ and the
+    other two of ADR 0008 item 4) goes on the editor's line and the week is read again. Focus
+    returns to Publish (or Unpublish) once it is enabled again.
+47. **Where the copies go.** A replaced or unpublished copy is a version of the week (Status
+    Version, `PublishedAt__c` kept). Until Generated gets its own Versions (the next part), it
+    shows in Manual Build's **Versions** for that week (it lists every version of the week,
+    with _Generated Schedule_ under the name) and on the Schedules page, and Start from another week can
+    start from it.
+
+## Tests (Publish)
+
+`GeneratedPublishTest` (as a scheduler, records made inside `System.runAs`): the copy keeps the
+draft's cells and locks, Origin Generated, within the preview's 15 and publish's 25 queries; the
+week opened shows the published schedule, a Lock leaves it unchanged since and a hand edit
+changes it; a build answers with it (a Rebuild that builds the same week is not changed since)
+or with none; publishing again lists _Group A · Monday · Lunch: Open → Swim_ and Unpublish keeps
+both copies as history named _Published …_ (within 10 queries); Generated replaces Manual
+Build's published schedule; a week saved since the preview publishes nothing; a version and
+Manual Build's draft are refused. `GeneratedLimitsTest`: a published week opens and rebuilds
+within 25 queries. Jest `publish.test.js` drives the screen: at once when finished; asks with
+Open cells and with a dot; again with the changes; already published; the three refusals with
+a read again; Unpublish's question, Cancel and refusal; builds, Lock, a hand edit and the pickers
+held while it works, and it held while a build, a hand edit, a Lock or a read is out; _changed
+since_ after a hand edit and as a build answers; focus back. Each connection was taken away once
+(13 of them) and a test failed.
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -904,6 +972,8 @@ G2:
   "Before Try another", "Before Start over" (stored text; versions can be renamed).
 
 G5: none (no objects, fields or global members).
+
+Publish: none (no objects, fields or global members; `revisionOf`'s text is never stored).
 
 G4:
 
