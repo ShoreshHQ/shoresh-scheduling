@@ -315,11 +315,16 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       seeds with, whatever Ids the screen was given;
     - the draft's Id, what its days were saved at (`revision`, below) and the option it was built
       with;
-    - "deleted since" in the days (ADR 0005 §4) from the records just read: the program's time
-      blocks, groups, fixed and recurring activities and the season's activities. Unlike the
-      Schedules page (`ScheduleRefs`, which looks for the record anywhere it can be seen), a
-      record of another season or program counts as gone here; a Generated draft never holds one,
-      since a save refuses another season's activity. The week a Lock or a hand edit answers
+    - "deleted since" in the days (ADR 0005 §4), worked out as the Schedules page does. **Greg's
+      decision (2026-10-19), reversing the earlier choice here** (a record of another season or
+      program counted as gone on Generated, though the Schedules page did not mark it): "deleted
+      since" means only really deleted, never moved to another program or season, on both
+      screens, as the desktop does (it marks only a reference whose record is gone,
+      `resolveSlotCell` `missing`). The records just read (the program's time blocks, groups,
+      fixed and recurring activities and the season's activities) are known to be there, and any
+      other record a day points at is looked up (`ScheduleRefs`). A deleted group's pill in Group
+      View says "deleted since" too, the same on both screens (`groups` in
+      `shoreshScheduleViews`, Greg 2026-10-19). The week a Lock or a hand edit answers
       with is marked the same way (`GeneratedInputs.view`), so a note never comes and goes
       between opening the week and changing it;
     - each day's locked cells (G4, §32), which the data module turns into the engine's locks.
@@ -414,8 +419,8 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
     time blocks, every group, this week's exceptions; the camp's words only when needed) and
     shares it with the reader, the save, the checks and `BlankWeek.build(setup)`, so a request
     uses a fixed, small number of queries whatever the week's size. `SlotRules` takes a
-    `SlotRules.Setup` (Manual Build's is built in `SlotSaves`); the reader marks what is
-    "deleted since" from the records it has just read, not `ScheduleRefs`' extra queries.
+    `SlotRules.Setup` (Manual Build's is built in `SlotSaves`); the reader takes the records it has
+    just read as there and asks `ScheduleRefs` only about the rest (the "deleted since" item above).
     Shared with Manual Build: `ProgramReads` (now also reads sort orders), `BlankWeek`,
     `ScheduleViews.dayViews`, `SlotRules` (a second constructor, and `activityOf`/
     `seasonActivity`; it reads activities' places too), `ScheduleDaySaves.CHANGED_SINCE`. Deleting
