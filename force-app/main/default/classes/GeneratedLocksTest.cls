@@ -923,14 +923,14 @@ private class GeneratedLocksTest {
   }
 
   @IsTest
-  static void aLockShowsDeletedSinceAsOpeningTheWeekDoes() {
+  static void aLockShowsDeletedSinceAsOpeningTheWeekAndTheSchedulesPageDo() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
       // Monday's saved day names a group that is still in Salesforce but isn't in Main's setup
-      // (another program's): "deleted since" for Generated Schedule, which asks the program's
-      // setup, though the record itself exists.
+      // (another program's), and one that has been deleted. Only the deleted one is marked, on
+      // Generated and on the Schedules page alike.
       Program__c evenings = ShoreshTestData.program(
         ids.get('Season'),
         'Evenings'
@@ -950,8 +950,26 @@ private class GeneratedLocksTest {
           new ScheduleDaySaves.DaySave(monday.day, monday.grid, monday.revision)
         }
       );
+      Group__c deleted = ShoreshTestData.groupIn(
+        ShoreshTestData.division(evenings.Id, 'Late campers').Id,
+        'Late bunk'
+      );
+      monday = ScheduleDays.read(draftId)[0];
+      monday.grid.groups.add(
+        new ScheduleGrid.GroupRef(deleted.Id, 'Late bunk')
+      );
+      monday.grid.rows.add(new List<String>{ '', '', '' });
+      ScheduleDaySaves.write(
+        draftId,
+        new List<ScheduleDaySaves.DaySave>{
+          new ScheduleDaySaves.DaySave(monday.day, monday.grid, monday.revision)
+        }
+      );
+      Database.delete(deleted, AccessLevel.SYSTEM_MODE);
       Integer last = 3;
-      Assert.isTrue(GeneratedTestData.inputs().days[0].groups[last].gone);
+      Integer removed = 4;
+      Assert.isFalse(GeneratedTestData.inputs().days[0].groups[last].gone);
+      Assert.isTrue(GeneratedTestData.inputs().days[0].groups[removed].gone);
       GeneratedWeek.Locked locked = setLocks(
         draftId,
         new List<GeneratedWeek.LockChange>{
@@ -963,12 +981,14 @@ private class GeneratedLocksTest {
         }
       );
       // The same note after a Lock as on opening the week...
-      Assert.isTrue(locked.schedule.days[0].groups[last].gone);
+      Assert.isFalse(locked.schedule.days[0].groups[last].gone);
+      Assert.isTrue(locked.schedule.days[0].groups[removed].gone);
       Assert.isFalse(
         locked.schedule.days[0].groups[GeneratedTestData.GROUP_A].gone
       );
-      // ...where the Schedules page, which asks whether the record exists, sees it.
+      // ...and on the Schedules page.
       Assert.isFalse(ScheduleViews.open(draftId).days[0].groups[last].gone);
+      Assert.isTrue(ScheduleViews.open(draftId).days[0].groups[removed].gone);
     }
   }
 }

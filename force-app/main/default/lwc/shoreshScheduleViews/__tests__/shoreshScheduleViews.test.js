@@ -143,6 +143,17 @@ describe("c/shoreshScheduleViews", () => {
       ["Pottery", "1 Bunk · 1 time this week"]
     ]);
     expect(cards[2].gone).toBe(true);
+    // Not in the catalogue but still there (the server did not mark it deleted): listed, unmarked.
+    const view = opened();
+    view.days.forEach((day) =>
+      day.items.forEach((item) => {
+        if (item.name === "Pottery") {
+          item.gone = false;
+        }
+      })
+    );
+    const kept = activityCards(view, [{ Id: "a1", Name: "Swim" }], t);
+    expect(kept.find((c) => c.name === "Pottery").gone).toBe(false);
 
     const grid = activityGrid(opened(), "a1");
     // Monday: Bunk 1 in Period 1 and Period 2 (one two-block Swim).

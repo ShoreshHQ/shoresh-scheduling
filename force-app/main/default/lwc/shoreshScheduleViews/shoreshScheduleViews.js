@@ -295,7 +295,8 @@ export function groupGrid(view, groupKey, t) {
 
 /**
  * Activity View's cards: the camp's activities (the catalogue, in order), and any activity in
- * this schedule that is not in it any more. Each says how many groups do it and how often.
+ * this schedule that is not in it any more. Only an activity that is deleted is marked so, the
+ * same as its cells (one that is just in another season is listed, not marked). Each says how many groups do it and how often.
  */
 export function activityCards(view, catalogue, t) {
   const counts = new Map();
@@ -306,7 +307,8 @@ export function activityCards(view, catalogue, t) {
           const entry = counts.get(c.item.id) || {
             groups: new Set(),
             times: 0,
-            name: c.item.name
+            name: c.item.name,
+            gone: !!c.item.gone
           };
           entry.groups.add(refKey(grp));
           entry.times += 1;
@@ -319,7 +321,7 @@ export function activityCards(view, catalogue, t) {
   const known = new Set(cards.map((card) => card.key));
   counts.forEach((entry, id) => {
     if (!known.has(id)) {
-      cards.push({ key: id, name: entry.name, gone: true });
+      cards.push({ key: id, name: entry.name, gone: entry.gone });
     }
   });
   return cards.map((card) => {
