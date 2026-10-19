@@ -145,7 +145,8 @@ public with sharing class ManualBuildController {
 
   /**
    * What "Start from another week" can start from: the program's other weeks' Manual Build, and
-   * every version of the program (this week's too), each with its week's name.
+   * every published schedule and version of the program (this week's too), each with its week's
+   * name.
    */
   @AuraEnabled
   public static List<ManualBuildViews.WeekSource> getWeekSources(

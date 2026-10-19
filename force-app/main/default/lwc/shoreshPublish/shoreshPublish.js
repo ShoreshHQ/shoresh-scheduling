@@ -10,6 +10,7 @@
  *   { kind: "now" }: the week's first publish, with nothing to show; publish at once.
  *   { kind: "ask", heading, lines, confirmLabel }: for c-shoresh-ask.
  */
+import { buildTerms } from "c/shoreshTerms";
 
 /** "1 cell", "3 cells". */
 function cells(count) {
@@ -20,8 +21,9 @@ function cells(count) {
  * What is still to do: Open cells, placements with a dot, then the counters (each line only when
  * it is above 0), as the screen's counters and dots show them. counts: what the counters count
  * now (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
+ * t: the camp's words (c/shoreshTerms), so a dot names the camp's word for Activity.
  */
-export function problemLines(checked, counts) {
+export function problemLines(checked, counts, t = buildTerms([])) {
   if (!checked) {
     return [];
   }
@@ -35,7 +37,7 @@ export function problemLines(checked, counts) {
   const dotted = checked.flags ? checked.flags.size : 0;
   if (dotted > 0) {
     lines.push(
-      `${dotted} ${dotted === 1 ? "activity needs" : "activities need"} a look.`
+      `${dotted} ${dotted === 1 ? `${t.sIn("Activity")} needs` : `${t.pIn("Activity")} need`} a look.`
     );
   }
   const { overlapping, stillNeeded, spread } = counts || {
@@ -62,7 +64,7 @@ export function publishQuestion({ preview, checked, counts, weekName, t }) {
   if (replacing && preview.changeCount === 0) {
     return { kind: "same" };
   }
-  const problems = problemLines(checked, counts);
+  const problems = problemLines(checked, counts, t);
   if (!replacing && problems.length === 0) {
     return { kind: "now" };
   }

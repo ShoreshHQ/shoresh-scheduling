@@ -1,6 +1,7 @@
 /**
  * "Start from another week" (Greg, 2026-10-17; ADR 0008 §25): a new week's Manual Build draft
- * that begins as another week's Manual Build or a saved version of the program, matched by
+ * that begins as another week's Manual Build, a published schedule or a saved version of the
+ * program, matched by
  * weekday. The week starts as Start a blank week does (BlankWeek: fixed and recurring activities
  * from this week's own setup); then each activity of the source day goes into the same time
  * blocks for the same group (ManualWeekCopy), through the same slot saves as any edit
@@ -27,8 +28,8 @@ public with sharing class ManualWeekStart {
   }
 
   /**
-   * Starts the program's week from a source schedule (another week's Manual Build, or a version
-   * of the program). If the week was started meanwhile, its draft is returned unchanged.
+   * Starts the program's week from a source schedule (another week's Manual Build, a published
+   * schedule, or a version of the program). If the week was started meanwhile, its draft is returned unchanged.
    */
   public static Started start(Id programId, Id weekId, Id sourceId) {
     return startWith(new GeneratedSetup(programId, weekId), sourceId);
@@ -66,7 +67,10 @@ public with sharing class ManualWeekStart {
     return result;
   }
 
-  /** A Manual Build draft or a version of the program; anything else is refused. */
+  /**
+   * A Manual Build draft, a published schedule or a version of the program; anything else is
+   * refused.
+   */
   private static Schedule__c sourceOf(Id sourceId, Id programId) {
     List<Schedule__c> found = [
       SELECT Id, Status__c, Origin__c, Program__c
@@ -87,7 +91,9 @@ public with sharing class ManualWeekStart {
       source.Status__c == ManualDrafts.DRAFT &&
       source.Origin__c == ManualDrafts.MANUAL;
     return source.Program__c == programId &&
-      (source.Status__c == ManualVersions.VERSION || isManualDraft);
+      (source.Status__c == ManualVersions.VERSION ||
+      source.Status__c == SchedulePublish.PUBLISHED ||
+      isManualDraft);
   }
 
   /** Setup as it is for this week: what decides where a copied activity may go. */

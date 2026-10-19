@@ -166,6 +166,37 @@ describe("c/shoreshPublish", () => {
     ]);
   });
 
+  it("names dots in the camp's word for Activity", () => {
+    const campT = buildTerms([
+      {
+        term: "Activity",
+        singular: "Program",
+        plural: "Programs",
+        isCustom: true
+      }
+    ]);
+    const dots = (n) => ({
+      ...CLEAN,
+      flags: new Map(Array.from({ length: n }, (_, i) => [`k${i}`, "x"]))
+    });
+    expect(
+      publishQuestion({
+        preview: FIRST,
+        checked: dots(1),
+        weekName: "Week 1",
+        t: campT
+      }).lines
+    ).toEqual(["1 Program needs a look."]);
+    expect(
+      publishQuestion({
+        preview: FIRST,
+        checked: dots(2),
+        weekName: "Week 1",
+        t: campT
+      }).lines
+    ).toEqual(["2 Programs need a look."]);
+  });
+
   it("has nothing to do when the published schedule already is the week", () => {
     expect(
       publishQuestion({

@@ -539,8 +539,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       desktop's inline _Delete?_; its days go with it. Only a version of the draft's week; never
       the draft.
     - **Start from another week**, beside Start a blank week while the week has no Manual
-      Build: a menu of the program's other weeks' Manual Build and every version of the program
-      (_Week 2 · Manual Build_, _Week 1 · Before the trip (version)_). The week starts as Start
+      Build: a menu of the program's other weeks' Manual Build, each week's published schedule
+      (part 5; named in the camp's word today) and every version of the program, published
+      schedules replaced since among them (_Week 2 · Manual Build_, _Week 1 · Published
+      schedule_, _Week 1 · Before the trip (version)_). The week starts as Start
       a blank week does (fixed and recurring activities from this week's own setup), then each
       day takes the activities of the source day with the same weekday (in a week longer than
       seven days, first Monday from first Monday, second from second), bunk by bunk, at the
@@ -567,7 +569,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       versions, an unreadable day refused, a draft with no days, delete never the draft),
       `ManualWeekStartTest` (matched by weekday, a second Monday, a placement several blocks
       long, a bunk away that week or then, closed, deleted, already there, an unreadable day,
-      a week already started, what can and can't be the start), `versions.test.js` and
+      a week already started, what can and can't be the start, a published schedule and the ones
+      it replaced), `versions.test.js` and
       `shoreshVersions.test.js` (the list, Restore and its guards, Save version, Delete?, focus,
       Start from another week and its guards).
 
@@ -689,7 +692,7 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    neighbouring blocks with the same change on one line ("Period 1–Period 2"), at most 30 lines
    plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
    activity renamed since is a change; locks are not). The screen adds what its counters and dots
-   show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look.",
+   show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
    two only when the camp has those targets; lines the director accepted are not counted, as the
    counters don't count them). It asks (c-shoresh-ask, _Publish Week 1?_ or

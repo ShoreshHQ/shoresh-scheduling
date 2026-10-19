@@ -404,13 +404,34 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
         name: "Manual Build",
         isVersion: false
       },
+      {
+        id: "pub1",
+        weekName: "Week 1",
+        // Named in the camp's word when it was published; labelled in today's.
+        name: "Posted plan",
+        isVersion: false,
+        isPublished: true
+      },
+      {
+        id: "v2",
+        weekName: "Week 1",
+        name: "Published schedule",
+        isVersion: true,
+        isPublished: false
+      },
       { id: "v1", weekName: "Week 1", name: "Before the trip", isVersion: true }
     ]);
     const element = await render(null);
     const menu = q(element, '[data-id="start-from"]');
+    // The week's published schedule now, and the one it replaced (a version).
     expect(
       [...menu.querySelectorAll("lightning-menu-item")].map((i) => i.label)
-    ).toEqual(["Week 2 · Manual Build", "Week 1 · Before the trip (version)"]);
+    ).toEqual([
+      "Week 2 · Manual Build",
+      "Week 1 · Published schedule",
+      "Week 1 · Published schedule (version)",
+      "Week 1 · Before the trip (version)"
+    ]);
     startFromWeek.mockResolvedValue({
       ...draft(WITH_SWIM, ["1,2,", "1,,"]),
       leftOut: ["Swim · Bunk 2 · Monday: not at camp then"]

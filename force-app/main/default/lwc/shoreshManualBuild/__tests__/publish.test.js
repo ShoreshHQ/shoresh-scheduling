@@ -609,6 +609,44 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(notice(element)).toBe("Published Week 1.");
   });
 
+  it("asks with the counters' own lines: one of two still needed lines accepted leaves 1", async () => {
+    // Archery wants 3 a week: Bunk 1 has 2 and Bunk 2 has 1, so two still needed lines.
+    const element = await render({
+      ...finished(),
+      activityRecords: nsRecord([
+        { Id: "a8", Name: "Crafts", NoGroupLimit__c: true },
+        {
+          Id: "a9",
+          Name: "Archery",
+          TimesPerWeekMin__c: 3,
+          NoGroupLimit__c: true
+        }
+      ]),
+      groupRecords: nsRecord([
+        { Id: "g1", Name: "Bunk 1", Division__c: "d1" },
+        { Id: "g2", Name: "Bunk 2", Division__c: "d1" }
+      ])
+    });
+    const checks = q(element, "c-shoresh-week-checks");
+    const counter = () =>
+      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]');
+    counter().click();
+    await flush();
+    const accepts = [
+      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
+    ];
+    expect(accepts).toHaveLength(2);
+    accepts[0].click();
+    await flush();
+    expect(counter().textContent).toContain("1");
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    await clickPublish(element);
+    // The week's checks alone would say 2; the box says what the counter shows.
+    expect(ask(element).lines).toEqual(["Still needed: 1"]);
+    await answer(element, false);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it("focus goes back to Publish when it finishes without asking: published, already published, or failed", async () => {
     const element = await render(finished());
     const publishButton = () => q(element, '[data-id="publish"]');

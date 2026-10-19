@@ -419,11 +419,16 @@ export default class ShoreshManualBuild extends LightningElement {
     return this.weekSources.length > 0;
   }
 
-  /** "Week 2 · Manual Build", "Week 1 · Before the trip (version)" */
+  /**
+   * "Week 2 · Manual Build", "Week 1 · Published schedule" (the week's published schedule now,
+   * in the camp's word), "Week 1 · Before the trip (version)".
+   */
   get weekSourceItems() {
     return this.weekSources.map((source) => ({
       value: source.id,
-      label: `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})` : ""}`
+      label: source.isPublished
+        ? `${source.weekName} · ${this.t.s("PublishedSchedule")}`
+        : `${source.weekName} · ${source.name}${source.isVersion ? ` (${this.t.sIn("Version")})` : ""}`
     }));
   }
 

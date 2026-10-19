@@ -4,7 +4,8 @@ import { LightningElement, api } from "lwc";
  * A question before something the director may not mean (Shoresh desktop's confirm dialogs, such
  * as ExclusionConfirmDialog.jsx): a heading, a few lines, Cancel and a button that says what it
  * does ("Turn off anyway"). Modal: focus starts on Cancel, as on the desktop, Tab stays on the
- * two buttons, and Escape cancels.
+ * lines (focusable so a long list scrolls with the keyboard) and the two buttons, and Escape
+ * cancels.
  *
  * Fires: answer { yes }
  */
@@ -37,13 +38,15 @@ export default class ShoreshAsk extends LightningElement {
       return;
     }
     if (event.key === "Tab") {
-      const buttons = [...this.template.querySelectorAll("button")];
-      const at = buttons.indexOf(this.template.activeElement);
+      const stops = [
+        ...this.template.querySelectorAll('[data-id="lines"], button')
+      ];
+      const at = stops.indexOf(this.template.activeElement);
       const next = event.shiftKey
-        ? (at - 1 + buttons.length) % buttons.length
-        : (at + 1) % buttons.length;
+        ? (at - 1 + stops.length) % stops.length
+        : (at + 1) % stops.length;
       event.preventDefault();
-      buttons[next].focus();
+      stops[next].focus();
     }
   }
 

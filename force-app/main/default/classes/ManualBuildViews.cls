@@ -75,7 +75,10 @@ public with sharing class ManualBuildViews {
     public Activity__c record;
   }
 
-  /** A schedule a week can start from: another week's Manual Build, or a version. */
+  /**
+   * A schedule a week can start from: another week's Manual Build, a week's published schedule,
+   * or a version (a published schedule replaced since is one).
+   */
   public class WeekSource {
     @AuraEnabled
     public Id id;
@@ -87,11 +90,17 @@ public with sharing class ManualBuildViews {
     public String name;
     @AuraEnabled
     public Boolean isVersion;
+    // The week's published schedule now (not one replaced since).
+    @AuraEnabled
+    public Boolean isPublished;
     @AuraEnabled
     public Datetime savedAt;
   }
 
-  /** The program's other weeks' Manual Build drafts and all its versions, by week, newest first. */
+  /**
+   * The program's other weeks' Manual Build drafts, each week's published schedule and all its
+   * versions (the published schedules replaced since among them), by week, newest first.
+   */
   public static List<WeekSource> weekSources(Id programId, Id weekId) {
     List<WeekSource> result = new List<WeekSource>();
     for (Schedule__c schedule : [
@@ -100,6 +109,7 @@ public with sharing class ManualBuildViews {
       WHERE
         Program__c = :programId
         AND (Status__c = 'Version'
+        OR Status__c = :SchedulePublish.PUBLISHED
         OR (Status__c = 'Draft'
         AND Origin__c = 'Manual'
         AND Week__c != :weekId))
@@ -112,6 +122,7 @@ public with sharing class ManualBuildViews {
       source.weekName = schedule.Week__r.Name;
       source.name = schedule.Name;
       source.isVersion = schedule.Status__c == 'Version';
+      source.isPublished = schedule.Status__c == SchedulePublish.PUBLISHED;
       source.savedAt = schedule.CreatedDate;
       result.add(source);
     }
