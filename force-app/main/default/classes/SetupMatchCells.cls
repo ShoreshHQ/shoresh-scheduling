@@ -71,16 +71,32 @@ public with sharing class SetupMatchCells {
   }
 
   /**
-   * Whether two days have the same time blocks in the same order and the same groups. Rows stand
-   * alone, so groups may come in another order; time blocks may not (a placement runs over
-   * blocks next to each other).
+   * Whether two days have the same time blocks, at the same times and in the same order, and the
+   * same groups. Rows stand alone, so groups may come in another order; time blocks may not (a
+   * placement runs over blocks next to each other). A time block whose times changed makes the
+   * day one change, so the times shown and published are never left as they were unseen.
    */
   public static Boolean sameFrame(ScheduleGrid was, ScheduleGrid now) {
     if (was == null || now == null) {
       return false;
     }
     return idLine(was.blockIds()) == idLine(now.blockIds()) &&
+      timeLine(was) == timeLine(now) &&
       ids(was.groupIds()).equals(ids(now.groupIds()));
+  }
+
+  /** A grid's time block times, in order, as one line. */
+  private static String timeLine(ScheduleGrid grid) {
+    List<String> result = new List<String>();
+    for (ScheduleGrid.Block block : grid.blocks) {
+      result.add(timesOf(block));
+    }
+    return String.join(result, ',');
+  }
+
+  /** A time block's times as one text ("09:00-09:45"). */
+  public static String timesOf(ScheduleGrid.Block block) {
+    return block.startTime + '-' + block.endTime;
   }
 
   /** The Ids, in their 18-character form. */

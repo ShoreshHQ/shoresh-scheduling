@@ -6,7 +6,7 @@
  */
 @IsTest
 private class SetupMatchTest {
-  private static final Date MONDAY = Date.newInstance(2026, 6, 29);
+  private static final Date MONDAY = SetupMatchTestData.MONDAY;
   // The draft the test's edits go to, and the camp's Ids by name.
   private static Id draft;
   private static Map<String, Id> campIds;
@@ -86,54 +86,6 @@ private class SetupMatchTest {
       String.valueOf(ids.get(block));
   }
 
-  private static Map<String, String> dotsOf(SetupMatch.Preview preview) {
-    Map<String, String> result = new Map<String, String>();
-    for (SetupMatch.Dot dot : preview.dots) {
-      result.put(dot.key, dot.words);
-    }
-    return result;
-  }
-
-  /** The changes on Monday for a group, by the line's place. */
-  private static SetupMatch.Change changeAt(
-    SetupMatch.Preview preview,
-    String place
-  ) {
-    for (SetupMatch.Change change : preview.changes) {
-      for (SetupMatch.Line line : change.lines) {
-        if (line.place == place) {
-          return change;
-        }
-      }
-    }
-    Assert.fail('No change at ' + place + ' in ' + JSON.serialize(preview));
-    return null;
-  }
-
-  /** What a group's Monday cell holds now ('' Open, else the item's name). */
-  private static String mondayAt(
-    ManualBuildViews.DraftView view,
-    String groupName,
-    String blockName
-  ) {
-    ScheduleViews.DayView day = view.schedule.days[0];
-    Integer b = -1;
-    for (Integer i = 0; i < day.blocks.size(); i++) {
-      if (day.blocks[i].name == blockName) {
-        b = i;
-      }
-    }
-    for (Integer g = 0; g < day.groups.size(); g++) {
-      if (day.groups[g].name == groupName) {
-        String token = day.rows[g].split(',', -1)[b];
-        return String.isBlank(token) || token == '^'
-          ? token
-          : day.items[Integer.valueOf(token) - 1].name;
-      }
-    }
-    return null;
-  }
-
   private static SetupMatch.Updated makeChanges(
     Id draftId,
     List<String> keys,
@@ -146,14 +98,6 @@ private class SetupMatchTest {
     );
   }
 
-  private static List<String> keysOf(SetupMatch.Preview preview) {
-    List<String> keys = new List<String>();
-    for (SetupMatch.Change change : preview.changes) {
-      keys.add(change.key);
-    }
-    return keys;
-  }
-
   private static Integer versionsNamed(Map<String, Id> ids, String name) {
     return [
       SELECT COUNT()
@@ -164,6 +108,20 @@ private class SetupMatchTest {
         AND Name = :name
       WITH USER_MODE
     ];
+  }
+
+  /** Setup saved around the clash check, as a screen save defers it. */
+  private static void saveDeferred(SObject record, Boolean remove) {
+    SetTimeGuard.defer();
+    try {
+      if (remove) {
+        Database.delete(record, AccessLevel.SYSTEM_MODE);
+      } else {
+        Database.update(record, AccessLevel.SYSTEM_MODE);
+      }
+    } finally {
+      SetTimeGuard.resume();
+    }
   }
 
   @IsTest
@@ -213,7 +171,7 @@ private class SetupMatchTest {
         new Map<String, String>{
           mondayKey(ids, 'Group A', 'Period 2') => 'Deleted from setup'
         },
-        dotsOf(preview)
+        SetupMatchTestData.dotsOf(preview)
       );
       Integer before = Limits.getQueries();
       SetupMatch.Updated updated = makeChanges(
@@ -225,7 +183,10 @@ private class SetupMatchTest {
       Test.stopTest();
       Assert.isTrue(used <= 60, 'Update to match used ' + used + ' queries');
       Assert.isNull(updated.refused);
-      Assert.areEqual('', mondayAt(updated.view, 'Group A', 'Period 2'));
+      Assert.areEqual(
+        '',
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 2')
+      );
       // The way back: the week as it was, Swim and all.
       Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
       Assert.isTrue(
@@ -253,7 +214,8 @@ private class SetupMatchTest {
       Test.stopTest();
       Assert.areEqual(
         'Not running this week',
-        dotsOf(preview).get(mondayKey(ids, 'Group A', 'Period 2'))
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 2'))
       );
       Assert.areEqual(
         new List<Id>{ ids.get('Swim') },
@@ -274,7 +236,7 @@ private class SetupMatchTest {
       );
       // Three groups on four days, each cell its own change; nothing of the director's goes.
       Assert.areEqual(12, preview.changes.size(), JSON.serialize(preview));
-      SetupMatch.Change groupB = changeAt(
+      SetupMatch.Change groupB = SetupMatchTestData.changeAt(
         preview,
         'Group B · Monday · Period 1'
       );
@@ -284,12 +246,13 @@ private class SetupMatchTest {
       Assert.areEqual('Assembly is set up here now', groupB.lines[0].reason);
       Assert.areEqual(
         'Assembly is set up here now',
-        dotsOf(preview).get(mondayKey(ids, 'Group B', 'Period 1'))
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group B', 'Period 1'))
       );
       // The same week and setup give the same changes.
       Assert.areEqual(
-        keysOf(preview),
-        keysOf(SetupMatchController.getSetupChanges(draftId))
+        SetupMatchTestData.keysOf(preview),
+        SetupMatchTestData.keysOf(SetupMatchController.getSetupChanges(draftId))
       );
       SetupMatch.Updated updated = makeChanges(
         draftId,
@@ -300,16 +263,23 @@ private class SetupMatchTest {
       Assert.isNull(updated.refused);
       Assert.areEqual(
         'Assembly',
-        mondayAt(updated.view, 'Group B', 'Period 1')
+        SetupMatchTestData.mondayAt(updated.view, 'Group B', 'Period 1')
       );
-      Assert.areEqual('', mondayAt(updated.view, 'Group A', 'Period 1'));
-      Assert.areEqual('Swim', mondayAt(updated.view, 'Group A', 'Period 2'));
+      Assert.areEqual(
+        '',
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 1')
+      );
+      Assert.areEqual(
+        'Swim',
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 2')
+      );
       // Nothing of the director's was taken, so no version was kept.
       Assert.areEqual(0, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
       SetupMatch.Preview after = SetupMatchController.getSetupChanges(draftId);
       Assert.areEqual(11, after.changes.size());
       Assert.isFalse(
-        dotsOf(after).containsKey(mondayKey(ids, 'Group B', 'Period 1'))
+        SetupMatchTestData.dotsOf(after)
+          .containsKey(mondayKey(ids, 'Group B', 'Period 1'))
       );
     }
   }
@@ -324,7 +294,7 @@ private class SetupMatchTest {
       SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
         draftId
       );
-      SetupMatch.Change change = changeAt(
+      SetupMatch.Change change = SetupMatchTestData.changeAt(
         preview,
         'Group A · Monday · Period 2'
       );
@@ -334,14 +304,14 @@ private class SetupMatchTest {
       Assert.areEqual('Assembly is set up here now', change.lines[0].reason);
       SetupMatch.Updated updated = makeChanges(
         draftId,
-        keysOf(preview),
+        SetupMatchTestData.keysOf(preview),
         preview
       );
       Test.stopTest();
       Assert.isNull(updated.refused);
       Assert.areEqual(
         'Assembly',
-        mondayAt(updated.view, 'Group A', 'Period 2')
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 2')
       );
       Assert.areEqual(1, versionsNamed(ids, SetupMatch.BEFORE_UPDATE));
     }
@@ -373,7 +343,7 @@ private class SetupMatchTest {
       Assert.isTrue(preview.dots.isEmpty());
       Assert.areEqual(
         'Swimming',
-        mondayAt(view, 'Bunk Aleph', 'Second period')
+        SetupMatchTestData.mondayAt(view, 'Bunk Aleph', 'Second period')
       );
     }
   }
@@ -397,14 +367,20 @@ private class SetupMatchTest {
       Assert.isTrue(preview.dots.isEmpty());
       SetupMatch.Updated updated = makeChanges(
         draftId,
-        keysOf(preview),
+        SetupMatchTestData.keysOf(preview),
         preview
       );
       Test.stopTest();
       Assert.isNull(updated.refused);
       Assert.areEqual(4, updated.view.schedule.days[0].blocks.size());
-      Assert.areEqual('Swim', mondayAt(updated.view, 'Group A', 'Period 2'));
-      Assert.areEqual('', mondayAt(updated.view, 'Group A', 'Period 3'));
+      Assert.areEqual(
+        'Swim',
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 2')
+      );
+      Assert.areEqual(
+        '',
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Period 3')
+      );
       Assert.isTrue(
         SetupMatchController.getSetupChanges(draftId).changes.isEmpty()
       );
@@ -436,7 +412,8 @@ private class SetupMatchTest {
       Assert.areEqual('Open', monday.lines[0].after);
       Assert.areEqual(
         'Not at camp this week',
-        dotsOf(preview).get(mondayKey(ids, 'Group A', 'Period 2'))
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 2'))
       );
       SetupMatch.Updated updated = makeChanges(
         draftId,
@@ -470,7 +447,7 @@ private class SetupMatchTest {
         new Map<String, String>{
           mondayKey(ids, 'Group B', 'Lunch') => 'Not at camp then'
         },
-        dotsOf(preview)
+        SetupMatchTestData.dotsOf(preview)
       );
       Assert.areEqual('Soccer', preview.changes[0].lines[0].before);
     }
@@ -490,7 +467,7 @@ private class SetupMatchTest {
       place('Group C', 'Period 2', 'Soccer');
       SetupMatch.Updated updated = makeChanges(
         draftId,
-        keysOf(preview),
+        SetupMatchTestData.keysOf(preview),
         preview
       );
       Test.stopTest();
@@ -537,8 +514,14 @@ private class SetupMatchTest {
         ids.get('Main'),
         ids.get('Week 1')
       );
-      Assert.areEqual('', mondayAt(view, 'Group A', 'Period 1'));
-      Assert.areEqual('Swim', mondayAt(view, 'Group A', 'Period 2'));
+      Assert.areEqual(
+        '',
+        SetupMatchTestData.mondayAt(view, 'Group A', 'Period 1')
+      );
+      Assert.areEqual(
+        'Swim',
+        SetupMatchTestData.mondayAt(view, 'Group A', 'Period 2')
+      );
     }
   }
 
@@ -556,6 +539,203 @@ private class SetupMatchTest {
         Assert.isTrue(e.getMessage().contains('not found'), e.getMessage());
       }
       Test.stopTest();
+    }
+  }
+
+  @IsTest
+  static void aTimeBlockAtNewTimesIsOneChangeForTheDayAndUpdateTakesThem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      // Renamed and moved half an hour, in the same order.
+      saveDeferred(
+        new TimeBlock__c(
+          Id = ids.get('Period 2'),
+          Name = 'Second period',
+          StartTime__c = Time.newInstance(10, 30, 0, 0),
+          EndTime__c = Time.newInstance(11, 15, 0, 0)
+        ),
+        false
+      );
+      ManualBuildViews.DraftView view = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      // One change a day, named by the week's name for it; Swim stays where it is.
+      Assert.areEqual(4, preview.changes.size(), JSON.serialize(preview));
+      SetupMatch.Change monday = SetupMatchTestData.mondayChange(preview);
+      Assert.areEqual(
+        'Monday: Period 2 now 10:30 AM – 11:15 AM',
+        monday.summary
+      );
+      Assert.isTrue(monday.lines.isEmpty(), JSON.serialize(monday));
+      Assert.isFalse(monday.takesChoices);
+      Assert.isTrue(preview.dots.isEmpty());
+      // Until it is made, the row keeps the week's name with the week's times.
+      ScheduleViews.Ref shown = view.schedule.days[0].blocks[1];
+      Assert.areEqual('Period 2', shown.name);
+      Assert.areEqual('10:00', shown.startTime);
+      SetupMatch.Updated updated = makeChanges(
+        draftId,
+        SetupMatchTestData.keysOf(preview),
+        preview
+      );
+      Test.stopTest();
+      Assert.isNull(updated.refused);
+      ScheduleViews.Ref now = updated.view.schedule.days[0].blocks[1];
+      Assert.areEqual('Second period', now.name);
+      Assert.areEqual('10:30', now.startTime);
+      Assert.areEqual('11:15', now.endTime);
+      Assert.areEqual(
+        'Swim',
+        SetupMatchTestData.mondayAt(updated.view, 'Group A', 'Second period')
+      );
+      Assert.isTrue(
+        SetupMatchController.getSetupChanges(draftId).changes.isEmpty()
+      );
+    }
+  }
+
+  @IsTest
+  static void aGroupNoLongerInTheProgramSaysSo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      Database.delete(ids.get('Group A'), AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      SetupMatch.Change monday = SetupMatchTestData.mondayChange(preview);
+      Assert.areEqual('Monday: Group A no longer in Main', monday.summary);
+      Assert.areEqual('Swim', monday.lines[0].before);
+      Assert.areEqual(
+        'No longer in Main',
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 2'))
+      );
+    }
+  }
+
+  @IsTest
+  static void aTimeBlockNoLongerSetUpSaysSo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      saveDeferred(new TimeBlock__c(Id = ids.get('Period 2')), true);
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      SetupMatch.Change monday = SetupMatchTestData.mondayChange(preview);
+      Assert.areEqual('Monday: Period 2 no longer set up', monday.summary);
+      Assert.isTrue(monday.takesChoices);
+      Assert.areEqual(
+        'Period 2 is no longer set up',
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 2'))
+      );
+    }
+  }
+
+  @IsTest
+  static void aTimeBlockAddedInsideAPlacementSaysItsPeriodsChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      // Soccer runs Period 2 and Lunch for Group B; a period at 11 goes between them.
+      SlotEdits.Result result = ManualBuildController.saveSlots(
+        draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY,
+              ids.get('Group B'),
+              ids.get('Period 2')
+            ),
+            new List<String>{ '', '' },
+            new List<String>{
+              'A:' + ids.get('Soccer'),
+              '^A:' + ids.get('Soccer')
+            }
+          )
+        }
+      );
+      Assert.isTrue(result.conflicts.isEmpty());
+      Test.startTest();
+      ShoreshTestData.timeBlock(ids.get('Main'), 'Period 3', 11);
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      Map<String, String> dots = SetupMatchTestData.dotsOf(preview);
+      Assert.areEqual(
+        'Its periods changed',
+        dots.get(mondayKey(ids, 'Group B', 'Period 2'))
+      );
+      Assert.areEqual(
+        'Its periods changed',
+        dots.get(mondayKey(ids, 'Group B', 'Lunch'))
+      );
+      Assert.isFalse(dots.containsKey(mondayKey(ids, 'Group A', 'Period 2')));
+    }
+  }
+
+  @IsTest
+  static void aFixedActivityEndedSinceIsNotSetUpThereNow() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      // Start places Assembly in every group's Period 1.
+      Id assembly = addFixed(ids, 'Assembly', 'Period 1');
+      Id draftId = started(ids);
+      saveDeferred(new FixedActivity__c(Id = assembly), true);
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        'Not set up here now',
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 1'))
+      );
+      SetupMatch.Change change = SetupMatchTestData.changeAt(
+        preview,
+        'Group A · Monday · Period 1'
+      );
+      Assert.areEqual('Assembly', change.lines[0].before);
+      Assert.areEqual('Open', change.lines[0].after);
+      Assert.isFalse(change.takesChoices);
+    }
+  }
+
+  @IsTest
+  static void aDayTheProgramNoLongerRunsIsOneChange() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      Program__c main = new Program__c(Id = ids.get('Main'));
+      main.put(SetTimePlan.dayField(Program__c.SObjectType, 'Monday'), false);
+      saveDeferred(main, false);
+      Test.startTest();
+      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
+        draftId
+      );
+      Test.stopTest();
+      SetupMatch.Change monday = SetupMatchTestData.mondayChange(preview);
+      Assert.areEqual('Monday: not a day of Main now', monday.summary);
+      Assert.isTrue(monday.takesChoices);
+      Assert.areEqual(
+        'Not a day of Main now',
+        SetupMatchTestData.dotsOf(preview)
+          .get(mondayKey(ids, 'Group A', 'Period 2'))
+      );
     }
   }
 }

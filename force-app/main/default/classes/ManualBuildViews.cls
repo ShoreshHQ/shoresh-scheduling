@@ -254,46 +254,18 @@ public with sharing class ManualBuildViews {
     return view;
   }
 
-  /**
-   * A setup rename shows the new name, with no dot (Greg, Manual Build round 2 #3): the draft's
-   * time blocks, groups, activities and fixed and recurring activities are shown by their names
-   * in setup now. Only the screen's copy changes; what is saved keeps its names until an edit or
-   * "Update to match setup" writes the day again. Anything deleted since keeps its saved name.
-   */
+  /** The draft by setup's names now (ManualBuildNamesNow). */
   private static void namesNow(DraftView view, Read read) {
     if (view.schedule == null) {
       return;
     }
-    Map<Id, String> names = new Map<Id, String>();
     List<SObject> records = new List<SObject>();
     records.addAll(read.blocks);
     records.addAll(read.groups);
     records.addAll(read.activities);
     records.addAll(view.fixedActivityRecords);
     records.addAll(view.recurringActivityRecords);
-    for (SObject record : records) {
-      names.put(record.Id, (String) record.get('Name'));
-    }
-    for (ScheduleViews.DayView day : view.schedule.days) {
-      List<ScheduleViews.Ref> refs = new List<ScheduleViews.Ref>(day.blocks);
-      refs.addAll(day.groups);
-      refs.addAll(day.items);
-      for (ScheduleViews.Ref ref : refs) {
-        Id recordId = idOf(ref.id);
-        if (recordId != null && names.containsKey(recordId)) {
-          ref.name = names.get(recordId);
-        }
-      }
-    }
-  }
-
-  /** A saved Id, or null for a name (things not set up in Shoresh yet have none). */
-  private static Id idOf(String text) {
-    try {
-      return String.isBlank(text) ? null : Id.valueOf(text);
-    } catch (Exception e) {
-      return null;
-    }
+    ManualBuildNamesNow.apply(view.schedule, records, read.blocks);
   }
 
   /** The season's activities in the Activities screen's order. */

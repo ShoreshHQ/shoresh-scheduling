@@ -67,7 +67,10 @@ public with sharing class SetupMatchLines {
     return names.range(filled[0], filled[filled.size() - 1]);
   }
 
-  /** "Monday: Period 6 added, Period 5 no longer set up, Bunk 3 not at camp this week". */
+  /**
+   * "Monday: Period 6 added, Period 5 no longer set up, Period 2 now 10:30 AM – 11:15 AM, Bunk 3
+   * not at camp this week".
+   */
   public String summary(ScheduleGrid was, ScheduleGrid now) {
     String weekday = BlankWeek.weekdayOf(day);
     if (was == null) {
@@ -77,6 +80,7 @@ public with sharing class SetupMatchLines {
       return weekday + ': ' + lowerFirst(rules.notADay());
     }
     List<String> parts = blockParts(was, now);
+    parts.addAll(timeParts(was, now));
     parts.addAll(groupParts(was, now));
     if (parts.isEmpty()) {
       // The same time blocks in a new order (one was moved to another time).
@@ -97,6 +101,27 @@ public with sharing class SetupMatchLines {
     for (ScheduleGrid.Block block : was.blocks) {
       if (!nowBlocks.contains(SetupMatchCells.normal(block.id))) {
         parts.add(block.name + ' no longer set up');
+      }
+    }
+    return parts;
+  }
+
+  /** A time block in both whose times changed, by its name in the week and its new times. */
+  private List<String> timeParts(ScheduleGrid was, ScheduleGrid now) {
+    Map<String, ScheduleGrid.Block> nowBlocks = new Map<String, ScheduleGrid.Block>();
+    for (ScheduleGrid.Block block : now.blocks) {
+      nowBlocks.put(SetupMatchCells.normal(block.id), block);
+    }
+    List<String> parts = new List<String>();
+    for (ScheduleGrid.Block block : was.blocks) {
+      ScheduleGrid.Block moved = nowBlocks.get(
+        SetupMatchCells.normal(block.id)
+      );
+      if (
+        moved != null &&
+        SetupMatchCells.timesOf(moved) != SetupMatchCells.timesOf(block)
+      ) {
+        parts.add(rules.blockAt(block.name, moved.startTime, moved.endTime));
       }
     }
     return parts;

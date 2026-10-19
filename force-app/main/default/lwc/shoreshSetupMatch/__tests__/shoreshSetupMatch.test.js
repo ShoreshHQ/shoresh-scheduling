@@ -136,22 +136,48 @@ describe("c-shoresh-setup-match", () => {
     );
   });
 
-  it("waits while an update is on its way", async () => {
-    const { element } = await render({ busy: true });
+  it("waits while an update is on its way, Cancel and Escape too", async () => {
+    // Closing then would not stop the update, whose answer would open the list again by itself.
+    const { element, heard } = await render({ busy: true });
     expect(qa(element, '[data-id="update-one"]').every((b) => b.disabled)).toBe(
       true
     );
     expect(q(element, '[data-id="update-all"]').disabled).toBe(true);
-    expect(q(element, '[data-id="close"]').disabled).toBe(false);
+    expect(q(element, '[data-id="close"]').disabled).toBe(true);
+    await press(element, "Escape");
+    expect(heard).toEqual([]);
+    element.busy = false;
+    await flush();
+    await press(element, "Escape");
+    expect(heard).toEqual(["close"]);
   });
 
-  it("shows a notice above the list, said politely", async () => {
-    const { element } = await render({
-      notice: "Setup changed again since you looked."
-    });
-    const notice = q(element, '[data-id="notice"]');
-    expect(notice.textContent).toBe("Setup changed again since you looked.");
-    expect(notice.getAttribute("role")).toBe("status");
+  it("shows a notice above the list, and says it from a live region already there", async () => {
+    const { element } = await render();
+    // Present and empty from the start: a live region added already filled is often not read.
+    const live = q(element, '[data-id="announce"]');
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    expect(live.textContent.trim()).toBe("");
+    expect(live.closest('[role="dialog"]')).not.toBeNull();
+    element.notice = "Setup changed again since you looked.";
+    await flush();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Setup changed again since you looked."
+    );
+    expect(q(element, '[data-id="announce"]')).toBe(live);
+    expect(live.textContent.trim()).toBe(
+      "Setup changed again since you looked."
+    );
+  });
+
+  it("says an announcement only to screen readers", async () => {
+    const { element } = await render();
+    element.announcement = "Updated to match setup.";
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+      "Updated to match setup."
+    );
+    expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 
   it("moves focus to the next row once the row it was on is gone", async () => {

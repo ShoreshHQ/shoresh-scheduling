@@ -9,6 +9,9 @@
     onkeydown={handleKeyDown}
   >
     <div class="slds-modal__container">
+      <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+        {spoken}
+      </div>
       <div class="slds-modal__header">
         <h2 id="match-title" class="slds-modal__title">{heading}</h2>
       </div>
@@ -21,7 +24,7 @@
         data-id="changes"
       >
         <template lwc:if={notice}>
-          <p class="notice" role="status" data-id="notice">{notice}</p>
+          <p class="notice" data-id="notice">{notice}</p>
         </template>
         <ul class="changes">
           <template for:each={rows} for:item="row">
@@ -59,6 +62,7 @@
         <button
           type="button"
           class="slds-button slds-button_neutral"
+          disabled={busy}
           onclick={handleClose}
           data-id="close"
         >

@@ -8,8 +8,11 @@ import { LightningElement, api } from "lwc";
  * its own Update; Update all makes every change listed. Modal: focus starts on Cancel, as on
  * c-shoresh-ask; Tab stays inside and Escape cancels.
  *
- * changes: SetupMatch.Change rows. busy: an update is on its way (the buttons wait). notice: a
- * line above the list ("Setup changed again since you looked…").
+ * changes: SetupMatch.Change rows. busy: an update is on its way (the buttons, Cancel and Escape
+ * wait: the update's answer is for the list as it was). notice: a line above the list ("Setup
+ * changed again since you looked…"). announcement: words for screen readers only ("Updated to
+ * match setup."). Both are read out from a live region that is always in the dialog, so its
+ * words are heard when they change.
  *
  * Fires: update { keys }, close.
  */
@@ -18,8 +21,13 @@ export default class ShoreshSetupMatch extends LightningElement {
   @api changes = [];
   @api busy = false;
   @api notice;
+  @api announcement;
 
   focused = false;
+
+  get spoken() {
+    return this.notice || this.announcement || "";
+  }
 
   get rows() {
     return (this.changes || []).map((change) => {
@@ -65,7 +73,9 @@ export default class ShoreshSetupMatch extends LightningElement {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      this.handleClose();
+      if (!this.busy) {
+        this.handleClose();
+      }
       return;
     }
     if (event.key === "Tab") {

@@ -798,16 +798,21 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    from setup_). The editor takes them as `setupDots` (cell key to words); that is its only
    change. Cells are compared by record Id, so a rename is never a dot: Manual Build shows the
    draft's time blocks, groups, activities and fixed and recurring activities by their names in
-   setup now (`ManualBuildViews.namesNow`); what is saved keeps its names until the day is
-   written again. A bunk moved to another unit is the "Not set up for" dot of part 3 (round 1
+   setup now (`ManualBuildNamesNow`); what is saved keeps its names until the day is written
+   again. A time block whose times changed keeps its saved name on screen until the change is
+   made: its row shows the week's times, and a name that is its new time range (an unnamed block
+   follows its times) would contradict them. A bunk moved to another unit is the "Not set up for" dot of part 3 (round 1
    #3), not a setup-changed one.
 3. **Changes** (`SetupMatchClusters`, `SetupMatchLines`): the cells that differ are grouped so a
    group takes whole placements on both sides (a differing cell, every cell of its placements in
    the draft and in setup now, and theirs in turn). Making one alone always leaves a whole day.
    Each is one line: _Bunk 1 · Monday · Period 2_ · _Swim → Open_ · _Deleted from setup_. When a
-   day's time blocks or groups changed (a block added or removed, a bunk away this week or
-   added) the whole day is one change, its summary first (_Monday: Period 3 added, Bunk 3 not at
-   camp this week_) and then the lines of what moves with it. A day the program no longer runs
+   day's time blocks or groups changed (a block added or removed or at new times, a bunk away
+   this week or added) the whole day is one change, its summary first (_Monday: Period 3 added,
+   Period 2 now 10:30 AM – 11:15 AM, Bunk 3 not at camp this week_) and then the lines of what
+   moves with it. New times are compared like the blocks themselves (`SetupMatchCells.sameFrame`)
+   and have no dot, as a block added has none: the desktop freezes them at Start, and leaving
+   them unflagged would keep old times on screen and in what is published. A day the program no longer runs
    is one change (_Monday: not a day of Main now_), and so is a new one (_Tuesday: added_). A day
    that can't be read is left as it is.
 4. **Shown first, chosen by the director.** The screen asks for the changes on its own request
@@ -817,8 +822,12 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    this week started_ with **Update to match setup**. That opens `c-shoresh-setup-match`, read
    fresh: every change, each with its own **Update** (the "per slot" of round 1 #5), and
    **Update all** for every change listed; **Cancel** first, as on c-shoresh-ask. Edits,
-   Versions, Publish and the pickers wait while it is open. After one change the list stays with
-   what is left; after Update all it closes.
+   Versions, Publish and the pickers wait while it is open; while an update is on its way,
+   Cancel and Escape wait too (its answer is for the list as it was). After one change the list
+   stays with what is left and says so from a live region inside the dialog (the refusal below
+   too); after Update all it closes. If the changes can't be read, the dots and the box stay as
+   last read and the screen says it couldn't check (never a week that only looks as if it
+   matched).
 5. **Nothing changed unseen** (`SetupMatch.make`, under the draft's lock): each change's key is
    a digest of exactly the cells it changes, from what to what. The update sends the keys and the
    week's revisions the list was worked out on. Someone saved a day since: refused, nothing
@@ -837,10 +846,15 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
 8. **Checked by** `SetupMatchTest` (as a scheduler, data inside `runAs`): nothing to show; a
    deleted activity (dot, line, update by key, version kept); closed this week; a fixed activity
    added (per cell, deterministic keys, no version); one over a director's placement; a rename
-   with no dot; a time block added; a bunk away this week (one change a day); a bunk now mornings
-   only; a week saved since; setup changed again since; only a Manual Build draft. Screen:
-   `setupMatch.test.js` (dots, joined words, the box, the list read fresh, per-change and Update
-   all, Cancel, both refusals, when it reads again) and `shoreshSetupMatch.test.js` (the list,
+   with no dot; a time block added; a time block at new times (one change a day, the saved name
+   shown until made, then the new times and name); a bunk away this week (one change a day); a
+   bunk no longer in the program; a time block no longer set up; one added inside a placement; a
+   fixed activity ended; a day the program no longer runs; a bunk now mornings only; a week saved
+   since; setup changed again since; only a Manual Build draft. Screen:
+   `setupMatch.test.js` (dots, joined words, a dot on any block of a longer placement, said once,
+   the box, the list read fresh, per-change and Update all, Cancel and where focus goes, both
+   refusals, a failed update or read, an older answer dropped, another week, when it reads again,
+   Undo starting over) and `shoreshSetupMatch.test.js` (the list,
    focus, Tab, Escape, busy, accessibility).
 
 ## Choices that are hard to undo after release

@@ -1000,10 +1000,14 @@ export default class ShoreshManualBuild extends LightningElement {
       }
       this.setupPreview = preview;
       return preview;
-    } catch {
-      // Without it there are no setup dots; the week itself is unaffected.
+    } catch (e) {
+      // Said, never hidden: the dots and the box stay as last read rather than vanishing, which
+      // would make the week look as if it matched setup.
       if (ticket === this.setupTicket) {
-        this.setupPreview = null;
+        this.error = failed(
+          `Shoresh couldn't check ${this.weekName} against setup.`,
+          e
+        );
       }
       return null;
     }
@@ -1151,15 +1155,21 @@ export default class ShoreshManualBuild extends LightningElement {
       // Undo starts over, as after Restore: what it would undo is no longer the week.
       this.weekEditor.restored(result.view);
       this.restoredId = null;
-      this.say(
+      const done =
         keys.length === 1
           ? "Updated to match setup."
-          : `Updated ${keys.length} changes to match setup.`
-      );
+          : `Updated ${keys.length} changes to match setup.`;
       const fresh = await this.loadSetupChanges();
       const all = keys.length === preview.changes.length;
+      // While the list stays open it says so itself: a screen reader in the dialog hears only
+      // the dialog.
       this.setupAsk =
-        !all && fresh && fresh.changes.length ? { notice: null } : null;
+        !all && fresh && fresh.changes.length
+          ? { notice: null, announcement: done }
+          : null;
+      if (!this.setupAsk) {
+        this.say(done);
+      }
     } catch (e) {
       this.setupAsk = null;
       this.error = failed(`${this.weekName} was not updated.`, e);

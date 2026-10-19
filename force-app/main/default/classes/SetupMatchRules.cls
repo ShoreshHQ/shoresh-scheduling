@@ -95,6 +95,28 @@ public with sharing class SetupMatchRules {
     return setup.labels().plural('TimeBlock') + ' changed';
   }
 
+  /** "Period 2 now 10:30 AM – 11:15 AM": a time block whose times changed ("HH:mm" times). */
+  public String blockAt(String blockName, String startTime, String endTime) {
+    String range = TimeBlockTriggerHandler.rangeLabel(
+      timeOf(startTime),
+      timeOf(endTime)
+    );
+    return blockName + ' now ' + (range == null ? 'at other times' : range);
+  }
+
+  private static Time timeOf(String clock) {
+    try {
+      return Time.newInstance(
+        Integer.valueOf(clock.substringBefore(':')),
+        Integer.valueOf(clock.substringAfter(':')),
+        0,
+        0
+      );
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   /** "Lunch is set up here now". */
   public String setUpHere(String name) {
     return name + ' is set up here now';
