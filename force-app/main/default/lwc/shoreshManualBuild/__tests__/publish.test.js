@@ -444,6 +444,62 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="versions"]').busy).toBe(false);
   });
 
+  it("Clear day, Copy day to… and Clear week wait while a publish is on its way", async () => {
+    const element = await render(finished());
+    const waiting = () =>
+      ["clear-day", "copy-day", "clear-week"].map(
+        (id) => q(element, `[data-id="${id}"]`).disabled
+      );
+    expect(waiting()).toEqual([false, false, false]);
+    const preview = pending();
+    previewPublish.mockReturnValue(preview.promise);
+    await clickPublish(element);
+    expect(waiting()).toEqual([true, true, true]);
+    const sent = pending();
+    publish.mockReturnValue(sent.promise);
+    preview.resolve(FIRST_PREVIEW);
+    await flush();
+    expect(waiting()).toEqual([true, true, true]);
+    sent.resolve(DONE);
+    await flush();
+    expect(waiting()).toEqual([false, false, false]);
+  });
+
+  it("a tool refused while a publish is on its way says nothing was done and offers no Undo", async () => {
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      schedule: finished().schedule
+    });
+    const element = await render(finished());
+    // An earlier edit, saved: Undo would take it back.
+    await clearSwim(element);
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    const preview = pending();
+    previewPublish.mockReturnValue(preview.promise);
+    await clickPublish(element);
+    // A tool run all the same (a click that got past the waiting button).
+    q(element, '[data-id="week-editor"]').runTool({
+      kind: "clear",
+      dates: ["2026-06-29", "2026-06-30"],
+      name: "Week 1",
+      inWeek: true
+    });
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    expect(notice(element)).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    publish.mockResolvedValue(DONE);
+    preview.resolve(FIRST_PREVIEW);
+    await flush();
+    // Undo still takes back the earlier edit, one step: no step was added for the tool.
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+  });
+
   it("a refusal during a publish is shown after edits were held back", async () => {
     const element = await render(finished());
     previewPublish.mockResolvedValue(FIRST_PREVIEW);
@@ -1205,5 +1261,24 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(q(element, '[data-id="published"]')).not.toBeNull();
     expect(unpublishButton(element)).not.toBeNull();
     expect(q(element, '[data-id="notice"]')).toBeNull();
+  });
+
+  it("the day and week tools wait while an unpublish is on its way, in Group View too", async () => {
+    const element = await render(finished(PUBLISHED));
+    q(element, '[data-view="group"]').click();
+    await flush();
+    const waiting = () =>
+      ["clear-group-day", "clear-week"].map(
+        (id) => q(element, `[data-id="${id}"]`).disabled
+      );
+    expect(waiting()).toEqual([false, false]);
+    const sent = pending();
+    unpublish.mockReturnValue(sent.promise);
+    await clickUnpublish(element);
+    await answerUnpublish(element, true);
+    expect(waiting()).toEqual([true, true]);
+    sent.resolve(UNPUBLISHED);
+    await flush();
+    expect(waiting()).toEqual([false, false]);
   });
 });

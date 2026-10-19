@@ -193,6 +193,32 @@ describe("c-shoresh-week-editor", () => {
     expect(saveRuns).toHaveBeenCalledTimes(3);
   });
 
+  it("a tool refused while the host holds edits says nothing was done, and its line never names the edit before it", async () => {
+    let answer;
+    const saveRuns = jest.fn().mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    const { element } = await render(saveRuns);
+    // An earlier edit, still saving, is the last waiting edit.
+    await placeSwim(element);
+    element.restoring = true;
+    element.runTool({ kind: "clear", dates: ["2026-06-29"], name: "Monday" });
+    await flush();
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    element.restoring = false;
+    answer(saved(WITH_SWIM, ["1,2,"]));
+    await flush();
+    // Only the earlier edit was sent, and nothing about a Clear is said with it.
+    expect(saveRuns).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    expect(cellText(element, "0-1")).toBe("Swim");
+  });
+
   it("clear() lets go of the old week: no notice, nothing to undo", async () => {
     const saveRuns = jest.fn().mockResolvedValue(saved(WITH_SWIM, ["1,2,"]));
     const { element, heard } = await render(saveRuns);

@@ -45,6 +45,7 @@
               <button
                 type="button"
                 class="slds-button slds-button_neutral"
+                disabled={editsWait}
                 data-id="clear-day"
                 onclick={handleClearDay}
               >
@@ -56,6 +57,7 @@
                 label="Copy day to…"
                 alternative-text="Copy day to…"
                 menu-alignment="right"
+                disabled={editsWait}
                 data-id="copy-day"
                 onselect={handleCopyDay}
               >
@@ -74,6 +76,7 @@
               label="Clear day"
               alternative-text="Clear day"
               menu-alignment="right"
+              disabled={editsWait}
               data-id="clear-group-day"
               onselect={handleClearGroupDay}
             >
@@ -89,6 +92,7 @@
           <button
             type="button"
             class="slds-button slds-button_neutral"
+            disabled={editsWait}
             data-id="clear-week"
             onclick={handleClearWeek}
           >
