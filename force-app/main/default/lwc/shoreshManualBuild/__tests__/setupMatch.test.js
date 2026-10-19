@@ -353,4 +353,13 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(getSetupChanges).toHaveBeenCalledTimes(1);
   });
+
+  it("reads them again after a save when an activity is closed this week (placing it is a new difference)", async () => {
+    const element = await render({ ...NOTHING, closedActivityIds: ["a1"] });
+    q(element, "c-shoresh-week-editor").dispatchEvent(
+      new CustomEvent("saved", { detail: {} })
+    );
+    await flush();
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+  });
 });
