@@ -430,6 +430,92 @@ private class SetupMatchTest {
   }
 
   @IsTest
+  static void aRenameStillShowsAfterAnEdit() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      started(ids);
+      rename(ids);
+      Test.startTest();
+      // Any edit elsewhere in the week: the answer is what the screen shows next.
+      SlotEdits.Result result = ManualBuildController.saveSlots(
+        draft,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              MONDAY,
+              ids.get('Group B'),
+              ids.get('Period 1')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + ids.get('Gym games') }
+          )
+        }
+      );
+      Test.stopTest();
+      Assert.isTrue(result.conflicts.isEmpty());
+      Assert.areEqual(
+        'Swimming',
+        SetupMatchTestData.mondayAt(
+          result.schedule,
+          'Bunk Aleph',
+          'Second period'
+        )
+      );
+    }
+  }
+
+  @IsTest
+  static void aRenameIsWhatPublishPutsOut() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = camp();
+      Id draftId = started(ids);
+      SchedulePublish.Preview first = ManualBuildController.previewPublish(
+        draftId
+      );
+      ManualBuildController.publish(draftId, first.revisions, null);
+      rename(ids);
+      Test.startTest();
+      ManualBuildViews.DraftView view = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        draftId
+      );
+      SchedulePublish.Result result = ManualBuildController.publish(
+        draftId,
+        preview.revisions,
+        preview.published.id
+      );
+      Test.stopTest();
+      // The published week says Swim; the screen says Swimming: a change to publish, shown.
+      Assert.isTrue(view.published.changedSince);
+      Assert.areEqual(1, preview.changeCount, JSON.serialize(preview));
+      Assert.isTrue(
+        preview.changes[0].endsWith('Swim → Swimming'),
+        preview.changes[0]
+      );
+      Assert.isFalse(result.unchanged);
+      ScheduleGrid copy = ScheduleDays.read(result.published.id)[0].grid;
+      Assert.areEqual('Bunk Aleph', copy.groups[0].name);
+      Assert.areEqual('Second period', copy.blocks[1].name);
+      Assert.areEqual('Swimming', copy.items[0].name);
+    }
+  }
+
+  /** Swim, Period 2 and Group A renamed in setup. */
+  private static void rename(Map<String, Id> ids) {
+    Database.update(
+      new List<SObject>{
+        new Activity__c(Id = ids.get('Swim'), Name = 'Swimming'),
+        new TimeBlock__c(Id = ids.get('Period 2'), Name = 'Second period'),
+        new Group__c(Id = ids.get('Group A'), Name = 'Bunk Aleph')
+      },
+      AccessLevel.SYSTEM_MODE
+    );
+  }
+
+  @IsTest
   static void aTimeBlockAddedIsOneChangeForTheDayAndKeepsWhatFits() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = camp();

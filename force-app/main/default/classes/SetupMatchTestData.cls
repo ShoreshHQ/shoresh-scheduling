@@ -36,7 +36,16 @@ public class SetupMatchTestData {
     String groupName,
     String blockName
   ) {
-    ScheduleViews.DayView day = view.schedule.days[0];
+    return mondayAt(view.schedule, groupName, blockName);
+  }
+
+  /** The same, in a schedule as a save sends it back. */
+  public static String mondayAt(
+    ScheduleViews.ScheduleView schedule,
+    String groupName,
+    String blockName
+  ) {
+    ScheduleViews.DayView day = schedule.days[0];
     Integer b = -1;
     for (Integer i = 0; i < day.blocks.size(); i++) {
       if (day.blocks[i].name == blockName) {

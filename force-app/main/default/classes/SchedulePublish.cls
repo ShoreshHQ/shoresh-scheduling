@@ -71,17 +71,27 @@ public with sharing class SchedulePublish {
     public Boolean unchanged = false;
   }
 
-  /** The week's published schedule beside the draft, or null when the week has none. */
-  public static PublishState stateOf(Id programId, Id weekId, Id draftId) {
-    Schedule__c published = publishedOf(programId, weekId);
-    return published == null
-      ? null
-      : stateBeside(published, ScheduleDays.read(draftId));
+  /**
+   * The week's published schedule beside a Manual Build draft (its Id, Program__c and Week__c)
+   * by the names its screen shows (ManualBuildNamesNow), or null when the week has none (the
+   * draft is then not read).
+   */
+  public static PublishState stateOf(
+    Schedule__c draft,
+    ManualBuildNamesNow shownBy
+  ) {
+    Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
+    if (published == null) {
+      return null;
+    }
+    List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
+    shownBy.applyTo(days);
+    return stateBeside(published, days);
   }
 
   /**
-   * The same, beside the draft's days as the caller already has them (a screen that has just read
-   * or saved them), so they are not read again.
+   * The week's published schedule beside the draft's days as the caller already has them (a
+   * screen that has just read or saved them), or null when the week has none.
    */
   public static PublishState stateOf(
     Id programId,
@@ -106,6 +116,7 @@ public with sharing class SchedulePublish {
     Preview result = new Preview();
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
     result.revisions = ScheduleDays.stamp(days);
+    asShown(draft, days);
     Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
     if (published == null) {
       return result;
@@ -142,7 +153,7 @@ public with sharing class SchedulePublish {
       result.draftChanged = true;
       return result;
     }
-    readable(days);
+    asShown(draft, readable(days));
     List<Schedule__c> published = PublishedRows.locked(
       draft.Program__c,
       draft.Week__c
@@ -283,6 +294,25 @@ public with sharing class SchedulePublish {
     state.publishedBy = published.PublishedBy__r?.Name;
     state.origin = published.Origin__c;
     return state;
+  }
+
+  /**
+   * The draft's days by the names its screen shows: Manual Build's by setup's names now
+   * (ManualBuildNamesNow), so what is published is what the director saw; Generated Schedule's
+   * as saved.
+   */
+  private static void asShown(
+    Schedule__c draft,
+    List<ScheduleDays.DayGrid> days
+  ) {
+    if (draft.Origin__c == ManualDrafts.MANUAL) {
+      ManualBuildSetupNow.of(
+          days,
+          ProgramReads.blocksOf(draft.Program__c),
+          ProgramReads.groupsOf(draft.Program__c)
+        )
+        .applyTo(days);
+    }
   }
 
   /** The same cells on the same days (PublishedChanges finds none). */

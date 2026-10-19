@@ -701,7 +701,8 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    either end is a block named by its own times, as `TimeBlockTriggerHandler.rangeLabel` names
    one), at most 30 lines
    plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
-   activity renamed since is a change; locks are not). The screen adds what its counters and dots
+   activity renamed since is a change, since a Manual Build draft is published by setup's names
+   now, as the screen shows it (`ManualBuildNamesNow`, part 6 item 2); locks are not). The screen adds what its counters and dots
    show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
    two only when the camp has those targets; lines the director accepted are not counted, as the
@@ -818,8 +819,10 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    from setup_). The editor takes them as `setupDots` (cell key to words); that is its only
    change. Cells are compared by record Id, so a rename is never a dot: Manual Build shows the
    draft's time blocks, groups, activities and fixed and recurring activities by their names in
-   setup now (`ManualBuildNamesNow`); what is saved keeps its names until the day is written
-   again. A time block whose times changed keeps its saved name on screen until the change is
+   setup now (`ManualBuildNamesNow`), on opening the week and in the week every save sends
+   back, and Publish puts out those names, so what staff read is what the director sees (the
+   published state's "changed since" counts a rename too). What is saved keeps the names it was
+   saved with. A time block whose times changed keeps its saved name on screen until the change is
    made: its row shows the week's times, and a name that is its new time range (an unnamed block
    follows its times) would contradict them. A bunk moved to another unit is the "Not set up for" dot of part 3 (round 1
    #3), not a setup-changed one.
@@ -878,7 +881,7 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
 8. **Checked by** `SetupMatchTest` (as a scheduler, data inside `runAs`): nothing to show; a
    deleted activity (dot, line, update by key, version kept); closed this week; a fixed activity
    added (per cell, deterministic keys, no version); one over a director's placement; a rename
-   with no dot; a time block added; a time block at new times (one change a day, the saved name
+   with no dot, still shown after an edit and published as shown; a time block added; a time block at new times (one change a day, the saved name
    shown until made, then the new times and name); a bunk away this week (one change a day); a
    bunk no longer in the program; a time block no longer set up; one added inside a placement; a
    fixed activity ended; a day the program no longer runs; a bunk now mornings only; a week saved

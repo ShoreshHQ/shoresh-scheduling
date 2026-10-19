@@ -247,10 +247,12 @@ const rowsIn = (element) =>
 
 const pending = () => {
   let resolve;
-  const promise = new Promise((done) => {
+  let reject;
+  const promise = new Promise((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 };
 const saved = async (element) => {
   q(element, "c-shoresh-week-editor").dispatchEvent(
@@ -759,6 +761,23 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
     expect(q(element, '[data-id="setup-changed"]')).toBeNull();
     expect(dotIn(element, "0-1")).toBeNull();
+  });
+
+  it("a late failed check for the last week says nothing on the week chosen next", async () => {
+    const element = await render(PREVIEW, swimWeek(), TWO_WEEKS);
+    const late = pending();
+    getSetupChanges.mockReturnValueOnce(late.promise);
+    await saved(element);
+    // Week 2 is chosen and shown; its own check is still on its way when Week 1's fails.
+    getSetupChanges.mockReturnValue(pending().promise);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    late.reject({ body: { message: "No access." } });
+    await flush();
+    expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
+    expect(editorText(element)).toBeNull();
   });
 
   it("week and program stay put, and Versions waits, while the list is open", async () => {
