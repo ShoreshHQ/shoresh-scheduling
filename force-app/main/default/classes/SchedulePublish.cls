@@ -116,7 +116,7 @@ public with sharing class SchedulePublish {
     Preview result = new Preview();
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
     result.revisions = ScheduleDays.stamp(days);
-    asShown(draft, days);
+    ManualBuildSetupNow.asShown(draft, days);
     Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
     if (published == null) {
       return result;
@@ -153,7 +153,7 @@ public with sharing class SchedulePublish {
       result.draftChanged = true;
       return result;
     }
-    asShown(draft, readable(days));
+    ManualBuildSetupNow.asShown(draft, readable(days));
     List<Schedule__c> published = PublishedRows.locked(
       draft.Program__c,
       draft.Week__c
@@ -299,25 +299,6 @@ public with sharing class SchedulePublish {
     state.publishedBy = published.PublishedBy__r?.Name;
     state.origin = published.Origin__c;
     return state;
-  }
-
-  /**
-   * The draft's days by the names its screen shows: Manual Build's by setup's names now
-   * (ManualBuildNamesNow), so what is published is what the director saw; Generated Schedule's
-   * as saved.
-   */
-  private static void asShown(
-    Schedule__c draft,
-    List<ScheduleDays.DayGrid> days
-  ) {
-    if (draft.Origin__c == ManualDrafts.MANUAL) {
-      ManualBuildSetupNow.of(
-          days,
-          ProgramReads.blocksOf(draft.Program__c),
-          ProgramReads.groupsOf(draft.Program__c)
-        )
-        .applyTo(days);
-    }
   }
 
   /** The same cells on the same days (PublishedChanges finds none). */

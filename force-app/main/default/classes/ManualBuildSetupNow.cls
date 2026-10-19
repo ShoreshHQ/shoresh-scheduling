@@ -1,11 +1,29 @@
 /**
  * Setup's names now for a Manual Build draft's days (ManualBuildNamesNow), for a save's answer
- * (SlotSaves.save) and for Publish (SchedulePublish), on the program's time blocks and groups as
+ * (SlotSaves.save) and for Publish (SchedulePublish, asShown), on the program's time blocks and groups as
  * already read. What the days place is read by Id, one query for each kind they place (none for a
  * kind they don't); a time block or group the program no longer has is looked up only when there
  * is one, so what is still there is what ScheduleRefs would find. Runs in user mode.
  */
 public with sharing class ManualBuildSetupNow {
+  /**
+   * A draft's days by the names its screen shows, for Publish: Manual Build's by setup's names
+   * now, so what is published is what the director saw; Generated Schedule's as saved.
+   */
+  public static void asShown(
+    Schedule__c draft,
+    List<ScheduleDays.DayGrid> days
+  ) {
+    if (draft.Origin__c == ManualDrafts.MANUAL) {
+      of(
+          days,
+          ProgramReads.blocksOf(draft.Program__c),
+          ProgramReads.groupsOf(draft.Program__c)
+        )
+        .applyTo(days);
+    }
+  }
+
   public static ManualBuildNamesNow of(
     List<ScheduleDays.DayGrid> days,
     List<TimeBlock__c> blocks,
