@@ -8,6 +8,8 @@
       program-name={programName}
       save-runs={saveRuns}
       restoring={editsWait}
+      setup-dots={setupDots}
+      onsaved={handleSaved}
       onstatechange={handleEditorState}
       onedited={handleEdited}
       onerrorchange={handleEditorError}
@@ -163,6 +165,23 @@
           onlocate={handleLocate}
         ></c-shoresh-week-checks>
       </template>
+      <template lwc:if={showSetupChanged}>
+        <div class="setup-changed" slot="status" data-id="setup-changed">
+          <c-shoresh-dot label={setupChangedText}></c-shoresh-dot>
+          <span aria-hidden="true">{setupChangedText}</span>
+          <template lwc:if={canUpdateToMatch}>
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              disabled={editsWait}
+              data-id="update-to-match"
+              onclick={handleSetupMatch}
+            >
+              Update to match setup
+            </button>
+          </template>
+        </div>
+      </template>
       <template lwc:if={restoreRefused}>
         <p class="notice" slot="status" data-id="restore-refused">
           <span>{restoreRefusedText} ·</span>
@@ -286,6 +305,17 @@
         onanswer={handlePublishAnswer}
         data-id="publish-ask"
       ></c-shoresh-ask>
+    </template>
+    <template lwc:if={setupAsk}>
+      <c-shoresh-setup-match
+        heading={setupHeading}
+        changes={setupChanges}
+        busy={setupWorking}
+        notice={setupAsk.notice}
+        onupdate={handleSetupUpdate}
+        onclose={handleSetupClose}
+        data-id="setup-match"
+      ></c-shoresh-setup-match>
     </template>
     <template lwc:if={unpublishAsk}>
       <c-shoresh-ask

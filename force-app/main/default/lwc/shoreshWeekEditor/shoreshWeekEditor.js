@@ -51,6 +51,12 @@ function loose(text) {
     .toLowerCase();
 }
 
+/** A dot's words, joined as the checks join reasons (" · "); null for none. */
+function joinWords(...parts) {
+  const words = parts.filter(Boolean);
+  return words.length ? words.join(" · ") : null;
+}
+
 /** One slot, the same in Daily and Group View. */
 function slotKey(slot) {
   return `${slot.day}|${slot.group}|${slot.block}`;
@@ -92,6 +98,10 @@ function slotKey(slot) {
  *   (Manual Build's draft when left out).
  * - say(text) and clearNotice(): the host's own line on the quiet line, and taking it away once
  *   it is no longer true (a Lock or Unlock saved).
+ *
+ * What Manual Build adds: setupDots, a Map of cell ("date|groupId|blockId") to the words of its
+ * "setup changed since the week started" dot (ADR 0008 part 6). They join any other dot on the
+ * placement, after its words.
  */
 // How often an edit is sent again, with nothing new to ask, before it is given up.
 const MAX_RESENDS = 2;
@@ -117,6 +127,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api lit;
   // Adds an activity on the host's draft: ({ scheduleId, name }) => the activity as offered.
   @api addActivityWith;
+  // Setup changed since the week started (Manual Build): cell key to its dot's words, or nothing.
+  @api setupDots;
 
   // ManualBuildController's DraftView: { schedule, activities, away }, or null (not started).
   _draft = null;
@@ -648,10 +660,12 @@ export default class ShoreshWeekEditor extends LightningElement {
         ...cell,
         readOnly: this.lockedReason(cell.slot) !== null,
         movable: here.startsWith("A:"),
-        dot:
+        dot: joinWords(
           this.dotFor(cell.slot) ||
-          (cell.open && this.openReasonFor(cell.slot)) ||
-          null
+            (cell.open && this.openReasonFor(cell.slot)) ||
+            null,
+          this.setupDotFor(cell.slot)
+        )
       };
       if (this.isLockedSlot(cell.slot, locks)) {
         result.locked = true;
@@ -707,6 +721,26 @@ export default class ShoreshWeekEditor extends LightningElement {
         )
       ) || null
     );
+  }
+
+  /** The words of the setup-changed dots on any block of the placement a slot is part of. */
+  setupDotFor(slot) {
+    if (!this.setupDots || !this.setupDots.size) {
+      return null;
+    }
+    const day = this.dayOf(slot);
+    const groupId = day.groups[slot.group].id;
+    const at = placement(day, slot.group, slot.block);
+    const words = [];
+    day.blocks.slice(at.first, at.first + at.length).forEach((block) => {
+      const said = this.setupDots.get(
+        lockKey(day.dateValue, groupId, block.id)
+      );
+      if (said && !words.includes(said)) {
+        words.push(said);
+      }
+    });
+    return words.length ? words.join(" · ") : null;
   }
 
   /** Whether the host's counters light up any block of the placement a slot is part of. */

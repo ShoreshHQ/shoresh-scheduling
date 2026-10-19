@@ -134,6 +134,20 @@ public with sharing class ManualVersions {
     return found[0];
   }
 
+  /**
+   * An automatic version of the draft's days as they are (Update to match setup keeps one before
+   * it takes away a director's placement). Refused if a day can't be read.
+   */
+  public static Id keepAutomatically(
+    Schedule__c draft,
+    String name,
+    List<ScheduleDays.DayGrid> days
+  ) {
+    Id kept = newVersion(draft, name, AUTO_SAVED);
+    writeDays(kept, readable(days));
+    return kept;
+  }
+
   /** Every day, refused if any can't be read (it couldn't be copied as it is). */
   private static List<ScheduleDays.DayGrid> readable(
     List<ScheduleDays.DayGrid> days

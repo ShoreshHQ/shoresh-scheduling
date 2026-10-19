@@ -945,6 +945,33 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
     anyone else's changes): **Publish** and **Unpublish** are greyed out for that moment, then
     work again. If you had tabbed to **Publish**, it still has the focus outline afterwards.
 
+## 27. Manual Build: setup changed since the week started
+
+Use Week 1's Manual Build from section 26, with an activity in Bunk 1's Monday Period 2 (Swim,
+say).
+
+1. In another tab, rename Swim to _Swimming_ on **Activities**. Come back to Manual Build: the
+   cell says _Swimming_, with no dot. A rename is not a problem.
+2. Add a fixed activity _Assembly_ in Period 1 for everyone (on **Fixed activities**). Come back:
+   every Open Period 1 cell has the bronze dot; hover one: _Assembly is set up here now_. Above
+   the grid, a bronze box: the dot, _Setup changed since this week started_, and **Update to
+   match setup**.
+3. Click **Update to match setup**. A box lists each change before anything happens, one row
+   per cell: _Bunk 1 · Monday · Period 1_ · _Open → Assembly_ · _Assembly is set up here now_,
+   each with its own **Update**. **Cancel** is highlighted and changes nothing.
+4. Click **Update** on one row: that one cell gets Assembly; the row goes and the rest stay.
+   No version is kept (nothing of yours was taken).
+5. Delete an activity you placed on **Activities** (it asks first). Come back: its cells have the
+   dot _Deleted from setup_. Open **Update to match setup**: its row reads _Swimming → Open_.
+   Click **Update all**: everything listed is made, the box closes, and **Versions** has
+   _Before Update to match setup_ (the week as it was, your activity included).
+6. Add a Period at 11:00 on **Time blocks**. Come back: one row per day, _Monday: Period 3
+   added_. **Update all**: each day gets the new Period, and your activities stay where they
+   were.
+7. With the box open, change the same week in another tab and then click **Update all**: it
+   says _Someone else changed this week since, so nothing was updated._ and shows the week as it
+   is now.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
