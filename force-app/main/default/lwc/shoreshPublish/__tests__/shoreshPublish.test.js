@@ -166,6 +166,20 @@ describe("c/shoreshPublish", () => {
     ]);
   });
 
+  it("says one more line when just one isn't listed", () => {
+    const question = publishQuestion({
+      preview: { ...AGAIN, changeCount: 2, moreLines: 1 },
+      checked: CLEAN,
+      weekName: "Week 1",
+      t
+    });
+    expect(question.lines).toEqual([
+      "This replaces the published schedule. 2 cells change:",
+      "Bunk 1 · Monday · Period 2: Swim → Soccer",
+      "…and 1 more."
+    ]);
+  });
+
   it("names dots in the camp's word for Activity", () => {
     const campT = buildTerms([
       {

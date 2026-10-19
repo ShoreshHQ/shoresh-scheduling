@@ -900,7 +900,8 @@ This uses the made-up camp's Week 1 from sections 19 to 22.
    once and then elsewhere: nothing is deleted.
 5. **Start from another week.** Pick a week that has no Manual Build yet (Week 2, say). Next to
    **Start a blank week** is **Start from another week**: a menu of the other weeks' Manual
-   Build and the versions (_Week 1 · Manual Build_, _Week 1 · First try (version)_). Pick
+   Build and the versions (_Week 1 · Manual Build_, _Week 1 · First try (version) · Oct 18,
+   10:04 AM_: each version you saved shows when, so two with the same name can be told apart). Pick
    _Week 1 · Manual Build_. Week 2 begins with Week 1's activities, Monday from Monday and so on;
    its fixed and recurring activities are Week 2's own. Anything that couldn't go is listed under
    the toolbar, such as _Swim · Bunk 6 · Monday: not at camp then_ (or _not running this week_ if
@@ -932,8 +933,10 @@ This uses the made-up camp's Week 1 from sections 19 to 25.
    _Unpublish Week 1?_ with _Nothing will be published for this week._ **Cancel** is highlighted
    and changes nothing. Click **Unpublish**: it says _Unpublished Week 1._, the _Published …_ line
    and the **Unpublish** button go, and **Versions** lists the copy named _Published Oct 18, …_
-   (when step 5 published it), with **Restore** and **rename** but no **delete**. Under
-   **Start from another week** on Week 2 it reads _Week 1 · Published Oct 18, … (version)_.
+   (when step 5 published it), with **Restore** and **rename** but no **delete**. Pick Week 3
+   (not started yet; Week 2 has its own Manual Build from section 25): under **Start from another
+   week** it reads _Week 1 · Published Oct 18, … (version)_, with no second time after it.
+   Nothing is started until you pick one, so go back to Week 1.
 9. Click **Publish** again: with nothing left to do, it publishes at once, as a first publish.
 10. In **Versions**, **rename** one of the _Published Oct 18, …_ copies to _Opening week_. The
     line under it now says _Manual Build · Published ·_ and the date, since the name no longer

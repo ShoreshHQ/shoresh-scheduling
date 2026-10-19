@@ -116,8 +116,7 @@
         <div class="publish" slot="tools" data-id="publish-area">
           <template lwc:if={publishState}>
             <span class="published" data-id="published">
-              Published
-              <lightning-formatted-date-time
+              {publishedWord}<lightning-formatted-date-time
                 value={publishState.publishedAt}
                 month="short"
                 day="numeric"

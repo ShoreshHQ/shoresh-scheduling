@@ -254,6 +254,41 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="publish"]').disabled).toBe(false);
   });
 
+  it("the line beside Publish has a space between Published and the date", async () => {
+    const element = await render(finished(PUBLISHED));
+    const date = q(element, '[data-id="published"]').querySelector(
+      "lightning-formatted-date-time"
+    );
+    expect(date.value).toBe(PUBLISHED.publishedAt);
+    expect(date.previousSibling.textContent).toBe("Published ");
+    expect(date.nextSibling.textContent).toBe(" by Pat Director");
+  });
+
+  it("a week with no days offers no Publish", async () => {
+    const start = finished();
+    start.schedule.days = [];
+    const element = await render(start);
+    expect(q(element, '[data-id="publish"]')).toBeNull();
+  });
+
+  it("a publish the server finds changed nothing doesn't read Versions again", async () => {
+    const element = await render(
+      finished({ ...PUBLISHED, changedSince: true })
+    );
+    previewPublish.mockResolvedValue({
+      revisions: REV,
+      published: PUBLISHED,
+      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
+      changeCount: 1
+    });
+    publish.mockResolvedValue({ ...DONE, unchanged: true });
+    await clickPublish(element);
+    const versionReads = getVersions.mock.calls.length;
+    await answer(element, true);
+    expect(notice(element)).toBe("Week 1 is already published as it is.");
+    expect(getVersions).toHaveBeenCalledTimes(versionReads);
+  });
+
   it("asks first when the week still has Open cells, naming them; Cancel publishes nothing", async () => {
     const element = await render(read(draft(WITH_SWIM, ["1,2,", "1,,"])));
     previewPublish.mockResolvedValue(FIRST_PREVIEW);
@@ -744,6 +779,43 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="published"]')).not.toBeNull();
   });
 
+  it("a refused publish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(
+      finished({ ...PUBLISHED, changedSince: true })
+    );
+    previewPublish.mockResolvedValue({
+      revisions: REV,
+      published: PUBLISHED,
+      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
+      changeCount: 1
+    });
+    await clickPublish(element);
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    publish.mockResolvedValue({
+      published: null,
+      draftChanged: true,
+      publishedChanged: false,
+      unchanged: false
+    });
+    getDraft.mockResolvedValue(theirs(PUBLISHED));
+    await answer(element, true);
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published."
+    );
+    // The refusal reads the week again; the dropped reload needs no read of its own.
+    expect(getDraft).toHaveBeenCalledTimes(3);
+    reload.resolve(finished());
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(3);
+    expect(cellText(element, "0-1")).toBe("Open");
+  });
+
   it("a publish that fails still reads again the week a dropped reload was reading", async () => {
     const element = await render(
       finished({ ...PUBLISHED, changedSince: true })
@@ -817,18 +889,51 @@ describe("c-shoresh-manual-build: Publish", () => {
     );
     // Still disabled while the week is read again: focus can't land yet.
     expect(publishButton().disabled).toBe(true);
-    console.log(
-      "DURING",
-      String(
-        element.shadowRoot.activeElement &&
-          element.shadowRoot.activeElement.dataset.id
-      ),
-      document.activeElement.tagName
-    );
     reload.resolve(finished());
     await flush();
     expect(publishButton().disabled).toBe(false);
     expect(element.shadowRoot.activeElement).toBe(publishButton());
+  });
+
+  it("focus stays where the director put it while the week was read again", async () => {
+    const element = await render(finished());
+    const publishButton = () => q(element, '[data-id="publish"]');
+    publishButton().focus();
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    window.dispatchEvent(new CustomEvent("focus"));
+    await flush();
+    expect(publishButton().disabled).toBe(true);
+    q(element, '[data-id="clear-week"]').focus();
+    expect(element.shadowRoot.activeElement.dataset.id).toBe("clear-week");
+    reload.resolve(finished());
+    await flush();
+    expect(publishButton().disabled).toBe(false);
+    expect(element.shadowRoot.activeElement.dataset.id).toBe("clear-week");
+  });
+
+  it("focus stays where the director put it while a refused publish read the week again", async () => {
+    const element = await render(finished());
+    const publishButton = () => q(element, '[data-id="publish"]');
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue({
+      published: null,
+      draftChanged: true,
+      publishedChanged: false,
+      unchanged: false
+    });
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    await clickPublish(element);
+    expect(publishButton().disabled).toBe(true);
+    // Something outside Manual Build (the page's own header, say).
+    const elsewhere = document.createElement("input");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    reload.resolve(finished());
+    await flush();
+    expect(publishButton().disabled).toBe(false);
+    expect(document.activeElement).toBe(elsewhere);
   });
 
   it("focus on Publish comes back after the week is read again on returning to the window", async () => {
@@ -1057,6 +1162,29 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(cellName("0-1")).toBe("Open");
     expect(unpublishButton(element)).toBeNull();
     expect(q(element, '[data-id="published"]')).toBeNull();
+  });
+
+  it("a refused unpublish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(finished(PUBLISHED));
+    await clickUnpublish(element);
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    unpublish.mockResolvedValue({ ...UNPUBLISHED, publishedChanged: true });
+    getDraft.mockResolvedValue(finished({ ...PUBLISHED, id: "pub2" }));
+    await answerUnpublish(element, true);
+    expect(notice(element)).toBe(
+      "Someone else published or unpublished this week since, so nothing was unpublished."
+    );
+    // The refusal reads the week again; the dropped reload needs no read of its own.
+    expect(getDraft).toHaveBeenCalledTimes(3);
+    reload.resolve(finished(PUBLISHED));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(3);
   });
 
   it("an answer that comes after another week is shown isn't shown on that week", async () => {

@@ -542,7 +542,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Build: a menu of the program's other weeks' Manual Build, each week's published schedule
       (part 5; named in the camp's word today) and every version of the program, published
       schedules replaced since among them (_Week 2 · Manual Build_, _Week 1 · Published
-      schedule_, _Week 1 · Before the trip (version)_). The week starts as Start
+      schedule_, _Week 1 · Before the trip (version) · Jun 29, 9:00 AM_). A version shows when
+      it was saved after its name, as Versions does, so two with the same name can be told apart
+      (coordinator, 2026-10-19); a copy still named by when it was published (part 5 item 11)
+      shows no second time, since its name already says it. The week starts as Start
       a blank week does (fixed and recurring activities from this week's own setup), then each
       day takes the activities of the source day with the same weekday (in a week longer than
       seven days, first Monday from first Monday, second from second), bunk by bunk, at the

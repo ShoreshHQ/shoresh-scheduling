@@ -124,17 +124,32 @@ export default class ShoreshManualBuild extends LightningElement {
       this.weekEditor.show(draft, fresh);
     }
     // Publish and Unpublish are disabled while they work and while the week is read again, so
-    // focus fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3).
+    // focus fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3), unless
+    // the director has put it somewhere else meanwhile.
     if (this.focusOn && !this.publishDisabled) {
       // Unpublish is gone once the week has nothing published: Publish then.
       const button =
         this.template.querySelector(`[data-id="${this.focusOn}"]`) ||
         this.template.querySelector('[data-id="publish"]');
       this.focusOn = null;
-      if (button) {
+      if (button && this.focusIsLost()) {
         button.focus();
       }
     }
+  }
+
+  /**
+   * Focus fell to the page (or stayed on Publish or Unpublish while they were disabled), rather
+   * than being on something the director chose since.
+   */
+  focusIsLost() {
+    const inside = this.template.activeElement;
+    if (inside) {
+      const id = inside.dataset ? inside.dataset.id : null;
+      return id === "publish" || id === "unpublish";
+    }
+    const page = document.activeElement;
+    return !page || page === document.body;
   }
 
   get t() {
@@ -861,6 +876,11 @@ export default class ShoreshManualBuild extends LightningElement {
   refusePublish(text) {
     this.weekEditor.setNotice(text);
     this.load(true);
+  }
+
+  /** "Published " before the date: a template drops the space after a word on its own. */
+  get publishedWord() {
+    return "Published ";
   }
 
   get publishedBy() {
