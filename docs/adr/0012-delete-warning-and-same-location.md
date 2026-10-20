@@ -67,6 +67,9 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    question only. If fewer than two places are left, the question closes and the page says
    why. Afterwards the cursor is back on the row's button, or on the kept place once merged. A merge that went through but couldn't be read back says the page's usual _Done, but the screen couldn't show it yet. Reload the page._, never a refusal.
    Left out: the desktop's "You can undo this…" line (design guide: no explanatory text).
+   _Confirmed by Greg, 2026-10-20: no undo promise (a Salesforce merge can't be undone the way
+   the desktop's can, choice 11), and each place shows what fits and how many activities are
+   there, as the desktop's candidates do (`NearDuplicateGate`)._
 9. **What moves** (`LocationMerge`, desktop D1: "merge is a delete that re-points"): every
    activity, fixed activity, and recurring activity at the other places; the next season's
    copies of them (their "copied from"); and the weeks they are closed (one mark per week; a

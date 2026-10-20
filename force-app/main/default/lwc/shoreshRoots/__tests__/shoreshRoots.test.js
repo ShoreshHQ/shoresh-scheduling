@@ -182,13 +182,36 @@ describe("c-shoresh-roots", () => {
     ]);
   });
 
-  it("Import last year opens the import screen", async () => {
+  it("a camp with setup: the import recedes to Re-import last year, and still opens", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("navigate", handler);
-    element.shadowRoot
-      .querySelector('lightning-button[data-id="import"]')
-      .click();
+    const button = element.shadowRoot.querySelector(
+      'lightning-button[data-id="import"]'
+    );
+    expect(button.label).toBe("Re-import last year");
+    expect(button.variant).toBe("base");
+    button.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "import" });
+  });
+
+  it("an empty camp: Import last year is the first thing to do", async () => {
+    const element = await render({
+      season: SETUP.season,
+      weeks: SETUP.weeks,
+      programs: [{ program: { Name: "Main" } }],
+      locations: [],
+      activities: []
+    });
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const buttons = element.shadowRoot.querySelectorAll(
+      'lightning-button[data-id="import"]'
+    );
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].label).toBe("Import last year");
+    expect(buttons[0].variant).toBe("brand");
+    buttons[0].click();
     expect(handler.mock.calls[0][0].detail).toEqual({ screen: "import" });
   });
 
@@ -279,7 +302,7 @@ describe("c-shoresh-roots", () => {
   });
 });
 
-describe("Download camp workbook", () => {
+describe("Download worksheet", () => {
   it("saves every list and the extra sheets in one file", async () => {
     const XLSX = require("xlsx");
     window.XLSX = XLSX;
@@ -299,14 +322,17 @@ describe("Download camp workbook", () => {
       ...SETUP,
       season: { Id: "s1", Name: "Summer 2027" }
     });
-    element.shadowRoot
-      .querySelector('lightning-button[data-id="download-workbook"]')
-      .click();
+    const button = element.shadowRoot.querySelector(
+      'lightning-button[data-id="download-workbook"]'
+    );
+    // The desktop's word (RootsHomeScreen.jsx, ImportScreen.jsx: "Download worksheet").
+    expect(button.label).toBe("Download worksheet");
+    button.click();
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
     expect(saved).toHaveLength(1);
-    expect(saved[0].download).toBe("Summer 2027 - camp workbook.xlsx");
+    expect(saved[0].download).toBe("Summer 2027 - worksheet.xlsx");
     const bytes = await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(new Uint8Array(reader.result));

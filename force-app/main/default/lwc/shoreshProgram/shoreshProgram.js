@@ -203,7 +203,6 @@ export default class ShoreshProgram extends LightningElement {
 
   /** Plus a tick for each day the program runs, and who it covers. */
   get recurringColumns() {
-    const t = this.terms;
     const program = this.entry.program;
     const days = DAYS.filter((day) => program[PROGRAM[day]]).map((day) => ({
       fieldName: RECURRING[day],
@@ -218,8 +217,6 @@ export default class ShoreshProgram extends LightningElement {
         label: "Who",
         type: "who",
         everyone: `Everyone in ${program.Name}`,
-        sourceLabel: `${t.p("Division")} and ${t.p("Group")}`,
-        selectedLabel: "Covers",
         options: this.whoOptions
       }
     ];

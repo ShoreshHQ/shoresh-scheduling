@@ -22,15 +22,19 @@ const EARLY_WEEK = EARLY_WEEK_INPUTS.map((key) => RULE_FIELDS[key]);
 
 /**
  * One activity's details: who can do it (every group, or only chosen divisions and groups) and
- * the less common rules. They save as you go, like the tables (ADR 0011, decision 26 (4)): a tick
- * or a dropdown the moment it changes; a number, the notes, or "who" when the director leaves the
- * field. Only the rules that changed are sent, except that the early-week count and its day always
+ * the less common rules. Opened from the activity's row in the Activities table (open(id)), as
+ * the desktop's row Edit opens its details (ActivitiesScreen.jsx); hidden until then, and Close
+ * hides it again. Who can do it is a list of ticks, as on the desktop (ActivitiesScreen.jsx,
+ * "Eligible Age Divisions" and the group ticks). They save as you go, like the tables (ADR 0011,
+ * decision 26 (4)): a tick or a dropdown the moment it changes; a number or the notes when the
+ * director leaves the field. Only the rules that changed are sent, except that the early-week count and its day always
  * go together (who can do it is always sent whole: the server replaces the list). "Saved" shows
  * quietly; a refusal shows next to the field, with what was typed kept. If something else on the
  * screen is saved meanwhile, what was typed here stays.
  *
  * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }
- * (shown: whether the form still shows that activity; a refusal it can't show is said at the top)
+ * (shown: whether the form still shows that activity; a refusal it can't show is said at the top);
+ * close { activityId } (Close pressed: the page puts the cursor back on the row's button)
  */
 export default class ShoreshActivityDetails extends LightningElement {
   @api terms;
@@ -44,6 +48,8 @@ export default class ShoreshActivityDetails extends LightningElement {
   // Why the last save of a field was refused: field -> message, shown next to it.
   errors = {};
   _setup;
+  // Put the cursor on the heading once the details are drawn.
+  focusHeadingNext = false;
 
   /** The season setup from SeasonSetupController (activities, programs). */
   @api
@@ -53,8 +59,9 @@ export default class ShoreshActivityDetails extends LightningElement {
   set setup(value) {
     this._setup = value;
     const activities = (value && value.activities) || [];
-    if (!activities.some((a) => a.Id === this.activityId)) {
-      this.activityId = activities.length ? activities[0].Id : null;
+    if (this.activityId && !activities.some((a) => a.Id === this.activityId)) {
+      // The activity is gone (deleted, or another season): its details close.
+      this.activityId = null;
       this.forget();
     }
     this.showSaved();
@@ -96,12 +103,10 @@ export default class ShoreshActivityDetails extends LightningElement {
     return this.activities.find((a) => a.Id === this.activityId);
   }
 
-  get hasActivities() {
-    return this.activities.length > 0;
-  }
-
-  get activityOptions() {
-    return this.activities.map((a) => ({ label: a.Name, value: a.Id }));
+  /** The activity shown, or null when the details are closed. */
+  @api
+  get openActivityId() {
+    return this.activityId || null;
   }
 
   draftFor(activity) {
@@ -174,11 +179,11 @@ export default class ShoreshActivityDetails extends LightningElement {
     return this.rules[ACTIVITY.Notes];
   }
 
-  /** The chosen list's heading; with nobody chosen it shows that everyone can (no sentence). */
-  get chosenLabel() {
+  /** The ticks' label; with nothing ticked it shows that everyone can (no sentence). */
+  get whoLabel() {
     return this.whoCanDoIt.length === 0
-      ? `${this.labels.chosen}: everyone`
-      : this.labels.chosen;
+      ? `${this.labels.whoCanDoIt}: everyone`
+      : this.labels.whoCanDoIt;
   }
 
   get whoError() {
@@ -200,54 +205,84 @@ export default class ShoreshActivityDetails extends LightningElement {
   get labels() {
     const t = this.terms;
     return {
-      title: `${t.s("Activity")} details`,
-      activity: t.s("Activity"),
+      title: `${this.activity ? this.activity.Name : ""} details`.trim(),
       whoCanDoIt: "Who can do it",
-      available: `${t.p("Division")} and ${t.p("Group")}`,
-      chosen: "Can do it",
       moreRules: "More rules",
       sameDivision: `Only ${t.pIn("Group")} from the same ${t.sIn("Division")} at the same time`,
       // One group, read as "Early in the week: How many … By …" (WCAG 1.3.1).
       early: "Early in the week",
       earlyCount: "How many",
       earlyDay: "By",
-      notes: "Notes",
-      empty: `No ${t.pIn("Activity")} yet`
+      notes: "Notes"
     };
   }
 
-  async handleActivityChange(event) {
-    const picker = event.target;
-    const chosen = event.detail.value;
-    if (this.dirty.size) {
-      // Only a refused change is still unsaved here: leaving a field saves it.
-      const ok = await LightningConfirm.open({
-        label: "Unsaved changes",
-        message: `Discard your unsaved changes to "${this.activity.Name}"?`,
-        variant: "header",
-        theme: "warning"
-      });
-      if (!ok) {
-        // Stay on the activity being edited.
-        picker.value = this.activityId;
-        return;
-      }
+  /**
+   * Opens this activity's details (from its row), the cursor on their heading. Another
+   * activity's refused change, still unsaved, is asked about first; staying keeps it. Resolves
+   * whether the details now show that activity.
+   */
+  @api
+  async open(activityId) {
+    if (activityId !== this.activityId && !(await this.mayLeave())) {
+      return false;
     }
-    this.activityId = chosen;
-    this.forget();
-    this.draft = this.draftFor(this.activity);
-    this.clearMark();
+    if (!this.activities.some((a) => a.Id === activityId)) {
+      return false;
+    }
+    if (activityId !== this.activityId) {
+      this.activityId = activityId;
+      this.forget();
+      this.draft = this.draftFor(this.activity);
+      this.clearMark();
+    }
+    this.focusHeadingNext = true;
+    this.focusHeading();
+    return true;
   }
 
+  renderedCallback() {
+    this.focusHeading();
+  }
+
+  focusHeading() {
+    const heading =
+      this.focusHeadingNext && this.template.querySelector("[data-heading]");
+    if (heading) {
+      this.focusHeadingNext = false;
+      heading.focus();
+    }
+  }
+
+  /** Whether the activity shown may be left: a refused change still unsaved is asked about. */
+  async mayLeave() {
+    if (!this.activityId || !this.dirty.size) {
+      return true;
+    }
+    // Only a refused change is still unsaved here: leaving a field saves it.
+    return LightningConfirm.open({
+      label: "Unsaved changes",
+      message: `Discard your unsaved changes to "${this.activity.Name}"?`,
+      variant: "header",
+      theme: "warning"
+    });
+  }
+
+  /** Close: the details go (asking first about a refused change still unsaved). */
+  async handleClose() {
+    if (!(await this.mayLeave())) {
+      return;
+    }
+    const activityId = this.activityId;
+    this.activityId = null;
+    this.forget();
+    this.dispatchEvent(new CustomEvent("close", { detail: { activityId } }));
+  }
+
+  /** A tick is chosen once, so it is saved at once, like the rule ticks. */
   handleWhoChange(event) {
     this.update(WHO_KEY, { whoCanDoIt: [...event.detail.value] });
-  }
-
-  /** Who can do it is saved when the director leaves the list (not on every move in it). */
-  handleWhoLeave(event) {
-    if (leftField(event)) {
-      this.save(WHO_KEY);
-    }
+    this.save(WHO_KEY);
   }
 
   /** A number or the notes: saved on leaving the field. */

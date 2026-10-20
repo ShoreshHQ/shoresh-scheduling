@@ -56,7 +56,8 @@ wins.
    Ticking that bunk's or location's week back on is checked like any other change. An item
    at a location closed in a week it runs is shown in Needs attention.
 7. **Who is chosen in the table**: a **Who** column shows "Everyone in Main" or the names, and
-   **Change** opens the same picker as activities' "Who can do it" under the row. Who is saved
+   **Change** opens the same picker as activities' "Who can do it" under the row (_since
+   2026-10-20 a list of ticks, as the desktop's, ADR 0013 choice 18_). Who is saved
    with the row, all or none, so a new recurring activity can be saved already narrowed to its
    bunks. (A details panel below the table, as for activities, would have saved a new row as
    "everyone" first, and could be refused for that.) New recurring rows start with no day

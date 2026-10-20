@@ -462,7 +462,7 @@ describe("Download this list", () => {
   });
 });
 
-describe("Import camp workbook (Roots)", () => {
+describe("Import worksheet (Roots)", () => {
   // The round-trip tests' made-up camp: two programs, two weeks, its own words.
   const { camp } = require("../../shoreshLists/__tests__/data/camp");
   const XLSX = require("xlsx");
@@ -521,7 +521,7 @@ describe("Import camp workbook (Roots)", () => {
     jest.clearAllMocks();
   });
 
-  it("opens as Import camp workbook, without a list download", () => {
+  it("opens as Import worksheet, without a list download", () => {
     const element = createElement("c-shoresh-list-import", {
       is: ShoreshListImport
     });
@@ -530,7 +530,7 @@ describe("Import camp workbook (Roots)", () => {
     element.terms = buildTerms(camp().labels);
     document.body.appendChild(element);
     expect($(element, 'lightning-button[data-id="open"]').label).toBe(
-      "Import camp workbook"
+      "Import worksheet"
     );
     expect($(element, 'lightning-button[data-id="download"]')).toBeNull();
   });

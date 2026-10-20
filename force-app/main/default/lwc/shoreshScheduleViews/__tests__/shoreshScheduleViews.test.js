@@ -71,7 +71,7 @@ describe("c/shoreshScheduleViews", () => {
     expect(chugim.note).toBe("not set up yet");
     expect(chugim.title).toBe("Chugim: Chug, not set up in Shoresh yet");
     const pottery = grid.cells.find((c) => c.key === "1-1");
-    expect(pottery.note).toBe("deleted since");
+    expect(pottery.note).toBe("(removed)");
   });
 
   it("calls a trip by the camp's own word", () => {

@@ -2030,6 +2030,41 @@ describe("c-shoresh-camp-setup", () => {
       expect(saveRecords).toHaveBeenCalledTimes(1);
     });
 
+    it("an activity's details open from its row's Details, and Close goes back to that button", async () => {
+      const element = await renderWith(
+        setupWith({
+          activities: [
+            { Id: "a1", Name: "Archery" },
+            { Id: "a2", Name: "Swim" }
+          ]
+        })
+      );
+      await openScreen(element, "activities");
+      const table = q(
+        element,
+        'c-shoresh-editable-table[data-id="activities"]'
+      );
+      const details = q(element, "c-shoresh-activity-details");
+      expect(details.openActivityId).toBeNull();
+      const swim = table.shadowRoot.querySelector(
+        '[data-id="details"][data-row-key="row-a2"]'
+      );
+      expect(swim.getAttribute("aria-label")).toBe("Swim details");
+      swim.click();
+      await flush();
+      await flush();
+      expect(details.openActivityId).toBe("a2");
+      expect(swim.getAttribute("aria-expanded")).toBe("true");
+      details.shadowRoot
+        .querySelector('lightning-button[data-id="close"]')
+        .click();
+      await flush();
+      await flush();
+      expect(details.openActivityId).toBeNull();
+      expect(swim.getAttribute("aria-expanded")).toBe("false");
+      expect(table.shadowRoot.activeElement).toBe(swim);
+    });
+
     it("an activity details field: saved without a toast; a refusal goes back to the form", async () => {
       saveActivityDetails.mockResolvedValueOnce();
       saveActivityDetails.mockRejectedValueOnce({ body: { message: "No." } });

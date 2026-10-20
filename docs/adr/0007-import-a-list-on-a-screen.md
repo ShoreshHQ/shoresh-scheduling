@@ -12,6 +12,15 @@ screens' `confirmImport`), adapted under Apache-2.0 (see `NOTICE`).
 **Part C:** "Download this list" on every screen, and the full camp workbook export.
 **Part D:** "Import camp workbook" on Roots.
 
+_Changed 2026-10-20 (Greg: the leftover wording calls follow the desktop): what the director
+sees says **worksheet**, as the desktop does (`RootsHomeScreen.jsx` and `ImportScreen.jsx`
+"Download worksheet", `workbookToSource.js` "This worksheet …"): **Download worksheet** and
+**Import worksheet** on Roots, the file "Summer 2027 - worksheet.xlsx", "Not in the worksheet",
+"… of the worksheet that can be read", "The worksheet could not be downloaded", and the save's
+"This worksheet is too big to be undone later …". The code keeps its names (`campWorkbookSheets`,
+`workbook.js`, `saveWorkbook`, the `workbook` attribute); this record keeps "camp workbook" for
+the same thing._
+
 ## What the desktop did and did not do
 
 Checked in its code (2026-10-17): its column memory (`mappingSeedling.js`) is wired only into
@@ -172,7 +181,7 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     maximum", "No limit", "2 by Wednesday", "9:00 AM", days by name, who lists by the shortest
     name no other unit or bunk shares ("Juniors (Main)" where two programs have a Juniors),
     "Everyone" for no list.
-18. **"Download camp workbook"** on Roots writes every screen's list as its own sheet, named
+18. **"Download camp workbook"** (now **Download worksheet**) on Roots writes every screen's list as its own sheet, named
     as the menu names the screen, in menu order, then what has no list of its own so a camp
     can be rebuilt from the workbook (coordinator, Q3): the location types (the Locations
     sheet only names those in use), the camp's words (only those it changed), the weeks, and
@@ -193,7 +202,7 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     a quote inside written twice. Two weeks of one name head their "Runs in" columns with
     their start dates. Two items of exactly one name are asked which is which on the way
     back (shown, never guessed): a known limit of names that aren't unique.
-22. **Spacing is tidied on both sides** before names are compared: "Board  games" (two
+22. **Spacing is tidied on both sides** before names are compared: "Board games" (two
     spaces) in a file matches "Board games" set up, and a name set up with two spaces matches
     the file's one, without a question. Capitals are not: "gym" against "Gym" is asked.
 23. **Files are saved from a Blob** (`URL.createObjectURL`, let go at the next download: no timer, which LWC forbids), not a
@@ -201,7 +210,8 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
 
 ## Part D: importing the camp workbook on Roots (2026-10-17)
 
-24. **One import for the whole camp** (Greg, Q3): **Import camp workbook** on Roots reads every
+24. **One import for the whole camp** (Greg, Q3): **Import camp workbook** (now **Import
+    worksheet**) on Roots reads every
     sheet of the workbook Roots downloads, in one review, one save, and one Undo. Nothing the
     workbook leaves out is deleted. It is the panel of "Import a list" in a workbook mode: one
     section per sheet; the questions, **Change all from this file**, and the save label cover
@@ -228,8 +238,7 @@ as "all"; two rows with one name, the last wins). So these parts are new work, n
     is set aside, so setting one aside never flips it. A season with dates but no weeks yet
     (coordinator's call, 2026-10-17, following Greg's "copy the weeks, update the dates"): its
     weeks are first filled from its dates as "Fill in weeks" makes them (`SeasonWeeks.toFill`,
-    in the same save), then paired by order; the preview shows "Will also add: Week 1 (Jun 26
-    2028) …" and the pairing; Undo removes the filled weeks unless used or edited since; the
+    in the same save), then paired by order; the preview shows "Will also add: Week 1 (Jun 26 2028) …" and the pairing; Undo removes the filled weeks unless used or edited since; the
     save refuses if the season's dates no longer give the weeks the preview showed. Dates are read only when certain: 2027-06-28,
     "Jun 28, 2027", "28-Jun-27", or numbers whose day and month order another date in the
     column settles; "7/5/2027" alone could be read two ways and can't be read.

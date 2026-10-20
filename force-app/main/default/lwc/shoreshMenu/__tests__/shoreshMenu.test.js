@@ -49,11 +49,12 @@ describe("c-shoresh-menu", () => {
     }
   });
 
-  it("lists Roots, Camp, Activities and Schedules, in the camp's words", async () => {
+  it("lists Roots, Camp, Activities & Events and Schedules, in the camp's words", async () => {
     const element = await render();
+    // The desktop's section titles (navSections.js NAV_SECTIONS), activities in the camp's word.
     expect(
       [...element.shadowRoot.querySelectorAll("h2")].map((h) => h.textContent)
-    ).toEqual(["Camp", "Periods"]);
+    ).toEqual(["Camp", "Periods & Events", "Schedules"]);
     // Each entry: its words, and whether it says "Coming".
     const entries = [...element.shadowRoot.querySelectorAll("[data-item]")].map(
       (item) => {

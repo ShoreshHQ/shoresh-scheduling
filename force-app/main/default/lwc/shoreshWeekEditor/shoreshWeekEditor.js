@@ -903,7 +903,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       return saved.name;
     }
     const activity = this.activityFor(item);
-    return activity ? activity.name : "deleted since";
+    return activity ? activity.name : `${this.t.s("Activity")} (removed)`;
   }
 
   activityFor(item) {
@@ -1866,10 +1866,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     return `${this.nameOf(slot, day)} · ${day.groups[group].name} · ${dayLabel(day.dateValue).label}`;
   }
 
-  /** "2 stayed: Archery · Bunk 1 · Monday (deleted since); …" (at most five named). */
+  /** "2 stayed: Archery · Bunk 1 · Monday (removed); …" (at most five named). */
   stayedText(week, stayed) {
     const why = {
-      [LEFT_OUT.GONE]: "deleted since",
+      [LEFT_OUT.GONE]: "removed",
       [LEFT_OUT.NOT_SET_UP]: "not set up yet",
       [LEFT_OUT.AWAY]: "not at camp then"
     };
@@ -1894,7 +1894,7 @@ export default class ShoreshWeekEditor extends LightningElement {
         case LEFT_OUT.NO_GROUP:
           return `not on ${target}`;
         case LEFT_OUT.GONE:
-          return "deleted since";
+          return "removed";
         case LEFT_OUT.NOT_SET_UP:
           return "not set up yet";
         default:

@@ -259,7 +259,7 @@ describe("the Lock menu", () => {
 });
 
 describe("a deleted bunk", () => {
-  it("its Group View pill says deleted since, as on the Schedules page", async () => {
+  it("its Group View pill says (removed), as on the Schedules page", async () => {
     const inputs = savedWeek();
     inputs.days = inputs.days.map((day) => ({
       ...day,
@@ -275,7 +275,7 @@ describe("a deleted bunk", () => {
     const pills = [...findAll(element, '[data-id="group-pills"] button')].map(
       (b) => b.textContent.replace(/\s+/g, " ").trim()
     );
-    expect(pills).toEqual(["Bunk 1", "Bunk 2", "Bunk 9 deleted since"]);
+    expect(pills).toEqual(["Bunk 1", "Bunk 2", "Bunk 9 (removed)"]);
   });
 });
 

@@ -291,7 +291,7 @@ describe("c-shoresh-schedules", () => {
     await expect(element).toBeAccessible();
   });
 
-  it("a deleted bunk's Group View pill says deleted since, as on Generated Schedule", async () => {
+  it("a deleted bunk's Group View pill says (removed), as on Generated Schedule", async () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockImplementation((args) =>
       answerFor(args).then((view) => ({
@@ -312,7 +312,7 @@ describe("c-shoresh-schedules", () => {
       qa(element, '[data-id="group-pills"] button').map((b) =>
         b.textContent.replace(/\s+/g, " ").trim()
       )
-    ).toEqual(["Bunk 1", "Bunk 2 deleted since"]);
+    ).toEqual(["Bunk 1", "Bunk 2 (removed)"]);
     await expect(element).toBeAccessible();
   });
 

@@ -418,7 +418,7 @@ private class SeasonSetupControllerTest {
     List<CampLabels.TermLabel> labels = CampLabels.forCamp(camp.Id).all();
     setWords(labels, 'Group', 'Bunk/Bunks');
     System.runAs(ShoreshTestData.outsider()) {
-      String expected = 'You don\'t have access to change camp words. A Salesforce admin can give you Shoresh Scheduler access.';
+      String expected = 'Only an admin can change camp words.';
       Assert.areEqual(
         expected,
         SeasonSetupController.campWordsBlockedReason(camp.Id)

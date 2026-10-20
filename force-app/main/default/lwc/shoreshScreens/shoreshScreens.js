@@ -1,9 +1,10 @@
 /**
  * The screens of the Shoresh page and the left-hand menu that reaches them, following Shoresh
- * desktop's sidebar: Roots (home), then Camp, then Activities, then
- * the schedules: Generated Schedule and Manual Build (by name, as the desktop lists them: the two
- * are equal and the order means nothing), and Schedules (saved versions). Every label is in the
- * camp's own words. Screens not built yet are listed as coming, not hidden.
+ * desktop's sidebar (navSections.js): Roots (home), then Camp, then Activities & Events, then
+ * Schedules: Generated Schedule and Manual Build (by name, as the desktop lists them: the two
+ * are equal and the order means nothing), and Schedules (saved versions). Section titles are the
+ * desktop's NAV_SECTIONS titles. Every label is in the camp's own words. Screens not built yet
+ * are listed as coming, not hidden.
  */
 
 // Built in a later slice: listed, not reachable yet.
@@ -50,7 +51,7 @@ const SECTIONS = [
   },
   {
     key: "activities",
-    title: (t) => t.p("Activity"),
+    title: (t) => `${t.p("Activity")} & Events`,
     screens: [
       "activities",
       "fixedActivities",
@@ -60,6 +61,7 @@ const SECTIONS = [
   },
   {
     key: "schedules",
+    title: () => "Schedules",
     screens: ["generatedSchedule", "manualBuild", "schedules"]
   }
 ];

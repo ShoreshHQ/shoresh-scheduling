@@ -754,14 +754,18 @@
                 before-week-off={beforeWeekOff}
                 week-phrase="runs in"
                 busy={busy}
+                details-label="Details"
+                details-open-for={activityDetailsFor}
                 onsave={handleSaveRecords}
                 ondelete={handleDeleteRecord}
+                ondetails={handleOpenActivityDetails}
               ></c-shoresh-editable-table>
               <c-shoresh-activity-details
                 setup={setup}
                 terms={terms}
                 busy={busy}
                 onsave={handleSaveActivityDetails}
+                onclose={handleCloseActivityDetails}
               ></c-shoresh-activity-details>
               <template lwc:if={next.activities}>
                 <div

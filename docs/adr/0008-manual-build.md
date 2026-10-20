@@ -466,7 +466,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       week's days, clearing that bunk's day. **Clear week**: every day, every bunk, in either
       view. No confirm (decision 6): the line under the toolbar says _Cleared Monday · Undo_
       (_Cleared Bunk 3 · Tuesday_, _Cleared Week 1_; _2 stayed: Archery · Bunk 1 · Monday
-      (deleted since); …_ when anything stays), and Undo there (named _Undo Cleared Monday_ for
+      (removed); …_ when anything stays; _deleted since_ until 2026-10-20, ADR 0010 §13), and Undo there (named _Undo Cleared Monday_ for
       screen readers), the toolbar's, or Ctrl+Z puts it all back. With nothing to clear:
       _Nothing to clear on Monday._, or _Nothing cleared on Monday. 2 stayed: …_
     - **Copy day to…** (Daily View): a menu of the week's other days, and _All other days_
@@ -475,7 +475,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       blocks (matched by Id). Something already the same there needs nothing; anything else that
       can't go is left out whole and listed: _Copied Monday to Tuesday. 1 left out: Soccer · Bunk
       2 · Tuesday: not at camp then. · Undo_ (also _Lunch is set up there_, _Tuesday has no
-      Period 5_ naming the block it lacks, _not on Tuesday_, _deleted since_, _not set up yet_;
+      Period 5_ naming the block it lacks, _not on Tuesday_, _removed_, _not set up yet_;
       five named at most, then _and N more_). With nothing copied: _Nothing copied. 1 left out:
       …_ or _Tuesday already matches Monday._ No confirm.
     - **Someone else's change in the way** (Greg confirmed, 2026-10-18): a tool isn't
@@ -953,7 +953,8 @@ Generated Schedule (ADR 0010 §57).
    updated._ (the list shows what it would change now, in place), and **Cancel** reads **Close**
    once an update was made in that opening. Kept as the desktop words them: _Auto-saved_,
    _Accept_, _Rebuild this schedule?_ with _Saved to Versions first._, _Let the app propose one_
-   above _Generate a schedule_, _deleted since_.
+   above _Generate a schedule_. (_deleted since_ became the desktop's _(removed)_ on 2026-10-20,
+   ADR 0010 §13.)
 
 Checked by Jest: focus on the line's Undo after Clear day and Group View's Clear day; focus on
 the grid after Update to match setup leaves nothing; the dialog's Close; the day-problem words;

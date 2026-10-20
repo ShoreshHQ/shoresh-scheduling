@@ -164,6 +164,8 @@ export default class ShoreshCampSetup extends LightningElement {
   locationFilter = "all";
   // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
   sameLocation = null;
+  // The activity whose details are open (opened from its row), or null.
+  activityDetailsFor = null;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
   sameLocationError = null;
   // Merging: the question's buttons wait.
@@ -1052,6 +1054,26 @@ export default class ShoreshCampSetup extends LightningElement {
       null,
       `${this.terms.s("Program")} not added. Nothing was saved.`
     );
+  }
+
+  /** An activity row's Details: its details open below the table (desktop's row Edit). */
+  async handleOpenActivityDetails(event) {
+    const { recordId } = event.detail;
+    const details = this.template.querySelector("c-shoresh-activity-details");
+    if (details && (await details.open(recordId))) {
+      this.activityDetailsFor = recordId;
+    }
+  }
+
+  /** Closed: the cursor goes back to that row's Details button. */
+  handleCloseActivityDetails(event) {
+    this.activityDetailsFor = null;
+    const table = this.template.querySelector(
+      'c-shoresh-editable-table[data-id="activities"]'
+    );
+    if (table) {
+      table.focusDetailsOf(event.detail.activityId);
+    }
   }
 
   /** A field of an activity's details, saved as the director leaves it. */
