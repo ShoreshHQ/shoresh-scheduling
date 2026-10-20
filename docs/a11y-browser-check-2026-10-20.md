@@ -236,3 +236,44 @@ box calendar buttons) above. Not run: Camp words and the season's pencil were no
 with Tab, most likely because the check's own camp now has 29 weeks and the Weeks table's
 controls use up the script's 140 Tab presses before them (a limit of the check; not looked
 into here).
+
+## Follow-up, 2026-10-20: the loose ends of the two follow-ups above
+
+Branch `a11y-loose-ends`, code `454e979` (the check script's last fix came after it; the app is
+the same), deployed to the test org and checked with the same script and browser, on Week 30 of
+the check's camp, with no CI run using the org. **116 passed, 0 failed, 0 not run**, twice in a
+row.
+
+1. **Deleting a whole program card** (not a table row, so ADR 0013 choice 23 didn't cover it)
+   let the cursor fall to the page and said nothing. Now the Programs screen says "Deleted
+   Program 2" and the cursor goes to the next card's name, else the card above, else **Add
+   program** (ADR 0013 choice 25). The check now adds a card and deletes it again each run.
+2. **The check's camp no longer gains a week each run.** Published schedules are kept history,
+   so a week the check has published can't be deleted; instead the check reuses its week (the
+   latest), deleting that week's drafts and saved versions first, so Start a blank week,
+   Generate and Save version happen again. The two runs made Week 30 fresh (deleting 0, then 7
+   draft or saved schedules), and the camp still has 30 weeks afterwards. The 28 weeks that
+   earlier runs added stay, since each has published history; only deleting the made-up camp
+   itself would clear them.
+3. **Camp words and the season's pencil not reached: a limit of the check, not a keyboard
+   trap.** Nothing in the app holds the cursor: Shift+Tab leaves the Weeks table at once. The
+   check only ever went forward to them: Camp words from the Weeks heading (fixed in the
+   follow-up above by trying Shift+Tab first) and the pencil from **Copy this season**, though
+   the pencil comes just before **New season**, so going forward crossed the menu and the whole
+   open screen, and with 29 weeks ran out of its 140 presses. The pencil step now tries
+   Shift+Tab first too. Both passed with the camp at 30 weeks:
+
+| Screen         | Step                                                         | What happened now                              |
+| -------------- | ------------------------------------------------------------ | ---------------------------------------------- |
+| Programs       | Deleting the card Program 2: it is said                      | Said: "Deleted Program 2".                     |
+| Programs       | After deleting the last card: focus on the card above's name | Focus on input "\*Program name".               |
+| Camp words     | Leaving a changed pair of words: Saved is said               | Said: "✓ Saved".                               |
+| Season details | Opening it: focus stays on the pencil                        | Focus on button "Edit Sample summer".          |
+| Season details | Closing it: focus stays on the pencil                        | Focus on button "Edit Sample summer".          |
+| Manual Build   | Start a blank week: it is said                               | Said: "Started Week 30.".                      |
+| Generated      | Generate: it is said when it ends                            | Said: "Week 30 generated. Filled 141 of 141.". |
+
+Not changed: a long Weeks table is still many Tab presses to cross going forward (each week's
+row has its own boxes and buttons), as any long table in Salesforce is. A real season has
+around 8 to 10 weeks, and the menu and the season's controls come before it, so no skip link
+was added.

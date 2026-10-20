@@ -191,7 +191,7 @@ if (weeks.size() > 1) {
   week = weeks[0];
   List<Schedule__c> drafts = [SELECT Id FROM Schedule__c WHERE Week__c = :week.Id AND Status__c != 'Published' AND PublishedAt__c = NULL AND PublishedBy__c = NULL AND PublishKey__c = NULL];
   delete drafts;
-  System.debug('A11Y_RESET=' + drafts.size() + '=');
+  System.debug('A11Y_RESET[' + drafts.size() + ']');
 } else {
   Date monday = weeks.isEmpty() ? Date.newInstance(2027, 6, 28) : weeks[0].StartDate__c.addDays(7);
   Integer n = weeks.size() + 1;
@@ -202,11 +202,12 @@ if (weeks.size() > 1) {
   week = new Week__c(Season__c = season.Id, Name = 'Week ' + n, StartDate__c = monday, EndDate__c = monday.addDays(4), SortOrder__c = n);
   insert week;
 }
-System.debug('A11Y_WEEK=' + week.Name + '=');
+System.debug('A11Y_WEEK[' + week.Name + ']');
 `);
-  const week = /A11Y_WEEK=(.+?)=/.exec(logs);
+  // The log also echoes the code above, quote marks and all: only the debug line matches.
+  const week = /A11Y_WEEK\[([^\]']+)\]/.exec(logs);
   if (!week) throw new Error("The check's week was not reported back.");
-  const reset = /A11Y_RESET=(\d+)=/.exec(logs);
+  const reset = /A11Y_RESET\[(\d+)\]/.exec(logs);
   say(
     reset
       ? `Made ${week[1]} of "${CAMP}" fresh (${reset[1]} draft or saved schedules deleted); the check works on it.`
