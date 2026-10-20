@@ -428,7 +428,7 @@ export default class ShoreshProgram extends LightningElement {
       noDivisions: `No ${t.pIn("Division")} yet`,
       addGroup: `Add ${t.s("Group")}`,
       noGroups: `No ${t.pIn("Group")} yet`,
-      groupsNeedDivisions: `${program} has no ${t.pIn("Division")} yet. Add them under ${t.p("Division")} first.`,
+      toDivisions: `${t.p("Division")} →`,
       name: `${t.s("Program")} name`,
       days: "Runs on",
       deleteProgram: `Delete this ${t.sIn("Program")}`,
@@ -438,9 +438,22 @@ export default class ShoreshProgram extends LightningElement {
       recurring: `${t.p("RecurringActivity")} in ${program}`,
       addRecurring: `Add ${t.s("RecurringActivity")}`,
       noRecurring: `No ${t.pIn("RecurringActivity")} yet`,
-      needsBlocks: `${program} has no ${t.pIn("TimeBlock")} yet. Add them under ${t.p("TimeBlock")} first.`,
-      leftOut: "Notes"
+      toTimeBlocks: `${t.p("TimeBlock")} →`,
+      // What needs a look on a row: who is left out, a time block that changed (desktop: "Needs
+      // attention"), not general notes.
+      leftOut: "Needs attention",
+      // What moving a group to another division changes.
+      moving: "What changes"
     };
+  }
+
+  /** A screen this one needs first (an empty one's button): the page opens it. */
+  handleGo(event) {
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: { screen: event.currentTarget.dataset.screen }
+      })
+    );
   }
 
   handleName(event) {

@@ -162,7 +162,7 @@ it or press **Escape**.
 5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
    to **Can do it**, then click elsewhere: it is saved (**✓ Saved** beside the heading). Only
    Bunk 1 can swim now; nobody chosen means every bunk.
-6. Still on Swim, under **More rules**: "Get this many done early in the week" 1, **By**
+6. Still on Swim, under **More rules**, **Early in the week**: **How many** 1, **By**
    Tuesday (the swim test by Tuesday). Each is saved as you leave it or choose it.
 7. Try deleting the **Pool** (trash can in the Locations table). Shoresh refuses: Swim happens
    there; choose another location for Swim first. Try deleting **Gym games**: refused,
@@ -198,7 +198,7 @@ activities and from each other. Clashes are refused, never just shown.
    Main_. In the blank row type _Flagpole_, **Time block** Period 1, length 1, no location,
    and press **Enter**. Every week is ticked under **Runs in**. Add a second one, _Lunch
    break_ in Lunch.
-2. The **Notes** column on Lunch break says _Bunk 2 is morning only and is left out._
+2. The **Needs attention** column on Lunch break says _Bunk 2 is morning only and is left out._
    Bunk 2 is not at camp in the afternoon, so Lunch break leaves it out rather than refusing.
 3. On **Roots**, the wide **Fixed activities** card now counts 2 and names them. Click it to
    come back.
@@ -270,7 +270,7 @@ Does this work the way you think in practice? Note anything that feels awkward.
    too (Recurring activities), so Period 2 is free. On **Fixed activities**, set Flagpole's
    **Length** to 2 and press **Enter**: it covers Period 1 and Period 2. Now on **Time
    blocks** add _Snack_ 9:45–10:00 AM, Morning. Back on **Fixed activities**, Needs attention
-   and Flagpole's Notes say _Time blocks changed since it was saved: it covered Period 1 –
+   and Flagpole's Needs attention column say _Time blocks changed since it was saved: it covered Period 1 –
    Period 2 and now covers Period 1 – Snack._ Two fixes are offered: **Keep Period 1 – Snack**
    and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and press **Enter**: the note stays.
    Click **Stretch to Period 1 – Period 2**: the length becomes 3 and the note goes. (Deleting
@@ -305,8 +305,8 @@ save one), so first add a made-up one.
    up)_. Click **Schedules** in the menu.
 3. The newest version opens by itself. The toolbar shows **Week** (_Week 1_), the **Daily View
    / Group View / Activity View** toggle (as on the desktop), and, on the right after a
-   divider, **Versions**. A blue strip says _Looking at a version: Imported from
-   sample-week.xlsx (made up) · Imported · (date) · read-only_.
+   divider, **Versions**. A blue strip says _Imported from sample-week.xlsx (made up) · Imported ·
+   saved (date) · view only_.
 4. Click **Versions**. The list (titled **Versions**) shows each version, newest first, with
    _Imported_ and when it was saved, **rename** and **Open**; the one showing says _on screen
    now_. **Open** on another version switches to it. (If you ran the script twice, there are
@@ -389,7 +389,7 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
    says how many are left, and cannot be clicked.) Click it.
 7. The summary: _Imported from maple-grove-2026-all-camp.xlsx._, what was **Added** (1
    program, 7 time blocks, 2 units, 6 bunks, 7 activities, 1 fixed activity, 2 recurring
-   activities), **Not set up yet**, and **Good to know**. Click **Continue**.
+   activities), **Not set up yet**, and **Good to know**. Click **Back to Roots**.
 8. Roots now shows the cards filled in. Open **Fixed activities** (Lunch, at Lunch) and
    **Recurring activities** (Morning meeting on Mondays for everyone; Library time on
    Wednesdays for Juniors), and **Activities** (Boating two blocks long, for Seniors only).
@@ -419,7 +419,7 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
     _Week 1_. **Good to know** says the season's 2 weeks are added from its dates, and the
     summary's **Added** includes 2 weeks. (Undo in step 15 removes them too.)
 14. The summary now has **Last year's schedule**: _Imported from maple-grove-2026-all-camp.xlsx,
-    for Week 1 (Main): open it on Schedules._ Click **Continue**, then **Schedules**: the version
+    for Week 1 (Main): open it on Schedules._ Click **Back to Roots**, then **Schedules**: the version
     opens, with Lunch and Morning meeting as fixed and recurring activities, Chugim, the Zoo
     trip, and Field day marked _not set up yet_.
 15. Back on Roots, under **Import last year**: _Last import: maple-grove-2026-all-camp.xlsx,
@@ -453,7 +453,7 @@ section 14 are in `docs/samples/lists` (do section 14 first, in the _Import test
    - **New (4)**: Pool, Lake, Art room, Field.
    - **Can't read**: _Row 6 · Gym · Groups that fit: "two" is not a whole number_.
 4. The button at the bottom says **Add 4**. Click it. The box says _Saved_, with what was added
-   (3 location types, 4 locations), and **Undo this import**. Click **Done**.
+   (3 location types, 4 locations), and **Undo this import**. Click **Close**.
 
 **Activities**
 
@@ -734,8 +734,8 @@ Juniors are Bunks 1 to 3, Seniors Bunks 4 to 6.
 10. **Not set up for a bunk.** On **Activities**, open Boating and set **Who can do it** to
     Seniors. Back in Manual Build (reload the page), place Boating for Bunk 1: _Not set up for
     Bunk 1_. Set Boating back to everyone afterwards.
-11. **Spread across the week.** On **Activities**, open Swim and set **Get this many done early in
-    the week** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
+11. **Spread across the week.** On **Activities**, open Swim and under **Early in the week** set
+    **How many** to 1, **By** Tuesday. Back in Manual Build (reload), the **Spread across the week**
     tile appears (it isn't shown while no activity has an early-week goal), and the list has each
     bunk without a Swim on Monday or Tuesday (_Swim · Bunk 6: 1 still needed by Tuesday_). Clear
     those two settings afterwards: the tile goes again.

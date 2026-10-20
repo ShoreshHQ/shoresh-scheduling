@@ -7,7 +7,6 @@
       <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
     </div>
     <template lwc:if={hasActivities}>
-      <p class="slds-m-bottom_small">{labels.intro}</p>
       <div class="slds-grid slds-wrap slds-gutters_small">
         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
           <lightning-combobox
@@ -23,15 +22,12 @@
       <h3 class="slds-text-heading_small slds-m-top_medium">
         {labels.whoCanDoIt}
       </h3>
-      <p class="slds-text-color_weak slds-m-bottom_x-small" data-id="who-note">
-        {everyoneNote}
-      </p>
       <lightning-dual-listbox
         data-id="who-can-do-it"
         label={labels.whoCanDoIt}
         variant="label-hidden"
         source-label={labels.available}
-        selected-label={labels.chosen}
+        selected-label={chosenLabel}
         options={targetOptions}
         value={whoCanDoIt}
         onchange={handleWhoChange}
@@ -68,47 +64,52 @@
           {sameDivisionError}
         </div>
       </template>
-      <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small">
-        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-          <lightning-input
-            type="number"
-            data-field="earlyCount"
-            label={labels.earlyCount}
-            value={earlyCount}
-            min="1"
-            step="1"
-            onchange={handleRule}
-            onfocusout={handleRuleLeave}
-          ></lightning-input>
-          <template lwc:if={earlyCountError}>
-            <div
-              class="slds-form-element__help slds-text-color_error"
-              role="alert"
-              data-error="earlyCount"
-            >
-              {earlyCountError}
-            </div>
-          </template>
+      <fieldset class="slds-form-element slds-m-top_x-small" data-id="early">
+        <legend class="slds-form-element__legend slds-form-element__label">
+          {labels.early}
+        </legend>
+        <div class="slds-grid slds-wrap slds-gutters_small">
+          <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <lightning-input
+              type="number"
+              data-field="earlyCount"
+              label={labels.earlyCount}
+              value={earlyCount}
+              min="1"
+              step="1"
+              onchange={handleRule}
+              onfocusout={handleRuleLeave}
+            ></lightning-input>
+            <template lwc:if={earlyCountError}>
+              <div
+                class="slds-form-element__help slds-text-color_error"
+                role="alert"
+                data-error="earlyCount"
+              >
+                {earlyCountError}
+              </div>
+            </template>
+          </div>
+          <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <lightning-combobox
+              data-field="earlyDay"
+              label={labels.earlyDay}
+              value={earlyDay}
+              options={dayOptions}
+              onchange={handleRule}
+            ></lightning-combobox>
+            <template lwc:if={earlyDayError}>
+              <div
+                class="slds-form-element__help slds-text-color_error"
+                role="alert"
+                data-error="earlyDay"
+              >
+                {earlyDayError}
+              </div>
+            </template>
+          </div>
         </div>
-        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-          <lightning-combobox
-            data-field="earlyDay"
-            label={labels.earlyDay}
-            value={earlyDay}
-            options={dayOptions}
-            onchange={handleRule}
-          ></lightning-combobox>
-          <template lwc:if={earlyDayError}>
-            <div
-              class="slds-form-element__help slds-text-color_error"
-              role="alert"
-              data-error="earlyDay"
-            >
-              {earlyDayError}
-            </div>
-          </template>
-        </div>
-      </div>
+      </fieldset>
       <lightning-textarea
         class="slds-m-top_x-small"
         data-field="notes"
@@ -128,7 +129,7 @@
       </template>
     </template>
     <template lwc:else>
-      <p class="slds-text-color_weak">{labels.empty}</p>
+      <c-shoresh-empty-state title={labels.empty}></c-shoresh-empty-state>
     </template>
   </section>
 </template>

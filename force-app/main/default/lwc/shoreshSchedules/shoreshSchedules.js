@@ -42,6 +42,8 @@ export default class ShoreshSchedules extends LightningElement {
   dayIndex = 0;
   groupKey;
   activityId;
+  // Where the cursor goes at the next render: { back } or { card: activity Id }.
+  focusAfter = null;
   pending = 0;
   // From choosing a week until its newest version is open (or it has none).
   loading = false;
@@ -216,9 +218,6 @@ export default class ShoreshSchedules extends LightningElement {
   get openedSavedAt() {
     return this.opened.schedule.savedAt;
   }
-  get viewingLabel() {
-    return `Looking at a ${this.t.sIn("Version")}`;
-  }
   get noDaysMessage() {
     return `This ${this.t.sIn("Version")} has no days saved.`;
   }
@@ -266,7 +265,9 @@ export default class ShoreshSchedules extends LightningElement {
   get dayPills() {
     return days(this.opened).map((day) => ({
       ...day,
-      className: day.index === this.dayIndex ? "pill pill_on" : "pill"
+      className: day.index === this.dayIndex ? "pill pill_on" : "pill",
+      // Chosen is said to screen readers, and shown by more than colour (CSS: underline).
+      pressed: String(day.index === this.dayIndex)
     }));
   }
   get selectedDay() {
@@ -293,7 +294,8 @@ export default class ShoreshSchedules extends LightningElement {
   get groupPills() {
     return groups(this.opened).map((grp) => ({
       ...grp,
-      className: grp.key === this.groupKey ? "pill pill_on" : "pill"
+      className: grp.key === this.groupKey ? "pill pill_on" : "pill",
+      pressed: String(grp.key === this.groupKey)
     }));
   }
   get groupGrid() {
@@ -339,11 +341,30 @@ export default class ShoreshSchedules extends LightningElement {
   get allActivitiesLabel() {
     return `← All ${this.t.p("Activity")}`;
   }
+  /** Opening an activity puts the cursor on the way back; going back, on its card (WCAG 2.4.3). */
   handleActivity(event) {
     this.activityId = event.currentTarget.dataset.key;
+    this.focusAfter = { back: true };
   }
   handleAllActivities() {
+    this.focusAfter = { card: this.activityId };
     this.activityId = null;
+  }
+
+  renderedCallback() {
+    if (!this.focusAfter) {
+      return;
+    }
+    const { back, card } = this.focusAfter;
+    this.focusAfter = null;
+    const target = back
+      ? this.template.querySelector('[data-id="all-activities"]')
+      : [...this.template.querySelectorAll(".card[data-key]")].find(
+          (el) => el.dataset.key === card
+        );
+    if (target) {
+      target.focus();
+    }
   }
 
   get legend() {

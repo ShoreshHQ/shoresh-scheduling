@@ -9,17 +9,24 @@
           <template for:each={section.items} for:item="item">
             <li key={item.key} class={item.className}>
               <template lwc:if={item.disabled}>
-                <span
+                <a
+                  href="#"
                   class="slds-nav-vertical__action slds-text-color_weak"
                   aria-disabled="true"
                   data-coming={item.coming}
                   data-item={item.key}
+                  onclick={handleDisabledClick}
+                  ><span class="menu-label">{item.label}</span
+                  ><template lwc:if={item.coming}
+                    ><span
+                      class="slds-badge slds-col_bump-left"
+                      aria-hidden="true"
+                      >Coming</span
+                    ></template
+                  ><span class="slds-assistive-text" data-reason={item.key}
+                    >{item.reason}</span
+                  ></a
                 >
-                  {item.label}
-                  <template lwc:if={item.coming}>
-                    <span class="slds-badge slds-col_bump-left">Coming</span>
-                  </template>
-                </span>
               </template>
               <template lwc:else>
                 <a

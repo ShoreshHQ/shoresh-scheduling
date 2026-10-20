@@ -22,7 +22,8 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    and RecurringEvent camp words. "Roots", "Camp", "Camp words", and "Schedules" are not glossary
    terms and stay as they are.
 3. **Before the first season**, only Camp words can be opened; the rest is greyed out (each
-   needs a season). New season and Copy season stay at the top, beside the season picker;
+   needs a season). _Changed 2026-10-20 (ADR 0013 choice 11): greyed entries stay in the tab
+   order, marked unavailable, and say why ("Needs a season", "Coming") to screen readers._ New season and Copy season stay at the top, beside the season picker;
    Delete season moved to the Weeks screen, with the season's name, dates, and status.
    _Changed 2026-10-20 (ADR 0013): the season's name, dates and Delete season open from a pencil
    beside the season picker; Status is no longer shown._

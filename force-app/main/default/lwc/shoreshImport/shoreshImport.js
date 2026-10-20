@@ -58,6 +58,68 @@ export default class ShoreshImport extends LightningElement {
   remembered = {};
   dragging = false;
   sheetJsLoaded = false;
+  // Where the cursor goes at the next render: { card } (that card), { after } (the next question
+  // still open after that one), or { selector }.
+  focusNext = null;
+
+  /** The screen's heading takes the cursor (the page calls this when the screen opens). */
+  @api
+  focusHeading() {
+    const heading = this.template.querySelector("[data-heading]");
+    if (heading) {
+      heading.focus();
+    }
+  }
+
+  renderedCallback() {
+    if (!this.focusNext) {
+      return;
+    }
+    const next = this.focusNext;
+    this.focusNext = null;
+    let target = null;
+    if (next.selector) {
+      target = this.template.querySelector(next.selector);
+    } else {
+      const cards = this.isReview ? this.reviewCards : this.previewCards;
+      let id = next.card;
+      if (next.after) {
+        const at = cards.findIndex((c) => c.id === next.after);
+        const open = [...cards.slice(at + 1), ...cards.slice(0, at + 1)].find(
+          (c) => !c.answered
+        );
+        id = open ? open.id : null;
+      }
+      const card = id
+        ? [...this.template.querySelectorAll("[data-card]")].find(
+            (el) => el.dataset.card === id
+          )
+        : null;
+      // The card's first choice; with every question answered, the step's main button.
+      target = card
+        ? card.querySelector("lightning-button")
+        : this.template.querySelector(
+            this.isReview ? '[data-id="save"]' : '[data-id="review"]'
+          );
+    }
+    if (target && typeof target.focus === "function") {
+      target.focus();
+    }
+  }
+
+  /** What is happening, for the status line screen readers hear. */
+  get statusText() {
+    if (this.stage === "reading") {
+      return "Reading the files";
+    }
+    if (this.stage === "saving") {
+      return "Saving";
+    }
+    if (this.stage === "done") {
+      return this.undone || `Imported from ${this.fileNames}.`;
+    }
+    return "";
+  }
 
   // ---------- reading the files ----------
 
@@ -263,6 +325,8 @@ export default class ShoreshImport extends LightningElement {
     const [id, value] = event.currentTarget.dataset.key.split("::");
     this.answers = { ...this.answers, [id]: value };
     this.recompute();
+    // The clicked button is gone with the answer: on to the next open question (WCAG 2.4.3).
+    this.focusNext = { after: id };
   }
 
   handleChoice(event) {
@@ -274,10 +338,13 @@ export default class ShoreshImport extends LightningElement {
   }
 
   handleChangeAnswer(event) {
+    const id = event.currentTarget.dataset.id;
     const answers = { ...this.answers };
-    delete answers[event.currentTarget.dataset.id];
+    delete answers[id];
     this.answers = answers;
     this.recompute();
+    // The card opens again: the cursor goes to its first choice.
+    this.focusNext = { card: id };
   }
 
   // ---------- what was found ----------
@@ -419,14 +486,17 @@ export default class ShoreshImport extends LightningElement {
 
   handleReview() {
     this.stage = "review";
+    this.focusNext = { selector: "[data-heading]" };
   }
 
   handleBackToPreview() {
     this.stage = "preview";
+    this.focusNext = { selector: "[data-heading]" };
   }
 
   handleStartAgain() {
     this.stage = "pick";
+    this.focusNext = { selector: "[data-heading]" };
     this.undone = null;
     this.files = [];
     this.proposal = null;
@@ -453,6 +523,7 @@ export default class ShoreshImport extends LightningElement {
       });
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.stage = "done";
+      this.focusNext = { selector: '[data-id="done"]' };
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";

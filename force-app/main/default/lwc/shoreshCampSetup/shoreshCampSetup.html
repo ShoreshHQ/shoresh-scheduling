@@ -1,7 +1,9 @@
 <template>
   <div class="slds-card slds-p-around_medium">
     <template lwc:if={isLoading}>
-      <lightning-spinner alternative-text="Loading"></lightning-spinner>
+      <lightning-spinner
+        alternative-text="Opening your camp"
+      ></lightning-spinner>
     </template>
 
     <template lwc:if={error}>
@@ -217,10 +219,13 @@
         <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-6">
           <!-- New season -->
           <template lwc:if={isNewSeason}>
-            <h2 class="slds-text-heading_medium slds-m-bottom_x-small">
+            <h2
+              class="slds-text-heading_medium slds-m-bottom_small"
+              tabindex="-1"
+              data-id="new-season-title"
+            >
               {labels.newSeasonTitle}
             </h2>
-            <p class="slds-m-bottom_small">{labels.newSeasonHint}</p>
             <div class="slds-grid slds-wrap slds-gutters_small">
               <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
                 <lightning-input
@@ -442,6 +447,7 @@
                   busy={busy}
                   onsave={handleSaveRecords}
                   ondelete={handleDeleteRecord}
+                  onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
@@ -492,6 +498,7 @@
                   busy={busy}
                   onsave={handleSaveRecords}
                   ondelete={handleDeleteRecord}
+                  onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
@@ -545,6 +552,7 @@
                   busy={busy}
                   onsave={handleSaveRecords}
                   ondelete={handleDeleteRecord}
+                  onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
@@ -595,6 +603,7 @@
                   busy={busy}
                   onsave={handleSaveRecords}
                   ondelete={handleDeleteRecord}
+                  onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
@@ -801,6 +810,7 @@
                   busy={busy}
                   onsave={handleSaveRecords}
                   ondelete={handleDeleteRecord}
+                  onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
@@ -858,6 +868,7 @@
                   busy={busy}
                   onsave={handleSaveRecords}
                   ondelete={handleDeleteRecord}
+                  onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
               <template lwc:if={hasNoPrograms}>
@@ -885,7 +896,11 @@
               class={shown.generatedSchedule}
               data-screen="generatedSchedule"
             >
-              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+              <h2
+                class="slds-text-heading_medium slds-m-bottom_small"
+                tabindex="-1"
+                data-heading
+              >
                 {labels.screens.generatedSchedule}
               </h2>
               <c-shoresh-generated-schedule
@@ -897,7 +912,11 @@
 
             <!-- Manual Build: a program's week built by hand -->
             <div class={shown.manualBuild} data-screen="manualBuild">
-              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+              <h2
+                class="slds-text-heading_medium slds-m-bottom_small"
+                tabindex="-1"
+                data-heading
+              >
                 {labels.screens.manualBuild}
               </h2>
               <c-shoresh-manual-build
@@ -909,7 +928,11 @@
 
             <!-- The schedule page: versions of a program's week, in three views -->
             <div class={shown.schedules} data-screen="schedules">
-              <h2 class="slds-text-heading_medium slds-m-bottom_small">
+              <h2
+                class="slds-text-heading_medium slds-m-bottom_small"
+                tabindex="-1"
+                data-heading
+              >
                 {labels.screens.schedules}
               </h2>
               <c-shoresh-schedules

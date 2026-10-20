@@ -214,6 +214,12 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="viewing"]').textContent).toContain(
       "Imported again"
     );
+    // Camp words, not "Looking at a Version … read-only".
+    const viewing = q(element, '[data-id="viewing"]').textContent;
+    expect(viewing).toContain("saved");
+    expect(viewing).toContain("view only");
+    expect(viewing).not.toContain("read-only");
+    expect(viewing).not.toContain("Looking at");
     expect(q(element, "c-shoresh-versions").openId).toBe("s2");
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
@@ -226,9 +232,20 @@ describe("c-shoresh-schedules", () => {
     ]);
     expect(daily.corner).toBe("Time block");
     await expect(element).toBeAccessible();
+    // The chosen day is said (aria-pressed), not shown by colour alone.
+    expect(
+      qa(element, '[data-id="day-pills"] button').map((b) =>
+        b.getAttribute("aria-pressed")
+      )
+    ).toEqual(["true", "false", "false"]);
     // Wednesday could not be read: it says so instead of a grid.
     qa(element, '[data-id="day-pills"] button')[2].click();
     await flush();
+    expect(
+      qa(element, '[data-id="day-pills"] button')[2].getAttribute(
+        "aria-pressed"
+      )
+    ).toBe("true");
     expect(q(element, '[data-id="daily-grid"]')).toBeNull();
     expect(element.shadowRoot.textContent).toContain(
       "This day could not be read"
@@ -243,6 +260,11 @@ describe("c-shoresh-schedules", () => {
     ).toEqual(["Bunk 1", "Bunk 2"]);
     qa(element, '[data-id="group-pills"] button')[1].click();
     await flush();
+    expect(
+      qa(element, '[data-id="group-pills"] button').map((b) =>
+        b.getAttribute("aria-pressed")
+      )
+    ).toEqual(["false", "true"]);
     const group = q(element, '[data-id="group-grid"]');
     expect(group.grid.cells.find((c) => c.key === "0-0").text).toBe("Chugim");
 
@@ -256,9 +278,16 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="activity-grid"]').grid.columns).toHaveLength(
       3
     );
+    // The cursor follows: onto the way back, then back onto the card it came from.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="all-activities"]')
+    );
     q(element, '[data-id="all-activities"]').click();
     await flush();
     expect(q(element, '[data-id="activity-cards"]')).not.toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      qa(element, '[data-id="activity-cards"] button')[0]
+    );
     await expect(element).toBeAccessible();
   });
 

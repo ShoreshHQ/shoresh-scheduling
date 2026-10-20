@@ -502,6 +502,30 @@ export default class ShoreshEditableTable extends LightningElement {
       }
     }
     this.reportMoves();
+    this.announceDraftNotes();
+  }
+
+  /**
+   * A note worked out from typing ("Moves to Seniors: …") is read out once, in the table's one
+   * live region, when it appears or changes. Each row's note cell is not its own live region, so
+   * a reload never reads every note at once.
+   */
+  announceDraftNotes() {
+    const notes = this.draftNotes;
+    if (notes === this.notesHeard) {
+      return;
+    }
+    const before = this.notesHeard;
+    this.notesHeard = notes;
+    if (!before) {
+      return;
+    }
+    const fresh = [...notes].find(
+      ([key, note]) => note && before.get(key) !== note
+    );
+    if (fresh) {
+      this.announce(fresh[1]);
+    }
   }
 
   focusRow(key) {

@@ -219,6 +219,10 @@ describe("c-shoresh-same-location", () => {
     focus.mockRestore();
     expect(focused).toContain("refusal");
     expect($(element, "refusal").getAttribute("role")).toBe("alert");
+    // The icon adds no words of its own ("Refused"): the reason follows it.
+    expect(
+      $(element, "refusal").querySelector("lightning-icon").alternativeText
+    ).toBe("");
     expect($(element, "refusal-words").textContent.trim()).toBe(
       '"Pool" fits 1 Bunk at once …'
     );

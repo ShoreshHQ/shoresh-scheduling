@@ -225,6 +225,57 @@ describe("c-shoresh-import", () => {
     expect($(element, '[data-id="noted"]').textContent).toContain("Zoo trip");
   });
 
+  it("keeps the cursor on the way: next question, Save, then the summary; and says what happens", async () => {
+    const focused = [];
+    const spy = jest
+      .spyOn(HTMLElement.prototype, "focus")
+      .mockImplementation(function record() {
+        focused.push(this);
+      });
+    try {
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      const status = () => $(element, '[data-id="status"]');
+      expect(status().getAttribute("role")).toBe("status");
+      const similar = $(element, '[data-id="similar"] [data-card]').dataset
+        .card;
+      await answer(element, similar, "a");
+      // The only preview question answered: on to the step's main button.
+      expect(focused.pop().dataset.id).toBe("review");
+      // Change opens the card again, with the cursor on its first choice.
+      $(
+        element,
+        `[data-card="${similar}"] lightning-button[data-id="${similar}"]`
+      ).click();
+      await flush();
+      expect(focused.pop().closest("[data-card]").dataset.card).toBe(similar);
+      await answer(element, similar, "a");
+      $(element, 'lightning-button[data-id="review"]').click();
+      await flush();
+      expect(focused.pop().hasAttribute("data-heading")).toBe(true);
+      await answer(element, "kind|Library time", "recurring");
+      expect(focused.pop().dataset.id).toBe("save");
+      $(element, 'lightning-button[data-id="save"]').click();
+      await flush();
+      await flush();
+      expect(focused.pop().dataset.id).toBe("done");
+      expect(status().textContent.trim()).toBe(
+        "Imported from maple-grove-2026-all-camp.xlsx."
+      );
+      expect($(element, 'lightning-button[data-id="continue"]').label).toBe(
+        "Back to Roots"
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("puts the cursor on its heading when the page opens it", async () => {
+    const element = await render();
+    element.focusHeading();
+    expect(element.shadowRoot.activeElement).toBe($(element, "[data-heading]"));
+  });
+
   it("lists what was left out for now after saving", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
@@ -379,7 +430,7 @@ describe("c-shoresh-import", () => {
       );
       expect(
         $(element, '[data-card="kind|Library time"]').textContent
-      ).toContain("remembered");
+      ).toContain("Remembered");
       expect($(element, 'lightning-button[data-id="save"]').label).toBe(
         "Use this setup"
       );
@@ -399,10 +450,10 @@ describe("c-shoresh-import", () => {
       });
       const pool = $(element, '[data-place="place|Pool"]');
       expect(pool.querySelector("lightning-input").checked).toBe(true);
-      expect(pool.textContent).toContain("remembered");
+      expect(pool.textContent).toContain("Remembered");
       const artRoom = $(element, '[data-place="place|Art room"]');
       expect(artRoom.querySelector("lightning-input").checked).toBe(false);
-      expect(artRoom.textContent).not.toContain("remembered");
+      expect(artRoom.textContent).not.toContain("Remembered");
       // Headed in the camp's word, with what it was named with in plain text: no help icon.
       const places = $(element, '[data-id="places"]');
       expect(places.querySelector(".import-section-label").textContent).toBe(

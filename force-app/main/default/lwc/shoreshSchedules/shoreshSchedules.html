@@ -71,10 +71,9 @@
 
     <template lwc:if={opened}>
       <div class="viewing" data-id="viewing">
-        <span class="viewing-label">{viewingLabel}</span>
         <span class="viewing-name">{openedName}</span>
         <span class="viewing-meta">
-          {openedOrigin} ·
+          {openedOrigin} · saved
           <lightning-formatted-date-time
             value={openedSavedAt}
             month="short"
@@ -82,7 +81,7 @@
             hour="numeric"
             minute="2-digit"
           ></lightning-formatted-date-time>
-          · read-only
+          · view only
         </span>
       </div>
 
@@ -101,6 +100,7 @@
                 key={day.key}
                 type="button"
                 class={day.className}
+                aria-pressed={day.pressed}
                 data-index={day.index}
                 onclick={handleDay}
               >
@@ -134,6 +134,7 @@
                 key={grp.key}
                 type="button"
                 class={grp.className}
+                aria-pressed={grp.pressed}
                 data-key={grp.key}
                 onclick={handleGroup}
               >

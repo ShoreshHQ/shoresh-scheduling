@@ -2,13 +2,20 @@
   <template lwc:if={open}>
     <div class="list-import slds-m-bottom_medium" data-id="list-import">
       <div class="list-header">
-        <h3 class="slds-text-heading_small">{title}</h3>
+        <h3 class="slds-text-heading_small" tabindex="-1" data-heading>
+          {title}
+        </h3>
         <lightning-button
           data-id="close"
           variant="base"
           label="Close"
           onclick={handleClose}
         ></lightning-button>
+      </div>
+
+      <!-- Reading, saving, saved and undone, read out as they happen (WCAG 4.1.3). -->
+      <div class="slds-assistive-text" role="status" data-id="status">
+        {statusText}
       </div>
 
       <template lwc:if={error}>
@@ -357,7 +364,7 @@
 
       <!-- Saved -->
       <template lwc:if={isDone}>
-        <p class="slds-m-bottom_small" data-id="saved">Saved</p>
+        <p class="slds-m-bottom_small" tabindex="-1" data-id="saved">Saved</p>
         <ul class="list-names" data-id="summary">
           <template for:each={summaryLines} for:item="line">
             <li key={line.key}>{line.text}</li>
@@ -382,7 +389,7 @@
             class="slds-m-left_x-small"
             data-id="done"
             variant="brand"
-            label="Done"
+            label="Close"
             onclick={handleClose}
           ></lightning-button>
         </div>

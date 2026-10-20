@@ -6,6 +6,10 @@ import { LightningElement, api } from "lwc";
  * focus, and screen readers read them as part of that row (assistive text), without hovering
  * (Greg, 2026-10-17).
  *
+ * shape: "dot" (the default), or "overlap" for two things that overlap (two dates, say): two
+ * linked rings, so it reads differently from a same-name dot without relying on colour
+ * (WCAG 1.4.1).
+ *
  * label: a few words in the camp's terms ("Not set up for Bunk 2"). open: the row it sits on has
  * focus or is highlighted, so the tooltip shows. focusable: the dot is its own tab stop (when the
  * row around it isn't focusable itself). inCell: the dot sits in a grid cell, which carries
@@ -18,6 +22,7 @@ export default class ShoreshDot extends LightningElement {
   @api label;
   @api focusable = false;
   @api inCell = false;
+  @api shape = "dot";
 
   hovered = false;
   tapped = false;
@@ -57,6 +62,10 @@ export default class ShoreshDot extends LightningElement {
 
   disconnectedCallback() {
     window.removeEventListener("keydown", this.onKey, true);
+  }
+
+  get isOverlap() {
+    return this.shape === "overlap";
   }
 
   get showTip() {

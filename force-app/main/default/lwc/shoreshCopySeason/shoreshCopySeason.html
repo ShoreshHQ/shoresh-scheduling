@@ -1,7 +1,9 @@
 <template>
   <article class="slds-card slds-card_boundary">
     <div class="slds-card__header">
-      <h2 class="slds-text-heading_medium">{labels.title}</h2>
+      <h2 class="slds-text-heading_medium" tabindex="-1" data-id="copy-title">
+        {labels.title}
+      </h2>
     </div>
     <div class="slds-card__body slds-card__body_inner">
       <p class="slds-m-bottom_small">{labels.intro}</p>
@@ -35,7 +37,7 @@
       <template lwc:if={weekdayWarning}>
         <div
           class="slds-notify slds-notify_alert slds-alert_warning slds-m-top_small"
-          role="alert"
+          role="status"
           data-id="weekday-warning"
         >
           {weekdayWarning}

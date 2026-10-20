@@ -127,7 +127,7 @@
           empty-message={labels.noGroups}
           new-row-defaults={division.defaults}
           draft-note={groupMoveNote}
-          draft-note-heading="Moving"
+          draft-note-heading={labels.moving}
           weeks={weeks}
           week-exceptions={weekExceptions}
           weeks-heading="Runs in"
@@ -140,9 +140,19 @@
       </template>
     </template>
     <template lwc:else>
-      <p class="slds-text-color_weak slds-m-bottom_medium">
-        {labels.groupsNeedDivisions}
-      </p>
+      <div class="slds-m-bottom_medium" data-id="needs-divisions">
+        <c-shoresh-empty-state
+          title={labels.noDivisions}
+        ></c-shoresh-empty-state>
+        <div class="slds-text-align_center">
+          <lightning-button
+            label={labels.toDivisions}
+            data-screen="divisions"
+            data-id="go-divisions"
+            onclick={handleGo}
+          ></lightning-button>
+        </div>
+      </div>
     </template>
   </template>
 
@@ -172,9 +182,19 @@
       ></c-shoresh-editable-table>
     </template>
     <template lwc:else>
-      <p class="slds-text-color_weak slds-m-bottom_medium">
-        {labels.needsBlocks}
-      </p>
+      <div class="slds-m-bottom_medium" data-id="needs-blocks">
+        <c-shoresh-empty-state
+          title={labels.noTimeBlocks}
+        ></c-shoresh-empty-state>
+        <div class="slds-text-align_center">
+          <lightning-button
+            label={labels.toTimeBlocks}
+            data-screen="timeBlocks"
+            data-id="go-time-blocks"
+            onclick={handleGo}
+          ></lightning-button>
+        </div>
+      </div>
     </template>
   </template>
 
@@ -204,9 +224,19 @@
       ></c-shoresh-editable-table>
     </template>
     <template lwc:else>
-      <p class="slds-text-color_weak slds-m-bottom_medium">
-        {labels.needsBlocks}
-      </p>
+      <div class="slds-m-bottom_medium" data-id="needs-blocks">
+        <c-shoresh-empty-state
+          title={labels.noTimeBlocks}
+        ></c-shoresh-empty-state>
+        <div class="slds-text-align_center">
+          <lightning-button
+            label={labels.toTimeBlocks}
+            data-screen="timeBlocks"
+            data-id="go-time-blocks"
+            onclick={handleGo}
+          ></lightning-button>
+        </div>
+      </div>
     </template>
   </template>
 </template>

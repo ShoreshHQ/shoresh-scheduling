@@ -68,10 +68,6 @@
   font-size: 13px;
 }
 
-.viewing-label {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
 .viewing-name {
   font-weight: 700;
 }
@@ -104,6 +100,10 @@
 .pill_on {
   background: var(--slds-g-color-brand-base-50, #0176d3);
   color: var(--slds-g-color-neutral-base-100, #fff);
+  /* Chosen shows by more than colour (WCAG 1.4.1). */
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .pill-sub {

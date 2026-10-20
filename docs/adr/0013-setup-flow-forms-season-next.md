@@ -79,6 +79,58 @@ season form on Weeks; Camp words' Cancel).
    the screen and puts the cursor on its heading (`tabindex="-1"`), so keyboard and screen-reader
    users start at the top of it.
 
+## Accessibility and words (added 2026-10-20)
+
+From the rest of the UI/UX pass on the setup screens (findings 1, 9-17, 21, 23-28, 30, 32, 34-36,
+39-41, 43-47, 49, 51-53), under Greg's "my calls" list (part B). Every choice is checked in Jest;
+real-browser behaviour is still to be checked by hand (Known limits).
+
+8. **The cursor follows the director.** Picking a screen from the menu, Roots, or a screen's
+   own link puts the cursor on that screen's heading, like the next buttons (Roots, Camp words
+   and Import last year focus their own, `focusHeading()`). New season and Copy this season move
+   it to their heading; Cancel puts it back on the button that opened them. Import a list:
+   opening it goes to its heading, closing it back to "Import a list", answering a question to
+   the next open question (or Save once none is left), Change to that question's first choice,
+   and saving to "Saved". Import last year does the same for its questions, its steps and its
+   summary. On Schedules, opening an activity moves to "← All Activities", and going back moves
+   to that activity's card.
+9. **What happens is said.** Import a list and Import last year each have one status line
+   (`role="status"`): "Reading …", "Saving", "Saved" / "Imported from …", and Undo's result.
+   A note worked out from typing (a group moving division) is read once, in the table's single
+   live region; no note cell is its own live region any more, so a reload never reads every note.
+10. **Delete season asks with c-shoresh-ask**, like every other question: heading "Delete Summer
+    2026?", what goes with it as counts, one line each ("4 Weeks", "12 Bunks", "3 saved
+    schedules"), and "Delete season". Cancel puts the cursor back on the button.
+11. **Menu entries that can't open stay reachable.** They are links marked `aria-disabled`, in the
+    tab order, with why read out ("Needs a season", "Coming"); a click does nothing.
+12. **A new message at the top is scrolled into view**, so a save refused far down a long table
+    is seen (screen readers already heard it).
+13. **Same name and overlap look different without colour.** A same-name dot stays a dot; an
+    overlap (two weeks' dates) is two linked rings (`c-shoresh-dot` `shape="overlap"`).
+14. **Fewer words.** Gone: the New season hint, the Activity details intro, "Nobody chosen: every
+    Group can do it." (the chosen list is headed "Can do it: everyone" instead), Copy season's
+    list of what is copied (the preview shows it; it now says only '"Summer 2026" stays as it
+    is.'), and the three-sentence weekday warning (now "Weeks move from Mondays to Tuesdays.",
+    a status, not an alert). Camp words' boxes no longer repeat the standard word as a
+    placeholder. A screen that needs another first (Groups without Divisions, Fixed or Recurring
+    without Time blocks) shows an empty state and a "Divisions →" button instead of a sentence;
+    Activity details with no activities shows "No Activities yet".
+15. **Camp words over working words.** The left-out column on Fixed and Recurring activities is
+    headed "Needs attention" (the desktop's term for these), not "Notes"; the group-move column
+    "What changes", not "Moving". "Early in the week" groups its two fields ("How many", "By").
+    "remembered" is "Remembered" everywhere; Import last year's last button is "Back to Roots"
+    (as at the top) and Import a list's is "Close" (as at the top). Import last year's
+    placements not in last year's version are a small table (in the file, how many, why, for
+    example).
+16. **Schedules**: the strip reads "Imported · saved Oct 3, 2:00 PM · view only"; the chosen day
+    and group pills say so (`aria-pressed`) and are bold and underlined, not only filled.
+17. **Small visuals.** The tab icon is the leaf (`Custom5: Leaf`, an SLDS standard motif) instead
+    of an airplane; the empty-state picture is a tent instead of an inbox tray. c-shoresh-ask
+    falls back to "Go ahead", never "OK". One button rule for setup: leaving things as they are
+    on the left, the action on the right (Cancel · Create season, Cancel · Copy season, Cancel ·
+    the ask's action, Keep separate · Merge, Keep theirs · Use yours), which every setup
+    question already follows.
+
 ## Differences from the desktop
 
 - The desktop's last setup screen leads to a neutral "Schedule →" landing that picks neither
@@ -91,12 +143,14 @@ season form on Weeks; Camp words' Cancel).
 - The desktop's footer also holds Download Template / Import from Excel / Delete All; here the
   list import stays at the top of each screen (not part of this decision).
 - "✓ Saved" stays until the next change instead of fading after two seconds (choice 4).
+- "Same location?" keeps Keep separate before Merge (choice 17's rule); the desktop puts Merge
+  first, though its other questions (ExclusionConfirmDialog.jsx) put Cancel first.
 - The desktop's Camp screen saves its one name with a Save button or Enter; here leaving the
   field saves it too, as Greg decided for every setup form.
 
 ## Known limits
 
 - Whether focus and the spoken "Saved" behave in a real browser with a screen reader is checked
-  by hand in the test org, not by Jest (UI/UX pass, part C).
+  by hand in the test org, not by Jest (UI/UX pass, part C). The same goes for choices 8-12.
 - Two people editing the same season, program, or activity details field: the last save wins,
   as before this change (only the tables have the compare and set of ADR 0011 choice 5).

@@ -58,10 +58,10 @@ describe("c-shoresh-menu", () => {
     const entries = [...element.shadowRoot.querySelectorAll("[data-item]")].map(
       (item) => {
         const badge = item.querySelector(".slds-badge");
-        const words = item.textContent.replace(
-          badge ? badge.textContent : "",
-          ""
-        );
+        const reason = item.querySelector("[data-reason]");
+        const words = item.textContent
+          .replace(badge ? badge.textContent : "", "")
+          .replace(reason ? reason.textContent : "", "");
         return badge ? `${words.trim()} (${badge.textContent})` : words.trim();
       }
     );
@@ -115,6 +115,31 @@ describe("c-shoresh-menu", () => {
     expect(canOpen("recurringActivities", false)).toBe(false);
     expect(canOpen("weeks", false)).toBe(false);
     expect(canOpen("weeks", true)).toBe(true);
+  });
+
+  it("an entry that can't open stays in the tab order, unavailable, and says why", async () => {
+    const element = await render(false, null);
+    const weeks = element.shadowRoot.querySelector('[data-item="weeks"]');
+    expect(weeks.tagName).toBe("A");
+    expect(weeks.getAttribute("href")).toBe("#");
+    expect(weeks.getAttribute("aria-disabled")).toBe("true");
+    expect(weeks.querySelector("[data-reason]").textContent).toBe(
+      "Needs a season"
+    );
+    const coming = element.shadowRoot.querySelector(
+      '[data-item="specialEvents"]'
+    );
+    expect(coming.querySelector("[data-reason]").textContent).toBe("Coming");
+    // The visible badge isn't read twice.
+    expect(
+      coming.querySelector(".slds-badge").getAttribute("aria-hidden")
+    ).toBe("true");
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    const click = new CustomEvent("click", { bubbles: true, cancelable: true });
+    weeks.dispatchEvent(click);
+    expect(handler).not.toHaveBeenCalled();
+    expect(click.defaultPrevented).toBe(true);
   });
 
   it("shows the desktop's marks: ! (Needed) and ✓ (Done), read out as words", async () => {

@@ -35,6 +35,15 @@ export default class ShoreshRoots extends LightningElement {
   /** From shoreshSetupRules.setupProblems: [{ key, screen, name, why }]. */
   @api problems = [];
 
+  /** The screen's heading takes the cursor (the page calls this when Roots opens). */
+  @api
+  focusHeading() {
+    const heading = this.template.querySelector("[data-heading]");
+    if (heading) {
+      heading.focus();
+    }
+  }
+
   /** What each card counts: the rows of the screen it opens. */
   rowsFor(key) {
     const setup = this.setup || {};

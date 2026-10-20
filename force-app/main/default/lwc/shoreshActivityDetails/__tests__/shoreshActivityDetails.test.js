@@ -121,9 +121,10 @@ describe("c-shoresh-activity-details", () => {
       "Bunk 1 (Juniors)",
       "Bunk 2 (Juniors)"
     ]);
-    expect(q(element, '[data-id="who-note"]').textContent).toContain(
-      "Only the chosen Units and Bunks"
-    );
+    // No sentence explaining the picker: its chosen list says it.
+    expect(q(element, '[data-id="who-note"]')).toBeNull();
+    expect(who.selectedLabel).toBe("Can do it");
+    expect(element.shadowRoot.textContent).not.toContain("rules most");
     expect(element.shadowRoot.querySelectorAll("lightning-button").length).toBe(
       0
     );
@@ -134,8 +135,8 @@ describe("c-shoresh-activity-details", () => {
     change(q(element, '[data-id="activity-picker"]'), "a2");
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual([]);
-    expect(q(element, '[data-id="who-note"]').textContent).toContain(
-      "every Bunk can do it"
+    expect(q(element, '[data-id="who-can-do-it"]').selectedLabel).toBe(
+      "Can do it: everyone"
     );
     expect(q(element, '[data-field="earlyDay"]').value).toBe("Tuesday");
   });
@@ -394,11 +395,23 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
   });
 
-  it("asks for activities first when there are none", async () => {
+  it("shows an empty state when there are no activities", async () => {
     const element = await render({ ...SETUP, activities: [] });
-    expect(element.shadowRoot.textContent).toContain(
-      "Add activities in the table above"
+    expect(q(element, "c-shoresh-empty-state").title).toBe("No activities yet");
+    expect(element.shadowRoot.textContent).not.toContain("save them first");
+  });
+
+  it("groups the early-in-the-week rule's two fields under one label", async () => {
+    const element = await render();
+    const group = q(element, '[data-id="early"]');
+    expect(group.tagName).toBe("FIELDSET");
+    expect(group.querySelector("legend").textContent.trim()).toBe(
+      "Early in the week"
     );
+    expect(group.querySelector('[data-field="earlyCount"]').label).toBe(
+      "How many"
+    );
+    expect(group.querySelector('[data-field="earlyDay"]').label).toBe("By");
   });
 
   it("switching activities with a refused change asks first, and staying keeps it", async () => {

@@ -1,13 +1,20 @@
 <template>
   <div class="import" data-id="import">
     <div class="import-header">
-      <h2 class="slds-text-heading_medium">Import last year</h2>
+      <h2 class="slds-text-heading_medium" tabindex="-1" data-heading>
+        Import last year
+      </h2>
       <lightning-button
         variant="base"
         label="Back to Roots"
         onclick={handleClose}
         data-id="close"
       ></lightning-button>
+    </div>
+
+    <!-- Reading, saving, imported and undone, read out as they happen (WCAG 4.1.3). -->
+    <div class="slds-assistive-text" role="status" data-id="status">
+      {statusText}
     </div>
 
     <template lwc:if={error}>
@@ -137,7 +144,7 @@
                 <div class="import-card-done">
                   <span>✓ {card.answerLabel}</span>
                   <template lwc:if={card.fromMemory}>
-                    <span class="import-tag">remembered</span>
+                    <span class="import-tag">Remembered</span>
                   </template>
                   <span class="import-weak">{card.title}</span>
                   <lightning-button
@@ -184,7 +191,7 @@
               ></lightning-input>
               <span class="import-weak">{place.usedByText}</span>
               <template lwc:if={place.fromMemory}>
-                <span class="import-tag">remembered</span>
+                <span class="import-tag">Remembered</span>
               </template>
             </div>
           </template>
@@ -256,7 +263,7 @@
             <div class="import-card-done">
               <span>✓ {card.answerLabel}</span>
               <template lwc:if={card.fromMemory}>
-                <span class="import-tag">remembered</span>
+                <span class="import-tag">Remembered</span>
               </template>
               <span class="import-weak">{card.title}</span>
               <lightning-button
@@ -311,7 +318,11 @@
 
     <!-- 4. Done -->
     <template lwc:if={isDone}>
-      <div class="import-banner import-banner_done" data-id="done">
+      <div
+        class="import-banner import-banner_done"
+        tabindex="-1"
+        data-id="done"
+      >
         Imported from {fileNames}.
       </div>
       <section class="import-section" data-id="added">
@@ -345,14 +356,29 @@
       <template lwc:if={hasUnplaced}>
         <section class="import-section" data-id="unplaced">
           <div class="import-section-label">{unplacedTitle}</div>
-          <ul class="slds-list_dotted">
-            <template for:each={unplaced} for:item="line">
-              <li key={line.key}>
-                <strong>{line.name}</strong>: {line.count} ({line.why}), for
-                example {line.whereText}
-              </li>
-            </template>
-          </ul>
+          <table
+            class="slds-table slds-table_cell-buffer slds-table_bordered"
+            aria-label={unplacedTitle}
+          >
+            <thead>
+              <tr>
+                <th scope="col">In the file</th>
+                <th scope="col">How many</th>
+                <th scope="col">Why</th>
+                <th scope="col">For example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template for:each={unplaced} for:item="line">
+                <tr key={line.key} data-unplaced={line.key}>
+                  <th scope="row">{line.name}</th>
+                  <td>{line.count}</td>
+                  <td class="slds-cell-wrap">{line.why}</td>
+                  <td class="slds-cell-wrap">{line.whereText}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
         </section>
       </template>
       <template lwc:if={hasLeftOut}>
@@ -398,7 +424,7 @@
         </template>
         <lightning-button
           variant="brand"
-          label="Continue"
+          label="Back to Roots"
           onclick={handleClose}
           data-id="continue"
         ></lightning-button>
