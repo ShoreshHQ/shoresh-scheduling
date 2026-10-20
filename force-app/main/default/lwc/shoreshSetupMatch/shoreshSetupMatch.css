@@ -1,0 +1,54 @@
+@import "c/shoreshTokens";
+
+/* What "Update to match setup" would change: one row per change, its Update on the right. */
+.changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}
+
+.what {
+  flex: 1;
+}
+
+.summary {
+  font-weight: 700;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
+.place {
+  color: var(--slds-g-color-neutral-base-30, #444);
+}
+
+.from-to {
+  font-weight: 700;
+}
+
+.reason {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.update-one {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+.notice {
+  margin-bottom: 8px;
+  font-size: 13px;
+}

@@ -54,6 +54,12 @@ public with sharing class SchedulePublish {
     public Integer changeCount = 0;
     @AuraEnabled
     public Integer moreLines = 0;
+    // Of changeCount: the bunks and time blocks renamed, and the time blocks at new times (the
+    // rest are cells).
+    @AuraEnabled
+    public Integer renameCount = 0;
+    @AuraEnabled
+    public Integer retimeCount = 0;
   }
 
   /** A publish done, or refused because the week or its published schedule changed since. */
@@ -71,17 +77,27 @@ public with sharing class SchedulePublish {
     public Boolean unchanged = false;
   }
 
-  /** The week's published schedule beside the draft, or null when the week has none. */
-  public static PublishState stateOf(Id programId, Id weekId, Id draftId) {
-    Schedule__c published = publishedOf(programId, weekId);
-    return published == null
-      ? null
-      : stateBeside(published, ScheduleDays.read(draftId));
+  /**
+   * The week's published schedule beside a Manual Build draft (its Id, Program__c and Week__c)
+   * by the names its screen shows (ManualBuildNamesNow), or null when the week has none (the
+   * draft is then not read).
+   */
+  public static PublishState stateOf(
+    Schedule__c draft,
+    ManualBuildNamesNow shownBy
+  ) {
+    Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
+    if (published == null) {
+      return null;
+    }
+    List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
+    shownBy.applyTo(days);
+    return stateBeside(published, days);
   }
 
   /**
-   * The same, beside the draft's days as the caller already has them (a screen that has just read
-   * or saved them), so they are not read again.
+   * The week's published schedule beside the draft's days as the caller already has them (a
+   * screen that has just read or saved them), or null when the week has none.
    */
   public static PublishState stateOf(
     Id programId,
@@ -106,6 +122,7 @@ public with sharing class SchedulePublish {
     Preview result = new Preview();
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
     result.revisions = ScheduleDays.stamp(days);
+    ManualBuildSetupNow.asShown(draft, days);
     Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
     if (published == null) {
       return result;
@@ -119,6 +136,8 @@ public with sharing class SchedulePublish {
     result.changes = changes.lines;
     result.changeCount = changes.count;
     result.moreLines = changes.moreLines;
+    result.renameCount = changes.renames;
+    result.retimeCount = changes.retimes;
     result.published.changedSince = changes.count > 0;
     return result;
   }
@@ -142,7 +161,7 @@ public with sharing class SchedulePublish {
       result.draftChanged = true;
       return result;
     }
-    readable(days);
+    ManualBuildSetupNow.asShown(draft, readable(days));
     List<Schedule__c> published = PublishedRows.locked(
       draft.Program__c,
       draft.Week__c

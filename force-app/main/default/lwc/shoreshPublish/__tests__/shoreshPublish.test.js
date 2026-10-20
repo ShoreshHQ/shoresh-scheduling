@@ -166,6 +166,33 @@ describe("c/shoreshPublish", () => {
     ]);
   });
 
+  it("says a rename as a name, never as a cell", () => {
+    const renamed = (preview) =>
+      publishQuestion({
+        preview: { ...AGAIN, ...preview },
+        checked: CLEAN,
+        weekName: "Week 1",
+        t
+      }).lines[0];
+    expect(
+      renamed({
+        changes: ["Renamed: Group A → Bunk Aleph"],
+        changeCount: 1,
+        renameCount: 1
+      })
+    ).toBe("This replaces the published schedule. 1 name changes:");
+    expect(renamed({ changeCount: 3, renameCount: 2 })).toBe(
+      "This replaces the published schedule. 1 cell and 2 names change:"
+    );
+    // A time block at new times (Update to match setup), in the camp's word for it.
+    expect(renamed({ changeCount: 1, retimeCount: 1 })).toBe(
+      "This replaces the published schedule. 1 time block changes:"
+    );
+    expect(renamed({ changeCount: 5, renameCount: 1, retimeCount: 2 })).toBe(
+      "This replaces the published schedule. 2 cells, 1 name and 2 time blocks change:"
+    );
+  });
+
   it("says one more line when just one isn't listed", () => {
     const question = publishQuestion({
       preview: { ...AGAIN, changeCount: 2, moreLines: 1 },

@@ -229,28 +229,48 @@ public with sharing class ManualBuildViews {
     );
     view.groupRecords = read.groups;
     view.fixedActivityRecords = [
-      SELECT Id, Location__c
+      SELECT Id, Name, Location__c
       FROM FixedActivity__c
       WHERE Program__c = :read.program.Id
       WITH USER_MODE
       ORDER BY Id
     ];
     view.recurringActivityRecords = [
-      SELECT Id, Location__c
+      SELECT Id, Name, Location__c
       FROM RecurringActivity__c
       WHERE Program__c = :read.program.Id
       WITH USER_MODE
       ORDER BY Id
     ];
+    ManualBuildNamesNow names = namesNow(view, read);
+    if (view.schedule != null) {
+      names.applyTo(view.schedule);
+    }
     view.away = away(read.groups, read.blocks);
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
+    // Beside the days as Publish would put them out (SchedulePublish), so a rename since the
+    // week was published shows as a change to publish.
     view.published = SchedulePublish.stateOf(
-      read.program.Id,
-      read.week.Id,
-      read.scheduleId
+      new Schedule__c(
+        Id = read.scheduleId,
+        Program__c = read.program.Id,
+        Week__c = read.week.Id
+      ),
+      names
     );
     return view;
+  }
+
+  /** Setup's names now, from what the view has read (ManualBuildNamesNow). */
+  private static ManualBuildNamesNow namesNow(DraftView view, Read read) {
+    List<SObject> records = new List<SObject>();
+    records.addAll(read.blocks);
+    records.addAll(read.groups);
+    records.addAll(read.activities);
+    records.addAll(view.fixedActivityRecords);
+    records.addAll(view.recurringActivityRecords);
+    return new ManualBuildNamesNow(records, read.blocks);
   }
 
   /** The season's activities in the Activities screen's order. */

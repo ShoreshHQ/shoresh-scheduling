@@ -163,6 +163,117 @@ private class PublishedChangesTest {
   }
 
   @IsTest
+  static void aBunkOrBlockRenamedSinceIsOneChangeForTheWeek() {
+    List<List<String>> rows = new List<List<String>>{
+      row('1', '', '3'),
+      row('', '', '3')
+    };
+    List<ScheduleDays.DayGrid> renamed = new List<ScheduleDays.DayGrid>{
+      day(MONDAY, items(), rows),
+      day(MONDAY.addDays(1), items(), rows)
+    };
+    for (ScheduleDays.DayGrid each : renamed) {
+      each.grid.groups[1].name = 'group b';
+      each.grid.blocks[2].name = 'Third period';
+    }
+    PublishedChanges.Changes changes = PublishedChanges.between(
+      new List<ScheduleDays.DayGrid>{
+        day(MONDAY, items(), rows),
+        day(MONDAY.addDays(1), items(), rows)
+      },
+      renamed,
+      30
+    );
+    // Same cells, but staff would read the old names: once each, even in case only.
+    Assert.areEqual(
+      new List<String>{
+        'Renamed: Group B → group b',
+        'Renamed: Period 3 → Third period'
+      },
+      changes.lines
+    );
+    Assert.areEqual(2, changes.count);
+    Assert.areEqual(2, changes.renames);
+    Assert.areEqual(0, changes.retimes);
+  }
+
+  @IsTest
+  static void aBlockAtNewTimesIsOneChangeForTheWeek() {
+    List<List<String>> rows = new List<List<String>>{
+      row('1', '', '3'),
+      row('', '', '3')
+    };
+    // Period 2 moves on Tuesday only; Period 3, named by its times, moves on both days.
+    List<ScheduleDays.DayGrid> moved = new List<ScheduleDays.DayGrid>{
+      day(MONDAY, items(), rows),
+      day(MONDAY.addDays(1), items(), rows)
+    };
+    moved[1].grid.blocks[1].at('10:30', '11:15');
+    List<ScheduleDays.DayGrid> published = new List<ScheduleDays.DayGrid>{
+      day(MONDAY, items(), rows),
+      day(MONDAY.addDays(1), items(), rows)
+    };
+    for (Integer i = 0; i < 2; i++) {
+      published[i].grid.blocks[2].name = '11:00 AM – 11:45 AM';
+      moved[i].grid.blocks[2].at('13:00', '13:45');
+      moved[i].grid.blocks[2].name = '1:00 PM – 1:45 PM';
+    }
+    PublishedChanges.Changes changes = PublishedChanges.between(
+      published,
+      moved,
+      30
+    );
+    // Same cells, but staff would keep the old times: once each. A block named by its times
+    // says so in its rename.
+    Assert.areEqual(
+      new List<String>{
+        'Renamed: 11:00 AM – 11:45 AM → 1:00 PM – 1:45 PM',
+        'New times: Period 2, 10:00 AM – 10:45 AM → 10:30 AM – 11:15 AM'
+      },
+      changes.lines
+    );
+    Assert.areEqual(2, changes.count);
+    Assert.areEqual(1, changes.renames);
+    Assert.areEqual(1, changes.retimes);
+  }
+
+  @IsTest
+  static void aBlockNamedByItsTimesMovedOnALaterDayOnlyStillSaysItsNewTimes() {
+    List<List<String>> rows = new List<List<String>>{
+      row('1', '', '3'),
+      row('', '', '3')
+    };
+    List<ScheduleDays.DayGrid> published = new List<ScheduleDays.DayGrid>{
+      day(MONDAY, items(), rows),
+      day(MONDAY.addDays(1), items(), rows)
+    };
+    List<ScheduleDays.DayGrid> moved = new List<ScheduleDays.DayGrid>{
+      day(MONDAY, items(), rows),
+      day(MONDAY.addDays(1), items(), rows)
+    };
+    for (Integer i = 0; i < 2; i++) {
+      published[i].grid.blocks[2].name = '11:00 AM – 11:45 AM';
+      moved[i].grid.blocks[2].name = '11:00 AM – 11:45 AM';
+    }
+    // Only Tuesday was updated to match setup: it takes the new times, and with them its name.
+    moved[1].grid.blocks[2].at('13:00', '13:45');
+    moved[1].grid.blocks[2].name = '1:00 PM – 1:45 PM';
+    PublishedChanges.Changes changes = PublishedChanges.between(
+      published,
+      moved,
+      30
+    );
+    // Monday's name is unchanged, so no rename is written: the new times get their own line.
+    Assert.areEqual(
+      new List<String>{ 'New times: 11:00 AM – 11:45 AM → 1:00 PM – 1:45 PM' },
+      changes.lines
+    );
+    Assert.areEqual(1, changes.count);
+    Assert.areEqual(0, changes.renames);
+    Assert.areEqual(1, changes.retimes);
+  }
+
+  @IsTest
   static void aDayOnlyOneSideHasIsOpenOnTheOther() {
     ScheduleDays.DayGrid tuesday = day(
       MONDAY.addDays(1),

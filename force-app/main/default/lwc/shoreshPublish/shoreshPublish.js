@@ -31,6 +31,29 @@ function cells(count) {
 }
 
 /**
+ * How much changes, in plain words: cells, then names (bunks and time blocks renamed), then time
+ * blocks at new times, each only when above 0: "2 cells change", "1 name changes", "1 cell and
+ * 1 name change". A rename is never counted as a cell.
+ */
+function changeWords(preview, t) {
+  const renames = preview.renameCount || 0;
+  const retimes = preview.retimeCount || 0;
+  const parts = [
+    [preview.changeCount - renames - retimes, "cell", "cells"],
+    [renames, "name", "names"],
+    [retimes, t.sIn("TimeBlock"), t.pIn("TimeBlock")]
+  ]
+    .filter(([count]) => count > 0)
+    .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
+  const single = parts.length === 1 && parts[0].startsWith("1 ");
+  const said =
+    parts.length > 1
+      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+      : parts[0];
+  return `${said} ${single ? "changes" : "change"}`;
+}
+
+/**
  * What is still to do: Open cells, placements with a dot, then the counters (each line only when
  * it is above 0), as the screen's counters and dots show them. counts: what the counters count
  * now (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
@@ -84,7 +107,7 @@ export function publishQuestion({ preview, checked, counts, weekName, t }) {
   const lines = [];
   if (replacing) {
     lines.push(
-      `This replaces the ${t.sIn("PublishedSchedule")}. ${cells(preview.changeCount)} ${preview.changeCount === 1 ? "changes" : "change"}:`
+      `This replaces the ${t.sIn("PublishedSchedule")}. ${changeWords(preview, t)}:`
     );
     lines.push(...preview.changes);
     // Lines not listed (a line can cover several cells, so not changeCount less those shown).

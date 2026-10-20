@@ -73,6 +73,23 @@
   font-size: 13px;
 }
 
+/*
+ * Setup changed since the week started: the "needs a look" box (as after Start), its words, and
+ * Update to match setup.
+ */
+.setup-changed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  font-size: 13px;
+}
+
 /* A refused move: a quiet line under the toolbar. */
 .notice {
   margin: -8px 0 12px;

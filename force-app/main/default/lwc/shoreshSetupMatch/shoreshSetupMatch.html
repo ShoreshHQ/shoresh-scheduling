@@ -1,0 +1,84 @@
+<template>
+  <section
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="match-title"
+    class="slds-modal slds-fade-in-open"
+    data-id="setup-match"
+    onkeydown={handleKeyDown}
+  >
+    <div class="slds-modal__container">
+      <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+        {spoken}
+      </div>
+      <div class="slds-modal__header">
+        <h2 id="match-title" class="slds-modal__title">{heading}</h2>
+      </div>
+      <!-- Focusable, so a list longer than the screen scrolls with the keyboard too (WCAG 2.1.1). -->
+      <div
+        class="slds-modal__content slds-p-around_medium"
+        role="region"
+        aria-labelledby="match-title"
+        tabindex="0"
+        data-id="changes"
+      >
+        <template lwc:if={notice}>
+          <p class="notice" data-id="notice">{notice}</p>
+        </template>
+        <ul class="changes">
+          <template for:each={rows} for:item="row">
+            <li key={row.key} class="change" data-id="change">
+              <div class="what">
+                <template lwc:if={row.summary}>
+                  <p class="summary">{row.summary}</p>
+                </template>
+                <template for:each={row.lines} for:item="line">
+                  <p key={line.key} class="line">
+                    <span class="place">{line.place}</span>
+                    <span class="from-to">{line.before} → {line.after}</span>
+                    <template lwc:if={line.reason}>
+                      <span class="reason">{line.reason}</span>
+                    </template>
+                  </p>
+                </template>
+              </div>
+              <button
+                type="button"
+                class="slds-button slds-button_neutral update-one"
+                aria-label={row.updateLabel}
+                disabled={busy}
+                data-key={row.key}
+                data-id="update-one"
+                onclick={handleUpdateOne}
+              >
+                Update
+              </button>
+            </li>
+          </template>
+        </ul>
+      </div>
+      <div class="slds-modal__footer">
+        <button
+          type="button"
+          class="slds-button slds-button_neutral"
+          disabled={busy}
+          onclick={handleClose}
+          data-id="close"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="slds-button slds-button_brand"
+          disabled={busy}
+          onclick={handleUpdateAll}
+          data-id="update-all"
+        >
+          Update all
+        </button>
+      </div>
+    </div>
+  </section>
+  <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

@@ -347,7 +347,10 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     `locationsOf`, the setup screen's own queries), the program's groups with their divisions
     (`groupRecords`) and where its fixed and recurring activities are
     (`fixedActivityRecords`, `recurringActivityRecords`). So they are read again whenever the
-    week is (window focus, reload), and anything changed elsewhere shows at once; the activity
+    week is (window focus, reload, or setup saved on another Camp Setup screen, which hands
+    Manual Build a new `setup` for the same week: review round 6; when the week can't be read
+    again just then, as while an edit saves, its setup changes still are, round 7), and anything changed elsewhere
+    shows at once; the activity
     list's words come from the same draft. An activity added from a slot ("Add <name>") brings
     its record back with it (`ActivityOption.record`) and joins the draft's. Field names come
     from `c/shoreshSchema`.
@@ -701,7 +704,19 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    either end is a block named by its own times, as `TimeBlockTriggerHandler.rangeLabel` names
    one), at most 30 lines
    plus "…and N more." (`PublishedChanges`; cells matched by group and time block record; an
-   activity renamed since is a change; locks are not). The screen adds what its counters and dots
+   activity renamed since is a change, since a Manual Build draft is published by setup's names
+   now, as the screen shows it (`ManualBuildNamesNow`, part 6 item 2); so is a bunk or time block
+   renamed since, one line each for the week, first, counted as one change each:
+   "Renamed: Group A → Bunk Aleph" (`PublishedRenames`; review round 4, wording kept by
+   coordinator call in review round 5: otherwise a rename alone would never reach staff); so is a
+   time block at new times (Update to match setup moves them, review round 5), one line for the
+   week after the renames: "New times: Period 2, 10:00 AM – 10:45 AM → 10:30 AM – 11:15 AM" (a
+   block named by its times says them in its rename instead, when its first day moved; moved on
+   a later day only, it has a line of its own, "New times: 9:00 AM – 9:45 AM → 9:30 AM – 10:15
+   AM", review round 6); locks are not). The question's
+   first line counts each kind in plain words, never a rename as a cell: "This replaces the
+   published schedule. 1 cell and 1 name change:", "… 1 time block changes:" (the camp's word;
+   `renameCount` and `retimeCount` of `changeCount`). The screen adds what its counters and dots
    show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
    two only when the camp has those targets; lines the director accepted are not counted, as the
@@ -779,6 +794,121 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
     One whose `Origin__c` names neither screen (made before Publish, with no Origin) says
     _Published Oct 18, …_ as before (`c/shoreshPublish` `publishedWord`).
 
+## Choices (part 6: setup changed since the week started)
+
+The desktop writes fixed and recurring events in once, at Start, and never updates them; changing
+setup later leaves the week as it was, with no refresh short of a new blank week (desktop
+`src/screens/schedule/useGeneration.js`; wiki behaviour index, "Fixed/recurring events frozen at
+start"). It marks a placement whose activity, group or place is closed that week ("is marked
+closed this week", `src/utils/computeWeekClosures.js`), and never corrects it. Greg chose more:
+placements stay, mismatches get a dot, and "Update to match setup" for all or per slot (Manual
+Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
+
+1. **What "setup now" is** (`SetupMatch`, `SetupMatchCarry`): Start a blank week's day for each
+   date (`BlankWeek`: today's time blocks, the groups at camp this week, fixed and recurring
+   activities where `SetTimePlan` puts them), with each of the director's placements carried
+   over whole, at the same group and time blocks (matched by record Id), when it still fits:
+   its activity is still in the season and running this week (not closed, itself or by its
+   place), its group and blocks are still there and in the same order, the group is at camp
+   then, and no fixed or recurring activity is now there. Things not set up in Shoresh yet (an
+   imported elective) are carried like activities: there is nothing in setup to compare them
+   with. Placements go in the order of the day, so the same draft and setup always give the same
+   answer (product principle: same inputs, same output).
+2. **Dots** (`SetupMatchDots`): every cell of a placement that would not stay as it is, and every
+   Open cell a fixed or recurring activity is now set up in, gets the bronze dot with why:
+   _Deleted from setup_, _Not running this week_ (camp word; an activity closed by its place
+   names the place instead, _Pool is closed this week_, as the desktop's computeWeekClosures.js
+   and Generated Schedule do), _Not at camp this week_, _No longer
+   in Main_, _Period 5 is no longer set up_, _Its periods changed_ (a block added inside a
+   placement), _Not at camp then_ (a bunk now mornings only), _Lunch is set up here now_, _Not
+   set up here now_ (a fixed or recurring activity moved or ended), _Not a day of Main now_. A
+   fixed or recurring activity's own cell says why when its group or time blocks changed, in the
+   same words (_Not at camp this week_, _Not at camp then_, _Period 5 is no longer set up_);
+   _Not set up here now_ only when the activity itself moved or ended. **An activity closed this
+   week can still be placed by hand** (coordinator call, review round 3), as on the desktop,
+   which marks it ("is marked closed this week", `src/utils/computeWeekClosures.js`) rather than
+   refusing it: its cell gets _Not running this week_, and the box and the list offer to take it
+   out again. The director sees it and chooses; nothing is resolved silently.
+   The words join any other dot on the placement after " · " (_Not set up for Bunk 2 · Deleted
+   from setup_). The editor takes them as `setupDots` (cell key to words); that is its only
+   change. Cells are compared by record Id, so a rename is never a dot: Manual Build shows the
+   draft's time blocks, groups, activities and fixed and recurring activities by their names in
+   setup now (`ManualBuildNamesNow`), on opening the week and in the week every save sends
+   back, and Publish puts out those names, so what staff read is what the director sees (the
+   published state's "changed since" counts a rename too). What is saved keeps the names it was
+   saved with. A time block whose times changed keeps its saved name on screen until the change is
+   made: its row shows the week's times, and a name that is its new time range (an unnamed block
+   follows its times) would contradict them. A bunk moved to another unit is the "Not set up for" dot of part 3 (round 1
+   #3), not a setup-changed one.
+3. **Changes** (`SetupMatchClusters`, `SetupMatchLines`): the cells that differ are grouped so a
+   group takes whole placements on both sides (a differing cell, every cell of its placements in
+   the draft and in setup now, and theirs in turn). Making one alone always leaves a whole day.
+   Each is one line: _Bunk 1 · Monday · Period 2_ · _Swim → Open_ · _Deleted from setup_. When a
+   day's time blocks or groups changed (a block added or removed or at new times, a bunk away
+   this week or added) the whole day is one change, its summary first (_Monday: Period 3 added,
+   Period 2 now 10:30 AM – 11:15 AM, Bunk 3 not at camp this week_) and then the lines of what
+   moves with it. New times are compared like the blocks themselves (`SetupMatchCells.sameFrame`)
+   and have no dot, as a block added has none: the desktop freezes them at Start, and leaving
+   them unflagged would keep old times on screen and in what is published. A day the program no longer runs
+   is one change (_Monday: not a day of Main now_), and so is a new one (_Tuesday: added_). A day
+   that can't be read is left as it is.
+4. **Shown first, chosen by the director.** The screen asks for the changes on its own request
+   (`SetupMatchController.getSetupChanges`), whenever the week is read, after a Restore or an
+   update, and after a save while the week differs from setup or a closed activity exists
+   (placing one makes a new difference). A bronze box above the grid says _Week 1 doesn't match
+   setup_ with **Update to match setup**: true whatever made the difference ("setup changed
+   since this week started" would not be after a closed activity was placed by hand). A late
+   answer for the week shown before is dropped once another week is chosen. That opens `c-shoresh-setup-match`, read
+   fresh: every change, each with its own **Update** (the "per slot" of round 1 #5), and
+   **Update all** for every change listed; **Cancel** first, as on c-shoresh-ask. Edits,
+   Versions, Publish, the pickers and the reread on coming back to the window wait while it is
+   read, open or updating; while an update is on its way, Cancel and Escape wait too (its answer
+   is for the list as it was), and focus waits on the list itself, never leaving the dialog.
+   After one change the list stays with what is left and says so from a live region inside the
+   dialog (the refusal below too), read out each time even when the words are the same as the
+   last; focus goes to the first row's Update. After Update all it closes, says how many changes
+   were made, and focus goes back to **Update to match setup**, or on to **Publish** when the
+   box is gone with nothing left. After an update the publish line, the checks and Versions are
+   those of the week as it is now (no longer a version restored; a version just kept listed). If the changes can't be read, the dots and the box stay as
+   last read and the screen says it couldn't check (never a week that only looks as if it
+   matched).
+5. **Nothing changed unseen** (`SetupMatch.make`, under the draft's lock): each change's key is
+   a digest of exactly the cells it changes, from what to what. The update sends the keys and the
+   week's revisions the list was worked out on. Someone saved a day since: refused, nothing
+   changed, _Someone else changed this week since, so nothing was updated._, and the week is read
+   again. Setup changed again so a chosen change is no longer the one shown (the key isn't
+   offered now): refused, nothing changed, and the list shows what it would change now (_Setup
+   changed again since you looked, so nothing was updated. …_). A change that takes away or
+   replaces one of the director's own placements first keeps the week as it was as an automatic
+   version, _Before Update to match setup_ (VersionReason Auto-saved, as before Restore), **once
+   per opening of the list** (coordinator call, review round 3): the first update in that
+   opening that takes a placement keeps it, and later ones in the same opening keep none (the
+   screen sends `versionKept`; the server answers `kept`), so updating row by row leaves one way
+   back, the week as it was before the list's first such change, not one version per row.
+   Opening the list again starts a new opening. Undo starts over afterwards, as after Restore.
+   The published copy is never touched.
+6. **The week can't be laid out from setup now** (no time blocks, no group at camp this week,
+   no day it runs, no access to its set-time items): the box says why in Start's own words and
+   offers no update; nothing is guessed.
+7. Reads: getting the changes at most 30 queries, an update at most 60, the view sent back
+   included (asserted in `SetupMatchTest`). Opening Manual Build reads nothing more.
+8. **Checked by** `SetupMatchTest` (as a scheduler, data inside `runAs`): nothing to show; a
+   deleted activity (dot, line, update by key, version kept); closed this week; a fixed activity
+   added (per cell, deterministic keys, no version); one over a director's placement; a rename
+   with no dot, still shown after an edit and published as shown; a time block added; a time block at new times (one change a day, the saved name
+   shown until made, then the new times and name); a bunk away this week (one change a day); a
+   bunk no longer in the program; a time block no longer set up; one added inside a placement; a
+   fixed activity ended; a day the program no longer runs; a bunk now mornings only; a week saved
+   since; setup changed again since; only a Manual Build draft; one version per opening of the
+   list; a fixed activity whose group is away or now mornings only. Screen:
+   `setupMatch.test.js` (dots, joined words, a dot on any block of a longer placement, said once,
+   the box, the list read fresh, per-change and Update all, Cancel and where focus goes, both
+   refusals, a failed update or read, an older answer dropped, another week and a late answer for
+   the last one, when it reads again, Undo starting over, what waits while the list is read,
+   open or updating, focus and words after Update all, the publish line, checks and Versions
+   after an update, one version per opening) and `shoreshSetupMatch.test.js` (the list, focus,
+   Tab, Escape, busy and focus while busy, the same words read out again, accessibility).
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
@@ -787,7 +917,8 @@ the screen and the server. Part 4b adds the `VersionReason__c` value **AutoSaved
 ("Auto-saved"), the same one Generated Schedule G2 (#46) adds; whichever merges second keeps
 the one value. Part 5 adds `Schedule__c.PublishedAt__c` (date/time), `PublishedBy__c` (lookup to
 User, cleared if the user is deleted) and `PublishKey__c` (text 40, unique, case-sensitive:
-"programId:weekId" while published, cleared when replaced), as the data model names them.
+"programId:weekId" while published, cleared when replaced), as the data model names them. Part 6
+adds no fields: the automatic version reuses the AutoSaved reason.
 
 ## Not done here
 

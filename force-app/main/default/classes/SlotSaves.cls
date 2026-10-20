@@ -14,19 +14,34 @@
  */
 public with sharing class SlotSaves {
   private SlotRules rules;
+  // The program's setup as saveOn read it (not read by makeWith).
+  private SlotRules.Setup setup;
   private Map<Date, ScheduleDays.DayGrid> days = new Map<Date, ScheduleDays.DayGrid>();
   private Set<Date> changed = new Set<Date>();
   // Generated Schedule: what an edit fills is locked.
   private Boolean lockEdits = false;
 
-  /** Makes the edits that still fit, in order; the answer has the schedule as it now is. */
+  /**
+   * Makes the edits that still fit, in order; the answer has the schedule as it now is, by
+   * setup's names now as Manual Build shows it (ManualBuildNamesNow).
+   */
   public static SlotEdits.Result save(
     Id scheduleId,
     List<SlotEdits.Edit> edits
   ) {
-    SlotEdits.Result result = new SlotSaves()
-      .saveOn(ManualDrafts.locked(scheduleId), edits);
-    result.schedule = ScheduleViews.open(scheduleId);
+    SlotSaves saves = new SlotSaves();
+    SlotEdits.Result result = saves.saveOn(
+      ManualDrafts.locked(scheduleId),
+      edits
+    );
+    // Setup now, on the setup the save read: what is still there and what it is called.
+    ManualBuildNamesNow names = ManualBuildSetupNow.of(
+      saves.days.values(),
+      saves.setup.blocks,
+      saves.setup.groups
+    );
+    result.schedule = ScheduleViews.open(scheduleId, names.stillThere());
+    names.applyTo(result.schedule);
     return result;
   }
 
@@ -73,10 +88,8 @@ public with sharing class SlotSaves {
     Schedule__c schedule,
     List<SlotEdits.Edit> edits
   ) {
-    rules = new SlotRules(
-      setupOf(schedule.Program__r),
-      SlotRules.activityIdsIn(edits)
-    );
+    setup = setupOf(schedule.Program__r);
+    rules = new SlotRules(setup, SlotRules.activityIdsIn(edits));
     return saveAll(schedule.Id, edits);
   }
 
