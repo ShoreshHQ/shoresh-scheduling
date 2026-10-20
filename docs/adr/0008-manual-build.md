@@ -936,8 +936,9 @@ Generated Schedule (ADR 0010 §57).
    - After **Update to match setup** closes with nothing left to change, its button is gone with
      the box: focus goes to the grid's cell, not to Publish (which may not be there) or the page.
      With changes left, or after Cancel, it goes back to the button, as before.
-   - **Versions:** after a rename is saved or let go (Escape), focus goes to that version's
-     rename; the list's own focus rules (Restore, Escape, delete) are unchanged. A click inside
+   - **Versions:** a rename puts focus in its name box (the desktop's `autoFocus`), and after it
+     is saved or let go (Escape) focus goes to that version's rename; the list's own focus rules
+     (Restore, Escape, delete) are unchanged. A click inside
      the list or on its button is noted by the list itself, so the page-wide "click elsewhere
      closes it" listener lets it be: in Salesforce that listener sees the component through a
      wrapper, so asking whether the click's path held the component's own element always said no

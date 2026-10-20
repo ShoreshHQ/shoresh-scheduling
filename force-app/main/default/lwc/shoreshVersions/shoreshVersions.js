@@ -53,6 +53,9 @@ export default class ShoreshVersions extends LightningElement {
   focusAfterDelete = null;
   // After a rename is saved or let go: the row's rename button (the box it was in is gone).
   focusRenameAfterRender = null;
+  // A rename just started: its box (the rename button it came from is gone), as the desktop's
+  // autoFocus.
+  focusRenameInputAfterRender = false;
 
   @api
   get versions() {
@@ -78,6 +81,13 @@ export default class ShoreshVersions extends LightningElement {
       );
       if (rename) {
         rename.focus();
+      }
+    }
+    if (this.focusRenameInputAfterRender) {
+      this.focusRenameInputAfterRender = false;
+      const input = this.template.querySelector('[data-id="rename-input"]');
+      if (input) {
+        input.focus();
       }
     }
     if (this.focusAfterDelete && !this.busy) {
@@ -295,6 +305,7 @@ export default class ShoreshVersions extends LightningElement {
     const id = event.currentTarget.dataset.id;
     this.renamingId = id;
     this.renameValue = this._versions.find((v) => v.id === id).name;
+    this.focusRenameInputAfterRender = true;
   }
 
   handleRenameInput(event) {

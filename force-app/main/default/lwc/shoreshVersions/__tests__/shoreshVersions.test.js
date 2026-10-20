@@ -102,6 +102,9 @@ describe("c-shoresh-versions", () => {
     await flush();
     const input = q(element, '[data-id="rename-input"]');
     expect(input.value).toBe("Before my changes");
+    // The rename button it was started from is gone: focus goes into the box (the desktop's
+    // autoFocus), not the page (real-browser check, 2026-10-20).
+    expect(element.shadowRoot.activeElement).toBe(input);
     await expect(element).toBeAccessible();
     input.value = "  Monday plan ";
     input.dispatchEvent(new CustomEvent("input"));
