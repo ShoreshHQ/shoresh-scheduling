@@ -748,7 +748,7 @@ private class ImportSetupSavesTest {
       Assert.areEqual(40, result.added.get('Group'));
       Assert.areEqual(60, result.added.get('Activity'));
       Assert.areEqual(8, result.added.get('RecurringActivity'));
-      Assert.isTrue(queries < 60, 'queries: ' + queries);
+      Assert.isTrue(queries < 45, 'queries: ' + queries);
       Assert.isTrue(dml < 60, 'DML statements: ' + dml);
       Assert.isTrue(cpu < 8000, 'CPU ms: ' + cpu);
       Integer logged = [

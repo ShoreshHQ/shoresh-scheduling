@@ -279,7 +279,7 @@ private class SetupTablesTest {
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(used <= 40, 'Queries for the merge: ' + used);
+      Assert.isTrue(used <= 25, 'Queries for the merge: ' + used);
       Id pool = ids.get('Pool');
       Assert.areEqual(
         0,
@@ -368,7 +368,7 @@ private class SetupTablesTest {
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(used <= 40, 'Queries for the merge: ' + used);
+      Assert.isTrue(used <= 30, 'Queries for the merge: ' + used);
       Assert.areEqual(
         ids.get('Pool'),
         [

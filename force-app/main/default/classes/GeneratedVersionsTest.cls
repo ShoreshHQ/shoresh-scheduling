@@ -119,7 +119,7 @@ private class GeneratedVersionsTest {
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(used <= 15, 'Save version used ' + used);
+      Assert.isTrue(used <= 10, 'Save version used ' + used);
       Schedule__c saved = version(versionId);
       Assert.areEqual('Before the trip', saved.Name);
       Assert.areEqual('Version', saved.Status__c);
@@ -455,7 +455,7 @@ private class GeneratedVersionsTest {
       );
       Assert.isTrue(started);
       Assert.isFalse(again);
-      Assert.isTrue(used <= 25, 'Restore on a new week used ' + used);
+      Assert.isTrue(used <= 18, 'Restore on a new week used ' + used);
       GeneratedInputs.Inputs after = GeneratedTestData.inputs();
       Id draftId = after.scheduleId;
       Assert.isNotNull(draftId);

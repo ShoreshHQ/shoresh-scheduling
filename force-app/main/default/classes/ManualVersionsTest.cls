@@ -116,7 +116,7 @@ private class ManualVersionsTest {
       );
       Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
-      Assert.isTrue(queries <= 25, 'Save version used ' + queries + ' queries');
+      Assert.isTrue(queries <= 10, 'Save version used ' + queries + ' queries');
       Schedule__c version = [
         SELECT
           Name,
@@ -181,7 +181,7 @@ private class ManualVersionsTest {
       // A fixed number of queries, whatever the size of the week: well under 100.
       Integer queries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
-      Assert.isTrue(queries <= 50, 'Restore used ' + queries + ' queries');
+      Assert.isTrue(queries <= 40, 'Restore used ' + queries + ' queries');
       Assert.areEqual(draftId, view.schedule.schedule.id);
       Assert.isFalse(view.changedSince);
       Assert.areEqual('Swim', mondayPeriod2(draftId));
