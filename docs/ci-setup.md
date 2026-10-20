@@ -126,6 +126,22 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
 Not covered: anything else only the org's compiler knows (types, method signatures), and
 sharing and query limits at run time.
 
+## Real-browser accessibility check (by hand, not in CI)
+
+`node scripts/a11y-browser-check.mjs` drives the Shoresh tab in the test org in Google Chrome
+with the keyboard only (Camp setup, Manual Build, Generated Schedule, Versions, Update to match
+setup, Publish) and writes `docs/a11y-browser-check-<date>.md`: where focus lands after each menu,
+dialog and tool closes, what the live regions say, whether every toolbar action is reachable with
+Tab, and axe-core's findings on each screen. Run it on this Mac from your worktree after
+`npm ci`, with Chrome installed and `sf` signed in to `shoresh-test`: deploy what you want checked
+first, and run it only when no CI run is using the test org (it refuses to start while one is
+running or queued, and always in CI). It signs in with `sf org open --url-only` and never shows,
+logs or saves that link. It works on its own made-up camp, _Keyboard check camp (made up)_ (the
+walkthrough's seed under another name, so _Sample Camp (made up)_ is left alone), adds a new week
+to it each run, and deletes and adds again a fixed activity _Assembly_ there so that week stops
+matching setup. `--headed` shows the browser; screenshots of failures go to a temporary folder
+(`--shots <dir>` to choose).
+
 ## Running Apex tests: one class at a time
 
 Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the
