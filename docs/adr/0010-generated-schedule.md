@@ -326,7 +326,14 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
       View says "deleted since" too, the same on both screens (`groups` in
       `shoreshScheduleViews`, Greg 2026-10-19). The week a Lock or a hand edit answers
       with is marked the same way (`GeneratedInputs.view`), so a note never comes and goes
-      between opening the week and changing it;
+      between opening the week and changing it. **The words (Greg, 2026-10-20: the leftover
+      wording calls follow the desktop):** the mark reads **(removed)**, as the desktop's
+      "Activity (removed)" / "Event (removed)" (`SlotCell.jsx`, `EventCell.jsx`,
+      `scheduleCells.js`), on every screen at once: Schedules, Manual Build, Generated, the week
+      editor's cards and grid, and Group View's pills ("Bunk 9 (removed)"). The week editor's
+      lists say it as their other reasons ("Archery · Bunk 1 · Monday (removed)", "…: removed"),
+      and a placement whose activity can't be named reads "Activity (removed)", in the camp's
+      word. Server names (`gone`, `ScheduleRefs`) are unchanged;
     - each day's locked cells (G4, §32), which the data module turns into the engine's locks.
       Other programs come with G5 (§27–31).
 14. **The Generated draft** (`GeneratedDrafts`). One `Schedule__c` per program and week, Status

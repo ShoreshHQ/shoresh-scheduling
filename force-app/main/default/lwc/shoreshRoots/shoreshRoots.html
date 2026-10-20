@@ -76,15 +76,18 @@
         </section>
 
         <div class="roots-bottom">
-          <lightning-button
-            data-id="import"
-            data-screen="import"
-            label="Import last year"
-            onclick={handleOpen}
-          ></lightning-button>
+          <template lwc:if={campIsEmpty}>
+            <lightning-button
+              data-id="import"
+              data-screen="import"
+              label="Import last year"
+              variant="brand"
+              onclick={handleOpen}
+            ></lightning-button>
+          </template>
           <lightning-button
             data-id="download-workbook"
-            label="Download camp workbook"
+            label="Download worksheet"
             icon-name="utility:download"
             disabled={downloading}
             onclick={handleDownloadWorkbook}
@@ -96,6 +99,15 @@
             terms={terms}
             onimported={handleImported}
           ></c-shoresh-list-import>
+          <template lwc:if={campHasData}>
+            <lightning-button
+              data-id="import"
+              data-screen="import"
+              label="Re-import last year"
+              variant="base"
+              onclick={handleOpen}
+            ></lightning-button>
+          </template>
           <template lwc:if={lastImport}>
             <div class="roots-last-import" data-id="last-import">
               <span>{lastImport.line}</span>

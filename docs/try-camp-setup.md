@@ -23,8 +23,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 1. Type a camp name (for example _Camp Willow_) and click **Create camp**.
 2. The camp name now shows at the top left, with a **New season** button. On the left is the
    Shoresh menu (Roots; **Camp**: Weeks, Programs, Divisions, Groups, Time blocks, Locations,
-   Camp words; **Activities**: Activities, Fixed activities, Recurring activities, and
-   Special events marked **Coming**; then **Generated Schedule**, **Manual Build** and
+   Camp words; **Activities & Events**: Activities, Fixed activities, Recurring activities, and
+   Special events marked **Coming**; **Schedules**: **Generated Schedule**, **Manual Build** and
    **Schedules**). Until there is a season, only
    **Camp words** can be opened; the rest is greyed out. The middle shows **Start a new season**.
 
@@ -57,7 +57,8 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
      **Fixed activities** card;
    - **Needs your attention** on the right: _Summer 2026_ has no weeks, no programs, and no
      activities yet;
-   - **Import last year** at the bottom (section 14).
+   - **Import last year** at the bottom, the blue button (section 14). Once the season has
+     units, bunks or time blocks it becomes a quiet **Re-import last year** link instead.
    - In the menu, a small **!** beside Weeks, Programs, Units, Bunks, Time blocks, and
      Activities: each is still empty, and building a schedule needs it. As each gets its
      first rows it turns to a green **✓** (Locations, Fixed and Recurring activities get the
@@ -143,7 +144,7 @@ it or press **Escape**.
 
 ## 8. Activities
 
-1. **Activities** (under the Activities heading in the menu). The blank row starts with the
+1. **Activities** (under the Activities & Events heading in the menu). The blank row starts with the
    usual defaults: length 1, at least 1 and at most 1 time a week, Low priority, indoors, one
    bunk at a time, and every week ticked under **Runs in**.
 2. Add three: _Swim_ at the Pool; _Gym games_ in the Gym; _Soccer_ on Field A with
@@ -159,9 +160,10 @@ it or press **Escape**.
    **Outdoors** on Gym games again.
 4. Set Gym games' **Groups at once** to 5 and press **Enter**. Needs attention now says the Gym fits 3, so
    scheduling will use 3. Put it back to 1.
-5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
-   to **Can do it**, then click elsewhere: it is saved (**✓ Saved** beside the heading). Only
-   Bunk 1 can swim now; nobody chosen means every bunk.
+5. On Swim's row, click **Details** (right, beside the trash can). _Swim details_ opens below
+   the table. Under **Who can do it: everyone**, tick _Bunk 1_: it is saved at once (**✓ Saved**
+   beside the heading) and the label now reads **Who can do it**. Only Bunk 1 can swim now;
+   nothing ticked means every bunk. (Tab reaches each tick; Space ticks it.)
 6. Still on Swim, under **More rules**, **Early in the week**: **How many** 1, **By**
    Tuesday (the swim test by Tuesday). Each is saved as you leave it or choose it.
 7. Try deleting the **Pool** (trash can in the Locations table). Shoresh refuses: Swim happens
@@ -194,7 +196,7 @@ runs (flagpole, lunch). A **recurring activity** takes chosen bunks (or all of t
 block on the days you tick (Bunk 1 swims Monday and Wednesday). They are separate from
 activities and from each other. Clashes are refused, never just shown.
 
-1. **Fixed activities** (under Activities in the menu). The table is _Fixed activities in
+1. **Fixed activities** (under Activities & Events in the menu). The table is _Fixed activities in
    Main_. In the blank row type _Flagpole_, **Time block** Period 1, length 1, no location,
    and press **Enter**. Every week is ticked under **Runs in**. Add a second one, _Lunch
    break_ in Lunch.
@@ -333,7 +335,7 @@ save one), so first add a made-up one.
 10. **Cells cannot be changed here**, on purpose: placing and moving things comes with Manual
     Build.
 11. **Something deleted since the version was saved** still shows under its saved name, marked
-    _deleted since_. Try it: on **Activities**, delete _Art_. Shoresh asks first: _Art is in 1
+    _(removed)_. Try it: on **Activities**, delete _Art_. Shoresh asks first: _Art is in 1
     schedule. Delete anyway?_ The number is every schedule using Art: drafts, saved versions,
     and published ones, so it is 1 if you ran the script once, 2 after two runs, and so on. Confirm, then open the version again. Deleting a bunk asks the same way. Art
     can be brought back from Salesforce's Recycle Bin.
@@ -396,7 +398,8 @@ _Maple Grove_, one week, six bunks): the same week as an all-camp workbook
 
 **Adding to a season that already has setup**
 
-9. Back on Roots, click **Import last year** again. This time pick **all eight files** at
+9. Back on Roots, click **Re-import last year** (the season has setup now, so it is a quiet
+   link at the bottom). This time pick **all eight files** at
    once (the workbook, the six bunk CSVs, and the by-activity CSV).
 10. Each file shows its layout: _All camp_, _By group_ (each bunk's file, named after the file:
     _Bunk 1_ …), and _By activity_. Everything is marked _already set up_: Shoresh matched it
@@ -477,8 +480,8 @@ section 14 are in `docs/samples/lists` (do section 14 first, in the _Import test
     **Keep** on one line. The button above now says **Change the other …**; click it. The Keep
     you chose stays.
 11. When nothing is waiting, the button at the bottom says what it will do (for example
-    **Add 1, change 4**). Click it. Open Archery's details below the table: _Who can do it_
-    now shows what the file said.
+    **Add 1, change 4**). Click it. Click **Details** on Archery's row: _Who can do it_ now
+    shows what the file said.
 12. Click **Undo this import** and confirm. What the list added is removed, and the activities
     it changed go back to how they were, including who can do them. Anything you edited in the
     meantime stays, and the message names it.
@@ -523,19 +526,19 @@ in the _Import test_ season, in this order).
    **Import a list**. The box shows that one difference and nothing else.
 3. On a screen with nothing set up yet, **Download this list** gives the headings only: a
    template to fill in.
-4. On **Roots**, click **Download camp workbook**. The file _Import test - camp
-   workbook.xlsx_ has a sheet per setup screen (Programs, Units, Bunks, Time blocks,
+4. On **Roots**, click **Download worksheet**. The file _Import test -
+   worksheet.xlsx_ has a sheet per setup screen (Programs, Units, Bunks, Time blocks,
    Locations, Activities, Fixed activities, Recurring activities, in your camp's words), then
    _Location types_, _Camp words_, _Weeks_, and _Runs in_ (a Yes or No under each week, as the
    screens' ticks).
-5. Import the workbook on any screen: it reads that screen's sheet, and shows _Unchanged_ for
+5. Import the worksheet on any screen: it reads that screen's sheet, and shows _Unchanged_ for
    every row.
 
-## 18. Import the whole camp workbook on Roots
+## 18. Import the whole camp worksheet on Roots
 
-1. On **Roots**, click **Download camp workbook** (section 17), then **Import camp workbook**
+1. On **Roots**, click **Download worksheet** (section 17), then **Import worksheet**
    and choose that file. One box shows every sheet as its own section, and _Nothing to change_.
-2. Open the workbook in Excel and make four changes:
+2. Open the worksheet in Excel and make four changes:
    - _Weeks_: rename _Week 1_ to _Opening week_, and on _Runs in_ rename that column too.
    - _Runs in_: change one activity's _Yes_ to _No_ under a week.
    - _Activities_: add a row _Kayak_ (Length 1, at least 1 a week).
@@ -551,7 +554,7 @@ in the _Import test_ season, in this order).
 6. Rename a sheet (for example _Weeks_ to _Dates_) and import again: it is still read, by
    what it holds. A sheet of your own that Shoresh can't read shows under _Sheets not read_.
 7. In a season with other dates (for example after **Copy season** to next summer), import
-   the same workbook. The _Weeks_ section shows _Matched by order_: _Week 1 (Jun 28 2027) →
+   the same worksheet. The _Weeks_ section shows _Matched by order_: _Week 1 (Jun 28 2027) →
    Week 1_ of this season, and so on. This season keeps its own dates, and the _Runs in_ ticks
    follow the pairing.
 
@@ -768,8 +771,8 @@ This uses the made-up camp's Week 1 from sections 19 to 22. Generated Schedule i
 separate schedule for the same week: nothing here changes Manual Build, and Manual Build's week
 doesn't change this one.
 
-1. **The menu and Roots.** Reload the Shoresh tab. The menu's last section reads **Generated
-   Schedule**, **Manual Build**, **Schedules**, with no _Coming_ (the two schedules are listed by
+1. **The menu and Roots.** Reload the Shoresh tab. The menu's last section, **Schedules**, reads
+   **Generated Schedule**, **Manual Build**, **Schedules**, with no _Coming_ (the two schedules are listed by
    name, as on the desktop: the order means nothing). On Roots, **Build or generate the
    schedule** now holds two buttons side by side, **Generated Schedule →** and **Manual
    Build →**. Click **Generated Schedule →**.

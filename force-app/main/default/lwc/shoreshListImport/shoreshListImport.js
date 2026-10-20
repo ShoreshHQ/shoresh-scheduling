@@ -143,14 +143,14 @@ export default class ShoreshListImport extends LightningElement {
     return screenLabels(this.terms)[this.screenKey];
   }
   get title() {
-    return this.workbook ? "Import camp workbook" : `Import ${this.screenName}`;
+    return this.workbook ? "Import worksheet" : `Import ${this.screenName}`;
   }
-  /** Roots has its own "Download camp workbook". */
+  /** Roots has its own "Download worksheet". */
   get showDownload() {
     return !this.workbook;
   }
   get openLabel() {
-    return this.workbook ? "Import camp workbook" : "Import a list";
+    return this.workbook ? "Import worksheet" : "Import a list";
   }
 
   /** Opened: the cursor goes to its heading; closed: back to the button that opened it. */

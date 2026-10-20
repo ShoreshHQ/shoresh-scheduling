@@ -103,6 +103,22 @@ export default class ShoreshRoots extends LightningElement {
       }));
   }
 
+  /**
+   * Whether the camp has any setup yet: divisions, groups or time blocks (desktop
+   * campHasSetupData, the required areas). An empty camp sees "Import last year" as the first
+   * thing to do (desktop SeedScreen.jsx); once it has data the import recedes to a quiet
+   * "Re-import last year", still reachable (desktop navSections.js ADMIN_MENU_ITEMS).
+   */
+  get campHasData() {
+    return ["divisions", "groups", "timeBlocks"].some(
+      (key) => this.rowsFor(key).length > 0
+    );
+  }
+
+  get campIsEmpty() {
+    return !this.campHasData;
+  }
+
   get hasAttention() {
     return (this.problems || []).length > 0;
   }
@@ -167,12 +183,12 @@ export default class ShoreshRoots extends LightningElement {
       await downloadWorkbook(
         this,
         campWorkbookSheets(this.setup, this.terms),
-        fileNameOf(`${this.setup.season.Name} - camp workbook`)
+        fileNameOf(`${this.setup.season.Name} - worksheet`)
       );
     } catch (e) {
       this.dispatchEvent(
         new ShowToastEvent({
-          title: "The workbook could not be downloaded",
+          title: "The worksheet could not be downloaded",
           message: reasonOf(e),
           variant: "error"
         })

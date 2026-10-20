@@ -1927,8 +1927,6 @@ describe("c-shoresh-editable-table", () => {
       label: "Who",
       type: "who",
       everyone: "Everyone in Main",
-      sourceLabel: "Units and Bunks",
-      selectedLabel: "Covers",
       options: [
         { label: "Unit: Juniors", value: "d1" },
         { label: "Bunk 1 (Juniors)", value: "g1" },
@@ -2008,16 +2006,18 @@ describe("c-shoresh-editable-table", () => {
       ]);
     });
 
-    it("opens the picker under the row; Done saves the choice with who it covered", async () => {
+    it("opens ticks under the row; Done saves the choice with who it covered", async () => {
       const element = renderRecurring();
       const sent = listen(element);
       await flush();
       toggle(element, 1).click();
       await flush();
       const listbox = picker(element);
+      // A labelled group of ticks, as the desktop's (FixedEventsScreen.jsx), not two lists.
+      expect(listbox.tagName).toBe("LIGHTNING-CHECKBOX-GROUP");
       expect(listbox.options).toEqual(WHO.options);
       expect(listbox.value).toEqual([]);
-      expect(listbox.sourceLabel).toBe("Units and Bunks");
+      expect(listbox.label).toBe("Who: Lunch (Everyone in Main)");
       listbox.dispatchEvent(
         new CustomEvent("change", { detail: { value: ["d1"] } })
       );
@@ -2264,6 +2264,56 @@ describe("c-shoresh-editable-table", () => {
         .querySelector('[data-id="announce"]')
         .textContent.trim()
     ).toBe("Renamed to Archery");
+  });
+
+  describe("a row's details", () => {
+    const ACTIVITIES = [
+      { Id: "a1", Name: "Swim" },
+      { Id: "a2", Name: "Art" }
+    ];
+    const renderActivities = (props = {}) =>
+      render({
+        objectApiName: "Activity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true }
+        ],
+        rows: ACTIVITIES,
+        detailsLabel: "Details",
+        ...props
+      });
+    const buttons = (element) => [
+      ...element.shadowRoot.querySelectorAll('[data-id="details"]')
+    ];
+
+    it("each saved row has a Details button that asks to open its details (desktop's row Edit)", async () => {
+      const element = renderActivities({ detailsOpenFor: "a2" });
+      await flush();
+      const handler = jest.fn();
+      element.addEventListener("details", handler);
+      // Saved rows only: the blank row has nothing to open yet.
+      expect(buttons(element).map((b) => b.getAttribute("aria-label"))).toEqual(
+        ["Swim details", "Art details"]
+      );
+      expect(buttons(element)[0].textContent.trim()).toBe("Details");
+      expect(
+        buttons(element).map((b) => b.getAttribute("aria-expanded"))
+      ).toEqual(["false", "true"]);
+      buttons(element)[0].click();
+      expect(handler.mock.calls[0][0].detail).toEqual({ recordId: "a1" });
+    });
+
+    it("the cursor goes back to the row's button when its details close", async () => {
+      const element = renderActivities();
+      await flush();
+      element.focusDetailsOf("a2");
+      expect(element.shadowRoot.activeElement).toBe(buttons(element)[1]);
+    });
+
+    it("no button without a label", async () => {
+      const element = renderActivities({ detailsLabel: undefined });
+      await flush();
+      expect(buttons(element)).toEqual([]);
+    });
   });
 
   describe("same names", () => {

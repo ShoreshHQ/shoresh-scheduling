@@ -43,9 +43,9 @@ const ADD = "add";
  *
  * A "who" column (type "who", fieldName: the child rows' relationship, such as Coverages__r,
  * options: the divisions and groups to choose from, everyone: what an empty choice means,
- * sourceLabel / selectedLabel: the picker's two list headings) shows
- * who each row covers, with a Change button that opens the same picker as activities' "Who can
- * do it" under the row. An empty choice means everyone.
+ * shows who each row covers, with a Change button that opens a list of ticks under the row, as
+ * activities' "Who can do it" and the desktop's (FixedEventsScreen.jsx "Age Divisions" ticks).
+ * An empty choice means everyone.
  *
  * flagSameNames: a row whose name matches another row's, ignoring capitals and spacing (the
  *   import's looseKey, so it is what would make an import ask "Which ...?"), gets a small
@@ -110,6 +110,13 @@ export default class ShoreshEditableTable extends LightningElement {
    * "Turn off … for Week 3?" when the week already has placements (PR #48).
    */
   @api beforeWeekOff;
+  /**
+   * Optional: a button with this label ("Details") on each saved row that asks the screen to
+   * open the row's details (the desktop's row Edit, ActivitiesScreen.jsx). detailsOpenFor: the
+   * record whose details are open, so its button says so (aria-expanded).
+   */
+  @api detailsLabel;
+  @api detailsOpenFor;
 
   drafts = [];
   addRow = this.blankRow();
@@ -633,6 +640,26 @@ export default class ShoreshEditableTable extends LightningElement {
     }
   }
 
+  /** After the row's details close: back to its Details button. */
+  @api
+  focusDetailsOf(recordId) {
+    const button = this.template.querySelector(
+      `[data-id="details"][data-row-key="row-${recordId}"]`
+    );
+    if (button) {
+      button.focus();
+    }
+  }
+
+  handleDetails(event) {
+    const draft = this.rowFor(event.currentTarget.dataset.rowKey);
+    if (draft && !draft.isNew) {
+      this.dispatchEvent(
+        new CustomEvent("details", { detail: { recordId: draft.original.Id } })
+      );
+    }
+  }
+
   handleMerge(event) {
     const draft = this.rowFor(event.currentTarget.dataset.rowKey);
     const others = (
@@ -727,11 +754,18 @@ export default class ShoreshEditableTable extends LightningElement {
       whoOpen: !!whoColumn && draft.whoOpen,
       who: draft.who,
       whoOptions: whoColumn ? whoColumn.options : [],
-      whoSource: whoColumn ? whoColumn.sourceLabel : "",
-      whoSelected: whoColumn ? whoColumn.selectedLabel : "",
+      // The ticks' label: whose they are, and "everyone" while none is ticked.
       whoLabel: whoColumn
-        ? `${whoColumn.label}: ${draft.values.Name || ""}`.trim()
+        ? `${whoColumn.label}: ${draft.values.Name || ""}${
+            draft.who.length === 0 ? ` (${this.whoNames(whoColumn, [])})` : ""
+          }`
         : "",
+      hasDetails: !!this.detailsLabel && !draft.isNew,
+      detailsName: `${draft.values.Name || ""} details`.trim(),
+      detailsOpen:
+        !draft.isNew && draft.original.Id === this.detailsOpenFor
+          ? "true"
+          : "false",
       note: draft.isNew
         ? ""
         : this.draftNotes.get(draft.key) || notes[draft.original.Id] || "",

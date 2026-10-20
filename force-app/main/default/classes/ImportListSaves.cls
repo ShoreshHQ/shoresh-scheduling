@@ -190,7 +190,7 @@ public with sharing class ImportListSaves {
     if (created.length() > LOG_LIMIT || changed.length() > LOG_LIMIT) {
       throw new ShoreshException(
         workbook
-          ? 'This workbook is too big to be undone later, so nothing was saved. Import its sheets on their own screens.'
+          ? 'This worksheet is too big to be undone later, so nothing was saved. Import its sheets on their own screens.'
           : 'This list is too long to be undone later, so nothing was saved. Split it into two files and import each one.'
       );
     }

@@ -105,7 +105,7 @@ export function groups(view) {
           key: refKey(grp),
           name: grp.name,
           gone: grp.gone,
-          note: grp.gone ? "deleted since" : null
+          note: grp.gone ? "(removed)" : null
         });
       }
     })
@@ -191,7 +191,7 @@ function cellView(item, t) {
   return {
     text: item.name,
     className: setTime ? "cell cell_set-time" : "cell cell_activity",
-    note: item.gone ? "deleted since" : null,
+    note: item.gone ? "(removed)" : null,
     title: item.kind === "A" ? item.name : `${item.name}: ${kind}`
   };
 }
@@ -229,7 +229,7 @@ function problemCell(dayIndex, rowCount) {
 }
 
 function column(key, label, sub, gone) {
-  return { key, label, sub, note: gone ? "deleted since" : null };
+  return { key, label, sub, note: gone ? "(removed)" : null };
 }
 
 /** Daily View: one day, a column per group. */

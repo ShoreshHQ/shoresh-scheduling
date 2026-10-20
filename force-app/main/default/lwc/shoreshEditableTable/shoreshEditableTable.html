@@ -286,6 +286,19 @@
                         >Not saved</span
                       >
                     </template>
+                    <template lwc:if={row.hasDetails}>
+                      <button
+                        type="button"
+                        class="slds-button slds-m-right_small"
+                        aria-label={row.detailsName}
+                        aria-expanded={row.detailsOpen}
+                        data-id="details"
+                        data-row-key={row.key}
+                        onclick={handleDetails}
+                      >
+                        {detailsLabel}
+                      </button>
+                    </template>
                     <lightning-button-icon
                       icon-name="utility:delete"
                       alternative-text={row.deleteLabel}
@@ -307,16 +320,14 @@
                   onfocusout={handleRowLeave}
                 >
                   <td colspan={fullSpan}>
-                    <lightning-dual-listbox
+                    <lightning-checkbox-group
                       data-row-key={row.key}
                       data-id="who-picker"
                       label={row.whoLabel}
-                      source-label={row.whoSource}
-                      selected-label={row.whoSelected}
                       options={row.whoOptions}
                       value={row.who}
                       onchange={handleWhoChange}
-                    ></lightning-dual-listbox>
+                    ></lightning-checkbox-group>
                   </td>
                 </tr>
               </template>

@@ -66,7 +66,7 @@
                 <span key={line.key} class="block-time">{line.text}</span>
               </template>
               <template lwc:if={row.gone}>
-                <span class="note">deleted since</span>
+                <span class="note">(removed)</span>
               </template>
             </div>
             <template for:each={row.cells} for:item="cell">

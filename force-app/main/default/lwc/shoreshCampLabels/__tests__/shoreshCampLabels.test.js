@@ -220,11 +220,11 @@ describe("c-shoresh-camp-labels", () => {
 
   it("explains, and blocks saving, when this person cannot change the camp words", async () => {
     const element = await render(
-      "Your Salesforce admin has limited who can change this camp."
+      "You can't edit this camp, so its words are view only."
     );
     expect(
       element.shadowRoot.querySelector('[data-id="read-only"]').textContent
-    ).toContain("Your Salesforce admin has limited who can change this camp.");
+    ).toContain("You can't edit this camp, so its words are view only.");
     expect(input(element, "Group", "singular").disabled).toBe(true);
     leave(element, "Group", "singular");
     await flush();

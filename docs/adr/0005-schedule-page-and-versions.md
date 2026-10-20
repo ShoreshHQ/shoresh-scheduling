@@ -54,7 +54,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    time blocks, groups, and items as they were (as the data model has published rows copy
    names). Anything it points at that has been deleted since still shows under its saved name,
    marked "deleted since" (data model, Protecting history: lost references are shown, not
-   hidden). Fixed and recurring activities are stored in the grid like anything else, so an
+   hidden). _Changed 2026-10-20 (ADR 0010 §13): the mark reads "(removed)", as the desktop's._ Fixed and recurring activities are stored in the grid like anything else, so an
    imported or saved version keeps them even if the setup changes later; they are not worked
    out live from today's setup.
 5. **Storage**, as the data model has it, with only what 4a needs:

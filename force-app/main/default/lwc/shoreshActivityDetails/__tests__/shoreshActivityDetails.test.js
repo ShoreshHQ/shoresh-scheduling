@@ -63,13 +63,20 @@ const flush = () =>
     Promise.resolve()
   );
 
-async function render(setup = SETUP) {
+/** The details, opened (as from the activity's row) on its first activity unless told not to. */
+async function render(
+  setup = SETUP,
+  openId = setup.activities.length ? setup.activities[0].Id : null
+) {
   const element = createElement("c-shoresh-activity-details", {
     is: ShoreshActivityDetails
   });
   element.terms = terms;
   element.setup = nsRecord(setup);
   document.body.appendChild(element);
+  if (openId) {
+    await element.open(openId);
+  }
   await flush();
   return element;
 }
@@ -112,33 +119,71 @@ describe("c-shoresh-activity-details", () => {
     }
   });
 
-  it("shows the first activity's choices, in the camp words", async () => {
+  it("shows nothing until an activity is opened from its row; no picker of its own", async () => {
+    const element = await render(SETUP, null);
+    expect(q(element, '[data-id="details"]')).toBeNull();
+    expect(element.openActivityId).toBeNull();
+    expect(await element.open("a2")).toBe(true);
+    await flush();
+    expect(q(element, '[data-id="details"]')).not.toBeNull();
+    expect(q(element, '[data-id="activity-picker"]')).toBeNull();
+    expect(q(element, "h2").textContent.trim()).toBe("Swim test details");
+    expect(element.openActivityId).toBe("a2");
+    // The cursor lands on the heading.
+    expect(element.shadowRoot.activeElement).toBe(q(element, "[data-heading]"));
+  });
+
+  it("shows the activity's choices as ticks, in the camp words (desktop's checkboxes)", async () => {
     const element = await render();
     const who = q(element, '[data-id="who-can-do-it"]');
+    // One labelled group of ticks (a fieldset, keyboard-reachable), not a two-list picker.
+    expect(who.tagName).toBe("LIGHTNING-CHECKBOX-GROUP");
+    expect(q(element, "lightning-dual-listbox")).toBeNull();
     expect(who.value).toEqual(["g2"]);
     expect(who.options.map((o) => o.label)).toEqual([
       "Unit: Juniors",
       "Bunk 1 (Juniors)",
       "Bunk 2 (Juniors)"
     ]);
-    // No sentence explaining the picker: its chosen list says it.
+    // No sentence explaining the ticks: the label says it.
     expect(q(element, '[data-id="who-note"]')).toBeNull();
-    expect(who.selectedLabel).toBe("Can do it");
+    expect(who.label).toBe("Who can do it");
     expect(element.shadowRoot.textContent).not.toContain("rules most");
-    expect(element.shadowRoot.querySelectorAll("lightning-button").length).toBe(
-      0
-    );
+    // One button: Close.
+    expect(
+      [...element.shadowRoot.querySelectorAll("lightning-button")].map(
+        (b) => b.label
+      )
+    ).toEqual(["Close"]);
   });
 
   it("nobody chosen means every group", async () => {
     const element = await render();
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await element.open("a2");
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual([]);
-    expect(q(element, '[data-id="who-can-do-it"]').selectedLabel).toBe(
-      "Can do it: everyone"
+    expect(q(element, '[data-id="who-can-do-it"]').label).toBe(
+      "Who can do it: everyone"
     );
     expect(q(element, '[data-field="earlyDay"]').value).toBe("Tuesday");
+  });
+
+  it("Close hides the details and says which activity they were for", async () => {
+    const element = await render();
+    const closed = jest.fn();
+    element.addEventListener("close", closed);
+    q(element, 'lightning-button[data-id="close"]').click();
+    await flush();
+    expect(q(element, '[data-id="details"]')).toBeNull();
+    expect(closed.mock.calls[0][0].detail).toEqual({ activityId: "a1" });
+  });
+
+  it("an activity deleted meanwhile closes its details", async () => {
+    const element = await render();
+    element.setup = nsRecord({ ...SETUP, activities: [SETUP.activities[1]] });
+    await flush();
+    expect(q(element, '[data-id="details"]')).toBeNull();
+    expect(element.openActivityId).toBeNull();
   });
 
   it("shows each saved rule and who can do it, by division or group", async () => {
@@ -191,24 +236,33 @@ describe("c-shoresh-activity-details", () => {
     expect(typeof saves[0].onFailure).toBe("function");
   });
 
-  it("a number, the notes, and who can do it save when the director leaves them", async () => {
+  it("a tick in who can do it saves at once, the whole list", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    change(q(element, '[data-id="who-can-do-it"]'), ["d1"]);
+    await flush();
+    const saves = sent(handler);
+    expect(saves.map((save) => save.rules)).toEqual([
+      { sobjectType: "Activity__c", Id: "a1" }
+    ]);
+    expect(saves[0].whoCanDoIt).toEqual(["d1"]);
+  });
+
+  it("a number and the notes save when the director leaves them", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("save", handler);
     allValid(element);
-    const who = q(element, '[data-id="who-can-do-it"]');
-    change(who, ["d1"]);
     change(q(element, '[data-field="earlyCount"]'), "2");
     change(q(element, '[data-field="notes"]'), "Helmets");
     await flush();
     expect(handler).not.toHaveBeenCalled();
-    leave(who);
     leave(q(element, '[data-field="earlyCount"]'));
     leave(q(element, '[data-field="notes"]'));
     await flush();
     const saves = sent(handler);
     expect(saves.map((save) => save.rules)).toEqual([
-      { sobjectType: "Activity__c", Id: "a1" },
       {
         sobjectType: "Activity__c",
         Id: "a1",
@@ -217,26 +271,10 @@ describe("c-shoresh-activity-details", () => {
       },
       { sobjectType: "Activity__c", Id: "a1", Notes__c: "Helmets" }
     ]);
-    expect(saves[0].whoCanDoIt).toEqual(["d1"]);
     // Leaving again with nothing changed sends nothing more.
-    leave(who);
+    leave(q(element, '[data-field="notes"]'));
     await flush();
-    expect(handler).toHaveBeenCalledTimes(3);
-  });
-
-  it("moving inside the who list (to its buttons) is not leaving it", async () => {
-    const element = await render();
-    const handler = jest.fn();
-    element.addEventListener("save", handler);
-    const who = q(element, '[data-id="who-can-do-it"]');
-    change(who, ["d1"]);
-    // Focus moving to the list's own buttons is seen from outside as focus on the list itself
-    // (the browser retargets it to the component).
-    who.dispatchEvent(
-      new FocusEvent("focusout", { relatedTarget: who, bubbles: true })
-    );
-    await flush();
-    expect(handler).not.toHaveBeenCalled();
+    expect(handler).toHaveBeenCalledTimes(2);
   });
 
   it("an early count the field refuses is not sent", async () => {
@@ -253,7 +291,7 @@ describe("c-shoresh-activity-details", () => {
 
   it("clearing the early-week day sends nothing, not an empty word", async () => {
     const element = await render();
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await element.open("a2");
     await flush();
     const handler = jest.fn();
     element.addEventListener("save", handler);
@@ -300,7 +338,7 @@ describe("c-shoresh-activity-details", () => {
 
   it("an early-week rule can be cleared one field at a time", async () => {
     const element = await render();
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await element.open("a2");
     await flush();
     const handler = jest.fn();
     element.addEventListener("save", handler);
@@ -350,7 +388,6 @@ describe("c-shoresh-activity-details", () => {
     element.addEventListener("save", handler);
     const who = q(element, '[data-id="who-can-do-it"]');
     change(who, ["g1", "g2"]);
-    leave(who);
     await flush();
     handler.mock.calls[0][0].detail.onFailure(
       "Activity details not saved. Your changes are still here. Try again."
@@ -363,13 +400,14 @@ describe("c-shoresh-activity-details", () => {
     element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
-    leave(q(element, '[data-id="who-can-do-it"]'));
+    // Another tick sends the list again, as it now shows.
+    change(q(element, '[data-id="who-can-do-it"]'), ["g1"]);
     await flush();
     expect(handler).toHaveBeenCalledTimes(2);
-    expect(sent(handler)[1].whoCanDoIt).toEqual(["g1", "g2"]);
+    expect(sent(handler)[1].whoCanDoIt).toEqual(["g1"]);
   });
 
-  it("keeps unsaved choices when something else on the screen is saved", async () => {
+  it("keeps choices being saved when something else on the screen is saved", async () => {
     const element = await render();
     change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
     await flush();
@@ -395,10 +433,10 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
   });
 
-  it("shows an empty state when there are no activities", async () => {
+  it("with no activities there is nothing to open", async () => {
     const element = await render({ ...SETUP, activities: [] });
-    expect(q(element, "c-shoresh-empty-state").title).toBe("No activities yet");
-    expect(element.shadowRoot.textContent).not.toContain("save them first");
+    expect(await element.open("a1")).toBe(false);
+    expect(q(element, '[data-id="details"]')).toBeNull();
   });
 
   it("groups the early-in-the-week rule's two fields under one label", async () => {
@@ -419,22 +457,26 @@ describe("c-shoresh-activity-details", () => {
     const handler = jest.fn();
     element.addEventListener("save", handler);
     change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
-    leave(q(element, '[data-id="who-can-do-it"]'));
     await flush();
     handler.mock.calls[0][0].detail.onFailure("Not saved.");
     await flush();
     LightningConfirm.open.mockResolvedValue(false);
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    expect(await element.open("a2")).toBe(false);
     await flush();
     expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
     expect(LightningConfirm.open.mock.calls[0][0].message).toBe(
       'Discard your unsaved changes to "Archery"?'
     );
-    expect(q(element, '[data-id="activity-picker"]').value).toBe("a1");
+    expect(element.openActivityId).toBe("a1");
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
+    // Close asks too.
+    q(element, 'lightning-button[data-id="close"]').click();
+    await flush();
+    expect(LightningConfirm.open).toHaveBeenCalledTimes(2);
+    expect(element.openActivityId).toBe("a1");
 
     LightningConfirm.open.mockResolvedValue(true);
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    expect(await element.open("a2")).toBe(true);
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual([]);
     expect(q(element, '[data-error="who"]')).toBeNull();
@@ -445,12 +487,11 @@ describe("c-shoresh-activity-details", () => {
     const handler = jest.fn();
     element.addEventListener("save", handler);
     change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
-    leave(q(element, '[data-id="who-can-do-it"]'));
     await flush();
     const detail = handler.mock.calls[0][0].detail;
     expect(detail.shown()).toBe(true);
     // Sent, so nothing is unsaved: switching does not ask.
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await element.open("a2");
     await flush();
     expect(LightningConfirm.open).not.toHaveBeenCalled();
     expect(detail.shown()).toBe(false);
@@ -462,7 +503,7 @@ describe("c-shoresh-activity-details", () => {
 
   it("switching with nothing typed does not ask", async () => {
     const element = await render();
-    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await element.open("a2");
     await flush();
     expect(LightningConfirm.open).not.toHaveBeenCalled();
   });

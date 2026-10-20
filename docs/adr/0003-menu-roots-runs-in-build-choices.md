@@ -20,7 +20,8 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    entry uses the camp's words. "Fixed activities" and "Recurring activities" are built as
    "Fixed / Recurring" + the camp's word for activities until slice 3b renames the FixedEvent
    and RecurringEvent camp words. "Roots", "Camp", "Camp words", and "Schedules" are not glossary
-   terms and stay as they are.
+   terms and stay as they are. _Changed 2026-10-20 (ADR 0013 choice 21): the section titles are
+   the desktop's, Camp, Activities & Events, Schedules._
 3. **Before the first season**, only Camp words can be opened; the rest is greyed out (each
    needs a season). _Changed 2026-10-20 (ADR 0013 choice 11): greyed entries stay in the tab
    order, marked unavailable, and say why ("Needs a season", "Coming") to screen readers._ New season and Copy season stay at the top, beside the season picker;
@@ -37,7 +38,9 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    import, its "couldn't be read" dashes, and its overflow chip (the list shows every item).
    Differences: every card opens its screen (the desktop's cards do not; the brief asks for
    it); and a small **Weeks** card fills the place the desktop's grid leaves empty, beside the
-   lower half of Groups (Greg, 2026-10-16).
+   lower half of Groups (Greg, 2026-10-16). _Changed 2026-10-20: the camp's whole setup now
+   downloads as **Download worksheet** (the desktop's words, ADR 0007 choice 18), and Import
+   last year recedes to **Re-import last year** once the camp has setup (ADR 0013 choice 20)._
 5. **Needs attention items know which screen fixes them.** `setupProblems` returns
    `{ screen, name, why }`; Roots lists all of them and each opens its screen, and each screen
    shows its own at the top. Two checks come from the desktop's Roots: a season with no

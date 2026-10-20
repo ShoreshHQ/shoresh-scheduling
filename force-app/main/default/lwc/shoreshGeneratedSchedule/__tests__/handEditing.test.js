@@ -754,7 +754,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     ];
     const card = cards.find((c) => c.dataset.key === archery);
     expect(card).toBeDefined();
-    expect(card.textContent).not.toContain("deleted since");
+    expect(card.textContent).not.toContain("(removed)");
   });
 
   it("a read of the week already on its way when a hand edit is made doesn't replace it", async () => {

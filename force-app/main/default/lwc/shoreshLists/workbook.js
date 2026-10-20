@@ -661,7 +661,7 @@ function readWeeks(sheet, setup, answers, t) {
       },
       {
         key: "untouched",
-        heading: "Not in the workbook",
+        heading: "Not in the worksheet",
         lines: bySeasonOrder(setup.weeks)
           .filter((w) => !paired.has(w.Id))
           .map((w) => ({
@@ -983,7 +983,7 @@ function readRunsIn(sheet, setup, weeks, t, answers) {
       problems: [
         ...unknown.map(
           (c) =>
-            `"${c.heading}" isn't a ${t.sIn("Week")} of the workbook that can be read`
+            `"${c.heading}" isn't a ${t.sIn("Week")} of the worksheet that can be read`
         ),
         ...twins.map(
           (list) =>

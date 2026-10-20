@@ -1,38 +1,37 @@
 <template>
-  <section class="slds-m-top_large">
-    <div
-      class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small"
+  <template lwc:if={activity}>
+    <section
+      class="slds-m-top_large slds-box"
+      data-id="details"
+      aria-labelledby="activity-details-title"
     >
-      <h2 class="slds-text-heading_medium">{labels.title}</h2>
-      <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
-    </div>
-    <template lwc:if={hasActivities}>
-      <div class="slds-grid slds-wrap slds-gutters_small">
-        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-          <lightning-combobox
-            data-id="activity-picker"
-            label={labels.activity}
-            value={activityId}
-            options={activityOptions}
-            onchange={handleActivityChange}
-          ></lightning-combobox>
-        </div>
+      <div
+        class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small"
+      >
+        <h2
+          id="activity-details-title"
+          class="slds-text-heading_medium"
+          tabindex="-1"
+          data-heading
+        >
+          {labels.title}
+        </h2>
+        <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
+        <lightning-button
+          class="slds-col_bump-left"
+          data-id="close"
+          label="Close"
+          onclick={handleClose}
+        ></lightning-button>
       </div>
 
-      <h3 class="slds-text-heading_small slds-m-top_medium">
-        {labels.whoCanDoIt}
-      </h3>
-      <lightning-dual-listbox
+      <lightning-checkbox-group
         data-id="who-can-do-it"
-        label={labels.whoCanDoIt}
-        variant="label-hidden"
-        source-label={labels.available}
-        selected-label={chosenLabel}
+        label={whoLabel}
         options={targetOptions}
         value={whoCanDoIt}
         onchange={handleWhoChange}
-        onfocusout={handleWhoLeave}
-      ></lightning-dual-listbox>
+      ></lightning-checkbox-group>
       <template lwc:if={whoError}>
         <div
           class="slds-form-element__help slds-text-color_error"
@@ -127,9 +126,6 @@
           {notesError}
         </div>
       </template>
-    </template>
-    <template lwc:else>
-      <c-shoresh-empty-state title={labels.empty}></c-shoresh-empty-state>
-    </template>
-  </section>
+    </section>
+  </template>
 </template>

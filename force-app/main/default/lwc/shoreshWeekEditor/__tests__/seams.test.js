@@ -1569,6 +1569,28 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
         expect(lockText(element, "0-2")).toBe("Locked");
       });
 
+      it("Clear day leaves, and lists as (removed), an activity deleted since (desktop SlotCell.jsx)", async () => {
+        const gone = [
+          WITH_SWIM[0],
+          { ...WITH_SWIM[1], gone: true },
+          WITH_SOCCER[1]
+        ];
+        const saveRuns = jest
+          .fn()
+          .mockResolvedValue(savedLocked(gone, SWIM_AT_P2, ["", ""]));
+        const { element } = await render(saveRuns, {
+          items: gone,
+          rows: ["1,2,3", "1,,"],
+          locks: []
+        });
+        element.runTool(CLEAR_MONDAY);
+        await flush();
+        expect(toolNoticeOf(element)).toContain(
+          "1 stayed: Swim · Bunk 1 · Monday (removed)."
+        );
+        expect(toolNoticeOf(element)).not.toContain("deleted since");
+      });
+
       it("Clear day lists and counts a locked activity that runs two blocks once", async () => {
         const items = [...BOATING, WITH_SOCCER[1]];
         const rows = ["1,2,^", "1,3,"];

@@ -360,7 +360,7 @@ describe("a camp's workbook, edited", () => {
     expect(rows[0]).toMatchObject({
       rowNumber: 1,
       status: "unreadable",
-      problems: ['"Week 9" isn\'t a week of the workbook that can be read']
+      problems: ['"Week 9" isn\'t a week of the worksheet that can be read']
     });
     expect(rows.find((r) => r.name === "Kayak").problems).toEqual([
       "No activity “Kayak”"
@@ -424,7 +424,7 @@ describe("a workbook from another season", () => {
           "Week 2 (Jul 5 2027) → Week 2 (Jul 3 2028)"
         ]
       ],
-      ["Not in the workbook", ["Week 3 (Jul 10 2028)"]]
+      ["Not in the worksheet", ["Week 3 (Jul 10 2028)"]]
     ]);
     expect(weeks.rows.map((r) => r.status)).toEqual(["unchanged", "unchanged"]);
     const plan = workbookPlan(p, answers);
@@ -789,7 +789,7 @@ describe("coordinator's review of PR D", () => {
     ]);
     // "Week 1" heads a column but two weeks have that name: said, never skipped quietly.
     expect(p.runsIn.rows[0].problems).toEqual([
-      '"Week 1" isn\'t a week of the workbook that can be read'
+      '"Week 1" isn\'t a week of the worksheet that can be read'
     ]);
   });
 

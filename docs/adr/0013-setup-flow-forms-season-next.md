@@ -19,7 +19,8 @@ season form on Weeks; Camp words' Cancel).
    presses Enter in it; moving inside a field (a date's calendar, the "who" list's buttons) is not
    leaving it (`c/shoreshSavedMark` `leftField`). A tick or a dropdown is saved the moment it is
    chosen, as the tables' ticks are. The "who can do it" list is saved when the director leaves
-   it, not on every move. Leaving a field with nothing changed sends nothing.
+   it, not on every move. Leaving a field with nothing changed sends nothing. _Changed
+   2026-10-20 (choice 18): "who can do it" is ticks now, each saved the moment it is ticked._
 2. **Only the field that changed is sent** (the season, the program, an activity's rules), so a
    change someone else made to another field stays, **except fields the server checks against
    each other, which always go together, as the screen shows them**: the season's first and last
@@ -60,7 +61,8 @@ season form on Weeks; Camp words' Cancel).
    moving on, as a table row doesn't.
 6. **Deletes keep their questions.** Delete this program and Delete season stay as buttons, with
    the questions they had. Switching activities in Activity details asks before dropping a change
-   only when one is still unsaved, which now means it was refused.
+   only when one is still unsaved, which now means it was refused. _Since choice 19, switching
+   is opening another row's details; Close asks the same way._
 7. **The season's Status is gone from the screen (decision 26 (5)).** Planning / Active /
    Finished changed nothing a director could see, and the desktop has no season status.
    `Season__c.Status__c` stays in the data (never dropped from a package): a new or copied season
@@ -115,7 +117,9 @@ real-browser behaviour is still to be checked by hand (Known limits).
     a status, not an alert). Camp words' boxes no longer repeat the standard word as a
     placeholder. A screen that needs another first (Groups without Divisions, Fixed or Recurring
     without Time blocks) shows an empty state and a "Divisions →" button instead of a sentence;
-    Activity details with no activities shows "No Activities yet".
+    Activity details with no activities shows "No Activities yet". _Changed 2026-10-20 (choices
+    18 and 19): the ticks' label says "Who can do it: everyone"; with no activities there is no
+    row to open details from, so the table's own empty state is the only one._
 15. **Camp words over working words.** The left-out column on Fixed and Recurring activities is
     headed "Needs attention" (the desktop's term for these), not "Notes"; the group-move column
     "What changes", not "Moving". "Early in the week" groups its two fields ("How many", "By").
@@ -131,6 +135,41 @@ real-browser behaviour is still to be checked by hand (Known limits).
     on the left, the action on the right (Cancel · Create season, Cancel · Copy season, Cancel ·
     the ask's action, Keep separate · Merge, Keep theirs · Use yours), which every setup
     question already follows.
+
+18. **"Who can do it" is a list of ticks** (Greg, 2026-10-20: the leftover wording calls follow
+    the desktop; desktop `ActivitiesScreen.jsx` "Eligible Age Divisions" and its group ticks,
+    `FixedEventsScreen.jsx` "Age Divisions"). In Activity details and in the Recurring
+    activities table's "Who" (under the row, after Change) the two-column picker
+    (`lightning-dual-listbox`) is replaced by `lightning-checkbox-group`: one labelled group
+    (a fieldset with its legend, each tick reached with Tab and toggled with Space). Divisions
+    come first ("Unit: Juniors"), then groups with their division ("Bunk 1 (Juniors)"), as the
+    picker listed them. Nothing ticked still means everyone; the label says so ("Who can do it:
+    everyone", "Who: Lunch (Everyone in Main)"). In Activity details a tick saves at once, like
+    every other tick (choice 1); in the table, Who saves with its row, as before (ADR 0004).
+19. **Activity details open from the activity's row** (Greg, 2026-10-20; desktop
+    `ActivitiesScreen.jsx`, the row's Edit, "Edit Archery details"). Each saved row of the
+    Activities table has a **Details** button (named "Archery details" for screen readers,
+    `aria-expanded`); the details show below the table, headed "Archery details", with
+    **Close**. There is no activity picker any more, and nothing shows until a row is opened.
+    Opening moves the cursor to the heading; Close moves it back to the row's button. An
+    activity deleted meanwhile closes its details. Differences: the desktop opens a dialog with
+    Save and Cancel; here the details save as you go (choice 1), so they stay on the page under
+    the table, with Close.
+20. **Import last year recedes once the camp has setup** (Greg, 2026-10-20; desktop
+    `SeedScreen.jsx` and `navSections.js` `ADMIN_MENU_ITEMS` "Re-import last year"). On Roots, a
+    camp with no divisions, groups or time blocks (the desktop's `campHasSetupData`: its required
+    areas) sees **Import last year** as the one brand button, the first thing to do. Once it has
+    any, the same entry is a quiet text button, **Re-import last year**, after the other actions:
+    still there, not competing. Salesforce has no settings gear, so it stays on Roots rather than
+    moving to an admin menu. The import screen itself is unchanged.
+21. **Menu section titles are the desktop's** (`navSections.js` `NAV_SECTIONS`): **Camp**,
+    **Activities & Events** (in the camp's word for activities, "Periods & Events"), and
+    **Schedules** over Generated Schedule, Manual Build and the saved Schedules. Roots stays a
+    row of its own, untitled, as on the desktop.
+22. **Camp words' read-only reason is short and names no Salesforce machinery** (Greg,
+    2026-10-20; the desktop's "Only an admin can …", e.g. `TiersScreen.jsx`): "Only an admin can
+    change camp words." (no Shoresh Scheduler access) and "You can't edit this camp, so its words
+    are view only." (an admin narrowed access to the camp record). `CampLabels.whyCannotEdit`.
 
 ## Differences from the desktop
 
