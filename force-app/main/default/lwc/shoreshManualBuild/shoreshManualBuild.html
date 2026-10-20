@@ -113,6 +113,7 @@
           open-id={restoredId}
           terms={terms}
           busy={versionsBusy}
+          announce-with={announceText}
           onopen={handleRestore}
           onrename={handleRenameVersion}
           ondelete={handleDeleteVersion}
@@ -132,8 +133,14 @@
                 minute="2-digit"
               ></lightning-formatted-date-time
               >{publishedBy}
+              <!-- Changed since it was published: the "needs a look" dot, not more grey words. -->
               <template lwc:if={publishState.changedSince}>
-                <span data-id="changed-since"> · changed since</span>
+                <c-shoresh-dot
+                  class="changed-since"
+                  label="Changed since"
+                  focusable
+                  data-id="changed-since"
+                ></c-shoresh-dot>
               </template>
             </span>
           </template>
@@ -317,6 +324,7 @@
         notice={setupAsk.notice}
         announcement={setupAsk.announcement}
         said={setupAsk.said}
+        updated={setupAsk.updated}
         onupdate={handleSetupUpdate}
         onclose={handleSetupClose}
         data-id="setup-match"

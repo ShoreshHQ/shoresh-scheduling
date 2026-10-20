@@ -1,9 +1,5 @@
 <template>
   <div class="schedules" data-id="generated-schedule">
-    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
-      {announcement}
-    </div>
-
     <!-- One editor shell from the start, as in Manual Build: the week and program pickers sit in
          its toolbar before the week is generated too, so they never move when it is drawn. -->
     <c-shoresh-week-editor
@@ -84,8 +80,23 @@
         </div>
       </template>
 
-      <!-- Someone else saved this week first: nothing of ours was written. -->
-      <template lwc:if={conflict}>
+      <!-- Someone else saved this week first: nothing of ours was written. A refused Restore
+           (nothing was changed) is the quiet line Manual Build shows for it. -->
+      <template lwc:if={quietConflict}>
+        <p class="notice" slot="status" data-id="restore-refused">
+          <span>{conflict.message} ·</span>
+          <button
+            type="button"
+            class="slds-button tool-undo"
+            disabled={reloadDisabled}
+            onclick={handleReload}
+            data-id="reload"
+          >
+            Reload
+          </button>
+        </p>
+      </template>
+      <template lwc:elseif={conflict}>
         <div class="conflict" slot="status" role="alert" data-id="conflict">
           <p>{conflict.message}</p>
           <button
@@ -193,6 +204,7 @@
               versions={versions}
               terms={terms}
               busy={versionsBusy}
+              announce-with={announceText}
               onopen={handleRestore}
               onrename={handleRenameVersion}
               data-id="versions"
@@ -315,6 +327,7 @@
           open-id={restoredId}
           terms={terms}
           busy={versionsBusy}
+          announce-with={announceText}
           onopen={handleRestore}
           onrename={handleRenameVersion}
           ondelete={handleDeleteVersion}
@@ -334,8 +347,14 @@
                 minute="2-digit"
               ></lightning-formatted-date-time
               >{publishedBy}
+              <!-- Changed since it was published: the "needs a look" dot, not more grey words. -->
               <template lwc:if={publishState.changedSince}>
-                <span data-id="changed-since"> · changed since</span>
+                <c-shoresh-dot
+                  class="changed-since"
+                  label="Changed since"
+                  focusable
+                  data-id="changed-since"
+                ></c-shoresh-dot>
               </template>
             </span>
             <button
@@ -389,6 +408,7 @@
         notice={setupAsk.notice}
         announcement={setupAsk.announcement}
         said={setupAsk.said}
+        updated={setupAsk.updated}
         onupdate={handleSetupUpdate}
         onclose={handleSetupClose}
         data-id="setup-match"

@@ -919,6 +919,46 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    leaves as it was (`SetupMatchLocks`), and sends no view back for it (that screen reads its
    week again). Manual Build's behaviour and query bounds are unchanged.
 
+## Choices (keyboard, screen readers and words, 2026-10-20)
+
+From the look-and-feel review of the scheduling screens (findings the coordinator decides,
+following the desktop; Greg's part-A calls are in ADR 0010 §55 and §56). The same rules hold on
+Generated Schedule (ADR 0010 §57).
+
+1. **Focus lands somewhere useful after every tool, menu and dialog** (WCAG 2.4.3).
+   - After **Clear day**, **Copy day to…** and **Clear week**, focus goes to the line's **Undo**
+     (`tool-undo`): the most useful next stop, and the menu that ran it may be held while it
+     saves, which would drop focus to the page.
+   - After **Update to match setup** closes with nothing left to change, its button is gone with
+     the box: focus goes to the grid's cell, not to Publish (which may not be there) or the page.
+     With changes left, or after Cancel, it goes back to the button, as before.
+   - **Versions:** after a rename is saved or let go (Escape), focus goes to that version's
+     rename; the list's own focus rules (Restore, Escape, delete) are unchanged.
+   - The counters' list closes with **Escape** too, focus back to the counter that opened it.
+2. **One polite live region per screen**: the week editor's. Versions says _Delete …? Press
+   again to delete._ through it (`announceWith`); it keeps a region of its own only where the page
+   gives none (the Schedules page). The Update-to-match dialog keeps its region: it is modal, and a
+   screen reader in it hears only it.
+3. **Named controls, nothing by colour alone.** The Versions button is a plain button carrying
+   `aria-expanded` itself (a `lightning-button` may not pass it on). _Changed since_ after the
+   published date is the "needs a look" dot (its words on hover, focus and for screen readers)
+   rather than four small grey words; the published line is a shade darker (#5c6670, WCAG 1.4.3).
+   The setup-changed line's words stay `aria-hidden`: the dot beside it always gives them to
+   screen readers (`c-shoresh-dot` assistive text).
+4. **Fewer, camp words.** A day that can't be read says _Monday can't be shown. Nothing on it was
+   changed._ (Group and Activity View: _Can't be shown_), never the server's reason about how
+   the day is stored. _Already as you had it._ is _Already done._; _Redo skipped._ is _Redo
+   wasn't made._ The counters' list is headed by the counter whose lines it shows (generated
+   route), else _Still to place_. In Update to match setup, _Setup changed again, so nothing was
+   updated._ (the list shows what it would change now, in place), and **Cancel** reads **Close**
+   once an update was made in that opening. Kept as the desktop words them: _Auto-saved_,
+   _Accept_, _Rebuild this schedule?_ with _Saved to Versions first._, _Let the app propose one_
+   above _Generate a schedule_, _deleted since_.
+
+Checked by Jest: focus on the line's Undo after Clear day and Group View's Clear day; focus on
+the grid after Update to match setup leaves nothing; the dialog's Close; the day-problem words;
+Versions' button, rename focus and `announceWith`; the counters' heading and Escape.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's

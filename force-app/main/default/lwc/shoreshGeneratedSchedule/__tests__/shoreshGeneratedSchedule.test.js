@@ -543,11 +543,67 @@ describe("c-shoresh-generated-schedule", () => {
     });
     action(element, "TryAnother").click();
     await settle(element);
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Flagpole stays where it is set up."
+    // What didn't happen first, then Shoresh's own reason.
+    expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
+      "Option 2 wasn't saved. Nothing was changed. Flagpole stays where it is set up."
     );
     expect(cells(element).map((c) => c.textContent)).toEqual(before);
     expect(q(element, '[data-id="option"]').value).toBe("1");
+  });
+
+  it("Salesforce's own text never reaches the director: it says what didn't happen, then Try again", async () => {
+    const element = await render();
+    await generate(element);
+    saveWeekOnServer.mockRejectedValueOnce({
+      body: {
+        message:
+          "Insert failed. First exception on row 0; first error: FIELD_CUSTOM_VALIDATION_EXCEPTION"
+      }
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    action(element, "Rebuild").click();
+    await flush();
+    q(element, '[data-id="confirm-go"]').click();
+    await settle(element);
+    expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
+      "Week 1 wasn't rebuilt. Nothing was changed. Try again."
+    );
+    console.error.mockRestore();
+  });
+
+  it("a week that can't be opened says which, in camp words", async () => {
+    getInputs.mockRejectedValue({
+      body: { message: "Script-thrown exception" }
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const element = createElement("c-shoresh-generated-schedule", {
+      is: ShoreshGeneratedSchedule
+    });
+    element.terms = terms;
+    element.setup = SETUP;
+    document.body.appendChild(element);
+    await flush();
+    expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
+      "Week 1 couldn't be opened. Nothing was changed. Try again."
+    );
+    console.error.mockRestore();
+  });
+
+  it("a build is said when it ends, from the screen's one live region", async () => {
+    const element = await render();
+    await generate(element);
+    saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
+    action(element, "TryAnother").click();
+    await settle(element);
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent).toMatch(
+      /^\s*Option 2\. Filled \d+ of \d+\.\s*$/
+    );
+    // One polite region on the screen: the editor's (Versions says things through it).
+    expect(element.shadowRoot.querySelectorAll("[aria-live]")).toHaveLength(0);
+    expect(findAll(element, "[aria-live]")).toHaveLength(1);
+    const versions = q(element, "c-shoresh-versions");
+    expect(versions.shadowRoot.querySelector("[aria-live]")).toBeNull();
   });
 
   it("a week the engine can't build says so and saves nothing", async () => {

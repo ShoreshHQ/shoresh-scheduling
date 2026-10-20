@@ -1118,8 +1118,8 @@ recommended, 2026-10-20; the rest is the coordinator's, following the desktop).
       over. Rebuild keeps its confirm (the desktop's `ConfirmRegenModal`). No server change: the
       version's Id already came back with every save (`saveWeek` `versionId`).
 
-Not in this change: Generated's own "setup changed" marks and Update to match setup (a separate
-piece), and its second announcement region.
+Not in this change: Generated's own "setup changed" marks and Update to match setup (§56), and
+its second announcement region (§57).
 
 ## Tests (same layout)
 
@@ -1193,10 +1193,44 @@ no lock added; a Generated version is neither compared nor updated. Jest
 before the first Generate, the box first in the status slot (accessible), nothing when the week
 matches, the reason with no button, the list read fresh with builds, Lock, Publish, Versions,
 pickers and edits held, one change (week read again, list left open, said in the dialog, Versions
-read again), one version per opening, Update all (focus to Publish, or back to the button when
+read again), one version per opening, Update all (focus to the grid, §57, or back to the button when
 changes are left), Cancel, both refusals, a failed update and a failed read, reads after Start
 over and after hand edits, no reload from the window while the list is open or updating, and the
 season's read done once the list closes.
+
+## Choices (keyboard, screen readers and words, 2026-10-20)
+
+The rest of the look-and-feel review, as on Manual Build (ADR 0008, "keyboard, screen readers
+and words"), plus what is Generated's own:
+
+57. **Errors, focus and announcements.**
+    - **Every failure names what didn't happen**, then Shoresh's own reason or _Try again._
+      (`failed()`, ADR 0001 point 5): _Week 1 couldn't be opened. Nothing was changed._, _Week 1
+      wasn't rebuilt._ / _Option 2 wasn't saved._ / _The open cells weren't filled._ / _Week 1
+      wasn't started over._ (each _Nothing was changed._), _Monday wasn't locked._, _Before the
+      trip wasn't saved / restored / deleted / renamed._, _Week 1 was restored (updated), but
+      couldn't be shown just now._ `c/shoreshGeneratedWeek` now returns only the why
+      (`reasonOf`) for a refusal, and the screen puts what didn't happen in front of it.
+    - **One live region**: the screen's own is gone; everything is said through the editor's
+      (drawn from the start, §55), Versions' too.
+    - **A build is said when it ends**: _Week 1 rebuilt. Filled 34 of 36._, _Option 2. Filled …_,
+      _Started Week 1 over. Filled 0 of 36._ (failures are the alert).
+    - **After Start over, focus goes to its line's Undo** (as after Clear week on Manual Build);
+      after that Undo, back to Start over (§55).
+    - **After Update to match setup** closes with nothing left, focus goes to the grid's cell
+      (the cell last reached), not Publish.
+    - **A refused Restore** (or Start over's Undo) is the quiet line Manual Build shows,
+      _Someone else changed this week since you opened it, so nothing was restored. · Reload_,
+      read out once, focus on Reload; builds still wait until Reload. A conflict on a save is
+      still the alert box.
+
+## Tests (keyboard, screen readers and words)
+
+Jest: a refused Try another and a platform failure on Rebuild read subject first (the second
+_Try again._, no Salesforce text); a week that can't be opened says which; Lock's refusal names
+the cell; a build is said when it ends, and the screen has one live region (none of its own, none
+in Versions); Start over puts focus on its Undo; the refused Restore and Undo lines; focus to the
+grid after Update all leaves nothing; `saveWeek` gives _Try again._ for platform text.
 
 ## Choices that are hard to undo after release
 

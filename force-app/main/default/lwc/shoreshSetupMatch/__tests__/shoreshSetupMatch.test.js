@@ -112,6 +112,14 @@ describe("c-shoresh-setup-match", () => {
     expect(heard).toEqual([["k2"], ["k1", "k2"]]);
   });
 
+  it("says Close, not Cancel, once an update was made in this opening", async () => {
+    const { element } = await render();
+    expect(q(element, '[data-id="close"]').textContent.trim()).toBe("Cancel");
+    element.updated = true;
+    await flush();
+    expect(q(element, '[data-id="close"]').textContent.trim()).toBe("Close");
+  });
+
   it("Cancel and Escape close it", async () => {
     const { element, heard } = await render();
     q(element, '[data-id="close"]').click();

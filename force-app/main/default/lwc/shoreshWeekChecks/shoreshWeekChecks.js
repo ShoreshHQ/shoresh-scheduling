@@ -243,6 +243,26 @@ export default class ShoreshWeekChecks extends LightningElement {
     this.setFilter(null);
   }
 
+  /**
+   * The list's heading: the counter's own name when it shows one counter's lines (generated
+   * route), otherwise "Still to place" (every line).
+   */
+  get listHeading() {
+    const counter =
+      this.isGenerated && this.filterKind
+        ? this.counterButtons.find((c) => c.key === this.filterKind)
+        : null;
+    return counter ? counter.label : "Still to place";
+  }
+
+  /** Escape closes the list, as Close does (focus back to what opened it). */
+  handleListKeyDown(event) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      this.handleCloseList();
+    }
+  }
+
   /** Close: the list goes, and focus goes back to the counter that opened it. */
   handleCloseList() {
     this.listOpen = false;

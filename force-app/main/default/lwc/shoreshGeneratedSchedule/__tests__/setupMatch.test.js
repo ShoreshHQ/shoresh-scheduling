@@ -7,7 +7,7 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find } from "shoresh-jest/week-editor";
+import { expectFocusInGrid, find } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
@@ -337,7 +337,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     });
   });
 
-  it("Update all makes every change listed, closes the list, and focus goes to Publish once nothing is left", async () => {
+  it("Update all makes every change listed, closes the list, and focus goes to the grid once nothing is left", async () => {
     const element = await render();
     await openUpdate(element);
     updateToMatchSetup.mockResolvedValue({ refused: null, kept: true });
@@ -358,8 +358,9 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expect(dialog(element)).toBeNull();
     expect(box(element)).toBeNull();
     expect(q(element, "c-shoresh-week-editor").restoring).toBe(false);
-    const focused = element.shadowRoot.activeElement;
-    expect(focused && focused.dataset.id).toBe("publish");
+    // Update to match setup is gone with the box: the grid's cell, not Publish or the page.
+    await flush();
+    expectFocusInGrid(element);
   });
 
   it("Update all with changes left: the box stays and focus goes back to Update to match setup", async () => {
@@ -409,7 +410,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(inDialog(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again since you looked, so nothing was updated. This is what it would change now."
+      "Setup changed again, so nothing was updated."
     );
     expect(rowsIn(element)).toEqual([
       "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"

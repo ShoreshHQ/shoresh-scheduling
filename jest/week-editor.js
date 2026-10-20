@@ -26,3 +26,22 @@ export function findAll(element, selector) {
     ...(root ? root.querySelectorAll(selector) : [])
   ];
 }
+
+/** The grid cell keyboard focus is on (its key), or null when focus isn't in the editor's grid. */
+export function focusedCellKey(element) {
+  const editor = element.shadowRoot.querySelector("c-shoresh-week-editor");
+  if (!editor || element.shadowRoot.activeElement !== editor) {
+    return null;
+  }
+  const grid = editor.shadowRoot.activeElement;
+  if (!grid || !grid.dataset || grid.dataset.id !== "edit-grid") {
+    return null;
+  }
+  const cell = grid.shadowRoot.activeElement;
+  return cell && cell.dataset ? cell.dataset.cell || null : null;
+}
+
+/** Keyboard focus is on a cell of the editor's grid (not the page, not a toolbar button). */
+export function expectFocusInGrid(element) {
+  expect(focusedCellKey(element)).not.toBeNull();
+}

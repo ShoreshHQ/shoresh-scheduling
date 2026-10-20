@@ -692,9 +692,11 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     await flush();
     await useYoursSendsWhatWasShown(element);
-    expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Redo wasn't made."
+    );
     expect(q(element, '[data-id="announce"]').textContent).toBe(
-      "Placed Swim · Bunk 1 · Monday · Period 2. Redo skipped."
+      "Placed Swim · Bunk 1 · Monday · Period 2. Redo wasn't made."
     );
   });
 
@@ -781,7 +783,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     );
   });
 
-  it("Redo skipped is kept through a second question", async () => {
+  it("Redo wasn't made is kept through a second question", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
     const placing = later();
     saveSlots.mockReturnValueOnce(placing.promise);
@@ -801,7 +803,9 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     await useYoursSendsWhatWasShown(element);
     await useYoursSendsWhatWasShown(element);
-    expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Redo wasn't made."
+    );
   });
 
   it("an Undo after the screen refreshed to someone else's change asks before replacing it", async () => {
@@ -960,7 +964,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(q(element, '[data-id="notice"]')).toBeNull();
   });
 
-  it("Redo skipped is said once, and not again with the next save", async () => {
+  it("Redo wasn't made is said once, and not again with the next save", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
     const placing = later();
     saveSlots.mockReturnValueOnce(placing.promise);
@@ -984,7 +988,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     placing.answer({ conflicts: [0], schedule: before });
     await flush();
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
-      "Placed Swim · Bunk 1 · Monday · Period 2. Redo skipped."
+      "Placed Swim · Bunk 1 · Monday · Period 2. Redo wasn't made."
     );
     cleared.answer({
       conflicts: [],
@@ -992,13 +996,15 @@ describe("c-shoresh-manual-build: moving things", () => {
     });
     await flush();
     expect(saveSlots).toHaveBeenCalledTimes(4);
-    expect(q(element, '[data-id="notice"]').textContent).toBe("Redo skipped.");
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Redo wasn't made."
+    );
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
       "Cleared Bunk 2 · Monday · Period 2"
     );
   });
 
-  it("Already as you had it is said once, not with the next save", async () => {
+  it("Already done is said once, not with the next save", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,,", "1,2,"]));
     const placing = later();
     const clearing = later();
@@ -1012,9 +1018,7 @@ describe("c-shoresh-manual-build: moving things", () => {
     const placed = schedule([FLAGPOLE, SWIM, SOCCER], ["1,2,", "1,3,"]);
     placing.answer({ conflicts: [0], schedule: placed });
     await flush();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Already as you had it."
-    );
+    expect(q(element, '[data-id="notice"]').textContent).toBe("Already done.");
     clearing.answer({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SWIM], ["1,2,", "1,,"])

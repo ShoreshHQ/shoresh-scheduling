@@ -105,6 +105,10 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(runs.every((run) => run.day === "2026-06-29")).toBe(true);
     expect(runs.map((run) => run.after)).toEqual([["", ""], [""]]);
     expect(toolNotice(element)).toBe("Cleared Monday · Undo");
+    // Focus goes to the line's Undo: the most useful next stop.
+    expect(q(element, "c-shoresh-week-editor").shadowRoot.activeElement).toBe(
+      q(element, '[data-id="tool-undo"]')
+    );
     // Undo, from the line: one step puts every bunk's day back.
     q(element, '[data-id="tool-undo"]').click();
     await flush();
@@ -141,6 +145,10 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       })
     ]);
     expect(toolNotice(element)).toBe("Cleared Bunk 1 · Tuesday · Undo");
+    // After the menu, focus is on the line's Undo too (the menu may be held while it saves).
+    expect(q(element, "c-shoresh-week-editor").shadowRoot.activeElement).toBe(
+      q(element, '[data-id="tool-undo"]')
+    );
     q(element, '[data-id="clear-week"]').click();
     await flush();
     expect(new Set(sentRuns(1).map((run) => run.day))).toEqual(
@@ -374,6 +382,10 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(q(element, '[data-id="clear-day"]')).toBeNull();
     expect(q(element, '[data-id="copy-day"]')).toBeNull();
     expect(q(element, '[data-id="clear-week"]')).not.toBeNull();
+    // Said in camp words: not why it can't be read (how the day is stored).
+    const said = q(element, '[role="alert"]').textContent.trim();
+    expect(said).toBe("Monday can't be shown. Nothing on it was changed.");
+    expect(said).not.toContain("unreadable");
   });
 
   it("the line's Undo is named for what it takes back", async () => {

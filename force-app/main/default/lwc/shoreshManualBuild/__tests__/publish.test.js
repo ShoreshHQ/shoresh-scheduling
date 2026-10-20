@@ -276,7 +276,10 @@ describe("c-shoresh-manual-build: Publish", () => {
       line.querySelector("lightning-formatted-date-time").previousSibling
         .textContent
     ).toBe("Published from Generated Schedule ");
-    expect(line.textContent).toContain(" · changed since");
+    // Changed since: the "needs a look" dot, its words for screen readers and on hover or focus.
+    expect(line.querySelector('[data-id="changed-since"]').label).toBe(
+      "Changed since"
+    );
   });
 
   it("a week with no days offers no Publish", async () => {

@@ -10,7 +10,9 @@ import { LightningElement, api } from "lwc";
  *
  * changes: SetupMatch.Change rows. busy: an update is on its way (the buttons, Cancel and Escape
  * wait: the update's answer is for the list as it was; focus waits on the list itself, inside the
- * dialog). notice: a line above the list ("Setup changed again since you looked…").
+ * dialog). notice: a line above the list ("Setup changed again, so nothing was updated.").
+ * updated: an update was made in this opening, so Cancel says Close (cancelling would read as
+ * taking back what was updated).
  * announcement: words for screen readers only ("Updated to match setup."). Both are read out
  * from a live region that is always in the dialog; said: change it to have them read out again,
  * even the same words as last time (a second update of one row).
@@ -24,6 +26,7 @@ export default class ShoreshSetupMatch extends LightningElement {
   @api notice;
   @api announcement;
   @api said = 0;
+  @api updated = false;
 
   focused = false;
   // Focus was moved to the list while an update was on its way.
@@ -36,6 +39,10 @@ export default class ShoreshSetupMatch extends LightningElement {
   get spoken() {
     const words = this.notice || this.announcement || "";
     return words && this.said % 2 ? `${words}\u00a0` : words;
+  }
+
+  get closeLabel() {
+    return this.updated ? "Close" : "Cancel";
   }
 
   get rows() {

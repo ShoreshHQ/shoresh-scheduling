@@ -135,7 +135,7 @@ function isTimeRange(block) {
 
 function blockRows(blocks) {
   if (!blocks.length) {
-    // No day could be read: one empty row, so each day's "Could not be read" still shows.
+    // No day could be read: one empty row, so each day's "Can't be shown" still shows.
     return [
       {
         key: "none",
@@ -209,18 +209,22 @@ function cell(key, at, item, t) {
   };
 }
 
-/** A day that could not be read, in Group or Activity View: its whole column says so. */
-function problemCell(dayIndex, rowCount, problem) {
+/**
+ * A day that could not be read, in Group or Activity View: its whole column says so, in camp
+ * words. Why (the day's problem: the server's reason, about how the day is stored) is no help
+ * to a director and isn't shown.
+ */
+function problemCell(dayIndex, rowCount) {
   return {
     key: `${dayIndex}-problem`,
     row: 0,
     column: dayIndex,
     length: Math.max(rowCount, 1),
     style: place(0, dayIndex, Math.max(rowCount, 1)),
-    text: "Could not be read",
+    text: "Can't be shown",
     className: "cell cell_problem",
     note: null,
-    title: problem
+    title: null
   };
 }
 
@@ -269,7 +273,7 @@ export function groupGrid(view, groupKey, t) {
   const columns = days(view).map((d) => column(d.key, d.label, d.sub, false));
   (view.days || []).forEach((day, dayIndex) => {
     if (day.problem) {
-      cells.push(problemCell(dayIndex, blocks.length, day.problem));
+      cells.push(problemCell(dayIndex, blocks.length));
       return;
     }
     const g = day.groups.findIndex((grp) => refKey(grp) === groupKey);
@@ -346,7 +350,7 @@ export function activityGrid(view, activityId) {
   const cells = [];
   (view.days || []).forEach((day, dayIndex) => {
     if (day.problem) {
-      cells.push(problemCell(dayIndex, blocks.length, day.problem));
+      cells.push(problemCell(dayIndex, blocks.length));
       return;
     }
     const names = new Map();

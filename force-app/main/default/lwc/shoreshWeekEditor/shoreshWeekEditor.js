@@ -157,6 +157,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   toolNotice = null;
   // After the line's Undo, focus goes to the toolbar's (the line itself goes away).
   focusUndoAfterRender = false;
+  // After a day or week tool, focus goes to its line's Undo.
+  focusToolUndoAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -582,10 +584,14 @@ export default class ShoreshWeekEditor extends LightningElement {
       className: day.index === this.dayIndex ? "pill pill_on" : "pill"
     }));
   }
+  /**
+   * A day that can't be read, in camp words. Why (the server's reason, about how the day is
+   * stored) is no help to a director and isn't shown; nothing on the day is changed.
+   */
   get dayProblem() {
     const day = this.schedule && this.schedule.days[this.dayIndex];
     return day && day.problem
-      ? `This day could not be read: ${day.problem}.`
+      ? `${dayLabel(day.dateValue).label} can't be shown. Nothing on it was changed.`
       : null;
   }
   get dailyGridLabel() {
@@ -1559,7 +1565,7 @@ export default class ShoreshWeekEditor extends LightningElement {
         }
       } else {
         this.reportError(null);
-        // A note that came with this change (Redo skipped.) is added to the line. Anything
+        // A note that came with this change (Redo wasn't made.) is added to the line. Anything
         // already there (an earlier change that couldn't be made) stays until the director's
         // next change, and is said again with the first save after it, which would otherwise
         // talk over it.
@@ -1973,6 +1979,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       entry.extra = said;
     }
     this.showToolNotice(label, said, this.stepSeq);
+    // Its Undo is the most useful next stop, and the menu or button that ran it may be held
+    // while it saves (which drops focus).
+    this.focusToolUndoAfterRender = true;
   }
 
   showToolNotice(label, said, stepId) {
@@ -2486,9 +2495,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     if (!made.runs.length) {
       this.sayOnce(
-        entry.note
-          ? `Already as you had it. ${entry.note}`
-          : "Already as you had it."
+        entry.note ? `Already done. ${entry.note}` : "Already done."
       );
       return;
     }
@@ -2633,7 +2640,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.lockTarget(entry.stepId, entry.kind, entry.seen) ||
       entry.locksTarget;
     const note = dropped.some((w) => w.kind === "redo")
-      ? "Redo skipped."
+      ? "Redo wasn't made."
       : entry.note || null;
     this.queue = [
       {
@@ -2675,6 +2682,13 @@ export default class ShoreshWeekEditor extends LightningElement {
           : this.template.querySelector('[data-id="redo"]');
       if (target) {
         target.focus();
+      }
+    }
+    if (this.focusToolUndoAfterRender) {
+      this.focusToolUndoAfterRender = false;
+      const toolUndo = this.template.querySelector('[data-id="tool-undo"]');
+      if (toolUndo) {
+        toolUndo.focus();
       }
     }
     if (this.focusAfterRender) {

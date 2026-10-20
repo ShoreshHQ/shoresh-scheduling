@@ -41,10 +41,17 @@
       </template>
     </div>
     <template lwc:if={listOpen}>
-      <div class="counter-list" id="counter-list" data-id="counter-list">
-        <div class="counter-list-head">Still to place</div>
+      <div
+        class="counter-list"
+        id="counter-list"
+        data-id="counter-list"
+        onkeydown={handleListKeyDown}
+      >
+        <div class="counter-list-head" data-id="list-heading">
+          {listHeading}
+        </div>
         <template lwc:if={openLines}>
-          <ul aria-label="Still to place">
+          <ul aria-label={listHeading}>
             <template for:each={openLines} for:item="line">
               <li key={line.key} class={line.className}>
                 <button
