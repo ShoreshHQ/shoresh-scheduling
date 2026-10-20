@@ -688,9 +688,117 @@ describe("c-shoresh-editable-table", () => {
       expect(deletes.length).toBe(2);
       expect(deletes[0].alternativeText).toBe("Delete Period 1");
       deletes[0].click();
-      expect(bareRecord(handler.mock.calls[0][0].detail)).toEqual({
+      const { onDeleted, ...detail } = handler.mock.calls[0][0].detail;
+      expect(bareRecord(detail)).toEqual({
         recordId: "a1",
         name: "Period 1"
+      });
+      expect(typeof onDeleted).toBe("function");
+    });
+
+    describe("once the screen has deleted a row", () => {
+      const THREE = [
+        ...ROWS,
+        { ...ROWS[1], Id: "a3", Name: "Swim", SortOrder__c: 3 }
+      ];
+
+      /** Clicks the row's delete; returns the screen's onDeleted. */
+      async function askToDelete(element, rowIndex) {
+        const handler = jest.fn();
+        element.addEventListener("delete", handler);
+        const deletes =
+          element.shadowRoot.querySelectorAll('[data-id="delete"]');
+        deletes[rowIndex].click();
+        await flush();
+        return handler.mock.calls[0][0].detail.onDeleted;
+      }
+
+      /** Reloads without the row, as the screen does, and lists what took the focus. */
+      async function reloadWithout(element, rowsLeft, onDeleted) {
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        element.rows = nsRecord(rowsLeft);
+        onDeleted();
+        await flush();
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+        );
+        focus.mockRestore();
+        return focused;
+      }
+
+      const live = (element) =>
+        element.shadowRoot
+          .querySelector('[data-id="announce"]')
+          .textContent.trim();
+
+      it("says so, and moves the cursor to the next row", async () => {
+        const element = render({ columns: COLUMNS, rows: THREE });
+        await flush();
+        const onDeleted = await askToDelete(element, 1);
+        const focused = await reloadWithout(
+          element,
+          [THREE[0], THREE[2]],
+          onDeleted
+        );
+        expect(live(element)).toBe("Deleted Lunch");
+        expect(focused).toEqual([`row-a3:${nsName("Name")}`]);
+      });
+
+      it("the last saved row: the cursor moves to the row above", async () => {
+        const element = render({ columns: COLUMNS, rows: THREE });
+        await flush();
+        const onDeleted = await askToDelete(element, 2);
+        const focused = await reloadWithout(
+          element,
+          [THREE[0], THREE[1]],
+          onDeleted
+        );
+        expect(live(element)).toBe("Deleted Swim");
+        expect(focused).toEqual([`row-a2:${nsName("Name")}`]);
+      });
+
+      it("the only row: the cursor moves to the blank row", async () => {
+        const element = render({ columns: COLUMNS, rows: [ROWS[0]] });
+        await flush();
+        const onDeleted = await askToDelete(element, 0);
+        const focused = await reloadWithout(element, [], onDeleted);
+        expect(live(element)).toBe("Deleted Period 1");
+        expect(focused).toEqual([`add:${nsName("Name")}`]);
+      });
+
+      it("the cursor waits until the row is gone from the table", async () => {
+        const element = render({ columns: COLUMNS, rows: THREE });
+        await flush();
+        const onDeleted = await askToDelete(element, 0);
+        let focus = jest.spyOn(HTMLElement.prototype, "focus");
+        onDeleted();
+        await flush();
+        expect(live(element)).toBe("Deleted Period 1");
+        expect(focus).not.toHaveBeenCalled();
+        focus.mockRestore();
+        focus = jest.spyOn(HTMLElement.prototype, "focus");
+        element.rows = nsRecord(THREE.slice(1));
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+        );
+        focus.mockRestore();
+        expect(focused).toEqual([`row-a2:${nsName("Name")}`]);
+      });
+
+      it("a delete that was cancelled moves nothing when the rows reload", async () => {
+        const element = render({ columns: COLUMNS, rows: THREE });
+        await flush();
+        await askToDelete(element, 0);
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        element.rows = nsRecord([...THREE]);
+        await flush();
+        element.rows = nsRecord(THREE.slice(1));
+        await flush();
+        expect(focus).not.toHaveBeenCalled();
+        focus.mockRestore();
+        expect(live(element)).toBe("");
       });
     });
 
@@ -2476,6 +2584,27 @@ describe("c-shoresh-editable-table", () => {
         expect(tags(elements[i])).toEqual([same, same, false]);
       });
     });
+  });
+
+  it("marks each date box for the date box style (calendar button at least 24 by 24)", async () => {
+    const element = render({
+      objectApiName: "Week__c",
+      columns: [
+        { fieldName: "Name", label: "Name", type: "text", required: true },
+        { fieldName: "StartDate__c", label: "Start date", type: "date" }
+      ],
+      rows: [{ Id: "w1", Name: "Week 1", StartDate__c: "2027-06-28" }]
+    });
+    await flush();
+    const dates = [
+      ...element.shadowRoot.querySelectorAll(
+        `[data-field="${nsName("StartDate__c")}"]`
+      )
+    ];
+    expect(dates.length).toBe(2);
+    dates.forEach((input) =>
+      expect(input.classList.contains("shoresh-date")).toBe(true)
+    );
   });
 
   describe("overlapping weeks", () => {

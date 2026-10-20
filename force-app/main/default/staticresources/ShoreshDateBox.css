@@ -1,0 +1,13 @@
+/*
+ * The calendar button in Salesforce's date box (lightning-input type="date"), at least 24 by 24
+ * pixels (WCAG 2.5.8, axe target-size). The button lives inside Salesforce's component, where a
+ * component's own CSS can't reach, so the camp setup page loads this once (loadStyle). Only date
+ * boxes Shoresh marks with the shoresh-date class change; Salesforce's date boxes elsewhere stay
+ * as they are. The button keeps its place: the box's right padding (2rem) holds 1.5rem plus the
+ * 0.5rem gap SLDS leaves at the right, and the icon stays its own size in the middle.
+ * ADR 0013 choice 24.
+ */
+.shoresh-date .slds-input__icon_right .slds-button_icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}

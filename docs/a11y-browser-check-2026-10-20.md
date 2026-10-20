@@ -44,6 +44,28 @@ line's Undo after Clear day, Copy day and Start over, as ADR 0008 and 0010 say; 
 locks, publishing and unpublishing are all announced; every enabled toolbar action on both
 schedule screens is reachable with Tab; axe found nothing else on any screen.
 
+## Follow-up, 2026-10-20: setup screens (items 4 and 5)
+
+Fixed in branch `fix-setup-browser-a11y` (ADR 0013 choices 23 and 24) and checked again by the
+same script, on code `49cce59` deployed to the test org, Week 30 of the check's camp, with no CI
+run or other session using the org. Every setup-screen step passed; the run's other failures
+were items 1 to 3 (Manual Build, Generated Schedule, Versions, Update to match setup), which
+this change does not touch.
+
+| Screen           | Step                                    | What happened now                                             |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------- |
+| Weeks            | axe                                     | No violations (22 rules passed); target-size no longer fails. |
+| New season       | axe                                     | No violations (20 rules passed).                              |
+| Copy this season | axe                                     | No violations (22 rules passed).                              |
+| Season details   | axe                                     | No violations (22 rules passed).                              |
+| Fixed activities | Deleting Assembly: it is said           | Said: "Deleted Assembly".                                     |
+| Fixed activities | After deleting Assembly: focus not lost | Focus on the next row's Name box.                             |
+
+Still as before: the delete question is Salesforce's own confirm box, not Shoresh's question
+with camp words (the first half of item 4). The script now goes back to the menu with Shift+Tab
+first: with the cursor staying in the table after a delete, and the camp gaining a week each
+run, going forward only ran out of Tab presses before reaching it.
+
 ## Failed
 
 | Screen             | Step                                                    | What happened                                                                                                                                                                        |

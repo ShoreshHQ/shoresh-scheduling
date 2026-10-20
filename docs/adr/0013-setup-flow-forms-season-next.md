@@ -171,6 +171,27 @@ real-browser behaviour is still to be checked by hand (Known limits).
     change camp words." (no Shoresh Scheduler access) and "You can't edit this camp, so its words
     are view only." (an admin narrowed access to the camp record). `CampLabels.whyCannotEdit`.
 
+### From the real-browser check (added 2026-10-20)
+
+`docs/a11y-browser-check-2026-10-20.md`, follow-up items 4 and 5; the passing re-run is recorded
+there.
+
+23. **A deleted row is said, and the cursor moves to its neighbour.** After **OK** on a setup
+    table row's delete, the table's live region says "Deleted Assembly" and the cursor goes to the
+    first box of the row that took its place, else the row above, else the blank row (it used to
+    fall to the page with the row's delete button). The table only moves it once the season has
+    been read again and the row is gone; a cancelled or refused delete leaves the cursor on the
+    delete button (ADR 0012 choice 5). Every setup table, on its own screen or in a program
+    card, deletes through the same path (`shoreshCampSetup.askAndDelete` calls the table's
+    `onDeleted`). The question itself is still Salesforce's confirm box.
+24. **Date boxes' calendar buttons are at least 24 by 24 pixels** (WCAG 2.5.8; axe
+    `target-size`) on Weeks, New season, Copy this season and the season's own dates. The button
+    is inside Salesforce's date box, out of reach of a component's own CSS, so the camp setup
+    page loads one small stylesheet (static resource `ShoreshDateBox`) that sizes the button only
+    in date boxes Shoresh marks `shoresh-date`; Salesforce's date boxes elsewhere are untouched.
+    The icon keeps its size and the box keeps its SLDS padding, which already holds the larger
+    button.
+
 ## Differences from the desktop
 
 - The desktop's last setup screen leads to a neutral "Schedule →" landing that picks neither
@@ -192,5 +213,9 @@ real-browser behaviour is still to be checked by hand (Known limits).
 
 - Whether focus and the spoken "Saved" behave in a real browser with a screen reader is checked
   by hand in the test org, not by Jest (UI/UX pass, part C). The same goes for choices 8-12.
+- Choice 24 relies on Salesforce drawing its date box without a real (native) shadow root, as
+  it does today: the page's stylesheet reaches the button only that way. If Salesforce changes
+  that, the button goes back to its own smaller size (it still works), and the real-browser
+  check's axe step reports it again.
 - Two people editing the same season, program, or activity details field: the last save wins,
   as before this change (only the tables have the compare and set of ADR 0011 choice 5).

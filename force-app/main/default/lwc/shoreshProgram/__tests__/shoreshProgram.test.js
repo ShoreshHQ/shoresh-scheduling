@@ -553,18 +553,22 @@ describe("c-shoresh-program", () => {
     table.dispatchEvent(
       new CustomEvent("save", { detail: { records: [{ Id: "t1" }] } })
     );
+    const onDeleted = jest.fn();
     table.dispatchEvent(
       new CustomEvent("delete", {
-        detail: { recordId: "t1", name: "Period 1" }
+        detail: { recordId: "t1", name: "Period 1", onDeleted }
       })
     );
     expect(bareRecord(saves.mock.calls[0][0].detail)).toEqual({
       records: [{ Id: "t1" }]
     });
-    expect(bareRecord(deletes.mock.calls[0][0].detail)).toEqual({
+    // onDeleted goes up with it, so the table can say so and move the cursor.
+    const { onDeleted: passed, ...detail } = deletes.mock.calls[0][0].detail;
+    expect(bareRecord(detail)).toEqual({
       recordId: "t1",
       name: "Period 1"
     });
+    expect(passed).toBe(onDeleted);
   });
 
   it("asks to delete the whole program", async () => {
