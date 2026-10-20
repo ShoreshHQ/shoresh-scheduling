@@ -159,11 +159,8 @@ describe("locks on the Generated Schedule screen", () => {
     expect(cellAt(element, "0-2").querySelector(".cell-lock")).not.toBeNull();
     // Bunk 1: 3 periods a day, Bunk 2: 2 mornings; Swim twice: 2 of 9 (10 less the locked one).
     expect(filled(element)).toContain("2 of 9");
-    const openCount = q(
-      element,
-      "c-shoresh-week-checks"
-    ).shadowRoot.querySelector('[data-counter="open"] .count').textContent;
-    expect(openCount).toBe("7");
+    // Not Open: Fill the open cells passes it over (its dot says nothing about a gap either).
+    expect(cellAt(element, "0-2").querySelector("c-shoresh-dot")).toBeNull();
   });
 
   it("the Lock menu offers the day shown, then the cell focus reached, its bunk's day too", async () => {
@@ -270,7 +267,7 @@ describe("locks on the Generated Schedule screen", () => {
     );
   });
 
-  it("the confirms speak of locks only when there are some", async () => {
+  it("Rebuild's confirm speaks of locks only when there are some; Start over asks nothing", async () => {
     const element = await render(savedWeek([[",1,,", ",,,"]]));
     q(element, '[data-action="Rebuild"]').click();
     await flush();
@@ -279,11 +276,16 @@ describe("locks on the Generated Schedule screen", () => {
     );
     q(element, '[data-id="confirm-cancel"]').click();
     await flush();
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: SCHEDULE,
+      revision: "2026-06-29:2|2026-06-30:2",
+      locks: []
+    });
     q(element, '[data-action="StartOver"]').click();
     await flush();
-    expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
-      "Clears the 2 activity cells and every lock in Week 1. Fixed activities and recurring activities stay."
-    );
+    expect(q(element, '[data-id="confirm"]')).toBeNull();
+    await until(() => saveWeekOnServer.mock.calls.length > 0);
   });
 
   it("Start over: the server clears the locks, and none show after", async () => {
@@ -295,8 +297,6 @@ describe("locks on the Generated Schedule screen", () => {
       locks: []
     });
     q(element, '[data-action="StartOver"]').click();
-    await flush();
-    q(element, '[data-id="confirm-go"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
     expect(saveWeekOnServer.mock.calls[0][0].request.action).toBe("StartOver");
@@ -313,8 +313,6 @@ describe("locks on the Generated Schedule screen", () => {
       locks: []
     });
     q(element, '[data-action="StartOver"]').click();
-    await flush();
-    q(element, '[data-id="confirm-go"]').click();
     await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
     saveWeekOnServer.mockResolvedValueOnce({
@@ -384,16 +382,22 @@ describe("locks on the Generated Schedule screen", () => {
     expect(menuLabels(element)).toEqual(["Lock Monday"]);
   });
 
-  it("Start over with only locks on Open cells says the locks go", async () => {
+  it("Start over with only locks on Open cells clears them too", async () => {
     // Nothing placed but Flagpole; Bunk 1's Period 2 locked empty.
     const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
     inputs.days[0] = { ...inputs.days[0], locks: [",,1,", ",,,"] };
     const element = await render(inputs);
+    saveWeekOnServer.mockResolvedValue({
+      conflict: false,
+      scheduleId: SCHEDULE,
+      revision: "2026-06-29:2|2026-06-30:2",
+      locks: []
+    });
     q(element, '[data-action="StartOver"]').click();
+    await until(() => saveWeekOnServer.mock.calls.length > 0);
     await flush();
-    expect(q(element, '[data-id="confirm-body"]').textContent).toBe(
-      "Clears every lock in Week 1; there are no activity cells to clear. Fixed activities and recurring activities stay."
-    );
+    expect(saveWeekOnServer.mock.calls[0][0].request.action).toBe("StartOver");
+    expect(cellAt(element, "0-2").querySelector(".cell-lock")).toBeNull();
   });
 
   it("a day that can't be read: the Lock menu offers nothing, held (the server would refuse)", async () => {

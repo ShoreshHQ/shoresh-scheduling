@@ -26,7 +26,7 @@ import {
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
-import { activityCells, clearedDays, litCells, openCells } from "./week";
+import { clearedDays, litCells, openCells } from "./week";
 import { activityOptions, awayRows, lockOf } from "./editing";
 
 // What each action is called on its button and while it runs.
@@ -56,7 +56,10 @@ function statementOf(message) {
  *     first, and locked cells will stay once locks come, G4);
  *   Try another builds the next option, and Option brings back any option tried;
  *   Fill the open cells fills only the cells left Open;
- *   Start over clears every activity (after a confirm; a version is kept first).
+ *   Start over clears every activity at once (a version is kept first), with an Undo that brings
+ *     that version back, as Manual Build's Clear week offers Undo (Greg's decision 2, 2026-10-20).
+ * The screen is laid out as Manual Build is: one editor shell from the start (so the pickers never
+ * move when the week is drawn), the counters under its toolbar, Versions and Publish at its right.
  * The build runs a little at a time (ADR 0010 §22) with its progress shown, so a big week never
  * freezes the tab. A save someone else's save got in the way of writes nothing: the screen says
  * so and offers to reload. Dots, counters and the "Still to place" list are worked out from the
@@ -132,7 +135,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   setupMemo = { setup: undefined, input: undefined, value: undefined };
   announcement = "";
   checksResetKey = 0;
-  // The cells the open counter lights up ("date|groupId|blockId"), generated route.
+  // The cells a counter lights up ("date|groupId|blockId"), generated route.
   lit = new Set();
   focusAfterRender = null;
   // Where focus goes once a versions action is over (its control may be gone meanwhile).
@@ -158,9 +161,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   // The version just restored and the revision it was restored at: "on screen now" until the
   // week is saved again (an edit, a Lock, a build), as on the desktop.
   restored = null;
-  // A Restore done whose week couldn't be read just after it ({ id, name }): the next read of
+  // A Restore done whose week couldn't be read just after it ({ id, said }): the next read of
   // this week shows it as the restored week (Undo started over, on screen now, said so).
   restoreUnread = null;
+  // Start over just saved: { versionId (the version it kept first), revision (the week it
+  // saved), label }. Its Undo is offered while the week is still as Start over left it.
+  startedOver = null;
+  // The editor is showing this screen's week (it is told to let it go once there is none).
+  editorHasWeek = false;
 
   @api
   get setup() {
@@ -213,12 +221,17 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   renderedCallback() {
+    // The editor is drawn from the start (so the pickers never move); with no week to show any
+    // more (another week being read, one not generated yet) it lets the last one go.
+    if (this.editorHasWeek && !this.showWeek && this.weekEditor) {
+      this.hideWeekInEditor();
+    }
     if (this.editorNews && this.weekEditor) {
       const how = this.editorNews;
       this.editorNews = null;
       this.tellEditor(how);
     }
-    if (this.sayWhenShown && this.weekEditor) {
+    if (this.sayWhenShown && this.editorHasWeek) {
       this.weekEditor.say(this.sayWhenShown);
       this.sayWhenShown = null;
     }
@@ -337,6 +350,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.locking = false;
     this.readAfterRun = false;
     this.confirming = null;
+    // The week shown goes from the editor along with it (never drawn over the next one's checks).
+    if ((!key || fresh) && this.editorHasWeek && this.weekEditor) {
+      this.hideWeekInEditor();
+    }
     if (!key) {
       this.loaded = null;
       this.loadedFor = null;
@@ -362,6 +379,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.loaded = null;
       this.error = null;
       this.conflict = null;
+      this.startedOver = null;
       this.versions = [];
       this.sayWhenShown = null;
       // A list still on its way for the last week is not this one's.
@@ -517,10 +535,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   get showWeek() {
     return this.isGenerated && !this.hasNoDays;
-  }
-  /** The build's bar, errors, a conflict and Not placed: under the editor's toolbar once it shows. */
-  get showStatusAbove() {
-    return !this.showWeek;
   }
   get hasNoDays() {
     return !!this.loaded && this.loaded.input.days.length === 0;
@@ -679,9 +693,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.confirming = { action: ACTION.REBUILD };
     this.focusConfirm();
   }
+  /** Start over goes at once, with Undo (Greg's decision 2, 2026-10-20); it keeps a version first. */
   handleStartOver() {
-    this.confirming = { action: ACTION.START_OVER };
-    this.focusConfirm();
+    this.run(ACTION.START_OVER, this.option);
   }
   handleTryAnother() {
     this.run(ACTION.TRY_ANOTHER, this.option + 1);
@@ -761,6 +775,15 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         // Beside the week as saved: a Rebuild that changed nothing is not "changed since".
         this.publishState = saved.published;
         this.triedUpTo = Math.max(this.triedUpTo, option);
+        // Start over offers Undo: the version it kept first, brought back.
+        this.startedOver =
+          action === ACTION.START_OVER && saved.versionId
+            ? {
+                versionId: saved.versionId,
+                revision: saved.revision,
+                label: `Started ${this.weekName} over`
+              }
+            : null;
         this.resetChecks();
         // A whole new week: Undo starts over (its steps were made on the week it replaced).
         this.showInEditor("rebuilt");
@@ -799,6 +822,36 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (picker) {
       picker.value = this.optionValue;
     }
+  }
+
+  /** "Started Week 1 over", while Undo would take it back: the week is still as it left it. */
+  get startedOverText() {
+    const started = this.startedOver;
+    return started &&
+      this.loaded &&
+      this.loaded.revision === started.revision &&
+      !this.busy &&
+      !this.conflict
+      ? started.label
+      : null;
+  }
+  get startOverUndoLabel() {
+    return this.startedOver ? `Undo ${this.startedOver.label}` : "Undo";
+  }
+
+  /**
+   * Start over's Undo: the version it kept first is restored (its cells, locks and option), the
+   * same way Restore does it, so someone else's newer save is never replaced unseen. Focus goes
+   * back to Start over (the line goes with the week it was about).
+   */
+  handleUndoStartOver() {
+    const started = this.startedOver;
+    if (!started || this.versionsBusy) {
+      return;
+    }
+    this.restore(started.versionId, `Undone: ${started.label}.`, {
+      focus: `[data-action="${ACTION.START_OVER}"]`
+    });
   }
 
   /**
@@ -867,50 +920,30 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.announce(`${this.weekName} as saved now.`);
   }
 
-  // ---------- the confirm (Rebuild, Start over) ----------
+  // ---------- the confirm (Rebuild) ----------
 
   get confirmTitle() {
-    return this.confirming && this.confirming.action === ACTION.START_OVER
-      ? "Start over?"
-      : "Rebuild this schedule?";
+    return "Rebuild this schedule?";
   }
   /**
    * The desktop's ConfirmRegenModal, as Greg's decisions change it: hand edits are locks and
-   * stay (decision 2), so Rebuild no longer says it replaces them; Start over clears everything,
-   * locks too. Each names the week and what it changes, then that a version is kept first.
+   * stay (decision 2), so Rebuild no longer says it replaces them. It names the week, then that a
+   * version is kept first. Start over asks nothing: it goes at once, with Undo (decision 2,
+   * 2026-10-20).
    */
   get confirmBody() {
     if (!this.confirming || !this.checked) {
       return "";
     }
-    // Locked cells stay through a Rebuild and are cleared by Start over (decision 2); said only
-    // when the week has some.
+    // Locked cells stay through a Rebuild (decision 2); said only when the week has some.
     const anyLocked = this.week.locked.size > 0;
-    if (this.confirming.action !== ACTION.START_OVER) {
-      return `Builds ${this.weekName} again from your setup.${anyLocked ? " Locked cells stay as they are." : ""}`;
-    }
-    // What Start over clears: each cell holding an activity where the bunk is at camp. Things
-    // not set up yet (an elective, a trip) stay, so they aren't counted (Filled counts them).
-    const n = activityCells(this.week.days, this.week.isAway);
-    const word = this.t.sIn("Activity");
-    const cells = `the ${n} ${word} ${n === 1 ? "cell" : "cells"}`;
-    let clears = `Clears ${cells} in ${this.weekName}.`;
-    if (n && anyLocked) {
-      clears = `Clears ${cells} and every lock in ${this.weekName}.`;
-    } else if (anyLocked) {
-      clears = `Clears every lock in ${this.weekName}; there are no ${word} cells to clear.`;
-    } else if (!n) {
-      clears = `There are no ${word} cells to clear in ${this.weekName}.`;
-    }
-    return `${clears} ${this.t.p("FixedActivity")} and ${this.t.pIn("RecurringActivity")} stay.`;
+    return `Builds ${this.weekName} again from your setup.${anyLocked ? " Locked cells stay as they are." : ""}`;
   }
   get confirmNote() {
     return `Saved to ${this.t.p("Version")} first.`;
   }
   get confirmLabel() {
-    return this.confirming && this.confirming.action === ACTION.START_OVER
-      ? "Start over"
-      : "Rebuild it";
+    return "Rebuild it";
   }
 
   focusConfirm() {
@@ -1136,10 +1169,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get groupPills() {
     return groups(this.schedule);
   }
-  // The screen's own toolbar (the pickers alone) until the week is drawn; then the editor's.
-  get showToolbar() {
-    return !this.showWeek;
-  }
   // Edits wait while a build or a Lock is saved, or Reload reads the week (it is about to be
   // replaced), and while a publish is on its way (its answer is for the week as it was).
   get editsWait() {
@@ -1203,8 +1232,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   tellEditor(how) {
     const editor = this.weekEditor;
     if (!this.showWeek) {
+      if (this.editorHasWeek) {
+        this.hideWeekInEditor();
+      }
       return;
     }
+    this.editorHasWeek = true;
     // A week the editor hasn't shown yet starts at the first day and bunk.
     if (how === "fresh" || !editor.savedWeek) {
       // Another week: nothing of the last one is kept (Undo, the typing box, what was picked up).
@@ -1217,15 +1250,31 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
   }
 
+  /** No week to show: the editor lets the last one go (nothing of it is kept, Undo included). */
+  hideWeekInEditor() {
+    const editor = this.weekEditor;
+    editor.clear();
+    editor.show(null, false);
+    this.editorHasWeek = false;
+  }
+
   /**
    * The editor's check of the week as it shows it (with the edits still saving): the engine's,
    * with those locks, so its dots, the Open reasons and the counts are this screen's own.
    */
-  checkWith = (days, locks) =>
+  checkWeekShown = (days, locks) =>
     this.checkDays(
       days,
       locks ? [...locks].map(lockOf) : this.loaded.input.locks
     ).checked;
+
+  /**
+   * Given to the editor once a week is loaded: the editor is drawn before that (so the pickers
+   * never move), and with nothing loaded there is nothing for this screen's check to read.
+   */
+  get checkWith() {
+    return this.loaded ? this.checkWeekShown : null;
+  }
 
   /** The editor saves each hand edit through here (GeneratedScheduleController.saveSlots). */
   saveRuns = async (edits) => {
@@ -1697,6 +1746,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.say("One moment: an edit is still saving.");
       return;
     }
+    await this.restore(id, `Restored ${version ? version.name : ""}.`);
+  }
+
+  /**
+   * Restores a version (Restore, and Start over's Undo): said is what the line says once the
+   * week is on screen; focus, where focus goes after (a selector), when the control used is gone.
+   */
+  async restore(id, said, { focus = null } = {}) {
     const loaded = this.loaded;
     // Reads wait while it runs; one for another week (or the screen gone) drops its answer.
     const ticket = this.loadTicket;
@@ -1722,7 +1779,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.focusAfterRender = { selector: '[data-id="reload"]' };
         return;
       }
-      const restored = { id, name: version ? version.name : "" };
+      const restored = { id, said };
       let week;
       try {
         week = await loadWeek(this.programId, this.weekId);
@@ -1747,22 +1804,23 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         // On a week not generated yet the Versions list goes with the start: focus goes to
         // Rebuild, as after a first Generate.
         this.focusAfterVersions = `[data-action="${ACTION.REBUILD}"]`;
+      } else if (focus) {
+        this.focusAfterVersions = focus;
       }
     });
   }
 
   /** The week a Restore made, as read: a whole new week (Undo starts over), on screen now. */
-  showRestored({ id, name }, week) {
+  showRestored({ id, said }, week) {
     this.resetChecks();
     // Undo starts over: its steps were made on the week it replaced.
     this.showInEditor("rebuilt");
     this.restored = { id, revision: week.revision };
-    const text = `Restored ${name}.`;
-    if (this.weekEditor) {
-      this.say(text);
+    if (this.editorHasWeek) {
+      this.say(said);
     } else {
-      // A week not generated yet: the editor is drawn for it now, and says it there.
-      this.sayWhenShown = text;
+      // A week not generated yet: the editor shows it now, and says it there.
+      this.sayWhenShown = said;
     }
   }
 

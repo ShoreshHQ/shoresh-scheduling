@@ -801,6 +801,105 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(versions(element).busy).toBe(false);
   });
 
+  describe("Start over acts at once, with Undo (Greg's decision 2, 2026-10-20)", () => {
+    const KEPT = "a0S000000000025AAA";
+    const STARTED_AT = "2026-06-29:2";
+    const startedLine = (element) => q(element, '[data-id="started-over"]');
+    const undoButton = (element) => q(element, '[data-id="start-over-undo"]');
+
+    /** Start over saved: Period 1 emptied, a version kept first. */
+    async function startOver(element) {
+      const cleared = week();
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: STARTED_AT,
+        versionId: KEPT,
+        locks: []
+      });
+      action(element, "StartOver").click();
+      await until(() => !q(element, '[data-id="busy"]'));
+      return cleared;
+    }
+
+    it("clears the week without a question, then offers Undo on a quiet line", async () => {
+      const element = await render(week({ locked: true }));
+      await startOver(element);
+      expect(q(element, '[data-id="confirm"]')).toBeNull();
+      expect(saveWeekOnServer.mock.calls[0][0].request.action).toBe(
+        "StartOver"
+      );
+      expect(cellAt(element, "0-1").className).toContain("cell_open");
+      expect(startedLine(element).textContent).toContain("Started Week 1 over");
+      expect(undoButton(element).getAttribute("aria-label")).toBe(
+        "Undo Started Week 1 over"
+      );
+      expect(element.shadowRoot.activeElement).toBe(
+        action(element, "StartOver")
+      );
+    });
+
+    it("Undo brings back the version Start over kept, locks and all, and says so", async () => {
+      const element = await render(week({ locked: true }));
+      await startOver(element);
+      restoreVersion.mockResolvedValue(true);
+      getInputs.mockResolvedValue(week({ locked: true, revision: "x:3" }));
+      undoButton(element).click();
+      await until(() => !versions(element).busy);
+      expect(restoreVersion).toHaveBeenCalledWith({
+        scheduleId: SCHEDULE,
+        versionId: KEPT,
+        seenRevisions: STARTED_AT
+      });
+      expect(lockAt(element, "0-1")).toBe("Locked");
+      expect(notice(element)).toBe("Undone: Started Week 1 over.");
+      // The line goes with the week it was about; focus goes back to Start over.
+      expect(startedLine(element)).toBeNull();
+      expect(element.shadowRoot.activeElement).toBe(
+        action(element, "StartOver")
+      );
+    });
+
+    it("Undo refused because someone else saved since changes nothing and offers Reload", async () => {
+      const element = await render(week());
+      await startOver(element);
+      restoreVersion.mockResolvedValue(false);
+      undoButton(element).click();
+      await flush();
+      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      expect(startedLine(element)).toBeNull();
+    });
+
+    it("the Undo line goes once the week is saved again", async () => {
+      const element = await render(week());
+      await startOver(element);
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:3",
+        versionId: null,
+        locks: []
+      });
+      action(element, "FillOpen").click();
+      await until(() => !q(element, '[data-id="busy"]'));
+      expect(startedLine(element)).toBeNull();
+    });
+
+    it("no Undo when the server kept no version", async () => {
+      const element = await render(week());
+      saveWeekOnServer.mockResolvedValueOnce({
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: STARTED_AT,
+        versionId: null,
+        locks: []
+      });
+      action(element, "StartOver").click();
+      await until(() => !q(element, '[data-id="busy"]'));
+      expect(startedLine(element)).toBeNull();
+    });
+  });
+
   it("a build reads the list again (Rebuild keeps a version first)", async () => {
     const element = await render(week());
     getVersions.mockClear();

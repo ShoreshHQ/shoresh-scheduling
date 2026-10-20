@@ -717,7 +717,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    first line counts each kind in plain words, never a rename as a cell: "This replaces the
    published schedule. 1 cell and 1 name change:", "… 1 time block changes:" (the camp's word;
    `renameCount` and `retimeCount` of `changeCount`). The screen adds what its counters and dots
-   show (`c/shoreshPublish`): "N of M cells still Open.", "N activities need a look." (the camp's word),
+   show (`c/shoreshPublish`): "Filled: X of Y" while cells are Open (until 2026-10-20 "N of M
+   cells still Open."; the counters' own words on both screens, Greg's decision 3, ADR 0010 §55),
+   "N activities need a look." (the camp's word),
    "Overlapping: N", "Still needed: N", "Spread across the week: N" (each only above 0, the last
    two only when the camp has those targets; lines the director accepted are not counted, as the
    counters don't count them). It asks (c-shoresh-ask, _Publish Week 1?_ or
@@ -734,7 +736,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    replaced. …_ Two first publishes at the same moment: the key's uniqueness refuses the second
    the same way. Publish locks the draft (its drafts class) and then the week's published rows,
    never the program, so it can't deadlock with a Generated save (program, then draft).
-5. **On screen**: **Publish** (brand button) last on the toolbar, waiting while an edit saves,
+5. **On screen**: **Publish** (brand button) last on the toolbar, after Versions, both at the
+   toolbar's right edge as on Generated Schedule and the desktop (a spacer before Versions' divider,
+   2026-10-20, ADR 0010 §55), waiting while an edit saves,
    a Restore runs or the week is being read again (so its question is never worked out from a
    view about to be replaced; Unpublish waits the same way); beside it _Published from Manual Build Oct 18, 10:04 AM by Pat_ (item 12) and, once the draft differs,
    _· changed since_ (from `DraftView.published`, worked out on the server by the same

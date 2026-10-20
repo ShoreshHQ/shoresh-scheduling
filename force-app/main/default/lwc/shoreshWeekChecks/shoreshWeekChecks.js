@@ -9,10 +9,11 @@ import { LightningElement, api } from "lwc";
  * are shown). resetKey: change it when a different week is shown fresh; the list closes and
  * accepted lines come back. route: "manual" (the default) or "generated".
  *
- * The generated route, as the desktop's: Open (the cells nothing could go in; checked.openCells,
- * [{ dateValue, groupId, blockId, text }], first in the list) instead of the Overlapping counter,
- * though overlaps are still listed; each counter shows only its own lines and lights up the cells
- * they are about (the "highlight" event); "Review all" shows every line.
+ * Both routes show the same counters with the same words (Greg's decision 3, 2026-10-20): Filled
+ * X of Y and Overlapping, then Still needed and Spread across the week when they apply. The
+ * generated route differs only in how the list opens, as the desktop's: each counter shows only
+ * its own lines and lights up the cells they are about (the "highlight" event); "Review all"
+ * shows every line.
  *
  * Events: locate (detail: the line, { key, kind, text, groupId, activityId, and for a cell
  * dateValue and blockId }) when a line is clicked; the parent takes the director there. accept
@@ -83,18 +84,7 @@ export default class ShoreshWeekChecks extends LightningElement {
 
   get lines() {
     const checked = this.checked || {};
-    // Generated: the cells nothing could go in come first, as the desktop's Unfillable rows do.
-    const lines = (this.isGenerated ? checked.openCells || [] : []).map(
-      (cell) => ({
-        key: `open|${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
-        kind: "open",
-        text: cell.text,
-        groupId: cell.groupId,
-        dateValue: cell.dateValue,
-        blockId: cell.blockId
-      })
-    );
-    const overlaps = (checked.overlapping || []).map((cell) => ({
+    const lines = (checked.overlapping || []).map((cell) => ({
       key: `overlap|${cell.dateValue}|${cell.groupId}|${cell.blockId}`,
       kind: "overlapping",
       text: cell.text,
@@ -102,7 +92,6 @@ export default class ShoreshWeekChecks extends LightningElement {
       dateValue: cell.dateValue,
       blockId: cell.blockId
     }));
-    lines.push(...overlaps);
     const short = (kind, texts, entries) =>
       texts.map((text, i) => {
         const e = entries[i] || {};
@@ -131,23 +120,20 @@ export default class ShoreshWeekChecks extends LightningElement {
   }
 
   /**
-   * The counters, as the desktop's manual route shows them: Overlapping always, Still needed and
-   * Spread across the week when some activity has that target. Each counts its lines (accepted
-   * ones aside). A zero shows, grey, and opens nothing; any other opens the one list.
+   * The counters, on both routes as the desktop's manual route shows them: Overlapping always,
+   * Still needed and Spread across the week when some activity has that target. Each counts its
+   * lines (accepted ones aside). A zero shows, grey, and opens nothing; any other opens the list.
    */
   get counterButtons() {
     const checked = this.checked || {};
     const lines = this.lines;
     const count = (kind) => lines.filter((line) => line.kind === kind).length;
-    const first = this.isGenerated
-      ? { key: "open", label: "Open", count: count("open") }
-      : {
-          key: "overlapping",
-          label: "Overlapping",
-          count: count("overlapping")
-        };
     return [
-      first,
+      {
+        key: "overlapping",
+        label: "Overlapping",
+        count: count("overlapping")
+      },
       checked.hasCoverageTargets && {
         key: "stillNeeded",
         label: "Still needed",

@@ -103,6 +103,8 @@
         </div>
       </template>
       <template lwc:if={draft}>
+        <!-- Versions and Publish at the right edge, as on Generated Schedule and the desktop. -->
+        <span class="spacer" slot="tools"></span>
         <div class="divider" slot="tools" aria-hidden="true"></div>
         <c-shoresh-versions
           slot="tools"

@@ -3,7 +3,8 @@
  * what to ask before publishing, from the server's preview (SchedulePublish.Preview) and the
  * week's checks (c/shoreshEngine checkWeek, as the counters show them). Problems are shown, never
  * a reason to refuse: a week with Open cells or dots can still be published (Greg, Manual Build
- * round 1 #2 to #4: never blocked).
+ * round 1 #2 to #4: never blocked). It uses the counters' own words, the same on both screens
+ * (Greg's decision 3, 2026-10-20): Filled, Overlapping, Still needed, Spread across the week.
  *
  * publishQuestion returns one of:
  *   { kind: "same" }: the published schedule already is the week; nothing to do.
@@ -23,11 +24,6 @@ const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
 export function publishedWord(published) {
   const screen = published && SCREENS[published.origin];
   return screen ? `Published from ${screen} ` : "Published ";
-}
-
-/** "1 cell", "3 cells". */
-function cells(count) {
-  return `${count} ${count === 1 ? "cell" : "cells"}`;
 }
 
 /**
@@ -54,8 +50,8 @@ function changeWords(preview, t) {
 }
 
 /**
- * What is still to do: Open cells, placements with a dot, then the counters (each line only when
- * it is above 0), as the screen's counters and dots show them. counts: what the counters count
+ * What is still to do: Filled while cells are still Open, placements with a dot, then the
+ * counters (each line only when it is above 0), as the screen's counters and dots show them. counts: what the counters count
  * now (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
  * t: the camp's words (c/shoreshTerms), so a dot names the camp's word for Activity.
  */
@@ -66,7 +62,7 @@ export function problemLines(checked, counts, t = buildTerms([])) {
   const lines = [];
   const { filled, total } = checked.cells || { filled: 0, total: 0 };
   if (total > filled) {
-    lines.push(`${total - filled} of ${cells(total)} still Open.`);
+    lines.push(`Filled: ${filled} of ${total}`);
   }
   // Every placement with a dot (over its weekly limit, not set up for a bunk, twice in a day,
   // overlapping...): some have no counter of their own.
