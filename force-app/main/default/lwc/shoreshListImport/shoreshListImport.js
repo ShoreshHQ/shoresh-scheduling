@@ -81,6 +81,61 @@ export default class ShoreshListImport extends LightningElement {
   undone;
   undoing = false;
   sheetJsLoaded = false;
+  // Where the cursor goes at the next render: { card } (that card), { after } (the next question
+  // still open after that one), or { selector }.
+  focusNext = null;
+  // The file being read, named in the status line.
+  readingName = null;
+
+  renderedCallback() {
+    if (!this.focusNext) {
+      return;
+    }
+    const next = this.focusNext;
+    this.focusNext = null;
+    let target = null;
+    if (next.selector) {
+      target = this.template.querySelector(next.selector);
+    } else {
+      const cards = this.cards;
+      let id = next.card;
+      if (next.after) {
+        const at = cards.findIndex((c) => c.id === next.after);
+        const open = [...cards.slice(at + 1), ...cards.slice(0, at + 1)].find(
+          (c) => !c.answered
+        );
+        id = open ? open.id : null;
+      }
+      const card = id
+        ? [...this.template.querySelectorAll("[data-card]")].find(
+            (el) => el.dataset.card === id
+          )
+        : null;
+      // The card's first choice; with every question answered, Save.
+      target = card
+        ? card.querySelector(
+            "lightning-button, lightning-checkbox-group, lightning-input"
+          )
+        : this.template.querySelector('[data-id="save"]');
+    }
+    if (target && typeof target.focus === "function") {
+      target.focus();
+    }
+  }
+
+  /** What is happening, for the status line screen readers hear. */
+  get statusText() {
+    if (this.stage === "reading") {
+      return `Reading ${this.readingName || "the file"}`;
+    }
+    if (this.stage === "saving") {
+      return "Saving";
+    }
+    if (this.stage === "done") {
+      return this.undone || "Saved";
+    }
+    return "";
+  }
 
   // ---------- opening and reading ----------
 
@@ -98,9 +153,11 @@ export default class ShoreshListImport extends LightningElement {
     return this.workbook ? "Import camp workbook" : "Import a list";
   }
 
+  /** Opened: the cursor goes to its heading; closed: back to the button that opened it. */
   handleOpen() {
     this.open = true;
     this.reset();
+    this.focusNext = { selector: "[data-heading]" };
   }
 
   /** The screen's list, in the layout "Import a list" reads (an empty list is the template). */
@@ -136,6 +193,7 @@ export default class ShoreshListImport extends LightningElement {
   handleClose() {
     this.open = false;
     this.reset();
+    this.focusNext = { selector: '[data-id="open"]' };
   }
 
   reset() {
@@ -175,6 +233,7 @@ export default class ShoreshListImport extends LightningElement {
       return;
     }
     this.error = null;
+    this.readingName = chosen.name;
     this.stage = "reading";
     try {
       this.file = isCsv(chosen.name)
@@ -456,12 +515,17 @@ export default class ShoreshListImport extends LightningElement {
   handleCardAnswer(event) {
     const [id, value] = event.currentTarget.dataset.key.split("::");
     this.answer(id, value);
+    // The clicked button is gone with the answer: on to the next open question (WCAG 2.4.3).
+    this.focusNext = { after: id };
   }
   handleCardChange(event) {
+    const id = event.currentTarget.dataset.id;
     const answers = { ...this.answers };
-    delete answers[event.currentTarget.dataset.id];
+    delete answers[id];
     this.answers = answers;
     this.recompute();
+    // The card opens again: the cursor goes to its first choice.
+    this.focusNext = { card: id };
   }
 
   /**
@@ -572,6 +636,7 @@ export default class ShoreshListImport extends LightningElement {
     const days = this.draftDays(id);
     if (kind === "days" && days.length) {
       this.answer(id, days.join(","));
+      this.focusNext = { after: id };
     } else if (
       kind === "times" &&
       draft.start &&
@@ -579,6 +644,7 @@ export default class ShoreshListImport extends LightningElement {
       draft.end > draft.start
     ) {
       this.answer(id, `${draft.start.slice(0, 5)}-${draft.end.slice(0, 5)}`);
+      this.focusNext = { after: id };
     } else {
       // Said on the card, never a click that does nothing.
       this.drafts = {
@@ -797,6 +863,7 @@ export default class ShoreshListImport extends LightningElement {
         this.result = await saveList({ plan: JSON.stringify(plan) });
       }
       this.stage = "done";
+      this.focusNext = { selector: '[data-id="saved"]' };
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";

@@ -9,7 +9,23 @@
     onclick={handleTap}
     data-id="dot"
   >
-    <span class="dot" aria-hidden="true"></span>
+    <template lwc:if={isOverlap}>
+      <svg
+        class="overlap"
+        data-id="overlap-mark"
+        viewBox="0 0 12 8"
+        width="12"
+        height="8"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <circle cx="4" cy="4" r="3"></circle>
+        <circle cx="8" cy="4" r="3"></circle>
+      </svg>
+    </template>
+    <template lwc:else>
+      <span class="dot" aria-hidden="true"></span>
+    </template>
     <span class="slds-assistive-text" data-id="dot-words">{label}</span>
     <template lwc:if={showTip}>
       <span class={tipClass} aria-hidden="true">

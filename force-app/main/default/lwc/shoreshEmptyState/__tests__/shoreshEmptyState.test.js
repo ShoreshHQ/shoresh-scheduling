@@ -23,4 +23,18 @@ describe("c-shoresh-empty-state", () => {
     expect(root.querySelector("p").textContent).toBe("No programs yet");
     expect(root.textContent.trim()).toBe("No programs yet");
   });
+
+  it("draws a tent, not a software inbox tray", async () => {
+    const element = createElement("c-shoresh-empty-state", {
+      is: ShoreshEmptyState
+    });
+    element.title = "No weeks yet";
+    document.body.appendChild(element);
+    await Promise.resolve();
+    const paths = [
+      ...element.shadowRoot.querySelectorAll('[data-id="empty-icon"] path')
+    ].map((p) => p.getAttribute("d"));
+    expect(paths[0]).toBe("M12 4 2.5 20h19L12 4z");
+    expect(paths.join(" ")).not.toContain("M3 13h5");
+  });
 });

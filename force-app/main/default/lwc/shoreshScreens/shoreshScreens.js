@@ -102,7 +102,7 @@ const MARKS = {
 };
 
 /**
- * The menu: sections, each with its items ({ key, label, coming, disabled, mark }). marks:
+ * The menu: sections, each with its items ({ key, label, coming, disabled, reason, mark }). marks:
  * screen -> "needed" | "done" (shoreshSetupRules.menuMarks); mark is { kind, symbol, label }.
  */
 export function menuSections(t, hasSeason, marks = {}) {
@@ -113,11 +113,18 @@ export function menuSections(t, hasSeason, marks = {}) {
     items: section.screens.map((screen) => {
       const disabled = !canOpen(screen, hasSeason);
       const kind = disabled ? null : marks[screen];
+      const coming = COMING.has(screen);
       return {
         key: screen,
         label: labels[screen],
-        coming: COMING.has(screen),
+        coming,
         disabled,
+        // Why it can't open, read with it (it stays in the tab order, so keyboard users hear it).
+        reason: !disabled
+          ? null
+          : coming
+            ? "Coming"
+            : `Needs a ${t.sIn("Season")}`,
         mark: kind ? { kind, ...MARKS[kind] } : null
       };
     })

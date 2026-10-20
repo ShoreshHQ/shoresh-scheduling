@@ -174,11 +174,11 @@ export default class ShoreshActivityDetails extends LightningElement {
     return this.rules[ACTIVITY.Notes];
   }
 
-  get everyoneNote() {
-    const t = this.terms;
+  /** The chosen list's heading; with nobody chosen it shows that everyone can (no sentence). */
+  get chosenLabel() {
     return this.whoCanDoIt.length === 0
-      ? `Nobody chosen: every ${t.sIn("Group")} can do it.`
-      : `Only the chosen ${t.pIn("Division")} and ${t.pIn("Group")} can do it.`;
+      ? `${this.labels.chosen}: everyone`
+      : this.labels.chosen;
   }
 
   get whoError() {
@@ -201,17 +201,18 @@ export default class ShoreshActivityDetails extends LightningElement {
     const t = this.terms;
     return {
       title: `${t.s("Activity")} details`,
-      intro: `Who can do each ${t.sIn("Activity")}, and the rules most ${t.pIn("Activity")} don't need.`,
       activity: t.s("Activity"),
       whoCanDoIt: "Who can do it",
       available: `${t.p("Division")} and ${t.p("Group")}`,
       chosen: "Can do it",
       moreRules: "More rules",
       sameDivision: `Only ${t.pIn("Group")} from the same ${t.sIn("Division")} at the same time`,
-      earlyCount: "Get this many done early in the week",
+      // One group, read as "Early in the week: How many … By …" (WCAG 1.3.1).
+      early: "Early in the week",
+      earlyCount: "How many",
       earlyDay: "By",
       notes: "Notes",
-      empty: `Add ${t.pIn("Activity")} in the table above and save them first.`
+      empty: `No ${t.pIn("Activity")} yet`
     };
   }
 

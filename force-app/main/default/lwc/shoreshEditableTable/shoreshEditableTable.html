@@ -11,7 +11,7 @@
           icon-name="utility:error"
           variant="error"
           size="small"
-          alternative-text="Error"
+          alternative-text=""
         ></lightning-icon>
         <div class="slds-media__body">
           <h3 class="slds-text-heading_small">{title}</h3>
@@ -131,6 +131,7 @@
                         <c-shoresh-dot
                           class="flag"
                           data-id="overlaps"
+                          shape="overlap"
                           label={cell.overlapLabel}
                           focusable
                         ></c-shoresh-dot>
@@ -243,7 +244,6 @@
                   <td
                     class="slds-cell-wrap slds-text-color_weak"
                     data-id="note"
-                    aria-live="polite"
                   >
                     {row.note}
                     <template for:each={row.actions} for:item="action">

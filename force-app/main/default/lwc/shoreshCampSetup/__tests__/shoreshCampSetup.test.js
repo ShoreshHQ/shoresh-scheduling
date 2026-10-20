@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
-import ShoreshCampSetup from "c/shoreshCampSetup";
+import ShoreshCampSetup, { seasonContents } from "c/shoreshCampSetup";
+import { buildTerms } from "c/shoreshTerms";
 import LightningConfirm from "lightning/confirm";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
@@ -573,14 +574,37 @@ describe("c-shoresh-camp-setup", () => {
       expect(q(element, '[data-id="season-form"]')).toBeNull();
     });
 
-    it("deleting it names everything that goes with it", async () => {
-      LightningConfirm.open.mockResolvedValue(nsRecord(true));
+    it("deleting it asks first, showing what goes with it as counts", async () => {
       deleteRecord.mockResolvedValue();
       const element = await renderSeason();
       button(element, "Delete season").click();
       await flush();
-      expect(LightningConfirm.open.mock.calls[0][0].message).toContain("Bunks");
+      expect(LightningConfirm.open).not.toHaveBeenCalled();
+      const ask = q(element, "c-shoresh-ask");
+      expect(ask.heading).toBe("Delete Summer 2026?");
+      expect(ask.lines).toEqual([
+        "1 Week",
+        "1 Program",
+        "1 Division",
+        "1 Time block"
+      ]);
+      expect(ask.confirmLabel).toBe("Delete season");
+      expect(deleteRecord).not.toHaveBeenCalled();
+      ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
+      await flush();
       expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
+    });
+
+    it("Cancel on delete season deletes nothing", async () => {
+      const element = await renderSeason();
+      button(element, "Delete season").click();
+      await flush();
+      q(element, "c-shoresh-ask").dispatchEvent(
+        new CustomEvent("answer", { detail: { yes: false } })
+      );
+      await flush();
+      expect(q(element, "c-shoresh-ask")).toBeNull();
+      expect(deleteRecord).not.toHaveBeenCalled();
     });
 
     it("a date saves when the director leaves it, with the other date, and no toast", async () => {
@@ -863,6 +887,141 @@ describe("c-shoresh-camp-setup", () => {
         NoGroupLimit__c: false
       }
     });
+  });
+
+  it("counts what a season holds, in the camp's words, saved schedules last", () => {
+    const t = buildTerms(LABELS);
+    expect(
+      seasonContents(
+        {
+          weeks: [{}, {}],
+          locations: [{}],
+          activities: [],
+          schedules: [{}, {}, {}],
+          programs: [
+            {
+              divisions: [{ groups: [{}, {}] }, { groups: [{}] }],
+              timeBlocks: [],
+              fixedActivities: [{}],
+              recurringActivities: []
+            }
+          ]
+        },
+        t
+      )
+    ).toEqual([
+      "2 Weeks",
+      "1 Program",
+      "2 Divisions",
+      "3 Bunks",
+      "1 Location",
+      "1 Fixed activity",
+      "3 saved schedules"
+    ]);
+    expect(seasonContents({}, t)).toEqual(["Nothing set up in it yet"]);
+  });
+
+  it("a screen picked from the menu gets the cursor on its heading", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    await openScreen(element, "locations");
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-screen="locations"] [data-heading]')
+    );
+    await openScreen(element, "schedules");
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-screen="schedules"] [data-heading]')
+    );
+  });
+
+  it("picking the screen already open puts the cursor on its heading now, not at a later redraw", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    const heading = q(element, '[data-screen="weeks"] [data-heading]');
+    await openScreen(element, "weeks");
+    expect(element.shadowRoot.activeElement).toBe(heading);
+    q(element, '[data-id="new-season"]').focus();
+    await openScreen(element, "weeks");
+    expect(element.shadowRoot.activeElement).toBe(heading);
+    // Nothing left waiting: the next redraw puts the cursor where that action says.
+    button(element, "New season").click();
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="new-season-title"]')
+    );
+  });
+
+  it("Roots and Camp words, drawn by their own components, focus their own headings", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    const roots = q(element, "c-shoresh-roots");
+    roots.focusHeading = jest.fn();
+    await openScreen(element, "weeks");
+    await openScreen(element, "roots");
+    expect(roots.focusHeading).toHaveBeenCalled();
+  });
+
+  it("a new message at the top is brought into view", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const scrolled = [];
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function record() {
+      scrolled.push(this.dataset.id);
+    };
+    try {
+      addWeeksFromSeasonDates.mockRejectedValue({
+        body: { message: "No dates." }
+      });
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith({ weeks: [] })));
+      const element = await render();
+      await openScreen(element, "weeks");
+      q(element, '[data-id="fill-weeks"]').click();
+      await flush();
+      expect(q(element, '[data-id="error"]')).not.toBeNull();
+      expect(scrolled).toEqual(["error"]);
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it("New season: no instructions, cursor on its heading, and back on the button after Cancel", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const focused = [];
+    const spy = jest
+      .spyOn(HTMLElement.prototype, "focus")
+      .mockImplementation(function record() {
+        focused.push(this);
+      });
+    try {
+      const element = await render();
+      button(element, "New season").click();
+      await flush();
+      expect(focused.pop().dataset.id).toBe("new-season-title");
+      expect(element.shadowRoot.textContent).not.toContain("Give it a name");
+      expect(element.shadowRoot.textContent).not.toContain("go back and use");
+      button(element, "Cancel").click();
+      await flush();
+      expect(focused.pop().dataset.id).toBe("new-season");
+      button(element, "Copy this season").click();
+      await flush();
+      q(element, "c-shoresh-copy-season").dispatchEvent(
+        new CustomEvent("cancel")
+      );
+      await flush();
+      expect(focused.pop().dataset.id).toBe("copy-season");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("opens the copy panel, and camp words from the menu", async () => {

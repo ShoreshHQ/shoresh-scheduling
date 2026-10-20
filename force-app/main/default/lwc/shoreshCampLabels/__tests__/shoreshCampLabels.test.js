@@ -79,6 +79,9 @@ describe("c-shoresh-camp-labels", () => {
     const element = await render();
     expect(input(element, "Group", "singular").value).toBe("Bunk");
     expect(input(element, "Division", "singular").value).toBe("");
+    // A blank box looks blank: the standard word is in its own column, not repeated inside.
+    expect(input(element, "Division", "singular").placeholder).toBeFalsy();
+    expect(input(element, "Division", "plural").placeholder).toBeFalsy();
     expect(element.shadowRoot.textContent).toContain("Words Camp Willow uses");
   });
 

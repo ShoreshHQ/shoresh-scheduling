@@ -24,6 +24,14 @@
   flex: none;
 }
 
+/* Overlap: two linked rings in the same hue, a different shape from the dot. */
+.overlap {
+  flex: none;
+  fill: none;
+  stroke: var(--shoresh-caution);
+  stroke-width: 1.5;
+}
+
 /* The words: a small quiet box above the dot. Never bronze text (too light to read). The area
    reaches down to the dot with no gap, so the pointer can move from the dot onto the words and
    they stay (WCAG 1.4.13). It catches the pointer only when the pointer brought it up; shown for

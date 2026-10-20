@@ -2244,6 +2244,26 @@ describe("c-shoresh-editable-table", () => {
       ""
     ]);
     expect(element.shadowRoot.textContent).toContain("Moving");
+    // Read out once, in the table's one live region; no note cell is a live region of its own,
+    // so a reload never reads every note at once.
+    await flush();
+    expect(
+      element.shadowRoot
+        .querySelector('[data-id="announce"]')
+        .textContent.trim()
+    ).toBe("Renamed to Swim time");
+    expect(
+      element.shadowRoot.querySelectorAll('[data-id="note"][aria-live]').length
+    ).toBe(0);
+    // Another row's new note is said in its turn.
+    change(field(element, 1, "Name"), "Archery");
+    await flush();
+    await flush();
+    expect(
+      element.shadowRoot
+        .querySelector('[data-id="announce"]')
+        .textContent.trim()
+    ).toBe("Renamed to Archery");
   });
 
   describe("same names", () => {
@@ -2450,6 +2470,10 @@ describe("c-shoresh-editable-table", () => {
       });
       const sent = listen(element);
       await flush();
+      // Drawn differently from the same-name dot, so the two don't depend on colour.
+      expect(
+        element.shadowRoot.querySelector('[data-id="overlaps"]').shape
+      ).toBe("overlap");
       expect(tags(element)).toEqual([
         "Overlaps another session",
         "Overlaps another session",

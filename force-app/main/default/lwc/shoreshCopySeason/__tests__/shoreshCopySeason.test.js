@@ -86,7 +86,11 @@ describe("c-shoresh-copy-season", () => {
     expect(name.value).toBe("Summer 2027");
     expect(date.value).toBe("2027-06-28");
     expect(element.shadowRoot.textContent).toContain("Session 1");
-    expect(element.shadowRoot.textContent).toContain("stays exactly as it is");
+    expect(element.shadowRoot.textContent).toContain(
+      '"Summer 2026" stays as it is.'
+    );
+    // What is copied shows in the preview, not in a sentence.
+    expect(element.shadowRoot.textContent).not.toContain("Makes a new");
     expect(
       element.shadowRoot.querySelector('[data-id="weekday-warning"]')
     ).toBeNull();
@@ -108,8 +112,11 @@ describe("c-shoresh-copy-season", () => {
     const warning = element.shadowRoot.querySelector(
       '[data-id="weekday-warning"]'
     );
-    expect(warning.textContent).toContain("this date is a Tuesday");
-    expect(warning.textContent).toContain("Every Session will move");
+    expect(warning.textContent.trim()).toBe(
+      "Sessions move from Mondays to Tuesdays."
+    );
+    // A warning, not an alarm.
+    expect(warning.getAttribute("role")).toBe("status");
   });
 
   it("copies and reports the new season", async () => {
@@ -156,6 +163,13 @@ describe("c-shoresh-copy-season", () => {
     const element = await render();
     expect(button(element, "Copy season").disabled).toBe(true);
     expect(element.shadowRoot.textContent).toContain("Choose a start date");
+  });
+
+  it("puts the cursor on its heading when it opens", async () => {
+    const element = await render();
+    const title = element.shadowRoot.querySelector('[data-id="copy-title"]');
+    expect(element.shadowRoot.activeElement).toBe(title);
+    expect(title.getAttribute("tabindex")).toBe("-1");
   });
 
   it("cancel goes back", async () => {

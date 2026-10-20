@@ -21,6 +21,8 @@ export default class ShoreshCopySeason extends LightningElement {
   error;
   busy = false;
 
+  focused = false;
+
   connectedCallback() {
     const start = this.season[FIELD.Season.StartDate];
     this.newStart = suggestedCopyStart(start);
@@ -28,14 +30,23 @@ export default class ShoreshCopySeason extends LightningElement {
     this.loadPreview();
   }
 
+  /** Opened: the cursor goes to its heading, where the copy starts (WCAG 2.4.3). */
+  renderedCallback() {
+    if (!this.focused) {
+      const title = this.template.querySelector('[data-id="copy-title"]');
+      if (title) {
+        this.focused = true;
+        title.focus();
+      }
+    }
+  }
+
   get labels() {
     const t = this.terms;
     return {
       title: `Copy ${t.sIn("Season")} "${this.season.Name}"`,
-      intro:
-        `Makes a new ${t.sIn("Season")} with the same ${t.pIn("Week")}, ${t.pIn("Program")}, ` +
-        `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")} and ${t.pIn("WeekException")}, ` +
-        `each linked to the one it came from. "${this.season.Name}" stays exactly as it is.`,
+      // What is copied shows in the preview below; this only says the original is safe.
+      intro: `"${this.season.Name}" stays as it is.`,
       name: `New ${t.sIn("Season")} name`,
       start: "New start date",
       weeks: `${t.p("Week")} in the new ${t.sIn("Season")}`,
@@ -48,11 +59,8 @@ export default class ShoreshCopySeason extends LightningElement {
     if (!this.preview || !this.preview.weekdaysChange) {
       return null;
     }
-    return (
-      `"${this.season.Name}" started on a ${this.preview.oldWeekday}; this date is a ${this.preview.newWeekday}. ` +
-      `Every ${this.terms.sIn("Week")} will move to different days of the week. ` +
-      `Choose a ${this.preview.oldWeekday} to keep them on the same days.`
-    );
+    // One line; the dates below show each week's new days.
+    return `${this.terms.p("Week")} move from ${this.preview.oldWeekday}s to ${this.preview.newWeekday}s.`;
   }
 
   get previewWeeks() {

@@ -145,4 +145,22 @@ describe("c-shoresh-dot", () => {
     await flush();
     expect(tip(element)).toBeNull();
   });
+
+  it("an overlap is drawn as two linked rings, not the same-name dot (not by colour alone)", () => {
+    const element = render({
+      label: "Overlaps another week",
+      shape: "overlap"
+    });
+    expect(q(element, ".dot")).toBeNull();
+    const mark = q(element, '[data-id="overlap-mark"]');
+    expect(mark.querySelectorAll("circle").length).toBe(2);
+    expect(mark.getAttribute("aria-hidden")).toBe("true");
+    expect(q(element, '[data-id="dot-words"]').textContent).toBe(
+      "Overlaps another week"
+    );
+    // The default stays the single dot.
+    const plain = render();
+    expect(q(plain, ".dot")).not.toBeNull();
+    expect(q(plain, '[data-id="overlap-mark"]')).toBeNull();
+  });
 });

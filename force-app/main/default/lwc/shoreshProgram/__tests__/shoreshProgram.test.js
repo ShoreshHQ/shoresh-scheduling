@@ -156,7 +156,8 @@ describe("c-shoresh-program", () => {
     const bunk = { Id: "g1", Name: "Bunk 1", Division__c: "d1" };
     expect(
       groups.draftNote(nsRecord({ ...bunk, Division__c: "d2" }), nsRecord(bunk))
-    ).toBe("Moves to Seniors: Bunk 1 is now in Archery (for Seniors).");
+    ).toBe("Moves to Seniors: Bunk 1 is now in Archery (for Seniors)."); // Headed by what the note says, not a working word like "Moving".
+    expect(groups.draftNoteHeading).toBe("What changes");
   });
 
   it("flags same names within the program's tables and each unit's bunks", async () => {
@@ -336,9 +337,16 @@ describe("c-shoresh-program", () => {
     expect(element.shadowRoot.querySelector("c-shoresh-editable-table")).toBe(
       null
     );
-    expect(element.shadowRoot.querySelector("p").textContent).toBe(
-      "Main has no Units yet. Add them under Units first."
-    );
+    // An empty state and a way there, not a sentence of instructions.
+    expect(
+      element.shadowRoot.querySelector("c-shoresh-empty-state").title
+    ).toBe("No Units yet");
+    const go = element.shadowRoot.querySelector('[data-id="go-divisions"]');
+    expect(go.label).toBe("Units →");
+    const handler = jest.fn();
+    element.addEventListener("navigate", handler);
+    go.click();
+    expect(handler.mock.calls[0][0].detail).toEqual({ screen: "divisions" });
   });
 
   it("has no Save button: a ticked day saves at once, with the other days as shown", async () => {
@@ -679,6 +687,8 @@ describe("c-shoresh-program", () => {
       await flush();
       const fixed = table(element);
       expect(fixed.dataset.id).toBe("fixed-activities");
+      // Who is left out, and changed time blocks: headed as what needs a look, not "Notes".
+      expect(fixed.notesHeading).toBe("Needs attention");
       expect(bareName(fixed.objectApiName)).toBe("FixedActivity__c");
       expect(fixed.columns.map((c) => bareName(c.fieldName))).toEqual([
         "Name",
@@ -766,9 +776,15 @@ describe("c-shoresh-program", () => {
         timeBlocks: []
       });
       expect(table(element)).toBeNull();
-      expect(element.shadowRoot.textContent).toContain(
-        "Main has no time blocks yet."
-      );
+      expect(
+        element.shadowRoot.querySelector("c-shoresh-empty-state").title
+      ).toBe("No time blocks yet");
+      const go = element.shadowRoot.querySelector('[data-id="go-time-blocks"]');
+      expect(go.label).toBe("Time blocks →");
+      const handler = jest.fn();
+      element.addEventListener("navigate", handler);
+      go.click();
+      expect(handler.mock.calls[0][0].detail).toEqual({ screen: "timeBlocks" });
     });
   });
 });

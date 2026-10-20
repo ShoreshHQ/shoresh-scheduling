@@ -42,7 +42,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    **Open** shows the version instead of **Restore** copying it into a working schedule;
    there is no **delete** and no "Name current version … Save version" footer. Any version can
    be renamed (the desktop renames only unnamed auto-saves); names are 1 to 80 characters. A
-   blue strip says which version is on screen and that it is read-only. **Open** in Versions
+   blue strip says which version is on screen and that it is read-only (_since 2026-10-20, ADR
+   0013 choice 16: in camp words, "Imported · saved Oct 3, 2:00 PM · view only", without
+   "Looking at a Version"_). **Open** in Versions
    switches to another version.
    On Manual Build (ADR 0008 §25) the same list's action is **Restore**, the desktop's word,
    because there it copies the version into the week being built; it also has **delete** and

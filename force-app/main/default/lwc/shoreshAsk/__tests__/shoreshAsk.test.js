@@ -109,4 +109,13 @@ describe("c-shoresh-ask", () => {
     );
     expect(behind).not.toHaveBeenCalled();
   });
+
+  it("a caller that names no button still gets a verb, never OK", async () => {
+    const element = createElement("c-shoresh-ask", { is: ShoreshAsk });
+    element.heading = "Delete Summer 2026?";
+    element.lines = ["4 Weeks"];
+    document.body.appendChild(element);
+    await flush();
+    expect(q(element, '[data-id="yes"]').textContent.trim()).toBe("Go ahead");
+  });
 });

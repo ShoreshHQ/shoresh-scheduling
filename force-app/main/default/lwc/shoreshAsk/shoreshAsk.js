@@ -12,7 +12,8 @@ import { LightningElement, api } from "lwc";
 export default class ShoreshAsk extends LightningElement {
   @api heading;
   @api lines = [];
-  @api confirmLabel = "OK";
+  // Callers name what the button does; a verb, never "OK", if one forgets.
+  @api confirmLabel = "Go ahead";
 
   focused = false;
 

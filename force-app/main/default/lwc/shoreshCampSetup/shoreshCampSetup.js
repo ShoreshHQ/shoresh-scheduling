@@ -66,6 +66,45 @@ const SCREENS = [
   "import"
 ];
 
+/**
+ * What deleting a season takes with it, one line per kind that has any ("4 Weeks"), in the
+ * camp's words; saved schedules last. A season with nothing in it says so.
+ */
+export function seasonContents(setup, t) {
+  const programs = setup.programs || [];
+  const inPrograms = (pick) =>
+    programs.reduce((sum, entry) => sum + pick(entry), 0);
+  const counts = [
+    ["Week", (setup.weeks || []).length],
+    ["Program", programs.length],
+    ["Division", inPrograms((e) => (e.divisions || []).length)],
+    [
+      "Group",
+      inPrograms((e) =>
+        (e.divisions || []).reduce((n, d) => n + (d.groups || []).length, 0)
+      )
+    ],
+    ["TimeBlock", inPrograms((e) => (e.timeBlocks || []).length)],
+    ["Location", (setup.locations || []).length],
+    ["Activity", (setup.activities || []).length],
+    ["FixedActivity", inPrograms((e) => (e.fixedActivities || []).length)],
+    [
+      "RecurringActivity",
+      inPrograms((e) => (e.recurringActivities || []).length)
+    ]
+  ];
+  const lines = counts
+    .filter(([, n]) => n > 0)
+    .map(([term, n]) => `${n} ${n === 1 ? t.s(term) : t.p(term)}`);
+  const schedules = (setup.schedules || []).length;
+  if (schedules) {
+    lines.push(
+      `${schedules} saved ${schedules === 1 ? "schedule" : "schedules"}`
+    );
+  }
+  return lines.length ? lines : ["Nothing set up in it yet"];
+}
+
 /** The element with focus, looking inside components (their shadow roots). */
 function focusedElement() {
   let element = document.activeElement;
@@ -114,8 +153,13 @@ export default class ShoreshCampSetup extends LightningElement {
   seasonSending = new Map();
   // Why a season field's last save was refused: data-field -> message, shown under it.
   seasonErrors = {};
-  // A screen whose heading takes the cursor once it shows (after its "next" button).
+  // A screen whose heading takes the cursor once it shows (after the menu or a "next" button).
   focusHeadingOf = null;
+  // Something else that takes the cursor at the next render (a selector), such as the button
+  // that opened New season once it is cancelled.
+  focusAfter = null;
+  // The top message last brought into view.
+  errorShown = null;
   // Which location type the Locations table shows; "all" shows every location.
   locationFilter = "all";
   // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
@@ -220,23 +264,49 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   renderedCallback() {
+    this.showNewError();
+    if (this.focusAfter) {
+      const target = this.template.querySelector(this.focusAfter);
+      this.focusAfter = null;
+      if (target && typeof target.focus === "function") {
+        target.focus();
+      }
+    }
     if (!this.focusHeadingOf) {
       return;
     }
     const screen = this.focusHeadingOf;
     this.focusHeadingOf = null;
-    if (screen === "campWords") {
-      const words = this.template.querySelector("c-shoresh-camp-labels");
-      if (words) {
-        words.focusHeading();
-      }
-      return;
-    }
+    this.focusScreenHeading(screen);
+  }
+
+  focusScreenHeading(screen) {
     const heading = this.template.querySelector(
       `[data-screen="${screen}"] [data-heading]`
     );
     if (heading) {
       heading.focus();
+      return;
+    }
+    // A screen drawn by its own component (Roots, Camp words, Import last year) focuses its own.
+    const own = this.template.querySelector(`[data-screen="${screen}"] > *`);
+    if (own && typeof own.focusHeading === "function") {
+      own.focusHeading();
+    }
+  }
+
+  /**
+   * A new message at the top is brought into view: a save refused while the director is far
+   * down a long table would otherwise go unseen (screen readers hear it: role=alert).
+   */
+  showNewError() {
+    if (this.error === this.errorShown) {
+      return;
+    }
+    this.errorShown = this.error;
+    const box = this.error && this.template.querySelector('[data-id="error"]');
+    if (box && typeof box.scrollIntoView === "function") {
+      box.scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -279,15 +349,34 @@ export default class ShoreshCampSetup extends LightningElement {
   get campKeys() {
     return this.campId ? [this.campId] : [];
   }
+  /**
+   * The menu, Roots, or a screen's own link: that screen, with the cursor on its heading, so a
+   * keyboard or screen-reader user lands where the new screen starts (WCAG 2.4.3).
+   */
   handleNavigate(event) {
     const screen = event.detail.screen;
     if (!canOpen(screen, !!this.setup)) {
       return;
     }
+    this.openScreen(screen);
+  }
+
+  /**
+   * Shows a screen with the cursor on its heading. The screen already open takes it now: the
+   * page may not redraw, and a cursor move left waiting would jump at the next unrelated redraw.
+   */
+  openScreen(screen) {
+    const already = this.currentScreen === screen;
     this.screen = screen;
     this.mode = "screens";
     // A message about another screen's save does not belong on this one.
     this.error = null;
+    if (already) {
+      this.focusHeadingOf = null;
+      this.focusScreenHeading(screen);
+    } else {
+      this.focusHeadingOf = screen;
+    }
   }
 
   /** Each setup screen's next screen ({ key, label }), or null: screen -> next. */
@@ -305,10 +394,7 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup)) {
       return;
     }
-    this.screen = screen;
-    this.mode = "screens";
-    this.error = null;
-    this.focusHeadingOf = screen;
+    this.openScreen(screen);
   }
   get hasCamp() {
     return !!this.campId && !this.isNoCamp && !this.isLoading;
@@ -607,9 +693,6 @@ export default class ShoreshCampSetup extends LightningElement {
       deleteSeason: `Delete ${t.sIn("Season")}`,
       createSeason: `Create ${t.sIn("Season")}`,
       newSeasonTitle: `Start a new ${t.sIn("Season")}`,
-      newSeasonHint: this.hasSeasons
-        ? `Or go back and use "Copy this ${t.sIn("Season")}" to start from an earlier one.`
-        : `Give it a name and its first and last days. You can add ${t.pIn("Week")} and ${t.pIn("Program")} next.`,
       problems: "Needs attention",
       addWeek: `Add ${t.s("Week")}`,
       noWeeks: `No ${t.pIn("Week")} yet`,
@@ -810,16 +893,16 @@ export default class ShoreshCampSetup extends LightningElement {
     });
   }
 
+  /**
+   * Delete season asks first, as every question does (c-shoresh-ask): what goes with it is shown
+   * as counts, one line each, rather than told in a sentence. Cancel puts the cursor back on
+   * the button.
+   */
   async handleDeleteSeason() {
-    const t = this.terms;
-    const ok = await LightningConfirm.open({
-      label: `Delete ${t.sIn("Season")}`,
-      message:
-        `Delete "${this.setup.season.Name}" and everything set up in it (${t.pIn("Week")}, ${t.pIn("Program")}, ` +
-        `${t.pIn("Division")}, ${t.pIn("Group")}, ${t.pIn("TimeBlock")}, ${t.pIn("Location")}, ${t.pIn("Activity")}, ` +
-        `${t.pIn("FixedActivity")}, ${t.pIn("RecurringActivity")}, and saved schedules)?`,
-      variant: "header",
-      theme: "error"
+    const ok = await this.askFirst({
+      heading: `Delete ${this.setup.season.Name}?`,
+      lines: seasonContents(this.setup, this.terms),
+      confirmLabel: this.labels.deleteSeason
     });
     if (!ok) {
       return;
@@ -838,6 +921,7 @@ export default class ShoreshCampSetup extends LightningElement {
   handleStartNewSeason() {
     this.newSeason = {};
     this.mode = "newSeason";
+    this.focusAfter = '[data-id="new-season-title"]';
   }
 
   handleNewSeasonField(event) {
@@ -873,7 +957,17 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleCancelNewSeason() {
-    this.mode = this.seasonId ? "screens" : "newSeason";
+    const selector = '[data-id="new-season"]';
+    if (this.seasonId) {
+      this.mode = "screens";
+      this.focusAfter = selector;
+      return;
+    }
+    // No season open: the form stays and the page may not redraw, so the button takes it now.
+    const target = this.template.querySelector(selector);
+    if (target && typeof target.focus === "function") {
+      target.focus();
+    }
   }
 
   // ---------- copy ----------
@@ -922,10 +1016,12 @@ export default class ShoreshCampSetup extends LightningElement {
 
   handleImportClosed() {
     this.screen = "roots";
+    this.focusHeadingOf = "roots";
   }
 
   handleCancelCopy() {
     this.mode = "screens";
+    this.focusAfter = '[data-id="copy-season"]';
   }
 
   // ---------- weeks, programs, and everything inside ----------

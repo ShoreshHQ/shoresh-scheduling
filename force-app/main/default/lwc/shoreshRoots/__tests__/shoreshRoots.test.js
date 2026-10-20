@@ -91,6 +91,14 @@ describe("c-shoresh-roots", () => {
     }
   });
 
+  it("puts the cursor on its heading when the page opens it", async () => {
+    const element = await render();
+    element.focusHeading();
+    expect(element.shadowRoot.activeElement).toBe(
+      element.shadowRoot.querySelector("[data-heading]")
+    );
+  });
+
   it("shows the desktop's cards, in their places, in the camp's words", async () => {
     const element = await render();
     const cards = [...element.shadowRoot.querySelectorAll("[data-card]")].map(

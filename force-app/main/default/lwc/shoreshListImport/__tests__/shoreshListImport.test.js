@@ -322,6 +322,81 @@ describe("c-shoresh-list-import", () => {
     expect($(element, 'lightning-button[data-id="save"]').label).toBe("Add 3");
   });
 
+  it("keeps the cursor on the way: heading, next question, Save, Saved, then back to the button", async () => {
+    const focused = [];
+    const spy = jest
+      .spyOn(HTMLElement.prototype, "focus")
+      .mockImplementation(function record() {
+        focused.push(this);
+      });
+    try {
+      const element = createElement("c-shoresh-list-import", {
+        is: ShoreshListImport
+      });
+      element.screenKey = "fixedActivities";
+      element.setup = nsRecord({
+        ...SETUP,
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main", Monday__c: true },
+            timeBlocks: [],
+            divisions: [],
+            fixedActivities: [],
+            recurringActivities: []
+          }
+        ]
+      });
+      element.terms = buildTerms([]);
+      document.body.appendChild(element);
+      $(element, 'lightning-button[data-id="open"]').click();
+      await flush();
+      expect(focused.pop().hasAttribute("data-heading")).toBe(true);
+      const status = () => $(element, '[data-id="status"]');
+      expect(status().getAttribute("role")).toBe("status");
+      const input = $(element, 'input[data-id="file"]');
+      Object.defineProperty(input, "files", {
+        value: [
+          file(
+            "fixed.csv",
+            ["Program,Fixed activity,Time block", "Teens,Snack,Break"].join(
+              "\n"
+            )
+          )
+        ]
+      });
+      input.dispatchEvent(new CustomEvent("change"));
+      await flush();
+      buttonNamed(element, "Use these days").click();
+      await flush();
+      // On to the next open question: the times card's first box.
+      const next = focused.pop();
+      expect(next.type).toBe("time");
+      const [start, end] = $$(element, "lightning-input").filter(
+        (box) => box.type === "time"
+      );
+      start.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "10:00:00.000" } })
+      );
+      end.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "10:30:00.000" } })
+      );
+      buttonNamed(element, "Use these times").click();
+      await flush();
+      expect(focused.pop().dataset.id).toBe("save");
+      $(element, 'lightning-button[data-id="save"]').click();
+      await flush();
+      expect(focused.pop().dataset.id).toBe("saved");
+      expect(status().textContent.trim()).toBe("Saved");
+      const close = $(element, 'lightning-button[data-id="done"]');
+      expect(close.label).toBe("Close");
+      close.click();
+      await flush();
+      expect(focused.pop().dataset.id).toBe("open");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("a new row's blank required cell shows its starting value", async () => {
     const element = await openWith(["Activity,Length", "Canoeing,"].join("\n"));
     expect($(element, '[data-id="new"]').textContent).toContain(

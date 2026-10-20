@@ -3,6 +3,8 @@ import { LightningElement, api } from "lwc";
 /**
  * The left-hand menu (desktop-style): Roots, then sections of screens. Entries not built yet say
  * "Coming" and cannot be opened; entries that need a season are greyed out until there is one.
+ * Both stay in the tab order, marked unavailable, with why read out ("Needs a Season"), so a
+ * keyboard or screen-reader user learns they exist and what opens them.
  *
  * sections: from shoreshScreens.menuSections. current: the screen shown.
  * Fires: navigate { screen }
@@ -29,6 +31,11 @@ export default class ShoreshMenu extends LightningElement {
         };
       })
     }));
+  }
+
+  /** An entry that can't open yet: the click does nothing (its words say why). */
+  handleDisabledClick(event) {
+    event.preventDefault();
   }
 
   handleClick(event) {
