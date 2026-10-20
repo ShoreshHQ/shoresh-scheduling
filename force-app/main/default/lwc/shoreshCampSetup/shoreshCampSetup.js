@@ -660,14 +660,19 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** Camp words saved (the editor shows "Saved"): every screen reads them again. */
   async handleLabelsSaved() {
-    // The director stays where they are: the save ran as they left a box, maybe for another
-    // screen. With no season yet, loading would show New season over camp words.
-    const screen = this.screen;
-    const wasScreens = this.mode === "screens";
-    await this.run(() => this.loadCamp(), this.openFailed);
-    if (wasScreens) {
-      this.screen = screen;
-      this.mode = "screens";
+    // The director stays where they are: the save ran as they left a box, maybe by clicking
+    // another screen, New season or Copy this season. So only the words and the season are read
+    // again, never loadCamp, which would choose the screen.
+    await this.run(async () => {
+      this.termLabels = await getLabels({ campId: this.campId });
+      await this.loadSeason();
+    }, this.openFailed);
+  }
+
+  /** Camp words refused: shown under the box, and at the top too if camp words is not showing. */
+  handleLabelsFailed(event) {
+    if (this.currentScreen !== "campWords") {
+      this.error = event.detail.message;
     }
   }
 
@@ -797,7 +802,9 @@ export default class ShoreshCampSetup extends LightningElement {
         showErrors(message);
       },
       // A new name shows in the season picker.
-      reloadSeasons: true
+      reloadSeasons: true,
+      // The season box is beside the picker, on every screen, until its pencil closes it.
+      shown: () => this.showSeasonForm
     });
   }
 
@@ -982,10 +989,16 @@ export default class ShoreshCampSetup extends LightningElement {
    * One field of a setup form (season, program, activity details), saved as the director leaves
    * it. It waits its turn with the table rows, so saves never pass each other, and like a row it
    * doesn't make the page busy. The form hears it saved (and shows "Saved") before the season is
-   * read again; a refusal goes back to the form, to show next to the field in camp words.
+   * read again; a refusal goes back to the form, to show next to the field in camp words, and is
+   * said at the top as well when that field is no longer on screen (shown(): whether it is).
    * Done but not read back is said at the top, as the tables do.
    */
-  saveForm({ records, save, what, onSaved, onFailure, reloadSeasons }) {
+  saveForm({ records, save, what, onSaved, onFailure, reloadSeasons, shown }) {
+    // Where the field is: by default the screen it was left on (the click that left it may
+    // open another). A refusal the director can't see there is also said at the top.
+    const screen = this.screen;
+    const stillShown =
+      shown || (() => this.mode === "screens" && this.screen === screen);
     this.rowSaves = this.rowSaves
       .then(async () => {
         let saved = false;
@@ -1004,7 +1017,11 @@ export default class ShoreshCampSetup extends LightningElement {
           if (saved) {
             this.showError(e, this.refreshFailed);
           } else if (onFailure) {
-            onFailure(failed(what, e));
+            const message = failed(what, e);
+            onFailure(message);
+            if (!stillShown()) {
+              this.error = message;
+            }
           } else {
             this.showError(e, what);
           }

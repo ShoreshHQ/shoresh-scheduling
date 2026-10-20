@@ -46,13 +46,18 @@ season form on Weeks; Camp words' Cancel).
    readers hear "Saved" through a polite live region, again on every save. No toast: the
    "Saved." and "Saved. Shoresh screens now use your camp words." toasts are gone, and the
    director is no longer sent back to Camp words when its words are saved (a save on leaving a
-   box may be on the way to another screen).
+   box may be on the way to another screen, or to New season or Copy this season, which stay
+   open).
 5. **A refusal shows next to the field, in camp words** ("Season not saved. Your changes are
    still here." then why), with `role="alert"`, not at the top of the page. The typing stays and
    is sent again the next time the director leaves the field. A value the field itself refuses
    (a blank name, a date that isn't one, an early count under 1) is not sent; the field says why,
    as any Lightning field does. "Done, but the screen couldn't show it yet" (the save worked, the
-   reload didn't) still shows at the top, as for the tables.
+   reload didn't) still shows at the top, as for the tables. A refusal that answers once its
+   field is no longer on screen (the director left the last field by clicking the screen's next
+   button, the menu, or the season pencil that closes the box) is also shown at the top, so it
+   is never written only where nobody can see it. The page doesn't wait for the save before
+   moving on, as a table row doesn't.
 6. **Deletes keep their questions.** Delete this program and Delete season stay as buttons, with
    the questions they had. Switching activities in Activity details asks before dropping a change
    only when one is still unsaved, which now means it was refused.

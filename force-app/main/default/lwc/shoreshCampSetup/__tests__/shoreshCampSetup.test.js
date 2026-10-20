@@ -659,6 +659,36 @@ describe("c-shoresh-camp-setup", () => {
       expect(saveRecords).toHaveBeenCalledTimes(2);
     });
 
+    it("a refusal that comes after the box was closed with its pencil is said at the top", async () => {
+      const element = await renderSeason();
+      let refuse;
+      saveRecords.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      typeSeason(element, "end", "2026-06-01");
+      leaveSeason(element, "end");
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      refuse({
+        body: { message: "The last day can't be before the first day." }
+      });
+      await flush();
+      expect(q(element, '[data-error="season-end"]')).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent).toContain(
+        "can't be before the first day"
+      );
+      // Opened again, the box still shows why, next to the field, with the typing kept.
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      expect(q(element, '[data-error="season-end"]').textContent).toContain(
+        "can't be before the first day"
+      );
+      expect(seasonInput(element, "end").value).toBe("2026-06-01");
+    });
+
     it("moving the season later works whichever date is changed first", async () => {
       const element = await renderSeason();
       saveRecords.mockRejectedValueOnce({
@@ -1855,6 +1885,101 @@ describe("c-shoresh-camp-setup", () => {
       expect(getLabels.mock.calls.length).toBeGreaterThan(calls);
       expect(shownScreens(element)).toEqual(["groups"]);
       expect(toasts).toEqual([]);
+    });
+
+    it("camp words saved as the director clicks New season or Copy this season: that form stays open", async () => {
+      const element = await renderWith();
+      await openScreen(element, "campWords");
+      const words = q(element, "c-shoresh-camp-labels");
+      // Leaving the box starts the save; the click lands before it answers.
+      button(element, "New season").click();
+      await flush();
+      words.dispatchEvent(new CustomEvent("saved"));
+      await flush();
+      expect(
+        q(element, 'lightning-input[data-form="new-season"]')
+      ).not.toBeNull();
+      expect(shownScreens(element)).toEqual([]);
+
+      button(element, "Cancel").click();
+      await flush();
+      button(element, "Copy this season").click();
+      await flush();
+      words.dispatchEvent(new CustomEvent("saved"));
+      await flush();
+      expect(q(element, "c-shoresh-copy-season")).not.toBeNull();
+      expect(shownScreens(element)).toEqual([]);
+    });
+
+    it("camp words refused: under the box only while camp words shows, and at the top once it doesn't", async () => {
+      const element = await renderWith();
+      await openScreen(element, "campWords");
+      const words = q(element, "c-shoresh-camp-labels");
+      const refused = new CustomEvent("failed", {
+        detail: {
+          message: "Camp words not saved. Your changes are still here. No."
+        }
+      });
+      words.dispatchEvent(refused);
+      await flush();
+      expect(q(element, '[data-id="error"]')).toBeNull();
+
+      // The director clicked "Activities →" as they left the box; the refusal comes after.
+      q(
+        element,
+        '[data-screen="campWords"] lightning-button[data-id="next"]'
+      ).click();
+      await flush();
+      words.dispatchEvent(
+        new CustomEvent("failed", {
+          detail: {
+            message: "Camp words not saved. Your changes are still here. No."
+          }
+        })
+      );
+      await flush();
+      expect(shownScreens(element)).toEqual(["activities"]);
+      expect(q(element, '[data-id="error"]').textContent).toContain(
+        "Camp words not saved. Your changes are still here. No."
+      );
+    });
+
+    it("a form field refused after the director went on to the next screen: said at the top too", async () => {
+      let refuse;
+      saveActivityDetails.mockImplementation(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      const element = await renderWith(
+        setupWith({ activities: [{ Id: "a1", Name: "Archery" }] })
+      );
+      await openScreen(element, "activities");
+      const onFailure = jest.fn();
+      // Leaving the last field sends it; the click on "Fixed activities →" opens the next screen.
+      q(element, "c-shoresh-activity-details").dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            rules: nsRecord({ sobjectType: "Activity__c", Id: "a1" }),
+            whoCanDoIt: [],
+            onSaved: jest.fn(),
+            onFailure
+          }
+        })
+      );
+      q(
+        element,
+        '[data-screen="activities"] lightning-button[data-id="next"]'
+      ).click();
+      await flush();
+      refuse({ body: { message: "Pick the day for the early-week count." } });
+      await flush();
+      const message =
+        "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
+      expect(onFailure).toHaveBeenCalledWith(message);
+      expect(shownScreens(element)).toEqual(["fixedActivities"]);
+      expect(q(element, '[data-id="error"]').textContent).toContain(message);
     });
   });
 

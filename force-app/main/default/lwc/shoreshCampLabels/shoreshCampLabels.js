@@ -15,7 +15,8 @@ const NOT_SAVED = "Camp words not saved. Your changes are still here.";
  * on screen then. "Saved" shows quietly; a refusal shows under the box that was left, with the
  * typing kept.
  *
- * Fires: saved (after each save). @api focusHeading(): the cursor to the screen's heading.
+ * Fires: saved (after each save); failed { message } (a save refused).
+ * @api focusHeading(): the cursor to the screen's heading.
  */
 export default class ShoreshCampLabels extends LightningElement {
   @api campId;
@@ -138,7 +139,10 @@ export default class ShoreshCampLabels extends LightningElement {
       } catch (e) {
         // Still to save: the next box left sends it again.
         this.dirty = true;
-        this.fieldError = { term, field, message: failed(NOT_SAVED, e) };
+        const message = failed(NOT_SAVED, e);
+        this.fieldError = { term, field, message };
+        // The setup page says it at the top too if this screen is no longer showing.
+        this.dispatchEvent(new CustomEvent("failed", { detail: { message } }));
       }
     });
     return this.saves;

@@ -187,7 +187,9 @@ describe("c-shoresh-camp-labels", () => {
     saveCampLabels.mockResolvedValue();
     const element = await render();
     const saved = jest.fn();
+    const failed = jest.fn();
     element.addEventListener("saved", saved);
+    element.addEventListener("failed", failed);
     type(element, "Division", "singular", "Unit");
     leave(element, "Division", "singular");
     await flush();
@@ -200,6 +202,8 @@ describe("c-shoresh-camp-labels", () => {
     expect(why.textContent).toContain("both a singular and a plural word");
     expect(why.getAttribute("role")).toBe("alert");
     expect(saved).not.toHaveBeenCalled();
+    // The setup page hears why too, to say it at the top if camp words is no longer showing.
+    expect(failed.mock.calls[0][0].detail.message).toBe(why.textContent.trim());
     expect(input(element, "Division", "singular").value).toBe("Unit");
     expect(savedMark(element).textContent).toBe("");
     // Fixing it and leaving again sends it, and the message goes.
