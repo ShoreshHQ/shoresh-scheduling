@@ -51,8 +51,9 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   without one, `npm run check:name-clash` fails on a variable named like a class or static under
   another spelling (Apex ignores case; #46, #48), and `npm run check:reserved-words` on a name that
   is an Apex reserved word (`number`, #46). All run in CI; see `docs/ci-setup.md`.
-- **Compile against the test org before pushing Apex:** `sf project deploy start --dry-run --source-dir
-  force-app --target-org shoresh-test --test-level NoTestRun --ignore-conflicts`, with 0 errors. It runs
+- **Compile against the test org before pushing Apex:**
+  `sf project deploy start --dry-run --source-dir force-app --target-org shoresh-test --test-level NoTestRun --ignore-conflicts`,
+  with 0 errors. It runs
   no tests and changes nothing, but it is still a deployment: follow the rule above and run it only when
   no CI run is using the org (during one it would wait on or hold up CI, and compile against that
   branch's code). If the org is busy, push without it: CI's deploy step fails within minutes on a

@@ -473,6 +473,51 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="week"]').disabled).toBe(false);
   });
 
+  it("a tool refused while a publish is on its way says nothing was done and offers no Undo", async () => {
+    // The week as saved after the earlier edit: Bunk 1's Monday Period 1 Open, Tuesday as it was.
+    const after = openWeek();
+    saveSlots.mockResolvedValue({
+      conflicts: [],
+      revision: "2026-06-29:2|2026-06-30:1",
+      schedule: {
+        schedule: { id: SCHEDULE },
+        days: after.days.map((day, d) => ({
+          ...day,
+          rows: d === 0 ? ["1,,,", "1,,,"] : day.rows,
+          locks: []
+        }))
+      }
+    });
+    const element = await render(openWeek());
+    // An earlier edit, saved: Undo would take it back.
+    await press(cellAt(element, "0-1"), "Delete");
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    const held = slow();
+    previewPublish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    // A tool run all the same (as in Manual Build's host test: a click that got past the wait),
+    // on Tuesday, which still has Swim to clear.
+    q(element, '[data-id="week-editor"]').runTool({
+      kind: "clear",
+      dates: [after.days[1].dateValue],
+      name: "Tuesday"
+    });
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="tool-notice"]')).toBeNull();
+    expect(notice(element)).toBe(
+      "One moment: the week is being saved or restored."
+    );
+    publish.mockResolvedValue({ published: PUBLISHED });
+    held.answer(preview());
+    await flush();
+    // Undo still takes back the earlier edit, one step: no step was added for the tool.
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="undo"]').disabled).toBe(true);
+  });
+
   it("Publish waits while a build is on its way", async () => {
     const element = await render(cleanWeek());
     saveWeekOnServer.mockReturnValue(new Promise(() => {}));
