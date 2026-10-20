@@ -186,6 +186,16 @@ jobs:
             # The shared org is also deployed to by hand, so its change tracking reports
             # conflicts; the repository is always what should end up in the org.
             sf project deploy start --source-dir force-app --ignore-conflicts --test-level NoTestRun --wait 30
+            # Tests that run as the org's admin (no runAs) read Shoresh fields through the
+            # Shoresh Scheduler permission set: the admin profile gets no access to fields a
+            # deploy adds. A fresh test org starts without it (2026-10-20); already having it is fine.
+            if ! out=$(sf org assign permset --name Shoresh_Scheduler --json 2>&1); then
+              if ! grep -q "Duplicate PermissionSetAssignment" <<< "$out"; then
+                echo "::error::Could not give the test org's admin the Shoresh Scheduler permission set."
+                echo "$out"
+                exit 1
+              fi
+            fi
           fi
       - name: Apex tests
         # Skipped only for docs and screen-only pull requests; anything unrecognised runs them.
