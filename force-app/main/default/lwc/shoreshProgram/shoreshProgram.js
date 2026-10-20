@@ -553,6 +553,17 @@ export default class ShoreshProgram extends LightningElement {
     );
   }
 
+  /** The cursor into the program's name box (after the card above it is deleted). */
+  @api
+  focusName() {
+    const input = this.template.querySelector(
+      'lightning-input[data-id="name"]'
+    );
+    if (input) {
+      input.focus();
+    }
+  }
+
   handleDeleteProgram() {
     this.dispatchEvent(
       new CustomEvent("delete", {

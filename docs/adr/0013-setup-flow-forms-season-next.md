@@ -191,6 +191,14 @@ there.
     in date boxes Shoresh marks `shoresh-date`; Salesforce's date boxes elsewhere are untouched.
     The icon keeps its size and the box keeps its SLDS padding, which already holds the larger
     button.
+25. **A deleted program card is said, and the cursor moves to its neighbour** (added
+    2026-10-20, the loose end of choice 23). A program card is not a table row, so choice 23
+    did not cover it: after **OK** on **Delete this program** the cursor fell to the page and
+    nothing was said. Now the Programs screen's own live region says "Deleted Teens", and the
+    cursor goes to the name box of the card that took its place, else the card above, else
+    **Add program**, once the season has been read again and the page is no longer busy (Add
+    program is disabled while it is). A cancelled or refused delete leaves the cursor on the
+    card's delete button, as for rows.
 
 ## Differences from the desktop
 

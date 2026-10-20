@@ -584,6 +584,15 @@ describe("c-shoresh-program", () => {
     });
   });
 
+  it("puts the cursor in its name box when asked", async () => {
+    const element = await render();
+    const focus = jest.spyOn(HTMLElement.prototype, "focus");
+    element.focusName();
+    const focused = focus.mock.contexts.map((el) => el.dataset.id);
+    focus.mockRestore();
+    expect(focused).toEqual(["name"]);
+  });
+
   it("keeps a typed but unsaved name when something else is saved", async () => {
     const element = await render();
     typeName(element, "Typed");

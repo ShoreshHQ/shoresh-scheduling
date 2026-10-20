@@ -533,6 +533,130 @@ describe("c-shoresh-camp-setup", () => {
     }, Promise.resolve());
   });
 
+  describe("deleting a whole program card", () => {
+    const card = (id, name) => ({
+      program: { Id: id, Name: name, Monday__c: true },
+      timeBlocks: [],
+      divisions: []
+    });
+    const programs = (...cards) =>
+      nsRecord(setupWith({ programs: cards.map(([id, n]) => card(id, n)) }));
+    const live = (element) =>
+      q(element, '[data-id="programs-announce"]').textContent.trim();
+
+    /**
+     * Deletes `id` from the Programs screen: the season read again comes back with `left`.
+     * Returns what took the focus: a card's name box ("name:Main") or a page button.
+     */
+    async function deleteCard(element, id, name, left) {
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      getSeasonSetup.mockResolvedValue(programs(...left));
+      LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
+      deleteRecord.mockResolvedValueOnce();
+      const source = [
+        ...element.shadowRoot.querySelectorAll(
+          '[data-screen="programs"] c-shoresh-program'
+        )
+      ].find((c) => c.entry.program.Id === id);
+      source.dispatchEvent(
+        new CustomEvent("delete", { detail: { recordId: id, name } })
+      );
+      await flush();
+      await flush();
+      const focused = focus.mock.contexts.map((el) => {
+        if (el.dataset.id === "name") {
+          return `name:${el.getRootNode().host.entry.program.Name}`;
+        }
+        return el.dataset.id || el.tagName.toLowerCase();
+      });
+      focus.mockRestore();
+      return focused;
+    }
+
+    beforeEach(() => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    });
+
+    it("says so and puts the cursor on the next card's name", async () => {
+      getSeasonSetup.mockResolvedValue(
+        programs(["p1", "Main"], ["p2", "Teens"], ["p3", "Sports"])
+      );
+      const element = await render();
+      await openScreen(element, "programs");
+      const focused = await deleteCard(element, "p2", "Teens", [
+        ["p1", "Main"],
+        ["p3", "Sports"]
+      ]);
+      expect(live(element)).toBe("Deleted Teens");
+      expect(focused).toEqual(["name:Sports"]);
+    });
+
+    it("goes to the card above when the last one is deleted", async () => {
+      getSeasonSetup.mockResolvedValue(
+        programs(["p1", "Main"], ["p2", "Teens"])
+      );
+      const element = await render();
+      await openScreen(element, "programs");
+      const focused = await deleteCard(element, "p2", "Teens", [
+        ["p1", "Main"]
+      ]);
+      expect(live(element)).toBe("Deleted Teens");
+      expect(focused).toEqual(["name:Main"]);
+    });
+
+    it("goes to Add program when no card is left", async () => {
+      getSeasonSetup.mockResolvedValue(programs(["p1", "Main"]));
+      const element = await render();
+      await openScreen(element, "programs");
+      const focused = await deleteCard(element, "p1", "Main", []);
+      expect(live(element)).toBe("Deleted Main");
+      expect(focused).toEqual(["add-program"]);
+    });
+
+    it("says it again when the next delete has the same name", async () => {
+      getSeasonSetup.mockResolvedValue(
+        programs(["p1", "Main"], ["p2", "Main"], ["p3", "Sports"])
+      );
+      const element = await render();
+      await openScreen(element, "programs");
+      await deleteCard(element, "p1", "Main", [
+        ["p2", "Main"],
+        ["p3", "Sports"]
+      ]);
+      const first = q(element, '[data-id="programs-announce"]').textContent;
+      await deleteCard(element, "p2", "Main", [["p3", "Sports"]]);
+      const second = q(element, '[data-id="programs-announce"]').textContent;
+      expect(live(element)).toBe("Deleted Main");
+      expect(second).not.toBe(first);
+    });
+
+    it("says nothing and keeps the cursor when cancelled or refused", async () => {
+      getSeasonSetup.mockResolvedValue(
+        programs(["p1", "Main"], ["p2", "Teens"])
+      );
+      const element = await render();
+      await openScreen(element, "programs");
+      const source = q(element, '[data-screen="programs"] c-shoresh-program');
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      LightningConfirm.open.mockResolvedValueOnce(nsRecord(false));
+      source.dispatchEvent(
+        new CustomEvent("delete", { detail: { recordId: "p1", name: "Main" } })
+      );
+      await flush();
+      LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
+      deleteRecord.mockRejectedValueOnce({ body: { message: "Locked." } });
+      source.dispatchEvent(
+        new CustomEvent("delete", { detail: { recordId: "p1", name: "Main" } })
+      );
+      await flush();
+      const focused = focus.mock.contexts.length;
+      focus.mockRestore();
+      expect(live(element)).toBe("");
+      expect(focused).toBe(0);
+    });
+  });
+
   it("deleting a bunk or activity some schedules use says how many first", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));

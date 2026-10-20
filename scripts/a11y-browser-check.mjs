@@ -48,7 +48,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ORG = "shoresh-test";
 // The check's own made-up camp, set up by the walkthrough's seed (scripts/apex/sample-version.apex)
 // under another name, so "Sample Camp (made up)" stays as the walkthrough expects it. Each run
-// adds a new week to it, so Start, Generate and a first Publish happen every time.
+// makes its one week fresh (seedCamp), so Start, Generate and Save version happen every time.
 const CAMP = "Keyboard check camp (made up)";
 const SEED = join("scripts", "apex", "sample-version.apex");
 const SEED_NAME = "final String CAMP_NAME = 'Sample Camp (made up)';";
@@ -156,7 +156,13 @@ function apex(code) {
   return result.logs || "";
 }
 
-/** The check's camp (first run only), then a new week in it. Returns the week's name. */
+/**
+ * The check's camp (first run only), then the check's own week in it, made fresh: the week an
+ * earlier run added (the latest), with its drafts and saved versions deleted, so Start, Generate
+ * and Save version happen again and the camp gains no more weeks. Published schedules are kept
+ * history (`PublishedHistory`, `PublishedGuard`): they stay, and this run publishes the same week
+ * again. Only the first run adds a week. Returns the week's name.
+ */
 function seedCamp() {
   const count = JSON.parse(
     run("sf", [
@@ -179,19 +185,34 @@ function seedCamp() {
   const logs = apex(`
 Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
 Season__c season = [SELECT Id, EndDate__c FROM Season__c WHERE Camp__c = :camp.Id ORDER BY CreatedDate LIMIT 1];
-List<Week__c> weeks = [SELECT StartDate__c, SortOrder__c FROM Week__c WHERE Season__c = :season.Id ORDER BY StartDate__c DESC];
-Date monday = weeks.isEmpty() ? Date.newInstance(2027, 6, 28) : weeks[0].StartDate__c.addDays(7);
-Integer n = weeks.size() + 1;
-if (season.EndDate__c < monday.addDays(4)) {
-  season.EndDate__c = monday.addDays(4);
-  update season;
+List<Week__c> weeks = [SELECT Id, Name, StartDate__c FROM Week__c WHERE Season__c = :season.Id ORDER BY StartDate__c DESC];
+Week__c week;
+if (weeks.size() > 1) {
+  week = weeks[0];
+  List<Schedule__c> drafts = [SELECT Id FROM Schedule__c WHERE Week__c = :week.Id AND Status__c != 'Published' AND PublishedAt__c = NULL AND PublishedBy__c = NULL AND PublishKey__c = NULL];
+  delete drafts;
+  System.debug('A11Y_RESET[' + drafts.size() + ']');
+} else {
+  Date monday = weeks.isEmpty() ? Date.newInstance(2027, 6, 28) : weeks[0].StartDate__c.addDays(7);
+  Integer n = weeks.size() + 1;
+  if (season.EndDate__c < monday.addDays(4)) {
+    season.EndDate__c = monday.addDays(4);
+    update season;
+  }
+  week = new Week__c(Season__c = season.Id, Name = 'Week ' + n, StartDate__c = monday, EndDate__c = monday.addDays(4), SortOrder__c = n);
+  insert week;
 }
-insert new Week__c(Season__c = season.Id, Name = 'Week ' + n, StartDate__c = monday, EndDate__c = monday.addDays(4), SortOrder__c = n);
-System.debug('A11Y_WEEK=Week ' + n + '=');
+System.debug('A11Y_WEEK[' + week.Name + ']');
 `);
-  const week = /A11Y_WEEK=(Week \d+)=/.exec(logs);
-  if (!week) throw new Error("The new week was not reported back.");
-  say(`Added ${week[1]} to "${CAMP}"; the check works on it.`);
+  // The log also echoes the code above, quote marks and all: only the debug line matches.
+  const week = /A11Y_WEEK\[([^\]']+)\]/.exec(logs);
+  if (!week) throw new Error("The check's week was not reported back.");
+  const reset = /A11Y_RESET\[(\d+)\]/.exec(logs);
+  say(
+    reset
+      ? `Made ${week[1]} of "${CAMP}" fresh (${reset[1]} draft or saved schedules deleted); the check works on it.`
+      : `Added ${week[1]} to "${CAMP}"; the check works on it.`
+  );
   return week[1];
 }
 
@@ -222,7 +243,7 @@ function signInUrl() {
 
 const results = new Results();
 let page;
-let week; // the week this run added, e.g. "Week 3"
+let week; // the check's week, made fresh for this run, e.g. "Week 2"
 let shotCount = 0;
 const pause = (ms) => page.waitForTimeout(ms);
 
@@ -455,8 +476,8 @@ const isMenuLink = (re) => (f) =>
 /** Opens a screen from the Shoresh menu by keyboard; focus should be on its heading. */
 async function openFromMenu(screen, re, heading = new RegExp(`^${screen}$`)) {
   // The menu comes before every screen, so Shift+Tab reaches it first from a heading or a
-  // table row (focus stays on the next row after a delete, and the check's camp gains a week
-  // each run, so Weeks outgrows going forward). From near the page's end, forward wraps round.
+  // table row (focus stays on the next row after a delete, and a long Weeks table outgrows
+  // going forward). From near the page's end, forward wraps round.
   const link =
     (await tabTo(isMenuLink(re), { back: true })) ||
     (await tabTo(isMenuLink(re), { max: 280 }));
@@ -618,6 +639,49 @@ async function campSetup() {
     await openFromMenu("Weeks", /^Weeks\b/);
     await axe("Weeks");
   });
+  await step(S, "Programs: add a card, then delete it", async () => {
+    await openFromMenu("Programs", /^Programs\b/);
+    const cards = () =>
+      shown(
+        '[data-screen="programs"] c-shoresh-program lightning-input[data-id="name"] input'
+      );
+    const before = await cards().count();
+    if (!(await tabTo(named(/^Add program$/i, { tag: "button" }), { max: 10 })))
+      throw new Error("Add program not reached with Tab.");
+    await press("Enter", 3000);
+    // Only the card this step added is deleted: never the camp's own programs.
+    const names = await cards().evaluateAll((inputs) =>
+      inputs.map((i) => i.value)
+    );
+    const added = names[names.length - 1];
+    if (names.length !== before + 1 || !/^Program \d+$/.test(added || "")) {
+      throw new Error(
+        `No new program card to delete (cards: ${names.join(", ")}).`
+      );
+    }
+    for (let i = 0; i < names.length; i++) {
+      if (!(await tabTo(named(/^Delete this program$/i), { max: 40 })))
+        throw new Error("The new card's Delete was not reached with Tab.");
+    }
+    await press("Enter", 1200);
+    const go = await tabTo(
+      (g) =>
+        g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
+      { max: 6, anywhere: true }
+    );
+    if (!go) throw new Error("The delete question's button not reached.");
+    await expectLive(
+      "Programs",
+      `Deleting the card ${added}: it is said`,
+      new RegExp(`^Deleted ${added}`),
+      () => press("Enter")
+    );
+    await expectFocus(
+      "Programs",
+      "After deleting the last card: focus on the card above's name",
+      { tag: "input", name: /program name/i }
+    );
+  });
   await step(S, "Camp words: a word is saved and said", async () => {
     await openFromMenu("Camp words", /^Camp words/, /^Words .* uses$/);
     await axe("Camp words");
@@ -714,7 +778,13 @@ async function campSetup() {
     }
   );
   await step(S, "Season pencil: open and close keep focus on it", async () => {
-    const b = await tabTo(named(/^Edit /, { tag: "button" }));
+    // The pencil sits just before New season and Copy this season (where the step before left
+    // focus), so Shift+Tab reaches it at once; going forward would cross the whole screen first.
+    const b =
+      (await tabTo(named(/^Edit /, { tag: "button" }), {
+        back: true,
+        max: 10
+      })) || (await tabTo(named(/^Edit /, { tag: "button" }), { max: 280 }));
     if (!b) throw new Error("The season's pencil not reached with Tab.");
     await press("Enter", 800);
     await expectFocus(
