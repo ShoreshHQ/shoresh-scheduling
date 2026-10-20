@@ -427,6 +427,26 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-error="who"]')).toBeNull();
   });
 
+  it("a save answered after the director switched activities says it is no longer shown", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
+    leave(q(element, '[data-id="who-can-do-it"]'));
+    await flush();
+    const detail = handler.mock.calls[0][0].detail;
+    expect(detail.shown()).toBe(true);
+    // Sent, so nothing is unsaved: switching does not ask.
+    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await flush();
+    expect(LightningConfirm.open).not.toHaveBeenCalled();
+    expect(detail.shown()).toBe(false);
+    // The refusal is said at the top by the page, not next to another activity's field.
+    detail.onFailure("Not saved.");
+    await flush();
+    expect(q(element, '[data-error="who"]')).toBeNull();
+  });
+
   it("switching with nothing typed does not ask", async () => {
     const element = await render();
     change(q(element, '[data-id="activity-picker"]'), "a2");

@@ -29,7 +29,8 @@ const EARLY_WEEK = EARLY_WEEK_INPUTS.map((key) => RULE_FIELDS[key]);
  * quietly; a refusal shows next to the field, with what was typed kept. If something else on the
  * screen is saved meanwhile, what was typed here stays.
  *
- * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message) }
+ * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }
+ * (shown: whether the form still shows that activity; a refusal it can't show is said at the top)
  */
 export default class ShoreshActivityDetails extends LightningElement {
   @api terms;
@@ -373,7 +374,8 @@ export default class ShoreshActivityDetails extends LightningElement {
           rules,
           whoCanDoIt: [...this.draft.whoCanDoIt],
           onSaved,
-          onFailure
+          onFailure,
+          shown: () => activityId === this.activityId
         }
       })
     );

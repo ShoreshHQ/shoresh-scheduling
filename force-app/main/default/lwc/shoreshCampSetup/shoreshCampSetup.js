@@ -804,7 +804,9 @@ export default class ShoreshCampSetup extends LightningElement {
       // A new name shows in the season picker.
       reloadSeasons: true,
       // The season box is beside the picker, on every screen, until its pencil closes it.
-      shown: () => this.showSeasonForm
+      shown: () => this.showSeasonForm,
+      // Another season picked since: the box no longer shows this one.
+      sameRecord: current
     });
   }
 
@@ -958,12 +960,13 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** A field of an activity's details, saved as the director leaves it. */
   handleSaveActivityDetails(event) {
-    const { rules, whoCanDoIt, onSaved, onFailure } = event.detail;
+    const { rules, whoCanDoIt, onSaved, onFailure, shown } = event.detail;
     return this.saveForm({
       save: () => saveActivityDetails({ rules, whoCanDoIt }),
       what: `${this.terms.s("Activity")} details not saved. Your changes are still here.`,
       onSaved,
-      onFailure
+      onFailure,
+      sameRecord: shown
     });
   }
 
@@ -990,15 +993,26 @@ export default class ShoreshCampSetup extends LightningElement {
    * it. It waits its turn with the table rows, so saves never pass each other, and like a row it
    * doesn't make the page busy. The form hears it saved (and shows "Saved") before the season is
    * read again; a refusal goes back to the form, to show next to the field in camp words, and is
-   * said at the top as well when that field is no longer on screen (shown(): whether it is).
+   * said at the top as well when that field is no longer on screen (shown(): whether it is), or
+   * the form now shows another record (sameRecord(): whether it still shows the one sent).
    * Done but not read back is said at the top, as the tables do.
    */
-  saveForm({ records, save, what, onSaved, onFailure, reloadSeasons, shown }) {
+  saveForm({
+    records,
+    save,
+    what,
+    onSaved,
+    onFailure,
+    reloadSeasons,
+    shown,
+    sameRecord
+  }) {
     // Where the field is: by default the screen it was left on (the click that left it may
     // open another). A refusal the director can't see there is also said at the top.
     const screen = this.screen;
-    const stillShown =
+    const onScreen =
       shown || (() => this.mode === "screens" && this.screen === screen);
+    const stillShown = () => onScreen() && (!sameRecord || sameRecord());
     this.rowSaves = this.rowSaves
       .then(async () => {
         let saved = false;

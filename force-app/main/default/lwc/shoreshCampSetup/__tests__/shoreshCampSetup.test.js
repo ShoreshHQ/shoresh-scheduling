@@ -689,6 +689,38 @@ describe("c-shoresh-camp-setup", () => {
       expect(seasonInput(element, "end").value).toBe("2026-06-01");
     });
 
+    it("a refusal that comes after the director picked another season is said at the top", async () => {
+      const element = await renderSeason();
+      let refuse;
+      saveRecords.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      typeSeason(element, "end", "2026-06-01");
+      leaveSeason(element, "end");
+      await flush();
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({ season: { ...SEASON, Id: "s2", Name: "Summer 2027" } })
+        )
+      );
+      q(element, '[data-id="season-picker"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
+      await flush();
+      refuse({
+        body: { message: "The last day can't be before the first day." }
+      });
+      await flush();
+      // The box shows the other season now: nothing from the first one under its fields.
+      expect(q(element, '[data-error="season-end"]')).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent).toContain(
+        "can't be before the first day"
+      );
+    });
+
     it("moving the season later works whichever date is changed first", async () => {
       const element = await renderSeason();
       saveRecords.mockRejectedValueOnce({
@@ -1979,6 +2011,40 @@ describe("c-shoresh-camp-setup", () => {
         "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
       expect(onFailure).toHaveBeenCalledWith(message);
       expect(shownScreens(element)).toEqual(["fixedActivities"]);
+      expect(q(element, '[data-id="error"]').textContent).toContain(message);
+    });
+    it("an activity's details refused after the director picked another activity: said at the top", async () => {
+      let refuse;
+      saveActivityDetails.mockImplementation(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      const element = await renderWith(
+        setupWith({ activities: [{ Id: "a1", Name: "Archery" }] })
+      );
+      await openScreen(element, "activities");
+      const onFailure = jest.fn();
+      q(element, "c-shoresh-activity-details").dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            rules: nsRecord({ sobjectType: "Activity__c", Id: "a1" }),
+            whoCanDoIt: [],
+            onSaved: jest.fn(),
+            onFailure,
+            // The form shows another activity now.
+            shown: () => false
+          }
+        })
+      );
+      await flush();
+      refuse({ body: { message: "Pick the day for the early-week count." } });
+      await flush();
+      const message =
+        "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
+      expect(onFailure).toHaveBeenCalledWith(message);
+      expect(shownScreens(element)).toEqual(["activities"]);
       expect(q(element, '[data-id="error"]').textContent).toContain(message);
     });
   });
