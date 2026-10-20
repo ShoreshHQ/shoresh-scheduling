@@ -169,3 +169,48 @@ schedule screens is reachable with Tab; axe found nothing else on any screen.
 - Pointer-only actions (drag and drop) and touch.
 - axe-core finds about a third of WCAG problems; colour contrast it can only judge where the
   colours are plain.
+
+## Follow-up, 2026-10-20: items 1 to 3 fixed
+
+Branch `fix-versions-setupmatch-browser`, code `7eb747f`, deployed to the test org and checked
+with the same script and browser (Week 29 of the check's camp; nobody else deployed during the
+run). **105 passed, 5 failed, 2 not run.** Everything listed below under items 1 to 3 now passes.
+
+1. **Versions opens** on both screens. The "click elsewhere closes it" listener asked whether
+   the click's path held the list's own element; in Salesforce the page sees the component
+   through a wrapper, so the answer was always no. The list now notes clicks inside itself.
+   Opening it also showed that **rename** left focus on the page (its button goes when the name
+   box comes); focus now goes into the box, as the desktop's `autoFocus` does.
+2. **Update to match setup is made.** The screen sent the right revisions, but what it sends
+   (`SetupMatch.Ask`) had plain fields, which Salesforce leaves empty, so the server compared
+   the week with nothing and refused. They are properties now; `npm run check:aura-inputs`
+   (also run in CI by Jest) fails on any class a screen sends with a plain field.
+3. **Start a blank week** puts focus on the new week's first cell.
+
+| Screen             | Step                                                    | What happened                                                    |
+| ------------------ | ------------------------------------------------------- | ---------------------------------------------------------------- |
+| Manual Build       | Start a blank week: focus not lost when the button goes | Focus on div "Morning meeting: Recurring activity" in the grid.  |
+| Manual Build       | Versions: Enter opens the list                          | aria-expanded is true.                                           |
+| Manual Build       | Versions: Escape closes it, focus on Versions           | Focus on button "Versions".                                      |
+| Manual Build       | Save version: it is said                                | Said: "Saved Keyboard check 17:54:08.".                          |
+| Manual Build       | rename: focus in the name box                           | Focus on input "New name".                                       |
+| Manual Build       | Escape in the name box: focus back on its rename        | Focus on button "Rename Keyboard check 17:54:08".                |
+| Generated Schedule | Versions: Enter opens the list                          | aria-expanded is true.                                           |
+| Generated Schedule | Versions: Escape closes it, focus on Versions           | Focus on button "Versions".                                      |
+| Generated Schedule | Save version: it is said                                | Said: "Saved Keyboard check 17:54:23.".                          |
+| Generated Schedule | rename: focus in the name box                           | Focus on input "New name".                                       |
+| Generated Schedule | Escape in the name box: focus back on its rename        | Focus on button "Rename Keyboard check 17:54:23".                |
+| Manual Build       | One row's Update: it is said                            | Said: "Updated to match setup.".                                 |
+| Manual Build       | One row's Update: focus stays in the dialog             | Focus on button "Update Bunk 2 · Monday · Period 6" in a dialog. |
+| Manual Build       | Update all: it is said                                  | Said: "Updated to match setup." (the one change left).           |
+| Manual Build       | Update all leaves nothing: focus on the grid            | Focus on div "Swim" in the grid.                                 |
+| Generated Schedule | One row's Update: it is said                            | Said: "Updated to match setup.".                                 |
+| Generated Schedule | One row's Update: focus stays in the dialog             | Focus on button "Update Bunk 2 · Monday · Period 6" in a dialog. |
+| Generated Schedule | Update all: it is said                                  | Said: "Updated to match setup." (the one change left).           |
+| Generated Schedule | Update all leaves nothing: focus on the grid            | Focus on div "Art" in the grid.                                  |
+
+Still failing, not part of this change: items 4 (deleting a row in a setup table) and 5 (date
+box calendar buttons) above. Not run: Camp words and the season's pencil were not reached
+with Tab, most likely because the check's own camp now has 29 weeks and the Weeks table's
+controls use up the script's 140 Tab presses before them (a limit of the check; not looked
+into here).

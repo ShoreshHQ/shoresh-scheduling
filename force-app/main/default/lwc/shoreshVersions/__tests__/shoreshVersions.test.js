@@ -102,6 +102,9 @@ describe("c-shoresh-versions", () => {
     await flush();
     const input = q(element, '[data-id="rename-input"]');
     expect(input.value).toBe("Before my changes");
+    // The rename button it was started from is gone: focus goes into the box (the desktop's
+    // autoFocus), not the page (real-browser check, 2026-10-20).
+    expect(element.shadowRoot.activeElement).toBe(input);
     await expect(element).toBeAccessible();
     input.value = "  Monday plan ";
     input.dispatchEvent(new CustomEvent("input"));
@@ -187,6 +190,73 @@ describe("c-shoresh-versions", () => {
     document.body.click();
     await flush();
     expect(q(element, '[data-id="versions-panel"]')).toBeNull();
+  });
+
+  // In Salesforce the page sees each component through a wrapper (Lightning Locker / Lightning
+  // Web Security): a page-wide listener gets the click's path as stand-ins, never the very
+  // element the component knows as its host. The list then closed the moment it opened, by Enter
+  // or a click, on Manual Build and Generated Schedule (real-browser check, 2026-10-20). Here a
+  // page-wide click listener gets its event the same way.
+  describe("when a page-wide listener sees the click through a wrapper (Salesforce)", () => {
+    const realAdd = document.addEventListener;
+    const realRemove = document.removeEventListener;
+    const wrappers = new Map();
+    const standIn = (event) =>
+      new Proxy(event, {
+        get(target, prop) {
+          if (prop === "composedPath") {
+            return () =>
+              target.composedPath().map((node) => new Proxy(node, {}));
+          }
+          const value = target[prop];
+          return typeof value === "function" ? value.bind(target) : value;
+        }
+      });
+    beforeEach(() => {
+      document.addEventListener = function add(type, listener, options) {
+        if (type !== "click") {
+          return realAdd.call(this, type, listener, options);
+        }
+        const wrapper = (event) => listener(standIn(event));
+        wrappers.set(listener, wrapper);
+        return realAdd.call(this, type, wrapper, options);
+      };
+      document.removeEventListener = function remove(type, listener, options) {
+        return realRemove.call(
+          this,
+          type,
+          wrappers.get(listener) || listener,
+          options
+        );
+      };
+    });
+    afterEach(() => {
+      document.addEventListener = realAdd;
+      document.removeEventListener = realRemove;
+    });
+
+    it("opens on a click, and stays open for clicks inside it", async () => {
+      const element = await render();
+      const button = q(element, '[data-id="versions-button"]');
+      button.click();
+      await flush();
+      expect(button.getAttribute("aria-expanded")).toBe("true");
+      expect(q(element, '[data-id="versions-panel"]')).not.toBeNull();
+      q(element, '[data-action="rename"]').click();
+      await flush();
+      expect(q(element, '[data-id="rename-input"]')).not.toBeNull();
+    });
+
+    it("still closes when clicking elsewhere on the page", async () => {
+      const element = await render();
+      await openList(element);
+      document.body.click();
+      await flush();
+      expect(q(element, '[data-id="versions-panel"]')).toBeNull();
+      expect(
+        q(element, '[data-id="versions-button"]').getAttribute("aria-expanded")
+      ).toBe("false");
+    });
   });
 
   describe("on Manual Build (restore)", () => {

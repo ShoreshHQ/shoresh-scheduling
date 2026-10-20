@@ -53,6 +53,9 @@ export default class ShoreshVersions extends LightningElement {
   focusAfterDelete = null;
   // After a rename is saved or let go: the row's rename button (the box it was in is gone).
   focusRenameAfterRender = null;
+  // A rename just started: its box (the rename button it came from is gone), as the desktop's
+  // autoFocus.
+  focusRenameInputAfterRender = false;
 
   @api
   get versions() {
@@ -78,6 +81,13 @@ export default class ShoreshVersions extends LightningElement {
       );
       if (rename) {
         rename.focus();
+      }
+    }
+    if (this.focusRenameInputAfterRender) {
+      this.focusRenameInputAfterRender = false;
+      const input = this.template.querySelector('[data-id="rename-input"]');
+      if (input) {
+        input.focus();
       }
     }
     if (this.focusAfterDelete && !this.busy) {
@@ -244,9 +254,22 @@ export default class ShoreshVersions extends LightningElement {
     this.renamingId = null;
   }
 
+  /**
+   * A click inside the list or on its button: noted, so the page-wide listener below, which hears
+   * the same click next (it bubbles up from here), lets it be. In Salesforce the page sees this
+   * component through a wrapper, so the click's path never holds the very element
+   * this.template.host is, and asking that closed the list the moment it opened (real-browser
+   * check, 2026-10-20).
+   */
+  handleInsideClick() {
+    this.clickInside = true;
+  }
+
   connectedCallback() {
-    this.closeOnOutside = (event) => {
-      if (this.isOpen && !event.composedPath().includes(this.template.host)) {
+    this.closeOnOutside = () => {
+      const inside = this.clickInside;
+      this.clickInside = false;
+      if (this.isOpen && !inside) {
         this.isOpen = false;
         this.renamingId = null;
       }
@@ -282,6 +305,7 @@ export default class ShoreshVersions extends LightningElement {
     const id = event.currentTarget.dataset.id;
     this.renamingId = id;
     this.renameValue = this._versions.find((v) => v.id === id).name;
+    this.focusRenameInputAfterRender = true;
   }
 
   handleRenameInput(event) {

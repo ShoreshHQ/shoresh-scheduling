@@ -6,7 +6,12 @@ import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { editorRoot, find, findAll } from "shoresh-jest/week-editor";
+import {
+  editorRoot,
+  find,
+  findAll,
+  focusedCellKey
+} from "shoresh-jest/week-editor";
 import {
   WITH_SOCCER,
   WITH_SWIM,
@@ -139,6 +144,35 @@ describe("c-shoresh-manual-build", () => {
     expect(cellText(element, "0-0")).toBe("Flagpole");
     expect(cellText(element, "0-1")).toBe("Open");
     await expect(element).toBeAccessible();
+  });
+
+  // The button goes once the week is started; focus fell to the page in a real browser
+  // (real-browser check, 2026-10-20, WCAG 2.4.3). It goes to the new week's first cell.
+  it("after Start a blank week, focus goes to the new week's first cell", async () => {
+    getDraft.mockResolvedValue(null);
+    startBlankWeek.mockResolvedValue(draft());
+    const element = await render(READY);
+    const start = q(element, '[data-id="start-week"]');
+    start.click();
+    await flush();
+    expect(q(element, '[data-id="start-week"]')).toBeNull();
+    expect(focusedCellKey(element)).toBe("0-0");
+  });
+
+  it("after a start, focus the director put somewhere else stays there", async () => {
+    getDraft.mockResolvedValue(null);
+    const started = later();
+    startBlankWeek.mockReturnValue(started.promise);
+    const element = await render(READY);
+    q(element, '[data-id="start-week"]').click();
+    await flush();
+    const elsewhere = document.createElement("button");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    started.answer(draft());
+    await flush();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(focusedCellKey(element)).toBeNull();
   });
 
   it("waits for the basics: everything still needed in one sentence, each a link", async () => {

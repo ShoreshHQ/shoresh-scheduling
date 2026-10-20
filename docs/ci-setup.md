@@ -118,6 +118,13 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
   with one of Salesforce's Apex reserved keywords, ignoring case (`Integer number`, #46;
   `List<String> into`). The list is the Apex Developer Guide's "Reserved Keywords" page; its
   special keywords that can be names (`count`, `first`, `order`, ...) are allowed.
+- **What a screen sends to Apex arrives** (`npm run check:aura-inputs`,
+  `scripts/apex-aura-inputs.js`; runs in CI as part of the Jest step, through
+  `scripts/__tests__/apex-aura-inputs.test.js`). A class an `@AuraEnabled` method takes, and every
+  class it holds, has properties (`{ get; set; }`), not plain fields: Salesforce leaves a plain
+  field empty with no error, and Apex tests and Jest never see it (every Update to match setup was
+  refused that way, real-browser check 2026-10-20). Opt out a field the server never reads, on one
+  of the three lines above it: `// apex-aura-inputs-ok: <why>`.
 - **Accessibility in Jest** (`@sa11y/jest`, axe-core rules): the main screens' render tests
   (Manual Build, Generated, Schedules, Versions, the setup screen and its tables) end with
   `await expect(element).toBeAccessible()`. jsdom has no layout, so focus loss, contrast and

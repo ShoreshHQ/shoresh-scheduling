@@ -87,15 +87,18 @@ public with sharing class SetupMatch {
 
   /**
    * What an update asks for: the keys chosen, the week's revisions the list was worked out on,
-   * and whether an earlier update in this opening of the list kept a version already.
+   * and whether an earlier update in this opening of the list kept a version already. Sent by
+   * the screen, so each is a property ({ get; set; }): Salesforce fills only properties of a
+   * class a Lightning call sends, and left as plain fields every update came in with no
+   * revisions and was refused as changed since (scripts/apex-aura-inputs.js).
    */
   public class Ask {
     @AuraEnabled
-    public List<String> keys;
+    public List<String> keys { get; set; }
     @AuraEnabled
-    public String seenRevisions;
+    public String seenRevisions { get; set; }
     @AuraEnabled
-    public Boolean versionKept;
+    public Boolean versionKept { get; set; }
   }
 
   /** An update's answer: refused (CHANGED_SINCE or SETUP_CHANGED, nothing changed) or made. */
