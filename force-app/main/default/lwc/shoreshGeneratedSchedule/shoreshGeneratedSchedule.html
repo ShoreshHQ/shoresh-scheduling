@@ -17,6 +17,7 @@
       locks={editorLocks}
       check-with={checkWith}
       lit={lit}
+      setup-dots={setupDots}
       add-activity-with={addActivityWith}
       onstatechange={handleEditorState}
       oneditstate={handleEditState}
@@ -27,6 +28,28 @@
       onunlockrequest={handleUnlockRequest}
       oncellfocus={handleCellFocus}
     >
+      <!-- Setup changed since the week was built: first under the toolbar and counters, where
+           Manual Build has it (ADR 0010 §56). -->
+      <template lwc:if={showSetupChanged}>
+        <div class="setup-changed" slot="status" data-id="setup-changed">
+          <c-shoresh-dot label={setupChangedText}></c-shoresh-dot>
+          <span aria-hidden="true">{setupChangedText}</span>
+          <template lwc:if={canUpdateToMatch}>
+            <!-- Waits for a build, an edit still saving and the rest: what it compares is the
+                 week as saved. -->
+            <button
+              type="button"
+              class="slds-button slds-button_neutral"
+              disabled={versionsBusy}
+              data-id="update-to-match"
+              onclick={handleSetupMatch}
+            >
+              Update to match setup
+            </button>
+          </template>
+        </div>
+      </template>
+
       <template lwc:if={busy}>
         <div class="busy" slot="status" data-id="busy">
           <div
@@ -357,6 +380,19 @@
         onanswer={handlePublishAnswer}
         data-id="publish-ask"
       ></c-shoresh-ask>
+    </template>
+    <template lwc:if={setupAsk}>
+      <c-shoresh-setup-match
+        heading={setupHeading}
+        changes={setupChanges}
+        busy={setupWorking}
+        notice={setupAsk.notice}
+        announcement={setupAsk.announcement}
+        said={setupAsk.said}
+        onupdate={handleSetupUpdate}
+        onclose={handleSetupClose}
+        data-id="setup-match"
+      ></c-shoresh-setup-match>
     </template>
     <template lwc:if={unpublishAsk}>
       <c-shoresh-ask

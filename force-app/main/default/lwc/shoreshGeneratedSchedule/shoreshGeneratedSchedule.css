@@ -138,3 +138,20 @@
   font-size: 12px;
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
+
+/*
+ * Setup changed since the week was built: the "needs a look" box, its words, and Update to match
+ * setup, as on Manual Build.
+ */
+.setup-changed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 8px;
+  background: var(--shoresh-caution-tint);
+  font-size: 13px;
+}
