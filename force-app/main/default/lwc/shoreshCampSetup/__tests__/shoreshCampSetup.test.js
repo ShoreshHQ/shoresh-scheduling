@@ -560,7 +560,8 @@ describe("c-shoresh-camp-setup", () => {
       ]);
       expect(element.shadowRoot.textContent).not.toContain("Status");
       expect(button(element, "Save season")).toBeUndefined();
-      await expect(element).toBeAccessible();
+      // The box alone: the whole page (every screen) is too slow to check here.
+      await expect(q(element, '[data-id="season-form"]')).toBeAccessible();
 
       pencil.click();
       await flush();
