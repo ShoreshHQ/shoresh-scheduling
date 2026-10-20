@@ -348,7 +348,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     (`groupRecords`) and where its fixed and recurring activities are
     (`fixedActivityRecords`, `recurringActivityRecords`). So they are read again whenever the
     week is (window focus, reload, or setup saved on another Camp Setup screen, which hands
-    Manual Build a new `setup` for the same week: review round 6), and anything changed elsewhere
+    Manual Build a new `setup` for the same week: review round 6; when the week can't be read
+    again just then, as while an edit saves, its setup changes still are, round 7), and anything changed elsewhere
     shows at once; the activity
     list's words come from the same draft. An activity added from a slot ("Add <name>") brings
     its record back with it (`ActivityOption.record`) and joins the draft's. Field names come

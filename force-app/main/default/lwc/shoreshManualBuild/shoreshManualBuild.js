@@ -127,8 +127,18 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     // Setup saved on another screen of Camp Setup comes back as a new setup for the same week:
     // the week is read again, as on coming back to the window, so its dots and names catch up.
+    // While it can't be (an edit saving or answering, a Publish), its setup changes are still
+    // read: nothing later would catch them up. Not while the update list is open or working,
+    // which reads them itself.
     if (`${this.programId}|${this.weekId}` === this.loadedFor) {
-      this.refresh();
+      if (
+        !this.refresh() &&
+        this.draft &&
+        !this.setupWorking &&
+        !this.setupAsk
+      ) {
+        this.loadSetupChanges();
+      }
     } else {
       this.load();
     }
@@ -401,7 +411,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /**
    * Coming back to the window shows other people's changes, unless an edit, a Restore or a start
-   * is under way.
+   * is under way. Returns whether the week is read again.
    */
   refresh() {
     if (
@@ -415,7 +425,9 @@ export default class ShoreshManualBuild extends LightningElement {
       this.weekEditor.settled
     ) {
       this.load(true);
+      return true;
     }
+    return false;
   }
 
   show(draft, fresh) {

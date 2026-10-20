@@ -299,6 +299,21 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
   });
 
+  it("setup saved on another screen while an edit is saving still reads its setup changes", async () => {
+    const element = await render(NOTHING);
+    saveSlots.mockReturnValue(pending().promise);
+    clearCell(element, "0-1");
+    await flush();
+    // The week can't be read again while its edit saves, and a save that finds the week matched
+    // setup reads nothing after: the setup changes are read now, or never.
+    getSetupChanges.mockResolvedValue(PREVIEW);
+    element.setup = nsRecord({ ...SETUP });
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+  });
+
   it("joins a setup dot to the checks' own words on the same placement", async () => {
     // Swim in Bunk 2, which it isn't set up for, and deleted from setup since.
     const start = draft([FLAGPOLE, SWIM], ["1,,", "1,2,"]);
