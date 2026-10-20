@@ -73,6 +73,28 @@ export function canOpen(screen, hasSeason) {
   return !COMING.has(screen) && (hasSeason || WITHOUT_SEASON.has(screen));
 }
 
+// The setup screens, in menu order (the Camp section, then Activities): each one's "next" button
+// walks this list, so following the buttons and reading down the menu take the same path (desktop
+// navSections.js SETUP_SCREEN_ORDER, SetupScreenShell.jsx).
+const SETUP_ORDER = SECTIONS.filter(
+  (section) => section.key === "camp" || section.key === "activities"
+).flatMap((section) => section.screens);
+
+/**
+ * The setup screen after this one that can be opened now ({ key, label: "Bunks →" }), or null
+ * for the last one and for screens that are not setup screens. The desktop's last setup screen
+ * leads to a neutral schedule landing; Salesforce has none, and pointing at Generated Schedule
+ * or Manual Build would pick one for the director, so the last setup screen has no next.
+ */
+export function nextScreen(screen, t, hasSeason) {
+  const at = SETUP_ORDER.indexOf(screen);
+  if (at < 0) {
+    return null;
+  }
+  const next = SETUP_ORDER.slice(at + 1).find((key) => canOpen(key, hasSeason));
+  return next ? { key: next, label: `${screenLabels(t)[next]} →` } : null;
+}
+
 // The words on each mark (Shoresh desktop Sidebar.jsx: "Needed" on "!", "Done" on "✓").
 const MARKS = {
   needed: { symbol: "!", label: "Needed" },

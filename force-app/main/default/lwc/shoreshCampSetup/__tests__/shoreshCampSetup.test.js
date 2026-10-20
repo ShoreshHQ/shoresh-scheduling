@@ -13,6 +13,7 @@ import scheduleUses from "@salesforce/apex/SetupTablesController.scheduleUses";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
+import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -47,6 +48,11 @@ jest.mock(
 jest.mock("@salesforce/apex/ImportController.undoImport", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/ActivitiesController.saveActivityDetails",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock("@salesforce/apex/RunsInController.placedInWeeks", () => apex(), {
   virtual: true
 });
@@ -496,112 +502,283 @@ describe("c-shoresh-camp-setup", () => {
     );
   });
 
-  it("deleting a season names everything that goes with it", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    LightningConfirm.open.mockResolvedValue(nsRecord(true));
-    deleteRecord.mockResolvedValue();
-    const element = await render();
-    button(element, "Delete season").click();
-    await flush();
-    expect(LightningConfirm.open.mock.calls[0][0].message).toContain("Bunks");
-    expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
-  });
+  describe("the season, beside its picker", () => {
+    async function renderSeason(setup = setupWith()) {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setup));
+      saveRecords.mockResolvedValue(nsRecord(["s1"]));
+      const element = await render();
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      element.shadowRoot
+        .querySelectorAll('lightning-input[data-form="season"]')
+        .forEach((input) => {
+          input.reportValidity = () => true;
+        });
+      return element;
+    }
+    const seasonInput = (element, field) =>
+      q(element, `lightning-input[data-form="season"][data-field="${field}"]`);
+    function typeSeason(element, field, value) {
+      const input = seasonInput(element, field);
+      input.reportValidity = () => true;
+      input.value = value;
+      input.dispatchEvent(new CustomEvent("change", { detail: { value } }));
+    }
+    const leaveSeason = (element, field) =>
+      seasonInput(element, field).dispatchEvent(new CustomEvent("focusout"));
+    const seasonMark = (element) =>
+      q(
+        element,
+        'c-shoresh-saved-mark[data-id="season-saved"]'
+      ).shadowRoot.querySelector('[data-id="saved"]');
 
-  it("edits the season dates and saves only the season", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRecords.mockResolvedValue(nsRecord(["s1"]));
-    const element = await render();
-    expect(button(element, "Save season").disabled).toBe(true);
-    const end = element.shadowRoot.querySelector(
-      'lightning-input[data-form="season"][data-field="end"]'
-    );
-    end.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "2026-08-14" } })
-    );
-    await flush();
-    validAll(element);
-    button(element, "Save season").click();
-    await flush();
-    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toEqual({
-      sobjectType: "Season__c",
-      Id: "s1",
-      Name: "Summer 2026",
-      StartDate__c: "2026-06-29",
-      EndDate__c: "2026-08-14",
-      Status__c: "Planning"
+    it("opens from the pencil beside the picker, not on the Weeks screen, and has no Status", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const pencil = q(element, '[data-id="edit-season"]');
+      expect(pencil.alternativeText).toBe("Edit Summer 2026");
+      expect(pencil.ariaExpanded).toBe("false");
+      expect(q(element, '[data-id="season-form"]')).toBeNull();
+      await openScreen(element, "weeks");
+      expect(
+        q(element, '[data-screen="weeks"] [data-form="season"]')
+      ).toBeNull();
+      expect(button(element, "Delete season")).toBeUndefined();
+
+      pencil.click();
+      await flush();
+      expect(pencil.ariaExpanded).toBe("true");
+      expect(
+        [
+          ...element.shadowRoot.querySelectorAll(
+            '[data-id="season-form"] [data-field]'
+          )
+        ].map((input) => [input.dataset.field, input.value])
+      ).toEqual([
+        ["name", "Summer 2026"],
+        ["start", "2026-06-29"],
+        ["end", "2026-08-07"]
+      ]);
+      expect(element.shadowRoot.textContent).not.toContain("Status");
+      expect(button(element, "Save season")).toBeUndefined();
+      // The box alone: the whole page (every screen) is too slow to check here.
+      await expect(q(element, '[data-id="season-form"]')).toBeAccessible();
+
+      pencil.click();
+      await flush();
+      expect(q(element, '[data-id="season-form"]')).toBeNull();
     });
-  });
 
-  it("shows the saved season in its form, and a changed status is saved", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRecords.mockResolvedValue(nsRecord(["s1"]));
-    const element = await render();
-    const input = (field) =>
-      element.shadowRoot.querySelector(
-        `[data-form="season"][data-field="${field}"]`
+    it("deleting it names everything that goes with it", async () => {
+      LightningConfirm.open.mockResolvedValue(nsRecord(true));
+      deleteRecord.mockResolvedValue();
+      const element = await renderSeason();
+      button(element, "Delete season").click();
+      await flush();
+      expect(LightningConfirm.open.mock.calls[0][0].message).toContain("Bunks");
+      expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
+    });
+
+    it("a date saves when the director leaves it, with the other date, and no toast", async () => {
+      const element = await renderSeason();
+      const toasts = [];
+      element.addEventListener("lightning__showtoast", (e) => toasts.push(e));
+      typeSeason(element, "end", "2026-08-14");
+      await flush();
+      expect(saveRecords).not.toHaveBeenCalled();
+      leaveSeason(element, "end");
+      await flush();
+      expect(bareRecord(saveRecords.mock.calls[0][0].records)).toEqual([
+        {
+          sobjectType: "Season__c",
+          Id: "s1",
+          StartDate__c: "2026-06-29",
+          EndDate__c: "2026-08-14"
+        }
+      ]);
+      expect(toasts).toEqual([]);
+      expect(seasonMark(element).textContent).toContain("Saved");
+      expect(seasonMark(element).getAttribute("role")).toBe("status");
+    });
+
+    it("a new name saves on leaving (or Enter) and shows in the season picker", async () => {
+      const element = await renderSeason();
+      getSeasons.mockResolvedValue(
+        nsRecord([{ ...SEASON, Name: "Summer 2026 (day camp)" }])
       );
-    expect(
-      ["name", "start", "end", "status"].map((field) => input(field).value)
-    ).toEqual(["Summer 2026", "2026-06-29", "2026-08-07", "Planning"]);
-    input("status").dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Active" } })
-    );
-    await flush();
-    validAll(element);
-    button(element, "Save season").click();
-    await flush();
-    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toMatchObject({
-      Status__c: "Active"
-    });
-  });
-
-  it("renames a season and saves the new name with its dates", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRecords.mockResolvedValue(nsRecord(["s1"]));
-    const element = await render();
-    element.shadowRoot
-      .querySelector('[data-form="season"][data-field="name"]')
-      .dispatchEvent(
-        new CustomEvent("change", {
-          detail: { value: "Summer 2026 (day camp)" }
-        })
+      typeSeason(element, "name", "Summer 2026 (day camp)");
+      seasonInput(element, "name").dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter" })
       );
-    await flush();
-    validAll(element);
-    button(element, "Save season").click();
-    await flush();
-    expect(bareRecord(saveRecords.mock.calls[0][0].records)[0]).toEqual({
-      sobjectType: "Season__c",
-      Id: "s1",
-      Name: "Summer 2026 (day camp)",
-      StartDate__c: "2026-06-29",
-      EndDate__c: "2026-08-07",
-      Status__c: "Planning"
+      await flush();
+      expect(bareRecord(saveRecords.mock.calls[0][0].records)).toEqual([
+        { sobjectType: "Season__c", Id: "s1", Name: "Summer 2026 (day camp)" }
+      ]);
+      expect(
+        q(element, '[data-id="season-picker"]').options.map((o) => o.label)
+      ).toEqual(["Summer 2026 (day camp)"]);
+      // Leaving it afterwards, unchanged, sends nothing more.
+      leaveSeason(element, "name");
+      await flush();
+      expect(saveRecords).toHaveBeenCalledTimes(1);
     });
-  });
 
-  it("says which season a copy came from", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(
-      nsRecord(
+    it("a blank or impossible value is not sent", async () => {
+      const element = await renderSeason();
+      typeSeason(element, "name", "");
+      seasonInput(element, "name").reportValidity = () => false;
+      leaveSeason(element, "name");
+      await flush();
+      expect(saveRecords).not.toHaveBeenCalled();
+    });
+
+    it("a refusal shows under the field in camp words, keeps the typing, and leaving again retries", async () => {
+      const element = await renderSeason();
+      saveRecords.mockRejectedValueOnce({
+        body: { message: "The last day can't be before the first day." }
+      });
+      typeSeason(element, "end", "2026-06-01");
+      leaveSeason(element, "end");
+      await flush();
+      const why = q(element, '[data-error="season-end"]');
+      expect(why.textContent).toContain(
+        "Season not saved. Your changes are still here."
+      );
+      expect(why.textContent).toContain("can't be before the first day");
+      expect(why.getAttribute("role")).toBe("alert");
+      // Not at the top of the page: it is next to the field it is about.
+      expect(q(element, '[data-id="error"]')).toBeNull();
+      expect(seasonInput(element, "end").value).toBe("2026-06-01");
+      expect(seasonMark(element).textContent).toBe("");
+      leaveSeason(element, "end");
+      await flush();
+      expect(saveRecords).toHaveBeenCalledTimes(2);
+    });
+
+    it("a refusal that comes after the box was closed with its pencil is said at the top", async () => {
+      const element = await renderSeason();
+      let refuse;
+      saveRecords.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      typeSeason(element, "end", "2026-06-01");
+      leaveSeason(element, "end");
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      refuse({
+        body: { message: "The last day can't be before the first day." }
+      });
+      await flush();
+      expect(q(element, '[data-error="season-end"]')).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent).toContain(
+        "can't be before the first day"
+      );
+      // Opened again, the box still shows why, next to the field, with the typing kept.
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      expect(q(element, '[data-error="season-end"]').textContent).toContain(
+        "can't be before the first day"
+      );
+      expect(seasonInput(element, "end").value).toBe("2026-06-01");
+    });
+
+    it("a refusal that comes after the director picked another season is said at the top", async () => {
+      const element = await renderSeason();
+      let refuse;
+      saveRecords.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      typeSeason(element, "end", "2026-06-01");
+      leaveSeason(element, "end");
+      await flush();
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({ season: { ...SEASON, Id: "s2", Name: "Summer 2027" } })
+        )
+      );
+      q(element, '[data-id="season-picker"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
+      await flush();
+      refuse({
+        body: { message: "The last day can't be before the first day." }
+      });
+      await flush();
+      // The box shows the other season now: nothing from the first one under its fields.
+      expect(q(element, '[data-error="season-end"]')).toBeNull();
+      expect(q(element, '[data-id="error"]').textContent).toContain(
+        "can't be before the first day"
+      );
+    });
+
+    it("moving the season later works whichever date is changed first", async () => {
+      const element = await renderSeason();
+      saveRecords.mockRejectedValueOnce({
+        body: { message: "The end date must be on or after the start date." }
+      });
+      typeSeason(element, "start", "2026-08-17");
+      leaveSeason(element, "start");
+      await flush();
+      expect(q(element, '[data-error="season-start"]').textContent).toContain(
+        "on or after the start date"
+      );
+
+      typeSeason(element, "end", "2026-09-04");
+      leaveSeason(element, "end");
+      await flush();
+      expect(bareRecord(saveRecords.mock.calls[1][0].records)).toEqual([
+        {
+          sobjectType: "Season__c",
+          Id: "s1",
+          StartDate__c: "2026-08-17",
+          EndDate__c: "2026-09-04"
+        }
+      ]);
+      // Both dates saved: the first day's old refusal is gone, and nothing is left to send.
+      expect(q(element, '[data-error="season-start"]')).toBeNull();
+      expect(q(element, '[data-error="season-end"]')).toBeNull();
+      expect(seasonMark(element).textContent).toContain("Saved");
+      leaveSeason(element, "start");
+      await flush();
+      expect(saveRecords).toHaveBeenCalledTimes(2);
+    });
+
+    it("typing in one field survives the reload after another field's save", async () => {
+      const element = await renderSeason();
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({ season: { ...SEASON, StartDate__c: "2026-06-22" } })
+        )
+      );
+      typeSeason(element, "start", "2026-06-22");
+      leaveSeason(element, "start");
+      typeSeason(element, "name", "Half typed");
+      await flush();
+      expect(getSeasonSetup).toHaveBeenCalledTimes(2);
+      expect(seasonInput(element, "name").value).toBe("Half typed");
+      expect(seasonInput(element, "start").value).toBe("2026-06-22");
+    });
+
+    it("says which season a copy came from", async () => {
+      const element = await renderSeason(
         setupWith({
           season: { ...SEASON, CopiedFrom__r: { Name: "Summer 2025" } }
         })
-      )
-    );
-    const element = await render();
-    expect(q(element, '[data-id="copied-from"]').textContent).toContain(
-      "Summer 2025"
-    );
+      );
+      expect(q(element, '[data-id="copied-from"]').textContent).toContain(
+        "Summer 2025"
+      );
+    });
   });
 
   it("deleting a program says which saved versions go with it", async () => {
@@ -1585,6 +1762,366 @@ describe("c-shoresh-camp-setup", () => {
       );
       await flush();
       expect(q(element, "c-shoresh-same-location").title).toBe("Same Area?");
+    });
+  });
+
+  describe("setup forms save as you go", () => {
+    async function renderWith(setup = setupWith()) {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setup));
+      return render();
+    }
+    const programCard = (element) =>
+      q(element, '[data-screen="programs"] c-shoresh-program');
+
+    it("a program field: saved, the form told before the reload, no toast", async () => {
+      saveRecords.mockResolvedValue(nsRecord(["p1"]));
+      const element = await renderWith();
+      const toasts = [];
+      element.addEventListener("lightning__showtoast", (e) => toasts.push(e));
+      const order = [];
+      getSeasonSetup.mockImplementation(() => {
+        order.push("reload");
+        return Promise.resolve(nsRecord(setupWith()));
+      });
+      programCard(element).dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            records: nsRecord([
+              { sobjectType: "Program__c", Id: "p1", Friday__c: true }
+            ]),
+            onSaved: () => order.push("form told"),
+            onFailure: jest.fn()
+          }
+        })
+      );
+      await flush();
+      expect(sentTo(saveRecords)).toEqual([
+        { records: [{ sobjectType: "Program__c", Id: "p1", Friday__c: true }] }
+      ]);
+      expect(order).toEqual(["form told", "reload"]);
+      expect(toasts).toEqual([]);
+      expect(q(element, "lightning-spinner")).toBeNull();
+    });
+
+    it("a refused program field goes back to the form in camp words, not to the top of the page", async () => {
+      saveRecords.mockRejectedValueOnce({
+        body: { message: "That name is already used. Pick another." }
+      });
+      const element = await renderWith();
+      const onFailure = jest.fn();
+      const onSaved = jest.fn();
+      programCard(element).dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            records: nsRecord([
+              { sobjectType: "Program__c", Id: "p1", Name: "Main" }
+            ]),
+            onSaved,
+            onFailure
+          }
+        })
+      );
+      await flush();
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(onFailure).toHaveBeenCalledWith(
+        "Programs not saved. Your changes are still here. That name is already used. Pick another."
+      );
+      expect(q(element, '[data-id="error"]')).toBeNull();
+    });
+
+    it("a form field waits for a table row being saved, and goes after it", async () => {
+      let finishRow;
+      saveRow.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finishRow = resolve;
+          })
+      );
+      saveRecords.mockResolvedValue(nsRecord(["p1"]));
+      const element = await renderWith();
+      q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+        new CustomEvent("save", {
+          detail: nsRecord({
+            record: { sobjectType: "Week__c", Id: "w1", Name: "A" },
+            seen: {},
+            extras: {},
+            onSaved: jest.fn(),
+            onFailure: jest.fn(),
+            onDone: jest.fn()
+          })
+        })
+      );
+      programCard(element).dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            records: nsRecord([{ sobjectType: "Program__c", Id: "p1" }]),
+            onSaved: jest.fn(),
+            onFailure: jest.fn()
+          }
+        })
+      );
+      await flush();
+      expect(saveRecords).not.toHaveBeenCalled();
+      finishRow(nsRecord({ saved: true }));
+      await flush();
+      await flush();
+      expect(saveRecords).toHaveBeenCalledTimes(1);
+    });
+
+    it("an activity details field: saved without a toast; a refusal goes back to the form", async () => {
+      saveActivityDetails.mockResolvedValueOnce();
+      saveActivityDetails.mockRejectedValueOnce({ body: { message: "No." } });
+      const element = await renderWith(
+        setupWith({ activities: [{ Id: "a1", Name: "Archery" }] })
+      );
+      const toasts = [];
+      element.addEventListener("lightning__showtoast", (e) => toasts.push(e));
+      const details = q(element, "c-shoresh-activity-details");
+      const first = { onSaved: jest.fn(), onFailure: jest.fn() };
+      const second = { onSaved: jest.fn(), onFailure: jest.fn() };
+      const rules = nsRecord({ sobjectType: "Activity__c", Id: "a1" });
+      details.dispatchEvent(
+        new CustomEvent("save", {
+          detail: { rules, whoCanDoIt: ["d1"], ...first }
+        })
+      );
+      details.dispatchEvent(
+        new CustomEvent("save", {
+          detail: { rules, whoCanDoIt: [], ...second }
+        })
+      );
+      await flush();
+      await flush();
+      expect(
+        saveActivityDetails.mock.calls.map((c) => c[0].whoCanDoIt)
+      ).toEqual([["d1"], []]);
+      expect(first.onSaved).toHaveBeenCalled();
+      expect(second.onFailure).toHaveBeenCalledWith(
+        "Activity details not saved. Your changes are still here. No."
+      );
+      expect(toasts).toEqual([]);
+    });
+
+    it("camp words saved: words read again, no toast, and the director stays on the screen they went to", async () => {
+      const element = await renderWith();
+      const toasts = [];
+      element.addEventListener("lightning__showtoast", (e) => toasts.push(e));
+      await openScreen(element, "groups");
+      const calls = getLabels.mock.calls.length;
+      q(element, "c-shoresh-camp-labels").dispatchEvent(
+        new CustomEvent("saved")
+      );
+      await flush();
+      expect(getLabels.mock.calls.length).toBeGreaterThan(calls);
+      expect(shownScreens(element)).toEqual(["groups"]);
+      expect(toasts).toEqual([]);
+    });
+
+    it("camp words saved as the director clicks New season or Copy this season: that form stays open", async () => {
+      const element = await renderWith();
+      await openScreen(element, "campWords");
+      const words = q(element, "c-shoresh-camp-labels");
+      // Leaving the box starts the save; the click lands before it answers.
+      button(element, "New season").click();
+      await flush();
+      words.dispatchEvent(new CustomEvent("saved"));
+      await flush();
+      expect(
+        q(element, 'lightning-input[data-form="new-season"]')
+      ).not.toBeNull();
+      expect(shownScreens(element)).toEqual([]);
+
+      button(element, "Cancel").click();
+      await flush();
+      button(element, "Copy this season").click();
+      await flush();
+      words.dispatchEvent(new CustomEvent("saved"));
+      await flush();
+      expect(q(element, "c-shoresh-copy-season")).not.toBeNull();
+      expect(shownScreens(element)).toEqual([]);
+    });
+
+    it("camp words refused: under the box only while camp words shows, and at the top once it doesn't", async () => {
+      const element = await renderWith();
+      await openScreen(element, "campWords");
+      const words = q(element, "c-shoresh-camp-labels");
+      const refused = new CustomEvent("failed", {
+        detail: {
+          message: "Camp words not saved. Your changes are still here. No."
+        }
+      });
+      words.dispatchEvent(refused);
+      await flush();
+      expect(q(element, '[data-id="error"]')).toBeNull();
+
+      // The director clicked "Activities →" as they left the box; the refusal comes after.
+      q(
+        element,
+        '[data-screen="campWords"] lightning-button[data-id="next"]'
+      ).click();
+      await flush();
+      words.dispatchEvent(
+        new CustomEvent("failed", {
+          detail: {
+            message: "Camp words not saved. Your changes are still here. No."
+          }
+        })
+      );
+      await flush();
+      expect(shownScreens(element)).toEqual(["activities"]);
+      expect(q(element, '[data-id="error"]').textContent).toContain(
+        "Camp words not saved. Your changes are still here. No."
+      );
+    });
+
+    it("a form field refused after the director went on to the next screen: said at the top too", async () => {
+      let refuse;
+      saveActivityDetails.mockImplementation(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      const element = await renderWith(
+        setupWith({ activities: [{ Id: "a1", Name: "Archery" }] })
+      );
+      await openScreen(element, "activities");
+      const onFailure = jest.fn();
+      // Leaving the last field sends it; the click on "Fixed activities →" opens the next screen.
+      q(element, "c-shoresh-activity-details").dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            rules: nsRecord({ sobjectType: "Activity__c", Id: "a1" }),
+            whoCanDoIt: [],
+            onSaved: jest.fn(),
+            onFailure
+          }
+        })
+      );
+      q(
+        element,
+        '[data-screen="activities"] lightning-button[data-id="next"]'
+      ).click();
+      await flush();
+      refuse({ body: { message: "Pick the day for the early-week count." } });
+      await flush();
+      const message =
+        "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
+      expect(onFailure).toHaveBeenCalledWith(message);
+      expect(shownScreens(element)).toEqual(["fixedActivities"]);
+      expect(q(element, '[data-id="error"]').textContent).toContain(message);
+    });
+    it("an activity's details refused after the director picked another activity: said at the top", async () => {
+      let refuse;
+      saveActivityDetails.mockImplementation(
+        () =>
+          new Promise((resolve, reject) => {
+            refuse = reject;
+          })
+      );
+      const element = await renderWith(
+        setupWith({ activities: [{ Id: "a1", Name: "Archery" }] })
+      );
+      await openScreen(element, "activities");
+      const onFailure = jest.fn();
+      q(element, "c-shoresh-activity-details").dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            rules: nsRecord({ sobjectType: "Activity__c", Id: "a1" }),
+            whoCanDoIt: [],
+            onSaved: jest.fn(),
+            onFailure,
+            // The form shows another activity now.
+            shown: () => false
+          }
+        })
+      );
+      await flush();
+      refuse({ body: { message: "Pick the day for the early-week count." } });
+      await flush();
+      const message =
+        "Activity details not saved. Your changes are still here. Pick the day for the early-week count.";
+      expect(onFailure).toHaveBeenCalledWith(message);
+      expect(shownScreens(element)).toEqual(["activities"]);
+      expect(q(element, '[data-id="error"]').textContent).toContain(message);
+    });
+  });
+
+  describe("each setup screen ends with the next one", () => {
+    const nextOn = (element, screen) =>
+      q(element, `[data-screen="${screen}"] lightning-button[data-id="next"]`);
+
+    it("in menu order, in camp words, with none after the last", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const chain = [
+        "weeks",
+        "programs",
+        "divisions",
+        "groups",
+        "timeBlocks",
+        "locations",
+        "campWords",
+        "activities",
+        "fixedActivities",
+        "recurringActivities"
+      ].map((screen) => {
+        const next = nextOn(element, screen);
+        return [screen, next ? next.label : null];
+      });
+      expect(chain).toEqual([
+        ["weeks", "Programs →"],
+        ["programs", "Divisions →"],
+        ["divisions", "Bunks →"],
+        ["groups", "Time blocks →"],
+        ["timeBlocks", "Locations →"],
+        ["locations", "Camp words →"],
+        ["campWords", "Activities →"],
+        ["activities", "Fixed activities →"],
+        ["fixedActivities", "Recurring activities →"],
+        // Special events is not built yet; Generated Schedule and Manual Build are equal,
+        // so neither is picked.
+        ["recurringActivities", null]
+      ]);
+      expect(nextOn(element, "roots")).toBeNull();
+      expect(nextOn(element, "schedules")).toBeNull();
+      expect(nextOn(element, "weeks").variant).toBe("brand");
+    });
+
+    it("opens the next screen and puts the cursor on its heading", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      await openScreen(element, "weeks");
+      nextOn(element, "weeks").click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["programs"]);
+      expect(q(element, "c-shoresh-menu").current).toBe("programs");
+      const heading = q(element, '[data-screen="programs"] [data-heading]');
+      expect(element.shadowRoot.activeElement).toBe(heading);
+      expect(heading.getAttribute("tabindex")).toBe("-1");
+
+      await openScreen(element, "locations");
+      nextOn(element, "locations").click();
+      await flush();
+      expect(shownScreens(element)).toEqual(["campWords"]);
+      const words = q(element, "c-shoresh-camp-labels");
+      expect(words.shadowRoot.activeElement).toBe(
+        words.shadowRoot.querySelector("[data-heading]")
+      );
+    });
+
+    it("before the first season, camp words has no next (nothing else opens yet)", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([]));
+      const element = await render();
+      await openScreen(element, "campWords");
+      expect(nextOn(element, "campWords")).toBeNull();
     });
   });
 

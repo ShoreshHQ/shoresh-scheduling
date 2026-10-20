@@ -1,0 +1,12 @@
+@import "c/shoreshTokens";
+
+/* Quiet: small secondary text; the tick alone in the success green (a mark, never text). */
+.saved {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: var(--shoresh-text-secondary);
+}
+
+.tick {
+  color: var(--shoresh-success);
+}

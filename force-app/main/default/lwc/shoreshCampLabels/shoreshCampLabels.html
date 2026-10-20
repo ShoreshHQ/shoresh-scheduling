@@ -1,7 +1,10 @@
 <template>
   <article class="slds-card slds-card_boundary">
-    <div class="slds-card__header">
-      <h2 class="slds-text-heading_medium">{title}</h2>
+    <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
+      <h2 class="slds-text-heading_medium" tabindex="-1" data-heading>
+        {title}
+      </h2>
+      <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
     </div>
     <div class="slds-card__body slds-card__body_inner">
       <template lwc:if={readOnly}>
@@ -33,7 +36,7 @@
           </tr>
         </thead>
         <tbody>
-          <template for:each={rows} for:item="row">
+          <template for:each={view} for:item="row">
             <tr key={row.term}>
               <td>{row.modelSingular} / {row.modelPlural}</td>
               <td>
@@ -46,8 +49,20 @@
                   data-term={row.term}
                   data-field="singular"
                   onchange={handleChange}
+                  onfocusout={handleLeave}
+                  onkeydown={handleKey}
                   disabled={readOnly}
                 ></lightning-input>
+                <template lwc:if={row.singularError}>
+                  <div
+                    class="slds-form-element__help slds-text-color_error"
+                    role="alert"
+                    data-error={row.term}
+                    data-field-error="singular"
+                  >
+                    {row.singularError}
+                  </div>
+                </template>
               </td>
               <td>
                 <lightning-input
@@ -59,27 +74,25 @@
                   data-term={row.term}
                   data-field="plural"
                   onchange={handleChange}
+                  onfocusout={handleLeave}
+                  onkeydown={handleKey}
                   disabled={readOnly}
                 ></lightning-input>
+                <template lwc:if={row.pluralError}>
+                  <div
+                    class="slds-form-element__help slds-text-color_error"
+                    role="alert"
+                    data-error={row.term}
+                    data-field-error="plural"
+                  >
+                    {row.pluralError}
+                  </div>
+                </template>
               </td>
             </tr>
           </template>
         </tbody>
       </table>
     </div>
-    <footer class="slds-card__footer">
-      <lightning-button
-        data-id="cancel-words"
-        label="Cancel changes"
-        onclick={handleCancel}
-      ></lightning-button>
-      <lightning-button
-        class="slds-m-left_x-small"
-        variant="brand"
-        label="Save words"
-        onclick={handleSave}
-        disabled={saveDisabled}
-      ></lightning-button>
-    </footer>
   </article>
 </template>

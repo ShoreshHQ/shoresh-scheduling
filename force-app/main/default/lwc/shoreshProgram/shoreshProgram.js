@@ -1,6 +1,7 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
+import { leftField } from "c/shoreshSavedMark";
 import { moveNote } from "./groupMoves";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -10,12 +11,20 @@ const BLOCK = FIELD.TimeBlock;
 const FIXED = FIELD.FixedActivity;
 const RECURRING = FIELD.RecurringActivity;
 const GROUP = FIELD.Group;
+// The operating days, saved together (see saveProgram).
+const DAYS_KEY = "Days";
 
 /**
  * One part of one program, for the screen showing it (show): "program" (its name and operating
  * days), "timeBlocks", "divisions", "groups" (each division's groups, with the weeks each runs
  * in), "fixedActivities", or "recurringActivities" (with their weeks, and for recurring ones the
  * days and who each covers). Saves and deletes go up to the setup screen as events.
+ *
+ * The program's own name and days save as you go, like the tables (ADR 0011, decision 26 (4)): the
+ * name when the director leaves it (or presses Enter), the days the moment one is ticked. The
+ * name is sent alone; the days always go all together, as the screen shows them, since the server
+ * refuses a program with none (one day alone could be refused while another waits unsent). "Saved" shows quietly once it is; a refusal shows next to the field, with the
+ * typing kept.
  */
 export default class ShoreshProgram extends LightningElement {
   @api terms;
@@ -33,12 +42,16 @@ export default class ShoreshProgram extends LightningElement {
 
   name;
   days = {};
-  changed = false;
+  // Fields ("Name", or "Days" for all five) changed on screen and not sent yet, and those sent and not answered.
+  // A reload never puts back either: what the director typed stays until it is saved.
+  dirty = new Set();
+  sending = new Map(); // field -> saves under way
+
+  nameError;
+  daysError;
   divisionRecords = [];
   // Bunks switched to another unit on screen and not saved yet: table's unit -> { unit: [names] }.
   pendingMoves = {};
-  // True from this form's Save until the screen reloads (or reports the save failed).
-  submitted = false;
   _entry;
 
   /** { program, timeBlocks, divisions: [{ division, groups }] } from SeasonSetupController. */
@@ -59,21 +72,23 @@ export default class ShoreshProgram extends LightningElement {
         Object.entries(this.pendingMoves).filter(([id]) => units.has(id))
       );
     }
-    // Keep a typed but unsaved name or days when something else on the screen was saved.
-    if (!this.changed || this.submitted) {
-      this.resetForm();
-    }
+    this.showSaved();
   }
 
-  resetForm() {
+  /** The saved name and days, except what the director changed and is not saved yet. */
+  showSaved() {
     const program = this._entry.program;
-    this.name = program.Name;
-    this.days = {};
-    DAYS.forEach((day) => {
-      this.days[day] = !!program[PROGRAM[day]];
-    });
-    this.changed = false;
-    this.submitted = false;
+    const keep = (field) => this.dirty.has(field) || this.sending.has(field);
+    if (!keep("Name")) {
+      this.name = program.Name;
+    }
+    if (!keep(DAYS_KEY)) {
+      const days = {};
+      DAYS.forEach((day) => {
+        days[day] = !!program[PROGRAM[day]];
+      });
+      this.days = days;
+    }
   }
 
   get isProgram() {
@@ -116,10 +131,6 @@ export default class ShoreshProgram extends LightningElement {
 
   get dayOptions() {
     return DAYS.map((day) => ({ day, label: day, checked: this.days[day] }));
-  }
-
-  get formUnchanged() {
-    return this.busy || !this.changed;
   }
 
   /**
@@ -434,38 +445,101 @@ export default class ShoreshProgram extends LightningElement {
 
   handleName(event) {
     this.name = event.detail.value;
-    this.changed = true;
+    this.edited("Name");
+    this.nameError = null;
   }
 
+  handleNameLeave(event) {
+    if (leftField(event)) {
+      this.saveProgram("Name");
+    }
+  }
+
+  handleNameKey(event) {
+    if (event.key === "Enter") {
+      this.saveProgram("Name");
+    }
+  }
+
+  /** The days are saved the moment one is ticked, as the tables' ticks are. */
   handleDay(event) {
-    this.days = {
-      ...this.days,
-      [event.target.dataset.day]: event.target.checked
-    };
-    this.changed = true;
+    const day = event.target.dataset.day;
+    this.days = { ...this.days, [day]: event.target.checked };
+    this.edited(DAYS_KEY);
+    this.daysError = null;
+    this.saveProgram(DAYS_KEY);
   }
 
-  handleSaveProgram() {
-    const input = this.template.querySelector(
-      'lightning-input[data-id="name"]'
-    );
-    if (input && !input.reportValidity()) {
+  edited(field) {
+    this.dirty.add(field);
+    const mark = this.template.querySelector("c-shoresh-saved-mark");
+    if (mark) {
+      mark.clear();
+    }
+  }
+
+  /**
+   * Sends what changed (field: "Name", or "Days" for all five days as shown). A blank name is
+   * not sent: the field says it needs one, as any required field does.
+   */
+  saveProgram(field) {
+    if (!this.dirty.has(field)) {
       return;
     }
-    const record = {
-      sobjectType: OBJECT.Program,
-      Id: this.programId,
-      Name: this.name
+    if (field === "Name") {
+      const input = this.template.querySelector(
+        'lightning-input[data-id="name"]'
+      );
+      if (input && !input.reportValidity()) {
+        return;
+      }
+    }
+    this.dirty.delete(field);
+    this.sending.set(field, (this.sending.get(field) || 0) + 1);
+    const record = { sobjectType: OBJECT.Program, Id: this.programId };
+    if (field === "Name") {
+      record.Name = this.name;
+    } else {
+      DAYS.forEach((day) => {
+        record[PROGRAM[day]] = !!this.days[day];
+      });
+    }
+    const done = () => {
+      const left = this.sending.get(field) - 1;
+      if (left > 0) {
+        this.sending.set(field, left);
+      } else {
+        this.sending.delete(field);
+      }
     };
-    DAYS.forEach((day) => {
-      record[PROGRAM[day]] = this.days[day];
-    });
-    this.submitted = true;
-    const onFailure = () => {
-      this.submitted = false;
+    const onSaved = () => {
+      done();
+      if (field === DAYS_KEY) {
+        this.daysError = null;
+      }
+      const mark = this.template.querySelector("c-shoresh-saved-mark");
+      if (mark) {
+        mark.saved();
+      }
+    };
+    // Refused: the change stays on screen, still to save, with why next to it.
+    const onFailure = (message) => {
+      done();
+      if (this.sending.has(field)) {
+        // A newer save of the same field is on its way, with what the screen shows now.
+        return;
+      }
+      this.dirty.add(field);
+      if (field === "Name") {
+        this.nameError = message;
+      } else {
+        this.daysError = message;
+      }
     };
     this.dispatchEvent(
-      new CustomEvent("save", { detail: { records: [record], onFailure } })
+      new CustomEvent("save", {
+        detail: { records: [record], onSaved, onFailure }
+      })
     );
   }
 

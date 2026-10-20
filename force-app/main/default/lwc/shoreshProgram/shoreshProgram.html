@@ -12,7 +12,18 @@
               value={name}
               required
               onchange={handleName}
+              onfocusout={handleNameLeave}
+              onkeydown={handleNameKey}
             ></lightning-input>
+            <template lwc:if={nameError}>
+              <div
+                class="slds-form-element__help slds-text-color_error"
+                role="alert"
+                data-id="name-error"
+              >
+                {nameError}
+              </div>
+            </template>
           </div>
           <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
             <fieldset class="slds-form-element">
@@ -34,23 +45,30 @@
                   ></lightning-input>
                 </template>
               </div>
+              <template lwc:if={daysError}>
+                <div
+                  class="slds-form-element__help slds-text-color_error"
+                  role="alert"
+                  data-id="days-error"
+                >
+                  {daysError}
+                </div>
+              </template>
             </fieldset>
           </div>
         </div>
-        <div class="slds-m-top_x-small">
+        <div
+          class="slds-m-top_x-small slds-grid slds-grid_vertical-align-center"
+        >
           <lightning-button
-            label="Save"
-            variant="brand"
-            onclick={handleSaveProgram}
-            disabled={formUnchanged}
-          ></lightning-button>
-          <lightning-button
-            class="slds-m-left_x-small"
             label={labels.deleteProgram}
             variant="destructive-text"
             onclick={handleDeleteProgram}
             disabled={busy}
           ></lightning-button>
+          <c-shoresh-saved-mark
+            class="slds-m-left_small"
+          ></c-shoresh-saved-mark>
         </div>
       </div>
     </article>

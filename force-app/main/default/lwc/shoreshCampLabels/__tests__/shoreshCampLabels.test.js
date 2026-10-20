@@ -82,30 +82,46 @@ describe("c-shoresh-camp-labels", () => {
     expect(element.shadowRoot.textContent).toContain("Words Camp Willow uses");
   });
 
-  it("saves what the scheduler typed", async () => {
+  /** Types into a box, as a director would. */
+  function type(element, term, field, value) {
+    const box = input(element, term, field);
+    box.value = value;
+    box.dispatchEvent(new CustomEvent("change", { detail: { value } }));
+  }
+  /** Leaves a box (the cursor goes elsewhere on the page). */
+  function leave(element, term, field) {
+    input(element, term, field).dispatchEvent(new CustomEvent("focusout"));
+  }
+  const savedMark = (element) =>
+    element.shadowRoot
+      .querySelector("c-shoresh-saved-mark")
+      .shadowRoot.querySelector('[data-id="saved"]');
+
+  it("has no Save or Cancel buttons: words save as you go", async () => {
+    const element = await render();
+    expect(element.shadowRoot.querySelectorAll("lightning-button").length).toBe(
+      0
+    );
+  });
+
+  it("saves what the scheduler typed when they leave the box, and says Saved quietly", async () => {
     saveCampLabels.mockResolvedValue();
     const element = await render();
     const saved = jest.fn();
     element.addEventListener("saved", saved);
 
-    const singular = input(element, "Division", "singular");
-    singular.value = "Unit";
-    singular.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Unit" } })
-    );
-    const plural = input(element, "Division", "plural");
-    plural.value = "Units";
-    plural.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Units" } })
-    );
+    type(element, "Division", "singular", "Unit");
+    // Moving between boxes of one word saves each time something changed.
+    leave(element, "Division", "singular");
+    await flush();
+    type(element, "Division", "plural", "Units");
+    await flush();
+    expect(savedMark(element).textContent).toBe("");
+    leave(element, "Division", "plural");
     await flush();
 
-    [...element.shadowRoot.querySelectorAll("lightning-button")]
-      .find((b) => b.label === "Save words")
-      .click();
-    await flush();
-
-    const sent = saveCampLabels.mock.calls[0][0];
+    expect(saveCampLabels).toHaveBeenCalledTimes(2);
+    const sent = saveCampLabels.mock.calls[1][0];
     expect(sent.campId).toBe("camp1");
     expect(sent.labels.find((r) => r.term === "Division")).toMatchObject({
       singular: "Unit",
@@ -116,26 +132,87 @@ describe("c-shoresh-camp-labels", () => {
       plural: "Bunks",
       labelId: "a01"
     });
-    expect(saved).toHaveBeenCalled();
+    expect(saved).toHaveBeenCalledTimes(2);
+    const mark = savedMark(element);
+    expect(mark.getAttribute("role")).toBe("status");
+    expect(mark.textContent).toContain("Saved");
   });
 
-  it("shows the reason when saving fails and stays open", async () => {
-    saveCampLabels.mockRejectedValue({
+  it("leaving a box with nothing changed sends nothing; Enter saves too", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    leave(element, "Group", "singular");
+    await flush();
+    expect(saveCampLabels).not.toHaveBeenCalled();
+    type(element, "Group", "singular", "Cabin");
+    input(element, "Group", "singular").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter" })
+    );
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves one at a time, each with the words as they were then", async () => {
+    let finish;
+    saveCampLabels.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    type(element, "Group", "singular", "Cabin");
+    leave(element, "Group", "singular");
+    type(element, "Group", "plural", "Cabins");
+    leave(element, "Group", "plural");
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(1);
+    finish();
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(2);
+    const words = (call) =>
+      saveCampLabels.mock.calls[call][0].labels.find((r) => r.term === "Group");
+    expect(words(0)).toMatchObject({ singular: "Cabin", plural: "Bunks" });
+    expect(words(1)).toMatchObject({ singular: "Cabin", plural: "Cabins" });
+  });
+
+  it("a refusal shows under the box left, in camp words, and the typing stays to save again", async () => {
+    saveCampLabels.mockRejectedValueOnce({
       body: {
-        message: 'Give "Week" both a singular and a plural word, or clear both.'
+        message:
+          'Give "Division" both a singular and a plural word, or clear both.'
       }
     });
+    saveCampLabels.mockResolvedValue();
     const element = await render();
     const saved = jest.fn();
+    const failed = jest.fn();
     element.addEventListener("saved", saved);
-    [...element.shadowRoot.querySelectorAll("lightning-button")]
-      .find((b) => b.label === "Save words")
-      .click();
+    element.addEventListener("failed", failed);
+    type(element, "Division", "singular", "Unit");
+    leave(element, "Division", "singular");
     await flush();
-    expect(element.shadowRoot.textContent).toContain(
-      "both a singular and a plural word"
+    const why = element.shadowRoot.querySelector(
+      '[data-error="Division"][data-field-error="singular"]'
     );
+    expect(why.textContent).toContain(
+      "Camp words not saved. Your changes are still here."
+    );
+    expect(why.textContent).toContain("both a singular and a plural word");
+    expect(why.getAttribute("role")).toBe("alert");
     expect(saved).not.toHaveBeenCalled();
+    // The setup page hears why too, to say it at the top if camp words is no longer showing.
+    expect(failed.mock.calls[0][0].detail.message).toBe(why.textContent.trim());
+    expect(input(element, "Division", "singular").value).toBe("Unit");
+    expect(savedMark(element).textContent).toBe("");
+    // Fixing it and leaving again sends it, and the message goes.
+    type(element, "Division", "plural", "Units");
+    leave(element, "Division", "plural");
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(2);
+    expect(saved).toHaveBeenCalledTimes(1);
+    expect(element.shadowRoot.querySelector("[data-error]")).toBeNull();
   });
 
   it("explains, and blocks saving, when this person cannot change the camp words", async () => {
@@ -146,24 +223,16 @@ describe("c-shoresh-camp-labels", () => {
       element.shadowRoot.querySelector('[data-id="read-only"]').textContent
     ).toContain("Your Salesforce admin has limited who can change this camp.");
     expect(input(element, "Group", "singular").disabled).toBe(true);
-    const save = [
-      ...element.shadowRoot.querySelectorAll("lightning-button")
-    ].find((b) => b.label === "Save words");
-    expect(save.disabled).toBe(true);
-  });
-  it("cancel changes puts back the words as saved", async () => {
-    const element = await render();
-    const bunk = input(element, "Group", "singular");
-    bunk.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Cabin" } })
-    );
+    leave(element, "Group", "singular");
     await flush();
-    expect(input(element, "Group", "singular").value).toBe("Cabin");
-    element.shadowRoot
-      .querySelector('lightning-button[data-id="cancel-words"]')
-      .click();
-    await flush();
-    expect(input(element, "Group", "singular").value).toBe("Bunk");
     expect(saveCampLabels).not.toHaveBeenCalled();
+  });
+
+  it("focusHeading puts the cursor on the screen's heading", async () => {
+    const element = await render();
+    element.focusHeading();
+    expect(element.shadowRoot.activeElement).toBe(
+      element.shadowRoot.querySelector("[data-heading]")
+    );
   });
 });
