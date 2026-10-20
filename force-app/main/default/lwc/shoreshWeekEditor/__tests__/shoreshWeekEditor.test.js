@@ -91,6 +91,27 @@ describe("c-shoresh-week-editor", () => {
     expect(element.settled).toBe(true);
   });
 
+  // Manual Build asks for the first cell just after Start, and in Salesforce the editor may not
+  // have drawn the new week's grid yet: focus fell to the page (real-browser check, 2026-10-20).
+  it("focusCell asked before the grid is drawn puts focus on it once it is", async () => {
+    const element = createElement("c-shoresh-week-editor", {
+      is: ShoreshWeekEditor
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    element.weekName = "Week 1";
+    element.programName = "Main";
+    element.saveRuns = jest.fn();
+    document.body.appendChild(element);
+    await flush();
+    expect(grid(element)).toBeNull();
+    element.focusCell();
+    element.show(draft(), true);
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(grid(element));
+    expect(grid(element).shadowRoot.activeElement.dataset.cell).toBe("0-0");
+  });
+
   it("sends an edit to the saver it was given, shows it at once, and tells the host", async () => {
     const saveRuns = jest.fn().mockResolvedValue(saved(WITH_SWIM, ["1,2,"]));
     const { element, heard } = await render(saveRuns);

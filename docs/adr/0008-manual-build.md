@@ -945,7 +945,8 @@ Generated Schedule (ADR 0010 §57).
      and the list closed the moment it opened (real-browser check, 2026-10-20).
    - After **Start a blank week** or **Start from another week**, the buttons are gone with the
      week started: focus goes to the new week's first cell, unless the director has put it
-     somewhere else meanwhile (it fell to the page before, real-browser check 2026-10-20).
+     somewhere else meanwhile (it fell to the page before, real-browser check 2026-10-20). The
+     editor's `focusCell` waits for its grid when the week is not drawn yet.
    - The counters' list closes with **Escape** too, focus back to the counter that opened it.
 2. **One polite live region per screen**: the week editor's. Versions says _Delete …? Press
    again to delete._ through it (`announceWith`); it keeps a region of its own only where the page

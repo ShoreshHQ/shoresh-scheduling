@@ -161,6 +161,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   focusToolUndoAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
+  // focusCell asked before the grid was drawn (a week just started): { key }, kept until it is.
+  focusCellWhenDrawn = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
   // useFlagChangeAck), only for a director's own edit and only when it touched a few.
   pulseKeys = [];
@@ -370,6 +372,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** Another week is about to be shown: nothing of this visit to the last one is kept. */
   @api
   clear() {
+    this.focusCellWhenDrawn = null;
     this.draft = null;
     this.notice = null;
     this.unrepeated = null;
@@ -404,12 +407,19 @@ export default class ShoreshWeekEditor extends LightningElement {
     return true;
   }
 
-  /** Puts keyboard focus on a cell of the grid on screen (its grid key; the first cell without one). */
+  /**
+   * Puts keyboard focus on a cell of the grid on screen (its grid key; the first cell without one).
+   * Asked before the grid is drawn (a week just shown), it waits until the grid is, unless focus
+   * has gone somewhere by then.
+   */
   @api
   focusCell(key) {
     const grid = this.template.querySelector('[data-id="edit-grid"]');
     if (grid) {
+      this.focusCellWhenDrawn = null;
       grid.focusCell(key);
+    } else {
+      this.focusCellWhenDrawn = { key };
     }
   }
 
@@ -2697,6 +2707,17 @@ export default class ShoreshWeekEditor extends LightningElement {
       const grid = this.template.querySelector('[data-id="edit-grid"]');
       if (grid) {
         grid.focusCell(cellKey);
+      }
+    }
+    if (this.focusCellWhenDrawn) {
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (grid) {
+        const { key } = this.focusCellWhenDrawn;
+        this.focusCellWhenDrawn = null;
+        const page = document.activeElement;
+        if (!page || page === document.body) {
+          grid.focusCell(key);
+        }
       }
     }
     if (this.conflict && !this.conflictFocused) {
