@@ -243,15 +243,17 @@ describe("c-shoresh-week-checks", () => {
     const generated = (props = {}) =>
       render({ checked: GENERATED, route: "generated", ...props });
 
-    it("counts Open instead of Overlapping, lists Open cells first, and still lists overlaps", async () => {
+    it("shows Manual Build's counters (Filled, Overlapping), no Open counter, and no Open lines", async () => {
       const element = generated();
       await flush();
-      expect(q(element, '[data-counter="open"]')).not.toBeNull();
-      expect(q(element, '[data-counter="overlapping"]')).toBeNull();
+      const labels = [
+        ...element.shadowRoot.querySelectorAll(".counter-label")
+      ].map((l) => l.textContent.trim());
+      expect(labels).toEqual(["Filled", "Overlapping", "Still needed"]);
+      expect(q(element, '[data-counter="open"]')).toBeNull();
       q(element, '[data-id="review-all"]').click();
       await flush();
       expect(lines(element)).toEqual([
-        "Bunk 2 · Monday · Period 3: Already busy then",
         "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
         "Swim · Bunk 1: 1 still needed"
       ]);
@@ -277,17 +279,17 @@ describe("c-shoresh-week-checks", () => {
         q(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
       ).toBe("true");
       expect(
-        q(element, '[data-counter="open"]').getAttribute("aria-expanded")
+        q(element, '[data-counter="overlapping"]').getAttribute("aria-expanded")
       ).toBe("false");
 
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       expect(lines(element)).toEqual([
-        "Bunk 2 · Monday · Period 3: Already busy then"
+        "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
       ]);
-      expect(last()).toMatchObject({ kind: "open" });
+      expect(last()).toMatchObject({ kind: "overlapping" });
 
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       expect(q(element, '[data-id="counter-list"]')).toBeNull();
       expect(last()).toEqual({ kind: null, lines: [] });
@@ -299,19 +301,19 @@ describe("c-shoresh-week-checks", () => {
       element.addEventListener("highlight", lit);
       const last = () => lit.mock.calls[lit.mock.calls.length - 1][0].detail;
       await flush();
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       element.shadowRoot.querySelector(".line-text").click();
       await flush();
       expect(last().kind).toBeNull();
 
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       q(element, '[data-id="close-list"]').click();
       await flush();
       expect(last().kind).toBeNull();
 
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       element.resetKey = 9;
       await flush();
@@ -323,35 +325,36 @@ describe("c-shoresh-week-checks", () => {
       const lit = jest.fn();
       element.addEventListener("highlight", lit);
       await flush();
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       element.checked = {
         ...GENERATED,
-        openCells: [
-          ...GENERATED.openCells,
+        overlapping: [
+          ...GENERATED.overlapping,
           {
             dateValue: "2026-06-30",
             groupId: "g1",
             blockId: "t1",
-            text: "Bunk 1 · Tuesday · Period 1"
+            rules: ["groupsAtOnce"],
+            text: "Bunk 1 · Tuesday · Period 1: Over its limit of 1 Bunk at once"
           }
         ]
       };
       await flush();
       const last = lit.mock.calls[lit.mock.calls.length - 1][0].detail;
-      expect(last.kind).toBe("open");
-      expect(last.lines.map((l) => l.blockId)).toEqual(["t3", "t1"]);
+      expect(last.kind).toBe("overlapping");
+      expect(last.lines.map((l) => l.blockId)).toEqual(["t2", "t1"]);
     });
 
     it("Close puts focus back on the counter that opened the list, or on Review all", async () => {
       const element = generated();
       await flush();
-      q(element, '[data-counter="open"]').click();
+      q(element, '[data-counter="overlapping"]').click();
       await flush();
       q(element, '[data-id="close-list"]').click();
       await flush();
       expect(element.shadowRoot.activeElement).toBe(
-        q(element, '[data-counter="open"]')
+        q(element, '[data-counter="overlapping"]')
       );
       q(element, '[data-id="review-all"]').click();
       await flush();
@@ -408,7 +411,7 @@ describe("c-shoresh-week-checks", () => {
       expect(last.lines).toEqual([]);
     });
 
-    it("the manual route is unchanged: no Open counter, no Review all, no highlight", async () => {
+    it("the manual route opens one list: no Review all, no highlight", async () => {
       const element = render({ checked: GENERATED });
       const lit = jest.fn();
       element.addEventListener("highlight", lit);
