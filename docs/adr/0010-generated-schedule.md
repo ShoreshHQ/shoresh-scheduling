@@ -958,11 +958,11 @@ _Published <date, time>_, never deleted). The desktop has no Publish. What diffe
 ## Tests (Publish)
 
 `GeneratedPublishTest` (as a scheduler, records made inside `System.runAs`): the copy keeps the
-draft's cells and locks, Origin Generated, within the preview's 15 and publish's 25 queries; the
+draft's cells and locks, Origin Generated, within the preview's 6 and publish's 15 queries; the
 week opened shows the published schedule, a Lock leaves it unchanged since and a hand edit
 changes it; a build answers with it (a Rebuild that builds the same week is not changed since)
 or with none; publishing again lists _Group A · Monday · Lunch: Open → Swim_ and Unpublish keeps
-both copies as history named _Published …_ (within 10 queries); Generated replaces Manual
+both copies as history named _Published …_ (within 8 queries); Generated replaces Manual
 Build's published schedule; a week saved since the preview publishes nothing; a version and
 Manual Build's draft are refused by the preview, Publish and Unpublish alike. `GeneratedLimitsTest`: a published week opens and rebuilds
 within 25 queries. Jest `publish.test.js` drives the screen: at once when finished; asks with
@@ -1045,8 +1045,8 @@ copy that was ever published is never deleted (decision 0002, `PublishedGuard`).
     box with **Reload**. Rename works there; Save version and delete don't show (there is no week
     yet to save, or to delete a version from; `c-shoresh-versions` `no-draft`).
 54. Reads: Save version 8 queries, Restore 14, delete 3 (measured in shoresh-test, 2026-10-19);
-    `GeneratedVersionsTest` asserts Save version at most 15, Restore at most 20, and Restore on a
-    week not generated yet at most 25.
+    `GeneratedVersionsTest` asserts Save version at most 10, Restore at most 20, and Restore on a
+    week not generated yet at most 18.
 
 ## Tests (Versions)
 

@@ -8,7 +8,7 @@
 @IsTest
 private class GeneratedAddActivityTest {
   // What one add may cost, well under 100 for a whole request (CLAUDE.md); about 8 by count.
-  private static final Integer QUERY_BOUND = 15;
+  private static final Integer QUERY_BOUND = 10;
 
   @IsTest
   static void aNewNameIsAddedOnceWithHandAddedStartingValues() {

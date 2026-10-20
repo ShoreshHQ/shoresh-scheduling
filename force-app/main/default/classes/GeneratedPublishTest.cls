@@ -116,8 +116,8 @@ private class GeneratedPublishTest {
       );
       Integer publishQueries = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(previewQueries <= 15, 'Preview used ' + previewQueries);
-      Assert.isTrue(publishQueries <= 25, 'Publish used ' + publishQueries);
+      Assert.isTrue(previewQueries <= 6, 'Preview used ' + previewQueries);
+      Assert.isTrue(publishQueries <= 15, 'Publish used ' + publishQueries);
       // The preview's revisions are what the screen read the week at.
       Assert.areEqual(seen, preview.revisions);
       Assert.isNull(preview.published);
@@ -260,7 +260,7 @@ private class GeneratedPublishTest {
       Integer unpublishQueries = Limits.getQueries() - before;
       Test.stopTest();
       Assert.isTrue(
-        unpublishQueries <= 10,
+        unpublishQueries <= 8,
         'Unpublish used ' + unpublishQueries
       );
       Assert.areEqual(firstId, preview.published.id);
