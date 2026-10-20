@@ -277,6 +277,10 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     const screen = this.focusHeadingOf;
     this.focusHeadingOf = null;
+    this.focusScreenHeading(screen);
+  }
+
+  focusScreenHeading(screen) {
     const heading = this.template.querySelector(
       `[data-screen="${screen}"] [data-heading]`
     );
@@ -354,11 +358,25 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup)) {
       return;
     }
+    this.openScreen(screen);
+  }
+
+  /**
+   * Shows a screen with the cursor on its heading. The screen already open takes it now: the
+   * page may not redraw, and a cursor move left waiting would jump at the next unrelated redraw.
+   */
+  openScreen(screen) {
+    const already = this.currentScreen === screen;
     this.screen = screen;
     this.mode = "screens";
     // A message about another screen's save does not belong on this one.
     this.error = null;
-    this.focusHeadingOf = screen;
+    if (already) {
+      this.focusHeadingOf = null;
+      this.focusScreenHeading(screen);
+    } else {
+      this.focusHeadingOf = screen;
+    }
   }
 
   /** Each setup screen's next screen ({ key, label }), or null: screen -> next. */
@@ -376,10 +394,7 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!canOpen(screen, !!this.setup)) {
       return;
     }
-    this.screen = screen;
-    this.mode = "screens";
-    this.error = null;
-    this.focusHeadingOf = screen;
+    this.openScreen(screen);
   }
   get hasCamp() {
     return !!this.campId && !this.isNoCamp && !this.isLoading;
@@ -942,8 +957,17 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleCancelNewSeason() {
-    this.mode = this.seasonId ? "screens" : "newSeason";
-    this.focusAfter = '[data-id="new-season"]';
+    const selector = '[data-id="new-season"]';
+    if (this.seasonId) {
+      this.mode = "screens";
+      this.focusAfter = selector;
+      return;
+    }
+    // No season open: the form stays and the page may not redraw, so the button takes it now.
+    const target = this.template.querySelector(selector);
+    if (target && typeof target.focus === "function") {
+      target.focus();
+    }
   }
 
   // ---------- copy ----------

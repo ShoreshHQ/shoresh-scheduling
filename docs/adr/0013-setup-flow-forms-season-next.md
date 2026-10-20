@@ -93,7 +93,8 @@ real-browser behaviour is still to be checked by hand (Known limits).
    the next open question (or Save once none is left), Change to that question's first choice,
    and saving to "Saved". Import last year does the same for its questions, its steps and its
    summary. On Schedules, opening an activity moves to "← All Activities", and going back moves
-   to that activity's card.
+   to that activity's card. The cursor moves only at the director's action, never
+   later: picking the screen already open moves it at once, rather than at the next redraw.
 9. **What happens is said.** Import a list and Import last year each have one status line
    (`role="status"`): "Reading …", "Saving", "Saved" / "Imported from …", and Undo's result.
    A note worked out from typing (a group moving division) is read once, in the table's single

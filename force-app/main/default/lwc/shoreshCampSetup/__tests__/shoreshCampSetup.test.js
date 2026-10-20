@@ -936,6 +936,25 @@ describe("c-shoresh-camp-setup", () => {
     );
   });
 
+  it("picking the screen already open puts the cursor on its heading now, not at a later redraw", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    const heading = q(element, '[data-screen="weeks"] [data-heading]');
+    await openScreen(element, "weeks");
+    expect(element.shadowRoot.activeElement).toBe(heading);
+    q(element, '[data-id="new-season"]').focus();
+    await openScreen(element, "weeks");
+    expect(element.shadowRoot.activeElement).toBe(heading);
+    // Nothing left waiting: the next redraw puts the cursor where that action says.
+    button(element, "New season").click();
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="new-season-title"]')
+    );
+  });
+
   it("Roots and Camp words, drawn by their own components, focus their own headings", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
