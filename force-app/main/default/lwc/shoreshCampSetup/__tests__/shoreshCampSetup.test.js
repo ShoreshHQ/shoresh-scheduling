@@ -511,6 +511,11 @@ describe("c-shoresh-camp-setup", () => {
       const element = await render();
       q(element, '[data-id="edit-season"]').click();
       await flush();
+      element.shadowRoot
+        .querySelectorAll('lightning-input[data-form="season"]')
+        .forEach((input) => {
+          input.reportValidity = () => true;
+        });
       return element;
     }
     const seasonInput = (element, field) =>
@@ -578,7 +583,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(deleteRecord).toHaveBeenCalledWith({ recordId: "s1" });
     });
 
-    it("a date saves when the director leaves it, alone, with no toast", async () => {
+    it("a date saves when the director leaves it, with the other date, and no toast", async () => {
       const element = await renderSeason();
       const toasts = [];
       element.addEventListener("lightning__showtoast", (e) => toasts.push(e));
@@ -588,7 +593,12 @@ describe("c-shoresh-camp-setup", () => {
       leaveSeason(element, "end");
       await flush();
       expect(bareRecord(saveRecords.mock.calls[0][0].records)).toEqual([
-        { sobjectType: "Season__c", Id: "s1", EndDate__c: "2026-08-14" }
+        {
+          sobjectType: "Season__c",
+          Id: "s1",
+          StartDate__c: "2026-06-29",
+          EndDate__c: "2026-08-14"
+        }
       ]);
       expect(toasts).toEqual([]);
       expect(seasonMark(element).textContent).toContain("Saved");
@@ -645,6 +655,38 @@ describe("c-shoresh-camp-setup", () => {
       expect(seasonInput(element, "end").value).toBe("2026-06-01");
       expect(seasonMark(element).textContent).toBe("");
       leaveSeason(element, "end");
+      await flush();
+      expect(saveRecords).toHaveBeenCalledTimes(2);
+    });
+
+    it("moving the season later works whichever date is changed first", async () => {
+      const element = await renderSeason();
+      saveRecords.mockRejectedValueOnce({
+        body: { message: "The end date must be on or after the start date." }
+      });
+      typeSeason(element, "start", "2026-08-17");
+      leaveSeason(element, "start");
+      await flush();
+      expect(q(element, '[data-error="season-start"]').textContent).toContain(
+        "on or after the start date"
+      );
+
+      typeSeason(element, "end", "2026-09-04");
+      leaveSeason(element, "end");
+      await flush();
+      expect(bareRecord(saveRecords.mock.calls[1][0].records)).toEqual([
+        {
+          sobjectType: "Season__c",
+          Id: "s1",
+          StartDate__c: "2026-08-17",
+          EndDate__c: "2026-09-04"
+        }
+      ]);
+      // Both dates saved: the first day's old refusal is gone, and nothing is left to send.
+      expect(q(element, '[data-error="season-start"]')).toBeNull();
+      expect(q(element, '[data-error="season-end"]')).toBeNull();
+      expect(seasonMark(element).textContent).toContain("Saved");
+      leaveSeason(element, "start");
       await flush();
       expect(saveRecords).toHaveBeenCalledTimes(2);
     });

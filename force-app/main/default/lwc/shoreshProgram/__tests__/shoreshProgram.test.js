@@ -341,7 +341,7 @@ describe("c-shoresh-program", () => {
     );
   });
 
-  it("has no Save button: a ticked day saves at once, alone", async () => {
+  it("has no Save button: a ticked day saves at once, with the other days as shown", async () => {
     const element = await render();
     expect(
       [...element.shadowRoot.querySelectorAll("lightning-button")].map(
@@ -361,7 +361,15 @@ describe("c-shoresh-program", () => {
 
     const detail = bareRecord(handler.mock.calls[0][0].detail);
     expect(detail.records).toEqual([
-      { sobjectType: "Program__c", Id: "p1", Friday__c: true }
+      {
+        sobjectType: "Program__c",
+        Id: "p1",
+        Monday__c: true,
+        Tuesday__c: true,
+        Wednesday__c: true,
+        Thursday__c: true,
+        Friday__c: true
+      }
     ]);
     expect(typeof detail.onSaved).toBe("function");
     expect(typeof detail.onFailure).toBe("function");
@@ -458,6 +466,73 @@ describe("c-shoresh-program", () => {
       element.shadowRoot.querySelector('lightning-input[data-day="Friday"]')
         .checked
     ).toBe(true);
+  });
+
+  it("a refused untick is sent again with the next tick, so the screen and the record agree", async () => {
+    // Runs Monday only; the director wants Tuesday only and unticks Monday first.
+    const mondayOnly = {
+      ...ENTRY,
+      program: {
+        ...ENTRY.program,
+        Tuesday__c: false,
+        Wednesday__c: false,
+        Thursday__c: false
+      }
+    };
+    const element = await render("program", mondayOnly);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const day = (name) =>
+      element.shadowRoot.querySelector(`lightning-input[data-day="${name}"]`);
+    const daysError = () =>
+      element.shadowRoot.querySelector('[data-id="days-error"]');
+
+    day("Monday").checked = false;
+    day("Monday").dispatchEvent(new CustomEvent("change"));
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure(
+      "Choose at least one day it runs."
+    );
+    await flush();
+    expect(daysError().textContent).toContain("Choose at least one day");
+
+    day("Tuesday").checked = true;
+    day("Tuesday").dispatchEvent(new CustomEvent("change"));
+    await flush();
+    const second = bareRecord(handler.mock.calls[1][0].detail).records[0];
+    expect(second).toMatchObject({ Monday__c: false, Tuesday__c: true });
+    handler.mock.calls[1][0].detail.onSaved();
+    const saved = JSON.parse(JSON.stringify(mondayOnly));
+    saved.program.Monday__c = false;
+    saved.program.Tuesday__c = true;
+    element.entry = nsRecord(saved);
+    await flush();
+    expect(daysError()).toBeNull();
+    expect(day("Monday").checked).toBe(false);
+    expect(day("Tuesday").checked).toBe(true);
+  });
+
+  it("a refusal answered after a newer save of the days is under way waits for that one", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const day = (name) =>
+      element.shadowRoot.querySelector(`lightning-input[data-day="${name}"]`);
+    day("Friday").checked = true;
+    day("Friday").dispatchEvent(new CustomEvent("change"));
+    day("Monday").checked = false;
+    day("Monday").dispatchEvent(new CustomEvent("change"));
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure("Not saved.");
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-id="days-error"]')
+    ).toBeNull();
+    handler.mock.calls[1][0].detail.onFailure("Still not saved.");
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-id="days-error"]').textContent
+    ).toContain("Still not saved.");
   });
 
   it("passes saves and deletes from its tables up to the screen", async () => {

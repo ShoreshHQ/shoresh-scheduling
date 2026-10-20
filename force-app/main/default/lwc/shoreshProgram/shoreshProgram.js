@@ -11,6 +11,8 @@ const BLOCK = FIELD.TimeBlock;
 const FIXED = FIELD.FixedActivity;
 const RECURRING = FIELD.RecurringActivity;
 const GROUP = FIELD.Group;
+// The operating days, saved together (see saveProgram).
+const DAYS_KEY = "Days";
 
 /**
  * One part of one program, for the screen showing it (show): "program" (its name and operating
@@ -19,8 +21,9 @@ const GROUP = FIELD.Group;
  * days and who each covers). Saves and deletes go up to the setup screen as events.
  *
  * The program's own name and days save as you go, like the tables (ADR 0011, decision 26 (4)): the
- * name when the director leaves it (or presses Enter), a day the moment it is ticked. Only what
- * changed is sent. "Saved" shows quietly once it is; a refusal shows next to the field, with the
+ * name when the director leaves it (or presses Enter), the days the moment one is ticked. The
+ * name is sent alone; the days always go all together, as the screen shows them, since the server
+ * refuses a program with none (one day alone could be refused while another waits unsent). "Saved" shows quietly once it is; a refusal shows next to the field, with the
  * typing kept.
  */
 export default class ShoreshProgram extends LightningElement {
@@ -39,7 +42,7 @@ export default class ShoreshProgram extends LightningElement {
 
   name;
   days = {};
-  // Fields ("Name", or a day) changed on screen and not sent yet, and those sent and not answered.
+  // Fields ("Name", or "Days" for all five) changed on screen and not sent yet, and those sent and not answered.
   // A reload never puts back either: what the director typed stays until it is saved.
   dirty = new Set();
   sending = new Map(); // field -> saves under way
@@ -79,13 +82,13 @@ export default class ShoreshProgram extends LightningElement {
     if (!keep("Name")) {
       this.name = program.Name;
     }
-    const days = { ...this.days };
-    DAYS.forEach((day) => {
-      if (!keep(day)) {
+    if (!keep(DAYS_KEY)) {
+      const days = {};
+      DAYS.forEach((day) => {
         days[day] = !!program[PROGRAM[day]];
-      }
-    });
-    this.days = days;
+      });
+      this.days = days;
+    }
   }
 
   get isProgram() {
@@ -458,13 +461,13 @@ export default class ShoreshProgram extends LightningElement {
     }
   }
 
-  /** A day is saved the moment it is ticked, as the tables' ticks are. */
+  /** The days are saved the moment one is ticked, as the tables' ticks are. */
   handleDay(event) {
     const day = event.target.dataset.day;
     this.days = { ...this.days, [day]: event.target.checked };
-    this.edited(day);
+    this.edited(DAYS_KEY);
     this.daysError = null;
-    this.saveProgram(day);
+    this.saveProgram(DAYS_KEY);
   }
 
   edited(field) {
@@ -476,8 +479,8 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   /**
-   * Sends what changed in the field left (field: "Name" or a day). A blank name is not sent: the
-   * field says it needs one, as any required field does.
+   * Sends what changed (field: "Name", or "Days" for all five days as shown). A blank name is
+   * not sent: the field says it needs one, as any required field does.
    */
   saveProgram(field) {
     if (!this.dirty.has(field)) {
@@ -497,7 +500,9 @@ export default class ShoreshProgram extends LightningElement {
     if (field === "Name") {
       record.Name = this.name;
     } else {
-      record[PROGRAM[field]] = this.days[field];
+      DAYS.forEach((day) => {
+        record[PROGRAM[day]] = !!this.days[day];
+      });
     }
     const done = () => {
       const left = this.sending.get(field) - 1;
@@ -509,6 +514,9 @@ export default class ShoreshProgram extends LightningElement {
     };
     const onSaved = () => {
       done();
+      if (field === DAYS_KEY) {
+        this.daysError = null;
+      }
       const mark = this.template.querySelector("c-shoresh-saved-mark");
       if (mark) {
         mark.saved();
@@ -517,6 +525,10 @@ export default class ShoreshProgram extends LightningElement {
     // Refused: the change stays on screen, still to save, with why next to it.
     const onFailure = (message) => {
       done();
+      if (this.sending.has(field)) {
+        // A newer save of the same field is on its way, with what the screen shows now.
+        return;
+      }
       this.dirty.add(field);
       if (field === "Name") {
         this.nameError = message;

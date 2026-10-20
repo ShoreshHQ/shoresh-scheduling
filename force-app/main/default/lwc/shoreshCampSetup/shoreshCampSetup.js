@@ -45,6 +45,8 @@ const SEASON_INPUTS = {
   start: SEASON.StartDate,
   end: SEASON.EndDate
 };
+// The two dates, saved together (see saveSeasonField).
+const SEASON_DATES = ["start", "end"];
 
 const SCREENS = [
   "roots",
@@ -713,41 +715,68 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
-   * Saves the season field left (input), if it changed: only that field is sent. A blank or
-   * impossible value is not sent; the field says why, as any field does.
+   * Saves the season field left (input), if it changed. The name is sent alone; the two dates
+   * always go together, since the last day may not come before the first (a season moved later
+   * would be refused with only its first day sent). A blank or impossible value is not sent; the
+   * field says why, as any field does.
    */
   saveSeasonField(input) {
     const name = input.dataset.field;
-    const field = SEASON_INPUTS[name];
-    if (!field || !this.seasonDirty.has(field) || !input.reportValidity()) {
+    if (!SEASON_INPUTS[name]) {
       return;
     }
-    this.seasonDirty.delete(field);
-    this.seasonSending.set(field, (this.seasonSending.get(field) || 0) + 1);
+    const names = SEASON_DATES.includes(name) ? SEASON_DATES : [name];
+    const fields = names.map((n) => SEASON_INPUTS[n]);
+    const changed = fields.filter((f) => this.seasonDirty.has(f));
+    if (!changed.length) {
+      return;
+    }
+    const inputs = names.map((n) => {
+      if (n === name) {
+        return input;
+      }
+      return this.template.querySelector(
+        `[data-form="season"][data-field="${n}"]`
+      );
+    });
+    if (inputs.some((i) => i && !i.reportValidity())) {
+      return;
+    }
+    const record = { sobjectType: OBJECT.Season, Id: this.seasonForm.Id };
+    fields.forEach((f) => {
+      this.seasonDirty.delete(f);
+      this.seasonSending.set(f, (this.seasonSending.get(f) || 0) + 1);
+      record[f] = this.seasonForm[f];
+    });
     const seasonId = this.seasonForm.Id;
     const done = () => {
-      const left = (this.seasonSending.get(field) || 0) - 1;
-      if (left > 0) {
-        this.seasonSending.set(field, left);
-      } else {
-        this.seasonSending.delete(field);
-      }
+      fields.forEach((f) => {
+        const left = (this.seasonSending.get(f) || 0) - 1;
+        if (left > 0) {
+          this.seasonSending.set(f, left);
+        } else {
+          this.seasonSending.delete(f);
+        }
+      });
+    };
+    // Sent together, so answered together: an old refusal under either is replaced.
+    const showErrors = (message) => {
+      const errors = { ...this.seasonErrors };
+      names.forEach((n) => {
+        errors[n] = n === name ? message : null;
+      });
+      this.seasonErrors = errors;
     };
     const current = () => this.seasonForm.Id === seasonId;
     this.saveForm({
-      records: [
-        {
-          sobjectType: OBJECT.Season,
-          Id: seasonId,
-          [field]: this.seasonForm[field]
-        }
-      ],
+      records: [record],
       what: `${this.terms.s("Season")} not saved. Your changes are still here.`,
       onSaved: () => {
         if (!current()) {
           return;
         }
         done();
+        showErrors(null);
         const mark = this.template.querySelector(
           'c-shoresh-saved-mark[data-id="season-saved"]'
         );
@@ -760,8 +789,12 @@ export default class ShoreshCampSetup extends LightningElement {
           return;
         }
         done();
-        this.seasonDirty.add(field);
-        this.seasonErrors = { ...this.seasonErrors, [name]: message };
+        if (this.seasonSending.has(fields[0])) {
+          // A newer save of the same fields is on its way, with what the form shows now.
+          return;
+        }
+        changed.forEach((f) => this.seasonDirty.add(f));
+        showErrors(message);
       },
       // A new name shows in the season picker.
       reloadSeasons: true

@@ -169,13 +169,20 @@ describe("c-shoresh-activity-details", () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("save", handler);
+    allValid(element);
     change(q(element, '[data-field="sameDivision"]'), true);
     change(q(element, '[data-field="earlyDay"]'), "Wednesday");
     await flush();
     const saves = sent(handler);
     expect(saves.map((save) => save.rules)).toEqual([
       { sobjectType: "Activity__c", Id: "a1", SameDivisionOnly__c: true },
-      { sobjectType: "Activity__c", Id: "a1", EarlyWeekByDay__c: "Wednesday" }
+      // The early-week day goes with its count: the server takes both or neither.
+      {
+        sobjectType: "Activity__c",
+        Id: "a1",
+        EarlyWeekCount__c: null,
+        EarlyWeekByDay__c: "Wednesday"
+      }
     ]);
     // The server replaces the list, so it always goes whole.
     expect(saves[0].whoCanDoIt).toEqual(["g2"]);
@@ -201,7 +208,12 @@ describe("c-shoresh-activity-details", () => {
     const saves = sent(handler);
     expect(saves.map((save) => save.rules)).toEqual([
       { sobjectType: "Activity__c", Id: "a1" },
-      { sobjectType: "Activity__c", Id: "a1", EarlyWeekCount__c: 2 },
+      {
+        sobjectType: "Activity__c",
+        Id: "a1",
+        EarlyWeekCount__c: 2,
+        EarlyWeekByDay__c: null
+      },
       { sobjectType: "Activity__c", Id: "a1", Notes__c: "Helmets" }
     ]);
     expect(saves[0].whoCanDoIt).toEqual(["d1"]);
@@ -252,6 +264,66 @@ describe("c-shoresh-activity-details", () => {
     const [first, second] = sent(handler);
     expect(first.rules.EarlyWeekCount__c).toBeNull();
     expect(second.rules.EarlyWeekByDay__c).toBeNull();
+  });
+
+  it("an early-week rule can be set one field at a time: a refused count goes again with the day", async () => {
+    // Archery has neither the count nor the day.
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    allValid(element);
+    const count = q(element, '[data-field="earlyCount"]');
+    change(count, "2");
+    leave(count);
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure(
+      "Give both how many times and by which day, or neither."
+    );
+    await flush();
+    expect(q(element, '[data-error="earlyCount"]').textContent).toContain(
+      "Give both"
+    );
+    change(q(element, '[data-field="earlyDay"]'), "Wednesday");
+    await flush();
+    expect(sent(handler)[1].rules).toEqual({
+      sobjectType: "Activity__c",
+      Id: "a1",
+      EarlyWeekCount__c: 2,
+      EarlyWeekByDay__c: "Wednesday"
+    });
+    handler.mock.calls[1][0].detail.onSaved();
+    await flush();
+    expect(q(element, '[data-error="earlyCount"]')).toBeNull();
+    expect(savedMark(element).textContent).toContain("Saved");
+  });
+
+  it("an early-week rule can be cleared one field at a time", async () => {
+    const element = await render();
+    change(q(element, '[data-id="activity-picker"]'), "a2");
+    await flush();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    allValid(element);
+    change(q(element, '[data-field="earlyDay"]'), "");
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure("Give both, or neither.");
+    await flush();
+    expect(q(element, '[data-error="earlyDay"]').textContent).toContain(
+      "Give both"
+    );
+    const count = q(element, '[data-field="earlyCount"]');
+    change(count, "");
+    leave(count);
+    await flush();
+    expect(sent(handler)[1].rules).toEqual({
+      sobjectType: "Activity__c",
+      Id: "a2",
+      EarlyWeekCount__c: null,
+      EarlyWeekByDay__c: null
+    });
+    handler.mock.calls[1][0].detail.onSaved();
+    await flush();
+    expect(q(element, '[data-error="earlyDay"]')).toBeNull();
   });
 
   it("says Saved quietly once the screen saved it", async () => {

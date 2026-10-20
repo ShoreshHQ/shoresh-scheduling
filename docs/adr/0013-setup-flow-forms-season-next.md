@@ -21,7 +21,17 @@ season form on Weeks; Camp words' Cancel).
    chosen, as the tables' ticks are. The "who can do it" list is saved when the director leaves
    it, not on every move. Leaving a field with nothing changed sends nothing.
 2. **Only the field that changed is sent** (the season, the program, an activity's rules), so a
-   change someone else made to another field stays. Activity details always send the whole
+   change someone else made to another field stays, **except fields the server checks against
+   each other, which always go together, as the screen shows them**: the season's first and last
+   day (`EndOnOrAfterStart`), the program's five days (`AtLeastOneDay`), and an activity's
+   early-week count and day (`EarlyWeekComplete`). Sent one at a time, each could be refused
+   against the other's old value: an early-week rule could never be set or cleared, a season
+   moved later only worked with the last day changed first, and a refused untick could stay on
+   screen unsent while the next tick saved and showed "Saved". A refusal is shown under the field
+   the director left, replacing any older one under its partner; a save of the pair clears both.
+   A refusal that arrives while a newer save of the same field is already on its way is not
+   shown: that newer save carries what the screen shows now, and its answer decides. Activity
+   details always send the whole
    "who can do it" list, since the server replaces it (`ActivityDetails.save`, unchanged). Camp
    words send every word, since `saveCampLabels` takes the list (unchanged); its saves go one at
    a time, each with the words as they are on screen then.
