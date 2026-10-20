@@ -2,7 +2,7 @@ import { LightningElement, api } from "lwc";
 import { campWorkbookSheets } from "c/shoreshLists";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
-import { errorMessage } from "c/shoreshErrors";
+import { reasonOf } from "c/shoreshErrors";
 import { screenLabels } from "c/shoreshScreens";
 import { FIELD } from "c/shoreshSchema";
 
@@ -164,7 +164,7 @@ export default class ShoreshRoots extends LightningElement {
       this.dispatchEvent(
         new ShowToastEvent({
           title: "The workbook could not be downloaded",
-          message: errorMessage(e),
+          message: reasonOf(e),
           variant: "error"
         })
       );

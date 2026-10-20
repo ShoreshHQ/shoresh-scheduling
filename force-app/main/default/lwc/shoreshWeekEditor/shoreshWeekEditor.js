@@ -1,6 +1,6 @@
 import { LightningElement, api } from "lwc";
 import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
-import { failed } from "c/shoreshErrors";
+import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -1528,7 +1528,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       const result = await this.saveRuns([sent]);
       if (result.status === "refused") {
         // The host's reason, as it would read from a server refusal.
-        throw new Error(result.message);
+        throw refusal(result.message);
       }
       this.queue = this.queue.slice(1);
       this.server = result.schedule;
@@ -1581,9 +1581,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     } catch (e) {
       const dropped = this.queue.length - 1;
       this.reportError(
-        failed(`Not saved: ${entry.label}.`, e) +
+        failed(`Your change wasn't saved: ${entry.label}.`, e) +
           (dropped > 0
-            ? ` ${dropped} more ${dropped === 1 ? "change was" : "changes were"} not saved.`
+            ? ` ${dropped} more ${dropped === 1 ? "change" : "changes"} after it ${dropped === 1 ? "wasn't" : "weren't"} saved either.`
             : "")
       );
       this.queue = [];
@@ -2513,7 +2513,7 @@ export default class ShoreshWeekEditor extends LightningElement {
         // Sent again and refused again with nothing new to ask: not a loop without end.
         this.abandon(entry);
         this.say(
-          `Not saved: ${entry.label}. The ${this.t.sIn("Week")} kept changing while it was saved. Try again.`
+          `Your change wasn't saved: ${entry.label}. The ${this.t.sIn("Week")} kept changing while it was saved. Try again.`
         );
         return;
       }

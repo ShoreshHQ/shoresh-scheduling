@@ -778,7 +778,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     const reads = getInputs.mock.calls.length;
     await clearSwim(element);
     expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Not saved"
+      "wasn't saved"
     );
     expect(getInputs.mock.calls.length).toBe(reads + 1);
   });

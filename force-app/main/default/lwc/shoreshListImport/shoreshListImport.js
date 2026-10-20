@@ -33,7 +33,7 @@ import {
   workbookWaiting
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
-import { errorMessage } from "c/shoreshErrors";
+import { failed, reasonOf } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
@@ -124,7 +124,7 @@ export default class ShoreshListImport extends LightningElement {
       this.dispatchEvent(
         new ShowToastEvent({
           title: "The list could not be downloaded",
-          message: errorMessage(e),
+          message: reasonOf(e),
           variant: "error"
         })
       );
@@ -190,7 +190,7 @@ export default class ShoreshListImport extends LightningElement {
       this.stage = "review";
     } catch (e) {
       this.stage = "pick";
-      this.error = `That file could not be read. ${errorMessage(e)}`;
+      this.error = failed("That file could not be read.", e);
     }
   }
 
@@ -800,7 +800,7 @@ export default class ShoreshListImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = `Nothing was saved. ${errorMessage(e)}`;
+      this.error = failed("Nothing was saved.", e);
     }
   }
 
@@ -846,7 +846,7 @@ export default class ShoreshListImport extends LightningElement {
       );
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
-      this.error = `That import could not be undone. ${errorMessage(e)}`;
+      this.error = failed("That import could not be undone.", e);
     } finally {
       this.undoing = false;
     }

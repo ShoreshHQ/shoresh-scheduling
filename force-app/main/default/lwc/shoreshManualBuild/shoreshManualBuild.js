@@ -14,7 +14,7 @@ import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChang
 import updateToMatchSetup from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
-import { errorMessage, failed } from "c/shoreshErrors";
+import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
@@ -227,7 +227,7 @@ export default class ShoreshManualBuild extends LightningElement {
         status: "refused",
         conflicts: [],
         schedule: null,
-        message: errorMessage(e)
+        message: reasonOf(e)
       };
     }
   };
@@ -620,16 +620,16 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /**
    * Runs a versions action, then reads the list again before it is done (so the list never shows
-   * a version just deleted as if it were there); refused ones say why.
+   * a version just deleted as if it were there); refused ones say what didn't happen, then why.
    */
-  async versionsAction(work) {
+  async versionsAction(work, what) {
     this.versionsWorking = true;
     this.error = null;
     try {
       await work();
       return true;
     } catch (e) {
-      this.error = errorMessage(e);
+      this.error = failed(what, e);
       return false;
     } finally {
       await this.loadVersions();
@@ -640,8 +640,9 @@ export default class ShoreshManualBuild extends LightningElement {
   /** Save version: the week as it is now, kept under a name. */
   async handleSaveVersion(event) {
     const { name, onDone } = event.detail;
-    const saved = await this.versionsAction(() =>
-      saveVersion({ scheduleId: this.schedule.schedule.id, name })
+    const saved = await this.versionsAction(
+      () => saveVersion({ scheduleId: this.schedule.schedule.id, name }),
+      `${name} wasn't saved.`
     );
     if (saved) {
       this.say(`Saved ${name}.`);
@@ -665,30 +666,33 @@ export default class ShoreshManualBuild extends LightningElement {
     this.loadTicket += 1;
     const ticket = this.loadTicket;
     this.restoreRefused = false;
-    await this.versionsAction(async () => {
-      const draft = await restoreVersion({
-        scheduleId: this.schedule.schedule.id,
-        versionId: id,
-        seenRevisions: this.server ? this.server.revisions : null
-      });
-      if (ticket !== this.loadTicket) {
-        return;
-      }
-      if (draft.changedSince) {
-        // Nothing was changed: someone else's newer week is never replaced unseen.
-        this.restoreRefused = true;
-        // Its line (with Reload) is on screen; said aloud too.
-        this.announce(this.restoreRefusedText);
-        return;
-      }
-      this.checksResetKey += 1;
-      this.draft = draft;
-      this.publishState = draft.published || null;
-      this.weekEditor.restored(draft);
-      this.restoredId = id;
-      this.loadSetupChanges();
-      this.say(`Restored ${version ? version.name : ""}.`);
-    });
+    await this.versionsAction(
+      async () => {
+        const draft = await restoreVersion({
+          scheduleId: this.schedule.schedule.id,
+          versionId: id,
+          seenRevisions: this.server ? this.server.revisions : null
+        });
+        if (ticket !== this.loadTicket) {
+          return;
+        }
+        if (draft.changedSince) {
+          // Nothing was changed: someone else's newer week is never replaced unseen.
+          this.restoreRefused = true;
+          // Its line (with Reload) is on screen; said aloud too.
+          this.announce(this.restoreRefusedText);
+          return;
+        }
+        this.checksResetKey += 1;
+        this.draft = draft;
+        this.publishState = draft.published || null;
+        this.weekEditor.restored(draft);
+        this.restoredId = id;
+        this.loadSetupChanges();
+        this.say(`Restored ${version ? version.name : ""}.`);
+      },
+      `${version ? version.name : "That version"} wasn't restored. Nothing was changed.`
+    );
   }
 
   get restoreRefusedText() {
@@ -707,8 +711,10 @@ export default class ShoreshManualBuild extends LightningElement {
     }
     const id = event.detail.id;
     const version = this.versions.find((v) => v.id === id);
-    const done = await this.versionsAction(() =>
-      deleteVersion({ scheduleId: this.schedule.schedule.id, versionId: id })
+    const done = await this.versionsAction(
+      () =>
+        deleteVersion({ scheduleId: this.schedule.schedule.id, versionId: id }),
+      `${version ? version.name : "That version"} wasn't deleted.`
     );
     if (done) {
       this.say(`Deleted ${version ? version.name : ""}.`);
@@ -717,8 +723,10 @@ export default class ShoreshManualBuild extends LightningElement {
 
   async handleRenameVersion(event) {
     const { id, name, onDone } = event.detail;
-    const renamed = await this.versionsAction(() =>
-      renameSchedule({ scheduleId: id, name })
+    const version = this.versions.find((v) => v.id === id);
+    const renamed = await this.versionsAction(
+      () => renameSchedule({ scheduleId: id, name }),
+      `${version ? version.name : "That version"} wasn't renamed.`
     );
     onDone(renamed);
   }

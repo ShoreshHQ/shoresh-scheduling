@@ -8,6 +8,7 @@
  * Every text cell goes through the spreadsheet-formula guard (cells.js sanitizeCell). Pure
  * JavaScript: the screen turns the sheets into a file with SheetJS.
  */
+import { refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 import { screenLabels } from "c/shoreshScreens";
 import { sanitizeCell } from "./cells";
@@ -44,7 +45,7 @@ function fitsExcel(rows) {
   rows.forEach((row) =>
     row.forEach((cell, c) => {
       if (typeof cell === "string" && cell.length > CELL_LIMIT) {
-        throw new Error(
+        throw refusal(
           `${rows[0][c]} for “${row[0]}” is longer than a spreadsheet cell holds.`
         );
       }

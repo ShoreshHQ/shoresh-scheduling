@@ -126,7 +126,7 @@ describe("c-shoresh-week-editor", () => {
     await placeSwim(element);
     expect(heard.errors).toHaveLength(1);
     expect(heard.errors[0]).toMatch(
-      /^Not saved: Placed Swim · .*\. Not allowed\.$/
+      /^Your change wasn't saved: Placed Swim · .*\. Not allowed\.$/
     );
     expect(heard.reloads).toBe(1);
     // What is saved is no longer known here: there is nothing to undo.
