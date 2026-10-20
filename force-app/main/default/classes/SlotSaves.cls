@@ -48,7 +48,7 @@ public with sharing class SlotSaves {
   /**
    * Start from another week's copy: on setup already read (GeneratedSetup.rules), and without
    * reading the schedule back (the start reads the whole draft once afterwards anyway). The draft
-   * must already be locked (ManualDrafts.locked) in this request.
+   * must be one this request inserted, so nobody else can save it meanwhile.
    */
   public static SlotEdits.Result makeWith(
     Id scheduleId,

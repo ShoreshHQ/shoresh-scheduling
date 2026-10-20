@@ -9,3 +9,6 @@
 .vscode
 
 coverage/
+# Vendored Salesforce skills (kept as their source has them) and throwaway prototypes
+.claude/skills/
+prototypes/

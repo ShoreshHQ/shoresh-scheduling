@@ -6,10 +6,10 @@ Shoresh ships SheetJS Community Edition **0.20.3** unchanged as the static resou
 
 Checked 2026-10-17 against the vendor's advisories:
 
-| Advisory | Issue | Affected | Fixed in | Applies to 0.20.3? |
-|---|---|---|---|---|
-| [CVE-2023-30533](https://cdn.sheetjs.com/advisories/CVE-2023-30533) | Prototype pollution when reading crafted files | through 0.19.2 | 0.19.3 | No |
-| [CVE-2024-22363](https://cdn.sheetjs.com/advisories/CVE-2024-22363) | Regular-expression denial of service (ReDoS) | through 0.20.1 | 0.20.2 | No |
+| Advisory                                                            | Issue                                          | Affected       | Fixed in | Applies to 0.20.3? |
+| ------------------------------------------------------------------- | ---------------------------------------------- | -------------- | -------- | ------------------ |
+| [CVE-2023-30533](https://cdn.sheetjs.com/advisories/CVE-2023-30533) | Prototype pollution when reading crafted files | through 0.19.2 | 0.19.3   | No                 |
+| [CVE-2024-22363](https://cdn.sheetjs.com/advisories/CVE-2024-22363) | Regular-expression denial of service (ReDoS)   | through 0.20.1 | 0.20.2   | No                 |
 
 Older ones (for example CVE-2021-32014, through 0.16.9) are long fixed. The vendor's advisory
 list (https://cdn.sheetjs.com/advisories/) has no advisory after these two, and a web search found

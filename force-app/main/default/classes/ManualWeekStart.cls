@@ -52,7 +52,8 @@ public with sharing class ManualWeekStart {
     copy.plan(ScheduleDays.read(source.Id), ScheduleDays.read(blank.draftId));
     result.leftOut = copy.leftOut;
     if (!copy.edits.isEmpty()) {
-      ManualDrafts.locked(blank.draftId);
+      // No second lock: this request inserted the draft (under the program's lock), so nobody
+      // else can see or save it until the request ends.
       SlotEdits.Result saved = SlotSaves.makeWith(
         blank.draftId,
         copy.edits,
