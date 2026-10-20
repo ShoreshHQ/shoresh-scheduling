@@ -182,7 +182,7 @@ public with sharing class CampLabels {
     public String singular { get; set; }
     @AuraEnabled
     public String plural { get; set; }
-    // Shown to the screen only; never read back.
+    // apex-aura-inputs-ok: shown to the screen only; never read back.
     @AuraEnabled
     public Boolean isCustom;
     @AuraEnabled

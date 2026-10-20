@@ -890,7 +890,11 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    screen sends `versionKept`; the server answers `kept`), so updating row by row leaves one way
    back, the week as it was before the list's first such change, not one version per row.
    Opening the list again starts a new opening. Undo starts over afterwards, as after Restore.
-   The published copy is never touched.
+   The published copy is never touched. What the update sends (`SetupMatch.Ask`) is a class of
+   properties (`{ get; set; }`), as every class a screen sends is: Salesforce leaves a plain field
+   empty, so until 2026-10-20 every update arrived with no revisions and was refused as changed
+   since, with nobody else editing (found by the real-browser check; `npm run check:aura-inputs`
+   now fails on any such field).
 6. **The week can't be laid out from setup now** (no time blocks, no group at camp this week,
    no day it runs, no access to its set-time items): the box says why in Start's own words and
    offers no update; nothing is guessed.
@@ -933,7 +937,14 @@ Generated Schedule (ADR 0010 §57).
      the box: focus goes to the grid's cell, not to Publish (which may not be there) or the page.
      With changes left, or after Cancel, it goes back to the button, as before.
    - **Versions:** after a rename is saved or let go (Escape), focus goes to that version's
-     rename; the list's own focus rules (Restore, Escape, delete) are unchanged.
+     rename; the list's own focus rules (Restore, Escape, delete) are unchanged. A click inside
+     the list or on its button is noted by the list itself, so the page-wide "click elsewhere
+     closes it" listener lets it be: in Salesforce that listener sees the component through a
+     wrapper, so asking whether the click's path held the component's own element always said no
+     and the list closed the moment it opened (real-browser check, 2026-10-20).
+   - After **Start a blank week** or **Start from another week**, the buttons are gone with the
+     week started: focus goes to the new week's first cell, unless the director has put it
+     somewhere else meanwhile (it fell to the page before, real-browser check 2026-10-20).
    - The counters' list closes with **Escape** too, focus back to the counter that opened it.
 2. **One polite live region per screen**: the week editor's. Versions says _Delete …? Press
    again to delete._ through it (`announceWith`); it keeps a region of its own only where the page
@@ -958,7 +969,9 @@ Generated Schedule (ADR 0010 §57).
 
 Checked by Jest: focus on the line's Undo after Clear day and Group View's Clear day; focus on
 the grid after Update to match setup leaves nothing; the dialog's Close; the day-problem words;
-Versions' button, rename focus and `announceWith`; the counters' heading and Escape.
+Versions' button, rename focus and `announceWith`, and the list staying open when a page-wide
+listener sees the click through a wrapper; focus on the first cell after Start; the counters'
+heading and Escape.
 
 ## Choices that are hard to undo after release
 

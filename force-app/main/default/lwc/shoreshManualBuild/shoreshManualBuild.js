@@ -94,6 +94,8 @@ export default class ShoreshManualBuild extends LightningElement {
   unpublishAsk = null;
   // Where focus goes back to once it is drawn enabled again ("publish" or "unpublish"), or null.
   focusOn = null;
+  // A start just gave the week: its Start buttons are gone, so focus goes to the grid once drawn.
+  focusGridAfterStart = false;
   // What setup changed since the week started (SetupMatch.Preview), for the week shown, or null.
   setupPreview = null;
   setupTicket = 0;
@@ -165,6 +167,19 @@ export default class ShoreshManualBuild extends LightningElement {
     // the director has put it somewhere else meanwhile.
     if (this.focusOn && !this.publishDisabled) {
       this.focusBack();
+    }
+    // After a start the button that was clicked is gone (WCAG 2.4.3): focus goes to the new
+    // week's first cell, unless the director has put it somewhere else meanwhile.
+    if (
+      this.focusGridAfterStart &&
+      this.draft &&
+      !this.waiting &&
+      this.weekEditor
+    ) {
+      this.focusGridAfterStart = false;
+      if (this.focusIsLost()) {
+        this.weekEditor.focusCell();
+      }
     }
   }
 
@@ -511,6 +526,7 @@ export default class ShoreshManualBuild extends LightningElement {
         return null;
       }
       this.show(draft, true);
+      this.focusGridAfterStart = !!draft;
       this.loadVersions();
       return draft;
     } catch (e) {
