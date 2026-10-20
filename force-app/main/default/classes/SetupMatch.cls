@@ -13,6 +13,10 @@
  * as it was first, as an automatic version (the desktop's way back before a restore), once per
  * opening of the list. Runs in
  * user mode.
+ *
+ * Generated Schedule's draft gets the same (Greg's look-and-feel decision 1, 2026-10-20; ADR 0010
+ * §56): the same dots, list and update, and its locks stay on every cell an update leaves holding
+ * what it held (SetupMatchDay), so a director's hand edits and Locks are never lost unseen.
  */
 public with sharing class SetupMatch {
   public static final String BEFORE_UPDATE = 'Before Update to match setup';
@@ -98,7 +102,8 @@ public with sharing class SetupMatch {
   public class Updated {
     @AuraEnabled
     public String refused;
-    // The draft as it is now, when the update was made.
+    // Manual Build's draft as it is now, when the update was made. None for Generated Schedule's,
+    // whose screen reads its week again (the engine's input, not Manual Build's view).
     @AuraEnabled
     public ManualBuildViews.DraftView view;
     // This update kept the week as it was first (BEFORE_UPDATE).
@@ -118,7 +123,7 @@ public with sharing class SetupMatch {
     private Boolean versionKept = false;
   }
 
-  /** What setup changed since the Manual Build draft's week started. */
+  /** What setup changed since the draft's week started (Manual Build's or Generated Schedule's). */
   public static Preview of(Id draftId) {
     Schedule__c draft = draftOf(draftId);
     return planFor(
@@ -138,7 +143,7 @@ public with sharing class SetupMatch {
    */
   public static Updated make(Id draftId, Ask asked) {
     Ask ask = asked == null ? new Ask() : asked;
-    Schedule__c draft = ManualDrafts.locked(draftId);
+    Schedule__c draft = lockedDraft(draftId);
     List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
     Updated result = new Updated();
     if (ScheduleDays.stamp(current) != ask.seenRevisions) {
@@ -169,8 +174,15 @@ public with sharing class SetupMatch {
     }
     plan.versionKept = ask.versionKept == true;
     result.kept = write(draft, plan);
-    result.view = ManualBuildViews.open(draftId);
+    result.view = viewOf(draft);
     return result;
+  }
+
+  /** Manual Build's draft as it is now; none for Generated Schedule's, which reads its week again. */
+  private static ManualBuildViews.DraftView viewOf(Schedule__c draft) {
+    return draft.Origin__c == ManualDrafts.MANUAL
+      ? ManualBuildViews.open(draft.Id)
+      : null;
   }
 
   /** Makes the chosen changes; returns whether it kept the week as it was first. */
@@ -270,7 +282,7 @@ public with sharing class SetupMatch {
     return plan;
   }
 
-  /** A Manual Build draft the user can see, or refused. */
+  /** A Manual Build or Generated Schedule draft the user can see, or refused. */
   private static Schedule__c draftOf(Id draftId) {
     List<Schedule__c> found = [
       SELECT Id, Program__c, Week__c, Status__c, Origin__c
@@ -278,15 +290,47 @@ public with sharing class SetupMatch {
       WHERE Id = :draftId
       WITH USER_MODE
     ];
-    if (
-      found.isEmpty() ||
-      found[0].Status__c != ManualDrafts.DRAFT ||
-      found[0].Origin__c != ManualDrafts.MANUAL
-    ) {
-      throw new ShoreshException(
-        'That schedule was not found, or you do not have access to it.'
-      );
+    if (found.isEmpty() || !isDraft(found[0])) {
+      throw notFound();
     }
     return found[0];
+  }
+
+  /**
+   * The draft, locked until this update ends so saves of it take turns (as ManualDrafts.locked
+   * and GeneratedDrafts.lockedToEdit lock it): one query, whichever screen's draft it is. A
+   * version or a published schedule is refused.
+   */
+  private static Schedule__c lockedDraft(Id draftId) {
+    List<Schedule__c> found = [
+      SELECT
+        Id,
+        Name,
+        Status__c,
+        Origin__c,
+        EngineOption__c,
+        Program__c,
+        Week__c
+      FROM Schedule__c
+      WHERE Id = :draftId
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    if (found.isEmpty() || !isDraft(found[0])) {
+      throw notFound();
+    }
+    return found[0];
+  }
+
+  private static Boolean isDraft(Schedule__c schedule) {
+    return schedule.Status__c == ManualDrafts.DRAFT &&
+      (schedule.Origin__c == ManualDrafts.MANUAL ||
+      schedule.Origin__c == GeneratedDrafts.GENERATED);
+  }
+
+  private static ShoreshException notFound() {
+    return new ShoreshException(
+      'That schedule was not found, or you do not have access to it.'
+    );
   }
 }

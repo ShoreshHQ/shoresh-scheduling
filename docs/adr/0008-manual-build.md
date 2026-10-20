@@ -914,6 +914,11 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    after an update, one version per opening) and `shoreshSetupMatch.test.js` (the list, focus,
    Tab, Escape, busy and focus while busy, the same words read out again, accessibility).
 
+9. **Generated Schedule uses the same path** (Greg's look-and-feel decision 1, 2026-10-20; ADR
+   0010 §56): `SetupMatch` takes a Generated draft too, keeps its locks on every cell an update
+   leaves as it was (`SetupMatchLocks`), and sends no view back for it (that screen reads its
+   week again). Manual Build's behaviour and query bounds are unchanged.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's

@@ -1134,6 +1134,70 @@ line, and Undo restores the kept version with the saved revision (its lock back,
 said, focus on Start over), a refused Undo offers Reload, a later save takes the line away, and
 no line shows without a kept version; Publish's lines read _Filled: X of Y_ on both screens.
 
+## Choices (setup changed since the week was built, 2026-10-20)
+
+From the look-and-feel review: Generated showed nothing when setup changed after the week was
+built, while Manual Build marks the cells and offers Update to match setup. **Greg's decision 1
+(2026-10-20, approved as recommended): the same marks and button on Generated.** The desktop has
+neither (it freezes the week at Start; ADR 0008 part 6 has the detail).
+
+56. **The same feature, on the same server path** (ADR 0008 part 6; `SetupMatch`,
+    `SetupMatchController`): the Generated draft is compared with the week setup makes now
+    exactly as Manual Build's is, with the same dots, the same changes and the same keys, so the
+    two screens never disagree about what changed.
+    - **Where:** the bronze box _Week 1 doesn't match setup_ with **Update to match setup** is the
+      first line under the toolbar and the counters, where Manual Build has it (§55: one layout);
+      each cell that differs gets the same dot, joined after any of the engine's own words. It
+      shows only once the week is generated (a week not generated yet reads nothing).
+    - **Shown first, chosen by the director:** the button opens the same list
+      (`c-shoresh-setup-match`), read fresh: each change with its own **Update**, **Update all**,
+      **Cancel**. Nothing changes until one is chosen. While it is read, open or updating, builds,
+      Lock, hand edits, Publish, Versions, the pickers, coming back to the window and the season
+      read again all wait (the season's read is done once the list closes).
+    - **Locks and hand edits win** (`SetupMatchLocks`): a lock is the director's own choice (a
+      hand edit is a lock, §33), so every lock stays on each cell an update leaves holding what it
+      held: a placement carried over, at the same or (when the day's time blocks changed) a new
+      position, and an Open cell kept empty. A lock goes only with the placement it kept, when the
+      director chose to take that placement out; fixed and recurring activities are never locked
+      (§34). Manual Build's draft has no locks, so nothing changes there.
+    - **The way back:** a change that takes away or replaces a placement keeps the week as it was
+      first, _Before Update to match setup_ (Auto-saved, Origin Generated, its option and locks),
+      **once per opening of the list**, as on Manual Build. Versions lists it at once.
+    - **After an update** the screen reads the week again (`loadWeek`: Generated shows the
+      engine's input, not Manual Build's view, so the server sends no view back for it): a whole
+      new week, Undo started over, as after Restore; the counters, the publish line and the
+      setup changes are the week's as it is now. One change leaves the list open with what is
+      left; Update all closes it, says how many, and focus goes back to the button (or Publish
+      when nothing is left). Someone else's save since, or setup changed again, is refused with
+      nothing changed, in Manual Build's words.
+    - **When the changes are read:** whenever the week is read (opening it, coming back to the
+      window, the season read again), after a build's save (Rebuild keeps locks and leftovers,
+      so differences can remain), a Restore or Start over's Undo, an update, and after a hand
+      edit while the week differs from setup or an activity is closed this week. A failed read
+      keeps the box and the dots and says _Shoresh couldn't check Week 1 against setup._
+    - Server: `SetupMatch.of` and `make` take a Generated draft too (one locking query for either
+      draft, so Manual Build's bound is unchanged); a version or published schedule is refused.
+      `SetupMatchController` is already in the Shoresh Scheduler permission set. No new objects,
+      fields, picklist values or global members.
+
+## Tests (setup changed)
+
+Apex `SetupMatchGeneratedTest` (as a scheduler, data inside `runAs`): a generated week as setup
+makes it shows nothing; an activity deleted from setup is one change with its dot, and updating it
+keeps every other lock (Monday's locked Gym games, a cell locked empty), takes Swim's lock with
+Swim, keeps _Before Update to match setup_ with Swim's lock, sends no view back, and stays within
+Manual Build's bounds (at most 13 queries to read, 45 to update; `Limits.getQueries()`); a time
+block added is one change a day and the locks of what it carries land on the new positions, with
+no lock added; a Generated version is neither compared nor updated. Jest
+(`shoreshGeneratedSchedule/__tests__/setupMatch.test.js`): the dots beside the lock icon, no read
+before the first Generate, the box first in the status slot (accessible), nothing when the week
+matches, the reason with no button, the list read fresh with builds, Lock, Publish, Versions,
+pickers and edits held, one change (week read again, list left open, said in the dialog, Versions
+read again), one version per opening, Update all (focus to Publish, or back to the button when
+changes are left), Cancel, both refusals, a failed update and a failed read, reads after Start
+over and after hand edits, no reload from the window while the list is open or updating, and the
+season's read done once the list closes.
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).
@@ -1146,6 +1210,9 @@ G2:
   "Before Try another", "Before Start over" (stored text; versions can be renamed).
 
 G5: none (no objects, fields or global members).
+
+Setup changed (§56): none (no objects, fields, picklist values or global members; the version
+name "Before Update to match setup" is Manual Build's, ADR 0008 part 6).
 
 Publish: none (no objects, fields or global members; `revisionOf`'s text is never stored).
 

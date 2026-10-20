@@ -5,7 +5,8 @@
  * up in. The cells that differ are grouped into changes the director can make one at a time
  * (SetupMatchClusters); when the day's time blocks or groups changed, the whole day is one change.
  * A name changed in setup is shown, not flagged (Greg, round 2 #3): cells are compared by record
- * Id, never by name.
+ * Id, never by name. A Generated Schedule's locks (the director's own choices, ADR 0010 §33) stay
+ * on every cell a change leaves holding what it held; a lock goes only with the placement it kept.
  */
 public with sharing class SetupMatchDay {
   public Date day;
@@ -23,6 +24,8 @@ public with sharing class SetupMatchDay {
   private Map<String, List<String>> cellsByKey = new Map<String, List<String>>();
   // Why each cell of the draft has a dot (cells: "groupId|blockId").
   private Map<String, String> whyByCell = new Map<String, String>();
+  // The draft's locks (a Generated Schedule's; Manual Build's draft has none).
+  private SetupMatchLocks locks;
 
   public SetupMatchDay(SetupMatchRules rules, Date day) {
     this.rules = rules;
@@ -34,6 +37,7 @@ public with sharing class SetupMatchDay {
     this.was = was;
     names = new SetupMatchNames(rules, was, target);
     before = new SetupMatchCells(was);
+    locks = new SetupMatchLocks(was);
     if (target != null) {
       SetupMatchCarry carried = new SetupMatchCarry(rules, names, target);
       carried.carry(before);
@@ -136,10 +140,13 @@ public with sharing class SetupMatchDay {
     return now == null;
   }
 
-  /** The day with the chosen changes made (a whole-day change gives the day as setup makes it). */
+  /**
+   * The day with the chosen changes made (a whole-day change gives the day as setup makes it),
+   * keeping the draft's locks on every cell that still holds what it held.
+   */
   public ScheduleGrid madeWith(Set<String> keys) {
     if (!sameFrame) {
-      return now;
+      return locks.onto(now, before);
     }
     Map<String, String> cells = new Map<String, String>(before.held);
     for (String key : cellsByKey.keySet()) {
@@ -149,6 +156,6 @@ public with sharing class SetupMatchDay {
         }
       }
     }
-    return SetupMatchCells.gridOf(now, cells, names);
+    return locks.onto(SetupMatchCells.gridOf(now, cells, names), before);
   }
 }
