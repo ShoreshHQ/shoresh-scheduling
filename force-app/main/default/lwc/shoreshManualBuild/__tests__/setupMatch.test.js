@@ -688,6 +688,33 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
   });
 
+  it("setup saved on another screen while the update list is open leaves the list's own reading alone", async () => {
+    const element = await render();
+    await openUpdate(element);
+    // An edit saving meanwhile: the week can't be read again, but the open list reads its own.
+    saveSlots.mockReturnValue(pending().promise);
+    clearCell(element, "0-1");
+    await flush();
+    getSetupChanges.mockClear();
+    element.setup = nsRecord({ ...SETUP });
+    await flush();
+    expect(getSetupChanges).not.toHaveBeenCalled();
+  });
+
+  it("Update to match setup that finds nothing to open puts focus on Publish", async () => {
+    const element = await render();
+    getSetupChanges.mockResolvedValue(NOTHING);
+    await openUpdate(element);
+    expect(dialog(element)).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Week 1 matches setup."
+    );
+    // The button went with the changes: focus goes on to Publish, not the page.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="publish"]')
+    );
+  });
+
   it("an update starts Undo over, as Restore does", async () => {
     const element = await render();
     // An edit first: Undo has something to take back.
