@@ -329,13 +329,40 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     await flush();
     panel.querySelector('[data-id="save-button"]').click();
     await flush();
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "That name is taken."
+    expect(q(element, '[data-id="build-error"]').textContent).toBe(
+      "Before the trip wasn't saved. That name is taken."
     );
     expect(q(element, '[data-id="notice"]')).toBeNull();
     expect(panel.querySelector('[data-id="save-name"]').value).toBe(
       "Before the trip"
     );
+  });
+
+  it("a Save version that fails for a reason Shoresh didn't write never shows Salesforce's text", async () => {
+    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    saveVersion.mockRejectedValue({
+      body: {
+        exceptionType: "System.DmlException",
+        message:
+          "Insert failed. First exception on row 0; first error: FIELD_CUSTOM_VALIDATION_EXCEPTION, x: []",
+        stackTrace: "Class.ManualDrafts.saveVersion: line 9, column 1"
+      }
+    });
+    const panel = await versionsPanel(element);
+    const input = panel.querySelector('[data-id="save-name"]');
+    input.value = "Before the trip";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    panel.querySelector('[data-id="save-button"]').click();
+    await flush();
+    expect(q(element, '[data-id="build-error"]').textContent).toBe(
+      "Before the trip wasn't saved. Try again."
+    );
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("a slow list of versions for the week before is not shown for this one", async () => {

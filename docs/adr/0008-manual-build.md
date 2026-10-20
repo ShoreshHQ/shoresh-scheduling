@@ -632,7 +632,7 @@ Manual Build passes none of these and behaves as before.
   as "<cell> is locked." (the same words as any other refusal, naming that cell). This holds for
   an Undo and a Redo too. A conflict that changed no lock on the cells it touches is sent again
   as before, after its question if there is one. An edit sent again with nothing new to ask is
-  given up after two more tries ("Not saved ... The <week word> kept changing"), rather than sent
+  given up after two more tries ("Your change wasn't saved: ... The <week word> kept changing"), rather than sent
   for ever; this guard also runs in Manual Build, which passes no locks.
 - **A lock someone took off is not a reason to drop an edit** (review of #67). When a conflict
   comes back with nothing to ask (the cells hold what the director saw, nothing newly locked) and

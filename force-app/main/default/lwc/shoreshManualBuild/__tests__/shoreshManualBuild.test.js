@@ -481,7 +481,7 @@ describe("c-shoresh-manual-build", () => {
     await press(await type(element, "swim"), "Enter");
     // What wasn't saved, then why (desktop error shape).
     expect(q(element, '[data-id="build-error"]').textContent).toMatch(
-      /^Not saved: Placed Swim · .*\. Shoresh couldn't tell why\. Try again\.$/
+      /^Your change wasn't saved: Placed Swim · .*\. Shoresh couldn't tell why\. Try again\.$/
     );
     expect(getDraft).toHaveBeenCalledTimes(2);
     expect(cellText(element, "0-1")).toBe("Open");

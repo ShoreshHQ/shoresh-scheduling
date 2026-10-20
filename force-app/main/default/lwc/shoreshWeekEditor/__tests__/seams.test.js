@@ -1298,7 +1298,7 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
       expect(saveRuns).toHaveBeenCalledTimes(3);
       expect(q(element, '[data-id="conflict"]')).toBeNull();
       expect(q(element, '[data-id="notice"]').textContent).toMatch(
-        /Not saved: .*kept changing/
+        /Your change wasn't saved: .*kept changing/
       );
       // Nothing is left to undo or redo for it.
       expect(q(element, '[data-id="undo"]').disabled).toBe(true);

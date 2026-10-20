@@ -20,7 +20,7 @@ import {
   unplacedLines,
   workbookFile
 } from "c/shoreshImportEngine";
-import { errorMessage } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 
 /** Each layout in the camp's words. */
@@ -107,7 +107,7 @@ export default class ShoreshImport extends LightningElement {
       }
     } catch (e) {
       this.stage = "pick";
-      this.error = `That file could not be read. ${errorMessage(e)}`;
+      this.error = failed("That file could not be read.", e);
     }
   }
 
@@ -456,7 +456,10 @@ export default class ShoreshImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = `Nothing was saved, and your answers are still here. ${errorMessage(e)}`;
+      this.error = failed(
+        "Nothing was saved, and your answers are still here.",
+        e
+      );
     }
   }
 
@@ -516,7 +519,7 @@ export default class ShoreshImport extends LightningElement {
       this.undone = undoMessage(result);
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
-      this.error = `That import could not be undone. ${errorMessage(e)}`;
+      this.error = failed("That import could not be undone.", e);
     } finally {
       this.undoing = false;
     }
