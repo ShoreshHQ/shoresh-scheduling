@@ -5,7 +5,8 @@
  * first day. Then each time block at other times than published on any day (Update to match setup
  * moves them; staff would keep the old times): "New times: Period 2, 9:00 AM – 9:45 AM → 9:30 AM –
  * 10:15 AM", once for the week, by its first such day. A block named by its times says its new
- * times in its rename already. Compared exactly: a name's case is part of what campers read.
+ * times in its rename when that rename was written (its first day moved too); moved on a later day
+ * only, it gets a line of its own: "New times: 9:00 AM – 9:45 AM → 9:30 AM – 10:15 AM". Compared exactly: a name's case is part of what campers read.
  * Same days, same lines.
  */
 public with sharing class PublishedRenames {
@@ -84,12 +85,23 @@ public with sharing class PublishedRenames {
         if (nowTimes == null || wasTimes == null || nowTimes.equals(wasTimes)) {
           continue;
         }
-        // Named by its times: its rename says the new times.
+        if (renamedTo(key, nowTimes, was)) {
+          return null;
+        }
+        // Named by its times on this day: the times are its name.
         return nowTimes.equals(nowBlock.name)
-          ? null
+          ? 'New times: ' + wasTimes + ' → ' + nowTimes
           : 'New times: ' + nowBlock.name + ', ' + wasTimes + ' → ' + nowTimes;
       }
       return null;
+    }
+
+    /** This block's rename line was written, and ends in these times: nothing to add. */
+    private Boolean renamedTo(String key, String times, Names was) {
+      String wasName = was.names.get(key);
+      return times.equals(names.get(key)) &&
+        wasName != null &&
+        !wasName.equals(times);
     }
   }
 

@@ -125,7 +125,13 @@ export default class ShoreshManualBuild extends LightningElement {
     if (!weeks.includes(this.weekId)) {
       this.weekId = weeks[0];
     }
-    this.load();
+    // Setup saved on another screen of Camp Setup comes back as a new setup for the same week:
+    // the week is read again, as on coming back to the window, so its dots and names catch up.
+    if (`${this.programId}|${this.weekId}` === this.loadedFor) {
+      this.refresh();
+    } else {
+      this.load();
+    }
   }
 
   connectedCallback() {

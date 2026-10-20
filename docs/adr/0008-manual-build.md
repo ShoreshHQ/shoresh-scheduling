@@ -347,7 +347,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     `locationsOf`, the setup screen's own queries), the program's groups with their divisions
     (`groupRecords`) and where its fixed and recurring activities are
     (`fixedActivityRecords`, `recurringActivityRecords`). So they are read again whenever the
-    week is (window focus, reload), and anything changed elsewhere shows at once; the activity
+    week is (window focus, reload, or setup saved on another Camp Setup screen, which hands
+    Manual Build a new `setup` for the same week: review round 6), and anything changed elsewhere
+    shows at once; the activity
     list's words come from the same draft. An activity added from a slot ("Add <name>") brings
     its record back with it (`ActivityOption.record`) and joins the draft's. Field names come
     from `c/shoreshSchema`.
@@ -708,7 +710,9 @@ schedule per week; the earlier one is kept as history) and the data model (`Publ
    coordinator call in review round 5: otherwise a rename alone would never reach staff); so is a
    time block at new times (Update to match setup moves them, review round 5), one line for the
    week after the renames: "New times: Period 2, 10:00 AM – 10:45 AM → 10:30 AM – 11:15 AM" (a
-   block named by its times says them in its rename instead); locks are not). The question's
+   block named by its times says them in its rename instead, when its first day moved; moved on
+   a later day only, it has a line of its own, "New times: 9:00 AM – 9:45 AM → 9:30 AM – 10:15
+   AM", review round 6); locks are not). The question's
    first line counts each kind in plain words, never a rename as a cell: "This replaces the
    published schedule. 1 cell and 1 name change:", "… 1 time block changes:" (the camp's word;
    `renameCount` and `retimeCount` of `changeCount`). The screen adds what its counters and dots
