@@ -519,17 +519,18 @@ describe("c-shoresh-camp-setup", () => {
       )
     ];
     expect(sources.length).toBeGreaterThan(0);
-    for (const source of sources) {
+    // One after another: a second delete while one is under way is ignored.
+    await sources.reduce(async (before, source) => {
+      await before;
       const onDeleted = jest.fn();
       source.dispatchEvent(
         new CustomEvent("delete", {
           detail: { recordId: "x1", name: "Something", onDeleted }
         })
       );
-      // eslint-disable-next-line no-await-in-loop
       await flush();
       expect(onDeleted).toHaveBeenCalledTimes(1);
-    }
+    }, Promise.resolve());
   });
 
   it("deleting a bunk or activity some schedules use says how many first", async () => {
