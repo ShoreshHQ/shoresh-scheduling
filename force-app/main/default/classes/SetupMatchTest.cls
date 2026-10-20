@@ -117,10 +117,11 @@ private class SetupMatchTest {
         draftId
       );
       // A fixed number of queries, whatever the size of the week (nothing read per day, group
-      // or cell), well under the limit of 100.
+      // or cell), well under the limit of 100. Measured 2026-10-19: 10 here, 15 on a camp of 8
+      // groups, 5 days and 8 time blocks (35 changed cells).
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(used <= 30, 'Setup changes used ' + used + ' queries');
+      Assert.isTrue(used <= 19, 'Setup changes used ' + used + ' queries');
       Assert.isTrue(preview.changes.isEmpty(), JSON.serialize(preview.changes));
       Assert.isTrue(preview.dots.isEmpty());
       Assert.isNull(preview.problem);
@@ -163,7 +164,7 @@ private class SetupMatchTest {
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(used <= 60, 'Update to match used ' + used + ' queries');
+      Assert.isTrue(used <= 56, 'Update to match used ' + used + ' queries');
       Assert.isNull(updated.refused);
       Assert.areEqual(
         '',
