@@ -42,6 +42,13 @@ suppressions:
     - rule_selector: "pmd:TooManyFields"
       max_suppressed_violations: 1
       reason: "One answer carrying everything the engine and screen need for a week."
+  # Design rule, not security: SetupMatch.Ask.versionKept is a property ({ get; set; }) because
+  # Salesforce fills only properties of a class a screen sends (scripts/apex-aura-inputs.js); PMD
+  # counts its setter as a method taking a Boolean.
+  "main/default/classes/SetupMatch.cls":
+    - rule_selector: "pmd:AvoidBooleanMethodParameters"
+      max_suppressed_violations: 1
+      reason: "The setter of a Boolean property the screen sends (Ask.versionKept)."
   # Jest tests fake real browser keyboard and mouse events, which are bubbling and composed in a
   # browser; components themselves never fire composed events.
   "main/default/lwc/shoreshAsk/__tests__":
