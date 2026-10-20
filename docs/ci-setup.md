@@ -161,7 +161,7 @@ It deletes the old test org, creates a new 30-day one, hands its login to GitHub
 date. Then re-run the failed check: on the pull request, **Checks** tab → **CI** →
 **Re-run all jobs**. Each renewal is also a clean from-scratch check.
 
-Current test org: created 2026-10-16, expires 2026-11-15.
+Current test org: created 2026-10-20, expires 2026-11-19, on the new Dev Hub (Developer Edition org 00Dbm000014tFy6, signed up 2026-10-20). The old Dev Hub (00DgK00000VLOOr) was frozen by Salesforce on 2026-10-20 because a sign-in came through a VPN, and with one admin it could not be unfrozen. Turn any VPN off before signing in to Salesforce.
 
 ## What the secret can do
 
