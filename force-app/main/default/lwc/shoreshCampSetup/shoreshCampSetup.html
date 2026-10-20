@@ -454,6 +454,13 @@
                   onnavigate={handleNavigate}
                 ></c-shoresh-program>
               </template>
+              <div
+                class="slds-assistive-text"
+                aria-live="polite"
+                data-id="programs-announce"
+              >
+                {programsAnnouncement}
+              </div>
               <template lwc:if={hasNoPrograms}>
                 <c-shoresh-empty-state
                   title={labels.noPrograms}

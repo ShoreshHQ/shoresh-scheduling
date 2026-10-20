@@ -174,6 +174,12 @@ export default class ShoreshCampSetup extends LightningElement {
   merging = false;
   // A delete's question is open, or the delete is under way.
   deleting = false;
+  // A program card just deleted: its place in the list, so the cursor goes to its neighbour once
+  // the card is gone and the page is no longer busy (null when none).
+  focusAfterProgramDelete = null;
+  // The Programs screen's live region: "Deleted Main" after a card's delete.
+  programsAnnouncement = "";
+  programsAnnounced = false;
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -271,6 +277,7 @@ export default class ShoreshCampSetup extends LightningElement {
 
   renderedCallback() {
     this.showNewError();
+    this.focusProgramNeighbour();
     if (this.focusAfter) {
       const target = this.template.querySelector(this.focusAfter);
       this.focusAfter = null;
@@ -1326,6 +1333,8 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!ok) {
       return;
     }
+    // A whole program card (not a table row): where it was in the list, before it goes.
+    const programIndex = this.programs.findIndex((p) => p.key === recordId);
     await this.run(async () => {
       await deleteRecord({ recordId });
       this.changedOnServer = true;
@@ -1334,8 +1343,46 @@ export default class ShoreshCampSetup extends LightningElement {
       // The table says so in its live region and moves the cursor off the gone row.
       if (onDeleted) {
         onDeleted();
+      } else if (programIndex >= 0) {
+        this.programDeleted(programIndex, name);
       }
     }, `"${name}" not deleted. Nothing was removed.`);
+  }
+
+  /**
+   * A program card was deleted and the season read again: it is said, and the cursor goes to
+   * the name of the card that took its place, else the card above, else Add program, as a
+   * table's row delete does (ADR 0013 choice 25).
+   */
+  programDeleted(index, name) {
+    this.programsAnnounced = !this.programsAnnounced;
+    const text = `Deleted ${name || ""}`.trim();
+    // Every other time with a trailing non-breaking space, so the same words are read again.
+    this.programsAnnouncement = this.programsAnnounced ? text : `${text}\u00a0`;
+    this.focusAfterProgramDelete = index;
+  }
+
+  focusProgramNeighbour() {
+    // Add program is disabled while the page is busy, and a disabled button can't take focus.
+    if (this.focusAfterProgramDelete === null || this.busy) {
+      return;
+    }
+    const index = this.focusAfterProgramDelete;
+    this.focusAfterProgramDelete = null;
+    const cards = [
+      ...this.template.querySelectorAll(
+        '[data-screen="programs"] c-shoresh-program'
+      )
+    ];
+    const card = cards[index] || cards[index - 1];
+    if (card) {
+      card.focusName();
+      return;
+    }
+    const add = this.template.querySelector('[data-id="add-program"]');
+    if (add) {
+      add.focus();
+    }
   }
 
   /**

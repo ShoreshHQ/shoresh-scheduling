@@ -200,7 +200,7 @@ function renderReport(results, about) {
     `- Code checked: \`${about.commit}\``,
     `- Browser: ${about.browser}`,
     `- axe-core ${about.axeVersion}, rules: WCAG 2.0, 2.1 and 2.2, levels A and AA`,
-    `- Data: the made-up camp "${about.camp}" (the walkthrough's seed, \`scripts/apex/sample-version.apex\`, under its own name), on ${about.week}, a week added for this run`,
+    `- Data: the made-up camp "${about.camp}" (the walkthrough's seed, \`scripts/apex/sample-version.apex\`, under its own name), on ${about.week}, the check's own week, made fresh for this run`,
     "",
     `**${passed.length} passed, ${failed.length} failed, ${notRun.length} not run.**`,
     "",

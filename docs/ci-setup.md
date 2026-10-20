@@ -144,9 +144,11 @@ Tab, and axe-core's findings on each screen. Run it on this Mac from your worktr
 first, and run it only when no CI run is using the test org (it refuses to start while one is
 running or queued, and always in CI). It signs in with `sf org open --url-only` and never shows,
 logs or saves that link. It works on its own made-up camp, _Keyboard check camp (made up)_ (the
-walkthrough's seed under another name, so _Sample Camp (made up)_ is left alone), adds a new week
-to it each run, and deletes and adds again a fixed activity _Assembly_ there so that week stops
-matching setup. `--headed` shows the browser; screenshots of failures go to a temporary folder
+walkthrough's seed under another name, so _Sample Camp (made up)_ is left alone). The first run
+adds one week to it; every later run reuses that week, deleting its drafts and saved versions
+first (published schedules are kept history and stay), so the camp gains no more weeks. It also
+deletes and adds again a fixed activity _Assembly_ there so that week stops matching setup, and
+adds a program card and deletes it again. `--headed` shows the browser; screenshots of failures go to a temporary folder
 (`--shots <dir>` to choose).
 
 ## Running Apex tests: one class at a time
