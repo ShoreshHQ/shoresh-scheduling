@@ -126,7 +126,12 @@
   gap: 8px;
 }
 
+/* One shade darker than the grey it was (#747474 was borderline at 12px; WCAG 1.4.3). */
 .published {
   font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
+  color: var(--shoresh-text-secondary);
+}
+
+.changed-since {
+  margin-left: 4px;
 }

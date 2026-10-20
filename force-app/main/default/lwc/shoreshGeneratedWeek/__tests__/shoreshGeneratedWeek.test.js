@@ -348,6 +348,26 @@ describe("c/shoreshGeneratedWeek", () => {
         "Fixed activities and recurring activities stay where they are set up."
     });
   });
+
+  it("gives only why, never Salesforce's own text: Try again, for the screen to put after what didn't happen", async () => {
+    getInputs.mockResolvedValue(nsRecord(SERVER_INPUTS));
+    const loaded = await loadWeek(PROGRAM, WEEK);
+    saveWeekOnServer.mockRejectedValue({
+      body: {
+        message: "Update failed. first error: UNABLE_TO_LOCK_ROW",
+        exceptionType: "System.DmlException"
+      }
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const result = await saveWeek(loaded, {
+      action: ACTION.FILL_OPEN,
+      option: 1,
+      days: [DAY]
+    });
+    expect(result).toEqual({ status: REFUSED, message: "Try again." });
+    console.error.mockRestore();
+  });
+
   it("feeds the engine as loaded, and saves what it built", async () => {
     // Both bunks, both periods, two activities: enough for a whole week of Period 2.
     getInputs.mockResolvedValue(

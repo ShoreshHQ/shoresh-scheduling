@@ -8,7 +8,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { find } from "shoresh-jest/week-editor";
+import { expectFocusInGrid, find } from "shoresh-jest/week-editor";
 import { draft } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 
 // "Setup changed since the week started" on Manual Build (ADR 0008 part 6): the dots the server
@@ -408,6 +408,10 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(rowsIn(element)).toEqual([
       "Bunk 2 · Monday · Period 2 | Open → Flagpole | Flagpole is set up here now"
     ]);
+    // Something was updated: closing no longer reads as cancelling it.
+    expect(inDialog(element, '[data-id="close"]').textContent.trim()).toBe(
+      "Close"
+    );
   });
 
   it("Update all makes every change listed and closes the list", async () => {
@@ -482,7 +486,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     inDialog(element, '[data-key="k1"]').click();
     await flush();
     expect(inDialog(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again since you looked, so nothing was updated. This is what it would change now."
+      "Setup changed again, so nothing was updated."
     );
     expect(rowsIn(element)).toHaveLength(1);
   });
@@ -577,7 +581,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(dialog(element)).toBeNull();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Setup changed again since you looked, so nothing was updated. Week 1 matches setup now."
+      "Setup changed again, so nothing was updated. Week 1 matches setup now."
     );
   });
 
@@ -701,7 +705,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(getSetupChanges).not.toHaveBeenCalled();
   });
 
-  it("Update to match setup that finds nothing to open puts focus on Publish", async () => {
+  it("Update to match setup that finds nothing to open puts focus on the grid", async () => {
     const element = await render();
     getSetupChanges.mockResolvedValue(NOTHING);
     await openUpdate(element);
@@ -709,10 +713,9 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Week 1 matches setup."
     );
-    // The button went with the changes: focus goes on to Publish, not the page.
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="publish"]')
-    );
+    // The button went with the changes: focus goes to the grid's cell, not the page.
+    await flush();
+    expectFocusInGrid(element);
   });
 
   it("an update starts Undo over, as Restore does", async () => {
@@ -897,7 +900,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(getDraft).toHaveBeenCalledTimes(2);
   });
 
-  it("Update all with nothing left: focus goes to Publish, and it says how many were made", async () => {
+  it("Update all with nothing left: focus goes to the grid, and it says how many were made", async () => {
     const element = await render();
     await openUpdate(element);
     inDialog(element, '[data-id="update-all"]').focus();
@@ -906,10 +909,9 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(dialog(element)).toBeNull();
-    // Update to match setup is gone with the box: focus goes on to Publish, not the page.
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="publish"]')
-    );
+    // Update to match setup is gone with the box: focus goes to the grid's cell, not the page.
+    await flush();
+    expectFocusInGrid(element);
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Updated 2 changes to match setup."
     );

@@ -691,9 +691,7 @@ describe("c-shoresh-manual-build", () => {
     await press(await type(element, "swim"), "Enter");
     expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(saveSlots).toHaveBeenCalledTimes(1);
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Already as you had it."
-    );
+    expect(q(element, '[data-id="notice"]').textContent).toBe("Already done.");
   });
 
   it("an activity that starts where the bunk is at camp offers the full list", async () => {

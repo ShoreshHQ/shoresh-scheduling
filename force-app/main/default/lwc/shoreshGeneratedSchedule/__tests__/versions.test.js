@@ -399,7 +399,7 @@ describe("Versions on the Generated Schedule screen", () => {
     restoreVersionAsNew.mockResolvedValue(false);
     await restore(element);
     expect(getInputs).toHaveBeenCalledTimes(1);
-    expect(q(element, '[data-id="conflict"]').textContent).toContain(
+    expect(q(element, '[data-id="restore-refused"]').textContent).toContain(
       "nothing was restored."
     );
   });
@@ -494,9 +494,18 @@ describe("Versions on the Generated Schedule screen", () => {
     restoreVersion.mockResolvedValue(false);
     await restore(element);
     expect(getInputs).toHaveBeenCalledTimes(1);
-    const box = q(element, '[data-id="conflict"]');
-    expect(box.textContent).toContain(
+    // The quiet line Manual Build shows for it (not the alert box), read out once.
+    expect(q(element, '[data-id="conflict"]')).toBeNull();
+    const line = q(element, '[data-id="restore-refused"]');
+    expect(line.textContent).toContain(
       "Someone else changed this week since you opened it, so nothing was restored."
+    );
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent).toContain(
+      "nothing was restored."
+    );
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="reload"]')
     );
     expect(versions(element).openId).toBeFalsy();
     // Builds and Versions wait until Reload shows the week as it is now.
@@ -834,8 +843,10 @@ describe("Versions on the Generated Schedule screen", () => {
       expect(undoButton(element).getAttribute("aria-label")).toBe(
         "Undo Started Week 1 over"
       );
-      expect(element.shadowRoot.activeElement).toBe(
-        action(element, "StartOver")
+      // Its Undo is the next stop, as after Clear week on Manual Build; and it is said.
+      expect(element.shadowRoot.activeElement).toBe(undoButton(element));
+      expect(q(element, '[data-id="announce"]').textContent).toContain(
+        "Started Week 1 over."
       );
     });
 
@@ -866,7 +877,7 @@ describe("Versions on the Generated Schedule screen", () => {
       restoreVersion.mockResolvedValue(false);
       undoButton(element).click();
       await flush();
-      expect(q(element, '[data-id="conflict"]')).not.toBeNull();
+      expect(q(element, '[data-id="restore-refused"]')).not.toBeNull();
       expect(startedLine(element)).toBeNull();
     });
 

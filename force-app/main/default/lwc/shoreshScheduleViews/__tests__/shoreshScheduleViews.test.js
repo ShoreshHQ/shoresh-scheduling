@@ -114,7 +114,7 @@ describe("c/shoreshScheduleViews", () => {
     expect(grid.cells.find((c) => c.key === "1-0").text).toBe("Open");
     expect(grid.cells.find((c) => c.key === "1-1").text).toBe("Swim");
     const problem = grid.cells.find((c) => c.key === "2-problem");
-    expect(problem.text).toBe("Could not be read");
+    expect(problem.text).toBe("Can't be shown");
     expect(problem.style).toContain("grid-row: 1 / span 3");
   });
 
@@ -124,7 +124,7 @@ describe("c/shoreshScheduleViews", () => {
     const grid = groupGrid(view, "g1", t);
     expect(grid.rows).toHaveLength(1);
     expect(grid.cells.map((c) => [c.row, c.text])).toEqual([
-      [0, "Could not be read"]
+      [0, "Can't be shown"]
     ]);
   });
 

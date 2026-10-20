@@ -52,7 +52,11 @@ describe("c-shoresh-versions", () => {
 
   it("lists versions, newest first, with how each was made and which is on screen", async () => {
     const element = await render();
-    expect(q(element, '[data-id="versions-button"]').label).toBe("Versions");
+    const button = q(element, '[data-id="versions-button"]');
+    // A plain button, so the list's open state is on the button itself (aria-expanded).
+    expect(button.tagName).toBe("BUTTON");
+    expect(button.textContent.trim()).toBe("Versions");
+    expect(button.getAttribute("aria-expanded")).toBe("false");
     expect(q(element, '[data-id="versions-panel"]')).toBeNull();
     await openList(element);
     const rows = qa(element, ".version");
@@ -107,6 +111,38 @@ describe("c-shoresh-versions", () => {
     expect(handler.mock.calls[0][0].detail.id).toBe("s2");
     expect(handler.mock.calls[0][0].detail.name).toBe("Monday plan");
     expect(q(element, '[data-id="rename-input"]')).toBeNull();
+    // The box it was in is gone: focus goes to that version's rename, not the page.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="s2"][data-action="rename"]')
+    );
+  });
+
+  it("the Versions button says whether its list is open", async () => {
+    const element = await render();
+    await openList(element);
+    expect(
+      q(element, '[data-id="versions-button"]').getAttribute("aria-expanded")
+    ).toBe("true");
+  });
+
+  it("with announceWith, words are read out by the page, from no region of its own", async () => {
+    const element = createElement("c-shoresh-versions", {
+      is: ShoreshVersions
+    });
+    element.terms = buildTerms([]);
+    element.versions = [{ ...VERSIONS[0], reason: "AutoSaved" }];
+    element.restore = true;
+    const said = jest.fn();
+    element.announceWith = said;
+    document.body.appendChild(element);
+    await flush();
+    await openList(element);
+    expect(q(element, '[data-id="announce"]')).toBeNull();
+    q(element, '[data-action="delete"]').click();
+    await flush();
+    expect(said).toHaveBeenCalledWith(
+      "Delete Before my changes? Press again to delete."
+    );
   });
 
   it("keeps the rename open when it was refused, and Escape cancels it", async () => {
@@ -128,6 +164,9 @@ describe("c-shoresh-versions", () => {
     await flush();
     expect(q(element, '[data-id="rename-input"]')).toBeNull();
     expect(q(element, '[data-id="versions-panel"]')).not.toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="s1"][data-action="rename"]')
+    );
   });
 
   it("a blank name cannot be saved", async () => {

@@ -104,7 +104,8 @@ export default class ShoreshManualBuild extends LightningElement {
   setupError = null;
   // "Update to match setup" is open, or null: { notice, announcement, said (counts each time
   // its words are to be read out, even the same words again), kept (an update in this opening
-  // kept the week as it was, so the next keeps none) }. setupWorking: an update is on its way.
+  // kept the week as it was, so the next keeps none), updated (an update in this opening was
+  // made: its Cancel says Close) }. setupWorking: an update is on its way.
   setupAsk = null;
   setupWorking = false;
   setupSaid = 0;
@@ -163,14 +164,31 @@ export default class ShoreshManualBuild extends LightningElement {
     // focus fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3), unless
     // the director has put it somewhere else meanwhile.
     if (this.focusOn && !this.publishDisabled) {
-      // Unpublish is gone once the week has nothing published: Publish then.
-      const button =
-        this.template.querySelector(`[data-id="${this.focusOn}"]`) ||
-        this.template.querySelector('[data-id="publish"]');
-      this.focusOn = null;
-      if (button && this.focusIsLost()) {
-        button.focus();
-      }
+      this.focusBack();
+    }
+  }
+
+  /**
+   * Focus back to the button it was on (focusOn) once that is drawn enabled again. Unpublish is
+   * gone once the week has nothing published: Publish then. Update to match setup is gone once
+   * the week matches setup: the grid's cell then (Publish may not be there, and is no place to
+   * land after an update).
+   */
+  focusBack() {
+    const id = this.focusOn;
+    this.focusOn = null;
+    const button =
+      this.template.querySelector(`[data-id="${id}"]`) ||
+      (id === "update-to-match"
+        ? null
+        : this.template.querySelector('[data-id="publish"]'));
+    if (!this.focusIsLost()) {
+      return;
+    }
+    if (button) {
+      button.focus();
+    } else if (this.weekEditor) {
+      this.weekEditor.focusCell();
     }
   }
 
@@ -204,6 +222,8 @@ export default class ShoreshManualBuild extends LightningElement {
   announce(text) {
     this.weekEditor.announce(text);
   }
+  /** Given to Versions, so what it says is read out from this screen's one live region. */
+  announceText = (text) => this.announce(text);
 
   /** The week as the server last sent it, without edits still waiting to save. */
   get server() {
@@ -1141,7 +1161,7 @@ export default class ShoreshManualBuild extends LightningElement {
         this.say(preview.problem);
       } else if (preview.changes.length) {
         // A new opening of the list: its first update that takes a placement keeps a version.
-        this.setupAsk = { notice: null, kept: false };
+        this.setupAsk = { notice: null, kept: false, updated: false };
       } else {
         this.say(`${this.weekName} matches setup.`);
       }
@@ -1206,15 +1226,11 @@ export default class ShoreshManualBuild extends LightningElement {
       }
       if (result.refused === "setupChanged") {
         const fresh = await this.loadSetupChanges();
-        const again =
-          "Setup changed again since you looked, so nothing was updated.";
+        const again = "Setup changed again, so nothing was updated.";
+        // The list shows what it would change now, in place.
         this.setupAsk =
           fresh && fresh.changes.length
-            ? this.setupAskWith(
-                `${again} This is what it would change now.`,
-                null,
-                kept
-              )
+            ? this.setupAskWith(again, null, kept, this.setupAsk.updated)
             : null;
         if (fresh && !this.setupAsk) {
           // Nothing left to change (or it can't be compared now): the list closes, and says why.
@@ -1246,7 +1262,7 @@ export default class ShoreshManualBuild extends LightningElement {
       // the dialog.
       this.setupAsk =
         !all && fresh && fresh.changes.length
-          ? this.setupAskWith(null, done, kept)
+          ? this.setupAskWith(null, done, kept, true)
           : null;
       if (!this.setupAsk) {
         this.say(done);
@@ -1263,9 +1279,9 @@ export default class ShoreshManualBuild extends LightningElement {
   }
 
   /** The list, open again with words to read out (read out even when the same as last time). */
-  setupAskWith(notice, announcement, kept) {
+  setupAskWith(notice, announcement, kept, updated = false) {
     this.setupSaid += 1;
-    return { notice, announcement, kept, said: this.setupSaid };
+    return { notice, announcement, kept, updated, said: this.setupSaid };
   }
 
   // ---------- day and week tools (Greg, Manual Build round 2, decisions 6 and 7) ----------

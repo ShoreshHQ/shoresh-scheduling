@@ -8,7 +8,7 @@ import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.re
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
-import { errorMessage, failed } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
@@ -16,6 +16,7 @@ import {
   ACTION,
   CHANGED_SINCE,
   CONFLICT,
+  LOCK,
   SAVED,
   SETUP_CHANGED,
   addActivity,
@@ -143,7 +144,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   locksMemo = { of: undefined, keys: [] };
   // The season as the editor reads it, worked out once per season and week loaded.
   setupMemo = { setup: undefined, input: undefined, value: undefined };
-  announcement = "";
   checksResetKey = 0;
   // The cells a counter lights up ("date|groupId|blockId"), generated route.
   lit = new Set();
@@ -189,7 +189,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   setupError = null;
   // "Update to match setup" is open, or null: { notice, announcement, said (counts each time
   // its words are to be read out, even the same words again), kept (an update in this opening
-  // kept the week as it was, so the next keeps none) }. setupWorking: a read for it or an update
+  // kept the week as it was, so the next keeps none), updated (an update in this opening was
+  // made: its Cancel says Close) }. setupWorking: a read for it or an update
   // is on its way.
   setupAsk = null;
   setupWorking = false;
@@ -268,14 +269,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     // fell from them: it goes back once they are drawn enabled again (WCAG 2.4.3), unless the
     // director has put it somewhere else meanwhile.
     if (this.focusOn && !this.publishDisabled) {
-      // Unpublish is gone once the week has nothing published: Publish then.
-      const button =
-        this.template.querySelector(`[data-id="${this.focusOn}"]`) ||
-        this.template.querySelector('[data-id="publish"]');
-      this.focusOn = null;
-      if (button && this.focusIsLost()) {
-        button.focus();
-      }
+      this.focusBack();
     }
     if (!this.focusAfterRender) {
       return;
@@ -443,7 +437,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return true;
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `${this.weekName} couldn't be opened. Nothing was changed.`,
+          e
+        );
         this.errorFromRead = true;
         if (fresh) {
           this.loadedFor = null;
@@ -835,17 +832,22 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.loadVersions();
         // What still doesn't match setup in the week just built (locks and leftovers stay).
         this.loadSetupChanges();
+        // Said when it ends, not only when it starts (the bar's progress changes silently).
         const { filled, total } = this.checked.cells;
-        this.announce(`Filled ${filled} of ${total}.`);
+        this.announce(
+          [this.runDoneText(action, option), `Filled ${filled} of ${total}.`]
+            .filter(Boolean)
+            .join(" ")
+        );
       } else if (saved.status === CONFLICT) {
         // The box is an alert: it is read out once, there.
         this.conflict = { message: statementOf(saved.message) };
       } else {
-        this.error = saved.message;
+        this.error = failed(this.runFailedText(action, option), saved.message);
       }
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(this.runFailedText(action, option), e);
       }
     } finally {
       if (ticket === this.loadTicket) {
@@ -859,6 +861,40 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
           this.load(true);
         }
       }
+    }
+  }
+
+  /** What a build that didn't save says first: what didn't happen (then why, failed()). */
+  runFailedText(action, option) {
+    const week = this.weekName;
+    switch (action) {
+      case ACTION.GENERATE:
+        return `${week} wasn't generated. Nothing was saved.`;
+      case ACTION.TRY_ANOTHER:
+        return `Option ${option} wasn't saved. Nothing was changed.`;
+      case ACTION.FILL_OPEN:
+        return "The open cells weren't filled. Nothing was changed.";
+      case ACTION.START_OVER:
+        return `${week} wasn't started over. Nothing was changed.`;
+      default:
+        return `${week} wasn't rebuilt. Nothing was changed.`;
+    }
+  }
+
+  /** What a build that saved says, before the count: "Week 1 rebuilt.", "Option 2." */
+  runDoneText(action, option) {
+    const week = this.weekName;
+    switch (action) {
+      case ACTION.GENERATE:
+        return `${week} generated.`;
+      case ACTION.REBUILD:
+        return `${week} rebuilt.`;
+      case ACTION.TRY_ANOTHER:
+        return `Option ${option}.`;
+      case ACTION.START_OVER:
+        return `Started ${week} over.`;
+      default:
+        return "";
     }
   }
 
@@ -896,7 +932,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.restore(started.versionId, `Undone: ${started.label}.`, {
-      focus: `[data-action="${ACTION.START_OVER}"]`
+      focus: `[data-action="${ACTION.START_OVER}"]`,
+      name: started.label,
+      undo: true
     });
   }
 
@@ -911,6 +949,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
     if (!this.isGenerated) {
       return '[data-id="generate"]';
+    }
+    // Start over: its Undo, the most useful next stop (as after Clear week on Manual Build).
+    if (action === ACTION.START_OVER && this.startedOverText) {
+      return '[data-id="start-over-undo"]';
     }
     return `[data-action="${action === ACTION.GENERATE ? ACTION.REBUILD : action}"]`;
   }
@@ -933,6 +975,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
   get progressStyle() {
     return this.progressKnown ? `width: ${this.busy.progress}%;` : "";
+  }
+
+  /** A refused Restore: the quiet line with Reload, not the alert box (as on Manual Build). */
+  get quietConflict() {
+    return !!(this.conflict && this.conflict.quiet);
   }
 
   /** Reload waits while a hand edit saves: the read would draw the week without it. */
@@ -1179,7 +1226,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.conflict = { message: statementOf(result.message) };
         this.focusAfterRender = { selector: '[data-id="reload"]' };
       } else {
-        this.error = result.message;
+        this.error = failed(this.lockFailedText(choice), result.message);
         this.focusAfterRender = { selector: '[data-id="lock-menu"]' };
       }
     } finally {
@@ -1193,6 +1240,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         }
       }
     }
+  }
+
+  /** "Bunk 1, Monday wasn't locked.": what a refused Lock or Unlock didn't do. */
+  lockFailedText(choice) {
+    const name = choice.label.replace(/^(Lock|Unlock) /, "");
+    return `${name} wasn't ${choice.change.action === LOCK ? "locked" : "unlocked"}.`;
   }
 
   // ---------- hand editing (the shared week editor) ----------
@@ -1460,9 +1513,18 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     this.load(true);
   }
 
+  /** Given to Versions, so what it says is read out from this screen's one live region. */
+  announceText = (text) => this.announce(text);
+
+  /**
+   * Read out through the editor's live region, the one on this screen (it is drawn from the
+   * start), so two regions never talk over each other. The same words twice are still read out.
+   */
   announce(text) {
-    // The same words twice in a row are still read out.
-    this.announcement = this.announcement === text ? `${text} ` : text;
+    const editor = this.weekEditor;
+    if (editor) {
+      editor.announce(text);
+    }
   }
 
   // ---------- setup changed since the week was built (as Manual Build: ADR 0008 part 6) ----------
@@ -1587,7 +1649,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.say(preview.problem);
       } else if (preview.changes.length) {
         // A new opening of the list: its first update that takes a placement keeps a version.
-        this.setupAsk = { notice: null, kept: false };
+        this.setupAsk = { notice: null, kept: false, updated: false };
       } else {
         this.say(`${this.weekName} matches setup.`);
       }
@@ -1660,15 +1722,11 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       }
       if (result.refused === SETUP_CHANGED) {
         const fresh = await this.loadSetupChanges();
-        const again =
-          "Setup changed again since you looked, so nothing was updated.";
+        const again = "Setup changed again, so nothing was updated.";
+        // The list shows what it would change now, in place.
         this.setupAsk =
           fresh && fresh.changes.length
-            ? this.setupAskWith(
-                `${again} This is what it would change now.`,
-                null,
-                kept
-              )
+            ? this.setupAskWith(again, null, kept, this.setupAsk.updated)
             : null;
         if (fresh && !this.setupAsk) {
           // Nothing left to change (or it can't be compared now): the list closes, and says why.
@@ -1699,7 +1757,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       // the dialog.
       this.setupAsk =
         !all && fresh && fresh.changes.length
-          ? this.setupAskWith(null, done, kept)
+          ? this.setupAskWith(null, done, kept, true)
           : null;
       if (!this.setupAsk) {
         this.say(done);
@@ -1727,7 +1785,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       week = await loadWeek(this.programId, this.weekId);
     } catch (e) {
       if (ticket === this.loadTicket) {
-        this.error = errorMessage(e);
+        this.error = failed(
+          `${this.weekName} was updated, but couldn't be shown just now.`,
+          e
+        );
         this.errorFromRead = true;
         this.readAfterRun = true;
       }
@@ -1745,9 +1806,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   /** The list, open again with words to read out (read out even when the same as last time). */
-  setupAskWith(notice, announcement, kept) {
+  setupAskWith(notice, announcement, kept, updated = false) {
     this.setupSaid += 1;
-    return { notice, announcement, kept, said: this.setupSaid };
+    return { notice, announcement, kept, updated, said: this.setupSaid };
   }
 
   // ---------- Publish (as Manual Build: ADR 0008 part 5; ADR 0010 "Publish") ----------
@@ -1759,6 +1820,29 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    */
   get publishDisabled() {
     return this.actionsDisabled;
+  }
+
+  /**
+   * Focus back to the button it was on (focusOn) once that is drawn enabled again. Unpublish is
+   * gone once the week has nothing published: Publish then. Update to match setup is gone once
+   * the week matches setup: the grid's cell then (Publish is no place to land after an update).
+   */
+  focusBack() {
+    const id = this.focusOn;
+    this.focusOn = null;
+    const button =
+      this.template.querySelector(`[data-id="${id}"]`) ||
+      (id === "update-to-match"
+        ? null
+        : this.template.querySelector('[data-id="publish"]'));
+    if (!this.focusIsLost()) {
+      return;
+    }
+    if (button) {
+      button.focus();
+    } else if (this.weekEditor) {
+      this.weekEditor.focusCell(this.focusedCellKey);
+    }
   }
 
   /**
@@ -2034,7 +2118,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    * a version just deleted as if it were there); refused ones say why. A read asked for meanwhile
    * (the season read again) is done after it.
    */
-  async versionsAction(work) {
+  async versionsAction(what, work) {
     this.versionsWorking = true;
     this.error = null;
     this.errorFromRead = false;
@@ -2043,7 +2127,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       await work();
       return true;
     } catch (e) {
-      this.error = errorMessage(e);
+      // What didn't happen, then why (what: words, or a function for words known only later).
+      this.error = failed(typeof what === "function" ? what() : what, e);
       return false;
     } finally {
       await this.loadVersions();
@@ -2069,7 +2154,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     const scheduleId = this.loaded.scheduleId;
-    const saved = await this.versionsAction(() =>
+    const saved = await this.versionsAction(`${name} wasn't saved.`, () =>
       saveVersion({ scheduleId, name })
     );
     if (saved) {
@@ -2091,68 +2176,79 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.say("One moment: an edit is still saving.");
       return;
     }
-    await this.restore(id, `Restored ${version ? version.name : ""}.`);
+    await this.restore(id, `Restored ${version ? version.name : ""}.`, {
+      name: version ? version.name : null
+    });
   }
 
   /**
    * Restores a version (Restore, and Start over's Undo): said is what the line says once the
    * week is on screen; focus, where focus goes after (a selector), when the control used is gone.
    */
-  async restore(id, said, { focus = null } = {}) {
+  async restore(id, said, { focus = null, name = null, undo = false } = {}) {
     const loaded = this.loaded;
     // Reads wait while it runs; one for another week (or the screen gone) drops its answer.
     const ticket = this.loadTicket;
-    await this.versionsAction(async () => {
-      // A week not generated yet: the version becomes its Generated Schedule (decision 9).
-      const done = loaded.scheduleId
-        ? await restoreVersion({
-            scheduleId: loaded.scheduleId,
-            versionId: id,
-            seenRevisions: loaded.revision
-          })
-        : await restoreVersionAsNew({
-            programId: this.programId,
-            weekId: this.weekId,
-            versionId: id
-          });
-      if (ticket !== this.loadTicket) {
-        return;
-      }
-      if (!done) {
-        // Nothing was changed: someone else's newer week is never replaced unseen.
-        this.conflict = { message: this.restoreRefusedText };
-        this.focusAfterRender = { selector: '[data-id="reload"]' };
-        return;
-      }
-      const restored = { id, said };
-      let week;
-      try {
-        week = await loadWeek(this.programId, this.weekId);
-      } catch (e) {
-        // Restored, but the week can't be read now: it is read again once this is over, and
-        // shown then as the restored week (its error goes once that read works).
-        if (ticket === this.loadTicket) {
-          this.readAfterRun = true;
-          this.restoreUnread = restored;
+    let what = undo
+      ? `${name} wasn't undone. Nothing was changed.`
+      : `${name || "That version"} wasn't restored. Nothing was changed.`;
+    await this.versionsAction(
+      () => what,
+      async () => {
+        // A week not generated yet: the version becomes its Generated Schedule (decision 9).
+        const done = loaded.scheduleId
+          ? await restoreVersion({
+              scheduleId: loaded.scheduleId,
+              versionId: id,
+              seenRevisions: loaded.revision
+            })
+          : await restoreVersionAsNew({
+              programId: this.programId,
+              weekId: this.weekId,
+              versionId: id
+            });
+        if (ticket !== this.loadTicket) {
+          return;
         }
-        this.errorFromRead = true;
-        throw e;
+        if (!done) {
+          // Nothing was changed: someone else's newer week is never replaced unseen. The quiet
+          // line Manual Build shows (not an alert), read out once.
+          this.conflict = { message: this.restoreRefusedText, quiet: true };
+          this.announce(this.restoreRefusedText);
+          this.focusAfterRender = { selector: '[data-id="reload"]' };
+          return;
+        }
+        const restored = { id, said };
+        let week;
+        try {
+          week = await loadWeek(this.programId, this.weekId);
+        } catch (e) {
+          // Restored, but the week can't be read now: it is read again once this is over, and
+          // shown then as the restored week (its error goes once that read works).
+          what = `${this.weekName} was restored, but couldn't be shown just now.`;
+          if (ticket === this.loadTicket) {
+            this.readAfterRun = true;
+            this.restoreUnread = restored;
+          }
+          this.errorFromRead = true;
+          throw e;
+        }
+        if (ticket !== this.loadTicket) {
+          return;
+        }
+        // A read asked for meanwhile (the season read again) is still done after this.
+        this.loaded = week;
+        this.publishState = week.published || null;
+        this.showRestored(restored, week);
+        if (!loaded.scheduleId) {
+          // On a week not generated yet the Versions list goes with the start: focus goes to
+          // Rebuild, as after a first Generate.
+          this.focusAfterVersions = `[data-action="${ACTION.REBUILD}"]`;
+        } else if (focus) {
+          this.focusAfterVersions = focus;
+        }
       }
-      if (ticket !== this.loadTicket) {
-        return;
-      }
-      // A read asked for meanwhile (the season read again) is still done after this.
-      this.loaded = week;
-      this.publishState = week.published || null;
-      this.showRestored(restored, week);
-      if (!loaded.scheduleId) {
-        // On a week not generated yet the Versions list goes with the start: focus goes to
-        // Rebuild, as after a first Generate.
-        this.focusAfterVersions = `[data-action="${ACTION.REBUILD}"]`;
-      } else if (focus) {
-        this.focusAfterVersions = focus;
-      }
-    });
+    );
   }
 
   /** The week a Restore made, as read: a whole new week (Undo starts over), on screen now. */
@@ -2181,8 +2277,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const id = event.detail.id;
     const version = this.versions.find((v) => v.id === id);
     const scheduleId = this.loaded.scheduleId;
-    const done = await this.versionsAction(() =>
-      deleteVersion({ scheduleId, versionId: id })
+    const done = await this.versionsAction(
+      `${version ? version.name : "That version"} wasn't deleted.`,
+      () => deleteVersion({ scheduleId, versionId: id })
     );
     if (done) {
       this.say(`Deleted ${version ? version.name : ""}.`);
@@ -2195,8 +2292,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       onDone(false);
       return;
     }
-    const renamed = await this.versionsAction(() =>
-      renameSchedule({ scheduleId: id, name })
+    const version = this.versions.find((v) => v.id === id);
+    const renamed = await this.versionsAction(
+      `${version ? version.name : "That version"} wasn't renamed.`,
+      () => renameSchedule({ scheduleId: id, name })
     );
     onDone(renamed);
   }

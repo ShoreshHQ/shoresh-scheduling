@@ -21,6 +21,8 @@ const AUTO_SAVED = "AutoSaved";
  * Build's list (Restore, delete, Save version); noDraft: Restore and rename only (Generated
  * Schedule before its week is generated). A version that was once the week's published schedule
  * says so and has no delete (it is kept as history).
+ * announceWith: the page's way to read words out (its one live region); without it, the list
+ * reads them out from its own.
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
  * delete { id }, save { name, onDone(saved) }
  */
@@ -33,6 +35,7 @@ export default class ShoreshVersions extends LightningElement {
   // Generated Schedule before its week is generated: Restore and rename only (nothing to save
   // as a version, and no week to delete one from).
   @api noDraft = false;
+  @api announceWith;
 
   isOpen = false;
   renamingId;
@@ -48,6 +51,8 @@ export default class ShoreshVersions extends LightningElement {
   // first), focus goes to the version now at that place, or back to the row if it is still there
   // (refused).
   focusAfterDelete = null;
+  // After a rename is saved or let go: the row's rename button (the box it was in is gone).
+  focusRenameAfterRender = null;
 
   @api
   get versions() {
@@ -63,6 +68,16 @@ export default class ShoreshVersions extends LightningElement {
       const button = this.template.querySelector('[data-id="versions-button"]');
       if (button) {
         button.focus();
+      }
+    }
+    if (this.focusRenameAfterRender && !this.renamingId) {
+      const id = this.focusRenameAfterRender;
+      this.focusRenameAfterRender = null;
+      const rename = this.template.querySelector(
+        `[data-action="rename"][data-id="${id}"]`
+      );
+      if (rename) {
+        rename.focus();
       }
     }
     if (this.focusAfterDelete && !this.busy) {
@@ -91,6 +106,23 @@ export default class ShoreshVersions extends LightningElement {
 
   get title() {
     return this.terms ? this.terms.p("Version") : "Versions";
+  }
+
+  get expanded() {
+    return String(this.isOpen);
+  }
+
+  get ownRegion() {
+    return typeof this.announceWith !== "function";
+  }
+
+  /** Read out: through the page's live region when it has one, else this list's. */
+  say(text) {
+    if (this.ownRegion) {
+      this.announcement = text;
+    } else if (text) {
+      this.announceWith(text);
+    }
   }
 
   get buttonIcon() {
@@ -158,11 +190,11 @@ export default class ShoreshVersions extends LightningElement {
     const version = this._versions.find((v) => v.id === id);
     if (this.deletingId !== id) {
       this.deletingId = id;
-      this.announcement = `Delete ${version ? version.name : ""}? Press again to delete.`;
+      this.say(`Delete ${version ? version.name : ""}? Press again to delete.`);
       return;
     }
     this.deletingId = null;
-    this.announcement = "";
+    this.say("");
     this.focusAfterDelete = {
       id,
       index: this._versions.findIndex((v) => v.id === id)
@@ -230,6 +262,7 @@ export default class ShoreshVersions extends LightningElement {
     if (event.key === "Escape") {
       event.stopPropagation();
       if (this.renamingId) {
+        this.focusRenameAfterRender = this.renamingId;
         this.renamingId = null;
       } else if (this.isOpen) {
         this.isOpen = false;
@@ -275,6 +308,7 @@ export default class ShoreshVersions extends LightningElement {
           onDone: (saved) => {
             if (saved && this.renamingId === id) {
               this.renamingId = null;
+              this.focusRenameAfterRender = id;
             }
           }
         }

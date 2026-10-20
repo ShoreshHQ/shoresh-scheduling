@@ -365,6 +365,36 @@ describe("c-shoresh-week-checks", () => {
       );
     });
 
+    it("the list is headed by the counter whose lines it shows, or Still to place for all", async () => {
+      const element = generated();
+      await flush();
+      q(element, '[data-counter="overlapping"]').click();
+      await flush();
+      expect(q(element, '[data-id="list-heading"]').textContent).toBe(
+        "Overlapping"
+      );
+      q(element, '[data-id="review-all"]').click();
+      await flush();
+      expect(q(element, '[data-id="list-heading"]').textContent).toBe(
+        "Still to place"
+      );
+    });
+
+    it("Escape closes the list and puts focus back on the counter that opened it", async () => {
+      const element = generated();
+      await flush();
+      q(element, '[data-counter="overlapping"]').click();
+      await flush();
+      q(element, '[data-id="counter-list"]').dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+      );
+      await flush();
+      expect(q(element, '[data-id="counter-list"]')).toBeNull();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-counter="overlapping"]')
+      );
+    });
+
     it("Review all says whether the list is open; Accept under a counter takes its own line", async () => {
       const element = generated({
         checked: {

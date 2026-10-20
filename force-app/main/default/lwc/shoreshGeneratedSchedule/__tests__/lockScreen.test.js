@@ -262,8 +262,8 @@ describe("locks on the Generated Schedule screen", () => {
       body: { message: "A saved version can't be changed." }
     });
     await choose(element, "Lock Monday");
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "A saved version can't be changed."
+    expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
+      "Monday wasn't locked. A saved version can't be changed."
     );
   });
 

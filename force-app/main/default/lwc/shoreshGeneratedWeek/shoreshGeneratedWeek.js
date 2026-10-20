@@ -5,7 +5,7 @@ import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLo
 import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.addActivity";
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import updateToMatchSetupOnServer from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
-import { errorMessage } from "c/shoreshErrors";
+import { reasonOf } from "c/shoreshErrors";
 import { readOtherPrograms } from "c/shoreshEngine";
 
 /** What a save is for (GeneratedSaves). Rebuild and Start over keep the week as a version first. */
@@ -41,7 +41,7 @@ export const REFUSED = "refused";
  *   published: the week's published schedule beside the draft ({ id, publishedAt, publishedBy,
  *     changedSince }), or null when it has none (or nothing is generated yet)
  *   input: generateWeek's input, without option, mode and terms (the screen adds them)
- * and rejects when the week can't be opened (errorMessage gives the sentence).
+ * and rejects when the week can't be opened (the screen says what didn't happen: failed()).
  */
 export async function loadWeek(programId, weekId) {
   const r = await getInputs({ programId, weekId });
@@ -80,7 +80,8 @@ export async function loadWeek(programId, weekId) {
  *     versionId is the version Rebuild, Try another or Start over kept first, or null;
  *     published is the week's published schedule beside the week as saved now, or null
  *   { status: CONFLICT, message }: someone else saved the week since; nothing was written
- *   { status: REFUSED, message }: the server refused it (a fixed activity moved, ...)
+ *   { status: REFUSED, message }: the server refused it; message is why, in Shoresh's own words
+ *     or "Try again." (reasonOf), for the screen to put after what didn't happen (failed())
  */
 export async function saveWeek(loaded, { action, option, days }) {
   const request = {
@@ -96,7 +97,7 @@ export async function saveWeek(loaded, { action, option, days }) {
   try {
     result = await saveWeekOnServer({ request });
   } catch (e) {
-    return { status: REFUSED, message: errorMessage(e) };
+    return { status: REFUSED, message: reasonOf(e) };
   }
   if (result.conflict) {
     return { status: CONFLICT, message: result.message };
@@ -243,7 +244,7 @@ export async function saveEdits(loaded, edits) {
       loaded: withWeek(loaded, result.schedule, result.revision || "")
     };
   } catch (e) {
-    return { status: REFUSED, message: errorMessage(e) };
+    return { status: REFUSED, message: reasonOf(e) };
   }
 }
 
@@ -282,7 +283,7 @@ export async function setLocks(loaded, changes) {
       loaded: withWeek(loaded, result.schedule, result.revision)
     };
   } catch (e) {
-    return { status: REFUSED, message: errorMessage(e) };
+    return { status: REFUSED, message: reasonOf(e) };
   }
 }
 
