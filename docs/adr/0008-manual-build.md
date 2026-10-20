@@ -890,8 +890,9 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
 6. **The week can't be laid out from setup now** (no time blocks, no group at camp this week,
    no day it runs, no access to its set-time items): the box says why in Start's own words and
    offers no update; nothing is guessed.
-7. Reads: getting the changes at most 30 queries, an update at most 60, the view sent back
-   included (asserted in `SetupMatchTest`). Opening Manual Build reads nothing more.
+7. Reads: getting the changes at most 13 queries, an update at most 45, the view sent back
+   included (asserted in `SetupMatchTest` on its small camp: measured 10 and 37; on a camp of 8
+   groups, 5 days and 8 time blocks 15 and 45, whether one change or all). Opening Manual Build reads nothing more.
 8. **Checked by** `SetupMatchTest` (as a scheduler, data inside `runAs`): nothing to show; a
    deleted activity (dot, line, update by key, version kept); closed this week; a fixed activity
    added (per cell, deterministic keys, no version); one over a director's placement; a rename
