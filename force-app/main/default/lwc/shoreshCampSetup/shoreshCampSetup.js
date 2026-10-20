@@ -23,7 +23,7 @@ import {
   setupProblems,
   turnOffQuestion
 } from "c/shoreshSetupRules";
-import { errorMessage, failed } from "c/shoreshErrors";
+import { failed } from "c/shoreshErrors";
 import {
   canOpen,
   menuSections,
@@ -1317,7 +1317,7 @@ export default class ShoreshCampSetup extends LightningElement {
         this.showError(e, this.refreshFailed);
         return;
       }
-      const why = errorMessage(e);
+      const why = failed(`Nothing was merged into "${kept.name}".`, e);
       // The refusal says more than a failed reload would.
       await this.loadSeason().catch(() => null);
       const places = this.placesFor(asked);

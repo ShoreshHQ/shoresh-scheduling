@@ -31,7 +31,14 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    (Since the desktop-parity cleanup, 2026-10-17: the server's message is the why, and the screen
    puts what didn't happen and whether anything was lost in front of it, as the desktop's
    writeErrorMessage.js does: _Bunks not saved. Your changes are still here._ + why. The unknown
-   why reads "Shoresh couldn't tell why. Try again.") Once packaged,
+   why reads "Shoresh couldn't tell why. Try again.") (Since the look-and-feel review,
+   2026-10-20: the screen shows a why only when it is Shoresh's own words, sent by our Apex as an
+   AuraHandledException or raised by the screens themselves (`refusal()` in `c/shoreshErrors`).
+   Anything else that reaches a screen, an exception the Apex didn't catch, text with status codes,
+   field names or stack lines, a script error or a dropped connection, is never shown: the
+   sentence says what didn't happen, then "Try again." (_Swim wasn't saved. Try again._), and the
+   raw detail goes to the browser console for support. Every caller names what it was doing; one
+   that can't says "That didn't work. Try again.") Once packaged,
    only Shoresh support (subscriber login) can read that log, not the camp's own admin. (The import's
    undo refusal still adds the platform's text; it is changed with the import code.)
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list

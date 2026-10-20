@@ -1614,7 +1614,8 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       expect(getSeasonSetup).toHaveBeenCalledTimes(1);
       const question = q(element, "c-shoresh-same-location");
-      expect(question.error).toBe(refusal);
+      // What didn't happen, then why.
+      expect(question.error).toBe(`Nothing was merged into "Pool". ${refusal}`);
       expect(bareRecord(question.places).map((p) => p.name)).toEqual([
         "pool ",
         "Pool"
