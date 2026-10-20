@@ -2,6 +2,7 @@ import { createElement } from "lwc";
 import ShoreshCampSetup, { seasonContents } from "c/shoreshCampSetup";
 import { buildTerms } from "c/shoreshTerms";
 import LightningConfirm from "lightning/confirm";
+import { loadStyle } from "lightning/platformResourceLoader";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
@@ -216,6 +217,78 @@ describe("c-shoresh-camp-setup", () => {
     expect(element.shadowRoot.textContent).toContain("Start a new season");
   });
 
+  describe("date boxes' calendar buttons (WCAG 2.5.8, at least 24 by 24)", () => {
+    it("loads the date box style once, and marks every date box for it", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      // The season's own dates show once its pencil is pressed.
+      q(element, '[data-id="edit-season"]').click();
+      await flush();
+      expect(loadStyle).toHaveBeenCalledTimes(1);
+      expect(loadStyle.mock.calls[0][1]).toEqual(
+        expect.stringContaining("ShoreshDateBox")
+      );
+      const dates = [
+        ...element.shadowRoot.querySelectorAll("lightning-input")
+      ].filter((input) => input.type === "date");
+      expect(dates.length).toBeGreaterThan(0);
+      dates.forEach((input) =>
+        expect(input.classList.contains("shoresh-date")).toBe(true)
+      );
+    });
+
+    it("the new season's date boxes are marked too", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([]));
+      const element = await render();
+      const dates = [
+        ...element.shadowRoot.querySelectorAll(
+          'lightning-input[data-form="new-season"]'
+        )
+      ].filter((input) => input.type === "date");
+      expect(dates.length).toBe(2);
+      dates.forEach((input) =>
+        expect(input.classList.contains("shoresh-date")).toBe(true)
+      );
+    });
+
+    it("a page that can't load the style still opens", async () => {
+      loadStyle.mockRejectedValueOnce(new Error("Offline."));
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      expect(q(element, '[data-id="error"]')).toBeNull();
+      expect(q(element, "c-shoresh-menu")).not.toBeNull();
+    });
+
+    it("the style makes a marked date box's button 24 by 24, and nothing else", () => {
+      const fs = require("fs");
+      const path = require("path");
+      const css = fs
+        .readFileSync(
+          path.join(__dirname, "../../../staticresources/ShoreshDateBox.css"),
+          "utf8"
+        )
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map((m) => ({
+        selector: m[1].trim(),
+        body: m[2]
+      }));
+      expect(rules.length).toBeGreaterThan(0);
+      rules.forEach((rule) =>
+        expect(rule.selector.startsWith(".shoresh-date ")).toBe(true)
+      );
+      const iconRule = rules.find((r) =>
+        /\.slds-button_icon$/.test(r.selector)
+      );
+      expect(iconRule.body).toMatch(/width:\s*1\.5rem/);
+      expect(iconRule.body).toMatch(/height:\s*1\.5rem/);
+    });
+  });
+
   it("creates a season for the camp", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons
@@ -391,6 +464,72 @@ describe("c-shoresh-camp-setup", () => {
     );
     await flush();
     expect(deleteRecord).toHaveBeenCalledWith({ recordId: "w1" });
+  });
+
+  it("tells the table once a row is deleted and the season read again, and only then", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    const element = await render();
+    const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
+    const ask = (onDeleted) =>
+      weeks.dispatchEvent(
+        new CustomEvent("delete", {
+          detail: { recordId: "w1", name: "Week 1", onDeleted }
+        })
+      );
+
+    // Cancelled: nothing to say.
+    const cancelled = jest.fn();
+    LightningConfirm.open.mockResolvedValueOnce(nsRecord(false));
+    ask(cancelled);
+    await flush();
+    expect(cancelled).not.toHaveBeenCalled();
+
+    // Refused: nothing was deleted.
+    const refused = jest.fn();
+    LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
+    deleteRecord.mockRejectedValueOnce({ body: { message: "Locked." } });
+    ask(refused);
+    await flush();
+    expect(refused).not.toHaveBeenCalled();
+
+    // Deleted: after the season is read again, so the row is already gone.
+    const reads = getSeasonSetup.mock.calls.length;
+    const deleted = jest.fn(() =>
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1)
+    );
+    LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
+    deleteRecord.mockResolvedValueOnce();
+    ask(deleted);
+    await flush();
+    expect(deleted).toHaveBeenCalledTimes(1);
+  });
+
+  it("every setup table's delete goes the same way", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    LightningConfirm.open.mockResolvedValue(nsRecord(true));
+    deleteRecord.mockResolvedValue();
+    const element = await render();
+    const sources = [
+      ...element.shadowRoot.querySelectorAll(
+        "c-shoresh-editable-table, c-shoresh-program"
+      )
+    ];
+    expect(sources.length).toBeGreaterThan(0);
+    for (const source of sources) {
+      const onDeleted = jest.fn();
+      source.dispatchEvent(
+        new CustomEvent("delete", {
+          detail: { recordId: "x1", name: "Something", onDeleted }
+        })
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await flush();
+      expect(onDeleted).toHaveBeenCalledTimes(1);
+    }
   });
 
   it("deleting a bunk or activity some schedules use says how many first", async () => {

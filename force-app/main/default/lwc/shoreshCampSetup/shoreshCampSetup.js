@@ -1,6 +1,8 @@
 import { LightningElement } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import LightningConfirm from "lightning/confirm";
+import { loadStyle } from "lightning/platformResourceLoader";
+import DATE_BOX from "@salesforce/resourceUrl/ShoreshDateBox";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
@@ -188,6 +190,8 @@ export default class ShoreshCampSetup extends LightningElement {
     );
 
   connectedCallback() {
+    // Date boxes' calendar buttons at least 24 by 24 (WCAG 2.5.8); without it they work, smaller.
+    loadStyle(this, DATE_BOX).catch(() => {});
     this.loadCamps();
   }
 
@@ -1313,7 +1317,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
-  async askAndDelete({ recordId, name }) {
+  async askAndDelete({ recordId, name, onDeleted }) {
     // Asked without making the page busy: the row's delete button keeps the focus, so Cancel
     // gives it back there.
     const ok = await LightningConfirm.open(
@@ -1327,6 +1331,10 @@ export default class ShoreshCampSetup extends LightningElement {
       this.changedOnServer = true;
       this.toast(`Deleted "${name}".`);
       await this.loadSeason();
+      // The table says so in its live region and moves the cursor off the gone row.
+      if (onDeleted) {
+        onDeleted();
+      }
     }, `"${name}" not deleted. Nothing was removed.`);
   }
 

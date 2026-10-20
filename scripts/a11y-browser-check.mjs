@@ -454,7 +454,12 @@ const isMenuLink = (re) => (f) =>
 
 /** Opens a screen from the Shoresh menu by keyboard; focus should be on its heading. */
 async function openFromMenu(screen, re, heading = new RegExp(`^${screen}$`)) {
-  const link = await tabTo(isMenuLink(re));
+  // The menu comes before every screen, so Shift+Tab reaches it first from a heading or a
+  // table row (focus stays on the next row after a delete, and the check's camp gains a week
+  // each run, so Weeks outgrows going forward). From near the page's end, forward wraps round.
+  const link =
+    (await tabTo(isMenuLink(re), { back: true })) ||
+    (await tabTo(isMenuLink(re), { max: 280 }));
   if (!link)
     throw new Error(`The menu entry for ${screen} was not reached with Tab.`);
   await press("Enter", 1500);

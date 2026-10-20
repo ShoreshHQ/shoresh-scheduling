@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<StaticResource xmlns="http://soap.sforce.com/2006/04/metadata">
+    <cacheControl>Public</cacheControl>
+    <contentType>text/css</contentType>
+    <description>Makes the calendar button of Shoresh's date boxes at least 24 by 24 pixels (WCAG 2.5.8). Loaded by the camp setup page.</description>
+</StaticResource>

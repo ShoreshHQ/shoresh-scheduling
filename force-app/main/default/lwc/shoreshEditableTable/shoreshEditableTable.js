@@ -75,7 +75,9 @@ const ADD = "add";
  *          seen, when who changed. The screen calls onSaved(result) with SetupTablesController
  *          .saveRow's answer, or onFailure() if it did not go through; then, once it has
  *          reloaded, onDone(), and the next row is sent.
- *   delete { recordId, name }
+ *   delete { recordId, name, onDeleted } - the screen calls onDeleted() once the row is deleted
+ *          and the season read again; the table then says "Deleted <name>" and moves the
+ *          cursor to the next row (else the one above, else the blank row)
  *   merge  { recordIds } - with mergeLabel: the saved row asked about first, then the saved rows
  *          whose names match it (capitals and spacing aside)
  */
@@ -495,6 +497,13 @@ export default class ShoreshEditableTable extends LightningElement {
       if (target) {
         target.focus();
       }
+    }
+    if (this.focusAfterDelete && !this.rowFor(this.focusAfterDelete.key)) {
+      const { index } = this.focusAfterDelete;
+      this.focusAfterDelete = null;
+      const visible = this.visibleDrafts;
+      const next = visible[index] || visible[index - 1];
+      this.focusRow(next ? next.key : ADD);
     }
     if (this.focusAfterQuestion && !this.conflict) {
       // Back where the director was when the question came up.
@@ -1049,12 +1058,28 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   handleDelete(event) {
-    const draft = this.rowFor(event.currentTarget.dataset.rowKey);
+    const key = event.currentTarget.dataset.rowKey;
+    const draft = this.rowFor(key);
+    const name = draft.original.Name;
+    const index = this.visibleDrafts.findIndex((d) => d.key === key);
     this.dispatchEvent(
       new CustomEvent("delete", {
-        detail: { recordId: draft.original.Id, name: draft.original.Name }
+        detail: {
+          recordId: draft.original.Id,
+          name,
+          onDeleted: () => this.deleted(key, index, name)
+        }
       })
     );
+  }
+
+  /**
+   * The screen deleted the row and read the season again: it is said, and the cursor moves to
+   * the row that took its place, else the row above, else the blank row, once the row is gone.
+   */
+  deleted(key, index, name) {
+    this.announce(`Deleted ${name || ""}`.trim());
+    this.focusAfterDelete = { key, index };
   }
 
   // ---------- saving, one row at a time ----------

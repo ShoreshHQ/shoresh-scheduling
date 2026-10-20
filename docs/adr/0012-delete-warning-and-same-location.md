@@ -37,7 +37,8 @@ at 69dbd34): `docs/adr/2026-07-30-deleting-a-record-a-schedule-uses.md` §1,
    then, or the count can't be made at all, _Shoresh couldn't count the schedules Bunk 3 is
    in. Delete anyway?_. It is never left out quietly. Tests make the limits small to check
    this. The question opens without making the page busy, so Cancel gives the focus back to
-   the row's delete button; a second click while it is open does nothing.
+   the row's delete button; a second click while it is open does nothing. After a delete the
+   table says so and moves the cursor to the next row (ADR 0013 choice 23).
 
 ## "Same location?"
 
