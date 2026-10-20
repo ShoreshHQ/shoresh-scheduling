@@ -1,10 +1,13 @@
 import { LightningElement, api } from "lwc";
 import LightningConfirm from "lightning/confirm";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
+import { leftField } from "c/shoreshSavedMark";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const ACTIVITY = FIELD.Activity;
 const WHO = FIELD.ActivityEligibility;
+// "Who can do it", beside the rule fields, in what is changed and not saved yet.
+const WHO_KEY = "who";
 // Each rule's input (its data-field) and the activity field it saves.
 const RULE_FIELDS = {
   sameDivision: ACTIVITY.SameDivisionOnly,
@@ -15,10 +18,13 @@ const RULE_FIELDS = {
 
 /**
  * One activity's details: who can do it (every group, or only chosen divisions and groups) and
- * the less common rules. Changes stay on screen until Save; if something else on the screen is
- * saved meanwhile, what was typed here stays.
+ * the less common rules. They save as you go, like the tables (ADR 0011, decision 26 (4)): a tick
+ * or a dropdown the moment it changes; a number, the notes, or "who" when the director leaves the
+ * field. Only the rules that changed are sent (who can do it is always sent whole: the server
+ * replaces the list). "Saved" shows quietly; a refusal shows next to the field, with what was
+ * typed kept. If something else on the screen is saved meanwhile, what was typed here stays.
  *
- * Fires: save { rules, whoCanDoIt, onFailure }
+ * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message) }
  */
 export default class ShoreshActivityDetails extends LightningElement {
   @api terms;
@@ -26,8 +32,11 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   activityId;
   draft;
-  changed = false;
-  submitted = false;
+  // Fields (rule fields, or "who") changed and not sent yet; and those sent, not yet answered.
+  dirty = new Set();
+  sending = new Map();
+  // Why the last save of a field was refused: field -> message, shown next to it.
+  errors = {};
   _setup;
 
   /** The season setup from SeasonSetupController (activities, programs). */
@@ -40,14 +49,37 @@ export default class ShoreshActivityDetails extends LightningElement {
     const activities = (value && value.activities) || [];
     if (!activities.some((a) => a.Id === this.activityId)) {
       this.activityId = activities.length ? activities[0].Id : null;
-      this.changed = false;
+      this.forget();
     }
-    if (this.submitted || !this.changed) {
-      // This panel's own save went through, or nothing was typed: show what is saved.
-      this.submitted = false;
-      this.changed = false;
-      this.draft = this.draftFor(this.activity);
+    this.showSaved();
+  }
+
+  /** What is saved, except the fields the director changed and are not saved yet. */
+  showSaved() {
+    const saved = this.draftFor(this.activity);
+    if (!saved || !this.draft) {
+      this.draft = saved;
+      return;
     }
+    const keep = (field) => this.dirty.has(field) || this.sending.has(field);
+    const rules = { ...saved.rules };
+    Object.keys(rules).forEach((field) => {
+      if (keep(field)) {
+        rules[field] = this.draft.rules[field];
+      }
+    });
+    this.draft = {
+      rules,
+      whoCanDoIt: keep(WHO_KEY) ? this.draft.whoCanDoIt : saved.whoCanDoIt
+    };
+  }
+
+  /** Another activity: nothing of the last one's typing carries over. */
+  forget() {
+    this.dirty = new Set();
+    this.sending = new Map();
+    this.errors = {};
+    this.draft = null;
   }
 
   get activities() {
@@ -143,8 +175,20 @@ export default class ShoreshActivityDetails extends LightningElement {
       : `Only the chosen ${t.pIn("Division")} and ${t.pIn("Group")} can do it.`;
   }
 
-  get saveDisabled() {
-    return this.busy || !this.changed;
+  get whoError() {
+    return this.errors[WHO_KEY];
+  }
+  get sameDivisionError() {
+    return this.errors[ACTIVITY.SameDivisionOnly];
+  }
+  get earlyCountError() {
+    return this.errors[ACTIVITY.EarlyWeekCount];
+  }
+  get earlyDayError() {
+    return this.errors[ACTIVITY.EarlyWeekByDay];
+  }
+  get notesError() {
+    return this.errors[ACTIVITY.Notes];
   }
 
   get labels() {
@@ -168,7 +212,8 @@ export default class ShoreshActivityDetails extends LightningElement {
   async handleActivityChange(event) {
     const picker = event.target;
     const chosen = event.detail.value;
-    if (this.changed) {
+    if (this.dirty.size) {
+      // Only a refused change is still unsaved here: leaving a field saves it.
       const ok = await LightningConfirm.open({
         label: "Unsaved changes",
         message: `Discard your unsaved changes to "${this.activity.Name}"?`,
@@ -182,12 +227,28 @@ export default class ShoreshActivityDetails extends LightningElement {
       }
     }
     this.activityId = chosen;
-    this.changed = false;
+    this.forget();
     this.draft = this.draftFor(this.activity);
+    this.clearMark();
   }
 
   handleWhoChange(event) {
-    this.update({ whoCanDoIt: [...event.detail.value] });
+    this.update(WHO_KEY, { whoCanDoIt: [...event.detail.value] });
+  }
+
+  /** Who can do it is saved when the director leaves the list (not on every move in it). */
+  handleWhoLeave(event) {
+    if (leftField(event)) {
+      this.save(WHO_KEY);
+    }
+  }
+
+  /** A number or the notes: saved on leaving the field. */
+  handleRuleLeave(event) {
+    const field = RULE_FIELDS[event.currentTarget.dataset.field];
+    if (field && leftField(event)) {
+      this.save(field, event.currentTarget);
+    }
   }
 
   handleRule(event) {
@@ -205,39 +266,81 @@ export default class ShoreshActivityDetails extends LightningElement {
     if (value === "") {
       value = null;
     }
-    this.update({ rules: { ...this.draft.rules, [field]: value } });
+    this.update(field, { rules: { ...this.draft.rules, [field]: value } });
+    // A tick or a dropdown is chosen once, so it is saved at once.
+    const target = event.target;
+    if (target.type === "checkbox" || target.tagName === "LIGHTNING-COMBOBOX") {
+      this.save(field);
+    }
   }
 
-  update(part) {
+  update(field, part) {
     this.draft = { ...this.draft, ...part };
-    this.changed = true;
+    this.dirty.add(field);
+    if (this.errors[field]) {
+      this.errors = { ...this.errors, [field]: null };
+    }
+    this.clearMark();
   }
 
-  handleCancel() {
-    this.changed = false;
-    this.draft = this.draftFor(this.activity);
+  clearMark() {
+    const mark = this.template.querySelector("c-shoresh-saved-mark");
+    if (mark) {
+      mark.clear();
+    }
   }
 
-  handleSave() {
-    const inputs = [
-      ...this.template.querySelectorAll("lightning-input, lightning-combobox")
-    ];
-    if (!inputs.reduce((ok, input) => input.reportValidity() && ok, true)) {
+  /**
+   * Sends one changed field (a rule field, or "who"). A value the field itself refuses (an early
+   * count under 1) is not sent; the field says why, as any field does.
+   */
+  save(field, input) {
+    if (!this.dirty.has(field)) {
       return;
     }
-    this.submitted = true;
-    const onFailure = () => {
-      this.submitted = false;
+    if (input && input.reportValidity && !input.reportValidity()) {
+      return;
+    }
+    this.dirty.delete(field);
+    this.sending.set(field, (this.sending.get(field) || 0) + 1);
+    const rules = { sobjectType: OBJECT.Activity, Id: this.activityId };
+    if (field !== WHO_KEY) {
+      rules[field] = this.draft.rules[field];
+    }
+    const activityId = this.activityId;
+    const done = () => {
+      const left = (this.sending.get(field) || 0) - 1;
+      if (left > 0) {
+        this.sending.set(field, left);
+      } else {
+        this.sending.delete(field);
+      }
+    };
+    const onSaved = () => {
+      if (activityId !== this.activityId) {
+        return;
+      }
+      done();
+      const mark = this.template.querySelector("c-shoresh-saved-mark");
+      if (mark) {
+        mark.saved();
+      }
+    };
+    // Refused: what was typed stays, still to save, with why next to the field.
+    const onFailure = (message) => {
+      if (activityId !== this.activityId) {
+        return;
+      }
+      done();
+      this.dirty.add(field);
+      this.errors = { ...this.errors, [field]: message };
     };
     this.dispatchEvent(
       new CustomEvent("save", {
         detail: {
-          rules: {
-            sobjectType: OBJECT.Activity,
-            Id: this.activityId,
-            ...this.draft.rules
-          },
+          rules,
           whoCanDoIt: [...this.draft.whoCanDoIt],
+          onSaved,
           onFailure
         }
       })

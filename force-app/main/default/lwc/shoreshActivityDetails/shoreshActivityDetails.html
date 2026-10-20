@@ -1,8 +1,11 @@
 <template>
   <section class="slds-m-top_large">
-    <h2 class="slds-text-heading_medium slds-m-bottom_x-small">
-      {labels.title}
-    </h2>
+    <div
+      class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small"
+    >
+      <h2 class="slds-text-heading_medium">{labels.title}</h2>
+      <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
+    </div>
     <template lwc:if={hasActivities}>
       <p class="slds-m-bottom_small">{labels.intro}</p>
       <div class="slds-grid slds-wrap slds-gutters_small">
@@ -32,7 +35,17 @@
         options={targetOptions}
         value={whoCanDoIt}
         onchange={handleWhoChange}
+        onfocusout={handleWhoLeave}
       ></lightning-dual-listbox>
+      <template lwc:if={whoError}>
+        <div
+          class="slds-form-element__help slds-text-color_error"
+          role="alert"
+          data-error="who"
+        >
+          {whoError}
+        </div>
+      </template>
 
       <h3
         class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small"
@@ -46,6 +59,15 @@
         checked={sameDivision}
         onchange={handleRule}
       ></lightning-input>
+      <template lwc:if={sameDivisionError}>
+        <div
+          class="slds-form-element__help slds-text-color_error"
+          role="alert"
+          data-error="sameDivision"
+        >
+          {sameDivisionError}
+        </div>
+      </template>
       <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small">
         <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
           <lightning-input
@@ -56,7 +78,17 @@
             min="1"
             step="1"
             onchange={handleRule}
+            onfocusout={handleRuleLeave}
           ></lightning-input>
+          <template lwc:if={earlyCountError}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="earlyCount"
+            >
+              {earlyCountError}
+            </div>
+          </template>
         </div>
         <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
           <lightning-combobox
@@ -66,6 +98,15 @@
             options={dayOptions}
             onchange={handleRule}
           ></lightning-combobox>
+          <template lwc:if={earlyDayError}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="earlyDay"
+            >
+              {earlyDayError}
+            </div>
+          </template>
         </div>
       </div>
       <lightning-textarea
@@ -74,22 +115,17 @@
         label={labels.notes}
         value={notes}
         onchange={handleRule}
+        onfocusout={handleRuleLeave}
       ></lightning-textarea>
-
-      <div class="slds-m-top_small">
-        <lightning-button
-          label="Cancel changes"
-          onclick={handleCancel}
-          disabled={saveDisabled}
-        ></lightning-button>
-        <lightning-button
-          class="slds-m-left_x-small"
-          variant="brand"
-          label="Save changes"
-          onclick={handleSave}
-          disabled={saveDisabled}
-        ></lightning-button>
-      </div>
+      <template lwc:if={notesError}>
+        <div
+          class="slds-form-element__help slds-text-color_error"
+          role="alert"
+          data-error="notes"
+        >
+          {notesError}
+        </div>
+      </template>
     </template>
     <template lwc:else>
       <p class="slds-text-color_weak">{labels.empty}</p>

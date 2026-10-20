@@ -18,7 +18,8 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
 1. **One table, every setup screen.** `c/shoreshEditableTable` changed, so Weeks, Location
    types, Locations, Activities, Time blocks, Units, each unit's Bunks, Fixed activities and
    Recurring activities all work this way. Programs, the season form, Camp words, and Activity
-   details are forms, not tables, and keep their Save buttons.
+   details are forms, not tables, and keep their Save buttons. _Changed 2026-10-20 (ADR 0013,
+   decision 26 (4)): the forms save as you go too, one field at a time, in this queue._
 2. **The blank last row** (desktop `InlineAddRow`). Always there, tinted like the desktop's,
    its first text field showing the table's add word ("Add Bunk") in grey. It starts with the
    screen's starting values (an activity's length 1 and so on; every week ticked). Names now

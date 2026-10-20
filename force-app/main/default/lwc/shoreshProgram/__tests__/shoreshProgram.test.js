@@ -64,6 +64,16 @@ async function render(show = "program", entry = ENTRY) {
   return element;
 }
 
+const nameInput = (element) =>
+  element.shadowRoot.querySelector('lightning-input[data-id="name"]');
+function typeName(element, value) {
+  const name = nameInput(element);
+  name.value = value;
+  name.dispatchEvent(new CustomEvent("change", { detail: { value } }));
+}
+const leaveName = (element) =>
+  nameInput(element).dispatchEvent(new CustomEvent("focusout"));
+
 describe("c-shoresh-program", () => {
   afterEach(() => {
     while (document.body.firstChild) {
@@ -331,8 +341,13 @@ describe("c-shoresh-program", () => {
     );
   });
 
-  it("shows the operating days and saves a change to them", async () => {
+  it("has no Save button: a ticked day saves at once, alone", async () => {
     const element = await render();
+    expect(
+      [...element.shadowRoot.querySelectorAll("lightning-button")].map(
+        (b) => b.label
+      )
+    ).toEqual(["Delete this program"]);
     const friday = element.shadowRoot.querySelector(
       'lightning-input[data-day="Friday"]'
     );
@@ -343,26 +358,106 @@ describe("c-shoresh-program", () => {
     friday.checked = true;
     friday.dispatchEvent(new CustomEvent("change"));
     await flush();
-    const name = element.shadowRoot.querySelector(
-      'lightning-input[data-id="name"]'
-    );
-    name.reportValidity = () => true;
-    [...element.shadowRoot.querySelectorAll("lightning-button")]
-      .find((b) => b.label === "Save")
-      .click();
 
-    expect(bareRecord(handler.mock.calls[0][0].detail).records).toEqual([
-      {
-        sobjectType: "Program__c",
-        Id: "p1",
-        Name: "Main",
-        Monday__c: true,
-        Tuesday__c: true,
-        Wednesday__c: true,
-        Thursday__c: true,
-        Friday__c: true
-      }
+    const detail = bareRecord(handler.mock.calls[0][0].detail);
+    expect(detail.records).toEqual([
+      { sobjectType: "Program__c", Id: "p1", Friday__c: true }
     ]);
+    expect(typeof detail.onSaved).toBe("function");
+    expect(typeof detail.onFailure).toBe("function");
+  });
+
+  it("the name saves when the director leaves it (or presses Enter), only if it changed", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const name = nameInput(element);
+    name.reportValidity = () => true;
+    leaveName(element);
+    await flush();
+    expect(handler).not.toHaveBeenCalled();
+    typeName(element, "Day camp");
+    leaveName(element);
+    await flush();
+    expect(bareRecord(handler.mock.calls[0][0].detail).records).toEqual([
+      { sobjectType: "Program__c", Id: "p1", Name: "Day camp" }
+    ]);
+    typeName(element, "Day camp 2");
+    name.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    await flush();
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it("a blank name is not sent: the field says it needs one", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const name = nameInput(element);
+    name.reportValidity = jest.fn(() => false);
+    typeName(element, "");
+    leaveName(element);
+    await flush();
+    expect(name.reportValidity).toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("says Saved quietly once saved, and a refusal next to the field with the typing kept", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    nameInput(element).reportValidity = () => true;
+    typeName(element, "Day camp");
+    leaveName(element);
+    await flush();
+    const mark = () =>
+      element.shadowRoot
+        .querySelector("c-shoresh-saved-mark")
+        .shadowRoot.querySelector('[data-id="saved"]');
+    handler.mock.calls[0][0].detail.onSaved();
+    await flush();
+    expect(mark().textContent).toContain("Saved");
+
+    typeName(element, "Overnight");
+    await flush();
+    expect(mark().textContent).toBe("");
+    leaveName(element);
+    await flush();
+    handler.mock.calls[1][0].detail.onFailure(
+      "Programs not saved. Your changes are still here. Try again."
+    );
+    await flush();
+    const why = element.shadowRoot.querySelector('[data-id="name-error"]');
+    expect(why.textContent).toContain("Programs not saved.");
+    expect(why.getAttribute("role")).toBe("alert");
+    // A reload keeps the refused name, and leaving again sends it again.
+    element.entry = nsRecord({ ...ENTRY, timeBlocks: [] });
+    await flush();
+    expect(nameInput(element).value).toBe("Overnight");
+    leaveName(element);
+    await flush();
+    expect(handler).toHaveBeenCalledTimes(3);
+  });
+
+  it("a refused day shows why under the days, and stays ticked", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const friday = element.shadowRoot.querySelector(
+      'lightning-input[data-day="Friday"]'
+    );
+    friday.checked = true;
+    friday.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure("Not saved.");
+    element.entry = nsRecord({ ...ENTRY, timeBlocks: [] });
+    await flush();
+    expect(
+      element.shadowRoot.querySelector('[data-id="days-error"]').textContent
+    ).toContain("Not saved.");
+    expect(
+      element.shadowRoot.querySelector('lightning-input[data-day="Friday"]')
+        .checked
+    ).toBe(true);
   });
 
   it("passes saves and deletes from its tables up to the screen", async () => {
@@ -404,41 +499,33 @@ describe("c-shoresh-program", () => {
 
   it("keeps a typed but unsaved name when something else is saved", async () => {
     const element = await render();
-    const name = element.shadowRoot.querySelector(
-      'lightning-input[data-id="name"]'
-    );
-    name.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Typed" } })
-    );
+    typeName(element, "Typed");
     element.entry = nsRecord({ ...ENTRY, timeBlocks: [] });
     await flush();
-    expect(
-      element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
-    ).toBe("Typed");
+    expect(nameInput(element).value).toBe("Typed");
   });
 
-  it("after its own save, shows the saved name", async () => {
+  it("a name being saved is not put back by a reload before it, and shows as saved after", async () => {
     const element = await render();
-    const name = element.shadowRoot.querySelector(
-      'lightning-input[data-id="name"]'
-    );
-    name.dispatchEvent(
-      new CustomEvent("change", { detail: { value: "Typed" } })
-    );
-    name.reportValidity = () => true;
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    nameInput(element).reportValidity = () => true;
+    typeName(element, "Typed");
+    leaveName(element);
     await flush();
-    [...element.shadowRoot.querySelectorAll("lightning-button")]
-      .find((b) => b.label === "Save")
-      .click();
+    // Another row's save reloads before this one is answered.
+    element.entry = nsRecord({ ...ENTRY, timeBlocks: [] });
+    await flush();
+    expect(nameInput(element).value).toBe("Typed");
+    handler.mock.calls[0][0].detail.onSaved();
     element.entry = nsRecord({
       ...ENTRY,
       program: { ...ENTRY.program, Name: "Saved" }
     });
     await flush();
-    expect(
-      element.shadowRoot.querySelector('lightning-input[data-id="name"]').value
-    ).toBe("Saved");
+    expect(nameInput(element).value).toBe("Saved");
   });
+
   it("keeps a new division typed on its screen while saving, and after a failed save", async () => {
     const element = await render("divisions");
     const table = element.shadowRoot.querySelector("c-shoresh-editable-table");

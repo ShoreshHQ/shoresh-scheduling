@@ -24,6 +24,8 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
 3. **Before the first season**, only Camp words can be opened; the rest is greyed out (each
    needs a season). New season and Copy season stay at the top, beside the season picker;
    Delete season moved to the Weeks screen, with the season's name, dates, and status.
+   _Changed 2026-10-20 (ADR 0013): the season's name, dates and Delete season open from a pencil
+   beside the season picker; Status is no longer shown._
 4. **Roots is the desktop's Roots home**, not a redesign: the "Build or generate the schedule"
    door, "What has taken root" with the desktop's six cards in the desktop's places (large
    Activities and Groups with up to four names, small Divisions, Locations, Time blocks, and a
@@ -72,3 +74,4 @@ its ADRs `2026-08-22-roots-as-hub-setup-ia`, `2026-08-27-roots-hub-bento-layout`
    refuses; the Shoresh screens are the way to delete.
 9. **Camp words' Cancel** now puts back the saved words ("Cancel changes", like the tables)
    instead of leaving the screen, since Camp words is now a screen of its own.
+   _Changed 2026-10-20 (ADR 0013): Camp words saves as you go; there is no Save or Cancel._

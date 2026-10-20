@@ -3,10 +3,19 @@ import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
 import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
 import { failed } from "c/shoreshErrors";
+import { leftField } from "c/shoreshSavedMark";
+
+const NOT_SAVED = "Camp words not saved. Your changes are still here.";
 
 /**
  * The camp's own words for each term (decision 0006). Blank means the standard word.
- * Fires: saved.
+ *
+ * Saved as you go, like the setup tables (ADR 0011, decision 26 (4)): a word is saved when the
+ * director leaves its box (or presses Enter), one save at a time, each with every word as it is
+ * on screen then. "Saved" shows quietly; a refusal shows under the box that was left, with the
+ * typing kept.
+ *
+ * Fires: saved (after each save). @api focusHeading(): the cursor to the screen's heading.
  */
 export default class ShoreshCampLabels extends LightningElement {
   @api campId;
@@ -14,9 +23,14 @@ export default class ShoreshCampLabels extends LightningElement {
 
   rows = [];
   error;
-  busy = false;
   blockedReason;
   loaded = false;
+  // Something typed and not sent yet.
+  dirty = false;
+  // Saves go one at a time, in order.
+  saves = Promise.resolve();
+  // Why the last save was refused, under the box that was left: { term, field, message }.
+  fieldError = null;
 
   connectedCallback() {
     this.load();
@@ -51,8 +65,26 @@ export default class ShoreshCampLabels extends LightningElement {
     return this.loaded && !!this.blockedReason;
   }
 
-  get saveDisabled() {
-    return this.busy || !this.loaded || !!this.blockedReason;
+  /** The rows as shown, each with the refusal under the box it belongs to (if any). */
+  get view() {
+    const at = this.fieldError;
+    return this.rows.map((row) => ({
+      ...row,
+      singularError:
+        at && at.term === row.term && at.field === "singular"
+          ? at.message
+          : null,
+      pluralError:
+        at && at.term === row.term && at.field === "plural" ? at.message : null
+    }));
+  }
+
+  @api
+  focusHeading() {
+    const heading = this.template.querySelector("[data-heading]");
+    if (heading) {
+      heading.focus();
+    }
   }
 
   handleChange(event) {
@@ -60,27 +92,55 @@ export default class ShoreshCampLabels extends LightningElement {
     this.rows = this.rows.map((row) => {
       return row.term === term ? { ...row, [field]: event.detail.value } : row;
     });
-  }
-
-  async handleSave() {
-    this.busy = true;
-    this.error = null;
-    try {
-      await saveCampLabels({ campId: this.campId, labels: this.rows });
-      this.dispatchEvent(new CustomEvent("saved"));
-    } catch (e) {
-      this.error = failed(
-        "Camp words not saved. Your changes are still here.",
-        e
-      );
-    } finally {
-      this.busy = false;
+    this.dirty = true;
+    if (
+      this.fieldError &&
+      this.fieldError.term === term &&
+      this.fieldError.field === field
+    ) {
+      this.fieldError = null;
+    }
+    const mark = this.template.querySelector("c-shoresh-saved-mark");
+    if (mark) {
+      mark.clear();
     }
   }
 
-  /** Puts back the words as saved. */
-  handleCancel() {
-    this.error = null;
-    this.load();
+  handleLeave(event) {
+    if (leftField(event)) {
+      this.save(event.currentTarget.dataset);
+    }
+  }
+
+  handleKey(event) {
+    if (event.key === "Enter") {
+      this.save(event.currentTarget.dataset);
+    }
+  }
+
+  /** Sends every word as it is now, after any save still under way. */
+  save({ term, field }) {
+    if (!this.dirty || this.readOnly || !this.loaded) {
+      return this.saves;
+    }
+    this.dirty = false;
+    const labels = this.rows;
+    this.saves = this.saves.then(async () => {
+      try {
+        await saveCampLabels({ campId: this.campId, labels });
+        // Every word went, so an earlier refusal no longer stands.
+        this.fieldError = null;
+        const mark = this.template.querySelector("c-shoresh-saved-mark");
+        if (mark) {
+          mark.saved();
+        }
+        this.dispatchEvent(new CustomEvent("saved"));
+      } catch (e) {
+        // Still to save: the next box left sends it again.
+        this.dirty = true;
+        this.fieldError = { term, field, message: failed(NOT_SAVED, e) };
+      }
+    });
+    return this.saves;
   }
 }

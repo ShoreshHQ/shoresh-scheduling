@@ -34,9 +34,13 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
    two empty boxes.
 2. On the **Group / Groups** row type _Bunk_ and _Bunks_. On **Division / Divisions** type
    _Unit_ and _Units_.
-3. Scroll to the bottom and click **Save words**. You see "Saved. Shoresh screens now use your
-   camp words." The menu now says **Bunks** and **Units**, and so does everything below.
-   (**Cancel changes** puts back the words as saved.)
+3. There is no Save button: each word is saved when you leave its box (click elsewhere, press
+   **Tab** or **Enter**). A small grey **✓ Saved** shows beside the heading. The menu now says
+   **Bunks** and **Units**, and so does everything below. If Shoresh refuses a word, why shows
+   in red under that box and your typing stays.
+4. At the bottom right, **Activities →** would take you to the next screen; every setup screen
+   ends with one, in menu order, so you can walk through setup with it. (Before there is a
+   season, camp words has none.)
 
 ## 4. Create a season
 
@@ -64,7 +68,10 @@ The screen says **Welcome to Shoresh — Start by naming your camp.**
 
 ## 5. Weeks with real dates
 
-**How every table saves** (like the desktop): there is no Save button. The last row of each
+**How every table saves** (like the desktop): there is no Save button. The same goes for the
+program's name and days, the season's name and dates, camp words, and Activity details: a
+field is saved when you leave it (a tick or a dropdown the moment you choose it), a quiet
+**✓ Saved** appears, and a refusal shows in red next to the field with your typing kept. The last row of each
 table is always blank, tinted, with the table's add word in it in grey (_Add Week_). Type
 into it and press **Enter**, click its **+ Add** button, or just move out of the row: it is
 added. Until everything it needs is filled in, **+ Add** stays grey and nothing happens.
@@ -73,8 +80,11 @@ another row, and a week tick is saved the moment you click it; **Escape** puts t
 as it was. If Shoresh refuses a change, the row keeps a bronze edge on its left until you fix
 it or press **Escape**.
 
-1. On **Weeks**, the season's own name, dates, and status are at the top (**Save season**,
-   **Delete season**). Below, click **Fill in weeks from the season dates**. Six weeks
+1. The season's own name and dates are not on this screen: click the pencil beside the season
+   picker at the top (_Edit Summer 2026_). A box opens under it with **Season name**, **First
+   day**, **Last day** and **Delete season**; change a date and click elsewhere, and **✓ Saved**
+   shows. Click the pencil again to close it. On **Weeks**, click **Fill in weeks from the
+   season dates**. Six weeks
    appear, Week 1 = Jun 29 – Jul 3, each Monday to Friday. The **!** beside Weeks in the menu
    is now a **✓**.
 2. Try editing: change Week 6's end date and press **Enter**. It is saved. In the blank row,
@@ -96,7 +106,7 @@ it or press **Escape**.
 ## 6. A program, its time blocks, units, and bunks
 
 1. **Programs**: click **Add Program**. A program called _Main_ appears. Untick **Friday**
-   (it runs Monday to Thursday) and click **Save**.
+   (it runs Monday to Thursday): it is saved at once (**✓ Saved**).
 2. **Time blocks**: the table is called _Time blocks in Main_. In its blank row type
    _Period 1_, start 9:00 AM, end 9:45 AM, leave **Part of day** as **From start time**, and
    press **Enter**. It saves as Morning. Add _Period 2_ 10:00 AM – 10:45 AM and _Lunch_
@@ -150,10 +160,10 @@ it or press **Escape**.
 4. Set Gym games' **Groups at once** to 5 and press **Enter**. Needs attention now says the Gym fits 3, so
    scheduling will use 3. Put it back to 1.
 5. Below the table, **Activity details**: pick _Swim_. Under **Who can do it**, move _Bunk 1_
-   to **Can do it**, then **Save changes**. Only Bunk 1 can swim now; nobody chosen means
-   every bunk.
+   to **Can do it**, then click elsewhere: it is saved (**✓ Saved** beside the heading). Only
+   Bunk 1 can swim now; nobody chosen means every bunk.
 6. Still on Swim, under **More rules**: "Get this many done early in the week" 1, **By**
-   Tuesday (the swim test by Tuesday). **Save changes**.
+   Tuesday (the swim test by Tuesday). Each is saved as you leave it or choose it.
 7. Try deleting the **Pool** (trash can in the Locations table). Shoresh refuses: Swim happens
    there; choose another location for Swim first. Try deleting **Gym games**: refused,
    because it is Soccer's rain plan.
@@ -265,7 +275,7 @@ Does this work the way you think in practice? Note anything that feels awkward.
    and **Stretch to Period 1 – Period 2**. Rename Flagpole to _Flag_ and press **Enter**: the note stays.
    Click **Stretch to Period 1 – Period 2**: the length becomes 3 and the note goes. (Deleting
    a block inside an activity offers **Keep the shorter …** or **Extend to …** instead.)
-3. Open **Weeks**, click **Delete season** and confirm. It and everything in it are gone;
+3. Click the pencil beside the season picker, then **Delete season**, and confirm. It and everything in it are gone;
    _Summer 2026_ is untouched.
 4. Deleting a unit, program, week, time block, location, activity, fixed activity, or
    recurring activity works the same way (trash can icon, then confirm), unless something else

@@ -24,7 +24,13 @@ import {
   turnOffQuestion
 } from "c/shoreshSetupRules";
 import { errorMessage, failed } from "c/shoreshErrors";
-import { canOpen, menuSections, screenLabels } from "c/shoreshScreens";
+import {
+  canOpen,
+  menuSections,
+  nextScreen,
+  screenLabels
+} from "c/shoreshScreens";
+import { leftField } from "c/shoreshSavedMark";
 import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema).
@@ -32,12 +38,12 @@ const SEASON = FIELD.Season;
 const WEEK = FIELD.Week;
 const LOCATION = FIELD.Location;
 const ACTIVITY = FIELD.Activity;
-// The season forms' inputs (their data-field) and the season fields they hold.
+// The season forms' inputs (their data-field) and the season fields they hold. A season's Status
+// stays in the data but is not shown: it changed nothing a director could see (decision 26 (5)).
 const SEASON_INPUTS = {
   name: "Name",
   start: SEASON.StartDate,
-  end: SEASON.EndDate,
-  status: SEASON.Status
+  end: SEASON.EndDate
 };
 
 const SCREENS = [
@@ -67,12 +73,6 @@ function focusedElement() {
   return element;
 }
 
-const STATUS_OPTIONS = [
-  { label: "Planning", value: "Planning" },
-  { label: "Active", value: "Active" },
-  { label: "Finished", value: "Finished" }
-];
-
 /**
  * The Shoresh page: a director picks (or starts) a season, then moves between screens with the
  * left-hand menu (desktop-style): Roots, the home, and one screen each for weeks, programs,
@@ -81,7 +81,11 @@ const STATUS_OPTIONS = [
  * copied to start a new one. Every model term is shown in the camp's own words.
  *
  * Every screen stays on the page while another is shown, so typing that is not saved yet is still
- * there when the director comes back to it.
+ * there when the director comes back to it. Each setup screen ends with the next one's button, in
+ * menu order (desktop SetupScreenShell.jsx).
+ *
+ * The season's name and dates are edited next to the season picker, and saved as you go like
+ * everything else in setup (decision 26 (4) and (5)).
  */
 export default class ShoreshCampSetup extends LightningElement {
   camps = [];
@@ -101,8 +105,15 @@ export default class ShoreshCampSetup extends LightningElement {
   newCamp = { Name: "" };
   newSeason = {};
   seasonForm = {};
-  seasonChanged = false;
-  seasonSubmitted = false;
+  // The season's details, opened from the pencil beside the season picker.
+  seasonOpen = false;
+  // Season fields changed and not sent yet; and those sent, not yet answered (field -> count).
+  seasonDirty = new Set();
+  seasonSending = new Map();
+  // Why a season field's last save was refused: data-field -> message, shown under it.
+  seasonErrors = {};
+  // A screen whose heading takes the cursor once it shows (after its "next" button).
+  focusHeadingOf = null;
   // Which location type the Locations table shows; "all" shows every location.
   locationFilter = "all";
   // "Same location?" while it is asked: the places, [{ id, name, fits, activities }].
@@ -188,16 +199,42 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     // Keep typed but unsaved season details when something else was saved.
-    const keepForm =
-      this.seasonChanged &&
-      !this.seasonSubmitted &&
-      this.seasonForm.Id === setup.season.Id;
+    const sameSeason = this.seasonForm.Id === setup.season.Id;
+    const form = { ...setup.season };
+    if (sameSeason) {
+      Object.values(SEASON_INPUTS).forEach((field) => {
+        if (this.seasonDirty.has(field) || this.seasonSending.has(field)) {
+          form[field] = this.seasonForm[field];
+        }
+      });
+    } else {
+      this.seasonDirty = new Set();
+      this.seasonSending = new Map();
+      this.seasonErrors = {};
+    }
     this.setup = setup;
     this.termLabels = setup.labels;
-    if (!keepForm) {
-      this.seasonForm = { ...setup.season };
-      this.seasonChanged = false;
-      this.seasonSubmitted = false;
+    this.seasonForm = form;
+  }
+
+  renderedCallback() {
+    if (!this.focusHeadingOf) {
+      return;
+    }
+    const screen = this.focusHeadingOf;
+    this.focusHeadingOf = null;
+    if (screen === "campWords") {
+      const words = this.template.querySelector("c-shoresh-camp-labels");
+      if (words) {
+        words.focusHeading();
+      }
+      return;
+    }
+    const heading = this.template.querySelector(
+      `[data-screen="${screen}"] [data-heading]`
+    );
+    if (heading) {
+      heading.focus();
     }
   }
 
@@ -250,6 +287,27 @@ export default class ShoreshCampSetup extends LightningElement {
     // A message about another screen's save does not belong on this one.
     this.error = null;
   }
+
+  /** Each setup screen's next screen ({ key, label }), or null: screen -> next. */
+  get next() {
+    const result = {};
+    SCREENS.forEach((screen) => {
+      result[screen] = nextScreen(screen, this.terms, !!this.setup);
+    });
+    return result;
+  }
+
+  /** A screen's "next" button: that screen, with the cursor on its heading (WCAG 2.4.3). */
+  handleNext(event) {
+    const screen = event.currentTarget.dataset.next;
+    if (!canOpen(screen, !!this.setup)) {
+      return;
+    }
+    this.screen = screen;
+    this.mode = "screens";
+    this.error = null;
+    this.focusHeadingOf = screen;
+  }
   get hasCamp() {
     return !!this.campId && !this.isNoCamp && !this.isLoading;
   }
@@ -268,9 +326,6 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get seasonOptions() {
     return this.seasons.map((s) => ({ label: s.Name, value: s.Id }));
-  }
-  get statusOptions() {
-    return STATUS_OPTIONS;
   }
   get problems() {
     return setupProblems(this.setup, this.terms);
@@ -299,8 +354,20 @@ export default class ShoreshCampSetup extends LightningElement {
   get hasNoWeeks() {
     return this.setup && this.setup.weeks.length === 0;
   }
-  get seasonSaveDisabled() {
-    return this.busy || !this.seasonChanged;
+  get showSeasonForm() {
+    return this.seasonOpen && !!this.setup && this.mode === "screens";
+  }
+  get seasonOpenText() {
+    return this.showSeasonForm ? "true" : "false";
+  }
+  get seasonNameError() {
+    return this.seasonErrors.name;
+  }
+  get seasonStartError() {
+    return this.seasonErrors.start;
+  }
+  get seasonEndError() {
+    return this.seasonErrors.end;
   }
   /** Object and field names for the template's tables, as the package has them. */
   get objects() {
@@ -326,10 +393,6 @@ export default class ShoreshCampSetup extends LightningElement {
 
   get seasonEnd() {
     return this.seasonForm[SEASON.EndDate];
-  }
-
-  get seasonStatus() {
-    return this.seasonForm[SEASON.Status];
   }
 
   get copiedFromName() {
@@ -537,7 +600,8 @@ export default class ShoreshCampSetup extends LightningElement {
       newSeason: `New ${t.sIn("Season")}`,
       copySeason: `Copy this ${t.sIn("Season")}`,
       seasonName: `${t.s("Season")} name`,
-      saveSeason: `Save ${t.sIn("Season")}`,
+      editSeason: `Edit ${(this.setup && this.setup.season.Name) || t.sIn("Season")}`,
+      seasonDetails: `${t.s("Season")} details`,
       deleteSeason: `Delete ${t.sIn("Season")}`,
       createSeason: `Create ${t.sIn("Season")}`,
       newSeasonTitle: `Start a new ${t.sIn("Season")}`,
@@ -545,7 +609,6 @@ export default class ShoreshCampSetup extends LightningElement {
         ? `Or go back and use "Copy this ${t.sIn("Season")}" to start from an earlier one.`
         : `Give it a name and its first and last days. You can add ${t.pIn("Week")} and ${t.pIn("Program")} next.`,
       problems: "Needs attention",
-      seasonDates: `${t.s("Season")} dates`,
       addWeek: `Add ${t.s("Week")}`,
       noWeeks: `No ${t.pIn("Week")} yet`,
       overlapsWeek: `Overlaps another ${t.sIn("Week")}`,
@@ -593,12 +656,17 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(() => this.loadCamp(), this.openFailed);
   }
 
+  /** Camp words saved (the editor shows "Saved"): every screen reads them again. */
   async handleLabelsSaved() {
-    this.toast("Saved. Shoresh screens now use your camp words.");
+    // The director stays where they are: the save ran as they left a box, maybe for another
+    // screen. With no season yet, loading would show New season over camp words.
+    const screen = this.screen;
+    const wasScreens = this.mode === "screens";
     await this.run(() => this.loadCamp(), this.openFailed);
-    // Stay on camp words, even before there is a season.
-    this.screen = "campWords";
-    this.mode = "screens";
+    if (wasScreens) {
+      this.screen = screen;
+      this.mode = "screens";
+    }
   }
 
   // ---------- season ----------
@@ -609,38 +677,95 @@ export default class ShoreshCampSetup extends LightningElement {
     await this.run(() => this.loadSeason(), this.openFailed);
   }
 
+  handleToggleSeason() {
+    this.seasonOpen = !this.seasonOpen;
+  }
+
   handleSeasonField(event) {
-    const field = SEASON_INPUTS[event.target.dataset.field];
+    const input = event.target.dataset.field;
+    const field = SEASON_INPUTS[input];
     if (!field) {
       return;
     }
     this.seasonForm = { ...this.seasonForm, [field]: event.detail.value };
-    this.seasonChanged = true;
+    this.seasonDirty.add(field);
+    if (this.seasonErrors[input]) {
+      this.seasonErrors = { ...this.seasonErrors, [input]: null };
+    }
+    const mark = this.template.querySelector(
+      'c-shoresh-saved-mark[data-id="season-saved"]'
+    );
+    if (mark) {
+      mark.clear();
+    }
   }
 
-  async handleSaveSeason() {
-    if (!this.validInputs('[data-form="season"]')) {
+  handleSeasonLeave(event) {
+    if (leftField(event)) {
+      this.saveSeasonField(event.currentTarget);
+    }
+  }
+
+  handleSeasonKey(event) {
+    if (event.key === "Enter") {
+      this.saveSeasonField(event.currentTarget);
+    }
+  }
+
+  /**
+   * Saves the season field left (input), if it changed: only that field is sent. A blank or
+   * impossible value is not sent; the field says why, as any field does.
+   */
+  saveSeasonField(input) {
+    const name = input.dataset.field;
+    const field = SEASON_INPUTS[name];
+    if (!field || !this.seasonDirty.has(field) || !input.reportValidity()) {
       return;
     }
-    const f = this.seasonForm;
-    this.seasonSubmitted = true;
-    const records = [
-      {
-        sobjectType: OBJECT.Season,
-        Id: f.Id,
-        Name: f.Name,
-        [SEASON.StartDate]: f[SEASON.StartDate],
-        [SEASON.EndDate]: f[SEASON.EndDate],
-        [SEASON.Status]: f[SEASON.Status]
+    this.seasonDirty.delete(field);
+    this.seasonSending.set(field, (this.seasonSending.get(field) || 0) + 1);
+    const seasonId = this.seasonForm.Id;
+    const done = () => {
+      const left = (this.seasonSending.get(field) || 0) - 1;
+      if (left > 0) {
+        this.seasonSending.set(field, left);
+      } else {
+        this.seasonSending.delete(field);
       }
-    ];
-    await this.saveAndReload(
-      () => saveRecords({ records }),
-      () => {
-        this.seasonSubmitted = false;
+    };
+    const current = () => this.seasonForm.Id === seasonId;
+    this.saveForm({
+      records: [
+        {
+          sobjectType: OBJECT.Season,
+          Id: seasonId,
+          [field]: this.seasonForm[field]
+        }
+      ],
+      what: `${this.terms.s("Season")} not saved. Your changes are still here.`,
+      onSaved: () => {
+        if (!current()) {
+          return;
+        }
+        done();
+        const mark = this.template.querySelector(
+          'c-shoresh-saved-mark[data-id="season-saved"]'
+        );
+        if (mark) {
+          mark.saved();
+        }
       },
-      `${this.terms.s("Season")} not saved. Your changes are still here.`
-    );
+      onFailure: (message) => {
+        if (!current()) {
+          return;
+        }
+        done();
+        this.seasonDirty.add(field);
+        this.seasonErrors = { ...this.seasonErrors, [name]: message };
+      },
+      // A new name shows in the season picker.
+      reloadSeasons: true
+    });
   }
 
   async handleDeleteSeason() {
@@ -662,6 +787,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.changedOnServer = true;
       this.toast(`Deleted "${this.setup.season.Name}".`);
       this.seasonId = null;
+      this.seasonOpen = false;
       this.screen = "roots";
       await this.loadCamp();
     }, `"${this.setup.season.Name}" not deleted. Nothing was removed.`);
@@ -790,27 +916,20 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
 
-  async handleSaveActivityDetails(event) {
-    const { rules, whoCanDoIt, onFailure } = event.detail;
-    let saved = false;
-    await this.run(
-      async () => {
-        await saveActivityDetails({ rules, whoCanDoIt });
-        this.changedOnServer = true;
-        saved = true;
-        this.toast("Saved.");
-        await this.loadSeason();
-      },
-      `${this.terms.s("Activity")} details not saved. Your changes are still here.`
-    );
-    if (!saved && onFailure) {
-      onFailure();
-    }
+  /** A field of an activity's details, saved as the director leaves it. */
+  handleSaveActivityDetails(event) {
+    const { rules, whoCanDoIt, onSaved, onFailure } = event.detail;
+    return this.saveForm({
+      save: () => saveActivityDetails({ rules, whoCanDoIt }),
+      what: `${this.terms.s("Activity")} details not saved. Your changes are still here.`,
+      onSaved,
+      onFailure
+    });
   }
 
   /**
    * A save from a table (one row, as the director leaves it: SetupTablesController.saveRow,
-   * ADR 0011) or from a program's own form (its records).
+   * ADR 0011) or from a program's own form (a field, as the director leaves it).
    */
   async handleSaveRecords(event) {
     const detail = event.detail;
@@ -818,11 +937,48 @@ export default class ShoreshCampSetup extends LightningElement {
       await this.saveTableRow(detail);
       return;
     }
-    await this.saveAndReload(
-      () => saveRecords({ records: detail.records }),
-      detail.onFailure,
-      this.notSaved(detail.records)
-    );
+    await this.saveForm({
+      records: detail.records,
+      what: this.notSaved(detail.records),
+      onSaved: detail.onSaved,
+      onFailure: detail.onFailure
+    });
+  }
+
+  /**
+   * One field of a setup form (season, program, activity details), saved as the director leaves
+   * it. It waits its turn with the table rows, so saves never pass each other, and like a row it
+   * doesn't make the page busy. The form hears it saved (and shows "Saved") before the season is
+   * read again; a refusal goes back to the form, to show next to the field in camp words.
+   * Done but not read back is said at the top, as the tables do.
+   */
+  saveForm({ records, save, what, onSaved, onFailure, reloadSeasons }) {
+    this.rowSaves = this.rowSaves
+      .then(async () => {
+        let saved = false;
+        this.error = null;
+        try {
+          await (save ? save() : saveRecords({ records }));
+          saved = true;
+          if (onSaved) {
+            onSaved();
+          }
+          await this.loadSeason();
+          if (reloadSeasons) {
+            this.seasons = await getSeasons({ campId: this.campId });
+          }
+        } catch (e) {
+          if (saved) {
+            this.showError(e, this.refreshFailed);
+          } else if (onFailure) {
+            onFailure(failed(what, e));
+          } else {
+            this.showError(e, what);
+          }
+        }
+      })
+      .catch((e) => this.showError(e));
+    return this.rowSaves;
   }
 
   /**

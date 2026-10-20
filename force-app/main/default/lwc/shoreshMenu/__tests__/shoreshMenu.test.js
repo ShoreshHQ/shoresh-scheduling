@@ -1,6 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshMenu from "c/shoreshMenu";
-import { menuSections, canOpen } from "c/shoreshScreens";
+import { menuSections, canOpen, nextScreen } from "c/shoreshScreens";
 import { buildTerms } from "c/shoreshTerms";
 
 const terms = buildTerms([
@@ -144,5 +144,28 @@ describe("c-shoresh-menu", () => {
   it("an entry that can't be opened shows no mark", async () => {
     const element = await render(false, null, { groups: "needed" });
     expect(element.shadowRoot.querySelector("[data-mark]")).toBeNull();
+  });
+
+  it("each setup screen's next follows the menu, skipping what can't open yet", () => {
+    expect(nextScreen("timeBlocks", terms, true)).toEqual({
+      key: "locations",
+      label: "Locations →"
+    });
+    expect(nextScreen("campWords", terms, true)).toEqual({
+      key: "activities",
+      label: "Periods →"
+    });
+    expect(nextScreen("activities", terms, true).label).toBe("Anchors →");
+    // Special events is coming: the last built setup screen has no next.
+    expect(nextScreen("recurringActivities", terms, true)).toBeNull();
+    // Not setup screens.
+    expect(nextScreen("roots", terms, true)).toBeNull();
+    expect(nextScreen("generatedSchedule", terms, true)).toBeNull();
+    // Before a season only camp words opens.
+    expect(nextScreen("locations", terms, false)).toEqual({
+      key: "campWords",
+      label: "Camp words →"
+    });
+    expect(nextScreen("campWords", terms, false)).toBeNull();
   });
 });

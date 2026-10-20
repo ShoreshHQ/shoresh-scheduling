@@ -75,9 +75,14 @@ async function render(setup = SETUP) {
 }
 
 const q = (element, selector) => element.shadowRoot.querySelector(selector);
-const button = (element, label) =>
-  [...element.shadowRoot.querySelectorAll("lightning-button")].find(
-    (b) => b.label === label
+/** Leaves a field (the cursor goes elsewhere on the page). */
+const leave = (input) => input.dispatchEvent(new CustomEvent("focusout"));
+/** The saves sent, with bare names. */
+const sent = (handler) =>
+  handler.mock.calls.map((call) => bareRecord(call[0].detail));
+const savedMark = (element) =>
+  q(element, "c-shoresh-saved-mark").shadowRoot.querySelector(
+    '[data-id="saved"]'
   );
 
 function change(input, value) {
@@ -93,7 +98,7 @@ function change(input, value) {
 
 function allValid(element) {
   element.shadowRoot
-    .querySelectorAll("lightning-input, lightning-combobox")
+    .querySelectorAll("lightning-input, lightning-combobox, lightning-textarea")
     .forEach((input) => {
       input.reportValidity = () => true;
     });
@@ -119,7 +124,9 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-id="who-note"]').textContent).toContain(
       "Only the chosen Units and Bunks"
     );
-    expect(button(element, "Save changes").disabled).toBe(true);
+    expect(element.shadowRoot.querySelectorAll("lightning-button").length).toBe(
+      0
+    );
   });
 
   it("nobody chosen means every group", async () => {
@@ -158,46 +165,135 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-field="notes"]').value).toBe("Life jackets");
   });
 
-  it("saves the rules and the new list together", async () => {
+  it("a tick or a dropdown saves at once; only that rule is sent, with who can do it", async () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("save", handler);
-    change(q(element, '[data-id="who-can-do-it"]'), ["d1"]);
     change(q(element, '[data-field="sameDivision"]'), true);
-    change(q(element, '[data-field="earlyCount"]'), "2");
     change(q(element, '[data-field="earlyDay"]'), "Wednesday");
     await flush();
+    const saves = sent(handler);
+    expect(saves.map((save) => save.rules)).toEqual([
+      { sobjectType: "Activity__c", Id: "a1", SameDivisionOnly__c: true },
+      { sobjectType: "Activity__c", Id: "a1", EarlyWeekByDay__c: "Wednesday" }
+    ]);
+    // The server replaces the list, so it always goes whole.
+    expect(saves[0].whoCanDoIt).toEqual(["g2"]);
+    expect(typeof saves[0].onSaved).toBe("function");
+    expect(typeof saves[0].onFailure).toBe("function");
+  });
+
+  it("a number, the notes, and who can do it save when the director leaves them", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
     allValid(element);
-    button(element, "Save changes").click();
-    const { rules, whoCanDoIt, onFailure } = bareRecord(
-      handler.mock.calls[0][0].detail
+    const who = q(element, '[data-id="who-can-do-it"]');
+    change(who, ["d1"]);
+    change(q(element, '[data-field="earlyCount"]'), "2");
+    change(q(element, '[data-field="notes"]'), "Helmets");
+    await flush();
+    expect(handler).not.toHaveBeenCalled();
+    leave(who);
+    leave(q(element, '[data-field="earlyCount"]'));
+    leave(q(element, '[data-field="notes"]'));
+    await flush();
+    const saves = sent(handler);
+    expect(saves.map((save) => save.rules)).toEqual([
+      { sobjectType: "Activity__c", Id: "a1" },
+      { sobjectType: "Activity__c", Id: "a1", EarlyWeekCount__c: 2 },
+      { sobjectType: "Activity__c", Id: "a1", Notes__c: "Helmets" }
+    ]);
+    expect(saves[0].whoCanDoIt).toEqual(["d1"]);
+    // Leaving again with nothing changed sends nothing more.
+    leave(who);
+    await flush();
+    expect(handler).toHaveBeenCalledTimes(3);
+  });
+
+  it("moving inside the who list (to its buttons) is not leaving it", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const who = q(element, '[data-id="who-can-do-it"]');
+    change(who, ["d1"]);
+    // Focus moving to the list's own buttons is seen from outside as focus on the list itself
+    // (the browser retargets it to the component).
+    who.dispatchEvent(
+      new FocusEvent("focusout", { relatedTarget: who, bubbles: true })
     );
-    expect(whoCanDoIt).toEqual(["d1"]);
-    expect(rules).toEqual({
-      sobjectType: "Activity__c",
-      Id: "a1",
-      SameDivisionOnly__c: true,
-      EarlyWeekCount__c: 2,
-      EarlyWeekByDay__c: "Wednesday",
-      Notes__c: null
-    });
-    expect(typeof onFailure).toBe("function");
+    await flush();
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("an early count the field refuses is not sent", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const count = q(element, '[data-field="earlyCount"]');
+    count.reportValidity = () => false;
+    change(count, "0");
+    leave(count);
+    await flush();
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it("clearing the early-week day sends nothing, not an empty word", async () => {
     const element = await render();
     change(q(element, '[data-id="activity-picker"]'), "a2");
     await flush();
-    change(q(element, '[data-field="earlyCount"]'), "");
-    change(q(element, '[data-field="earlyDay"]'), "");
-    await flush();
     const handler = jest.fn();
     element.addEventListener("save", handler);
     allValid(element);
-    button(element, "Save changes").click();
-    const { rules } = bareRecord(handler.mock.calls[0][0].detail);
-    expect(rules.EarlyWeekCount__c).toBeNull();
-    expect(rules.EarlyWeekByDay__c).toBeNull();
+    change(q(element, '[data-field="earlyCount"]'), "");
+    leave(q(element, '[data-field="earlyCount"]'));
+    change(q(element, '[data-field="earlyDay"]'), "");
+    await flush();
+    const [first, second] = sent(handler);
+    expect(first.rules.EarlyWeekCount__c).toBeNull();
+    expect(second.rules.EarlyWeekByDay__c).toBeNull();
+  });
+
+  it("says Saved quietly once the screen saved it", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    change(q(element, '[data-field="sameDivision"]'), true);
+    await flush();
+    expect(savedMark(element).textContent).toBe("");
+    handler.mock.calls[0][0].detail.onSaved();
+    await flush();
+    expect(savedMark(element).textContent).toContain("Saved");
+    expect(savedMark(element).getAttribute("role")).toBe("status");
+    // Changing something again takes the mark away until that is saved.
+    change(q(element, '[data-field="notes"]'), "x");
+    await flush();
+    expect(savedMark(element).textContent).toBe("");
+  });
+
+  it("a refusal shows next to the field, and what was typed stays to save again", async () => {
+    const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const who = q(element, '[data-id="who-can-do-it"]');
+    change(who, ["g1", "g2"]);
+    leave(who);
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure(
+      "Activity details not saved. Your changes are still here. Try again."
+    );
+    await flush();
+    const why = q(element, '[data-error="who"]');
+    expect(why.textContent).toContain("Activity details not saved.");
+    expect(why.getAttribute("role")).toBe("alert");
+    // A reload from something else saved keeps it.
+    element.setup = nsRecord({ ...SETUP });
+    await flush();
+    expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
+    leave(q(element, '[data-id="who-can-do-it"]'));
+    await flush();
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(sent(handler)[1].whoCanDoIt).toEqual(["g1", "g2"]);
   });
 
   it("keeps unsaved choices when something else on the screen is saved", async () => {
@@ -207,16 +303,23 @@ describe("c-shoresh-activity-details", () => {
     element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
-    expect(button(element, "Save changes").disabled).toBe(false);
   });
 
-  it("cancel puts back what was saved", async () => {
+  it("a choice being saved is not put back by a reload that answers before it", async () => {
     const element = await render();
-    change(q(element, '[data-id="who-can-do-it"]'), []);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    change(q(element, '[data-field="sameDivision"]'), true);
     await flush();
-    button(element, "Cancel changes").click();
+    element.setup = nsRecord({ ...SETUP });
     await flush();
-    expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g2"]);
+    expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
+    handler.mock.calls[0][0].detail.onSaved();
+    const saved = JSON.parse(JSON.stringify(SETUP));
+    saved.activities[0].SameDivisionOnly__c = true;
+    element.setup = nsRecord(saved);
+    await flush();
+    expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
   });
 
   it("asks for activities first when there are none", async () => {
@@ -226,9 +329,14 @@ describe("c-shoresh-activity-details", () => {
     );
   });
 
-  it("switching activities with unsaved choices asks first, and staying keeps them", async () => {
+  it("switching activities with a refused change asks first, and staying keeps it", async () => {
     const element = await render();
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
     change(q(element, '[data-id="who-can-do-it"]'), ["g1", "g2"]);
+    leave(q(element, '[data-id="who-can-do-it"]'));
+    await flush();
+    handler.mock.calls[0][0].detail.onFailure("Not saved.");
     await flush();
     LightningConfirm.open.mockResolvedValue(false);
     change(q(element, '[data-id="activity-picker"]'), "a2");
@@ -244,7 +352,7 @@ describe("c-shoresh-activity-details", () => {
     change(q(element, '[data-id="activity-picker"]'), "a2");
     await flush();
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual([]);
-    expect(button(element, "Save changes").disabled).toBe(true);
+    expect(q(element, '[data-error="who"]')).toBeNull();
   });
 
   it("switching with nothing typed does not ask", async () => {
