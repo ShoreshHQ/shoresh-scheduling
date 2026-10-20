@@ -27,7 +27,7 @@ describe("c/shoreshPublish", () => {
     expect(problemLines(null)).toEqual([]);
   });
 
-  it("names Open cells, dots and each counter above 0", () => {
+  it("names Filled while cells are Open, dots and each counter above 0, in the counters' words", () => {
     expect(
       problemLines({
         ...CLEAN,
@@ -41,7 +41,7 @@ describe("c/shoreshPublish", () => {
         spread: ["c"]
       })
     ).toEqual([
-      "3 of 10 cells still Open.",
+      "Filled: 7 of 10",
       "2 activities need a look.",
       "Overlapping: 1",
       "Still needed: 2",
@@ -56,7 +56,7 @@ describe("c/shoreshPublish", () => {
         cells: { filled: 0, total: 1 },
         flags: new Map([["k1", "x"]])
       })
-    ).toEqual(["1 of 1 cell still Open.", "1 activity needs a look."]);
+    ).toEqual(["Filled: 0 of 1", "1 activity needs a look."]);
   });
 
   it("leaves out a counter the camp has no targets for, as the screen does", () => {
@@ -105,7 +105,7 @@ describe("c/shoreshPublish", () => {
     expect(question).toEqual({
       kind: "ask",
       heading: "Publish Week 1?",
-      lines: ["1 of 10 cells still Open."],
+      lines: ["Filled: 9 of 10"],
       confirmLabel: "Publish"
     });
   });

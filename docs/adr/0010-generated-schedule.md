@@ -512,10 +512,11 @@ limits.
     - then the toolbar: **Rebuild** (the whole week again, same option, after the confirm),
       **Fill the open cells** (fill mode; greyed while nothing is Open), **Try another** (the
       next option, saved at once), **Option** (every option tried this visit and the one saved:
-      picking one builds it again, exactly, decision 4), and **Start over** (after the confirm:
-      every activity cleared; fixed and recurring activities and things not set up yet stay;
-      the option stays). Each saves the whole week through G2's `saveWeek` with its action;
-    - the confirm, the desktop's `ConfirmRegenModal` with Greg's decisions: _Rebuild this schedule?_ / _Builds Week 1 again from your setup._ / _Saved to Versions first._ /
+      picking one builds it again, exactly, decision 4), and **Start over** (every activity
+      cleared; fixed and recurring activities and things not set up yet stay; the option stays;
+      at once with Undo since 2026-10-20, §55). Each saves the whole week through G2's
+      `saveWeek` with its action;
+    - the confirm (Rebuild only since 2026-10-20, §55), the desktop's `ConfirmRegenModal` with Greg's decisions: _Rebuild this schedule?_ / _Builds Week 1 again from your setup._ / _Saved to Versions first._ /
       Cancel (focus first), **Rebuild it**; and _Start over?_ / _Clears the 34 activity cells
       in Week 1. Fixed activities and recurring activities stay._ (each cell holding an
       activity where the bunk is at camp: what it clears; things not set up yet stay, so Filled
@@ -540,9 +541,9 @@ limits.
       legend. Cells are in a keyboard grid (arrows) so a dot's words can be read, and every cell
       is read-only (below);
     - the counters and the _Still to place_ list are Manual Build's shared
-      `c-shoresh-week-checks`, with `route="generated"`: **Filled**, **Open** (instead of
-      Overlapping, as the desktop shows Unfillable there; overlaps are still listed), **Still
-      needed**, **Spread across the week**; each counter shows only its own lines and lights up
+      `c-shoresh-week-checks`, with `route="generated"`: **Filled**, **Overlapping** (until
+      2026-10-20 **Open**, as the desktop shows Unfillable there; replaced by Greg's decision 3,
+      §55), **Still needed**, **Spread across the week**; each counter shows only its own lines and lights up
       their cells (an Open or overlapping line its cell; a still needed or spread line every
       placement of that activity for that group, desktop `findingHighlight.js`), **Review all**
       shows every line; clicking a line opens that group's week at that cell. Manual Build's
@@ -560,26 +561,25 @@ limits.
 The desktop's generated route (`ScheduleScreen.jsx`, `useGeneration.js`, `ConfirmRegenModal.jsx`,
 `FindingsRail.jsx`, Director Guide §4) and what is different here, each with its reason.
 
-| Desktop                                                                      | Here                                                                                                              | Why                                                                                                                 |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| One action, **Rebuild**                                                      | Rebuild, Try another, Option, Fill the open cells, Start over                                                     | Greg's decisions 2, 4 and 5                                                                                         |
-| _Replaces this schedule, including your edits._                              | _Builds Week 1 again from your setup._ (G4 adds _Locked cells stay as they are._)                                 | Hand edits are locks and are kept (decision 2); there are no locks before G4                                        |
-| Confirm shown for Rebuild only                                               | Also for Start over, naming how many filled cells it clears                                                       | Start over clears everything (decision 2); the design guide's confirmations name live counts                        |
-| Rebuild is quiet, red on hover                                               | Every action quiet; only the confirm's button is red                                                              | Design guide: destructive is loud once, in the dialog; Rebuild keeps a version first                                |
-| A version only when the week had cells                                       | Rebuild, Try another and Start over always keep one; Fill the open cells none                                     | G2 §16                                                                                                              |
-| Seed fixed per camp and program                                              | Program + week + option; any option brought back                                                                  | Decision 4                                                                                                          |
-| Admins only ("Admin only")                                                   | Anyone with Shoresh Scheduler access                                                                              | Decision 8                                                                                                          |
-| **Unfillable** counter, red; cells marked _Unfillable_ in red, with a reason | **Open**, bronze; a cell no activity fits has the dot _No activity fits this gap_, a busy one _Already busy then_ | Never blank (decision 7): only a busy or no-fit cell stays Open; one word, Open; red only for errors (design guide) |
-| Highlight colour by kind (red, bronze, green)                                | One bronze outline and tint                                                                                       | Bronze is the caution hue; red only for errors (design guide)                                                       |
-| Counters under the toolbar                                                   | Below the grid                                                                                                    | Design guide: "The generated schedule opens on the grid; concern counts sit below it"                               |
-| _Placed X of Y_                                                              | _Filled X of Y_                                                                                                   | Decision 16 (one word per idea)                                                                                     |
-| Engine's raw finding text ("Goal: N×/wk — scheduled M×")                     | The engine's lines (_Swim · Bunk 3: 1 still needed_)                                                              | ADR 0010 §7 and §11: one set of words for both schedules                                                            |
-| Indeterminate bar, engine on the main thread                                 | The same moving bar for a short build; a long one shows how far it has got, to 100, run in pieces                 | A 40-bunk week takes about 6 s; the tab must not freeze (§22)                                                       |
-| Drag, swap, undo on the generated grid                                       | Read-only until G4                                                                                                | §25                                                                                                                 |
-| Rebuild clears Undo and Accepted findings                                    | Accepted lines come back after each build or reload, as on the desktop; no Undo here yet                          | Undo comes with editing in G4                                                                                       |
-| Neutral _Schedule_ entry: _Open_ with each route's _X of Y placed_           | Roots door with both buttons, no counts                                                                           | The counts would need both drafts read for a week before one is chosen; the door names no week                      |
-| Rainy day…, Export, Versions dropdown on the toolbar                         | Not on this screen                                                                                                | Not built for either schedule yet                                                                                   |
-| Special days replace days                                                    | Not here                                                                                                          | Special days aren't set up in Salesforce yet                                                                        |
+| Desktop                                                                      | Here                                                                                                                                                                  | Why                                                                                                               |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| One action, **Rebuild**                                                      | Rebuild, Try another, Option, Fill the open cells, Start over                                                                                                         | Greg's decisions 2, 4 and 5                                                                                       |
+| _Replaces this schedule, including your edits._                              | _Builds Week 1 again from your setup._ (G4 adds _Locked cells stay as they are._)                                                                                     | Hand edits are locks and are kept (decision 2); there are no locks before G4                                      |
+| Confirm shown for Rebuild only                                               | The same; Start over (not on the desktop) acts at once and offers Undo                                                                                                | Greg's decision 2, 2026-10-20 (§55): as Manual Build's Clear week; Undo brings back the version kept first        |
+| Rebuild is quiet, red on hover                                               | Every action quiet; only the confirm's button is red                                                                                                                  | Design guide: destructive is loud once, in the dialog; Rebuild keeps a version first                              |
+| A version only when the week had cells                                       | Rebuild, Try another and Start over always keep one; Fill the open cells none                                                                                         | G2 §16                                                                                                            |
+| Seed fixed per camp and program                                              | Program + week + option; any option brought back                                                                                                                      | Decision 4                                                                                                        |
+| Admins only ("Admin only")                                                   | Anyone with Shoresh Scheduler access                                                                                                                                  | Decision 8                                                                                                        |
+| **Unfillable** counter, red; cells marked _Unfillable_ in red, with a reason | **Overlapping**, as Manual Build; a cell no activity fits has the dot _No activity fits this gap_, a busy one _Already busy then_, and Filled counts it as not filled | Greg's decision 3, 2026-10-20 (§55): one set of counter words on both screens; red only for errors (design guide) |
+| Highlight colour by kind (red, bronze, green)                                | One bronze outline and tint                                                                                                                                           | Bronze is the caution hue; red only for errors (design guide)                                                     |
+| _Placed X of Y_                                                              | _Filled X of Y_                                                                                                                                                       | Decision 16 (one word per idea)                                                                                   |
+| Engine's raw finding text ("Goal: N×/wk — scheduled M×")                     | The engine's lines (_Swim · Bunk 3: 1 still needed_)                                                                                                                  | ADR 0010 §7 and §11: one set of words for both schedules                                                          |
+| Indeterminate bar, engine on the main thread                                 | The same moving bar for a short build; a long one shows how far it has got, to 100, run in pieces                                                                     | A 40-bunk week takes about 6 s; the tab must not freeze (§22)                                                     |
+| Drag, swap, undo on the generated grid                                       | Read-only until G4                                                                                                                                                    | §25                                                                                                               |
+| Rebuild clears Undo and Accepted findings                                    | Accepted lines come back after each build or reload, as on the desktop; no Undo here yet                                                                              | Undo comes with editing in G4                                                                                     |
+| Neutral _Schedule_ entry: _Open_ with each route's _X of Y placed_           | Roots door with both buttons, no counts                                                                                                                               | The counts would need both drafts read for a week before one is chosen; the door names no week                    |
+| Rainy day…, Export, Versions dropdown on the toolbar                         | Not on this screen                                                                                                                                                    | Not built for either schedule yet                                                                                 |
+| Special days replace days                                                    | Not here                                                                                                                                                              | Special days aren't set up in Salesforce yet                                                                      |
 
 ## Choices (G5)
 
@@ -929,9 +929,10 @@ _Published <date, time>_, never deleted). The desktop has no Publish. What diffe
     since_, and Publish then says _Week 1 is already published as it is._
 44. **What is still to do** is the screen's own check, the same one its counters show
     (`c/shoreshPublish` `problemLines` with this screen's `checked` and the counters' `counts`):
-    the Open cells as the Open counter counts them (a cell locked empty is not Open, §31, and an
-    Open cell with a reason dot is one of them), every placement with a dot (_N activities need a
-    look._), then Overlapping, Still needed and Spread across the week above 0. The _not placed_
+    _Filled: 34 of 36_ while cells are Open, in the Filled counter's words (a cell locked empty
+    is not Open, §31, and an Open cell with a reason dot is one of them; until 2026-10-20 _2 of
+    36 cells still Open._, §55), every placement with a dot (_N activities need a look._), then
+    Overlapping, Still needed and Spread across the week above 0. The _not placed_
     list only exists before the first Generate, when there is nothing to publish.
 45. **Toolbar.** **Publish** (brand) is last in the editor's toolbar, after Start over, with
     **Unpublish** and _Published from Generated Schedule Oct 18, 10:04 AM by Pat_ (· _changed since_;
@@ -1076,6 +1077,62 @@ no Save version or delete; none shown when it has none), Restore there makes it 
 Generated Schedule (focus on Rebuild after), its list waits while that Restore is on its way and
 renames, and a refused one offers Reload; a Restore whose week is read late is shown
 as restored once only. Each connection was taken away once and a test failed.
+
+## Choices (same layout as Manual Build, 2026-10-20)
+
+From the look-and-feel review of both schedule screens (Greg approved the three calls below as
+recommended, 2026-10-20; the rest is the coordinator's, following the desktop).
+
+55. **One layout, one set of words, one way to wipe a week.**
+    - **One editor shell from the start.** The week editor (§38) is drawn before the week is
+      generated, as Manual Build draws it: the week and program pickers sit in its toolbar from
+      the first moment, so they no longer jump from a toolbar of their own into the editor's
+      once the week is drawn. Before the first Generate the editor shows no week (no views, no
+      Undo); the build's bar, an error, a conflict and _not placed_ sit under its toolbar, and
+      _Let the app propose one_, what building still needs, _no days_ and _no weeks yet_ below
+      that. Choosing a week not generated yet lets the last week go from the editor (its grid,
+      Undo, the typing box) before the next is read.
+    - **Counters under the toolbar**, in the editor's `checks` slot, where Manual Build and the
+      desktop put them (`ScheduleScreen.jsx`, owner 2026-09-12: "reads directly under the view
+      switcher rather than below the grid"). The earlier design-guide reason for putting them
+      below the grid no longer holds against both screens doing it one way.
+    - **Versions and Publish at the right edge** on both screens: a spacer before the divider
+      (Manual Build had the style but never drew it). **Start over** moves left of the spacer,
+      last of the actions that change the week, where Manual Build has Clear week.
+    - **One counter vocabulary** (Greg's decision 3): **Filled** _X of Y_ and **Overlapping** on
+      both screens, then Still needed and Spread across the week when the camp has those
+      targets. Generated's **Open** counter and its lines go; an Open cell still has its reason
+      dot in the grid (_Already busy then_, _No activity fits this gap_), and Filled counts it as
+      not filled. The generated route keeps its own way of opening the list (each counter its
+      own lines, lit cells, **Review all**). The Publish question uses the counters' words:
+      _Filled: 34 of 36_, _Overlapping: 2_, _Still needed: 1_ (`c/shoreshPublish`, both
+      screens; was _2 of 36 cells still Open._).
+    - **Start over acts at once, with Undo** (Greg's decision 2), as Manual Build's Clear week
+      does: no confirm. It still keeps _Before Start over_ first (§16). The quiet line under the
+      toolbar says _Started Week 1 over · Undo_ while the week is as Start over saved it (same
+      revision); any later save (a hand edit, a Lock, a build, a Restore) or another week takes
+      it away. **Undo** restores the version Start over kept (`restoreVersion`, §50, with the
+      revision Start over saved: someone else's save since is refused and offers Reload, as any
+      Restore), so cells, locks and option come back; it keeps _Before Restore_ as every Restore
+      does. The line then says _Undone: Started Week 1 over._ and focus goes back to Start
+      over. Rebuild keeps its confirm (the desktop's `ConfirmRegenModal`). No server change: the
+      version's Id already came back with every save (`saveWeek` `versionId`).
+
+Not in this change: Generated's own "setup changed" marks and Update to match setup (a separate
+piece), and its second announcement region.
+
+## Tests (same layout)
+
+Jest: the week picker is the same element in the editor's `pickers` slot before and after
+Generate, with no toolbar of the screen's own; the counters are in the `checks` slot; the spacer
+sits after Start over and before Versions (Manual Build: before its divider); choosing a week not
+generated yet takes the last grid away, the picker unmoved (this test fails, crashing the run,
+when the editor is not told to let the week go); `c-shoresh-week-checks` shows Filled,
+Overlapping and Still needed on the generated route, no Open counter and no Open lines, and
+overlapping lines light their cells; Start over saves at once with no confirm, shows the Undo
+line, and Undo restores the kept version with the saved revision (its lock back, the line gone,
+said, focus on Start over), a refused Undo offers Reload, a later save takes the line away, and
+no line shows without a kept version; Publish's lines read _Filled: X of Y_ on both screens.
 
 ## Choices that are hard to undo after release
 

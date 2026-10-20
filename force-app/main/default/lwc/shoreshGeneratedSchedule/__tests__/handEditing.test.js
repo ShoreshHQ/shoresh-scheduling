@@ -640,11 +640,15 @@ describe("hand editing on the Generated Schedule screen", () => {
   });
 
   it("a counter's lit cells are lit in the editor's grid", async () => {
-    const element = await render(savedWeek({ rows: ["1,,,", "1,,,"] }));
+    // Bunk 1 swims once (Monday, Period 1) of the two it needs: Still needed lights that Swim.
+    const week = savedWeek();
+    week.days[1] = { ...week.days[1], rows: ["1,,,", "1,,,"] };
+    const element = await render(week);
     const checks = q(element, "c-shoresh-week-checks");
-    checks.shadowRoot.querySelector('[data-counter="open"]').click();
+    expect(cellAt(element, "0-1").className).not.toContain("cell_lit");
+    checks.shadowRoot.querySelector('[data-counter="stillNeeded"]').click();
     await flush();
-    expect(cellAt(element, "0-2").className).toContain("cell_lit");
+    expect(cellAt(element, "0-1").className).toContain("cell_lit");
   });
 
   it("Add <name> to activities adds on the Generated draft, not Manual Build's, and places it", async () => {
