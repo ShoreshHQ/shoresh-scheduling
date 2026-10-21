@@ -30,6 +30,16 @@ private class SpecialDatesTest {
       return event.Id;
     }
 
+    String refusalOf(Id itemId, String week, String day) {
+      try {
+        SpecialDates.place(itemId, ids.get(week), day);
+        Assert.fail('Refused: ' + week + ' ' + day);
+      } catch (DmlException e) {
+        return e.getDmlMessage(0);
+      }
+      return null;
+    }
+
     Id location(String name) {
       Location__c location = new Location__c(
         Season__c = season.Id,
@@ -39,16 +49,6 @@ private class SpecialDatesTest {
       Database.insert(location, AccessLevel.USER_MODE);
       return location.Id;
     }
-  }
-
-  private static String refusalOf(Id itemId, String week, String day, Camp c) {
-    try {
-      SpecialDates.place(itemId, c.ids.get(week), day);
-      Assert.fail('Refused: ' + week + ' ' + day);
-    } catch (DmlException e) {
-      return e.getDmlMessage(0);
-    }
-    return null;
   }
 
   @IsTest
@@ -83,7 +83,7 @@ private class SpecialDatesTest {
 
       Assert.areEqual(
         'Tuesday of "Week 2" already has the special day "Field Day". Take it off first, or choose another day.',
-        refusalOf(colorWar, 'Week 2', 'Tuesday', c)
+        c.refusalOf(colorWar, 'Week 2', 'Tuesday')
       );
       // Another day of the same week is free.
       SpecialDates.place(colorWar, c.ids.get('Week 2'), 'Wednesday');
@@ -135,7 +135,7 @@ private class SpecialDatesTest {
 
       Assert.areEqual(
         'This special event is already on Monday of "Week 1".',
-        refusalOf(carnival, 'Week 1', 'Monday', c)
+        c.refusalOf(carnival, 'Week 1', 'Monday')
       );
     }
   }
@@ -155,7 +155,7 @@ private class SpecialDatesTest {
 
       Assert.areEqual(
         '"Short week" has no Monday.',
-        refusalOf(c.specialDay('Field Day'), 'Short week', 'Monday', c)
+        c.refusalOf(c.specialDay('Field Day'), 'Short week', 'Monday')
       );
     }
   }
@@ -169,7 +169,7 @@ private class SpecialDatesTest {
 
       Assert.areEqual(
         'This week belongs to a different season than the special day.',
-        refusalOf(c.specialDay('Field Day'), 'Other week', 'Monday', c)
+        c.refusalOf(c.specialDay('Field Day'), 'Other week', 'Monday')
       );
     }
   }

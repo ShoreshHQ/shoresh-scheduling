@@ -33,14 +33,42 @@ public with sharing class SpecialDateTriggerHandler {
         WITH SYSTEM_MODE
       ]
     );
-    Map<Id, SObject> items = itemsOf(itemIds);
-    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
-      seasonIds
-    );
+    Batch batch = new Batch();
+    batch.weeks = weeks;
+    batch.items = itemsOf(itemIds);
+    batch.labelsBySeason = SetupSeasons.labelsWhenNeeded(seasonIds);
     for (SpecialDate__c row : rows) {
-      check(row, weeks.get(row.Week__c), items, labelsBySeason);
+      batch.check(row);
     }
-    refuseTaken(rows, weekIds, savingIds, weeks, labelsBySeason);
+    batch.refuseTaken(rows, takenBy(weekIds, savingIds));
+  }
+
+  /** What is already on the weeks' days, by key: the special day's or event's name. */
+  private static Map<String, String> takenBy(
+    Set<Id> weekIds,
+    Set<Id> savingIds
+  ) {
+    Map<String, String> result = new Map<String, String>();
+    for (SpecialDate__c existing : [
+      SELECT
+        Week__c,
+        Day__c,
+        SpecialDay__c,
+        SpecialEvent__c,
+        SpecialDay__r.Name,
+        SpecialEvent__r.Name
+      FROM SpecialDate__c
+      WHERE Week__c IN :weekIds AND Id NOT IN :savingIds
+      WITH SYSTEM_MODE
+    ]) {
+      result.put(
+        keyOf(existing),
+        existing.SpecialDay__c != null
+          ? existing.SpecialDay__r.Name
+          : existing.SpecialEvent__r.Name
+      );
+    }
+    return result;
   }
 
   private static Map<Id, SObject> itemsOf(Set<Id> itemIds) {
@@ -64,104 +92,84 @@ public with sharing class SpecialDateTriggerHandler {
     return items;
   }
 
-  private static void check(
-    SpecialDate__c row,
-    Week__c week,
-    Map<Id, SObject> items,
-    SetupSeasons.LazyLabels labelsBySeason
-  ) {
-    String term = termOf(row);
-    SObject item = items.get(itemOf(row));
-    if (week != null && week.Season__c != row.Season__c) {
-      row.Week__c.addError(
-        SetupSeasons.otherSeason(
-          labelsBySeason.get(row.Season__c),
-          'Week',
-          term
-        )
-      );
-    } else if (item != null && seasonOf(item) != row.Season__c) {
-      row.addError(
-        SetupSeasons.otherSeason(
-          labelsBySeason.get(row.Season__c),
-          term,
-          'Week'
-        )
-      );
-    } else if (
-      week != null &&
-      row.Day__c != null &&
-      SpecialDates.dateOf(week.StartDate__c, week.EndDate__c, row.Day__c) ==
-      null
-    ) {
-      row.Day__c.addError('"' + week.Name + '" has no ' + row.Day__c + '.');
-    }
-  }
+  /** One save's weeks, special days and events, and camp words. */
+  private class Batch {
+    private Map<Id, Week__c> weeks;
+    private Map<Id, SObject> items;
+    private SetupSeasons.LazyLabels labelsBySeason;
 
-  /**
-   * 'Tuesday of "Week 2" already has the special day "Color War". Take it off first, or choose
-   * another day.' Rows in this save are compared with their new values, so moving two in one
-   * save is fine.
-   */
-  private static void refuseTaken(
-    List<SpecialDate__c> rows,
-    Set<Id> weekIds,
-    Set<Id> savingIds,
-    Map<Id, Week__c> weeks,
-    SetupSeasons.LazyLabels labelsBySeason
-  ) {
-    Map<String, String> takenBy = new Map<String, String>();
-    for (SpecialDate__c existing : [
-      SELECT
-        Week__c,
-        Day__c,
-        SpecialDay__c,
-        SpecialEvent__c,
-        SpecialDay__r.Name,
-        SpecialEvent__r.Name
-      FROM SpecialDate__c
-      WHERE Week__c IN :weekIds AND Id NOT IN :savingIds
-      WITH SYSTEM_MODE
-    ]) {
-      takenBy.put(
-        keyOf(existing),
-        existing.SpecialDay__c != null
-          ? existing.SpecialDay__r.Name
-          : existing.SpecialEvent__r.Name
-      );
+    private void check(SpecialDate__c row) {
+      Week__c week = weeks.get(row.Week__c);
+      String term = termOf(row);
+      SObject item = items.get(itemOf(row));
+      if (week != null && week.Season__c != row.Season__c) {
+        row.Week__c.addError(
+          SetupSeasons.otherSeason(
+            labelsBySeason.get(row.Season__c),
+            'Week',
+            term
+          )
+        );
+      } else if (item != null && seasonOf(item) != row.Season__c) {
+        row.addError(
+          SetupSeasons.otherSeason(
+            labelsBySeason.get(row.Season__c),
+            term,
+            'Week'
+          )
+        );
+      } else if (
+        week != null &&
+        row.Day__c != null &&
+        SpecialDates.dateOf(week.StartDate__c, week.EndDate__c, row.Day__c) ==
+        null
+      ) {
+        row.Day__c.addError('"' + week.Name + '" has no ' + row.Day__c + '.');
+      }
     }
-    for (SpecialDate__c row : rows) {
-      if (row.hasErrors() || row.Week__c == null) {
-        continue;
+
+    /**
+     * 'Tuesday of "Week 2" already has the special day "Color War". Take it off first, or choose
+     * another day.' Rows in this save are compared with their new values, so moving two in one
+     * save is fine.
+     */
+    private void refuseTaken(
+      List<SpecialDate__c> rows,
+      Map<String, String> takenBy
+    ) {
+      for (SpecialDate__c row : rows) {
+        if (row.hasErrors() || row.Week__c == null) {
+          continue;
+        }
+        String other = takenBy.get(row.Key__c);
+        if (other == null) {
+          takenBy.put(row.Key__c, '');
+          continue;
+        }
+        CampLabels labels = labelsBySeason.get(row.Season__c);
+        String onDay = SpecialDates.onDay(
+          row.Day__c,
+          weeks.get(row.Week__c)?.Name
+        );
+        row.addError(
+          row.SpecialDay__c != null
+            ? onDay +
+              ' already has ' +
+              (String.isBlank(other)
+                ? 'a ' + labels.singularInSentence('SpecialDay')
+                : 'the ' +
+                  labels.singularInSentence('SpecialDay') +
+                  ' "' +
+                  other +
+                  '"') +
+              '. Take it off first, or choose another day.'
+            : 'This ' +
+              labels.singularInSentence('SpecialEvent') +
+              ' is already on ' +
+              onDay +
+              '.'
+        );
       }
-      String other = takenBy.get(row.Key__c);
-      if (other == null) {
-        takenBy.put(row.Key__c, '');
-        continue;
-      }
-      CampLabels labels = labelsBySeason.get(row.Season__c);
-      String onDay = SpecialDates.onDay(
-        row.Day__c,
-        weeks.get(row.Week__c)?.Name
-      );
-      row.addError(
-        row.SpecialDay__c != null
-          ? onDay +
-            ' already has ' +
-            (String.isBlank(other)
-              ? 'a ' + labels.singularInSentence('SpecialDay')
-              : 'the ' +
-                labels.singularInSentence('SpecialDay') +
-                ' "' +
-                other +
-                '"') +
-            '. Take it off first, or choose another day.'
-          : 'This ' +
-            labels.singularInSentence('SpecialEvent') +
-            ' is already on ' +
-            onDay +
-            '.'
-      );
     }
   }
 

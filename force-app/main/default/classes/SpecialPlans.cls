@@ -54,18 +54,7 @@ public with sharing class SpecialPlans {
     Item item = locked(itemId);
     List<PlanPart__c> before = partsOf(new Set<Id>{ itemId }).get(itemId);
     before = before == null ? new List<PlanPart__c>() : before;
-    Integer current = before.isEmpty() || before[0].Revision__c == null
-      ? null
-      : before[0].Revision__c.intValue();
-    if (current != expectedRevision) {
-      CampLabels labels = CampLabels.forCamp(item.campId);
-      throw new ShoreshException(
-        'Someone else changed this ' +
-          labels.singularInSentence(item.term) +
-          ' since you opened it. Open it again to see their changes, then make yours.'
-      );
-    }
-    Integer revision = current == null ? 1 : current + 1;
+    Integer revision = nextRevision(item, before, expectedRevision);
     List<String> texts = ScheduleGridParts.split(grid);
     List<PlanPart__c> toSave = new List<PlanPart__c>();
     for (Integer i = 0; i < texts.size(); i++) {
@@ -91,6 +80,26 @@ public with sharing class SpecialPlans {
       throw e;
     }
     return revision;
+  }
+
+  /** The revision this save writes; refused if the plan was saved since it was opened. */
+  private static Integer nextRevision(
+    Item item,
+    List<PlanPart__c> before,
+    Integer expectedRevision
+  ) {
+    Integer current = before.isEmpty() || before[0].Revision__c == null
+      ? null
+      : before[0].Revision__c.intValue();
+    if (current != expectedRevision) {
+      CampLabels labels = CampLabels.forCamp(item.campId);
+      throw new ShoreshException(
+        'Someone else changed this ' +
+          labels.singularInSentence(item.term) +
+          ' since you opened it. Open it again to see their changes, then make yours.'
+      );
+    }
+    return current == null ? 1 : current + 1;
   }
 
   private class Item {

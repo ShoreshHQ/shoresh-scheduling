@@ -202,6 +202,50 @@ public class SpecialPlansTest {
     }
   }
 
+  /** count special days, then count special events, each with a one-part plan of this text. */
+  private static List<Id> itemsWithPlans(
+    Id seasonId,
+    String text,
+    Integer count
+  ) {
+    List<SpecialDay__c> days = new List<SpecialDay__c>();
+    List<SpecialEvent__c> events = new List<SpecialEvent__c>();
+    for (Integer i = 1; i <= count; i++) {
+      days.add(new SpecialDay__c(Season__c = seasonId, Name = 'Day ' + i));
+      events.add(
+        new SpecialEvent__c(Season__c = seasonId, Name = 'Event ' + i)
+      );
+    }
+    Database.insert(days, AccessLevel.USER_MODE);
+    Database.insert(events, AccessLevel.USER_MODE);
+    List<Id> itemIds = new List<Id>();
+    List<PlanPart__c> parts = new List<PlanPart__c>();
+    for (SpecialDay__c day : days) {
+      itemIds.add(day.Id);
+      parts.add(
+        new PlanPart__c(
+          Season__c = seasonId,
+          SpecialDay__c = day.Id,
+          Plan__c = text,
+          Revision__c = 1
+        )
+      );
+    }
+    for (SpecialEvent__c event : events) {
+      itemIds.add(event.Id);
+      parts.add(
+        new PlanPart__c(
+          Season__c = seasonId,
+          SpecialEvent__c = event.Id,
+          Plan__c = text,
+          Revision__c = 1
+        )
+      );
+    }
+    Database.insert(parts, AccessLevel.USER_MODE);
+    return itemIds;
+  }
+
   @IsTest
   static void readingAndSavingPlansStaysWithinAFewQueries() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -209,42 +253,14 @@ public class SpecialPlansTest {
       Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Map<String, Id> ids = ShoreshTestData.lastSeasonIds;
       // A season with plenty: 8 special days and 8 special events, each with a plan.
-      List<SpecialDay__c> days = new List<SpecialDay__c>();
-      List<SpecialEvent__c> events = new List<SpecialEvent__c>();
-      for (Integer i = 1; i <= 8; i++) {
-        days.add(new SpecialDay__c(Season__c = season.Id, Name = 'Day ' + i));
-        events.add(
-          new SpecialEvent__c(Season__c = season.Id, Name = 'Event ' + i)
-        );
-      }
-      Database.insert(days, AccessLevel.USER_MODE);
-      Database.insert(events, AccessLevel.USER_MODE);
-      List<SObject> items = new List<SObject>();
-      items.addAll(days);
-      items.addAll(events);
-      List<PlanPart__c> parts = new List<PlanPart__c>();
-      String text = plan(ids, 2).toText();
-      Set<Id> itemIds = new Set<Id>();
-      for (SObject item : items) {
-        itemIds.add(item.Id);
-        PlanPart__c part = new PlanPart__c(
-          Season__c = season.Id,
-          Plan__c = text,
-          Revision__c = 1
-        );
-        if (item instanceof SpecialDay__c) {
-          part.SpecialDay__c = item.Id;
-        } else {
-          part.SpecialEvent__c = item.Id;
-        }
-        parts.add(part);
-      }
-      Database.insert(parts, AccessLevel.USER_MODE);
-      Id firstDay = days[0].Id;
+      List<Id> itemIds = itemsWithPlans(season.Id, plan(ids, 2).toText(), 8);
+      Id firstDay = itemIds[0];
 
       Test.startTest();
       Integer start = Limits.getQueries();
-      Map<Id, SpecialPlans.Plan> read = SpecialPlans.readAll(itemIds);
+      Map<Id, SpecialPlans.Plan> read = SpecialPlans.readAll(
+        new Set<Id>(itemIds)
+      );
       Integer readQueries = Limits.getQueries() - start;
       start = Limits.getQueries();
       SpecialPlans.write(firstDay, plan(ids, 1), 1);
