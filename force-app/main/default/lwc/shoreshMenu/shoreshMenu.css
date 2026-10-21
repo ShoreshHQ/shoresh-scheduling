@@ -110,7 +110,7 @@ ul {
 /* The screen shown: raised (the one raised treatment), its words the value style. */
 .menu-action.shoresh-raised,
 .menu-action.shoresh-raised:hover {
-  background: var(--shoresh-color-accent);
+  background: var(--shoresh-color-primary-50);
   color: var(--shoresh-text-1);
   font-weight: 500;
 }
@@ -186,7 +186,7 @@ ul {
 
 /*
  * The desktop's menu marks (Sidebar.jsx): "!" when an area building needs is empty, "✓" when it
- * has rows. Both in the four colours: "!" in the text colour, "✓" a highlight icon (green on the
+ * has rows. Both in the three colours: "!" in the text colour, "✓" a highlight icon (green on the
  * shelf passes the 3:1 a mark needs).
  */
 .menu-mark {

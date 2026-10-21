@@ -1,5 +1,5 @@
 /**
- * The design system's values (ADR 0015): Greg's four colours exactly, the tonal surfaces, the
+ * The design system's values (ADR 0015): Greg's three colours exactly, the tonal surfaces, the
  * spacing steps, and that every pair of words and surface the system allows is readable.
  */
 const fs = require("fs");
@@ -15,6 +15,13 @@ const tokens = Object.fromEntries(
   ])
 );
 
+/** A token's colour, following var(--name) to the value it names. */
+function colour(name) {
+  const value = tokens[name];
+  const ref = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(value || "");
+  return ref ? colour(ref[1]) : value;
+}
+
 /** WCAG relative luminance contrast of two #rrggbb colours. */
 function contrast(a, b) {
   const lum = (hex) => {
@@ -29,19 +36,49 @@ function contrast(a, b) {
 }
 
 describe("c/shoreshTokens", () => {
-  it("has Greg's four colours, exactly (wiki decision 35)", () => {
-    expect(tokens["--shoresh-color-primary"]).toBe("#aeb6a7");
-    expect(tokens["--shoresh-color-accent"]).toBe("#f6f8f5");
-    expect(tokens["--shoresh-color-text"]).toBe("#26231b");
+  it("has three colours, exactly: one primary family, one highlight, text (wiki decision 40)", () => {
+    const colours = Object.keys(tokens).filter(
+      (name) => name.startsWith("--shoresh-color-") && !name.includes("-press")
+    );
+    expect(
+      colours.filter((name) => !/^--shoresh-color-primary-\d+$/.test(name))
+    ).toEqual(["--shoresh-color-highlight", "--shoresh-color-text"]);
+    // The primary family runs from the lightest step to Greg's primary (decision 35).
+    expect(tokens["--shoresh-color-primary-50"]).toBe("#f6f8f5");
+    expect(tokens["--shoresh-color-primary-500"]).toBe("#aeb6a7");
     expect(tokens["--shoresh-color-highlight"]).toBe("#1f6651");
+    expect(tokens["--shoresh-color-text"]).toBe("#26231b");
+    // No separate accent colour.
+    expect(
+      Object.keys(tokens).some(
+        (name) => name.includes("color-accent") && name.startsWith("--shoresh")
+      )
+    ).toBe(false);
   });
 
-  it("has the 0.5x tonal surfaces, page to drawer", () => {
+  it("the primary family's steps get darker as they go up", () => {
+    const steps = Object.keys(tokens)
+      .filter((name) => /^--shoresh-color-primary-\d+$/.test(name))
+      .sort(
+        (a, b) =>
+          parseInt(a.split("-").pop(), 10) - parseInt(b.split("-").pop(), 10)
+      );
+    const white = "#ffffff";
+    const contrasts = steps.map((name) => contrast(tokens[name], white));
+    expect(contrasts).toEqual([...contrasts].sort((a, b) => a - b));
+  });
+
+  it("has the tonal surfaces, page to drawer, as steps of the primary", () => {
     expect(
-      ["page", "shelf", "grid", "drawer"].map(
-        (name) => tokens[`--shoresh-surface-${name}`]
+      ["page", "shelf", "grid", "drawer"].map((name) =>
+        colour(`--shoresh-surface-${name}`)
       )
     ).toEqual(["#f3f5f2", "#eff1ee", "#ebede9", "#e6e9e4"]);
+    ["page", "shelf", "grid", "drawer", "hover"].forEach((name) =>
+      expect(tokens[`--shoresh-surface-${name}`]).toMatch(
+        /^var\(--shoresh-color-primary-\d+\)$/
+      )
+    );
   });
 
   it("has one unit and six steps: 1, 2, 3, 4, 6 and 8 units", () => {
@@ -61,11 +98,11 @@ describe("c/shoreshTokens", () => {
       "--shoresh-surface-grid",
       "--shoresh-surface-drawer",
       "--shoresh-surface-hover",
-      "--shoresh-color-accent"
+      "--shoresh-color-primary-50"
     ];
     words.forEach((word) =>
       surfaces.forEach((surface) =>
-        expect(contrast(tokens[word], tokens[surface])).toBeGreaterThanOrEqual(
+        expect(contrast(colour(word), colour(surface))).toBeGreaterThanOrEqual(
           4.5
         )
       )
@@ -73,13 +110,13 @@ describe("c/shoreshTokens", () => {
     // Highlight words on the light surfaces, and light words on the highlight (Publish).
     surfaces.forEach((surface) =>
       expect(
-        contrast(tokens["--shoresh-color-highlight"], tokens[surface])
+        contrast(colour("--shoresh-color-highlight"), colour(surface))
       ).toBeGreaterThanOrEqual(4.5)
     );
     expect(
       contrast(
-        tokens["--shoresh-color-accent"],
-        tokens["--shoresh-color-highlight"]
+        colour("--shoresh-color-primary-50"),
+        colour("--shoresh-color-highlight")
       )
     ).toBeGreaterThanOrEqual(4.5);
   });
@@ -89,7 +126,7 @@ describe("c/shoreshTokens", () => {
       "var(--shoresh-color-highlight)"
     );
     expect(tokens["--slds-c-button-neutral-color-background"]).toBe(
-      "var(--shoresh-color-accent)"
+      "var(--shoresh-color-primary-50)"
     );
   });
 });

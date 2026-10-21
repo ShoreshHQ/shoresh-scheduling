@@ -5,25 +5,38 @@
  * specs); the choices are docs/adr/0015-design-system.md.
  */
 :host {
-  /* ---------- colour: four colours, nothing else (wiki decisions 32, 35) ---------- */
-  --shoresh-color-primary: #aeb6a7;
-  --shoresh-color-accent: #f6f8f5;
-  --shoresh-color-text: #26231b;
+  /* ---------- colour: three colours, nothing else (wiki decisions 32, 35, 40) ---------- */
+  /* 1. The primary family, sage-greige: one colour in tonal steps, lightest (50) to the
+     primary itself (500), and one deeper step (700) that every shadow is made of. Gradients
+     between its steps are allowed. There is no separate accent: the lightest step is it. */
+  --shoresh-color-primary-50: #f6f8f5;
+  --shoresh-color-primary-100: #f3f5f2;
+  --shoresh-color-primary-150: #f1f3ef;
+  --shoresh-color-primary-200: #eff1ee;
+  --shoresh-color-primary-250: #ebede9;
+  --shoresh-color-primary-300: #e6e9e4;
+  --shoresh-color-primary-400: #d8dcd4;
+  --shoresh-color-primary-500: #aeb6a7;
+  --shoresh-color-primary-700: #808d74;
+  /* 2. The one highlight, forest, and its deeper tint for hover and pressed states. */
   --shoresh-color-highlight: #1f6651;
+  --shoresh-color-highlight-press: var(--shoresh-color-highlight-press);
+  /* 3. The text colour. */
+  --shoresh-color-text: #26231b;
 
-  /* Surfaces: 0.5x tonal steps of the primary, lightest at the back. */
-  --shoresh-surface-page: #f3f5f2;
-  --shoresh-surface-shelf: #eff1ee;
-  --shoresh-surface-grid: #ebede9;
-  --shoresh-surface-drawer: #e6e9e4;
-  /* Derived steps the mock-up uses: an item under the pointer (accent half-way to grid), the
-     edge of a piece and the hairline, and the shade every shadow is made of. */
-  --shoresh-surface-hover: #f1f3ef;
-  --shoresh-edge: #d8dcd4;
-  --shoresh-rule: #d8dcd4;
-  --shoresh-shade: #808d74;
-  /* Text: value (primary words) and rest (secondary words, 78% text on the drawer step). */
-  --shoresh-text-1: #26231b;
+  /* Surfaces: steps of the primary, lightest at the back. */
+  --shoresh-surface-page: var(--shoresh-color-primary-100);
+  --shoresh-surface-shelf: var(--shoresh-color-primary-200);
+  --shoresh-surface-grid: var(--shoresh-color-primary-250);
+  --shoresh-surface-drawer: var(--shoresh-color-primary-300);
+  /* An item under the pointer (half-way from the lightest step to grid), the edge of a piece
+     and the hairline, and the shade every shadow is made of. */
+  --shoresh-surface-hover: var(--shoresh-color-primary-150);
+  --shoresh-edge: var(--shoresh-color-primary-400);
+  --shoresh-rule: var(--shoresh-color-primary-400);
+  --shoresh-shade: var(--shoresh-color-primary-700);
+  /* Words: value (the text colour) and rest (secondary words, 78% text on the drawer step). */
+  --shoresh-text-1: var(--shoresh-color-text);
   --shoresh-text-2: #504f47;
 
   /* ---------- spacing: one unit, six steps, named roles (docs/design/spacing-spec-continuous.md) ---------- */
@@ -70,7 +83,7 @@
     0 8px 24px -8px rgba(128, 141, 116, 0.4);
   /* Keyboard focus: the highlight, outside the item. Selection is raised, never this ring. */
   --shoresh-focus-ring:
-    0 0 0 2px var(--shoresh-color-accent),
+    0 0 0 2px var(--shoresh-color-primary-50),
     0 0 0 4px var(--shoresh-color-highlight);
 
   /* ---------- type: Inter (static resource ShoreshFonts), else the system font ---------- */
@@ -87,15 +100,21 @@
   /* ---------- Salesforce's base components, in the same palette (SLDS styling hooks) ---------- */
   --slds-c-button-brand-color-background: var(--shoresh-color-highlight);
   --slds-c-button-brand-color-border: var(--shoresh-color-highlight);
-  --slds-c-button-brand-color-background-hover: #18503f;
-  --slds-c-button-brand-color-border-hover: #18503f;
-  --slds-c-button-brand-color-background-active: #18503f;
-  --slds-c-button-brand-text-color: var(--shoresh-color-accent);
-  --slds-c-button-neutral-color-background: var(--shoresh-color-accent);
+  --slds-c-button-brand-color-background-hover: var(
+    --shoresh-color-highlight-press
+  );
+  --slds-c-button-brand-color-border-hover: var(
+    --shoresh-color-highlight-press
+  );
+  --slds-c-button-brand-color-background-active: var(
+    --shoresh-color-highlight-press
+  );
+  --slds-c-button-brand-text-color: var(--shoresh-color-primary-50);
+  --slds-c-button-neutral-color-background: var(--shoresh-color-primary-50);
   --slds-c-button-neutral-color-border: var(--shoresh-edge);
   --slds-c-button-neutral-color-background-hover: var(--shoresh-surface-hover);
   --slds-c-button-text-color: var(--shoresh-color-highlight);
-  --slds-c-button-text-color-hover: #18503f;
+  --slds-c-button-text-color-hover: var(--shoresh-color-highlight-press);
   --slds-c-button-radius-border: var(--shoresh-radius);
   --slds-c-input-radius-border: var(--shoresh-radius);
   --slds-c-input-color-border: var(--shoresh-edge);
@@ -103,20 +122,18 @@
   --slds-c-input-color-border-focus: var(--shoresh-color-highlight);
   --slds-c-input-shadow-focus: 0 0 0 1px var(--shoresh-color-highlight);
   --slds-c-combobox-radius-border: var(--shoresh-radius);
-  --slds-c-checkbox-mark-color-foreground: var(--shoresh-color-accent);
   --slds-c-checkbox-color-background-checked: var(--shoresh-color-highlight);
   --slds-c-checkbox-color-border-checked: var(--shoresh-color-highlight);
   --slds-c-spinner-color-background: var(--shoresh-color-highlight);
   --slds-g-color-brand-base-50: var(--shoresh-color-highlight);
-  --slds-g-color-brand-base-40: #18503f;
-  --lwc-brandPrimary: var(--shoresh-color-highlight);
-  --lwc-brandAccessible: var(--shoresh-color-highlight);
-  --lwc-brandAccessibleActive: #18503f;
-  --lwc-brandTextLink: var(--shoresh-color-highlight);
-  --lwc-brandTextLinkActive: #18503f;
-  --lwc-colorTextLink: var(--shoresh-color-highlight);
-  --lwc-colorTextLinkHover: #18503f;
-  --lwc-colorBorderInputActive: var(--shoresh-color-highlight);
+  --slds-g-color-brand-base-40: var(--shoresh-color-highlight-press);
+  /* SLDS 2's accent and link hooks (the earlier --lwc-brand* tokens are deprecated). */
+  --slds-g-color-accent-1: var(--shoresh-color-highlight);
+  --slds-g-color-accent-container-1: var(--shoresh-color-highlight);
+  --slds-g-color-accent-container-2: var(--shoresh-color-highlight-press);
+  --slds-s-link-color: var(--shoresh-color-highlight);
+  --slds-s-link-color-hover: var(--shoresh-color-highlight-press);
+  --slds-s-link-color-active: var(--shoresh-color-highlight-press);
 
   /* ---------- earlier colours (wiki shoresh-design-guide.md), kept until each screen is restyled ---------- */
   /*
@@ -145,7 +162,7 @@
 /* The one raised treatment: the current menu item, the chosen view and day, a held tile, a
    cell. Light surface, fine edge, soft shadow (wiki decision 34). */
 .shoresh-raised {
-  background: var(--shoresh-color-accent);
+  background: var(--shoresh-color-primary-50);
   box-shadow: var(--shoresh-raise);
   border-radius: var(--shoresh-radius);
 }

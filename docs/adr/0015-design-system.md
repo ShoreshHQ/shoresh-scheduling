@@ -1,7 +1,7 @@
 # 0015: The design system
 
 Status: proposed (2026-10-21), design build step 1 of several (the foundation). Design source:
-Greg's decisions 28 to 39 in wiki `projects/shoresh-scheduling-sf.md` (approved 2026-10-21, "let's
+Greg's decisions 28 to 40 in wiki `projects/shoresh-scheduling-sf.md` (approved 2026-10-21, "let's
 do it"), and the visual spec in `docs/design/` (round 13 mock-up `manual-build.html` with
 `spacing-spec.md`, and round 11's `spacing-spec-continuous.md` for the rail's grammar). The
 desktop is the floor for meaning and words (decision 28); the look is the mock-up's.
@@ -17,15 +17,23 @@ until the next PRs; nothing a director does works differently.
    holds the values as CSS custom properties on `:host`, and four classes (below). The earlier
    colours (navy, forest, bronze, slate) stay in it, marked as earlier, until the last screen
    moves off them; nothing new uses them.
-2. **Four colours, exactly as chosen by eye** (decision 35): primary `#AEB6A7`, accent
-   `#F6F8F5`, text `#26231B`, highlight `#1F6651`. Surfaces are 0.5x tonal steps of the primary:
-   page `#F3F5F2`, shelf `#EFF1EE`, grid `#EBEDE9`, drawer `#E6E9E4`. The mock-up's derived steps
-   are named too: hover `#F1F3EF` (accent half-way to grid), edge and hairline `#D8DCD4`, shade
-   `#808D74` (every shadow is made of it), and secondary words `#504F47` (78% text on the drawer
-   step). The derived values are written out, not computed with `color-mix()`, so every browser
-   shows the same colour (same inputs, same output). Every pair of words and surface the system
-   allows reads at 4.5:1 or better (the lowest is the highlight on the drawer step); a test checks
-   each pair.
+2. **Three colours, including the text** (decisions 35 and 40). One primary family, sage-greige,
+   in tonal steps `--shoresh-color-primary-50` (`#F6F8F5`, the lightest) to
+   `--shoresh-color-primary-500` (`#AEB6A7`, the primary as chosen by eye), with one deeper step,
+   `-700` (`#808D74`), that every shadow is made of. One highlight, forest `#1F6651`
+   (`--shoresh-color-highlight`), with a deeper tint for hover and pressed (`-press`, `#18503F`).
+   And the text, `#26231B` (`--shoresh-color-text`). **The rule:** nothing else is a colour. The
+   old "accent" `#F6F8F5` is not a fourth colour but the primary's lightest step, so there is no
+   accent token; a new shade is a new step of the primary (gradients between its steps are
+   allowed), a state of the highlight is a tint of it, and secondary words are a tint of the
+   text. Surfaces and other roles name a step rather than a value: page `-100` (`#F3F5F2`), hover
+   `-150` (`#F1F3EF`), shelf `-200` (`#EFF1EE`), grid `-250` (`#EBEDE9`), drawer `-300`
+   (`#E6E9E4`), edge and hairline `-400` (`#D8DCD4`), shade `-700`; secondary words are `#504F47`
+   (78% text on the drawer step). The steps are written out, not computed with `color-mix()`, so
+   every browser shows the same colour (same inputs, same output). Every pair of words and
+   surface the system allows reads at 4.5:1 or better (the lowest is the highlight on the drawer
+   step); a test checks each pair, that only these three colours are defined and that the
+   primary's steps darken in order.
 3. **One unit, six steps, named roles** (spacing-spec-continuous.md). The unit is the page width
    divided by 360, between 3 and 5 px (4 px at 1440 wide); steps are 1, 2, 3, 4, 6 and 8 units.
    Components use the roles, not the steps, where a role exists: word gap, in-group gap, group
@@ -42,7 +50,7 @@ until the next PRs; nothing a director does works differently.
    once in the system font, and a page that can't load the fonts still works. 13 px body,
    14 px for the camp name, 11 px for the menu's section titles. Numbers that must line up use
    tabular numerals (`.shoresh-num`). One mono, JetBrains Mono, for times and section titles.
-5. **The one raised treatment is a class, `.shoresh-raised`** (decision 34): the accent surface,
+5. **The one raised treatment is a class, `.shoresh-raised`** (decision 34): the primary's lightest step,
    a fine edge and a soft shadow, all made of the shade. It marks the current choice only: the
    menu's screen shown now, later the chosen view and day, a held tile and a grid cell. A menu
    that is closed, a form or a panel is never raised. Keyboard focus is a separate 2 px highlight
@@ -54,10 +62,11 @@ until the next PRs; nothing a director does works differently.
    with optional words for screen readers ("Locked empty"). The grids start using the mark and the
    lock when they are restyled.
 7. **Salesforce's base components take the palette through SLDS styling hooks**, set in the same
-   module: brand buttons are the highlight with accent words, neutral buttons the accent with the
-   edge, buttons and inputs get the 8 px corner, inputs a highlight focus edge, checkboxes and the
-   spinner the highlight. The older `--lwc-brand*` and link tokens are set to the highlight too,
-   for the parts of the base components that still read them. Only Shoresh's own page changes;
+   module: brand buttons are the highlight with words in the primary's lightest step, neutral buttons
+   that step with the edge, buttons and inputs get the 8 px corner, inputs a highlight focus edge, checkboxes and the
+   spinner the highlight. SLDS 2's accent and link hooks are set to the highlight too, not the
+   deprecated `--lwc-*` tokens (Code Analyzer refuses them), and the checkbox's mark colour is left
+   to Salesforce (SLDS 2 has no hook for it). Only Shoresh's own page changes;
    the rest of Salesforce keeps its look.
 8. **The frame and the menu, as the mock-up draws them.** The page is the page surface with a
    12 margin. The menu is its own piece, 208 wide, 12 from the frame. Its top row is the camp's
@@ -67,7 +76,7 @@ until the next PRs; nothing a director does works differently.
    entries under a section title sit in from it with a highlight dot beside the one shown.
    Entries not built yet or needing a season stay, quieter, with their words for screen readers
    (unchanged). The desktop's marks stay (`!` Needed in the text colour, `✓` Done in the
-   highlight): bronze is not one of the four colours. The frame is one piece: the season row on
+   highlight): bronze is not one of the three colours. The frame is one piece: the season row on
    top (the season picker, its pencil, New season, Copy season), one hairline, then the screen.
    The pickers' visible labels are gone (their names are still read out): the picker shows the
    season, so the word "Season" over it explained nothing. The row is one item tall plus its
@@ -76,7 +85,7 @@ until the next PRs; nothing a director does works differently.
    updated to match setup, the menu's foot shows _Setup changed_ and a raised **Update to match
    setup**, the same action as the button above that screen's grid (ADR 0008 part 6 §10). Only
    Manual Build and Generated Schedule have it, and each says so only for itself.
-10. **Checked by** `shoreshTokens.test.js` (the four colours exact, the surfaces, the steps, every
+10. **Checked by** `shoreshTokens.test.js` (only the three colours, exact, the primary's steps in order, the surfaces, the steps, every
     allowed pair of words and surface at 4.5:1, the button hooks), `shoreshLock.test.js` (one
     padlock, hidden unless it has words, accessible), `shoreshMenu.test.js` (the camp row, one
     raised entry, Roots' sprout, the foot and its Update, held while busy, accessible),
