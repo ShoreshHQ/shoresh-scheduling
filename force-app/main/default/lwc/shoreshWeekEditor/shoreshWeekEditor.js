@@ -2275,20 +2275,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.dragging = null;
   }
 
-  handleResizeStart(event) {
-    const cell = this.cellByKey(event.detail.key);
-    if (cell && cell.movable) {
-      this.dragging = {
-        kind: "resize",
-        slot: cell.slot,
-        key: cell.key,
-        name: cell.text
-      };
-      return;
-    }
-    this.dragging = null;
-  }
-
   handleCellDrop(event) {
     const dragged = this.draggedFor(event.detail.data);
     this.putDown(dragged, this.cellByKey(event.detail.key), event.detail.at);
@@ -2383,6 +2369,33 @@ export default class ShoreshWeekEditor extends LightningElement {
       cell.key,
       at.first + at.length - 1 + event.detail.delta
     );
+  }
+
+  /**
+   * The bottom handle stretched with the pointer and let go (the grid showed the length live):
+   * it now runs that many blocks. One that went above its start, or was stopped by a slot before
+   * it grew at all, says why on the quiet line instead of changing nothing in silence.
+   */
+  handleCellStretch(event) {
+    const { key, length, stopped } = event.detail;
+    const cell = this.cellByKey(key);
+    if (!cell || !cell.movable || !cell.slot) {
+      return;
+    }
+    const at = placement(
+      this.dayOf(cell.slot),
+      cell.slot.group,
+      cell.slot.block
+    );
+    if (length < 1) {
+      // "Swim can't end before it starts."
+      this.resizeTo(cell.slot, key, at.first - 1);
+    } else if (length !== at.length) {
+      this.resizeTo(cell.slot, key, at.first + length - 1);
+    } else if (stopped) {
+      // The next block can't take it: the refusal says why ("Swim doesn't fit there.").
+      this.resizeTo(cell.slot, key, at.first + at.length);
+    }
   }
 
   /** What was dragged or picked up, put down on a cell. */

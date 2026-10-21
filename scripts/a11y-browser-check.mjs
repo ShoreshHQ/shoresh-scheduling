@@ -10,6 +10,9 @@
  * - that every enabled toolbar action is reachable with Tab;
  * - that "Same location?" merges a place typed twice, and Ctrl+Z / Ctrl+Shift+Z undo and redo
  *   on Manual Build (also with nothing focused), never inside a box;
+ * - that a placement's bottom handle stretches it with a real mouse drag on Manual Build (the
+ *   one place the check uses the mouse: Greg's drag, 2026-10-21), the span growing live, a ghost
+ *   on the slot that stops it, and the longer placement kept on letting go;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -992,6 +995,9 @@ async function manualBuild(openManual) {
       await cell.evaluate((el) => el.focus());
     }
   );
+  await step(S, "Stretch by the handle with the mouse, then its Undo", () =>
+    stretchByHandle(S)
+  );
   await step(S, "Clear day, then its Undo", async () => {
     if (!(await tabTo(named(/^Clear day$/, { tag: "button" })))) {
       throw new Error("Clear day not reached with Tab.");
@@ -1032,6 +1038,114 @@ async function manualBuild(openManual) {
     });
     if (f && f.dataId === "tool-undo") await press("Enter", 1500);
   });
+}
+
+/**
+ * Greg's drag (2026-10-21): the activity placed in Bunk 1's second time block, its bottom handle
+ * pressed a little below the visible bar (still in the handle's area, as a trackpad press lands),
+ * moved down in small steps past the next block's line into the fixed activity after it, and let
+ * go. While moving, the cell itself must span two blocks and the fixed activity carry the ghost;
+ * after, the placement runs two blocks and that is said. Ctrl+Z puts it back.
+ */
+async function stretchByHandle(S) {
+  const editGrid = shown(
+    'c-shoresh-schedule-grid[data-id="edit-grid"]'
+  ).first();
+  const cellAt = (key) => editGrid.locator(`[data-cell="${key}"]`);
+  const [from, open, stop] = ["0-1", "0-2", "0-3"].map(cellAt);
+  const textOf = async (cell) =>
+    ((await cell.textContent()) || "").replace(/\s+/g, " ").trim();
+  if (!/\S/.test(await textOf(from)) || (await textOf(open)) !== "Open") {
+    throw new Error(
+      `Bunk 1 is not an activity then Open (it shows "${await textOf(from)}", "${await textOf(open)}").`
+    );
+  }
+  if ((await stop.getAttribute("draggable")) === "true") {
+    throw new Error(
+      "The third time block is not a fixed activity in the made-up camp."
+    );
+  }
+  const name = await textOf(from);
+  await from.scrollIntoViewIfNeeded();
+  await stop.scrollIntoViewIfNeeded();
+  const bar = await from.locator("[data-handle-bar]").boundingBox();
+  const target = await stop.boundingBox();
+  if (!bar || !target)
+    throw new Error("The handle or the slot below is not on screen.");
+  const x = bar.x + bar.width / 2;
+  const y = bar.y + bar.height / 2 + 6;
+  const toY = target.y + target.height / 2;
+  await page.mouse.move(x, y);
+  await pause(200);
+  await page.mouse.down();
+  for (let i = 1; i <= 20; i++) {
+    await page.mouse.move(x, y + ((toY - y) * i) / 20);
+    await pause(30);
+  }
+  const during = await editGrid.evaluate((g) => {
+    const root = g.shadowRoot || g;
+    const growing = root.querySelector(".cell_stretching");
+    const ghost = root.querySelector(".cell_stretch-blocked");
+    return {
+      growing: growing ? growing.dataset.cell : null,
+      span: growing
+        ? (/span (\d+);/.exec(growing.getAttribute("style")) || [])[1]
+        : null,
+      ghost: ghost ? `${ghost.dataset.cell} ${ghost.dataset.ghost}` : null
+    };
+  });
+  if (during.growing === "0-1" && during.span === "2") {
+    results.pass(
+      S,
+      "Stretch: the cell grows live under the pointer",
+      "It spans 2 blocks while held."
+    );
+  } else {
+    await shot(S, "Stretch while held");
+    results.fail(
+      S,
+      "Stretch: the cell grows live under the pointer",
+      `While held: growing ${during.growing || "nothing"}, span ${during.span || "none"}.`
+    );
+  }
+  if (during.ghost === `0-3 ${name}`) {
+    results.pass(
+      S,
+      "Stretch: the slot that stops it shows a ghost",
+      `Ghost of ${name} on the fixed activity.`
+    );
+  } else {
+    results.fail(
+      S,
+      "Stretch: the slot that stops it shows a ghost",
+      `Ghost: ${during.ghost || "none"}.`
+    );
+  }
+  await expectLive(
+    S,
+    "Stretch: letting go keeps it longer, and it is said",
+    new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} runs 2 `),
+    () => page.mouse.up()
+  );
+  await pause(1000);
+  const span = await from.getAttribute("aria-rowspan");
+  if (span === "2") {
+    results.pass(
+      S,
+      "Stretch: the placement runs 2 blocks after letting go",
+      "aria-rowspan 2."
+    );
+  } else {
+    await shot(S, "Stretch after letting go");
+    results.fail(
+      S,
+      "Stretch: the placement runs 2 blocks after letting go",
+      `aria-rowspan ${span}.`
+    );
+  }
+  await expectLive(S, "Stretch: Ctrl+Z puts it back", /^Undone: /, () =>
+    press("ControlOrMeta+z")
+  );
 }
 
 async function generated(openGenerated) {
