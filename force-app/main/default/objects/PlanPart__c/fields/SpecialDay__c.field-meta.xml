@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SpecialDay__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The special day this is the plan of. Exactly one of Special Day and Special Event is filled in. The plan goes with the special day when it is deleted.</description>
+    <label>Special Day</label>
+    <referenceTo>SpecialDay__c</referenceTo>
+    <relationshipLabel>Plan Parts</relationshipLabel>
+    <relationshipName>PlanParts</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

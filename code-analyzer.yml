@@ -36,6 +36,22 @@ suppressions:
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1
       reason: "Season and start date, used to stop duplicate weeks, not a secret."
+  "main/default/objects/PlanPart__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Special day or event and part number, so a plan has each part once; not a secret."
+  "main/default/objects/SpecialDate__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Week, weekday and what is placed, so a week day holds one special day; not a secret."
+  "main/default/objects/SpecialDay__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Season and name, used to stop duplicate special days, not a secret."
+  "main/default/objects/SpecialEvent__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Season and name, used to stop duplicate special events, not a secret."
   # Design rule, not security: the engine's inputs go to the screen as one answer (one request when
   # a week opens); splitting them would add a round trip for nothing.
   "main/default/classes/GeneratedInputs.cls":

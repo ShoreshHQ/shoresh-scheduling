@@ -120,7 +120,42 @@ public with sharing class InUse {
       parts.add(setTime[0]);
       fixes.add(setTime[1]);
     }
+    List<String> events = specialEventsAt(locationId, labels);
+    if (!events.isEmpty()) {
+      parts.add(events[0]);
+      fixes.add(events[1]);
+    }
     return parts.isEmpty() ? null : refusal(parts, fixes);
+  }
+
+  /** '"Carnival" happens here' and its fix, or an empty list when no special event is there. */
+  private static List<String> specialEventsAt(
+    Id locationId,
+    CampLabels labels
+  ) {
+    List<String> names = new List<String>();
+    for (SpecialEvent__c event : [
+      SELECT Name
+      FROM SpecialEvent__c
+      WHERE Location__c = :locationId
+      WITH USER_MODE
+      ORDER BY Name
+      LIMIT 21
+    ]) {
+      names.add(event.Name);
+    }
+    if (names.isEmpty()) {
+      return names;
+    }
+    return new List<String>{
+      quoted(names) +
+      (names.size() == 1 ? ' happens' : ' happen') +
+      ' here',
+      'choose another ' +
+      labels.singularInSentence('Location') +
+      ' for ' +
+      thatOrThose(labels, 'SpecialEvent', names.size())
+    };
   }
 
   /** "that activity" or "those activities", in the camp's words. */

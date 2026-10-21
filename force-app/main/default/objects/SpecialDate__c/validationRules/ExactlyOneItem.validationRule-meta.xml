@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ExactlyOneItem</fullName>
+    <active>true</active>
+    <description
+  >Exactly one thing placed: a special day or a special event.</description>
+    <errorConditionFormula
+  >IF(ISBLANK(SpecialDay__c), 0, 1) + IF(ISBLANK(SpecialEvent__c), 0, 1) &lt;&gt; 1</errorConditionFormula>
+    <errorMessage
+  >Choose the special day or the special event to put on this day.</errorMessage>
+</ValidationRule>

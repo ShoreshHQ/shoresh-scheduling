@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>DayRequired</fullName>
+    <active>true</active>
+    <description
+  >A day of the week is required. A validation rule rather than a required field, as for other choices.</description>
+    <errorConditionFormula>ISBLANK(TEXT(Day__c))</errorConditionFormula>
+    <errorDisplayField>Day__c</errorDisplayField>
+    <errorMessage>Choose a day.</errorMessage>
+</ValidationRule>

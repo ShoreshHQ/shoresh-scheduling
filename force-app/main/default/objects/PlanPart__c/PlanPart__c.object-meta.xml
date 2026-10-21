@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >The plan of one special day or special event, stored compactly as text in the same format as a schedule day (repo docs/adr/0005). A plan too big for one record is split into parts of whole rows.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Plan Part</label>
+    <nameField>
+        <displayFormat>PP-{000000}</displayFormat>
+        <label>Plan Part Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Plan Parts</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>
