@@ -1079,7 +1079,9 @@ the grid and the activity list on its left keep their look.
    itself opens every week of the season in a menu, so any week is still one choice away (the
    combobox it replaces could do that). It takes and gives what `lightning-combobox` did (label,
    value, options, disabled, change), so the screen uses it the same way. With several programs
-   the program is a word and its chevron before it.
+   the program is a word and its chevron before it. At the first or last week the arrow just
+   pressed goes dim; focus then moves to the week itself, which says the week now shown, so it
+   never drops to the page.
 5. **Edit** (decision 36) holds **Undo** and **Redo** with their keys (⌘Z and ⇧⌘Z on a Mac,
    Ctrl+Z and Ctrl+Shift+Z elsewhere; `aria-keyshortcuts`), a line, then Manual Build's tools:
    **Clear day**, **Copy day to…**, **Clear week** (Group View: **Clear day** with the bunk's
@@ -1128,15 +1130,16 @@ the grid and the activity list on its left keep their look.
    compared with setup still says why, on a quiet line under the rail, so that is never hidden.
 
 Checked by Jest: `shoreshRailPop.test.js` (one item, never raised closed, a menu's keys, select,
-rows that open rows, a click outside, Tab, held), `shoreshRailPicker.test.js` (arrows, the
-raised week, every week in its menu, change, held), `measure.test.js` (placed, still needed,
+rows that open rows, a click outside, Tab, held), `shoreshRailPicker.test.js` (arrows, focus
+to the week when an arrow goes dim at either end, the raised week, every week in its menu, change, held), `measure.test.js` (placed, still needed,
 under per bunk, not set up, over, order, look, same inputs same measure),
 `shoreshWeekChecks.test.js` (the item, the corner, the dropdown's parts, the 0s, rows to an
 activity, lines to a cell, Escape, a week shown fresh), and the screens' suites (Edit's rows in
 order and none in Activity View, Copy day to… opening its days, focus to Edit after the line's
 Undo, the counter's numbers on real checks, Published and Unpublish, the menu's Update and focus
 back to it). In the test org: `scripts/a11y-browser-check.mjs` opens Edit, Build, the counter
-and Published with the keyboard (rows, Escape, focus) and runs axe with the counter open;
+and Published with the keyboard (rows, Escape, focus), presses '›' onto the last week (focus on
+the week) and runs axe with the counter open;
 screenshots next to the mock-up in `docs/design/screens/`.
 
 ## Choices that are hard to undo after release

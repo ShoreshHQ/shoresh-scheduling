@@ -81,6 +81,47 @@ describe("c-shoresh-rail-picker", () => {
     expect(changes).toEqual(["w2", "w2"]);
   });
 
+  it("an arrow that goes dim at the first or last week leaves focus on the week", async () => {
+    const { element } = render({
+      label: "Week",
+      value: "w2",
+      options: WEEKS,
+      arrows: true
+    });
+    // The screen shows the week chosen, as Manual Build and Generated Schedule do.
+    element.addEventListener("change", (e) => {
+      element.value = e.detail.value;
+    });
+    await flush();
+    const focused = () => {
+      const inner = element.shadowRoot.activeElement;
+      return inner && inner.shadowRoot && inner.shadowRoot.activeElement
+        ? inner.shadowRoot.activeElement
+        : inner;
+    };
+
+    q(element, '[data-id="previous"]').focus();
+    q(element, '[data-id="previous"]').click();
+    await flush();
+    expect(element.value).toBe("w1");
+    expect(q(element, '[data-id="previous"]').disabled).toBe(true);
+    expect(focused()).toBe(word(element));
+    expect(word(element).getAttribute("aria-label")).toBe("Week 1, Week");
+
+    // Not at an end: focus stays on the arrow.
+    q(element, '[data-id="next"]').focus();
+    q(element, '[data-id="next"]').click();
+    await flush();
+    expect(element.value).toBe("w2");
+    expect(focused()).toBe(q(element, '[data-id="next"]'));
+
+    q(element, '[data-id="next"]').click();
+    await flush();
+    expect(element.value).toBe("w3");
+    expect(q(element, '[data-id="next"]').disabled).toBe(true);
+    expect(focused()).toBe(word(element));
+  });
+
   it("the word opens every choice, the one shown checked; choosing one says change", async () => {
     const { element, changes } = render({
       label: "Week",

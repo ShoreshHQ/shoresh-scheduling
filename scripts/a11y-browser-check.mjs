@@ -9,6 +9,7 @@
  * - that the live regions say something after saves, builds and publishing;
  * - that every enabled rail action is reachable with Tab, and that the rail's menus (Edit,
  *   Build, the counter, Published) open, move with the arrows and close with Escape;
+ * - that the week's '›' arrow, dim once it reaches the last week, leaves focus on the week;
  * - that a field's error (a blank season name, put back after) reads at 4.5:1 on the surface
  *   behind it;
  * - that "Same location?" merges a place typed twice, and Ctrl+Z / Ctrl+Shift+Z undo and redo
@@ -505,6 +506,40 @@ async function pickWeek() {
   }
   await chooseOption(new RegExp(`^${week}$`));
   await pause(2500);
+}
+
+/**
+ * The week's arrows at the last week (the check's week is the camp's last): '‹' to the week
+ * before, then '›' back, which goes dim under focus, so focus should land on the week itself
+ * ("Week 3, Week"), never on the page. Ends with the check's week shown again.
+ */
+async function weekArrowEnd(screen) {
+  const toPrevious = named(/^Previous: /, { tag: "button" });
+  if (!(await tabTo(toPrevious, { back: true, max: 10 }))) {
+    results.notRun(
+      screen,
+      "Week arrows: the last week",
+      "No '‹' arrow to press (the camp has one week)."
+    );
+    return;
+  }
+  await press("Enter", 2500);
+  if (
+    !(await tabTo(named(new RegExp(`^Next: ${week}$`), { tag: "button" }), {
+      max: 10
+    }))
+  ) {
+    throw new Error(`The '›' arrow back to ${week} was not reached with Tab.`);
+  }
+  await press("Enter", 2500);
+  await expectFocus(
+    screen,
+    "Week arrows: at the last week, focus on the week",
+    {
+      tag: "button",
+      name: new RegExp(`^${week}, Week$`)
+    }
+  );
 }
 
 /** Opens a menu button or combobox and chooses the option whose text matches `re`. */
@@ -1055,6 +1090,7 @@ async function counterMenu(S) {
 async function manualBuild(openManual) {
   const S = "Manual Build";
   await step(S, "Open", openManual);
+  await step(S, "Week arrows: the last week", () => weekArrowEnd(S));
   await step(S, "Start the week (when not started)", async () => {
     if (!(await exists('[data-id="start-week"]'))) {
       results.pass(S, "Start the week (when not started)", "Already started.");
@@ -1326,6 +1362,7 @@ async function stretchByHandle(S) {
 async function generated(openGenerated) {
   const S = "Generated Schedule";
   await step(S, "Open", openGenerated);
+  await step(S, "Week arrows: the last week", () => weekArrowEnd(S));
   await step(S, "Generate (when not generated)", async () => {
     if (!(await exists('[data-id="generate"]'))) {
       results.pass(S, "Generate (when not generated)", "Already generated.");

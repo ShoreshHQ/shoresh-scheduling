@@ -16,6 +16,9 @@ export default class ShoreshRailPicker extends LightningElement {
   @api disabled = false;
   @api arrows = false;
 
+  // The arrow just pressed, while it may be the one that goes (Week 1 has no '‹').
+  pressed = null;
+
   get list() {
     return this.options || [];
   }
@@ -72,12 +75,29 @@ export default class ShoreshRailPicker extends LightningElement {
   }
   handlePrevious() {
     if (this.previous) {
+      this.pressed = "previous";
       this.choose(this.previous.value);
     }
   }
   handleNext() {
     if (this.next) {
+      this.pressed = "next";
       this.choose(this.next.value);
+    }
+  }
+
+  /**
+   * At the first or last week the arrow just pressed goes dim under focus, and the browser
+   * would drop focus to the page: it goes to the week instead, which says the week now shown.
+   */
+  renderedCallback() {
+    const pressed = this.pressed;
+    this.pressed = null;
+    const gone =
+      (pressed === "previous" && this.noPrevious) ||
+      (pressed === "next" && this.noNext);
+    if (gone && !this.disabled) {
+      this.focus();
     }
   }
 
