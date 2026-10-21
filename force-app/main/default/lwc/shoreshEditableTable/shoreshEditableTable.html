@@ -20,56 +20,65 @@
       </div>
     </article>
   </template>
-  <div lwc:else class="slds-m-bottom_medium">
-    <h3 class="slds-text-heading_small slds-m-bottom_x-small">{title}</h3>
-    <div class="slds-scrollable_x">
+  <div lwc:else class={sectionClass}>
+    <!-- The column names, shown once above the first section (and its heading); the table
+         below reads them out with every cell, so this copy is for the eye only. -->
+    <template lwc:if={showColumns}>
       <table
-        class="slds-table slds-table_cell-buffer slds-table_bordered"
-        aria-label={title}
+        class="list list_head"
+        style={tableStyle}
+        aria-hidden="true"
+        data-id="column-names"
       >
-        <thead>
-          <template lwc:if={hasWeeks}>
-            <tr class="slds-line-height_reset">
-              <th scope="colgroup" colspan={columnCount}>
-                <span class="slds-assistive-text">{title}</span>
-              </th>
-              <th
-                scope="colgroup"
-                colspan={weekCount}
-                class="slds-text-align_center"
-                data-id="weeks-heading"
-              >
-                {weeksHeading}
-              </th>
-              <template lwc:if={hasNotes}>
-                <th scope="col"></th>
-              </template>
-              <th scope="col">
-                <span class="slds-assistive-text">Actions</span>
-              </th>
-            </tr>
+        <colgroup>
+          <template for:each={cols} for:item="col">
+            <col key={col.key} style={col.style} />
           </template>
-          <tr class="slds-line-height_reset">
-            <template for:each={columns} for:item="col">
-              <th key={col.fieldName} scope="col">
-                <div class="slds-truncate" title={col.label}>{col.label}</div>
+        </colgroup>
+        <thead>
+          <tr>
+            <template for:each={headers} for:item="col">
+              <th key={col.key} class={col.className}>
+                <span class="head-text">{col.label}</span>
               </th>
             </template>
-            <template lwc:if={hasWeeks}>
-              <template for:each={weeks} for:item="week">
-                <th key={week.Id} scope="col" class="slds-text-align_center">
-                  <div class="slds-truncate" title={week.Name}>{week.Name}</div>
-                </th>
-              </template>
-            </template>
-            <template lwc:if={hasNotes}>
-              <th scope="col">
-                <div class="slds-truncate" title={notesTitle}>{notesTitle}</div>
+          </tr>
+        </thead>
+      </table>
+    </template>
+    <!-- A section's heading (a division, a type) with its count; without one, the table's name
+         is read out only: the menu and the rail already say which list this is. -->
+    <template lwc:if={heading}>
+      <h3 class="section-head" data-id="section-head">
+        <span class="section-name">{heading}</span
+        ><span class="slds-assistive-text">, </span>
+        <span class="section-count shoresh-num" data-id="section-count"
+          >{shownCount}</span
+        >
+      </h3>
+    </template>
+    <template lwc:else>
+      <h3 class="slds-assistive-text">{title}</h3>
+    </template>
+    <div class="scroll">
+      <table class="list" style={tableStyle} aria-label={title}>
+        <colgroup>
+          <template for:each={cols} for:item="col">
+            <col key={col.key} style={col.style} />
+          </template>
+        </colgroup>
+        <thead class="head head_hidden">
+          <tr>
+            <template for:each={headers} for:item="col">
+              <th
+                key={col.key}
+                scope="col"
+                class={col.className}
+                data-id={col.dataId}
+              >
+                <span class="head-text" title={col.label}>{col.label}</span>
               </th>
             </template>
-            <th scope="col">
-              <span class="slds-assistive-text">Actions</span>
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -92,50 +101,62 @@
                 onfocusout={handleRowLeave}
               >
                 <template for:each={row.cells} for:item="cell">
-                  <td key={cell.key}>
+                  <td key={cell.key} class={cell.className}>
                     <template lwc:if={cell.isText}>
-                      <lightning-input
-                        type="text"
-                        label={cell.label}
-                        variant="label-hidden"
-                        value={cell.value}
-                        placeholder={cell.placeholder}
-                        required={cell.required}
-                        data-row-key={row.key}
-                        data-field={cell.fieldName}
-                        disabled={cell.disabled}
-                        onchange={handleChange}
-                      ></lightning-input>
-                      <template lwc:if={cell.sameName}>
-                        <c-shoresh-dot
-                          class="flag"
-                          data-id="same-name"
-                          label="Same name as another"
-                          focusable
-                        ></c-shoresh-dot>
-                      </template>
-                      <template lwc:if={cell.canMerge}>
-                        <button
-                          type="button"
-                          class="slds-button slds-m-left_x-small"
-                          aria-label={cell.mergeName}
-                          data-id="merge"
+                      <div class="cell-line">
+                        <template lwc:if={cell.isAddName}>
+                          <svg
+                            class="plus"
+                            viewBox="0 0 16 16"
+                            aria-hidden="true"
+                          >
+                            <path d="M8 3.5v9M3.5 8h9"></path>
+                          </svg>
+                        </template>
+                        <lightning-input
+                          class="grow"
+                          type="text"
+                          label={cell.label}
+                          variant="label-hidden"
+                          value={cell.value}
+                          placeholder={cell.placeholder}
+                          required={cell.required}
                           data-row-key={row.key}
-                          onclick={handleMerge}
-                          disabled={busy}
-                        >
-                          {cell.mergeLabel}
-                        </button>
-                      </template>
-                      <template lwc:if={cell.overlaps}>
-                        <c-shoresh-dot
-                          class="flag"
-                          data-id="overlaps"
-                          shape="overlap"
-                          label={cell.overlapLabel}
-                          focusable
-                        ></c-shoresh-dot>
-                      </template>
+                          data-field={cell.fieldName}
+                          disabled={cell.disabled}
+                          onchange={handleChange}
+                        ></lightning-input>
+                        <template lwc:if={cell.sameName}>
+                          <c-shoresh-dot
+                            class="flag"
+                            data-id="same-name"
+                            label="Same name as another"
+                            focusable
+                          ></c-shoresh-dot>
+                        </template>
+                        <template lwc:if={cell.canMerge}>
+                          <button
+                            type="button"
+                            class="shoresh-item merge"
+                            aria-label={cell.mergeName}
+                            data-id="merge"
+                            data-row-key={row.key}
+                            onclick={handleMerge}
+                            disabled={busy}
+                          >
+                            {cell.mergeLabel}
+                          </button>
+                        </template>
+                        <template lwc:if={cell.overlaps}>
+                          <c-shoresh-dot
+                            class="flag"
+                            data-id="overlaps"
+                            shape="overlap"
+                            label={cell.overlapLabel}
+                            focusable
+                          ></c-shoresh-dot>
+                        </template>
+                      </div>
                     </template>
                     <template lwc:elseif={cell.isNumber}>
                       <lightning-input
@@ -192,13 +213,13 @@
                       ></lightning-input>
                     </template>
                     <template lwc:elseif={cell.isWho}>
-                      <div class="slds-grid slds-grid_vertical-align-center">
-                        <span class="slds-m-right_x-small" data-id="who">
+                      <div class="cell-line">
+                        <span class="who" data-id="who">
                           {cell.whoSummary}
                         </span>
                         <button
                           type="button"
-                          class="slds-button"
+                          class="shoresh-item"
                           aria-label={cell.whoName}
                           data-row-key={row.key}
                           data-id="who-toggle"
@@ -223,29 +244,57 @@
                       ></lightning-combobox>
                     </template>
                     <template lwc:elseif={cell.isFixed}>
-                      <span data-id="fixed">{cell.fixedText}</span>
+                      <span class="fixed" data-id="fixed"
+                        >{cell.fixedText}</span
+                      >
+                    </template>
+                    <template lwc:elseif={cell.isReadonly}>
+                      <span
+                        class="fixed"
+                        data-id="readonly"
+                        data-column={cell.fieldName}
+                        title={cell.fixedText}
+                        >{cell.fixedText}</span
+                      >
                     </template>
                   </td>
                 </template>
-                <template for:each={row.weekCells} for:item="cell">
-                  <td key={cell.key} class="slds-text-align_center">
-                    <lightning-input
-                      type="checkbox"
-                      label={cell.label}
-                      variant="label-hidden"
-                      checked={cell.checked}
-                      data-row-key={row.key}
-                      data-week={cell.weekId}
-                      disabled={row.locked}
-                      onchange={handleTick}
-                    ></lightning-input>
+                <template lwc:if={hasWeeks}>
+                  <!-- Weeks: the exception in words at rest ("Every week", "Off Wk 3"); under
+                       the pointer or while the row is being edited, a fine strip of the weeks,
+                       one tick each, in their place. -->
+                  <td class="cell cell_weeks" data-id="weeks">
+                    <span class={row.weeksTextClass} data-id="weeks-text"
+                      >{row.weeksText}</span
+                    >
+                    <span
+                      class="strip"
+                      role="group"
+                      aria-label={row.weeksName}
+                      data-id="week-strip"
+                    >
+                      <template for:each={row.weekCells} for:item="cell">
+                        <label key={cell.key} class="chip">
+                          <input
+                            type="checkbox"
+                            class="chip-box"
+                            aria-label={cell.label}
+                            checked={cell.checked}
+                            data-row-key={row.key}
+                            data-week={cell.weekId}
+                            disabled={row.locked}
+                            onchange={handleTick}
+                          />
+                          <span class="chip-face shoresh-num" aria-hidden="true"
+                            >{cell.number}</span
+                          >
+                        </label>
+                      </template>
+                    </span>
                   </td>
                 </template>
                 <template lwc:if={hasNotes}>
-                  <td
-                    class="slds-cell-wrap slds-text-color_weak"
-                    data-id="note"
-                  >
+                  <td class="cell cell_note" data-id="note">
                     {row.note}
                     <template for:each={row.actions} for:item="action">
                       <lightning-button
@@ -262,23 +311,18 @@
                     </template>
                   </td>
                 </template>
-                <td>
+                <td class="cell cell_end">
                   <template lwc:if={row.isNew}>
                     <button
                       type="button"
-                      class="slds-button slds-button_neutral add"
+                      class="shoresh-item add"
                       aria-label={addName}
                       title={addLabel}
                       data-id="add"
                       onclick={handleAdd}
                       disabled={addDisabled}
                     >
-                      <lightning-icon
-                        class="slds-button__icon slds-button__icon_left"
-                        icon-name="utility:add"
-                        size="xx-small"
-                      ></lightning-icon
-                      >{addText}
+                      {addText}
                     </button>
                   </template>
                   <template lwc:else>
@@ -290,7 +334,7 @@
                     <template lwc:if={row.hasDetails}>
                       <button
                         type="button"
-                        class="slds-button slds-m-right_small"
+                        class="shoresh-item"
                         aria-label={row.detailsName}
                         aria-expanded={row.detailsOpen}
                         data-id="details"
@@ -300,22 +344,115 @@
                         {detailsLabel}
                       </button>
                     </template>
-                    <lightning-button-icon
-                      icon-name="utility:delete"
-                      alternative-text={row.deleteLabel}
-                      title={row.deleteLabel}
-                      variant="bare"
-                      data-id="delete"
-                      data-row-key={row.key}
-                      onclick={handleDelete}
-                      disabled={busy}
-                    ></lightning-button-icon>
+                    <span class="tools">
+                      <lightning-button-icon
+                        icon-name="utility:delete"
+                        alternative-text={row.deleteLabel}
+                        title={row.deleteLabel}
+                        variant="bare"
+                        data-id="delete"
+                        data-row-key={row.key}
+                        onclick={handleDelete}
+                        disabled={busy}
+                      ></lightning-button-icon>
+                      <template lwc:if={row.hasMore}>
+                        <button
+                          type="button"
+                          class="shoresh-item shoresh-item_icon more"
+                          aria-label={row.moreName}
+                          title={row.moreName}
+                          aria-expanded={row.moreOpenText}
+                          data-id="more"
+                          data-row-key={row.key}
+                          onclick={handleMoreToggle}
+                        >
+                          <svg
+                            class={row.moreGlyphClass}
+                            viewBox="0 0 16 16"
+                            aria-hidden="true"
+                          >
+                            <path d="m6 4 4 4-4 4"></path>
+                          </svg>
+                        </button>
+                      </template>
+                    </span>
                   </template>
                 </td>
               </tr>
+              <!-- The row's details, opened from its end: the fields that are not columns
+                   (a group's division, a place's type and notes). Saved as the row is. -->
+              <template lwc:if={row.moreOpen}>
+                <tr
+                  key={row.moreKey}
+                  class="extra"
+                  data-row={row.key}
+                  data-more-row={row.key}
+                  onkeydown={handleRowKeyDown}
+                  onfocusout={handleRowLeave}
+                >
+                  <td colspan={fullSpan}>
+                    <div class="more-fields" data-id="more-fields">
+                      <template for:each={row.moreCells} for:item="cell">
+                        <div key={cell.key} class={cell.className}>
+                          <template lwc:if={cell.isPicklist}>
+                            <lightning-combobox
+                              label={cell.label}
+                              value={cell.value}
+                              options={cell.options}
+                              required={cell.required}
+                              data-row-key={row.key}
+                              data-field={cell.fieldName}
+                              disabled={cell.disabled}
+                              onchange={handleChange}
+                            ></lightning-combobox>
+                          </template>
+                          <template lwc:elseif={cell.isNumber}>
+                            <lightning-input
+                              type="number"
+                              label={cell.label}
+                              value={cell.value}
+                              required={cell.required}
+                              min={cell.min}
+                              step="1"
+                              data-row-key={row.key}
+                              data-field={cell.fieldName}
+                              disabled={cell.disabled}
+                              onchange={handleChange}
+                            ></lightning-input>
+                          </template>
+                          <template lwc:elseif={cell.isCheckbox}>
+                            <lightning-input
+                              type="checkbox"
+                              label={cell.label}
+                              checked={cell.checked}
+                              data-row-key={row.key}
+                              data-field={cell.fieldName}
+                              disabled={cell.disabled}
+                              onchange={handleChange}
+                            ></lightning-input>
+                          </template>
+                          <template lwc:else>
+                            <lightning-input
+                              type="text"
+                              label={cell.label}
+                              value={cell.value}
+                              required={cell.required}
+                              data-row-key={row.key}
+                              data-field={cell.fieldName}
+                              disabled={cell.disabled}
+                              onchange={handleChange}
+                            ></lightning-input>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </template>
               <template lwc:if={row.whoOpen}>
                 <tr
                   key={row.whoKey}
+                  class="extra"
                   data-row={row.key}
                   data-who-row={row.key}
                   onfocusout={handleRowLeave}

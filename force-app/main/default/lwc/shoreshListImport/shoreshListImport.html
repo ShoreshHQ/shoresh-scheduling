@@ -396,6 +396,44 @@
       </template>
     </div>
   </template>
+  <template lwc:elseif={isRail}>
+    <!-- On a setup screen's rail: two quiet rail items (docs/design/setup/). -->
+    <span class="rail-actions">
+      <button
+        type="button"
+        class="shoresh-item"
+        data-id="open"
+        onclick={handleOpen}
+      >
+        <svg
+          class="shoresh-glyph rail-glyph"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+        >
+          <path d="M8 10V2.5"></path>
+          <path d="M5 5.5 8 2.5l3 3"></path>
+          <path d="M2.5 10v2.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"></path></svg
+        >{openLabel}
+      </button>
+      <button
+        type="button"
+        class="shoresh-item"
+        data-id="download"
+        disabled={downloading}
+        onclick={handleDownload}
+      >
+        <svg
+          class="shoresh-glyph rail-glyph"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+        >
+          <path d="M8 2.5V10"></path>
+          <path d="M5 7l3 3 3-3"></path>
+          <path d="M2.5 10v2.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"></path></svg
+        >Download this list
+      </button>
+    </span>
+  </template>
   <template lwc:else>
     <lightning-button-group>
       <lightning-button

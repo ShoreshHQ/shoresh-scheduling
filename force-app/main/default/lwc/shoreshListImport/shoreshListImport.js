@@ -67,6 +67,11 @@ export default class ShoreshListImport extends LightningElement {
   @api setup;
   @api terms;
   @api workbook = false;
+  /**
+   * "rail": closed, it is two quiet items on a setup screen's rail; open, it takes the rail's
+   * whole width under them (the host is marked list-open, which the page's rail wraps).
+   */
+  @api variant;
 
   open = false;
   downloading = false;
@@ -153,9 +158,14 @@ export default class ShoreshListImport extends LightningElement {
     return this.workbook ? "Import worksheet" : "Import a list";
   }
 
+  get isRail() {
+    return this.variant === "rail";
+  }
+
   /** Opened: the cursor goes to its heading; closed: back to the button that opened it. */
   handleOpen() {
     this.open = true;
+    this.classList.add("list-open");
     this.reset();
     this.focusNext = { selector: "[data-heading]" };
   }
@@ -192,6 +202,7 @@ export default class ShoreshListImport extends LightningElement {
 
   handleClose() {
     this.open = false;
+    this.classList.remove("list-open");
     this.reset();
     this.focusNext = { selector: '[data-id="open"]' };
   }

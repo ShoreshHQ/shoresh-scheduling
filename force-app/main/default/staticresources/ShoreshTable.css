@@ -1,0 +1,74 @@
+/*
+ * Shoresh's setup tables (c-shoresh-editable-table): a field in a row reads as words until the
+ * pointer or the cursor is on its row (docs/design/setup/groups.html). The edge, the fill and the
+ * chevron or calendar of Salesforce's fields live inside Salesforce's components, where a
+ * component's own CSS can't reach, so the camp setup page loads this once (loadStyle), as it
+ * loads ShoreshDateBox. Only fields inside cells Shoresh marks shoresh-cell, in rows it marks
+ * shoresh-row, change; Salesforce's fields elsewhere stay as they are. ADR 0015 choice 11.
+ * Colours come from the table's own tokens (c/shoreshTokens), with the same values as fallbacks.
+ */
+.shoresh-cell .slds-input,
+.shoresh-cell .slds-input_faux,
+.shoresh-cell .slds-combobox__input {
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--shoresh-text-1, #26231b);
+}
+
+/* A name is the row's value: medium weight. */
+.shoresh-name .slds-input {
+  font-weight: 500;
+}
+
+/* The blank row's placeholder in the secondary words. */
+.shoresh-cell .slds-input::placeholder {
+  color: var(--shoresh-text-2, #504f47);
+  opacity: 1;
+}
+
+/* A field's chevron, clock or calendar: only while the row is being looked at or edited. */
+.shoresh-cell .slds-input__icon,
+.shoresh-cell .slds-input__icon_right,
+.shoresh-cell .slds-input__icon-group,
+.shoresh-cell .slds-input__button {
+  opacity: 0;
+}
+
+.shoresh-row:hover .shoresh-cell .slds-input__icon,
+.shoresh-row:hover .shoresh-cell .slds-input__icon_right,
+.shoresh-row:hover .shoresh-cell .slds-input__icon-group,
+.shoresh-row:hover .shoresh-cell .slds-input__button,
+.shoresh-row:focus-within .shoresh-cell .slds-input__icon,
+.shoresh-row:focus-within .shoresh-cell .slds-input__icon_right,
+.shoresh-row:focus-within .shoresh-cell .slds-input__icon-group,
+.shoresh-row:focus-within .shoresh-cell .slds-input__button {
+  opacity: 1;
+}
+
+/* Under the pointer or being edited: each field shows its edge, on the lightest step. */
+.shoresh-row:hover .shoresh-cell .slds-input,
+.shoresh-row:hover .shoresh-cell .slds-input_faux,
+.shoresh-row:hover .shoresh-cell .slds-combobox__input,
+.shoresh-row:focus-within .shoresh-cell .slds-input,
+.shoresh-row:focus-within .shoresh-cell .slds-input_faux,
+.shoresh-row:focus-within .shoresh-cell .slds-combobox__input {
+  border-color: var(--shoresh-edge, #d8dcd4);
+  background-color: var(--shoresh-color-primary-50, #f6f8f5);
+}
+
+/* The field with the cursor: the highlight edge, as every Shoresh field. */
+.shoresh-row .shoresh-cell .slds-input:focus,
+.shoresh-row .shoresh-cell .slds-input_faux:focus,
+.shoresh-row .shoresh-cell .slds-combobox__input:focus,
+.shoresh-row .shoresh-cell .slds-has-focus .slds-combobox__input {
+  border-color: var(--shoresh-color-highlight, #1f6651);
+  box-shadow: 0 0 0 1px var(--shoresh-color-highlight, #1f6651);
+}
+
+/* A field that says what's wrong keeps Salesforce's error edge, at rest too. */
+.shoresh-cell .slds-has-error .slds-input,
+.shoresh-cell .slds-has-error .slds-input_faux,
+.shoresh-cell .slds-has-error .slds-combobox__input {
+  border-color: var(--slds-g-color-error-1, #b60554);
+}

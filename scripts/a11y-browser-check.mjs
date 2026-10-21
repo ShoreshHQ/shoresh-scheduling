@@ -21,6 +21,10 @@
  *   here" only on Open cells, and Escape lets go; that pointing at a cell outlines the other
  *   cells of its activity (the mouse again); and that Accept in the counter's dropdown is reached
  *   with the arrows, hides its line, is said, and moves focus on (ADR 0008 part 8);
+ * - that a setup table row in the shared pattern (ADR 0015 choice 11) shows its week ticks
+ *   while it is edited, Tab reaching them, and that its details open from its chevron with
+ *   focus kept there; with --shots it also saves each restyled setup screen at rest and a
+ *   group row under the pointer, for docs/design/screens/;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -800,6 +804,115 @@ async function seasonError() {
     await press("Enter", 500);
 }
 
+/**
+ * A setup table row in the shared pattern (ADR 0015 choice 11), on Groups: Tab into a group's
+ * name box, then on to its week ticks (shown only while the row is pointed at or edited, so
+ * reaching them by Tab proves they show), then its details chevron: Enter opens the details
+ * under the row with focus kept on the chevron (aria-expanded), axe looks at them open, and
+ * Enter closes them.
+ */
+async function setupRow() {
+  const G = "Groups";
+  await openFromMenu(G, /^Groups\b/);
+  await axe("Groups");
+  const box = await tabTo(
+    (f) =>
+      f.tag === "input" &&
+      f.components.includes("c-shoresh-editable-table") &&
+      !/^Add /.test(f.name),
+    { max: 30 }
+  );
+  if (!box) throw new Error("No group's name box was reached with Tab.");
+  const tick = await tabTo(
+    (f) =>
+      f.tag === "input" && f.type === "checkbox" && / runs in /.test(f.name),
+    { max: 12 }
+  );
+  if (tick) {
+    results.pass(
+      G,
+      "While a row is edited, its week ticks show and Tab reaches them",
+      `Reached "${tick.name}".`
+    );
+  } else {
+    await shot(G, "Week ticks");
+    results.fail(
+      G,
+      "While a row is edited, its week ticks show and Tab reaches them",
+      "No week tick was reached from the row's name box."
+    );
+  }
+  // Past the row's week ticks (one per week) and its delete.
+  const chevron = await tabTo(named(/ details$/, { tag: "button" }), {
+    max: 60
+  });
+  if (!chevron) throw new Error("The row's details chevron was not reached.");
+  await press("Enter", 600);
+  await expectFocus(G, "Opening a row's details: focus stays on its chevron", {
+    tag: "button",
+    name: / details$/
+  });
+  const expanded = await page.evaluate(() => {
+    let a = document.activeElement;
+    while (a && a.shadowRoot && a.shadowRoot.activeElement)
+      a = a.shadowRoot.activeElement;
+    return a ? a.getAttribute("aria-expanded") : null;
+  });
+  if (expanded === "true") {
+    results.pass(
+      G,
+      "The chevron says its details are open",
+      "aria-expanded true."
+    );
+  } else {
+    results.fail(
+      G,
+      "The chevron says its details are open",
+      `aria-expanded ${expanded}.`
+    );
+  }
+  await axe("Groups, a row's details open");
+  if (args.includes("--shots")) {
+    await page.screenshot({ path: join(shotsDir, "setup-groups-details.png") });
+  }
+  await press("Enter", 400);
+}
+
+/**
+ * With --shots: each restyled setup screen at rest, and a group row under the pointer (the
+ * mock-up's hover), saved by name for docs/design/screens/. Screenshots only; nothing is checked.
+ */
+async function setupShots() {
+  if (!args.includes("--shots")) return;
+  mkdirSync(shotsDir, { recursive: true });
+  for (const [screen, re] of [
+    ["Weeks", /^Weeks\b/],
+    ["Divisions", /^Divisions\b/],
+    ["Time blocks", /^Time blocks\b/],
+    ["Locations", /^Locations\b/],
+    ["Groups", /^Groups\b/]
+  ]) {
+    await openFromMenu(screen, re);
+    await page.mouse.move(2, 2);
+    await pause(400);
+    await page.screenshot({
+      path: join(
+        shotsDir,
+        `setup-${screen.toLowerCase().replace(/ /g, "-")}.png`
+      )
+    });
+  }
+  const row = shown(
+    'c-shoresh-editable-table[data-id="groups"] tr.row:not(.add-row)'
+  ).nth(1);
+  if ((await row.count()) > 0) {
+    await row.hover();
+    await pause(300);
+    await page.screenshot({ path: join(shotsDir, "setup-groups-hover.png") });
+    await page.mouse.move(2, 2);
+  }
+}
+
 async function campSetup() {
   const S = "Camp setup";
   await step(S, "Menu reachable by Tab from the top of the page", async () => {
@@ -825,6 +938,8 @@ async function campSetup() {
     await openFromMenu("Weeks", /^Weeks\b/);
     await axe("Weeks");
   });
+  await step(S, "Groups: a row's week ticks and details by keyboard", setupRow);
+  await step(S, "Setup screens: screenshots", setupShots);
   await step(S, "Programs: add a card, then delete it", async () => {
     await openFromMenu("Programs", /^Programs\b/);
     const cards = () =>
@@ -932,9 +1047,10 @@ async function campSetup() {
           `The camp's places are not as expected: ${before.join(", ")}.`
         );
       }
-      await shown(
-        `${table} [data-row-key="add"][data-field="Name"] input`
-      ).focus();
+      // Each type is its own section with its own blank row: the first one.
+      await shown(`${table} [data-row-key="add"][data-field="Name"] input`)
+        .first()
+        .focus();
       await type("pool");
       await press("Enter", 3000);
       if (!(await names()).includes("pool"))
