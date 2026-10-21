@@ -1379,7 +1379,9 @@ async function versions(S, openScreen) {
       dataId: "versions-button"
     });
     await press("Enter", 600);
-    if (!(await tabTo((f) => f.dataId === "save-name", { max: 60 }))) {
+    // Past every version in the list: three stops each, and the week keeps the schedules each
+    // run published (kept history), so the list grows run after run.
+    if (!(await tabTo((f) => f.dataId === "save-name", { max: 400 }))) {
       throw new Error("Name current version… not reached.");
     }
     const name = `Keyboard check ${new Date().toISOString().slice(11, 19)}`;
@@ -1395,8 +1397,8 @@ async function versions(S, openScreen) {
       named(new RegExp(`rename.*${name}|${name}.*rename`, "i")),
       {
         back: true,
-        // Three stops a version, and the week keeps its auto-saved versions run after run.
-        max: 200
+        // Back past every version, as above.
+        max: 400
       }
     );
     if (!rename) throw new Error("The new version's rename not reached.");
