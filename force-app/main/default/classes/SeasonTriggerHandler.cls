@@ -2,7 +2,7 @@
  * Deleting a season. Refuses a season with published history. Otherwise clears the rows inside
  * the season that point at the season's own records through restrict-delete lookups (week
  * exceptions, who recurring activities cover, fixed and recurring activities, activities and
- * who can do them, schedules), which
+ * who can do them, schedules, special dates and plans, special events), which
  * would otherwise block the whole delete (platform check (a)). Salesforce checks those lookups
  * after before-delete triggers run, so clearing them here lets the season go.
  */
@@ -74,6 +74,33 @@ public with sharing class SeasonTriggerHandler {
           SELECT Id
           FROM Schedule__c
           WHERE Program__r.Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      // Special dates point at the season's weeks and special days and events; plans at the
+      // special days and events; special events at its locations. Clearing the dates first
+      // means no special event is refused for still being on a day.
+      clear(
+        [
+          SELECT Id
+          FROM SpecialDate__c
+          WHERE Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      clear(
+        [
+          SELECT Id
+          FROM PlanPart__c
+          WHERE Season__c IN :deletable
+          WITH SYSTEM_MODE
+        ]
+      );
+      clear(
+        [
+          SELECT Id
+          FROM SpecialEvent__c
+          WHERE Season__c IN :deletable
           WITH SYSTEM_MODE
         ]
       );

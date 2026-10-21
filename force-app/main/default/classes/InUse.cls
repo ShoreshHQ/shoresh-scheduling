@@ -120,6 +120,28 @@ public with sharing class InUse {
       parts.add(setTime[0]);
       fixes.add(setTime[1]);
     }
+    List<String> events = new List<String>();
+    for (SpecialEvent__c event : [
+      SELECT Name
+      FROM SpecialEvent__c
+      WHERE Location__c = :locationId
+      WITH USER_MODE
+      ORDER BY Name
+      LIMIT 21
+    ]) {
+      events.add(event.Name);
+    }
+    if (!events.isEmpty()) {
+      parts.add(
+        quoted(events) + (events.size() == 1 ? ' happens' : ' happen') + ' here'
+      );
+      fixes.add(
+        'choose another ' +
+          labels.singularInSentence('Location') +
+          ' for ' +
+          thatOrThose(labels, 'SpecialEvent', events.size())
+      );
+    }
     return parts.isEmpty() ? null : refusal(parts, fixes);
   }
 

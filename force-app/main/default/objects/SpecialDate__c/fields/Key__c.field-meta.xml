@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Key__c</fullName>
+    <description
+  >Week, day, and what is placed, filled by Shoresh, so a week day holds at most one special day and the same special event only once.</description>
+    <caseSensitive>false</caseSensitive>
+    <externalId>false</externalId>
+    <label>Key</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

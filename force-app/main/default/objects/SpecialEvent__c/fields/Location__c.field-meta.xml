@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Location__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >Where the special event happens; empty means no particular location. A location used here cannot be deleted until this is changed.</description>
+    <label>Location</label>
+    <referenceTo>Location__c</referenceTo>
+    <relationshipLabel>Special Events</relationshipLabel>
+    <relationshipName>SpecialEvents</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

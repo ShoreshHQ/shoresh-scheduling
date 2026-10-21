@@ -44,6 +44,22 @@ describe("c/shoreshSchema", () => {
     );
   });
 
+  it("names the special day and event objects for the screens to come (ADR 0014)", () => {
+    expect(OBJECT.SpecialDay).toBe(`${NAMESPACE_PREFIX}SpecialDay__c`);
+    expect(OBJECT.SpecialEvent).toBe(`${NAMESPACE_PREFIX}SpecialEvent__c`);
+    expect(OBJECT.SpecialDate).toBe(`${NAMESPACE_PREFIX}SpecialDate__c`);
+    expect(OBJECT.PlanPart).toBe(`${NAMESPACE_PREFIX}PlanPart__c`);
+    expect(FIELD.SpecialDate.Day).toBe(`${NAMESPACE_PREFIX}Day__c`);
+    expect(FIELD.SpecialEvent.Location).toBe(`${NAMESPACE_PREFIX}Location__c`);
+    expect(FIELD.PlanPart.Plan).toBe(`${NAMESPACE_PREFIX}Plan__c`);
+    expect(CHILDREN.SpecialDay.SpecialDates).toBe(
+      `${NAMESPACE_PREFIX}SpecialDates__r`
+    );
+    expect(CHILDREN.SpecialEvent.PlanParts).toBe(
+      `${NAMESPACE_PREFIX}PlanParts__r`
+    );
+  });
+
   it("gives every name the prefix exactly once", () => {
     const names = [
       ...Object.values(OBJECT),

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Plan__c</fullName>
+    <description
+  >The plan in Shoresh's compact grid format (repo docs/adr/0005): its own time blocks, its rows (groups, stations or teams), what is placed, and one row of cells each. Written and read by Shoresh only.</description>
+    <label>Plan</label>
+    <length>131072</length>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

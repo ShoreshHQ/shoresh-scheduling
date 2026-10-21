@@ -1,7 +1,8 @@
 /**
  * Weeks: fills the hidden key (season + start date) so Salesforce refuses two weeks in a
  * season starting the same day, with a message in the camp's words; refuses deleting a week
- * with published history.
+ * with published history. A week that is deleted takes its special days and events off its days
+ * (the special days and events themselves are kept).
  */
 public with sharing class WeekTriggerHandler {
   public static void handle(
@@ -81,6 +82,24 @@ public with sharing class WeekTriggerHandler {
       campIdByWeekId.put(week.Id, campIdBySeasonId.get(week.Season__c));
     }
     PublishedHistory.refuseDeletes(oldWeeks.values(), 'Week', campIdByWeekId);
+    Set<Id> deletable = new Set<Id>();
+    for (Week__c week : oldWeeks.values()) {
+      if (!week.hasErrors()) {
+        deletable.add(week.Id);
+      }
+    }
+    // System mode on purpose: a special date means nothing without its week, and whoever may
+    // delete the week must not be stopped by one they cannot see. Salesforce checks the
+    // restrict-delete lookup after this runs.
+    List<SpecialDate__c> onDays = [
+      SELECT Id
+      FROM SpecialDate__c
+      WHERE Week__c IN :deletable
+      WITH SYSTEM_MODE
+    ];
+    if (!onDays.isEmpty()) {
+      Database.delete(onDays, true, AccessLevel.SYSTEM_MODE);
+    }
   }
 
   @TestVisible

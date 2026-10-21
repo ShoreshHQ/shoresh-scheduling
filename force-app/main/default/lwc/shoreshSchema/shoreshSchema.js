@@ -86,6 +86,15 @@ import locationLocationType from "@salesforce/schema/Location__c.LocationType__c
 import locationNotes from "@salesforce/schema/Location__c.Notes__c";
 import locationSeason from "@salesforce/schema/Location__c.Season__c";
 import locationSortOrder from "@salesforce/schema/Location__c.SortOrder__c";
+import planPartObject from "@salesforce/schema/PlanPart__c";
+import planPartGridFormatVersion from "@salesforce/schema/PlanPart__c.GridFormatVersion__c";
+import planPartKey from "@salesforce/schema/PlanPart__c.Key__c";
+import planPartPart from "@salesforce/schema/PlanPart__c.Part__c";
+import planPartPlan from "@salesforce/schema/PlanPart__c.Plan__c";
+import planPartRevision from "@salesforce/schema/PlanPart__c.Revision__c";
+import planPartSeason from "@salesforce/schema/PlanPart__c.Season__c";
+import planPartSpecialDay from "@salesforce/schema/PlanPart__c.SpecialDay__c";
+import planPartSpecialEvent from "@salesforce/schema/PlanPart__c.SpecialEvent__c";
 import programObject from "@salesforce/schema/Program__c";
 import programCopiedFrom from "@salesforce/schema/Program__c.CopiedFrom__c";
 import programFriday from "@salesforce/schema/Program__c.Friday__c";
@@ -132,6 +141,24 @@ import seasonCopiedFrom from "@salesforce/schema/Season__c.CopiedFrom__c";
 import seasonEndDate from "@salesforce/schema/Season__c.EndDate__c";
 import seasonStartDate from "@salesforce/schema/Season__c.StartDate__c";
 import seasonStatus from "@salesforce/schema/Season__c.Status__c";
+import specialDateObject from "@salesforce/schema/SpecialDate__c";
+import specialDateDay from "@salesforce/schema/SpecialDate__c.Day__c";
+import specialDateKey from "@salesforce/schema/SpecialDate__c.Key__c";
+import specialDateSeason from "@salesforce/schema/SpecialDate__c.Season__c";
+import specialDateSpecialDay from "@salesforce/schema/SpecialDate__c.SpecialDay__c";
+import specialDateSpecialEvent from "@salesforce/schema/SpecialDate__c.SpecialEvent__c";
+import specialDateWeek from "@salesforce/schema/SpecialDate__c.Week__c";
+import specialDayObject from "@salesforce/schema/SpecialDay__c";
+import specialDayKey from "@salesforce/schema/SpecialDay__c.Key__c";
+import specialDayNotes from "@salesforce/schema/SpecialDay__c.Notes__c";
+import specialDaySeason from "@salesforce/schema/SpecialDay__c.Season__c";
+import specialDaySortOrder from "@salesforce/schema/SpecialDay__c.SortOrder__c";
+import specialEventObject from "@salesforce/schema/SpecialEvent__c";
+import specialEventKey from "@salesforce/schema/SpecialEvent__c.Key__c";
+import specialEventLocation from "@salesforce/schema/SpecialEvent__c.Location__c";
+import specialEventNotes from "@salesforce/schema/SpecialEvent__c.Notes__c";
+import specialEventSeason from "@salesforce/schema/SpecialEvent__c.Season__c";
+import specialEventSortOrder from "@salesforce/schema/SpecialEvent__c.SortOrder__c";
 import timeBlockObject from "@salesforce/schema/TimeBlock__c";
 import timeBlockCopiedFrom from "@salesforce/schema/TimeBlock__c.CopiedFrom__c";
 import timeBlockEndTime from "@salesforce/schema/TimeBlock__c.EndTime__c";
@@ -183,11 +210,15 @@ export const OBJECT = Object.freeze({
   Import: importObject.objectApiName,
   LocationType: locationTypeObject.objectApiName,
   Location: locationObject.objectApiName,
+  PlanPart: planPartObject.objectApiName,
   Program: programObject.objectApiName,
   RecurringActivity: recurringActivityObject.objectApiName,
   ScheduleDay: scheduleDayObject.objectApiName,
   Schedule: scheduleObject.objectApiName,
   Season: seasonObject.objectApiName,
+  SpecialDate: specialDateObject.objectApiName,
+  SpecialDay: specialDayObject.objectApiName,
+  SpecialEvent: specialEventObject.objectApiName,
   TimeBlock: timeBlockObject.objectApiName,
   WeekException: weekExceptionObject.objectApiName,
   Week: weekObject.objectApiName
@@ -282,6 +313,16 @@ export const FIELD = Object.freeze({
     Season: locationSeason.fieldApiName,
     SortOrder: locationSortOrder.fieldApiName
   }),
+  PlanPart: Object.freeze({
+    GridFormatVersion: planPartGridFormatVersion.fieldApiName,
+    Key: planPartKey.fieldApiName,
+    Part: planPartPart.fieldApiName,
+    Plan: planPartPlan.fieldApiName,
+    Revision: planPartRevision.fieldApiName,
+    Season: planPartSeason.fieldApiName,
+    SpecialDay: planPartSpecialDay.fieldApiName,
+    SpecialEvent: planPartSpecialEvent.fieldApiName
+  }),
   Program: Object.freeze({
     CopiedFrom: programCopiedFrom.fieldApiName,
     Friday: programFriday.fieldApiName,
@@ -332,6 +373,27 @@ export const FIELD = Object.freeze({
     EndDate: seasonEndDate.fieldApiName,
     StartDate: seasonStartDate.fieldApiName,
     Status: seasonStatus.fieldApiName
+  }),
+  SpecialDate: Object.freeze({
+    Day: specialDateDay.fieldApiName,
+    Key: specialDateKey.fieldApiName,
+    Season: specialDateSeason.fieldApiName,
+    SpecialDay: specialDateSpecialDay.fieldApiName,
+    SpecialEvent: specialDateSpecialEvent.fieldApiName,
+    Week: specialDateWeek.fieldApiName
+  }),
+  SpecialDay: Object.freeze({
+    Key: specialDayKey.fieldApiName,
+    Notes: specialDayNotes.fieldApiName,
+    Season: specialDaySeason.fieldApiName,
+    SortOrder: specialDaySortOrder.fieldApiName
+  }),
+  SpecialEvent: Object.freeze({
+    Key: specialEventKey.fieldApiName,
+    Location: specialEventLocation.fieldApiName,
+    Notes: specialEventNotes.fieldApiName,
+    Season: specialEventSeason.fieldApiName,
+    SortOrder: specialEventSortOrder.fieldApiName
   }),
   TimeBlock: Object.freeze({
     CopiedFrom: timeBlockCopiedFrom.fieldApiName,
@@ -410,6 +472,11 @@ export const PARENT = Object.freeze({
     LocationType: FIELD.Location.LocationType.replace(/__c$/, "__r"),
     Season: FIELD.Location.Season.replace(/__c$/, "__r")
   }),
+  PlanPart: Object.freeze({
+    Season: FIELD.PlanPart.Season.replace(/__c$/, "__r"),
+    SpecialDay: FIELD.PlanPart.SpecialDay.replace(/__c$/, "__r"),
+    SpecialEvent: FIELD.PlanPart.SpecialEvent.replace(/__c$/, "__r")
+  }),
   Program: Object.freeze({
     CopiedFrom: FIELD.Program.CopiedFrom.replace(/__c$/, "__r"),
     Season: FIELD.Program.Season.replace(/__c$/, "__r")
@@ -433,6 +500,19 @@ export const PARENT = Object.freeze({
   Season: Object.freeze({
     Camp: FIELD.Season.Camp.replace(/__c$/, "__r"),
     CopiedFrom: FIELD.Season.CopiedFrom.replace(/__c$/, "__r")
+  }),
+  SpecialDate: Object.freeze({
+    Season: FIELD.SpecialDate.Season.replace(/__c$/, "__r"),
+    SpecialDay: FIELD.SpecialDate.SpecialDay.replace(/__c$/, "__r"),
+    SpecialEvent: FIELD.SpecialDate.SpecialEvent.replace(/__c$/, "__r"),
+    Week: FIELD.SpecialDate.Week.replace(/__c$/, "__r")
+  }),
+  SpecialDay: Object.freeze({
+    Season: FIELD.SpecialDay.Season.replace(/__c$/, "__r")
+  }),
+  SpecialEvent: Object.freeze({
+    Location: FIELD.SpecialEvent.Location.replace(/__c$/, "__r"),
+    Season: FIELD.SpecialEvent.Season.replace(/__c$/, "__r")
   }),
   TimeBlock: Object.freeze({
     CopiedFrom: FIELD.TimeBlock.CopiedFrom.replace(/__c$/, "__r"),
@@ -492,6 +572,7 @@ export const CHILDREN = Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     FixedActivities: `${NAMESPACE_PREFIX}FixedActivities__r`,
     RecurringActivities: `${NAMESPACE_PREFIX}RecurringActivities__r`,
+    SpecialEvents: `${NAMESPACE_PREFIX}SpecialEvents__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
   }),
   Program: Object.freeze({
@@ -518,8 +599,20 @@ export const CHILDREN = Object.freeze({
     Imports: `${NAMESPACE_PREFIX}Imports__r`,
     LocationTypes: `${NAMESPACE_PREFIX}LocationTypes__r`,
     Locations: `${NAMESPACE_PREFIX}Locations__r`,
+    PlanParts: `${NAMESPACE_PREFIX}PlanParts__r`,
     Programs: `${NAMESPACE_PREFIX}Programs__r`,
+    SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`,
+    SpecialDays: `${NAMESPACE_PREFIX}SpecialDays__r`,
+    SpecialEvents: `${NAMESPACE_PREFIX}SpecialEvents__r`,
     Weeks: `${NAMESPACE_PREFIX}Weeks__r`
+  }),
+  SpecialDay: Object.freeze({
+    PlanParts: `${NAMESPACE_PREFIX}PlanParts__r`,
+    SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
+  }),
+  SpecialEvent: Object.freeze({
+    PlanParts: `${NAMESPACE_PREFIX}PlanParts__r`,
+    SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
   }),
   TimeBlock: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
@@ -533,6 +626,7 @@ export const CHILDREN = Object.freeze({
   }),
   Week: Object.freeze({
     Schedules: `${NAMESPACE_PREFIX}Schedules__r`,
+    SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
   })
 });

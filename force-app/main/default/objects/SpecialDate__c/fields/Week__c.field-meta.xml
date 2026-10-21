@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Week__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description
+  >The week it is in, in the same season. Deleting the week takes it off that day.</description>
+    <label>Week</label>
+    <referenceTo>Week__c</referenceTo>
+    <relationshipLabel>Special Dates</relationshipLabel>
+    <relationshipName>SpecialDates</relationshipName>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>
