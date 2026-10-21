@@ -1395,7 +1395,8 @@ async function versions(S, openScreen) {
       named(new RegExp(`rename.*${name}|${name}.*rename`, "i")),
       {
         back: true,
-        max: 60
+        // Three stops a version, and the week keeps its auto-saved versions run after run.
+        max: 200
       }
     );
     if (!rename) throw new Error("The new version's rename not reached.");
