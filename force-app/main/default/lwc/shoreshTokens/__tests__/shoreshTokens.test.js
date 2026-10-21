@@ -16,10 +16,11 @@ const tokens = Object.fromEntries(
 );
 
 /** A token's colour, following var(--name) to the value it names. */
-function colour(name) {
+function colour(name, seen = []) {
+  if (seen.includes(name)) throw new Error(`${name} names itself`);
   const value = tokens[name];
   const ref = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(value || "");
-  return ref ? colour(ref[1]) : value;
+  return ref ? colour(ref[1], [...seen, name]) : value;
 }
 
 /** WCAG relative luminance contrast of two #rrggbb colours. */
@@ -48,6 +49,16 @@ describe("c/shoreshTokens", () => {
     expect(tokens["--shoresh-color-primary-500"]).toBe("#aeb6a7");
     expect(tokens["--shoresh-color-highlight"]).toBe("#1f6651");
     expect(tokens["--shoresh-color-text"]).toBe("#26231b");
+    // Its hover and pressed state is a deeper tint of the highlight.
+    expect(tokens["--shoresh-color-highlight-press"]).toBe("#18503f");
+    // Every colour and role resolves to a written-out value.
+    Object.keys(tokens)
+      .filter((name) =>
+        /^--shoresh-(color|surface)-|^--shoresh-(edge|rule|shade|text-[12])$/.test(
+          name
+        )
+      )
+      .forEach((name) => expect(colour(name)).toMatch(/^#[0-9a-f]{6}$/));
     // No separate accent colour.
     expect(
       Object.keys(tokens).some(

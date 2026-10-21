@@ -20,7 +20,7 @@
   --shoresh-color-primary-700: #808d74;
   /* 2. The one highlight, forest, and its deeper tint for hover and pressed states. */
   --shoresh-color-highlight: #1f6651;
-  --shoresh-color-highlight-press: var(--shoresh-color-highlight-press);
+  --shoresh-color-highlight-press: #18503f;
   /* 3. The text colour. */
   --shoresh-color-text: #26231b;
 
