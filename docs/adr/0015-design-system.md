@@ -123,6 +123,11 @@ restyles the setup tables and five setup screens; step 3b the rest (see Not done
       group to another division, and a place's type and notes, are the row's **details**, not
       columns: the chevron at the row's end opens them under the row (`aria-expanded`, named
       "Cedar details"), saved with the row as before (leaving the row and its details saves).
+      A row whose save moves it to another section (a place given another type, Enter in its
+      notes) takes the cursor with it: the same box in its new section, its details open again,
+      and the move is said ("Pool moved to Fields"), so focus never drops to the top of the page
+      (WCAG 2.4.3). When the rail shows only the old type, the cursor goes to that section's
+      blank row instead, with the same words. Until it is saved the row stays where it is.
     - **Names with room.** The table is laid out at fixed widths per kind of column; the name
       (and words such as "Activities held here") share what is left. Nothing scrolls sideways
       at 1280 to 1440 on these screens; a table with more columns than fit (Activities,
@@ -161,7 +166,8 @@ restyles the setup tables and five setup screens; step 3b the rest (see Not done
     `shoreshCampSetup` ("setup screens in the shared table pattern", the `ShoreshTable` style
     reaching only marked cells), `shoreshSavedMark` and `shoreshListImport` tests, and in the
     test org by `scripts/a11y-browser-check.mjs` (a group's week ticks reached by Tab while it
-    is edited, its details opened from the chevron with focus kept, axe on each screen) with
+    is edited, its details opened from the chevron with focus kept, a place moved to another
+    type with the cursor following it, axe on each screen) with
     screenshots next to the mock-ups in `docs/design/screens/` (`setup-*.png`).
 
 ## Not done here

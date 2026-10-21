@@ -2704,6 +2704,84 @@ describe("c-shoresh-editable-table", () => {
       expect(q(element, "tr[data-more-row]").dataset.row).toBe("row-g1");
     });
 
+    describe("a row that moved here from another section takes the cursor (WCAG 2.4.3)", () => {
+      /** Calls takeFocus and lists what took the focus, as row:field. */
+      async function take(element, ...args) {
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        element.takeFocus(...args);
+        await flush();
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+        );
+        focus.mockRestore();
+        return focused;
+      }
+      const said = (element) => q(element, '[data-id="announce"]').textContent;
+
+      it("the same field, its details opened again, and the move said", async () => {
+        const element = renderSection();
+        await flush();
+        const focused = await take(
+          element,
+          "g2",
+          nsName("Division__c"),
+          true,
+          "Cedar moved to Juniors"
+        );
+        expect(focused).toEqual([`row-g2:${nsName("Division__c")}`]);
+        expect(q(element, "tr[data-more-row]").dataset.row).toBe("row-g2");
+        expect(said(element)).toContain("Cedar moved to Juniors");
+      });
+
+      it("a field in the row itself, with its details left closed", async () => {
+        const element = renderSection();
+        await flush();
+        const focused = await take(element, "g3", nsName("Name"), false);
+        expect(focused).toEqual([`row-g3:${nsName("Name")}`]);
+        expect(q(element, "tr[data-more-row]")).toBeNull();
+      });
+
+      it("a row this section doesn't show: the blank row", async () => {
+        const element = renderSection({
+          filterField: "Division__c",
+          filterValue: "d2"
+        });
+        await flush();
+        const focused = await take(
+          element,
+          "g2",
+          nsName("Division__c"),
+          true,
+          "Cedar moved to Juniors"
+        );
+        expect(focused).toEqual([`add:${nsName("Name")}`]);
+        expect(said(element)).toContain("Cedar moved to Juniors");
+      });
+
+      it("focusedRow names the saved row and field with the cursor, never the blank row", async () => {
+        const element = renderSection();
+        await flush();
+        element.shadowRoot.querySelectorAll('[data-id="more"]')[1].click();
+        await flush();
+        const division = q(
+          element,
+          `tr[data-more-row] [data-field="${nsName("Division__c")}"]`
+        );
+        division.tabIndex = 0;
+        division.focus();
+        expect(element.focusedRow()).toEqual({
+          recordId: "g2",
+          field: nsName("Division__c"),
+          inDetails: true
+        });
+        const blank = field(element, 4, "Name");
+        blank.tabIndex = 0;
+        blank.focus();
+        expect(element.focusedRow()).toBeNull();
+      });
+    });
+
     it("a readonly column shows words from the saved row, and is never sent", async () => {
       const element = render({
         objectApiName: "Location__c",

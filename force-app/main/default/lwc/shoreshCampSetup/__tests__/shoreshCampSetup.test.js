@@ -16,7 +16,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
-import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
+import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
@@ -554,6 +554,143 @@ describe("c-shoresh-camp-setup", () => {
       expect(
         table.columns.filter((c) => c.more).map((c) => bareName(c.fieldName))
       ).toEqual(["LocationType__c", "Notes__c"]);
+    });
+
+    describe("a place whose type changes takes the cursor to its new section (WCAG 2.4.3)", () => {
+      const tables = (element) => [
+        ...element.shadowRoot.querySelectorAll(
+          'c-shoresh-editable-table[data-id="locations"]'
+        )
+      ];
+      const tableFor = (element, type) =>
+        tables(element).find((t) => t.filterValue === type);
+      const inTable = (table, selector) =>
+        table.shadowRoot.querySelector(selector);
+      /** The place's details open, its type changed, then Enter in its notes. */
+      async function moveLake(element, to, id = "l1", from = "lt1") {
+        const waterfront = tableFor(element, from);
+        inTable(
+          waterfront,
+          `[data-id="more"][data-row-key="row-${id}"]`
+        ).click();
+        await flush();
+        const type = inTable(
+          waterfront,
+          `[data-row-key="row-${id}"][data-field="${nsName("LocationType__c")}"]`
+        );
+        type.value = to;
+        type.dispatchEvent(
+          new CustomEvent("change", { detail: { value: to } })
+        );
+        await flush();
+        waterfront.shadowRoot
+          .querySelectorAll("lightning-input, lightning-combobox")
+          .forEach((i) => {
+            i.reportValidity = () => true;
+            i.checkValidity = () => true;
+          });
+        const notes = inTable(
+          waterfront,
+          `[data-row-key="row-${id}"][data-field="${nsName("Notes__c")}"]`
+        );
+        notes.tabIndex = 0;
+        notes.focus();
+        expect(waterfront.shadowRoot.activeElement).toBe(notes);
+        saveRow.mockResolvedValue(nsRecord({ id, changed: [] }));
+        getSeasonSetup.mockResolvedValue(
+          nsRecord(
+            setupWith({
+              locations: PLACES.map((p) => ({
+                ...p,
+                ...(p.Id === id ? { LocationType__c: to } : {})
+              })),
+              locationTypes: TYPES
+            })
+          )
+        );
+        // The test stand-in for a Salesforce input can't take focus itself: what took it is
+        // listed as section:row:field.
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        notes.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Enter",
+            bubbles: true,
+            composed: true
+          })
+        );
+        await flush();
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) =>
+            `${el.getRootNode().host.dataset.type}:${el.dataset.rowKey}:${bareName(el.dataset.field)}`
+        );
+        focus.mockRestore();
+        expect(saveRow).toHaveBeenCalledTimes(1);
+        return { notes, focused };
+      }
+
+      it("the same field in the place's row, its details open again, and the move said", async () => {
+        const element = await renderWith({
+          locations: PLACES,
+          locationTypes: TYPES
+        });
+        await openScreen(element, "locations");
+        const { notes, focused } = await moveLake(element, "lt2");
+        // Without this, the field with the cursor is gone and the cursor is at the page's top.
+        expect(notes.isConnected).toBe(false);
+        expect(tableFor(element, "lt1").showsRow("l1")).toBe(false);
+        const fields = tableFor(element, "lt2");
+        expect(fields.showsRow("l1")).toBe(true);
+        expect(focused).toEqual(["lt2:row-l1:Notes__c"]);
+        expect(
+          inTable(
+            fields,
+            '[data-id="more"][data-row-key="row-l1"]'
+          ).getAttribute("aria-expanded")
+        ).toBe("true");
+        expect(inTable(fields, '[data-id="announce"]').textContent).toContain(
+          "Lake moved to Fields"
+        );
+      });
+
+      it("while the rail shows only the old type, the cursor stays in that section's blank row", async () => {
+        const element = await renderWith({
+          locations: PLACES,
+          locationTypes: TYPES
+        });
+        await openScreen(element, "locations");
+        [
+          ...q(element, '[data-id="location-filter"]').querySelectorAll(
+            "button"
+          )
+        ][1].click();
+        await flush();
+        expect(tables(element).length).toBe(1);
+        const { focused } = await moveLake(element, "");
+        const waterfront = tableFor(element, "lt1");
+        expect(waterfront.showsRow("l1")).toBe(false);
+        expect(focused).toEqual(["lt1:add:Name"]);
+        expect(
+          inTable(waterfront, '[data-id="announce"]').textContent
+        ).toContain("Lake moved to No location type");
+      });
+
+      it("from a section that goes with it (the last place with no type): to its new one", async () => {
+        const element = await renderWith({
+          locations: PLACES,
+          locationTypes: TYPES
+        });
+        await openScreen(element, "locations");
+        const { focused } = await moveLake(element, "lt1", "l4", "");
+        expect(sections(element).map(([h]) => h)).toEqual([
+          "Waterfront",
+          "Fields"
+        ]);
+        expect(focused).toEqual(["lt1:row-l4:Notes__c"]);
+        expect(
+          inTable(tableFor(element, "lt1"), '[data-id="announce"]').textContent
+        ).toContain("Shed moved to Waterfront");
+      });
     });
   });
 

@@ -24,7 +24,8 @@
  * - that a setup table row in the shared pattern (ADR 0015 choice 11) shows its week ticks
  *   while it is edited, Tab reaching them; that unticking a week with placements asks first
  *   and, cancelled, leaves focus back on the tick, still ticked; and that its details open from
- *   its chevron with focus kept there; with --shots it also saves each restyled setup screen at rest and a
+ *   its chevron with focus kept there; that a place whose type is changed in its details moves
+ *   to its new section with the cursor kept in its notes, the move said; with --shots it also saves each restyled setup screen at rest and a
  *   group row under the pointer, for docs/design/screens/;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
@@ -938,6 +939,112 @@ async function setupRow() {
 }
 
 /**
+ * Locations in a section per type (ADR 0015 choice 11): a place whose type is changed in its
+ * details, then Enter in its notes, moves to its new section, and the cursor goes with it to
+ * the same box (WCAG 2.4.3), the move said. The step adds a type, moves Pool there and back,
+ * then deletes the type, so the camp ends as it began.
+ */
+async function placeChangesType() {
+  const L = "Locations";
+  const TYPE = "Check type";
+  await openFromMenu(L, /^Locations\b/);
+  const places = 'c-shoresh-editable-table[data-id="locations"]';
+  const types = 'c-shoresh-editable-table[data-id="location-types"]';
+  const typeNames = () =>
+    shown(`${types} lightning-input[data-field="Name"] input`).evaluateAll(
+      (inputs) => inputs.map((i) => i.value).filter(Boolean)
+    );
+  if ((await typeNames()).includes(TYPE)) {
+    throw new Error(
+      `"${TYPE}" is already a type: a run before this one stopped part way.`
+    );
+  }
+  await shown(`${types} [data-row-key="add"][data-field="Name"] input`).focus();
+  await type(TYPE);
+  await press("Enter", 3000);
+  if (!(await typeNames()).includes(TYPE))
+    throw new Error(`"${TYPE}" was not added.`);
+  // Pool's details: from its name box, Tab to its chevron.
+  const inputs = shown(`${places} lightning-input[data-field="Name"] input`);
+  const at = (
+    await inputs.evaluateAll((els) => els.map((e) => e.value))
+  ).indexOf("Pool");
+  if (at < 0) throw new Error("Pool is not on Locations.");
+  await inputs.nth(at).focus();
+  if (!(await tabTo(named(/^Pool details$/, { tag: "button" }), { max: 40 })))
+    throw new Error("Pool's details chevron not reached with Tab.");
+  await press("Enter", 600);
+  // Which section, and which box, has the cursor (through shadow roots).
+  const where = () =>
+    page.evaluate(() => {
+      let el = document.activeElement;
+      let section = null;
+      let field = null;
+      while (el) {
+        if (el.tagName === "C-SHORESH-EDITABLE-TABLE")
+          section = el.dataset.type;
+        if (el.dataset && el.dataset.field) field = el.dataset.field;
+        if (!el.shadowRoot || !el.shadowRoot.activeElement) break;
+        el = el.shadowRoot.activeElement;
+      }
+      return { section, field };
+    });
+  /** Type changed with the arrows, Tab to Notes, Enter: the move is said and the cursor follows. */
+  const move = async (arrow, to, back) => {
+    if (!(await tabTo((f) => f.role === "combobox", { max: 6, back })))
+      throw new Error("Pool's type not reached with Tab.");
+    const from = (await where()).section;
+    await press("Enter", 400);
+    await press(arrow, 200);
+    await press("Enter", 400);
+    if (!(await tabTo(named(/^Notes$/, { tag: "input" }), { max: 4 })))
+      throw new Error("Pool's notes not reached with Tab.");
+    await expectLive(
+      L,
+      `Pool to ${to} from its details: the move is said`,
+      new RegExp(`^Pool moved to ${to}$`),
+      () => press("Enter", 3000)
+    );
+    const now = await where();
+    const step = `Pool to ${to}: the cursor goes with it to its notes in the new section`;
+    if (now.field === "Notes__c" && now.section !== from) {
+      results.pass(
+        L,
+        step,
+        `Notes, in the section for type "${now.section || "none"}".`
+      );
+    } else {
+      await shot(L, step);
+      results.fail(
+        L,
+        step,
+        `Focus on ${formatFocus(await focus())} (section ${now.section}, box ${now.field}).`
+      );
+    }
+  };
+  // The type's choices: None, then the camp's types, the new one among them.
+  await move("ArrowDown", TYPE, false);
+  await move("ArrowUp", "No location type", true);
+  // The type goes again: its row's delete, then the question's button.
+  const rows = shown(`${types} lightning-input[data-field="Name"] input`);
+  const row = (
+    await rows.evaluateAll((els) => els.map((e) => e.value))
+  ).indexOf(TYPE);
+  await rows.nth(row).focus();
+  if (!(await tabTo(named(new RegExp(`^Delete ${TYPE}$`)), { max: 10 })))
+    throw new Error(`"${TYPE}"'s delete not reached with Tab.`);
+  await press("Enter", 1200);
+  const go = await tabTo(
+    (g) => g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
+    { max: 6, anywhere: true }
+  );
+  if (!go) throw new Error("The delete question's button not reached.");
+  await press("Enter", 3000);
+  if ((await typeNames()).includes(TYPE))
+    throw new Error(`"${TYPE}" was not deleted: delete it by hand.`);
+}
+
+/**
  * With --shots: each restyled setup screen at rest, and a group row under the pointer (the
  * mock-up's hover), saved by name for docs/design/screens/. Screenshots only; nothing is checked.
  */
@@ -1150,6 +1257,11 @@ async function campSetup() {
         tag: "input"
       });
     }
+  );
+  await step(
+    S,
+    "Locations: a place whose type changes takes the cursor to its new section",
+    placeChangesType
   );
   await step(
     S,

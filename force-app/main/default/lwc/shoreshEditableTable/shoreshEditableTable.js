@@ -168,6 +168,8 @@ export default class ShoreshEditableTable extends LightningElement {
   // Said once in the console when the screen names an object this table doesn't know.
   reportedUnknown = false;
   focusAddRow = false;
+  // Where the cursor goes once it is on the page (takeFocus): { key, field }.
+  focusTaken = null;
   _rows = [];
   _columns = [];
   _weeks = [];
@@ -643,6 +645,7 @@ export default class ShoreshEditableTable extends LightningElement {
         keep.focus();
       }
     }
+    this.applyTakenFocus();
     this.reportMoves();
     this.announceDraftNotes();
   }
@@ -779,6 +782,69 @@ export default class ShoreshEditableTable extends LightningElement {
   @api
   showsRow(recordId) {
     return this.visibleDrafts.some((d) => d.original.Id === recordId);
+  }
+
+  /**
+   * Where the cursor is, when it is in one of this table's saved rows: { recordId, field,
+   * inDetails }. The screen asks as a row is saved, so the cursor can follow a row that the
+   * save moves to another section (a place whose type changed; WCAG 2.4.3).
+   */
+  @api
+  focusedRow() {
+    const active = this.template.activeElement;
+    const tr =
+      active && typeof active.closest === "function"
+        ? active.closest("[data-row]")
+        : null;
+    const draft = tr ? this.rowFor(tr.dataset.row) : null;
+    if (!draft || draft.isNew) {
+      return null;
+    }
+    return {
+      recordId: draft.original.Id,
+      field: active.dataset.field,
+      inDetails: !!active.closest("[data-more-row]")
+    };
+  }
+
+  /**
+   * A row moved here from another section while it held the cursor: the cursor goes to the same
+   * field in it (its details open again if that is where the cursor was), else to the row's
+   * first field, else, when this table doesn't show the row, to the blank row. Said aloud.
+   */
+  @api
+  takeFocus(recordId, field, inDetails, words) {
+    const draft = this.rowFor(`row-${recordId}`);
+    const visible = !!draft && this.visibleDrafts.includes(draft);
+    this.focusTaken = visible ? { key: draft.key, field } : { key: ADD };
+    if (words) {
+      this.announce(words);
+    }
+    if (visible && inDetails && this.moreColumns.length && !draft.moreOpen) {
+      // Once its details are drawn.
+      draft.moreOpen = true;
+      this.touch(draft);
+    } else {
+      this.applyTakenFocus();
+    }
+  }
+
+  /** The cursor goes where takeFocus said, once that field is on the page. */
+  applyTakenFocus() {
+    if (!this.focusTaken) {
+      return;
+    }
+    const { key, field } = this.focusTaken;
+    const target =
+      (field &&
+        this.template.querySelector(
+          `[data-row-key="${key}"][data-field="${field}"]`
+        )) ||
+      this.template.querySelector(`[data-row-key="${key}"][data-field]`);
+    if (target) {
+      this.focusTaken = null;
+      target.focus();
+    }
   }
 
   /** After the row's details close: back to its Details button. */

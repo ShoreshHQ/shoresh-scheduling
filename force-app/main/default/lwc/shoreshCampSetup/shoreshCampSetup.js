@@ -1398,6 +1398,8 @@ export default class ShoreshCampSetup extends LightningElement {
   async saveOneRow(detail) {
     const { record, seen, extras, seenWho, onSaved, onFailure, onDone } =
       detail;
+    // A place's row with the cursor in it may leave its section once saved (its type changed).
+    const held = this.focusedLocation();
     let answered = false;
     this.error = null;
     // The rail's quiet Saved: gone while a row is on its way, back once it is saved.
@@ -1433,6 +1435,10 @@ export default class ShoreshCampSetup extends LightningElement {
     } finally {
       // Always: the table may only send its next row once this one is done.
       onDone();
+      if (held) {
+        // Once the table has redrawn without the row.
+        Promise.resolve().then(() => this.followMovedLocation(held));
+      }
     }
   }
 
@@ -1706,6 +1712,67 @@ export default class ShoreshCampSetup extends LightningElement {
         focusRowOf: () => {}
       }
     );
+  }
+
+  /** The place whose row holds the cursor, and the section table it is in, if any. */
+  focusedLocation() {
+    const tables = this.template.querySelectorAll(
+      'c-shoresh-editable-table[data-id="locations"]'
+    );
+    for (const table of tables) {
+      const row = table.focusedRow();
+      if (row) {
+        return { ...row, table };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * After a row is saved, a place that held the cursor and is no longer in its section (its
+   * type changed, ADR 0015 choice 11) takes the cursor along to its new section: the same field,
+   * its details open again if that is where the cursor was. If the rail shows only the old
+   * type, the cursor goes to that section's blank row. Either way the move is said aloud, so the
+   * cursor never drops to the top of the page (WCAG 2.4.3).
+   */
+  followMovedLocation(held) {
+    if (!held || !this.setup) {
+      return;
+    }
+    // Only when the cursor was lost with the row: never taken from where the director went.
+    const now = focusedElement();
+    if (now && now !== document.body) {
+      return;
+    }
+    const { table, recordId, field, inDetails } = held;
+    if (table.isConnected && table.showsRow(recordId)) {
+      return;
+    }
+    const place = (this.setup.locations || []).find((l) => l.Id === recordId);
+    if (!place) {
+      return;
+    }
+    const type = place[LOCATION.LocationType] || "";
+    const named = (this.setup.locationTypes || []).find((t) => t.Id === type);
+    const typeName = named
+      ? named.Name
+      : `No ${this.terms.sIn("LocationType")}`;
+    const tables = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="locations"]'
+      )
+    ];
+    const target =
+      tables.find((t) => t.showsRow(recordId)) ||
+      (table.isConnected ? table : tables[0]);
+    if (target) {
+      target.takeFocus(
+        recordId,
+        field,
+        inDetails,
+        `${place.Name} moved to ${typeName}`
+      );
+    }
   }
 
   /**
