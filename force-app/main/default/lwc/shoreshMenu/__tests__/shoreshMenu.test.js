@@ -33,10 +33,16 @@ const terms = buildTerms([
 
 const flush = () => Promise.resolve();
 
-async function render(hasSeason = true, current = "roots", marks = {}) {
+async function render(
+  hasSeason = true,
+  current = "roots",
+  marks = {},
+  more = {}
+) {
   const element = createElement("c-shoresh-menu", { is: ShoreshMenu });
   element.sections = menuSections(terms, hasSeason, marks);
   element.current = current;
+  Object.assign(element, more);
   document.body.appendChild(element);
   await flush();
   return element;
@@ -93,6 +99,65 @@ describe("c-shoresh-menu", () => {
     expect(active[0].querySelector("a").getAttribute("aria-current")).toBe(
       "page"
     );
+  });
+
+  it("the screen shown wears the one raised treatment; the rest don't (ADR 0015)", async () => {
+    const element = await render(true, "manualBuild");
+    const raised = [...element.shadowRoot.querySelectorAll(".shoresh-raised")];
+    expect(raised.map((a) => a.dataset.screen)).toEqual(["manualBuild"]);
+    // Roots has its sprout; the entries under a section title sit in from it.
+    const roots = element.shadowRoot.querySelector('a[data-screen="roots"]');
+    expect(roots.querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+    expect(element.shadowRoot.querySelectorAll(".section_titled").length).toBe(
+      3
+    );
+    await expect(element).toBeAccessible();
+  });
+
+  it("shows the camp's name and season at the top", async () => {
+    const element = await render(
+      true,
+      "roots",
+      {},
+      {
+        campName: "Camp Willow",
+        seasonName: "Summer 2026"
+      }
+    );
+    const camp = element.shadowRoot.querySelector('[data-id="camp"]');
+    expect(camp.querySelector(".camp-name").textContent).toBe("Camp Willow");
+    expect(camp.querySelector('[data-id="season"]').textContent).toBe(
+      "Summer 2026"
+    );
+    // No camp yet (the page asks for one): no row.
+    const bare = await render();
+    expect(bare.shadowRoot.querySelector('[data-id="camp"]')).toBeNull();
+  });
+
+  it("its foot says setup changed, with Update to match setup, only when asked", async () => {
+    const element = await render(true, "manualBuild");
+    expect(
+      element.shadowRoot.querySelector('[data-id="setup-notice"]')
+    ).toBeNull();
+    element.setupChanged = true;
+    await flush();
+    const foot = element.shadowRoot.querySelector('[data-id="setup-notice"]');
+    expect(foot.querySelector(".notice-what").textContent.trim()).toBe(
+      "Setup changed"
+    );
+    const go = foot.querySelector('[data-id="menu-update-to-match"]');
+    expect(go.textContent.trim()).toBe("Update to match setup");
+    expect(go.tagName).toBe("BUTTON");
+    expect(go.disabled).toBe(false);
+    const handler = jest.fn();
+    element.addEventListener("updatetomatch", handler);
+    go.click();
+    expect(handler).toHaveBeenCalledTimes(1);
+    await expect(element).toBeAccessible();
+    // While the schedule is busy it waits, as the screen's own button does.
+    element.setupBusy = true;
+    await flush();
+    expect(go.disabled).toBe(true);
   });
 
   it("asks to open a screen when one is clicked", async () => {

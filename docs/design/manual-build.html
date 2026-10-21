@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual Build · Full Rail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+/* Round 13 · FULL-WIDTH RAIL + SAME-ACTIVITY OUTLINE. Base: round12/counter-drawer.html.
+   Rule for the rail: spacing-spec.md. A = even gaps (body.a), B = three zones (body.b).
+   Round 12 note: COUNTER DRAWER. Base: round11/continuous.html. Only the rail counter changed:
+   four totals became one menu item, "29 of 35 placed", whose drawer holds the week's measure.
+   Round 11 note: Base: round10/system.html.
+   The rail, grid and drawer are three zones of ONE frame, divided by the one hairline.
+   Plain-language version: spacing-spec-continuous.md */
+:root{
+  /* 1 · THE UNIT. Page width / 360: 4px at 1440; never below 3px or above 5px. */
+  --u: clamp(3px, calc(100vw / 360), 5px);
+
+  /* 2 · THE SCALE */
+  --s1: calc(var(--u) * 1);   /*  4 */
+  --s2: calc(var(--u) * 2);   /*  8 */
+  --s3: calc(var(--u) * 3);   /* 12 */
+  --s4: calc(var(--u) * 4);   /* 16 */
+  --s5: calc(var(--u) * 6);   /* 24 */
+  --s6: calc(var(--u) * 8);   /* 32 */
+
+  /* 3 · THE ASSIGNMENTS */
+  --word:         var(--s1);  /* number to its word; mark to its number; chevron to its word */
+  --in-group:     var(--s1);  /* item to item inside a group */
+  --group-side:   var(--s2);  /* each side of the hairline that ends a group */
+  --control-x:    var(--s2);  /* side padding of every item, and the text inset of every header */
+  --control-h:    var(--s6);  /* every item on the rail, the bunk header row, Lunch and Assembly rows */
+  --page-margin:  var(--s3);
+  --gutter:       var(--s3);  /* menu to frame */
+  --pad:          var(--s3);  /* inside every zone, every side: rail, grid, drawer, menu */
+  --cell-gap:     var(--s2);  /* between cells, rows, tiles, and header column to cells */
+  --short-h:      calc(var(--u) * 7);   /* 28: Lunch, Assembly */
+  --tile-h:       calc(var(--u) * 14);  /* 56: drawer tiles */
+  --head-w:       calc(var(--u) * 24);  /* 96: header column (times) */
+  --menu-w:       calc(var(--u) * 52);  /* 208 */
+  --r-mod:        var(--s3);
+  --r:            var(--s2);
+
+  /* colour: Greg's palette, exact; surfaces are tonal steps of the primary */
+  --primary:#AEB6A7; --accent:#F6F8F5; --text:#26231B; --hl:#1F6651;
+  --page:#F3F5F2; --module:#EFF1EE; --well:#EBEDE9; --well-2:#E6E9E4;
+  --edge:#D8DCD4; --rule:#D8DCD4; --shade:#808D74;
+  --t1:var(--text);
+  --t2:color-mix(in srgb, var(--text) 78%, var(--well-2));
+
+  --mod-edge:0 0 0 1px var(--edge);
+  --raise: 0 0 0 1px color-mix(in srgb, var(--shade) 22%, transparent),
+           0 1px 2px color-mix(in srgb, var(--shade) 22%, transparent);
+  --well-in: inset 0 1px 2px color-mix(in srgb, var(--shade) 16%, transparent);
+
+  --cols: var(--head-w) repeat(7, 1fr);   /* shared by grid and drawer */
+
+  --sans:"Inter",-apple-system,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--t1);font-family:var(--sans);font-size:13px;line-height:1.25;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"cv11" 1;width:1440px;height:900px;overflow:hidden}
+.num{font-variant-numeric:tabular-nums}
+svg{display:block;flex:none}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.lock{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;
+  color:var(--t2);transform:translateY(-.5px)}
+
+/* Salesforce header: theirs, untouched */
+.sf{height:40px;background:#F3F3F3;border-bottom:1px solid #DDDBDA;display:flex;align-items:center;padding:0 12px;gap:12px;font-family:-apple-system,system-ui,sans-serif}
+.sf .logo{width:44px;height:22px;border-radius:11px;background:#C9C7C5}
+.sf .search{margin:0 auto;width:560px;height:28px;background:#fff;border:1px solid #C9C7C5;border-radius:4px;display:flex;align-items:center;padding:0 10px;gap:8px;color:#706E6B;font-size:13px}
+.sf .icons{display:flex;gap:10px}
+.sf .icons span{width:22px;height:22px;border-radius:50%;background:#DDDBDA}
+.sf .icons span.av{background:#B0ADAB}
+
+.app{height:860px;padding:var(--page-margin);display:grid;gap:var(--gutter);grid-template-columns:var(--menu-w) 1fr}
+.mod{background:var(--module);border-radius:var(--r-mod);box-shadow:var(--mod-edge);min-width:0;min-height:0;position:relative}
+
+/* MENU (unchanged from system, foot aligned to the drawer's divider) */
+nav{padding:var(--pad);display:flex;flex-direction:column}
+.camp{height:var(--control-h);padding:0 var(--s2);display:flex;align-items:center;justify-content:space-between}
+.camp b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.camp span{font-size:13px;color:var(--t2)}
+.hair{height:1px;background:var(--rule);flex:none}
+nav .hair{margin:var(--pad) calc(-1 * var(--pad))}
+.item{display:flex;align-items:center;gap:var(--s2);height:var(--control-h);padding:0 var(--s2);border-radius:var(--r);color:var(--t2)}
+.item.cur{color:var(--t1);font-weight:500}
+.sec{height:var(--control-h);display:flex;align-items:flex-end;padding:0 var(--s2) var(--s2);margin-top:var(--s2);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}
+.sub .item{padding-left:34px;position:relative}
+.sub .item.cur::before{content:"";position:absolute;left:15px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--hl)}
+.foot{margin-top:auto}
+nav .foot .hair{margin-bottom:var(--pad)}
+.notice{display:flex;flex-direction:column;gap:var(--s2);padding:0}
+.notice .what{display:flex;align-items:center;gap:var(--s2);color:var(--t2);height:var(--s4);padding:0 var(--s2)}
+.notice .what i{width:6px;height:6px;border-radius:50%;background:var(--hl)}
+.notice .go{height:var(--control-h);display:flex;align-items:center;justify-content:center;color:var(--hl);font-weight:500}
+
+/* THE FRAME: one outer edge; zones divided by the one hairline, full bleed */
+.frame{display:flex;flex-direction:column;overflow:visible}
+.zone{padding:var(--pad);min-height:0}
+
+/* RAIL: one grammar. Every item: 32 tall, 8 side padding, 13px Inter.
+   Rest = 400 / t2. Value = 500 / t1. Current choice = raised. Groups end in one hairline. */
+.rail{display:flex;align-items:center;height:calc(var(--control-h) + 2 * var(--pad));flex:none}
+.grp{display:flex;align-items:center;gap:var(--in-group)}
+.vr{width:1px;height:var(--s4);background:var(--rule);margin:0 var(--group-side);flex:none}
+.c{height:var(--control-h);padding:0 var(--control-x);display:flex;align-items:center;gap:var(--word);border-radius:var(--r);color:var(--t2);white-space:nowrap}
+.c.on,.c.val{color:var(--t1);font-weight:500}
+.c.icon{width:var(--control-h);padding:0;justify-content:center}
+.c b{font-weight:500;color:var(--t1);font-variant-numeric:tabular-nums}
+.c .of{font-variant-numeric:tabular-nums;margin-left:calc(-1 * var(--word))}
+.spacer{flex:1}
+/* FULL-WIDTH RAIL. Three parts: L | C | R. C (views + days) is centred on the grid's CELLS,
+   not on the page: L starts --offset wider than R, so C's centre lands --offset/2 right of the rail's centre,
+   which is exactly the centre of the seven bunk columns. */
+.rail{--offset:calc(var(--head-w) + var(--cell-gap))}
+.side{display:flex;align-items:center;flex:1 1 0;min-width:0}
+.side.l{flex-basis:var(--offset)}
+.mid{display:flex;align-items:center;flex:none}
+.edge{width:0;flex:none}
+/* A: every gap in a side is equal; hairlines sit at the middle of their gap (they are items too) */
+body.a .side{justify-content:space-between}
+body.a .side .vr{margin:0}
+body.a .views .vr{margin:0 var(--group-side)}
+.views{display:flex;align-items:center}
+body.b .views{margin-left:auto}
+/* B: three zones; inside a zone the normal grammar (4 / 8 | 8); zones pinned left, centre, right */
+body.b .side.r{justify-content:flex-end}
+.a-only,.b-only{display:contents}
+.edge{display:block}
+body.a .b-only,body.b .a-only,body.a .rail>.vr{display:none}
+.mk{width:8px;height:8px;flex:none}
+/* the needs-a-look corner: the same mark a cell carries in its corner */
+.mk-look{border-top-right-radius:2px;background:var(--t1);clip-path:polygon(0 0,100% 0,100% 100%);transform:translateY(-3px)}
+
+/* COUNTER: one menu item; its drawer is the Edit menu's dropdown */
+.menu{position:relative}
+.pop{position:absolute;top:calc(100% + var(--s2));right:0;width:calc(var(--u) * 64);padding:var(--s1);border-radius:var(--r-mod);z-index:5;
+  background:var(--accent);box-shadow:var(--raise), 0 8px 24px -8px color-mix(in srgb, var(--shade) 40%, transparent);display:none}
+body.open .pop{display:block}
+.pop .row{height:var(--control-h);padding:0 var(--control-x);display:flex;align-items:center;gap:var(--word);border-radius:var(--r);color:var(--t1);white-space:nowrap}
+.pop .row b{font-weight:500;font-variant-numeric:tabular-nums}
+.pop .row .n{margin-left:auto;color:var(--t2);font-variant-numeric:tabular-nums}
+.pop .row .n b{color:var(--t1)}
+.pop .row .n .mk{display:inline-block;margin-right:var(--word)}
+.pop .row.head{color:var(--t2)}
+.pop .row.hover{background:var(--well)}
+.pop .div{height:1px;background:var(--rule);margin:var(--s1) calc(-1 * var(--s1))}
+.bar{display:grid;grid-template-columns:repeat(35,1fr);gap:1px;height:var(--s2);margin:var(--s2) var(--control-x) 0}
+.bar i{background:var(--well-2);box-shadow:var(--well-in)}
+.bar i.p{background:var(--hl);box-shadow:none}
+.bar i:first-child{border-radius:2px 0 0 2px}.bar i:last-child{border-radius:0 2px 2px 0}
+.chev{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.btn-primary{height:var(--control-h);padding:0 var(--s4);border-radius:var(--r);background:var(--hl);color:var(--accent);font-weight:500;display:flex;align-items:center;
+  box-shadow:0 1px 2px color-mix(in srgb, var(--shade) 35%, transparent);margin-left:var(--in-group)}
+
+/* GRID: headers sit on the grid's own surface, no lines; set like rail items */
+.jig{flex:1;display:grid;grid-template-columns:var(--cols);
+  grid-template-rows:var(--control-h) 1fr 1fr 1fr var(--short-h) 1fr 1fr var(--short-h);gap:var(--cell-gap)}
+.colh{display:flex;align-items:center;justify-content:center;color:var(--t2)}
+.rowh{display:flex;align-items:center;padding-left:var(--control-x);color:var(--t2);font-variant-numeric:tabular-nums}
+.cell{display:flex;align-items:center;justify-content:center;gap:var(--s2);position:relative;text-align:center;border-radius:var(--r)}
+.cell b{font-weight:500;letter-spacing:-.005em}
+.cell.span{grid-column:2 / span 7}
+.slot{background:var(--well-2);box-shadow:var(--well-in);border-radius:var(--r)}
+.cell.same{outline:1.5px solid color-mix(in srgb, var(--hl) 45%, transparent);outline-offset:1px}
+.cell.hov{background:color-mix(in srgb, var(--accent) 50%, var(--well))}
+.cell.fits{outline:1.5px dashed var(--hl);outline-offset:-5px}
+.cell.look::after,.tile.over::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--text);
+  clip-path:polygon(0 0,100% 0,100% 100%);border-top-right-radius:2px}
+
+/* DRAWER: same columns, same header column */
+.drawer{flex:none}
+.tray{display:grid;grid-template-columns:var(--cols);gap:var(--cell-gap);height:var(--tile-h);position:relative}
+.tray .rowh{flex-direction:column;align-items:flex-start;justify-content:center;gap:var(--s1)}
+.tray .rowh b{font-weight:500;color:var(--t1);font-variant-numeric:tabular-nums}
+.tile{padding:var(--s2) var(--control-x);display:flex;flex-direction:column;justify-content:space-between;position:relative}
+.tile b{font-weight:500}
+.tile .num{color:var(--t2);align-self:flex-end}
+.tile.lifted .num{color:var(--hl);font-weight:500}
+.tile{cursor:grab}.cell.raised{cursor:pointer}
+.cursor{display:none}body.holding .cursor{display:block}
+.tile.over .num{color:var(--t1);font-weight:500}
+.cursor{position:absolute;left:204px;top:4px;z-index:3}
+
+/* ONE raised treatment, last so it wins */
+.raised{background:var(--accent);box-shadow:var(--raise);border-radius:var(--r)}
+.hl{outline:2px solid var(--hl);outline-offset:1px}
+.cell.look{box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent), var(--raise)}
+.tile.over{box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent), var(--raise)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="lock" viewBox="0 0 12 12"><rect x="2.25" y="5.25" width="7.5" height="5.5" rx="1.5"/><path d="M4 5.25V3.75a2 2 0 0 1 4 0v1.5"/></symbol>
+</svg>
+
+<div class="sf">
+  <div class="logo"></div>
+  <div class="search"><svg class="ic" viewBox="0 0 16 16" style="width:14px;height:14px"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Search...</div>
+  <div class="icons"><span></span><span></span><span></span><span class="av"></span></div>
+</div>
+
+<div class="app">
+  <nav class="mod">
+    <div class="camp"><b>Camp Tamarack</b><span class="num">2027</span></div>
+    <div class="hair"></div>
+    <div class="item"><svg class="ic" viewBox="0 0 16 16"><path d="M8 14V7"/><path d="M8 9C8 6 6 4.5 3 4.5c0 3 2 4.5 5 4.5Z"/><path d="M8 7.5c0-2.5 1.7-4 4.5-4 0 2.5-1.7 4-4.5 4Z"/></svg>Roots</div>
+    <div class="sec">Camp</div>
+    <div class="sub">
+      <div class="item">Weeks</div><div class="item">Age divisions</div><div class="item">Groups</div><div class="item">Time blocks</div><div class="item">Locations</div>
+    </div>
+    <div class="sec">Activities</div>
+    <div class="sub">
+      <div class="item">Activities</div><div class="item">Fixed activities</div><div class="item">Recurring activities</div><div class="item">Special events</div>
+    </div>
+    <div class="sec">Schedules</div>
+    <div class="sub">
+      <div class="item">Generated Schedule</div><div class="item cur raised">Manual Build</div><div class="item">Schedules</div>
+    </div>
+    <div class="foot">
+      <div class="hair"></div>
+      <div class="notice">
+        <div class="what"><i></i>Setup changed</div>
+        <div class="go raised">Update to match setup</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="frame mod">
+    <div class="rail zone">
+      <div class="side l"><div class="grp">
+        <div class="c icon"><svg class="ic" viewBox="0 0 16 16"><path d="M10 4 6 8l4 4"/></svg></div>
+        <div class="c val">Week 3</div>
+        <div class="c icon"><svg class="ic" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg></div>
+      </div><div class="vr"></div><div class="grp"><div class="c">Edit<svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5l3-3"/></svg></div></div><span class="a-only"><div class="vr"></div></span><div class="views"><div class="grp"><div class="c on raised">Daily</div><div class="c">Group</div><div class="c">Activity</div></div><div class="vr"></div></div></div>
+      <div class="mid">
+        <div class="grp"><div class="c on raised">Mon</div><div class="c">Tue</div><div class="c">Wed</div><div class="c">Thu</div><div class="c">Fri</div></div>
+      </div>
+      <div class="side r"><span class="a-only"><i class="edge"></i><div class="vr"></div></span><div class="grp tot menu">
+        <div class="c" id="counter"><i class="mk mk-look"></i><b>29</b>of 35 placed<svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5l3-3"/></svg></div>
+        <div class="pop" id="pop"></div>
+      </div><div class="vr"></div><div class="grp"><div class="c">Versions<svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5l3-3"/></svg></div></div><span class="a-only"><div class="vr"></div></span><div class="grp"><div class="btn-primary">Publish</div></div></div>
+    </div>
+    <div class="hair"></div>
+    <div class="jig zone" id="jig"></div>
+    <div class="hair"></div>
+    <div class="drawer zone">
+      <div class="tray" id="tray"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Synthetic Monday, Week 3. 7 bunks x 5 periods = 35 slots; 29 placed, 6 empty.
+const bunks=["Cedar","Birch","Maple","Aspen","Willow","Pine","Oak"];
+const periods=["9:00–9:45","9:50–10:35","10:40–11:25",null,"12:30–1:15","1:20–2:05"];
+const G=[
+ ["Swim","Archery","Arts & Crafts","Soccer","Boating","Drama","Gaga"],
+ ["Archery","Swim","Soccer","","Arts & Crafts","Nature","Swim"],
+ ["Arts & Crafts","Nature","Swim","Archery","","Ropes","Soccer"],
+ ["Boating","","Drama","Swim","Gaga","Canoe","Tennis"],
+ ["Gaga","Soccer","","Nature","","Tennis",""]];
+const SEL="1,4", LOOK="2,6", LOCKED=new Set(["0,5"]);
+const DRAWER=[["Archery","1 under"],["Swim","1 under"],["Canoe","1 under"],["Drama","1 under"],["Nature","2 under"],["Ropes","1 under"],["Soccer","1 over","over"]];
+const LOCK='<svg class="lock"><use href="#lock"/></svg>';
+let h='<div></div>'+bunks.map(b=>`<div class="colh">${b}</div>`).join('');
+let gi=0;
+const fixed=(t,n)=>`<div class="rowh">${t}</div><div class="cell span raised">${LOCK}<b>${n}</b></div>`;
+periods.forEach(p=>{
+  if(!p){h+=fixed("11:30–12:20","Lunch");return;}
+  const r=gi++;
+  h+=`<div class="rowh">${p}</div>`;
+  G[r].forEach((a,c)=>{
+    const k=r+","+c;
+    if(!a){h+=`<div class="cell slot" data-r="${r}"></div>`;return;}
+    h+=`<div data-a="${a}" class="cell raised${k===SEL?' hl':''}${k===LOOK?' look':''}">${LOCKED.has(k)?LOCK:''}<b>${a}</b></div>`;
+  });
+});
+h+=fixed("2:15–2:45","Assembly");
+document.getElementById('jig').innerHTML=h;
+
+// COUNTER DRAWER: counted from the grid above, against each activity's goal for the day.
+const GOAL={Archery:4,Swim:6,Canoe:2,Drama:3,Nature:5,Ropes:2,Soccer:3};
+const placedOf=a=>G.flat().filter(x=>x===a).length;
+const total=G.flat().length, placed=G.flat().filter(Boolean).length;
+const under=[],over=[];
+Object.entries(GOAL).forEach(([a,g])=>{const n=placedOf(a);if(n<g)under.push([a,n,g]);if(n>g)over.push([a,n,g]);});
+const sum=l=>l.reduce((t,[,n,g])=>t+Math.abs(g-n),0);
+const row=([a,n,g],hov)=>`<div class="row${hov?' hover':''}">${a}<span class="n">${n>g?'<i class="mk mk-look"></i>':''}<b>${n}</b> of ${g}</span></div>`;
+document.querySelector('#counter b').textContent=placed;
+document.getElementById('pop').innerHTML=
+  `<div class="bar">${Array.from({length:total},(_,i)=>`<i${i<placed?' class="p"':''}></i>`).join('')}</div>`+
+  `<div class="row"><b>${total-placed}</b>still needed</div>`+
+  `<div class="div"></div>`+
+  `<div class="row head"><b>${sum(under)}</b>under</div>`+under.map((r,i)=>row(r,i===0)).join('')+
+  `<div class="div"></div>`+
+  `<div class="row head"><b>${sum(over)}</b>over</div>`+over.map(r=>row(r)).join('');
+if(location.hash==='#open'){document.body.classList.add('open');document.getElementById('counter').classList.add('raised');}
+document.getElementById('tray').innerHTML=`<div class="rowh"><span><b>${sum(under)}</b> under</span></div>`+
+ DRAWER.map(([n,c,s])=>`<div data-a="${n}" class="tile raised${s?' '+s:''}"><b>${n}</b><span class="num">${c}</span></div>`).join('')+
+ `<svg class="cursor" width="20" height="20" viewBox="0 0 20 20"><path d="M6 9V4.8a1.3 1.3 0 0 1 2.6 0V9m0-1.2V3.6a1.3 1.3 0 0 1 2.6 0V9m0-.8V4.6a1.3 1.3 0 0 1 2.6 0V10m0-3a1.3 1.3 0 0 1 2.6 0v4.5c0 3.3-2.3 5.7-5.5 5.7h-.6c-2 0-3.3-.8-4.4-2.4L3.2 11a1.3 1.3 0 0 1 2.1-1.5L6 10.6" fill="#F6F8F5" stroke="#26231B" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+
+// SAME-ACTIVITY OUTLINE. Hover a cell: every OTHER cell of that activity is outlined.
+// Hold (hover) a drawer tile: every cell of that activity is outlined, and the empty slots in
+// periods where it is not already running show the dashed "fits here".
+const cells=[...document.querySelectorAll('#jig .cell[data-a]')], slots=[...document.querySelectorAll('#jig .slot')];
+function clear(){document.querySelectorAll('.same,.hov,.fits,.lifted').forEach(e=>e.classList.remove('same','hov','fits','lifted'));
+  document.querySelectorAll('.tile.hl').forEach(e=>e.classList.remove('hl'));document.body.classList.remove('holding');}
+function hoverCell(el){clear();el.classList.add('hov');cells.forEach(c=>{if(c!==el&&c.dataset.a===el.dataset.a)c.classList.add('same')});}
+function hold(tile){clear();const a=tile.dataset.a;tile.classList.add('lifted','hl');document.body.classList.add('holding');
+  cells.forEach(c=>{if(c.dataset.a===a)c.classList.add('same')});
+  slots.forEach(s=>{if(!G[s.dataset.r].includes(a))s.classList.add('fits')});
+  const cur=document.querySelector('.cursor'),tr=tile.getBoundingClientRect(),pr=document.getElementById('tray').getBoundingClientRect();
+  cur.style.left=(tr.left-pr.left+tr.width/2-6)+'px';}
+cells.forEach(c=>{c.addEventListener('mouseenter',()=>hoverCell(c));c.addEventListener('mouseleave',clear)});
+document.querySelectorAll('.tile').forEach(t=>{t.addEventListener('mouseenter',()=>hold(t));t.addEventListener('mouseleave',clear)});
+// render states: #a, #b, #hover-swim, #hold-archery (default: B)
+const H=location.hash.slice(1);
+document.body.classList.add(H==='a'?'a':'b');
+if(H==='hover-swim')hoverCell(cells.find(c=>c.dataset.a==='Swim'));
+if(H==='hold-archery')hold(document.querySelector('.tile[data-a="Archery"]'));
+</script>
+</body>
+</html>

@@ -1,19 +1,194 @@
 @import "c/shoreshTokens";
 
 /*
- * The desktop's menu marks (Sidebar.jsx): a small "!" when an area building needs is empty, a
- * "✓" when it has rows. Bronze is the caution hue but never text, so "!" is dark text on a
- * bronze ring; green is for small marks only, so "✓" is just the mark. Red stays for errors.
+ * The menu as the round 13 mock-up draws it (docs/design/manual-build.html, nav): one piece on
+ * the shelf surface, every row one item tall (32), 8 in from the piece's 12 inset, the section
+ * titles in the one mono, the screen shown raised with a highlight dot. ADR 0015.
  */
-.slds-nav-vertical__action {
+:host {
+  display: block;
+  height: 100%;
+}
+
+.menu {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--shoresh-space-pad);
+  background: var(--shoresh-surface-shelf);
+  border-radius: var(--shoresh-radius-piece);
+  box-shadow: var(--shoresh-piece-edge);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  line-height: 1.25;
+  color: var(--shoresh-text-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The camp row: the camp's name, and its season in the secondary colour. */
+.camp {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* A long name keeps its room: the season gives way first (it is also in the picker). */
+.camp-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.season {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--shoresh-text-2);
+  white-space: nowrap;
+}
+
+/* The hairline runs the piece's full width, past its inset, with one inset above and below. */
+.bleed {
+  margin: var(--shoresh-space-pad) calc(-1 * var(--shoresh-space-pad));
+}
+
+/* Section titles: small capitals in the one mono, sitting on the rows they head. */
+.section-title {
+  display: flex;
+  align-items: flex-end;
+  height: var(--shoresh-control-h);
+  margin: var(--shoresh-s2) 0 0;
+  padding: 0 var(--shoresh-space-control-x) var(--shoresh-s2);
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--shoresh-text-2);
+}
+
+/* Every entry: one item tall, words at rest in the secondary colour. */
+.menu-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  color: var(--shoresh-text-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.menu-action:hover,
+.menu-action:focus {
+  color: var(--shoresh-text-1);
+  text-decoration: none;
+}
+
+.menu-action:hover {
+  background: var(--shoresh-surface-grid);
+}
+
+/* The screen shown: raised (the one raised treatment), its words the value style. */
+.menu-action.shoresh-raised,
+.menu-action.shoresh-raised:hover {
+  background: var(--shoresh-color-accent);
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+/* Keyboard focus: the highlight ring, outside the item, never mistaken for the raised one. */
+.menu-action:focus-visible,
+.notice-go:focus-visible {
+  outline: 2px solid var(--shoresh-color-highlight);
+  outline-offset: 2px;
+}
+
+/* Entries under a section title sit in from it, with the dot of the shown one in that space. */
+.section_titled .menu-action {
+  padding-left: calc(var(--shoresh-u) * 8.5);
+}
+
+.section_titled .menu-action.shoresh-raised::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--shoresh-u) * 3.75);
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--shoresh-color-highlight);
+}
+
+.menu-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .menu-label {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* An entry that can't open yet: there, quieter, and it says why. */
+.menu-action_disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.menu-action_disabled:hover {
+  background: transparent;
+  color: var(--shoresh-text-2);
+}
+
+.menu-coming {
+  flex: none;
+  margin: 0;
+  padding: 0 var(--shoresh-s1);
+  border: 1px solid var(--shoresh-edge);
+  border-radius: var(--shoresh-s1);
+  background: transparent;
+  color: var(--shoresh-text-2);
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 400;
+  line-height: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/*
+ * The desktop's menu marks (Sidebar.jsx): "!" when an area building needs is empty, "✓" when it
+ * has rows. Both in the four colours: "!" in the text colour, "✓" a highlight icon (green on the
+ * shelf passes the 3:1 a mark needs).
+ */
 .menu-mark {
   flex: 0 0 auto;
   display: inline-flex;
@@ -21,19 +196,68 @@
   justify-content: center;
   width: 1rem;
   height: 1rem;
-  margin-left: 0.5rem;
-  font-size: 0.6875rem;
+  font-size: var(--shoresh-font-size-label);
   font-weight: 700;
   line-height: 1;
 }
 
 .menu-mark_needed {
-  border: 1.5px solid var(--shoresh-caution);
-  border-radius: 50%;
-  background: var(--shoresh-caution-tint);
-  color: var(--shoresh-text);
+  color: var(--shoresh-text-1);
 }
 
 .menu-mark_done {
-  color: var(--shoresh-success);
+  color: var(--shoresh-color-highlight);
+}
+
+/* The foot: the schedule shown no longer matches setup. Its line lines up with the drawer's. */
+.foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+}
+
+.foot .bleed {
+  margin-top: var(--shoresh-space-pad);
+  margin-bottom: var(--shoresh-s1);
+}
+
+.notice-what {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-s4);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+.notice-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shoresh-color-highlight);
+}
+
+.notice-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  border: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--shoresh-color-highlight);
+  cursor: pointer;
+}
+
+.notice-go:hover {
+  background: var(--shoresh-surface-hover);
+}
+
+.notice-go:disabled {
+  cursor: default;
+  opacity: 0.6;
 }

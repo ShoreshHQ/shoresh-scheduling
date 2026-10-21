@@ -226,10 +226,15 @@ describe("c-shoresh-camp-setup", () => {
       // The season's own dates show once its pencil is pressed.
       q(element, '[data-id="edit-season"]').click();
       await flush();
-      expect(loadStyle).toHaveBeenCalledTimes(1);
-      expect(loadStyle.mock.calls[0][1]).toEqual(
-        expect.stringContaining("ShoreshDateBox")
-      );
+      // Once each: the date box style and the typefaces (ADR 0015).
+      const loaded = loadStyle.mock.calls.map((call) => call[1]);
+      expect(
+        loaded.filter((url) => url.includes("ShoreshDateBox"))
+      ).toHaveLength(1);
+      expect(loaded.filter((url) => url.includes("ShoreshFonts"))).toEqual([
+        expect.stringMatching(/ShoreshFonts\/fonts\.css$/)
+      ]);
+      expect(loadStyle).toHaveBeenCalledTimes(2);
       const dates = [
         ...element.shadowRoot.querySelectorAll("lightning-input")
       ].filter((input) => input.type === "date");
@@ -286,6 +291,64 @@ describe("c-shoresh-camp-setup", () => {
       );
       expect(iconRule.body).toMatch(/width:\s*1\.5rem/);
       expect(iconRule.body).toMatch(/height:\s*1\.5rem/);
+    });
+  });
+
+  describe("the frame (ADR 0015)", () => {
+    it("ships Inter and the one mono with their licences, and the style names only those files", () => {
+      const fs = require("fs");
+      const path = require("path");
+      const dir = path.join(__dirname, "../../../staticresources/ShoreshFonts");
+      const css = fs.readFileSync(path.join(dir, "fonts.css"), "utf8");
+      const urls = [...css.matchAll(/url\("([^"]+)"\)/g)].map((m) => m[1]);
+      expect(urls.length).toBe(8);
+      urls.forEach((url) => {
+        // Relative, inside the resource: no font server outside the org (CSP).
+        expect(url).toMatch(/^files\/[a-z0-9-]+\.woff2$/);
+        expect(fs.existsSync(path.join(dir, url))).toBe(true);
+      });
+      expect(css).toContain('font-family: "Inter"');
+      expect(css).toContain('font-family: "JetBrains Mono"');
+      expect(css).toContain("font-display: swap");
+      ["OFL-Inter.txt", "OFL-JetBrainsMono.txt"].forEach((name) =>
+        expect(fs.readFileSync(path.join(dir, name), "utf8")).toContain(
+          "SIL Open Font License, Version 1.1"
+        )
+      );
+    });
+
+    it("the menu's foot shows setup changed for the schedule on screen, and opens its list", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const menu = q(element, "c-shoresh-menu");
+      const manual = q(element, '[data-setup-state="manualBuild"]');
+      expect(manual.tagName.toLowerCase()).toBe("c-shoresh-manual-build");
+      const opened = jest.fn();
+      manual.updateToMatchSetup = opened;
+      manual.dispatchEvent(
+        new CustomEvent("setupstate", {
+          detail: { changed: true, busy: false }
+        })
+      );
+      await flush();
+      // Only while that screen is shown.
+      expect(menu.setupChanged).toBe(false);
+      await openScreen(element, "manualBuild");
+      expect(menu.setupChanged).toBe(true);
+      expect(menu.setupBusy).toBe(false);
+      menu.dispatchEvent(new CustomEvent("updatetomatch"));
+      expect(opened).toHaveBeenCalledTimes(1);
+      // Generated Schedule's own state, separately.
+      await openScreen(element, "generatedSchedule");
+      expect(menu.setupChanged).toBe(false);
+      q(element, '[data-setup-state="generatedSchedule"]').dispatchEvent(
+        new CustomEvent("setupstate", { detail: { changed: true, busy: true } })
+      );
+      await flush();
+      expect(menu.setupChanged).toBe(true);
+      expect(menu.setupBusy).toBe(true);
     });
   });
 
@@ -349,9 +412,10 @@ describe("c-shoresh-camp-setup", () => {
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
 
-    expect(q(element, '[data-id="camp-name-heading"]').textContent).toBe(
-      "Camp Willow"
-    );
+    // The camp's name and season sit at the top of the menu (ADR 0015).
+    const menu = q(element, "c-shoresh-menu");
+    expect(menu.campName).toBe("Camp Willow");
+    expect(menu.seasonName).toBe("Summer 2026");
     expect(q(element, "c-shoresh-program").terms.p("Group")).toBe("Bunks");
     // Roots lists everything; each screen shows only its own.
     const roots = q(element, "c-shoresh-roots");

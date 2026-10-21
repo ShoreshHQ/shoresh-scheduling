@@ -159,6 +159,8 @@ const pending = () => {
   return { promise, resolve };
 };
 
+// What the screen told the page about setup changed, in order (the menu's foot, ADR 0015).
+const toldStates = [];
 async function render(preview = PREVIEW, inputs = week()) {
   getInputs.mockResolvedValue(inputs);
   getVersions.mockResolvedValue([]);
@@ -168,6 +170,9 @@ async function render(preview = PREVIEW, inputs = week()) {
   });
   element.terms = terms;
   element.setup = SETUP;
+  element.addEventListener("setupstate", (event) =>
+    toldStates.push(event.detail)
+  );
   document.body.appendChild(element);
   await flush();
   return element;
@@ -207,6 +212,7 @@ async function openUpdate(element) {
 
 describe("Setup changed on the Generated Schedule screen", () => {
   afterEach(() => {
+    toldStates.length = 0;
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
@@ -249,6 +255,29 @@ describe("Setup changed on the Generated Schedule screen", () => {
     ];
     expect(status[0]).toBe(line);
     await expect(element).toBeAccessible();
+  });
+
+  it("tells the page it can be updated to match setup, and the menu's Update opens the same list", async () => {
+    const element = await render();
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: true,
+      busy: false
+    });
+    element.updateToMatchSetup();
+    await flush();
+    expect(dialog(element)).not.toBeNull();
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: true,
+      busy: true
+    });
+  });
+
+  it("tells the page nothing needs updating when the week matches setup", async () => {
+    await render(NOTHING);
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: false,
+      busy: false
+    });
   });
 
   it("shows nothing when the week matches setup", async () => {

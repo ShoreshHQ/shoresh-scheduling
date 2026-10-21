@@ -19,6 +19,14 @@ Copyright (C) 2013-present SheetJS, licensed under the Apache License,
 Version 2.0, shipped unchanged as force-app/main/default/staticresources/SheetJS.js.
 Its licence text: docs/licenses/SheetJS-LICENSE.txt.
 
+This product includes the typefaces Inter (Copyright 2016 The Inter Project Authors,
+https://github.com/rsms/inter) and JetBrains Mono (Copyright 2020 The JetBrains Mono Project
+Authors, https://github.com/JetBrains/JetBrainsMono), both licensed under the SIL Open Font
+License, Version 1.1, as packaged by Fontsource 5.2.8 (@fontsource/inter,
+@fontsource/jetbrains-mono), shipped unchanged as woff2 files in
+force-app/main/default/staticresources/ShoreshFonts/. Their licence texts are in that folder
+and in docs/licenses/Inter-OFL.txt and docs/licenses/JetBrainsMono-OFL.txt.
+
 This repository includes development-assistant skills (not part of the packaged app) from
 Salesforce sf-skills (https://github.com/forcedotcom/sf-skills, commit 625863f),
 Copyright (c) 2026 Salesforce, Inc., licensed under the Apache License, Version 2.0, in

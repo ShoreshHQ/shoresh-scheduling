@@ -12,3 +12,7 @@ coverage/
 # Vendored Salesforce skills (kept as their source has them) and throwaway prototypes
 .claude/skills/
 prototypes/
+# The design spec, kept exactly as Greg approved it (docs/design/README.md)
+docs/design/manual-build.html
+docs/design/spacing-spec.md
+docs/design/spacing-spec-continuous.md

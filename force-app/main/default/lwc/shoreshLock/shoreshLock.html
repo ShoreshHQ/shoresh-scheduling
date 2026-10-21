@@ -1,0 +1,17 @@
+<template>
+  <svg
+    class="lock"
+    viewBox="0 0 12 12"
+    width="12"
+    height="12"
+    aria-hidden="true"
+    focusable="false"
+    data-id="lock"
+  >
+    <rect x="2.25" y="5.25" width="7.5" height="5.5" rx="1.5"></rect>
+    <path d="M4 5.25V3.75a2 2 0 0 1 4 0v1.5"></path>
+  </svg>
+  <template lwc:if={label}>
+    <span class="slds-assistive-text" data-id="lock-words">{label}</span>
+  </template>
+</template>
