@@ -837,6 +837,32 @@ describe("c-shoresh-generated-schedule", () => {
     expect(q(element, ".drill-name").textContent).toBe("Swim");
   });
 
+  it("an activity closed this week is never counted under: the counter measures what the dots check", async () => {
+    // Swim (three a week) is closed this week; Art has no goal or limit. Nothing is under or over.
+    const inputs = camp({
+      ...SMALL,
+      activities: [
+        { name: "Swim", min: 3, max: 3, atOnce: 2 },
+        { name: "Art", min: 0, max: null, atOnce: 2 }
+      ]
+    });
+    const swimId = inputs.activities[0].Id;
+    inputs.weekExceptions = [
+      nsRecord({ Id: "a0X000000000001AAA", Week__c: WEEK, Activity__c: swimId })
+    ];
+    const element = await render(inputs);
+    await generate(element);
+    await openCounter(element);
+    const root = checks(element).shadowRoot;
+    expect(root.querySelector(`button[data-activity="${swimId}"]`)).toBeNull();
+    expect(root.querySelector('[data-id="under"]')).toBeNull();
+    expect(
+      root
+        .querySelector('[data-id="counter"]')
+        .shadowRoot.querySelector(".mark")
+    ).toBeNull();
+  });
+
   it("cells can be reached from the keyboard and changed by hand, never through a whole-week save", async () => {
     const element = await render();
     await generate(element);

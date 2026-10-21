@@ -35,14 +35,21 @@ function hasNumber(value) {
 /**
  * checked: checkWeek's answer for the week. activities: the activities that can be placed
  * ({ id, name, minPerWeek, maxPerWeek, notFor }), in the order they are listed. days: the week's
- * days (for its bunks).
+ * days (for its bunks). Only the activities the check checked are measured (its activityIds):
+ * one closed this week, itself or by its place, has no goal or limit the week can be short of
+ * or past, as the dots and Open reasons have none for it.
  *
  * Returns { placed, total, stillNeeded, hasGoals, hasLimits, under: { count, rows }, over:
  * { count, rows }, look: [lines], byActivity: Map of activity Id -> { placed, goal, short,
  * extra } (placed: every placement of it this week, goal: its weekly goal for the camp, 0 for
  * none), offTarget }. Each row is { id, name, placed, goal }.
  */
-export function measureWeek(checked, activities, days) {
+export function measureWeek(checked, list, days) {
+  const checkedIds =
+    checked && checked.activityIds ? new Set(checked.activityIds) : null;
+  const activities = (list || []).filter(
+    (a) => !checkedIds || checkedIds.has(a.id)
+  );
   const cells = (checked && checked.cells) || { filled: 0, total: 0 };
   const groupIds = groupIdsOf(days);
   const counts = new Map();
@@ -57,7 +64,7 @@ export function measureWeek(checked, activities, days) {
   const under = { count: 0, rows: [] };
   const over = { count: 0, rows: [] };
   const byActivity = new Map();
-  (activities || []).forEach((a) => {
+  activities.forEach((a) => {
     const notFor = a.notFor || [];
     const eligible = groupIds.filter((id) => !notFor.includes(id));
     const min = Math.max(0, Number(a.minPerWeek) || 0);
@@ -116,8 +123,8 @@ export function measureWeek(checked, activities, days) {
     placed: cells.filled,
     total: cells.total,
     stillNeeded: Math.max(0, cells.total - cells.filled),
-    hasGoals: (activities || []).some((a) => Number(a.minPerWeek) > 0),
-    hasLimits: (activities || []).some((a) => hasNumber(a.maxPerWeek)),
+    hasGoals: activities.some((a) => Number(a.minPerWeek) > 0),
+    hasLimits: activities.some((a) => hasNumber(a.maxPerWeek)),
     under,
     over,
     look,

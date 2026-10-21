@@ -50,6 +50,25 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
     expect(m.offTarget).toBe(true);
   });
 
+  it("only the activities the check checked are measured: one closed this week has no goal", () => {
+    // Swim is closed this week (the check left it out); Archery runs, one a week, one bunk has it.
+    const m = measureWeek(
+      {
+        cells: { filled: 1, total: 6 },
+        placements: [p("b1", "arch")],
+        activityIds: ["arch"]
+      },
+      [act("swim", "Swim", 2, 1), act("arch", "Archery", 1)],
+      DAYS
+    );
+    expect(m.under).toEqual({
+      count: 2,
+      rows: [{ id: "arch", name: "Archery", placed: 1, goal: 3 }]
+    });
+    expect(m.hasLimits).toBe(false);
+    expect(m.byActivity.has("swim")).toBe(false);
+  });
+
   it("a bunk an activity isn't set up for has no goal for it", () => {
     const m = measureWeek(
       { cells: { filled: 0, total: 6 }, placements: [] },

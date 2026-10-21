@@ -1110,7 +1110,9 @@ the grid and the activity list on its left keep their look.
      added up. Over counts only the bunks past the limit: what they have, of what they may have.
      The numbers come from `measureWeek` in `c/shoreshEngine`, worked out once from the week's
      check (the same one that draws the dots), so the counter, its rows and the drawer (step 2b)
-     can never disagree.
+     can never disagree. It measures only the activities that check checks: on Generated, an
+     activity closed this week (itself or by its place) is never _under_ or _over_, as it has no
+     dots or Open reasons either.
    - **What went with the cards:** the desktop's **Accept** (hiding a still needed or spread line
      for the visit) and, on Generated, a counter lighting its cells and **Review all**. The
      approved dropdown has no place for them; what Accept hid is now counted per activity, and
@@ -1132,7 +1134,7 @@ the grid and the activity list on its left keep their look.
 Checked by Jest: `shoreshRailPop.test.js` (one item, never raised closed, a menu's keys, select,
 rows that open rows, a click outside, Tab, held), `shoreshRailPicker.test.js` (arrows, focus
 to the week when an arrow goes dim at either end, the raised week, every week in its menu, change, held), `measure.test.js` (placed, still needed,
-under per bunk, not set up, over, order, look, same inputs same measure),
+under per bunk, not set up, closed this week, over, order, look, same inputs same measure),
 `shoreshWeekChecks.test.js` (the item, the corner, the dropdown's parts, the 0s, rows to an
 activity, lines to a cell, Escape, a week shown fresh), and the screens' suites (Edit's rows in
 order and none in Activity View, Copy day to… opening its days, focus to Edit after the line's

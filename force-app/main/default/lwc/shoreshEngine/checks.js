@@ -534,7 +534,8 @@ function filledCount(ctx) {
  * missing }], entry i for line i), spreadBy ([{ activityId, groupId, missing, byDay }], byDay the
  * day's name as the line says it), cells: { filled, total }, hasCoverageTargets and
  * hasSpreadTargets (some activity has a weekly minimum / an early-week goal: without one, the
- * screens don't show that counter, desktop ScheduleScreen) }.
+ * screens don't show that counter, desktop ScheduleScreen), activityIds (the activities checked:
+ * on Generated, those running this week) }.
  */
 export function checkWeek(days, model, words) {
   const placements = placementsOf(days);
@@ -646,6 +647,7 @@ export function checkWeek(days, model, words) {
     ...stillToPlace(ctx),
     cells: filledCount(ctx),
     hasCoverageTargets: activities.some((a) => a.min > 0),
-    hasSpreadTargets: activities.some((a) => !!a.early)
+    hasSpreadTargets: activities.some((a) => !!a.early),
+    activityIds: [...ctx.activities.keys()]
   };
 }
