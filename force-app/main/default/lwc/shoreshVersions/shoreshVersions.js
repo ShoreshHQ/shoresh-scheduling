@@ -10,6 +10,17 @@ const ORIGINS = {
 const AUTO_SAVED = "AutoSaved";
 
 /**
+ * Ctrl or Cmd with Z or Y in a name box is the box's own Undo: it goes no further, so the week
+ * editor around this panel (which can't see into it) doesn't undo a schedule change as well.
+ */
+function keepOwnUndo(event) {
+  const key = String(event.key).toLowerCase();
+  if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
+    event.stopPropagation();
+  }
+}
+
+/**
  * The Versions button and its list, as on Shoresh desktop's schedule toolbar (VersionsDropdown):
  * one list shared by Manual Build and Generated Schedule. On the Schedules page a version can be
  * opened (to look at it in the three views) or renamed. On Manual Build (restore) its action is
@@ -219,6 +230,7 @@ export default class ShoreshVersions extends LightningElement {
     this.saveName = event.target.value;
   }
   handleSaveKey(event) {
+    keepOwnUndo(event);
     if (event.key === "Enter" && !this.saveDisabled) {
       this.save();
     }
@@ -313,6 +325,7 @@ export default class ShoreshVersions extends LightningElement {
   }
 
   handleRenameKey(event) {
+    keepOwnUndo(event);
     if (event.key === "Enter" && !this.renameDisabled) {
       this.saveRename();
     }

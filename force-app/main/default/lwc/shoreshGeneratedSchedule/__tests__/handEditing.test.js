@@ -164,9 +164,14 @@ const notice = (element) => {
   return line ? line.textContent : null;
 };
 
-async function press(target, key) {
+async function press(target, key, extra = {}) {
   target.dispatchEvent(
-    new KeyboardEvent("keydown", { key, bubbles: true, composed: true })
+    new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      composed: true,
+      ...extra
+    })
   );
   await flush();
 }
@@ -457,6 +462,31 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(run.after).toEqual([""]);
     expect(run.locksAfter).toEqual(["1"]);
     expect(lockAt(element, "0-2")).toBe("Locked empty");
+  });
+
+  it("Ctrl+Z with nothing focused undoes a hand edit here too, and says so", async () => {
+    // jsdom lays nothing out: the screen is on screen when it has boxes.
+    jest.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}]);
+    const element = await render(savedWeek({ rows: ["1,,,", "1,,,"] }));
+    saveSlots.mockResolvedValueOnce(
+      slotAnswer(["1,,2,", "1,,,"], [",,1,", ",,,"])
+    );
+    await press(cellAt(element, "0-2"), "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "swim";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    saveSlots.mockResolvedValueOnce(
+      slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"])
+    );
+    await press(document.body, "z", { ctrlKey: true });
+    jest.restoreAllMocks();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(saveSlots.mock.calls[1][0].edits[0].runs[0].after).toEqual([""]);
+    expect(q(element, '[data-id="announce"]').textContent).toContain(
+      "Undone: Placed Swim · Bunk 1 · Monday · Period 2"
+    );
   });
 
   it("a bunk's day Locked from the menu keeps the cell a hand edit had already locked when the edit is undone", async () => {

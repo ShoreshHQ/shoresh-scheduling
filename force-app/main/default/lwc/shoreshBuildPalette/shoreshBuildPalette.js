@@ -66,6 +66,17 @@ export default class ShoreshBuildPalette extends LightningElement {
     );
   }
 
+  /**
+   * Ctrl or Cmd with Z or Y in the box is the box's own Undo: it goes no further, so the week
+   * editor (which can't see into this list) doesn't undo a schedule change as well.
+   */
+  handleFilterKey(event) {
+    const key = String(event.key).toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
+      event.stopPropagation();
+    }
+  }
+
   handlePick(event) {
     this.dispatchEvent(
       new CustomEvent("pickactivity", {

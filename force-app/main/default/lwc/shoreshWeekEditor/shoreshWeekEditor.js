@@ -57,6 +57,41 @@ function joinWords(...parts) {
   return words.length ? words.join(" · ") : null;
 }
 
+// Inputs that take no typing: Ctrl+Z on them is the schedule's Undo.
+const NOT_TYPED = new Set([
+  "button",
+  "checkbox",
+  "radio",
+  "submit",
+  "reset",
+  "range",
+  "color",
+  "file",
+  "image"
+]);
+
+/**
+ * A box the director types in, whose own Undo Ctrl+Z belongs to: a text box (Salesforce's own
+ * lightning-input and lightning-textarea included, as seen from outside them) or editable text.
+ */
+function takesTyping(node) {
+  const tag = node && node.tagName;
+  if (!tag) {
+    return false;
+  }
+  if (tag === "INPUT") {
+    return !NOT_TYPED.has(String(node.type || "text").toLowerCase());
+  }
+  return (
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    tag === "LIGHTNING-INPUT" ||
+    tag === "LIGHTNING-TEXTAREA" ||
+    tag === "LIGHTNING-INPUT-RICH-TEXT" ||
+    node.isContentEditable === true
+  );
+}
+
 /** One slot, the same in Daily and Group View. */
 function slotKey(slot) {
   return `${slot.day}|${slot.group}|${slot.block}`;
@@ -194,10 +229,14 @@ export default class ShoreshWeekEditor extends LightningElement {
     // The slot box sits where the slot was on screen; scrolling would leave it behind.
     this.onScroll = () => this.followEditor();
     window.addEventListener("scroll", this.onScroll, true);
+    // Ctrl+Z with nothing focused (after a click on the page or a drag): still this week's Undo.
+    this.onPageKeyDown = (event) => this.handlePageKeyDown(event);
+    window.addEventListener("keydown", this.onPageKeyDown);
   }
 
   disconnectedCallback() {
     window.removeEventListener("scroll", this.onScroll, true);
+    window.removeEventListener("keydown", this.onPageKeyDown);
   }
 
   get t() {
@@ -1771,17 +1810,51 @@ export default class ShoreshWeekEditor extends LightningElement {
     );
   }
 
-  /** Ctrl or Cmd with Z undoes, with Shift (or Ctrl+Y) redoes; typing boxes keep their own. */
+  /**
+   * Ctrl or Cmd with Z undoes, with Shift (or Ctrl+Y) redoes (desktop useUndoRedo.js); typing
+   * boxes keep their own, so it never acts while the key comes from one.
+   */
   handleKeyDown(event) {
-    // The key's real target, inside the activity list's shadow if need be; never while the
-    // typing box or the "keep theirs or use yours" question is open.
-    const path = event.composedPath ? event.composedPath() : [];
-    const target = path.length ? path[0] : event.target;
-    const tag = target && target.tagName;
+    // Every element the key passed through that this editor can see; never while the typing box
+    // or the "keep theirs or use yours" question is open. In Salesforce the path stops at another
+    // component's edge, so the activity list's Filter and the Versions name boxes keep their
+    // Ctrl+Z themselves (they don't pass it on).
+    const path = event.composedPath ? event.composedPath() : [event.target];
+    if (path.some(takesTyping)) {
+      return;
+    }
+    this.undoShortcut(event);
+  }
+
+  /**
+   * The same keys pressed with nothing focused (a click on the page's background or a drag
+   * leaves focus there), while this editor is on screen: a screen visited earlier stays in the
+   * page, hidden. Anything focused elsewhere on the page keeps its own keys.
+   */
+  handlePageKeyDown(event) {
+    const target = event.target;
+    const nothingFocused =
+      !target ||
+      target === window ||
+      target === document ||
+      target.tagName === "BODY" ||
+      target.tagName === "HTML";
+    const root = this.template.querySelector('[data-id="manual-build"]');
+    if (
+      event.defaultPrevented ||
+      !nothingFocused ||
+      !root ||
+      root.getClientRects().length === 0
+    ) {
+      return;
+    }
+    this.undoShortcut(event);
+  }
+
+  undoShortcut(event) {
     if (
       !(event.ctrlKey || event.metaKey) ||
-      tag === "INPUT" ||
-      tag === "TEXTAREA" ||
+      event.altKey ||
       this.editor ||
       this.conflict
     ) {

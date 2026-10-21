@@ -193,7 +193,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
     - 50 steps per visit; choosing another week clears them, and Versions holds older history
       (part 4);
     - the toolbar buttons are named for the step (_Undo: Swapped Swim and Soccer_), with
-      Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, and Ctrl+Y (not inside the typing box);
+      Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, and Ctrl+Y (not inside the typing box; also with nothing
+      focused, see "Choices (keyboard…)" §5);
     - an Undo is the step's runs sent back the other way, so it is checked like any edit.
       Over someone else's newer change it asks _keep theirs or use yours_. Keeping theirs
       drops the step from both Undo and Redo;
@@ -969,11 +970,34 @@ Generated Schedule (ADR 0010 §57).
    above _Generate a schedule_. (_deleted since_ became the desktop's _(removed)_ on 2026-10-20,
    ADR 0010 §13.)
 
+5. **Ctrl+Z works wherever the director is, and never in a box** (Greg's end-to-end check,
+   2026-10-20: "undo should be control z"; desktop `useUndoRedo.js`, which listens on the whole
+   window). The shortcut used to work only while focus was inside the week editor; after a
+   click on the page's background, or a drag (which moves no focus), focus is on the page and
+   the keys did nothing. Now:
+   - **Ctrl+Z** (Cmd+Z on a Mac) undoes, **Ctrl+Shift+Z** (Cmd+Shift+Z) or **Ctrl+Y** redoes,
+     with focus in the editor or on nothing at all; the live region says _Undone: …_ or
+     _Redone: …_, as the buttons do. Ctrl+Alt (AltGr on some keyboards) is left alone.
+   - Only the week editor on screen acts: a screen visited earlier stays in the page, hidden, and
+     ignores the keys. Focus anywhere else on the page (Salesforce's search, the menu, a
+     picker) keeps its own keys.
+   - **A box keeps its own Undo**: the typing box, any text box or Salesforce text field the key
+     passes through, the activity list's **Filter**, and the Versions name boxes. In Salesforce an
+     event's path stops at another component's edge, so the editor can't see the Filter or a
+     name box behind the list or the Versions panel: those two components keep Ctrl/Cmd+Z and Y
+     to themselves instead (the box still undoes its own typing). Before this, Ctrl+Z in Filter
+     undid a schedule change in the real browser although Jest, which shows the whole path,
+     said it didn't (real-browser check, 2026-10-20).
+     Generated Schedule uses the same editor, so the same keys hold there.
+
 Checked by Jest: focus on the line's Undo after Clear day and Group View's Clear day; focus on
 the grid after Update to match setup leaves nothing; the dialog's Close; the day-problem words;
 Versions' button, rename focus and `announceWith`, and the list staying open when a page-wide
 listener sees the click through a wrapper; focus on the first cell after Start; the counters'
-heading and Escape.
+heading and Escape; Ctrl/Cmd+Z and redo with nothing focused on Manual Build and Generated, not
+while hidden or from a box elsewhere, Filter and the Versions name boxes keeping theirs. The
+real-browser check (`scripts/a11y-browser-check.mjs`) presses them on Manual Build: on the grid,
+with nothing focused, and in Filter.
 
 ## Choices that are hard to undo after release
 

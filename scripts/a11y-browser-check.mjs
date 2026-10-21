@@ -8,6 +8,8 @@
  * - where focus is after each menu, dialog and tool closes (through shadow roots);
  * - that the live regions say something after saves, builds and publishing;
  * - that every enabled toolbar action is reachable with Tab;
+ * - that "Same location?" merges a place typed twice, and Ctrl+Z / Ctrl+Shift+Z undo and redo
+ *   on Manual Build (also with nothing focused), never inside a box;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -729,6 +731,69 @@ async function campSetup() {
   });
   await step(
     S,
+    "Locations: Same location? merges a place typed twice",
+    async () => {
+      await openFromMenu("Locations", /^Locations\b/);
+      const L = "Locations";
+      const table = 'c-shoresh-editable-table[data-id="locations"]';
+      const names = () =>
+        shown(`${table} lightning-input[data-field="Name"] input`).evaluateAll(
+          (inputs) => inputs.map((i) => i.value).filter(Boolean)
+        );
+      const before = await names();
+      // The seed's Pool, with Swim there; the step adds "pool" and merges it back, so the camp
+      // ends as it began.
+      if (!before.includes("Pool") || before.includes("pool")) {
+        throw new Error(
+          `The camp's places are not as expected: ${before.join(", ")}.`
+        );
+      }
+      await shown(
+        `${table} [data-row-key="add"][data-field="Name"] input`
+      ).focus();
+      await type("pool");
+      await press("Enter", 3000);
+      if (!(await names()).includes("pool"))
+        throw new Error("pool was not added.");
+      const button = named(/^Same location\? pool$/i, { tag: "button" });
+      if (!(await tabTo(button, { back: true, max: 60 }))) {
+        throw new Error("pool's Same location? not reached with Tab.");
+      }
+      await press("Enter", 800);
+      await expectFocus(L, "Same location? opens: focus inside the question", {
+        inDialog: true
+      });
+      await axe("Same location?");
+      if (!(await tabTo(named(/^Merge$/, { tag: "button" }), { max: 8 }))) {
+        throw new Error("Merge not reached with Tab.");
+      }
+      await press("Enter", 4000);
+      const after = await names();
+      if (
+        after.includes("pool") ||
+        after.filter((n) => n === "Pool").length !== 1 ||
+        (await exists("c-shoresh-same-location"))
+      ) {
+        await shot(L, "Merge");
+        results.fail(
+          L,
+          "Merge: one Pool is left",
+          `Places now: ${after.join(", ")}.`
+        );
+      } else {
+        results.pass(
+          L,
+          "Merge: one Pool is left",
+          `Places now: ${after.join(", ")}.`
+        );
+      }
+      await expectFocus(L, "After merging: focus on the kept place's row", {
+        tag: "input"
+      });
+    }
+  );
+  await step(
+    S,
     "New season: heading, then Cancel back to the button",
     async () => {
       const b = await tabTo(named(/^New season$/, { tag: "button" }));
@@ -872,6 +937,61 @@ async function manualBuild(openManual) {
       inGrid: true
     });
   });
+  await step(
+    S,
+    "Ctrl+Z and Ctrl+Shift+Z, with focus anywhere but a box",
+    async () => {
+      // The step before left focus on the cell it placed an activity in: that placing is the
+      // newest step.
+      await expectLive(
+        S,
+        "Ctrl+Z on the grid: Undone is said",
+        /^Undone: /,
+        () => press("ControlOrMeta+z")
+      );
+      // Focus on the page itself, as after a click on the background or a drag.
+      const cell = await page.evaluateHandle(() => {
+        let el = document.activeElement;
+        while (el && el.shadowRoot && el.shadowRoot.activeElement) {
+          el = el.shadowRoot.activeElement;
+        }
+        return el;
+      });
+      await cell.evaluate((el) => el.blur());
+      if (await focus()) throw new Error("Focus did not leave the grid.");
+      await expectLive(
+        S,
+        "Ctrl+Shift+Z with nothing focused: Redone is said",
+        /^Redone: /,
+        () => press("ControlOrMeta+Shift+z")
+      );
+      // A box keeps its own Ctrl+Z: typing in Filter and undoing it changes no schedule.
+      const filter = shown(
+        'c-shoresh-build-palette [data-id="palette-filter"]'
+      );
+      await filter.focus();
+      await watchLive();
+      await type("x");
+      await press("ControlOrMeta+z", 1500);
+      const said = await page.evaluate(() => window.__a11yLive || []);
+      if (said.some((t) => /^Undone: /.test(t))) {
+        await shot(S, "Ctrl+Z in Filter");
+        results.fail(
+          S,
+          "Ctrl+Z in the Filter box: no schedule Undo",
+          `Said: "${said.join('", "')}".`
+        );
+      } else {
+        results.pass(
+          S,
+          "Ctrl+Z in the Filter box: no schedule Undo",
+          "Nothing undone."
+        );
+      }
+      await filter.fill("");
+      await cell.evaluate((el) => el.focus());
+    }
+  );
   await step(S, "Clear day, then its Undo", async () => {
     if (!(await tabTo(named(/^Clear day$/, { tag: "button" })))) {
       throw new Error("Clear day not reached with Tab.");
