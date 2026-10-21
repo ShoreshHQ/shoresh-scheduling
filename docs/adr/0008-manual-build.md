@@ -1219,7 +1219,9 @@ Generated Schedule (ADR 0010) and the Schedules page get the same look.
    keyboard focus on it, outlines every other cell of that activity: 1.5 px, the highlight at
    45 %, 1 px outside, no fill. A tile under the pointer or with focus outlines its activity's
    cells. Thinner and paler than selection; "fits here" is dashed, inside, and only on Open
-   cells, so the two never land on one cell. They replace Generated's counter lighting its cells.
+   cells, so the two never land on one cell. The selected cell (picked up) keeps its selection
+   outline and never takes the paler one, even when the pointer crosses another cell of its
+   activity. They replace Generated's counter lighting its cells.
 9. **Accept returns** (decision 43, as decision 16 and the desktop's FindingsRail). Hovering or
    focusing a line in the counter's dropdown (an under or over row, or a line to look at) shows
    **Accept**; it tucks that line away for this visit. It comes back when its numbers change or

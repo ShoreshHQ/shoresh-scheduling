@@ -410,6 +410,26 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
     expect(classes(element, "cell_same")).toEqual([]);
   });
 
+  it("the selected cell keeps its selection outline, never the pale same-activity one", async () => {
+    const cells = LOOK.cells.map((c) => {
+      return c.key === "0-0"
+        ? { ...c, className: `${c.className} cell_picked`, selected: true }
+        : c;
+    });
+    const element = renderLook({ ...LOOK, cells });
+    // Picked up "0-0", then the pointer crosses another cell of the same activity.
+    at(element, "2-0").dispatchEvent(
+      new CustomEvent("pointerover", { bubbles: true, composed: true })
+    );
+    await flush();
+    expect(classes(element, "cell_same")).toEqual(["1-1"]);
+    expect(at(element, "0-0").className).toContain("cell_picked");
+    // While the activity is held, every other cell of it is outlined, but not the selected one.
+    element.held = { activityKey: "A:swim", fits: [] };
+    await flush();
+    expect(classes(element, "cell_same")).toEqual(["2-0", "1-1"]);
+  });
+
   it("keyboard focus on a cell outlines its activity too", async () => {
     const element = renderLook();
     at(element, "1-1").dispatchEvent(

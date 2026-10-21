@@ -226,9 +226,12 @@ export default class ShoreshScheduleGrid extends LightningElement {
       : null;
   }
 
-  /** A cell's classes for the outlines (never both on one cell: "fits" is only on Open ones). */
+  /**
+   * A cell's classes for the outlines (never both on one cell: "fits" is only on Open ones). The
+   * selected cell keeps only its selection outline, never the paler same-activity one.
+   */
   outlineClass(cell, outline) {
-    if (!outline) {
+    if (!outline || cell.selected) {
       return "";
     }
     if (outline.fits.has(cell.key) && cell.open) {
