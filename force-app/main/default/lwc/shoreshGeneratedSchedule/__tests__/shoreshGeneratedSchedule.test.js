@@ -310,7 +310,13 @@ describe("c-shoresh-generated-schedule", () => {
     const texts = cells(element).map(
       (c) => c.querySelector(".cell-name").textContent
     );
-    expect(texts.filter((t) => t === "Flagpole")).toHaveLength(2);
+    // Flagpole for every bunk: one slim cell across the bunks, with the lock.
+    const flagpole = cells(element).filter(
+      (c) => c.querySelector(".cell-name").textContent === "Flagpole"
+    );
+    expect(flagpole).toHaveLength(1);
+    expect(flagpole[0].getAttribute("aria-colspan")).toBe("2");
+    expect(flagpole[0].querySelector(".set-lock svg")).not.toBeNull();
     // Bunk 2 is at camp mornings only: its afternoon cell is hatched.
     expect(texts).toContain("Not at camp");
     const away = cells(element).find((c) => c.className.includes("cell_away"));
@@ -884,7 +890,8 @@ describe("c-shoresh-generated-schedule", () => {
     );
     expect(flagpole.getAttribute("aria-readonly")).toBe("true");
     const before = sent().days;
-    all[1].dispatchEvent(
+    // Bunk 2's Flagpole (now the one slim Flagpole cell across the bunks, as all[1] was).
+    flagpole.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Delete", bubbles: true })
     );
     await flush();
@@ -899,7 +906,12 @@ describe("c-shoresh-generated-schedule", () => {
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
     ).toEqual(["Daily", "Group", "Activity"]);
-    expect(q(element, ".legend").textContent).toContain("Not at camp");
+    // The quiet line under the grid names the hatch (a bunk away part of the day).
+    expect(
+      q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
+        '[data-id="legend"]'
+      ).textContent
+    ).toContain("not at camp");
   });
 
   describe("a short build, and Start over", () => {

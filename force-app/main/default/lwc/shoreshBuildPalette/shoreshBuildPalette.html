@@ -1,80 +1,58 @@
 <template>
   <section
-    class="palette"
+    class="drawer"
     aria-label={heading}
     data-id="palette"
     ondragover={handleDragOver}
     ondrop={handleDrop}
   >
-    <div class="palette-title">{heading}</div>
-    <input
-      class="slds-input filter"
-      type="search"
-      placeholder="Filter…"
-      aria-label={filterLabel}
-      value={filter}
-      oninput={handleFilter}
-      onkeydown={handleFilterKey}
-      data-id="palette-filter"
-    />
+    <div class="head">
+      <span class="under" data-id="drawer-under"
+        ><b>{under}</b><span>under</span></span
+      >
+      <input
+        class="filter"
+        type="search"
+        placeholder="Filter"
+        aria-label={filterLabel}
+        value={filter}
+        oninput={handleFilter}
+        onkeydown={handleFilterKey}
+        data-id="palette-filter"
+      />
+    </div>
     <template lwc:if={noMatches}>
       <p class="no-matches">No matches</p>
     </template>
-    <ul class="chips" data-id="palette-needed">
-      <template for:each={neededChips} for:item="chip">
-        <li key={chip.id}>
+    <ul class="tiles" style={tilesStyle} data-id="drawer-tiles">
+      <template for:each={shownTiles} for:item="tile">
+        <li key={tile.id}>
           <button
             type="button"
-            class={chip.className}
+            class={tile.className}
             draggable="true"
-            aria-pressed={chip.pressed}
-            data-id={chip.id}
+            aria-pressed={tile.pressed}
+            aria-label={tile.said}
+            data-id={tile.id}
             onclick={handlePick}
             ondragstart={handleDragStart}
-            onfocus={handleChipFocus}
-            onblur={handleChipBlur}
+            onmouseenter={handleEnter}
+            onmouseleave={handleLeave}
+            onfocus={handleEnter}
+            onblur={handleLeave}
           >
-            <span class="chip-name">{chip.name}</span>
-            <span class="chip-count">
-              <template lwc:if={chip.over}
-                ><c-shoresh-dot
-                  label={overLabel}
-                  open={chip.focused}
-                ></c-shoresh-dot
-              ></template>
-              {chip.label}
-            </span>
-          </button>
-        </li>
-      </template>
-    </ul>
-    <template lwc:if={hasBoth}>
-      <hr class="zone-line" />
-    </template>
-    <ul class="chips" data-id="palette-placed">
-      <template for:each={placedChips} for:item="chip">
-        <li key={chip.id}>
-          <button
-            type="button"
-            class={chip.className}
-            draggable="true"
-            aria-pressed={chip.pressed}
-            data-id={chip.id}
-            onclick={handlePick}
-            ondragstart={handleDragStart}
-            onfocus={handleChipFocus}
-            onblur={handleChipBlur}
-          >
-            <span class="chip-name">{chip.name}</span>
-            <span class="chip-count">
-              <template lwc:if={chip.over}
-                ><c-shoresh-dot
-                  label={overLabel}
-                  open={chip.focused}
-                ></c-shoresh-dot
-              ></template>
-              {chip.label}
-            </span>
+            <span class="tile-name">{tile.name}</span>
+            <template lwc:if={tile.over}>
+              <span
+                class="shoresh-look-mark tile-mark"
+                aria-hidden="true"
+              ></span>
+            </template>
+            <template lwc:if={tile.showWords}>
+              <span class="tile-words" aria-hidden="true" data-id="tile-words"
+                >{tile.words}</span
+              >
+            </template>
           </button>
         </li>
       </template>

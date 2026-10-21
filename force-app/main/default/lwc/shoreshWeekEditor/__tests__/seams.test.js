@@ -89,8 +89,10 @@ const cell = (element, key) =>
 const cellText = (element, key) =>
   cell(element, key).querySelector(".cell-name").textContent;
 const lockText = (element, key) => {
-  const icon = cell(element, key).querySelector("lightning-icon");
-  return icon ? icon.alternativeText : null;
+  const words = cell(element, key).querySelector(
+    '.cell-lock [data-id="lock-words"]'
+  );
+  return words ? words.textContent : null;
 };
 const heardNamed = (heard, name) =>
   heard.filter((h) => h.name === name).map((h) => h.detail);
@@ -1973,12 +1975,13 @@ describe("c-shoresh-week-editor seams for Generated Schedule", () => {
   describe("cellfocus", () => {
     it("says which cell keyboard focus reached, and where it is", async () => {
       const { element, heard } = await render(jest.fn());
-      grid(element).focusCell("1-0");
+      // Period 1 is Flagpole for every bunk: one slim cell, so Bunk 2's Period 2 here.
+      grid(element).focusCell("1-1");
       await flush();
       const focused = heardNamed(heard, "cellfocus").pop();
-      expect(focused.key).toBe("1-0");
-      expect(focused.slot).toEqual({ day: 0, group: 1, block: 0 });
-      expect(focused.cell).toBe("2026-06-29|g2|t1");
+      expect(focused.key).toBe("1-1");
+      expect(focused.slot).toEqual({ day: 0, group: 1, block: 1 });
+      expect(focused.cell).toBe("2026-06-29|g2|t2");
     });
   });
 });

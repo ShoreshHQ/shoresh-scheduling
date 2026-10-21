@@ -8,6 +8,7 @@ import {
   schedule
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 import { find } from "shoresh-jest/week-editor";
+import { nsRecord } from "shoresh-jest/namespace";
 import {
   listedCells,
   useYoursSendsWhatWasShown as shownIsSent
@@ -122,11 +123,17 @@ describe("c-shoresh-manual-build: moving things", () => {
     jest.clearAllMocks();
   });
 
-  it("shows the activity list beside Daily and Group View, not Activity View", async () => {
+  it("shows the drawer under Daily and Group View, not Activity View", async () => {
     const element = await render();
     expect(palette(element)).not.toBeNull();
     expect(palette(element).heading).toBe("Activities");
-    expect(palette(element).stillNeeded.map((c) => c.name)).toEqual(["Soccer"]);
+    // One tile per activity, by name (this draft sends no activity records, so nothing is
+    // measured under: the order under-first is counts.test.js's).
+    expect(palette(element).tiles.map((c) => c.name)).toEqual([
+      "Boating",
+      "Soccer",
+      "Swim"
+    ]);
     q(element, '[data-view="activity"]').click();
     await flush();
     expect(palette(element)).toBeNull();
@@ -462,7 +469,8 @@ describe("c-shoresh-manual-build: moving things", () => {
     const element = await render();
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
     await fire(cell(element, "1-1"), "dragstart");
-    await fire(cell(element, "1-0"), "drop");
+    // Flagpole, every bunk's first block, is one slim cell across the bunks (its first bunk's).
+    await fire(cell(element, "0-0"), "drop");
     // Flagpole stays where it is set up: refused, nothing to undo.
     expect(q(element, '[data-id="undo"]').disabled).toBe(true);
     await press(cell(element, "1-1"), "Delete");
@@ -1264,3 +1272,130 @@ async function refusedThenAsked() {
   expect(q(element, '[data-id="conflict"]')).not.toBeNull();
   return element;
 }
+
+describe("c-shoresh-manual-build: the drawer, holding and the outlines (ADR 0008 part 8)", () => {
+  // The fixture's activities as setup records, so the checks know their goals and limits:
+  // Swim 1 to 2 a week, Boating (two blocks) any number, Soccer 2 to 3.
+  const RECORDS = nsRecord([
+    {
+      Id: "a1",
+      Name: "Swim",
+      TimesPerWeekMin__c: 1,
+      TimesPerWeekMax__c: 2,
+      NoGroupLimit__c: true
+    },
+    {
+      Id: "a2",
+      Name: "Boating",
+      Length__c: 2,
+      NoWeeklyMax__c: true,
+      NoGroupLimit__c: true
+    },
+    {
+      Id: "a3",
+      Name: "Soccer",
+      TimesPerWeekMin__c: 2,
+      TimesPerWeekMax__c: 3,
+      NoGroupLimit__c: true
+    }
+  ]);
+  const withRecords = () => ({
+    ...draft(MONDAY_ITEMS, MONDAY_ROWS),
+    activityRecords: RECORDS
+  });
+  const classed = (element, name) =>
+    [...grid(element).shadowRoot.querySelectorAll(`.${name}`)].map(
+      (c) => c.dataset.cell
+    );
+
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+  });
+
+  it("says N under with the counter's number, under first, each tile's numbers in the counter's words", async () => {
+    const element = await render(withRecords());
+    const drawer = palette(element);
+    // Swim: one a week for Bunk 1 (Bunk 1 has it); Soccer: two each for two bunks, Bunk 2 has 1.
+    expect(drawer.under).toBe(3);
+    expect(q(element, '[data-id="counter"]').measure.under.count).toBe(3);
+    expect(drawer.tiles.map((t) => [t.name, t.words])).toEqual([
+      ["Soccer", "1 of 4"],
+      ["Boating", "0 placed"],
+      ["Swim", "1 of 1"]
+    ]);
+    // On the grid's columns: two bunks.
+    expect(drawer.columns).toBe(2);
+  });
+
+  it("a tile under the pointer outlines its activity's cells; leaving it takes them away", async () => {
+    const element = await render(withRecords());
+    chip(element, "a3").dispatchEvent(new CustomEvent("mouseenter"));
+    await flush();
+    expect(classed(element, "cell_same")).toEqual(["1-1"]);
+    expect(classed(element, "cell_fits")).toEqual([]);
+    chip(element, "a3").dispatchEvent(new CustomEvent("mouseleave"));
+    await flush();
+    expect(classed(element, "cell_same")).toEqual([]);
+  });
+
+  it("holding a tile draws fits here on the Open cells it fits, by the checks that draw the marks", async () => {
+    const element = await render(withRecords());
+    // Soccer fits Bunk 1's Lunch; Bunk 2 isn't at camp then.
+    chip(element, "a3").click();
+    await flush();
+    expect(classed(element, "cell_fits")).toEqual(["0-2"]);
+    expect(classed(element, "cell_same")).toEqual(["1-1"]);
+    // Escape lets go: no outlines.
+    await press(cell(element, "0-2"), "Escape");
+    expect(classed(element, "cell_fits")).toEqual([]);
+    expect(classed(element, "cell_same")).toEqual([]);
+    // Swim there would be Bunk 1's second Swim on Monday: a new mark, so it doesn't fit.
+    chip(element, "a1").click();
+    await flush();
+    expect(classed(element, "cell_fits")).toEqual([]);
+    expect(classed(element, "cell_same")).toEqual(["0-1"]);
+    await press(cell(element, "0-2"), "Escape");
+    // Boating runs two blocks: Lunch is the last, so it can't fit there whole.
+    chip(element, "a2").click();
+    await flush();
+    expect(classed(element, "cell_fits")).toEqual([]);
+  });
+
+  it("dragging a tile holds it until the drag ends", async () => {
+    const element = await render(withRecords());
+    await fire(chip(element, "a3"), "dragstart");
+    expect(classed(element, "cell_fits")).toEqual(["0-2"]);
+    // The drag ends on the tile it started from, and the end reaches the page.
+    chip(element, "a3").dispatchEvent(
+      new CustomEvent("dragend", { bubbles: true, composed: true })
+    );
+    await flush();
+    expect(classed(element, "cell_fits")).toEqual([]);
+  });
+
+  it("placing the held activity where it fits leaves no new mark", async () => {
+    const element = await render(withRecords());
+    chip(element, "a3").click();
+    await flush();
+    await press(cell(element, "0-2"), " ");
+    expect(sentRuns()).toEqual([
+      expect.objectContaining({ firstBlockId: "t3", after: ["A:a3"] })
+    ]);
+    expect(cell(element, "0-2").querySelector("c-shoresh-dot")).toBeNull();
+  });
+
+  it("the drawer is the same in Group View, counting the one bunk", async () => {
+    const element = await render(withRecords());
+    q(element, '[data-view="group"]').click();
+    await flush();
+    const drawer = palette(element);
+    // Bunk 1: Soccer 0 of 2 (it has none), Swim 1 of 1.
+    expect(drawer.under).toBe(2);
+    expect(drawer.tiles[0]).toMatchObject({ name: "Soccer", words: "0 of 2" });
+    // Group View's columns are the days.
+    expect(drawer.columns).toBe(2);
+  });
+});

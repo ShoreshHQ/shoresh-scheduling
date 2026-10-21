@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import { gridMinWidth } from "c/shoreshScheduleViews";
 
 const EDIT_KEYS = new Set(["Enter", "F2"]);
 
@@ -44,22 +45,42 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * Editable, it says which cell keyboard focus has reached ("cellfocus", with the cell's key), so
  * the page can offer actions on it (a dot in the cell taking focus, tapped, counts as the cell).
  * A locked cell's lock says `lockLabel` ("Locked" when not given) in assistive text.
+ *
+ * The look (docs/design round 13, wiki decisions 36 to 43, ADR 0008 part 8): the grid sits on its
+ * zone's surface with no lines; times only down the side, names only across the top, both aligned
+ * to the cells. Every placed cell is the one raised look; an Open cell is recessed and wordless
+ * ("Open" stays its name for screen readers). A row where every column holds the same fixed or
+ * recurring activity for one block (Lunch, Assembly) is one slim cell across the columns, with
+ * the lock. The needs-a-look dot is the corner mark. A cell's other states keep their meaning as
+ * marks with words for screen readers, and a quiet line under the grid names the marks on it:
+ * not set up yet (a dashed edge), removed (the name struck through), not at camp (hatched).
+ *
+ * Same-activity outlines (wiki decision 38): pointing at a cell, or keyboard focus on it, gives
+ * every other cell of that activity (`activityKey`) a pale highlight outline. `held` ({
+ * activityKey, fits: [cell keys] }), from the page, outlines every cell of a held activity and
+ * draws the dashed "fits here" on the Open cells it names; while something is held, that wins.
  */
 export default class ShoreshScheduleGrid extends LightningElement {
   @api grid;
   @api corner;
   @api label;
   @api editable = false;
+  // An activity held from the drawer: { activityKey, fits: [cell keys] }, or null.
+  @api held;
 
   activeKey;
   // The cell that has keyboard focus now, if any: its dot shows its words.
   focusedKey = null;
+  // The cell under the pointer, if any (its activity's other cells are outlined).
+  hoverKey = null;
   // A stretch by the handle: where it began ({ key, pointerId, x, y, row, column, length, name,
   // moved }), and what it shows now ({ key, name, length, blocked, stopped, above }).
   pressed = null;
   stretch = null;
   // A drag of the handle is not also a click on what is under the pointer when it ends.
   swallowClick = false;
+  // The column Up and Down keep to (a slim row spans them all).
+  navColumn = null;
 
   /** Moves keyboard focus to a cell (after an editor closes, say). */
   @api
@@ -100,6 +121,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
     return ((this.grid && this.grid.columns) || []).map((column, i) => ({
       ...column,
       colIndex: i + 2,
+      labelClass: column.note ? "head-name head-name_gone" : "head-name",
       style: `grid-row: 1 / span 1; grid-column: ${i + 2} / span 1;`
     }));
   }
@@ -108,39 +130,202 @@ export default class ShoreshScheduleGrid extends LightningElement {
     return (this.grid && this.grid.cells) || [];
   }
 
+  /**
+   * The rows where every column holds the same fixed or recurring activity for one block (Lunch,
+   * Assembly): each is drawn as one slim cell across the columns. Their marks and words must
+   * match too, so nothing one bunk's cell says is lost.
+   */
+  get slimRows() {
+    const columns = ((this.grid && this.grid.columns) || []).length;
+    const byRow = new Map();
+    this.allCells.forEach((cell) => {
+      if (!byRow.has(cell.row)) {
+        byRow.set(cell.row, []);
+      }
+      byRow.get(cell.row).push(cell);
+    });
+    const same = (a, b) =>
+      a.text === b.text &&
+      a.title === b.title &&
+      (a.dot || null) === (b.dot || null) &&
+      !!a.locked === !!b.locked &&
+      !!a.gone === !!b.gone;
+    const slim = new Set();
+    byRow.forEach((cells, row) => {
+      if (
+        columns > 0 &&
+        cells.length === columns &&
+        cells.every(
+          (c) => c.setTime && (c.length || 1) === 1 && same(c, cells[0])
+        ) &&
+        // Nothing from a row above runs into it.
+        !this.allCells.some((c) => c.row < row && c.row + (c.length || 1) > row)
+      ) {
+        slim.add(row);
+      }
+    });
+    return slim;
+  }
+
+  /**
+   * The cells as drawn: in a slim row only its first column's cell, spanning every column (the
+   * rest go; the slot is read-only, so nothing is lost by sending the first one's key).
+   */
+  get drawnCells() {
+    const slim = this.slimRows;
+    const columns = ((this.grid && this.grid.columns) || []).length;
+    return this.allCells
+      .filter(
+        (cell) =>
+          !slim.has(cell.row) ||
+          cell.column ===
+            Math.min(
+              ...this.allCells
+                .filter((c) => c.row === cell.row)
+                .map((c) => c.column)
+            )
+      )
+      .map((cell) => {
+        if (!slim.has(cell.row)) {
+          return cell;
+        }
+        return {
+          ...cell,
+          colSpan: columns,
+          style: `grid-row: ${cell.row + 1} / span 1; grid-column: 2 / span ${columns};`
+        };
+      });
+  }
+
   /** The cell keyboard focus sits on: the last one used, else the first. */
   get currentKey() {
-    const cells = this.allCells;
+    const cells = this.drawnCells;
     if (cells.some((cell) => cell.key === this.activeKey)) {
       return this.activeKey;
     }
     return cells.length ? cells[0].key : null;
   }
 
+  /**
+   * Which activity's other cells are outlined, and which Open cells say "fits here": what the
+   * page holds, else the cell under the pointer or with keyboard focus.
+   */
+  get outline() {
+    const held = this.held;
+    if (held && held.activityKey) {
+      return {
+        activityKey: held.activityKey,
+        except: null,
+        fits: new Set(held.fits || [])
+      };
+    }
+    const key = this.hoverKey || this.focusedKey;
+    const cell = key && this.allCells.find((c) => c.key === key);
+    return cell && cell.activityKey
+      ? { activityKey: cell.activityKey, except: cell.key, fits: new Set() }
+      : null;
+  }
+
+  /**
+   * A cell's classes for the outlines (never both on one cell: "fits" is only on Open ones). The
+   * selected cell keeps only its selection outline, never the paler same-activity one.
+   */
+  outlineClass(cell, outline) {
+    if (!outline || cell.selected) {
+      return "";
+    }
+    if (outline.fits.has(cell.key) && cell.open) {
+      return " cell_fits";
+    }
+    if (
+      cell.activityKey &&
+      cell.activityKey === outline.activityKey &&
+      cell.key !== outline.except
+    ) {
+      return " cell_same";
+    }
+    return "";
+  }
+
   /** Each time block with the cells that start in it (a row for screen readers). */
   get bodyRows() {
     const current = this.editable ? this.currentKey : null;
+    const slim = this.slimRows;
+    const outline = this.outline;
+    const cells = this.drawnCells;
     return ((this.grid && this.grid.rows) || []).map((row, i) => ({
       ...row,
       rowIndex: i + 2,
-      cells: this.allCells
+      slim: slim.has(i),
+      headClass: row.gone ? "row-head row-head_gone" : "row-head",
+      said: row.gone
+        ? `${row.said || row.name} (removed)`
+        : row.said || row.name,
+      cells: cells
         .filter((cell) => cell.row === i)
-        .map((cell) => ({
-          ...cell,
-          ...this.stretchLook(cell),
-          role: this.editable ? "gridcell" : "cell",
-          tabIndex: this.editable ? (cell.key === current ? "0" : "-1") : null,
-          // A slot that can't change here (a fixed activity, a group not at camp).
-          ariaReadOnly: this.editable && cell.readOnly ? "true" : null,
-          draggable: this.editable && cell.movable ? "true" : null,
-          ariaSelected: this.editable && cell.selected ? "true" : null,
-          handle: this.editable && cell.movable,
-          dotOpen: Boolean(cell.dot) && cell.key === this.focusedKey,
-          lockText: cell.lockLabel || "Locked",
-          colIndex: cell.column + 2,
-          rowSpan: cell.length || 1
-        }))
+        .map((cell) => {
+          const look = {
+            ...cell,
+            className: `${cell.className}${cell.locked ? " cell_locked" : ""}${cell.dot ? " cell_look" : ""}${slim.has(i) ? " cell_slim" : ""}${this.outlineClass(cell, outline)}`
+          };
+          return {
+            ...look,
+            ...this.stretchLook(look),
+            role: this.editable ? "gridcell" : "cell",
+            tabIndex: this.editable
+              ? cell.key === current
+                ? "0"
+                : "-1"
+              : null,
+            // A slot that can't change here (a fixed activity, a group not at camp).
+            ariaReadOnly: this.editable && cell.readOnly ? "true" : null,
+            draggable: this.editable && cell.movable ? "true" : null,
+            ariaSelected: this.editable && cell.selected ? "true" : null,
+            handle: this.editable && cell.movable,
+            dotOpen: Boolean(cell.dot) && cell.key === this.focusedKey,
+            lockText: cell.lockLabel || "Locked",
+            // The lock: a director's Lock (with its words), or a fixed or recurring activity's.
+            setTimeLock: !!cell.setTime && !cell.locked,
+            // Open, not at camp, locked empty: no word on the cell, only for screen readers.
+            quiet: !!cell.open || !!cell.away || cell.text === "",
+            nameClass: cell.gone ? "cell-name cell-name_gone" : "cell-name",
+            colIndex: cell.column + 2,
+            colSpan: cell.colSpan || null,
+            rowSpan: cell.length || 1
+          };
+        })
     }));
+  }
+
+  /** The quiet line under the grid: the marks on it that don't say themselves. */
+  get legend() {
+    const cells = this.allCells;
+    const has = (test) => cells.some(test);
+    return [
+      has((c) => c.away) && {
+        key: "away",
+        label: "not at camp",
+        className: "legend-mark legend-mark_away"
+      },
+      has((c) => c.notSetUp) && {
+        key: "not-set-up",
+        label: "not set up yet",
+        className: "legend-mark legend-mark_not-set-up"
+      },
+      has((c) => c.gone) ||
+      ((this.grid && this.grid.rows) || []).some((r) => r.gone) ||
+      ((this.grid && this.grid.columns) || []).some((c) => c.note)
+        ? {
+            key: "gone",
+            label: "removed",
+            className: "legend-mark legend-mark_gone"
+          }
+        : null
+    ].filter(Boolean);
+  }
+
+  get hasLegend() {
+    return this.legend.length > 0;
   }
 
   /** How a cell looks while the handle stretches a placement: the cell itself grows. */
@@ -156,9 +341,16 @@ export default class ShoreshScheduleGrid extends LightningElement {
       };
     }
     if (cell.key === stretch.blocked) {
+      // A slim row across every column: the ghost sits over the stretched column only.
+      const span = cell.colSpan || 1;
+      const at = stretch.column - cell.column;
       return {
         className: `${cell.className} cell_stretch-blocked`,
-        ghost: stretch.name
+        ghost: stretch.name,
+        style:
+          span > 1
+            ? `${cell.style} --ghost-left: calc((100% + var(--shoresh-space-cell-gap)) * ${at} / ${span}); --ghost-width: calc((100% + var(--shoresh-space-cell-gap)) / ${span} - var(--shoresh-space-cell-gap));`
+            : cell.style
       };
     }
     return {};
@@ -172,18 +364,29 @@ export default class ShoreshScheduleGrid extends LightningElement {
     return this.columns.length + 1;
   }
 
+  /**
+   * The time column, then one column per bunk (or day), the same columns the drawer under the
+   * grid uses (the page passes the count on, so each tile sits under its column).
+   */
   get columnTemplate() {
-    return `grid-template-columns: 140px repeat(${this.columns.length}, minmax(0, 1fr));`;
+    return `grid-template-columns: var(--shoresh-head-w) repeat(${this.columns.length}, minmax(0, 1fr));`;
   }
 
+  /** Activity rows at least a tile tall, slim rows the short height (spacing-spec-continuous). */
   get bodyStyle() {
-    const rows = this.bodyRows.length;
-    return `${this.columnTemplate} grid-template-rows: repeat(${Math.max(rows, 1)}, minmax(48px, auto));`;
+    const rows = this.bodyRows;
+    const tall = "minmax(var(--shoresh-tile-h), auto)";
+    const heights = rows.length
+      ? rows
+          .map((row) => (row.slim ? "var(--shoresh-short-h)" : tall))
+          .join(" ")
+      : tall;
+    return `${this.columnTemplate} grid-template-rows: ${heights};`;
   }
 
   /** Wide enough for every column (Daily View with many groups scrolls sideways). */
   get frameStyle() {
-    return `min-width: ${140 + this.columns.length * 130}px;`;
+    return `min-width: ${gridMinWidth(this.columns.length)};`;
   }
 
   // ---------- editing ----------
@@ -192,11 +395,12 @@ export default class ShoreshScheduleGrid extends LightningElement {
     return key ? this.template.querySelector(`[data-cell="${key}"]`) : null;
   }
 
-  /** The cell covering a row in a column, if any. */
+  /** The cell covering a row in a column, if any (a slim row's one cell covers every column). */
   cellAt(row, column) {
-    return this.allCells.find(
+    return this.drawnCells.find(
       (cell) =>
-        cell.column === column &&
+        column >= cell.column &&
+        column < cell.column + (cell.colSpan || 1) &&
         row >= cell.row &&
         row < cell.row + (cell.length || 1)
     );
@@ -217,15 +421,33 @@ export default class ShoreshScheduleGrid extends LightningElement {
     this.focusedKey = null;
   }
 
+  /** The pointer over a cell: its activity's other cells are outlined. */
+  handlePointerOver(event) {
+    const at = event.target.closest && event.target.closest("[data-cell]");
+    const key = at ? at.dataset.cell : null;
+    if (key !== this.hoverKey) {
+      this.hoverKey = key;
+    }
+  }
+
+  handlePointerLeave() {
+    this.hoverKey = null;
+  }
+
   handleKeyDown(event) {
     const key = event.target.dataset && event.target.dataset.cell;
     if (!this.editable || !key) {
       return;
     }
-    const cell = this.allCells.find((c) => c.key === key);
+    const cell = this.drawnCells.find((c) => c.key === key);
     if (!cell) {
       return;
     }
+    // Up and Down through a slim row come out in the column they went in from.
+    const column =
+      cell.colSpan > 1 && this.navColumn !== null
+        ? this.navColumn
+        : cell.column;
     if (
       event.shiftKey &&
       (event.key === "ArrowUp" || event.key === "ArrowDown")
@@ -245,16 +467,16 @@ export default class ShoreshScheduleGrid extends LightningElement {
     let next;
     switch (event.key) {
       case "ArrowUp":
-        next = this.cellAt(cell.row - 1, cell.column);
+        next = this.cellAt(cell.row - 1, column);
         break;
       case "ArrowDown":
-        next = this.cellAt(cell.row + (cell.length || 1), cell.column);
+        next = this.cellAt(cell.row + (cell.length || 1), column);
         break;
       case "ArrowLeft":
         next = this.cellAt(cell.row, cell.column - 1);
         break;
       case "ArrowRight":
-        next = this.cellAt(cell.row, cell.column + 1);
+        next = this.cellAt(cell.row, cell.column + (cell.colSpan || 1));
         break;
       default:
         if (EDIT_KEYS.has(event.key)) {
@@ -268,6 +490,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
     }
     event.preventDefault();
     if (next) {
+      this.navColumn = next.colSpan > 1 ? column : next.column;
       this.focusCell(next.key);
     }
   }
@@ -373,6 +596,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
       !now ||
       now.length !== next.length ||
       now.blocked !== next.blocked ||
+      now.column !== next.column ||
       now.stopped !== next.stopped ||
       now.above !== next.above
     ) {
@@ -482,6 +706,7 @@ export default class ShoreshScheduleGrid extends LightningElement {
   stretchTo(pressed, row) {
     const shown = {
       key: pressed.key,
+      column: pressed.column,
       name: pressed.name,
       length: pressed.length,
       blocked: null,

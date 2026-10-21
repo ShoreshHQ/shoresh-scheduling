@@ -9,8 +9,8 @@ import {
   dayLabel,
   days,
   groupGrid,
-  groups,
-  kindLabel
+  gridMinWidth,
+  groups
 } from "c/shoreshScheduleViews";
 import {
   OPEN,
@@ -24,7 +24,7 @@ import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
-import { paletteChips } from "./counts";
+import { drawerTiles } from "./counts";
 import {
   LOCKED,
   foldRun,
@@ -214,6 +214,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
   measureMemo = { checked: null, activities: null, result: null };
+  // The drawer's measure in Group View (one bunk's), and the Open cells a held activity fits.
+  bunkMeasureMemo = { key: null, checked: null, result: null };
+  fitsMemo = { key: null, checked: null, result: [] };
+  // The drawer tile under the pointer or with keyboard focus (its activity is outlined).
+  hoverActivityId = null;
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -516,13 +521,19 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
       return memo.result;
     }
+    memo.inputs = inputs;
+    memo.result = this.checkDays((schedule && schedule.days) || []);
+    return memo.result;
+  }
+
+  /**
+   * A week's days checked: the host's own check when it gives one (Generated, with its locks),
+   * else checkWeek on the draft's setup. Used for the week shown, and for the week as it would be
+   * with an activity put down somewhere (the drawer's "fits here").
+   */
+  checkDays(weekDays) {
     if (this.checkWith) {
-      memo.inputs = inputs;
-      memo.result = this.checkWith(
-        (schedule && schedule.days) || [],
-        this.liveLocks
-      );
-      return memo.result;
+      return this.checkWith(weekDays, this.liveLocks);
     }
     const draft = this.draft || {};
     const entry = {
@@ -534,12 +545,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     ((this.draft && this.draft.away) || []).forEach((row) =>
       row.blockIds.forEach((blockId) => away.add(`${row.groupId}|${blockId}`))
     );
-    const activities = readActivities(draft.activityRecords);
-    const weekDays = (schedule && schedule.days) || [];
-    const result = checkWeek(
+    return checkWeek(
       weekDays,
       {
-        activities,
+        activities: readActivities(draft.activityRecords),
         locations: readLocations(draft.locationRecords),
         ...readProgram(entry),
         notFor: new Map(
@@ -553,9 +562,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       },
       { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
     );
-    memo.inputs = inputs;
-    memo.result = result;
-    return result;
   }
 
   /**
@@ -815,6 +821,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       result = {
         ...result,
         text: "Not at camp",
+        away: true,
         className: "cell cell_away",
         title: `${grp.name}: not at camp`
       };
@@ -890,6 +897,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   get activityCards() {
     return activityCards(this.schedule, this.catalogue, this.t).map((card) => ({
       ...card,
+      nameClass: card.gone ? "card-name card-name_gone" : "card-name",
       location: this.locationName(card.key)
     }));
   }
@@ -907,39 +915,6 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
   handleAllActivities() {
     this.activityId = null;
-  }
-
-  get showLegend() {
-    return !this.isActivity;
-  }
-  get legend() {
-    return [
-      {
-        key: "activity",
-        label: this.t.s("Activity"),
-        className: "swatch swatch_activity"
-      },
-      {
-        key: "set-time",
-        label: `${this.t.s("FixedActivity")} or ${this.t.sIn("RecurringActivity")}`,
-        className: "swatch swatch_set-time"
-      },
-      {
-        key: "not-set-up",
-        label: `Not set up yet (${["E", "D", "S", "T"].map((k) => kindLabel(k, this.t)).join(", ")})`,
-        className: "swatch swatch_not-set-up"
-      },
-      {
-        key: "open",
-        label: "Open: nothing placed",
-        className: "swatch swatch_open"
-      },
-      { key: "away", label: "Not at camp", className: "swatch swatch_away" },
-      // Only where cells can be locked (Generated Schedule).
-      ...(this.lockBase
-        ? [{ key: "locked", label: "Locked", icon: "utility:lock" }]
-        : [])
-    ];
   }
 
   // ---------- slots ----------
@@ -2327,25 +2302,60 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.saveNext();
   }
 
-  // ---------- the activity list ----------
+  // ---------- the drawer ----------
 
+  /** The drawer under the grid, in Daily and Group View with a grid to place on. */
   get showPalette() {
-    return !this.isActivity;
+    return !this.isActivity && !!this.editGrid;
   }
-  get chips() {
-    return paletteChips(
-      this.schedule,
-      this.checked,
+
+  /**
+   * What the drawer counts: the week's measure (the counter's) in Daily View; in Group View the
+   * bunk shown, measured the same way on its own (measureWeek counts the bunks the days name).
+   */
+  get drawerMeasure() {
+    if (!this.isGroup) {
+      return this.measure;
+    }
+    const checked = this.checked;
+    const memo = this.bunkMeasureMemo;
+    if (memo.checked !== checked || memo.key !== this.groupKey) {
+      memo.checked = checked;
+      memo.key = this.groupKey;
+      const bunkDays = ((this.schedule && this.schedule.days) || []).map(
+        (day) => ({
+          ...day,
+          groups: (day.groups || []).filter((grp) => grp.id === this.groupKey)
+        })
+      );
+      memo.result = measureWeek(
+        checked,
+        (this.draft && this.draft.activities) || [],
+        bunkDays
+      );
+    }
+    return memo.result;
+  }
+  get tiles() {
+    return drawerTiles(
+      this.drawerMeasure,
       (this.draft && this.draft.activities) || [],
-      this.isGroup ? this.groupKey : null,
       this.filter
     );
   }
-  get neededChips() {
-    return this.chips.stillNeeded;
+  get underCount() {
+    const m = this.drawerMeasure;
+    return m ? m.under.count : 0;
   }
-  get placedChips() {
-    return this.chips.placed;
+  get drawerColumns() {
+    const grid = this.editGrid;
+    return grid ? grid.columns.length : 0;
+  }
+  /** Grid and drawer are as wide as each other, so each tile stays under its column. */
+  get sheetStyle() {
+    return this.showPalette
+      ? `min-width: calc(${gridMinWidth(this.drawerColumns)} + 2 * var(--shoresh-space-pad) + 6px);`
+      : null;
   }
   get paletteHeading() {
     return this.t.p("Activity");
@@ -2354,6 +2364,93 @@ export default class ShoreshWeekEditor extends LightningElement {
     return this.picked && this.picked.kind === "activity"
       ? this.picked.id
       : null;
+  }
+
+  /** The activity held: picked up (a click, Enter or Space on its tile) or being dragged. */
+  get heldActivityId() {
+    if (this.pickedActivityId) {
+      return this.pickedActivityId;
+    }
+    return this.dragging && this.dragging.kind === "activity"
+      ? this.dragging.id
+      : null;
+  }
+
+  /**
+   * What the grid outlines for the drawer (wiki decision 38): a held activity's cells and the
+   * Open cells it fits; a tile under the pointer, only its cells.
+   */
+  get gridHeld() {
+    const held = this.heldActivityId;
+    if (held) {
+      return { activityKey: `A:${held}`, fits: this.fitsFor(held) };
+    }
+    return this.hoverActivityId
+      ? { activityKey: `A:${this.hoverActivityId}`, fits: [] }
+      : null;
+  }
+
+  /**
+   * The Open cells on screen where an activity fits: it can go there for its whole length (no
+   * group away, nothing locked or filled in the way), and putting it there gives the week no new
+   * needs-a-look mark, by the same check that draws them. Worked out once per held activity and
+   * week shown.
+   */
+  fitsFor(id) {
+    const checked = this.checked;
+    const grid = this.editGrid;
+    const key = `${id}|${this.view}|${this.dayIndex}|${this.groupKey}`;
+    const memo = this.fitsMemo;
+    if (memo.key === key && memo.checked === checked) {
+      return memo.result;
+    }
+    const fits = [];
+    const week = this.schedule.days;
+    const before = new Set(checked.flags.keys());
+    const length = this.activityLength(id);
+    ((grid && grid.cells) || []).forEach((cell) => {
+      if (
+        !cell.slot ||
+        !cell.open ||
+        cell.away ||
+        cell.locked ||
+        cell.readOnly
+      ) {
+        return;
+      }
+      const slot = cell.slot;
+      const day = this.dayOf(slot);
+      const run = editRun(
+        day,
+        slot.group,
+        slot.block,
+        `A:${id}`,
+        length,
+        this.awayIn(slot),
+        (block) => this.isLockedSlot({ ...slot, block })
+      );
+      if (!run || run.after.filter((x) => x !== OPEN).length < length) {
+        return;
+      }
+      const changed = applyRun(day, slot.group, run, (item) =>
+        this.itemFor(item)
+      );
+      const after = this.checkDays(
+        week.map((d, i) => (i === slot.day ? changed : d))
+      );
+      if ([...after.flags.keys()].every((k) => before.has(k))) {
+        fits.push(cell.key);
+      }
+    });
+    memo.key = key;
+    memo.checked = checked;
+    memo.result = fits;
+    return fits;
+  }
+
+  /** A tile under the pointer or with keyboard focus: its activity's cells are outlined. */
+  handleTileHover(event) {
+    this.hoverActivityId = (event.detail && event.detail.id) || null;
   }
 
   handleFilter(event) {

@@ -5,6 +5,32 @@
   display: inline-flex;
 }
 
+/* A line and its Accept, side by side. */
+.line {
+  display: flex;
+  align-items: stretch;
+}
+
+.line > button:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Accept: shown when its line is under the pointer or keyboard focus is on the line or on it.
+   Still in the Tab and arrow order while hidden from the eye, so the keyboard reaches it. */
+.accept {
+  flex: none;
+  width: auto;
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+  opacity: 0;
+}
+
+.line:hover .accept,
+.line:focus-within .accept {
+  opacity: 1;
+}
+
 .list {
   width: calc(var(--shoresh-u) * 64);
   max-height: 70vh;

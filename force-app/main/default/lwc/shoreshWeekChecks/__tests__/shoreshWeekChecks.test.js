@@ -218,4 +218,125 @@ describe("c-shoresh-week-checks: the counter", () => {
     await flush();
     expect(text(word(element))).toBe("0of 0 placed");
   });
+
+  describe("Accept (decisions 16 and 43)", () => {
+    // Swim under, Soccer over, one overlap and one spread line to look at.
+    const SPREAD = {
+      ...CHECKED,
+      hasSpreadTargets: true,
+      spread: ["Swim · Bunk 2: 1 more needed by Wednesday"],
+      spreadBy: [
+        { groupId: "g2", activityId: "a1", missing: 1, byDay: "Wednesday" }
+      ]
+    };
+    const open = async (props) => {
+      const element = render(props);
+      await flush();
+      word(element).click();
+      await flush();
+      return element;
+    };
+    const accepts = (element) =>
+      qa(element, ".accept").map((b) => b.getAttribute("aria-label"));
+    const keyOn = (target, key) =>
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, composed: true })
+      );
+
+    it("an under, over or spread line has Accept; a clash between cells has none, as on the desktop", async () => {
+      const element = await open({
+        measure: measureWeek(SPREAD, ACTIVITIES, DAYS)
+      });
+      expect(accepts(element)).toEqual([
+        "Accept: Swim, 1 of 4",
+        "Accept: Soccer, 2 of 1, over",
+        "Accept: Swim · Bunk 2: 1 more needed by Wednesday"
+      ]);
+      await expect(element).toBeAccessible();
+    });
+
+    it("Accept tucks the line away, says so, keeps the dropdown open, and focus moves to the next line", async () => {
+      const element = await open();
+      const accepted = jest.fn();
+      element.addEventListener("accept", accepted);
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(q(element, 'button[data-activity="a1"]')).toBeNull();
+      expect(accepted.mock.calls[0][0].detail).toMatchObject({
+        id: "a1",
+        placed: 1,
+        goal: 4
+      });
+      expect(q(element, '[data-id="accept-said"]').textContent).toBe(
+        "Accepted for this visit: Swim, 1 of 4."
+      );
+      expect(word(element).getAttribute("aria-expanded")).toBe("true");
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, 'button[data-activity="a2"]')
+      );
+      // The numbers stay the week's: the drawer shows the same ones.
+      expect(text(q(element, '[data-id="under"]'))).toBe("3under");
+    });
+
+    it("the keyboard reaches Accept: Down from a line, Enter accepts it", async () => {
+      const element = await open();
+      const row = q(element, 'button[data-activity="a2"]');
+      row.focus();
+      keyOn(row, "ArrowDown");
+      await flush();
+      const accept = q(element, '.accept[data-key^="over|a2|"]');
+      expect(element.shadowRoot.activeElement).toBe(accept);
+      accept.click();
+      await flush();
+      expect(q(element, 'button[data-activity="a2"]')).toBeNull();
+      // The next line: the one to look at.
+      expect(element.shadowRoot.activeElement).toBe(q(element, ".look-row"));
+    });
+
+    it("the corner goes once every line is accepted; with none left, focus goes to the counter", async () => {
+      const measure = measureWeek(
+        { ...CHECKED, overlapping: [] },
+        ACTIVITIES,
+        DAYS
+      );
+      const element = await open({ measure });
+      q(element, '.accept[data-key^="under|"]').click();
+      await flush();
+      expect(word(element).querySelector(".shoresh-look-mark")).not.toBeNull();
+      q(element, '.accept[data-key^="over|"]').click();
+      await flush();
+      expect(word(element).querySelector(".shoresh-look-mark")).toBeNull();
+      expect(word(element).getAttribute("aria-label")).toBe("4 of 10 placed");
+      expect(pop(element).shadowRoot.activeElement).toBe(word(element));
+    });
+
+    it("a line whose numbers change comes back, and so does every line when a week is shown fresh", async () => {
+      const element = await open();
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(q(element, 'button[data-activity="a1"]')).toBeNull();
+      // Bunk 2 gets a Swim: 2 of 4 now, a different line.
+      element.measure = measureWeek(
+        {
+          ...CHECKED,
+          placements: [
+            ...CHECKED.placements,
+            { kind: "A", groupId: "g2", id: "a1" }
+          ]
+        },
+        ACTIVITIES,
+        DAYS
+      );
+      await flush();
+      expect(text(q(element, 'button[data-activity="a1"]'))).toBe("Swim2of 4");
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(q(element, 'button[data-activity="a1"]')).toBeNull();
+      element.resetKey = 2;
+      await flush();
+      word(element).click();
+      await flush();
+      expect(q(element, 'button[data-activity="a1"]')).not.toBeNull();
+    });
+  });
 });

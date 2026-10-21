@@ -17,6 +17,10 @@
  * - that a placement's bottom handle stretches it with a real mouse drag on Manual Build (the
  *   one place the check uses the mouse: Greg's drag, 2026-10-21), the span growing live, a ghost
  *   on the slot that stops it, and the longer placement kept on letting go;
+ * - that a drawer tile held from the keyboard outlines its activity's cells and draws "fits
+ *   here" only on Open cells, and Escape lets go; that pointing at a cell outlines the other
+ *   cells of its activity (the mouse again); and that Accept in the counter's dropdown is reached
+ *   with the arrows, hides its line, is said, and moves focus on (ADR 0008 part 8);
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -335,17 +339,31 @@ async function expectFocusKept(screen, step) {
   return f;
 }
 
-async function liveTexts() {
-  return page
-    .locator(APP)
-    .locator('[aria-live], [role="status"], [role="alert"]')
-    .evaluateAll((els) =>
-      els
-        // Only regions on screen: screens visited earlier stay in the page, hidden.
-        .filter((e) => e.getClientRects().length > 0)
-        .map((e) => (e.textContent || "").replace(/\s+/g, " ").trim())
-        .filter(Boolean)
+// Live regions, one selector at a time: Playwright's piercing of a selector list (or `.or`)
+// missed a region in a component slotted into another's shadow (the counter's Accept line),
+// while each selector alone finds it.
+const LIVE = ["[aria-live]", '[role="status"]', '[role="alert"]'];
+
+/** Runs `fn` (an evaluateAll function) on every live region in Shoresh, each kind in turn. */
+async function eachLive(fn) {
+  const out = [];
+  for (const selector of LIVE) {
+    out.push(
+      ...((await page.locator(APP).locator(selector).evaluateAll(fn)) || [])
     );
+  }
+  return out;
+}
+
+async function liveTexts() {
+  // An element that is both (aria-live and a role) is counted under each, before and after alike.
+  return eachLive((els) =>
+    els
+      // Only regions on screen: screens visited earlier stay in the page, hidden.
+      .filter((e) => e.getClientRects().length > 0)
+      .map((e) => (e.textContent || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+  );
 }
 
 /**
@@ -363,20 +381,21 @@ async function watchLive() {
     window.__a11yObservers = [];
     window.__a11yLive = [];
   });
-  await page
-    .locator(APP)
-    .locator('[aria-live], [role="status"], [role="alert"]')
-    .evaluateAll((els) => {
-      // Only regions on screen: screens visited earlier stay in the page, hidden.
-      for (const el of els.filter((e) => e.getClientRects().length > 0)) {
-        const o = new MutationObserver(() => {
-          const t = (el.textContent || "").replace(/\s+/g, " ").trim();
-          if (t) window.__a11yLive.push(t);
-        });
-        o.observe(el, { childList: true, subtree: true, characterData: true });
-        window.__a11yObservers.push(o);
-      }
-    });
+  await eachLive((els) => {
+    // Only regions on screen: screens visited earlier stay in the page, hidden. One observer per
+    // element, even when two selectors find it.
+    for (const el of els.filter((e) => e.getClientRects().length > 0)) {
+      if (el.__a11yWatched === window.__a11yObservers) continue;
+      el.__a11yWatched = window.__a11yObservers;
+      const o = new MutationObserver(() => {
+        const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+        if (t) window.__a11yLive.push(t);
+      });
+      o.observe(el, { childList: true, subtree: true, characterData: true });
+      window.__a11yObservers.push(o);
+    }
+    return [];
+  });
 }
 
 /**
@@ -1109,6 +1128,9 @@ async function manualBuild(openManual) {
   await step(S, "axe", () => axe(S));
   await step(S, "Rail", () => toolbarReach(S));
   await step(S, "The counter: open, Escape", () => counterMenu(S));
+  await step(S, "The counter: Accept a line with the keyboard", () =>
+    acceptLine(S)
+  );
   await step(S, "Place an activity by typing", async () => {
     const cell = await tabTo(grid);
     if (!cell) throw new Error("No grid cell reached with Tab.");
@@ -1194,6 +1216,12 @@ async function manualBuild(openManual) {
   );
   await step(S, "Stretch by the handle with the mouse, then its Undo", () =>
     stretchByHandle(S)
+  );
+  await step(S, "The drawer: hold a tile, its outlines and fits here", () =>
+    holdTile(S)
+  );
+  await step(S, "Same-activity outlines: point at a cell", () =>
+    hoverOutlines(S)
   );
   await step(S, "Clear day, then its Undo", async () => {
     // Clear day is in the rail's Edit menu, after Undo and Redo.
@@ -1359,6 +1387,214 @@ async function stretchByHandle(S) {
   );
 }
 
+/** The grid's cells on screen, as { key, name, classes } (through the grid's shadow root). */
+async function gridCells() {
+  return shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
+    .first()
+    .evaluate((g) =>
+      [...(g.shadowRoot || g).querySelectorAll("[data-cell]")].map((c) => {
+        const name = c.querySelector(".cell-name");
+        return {
+          key: c.dataset.cell,
+          name: name ? name.textContent.trim() : "",
+          classes: c.className
+        };
+      })
+    );
+}
+
+/**
+ * The drawer (ADR 0008 part 8): Tab to a tile, Enter holds it (focus goes to the grid). Every
+ * cell of its activity is outlined, "fits here" lands only on Open cells, and the tile says it
+ * is held. Escape lets go and the outlines go. A screenshot of the hold goes next to the
+ * mock-up's hold-archery.png when --shots is given.
+ */
+async function holdTile(S) {
+  const isTile = (f) =>
+    f.tag === "button" &&
+    f.components.includes("c-shoresh-build-palette") &&
+    f.dataId !== "palette-filter" &&
+    f.type === "button";
+  const tile = await tabTo(isTile, { max: 200 });
+  if (!tile) throw new Error("No drawer tile reached with Tab.");
+  const name = tile.name.split(",")[0].trim();
+  await press("Enter", 800);
+  await expectFocus(S, "Holding a tile: focus goes to the grid", {
+    inGrid: true
+  });
+  const held = await gridCells();
+  const same = held.filter((c) => /\bcell_same\b/.test(c.classes));
+  const fits = held.filter((c) => /\bcell_fits\b/.test(c.classes));
+  const ofIt = held.filter((c) => c.name === name);
+  if (
+    same.length === ofIt.length &&
+    same.every((c) => c.name === name) &&
+    fits.every((c) => /\bcell_open\b/.test(c.classes))
+  ) {
+    results.pass(
+      S,
+      "Holding a tile: its cells outlined, fits here only on Open cells",
+      `${name}: ${same.length} outlined, ${fits.length} fit.`
+    );
+  } else {
+    await shot(S, "Holding a tile");
+    results.fail(
+      S,
+      "Holding a tile: its cells outlined, fits here only on Open cells",
+      `${name}: ${same.length} outlined of ${ofIt.length}; fits on ${fits.map((c) => `${c.key} ${c.classes}`).join("; ") || "none"}.`
+    );
+  }
+  const pressed = await shown("c-shoresh-build-palette")
+    .first()
+    .evaluate(
+      (d) =>
+        (d.shadowRoot || d).querySelector('button[aria-pressed="true"]') !==
+        null
+    );
+  if (pressed) {
+    results.pass(
+      S,
+      "Holding a tile: the tile says it is held",
+      "aria-pressed."
+    );
+  } else {
+    results.fail(
+      S,
+      "Holding a tile: the tile says it is held",
+      "No tile is aria-pressed."
+    );
+  }
+  if (args.includes("--shots")) {
+    await page.screenshot({ path: join(shotsDir, "hold-tile.png") });
+  }
+  await axe(`${S}: a tile held`);
+  await expectLive(S, "Escape lets go: it is said", /^Put back\.$/, () =>
+    press("Escape", 400)
+  );
+  const after = await gridCells();
+  const left = after.filter((c) => /\bcell_(same|fits)\b/.test(c.classes));
+  if (left.length) {
+    results.fail(
+      S,
+      "Escape: the outlines go",
+      `Still outlined: ${left.map((c) => c.key).join(", ")}.`
+    );
+  } else {
+    results.pass(S, "Escape: the outlines go", "None left.");
+  }
+}
+
+/**
+ * Same-activity outlines with the mouse (wiki decision 38): pointing at a placed activity
+ * outlines every other cell of it, and never an Open cell.
+ */
+async function hoverOutlines(S) {
+  const cells = await gridCells();
+  const counts = new Map();
+  cells
+    .filter((c) => /\bcell_activity\b/.test(c.classes) && c.name)
+    .forEach((c) => counts.set(c.name, (counts.get(c.name) || 0) + 1));
+  const [name] = [...counts].find(([, n]) => n > 1) || [];
+  if (!name) {
+    results.notRun(
+      S,
+      "Pointing at a cell outlines its activity",
+      "No activity is placed twice on this day."
+    );
+    return;
+  }
+  const target = cells.find((c) => c.name === name);
+  const editGrid = shown(
+    'c-shoresh-schedule-grid[data-id="edit-grid"]'
+  ).first();
+  const at = editGrid.locator(`[data-cell="${target.key}"]`);
+  await at.scrollIntoViewIfNeeded();
+  await at.hover();
+  await pause(300);
+  const now = await gridCells();
+  const same = now.filter((c) => /\bcell_same\b/.test(c.classes));
+  if (
+    same.length === counts.get(name) - 1 &&
+    same.every((c) => c.name === name && c.key !== target.key)
+  ) {
+    results.pass(
+      S,
+      "Pointing at a cell outlines its activity",
+      `${name}: the other ${same.length} outlined.`
+    );
+  } else {
+    await shot(S, "Hover outlines");
+    results.fail(
+      S,
+      "Pointing at a cell outlines its activity",
+      `${name}: outlined ${same.map((c) => `${c.key} ${c.name}`).join(", ") || "none"}.`
+    );
+  }
+  if (args.includes("--shots")) {
+    await page.screenshot({ path: join(shotsDir, "hover-cell.png") });
+  }
+  await page.mouse.move(2, 2);
+  await pause(200);
+}
+
+/**
+ * Accept (decision 43): open the counter, Down to a line's Accept, Enter. The line goes, it is
+ * said, the dropdown stays open and focus moves on to a line (or the counter).
+ */
+async function acceptLine(S) {
+  if (!(await openRailMenu(/^\d+ of \d+ placed\b/)))
+    throw new Error("The counter not reached with Tab.");
+  await press("ArrowDown", 150);
+  const accept = await arrowTo(/^Accept: /, { max: 30 });
+  if (!accept) {
+    await press("Escape", 300);
+    results.notRun(
+      S,
+      "Accept in the counter",
+      "No line with Accept this week (nothing under, over or spread)."
+    );
+    return;
+  }
+  const line = accept.name.replace(/^Accept: /, "");
+  await expectLive(S, "Accept: it is said", /^Accepted for this visit: /, () =>
+    press("Enter", 500)
+  );
+  const left = await page
+    .locator(APP)
+    .locator("c-shoresh-week-checks >> visible=true")
+    .first()
+    .evaluate(
+      (el, said) =>
+        [...el.shadowRoot.querySelectorAll(".accept")].some(
+          (b) => b.getAttribute("aria-label") === `Accept: ${said}`
+        ),
+      line
+    );
+  if (left) {
+    results.fail(S, "Accept: the line goes", `Still listed: ${line}.`);
+  } else {
+    results.pass(S, "Accept: the line goes", `Hidden: ${line}.`);
+  }
+  await expectFocus(S, "Accept: focus on the next line or the counter", {
+    name: /\S/
+  });
+  const f = await focus();
+  if (!f || !f.components.includes("c-shoresh-week-checks")) {
+    results.fail(
+      S,
+      "Accept: focus stays in the counter",
+      `Focus on ${formatFocus(f)}.`
+    );
+  } else {
+    results.pass(
+      S,
+      "Accept: focus stays in the counter",
+      `Focus on ${formatFocus(f)}.`
+    );
+  }
+  await press("Escape", 400);
+}
+
 async function generated(openGenerated) {
   const S = "Generated Schedule";
   await step(S, "Open", openGenerated);
@@ -1382,6 +1618,12 @@ async function generated(openGenerated) {
   await step(S, "axe", () => axe(S));
   await step(S, "Rail", () => toolbarReach(S));
   await step(S, "The counter: open, Escape", () => counterMenu(S));
+  await step(S, "The counter: Accept a line with the keyboard", () =>
+    acceptLine(S)
+  );
+  await step(S, "Same-activity outlines: point at a cell", () =>
+    hoverOutlines(S)
+  );
   await step(S, "Rebuild: the question, Escape, then Rebuild it", async () => {
     // Rebuild is in the rail's Build menu, first.
     if (!(await openRailMenu(/^Build$/))) throw new Error("Build not reached.");

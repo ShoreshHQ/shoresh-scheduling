@@ -1,12 +1,11 @@
-import { checkWeek, readActivities } from "c/shoreshEngine";
+import { checkWeek, measureWeek, readActivities } from "c/shoreshEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { countLabel, paletteChips } from "../counts";
+import { drawerTiles } from "../counts";
 import { ACTIVITIES, WITH_SOCCER, schedule } from "./data/draftFixture";
 
-// The fixture's activities as setup records, for the engine's checkWeek (what is placed, over its
-// weekly limit and still needed comes from there): Swim 1 to 2 a week, Boating any number,
-// Soccer 2 to 3.
+// The fixture's activities as setup records, for the engine's checkWeek (what is placed comes
+// from there): Swim 1 to 2 a week, Boating any number, Soccer 2 to 3.
 const RECORDS = nsRecord([
   {
     Id: "a1",
@@ -25,8 +24,11 @@ const RECORDS = nsRecord([
   }
 ]);
 
-/** The activity list for a week, with the week checked as the screen checks it. */
-function chips(week, groupId, filter = "") {
+/**
+ * The drawer for a week, measured as the screen measures it: the camp (groupId null, Daily View)
+ * or one bunk (Group View: the days with only that bunk).
+ */
+function tiles(week, groupId, filter = "") {
   const checked = checkWeek(
     week.days,
     {
@@ -35,103 +37,95 @@ function chips(week, groupId, filter = "") {
     },
     { t: buildTerms([]), dayName: () => "" }
   );
-  return paletteChips(week, checked, ACTIVITIES, groupId, filter);
+  const days = groupId
+    ? week.days.map((d) => ({
+        ...d,
+        groups: d.groups.filter((g) => g.id === groupId)
+      }))
+    : week.days;
+  const measure = measureWeek(checked, ACTIVITIES, days);
+  return { measure, tiles: drawerTiles(measure, ACTIVITIES, filter) };
 }
 
-describe("activity list counts", () => {
-  it("says the counts in the desktop's words", () => {
-    expect(countLabel(2, 3, 5)).toBe("2 placed (needs 3–5)");
-    expect(countLabel(14, 6, null)).toBe("14 placed (needs 6+)");
-    expect(countLabel(4, 0, 5)).toBe("4 placed (up to 5)");
-    expect(countLabel(1, 2, 2)).toBe("1 placed (needs 2)");
-    expect(countLabel(0, 0, null)).toBe("0 placed");
-  });
+const byName = (list, name) => list.find((t) => t.name === name);
 
-  it("Daily View counts the camp, against the groups each is set up for", () => {
+describe("the drawer's tiles", () => {
+  it("Daily View: under first, then the rest, by name; the numbers are the counter's", () => {
     // Soccer for Bunk 1 on Monday; Swim is set up for Bunk 1 only.
     const week = schedule(WITH_SOCCER, ["1,2,", "1,,"]);
-    const { stillNeeded, placed } = chips(week, null);
-    expect(stillNeeded.map((c) => [c.name, c.label])).toEqual([
-      ["Soccer", "1 placed (needs 4–6)"],
-      ["Swim", "0 placed (needs 1–2)"]
+    const { measure, tiles: list } = tiles(week, null);
+    expect(list.map((t) => [t.name, t.under, t.words])).toEqual([
+      ["Soccer", true, "1 of 4"],
+      ["Swim", true, "0 of 1"],
+      ["Boating", false, "0 placed"]
     ]);
-    expect(placed.map((c) => [c.name, c.label])).toEqual([
-      ["Boating", "0 placed"]
-    ]);
+    // "N under" in the drawer is the counter's number.
+    expect(measure.under.count).toBe(4);
+    expect(byName(list, "Soccer").said).toBe("Soccer, 1 of 4");
   });
 
-  it("Group View counts one bunk; a multi-block placement counts once; over the limit is marked", () => {
-    const items = [
-      { kind: "F", id: "f1", name: "Flagpole", gone: false },
-      { kind: "A", id: "a1", name: "Swim", gone: false },
-      { kind: "A", id: "a2", name: "Boating", gone: false }
-    ];
-    const week = schedule(items, ["1,2,2", "1,3,^"]);
-    week.days[1] = { ...week.days[1], items, rows: ["1,2,", "1,,"] };
-    const bunk1 = chips(week, "g1");
-    const swim = bunk1.placed.find((c) => c.name === "Swim");
-    expect(swim.label).toBe("3 placed (needs 1–2)");
-    expect(swim.over).toBe(true);
-    const bunk2 = chips(week, "g2");
-    expect(bunk2.placed.find((c) => c.name === "Boating").label).toBe(
-      "1 placed"
-    );
-  });
-
-  it("the Filter box narrows the list, spaces and capitals aside", () => {
-    const week = schedule();
-    const { stillNeeded, placed } = chips(week, null, " BOA ");
-    expect([...stillNeeded, ...placed].map((c) => c.name)).toEqual(["Boating"]);
-  });
-
-  it("in Group View, a bunk counts against the activity's own times a week, set up for it or not (desktop)", () => {
-    // Swim isn't set up for Bunk 2: the chip still says what a bunk needs; the grid's dot says
-    // "not set up". One Swim placed is not over its limit.
-    const week = schedule(
-      [
-        { kind: "F", id: "f1", name: "Flagpole", gone: false },
-        { kind: "A", id: "a1", name: "Swim", gone: false }
-      ],
-      ["1,,", "1,2,"]
-    );
-    const swim = chips(week, "g2").stillNeeded.find((c) => c.name === "Swim");
-    expect(swim).toBeUndefined();
-    const placed = chips(week, "g2").placed.find((c) => c.name === "Swim");
-    expect(placed.label).toBe("1 placed (needs 1–2)");
-    expect(placed.over).toBe(false);
-  });
-
-  it("exactly at the weekly maximum is not over it", () => {
-    // Swim at most twice: Bunk 1 has it Monday and Tuesday.
-    const items = [
-      { kind: "F", id: "f1", name: "Flagpole", gone: false },
-      { kind: "A", id: "a1", name: "Swim", gone: false }
-    ];
-    const week = schedule(items, ["1,2,", "1,,"]);
-    week.days[1] = { ...week.days[1], items, rows: ["1,2,", "1,,"] };
-    const swim = chips(week, "g1").placed.find((c) => c.name === "Swim");
-    expect(swim.label).toBe("2 placed (needs 1–2)");
-    expect(swim.over).toBe(false);
-  });
-
-  it("Daily View weighs the camp's total against the targets times the bunks, as the desktop does", () => {
-    // Bunk 1 has Soccer four times (its limit is 3); the camp's 4 is within 2 to 3 × 2 bunks.
+  it("an activity over its weekly limit in a bunk carries the corner, in the counter's words", () => {
+    // Bunk 1 has Soccer four times (its limit is 3).
     const week = schedule(WITH_SOCCER, ["1,2,2", "1,,"]);
     week.days[1] = {
       ...week.days[1],
       items: WITH_SOCCER,
       rows: ["1,2,2", "1,,"]
     };
-    const soccer = (list) =>
-      [...list.stillNeeded, ...list.placed].find((c) => c.name === "Soccer");
-    const camp = chips(week, null);
-    expect(soccer(camp).label).toBe("4 placed (needs 4–6)");
-    expect(soccer(camp).over).toBe(false);
-    expect(camp.placed.map((c) => c.name)).toContain("Soccer");
-    // Group View counts the one bunk: Bunk 1 is over, Bunk 2 still needs its two.
-    expect(soccer(chips(week, "g1")).over).toBe(true);
-    expect(chips(week, "g2").stillNeeded.map((c) => c.name)).toContain(
-      "Soccer"
-    );
+    const soccer = byName(tiles(week, null).tiles, "Soccer");
+    expect(soccer.over).toBe(true);
+    // The counter's over row: what the bunks past the limit have, of what they may have.
+    expect(soccer.words).toBe("4 of 3");
+    expect(soccer.said).toBe("Soccer, 4 of 3, Over its weekly limit");
+    // Still under its goal: Bunk 2 has none of its two.
+    expect(soccer.under).toBe(true);
+  });
+
+  it("Group View measures the one bunk", () => {
+    const week = schedule(WITH_SOCCER, ["1,2,2", "1,,"]);
+    week.days[1] = {
+      ...week.days[1],
+      items: WITH_SOCCER,
+      rows: ["1,2,2", "1,,"]
+    };
+    expect(byName(tiles(week, "g1").tiles, "Soccer").over).toBe(true);
+    const bunk2 = tiles(week, "g2");
+    expect(byName(bunk2.tiles, "Soccer")).toMatchObject({
+      over: false,
+      under: true,
+      words: "0 of 2"
+    });
+    // Swim isn't set up for Bunk 2: no goal there, so nothing under.
+    expect(byName(bunk2.tiles, "Swim").under).toBe(false);
+  });
+
+  it("exactly at the weekly maximum is not over it", () => {
+    const items = [
+      { kind: "F", id: "f1", name: "Flagpole", gone: false },
+      { kind: "A", id: "a1", name: "Swim", gone: false }
+    ];
+    const week = schedule(items, ["1,2,", "1,,"]);
+    week.days[1] = { ...week.days[1], items, rows: ["1,2,", "1,,"] };
+    const swim = byName(tiles(week, "g1").tiles, "Swim");
+    expect(swim.over).toBe(false);
+    // Past its goal of 1, within its limit of 2: not "2 of 1", which would read as over.
+    expect(swim.words).toBe("2 placed");
+  });
+
+  it("the Filter box narrows the drawer, spaces and capitals aside", () => {
+    const week = schedule();
+    expect(tiles(week, null, " BOA ").tiles.map((t) => t.name)).toEqual([
+      "Boating"
+    ]);
+  });
+
+  it("with no measure yet, every activity by name with no numbers", () => {
+    expect(
+      drawerTiles(null, ACTIVITIES, "").map((t) => [t.name, t.words, t.said])
+    ).toEqual([
+      ["Boating", "", "Boating"],
+      ["Soccer", "", "Soccer"],
+      ["Swim", "", "Swim"]
+    ]);
   });
 });

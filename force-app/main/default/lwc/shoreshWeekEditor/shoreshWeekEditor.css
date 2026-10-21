@@ -103,133 +103,83 @@
   }
 }
 
-/* The work under the rail: its zone's inset on every side. */
-.work {
+/* The grid's zone and the drawer's: each with its zone's inset on every side, as wide as each
+   other, scrolling sideways together when the bunks need more room than the frame has. */
+.below {
+  overflow-x: auto;
+}
+
+.work,
+.drawer-zone {
+  box-sizing: border-box;
   padding: var(--shoresh-space-pad);
 }
 
-/* Activity View's cards. */
+/* Activity View's cards: the one raised look, on the grid's surface. */
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  gap: var(--shoresh-space-cell-gap);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
 }
 
 .card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: var(--shoresh-s1);
+  padding: var(--shoresh-s3) var(--shoresh-s4);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+  color: var(--shoresh-text-1);
+  font: inherit;
   text-align: center;
   cursor: pointer;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-top: 4px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
 }
 
 .card:hover {
-  border-color: var(--slds-g-color-brand-base-50, #0176d3);
+  background: var(--shoresh-surface-hover);
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-raise), var(--shoresh-focus-ring);
 }
 
 .card-name {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 500;
 }
 
-.card-place {
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
+.card-name_gone {
+  text-decoration: line-through;
+  color: var(--shoresh-text-2);
 }
 
+.card-place,
 .card-summary {
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-family: var(--slds-g-font-family-monospace, monospace);
+  color: var(--shoresh-text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .drill-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.back {
-  padding: 4px 10px;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 6px;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  cursor: pointer;
-  font-size: 12px;
+  gap: var(--shoresh-s2);
+  margin-bottom: var(--shoresh-s3);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
 }
 
 .drill-name {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: 500;
+  color: var(--shoresh-text-1);
 }
 
 .drill-place {
-  font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.legend {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.legend-entry {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-.swatch_activity {
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
-}
-
-.swatch_set-time {
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 3px solid var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.swatch_not-set-up {
-  border: 1.5px dashed var(--shoresh-caution);
-  background: var(--shoresh-caution-tint);
-}
-
-.swatch_open {
-  border: 1px dashed var(--slds-g-color-neutral-base-60, #939393);
-}
-
-.note {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--shoresh-text-secondary);
-}
-
-.swatch_away {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--slds-g-color-neutral-base-90, #e5e5e5) 0 2px,
-    var(--slds-g-color-neutral-base-100, #fff) 2px 4px
-  );
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  color: var(--shoresh-text-2);
 }
 
 /* Typing a name into a slot: a small panel under the slot. */
@@ -290,18 +240,6 @@
   font-weight: 600;
 }
 
-/* The activity list on the left of the grid, as on the desktop. */
-.build-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.build-main {
-  flex: 1;
-  min-width: 0;
-}
-
 /* A refused move: a quiet line under the rail. */
 .notice {
   margin: 0 0 12px;
@@ -321,9 +259,4 @@
   min-height: 24px;
   min-width: 24px;
   padding: 0 0.5rem;
-}
-
-/* The lock in the legend (Generated Schedule only), slate like the cells' locks. */
-.legend-icon {
-  --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
 }

@@ -200,16 +200,7 @@
           </template>
         </template>
 
-        <template lwc:if={showLegend}>
-          <div class="legend">
-            <template for:each={legend} for:item="entry">
-              <span key={entry.key} class="legend-entry">
-                <span class={entry.className}></span>
-                {entry.label}
-              </span>
-            </template>
-          </div>
-        </template>
+        <!-- The grid names its own marks on a quiet line under it (c-shoresh-schedule-grid). -->
       </template>
     </template>
 

@@ -178,48 +178,6 @@
   color: var(--slds-g-color-neutral-base-50, #747474);
 }
 
-.legend {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.legend-entry {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-.swatch_activity {
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
-}
-
-.swatch_set-time {
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 3px solid var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.swatch_not-set-up {
-  border: 1.5px dashed var(--shoresh-caution);
-  background: var(--shoresh-caution-tint);
-}
-
-.swatch_open {
-  border: 1px dashed var(--slds-g-color-neutral-base-60, #939393);
-}
-
 .note {
   font-size: 10px;
   font-weight: 600;

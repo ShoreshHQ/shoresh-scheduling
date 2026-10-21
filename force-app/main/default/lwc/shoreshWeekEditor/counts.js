@@ -1,80 +1,83 @@
 /**
- * The activity list's counts (desktop ActivityPalette.jsx): how often each activity is placed this
- * week, against its weekly targets. In Group View it counts one group, against the activity's own
- * times a week; in Daily View the whole camp, against those times multiplied by the number of
- * groups it is set up for. A multi-block placement counts once. Activities still under their
- * minimum come first, then the rest, each by name. Over the maximum is never blocked (Greg,
- * 2026-10-17): its count gets the bronze dot. Which group a chip sits in and its dot follow the
- * numbers its own words show, as on the desktop (Greg, round 2 decision 8: palette counts work as
- * on the desktop). What is placed comes from the engine's checkWeek (c/shoreshEngine).
+ * The drawer's tiles (wiki decisions 38 and 41, ADR 0008 part 8): one per activity, its name
+ * only. The numbers come from the week's measure (c/shoreshEngine measureWeek), the same one
+ * the rail's counter shows, so the drawer and the counter can never disagree: "N under" in the
+ * drawer's time column is the measure's under count, an activity over its weekly limit carries
+ * the needs-a-look corner, and on hover or hold a tile shows "placed of goal" in the counter's
+ * dropdown's words. Activities still under their goal come first, then the rest, each by name
+ * (as the desktop's ActivityPalette lists still needed first).
+ *
+ * In Daily View the measure is the camp's; in Group View the page measures the one bunk shown
+ * (the desktop's palette counts one group there), so its tiles and "N under" are that bunk's.
  */
-/** "2 placed (needs 3–5)", "14 placed (needs 6+)", "4 placed (up to 5)". */
-export function countLabel(count, target, cap) {
-  let needs = null;
-  if (target > 0) {
-    if (cap === null) {
-      needs = `needs ${target}+`;
-    } else {
-      needs = target === cap ? `needs ${target}` : `needs ${target}–${cap}`;
-    }
-  } else if (cap !== null && cap > 0) {
-    needs = `up to ${cap}`;
-  }
-  return `${count} placed${needs ? ` (${needs})` : ""}`;
-}
 
-/** Every group in the week, by id. */
-function weekGroupIds(schedule) {
-  const ids = new Set();
-  ((schedule && schedule.days) || []).forEach((day) =>
-    (day.groups || []).forEach((grp) => ids.add(grp.id))
-  );
-  return [...ids];
+import { RULE, reasonFor } from "c/shoreshEngine";
+
+/** Names compared the way people type them: spaces and capitals aside. */
+function loose(text) {
+  return String(text || "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
 }
 
 /**
- * The list: { stillNeeded, placed }, each chip { id, name, length, count, label, over }. checked:
- * checkWeek's answer for the week (its placements). groupId: the group in Group View, or null for
- * the whole camp. filter: what was typed in the list's Filter box (spaces and capitals aside).
+ * "3 of 4": the counter dropdown's own row when the activity has one (under: what counts toward
+ * the goal, of the goal; over: what the bunks past the limit have, of what they may have), else
+ * every placement of it, of its goal; "2 placed" with no goal, or once past it. Empty when the week wasn't
+ * measured for it (closed this week on Generated).
  */
-export function paletteChips(schedule, checked, activities, groupId, filter) {
-  const mine = ((checked && checked.placements) || []).filter(
-    (p) => p.kind === "A" && (!groupId || p.groupId === groupId)
-  );
-  const groupIds = weekGroupIds(schedule);
-  const typed = String(filter || "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
-  const chips = (activities || [])
-    .filter(
-      (a) => !typed || a.name.replace(/\s+/g, "").toLowerCase().includes(typed)
-    )
+function wordsFor(id, measure) {
+  const row =
+    measure.over.rows.find((r) => r.id === id) ||
+    measure.under.rows.find((r) => r.id === id);
+  if (row) {
+    return `${row.placed} of ${row.goal}`;
+  }
+  const entry = measure.byActivity && measure.byActivity.get(id);
+  if (!entry) {
+    return "";
+  }
+  // Past its goal but within its limit: "3 placed" ("3 of 2" would read as over).
+  return entry.goal > 0 && entry.placed <= entry.goal
+    ? `${entry.placed} of ${entry.goal}`
+    : `${entry.placed} placed`;
+}
+
+/**
+ * The tiles: [{ id, name, length, under, over, words, said }]. measure: measureWeek's answer for
+ * what the drawer counts. activities: those that can be placed ({ id, name, length }). filter:
+ * what was typed in the drawer's Filter box.
+ */
+export function drawerTiles(measure, activities, filter) {
+  const typed = loose(filter);
+  const m = measure || {
+    under: { rows: [] },
+    over: { rows: [] },
+    byActivity: new Map()
+  };
+  const tiles = (activities || [])
+    .filter((a) => !typed || loose(a.name).includes(typed))
     .map((a) => {
-      const notFor = a.notFor || [];
-      // Group View: the bunk's own times a week, whoever it is set up for (desktop scaleFor;
-      // the grid's dot says "not set up"). Daily View: times the bunks it is set up for.
-      const scale = groupId
-        ? 1
-        : groupIds.filter((id) => !notFor.includes(id)).length;
-      const target = (a.minPerWeek || 0) * scale;
-      const cap =
-        a.maxPerWeek === null || a.maxPerWeek === undefined
-          ? null
-          : a.maxPerWeek * scale;
-      const count = mine.filter((p) => p.id === a.id).length;
+      const entry = m.byActivity && m.byActivity.get(a.id);
+      const under = !!entry && entry.short > 0;
+      const over = !!entry && entry.extra > 0;
+      const words = wordsFor(a.id, m);
       return {
         id: a.id,
         name: a.name,
         length: a.length,
-        count,
-        label: countLabel(count, target, cap),
-        over: cap !== null && count > cap,
-        needed: target > 0 && count < target
+        under,
+        over,
+        words,
+        // What a screen reader hears on the tile: its name, its numbers, and the corner's words.
+        said: [a.name, words, over ? reasonFor(RULE.WEEKLY_MAX) : null]
+          .filter(Boolean)
+          .join(", ")
       };
     });
   const byName = (x, y) => x.name.localeCompare(y.name);
-  return {
-    stillNeeded: chips.filter((c) => c.needed).sort(byName),
-    placed: chips.filter((c) => !c.needed).sort(byName)
-  };
+  return [
+    ...tiles.filter((t) => t.under).sort(byName),
+    ...tiles.filter((t) => !t.under).sort(byName)
+  ];
 }

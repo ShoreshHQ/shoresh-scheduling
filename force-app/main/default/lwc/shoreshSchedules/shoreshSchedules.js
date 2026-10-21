@@ -11,8 +11,7 @@ import {
   dailyGrid,
   days,
   groupGrid,
-  groups,
-  kindLabel
+  groups
 } from "c/shoreshScheduleViews";
 
 const ORIGINS = {
@@ -221,9 +220,6 @@ export default class ShoreshSchedules extends LightningElement {
   get noDaysMessage() {
     return `This ${this.t.sIn("Version")} has no days saved.`;
   }
-  get showLegend() {
-    return !this.isActivity;
-  }
   get hasNoDays() {
     return this.opened && this.opened.days.length === 0;
   }
@@ -365,31 +361,6 @@ export default class ShoreshSchedules extends LightningElement {
     if (target) {
       target.focus();
     }
-  }
-
-  get legend() {
-    return [
-      {
-        key: "activity",
-        label: this.t.s("Activity"),
-        className: "swatch swatch_activity"
-      },
-      {
-        key: "set-time",
-        label: `${this.t.s("FixedActivity")} or ${this.t.sIn("RecurringActivity")}`,
-        className: "swatch swatch_set-time"
-      },
-      {
-        key: "not-set-up",
-        label: `Not set up yet (${[kindLabel("E", this.t), kindLabel("D", this.t), kindLabel("S", this.t), kindLabel("T", this.t)].join(", ")})`,
-        className: "swatch swatch_not-set-up"
-      },
-      {
-        key: "open",
-        label: "Open: nothing placed",
-        className: "swatch swatch_open"
-      }
-    ];
   }
 
   // ---------- empty states ----------
