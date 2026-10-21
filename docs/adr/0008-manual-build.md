@@ -182,8 +182,8 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       Fixed and recurring activities don't move and nothing lands on them. Refusals are a quiet
       line under the toolbar (`role=status`), never a banner.
 15. **Longer and shorter** (desktop `useSpanExtendDrag.js`; Greg #7 "can be shortened"):
-    - a placement's bottom handle dragged to a slot of the same bunk and day makes it end
-      there, longer over Open, at-camp slots only;
+    - a placement's bottom handle dragged down or up within its bunk and day makes it end at
+      the block under the pointer, longer over Open, at-camp slots only (the stretch, below);
     - Shift+Down and Shift+Up add or take off a block.
 16. **One way to describe every change** (`moves.js`). The change is made on a copy of the
     rows it touches. Each row is then compared with its original, and the run sent is exactly
@@ -213,7 +213,7 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
 19. **Review fixes (part 2):**
     - **Length without dragging (WCAG 2.5.7):** a click on a placement's handle picks up its
       end (_Swim: choose where it ends._), and a click on a slot of the same bunk and day sets
-      it. A handle dropped on a multi-block cell lands on the block under the pointer.
+      it. A stretch ends on the block under the pointer (see "The stretch").
     - **Drags:** a drag that ends without a drop is forgotten (`dragend`). A drop counts only
       if it carries the dragged thing's name. The drag carries the name shown, never a record
       Id, so a drop into a text box writes a word.
@@ -319,9 +319,9 @@ the baseline), `projects/shoresh-design-guide`. Desktop: `src/screens/ScheduleSc
       answer.
     - **A swap checks both ends**: neither activity may land where its new bunk isn't at camp.
       It is refused on the quiet line, not by the server.
-    - **The handle** is a slim bar to see and drag, in a 48 × 24 px area to click (WCAG 2.5.8). A
-      drag that starts off the bar is a move, and with something picked up, a click on the
-      handle puts it down like a click anywhere on the cell.
+    - **The handle** is a slim bar to see, in a 48 × 24 px area that is all of it to press,
+      drag or click (WCAG 2.5.8; changed 2026-10-21, see "The stretch" below). With something
+      picked up, a click on the handle puts it down like a click anywhere on the cell.
     - **Quiet words for quiet no-ops:** a length chosen in another bunk or day (_Swim can only
       change length within Bunk 1 · Monday._), or before its start (_Swim can't end before it starts._); Space on
       a fixed or recurring activity (_Lunch stays where it is set up._), on the quiet line too.
@@ -998,6 +998,43 @@ heading and Escape; Ctrl/Cmd+Z and redo with nothing focused on Manual Build and
 while hidden or from a box elsewhere, Filter and the Versions name boxes keeping theirs. The
 real-browser check (`scripts/a11y-browser-check.mjs`) presses them on Manual Build: on the grid,
 with nothing focused, and in Filter.
+
+## Choices (the stretch, 2026-10-21)
+
+Greg's report: he pressed a placement's blue handle, saw the up-and-down arrows, dragged down,
+and the cells did not merge. In the real browser the handle used HTML drag and drop: only the
+5 px bar lengthened, a press a few pixels off it (still inside the handle's area, as a trackpad
+press lands) dragged the whole placement, so Swim moved down a block instead of getting longer;
+nothing on screen changed until the drop, so there was no telling which of the two was
+happening; a drop on a filled slot or above the start changed nothing until a line appeared
+afterwards; and touch and pen never start an HTML drag. Jest passed because it fired a made-up
+`dragstart` on the bar, and the real-browser check never dragged it.
+
+1. **Pointer events, like the desktop** (`useSpanExtendDrag.js`: pointerdown on the handle,
+   pointermove, pointerup; the grid holds the pointer with `setPointerCapture`). Mouse, trackpad,
+   pen and touch, in Chrome and Safari alike. The whole 48 × 24 px handle area starts it, never a
+   move of the placement (the browser's own drag from there is cancelled); `touch-action: none`
+   so a finger stretches instead of scrolling. A press that moves less than 4 px is still a
+   click (the click-to-choose-where-it-ends path stays, WCAG 2.5.7).
+2. **Live.** While held, the cell itself spans the blocks it will run (drawn over the Open slots
+   it covers, outlined), growing or shrinking as the pointer crosses each block's line.
+3. **It stops at a filled slot, like the desktop** (§7: over Open, at-camp slots only). The slot
+   that stops it shows a ghost: what is there faded, under the stretched name struck through in a
+   dashed grey box (the desktop's drag-replace ghost in its neutral drag-truncated colour). On
+   letting go it keeps what it reached, as the desktop does; if it reached nothing new, the quiet
+   line says why with the existing words (_Swim doesn't fit there._). Above its first block it
+   says _Swim can't end before it starts._ Back where it started, nothing changes.
+4. **Escape** while holding lets go with no change. Shift+Up and Shift+Down are unchanged.
+
+Checked by Jest (`moving.test.js`, pointer events step by step across a block's line): the live
+span while held and the save on letting go; the ghost and the words at a filled slot; shortening
+and above the start; Escape; a press that doesn't move is still a click; a second pointer doesn't
+stretch; a browser drag from the handle never moves the placement. The real-browser check drags
+it with the mouse on Manual Build (press below the bar, small steps into the fixed activity two
+blocks down): the span grows live, the ghost shows, it runs two blocks after, Ctrl+Z puts it
+back. Tried by hand in the real browser on Manual Build and Generated Schedule: down into Open,
+into a filled slot, up, across two blocks into a fixed activity, a slow jittery drag, script-sent
+pointer events with a pointerId (as Safari sends them), and touch.
 
 ## Choices that are hard to undo after release
 

@@ -293,12 +293,169 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(sentRuns(1)[0].after).toEqual(["A:a1", ""]);
   });
 
-  it("the bottom handle dragged to a lower slot makes it reach there", async () => {
+  // Greg's way (2026-10-21): press the bottom handle, drag across the next block's line, let go.
+  // The grid's time blocks are laid out 80 px tall from y = 100 (jsdom draws nothing).
+  const ROW_TOP = 100;
+  const ROW = 80;
+  const rowY = (row, within = 0.5) => ROW_TOP + (row + within) * ROW;
+  function layOut(element) {
+    grid(element)
+      .shadowRoot.querySelectorAll('.grid_body [role="rowheader"]')
+      .forEach((head, i) => {
+        head.getBoundingClientRect = () => ({
+          top: ROW_TOP + i * ROW,
+          bottom: ROW_TOP + (i + 1) * ROW,
+          left: 0,
+          right: 140,
+          width: 140,
+          height: ROW
+        });
+      });
+  }
+  /** A pointer event as Chrome and Safari send them (jsdom has no PointerEvent). */
+  function pointer(target, type, y, id = 1) {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      clientX: 200,
+      clientY: y,
+      button: type === "pointermove" ? -1 : 0
+    });
+    Object.defineProperty(event, "pointerId", { value: id });
+    Object.defineProperty(event, "isPrimary", { value: true });
+    target.dispatchEvent(event);
+    return event;
+  }
+  const handleOf = (element, key) =>
+    cell(element, key).querySelector("[data-handle]");
+  /** Presses the handle at the foot of `key`'s cell and moves in small steps to `toY`. */
+  async function stretch(element, key, toY, { letGo = true, steps = 8 } = {}) {
+    layOut(element);
+    const handle = handleOf(element, key);
+    const fromY = rowY(Number(key.split("-")[1]), 0.95);
+    const down = pointer(handle, "pointerdown", fromY);
+    // Moves keep reaching the grid wherever the pointer is (captured on the grid).
+    const frame = grid(element).shadowRoot.querySelector(".frame");
+    // One move, then a render, per step, in order.
+    await Array.from({ length: steps }, (_, n) => n + 1).reduce(
+      (previous, i) =>
+        previous.then(() => {
+          pointer(frame, "pointermove", fromY + ((toY - fromY) * i) / steps);
+          return flush();
+        }),
+      Promise.resolve()
+    );
+    if (letGo) {
+      pointer(frame, "pointerup", toY);
+      await flush();
+    }
+    return down;
+  }
+  const spanOf = (element, key) =>
+    /span (\d+);/.exec(cell(element, key).getAttribute("style"))[1];
+
+  it("the bottom handle dragged down grows the cell live, and letting go makes it reach there", async () => {
     const element = await render();
-    const handle = cell(element, "0-1").querySelector("[data-handle-bar]");
-    await fire(handle, "dragstart");
-    await fire(cell(element, "0-2"), "drop");
+    const down = await stretch(element, "0-1", rowY(2, 0.2), {
+      letGo: false
+    });
+    // No browser drag of the cell, no text selected: the handle's own gesture.
+    expect(down.defaultPrevented).toBe(true);
+    expect(cell(element, "0-1").classList).toContain("cell_stretching");
+    expect(spanOf(element, "0-1")).toBe("2");
+    expect(saveSlots).not.toHaveBeenCalled();
+    pointer(
+      grid(element).shadowRoot.querySelector(".frame"),
+      "pointerup",
+      rowY(2, 0.2)
+    );
+    await flush();
     expect(sentRuns()[0].after).toEqual(["A:a1", "^A:a1"]);
+    expect(cell(element, "0-1").classList).not.toContain("cell_stretching");
+  });
+
+  it("stretching stops at a filled slot: a ghost shows why, and letting go says so", async () => {
+    const element = await render(
+      draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
+    );
+    await stretch(element, "0-1", rowY(2), { letGo: false });
+    expect(spanOf(element, "0-1")).toBe("1");
+    const blocked = cell(element, "0-2");
+    expect(blocked.classList).toContain("cell_stretch-blocked");
+    expect(blocked.dataset.ghost).toBe("Swim");
+    pointer(
+      grid(element).shadowRoot.querySelector(".frame"),
+      "pointerup",
+      rowY(2)
+    );
+    await flush();
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      "Swim doesn't fit there."
+    );
+    expect(cell(element, "0-2").classList).not.toContain(
+      "cell_stretch-blocked"
+    );
+  });
+
+  it("the handle dragged up shortens a longer placement; above its start says why", async () => {
+    const element = await render(draft([FLAGPOLE, BOATING], ["1,2,^", "1,,"]));
+    await stretch(element, "0-1", rowY(1, 0.5), { letGo: false });
+    expect(spanOf(element, "0-1")).toBe("1");
+    pointer(
+      grid(element).shadowRoot.querySelector(".frame"),
+      "pointerup",
+      rowY(1, 0.5)
+    );
+    await flush();
+    expect(sentRuns()[0].after).toEqual(["A:a2", ""]);
+
+    const single = await render();
+    await stretch(single, "0-1", rowY(0));
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(single, '[data-id="notice"]').textContent).toBe(
+      "Swim can't end before it starts."
+    );
+  });
+
+  it("Escape while stretching lets go with no change; a press that doesn't move is a click", async () => {
+    const element = await render();
+    await stretch(element, "0-1", rowY(2), { letGo: false });
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+    await flush();
+    expect(cell(element, "0-1").classList).not.toContain("cell_stretching");
+    pointer(
+      grid(element).shadowRoot.querySelector(".frame"),
+      "pointerup",
+      rowY(2)
+    );
+    await flush();
+    expect(saveSlots).not.toHaveBeenCalled();
+
+    const handle = handleOf(element, "0-1");
+    pointer(handle, "pointerdown", rowY(1, 0.95));
+    pointer(handle, "pointermove", rowY(1, 0.95) + 2);
+    pointer(handle, "pointerup", rowY(1, 0.95) + 2);
+    handle.click();
+    await flush();
+    expect(q(element, '[data-id="announce"]').textContent).toBe(
+      "Swim: choose where it ends."
+    );
+  });
+
+  it("another pointer's moves (a second finger) don't stretch", async () => {
+    const element = await render();
+    layOut(element);
+    pointer(handleOf(element, "0-1"), "pointerdown", rowY(1, 0.95), 1);
+    const frame = grid(element).shadowRoot.querySelector(".frame");
+    pointer(frame, "pointermove", rowY(2), 2);
+    pointer(frame, "pointerup", rowY(2), 2);
+    await flush();
+    expect(cell(element, "0-1").classList).not.toContain("cell_stretching");
+    expect(saveSlots).not.toHaveBeenCalled();
   });
 
   it("Undo sends the change back the other way, and Redo again; Ctrl+Z and Ctrl+Shift+Z too", async () => {
@@ -493,22 +650,6 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(cell(element, "0-1").getAttribute("aria-selected")).toBe("true");
   });
 
-  it("the handle dropped low on a multi-block cell keeps the blocks above", async () => {
-    const element = await render(draft([FLAGPOLE, BOATING], ["1,2,^", "1,,"]));
-    await fire(
-      cell(element, "0-1").querySelector("[data-handle-bar]"),
-      "dragstart"
-    );
-    // The drop lands on Boating's own cell: near the top means Period 2 only.
-    grid(element)
-      .shadowRoot.querySelector('[data-cell="0-1"]')
-      .dispatchEvent(
-        new CustomEvent("drop", { bubbles: true, composed: true })
-      );
-    await flush();
-    expect(sentRuns()[0].after).toEqual(["A:a2", ""]);
-  });
-
   it("a click on the handle, then a click on a slot below, sets where it ends", async () => {
     const element = await render();
     cell(element, "0-1").querySelector("[data-handle]").click();
@@ -689,17 +830,20 @@ describe("c-shoresh-manual-build: moving things", () => {
     );
   });
 
-  it("a drag that starts in the handle's click area but off the bar is a move", async () => {
+  it("a browser drag that starts anywhere in the handle's area never moves the placement", async () => {
+    // Before (Greg, 2026-10-21): only the 5 px bar stretched; a press a little off it dragged
+    // the whole placement, so Swim moved down instead of getting longer.
     const element = await render();
-    await fire(
-      cell(element, "0-1").querySelector("[data-handle]"),
-      "dragstart"
-    );
-    await fire(cell(element, "0-2"), "drop");
-    expect(sentRuns()[0]).toMatchObject({
-      before: ["A:a1", ""],
-      after: ["", "A:a1"]
+    const start = new CustomEvent("dragstart", {
+      bubbles: true,
+      composed: true,
+      cancelable: true
     });
+    handleOf(element, "0-1").dispatchEvent(start);
+    await flush();
+    expect(start.defaultPrevented).toBe(true);
+    await fire(cell(element, "0-2"), "drop");
+    expect(saveSlots).not.toHaveBeenCalled();
   });
 
   it("Use yours on a Redo leaves the change there to undo", async () => {

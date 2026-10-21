@@ -210,7 +210,8 @@
   position: relative;
 }
 
-/* The handle: a slim bar to see and drag, in a 48 x 24 px area to click (WCAG 2.5.8). */
+/* The handle: a slim bar to see, in a 48 x 24 px area that is all of it to press, drag or click
+   (WCAG 2.5.8). touch-action: a finger on it stretches rather than scrolls the page. */
 .handle {
   position: absolute;
   left: 50%;
@@ -218,7 +219,8 @@
   width: 48px;
   height: 24px;
   transform: translateX(-50%);
-  cursor: pointer;
+  cursor: ns-resize;
+  touch-action: none;
 }
 
 .handle-bar {
@@ -229,7 +231,49 @@
   height: 5px;
   border-radius: 3px;
   background: var(--slds-g-color-brand-base-50, #0176d3);
+}
+
+/* Stretching by the handle (desktop useSpanExtendDrag.js): the cell itself grows or shrinks
+   under the pointer, drawn over the slots it now covers, outlined as the desktop marks where a
+   drag lands. */
+.cell_stretching {
+  position: relative;
+  z-index: 2;
+  background: var(--slds-g-color-neutral-base-100, #fff);
   cursor: ns-resize;
+}
+
+.cell_stretching .cell-inner {
+  outline: 2px solid var(--shoresh-primary);
+  outline-offset: -2px;
+}
+
+/* The slot that stops it: what is there, faded, under a dashed ghost of the stretched name, in
+   neutral grey (desktop drag-truncated and drag-replace ghost: informational, never red). */
+.cell_stretch-blocked {
+  position: relative;
+}
+
+.cell_stretch-blocked .cell-inner {
+  opacity: 0.35;
+}
+
+.cell_stretch-blocked::after {
+  content: attr(data-ghost);
+  position: absolute;
+  inset: 8px 6px;
+  border-radius: 8px;
+  border: 2px dashed var(--shoresh-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--shoresh-text-secondary);
+  text-decoration: line-through;
+  pointer-events: none;
+  z-index: 3;
 }
 
 .cell_picked .cell-inner {
