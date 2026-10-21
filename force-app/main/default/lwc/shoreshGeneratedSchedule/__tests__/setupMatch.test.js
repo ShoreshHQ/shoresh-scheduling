@@ -7,7 +7,7 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { expectFocusInGrid, find } from "shoresh-jest/week-editor";
+import { expectFocusInGrid, find, lockRows } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
@@ -184,8 +184,14 @@ const cell = (element, at) =>
     `[data-cell="${at}"]`
   );
 const dotIn = (element, at) => cell(element, at).querySelector("c-shoresh-dot");
-const box = (element) => q(element, '[data-id="setup-changed"]');
-const updateButton = (element) => q(element, '[data-id="update-to-match"]');
+/**
+ * Whether the screen last told the page it can be updated to match setup: the menu's foot says
+ * so then, with Update to match setup (ADR 0015 §9). The screen has no box of its own.
+ */
+const updatable = () => {
+  const last = toldStates[toldStates.length - 1];
+  return last ? last.changed : false;
+};
 const dialog = (element) => q(element, '[data-id="setup-match"]');
 const inDialog = (element, selector) =>
   dialog(element).shadowRoot.querySelector(selector);
@@ -205,8 +211,9 @@ const errorText = (element) => {
   return shown ? shown.textContent.trim() : null;
 };
 
+/** The menu's Update to match setup: the page calls the screen's. */
 async function openUpdate(element) {
-  updateButton(element).click();
+  element.updateToMatchSetup();
   await flush();
 }
 
@@ -234,26 +241,16 @@ describe("Setup changed on the Generated Schedule screen", () => {
     const inputs = week();
     inputs.scheduleId = null;
     inputs.revision = "";
-    const element = await render(PREVIEW, inputs);
+    await render(PREVIEW, inputs);
     expect(getSetupChanges).not.toHaveBeenCalled();
-    expect(box(element)).toBeNull();
+    expect(updatable()).toBe(false);
   });
 
-  it("says the week doesn't match setup in Manual Build's place, first under the toolbar", async () => {
+  it("says it at the menu's foot only, as Manual Build: no box or button of its own", async () => {
     const element = await render();
-    const line = box(element);
-    expect(line.assignedSlot.name).toBe("status");
-    expect(line.querySelector("c-shoresh-dot").label).toBe(
-      "Week 1 doesn't match setup"
-    );
-    expect(updateButton(element).textContent.trim()).toBe(
-      "Update to match setup"
-    );
-    // First of the status items, as on Manual Build (after the counters, before any line).
-    const status = [
-      ...q(element, "c-shoresh-week-editor").querySelectorAll('[slot="status"]')
-    ];
-    expect(status[0]).toBe(line);
+    expect(updatable()).toBe(true);
+    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(q(element, '[data-id="update-to-match"]')).toBeNull();
     await expect(element).toBeAccessible();
   });
 
@@ -281,19 +278,21 @@ describe("Setup changed on the Generated Schedule screen", () => {
   });
 
   it("shows nothing when the week matches setup", async () => {
-    const element = await render(NOTHING);
-    expect(box(element)).toBeNull();
+    await render(NOTHING);
+    expect(updatable()).toBe(false);
   });
 
-  it("says why the week can't be compared, with no button", async () => {
+  it("says why the week can't be compared, under the rail, and the menu offers nothing", async () => {
     const element = await render({
       ...NOTHING,
       problem: "No Bunks of Main are at camp in Week 1."
     });
-    expect(box(element).querySelector("c-shoresh-dot").label).toBe(
+    const line = q(element, '[data-id="setup-problem"]');
+    expect(line.textContent.trim()).toBe(
       "No Bunks of Main are at camp in Week 1."
     );
-    expect(updateButton(element)).toBeNull();
+    expect(line.assignedSlot.name).toBe("status");
+    expect(updatable()).toBe(false);
   });
 
   it("shows every change first, read fresh, and holds builds, Lock, Publish, Versions, pickers and edits", async () => {
@@ -309,7 +308,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     ]);
     expect(q(element, '[data-action="Rebuild"]').disabled).toBe(true);
     expect(q(element, '[data-action="StartOver"]').disabled).toBe(true);
-    expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(lockRows(element).every((row) => row.disabled)).toBe(true);
     expect(q(element, '[data-id="publish"]').disabled).toBe(true);
     expect(q(element, '[data-id="versions"]').busy).toBe(true);
     expect(q(element, '[data-id="week"]').disabled).toBe(true);
@@ -385,15 +384,20 @@ describe("Setup changed on the Generated Schedule screen", () => {
       }
     });
     expect(dialog(element)).toBeNull();
-    expect(box(element)).toBeNull();
+    expect(updatable()).toBe(false);
     expect(q(element, "c-shoresh-week-editor").restoring).toBe(false);
     // Update to match setup is gone with the box: the grid's cell, not Publish or the page.
     await flush();
     expectFocusInGrid(element);
   });
 
-  it("Update all with changes left: the box stays and focus goes back to Update to match setup", async () => {
+  it("Update all with changes left: the menu still offers it, and focus goes back to the menu's Update", async () => {
     const element = await render();
+    const asked = [];
+    element.addEventListener("setupfocus", (event) => {
+      asked.push(true);
+      event.detail.focused = true;
+    });
     await openUpdate(element);
     updateToMatchSetup.mockResolvedValue({ refused: null, kept: false });
     getInputs.mockResolvedValue(week({ revision: "2026-06-29:2" }));
@@ -401,21 +405,24 @@ describe("Setup changed on the Generated Schedule screen", () => {
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(dialog(element)).toBeNull();
-    expect(box(element)).not.toBeNull();
-    const focused = element.shadowRoot.activeElement;
-    expect(focused && focused.dataset.id).toBe("update-to-match");
+    expect(updatable()).toBe(true);
+    expect(asked).toEqual([true]);
   });
 
-  it("Cancel changes nothing and puts focus back on Update to match setup", async () => {
+  it("Cancel changes nothing and puts focus back on the menu's Update to match setup", async () => {
     const element = await render();
+    const asked = [];
+    element.addEventListener("setupfocus", (event) => {
+      asked.push(true);
+      event.detail.focused = true;
+    });
     await openUpdate(element);
     inDialog(element, '[data-id="close"]').click();
     await flush();
     expect(dialog(element)).toBeNull();
     expect(updateToMatchSetup).not.toHaveBeenCalled();
     expect(dotIn(element, "0-1").label).toContain("Deleted from setup");
-    const focused = element.shadowRoot.activeElement;
-    expect(focused && focused.dataset.id).toBe("update-to-match");
+    expect(asked).toEqual([true]);
   });
 
   it("someone else saved the week since: nothing is updated, it says so, and reads the week again", async () => {
@@ -465,7 +472,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expect(errorText(element)).toContain(
       "Shoresh couldn't check Week 1 against setup."
     );
-    expect(box(element)).not.toBeNull();
+    expect(updatable()).toBe(true);
     expect(dotIn(element, "0-1").label).toContain("Deleted from setup");
     getSetupChanges.mockResolvedValue(PREVIEW);
     window.dispatchEvent(new CustomEvent("focus"));
@@ -487,7 +494,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     await flush();
     expect(saveWeekOnServer).toHaveBeenCalled();
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
-    expect(box(element)).toBeNull();
+    expect(updatable()).toBe(false);
   });
 
   it("reads them again after a hand edit saves while the week differs from setup, and not when it matches", async () => {

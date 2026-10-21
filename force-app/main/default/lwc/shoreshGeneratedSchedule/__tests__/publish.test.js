@@ -7,7 +7,7 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find, editorRoot } from "shoresh-jest/week-editor";
+import { editorRoot, find, lockRows } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
@@ -155,32 +155,6 @@ function cleanWeek({ published = null, maxSwim = 5 } = {}) {
   return inputs;
 }
 
-/**
- * Two bunks, one day, each with Swim once in Period 1, where Swim wants 2 a week: nothing Open, no
- * dots, and two still needed lines.
- */
-function owedWeek() {
-  const inputs = camp({
-    bunks: [{ name: "Bunk 1" }, { name: "Bunk 2" }],
-    days: 1,
-    blocks: [
-      { name: "Flag", start: "08:30", end: "09:00" },
-      { name: "Period 1", start: "09:00", end: "10:00" }
-    ],
-    activities: [{ name: "Swim", min: 2, max: 5, atOnce: 2 }],
-    scheduleId: SCHEDULE
-  });
-  inputs.days = inputs.days.map((day) => ({
-    ...day,
-    items: [
-      ...day.items,
-      { kind: "A", id: inputs.activities[0].Id, name: "Swim", gone: false }
-    ],
-    rows: ["1,2", "1,2"]
-  }));
-  return inputs;
-}
-
 /** The season read again with only Week 2 in it: the screen moves on to Week 2. */
 async function showWeek2(element, inputs) {
   getInputs.mockResolvedValue(inputs);
@@ -262,13 +236,14 @@ describe("Publish on the Generated Schedule screen", () => {
     jest.resetAllMocks();
   });
 
-  it("sits last on the editor's toolbar, with no Unpublish while nothing is published", async () => {
+  it("sits last on the rail, the one filled control, with no Unpublish while nothing is published", async () => {
     const element = await render();
     const button = publishButton(element);
     expect(button).not.toBeNull();
     expect(button.closest('[data-id="publish-area"]').assignedSlot.name).toBe(
-      "tools"
+      "end"
     );
+    expect(button.className).toContain("shoresh-item_primary");
     expect(unpublishButton(element)).toBeNull();
     expect(publishedLine(element)).toBeNull();
   });
@@ -460,7 +435,7 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(action(element, "Rebuild").disabled).toBe(true);
     expect(action(element, "TryAnother").disabled).toBe(true);
     expect(action(element, "StartOver").disabled).toBe(true);
-    expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(lockRows(element).every((row) => row.disabled)).toBe(true);
     expect(q(element, '[data-id="week"]').disabled).toBe(true);
     expect(publishButton(element).disabled).toBe(true);
     // A hand edit waits too: nothing is sent.
@@ -537,12 +512,9 @@ describe("Publish on the Generated Schedule screen", () => {
   it("Publish waits while a Lock saves", async () => {
     const element = await render(cleanWeek());
     setLocksOnServer.mockReturnValue(new Promise(() => {}));
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label.startsWith("Lock "));
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    lockRows(element)
+      .find((row) => row.textContent.trim().startsWith("Lock "))
+      .click();
     await flush();
     expect(setLocksOnServer).toHaveBeenCalledTimes(1);
     expect(publishButton(element).disabled).toBe(true);
@@ -581,12 +553,9 @@ describe("Publish on the Generated Schedule screen", () => {
     // A Lock.
     element = await render(cleanWeek({ published: PUBLISHED }));
     setLocksOnServer.mockReturnValue(new Promise(() => {}));
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label.startsWith("Lock "));
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    lockRows(element)
+      .find((row) => row.textContent.trim().startsWith("Lock "))
+      .click();
     await flush();
     expect(setLocksOnServer).toHaveBeenCalledTimes(1);
     expect(unpublishButton(element).disabled).toBe(true);
@@ -671,7 +640,7 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(element.shadowRoot.activeElement).toBe(publishButton(element));
   });
 
-  it("focus goes back to Unpublish after the week is read again on coming back to the window", async () => {
+  it("focus goes back to Published after the week is read again on coming back to the window", async () => {
     const element = await render(cleanWeek({ published: PUBLISHED }));
     unpublishButton(element).focus();
     const held = slow();
@@ -683,7 +652,10 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(element.shadowRoot.activeElement).toBeNull();
     held.answer(cleanWeek({ published: PUBLISHED }));
     await flush();
-    expect(element.shadowRoot.activeElement).toBe(unpublishButton(element));
+    // Unpublish is in Published's dropdown, closed: focus goes to Published.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="published-menu"]')
+    );
   });
 
   it("a hand edit marks the week changed since it was published, at once", async () => {
@@ -756,7 +728,7 @@ describe("Publish on the Generated Schedule screen", () => {
     await clickPublish(element);
     expect(ask(element)).not.toBeNull();
     expect(action(element, "Rebuild").disabled).toBe(true);
-    expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(lockRows(element).every((row) => row.disabled)).toBe(true);
     expect(q(element, '[data-id="week"]').disabled).toBe(true);
     getInputs.mockClear();
     // The season read again, and coming back to the window.
@@ -835,22 +807,25 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(document.activeElement).toBe(elsewhere);
   });
 
-  it("focus stays on the week picker when the director moved there while Publish was held", async () => {
+  it("focus stays where the director moved it on the rail while Publish was held", async () => {
     const element = await render(cleanWeek());
     const held = slow();
     previewPublish.mockReturnValue(held.promise);
     publish.mockResolvedValue({ published: PUBLISHED });
     await clickPublish(element);
-    // Inside the screen this time: a keyboard user tabbed on to the week picker.
-    const picker = q(element, '[data-id="week"]');
-    picker.tabIndex = 0;
-    picker.focus();
-    expect(element.shadowRoot.activeElement).toBe(picker);
+    // Inside the screen this time: a keyboard user tabbed on to the counter (the week picker
+    // is held while publishing).
+    const counter = q(element, '[data-id="counter"]');
+    counter.shadowRoot
+      .querySelector('[data-id="counter"]')
+      .shadowRoot.querySelector('[data-id="button"]')
+      .focus();
+    expect(element.shadowRoot.activeElement).toBe(counter);
     const back = jest.spyOn(publishButton(element), "focus");
     held.answer(preview());
     await flush();
     expect(back).not.toHaveBeenCalled();
-    expect(element.shadowRoot.activeElement).toBe(picker);
+    expect(element.shadowRoot.activeElement).toBe(counter);
   });
 
   // A publish or unpublish whose answer comes back once another week is shown: it was for the
@@ -1081,51 +1056,5 @@ describe("Publish on the Generated Schedule screen", () => {
     await answer(unpublishAsk(element), true);
     expect(notice(element)).toBe("Unpublished Week 1.");
     expect(q(element, '[data-id="build-error"]')).toBeNull();
-  });
-
-  it("asks with the counters' own lines: one of two still needed lines accepted leaves 1", async () => {
-    const element = await render(owedWeek());
-    const checks = q(element, "c-shoresh-week-checks");
-    const counter = () =>
-      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]');
-    expect(counter().textContent).toContain("2");
-    counter().click();
-    await flush();
-    const accepts = [
-      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
-    ];
-    expect(accepts).toHaveLength(2);
-    accepts[0].click();
-    await flush();
-    expect(counter().textContent).toContain("1");
-    previewPublish.mockResolvedValue(preview());
-    await clickPublish(element);
-    // The week's checks alone would say 2; the box says what the counter shows.
-    expect(ask(element).lines).toEqual(["Still needed: 1"]);
-    await answer(ask(element), false);
-    expect(publish).not.toHaveBeenCalled();
-  });
-
-  it("a week whose still needed lines were all accepted publishes at once, as its counters say", async () => {
-    const element = await render(owedWeek());
-    const checks = q(element, "c-shoresh-week-checks");
-    const counter = () =>
-      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]');
-    counter().click();
-    await flush();
-    const accepts = [
-      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
-    ];
-    accepts[0].click();
-    await flush();
-    accepts[1].click();
-    await flush();
-    expect(counter().textContent).toContain("0");
-    previewPublish.mockResolvedValue(preview());
-    publish.mockResolvedValue({ published: PUBLISHED, unchanged: false });
-    await clickPublish(element);
-    expect(ask(element)).toBeNull();
-    expect(publish).toHaveBeenCalledTimes(1);
-    expect(notice(element)).toBe("Published Week 1.");
   });
 });

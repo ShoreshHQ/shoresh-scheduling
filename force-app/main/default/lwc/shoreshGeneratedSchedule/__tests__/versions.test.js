@@ -8,7 +8,7 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find, editorRoot } from "shoresh-jest/week-editor";
+import { editorRoot, find, lockRows } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
@@ -270,11 +270,11 @@ describe("Versions on the Generated Schedule screen", () => {
     jest.resetAllMocks();
   });
 
-  it("sits on the editor's toolbar after Start over and before Publish, listing the week's versions", async () => {
+  it("sits on the rail after Build (Start over) and before Publish, listing the week's versions", async () => {
     const element = await render();
     const list = versions(element);
     expect(list).not.toBeNull();
-    expect(list.assignedSlot.name).toBe("tools");
+    expect(list.assignedSlot.name).toBe("end");
     expect(list.restore).toBe(true);
     expect(getVersions).toHaveBeenCalledWith({
       programId: PROGRAM,
@@ -369,7 +369,9 @@ describe("Versions on the Generated Schedule screen", () => {
     await until(
       () => element.shadowRoot.activeElement === action(element, "Rebuild")
     );
-    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="build-menu"]')
+    );
   });
 
   it("…the list there waits while its Restore is on its way", async () => {
@@ -450,7 +452,9 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(getInputs).toHaveBeenCalledTimes(2);
     // The version's lock comes with it, and its option.
     expect(lockAt(element, "0-1")).toBe("Locked");
-    expect(q(element, '[data-id="option"]').value).toBe("3");
+    expect(q(element, '[data-option="3"]').getAttribute("aria-checked")).toBe(
+      "true"
+    );
     expect(versions(element).openId).toBe(MINE);
     expect(notice(element)).toBe("Restored Before the trip.");
   });
@@ -553,7 +557,7 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(action(element, "Rebuild").disabled).toBe(true);
     expect(action(element, "TryAnother").disabled).toBe(true);
     expect(action(element, "StartOver").disabled).toBe(true);
-    expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(lockRows(element).every((row) => row.disabled)).toBe(true);
     expect(publishButton(element).disabled).toBe(true);
     expect(q(element, '[data-id="week"]').disabled).toBe(true);
     expect(versions(element).busy).toBe(true);
@@ -867,7 +871,7 @@ describe("Versions on the Generated Schedule screen", () => {
       // The line goes with the week it was about; focus goes back to Start over.
       expect(startedLine(element)).toBeNull();
       expect(element.shadowRoot.activeElement).toBe(
-        action(element, "StartOver")
+        q(element, '[data-id="build-menu"]')
       );
     });
 
@@ -991,12 +995,9 @@ describe("Versions on the Generated Schedule screen", () => {
     // A Lock.
     element = await render(week());
     setLocksOnServer.mockReturnValue(new Promise(() => {}));
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label.startsWith("Lock "));
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    lockRows(element)
+      .find((row) => row.textContent.trim().startsWith("Lock "))
+      .click();
     await flush();
     expect(versions(element).busy).toBe(true);
     document.body.removeChild(element);

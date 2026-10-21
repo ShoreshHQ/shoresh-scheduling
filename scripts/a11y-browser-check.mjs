@@ -7,7 +7,8 @@
  * setup with the keyboard only (Tab, Enter, Space, Escape, arrows, typing) and checks:
  * - where focus is after each menu, dialog and tool closes (through shadow roots);
  * - that the live regions say something after saves, builds and publishing;
- * - that every enabled toolbar action is reachable with Tab;
+ * - that every enabled rail action is reachable with Tab, and that the rail's menus (Edit,
+ *   Build, the counter, Published) open, move with the arrows and close with Escape;
  * - that a field's error (a blank season name, put back after) reads at 4.5:1 on the surface
  *   behind it;
  * - that "Same location?" merges a place typed twice, and Ctrl+Z / Ctrl+Shift+Z undo and redo
@@ -536,10 +537,10 @@ async function chooseOption(re, { max = 30 } = {}) {
   throw new Error(`No option ${re.source} in the list.`);
 }
 
-/** Every enabled toolbar control is reached by Tab, in one pass from the first. */
+/** Every enabled rail control is reached by Tab, in one pass from the first. */
 async function toolbarReach(screen) {
   const controls = page
-    .locator("c-shoresh-week-editor .toolbar")
+    .locator("c-shoresh-week-editor .rail")
     .locator(
       'button, input, select, a[href], [role="combobox"], [tabindex="0"]'
     );
@@ -561,8 +562,8 @@ async function toolbarReach(screen) {
     }, i);
     if (name !== null) expected.set(String(i), name);
   }
-  if (!expected.size) throw new Error("No toolbar controls found.");
-  // Start just before the toolbar: back out of it if focus is already in it.
+  if (!expected.size) throw new Error("No rail controls found.");
+  // Start just before the rail: back out of it if focus is already in it.
   for (let i = 0; i < 40; i++) {
     const f = await focus();
     if (!f || f.checkMark === null) break;
@@ -572,8 +573,8 @@ async function toolbarReach(screen) {
   if (!first) {
     results.fail(
       screen,
-      "Toolbar: reachable by Tab",
-      "No toolbar control was reached with Tab."
+      "Rail: reachable by Tab",
+      "No rail control was reached with Tab."
     );
     return;
   }
@@ -596,16 +597,43 @@ async function toolbarReach(screen) {
   if (missing.length) {
     results.fail(
       screen,
-      "Toolbar: every action reachable by Tab",
-      `Not reached: ${missing.join(", ")}. Toolbar: ${names}.`
+      "Rail: every action reachable by Tab",
+      `Not reached: ${missing.join(", ")}. Rail: ${names}.`
     );
   } else {
     results.pass(
       screen,
-      "Toolbar: every action reachable by Tab",
+      "Rail: every action reachable by Tab",
       `All ${expected.size} reached: ${names}.`
     );
   }
+}
+
+/**
+ * A rail menu (ADR 0008 part 7): focus on its word (where it is already, else back with
+ * Shift+Tab, else on with Tab), then Enter opens it, with focus on its first row when it is a
+ * menu. Returns the word's focus, or null when it was not reached.
+ */
+async function openRailMenu(re, { max = 60 } = {}) {
+  const isWord = named(re, { tag: "button" });
+  const now = await focus();
+  const word =
+    (now && now.components.includes(APP) && isWord(now) ? now : null) ||
+    (await tabTo(isWord, { back: true, max })) ||
+    (await tabTo(isWord, { max: max * 3 }));
+  if (!word) return null;
+  await press("Enter", 500);
+  return word;
+}
+
+/** Inside an open rail menu: Down until the row whose words match `re` has focus. */
+async function arrowTo(re, { max = 20 } = {}) {
+  for (let i = 0; i < max; i++) {
+    const f = await focus();
+    if (f && re.test(f.name)) return f;
+    await press("ArrowDown", 80);
+  }
+  return null;
 }
 
 // Screens visited earlier stay in the page, hidden: only what is on screen counts.
@@ -991,6 +1019,39 @@ async function campSetup() {
   });
 }
 
+/**
+ * The rail's counter ("29 of 35 placed"): Enter opens its dropdown (the bar, still needed,
+ * under, over), axe looks at it open, and Escape closes it with focus still on the counter.
+ */
+async function counterMenu(S) {
+  if (!(await openRailMenu(/^\d+ of \d+ placed\b/)))
+    throw new Error("The counter not reached with Tab.");
+  const opened = await page
+    .locator(APP)
+    .locator("c-shoresh-week-checks >> visible=true")
+    .first()
+    .evaluate((el) => {
+      const pop = el.shadowRoot.querySelector('[data-id="counter"]');
+      const word = pop.shadowRoot.querySelector('[data-id="button"]');
+      return word.getAttribute("aria-expanded");
+    });
+  if (opened === "true") {
+    results.pass(S, "The counter: Enter opens it", "aria-expanded is true.");
+  } else {
+    await shot(S, "The counter opens");
+    results.fail(
+      S,
+      "The counter: Enter opens it",
+      `aria-expanded is ${opened}.`
+    );
+  }
+  await axe(`${S}: the counter open`);
+  await press("Escape", 400);
+  await expectFocus(S, "The counter: Escape closes it, focus on the counter", {
+    name: /^\d+ of \d+ placed\b/
+  });
+}
+
 async function manualBuild(openManual) {
   const S = "Manual Build";
   await step(S, "Open", openManual);
@@ -1010,7 +1071,8 @@ async function manualBuild(openManual) {
     );
   });
   await step(S, "axe", () => axe(S));
-  await step(S, "Toolbar", () => toolbarReach(S));
+  await step(S, "Rail", () => toolbarReach(S));
+  await step(S, "The counter: open, Escape", () => counterMenu(S));
   await step(S, "Place an activity by typing", async () => {
     const cell = await tabTo(grid);
     if (!cell) throw new Error("No grid cell reached with Tab.");
@@ -1098,8 +1160,15 @@ async function manualBuild(openManual) {
     stretchByHandle(S)
   );
   await step(S, "Clear day, then its Undo", async () => {
-    if (!(await tabTo(named(/^Clear day$/, { tag: "button" })))) {
-      throw new Error("Clear day not reached with Tab.");
+    // Clear day is in the rail's Edit menu, after Undo and Redo.
+    if (!(await openRailMenu(/^Edit$/))) {
+      throw new Error("Edit not reached with Tab.");
+    }
+    await expectFocus(S, "Edit opens: focus on its first row", {
+      role: "menuitem"
+    });
+    if (!(await arrowTo(/^Clear day$/))) {
+      throw new Error("Clear day not reached with the arrows in Edit.");
     }
     await expectLive(
       S,
@@ -1118,17 +1187,24 @@ async function manualBuild(openManual) {
     }
   });
   await step(S, "Copy day to…, then focus", async () => {
-    if (!(await tabTo(named(/^Copy day to/))))
-      throw new Error("Copy day to… not reached.");
-    await press("Enter", 500);
-    await expectFocus(S, "Copy day to… opens: focus on its first choice", {
-      role: "menuitem"
+    if (!(await openRailMenu(/^Edit$/)))
+      throw new Error("Edit not reached with Tab.");
+    if (!(await arrowTo(/^Copy day to/)))
+      throw new Error("Copy day to… not reached with the arrows in Edit.");
+    // Enter opens its days under it; Down goes to the first.
+    await press("Enter", 400);
+    await press("ArrowDown", 200);
+    await expectFocus(S, "Copy day to… opens: Down reaches its first day", {
+      role: "menuitem",
+      name: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/
     });
     await press("Escape", 400);
-    await expectFocus(S, "Escape: focus back on Copy day to…", {
-      name: /^Copy day to/
-    });
+    await expectFocus(S, "Escape: focus back on Edit", { name: /^Edit$/ });
     await press("Enter", 500);
+    if (!(await arrowTo(/^Copy day to/)))
+      throw new Error("Copy day to… not reached again.");
+    await press("Enter", 400);
+    await press("ArrowDown", 200);
     await expectLive(S, "Choosing a day: it is said", /Copied|Nothing/i, () =>
       press("Enter")
     );
@@ -1267,10 +1343,16 @@ async function generated(openGenerated) {
     await expectFocusKept(S, "Generate: focus not lost when the button goes");
   });
   await step(S, "axe", () => axe(S));
-  await step(S, "Toolbar", () => toolbarReach(S));
+  await step(S, "Rail", () => toolbarReach(S));
+  await step(S, "The counter: open, Escape", () => counterMenu(S));
   await step(S, "Rebuild: the question, Escape, then Rebuild it", async () => {
-    if (!(await tabTo(named(/^Rebuild$/, { tag: "button" }))))
-      throw new Error("Rebuild not reached.");
+    // Rebuild is in the rail's Build menu, first.
+    if (!(await openRailMenu(/^Build$/))) throw new Error("Build not reached.");
+    await expectFocus(S, "Build opens: focus on Rebuild", {
+      role: "menuitem",
+      name: /^Rebuild$/
+    });
+    await axe("Generated Schedule: Build open");
     await press("Enter", 600);
     await expectFocus(S, "Rebuild asks: focus on Cancel", {
       inDialog: true,
@@ -1278,9 +1360,11 @@ async function generated(openGenerated) {
     });
     await axe("Generated Schedule: Rebuild question");
     await press("Escape", 600);
-    await expectFocus(S, "Escape: focus back on Rebuild", {
-      name: /^Rebuild$/
+    await expectFocus(S, "Escape: focus back on Build", {
+      name: /^Build$/
     });
+    await press("Enter", 600);
+    if (!(await arrowTo(/^Rebuild$/))) throw new Error("Rebuild not reached.");
     await press("Enter", 600);
     if (!(await tabTo(named(/^Rebuild it$/), { max: 6 })))
       throw new Error("Rebuild it not reached.");
@@ -1293,27 +1377,33 @@ async function generated(openGenerated) {
     );
     await expectFocusKept(S, "After Rebuild: focus not lost");
   });
-  await step(S, "Lock menu: open, Escape, lock a cell", async () => {
+  await step(S, "Lock, in Edit: open, Escape, lock a cell", async () => {
     if (!(await tabTo(grid))) throw new Error("No grid cell reached with Tab.");
     await press("ArrowDown", 200);
-    if (!(await tabTo(named(/^Lock\b/), { back: true, max: 30 }))) {
-      throw new Error("Lock not reached.");
+    // Lock's choices are in the rail's Edit menu, with the other hand edits (ADR 0010 §58).
+    if (!(await openRailMenu(/^Edit$/))) {
+      throw new Error("Edit not reached.");
     }
-    await press("Enter", 500);
-    await expectFocus(S, "Lock opens: focus on its first choice", {
+    await expectFocus(S, "Edit opens: focus on its first row", {
       role: "menuitem"
     });
     await press("Escape", 400);
-    await expectFocus(S, "Escape: focus back on Lock", { name: /^Lock\b/ });
+    await expectFocus(S, "Escape: focus back on Edit", { name: /^Edit$/ });
     await press("Enter", 500);
+    if (!(await arrowTo(/^(Lock|Unlock) /))) {
+      throw new Error("No Lock choice in Edit.");
+    }
     await expectLive(S, "Choosing Lock/Unlock: it is said", /lock/i, () =>
       press("Enter")
     );
     await expectFocusKept(S, "After locking: focus not lost");
   });
   await step(S, "Start over, then its Undo", async () => {
-    if (!(await tabTo(named(/^Start over$/, { tag: "button" })))) {
-      throw new Error("Start over not reached.");
+    if (!(await openRailMenu(/^Build$/))) {
+      throw new Error("Build not reached.");
+    }
+    if (!(await arrowTo(/^Start over$/))) {
+      throw new Error("Start over not reached in Build.");
     }
     // No question: Start over keeps its Undo instead (ADR 0010).
     await expectLive(
@@ -1332,8 +1422,8 @@ async function generated(openGenerated) {
     );
     if (f && f.dataId === "start-over-undo") {
       await press("Enter", 300);
-      await expectFocus(S, "Its Undo: focus back on Start over", {
-        name: /^Start over$/
+      await expectFocus(S, "Its Undo: focus back on Build", {
+        name: /^Build$/
       });
       await pause(3000);
     }
@@ -1446,7 +1536,10 @@ async function publish(S, openScreen) {
       }
     );
     await expectFocusKept(S, "After Publish: focus not lost");
-    if (!(await tabTo((f2) => f2.dataId === "unpublish")))
+    // Unpublish is in Published's dropdown, beside Publish on the rail.
+    if (!(await openRailMenu(/^Published/)))
+      throw new Error("Published not reached.");
+    if (!(await tabTo((f2) => f2.dataId === "unpublish", { max: 4 })))
       throw new Error("Unpublish not reached.");
     await press("Enter", 800);
     await expectFocus(S, "Unpublish asks: focus on Cancel", {
@@ -1454,9 +1547,12 @@ async function publish(S, openScreen) {
       name: /^Cancel$/
     });
     await press("Escape", 600);
-    await expectFocus(S, "Escape: focus back on Unpublish", {
-      dataId: "unpublish"
+    await expectFocus(S, "Escape: focus back on Published", {
+      name: /^Published/
     });
+    await press("Enter", 500);
+    if (!(await tabTo((f2) => f2.dataId === "unpublish", { max: 4 })))
+      throw new Error("Unpublish not reached again.");
     await press("Enter", 800);
     if (!(await tabTo(named(/^Unpublish$/, { inDialog: true }), { max: 6 }))) {
       throw new Error("The question's Unpublish not reached.");
@@ -1563,12 +1659,25 @@ async function updateToMatch(S, openScreen) {
   await step(S, "Update to match setup", async () => {
     await openScreen();
     await pause(2000);
-    if (!(await exists('[data-id="update-to-match"]'))) {
-      throw new Error(
-        "No Update to match setup on the screen after the setup change."
+    // Said at the menu's foot only (ADR 0015 §9): the screen has no box of its own.
+    if (await exists('[data-id="update-to-match"]')) {
+      results.fail(
+        S,
+        "Setup changed: said at the menu's foot only",
+        "The screen still shows its own Update to match setup."
       );
     }
-    if (!(await tabTo((f) => f.dataId === "update-to-match"))) {
+    if (!(await exists('[data-id="menu-update-to-match"]'))) {
+      throw new Error(
+        "No Update to match setup at the menu's foot after the setup change."
+      );
+    }
+    if (
+      !(await tabTo((f) => f.dataId === "menu-update-to-match", {
+        back: true,
+        max: 200
+      }))
+    ) {
       results.fail(
         S,
         "Update to match setup: reachable by Tab",
@@ -1584,7 +1693,7 @@ async function updateToMatch(S, openScreen) {
     await axe(`${S}: Update to match setup`);
     await press("Escape", 600);
     await expectFocus(S, "Escape: focus back on Update to match setup", {
-      dataId: "update-to-match"
+      dataId: "menu-update-to-match"
     });
     await press("Enter", 1500);
     // One row first, then the rest.
@@ -1596,7 +1705,7 @@ async function updateToMatch(S, openScreen) {
         () => press("Enter")
       );
       if (said && /nothing was updated/i.test(said)) {
-        const f = await waitFocus({ dataId: "update-to-match" });
+        const f = await waitFocus({ dataId: "menu-update-to-match" });
         await shot(S, "One row's Update refused");
         results.fail(
           S,
@@ -1604,7 +1713,12 @@ async function updateToMatch(S, openScreen) {
           `Refused with no one else editing: "${said}" The dialog closed; focus on ${formatFocus(f)}.`
         );
         // Update all, tried the same way, to see whether it is refused too.
-        if (!(await tabTo((g) => g.dataId === "update-to-match"))) {
+        if (
+          !(await tabTo((g) => g.dataId === "menu-update-to-match", {
+            back: true,
+            max: 200
+          }))
+        ) {
           throw new Error("Update to match setup not reached again.");
         }
         await press("Enter", 1500);
@@ -1616,7 +1730,7 @@ async function updateToMatch(S, openScreen) {
         await press("Enter", 4000);
         const now = await liveTexts();
         if (
-          (await exists('[data-id="update-to-match"]')) &&
+          (await exists('[data-id="menu-update-to-match"]')) &&
           now.some((t) => /nothing was updated/i.test(t))
         ) {
           results.fail(

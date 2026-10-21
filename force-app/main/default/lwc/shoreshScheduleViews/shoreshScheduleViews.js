@@ -13,12 +13,13 @@
 const CARRIES_ON = "^";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
-/** "Monday" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone. */
+/** "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone. */
 export function dayLabel(dateValue) {
   const [y, m, d] = String(dateValue).split("-").map(Number);
   const date = new Date(y, m - 1, d);
   return {
     label: date.toLocaleDateString("en-US", { weekday: "long" }),
+    short: date.toLocaleDateString("en-US", { weekday: "short" }),
     sub: date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   };
 }

@@ -4,24 +4,13 @@
 /* Generated Schedule (desktop ScheduleScreen.jsx, generated route). The layout it shares with the
    other schedule screens is in c/shoreshScheduleScreen. */
 
-.actions {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.option {
-  width: 6rem;
-}
-
 /* While the week is built: a thin bar that follows the build (design guide: a thin bar for a
    blocking action), and "Generating…" beside it. */
 .busy {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: -8px 0 12px;
+  margin: 0 0 12px;
 }
 
 .progress {
@@ -120,43 +109,22 @@
   --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
 }
 
-/* Sets Versions off from the build actions, as on Manual Build and the desktop. */
-.divider {
-  width: 1px;
-  align-self: stretch;
-  background: var(--slds-g-color-border-base-1, #c9c9c9);
-}
-
-/* Publish, last on the toolbar: when the week was published, then the buttons (as Manual Build). */
+/* Versions, then Published and Publish, 4 apart at the rail's right edge (as Manual Build). */
 .publish {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--shoresh-space-in-group);
 }
 
-/* One shade darker than the grey it was (#747474 was borderline at 12px; WCAG 1.4.3). */
+/* When the week was published, in Published's dropdown: it may wrap. */
 .published {
-  font-size: 12px;
-  color: var(--shoresh-text-secondary);
+  max-width: calc(var(--shoresh-u) * 72);
+  padding-top: var(--shoresh-s2);
+  padding-bottom: var(--shoresh-s2);
+  white-space: normal;
+  color: var(--shoresh-text-2);
 }
 
 .changed-since {
-  margin-left: 4px;
-}
-
-/*
- * Setup changed since the week was built: the "needs a look" box, its words, and Update to match
- * setup, as on Manual Build.
- */
-.setup-changed {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 6px 12px;
-  border: 1px solid var(--shoresh-caution);
-  border-radius: 8px;
-  background: var(--shoresh-caution-tint);
-  font-size: 13px;
+  margin-left: var(--shoresh-space-word);
 }

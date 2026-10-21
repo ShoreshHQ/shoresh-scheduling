@@ -1044,6 +1044,101 @@ back. Tried by hand in the real browser on Manual Build and Generated Schedule: 
 into a filled slot, up, across two blocks into a fixed activity, a slow jittery drag, script-sent
 pointer events with a pointerId (as Safari sends them), and touch.
 
+## Choices (part 7: the rail, Edit and the counter, 2026-10-21)
+
+Design build step 2a (ADR 0015 is step 1). Source: Greg's decisions 36 to 41 (wiki
+`projects/shoresh-scheduling-sf.md`, "round 13 with rail layout B"), the visual spec in
+`docs/design/` (`manual-build.html` `#b` and `#open`, `spacing-spec.md`,
+`spacing-spec-continuous.md`). The desktop stays the floor for what each control does and says;
+the look is the mock-up's. This step does the frame, the rail, Edit and the counter; the grid,
+the drawer under it and the same-activity outlines come in step 2b (the next PR), so until then
+the grid and the activity list on its left keep their look.
+
+1. **One frame.** Under the season row the schedule is zones of the frame itself: the rail, one
+   hairline, then the week (status lines, the activity list and the grid). The frame's body loses
+   its inset for the two schedules (`body_flush` in Camp Setup), so the hairlines run edge to
+   edge and each zone keeps its own 12 inset. The screen's title is no longer shown (decision
+   36: the menu already says which screen this is); it stays as the heading screen readers land
+   on.
+2. **The rail, layout B** (`spacing-spec.md` part 2). Three parts: the left starts with a head
+   start of the grid's time column and its gap, so the days in the middle sit over the grid's
+   cells. Left: the week, then **Edit**, then the screen's own menu (Generated's **Build**), then
+   **Daily / Group / Activity** against the days. Middle: **Mon** to **Fri** (no dates, decision
+   33; read out in full, "Monday, Jun 29"), or the bunks in Group View. Right: the counter, a
+   line, then **Versions**, **Published** (when the week has a published schedule) and
+   **Publish**. A part never gets narrower than what it holds: with too little room the days give
+   up a little of their centring rather than slide under the views; under 1200 px the parts wrap.
+3. **One grammar** (`spacing-spec-continuous.md`, "The grammar"; classes in `c/shoreshTokens`):
+   every item 32 tall, 8 side padding, 13 px Inter; at rest regular in the secondary words, a
+   value medium in the text colour; the current choice (the week, the view, the day or bunk) is
+   the one raised look; a menu is its word and a 12 px chevron and is never raised while closed
+   (raised while open); one thin line, 8 each side, between groups; **Publish** is the only
+   filled control. Keyboard focus is the highlight ring outside the item.
+4. **The week** (`c-shoresh-rail-picker`): an arrow either side of the week, the week raised
+   ("‹ Week 3 ›"). The arrows step to the week before or after ("Previous: Week 2"); the week
+   itself opens every week of the season in a menu, so any week is still one choice away (the
+   combobox it replaces could do that). It takes and gives what `lightning-combobox` did (label,
+   value, options, disabled, change), so the screen uses it the same way. With several programs
+   the program is a word and its chevron before it.
+5. **Edit** (decision 36) holds **Undo** and **Redo** with their keys (⌘Z and ⇧⌘Z on a Mac,
+   Ctrl+Z and Ctrl+Shift+Z elsewhere; `aria-keyshortcuts`), a line, then Manual Build's tools:
+   **Clear day**, **Copy day to…**, **Clear week** (Group View: **Clear day** with the bunk's
+   days under it; none in Activity View). **Copy day to…** opens its days under it, one step in,
+   and keeps the menu open. Everything they did is unchanged (part 4a): no confirm, one Undo step,
+   the line with its Undo, focus on that Undo after. After the line's own Undo, focus goes to
+   Edit (the line is gone, and Undo is in Edit). Keys, as a menu button: Enter, Space or Down open
+   it on the first row it can use, Up on the last; Up, Down, Home and End move; Escape closes it
+   with focus back on Edit; Tab closes it and moves on; a click elsewhere closes it. Ctrl+Z works
+   as before, menu open or not. The rail menu is one component, `c-shoresh-rail-pop`, used for
+   Edit, Build, Published and the counter, each with its own rows slotted in.
+6. **The counter** (decisions 38 and 41) replaces the counter cards (Filled, Overlapping, Still
+   needed, Spread across the week) with one rail item, **29 of 35 placed**, and the needs-a-look
+   corner when anything is off target. It opens a dropdown in Edit's look: a slim bar of what is
+   placed, **N still needed** (cells still to fill), **N under** with each activity short of its
+   weekly goal (_Swim 3 of 4_), **N over** with each activity past its weekly limit (the corner,
+   _Soccer 4 of 3_), then **N to look at**: each cell whose placement breaks a rule shared with
+   other cells and each bunk still short of an early-week goal, in checkWeek's words (the earlier
+   Overlapping and Spread lines). An under or over row shows that activity in Activity View; a
+   line to look at takes the director to the bunk's week with focus on the cell, as before.
+   Under and over show their 0 when the camp has goals or limits (the desktop's grey 0) and are
+   left out when it has none; to look at shows only with something in it.
+   - **"Under" means one thing everywhere** (`spacing-spec.md` part 1): an activity's goal is its
+     times a week for each bunk it is set up for; a bunk counts only up to its own goal, so one
+     bunk's extra never makes up for another's shortfall. _N under_ is every bunk's shortfall
+     added up. Over counts only the bunks past the limit: what they have, of what they may have.
+     The numbers come from `measureWeek` in `c/shoreshEngine`, worked out once from the week's
+     check (the same one that draws the dots), so the counter, its rows and the drawer (step 2b)
+     can never disagree.
+   - **What went with the cards:** the desktop's **Accept** (hiding a still needed or spread line
+     for the visit) and, on Generated, a counter lighting its cells and **Review all**. The
+     approved dropdown has no place for them; what Accept hid is now counted per activity, and
+     the cells it is about carry their corner. Publish still asks with the week's own checks
+     (`c/shoreshPublish`, unchanged words; see "Not done here").
+7. **Published.** The published line (_Published from Manual Build Oct 18, 2:40 PM by Pat_, with
+   _Changed since_) and **Unpublish** move into a **Published** dropdown beside Publish, the
+   corner on its word when the week changed since it was published. Unpublish asks as before;
+   focus goes back to Published after its question (to Unpublish while the dropdown is open, to
+   Publish once nothing is published).
+8. **Versions** is a rail menu: its word and chevron, raised while open, its panel in Edit's
+   look. What it does is unchanged.
+9. **Setup changed lives only at the menu's foot** (ADR 0015 §9): the line and its button above
+   the grid are gone. The cells keep their marks; the menu's **Update to match setup** opens the
+   same list. When the list closes, focus goes back to the menu's Update (the screen asks the
+   page, `setupfocus`), or to the grid once the week matches setup. A week that can't be
+   compared with setup still says why, on a quiet line under the rail, so that is never hidden.
+
+Checked by Jest: `shoreshRailPop.test.js` (one item, never raised closed, a menu's keys, select,
+rows that open rows, a click outside, Tab, held), `shoreshRailPicker.test.js` (arrows, the
+raised week, every week in its menu, change, held), `measure.test.js` (placed, still needed,
+under per bunk, not set up, over, order, look, same inputs same measure),
+`shoreshWeekChecks.test.js` (the item, the corner, the dropdown's parts, the 0s, rows to an
+activity, lines to a cell, Escape, a week shown fresh), and the screens' suites (Edit's rows in
+order and none in Activity View, Copy day to… opening its days, focus to Edit after the line's
+Undo, the counter's numbers on real checks, Published and Unpublish, the menu's Update and focus
+back to it). In the test org: `scripts/a11y-browser-check.mjs` opens Edit, Build, the counter
+and Published with the keyboard (rows, Escape, focus) and runs axe with the counter open;
+screenshots next to the mock-up in `docs/design/screens/`.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
@@ -1056,6 +1151,15 @@ User, cleared if the user is deleted) and `PublishKey__c` (text 40, unique, case
 adds no fields: the automatic version reuses the AutoSaved reason.
 
 ## Not done here
+
+- **Design step 2b** (the next PR): the grid (times only, bunks only, headers on the grid's
+  surface, the one raised cell, slim fixed rows with the lock, recessed empty cells, the
+  highlight outline for the picked cell, the corner for a dot), the drawer under the grid in
+  place of the activity list on the left (with "7 under", the tiles' corner and "3 of 4" on
+  hover or hold, every way to place kept), and the same-activity outlines.
+- **Publish's question still uses the cards' words** (_Filled: 34 of 36_, _Overlapping: 2_,
+  _Still needed: 1_). Moving it to the counter's (_34 of 36 placed_, _N under_) is a small
+  follow-up.
 
 - **Truly simultaneous Starts** are not exercised by a test (Apex tests run one at a time). The
   test calls Start twice; the code takes the program lock before looking again.

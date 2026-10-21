@@ -1,0 +1,26 @@
+@import "c/shoreshTokens";
+
+/* A rail menu: the item, and its dropdown under it (ADR 0008 part 7). */
+:host {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+/* The needs-a-look corner sits on the words' cap height, as in the mock-up. */
+.mark {
+  transform: translateY(-3px);
+}
+
+.pop {
+  left: 0;
+}
+
+.pop_right {
+  left: auto;
+  right: 0;
+}
+
+.pop[hidden] {
+  display: none;
+}

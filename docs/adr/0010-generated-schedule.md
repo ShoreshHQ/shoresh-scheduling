@@ -1239,6 +1239,46 @@ the cell; a build is said when it ends, and the screen has one live region (none
 in Versions); Start over puts focus on its Undo; the refused Restore and Undo lines; focus to the
 grid after Update all leaves nothing; `saveWeek` gives _Try again._ for platform text.
 
+## Choices (the rail, 2026-10-21)
+
+Design build step 2a, as Manual Build (ADR 0008 part 7: the frame, the rail's three parts and
+grammar, the week's arrows, Edit, the counter, Published, Versions, setup changed only at the
+menu's foot). What is Generated's own:
+
+58. **Build beside Edit; Lock in Edit.** Generated's own tools fit the one grammar as two menus,
+    split by who does the work:
+    - **Edit** is what the director does by hand: **Undo** and **Redo**, a line, then the
+      **Lock** choices the old Lock menu offered (_Lock Bunk 1 · Monday · Period 2_, _Lock
+      Monday_, _Lock Bunk 1 · Monday_; _Unlock …_ for what is locked), for the cell keyboard
+      focus last reached and the day or bunk shown. They wait while the week is busy, and with
+      nothing to offer there are none. After a Lock or Unlock is saved, focus goes back to
+      Edit (to the grid when nothing is left to offer, as before).
+    - **Build** is what Shoresh builds: **Rebuild** (its question unchanged), **Try another**,
+      **Fill the open cells**, a line, every option tried this visit (_Option 1_, _Option 2_,
+      the one shown checked with the highlight dot; choosing one brings it back exactly, as the
+      Option picker did), a line, then **Start over** (at once, with its Undo line). Build waits
+      while the week is busy. After any of them, and after Rebuild's question closes, focus goes
+      back to Build; after Start over, to its line's Undo, and from that Undo back to Build.
+    - Why two menus, not one: they fit the left of the rail at 1280 and 1440 wide with the days
+      still over the grid's cells (a separate Lock menu would not, worked out from the items' widths), and the split reads the way a
+      director thinks of it: changes made by hand, which a build keeps (locks), and what a build
+      does. Generate itself stays the one big button before the first build.
+    - The counter is Manual Build's on both screens (decision 3 stays: one vocabulary). Its
+      generated-only ways (each counter lighting its cells, Review all, Accept) go with the
+      cards (ADR 0008 part 7 §6).
+
+## Tests (the rail)
+
+Jest: Build sits in the editor's `tools` slot after Edit and holds every build action; Lock's
+choices are Edit's rows after Undo, Redo and a line; the options are `menuitemradio` rows, the
+shown one checked, and choosing one brings it back; focus goes to Build after Generate, Rebuild,
+Try another, Reload and Start over's Undo, and to Edit after a Lock or a refused Lock; Versions
+and Publish are in the `end` slot; the counter reads _N of M placed_ and its under row opens the
+activity; a line to look at takes focus to its cell (the second block of a two-block cell); the
+setup-changed box is gone and the menu's Update gets focus back. In the test org:
+`scripts/a11y-browser-check.mjs` (Build, Rebuild's question, Lock in Edit, Start over and its
+Undo, the counter).
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).

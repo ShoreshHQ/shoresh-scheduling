@@ -27,6 +27,7 @@ import {
 
 export { BUSY, NO_FIT, RELAX_ORDER, RULE, reasonFor, checkWeek };
 export { readActivities, readLocations, readProgram } from "./checkInputs";
+export { measureWeek } from "./measure";
 
 /** How a week is built: every unlocked cell again, or only the Open ones. */
 export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });

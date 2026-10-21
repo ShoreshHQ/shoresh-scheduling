@@ -1,0 +1,13 @@
+@import "c/shoreshTokens";
+
+/* The arrows and the choice: one group, items 4 apart. */
+:host {
+  display: inline-flex;
+  flex: none;
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+}

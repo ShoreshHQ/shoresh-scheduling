@@ -5,7 +5,13 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find, editorRoot } from "shoresh-jest/week-editor";
+import {
+  chooseLock,
+  editorRoot,
+  find,
+  lockLabels,
+  lockRows
+} from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
@@ -154,10 +160,8 @@ const lockAt = (element, key) => {
   const icon = cellAt(element, key).querySelector(".cell-lock lightning-icon");
   return icon ? icon.alternativeText : null;
 };
-const menuLabels = (element) =>
-  [...element.shadowRoot.querySelectorAll("lightning-menu-item")].map(
-    (i) => i.label
-  );
+// Lock's choices are in the rail's Edit menu (ADR 0010 §58).
+const menuLabels = (element) => lockLabels(element);
 const action = (element, name) => q(element, `[data-action="${name}"]`);
 const notice = (element) => {
   const line = editorRoot(element).querySelector('[data-id="notice"]');
@@ -191,10 +195,10 @@ async function conflictShown(element) {
   await until(() => q(element, '[data-id="conflict"]') !== null);
 }
 
-/** The slot of the editor a node of this screen is drawn in, and whether it comes after the toolbar. */
+/** The slot of the editor a node of this screen is drawn in, and whether it comes after the rail. */
 function underToolbar(element, node) {
   const slot = node.assignedSlot;
-  const toolbar = editorRoot(element).querySelector(".toolbar");
+  const toolbar = editorRoot(element).querySelector(".rail");
   return {
     slot: slot ? slot.name : null,
     after: !!(
@@ -220,35 +224,43 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(q(element, "c-shoresh-build-palette")).not.toBeNull();
   });
 
-  it("keeps one toolbar, as on the desktop: the pickers, the views, Undo and Redo, then Rebuild", async () => {
+  it("keeps one rail, as on the desktop: the week, Edit (Undo, Redo, Lock), Build, then the views", async () => {
     const element = await render();
-    // No second row of the screen's own: the editor's toolbar holds it all.
-    expect(element.shadowRoot.querySelector(".toolbar")).toBeNull();
-    const toolbar = editorRoot(element).querySelector(".toolbar");
+    // No second row of the screen's own: the editor's rail holds it all.
+    expect(element.shadowRoot.querySelector(".rail")).toBeNull();
+    const rail = editorRoot(element).querySelector(".rail");
     const slotOf = (node) => node.assignedSlot;
     const pickers = slotOf(q(element, '[data-id="week"]'));
-    const tools = slotOf(action(element, "Rebuild").parentElement);
+    const build = q(element, '[data-id="build-menu"]');
+    const tools = slotOf(build);
     expect(pickers.name).toBe("pickers");
     expect(tools.name).toBe("tools");
-    expect(slotOf(action(element, "StartOver"))).toBe(tools);
-    expect(slotOf(q(element, '[data-id="lock-menu"]').parentElement)).toBe(
-      tools
+    // Every build action is in Build; Lock is with the other hand edits, in Edit.
+    ["Rebuild", "TryAnother", "FillOpen", "StartOver"].forEach((name) =>
+      expect(action(element, name).parentElement).toBe(build)
     );
-    // In this order: the week, the views, Undo, Redo, then Rebuild (desktop: "Sits with undo/redo").
+    expect(lockRows(element)[0].parentElement).toBe(
+      editorRoot(element).querySelector('[data-id="edit-menu"]')
+    );
+    // In this order: the week, Edit (with Undo and Redo), Build, then the views.
     const inOrder = [
       pickers,
-      toolbar.querySelector(".view-toggle"),
-      q(element, '[data-id="undo"]'),
-      q(element, '[data-id="redo"]'),
-      tools
+      editorRoot(element).querySelector('[data-id="edit-menu"]'),
+      tools,
+      rail.querySelector('[role="group"][aria-label="View"]')
     ];
-    inOrder.forEach((node) => expect(toolbar.contains(node)).toBe(true));
+    inOrder.forEach((node) => expect(rail.contains(node)).toBe(true));
     inOrder.reduce((before, after) => {
       expect(
         before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
       return after;
     });
+    expect(
+      editorRoot(element)
+        .querySelector('[data-id="edit-menu"]')
+        .contains(q(element, '[data-id="undo"]'))
+    ).toBe(true);
   });
 
   it("a hand edit is saved through Generated's slot save, naming the locks seen, and locks what it changes at once", async () => {
@@ -305,7 +317,7 @@ describe("hand editing on the Generated Schedule screen", () => {
     await clearSwim(element);
     expect(action(element, "Rebuild").disabled).toBe(true);
     expect(action(element, "TryAnother").disabled).toBe(true);
-    expect(q(element, '[data-id="lock-menu"]').disabled).toBe(true);
+    expect(lockRows(element).every((row) => row.disabled)).toBe(true);
     expect(q(element, '[data-id="week"]').disabled).toBe(true);
     held.answer(slotAnswer(["1,,,", "1,,,"], [",,,", ",,,"]));
     await flush();
@@ -403,12 +415,7 @@ describe("hand editing on the Generated Schedule screen", () => {
         days: unlocked.days.map((day) => ({ ...day, locks: [] }))
       }
     });
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label === "Unlock Bunk 1 · Monday · Period 1");
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    chooseLock(element, "Unlock Bunk 1 · Monday · Period 1");
     await flush();
     expect(lockAt(element, "0-1")).toBeNull();
     expect(notice(element)).toBeNull();
@@ -436,12 +443,7 @@ describe("hand editing on the Generated Schedule screen", () => {
         new CustomEvent("focusin", { bubbles: true, composed: true })
       );
       await flush();
-      const item = [
-        ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-      ].find((i) => i.label === label);
-      q(element, '[data-id="lock-menu"]').dispatchEvent(
-        new CustomEvent("select", { detail: { value: item.value } })
-      );
+      chooseLock(element, label);
       await flush();
     };
     // The director unlocks it, then locks it again from the Lock menu.
@@ -509,12 +511,7 @@ describe("hand editing on the Generated Schedule screen", () => {
       new CustomEvent("focusin", { bubbles: true, composed: true })
     );
     await flush();
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label === "Lock Bunk 1 · Monday");
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    chooseLock(element, "Lock Bunk 1 · Monday");
     await flush();
     saveSlots.mockReturnValueOnce(new Promise(() => {}));
     q(element, '[data-id="undo"]').click();
@@ -556,12 +553,7 @@ describe("hand editing on the Generated Schedule screen", () => {
       new CustomEvent("focusin", { bubbles: true, composed: true })
     );
     await flush();
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label === "Lock Bunk 1 · Monday");
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    chooseLock(element, "Lock Bunk 1 · Monday");
     await flush();
     // Redo brings the hand edit back with its own lock.
     saveSlots.mockReturnValueOnce(new Promise(() => {}));
@@ -610,12 +602,7 @@ describe("hand editing on the Generated Schedule screen", () => {
       }
     });
     await press(cellAt(element, "0-1"), "Enter");
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label === "Unlock Bunk 1 · Monday · Period 1");
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    chooseLock(element, "Unlock Bunk 1 · Monday · Period 1");
     await flush();
     expect(editor(element).savedWeek.days[0].locks).toEqual([]);
     // Fill the open cells: a build. Undo had a step; now it has none.
@@ -667,18 +654,6 @@ describe("hand editing on the Generated Schedule screen", () => {
     const dot = cellAt(element, "0-3").querySelector("c-shoresh-dot");
     expect(dot).not.toBeNull();
     expect(dot.label).toBe("No activity fits this gap");
-  });
-
-  it("a counter's lit cells are lit in the editor's grid", async () => {
-    // Bunk 1 swims once (Monday, Period 1) of the two it needs: Still needed lights that Swim.
-    const week = savedWeek();
-    week.days[1] = { ...week.days[1], rows: ["1,,,", "1,,,"] };
-    const element = await render(week);
-    const checks = q(element, "c-shoresh-week-checks");
-    expect(cellAt(element, "0-1").className).not.toContain("cell_lit");
-    checks.shadowRoot.querySelector('[data-counter="stillNeeded"]').click();
-    await flush();
-    expect(cellAt(element, "0-1").className).toContain("cell_lit");
   });
 
   it("Add <name> to activities adds on the Generated draft, not Manual Build's, and places it", async () => {
@@ -820,12 +795,7 @@ describe("hand editing on the Generated Schedule screen", () => {
       new CustomEvent("focusin", { bubbles: true, composed: true })
     );
     await flush();
-    const item = [
-      ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-    ].find((i) => i.label === "Lock Bunk 1 · Monday · Period 1");
-    q(element, '[data-id="lock-menu"]').dispatchEvent(
-      new CustomEvent("select", { detail: { value: item.value } })
-    );
+    chooseLock(element, "Lock Bunk 1 · Monday · Period 1");
     await flush();
     await clearSwim(element);
     expect(saveSlots).not.toHaveBeenCalled();
@@ -974,7 +944,9 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
       "Week 1 as saved now."
     );
-    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="build-menu"]')
+    );
     saveSlots.mockReturnValue(new Promise(() => {}));
     await clearSwim(element);
     expect(saveSlots).toHaveBeenCalledTimes(1);

@@ -230,10 +230,10 @@
   margin-bottom: 0.75rem;
 }
 
-/* A quiet line under the toolbar with its Undo ("Started Week 1 over · Undo"), as the week
+/* A quiet line under the rail with its Undo ("Started Week 1 over · Undo"), as the week
    editor's "Cleared Week 1 · Undo". */
 .notice {
-  margin: -8px 0 12px;
+  margin: 0 0 12px;
   font-size: 13px;
   color: var(--slds-g-color-neutral-base-30, #444);
 }

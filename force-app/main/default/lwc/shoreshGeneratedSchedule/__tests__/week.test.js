@@ -1,11 +1,5 @@
 import { buildTerms } from "c/shoreshTerms";
-import {
-  activityCells,
-  clearedDays,
-  isLit,
-  litCells,
-  openCells
-} from "../week";
+import { activityCells, clearedDays, openCells } from "../week";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -128,40 +122,5 @@ describe("openCells", () => {
     expect(openCells([{ ...DAY, problem: "bad row" }], atCamp, terms)).toEqual(
       []
     );
-  });
-});
-
-describe("litCells", () => {
-  const checked = {
-    placements: [
-      { d: 0, groupId: "g1", kind: "A", id: "a1", first: 1, length: 2 },
-      { d: 0, groupId: "g1", kind: "A", id: "a2", first: 3, length: 1 },
-      { d: 0, groupId: "g2", kind: "A", id: "a2", first: 2, length: 1 }
-    ]
-  };
-
-  it("lights every placement of a still needed line's activity for its bunk, each block", () => {
-    const lit = litCells(
-      [{ kind: "stillNeeded", groupId: "g1", activityId: "a1" }],
-      checked,
-      [DAY]
-    );
-    expect([...lit]).toEqual(["2026-06-29|g1|b2", "2026-06-29|g1|b3"]);
-  });
-
-  it("lights an Open or overlapping line's own cell", () => {
-    const lit = litCells(
-      [{ kind: "open", dateValue: "2026-06-29", groupId: "g2", blockId: "b4" }],
-      checked,
-      [DAY]
-    );
-    expect([...lit]).toEqual(["2026-06-29|g2|b4"]);
-  });
-
-  it("a grid cell is lit when any block it covers is", () => {
-    const lit = new Set(["2026-06-29|g1|b3"]);
-    expect(isLit(lit, [DAY], { day: 0, group: 0, block: 1 })).toBe(true);
-    expect(isLit(lit, [DAY], { day: 0, group: 0, block: 3 })).toBe(false);
-    expect(isLit(new Set(), [DAY], { day: 0, group: 0, block: 1 })).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find, findAll } from "shoresh-jest/week-editor";
+import { counterText, find, findAll } from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import { buildTerms } from "c/shoreshTerms";
@@ -122,8 +122,28 @@ const cells = (element) => [
   ...grid(element).shadowRoot.querySelectorAll("[data-cell]")
 ];
 const checks = (element) => q(element, "c-shoresh-week-checks");
-const counter = (element, key) =>
-  checks(element).shadowRoot.querySelector(`[data-counter="${key}"]`);
+const buildMenu = (element) => q(element, '[data-id="build-menu"]');
+/** The options in the Build menu: each one's number, and the one checked. */
+const optionValues = (element) =>
+  qa(element, "[data-option]").map((row) => row.dataset.option);
+const optionShown = (element) => {
+  const row = qa(element, "[data-option]").find(
+    (r) => r.getAttribute("aria-checked") === "true"
+  );
+  return row ? row.dataset.option : null;
+};
+const chooseOption = (element, value) =>
+  q(element, `[data-option="${value}"]`).click();
+/** The counter's dropdown, opened: its rows (c-shoresh-week-checks). */
+async function openCounter(element) {
+  const word = checks(element)
+    .shadowRoot.querySelector('[data-id="counter"]')
+    .shadowRoot.querySelector('[data-id="button"]');
+  if (word.getAttribute("aria-expanded") !== "true") {
+    word.click();
+    await flush();
+  }
+}
 const sent = (call = 0) => saveWeekOnServer.mock.calls[call][0].request;
 
 async function generate(element) {
@@ -211,21 +231,32 @@ describe("c-shoresh-generated-schedule", () => {
       expect(after.assignedSlot.name).toBe("pickers");
     });
 
-    it("the counters sit under the toolbar (the editor's checks slot), as on Manual Build", async () => {
+    it("the counter sits on the rail's right (the editor's checks slot), as on Manual Build", async () => {
       const element = await render();
       await generate(element);
       expect(checks(element).assignedSlot.name).toBe("checks");
     });
 
-    it("Versions and Publish sit at the right edge: a spacer before them, after Start over", async () => {
+    it("Build sits after Edit; Versions and Publish at the rail's right edge, after the counter", async () => {
       const element = await render();
       await generate(element);
-      const spacer = q(element, ".spacer");
-      expect(spacer.assignedSlot.name).toBe("tools");
+      expect(buildMenu(element).assignedSlot.name).toBe("tools");
+      expect(buildMenu(element).label).toBe("Build");
+      expect(action(element, "StartOver").parentElement).toBe(
+        buildMenu(element)
+      );
+      expect(q(element, '[data-id="versions"]').assignedSlot.name).toBe("end");
+      expect(q(element, '[data-id="publish-area"]').assignedSlot.name).toBe(
+        "end"
+      );
       const follows = (a, b) =>
         a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
-      expect(follows(action(element, "StartOver"), spacer)).toBeTruthy();
-      expect(follows(spacer, q(element, '[data-id="versions"]'))).toBeTruthy();
+      expect(
+        follows(
+          q(element, '[data-id="versions"]'),
+          q(element, '[data-id="publish"]')
+        )
+      ).toBeTruthy();
     });
 
     it("another week not generated yet: the last week's grid goes, the pickers stay put", async () => {
@@ -261,17 +292,13 @@ describe("c-shoresh-generated-schedule", () => {
     expect(request.days.map((d) => d.rows)).toEqual(
       expected.days.map((d) => d.rows)
     );
-    // Shown: the grid, the actions, the counters (Filled and Overlapping, as on Manual Build).
+    // Shown: the grid, the actions, the counter (as on Manual Build).
     expect(q(element, '[data-id="start"]')).toBeNull();
     expect(grid(element)).not.toBeNull();
     expect(action(element, "Rebuild")).not.toBeNull();
-    const filled =
-      checks(element).shadowRoot.querySelector('[data-id="filled"]');
-    expect(filled.textContent).toContain(
-      `${expected.cells.filled} of ${expected.cells.total}`
+    expect(counterText(element)).toBe(
+      `${expected.cells.filled}of ${expected.cells.total} placed`
     );
-    expect(counter(element, "overlapping")).not.toBeNull();
-    expect(counter(element, "open")).toBeNull();
     expect(q(element, '[data-id="announce"]').textContent).toContain(
       `Filled ${expected.cells.filled} of ${expected.cells.total}.`
     );
@@ -360,11 +387,11 @@ describe("c-shoresh-generated-schedule", () => {
     // The next save goes from what this one was saved at.
     expect(sent(1).revision).toBe("2026-06-29:1|2026-06-30:1");
     expect(sent(1).scheduleId).toBe(SCHEDULE);
-    // Focus is back on Rebuild, not lost with the dialog.
-    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+    // Focus is back on Build, where Rebuild is, not lost with the dialog.
+    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
   });
 
-  it("Cancel and Escape close the confirm without building, focus back on the button", async () => {
+  it("Cancel and Escape close the confirm without building, focus back on Build", async () => {
     const element = await render();
     await generate(element);
     action(element, "Rebuild").click();
@@ -372,7 +399,7 @@ describe("c-shoresh-generated-schedule", () => {
     q(element, '[data-id="confirm-cancel"]').click();
     await flush();
     expect(q(element, '[data-id="confirm"]')).toBeNull();
-    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
 
     action(element, "Rebuild").click();
     await flush();
@@ -381,7 +408,7 @@ describe("c-shoresh-generated-schedule", () => {
     );
     await flush();
     expect(q(element, '[data-id="confirm"]')).toBeNull();
-    expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
     expect(saveWeekOnServer).toHaveBeenCalledTimes(1);
   });
 
@@ -420,27 +447,27 @@ describe("c-shoresh-generated-schedule", () => {
     await settle(element);
     expect(sent(1).action).toBe("TryAnother");
     expect(sent(1).option).toBe(2);
-    expect(element.shadowRoot.activeElement).toBe(
-      action(element, "TryAnother")
-    );
+    expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
     const second = await built(inputs, { option: 2, mode: MODE.FULL });
     expect(sent(1).days.map((d) => d.rows)).toEqual(
       second.days.map((d) => d.rows)
     );
 
-    const option = q(element, '[data-id="option"]');
-    expect(option.value).toBe("2");
-    expect(option.options.map((o) => o.value)).toEqual(["1", "2"]);
+    // Build lists the options tried, the one shown checked ("Option 2").
+    expect(optionShown(element)).toBe("2");
+    expect(optionValues(element)).toEqual(["1", "2"]);
+    expect(q(element, '[data-option="2"]').textContent.trim()).toBe("Option 2");
+    expect(q(element, '[data-option="2"]').getAttribute("role")).toBe(
+      "menuitemradio"
+    );
     saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
-    option.dispatchEvent(new CustomEvent("change", { detail: { value: "1" } }));
+    chooseOption(element, "1");
     await settle(element);
     expect(sent(2).action).toBe("TryAnother");
     expect(sent(2).option).toBe(1);
     expect(sent(2).days.map((d) => d.rows)).toEqual(first);
     // Option 2 can still be brought back.
-    expect(
-      q(element, '[data-id="option"]').options.map((o) => o.value)
-    ).toEqual(["1", "2"]);
+    expect(optionValues(element)).toEqual(["1", "2"]);
   });
 
   it("Fill the open cells builds in fill mode and is held while nothing is Open", async () => {
@@ -448,9 +475,7 @@ describe("c-shoresh-generated-schedule", () => {
     const element = await render(inputs);
     await generate(element);
     // The small week fills every cell.
-    expect(
-      checks(element).shadowRoot.querySelector('[data-id="filled"]').textContent
-    ).toContain("10 of 10");
+    expect(counterText(element)).toBe("10of 10 placed");
     expect(action(element, "FillOpen").disabled).toBe(true);
 
     // Start over leaves cells Open; then Fill the open cells fills them, in fill mode.
@@ -497,10 +522,8 @@ describe("c-shoresh-generated-schedule", () => {
       ]);
       day.rows.forEach((row) => expect(row).toBe("1,,,"));
     });
-    const filled =
-      checks(element).shadowRoot.querySelector('[data-id="filled"]');
     // Bunk 1's three periods and Bunk 2's two morning ones, on two days.
-    expect(filled.textContent).toContain("0 of 10");
+    expect(counterText(element)).toBe("0of 10 placed");
   });
 
   it("someone else's save first: says so, writes nothing over it, and Reload shows theirs", async () => {
@@ -548,7 +571,7 @@ describe("c-shoresh-generated-schedule", () => {
       "Option 2 wasn't saved. Nothing was changed. Flagpole stays where it is set up."
     );
     expect(cells(element).map((c) => c.textContent)).toEqual(before);
-    expect(q(element, '[data-id="option"]').value).toBe("1");
+    expect(optionShown(element)).toBe("1");
   });
 
   it("Salesforce's own text never reaches the director: it says what didn't happen, then Try again", async () => {
@@ -670,11 +693,12 @@ describe("c-shoresh-generated-schedule", () => {
     ["Rebuild", "TryAnother", "StartOver"].forEach((name) =>
       expect(action(element, name).disabled).toBe(true)
     );
-    expect(q(element, '[data-id="option"]').disabled).toBe(true);
+    expect(q(element, "[data-option]").disabled).toBe(true);
+    expect(buildMenu(element).disabled).toBe(true);
     answerRead(camp({ ...SMALL, scheduleId: SCHEDULE, option: 2 }));
     await flush();
     expect(action(element, "TryAnother").disabled).toBe(false);
-    expect(q(element, '[data-id="option"]').value).toBe("2");
+    expect(optionShown(element)).toBe("2");
     // The next save goes from the week just read.
     saveWeekOnServer.mockResolvedValueOnce(savedAnswer(3));
     action(element, "TryAnother").click();
@@ -691,9 +715,8 @@ describe("c-shoresh-generated-schedule", () => {
     });
     action(element, "TryAnother").click();
     await settle(element);
-    const option = q(element, '[data-id="option"]');
-    expect(option.value).toBe("1");
-    expect(option.options.map((o) => o.value)).toEqual(["1"]);
+    expect(optionShown(element)).toBe("1");
+    expect(optionValues(element)).toEqual(["1"]);
 
     // Try another saved (option 2), then picking 1 again is refused: Option goes back to 2.
     saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
@@ -702,12 +725,10 @@ describe("c-shoresh-generated-schedule", () => {
     saveWeekOnServer.mockRejectedValueOnce({
       body: { message: "Flagpole stays where it is set up." }
     });
-    const picker = q(element, '[data-id="option"]');
-    picker.value = "1"; // what the director picked
-    picker.dispatchEvent(new CustomEvent("change", { detail: { value: "1" } }));
+    chooseOption(element, "1");
     await settle(element);
     expect(sent(3).option).toBe(1);
-    expect(q(element, '[data-id="option"]').value).toBe("2");
+    expect(optionShown(element)).toBe("2");
   });
 
   it("a bunk away this week keeps its row: hatched, not counted to fill, not Open", async () => {
@@ -716,10 +737,8 @@ describe("c-shoresh-generated-schedule", () => {
     const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
     inputs.groups = inputs.groups.slice(0, 1);
     const element = await render(inputs);
-    // Filled: only Bunk 1's six cells (three periods on two days) are to fill.
-    expect(
-      checks(element).shadowRoot.querySelector('[data-id="filled"]').textContent
-    ).toContain("0 of 6");
+    // Placed: only Bunk 1's six cells (three periods on two days) are to fill.
+    expect(counterText(element)).toBe("0of 6 placed");
     // Every Bunk 2 cell but Flagpole (fixed, it stays) is hatched, Not at camp (the second
     // column).
     const bunk2 = cells(element).filter(
@@ -751,11 +770,8 @@ describe("c-shoresh-generated-schedule", () => {
         "No activity fits this gap"
       )
     );
-    // Filled counts them as not filled; there is no Open counter (decision 3).
-    expect(counter(element, "open")).toBeNull();
-    expect(
-      checks(element).shadowRoot.querySelector('[data-id="filled"]').textContent
-    ).not.toMatch(/(\d+) of \1\b/);
+    // Placed counts them as not filled.
+    expect(counterText(element)).not.toMatch(/^(\d+)of \1 placed$/);
   });
 
   it("dots a cell that bends a rule, its words in assistive text, worked out again on load", async () => {
@@ -795,8 +811,8 @@ describe("c-shoresh-generated-schedule", () => {
     );
   });
 
-  it("a counter lights up the cells it is about; a line takes the director to that bunk", async () => {
-    // Swim owed three times in two days, at most once a day: still needed.
+  it("the counter's under row shows that activity; a line to look at takes the director to that bunk", async () => {
+    // Swim owed three times in two days, at most once a day: under its goal.
     const inputs = camp({
       ...SMALL,
       activities: [
@@ -806,38 +822,19 @@ describe("c-shoresh-generated-schedule", () => {
     });
     const element = await render(inputs);
     await generate(element);
-    const needed = counter(element, "stillNeeded");
-    expect(Number(needed.querySelector(".count").textContent)).toBeGreaterThan(
-      0
+    await openCounter(element);
+    const swim = checks(element).shadowRoot.querySelector(
+      "button[data-activity]"
     );
-    needed.click();
-    await flush();
-    const lit = cells(element).filter((c) => c.className.includes("cell_lit"));
-    expect(lit.length).toBeGreaterThan(0);
-    lit.forEach((c) =>
-      expect(c.querySelector(".cell-name").textContent).toBe("Swim")
+    expect(swim.textContent.replace(/\s+/g, " ").trim()).toMatch(
+      /^Swim\d+of 6$/
     );
-    // Clicking the counter again turns them off.
-    counter(element, "stillNeeded").click();
+    swim.click();
     await flush();
     expect(
-      cells(element).filter((c) => c.className.includes("cell_lit"))
-    ).toHaveLength(0);
-
-    // A line: that bunk's week, in Group View.
-    counter(element, "stillNeeded").click();
-    await flush();
-    checks(element).shadowRoot.querySelector(".line-text").click();
-    await flush();
-    expect(q(element, '[data-view="group"]').getAttribute("aria-pressed")).toBe(
-      "true"
-    );
-    // A still needed line names no cell: focus goes to that bunk's week (a cell of its grid), as
-    // in Manual Build, never nowhere.
-    expect(grid(element).shadowRoot.activeElement).not.toBeNull();
-    expect(
-      cells(element).filter((c) => c.className.includes("cell_lit"))
-    ).toHaveLength(0);
+      q(element, '[data-view="activity"]').getAttribute("aria-pressed")
+    ).toBe("true");
+    expect(q(element, ".drill-name").textContent).toBe("Swim");
   });
 
   it("cells can be reached from the keyboard and changed by hand, never through a whole-week save", async () => {
@@ -875,7 +872,7 @@ describe("c-shoresh-generated-schedule", () => {
     await generate(element);
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
-    ).toEqual(["Daily View", "Group View", "Activity View"]);
+    ).toEqual(["Daily", "Group", "Activity"]);
     expect(q(element, ".legend").textContent).toContain("Not at camp");
   });
 
@@ -996,7 +993,7 @@ describe("c-shoresh-generated-schedule", () => {
       );
     });
 
-    it("Reload holds the actions until the week is read, then puts focus on Rebuild", async () => {
+    it("Reload holds the actions until the week is read, then puts focus on Build", async () => {
       const element = await render();
       await generate(element);
       saveWeekOnServer.mockResolvedValueOnce({
@@ -1018,14 +1015,12 @@ describe("c-shoresh-generated-schedule", () => {
       answerRead(camp({ ...SMALL, scheduleId: SCHEDULE, option: 3 }));
       await flush();
       expect(action(element, "TryAnother").disabled).toBe(false);
-      expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+      expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
       expect(q(element, '[data-id="announce"]').textContent).toContain(
         "Week 1 as saved now."
       );
       // Every option up to the one saved can be brought back.
-      expect(
-        q(element, '[data-id="option"]').options.map((o) => o.value)
-      ).toEqual(["1", "2", "3"]);
+      expect(optionValues(element)).toEqual(["1", "2", "3"]);
     });
   });
 
@@ -1205,13 +1200,12 @@ describe("c-shoresh-generated-schedule", () => {
         rows: ["1,2,^,", "1,2,^,"]
       };
       const element = await render(inputs);
-      checks(element)
-        .shadowRoot.querySelector('[data-id="review-all"]')
-        .click();
-      await flush();
+      await openCounter(element);
       const line = [
-        ...checks(element).shadowRoot.querySelectorAll(".line-text")
-      ].find((b) => b.textContent.startsWith("Bunk 2 · Monday · Period 2"));
+        ...checks(element).shadowRoot.querySelectorAll(".look-row")
+      ].find((b) =>
+        b.textContent.trim().startsWith("Bunk 2 · Monday · Period 2")
+      );
       expect(line).toBeTruthy();
       line.click();
       await flush();
@@ -1219,10 +1213,10 @@ describe("c-shoresh-generated-schedule", () => {
       expect(grid(element).shadowRoot.activeElement.dataset.cell).toBe("0-1");
     });
 
-    it("after the first Generate, focus is on Rebuild; after one the engine can't build, on Generate", async () => {
+    it("after the first Generate, focus is on Build; after one the engine can't build, on Generate", async () => {
       const element = await render();
       await generate(element);
-      expect(element.shadowRoot.activeElement).toBe(action(element, "Rebuild"));
+      expect(element.shadowRoot.activeElement).toBe(buildMenu(element));
 
       document.body.removeChild(element);
       const none = await render(camp({ ...SMALL, activities: [] }));
@@ -1257,34 +1251,6 @@ describe("c-shoresh-generated-schedule", () => {
       expect(
         outside.mock.calls.filter((c) => c[0].key === "Escape")
       ).toHaveLength(0);
-    });
-
-    it("an accepted line comes back after the next build", async () => {
-      const inputs = camp({
-        ...SMALL,
-        activities: [
-          { name: "Swim", min: 3, max: 3, atOnce: 2 },
-          { name: "Art", min: 0, max: 5, atOnce: 2 }
-        ]
-      });
-      const element = await render(inputs);
-      await generate(element);
-      const needed = () =>
-        Number(
-          counter(element, "stillNeeded").querySelector(".count").textContent
-        );
-      const before = needed();
-      counter(element, "stillNeeded").click();
-      await flush();
-      checks(element).shadowRoot.querySelector(".line-accept").click();
-      await flush();
-      expect(needed()).toBe(before - 1);
-      saveWeekOnServer.mockResolvedValueOnce(savedAnswer(2));
-      action(element, "Rebuild").click();
-      await flush();
-      q(element, '[data-id="confirm-go"]').click();
-      await settle(element);
-      expect(needed()).toBe(before);
     });
   });
 });

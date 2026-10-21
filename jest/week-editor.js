@@ -45,3 +45,39 @@ export function focusedCellKey(element) {
 export function expectFocusInGrid(element) {
   expect(focusedCellKey(element)).not.toBeNull();
 }
+
+// The rail (ADR 0008 part 7): Edit is the editor's menu; the screens' own rows join it there
+// (Generated's Lock choices), and the counter is c-shoresh-week-checks.
+
+/** The Lock choices in the editor's Edit menu (Generated Schedule), as rows. */
+export function lockRows(element) {
+  const root = editorRoot(element);
+  return root ? [...root.querySelectorAll('[data-value^="lock:"]')] : [];
+}
+
+/** The Lock choices' words, in order ("Lock Monday"). */
+export function lockLabels(element) {
+  return lockRows(element).map((row) => row.textContent.trim());
+}
+
+/** Chooses a Lock choice by its words, as a click in the Edit menu does. */
+export function chooseLock(element, label) {
+  const row = lockRows(element).find((r) => r.textContent.trim() === label);
+  if (!row) {
+    throw new Error(`No Lock choice "${label}": ${lockLabels(element)}`);
+  }
+  row.click();
+}
+
+/** The rail's counter as read ("2of 9 placed"), or null when it isn't drawn. */
+export function counterText(element) {
+  const checks = element.shadowRoot.querySelector("c-shoresh-week-checks");
+  if (!checks) {
+    return null;
+  }
+  const pop = checks.shadowRoot.querySelector('[data-id="counter"]');
+  return pop.shadowRoot
+    .querySelector('[data-id="button"]')
+    .textContent.replace(/\s+/g, " ")
+    .trim();
+}

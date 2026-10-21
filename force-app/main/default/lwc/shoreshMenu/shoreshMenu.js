@@ -51,6 +51,22 @@ export default class ShoreshMenu extends LightningElement {
     event.preventDefault();
   }
 
+  /**
+   * Focus on the foot's Update to match setup, when it is there and can be used (the schedule's
+   * list of changes closed and gave focus back). True when it took focus.
+   */
+  @api
+  focusUpdateToMatch() {
+    const button = this.template.querySelector(
+      '[data-id="menu-update-to-match"]'
+    );
+    if (!button || button.disabled) {
+      return false;
+    }
+    button.focus();
+    return true;
+  }
+
   /** The foot's Update to match setup: the schedule shown opens its list of changes. */
   handleUpdateToMatch() {
     this.dispatchEvent(new CustomEvent("updatetomatch"));

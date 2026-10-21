@@ -50,6 +50,8 @@ const SEASON_INPUTS = {
 };
 // The two dates, saved together (see saveSeasonField).
 const SEASON_DATES = ["start", "end"];
+// The schedules: their rail, grid and drawer are the frame's zones (each with its own inset).
+const FLUSH_SCREENS = new Set(["manualBuild", "generatedSchedule"]);
 
 const SCREENS = [
   "roots",
@@ -358,6 +360,17 @@ export default class ShoreshCampSetup extends LightningElement {
     return this.mode === "screens" ? this.screen : null;
   }
   /** Each screen's class: shown, or hidden (kept on the page with its unsaved typing). */
+  /**
+   * The frame's body: inset like every zone, except under a schedule, whose rail, grid and
+   * drawer are zones of the frame themselves, each with its own inset and the hairline between
+   * them running edge to edge (docs/design/manual-build.html).
+   */
+  get bodyClass() {
+    return FLUSH_SCREENS.has(this.currentScreen)
+      ? "zone body body_flush"
+      : "zone body";
+  }
+
   get shown() {
     const result = {};
     SCREENS.forEach((screen) => {
@@ -419,6 +432,15 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get menuSetupBusy() {
     return !!this.shownSetupState.busy;
+  }
+
+  /**
+   * The schedule's list of changes closed: focus goes back to the menu's Update to match setup,
+   * which opened it, when it is still there (setupfocus { focused }, said back to the screen).
+   */
+  handleSetupFocus(event) {
+    const menu = this.template.querySelector("c-shoresh-menu");
+    event.detail.focused = !!menu && menu.focusUpdateToMatch();
   }
 
   /** The menu's Update to match setup: the schedule on screen opens its list of changes. */

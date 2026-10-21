@@ -1,164 +1,52 @@
 @import "c/shoreshTokens";
 
-/* The counters under the toolbar (desktop StatBadge): the number on top, the words below. Only
-   a count with something in it is bronze; a zero is grey and opens nothing. */
-.counters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: stretch;
-  margin: 0 0 12px;
-}
-
-.counter {
+/* The counter's dropdown (docs/design/manual-build.html #open): in the Edit menu's look. */
+:host {
   display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 120px;
-  padding: 8px 14px;
-  border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
-  border-radius: 8px;
-  background: var(--slds-g-color-neutral-base-100, #ffffff);
-  color: var(--slds-g-color-neutral-base-10, #181818);
-  font: inherit;
-  text-align: center;
-  cursor: default;
 }
 
-.counter[aria-disabled="true"] {
-  cursor: default;
-}
-
-.counter_due {
-  border-color: var(--shoresh-caution);
-  cursor: pointer;
-}
-
-.count {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--shoresh-text-secondary);
-}
-
-.counter_plain .count {
-  color: var(--slds-g-color-neutral-base-10, #181818);
-}
-
-.counter_due .count {
-  color: var(--slds-g-color-neutral-base-10, #181818);
-}
-
-/* Desktop StatBadge: the words small and quiet under the number; a chevron says it opens a list. */
-.counter-label {
-  font-size: 11px;
-  color: var(--shoresh-text-secondary);
-}
-
-.chevron {
-  display: inline-block;
-  margin-left: 4px;
-  vertical-align: middle;
-  --slds-c-icon-color-foreground-default: var(--shoresh-text-secondary);
-}
-
-/* The list opens under the counters as a panel over the grid (desktop FindingsRail): at most
-   360px wide and 400px high, scrolling inside, so the grid stays in view. */
-.checks {
-  position: relative;
-}
-
-.counter-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 20;
-  width: 360px;
-  max-width: 100%;
-  max-height: 400px;
+.list {
+  width: calc(var(--shoresh-u) * 64);
+  max-height: 70vh;
   overflow-y: auto;
-  margin-top: 6px;
-  background: var(--slds-g-color-neutral-base-100, #ffffff);
-  border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
-  border-radius: 8px;
-  box-shadow: 0 2px 24px rgba(30, 42, 52, 0.06);
-  font-size: 13px;
 }
 
-.counter-list-head {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
-  font-size: 12px;
-  color: var(--shoresh-text-secondary);
-}
-
-.counter-list ul {
+ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* Each line has a bar on its left: bronze (needs a look), forest for spread. */
-.counter-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--shoresh-caution);
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+/* The slim bar: what is placed, in the highlight, on a recessed track. */
+.bar {
+  display: block;
+  height: var(--shoresh-s2);
+  margin: var(--shoresh-s2) var(--shoresh-space-control-x) 0;
+  border-radius: 2px;
+  background: var(--shoresh-surface-drawer);
+  box-shadow: var(--shoresh-well-in);
+  overflow: hidden;
 }
 
-.line_info {
-  border-left-color: var(--shoresh-secondary);
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--shoresh-color-highlight);
 }
 
-.counter-list-empty {
-  margin: 0;
-  padding: 16px 14px;
-  text-align: center;
-  color: var(--shoresh-text-secondary);
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.counter-list-foot {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 10px;
+.mark {
+  transform: translateY(-3px);
 }
 
-.line-text {
-  flex: 1;
-  min-width: 0;
-  padding: 2px 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.line-text:hover {
-  text-decoration: underline;
-}
-
-.line-text:focus-visible {
-  outline: 2px solid var(--shoresh-primary);
-  outline-offset: 2px;
-}
-
-/* Generated: "Review all" (desktop), a quiet link-like button at the end of the counters. */
-.review-all {
-  align-self: center;
-  padding: 4px 6px;
-  border: 0;
-  background: none;
-  color: var(--shoresh-primary);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.review-all:focus-visible {
-  outline: 2px solid var(--shoresh-primary);
-  outline-offset: 2px;
+/* A line to look at can be long: it wraps, one item tall at least. */
+.look-row {
+  white-space: normal;
+  padding-top: var(--shoresh-s2);
+  padding-bottom: var(--shoresh-s2);
+  line-height: 1.35;
 }

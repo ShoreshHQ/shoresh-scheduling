@@ -1,0 +1,57 @@
+<template>
+  <div class="picker" role="group" aria-label={label}>
+    <template lwc:if={arrows}>
+      <button
+        type="button"
+        class="shoresh-item shoresh-item_icon"
+        aria-label={previousLabel}
+        title={previousLabel}
+        disabled={noPrevious}
+        onclick={handlePrevious}
+        data-id="previous"
+      >
+        <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M10 4 6 8l4 4"></path>
+        </svg>
+      </button>
+    </template>
+    <c-shoresh-rail-pop
+      label={shownLabel}
+      alternative-text={buttonName}
+      menu
+      raised={arrows}
+      no-chevron={arrows}
+      disabled={disabled}
+      onselect={handleSelect}
+      data-id="choose"
+    >
+      <template for:each={rows} for:item="row">
+        <button
+          key={row.value}
+          type="button"
+          class="shoresh-pop-row"
+          role="menuitemradio"
+          aria-checked={row.checked}
+          data-value={row.value}
+        >
+          {row.label}
+        </button>
+      </template>
+    </c-shoresh-rail-pop>
+    <template lwc:if={arrows}>
+      <button
+        type="button"
+        class="shoresh-item shoresh-item_icon"
+        aria-label={nextLabel}
+        title={nextLabel}
+        disabled={noNext}
+        onclick={handleNext}
+        data-id="next"
+      >
+        <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="m6 4 4 4-4 4"></path>
+        </svg>
+      </button>
+    </template>
+  </div>
+</template>

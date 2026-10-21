@@ -1,0 +1,34 @@
+<template>
+  <button type="button" data-id="before">Before</button>
+  <c-shoresh-rail-pop
+    label="Edit"
+    menu
+    onselect={handleSelect}
+    data-id="edit-menu"
+  >
+    <button type="button" role="menuitem" data-id="one" onclick={handleOne}>
+      One
+    </button>
+    <button type="button" role="menuitem" data-id="two" disabled>Two</button>
+    <button
+      type="button"
+      role="menuitem"
+      aria-expanded={moreText}
+      data-id="more"
+      onclick={handleMore}
+    >
+      More…
+    </button>
+    <template lwc:if={more}>
+      <button type="button" role="menuitem" data-value="m1" data-id="m1">
+        Inner
+      </button>
+    </template>
+    <button type="button" role="menuitem" data-value="three" data-id="three">
+      Three
+    </button>
+  </c-shoresh-rail-pop>
+  <button type="button" data-id="after">After</button>
+  <p data-id="chosen">{chosenText}</p>
+  <p data-id="ones">{ones}</p>
+</template>

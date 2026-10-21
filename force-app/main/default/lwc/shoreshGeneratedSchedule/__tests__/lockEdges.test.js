@@ -6,7 +6,14 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find, findAll } from "shoresh-jest/week-editor";
+import {
+  chooseLock,
+  editorRoot,
+  find,
+  findAll,
+  lockLabels,
+  lockRows
+} from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import { buildTerms } from "c/shoreshTerms";
@@ -99,11 +106,9 @@ const q = (element, selector) => find(element, selector);
 const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cellAt = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);
-const menu = (element) => q(element, '[data-id="lock-menu"]');
-const menuLabels = (element) =>
-  [...element.shadowRoot.querySelectorAll("lightning-menu-item")].map(
-    (i) => i.label
-  );
+// Lock's choices are in the rail's Edit menu (ADR 0010 §58).
+const editMenu = (element) => q(element, '[data-id="edit-menu"]');
+const menuLabels = (element) => lockLabels(element);
 
 async function focusCell(element, key) {
   cellAt(element, key).dispatchEvent(
@@ -112,12 +117,7 @@ async function focusCell(element, key) {
   await flush();
 }
 async function choose(element, label) {
-  const item = [
-    ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-  ].find((i) => i.label === label);
-  menu(element).dispatchEvent(
-    new CustomEvent("select", { detail: { value: item.value } })
-  );
+  chooseLock(element, label);
   await flush();
 }
 
@@ -191,23 +191,21 @@ describe("a cell locked empty, and a lock left where a bunk is now away", () => 
 });
 
 describe("the Lock menu", () => {
-  it("stays in the toolbar, held, when nothing applies (and in Activity View)", async () => {
+  it("Edit offers no Lock when nothing applies (and in Activity View)", async () => {
     // Nothing placed but Flagpole, no cell reached: nothing to lock.
     const element = await render(camp({ ...SMALL, scheduleId: SCHEDULE }));
-    expect(menu(element)).not.toBeNull();
-    expect(menu(element).disabled).toBe(true);
+    expect(editMenu(element)).not.toBeNull();
+    expect(menuLabels(element)).toEqual([]);
     q(element, '[data-view="activity"]').click();
     await flush();
-    expect(menu(element).disabled).toBe(true);
     expect(menuLabels(element)).toEqual([]);
   });
 
-  it("names itself once for a screen reader (no group of its own)", async () => {
+  it("its choices are Edit's menu items, each naming what it locks", async () => {
     const element = await render(savedWeek());
-    expect(menu(element).alternativeText).toBe("Lock");
-    expect(
-      menu(element).closest('[role="group"][aria-label="Lock"]')
-    ).toBeNull();
+    const rows = lockRows(element);
+    expect(rows.map((row) => row.getAttribute("role"))).toEqual(["menuitem"]);
+    expect(rows[0].closest('[role="group"]')).toBeNull();
   });
 
   it("an Unlock that leaves nothing to offer puts focus on the grid", async () => {
@@ -224,20 +222,18 @@ describe("the Lock menu", () => {
     const focusGrid = jest.spyOn(grid(element), "focusCell");
     await choose(element, "Unlock Monday");
     await flush();
-    expect(menu(element).disabled).toBe(true);
+    expect(menuLabels(element)).toEqual([]);
     expect(focusGrid).toHaveBeenCalled();
   });
 
-  it("a refused change puts focus back on the menu", async () => {
+  it("a refused change puts focus back on the Edit menu", async () => {
     const element = await render(savedWeek());
     setLocksOnServer.mockRejectedValue({
       body: { message: "A saved version can't be changed." }
     });
-    const focus = jest.fn();
-    menu(element).focus = focus;
     await choose(element, "Lock Monday");
     await flush();
-    expect(focus).toHaveBeenCalled();
+    expect(editorRoot(element).activeElement).toBe(editMenu(element));
   });
 
   it("forgets the cell reached on another view or bunk (grid keys repeat)", async () => {
@@ -364,9 +360,10 @@ describe("a Lock saving while other things happen", () => {
     ["Rebuild", "TryAnother", "StartOver"].forEach((name) =>
       expect(q(element, `[data-action="${name}"]`).disabled).toBe(true)
     );
-    expect(menu(element).disabled).toBe(true);
-    menu(element).dispatchEvent(
-      new CustomEvent("select", { detail: { value: "Lock|day" } })
+    // Held, and chosen anyway: nothing more is sent.
+    expect(lockRows(element).every((row) => row.disabled)).toBe(true);
+    q(element, "c-shoresh-week-editor").dispatchEvent(
+      new CustomEvent("editselect", { detail: { value: "lock:Lock|day" } })
     );
     await flush();
     expect(setLocksOnServer).toHaveBeenCalledTimes(1);

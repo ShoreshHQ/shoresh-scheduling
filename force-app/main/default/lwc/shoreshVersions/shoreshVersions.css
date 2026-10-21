@@ -1,28 +1,29 @@
-/* Shoresh desktop's Versions dropdown (VersionsDropdown.jsx), in Salesforce's design tokens. */
+@import "c/shoreshTokens";
+
+/* Shoresh desktop's Versions dropdown (VersionsDropdown.jsx), as a rail menu in the Edit menu's
+   look (docs/design/manual-build.html; ADR 0008 part 7). */
+:host {
+  display: inline-flex;
+}
+
 .versions {
   position: relative;
 }
 
 .panel {
-  position: absolute;
-  top: calc(100% + 6px);
   right: 0;
-  z-index: 100;
   width: 360px;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  padding: 0;
   overflow: hidden;
 }
 
 .panel-head {
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  padding: var(--shoresh-s3) var(--shoresh-s3) var(--shoresh-s2);
+  border-bottom: 1px solid var(--shoresh-rule);
 }
 
 .panel-title {
-  font-size: 15px;
+  font-size: var(--shoresh-font-size-title);
   font-weight: 600;
 }
 
@@ -32,17 +33,16 @@
 }
 
 .empty {
-  padding: 16px 14px;
-  font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
+  padding: var(--shoresh-s4) var(--shoresh-s3);
+  color: var(--shoresh-text-2);
 }
 
 .version {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  gap: var(--shoresh-s2);
+  padding: var(--shoresh-s2) var(--shoresh-s3);
+  border-bottom: 1px solid var(--shoresh-rule);
 }
 
 .version-text {
@@ -51,76 +51,78 @@
 }
 
 .version-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
 .version-meta {
-  font-size: 10px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
   margin-top: 1px;
+  font-size: 11px;
+  color: var(--shoresh-text-2);
 }
 
 .on-screen {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
   padding: 2px 6px;
   border-radius: 10px;
+  background: var(--shoresh-surface-grid);
+  color: var(--shoresh-color-highlight);
+  font-size: 11px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .link {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 3px 6px;
   /* A target at least 24px each way (WCAG 2.5.8). */
   min-height: 24px;
   min-width: 24px;
+  padding: 3px 6px;
+  border: none;
+  border-radius: var(--shoresh-radius);
+  background: none;
+  color: var(--shoresh-color-highlight);
+  font-family: var(--shoresh-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.link:hover:not(:disabled) {
+  background: var(--shoresh-surface-grid);
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
 }
 
 .link:disabled {
-  color: var(--slds-g-color-neutral-base-50, #747474);
+  color: var(--shoresh-text-2);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-/* "Delete?": the second click deletes, so it looks like it (desktop VersionsDropdown). */
+/* "Delete?": the second click deletes, so it looks like it (desktop VersionsDropdown). Salesforce's
+   red for a refusal (ADR 0015 §7). */
 .link_danger {
-  font-size: 10px;
-  color: var(--slds-g-color-error-base-40, #ba0517);
-  background: var(--slds-g-color-error-base-90, #fddde3);
-  border-radius: 5px;
+  color: var(--slds-g-color-error-1, #b60554);
+  background: var(--shoresh-surface-grid);
 }
 
 .link_quiet {
-  font-size: 10px;
   font-weight: 400;
-  color: var(--slds-g-color-neutral-base-50, #747474);
+  color: var(--shoresh-text-2);
 }
 
 .rename {
   display: flex;
-  gap: 4px;
+  gap: var(--shoresh-s1);
   width: 100%;
 }
 
-/* Manual Build's footer: "Name current version…" and Save version (desktop VersionsDropdown). */
+/* "Name current version…" and Save version (desktop VersionsDropdown). */
 .panel-foot {
   display: flex;
-  gap: 8px;
+  gap: var(--shoresh-s2);
   align-items: center;
-  padding: 8px 12px;
-  border-top: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
-}
-
-/* The Versions button's chevron, after its word. */
-.chevron {
-  margin-left: 0.25rem;
+  padding: var(--shoresh-s2) var(--shoresh-s3);
 }

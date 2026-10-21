@@ -10,71 +10,102 @@
   position: relative;
 }
 
-.toolbar {
+/*
+ * The rail (docs/design/manual-build.html #b, spacing-spec.md part 2, layout B): one item tall
+ * plus the zone's inset, three parts. Left and right share the free width, but the left starts
+ * with a head start of the grid's time column and its gap, so the days in the middle sit over
+ * the grid's cells, not the page's centre. Inside each part, the round 11 grammar: items 4
+ * apart, a thin line with 8 each side between groups.
+ */
+.rail {
+  --offset: calc(var(--shoresh-head-w) + var(--shoresh-space-cell-gap));
+  box-sizing: border-box;
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  align-items: center;
+  min-height: calc(var(--shoresh-control-h) + 2 * var(--shoresh-space-pad));
+  padding: var(--shoresh-space-pad);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  line-height: 1.25;
+  color: var(--shoresh-text-1);
 }
 
-/* The view toggle: one raised button in a grey track. */
-.view-toggle {
+/* A part never gets narrower than what it holds: with too little room the days give a little
+   of their centring rather than slide under the views or the counter. */
+.side {
   display: flex;
-  gap: 2px;
-  background: var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
-  padding: 3px;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-width: max-content;
 }
 
-.view-button {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  background: none;
-  color: var(--slds-g-color-neutral-base-10, #181818);
+.side_left {
+  flex-basis: var(--offset);
 }
 
-.view-button_on {
-  font-weight: 700;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  border-bottom-color: var(--slds-g-color-brand-base-50, #0176d3);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+.side_right {
+  justify-content: flex-end;
 }
 
-/* Day and group pills, centred above the grid. */
-.pills {
+.mid {
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  flex: none;
+  align-items: center;
+  min-width: 0;
 }
 
-.pill {
-  padding: 5px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid var(--slds-g-color-brand-base-50, #0176d3);
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  cursor: pointer;
+/* The views sit against the days, with the one group line either side. */
+.views {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
 }
 
-.pill_on {
-  background: var(--slds-g-color-brand-base-50, #0176d3);
-  color: var(--slds-g-color-neutral-base-100, #fff);
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+}
+
+/* Many bunks in Group View: the row scrolls rather than pushing the rail apart. */
+.group_scroll {
+  max-width: 60vw;
+  overflow-x: auto;
+  padding: 2px;
 }
 
 .pill-sub {
   font-weight: 400;
-  opacity: 0.8;
+  color: var(--shoresh-text-2);
+}
+
+/* A menu row whose rows are open under it turns its chevron up. */
+.chevron_open {
+  transform: rotate(180deg);
+}
+
+/* Too narrow for one line: the rail's parts wrap, in order. */
+@media (max-width: 75em) {
+  .rail {
+    flex-wrap: wrap;
+    row-gap: var(--shoresh-s2);
+  }
+
+  .side,
+  .side_left,
+  .mid {
+    flex: 1 1 auto;
+  }
+
+  .views {
+    margin-left: 0;
+  }
+}
+
+/* The work under the rail: its zone's inset on every side. */
+.work {
+  padding: var(--shoresh-space-pad);
 }
 
 /* Activity View's cards. */
@@ -271,14 +302,9 @@
   min-width: 0;
 }
 
-.undo-redo {
-  display: flex;
-  gap: 4px;
-}
-
-/* A refused move: a quiet line under the toolbar. */
+/* A refused move: a quiet line under the rail. */
 .notice {
-  margin: -8px 0 12px;
+  margin: 0 0 12px;
   font-size: 13px;
   color: var(--slds-g-color-neutral-base-30, #444);
 }
