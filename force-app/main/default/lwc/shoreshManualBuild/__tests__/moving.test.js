@@ -337,11 +337,15 @@ describe("c-shoresh-manual-build: moving things", () => {
     const down = pointer(handle, "pointerdown", fromY);
     // Moves keep reaching the grid wherever the pointer is (captured on the grid).
     const frame = grid(element).shadowRoot.querySelector(".frame");
-    for (let i = 1; i <= steps; i++) {
-      pointer(frame, "pointermove", fromY + ((toY - fromY) * i) / steps);
-      // eslint-disable-next-line no-await-in-loop
-      await flush();
-    }
+    // One move, then a render, per step, in order.
+    await Array.from({ length: steps }, (_, n) => n + 1).reduce(
+      (previous, i) =>
+        previous.then(() => {
+          pointer(frame, "pointermove", fromY + ((toY - fromY) * i) / steps);
+          return flush();
+        }),
+      Promise.resolve()
+    );
     if (letGo) {
       pointer(frame, "pointerup", toY);
       await flush();
