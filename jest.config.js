@@ -14,7 +14,9 @@ module.exports = {
     "^c/(shoreshTokens|shoreshScheduleScreen)$":
       "<rootDir>/force-app/main/default/lwc/$1/$1.css",
     // Test helpers shared by suites (jest/namespace.js: namespace-safe fixtures).
-    "^shoresh-jest/(.*)$": "<rootDir>/jest/$1.js"
+    "^shoresh-jest/(.*)$": "<rootDir>/jest/$1.js",
+    // Pages used only by tests (a parent that slots rows into a rail menu).
+    "^c/(railPopFixture)$": "<rootDir>/jest/fixtures/lwc/$1/$1.js"
   },
   // Shared made-up data for tests, not tests themselves.
   testPathIgnorePatterns: [

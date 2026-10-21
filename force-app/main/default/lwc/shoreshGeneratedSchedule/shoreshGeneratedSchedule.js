@@ -31,7 +31,7 @@ import {
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
-import { clearedDays, litCells, openCells } from "./week";
+import { clearedDays, openCells } from "./week";
 import { activityOptions, awayRows, lockOf } from "./editing";
 
 // What each action is called on its button and while it runs.
@@ -53,6 +53,10 @@ function statementOf(message) {
     .trim();
 }
 
+// The rail's Build menu (Rebuild, Try another, Fill the open cells, the options, Start over):
+// focus goes back to it once one of them is done.
+const BUILD_MENU = '[data-id="build-menu"]';
+
 /**
  * Generated Schedule (desktop: the generated route of ScheduleScreen.jsx): a program's week built
  * by the engine (c/shoreshEngine) in the browser and saved whole (c/shoreshGeneratedWeek, ADR
@@ -63,11 +67,13 @@ function statementOf(message) {
  *   Fill the open cells fills only the cells left Open;
  *   Start over clears every activity at once (a version is kept first), with an Undo that brings
  *     that version back, as Manual Build's Clear week offers Undo (Greg's decision 2, 2026-10-20).
- * The screen is laid out as Manual Build is: one editor shell from the start (so the pickers never
- * move when the week is drawn), the counters under its toolbar, Versions and Publish at its right.
+ * The screen is laid out as Manual Build is: one editor shell from the start (so the week never
+ * moves when the week is drawn), its rail with the week, Edit (Undo, Redo and Lock), Build (the
+ * actions above and the options), the views and days, the counter, Versions and Publish (ADR
+ * 0010 §58).
  * The build runs a little at a time (ADR 0010 §22) with its progress shown, so a big week never
  * freezes the tab. A save someone else's save got in the way of writes nothing: the screen says
- * so and offers to reload. Dots, counters and the "Still to place" list are worked out from the
+ * so and offers to reload. Dots and the counter are worked out from the
  * week on screen with the engine's own rules, whether it was just built or saved before.
  *
  * The week is drawn and edited by hand in the shared week editor (c-shoresh-week-editor, ADR
@@ -86,7 +92,7 @@ function statementOf(message) {
  *
  * Setup changed since the week was built works as on Manual Build (ADR 0008 part 6, ADR 0010
  * §56; Greg's look-and-feel decision 1): each cell that no longer matches setup gets the bronze dot
- * saying why, the box under the toolbar says "Week 1 doesn't match setup", and Update to match
+ * saying why, the menu's foot says so (ADR 0015 §9), and its Update to match
  * setup shows every change first (c-shoresh-setup-match), one at a time or all; nothing changes
  * unless the director chooses it. Locks stay on every cell an update leaves as it was.
  *
@@ -128,7 +134,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   confirming;
   // The highest option tried this visit, so each stays in Option to bring back.
   triedUpTo = 1;
-  // How the editor shows the week (it says so with statechange): what the Lock menu offers.
+  // How the editor shows the week (it says so with statechange): what Lock (in Edit) offers.
   view = "day";
   dayIndex = 0;
   groupKey;
@@ -146,7 +152,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   setupMemo = { setup: undefined, input: undefined, value: undefined };
   checksResetKey = 0;
   // The cells a counter lights up ("date|groupId|blockId"), generated route.
-  lit = new Set();
   focusAfterRender = null;
   // Where focus goes once a versions action is over (its control may be gone meanwhile).
   focusAfterVersions = null;
@@ -275,18 +280,23 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (!this.focusAfterRender) {
       return;
     }
-    const { cellKey, selector, grid: toGrid } = this.focusAfterRender;
+    const { cellKey, selector, grid: toGrid, editMenu } = this.focusAfterRender;
     this.focusAfterRender = null;
     const editor = this.weekEditor;
     if (editor && (cellKey || toGrid)) {
       editor.focusCell(cellKey);
       return;
     }
+    if (editor && editMenu) {
+      // Lock is in the Edit menu, held while it saved: focus goes back to Edit.
+      editor.focusEditMenu();
+      return;
+    }
     const target = selector && this.template.querySelector(selector);
     if (target) {
       target.focus();
     } else if (selector && editor) {
-      // The build actions sit in the editor's toolbar, drawn once the editor has drawn the week
+      // The build actions sit on the editor's rail, drawn once the editor has drawn the week
       // it was just told of: its render runs first, then this.
       Promise.resolve().then(() => {
         const later = this.template.querySelector(selector);
@@ -655,7 +665,6 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   resetChecks() {
     this.checksResetKey += 1;
-    this.lit = new Set();
   }
 
   // ---------- actions ----------
@@ -724,6 +733,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       value: String(i + 1)
     }));
   }
+  /** The options in the Build menu: "Option 2", the one shown checked. */
+  get optionRows() {
+    return this.optionChoices.map((choice) => ({
+      ...choice,
+      label: `${this.optionLabel} ${choice.label}`,
+      checked: String(choice.value === this.optionValue)
+    }));
+  }
   get generateLabel() {
     return ACTION_LABEL[ACTION.GENERATE];
   }
@@ -747,6 +764,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (chosen && chosen !== this.option) {
       this.run(ACTION.TRY_ANOTHER, chosen);
     }
+  }
+  /** An option chosen in the Build menu: brought back (Try another to that option). */
+  handleOptionRow(event) {
+    this.handleOption({
+      detail: { value: event.currentTarget.dataset.option }
+    });
   }
   handleFillOpen() {
     this.run(ACTION.FILL_OPEN, this.option);
@@ -933,7 +956,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.restore(started.versionId, `Undone: ${started.label}.`, {
-      focus: `[data-action="${ACTION.START_OVER}"]`,
+      focus: BUILD_MENU,
       name: started.label,
       undo: true
     });
@@ -955,7 +978,8 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     if (action === ACTION.START_OVER && this.startedOverText) {
       return '[data-id="start-over-undo"]';
     }
-    return `[data-action="${action === ACTION.GENERATE ? ACTION.REBUILD : action}"]`;
+    // Every build action is in the Build menu, closed by now: back to Build.
+    return BUILD_MENU;
   }
 
   /** The desktop's "Generating…"; Start over builds nothing, it starts over. */
@@ -1007,9 +1031,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       return;
     }
     this.focusAfterRender = {
-      selector: this.isGenerated
-        ? `[data-action="${ACTION.REBUILD}"]`
-        : '[data-id="generate"]'
+      selector: this.isGenerated ? BUILD_MENU : '[data-id="generate"]'
     };
     this.announce(`${this.weekName} as saved now.`);
   }
@@ -1063,8 +1085,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       this.readAfterRun = false;
       this.load(true);
     }
+    // Back to the Build menu, which Rebuild was chosen from.
     Promise.resolve().then(() => {
-      const back = this.template.querySelector(`[data-action="${action}"]`);
+      const back = action ? this.template.querySelector(BUILD_MENU) : null;
       if (back) {
         back.focus();
       }
@@ -1092,13 +1115,18 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
   }
 
-  // ---------- counters and the "Still to place" list ----------
+  // ---------- the counter ----------
 
-  handleHighlight(event) {
-    const { lines } = event.detail;
-    this.lit = this.week
-      ? litCells(lines, this.checked, this.week.days)
-      : new Set();
+  /** The week's measure, for the rail's counter (the editor's, from this screen's own check). */
+  get measure() {
+    return this.week && this.weekEditor ? this.weekEditor.measure : null;
+  }
+
+  /** An under or over row: that activity, in Activity View. */
+  handleShowActivity(event) {
+    if (this.weekEditor) {
+      this.weekEditor.showActivity(event.detail.activityId);
+    }
   }
 
   /** A line was clicked: that group's week, at that cell when it names one (desktop; the editor's showLine). */
@@ -1112,13 +1140,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   // ---------- Lock (decision 3) ----------
 
-  /** The cell keyboard focus last reached in the editor's grid, so the Lock menu can offer it. */
+  /** The cell keyboard focus last reached in the editor's grid, so Lock can offer it. */
   handleCellFocus(event) {
     this.focusedCellKey = event.detail.key;
     this.focusedSlot = event.detail.slot || null;
   }
 
-  /** That cell, if the week shown still has it: what the Lock menu needs of it. */
+  /** That cell, if the week shown still has it: what Lock needs of it. */
   get focusedCell() {
     const slot = this.focusedSlot;
     const day = slot && this.schedule ? this.schedule.days[slot.day] : null;
@@ -1136,7 +1164,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     };
   }
 
-  /** What the Lock menu offers now: the focused cell, the day or group shown, the cell's group's day. */
+  /** What Lock offers now: the focused cell, the day or group shown, the cell's group's day. */
   get lockMenu() {
     // A day that can't be read makes the server refuse any change (it reads the whole week):
     // nothing to offer then; the day says why.
@@ -1166,14 +1194,36 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       group: grp ? { groupId: grp.key, name: grp.name } : null
     });
   }
-  /** The menu stays in the toolbar; with nothing to offer it is there, held. */
+  /** With nothing to offer, or while the week is busy, nothing can be locked. */
   get lockDisabled() {
     return this.actionsDisabled || this.lockMenu.length === 0;
   }
 
   /**
+   * The Lock choices in the rail's Edit menu, after Undo and Redo (ADR 0010 §58): locking is done
+   * by hand, so it sits with the other hand edits. Held while the week is busy.
+   */
+  get editItems() {
+    const disabled = this.lockDisabled;
+    return this.lockMenu.map((choice) => ({
+      value: `lock:${choice.value}`,
+      label: choice.label,
+      dataId: `lock-${choice.value}`,
+      disabled
+    }));
+  }
+
+  /** A Lock choice from the Edit menu. */
+  handleEditSelect(event) {
+    const value = String(event.detail.value);
+    if (value.startsWith("lock:")) {
+      this.handleLockSelect({ detail: { value: value.slice(5) } });
+    }
+  }
+
+  /**
    * A locked cell was asked to change (Enter or a click in the editor): nothing unlocks without
-   * the director choosing Unlock (ADR 0010 §37), so the Lock menu now offers that cell, focus
+   * the director choosing Unlock (ADR 0010 §37), so Lock in Edit now offers that cell, focus
    * stays on it, and the line says it is locked (the menu offering it shows where its Unlock is).
    */
   handleUnlockRequest(event) {
@@ -1221,14 +1271,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         // The menu was held while it saved, which drops focus: back to it, or to the grid when
         // the menu has nothing left to offer (it is held then).
         this.focusAfterRender = this.lockMenu.length
-          ? { selector: '[data-id="lock-menu"]' }
+          ? { editMenu: true }
           : { cellKey: this.focusedCellKey, grid: true };
       } else if (result.status === CONFLICT) {
         this.conflict = { message: statementOf(result.message) };
         this.focusAfterRender = { selector: '[data-id="reload"]' };
       } else {
         this.error = failed(this.lockFailedText(choice), result.message);
-        this.focusAfterRender = { selector: '[data-id="lock-menu"]' };
+        this.focusAfterRender = { editMenu: true };
       }
     } finally {
       if (ticket === this.loadTicket) {
@@ -1452,7 +1502,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     }
   }
 
-  /** What the editor shows (view, day, bunk): the Lock menu offers what is on screen. */
+  /** What the editor shows (view, day, bunk): Lock offers what is on screen. */
   handleEditorState(event) {
     const { view, dayIndex, groupKey } = event.detail;
     if (
@@ -1597,18 +1647,14 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get setupProblem() {
     return this.setupPreview ? this.setupPreview.problem : null;
   }
-  /** The box under the toolbar: setup changed (with its button), or why it can't be compared. */
+  /** Setup changed (the menu's foot says so), or it can't be compared (said under the rail). */
   get showSetupChanged() {
     return (
       this.showWeek && (this.setupChanges.length > 0 || !!this.setupProblem)
     );
   }
-  /**
-   * True whatever made the difference: setup changed since the week was built, or an activity
-   * closed this week was placed by hand (still allowed, with its "Not running this week" dot).
-   */
-  get setupChangedText() {
-    return this.setupProblem || `${this.weekName} doesn't match setup`;
+  get showSetupProblem() {
+    return this.showWeek && !!this.setupProblem;
   }
   /**
    * Tells the page whether this week can be updated to match setup, and whether its Update waits,
@@ -1628,7 +1674,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     );
   }
 
-  /** The menu's Update to match setup: the same as the button under the toolbar. */
+  /** The menu's Update to match setup (ADR 0015 §9): the list of what setup changed. */
   @api
   updateToMatchSetup() {
     if (this.showSetupChanged && this.canUpdateToMatch && !this.versionsBusy) {
@@ -1857,19 +1903,53 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   focusBack() {
     const id = this.focusOn;
     this.focusOn = null;
-    const button =
-      this.template.querySelector(`[data-id="${id}"]`) ||
-      (id === "update-to-match"
-        ? null
-        : this.template.querySelector('[data-id="publish"]'));
     if (!this.focusIsLost()) {
       return;
     }
+    if (id === "update-to-match") {
+      // The menu's Update to match setup opened the list (ADR 0015 §9): focus goes back to it,
+      // or, once the week matches setup and it is gone, to the grid. After the page has drawn
+      // the menu with what this screen just told it (tellSetupState).
+      Promise.resolve().then(() => {
+        if (this.focusIsLost() && !this.focusMenuUpdate() && this.weekEditor) {
+          this.weekEditor.focusCell(this.focusedCellKey);
+        }
+      });
+      return;
+    }
+    // Unpublish sits in Published's dropdown: back to it while that is open, else to Published,
+    // or to Publish once the week has nothing published.
+    const button =
+      (id === "unpublish"
+        ? this.unpublishTarget()
+        : this.template.querySelector(`[data-id="${id}"]`)) ||
+      this.template.querySelector('[data-id="publish"]');
     if (button) {
       button.focus();
     } else if (this.weekEditor) {
       this.weekEditor.focusCell(this.focusedCellKey);
     }
+  }
+
+  /** Unpublish, when Published's dropdown is open; else Published; null with neither. */
+  unpublishTarget() {
+    const menu = this.template.querySelector('[data-id="published-menu"]');
+    if (!menu) {
+      return null;
+    }
+    return menu.opened
+      ? this.template.querySelector('[data-id="unpublish"]')
+      : menu;
+  }
+
+  /**
+   * Asks the page to put focus on the menu's Update to match setup (setupfocus { focused }: the
+   * page says whether it could). False when nothing took it.
+   */
+  focusMenuUpdate() {
+    const detail = { focused: false };
+    this.dispatchEvent(new CustomEvent("setupfocus", { detail }));
+    return detail.focused;
   }
 
   /**
@@ -1880,7 +1960,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const inside = this.template.activeElement;
     if (inside) {
       const id = inside.dataset ? inside.dataset.id : null;
-      return id === "publish" || id === "unpublish";
+      return id === "publish" || id === "unpublish" || id === "published-menu";
     }
     const page = document.activeElement;
     return !page || page === document.body;
@@ -1897,7 +1977,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
 
   /**
    * Publish: the server's preview says what would change; with the week's checks (the Open
-   * cells and their reasons, the dots, the counters) that decides whether to ask first
+   * cells and their reasons, the dots) that decides whether to ask first
    * (c/shoreshPublish). A week already published as it is needs nothing.
    */
   async handlePublish() {
@@ -1922,12 +2002,10 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         this.refusePublish(this.draftChangedText);
         return;
       }
-      const checks = this.template.querySelector("c-shoresh-week-checks");
       const question = publishQuestion({
         preview,
         checked: this.checked,
-        // What the counters count now (lines the director accepted aside).
-        counts: checks ? checks.counts : null,
+        counts: null,
         weekName: this.weekName,
         t: this.t
       });
@@ -2088,6 +2166,13 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   /** "Published from Manual Build " before the date (c/shoreshPublish). */
   get publishedWord() {
     return publishedWord(this.publishState);
+  }
+
+  /** The rail's Published: and whether the week changed since (its corner says it to the eye). */
+  get publishedName() {
+    return this.publishState && this.publishState.changedSince
+      ? "Published, changed since"
+      : "Published";
   }
 
   get publishedBy() {
@@ -2270,7 +2355,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
         if (!loaded.scheduleId) {
           // On a week not generated yet the Versions list goes with the start: focus goes to
           // Rebuild, as after a first Generate.
-          this.focusAfterVersions = `[data-action="${ACTION.REBUILD}"]`;
+          this.focusAfterVersions = BUILD_MENU;
         } else if (focus) {
           this.focusAfterVersions = focus;
         }

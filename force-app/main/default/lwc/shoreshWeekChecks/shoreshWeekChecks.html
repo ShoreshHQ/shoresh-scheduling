@@ -1,96 +1,98 @@
 <template>
-  <div class="checks">
-    <div class="counters" data-id="counters">
-      <div class="counter counter_plain" data-id="filled">
-        <span class="count">{filledText}</span>
-        <span class="counter-label">Filled</span>
+  <c-shoresh-rail-pop
+    count={placed}
+    label={placedWords}
+    mark={offTarget}
+    alternative-text={counterName}
+    align="right"
+    data-id="counter"
+  >
+    <div class="list" data-id="counter-list">
+      <div class="bar" aria-hidden="true" data-id="bar">
+        <span class="bar-fill" style={barStyle}></span>
       </div>
-      <template for:each={counterButtons} for:item="counter">
-        <button
-          key={counter.key}
-          type="button"
-          class={counter.className}
-          aria-expanded={counter.expanded}
-          aria-controls={counter.controls}
-          aria-disabled={counter.unavailable}
-          data-counter={counter.key}
-          onclick={handleCounter}
-        >
-          <span class="count">{counter.count}</span>
-          <span class="counter-label"
-            >{counter.label}<template lwc:if={counter.count}
-              ><lightning-icon
-                class="chevron"
-                icon-name="utility:chevrondown"
-                size="xx-small"
-              ></lightning-icon></template
-          ></span>
-        </button>
-      </template>
-      <template lwc:if={showReviewAll}>
-        <button
-          type="button"
-          class="review-all"
-          aria-expanded={reviewAllExpanded}
-          aria-controls={reviewAllControls}
-          data-id="review-all"
-          onclick={handleReviewAll}
-        >
-          {reviewAllLabel}
-        </button>
-      </template>
-    </div>
-    <template lwc:if={listOpen}>
-      <div
-        class="counter-list"
-        id="counter-list"
-        data-id="counter-list"
-        onkeydown={handleListKeyDown}
-      >
-        <div class="counter-list-head" data-id="list-heading">
-          {listHeading}
-        </div>
-        <template lwc:if={openLines}>
-          <ul aria-label={listHeading}>
-            <template for:each={openLines} for:item="line">
-              <li key={line.key} class={line.className}>
+      <p class="shoresh-pop-row" data-id="still-needed">
+        <b>{stillNeeded}</b><span>still needed</span>
+      </p>
+      <template lwc:if={showUnder}>
+        <div class="shoresh-pop-divider" role="presentation"></div>
+        <p class="shoresh-pop-row shoresh-pop-head" id="under" data-id="under">
+          <b>{underCount}</b><span>under</span>
+        </p>
+        <template lwc:if={underRows.length}>
+          <ul aria-labelledby="under">
+            <template for:each={underRows} for:item="row">
+              <li key={row.id}>
                 <button
                   type="button"
-                  class="line-text"
-                  data-key={line.key}
-                  onclick={handleLocate}
+                  class="shoresh-pop-row"
+                  data-pop-row
+                  data-activity={row.id}
+                  aria-label={row.said}
+                  onclick={handleActivity}
                 >
-                  {line.text}
-                </button>
-                <template lwc:if={line.acceptable}>
-                  <button
-                    type="button"
-                    class="slds-button slds-button_neutral line-accept"
-                    data-key={line.key}
-                    aria-label={line.acceptLabel}
-                    onclick={handleAccept}
+                  <span class="name">{row.name}</span>
+                  <span class="shoresh-pop-end"
+                    ><b>{row.placed}</b><span>of {row.goal}</span></span
                   >
-                    Accept
-                  </button>
-                </template>
+                </button>
               </li>
             </template>
           </ul>
         </template>
-        <template lwc:else>
-          <p class="counter-list-empty" data-id="list-empty">{emptyText}</p>
+      </template>
+      <template lwc:if={showOver}>
+        <div class="shoresh-pop-divider" role="presentation"></div>
+        <p class="shoresh-pop-row shoresh-pop-head" id="over" data-id="over">
+          <b>{overCount}</b><span>over</span>
+        </p>
+        <template lwc:if={overRows.length}>
+          <ul aria-labelledby="over">
+            <template for:each={overRows} for:item="row">
+              <li key={row.id}>
+                <button
+                  type="button"
+                  class="shoresh-pop-row"
+                  data-pop-row
+                  data-activity={row.id}
+                  aria-label={row.said}
+                  onclick={handleActivity}
+                >
+                  <span class="name">{row.name}</span>
+                  <span class="shoresh-pop-end"
+                    ><span
+                      class="shoresh-look-mark mark"
+                      aria-hidden="true"
+                    ></span
+                    ><b>{row.placed}</b><span>of {row.goal}</span></span
+                  >
+                </button>
+              </li>
+            </template>
+          </ul>
         </template>
-        <div class="counter-list-foot">
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
-            data-id="close-list"
-            onclick={handleCloseList}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </template>
-  </div>
+      </template>
+      <template lwc:if={lookRows.length}>
+        <div class="shoresh-pop-divider" role="presentation"></div>
+        <p class="shoresh-pop-row shoresh-pop-head" id="look" data-id="look">
+          <b>{lookRows.length}</b><span>to look at</span>
+        </p>
+        <ul aria-labelledby="look">
+          <template for:each={lookRows} for:item="line">
+            <li key={line.key}>
+              <button
+                type="button"
+                class="shoresh-pop-row look-row"
+                data-pop-row
+                data-key={line.key}
+                onclick={handleLocate}
+              >
+                {line.text}
+              </button>
+            </li>
+          </template>
+        </ul>
+      </template>
+    </div>
+  </c-shoresh-rail-pop>
 </template>

@@ -5,252 +5,348 @@
     onkeydown={handleKeyDown}
     ondragend={handleDragEnd}
   >
-    <!-- Toolbar, as on the desktop: the host's pickers, then how to look at the week. -->
-    <div class="toolbar">
-      <slot name="pickers"></slot>
-      <template lwc:if={draft}>
-        <div class="view-toggle" role="group" aria-label="View">
-          <template for:each={viewButtons} for:item="button">
+    <!-- The rail (docs/design/manual-build.html #b; ADR 0008 part 7): three zones. Left: the
+         host's week and program, Edit, the host's own tools, then how to look at the week.
+         Centre: the days (or bunks), over the grid's cells. Right: the counter, then Versions
+         and Publish. One item grammar throughout. -->
+    <div class="rail" data-id="rail">
+      <div class="side side_left">
+        <slot name="pickers"></slot>
+        <template lwc:if={draft}>
+          <span class="shoresh-rail-line" role="presentation"></span>
+          <c-shoresh-rail-pop
+            label="Edit"
+            menu
+            onselect={handleEditSelect}
+            ontoggle={handleEditToggle}
+            data-id="edit-menu"
+          >
             <button
-              key={button.key}
               type="button"
-              class={button.className}
-              aria-pressed={button.pressed}
-              data-view={button.key}
-              onclick={handleView}
+              role="menuitem"
+              class="shoresh-pop-row"
+              title={undoTitle}
+              aria-label={undoTitle}
+              aria-keyshortcuts={undoKeys}
+              disabled={cannotUndo}
+              onclick={handleUndo}
+              data-id="undo"
             >
-              {button.label}
+              <span>Undo</span>
+              <span class="shoresh-pop-end" aria-hidden="true">{undoHint}</span>
             </button>
-          </template>
-        </div>
-        <div class="undo-redo">
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
-            title={undoTitle}
-            aria-label={undoTitle}
-            disabled={cannotUndo}
-            onclick={handleUndo}
-            data-id="undo"
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
-            title={redoTitle}
-            aria-label={redoTitle}
-            disabled={cannotRedo}
-            onclick={handleRedo}
-            data-id="redo"
-          >
-            Redo
-          </button>
-        </div>
-        <template lwc:if={showTools}>
-          <slot name="tools"></slot>
-        </template>
-      </template>
-    </div>
-    <slot name="checks"></slot>
-    <template lwc:if={toolNoticeText}>
-      <p class="notice" data-id="tool-notice">
-        <span>{toolNoticeText} ·</span>
-        <button
-          type="button"
-          class="slds-button tool-undo"
-          data-id="tool-undo"
-          aria-label={toolUndoLabel}
-          onclick={handleToolUndo}
-        >
-          Undo
-        </button>
-      </p>
-    </template>
-    <template lwc:if={notice}>
-      <p class="notice" data-id="notice">{notice}</p>
-    </template>
-    <slot name="status"></slot>
-
-    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
-      {announcement}
-    </div>
-
-    <slot name="outcome"></slot>
-
-    <template lwc:if={draft}>
-      <template lwc:if={hasNoDays}>
-        <c-shoresh-empty-state
-          title={noDaysMessage}
-          data-id="no-days"
-        ></c-shoresh-empty-state>
-      </template>
-      <template lwc:else>
-        <div class="build-layout">
-          <template lwc:if={showPalette}>
-            <c-shoresh-build-palette
-              class="build-palette"
-              still-needed={neededChips}
-              placed={placedChips}
-              heading={paletteHeading}
-              filter={filter}
-              picked-id={pickedActivityId}
-              onfilter={handleFilter}
-              onpickactivity={handlePickActivity}
-              onactivitydragstart={handleActivityDragStart}
-              onremovedrop={handleRemoveDrop}
-            ></c-shoresh-build-palette>
-          </template>
-          <div class="build-main">
-            <template lwc:if={isDaily}>
-              <div class="pills" data-id="day-pills">
-                <template for:each={dayPills} for:item="day">
-                  <button
-                    key={day.key}
-                    type="button"
-                    class={day.className}
-                    data-index={day.index}
-                    onclick={handleDay}
-                  >
-                    {day.label} <span class="pill-sub">{day.sub}</span>
-                  </button>
-                </template>
-              </div>
-              <template lwc:if={dayProblem}>
+            <button
+              type="button"
+              role="menuitem"
+              class="shoresh-pop-row"
+              title={redoTitle}
+              aria-label={redoTitle}
+              aria-keyshortcuts={redoKeys}
+              disabled={cannotRedo}
+              onclick={handleRedo}
+              data-id="redo"
+            >
+              <span>Redo</span>
+              <span class="shoresh-pop-end" aria-hidden="true">{redoHint}</span>
+            </button>
+            <template for:each={editRows} for:item="row">
+              <template lwc:if={row.divider}>
                 <div
-                  class="slds-notify slds-notify_alert slds-alert_warning"
-                  role="alert"
+                  key={row.key}
+                  class="shoresh-pop-divider"
+                  role="separator"
+                ></div>
+              </template>
+              <template lwc:elseif={row.group}>
+                <button
+                  key={row.key}
+                  type="button"
+                  role="menuitem"
+                  class="shoresh-pop-row"
+                  aria-expanded={row.expanded}
+                  disabled={row.disabled}
+                  onclick={handleEditGroup}
+                  data-group={row.value}
+                  data-id={row.dataId}
                 >
-                  {dayProblem}
-                </div>
+                  <span>{row.label}</span>
+                  <svg
+                    class={row.chevronClass}
+                    viewBox="0 0 12 12"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 4.5 6 7.5l3-3"></path>
+                  </svg>
+                </button>
               </template>
               <template lwc:else>
-                <c-shoresh-schedule-grid
-                  data-id="edit-grid"
-                  grid={editGrid}
-                  corner={corner}
-                  label={dailyGridLabel}
-                  editable
-                  oneditcell={handleEditCell}
-                  onclearcell={handleClearCell}
-                  oncellfocus={handleCellFocus}
-                  oncellspace={handleCellSpace}
-                  oncellclick={handleCellClick}
-                  oncellescape={handleCellEscape}
-                  oncellresize={handleCellResize}
-                  oncelldragstart={handleCellDragStart}
-                  oncellstretch={handleCellStretch}
-                  oncelldrop={handleCellDrop}
-                  onhandleclick={handleHandleClick}
-                ></c-shoresh-schedule-grid>
-              </template>
-            </template>
-
-            <template lwc:if={isGroup}>
-              <div class="pills" data-id="group-pills">
-                <template for:each={groupPills} for:item="grp">
-                  <button
-                    key={grp.key}
-                    type="button"
-                    class={grp.className}
-                    data-key={grp.key}
-                    onclick={handleGroup}
-                  >
-                    {grp.name} <span class="pill-sub">{grp.note}</span>
-                  </button>
-                </template>
-              </div>
-              <template lwc:if={editGrid}>
-                <c-shoresh-schedule-grid
-                  data-id="edit-grid"
-                  grid={editGrid}
-                  corner={corner}
-                  label={groupGridLabel}
-                  editable
-                  oneditcell={handleEditCell}
-                  onclearcell={handleClearCell}
-                  oncellfocus={handleCellFocus}
-                  oncellspace={handleCellSpace}
-                  oncellclick={handleCellClick}
-                  oncellescape={handleCellEscape}
-                  oncellresize={handleCellResize}
-                  oncelldragstart={handleCellDragStart}
-                  oncellstretch={handleCellStretch}
-                  oncelldrop={handleCellDrop}
-                  onhandleclick={handleHandleClick}
-                ></c-shoresh-schedule-grid>
-              </template>
-            </template>
-          </div>
-        </div>
-        <template lwc:if={isActivity}>
-          <template lwc:if={selectedActivity}>
-            <div class="drill-head">
-              <button
-                type="button"
-                class="back"
-                onclick={handleAllActivities}
-                data-id="all-activities"
-              >
-                {allActivitiesLabel}
-              </button>
-              <span class="drill-name">{selectedActivity.name}</span>
-              <template lwc:if={selectedActivity.location}>
-                <span class="drill-place">{selectedActivity.location}</span>
-              </template>
-            </div>
-            <c-shoresh-schedule-grid
-              data-id="activity-grid"
-              grid={activityGrid}
-              corner={corner}
-              label={selectedActivity.name}
-            ></c-shoresh-schedule-grid>
-          </template>
-          <template lwc:else>
-            <div class="cards" data-id="activity-cards">
-              <template for:each={activityCards} for:item="card">
                 <button
-                  key={card.key}
+                  key={row.key}
                   type="button"
-                  class="card"
-                  data-key={card.key}
-                  onclick={handleActivity}
+                  role="menuitem"
+                  class={row.className}
+                  disabled={row.disabled}
+                  data-value={row.value}
+                  data-id={row.dataId}
                 >
-                  <span class="card-name">{card.name}</span>
-                  <template lwc:if={card.location}>
-                    <span class="card-place">{card.location}</span>
-                  </template>
-                  <template lwc:if={card.gone}>
-                    <span class="note">(removed)</span>
-                  </template>
-                  <span class="card-summary">{card.summary}</span>
+                  {row.label}
+                </button>
+              </template>
+            </template>
+          </c-shoresh-rail-pop>
+          <template lwc:if={showTools}>
+            <slot name="tools"></slot>
+          </template>
+          <div class="views">
+            <span class="shoresh-rail-line" role="presentation"></span>
+            <div class="group" role="group" aria-label="View">
+              <template for:each={viewButtons} for:item="button">
+                <button
+                  key={button.key}
+                  type="button"
+                  class={button.className}
+                  aria-pressed={button.pressed}
+                  data-view={button.key}
+                  onclick={handleView}
+                >
+                  {button.label}
                 </button>
               </template>
             </div>
-          </template>
+            <span class="shoresh-rail-line" role="presentation"></span>
+          </div>
         </template>
-
-        <template lwc:if={showLegend}>
-          <div class="legend">
-            <template for:each={legend} for:item="entry">
-              <span key={entry.key} class="legend-entry">
-                <template lwc:if={entry.icon}>
-                  <lightning-icon
-                    class="legend-icon"
-                    icon-name={entry.icon}
-                    size="xx-small"
-                  ></lightning-icon>
-                </template>
-                <template lwc:else>
-                  <span class={entry.className}></span>
-                </template>
-                {entry.label}
-              </span>
+      </div>
+      <div class="mid">
+        <template lwc:if={showDayPills}>
+          <div
+            class="group"
+            role="group"
+            aria-label={dayWord}
+            data-id="day-pills"
+          >
+            <template for:each={dayPills} for:item="day">
+              <button
+                key={day.key}
+                type="button"
+                class={day.className}
+                aria-pressed={day.pressed}
+                aria-label={day.name}
+                data-index={day.index}
+                onclick={handleDay}
+              >
+                {day.short}
+              </button>
             </template>
           </div>
         </template>
+        <template lwc:if={showGroupPills}>
+          <div
+            class="group group_scroll"
+            role="group"
+            aria-label={groupWord}
+            data-id="group-pills"
+          >
+            <template for:each={groupPills} for:item="grp">
+              <button
+                key={grp.key}
+                type="button"
+                class={grp.className}
+                aria-pressed={grp.pressed}
+                data-key={grp.key}
+                onclick={handleGroup}
+              >
+                {grp.name}<template lwc:if={grp.note}
+                  ><span class="pill-sub"> {grp.note}</span></template
+                >
+              </button>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div class="side side_right">
+        <slot name="checks"></slot>
+        <template lwc:if={draft}>
+          <span class="shoresh-rail-line" role="presentation"></span>
+        </template>
+        <slot name="end"></slot>
+      </div>
+    </div>
+    <div class="shoresh-hairline" role="presentation"></div>
+    <div class="work">
+      <template lwc:if={toolNoticeText}>
+        <p class="notice" data-id="tool-notice">
+          <span>{toolNoticeText} ·</span>
+          <button
+            type="button"
+            class="slds-button tool-undo"
+            data-id="tool-undo"
+            aria-label={toolUndoLabel}
+            onclick={handleToolUndo}
+          >
+            Undo
+          </button>
+        </p>
       </template>
-    </template>
+      <template lwc:if={notice}>
+        <p class="notice" data-id="notice">{notice}</p>
+      </template>
+      <slot name="status"></slot>
+
+      <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+        {announcement}
+      </div>
+
+      <slot name="outcome"></slot>
+
+      <template lwc:if={draft}>
+        <template lwc:if={hasNoDays}>
+          <c-shoresh-empty-state
+            title={noDaysMessage}
+            data-id="no-days"
+          ></c-shoresh-empty-state>
+        </template>
+        <template lwc:else>
+          <div class="build-layout">
+            <template lwc:if={showPalette}>
+              <c-shoresh-build-palette
+                class="build-palette"
+                still-needed={neededChips}
+                placed={placedChips}
+                heading={paletteHeading}
+                filter={filter}
+                picked-id={pickedActivityId}
+                onfilter={handleFilter}
+                onpickactivity={handlePickActivity}
+                onactivitydragstart={handleActivityDragStart}
+                onremovedrop={handleRemoveDrop}
+              ></c-shoresh-build-palette>
+            </template>
+            <div class="build-main">
+              <template lwc:if={isDaily}>
+                <template lwc:if={dayProblem}>
+                  <div
+                    class="slds-notify slds-notify_alert slds-alert_warning"
+                    role="alert"
+                  >
+                    {dayProblem}
+                  </div>
+                </template>
+                <template lwc:else>
+                  <c-shoresh-schedule-grid
+                    data-id="edit-grid"
+                    grid={editGrid}
+                    corner={corner}
+                    label={dailyGridLabel}
+                    editable
+                    oneditcell={handleEditCell}
+                    onclearcell={handleClearCell}
+                    oncellfocus={handleCellFocus}
+                    oncellspace={handleCellSpace}
+                    oncellclick={handleCellClick}
+                    oncellescape={handleCellEscape}
+                    oncellresize={handleCellResize}
+                    oncelldragstart={handleCellDragStart}
+                    oncellstretch={handleCellStretch}
+                    oncelldrop={handleCellDrop}
+                    onhandleclick={handleHandleClick}
+                  ></c-shoresh-schedule-grid>
+                </template>
+              </template>
+
+              <template lwc:if={isGroup}>
+                <template lwc:if={editGrid}>
+                  <c-shoresh-schedule-grid
+                    data-id="edit-grid"
+                    grid={editGrid}
+                    corner={corner}
+                    label={groupGridLabel}
+                    editable
+                    oneditcell={handleEditCell}
+                    onclearcell={handleClearCell}
+                    oncellfocus={handleCellFocus}
+                    oncellspace={handleCellSpace}
+                    oncellclick={handleCellClick}
+                    oncellescape={handleCellEscape}
+                    oncellresize={handleCellResize}
+                    oncelldragstart={handleCellDragStart}
+                    oncellstretch={handleCellStretch}
+                    oncelldrop={handleCellDrop}
+                    onhandleclick={handleHandleClick}
+                  ></c-shoresh-schedule-grid>
+                </template>
+              </template>
+            </div>
+          </div>
+          <template lwc:if={isActivity}>
+            <template lwc:if={selectedActivity}>
+              <div class="drill-head">
+                <button
+                  type="button"
+                  class="back"
+                  onclick={handleAllActivities}
+                  data-id="all-activities"
+                >
+                  {allActivitiesLabel}
+                </button>
+                <span class="drill-name">{selectedActivity.name}</span>
+                <template lwc:if={selectedActivity.location}>
+                  <span class="drill-place">{selectedActivity.location}</span>
+                </template>
+              </div>
+              <c-shoresh-schedule-grid
+                data-id="activity-grid"
+                grid={activityGrid}
+                corner={corner}
+                label={selectedActivity.name}
+              ></c-shoresh-schedule-grid>
+            </template>
+            <template lwc:else>
+              <div class="cards" data-id="activity-cards">
+                <template for:each={activityCards} for:item="card">
+                  <button
+                    key={card.key}
+                    type="button"
+                    class="card"
+                    data-key={card.key}
+                    onclick={handleActivity}
+                  >
+                    <span class="card-name">{card.name}</span>
+                    <template lwc:if={card.location}>
+                      <span class="card-place">{card.location}</span>
+                    </template>
+                    <template lwc:if={card.gone}>
+                      <span class="note">(removed)</span>
+                    </template>
+                    <span class="card-summary">{card.summary}</span>
+                  </button>
+                </template>
+              </div>
+            </template>
+          </template>
+
+          <template lwc:if={showLegend}>
+            <div class="legend">
+              <template for:each={legend} for:item="entry">
+                <span key={entry.key} class="legend-entry">
+                  <template lwc:if={entry.icon}>
+                    <lightning-icon
+                      class="legend-icon"
+                      icon-name={entry.icon}
+                      size="xx-small"
+                    ></lightning-icon>
+                  </template>
+                  <template lwc:else>
+                    <span class={entry.className}></span>
+                  </template>
+                  {entry.label}
+                </span>
+              </template>
+            </div>
+          </template>
+        </template>
+      </template>
+    </div>
 
     <!-- Typing a name into a slot -->
     <template lwc:if={editor}>

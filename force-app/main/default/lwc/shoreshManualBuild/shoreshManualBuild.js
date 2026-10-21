@@ -40,7 +40,8 @@ function savedWhen(source) {
  * Manual Build (desktop: the Manual schedule): a program's week built by hand. This screen
  * chooses the program and week, opens or starts it (a week not started yet offers "Start a blank
  * week" or "Start from another week"), keeps its versions (Save, Restore), counts what the week
- * still needs, offers Clear day, Clear week and Copy day, and publishes the week (Publish: what
+ * still needs (the rail's counter), offers Clear day, Clear week and Copy day (in the editor's Edit
+ * menu, ADR 0008 part 7), and publishes the week (Publish: what
  * would change and what is still to do are shown first; Unpublish asks first; SchedulePublish),
  * and shows what setup changed since the week started (a dot on each cell it changed), with
  * "Update to match setup" one change at a time or all at once, shown first (SetupMatch).
@@ -72,7 +73,7 @@ export default class ShoreshManualBuild extends LightningElement {
   loadTicket = 0;
   // Reads of the week on their way (a reload whose answer is dropped is read again).
   reads = 0;
-  // Changes when a week is shown fresh: the counters' list closes and its accepted lines return.
+  // Changes when a week is shown fresh: the counter's dropdown closes.
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
   versions = [];
@@ -193,19 +194,53 @@ export default class ShoreshManualBuild extends LightningElement {
   focusBack() {
     const id = this.focusOn;
     this.focusOn = null;
-    const button =
-      this.template.querySelector(`[data-id="${id}"]`) ||
-      (id === "update-to-match"
-        ? null
-        : this.template.querySelector('[data-id="publish"]'));
     if (!this.focusIsLost()) {
       return;
     }
+    if (id === "update-to-match") {
+      // The menu's Update to match setup opened the list (ADR 0015 §9): focus goes back to it,
+      // or, once the week matches setup and it is gone, to the grid. After the page has drawn
+      // the menu with what this screen just told it (tellSetupState).
+      Promise.resolve().then(() => {
+        if (this.focusIsLost() && !this.focusMenuUpdate() && this.weekEditor) {
+          this.weekEditor.focusCell();
+        }
+      });
+      return;
+    }
+    // Unpublish sits in Published's dropdown: back to it while that is open, else to Published,
+    // or to Publish once the week has nothing published.
+    const button =
+      (id === "unpublish"
+        ? this.unpublishTarget()
+        : this.template.querySelector(`[data-id="${id}"]`)) ||
+      this.template.querySelector('[data-id="publish"]');
     if (button) {
       button.focus();
     } else if (this.weekEditor) {
       this.weekEditor.focusCell();
     }
+  }
+
+  /** Unpublish, when Published's dropdown is open; else Published; null with neither. */
+  unpublishTarget() {
+    const menu = this.template.querySelector('[data-id="published-menu"]');
+    if (!menu) {
+      return null;
+    }
+    return menu.opened
+      ? this.template.querySelector('[data-id="unpublish"]')
+      : menu;
+  }
+
+  /**
+   * Asks the page to put focus on the menu's Update to match setup (setupfocus { focused }: the
+   * page says whether it could). False when nothing took it.
+   */
+  focusMenuUpdate() {
+    const detail = { focused: false };
+    this.dispatchEvent(new CustomEvent("setupfocus", { detail }));
+    return detail.focused;
   }
 
   /**
@@ -216,7 +251,7 @@ export default class ShoreshManualBuild extends LightningElement {
     const inside = this.template.activeElement;
     if (inside) {
       const id = inside.dataset ? inside.dataset.id : null;
-      return id === "publish" || id === "unpublish";
+      return id === "publish" || id === "unpublish" || id === "published-menu";
     }
     const page = document.activeElement;
     return !page || page === document.body;
@@ -806,12 +841,10 @@ export default class ShoreshManualBuild extends LightningElement {
         this.refusePublish(this.draftChangedText);
         return;
       }
-      const checks = this.template.querySelector("c-shoresh-week-checks");
       const question = publishQuestion({
         preview,
         checked: this.checked,
-        // What the counters count now (lines the director accepted aside).
-        counts: checks ? checks.counts : null,
+        counts: null,
         weekName: this.weekName,
         t: this.t
       });
@@ -994,6 +1027,13 @@ export default class ShoreshManualBuild extends LightningElement {
       : "";
   }
 
+  /** The rail's Published: and whether the week changed since (its corner says it to the eye). */
+  get publishedName() {
+    return this.publishState && this.publishState.changedSince
+      ? "Published, changed since"
+      : "Published";
+  }
+
   /** The program and week shown. */
   get weekKey() {
     return `${this.programId}|${this.weekId}`;
@@ -1026,7 +1066,7 @@ export default class ShoreshManualBuild extends LightningElement {
 
   /** The week checked (c/shoreshEngine checkWeek), by the editor that draws its dots. */
   get checked() {
-    // Read so the counters follow the week (the editor's answer is worked out again only when
+    // Read so the counter follows the week (the editor's answer is worked out again only when
     // the week or the camp's words change).
     return this.draft && this.weekEditor ? this.weekEditor.checked : null;
   }
@@ -1035,9 +1075,19 @@ export default class ShoreshManualBuild extends LightningElement {
     return !!this.draft && !this.hasNoDays && !!this.weekEditor;
   }
 
+  /** The week's measure, for the rail's counter (the editor's, from the same check as its dots). */
+  get measure() {
+    return this.draft && this.weekEditor ? this.weekEditor.measure : null;
+  }
+
   /** A line takes the director to its bunk's week; the editor shows it. */
   handleLocate(event) {
     this.weekEditor.showLine(event.detail);
+  }
+
+  /** An under or over row: that activity, in Activity View. */
+  handleShowActivity(event) {
+    this.weekEditor.showActivity(event.detail.activityId);
   }
   get programName() {
     const program = this.programOptions.find((o) => o.value === this.programId);
@@ -1129,7 +1179,7 @@ export default class ShoreshManualBuild extends LightningElement {
     return (this.setupPreview && this.setupPreview.changes) || [];
   }
 
-  /** The line under the toolbar: setup changed (with its button), or why it can't be compared. */
+  /** Setup changed (the menu's foot says so), or it can't be compared (said under the rail). */
   get showSetupChanged() {
     return (
       !!this.draft &&
@@ -1139,13 +1189,6 @@ export default class ShoreshManualBuild extends LightningElement {
   }
   get setupProblem() {
     return this.setupPreview ? this.setupPreview.problem : null;
-  }
-  /**
-   * True whether setup changed since the week started or an activity closed this week was placed
-   * by hand (still allowed, as on the desktop, with its "Not running this week" dot).
-   */
-  get setupChangedText() {
-    return this.setupProblem || `${this.weekName} doesn't match setup`;
   }
   /**
    * Tells the page whether this week can be updated to match setup, and whether its Update waits,
@@ -1165,7 +1208,7 @@ export default class ShoreshManualBuild extends LightningElement {
     );
   }
 
-  /** The menu's Update to match setup: the same as the button under the toolbar. */
+  /** The menu's Update to match setup (ADR 0015 §9): the list of what setup changed. */
   @api
   updateToMatchSetup() {
     if (this.showSetupChanged && this.canUpdateToMatch && !this.versionsBusy) {
@@ -1337,6 +1380,77 @@ export default class ShoreshManualBuild extends LightningElement {
   }
   get isGroup() {
     return this.view === "group";
+  }
+
+  /**
+   * The tools in the rail's Edit menu, after Undo and Redo (ADR 0008 part 7): Clear day and
+   * Copy day to… for the day shown in Daily View (Clear day for one of the bunk's days in Group
+   * View), then Clear week. They wait while an edit, a Restore or a Publish is under way.
+   */
+  get editItems() {
+    if (!this.showTools) {
+      return [];
+    }
+    const disabled = !!this.editsWait;
+    const items = [];
+    if (this.isDaily) {
+      if (this.dayReadable) {
+        items.push({
+          value: "clear-day",
+          label: "Clear day",
+          dataId: "clear-day",
+          disabled
+        });
+      }
+      if (this.canCopyDay) {
+        items.push({
+          value: "copy-day",
+          label: "Copy day to…",
+          dataId: "copy-day",
+          disabled,
+          children: this.copyTargets.map((target) => ({
+            value: `copy:${target.value}`,
+            label: target.label,
+            dataId: `copy-day-${target.value}`
+          }))
+        });
+      }
+    }
+    if (this.isGroup) {
+      items.push({
+        value: "clear-group-day",
+        label: "Clear day",
+        dataId: "clear-group-day",
+        disabled,
+        children: this.clearDayTargets.map((target) => ({
+          value: `clear-group-day:${target.value}`,
+          label: target.label,
+          dataId: `clear-group-day-${target.value}`
+        }))
+      });
+    }
+    items.push({
+      value: "clear-week",
+      label: this.clearWeekLabel,
+      dataId: "clear-week",
+      disabled
+    });
+    return items;
+  }
+
+  /** A tool chosen in the Edit menu. */
+  handleEditSelect(event) {
+    const value = String(event.detail.value);
+    const [what, target] = value.split(":");
+    if (what === "clear-day") {
+      this.handleClearDay();
+    } else if (what === "copy") {
+      this.handleCopyDay({ detail: { value: target } });
+    } else if (what === "clear-group-day") {
+      this.handleClearGroupDay({ detail: { value: target } });
+    } else if (what === "clear-week") {
+      this.handleClearWeek();
+    }
   }
 
   /** Clear day and Copy day to… work on the day shown, so only when it can be read. */

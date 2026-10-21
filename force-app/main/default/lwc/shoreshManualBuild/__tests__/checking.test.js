@@ -137,21 +137,37 @@ const dotIn = (element, key) =>
   cell(element, key).querySelector("c-shoresh-dot");
 const tipIn = (element, key) =>
   dotIn(element, key).shadowRoot.querySelector('[data-id="dot-tip"]');
-/** A counter tile as read: its number, then its words. */
-const tile = (el) =>
-  [...el.querySelectorAll("span")].map((span) => span.textContent).join(" ");
-const counters = (element) =>
-  [...qc(element, '[data-id="counters"]').querySelectorAll("button")].map(tile);
-const listLines = (element) =>
-  [
-    ...qc(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
-  ].map((b) => b.textContent.trim());
+const said = (el) => el.textContent.replace(/\s+/g, " ").trim();
+/** The rail's counter (c-shoresh-week-checks): its word, and what it says ("2of 6 placed"). */
+const counterWord = (element) =>
+  qc(element, '[data-id="counter"]').shadowRoot.querySelector(
+    '[data-id="button"]'
+  );
+const counter = (element) => said(counterWord(element));
+async function openCounter(element) {
+  if (counterWord(element).getAttribute("aria-expanded") !== "true") {
+    counterWord(element).click();
+    await flush();
+  }
+}
+/** The dropdown's counts, as read: still needed, then under, over and to look at when shown. */
+const heads = (element) =>
+  ["still-needed", "under", "over", "look"]
+    .map((id) => qc(element, `[data-id="${id}"]`))
+    .filter(Boolean)
+    .map(said);
+const qcAll = (element, selector) => {
+  const checks = q(element, "c-shoresh-week-checks");
+  return checks ? [...checks.shadowRoot.querySelectorAll(selector)] : [];
+};
+/** The under and over rows: each activity, then "placed of goal". */
+const activityRows = (element) =>
+  qcAll(element, "button[data-activity]").map(said);
+const listLines = (element) => qcAll(element, ".look-row").map(said);
 const lineButton = (element, text) =>
-  [
-    ...qc(element, '[data-id="counter-list"]').querySelectorAll(".line-text")
-  ].find((b) => b.textContent.trim() === text);
-const acceptButton = (element, text) =>
-  qc(element, `[data-id="counter-list"] [aria-label="Accept: ${text}"]`);
+  qcAll(element, ".look-row").find((b) => said(b) === text);
+const activityRow = (element, name) =>
+  qcAll(element, "button[data-activity]").find((b) => said(b).startsWith(name));
 
 /** Bunk 1's week in Group View (columns are days): Monday's items and rows, then Tuesday's. */
 async function bunkOneWeek(monday, tuesday, setup) {
@@ -183,7 +199,7 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     jest.clearAllMocks();
   });
 
-  it("two bunks at Soccer at once: a dot on each, with the words, and two cells overlapping", async () => {
+  it("two bunks at Soccer at once: a dot on each, with the words, and two cells to look at", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     expect(dotIn(element, "0-1").label).toBe(
       "Over its limit of 1 Bunk at once"
@@ -194,44 +210,40 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     // Fixed activities and Open cells have none.
     expect(dotIn(element, "0-0")).toBeNull();
     expect(dotIn(element, "0-2")).toBeNull();
-    // As the desktop counts it: each cell that overlaps (a bunk in a time block).
-    expect(counters(element)).toEqual(["2 Overlapping", "3 Still needed"]);
+    // As the desktop counts it: each cell that overlaps (a bunk in a time block). Swim (once a
+    // week for Bunk 1) and Soccer (twice for each bunk) are 3 short.
+    await openCounter(element);
+    expect(heads(element)).toEqual([
+      "4still needed",
+      "3under",
+      "0over",
+      "2to look at"
+    ]);
   });
 
-  it("any counter opens the one list, overlaps first; again, or Close, closes it", async () => {
+  it("the counter opens its dropdown: under and over by activity, then the cells to look at; again, it closes", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
-    const overlapping = qc(element, '[data-counter="overlapping"]');
-    expect(overlapping.getAttribute("aria-expanded")).toBe("false");
-    overlapping.click();
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("false");
+    counterWord(element).click();
     await flush();
-    expect(overlapping.getAttribute("aria-expanded")).toBe("true");
-    expect(
-      qc(element, '[data-counter="stillNeeded"]').getAttribute("aria-expanded")
-    ).toBe("true");
-    expect(
-      qc(element, '[data-id="counter-list"] ul').getAttribute("aria-label")
-    ).toBe("Still to place");
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("true");
+    expect(activityRows(element)).toEqual(["Swim0of 1", "Soccer2of 4"]);
     expect(listLines(element)).toEqual([
       "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once",
-      "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once",
-      "Swim · Bunk 1: 1 still needed",
-      "Soccer · Bunk 1: 1 still needed",
-      "Soccer · Bunk 2: 1 still needed"
+      "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once"
     ]);
-    qc(element, '[data-counter="stillNeeded"]').click();
+    counterWord(element).click();
     await flush();
-    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
-    overlapping.click();
-    await flush();
-    qc(element, '[data-id="close-list"]').click();
-    await flush();
-    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("Filled counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
+  it("placed counts cells filled of those to fill: not the fixed ones, not where a bunk is away", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
     // Two days; Bunk 1 has Period 2 and Lunch to fill, Bunk 2 only Period 2 (away at Lunch).
-    expect(tile(qc(element, '[data-id="filled"]'))).toBe("2 of 6 Filled");
+    expect(counter(element)).toBe("2of 6 placed");
+    expect(counterWord(element).getAttribute("aria-label")).toBe(
+      "2 of 6 placed, needs a look"
+    );
   });
 
   it("a placement for a bunk it isn't set up for gets the dot", async () => {
@@ -258,34 +270,31 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     });
     await press(cell(element, "1-1"), "Delete");
     expect(dotIn(element, "0-1")).toBeNull();
-    expect(counters(element)).toEqual(["0 Overlapping", "3 Still needed"]);
+    await openCounter(element);
+    expect(heads(element)).toEqual(["5still needed", "4under", "0over"]);
   });
 
-  it("a counter at zero shows grey and opens nothing; one with no targets set isn't shown", async () => {
+  it("under and over show their 0 when the camp has goals and limits; nothing to look at shows nothing", async () => {
     const element = await render(
       draft([FLAGPOLE, SWIM, SOCCER], ["1,2,3", "1,3,"])
     );
-    // Nothing overlaps; no activity has an early-week goal, so Spread isn't shown (desktop).
-    expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
-    const overlapping = qc(element, '[data-counter="overlapping"]');
-    expect(overlapping.getAttribute("aria-disabled")).toBe("true");
-    overlapping.click();
-    await flush();
-    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
-    expect(overlapping.hasAttribute("aria-expanded")).toBe(false);
-    expect(overlapping.className).not.toContain("counter_due");
-    expect(qc(element, '[data-counter="stillNeeded"]').className).toContain(
-      "counter_due"
-    );
-    expect(qc(element, '[data-counter="spread"]')).toBeNull();
+    // Nothing overlaps and nothing is over; Soccer is one short for each bunk.
+    await openCounter(element);
+    expect(heads(element)).toEqual(["3still needed", "2under", "0over"]);
+    expect(qc(element, '[data-id="look"]')).toBeNull();
+    // Off target (under), so the counter carries the corner.
+    expect(
+      counterWord(element).querySelector(".shoresh-look-mark")
+    ).not.toBeNull();
   });
 
-  it("Still needed isn't shown when no activity has a weekly minimum", async () => {
-    const element = await render(
-      draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]),
-      NO_MINIMUMS
-    );
-    expect(counters(element)).toEqual(["0 Overlapping"]);
+  it("under isn't shown when no activity has a weekly minimum", async () => {
+    const start = draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]);
+    start.activities = start.activities.map((a) => ({ ...a, minPerWeek: 0 }));
+    const element = await render(start, NO_MINIMUMS);
+    await openCounter(element);
+    expect(heads(element)).toEqual(["5still needed", "0over"]);
+    expect(counterWord(element).querySelector(".shoresh-look-mark")).toBeNull();
   });
 
   it("one Escape on a cell with a dot hides the words and lets go of what was picked up", async () => {
@@ -317,22 +326,21 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(dotIn(element, "1-1").open).toBe(false);
   });
 
-  it("with nothing left to list, the list stays open and says what is still open (desktop)", async () => {
+  it("the dropdown stays open while the week changes under it, and follows it", async () => {
     // No minimums: only the overlap is listed.
-    const element = await render(
-      draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]),
-      NO_MINIMUMS
-    );
-    qc(element, '[data-counter="overlapping"]').click();
-    await flush();
+    const start = draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]);
+    start.activities = start.activities.map((a) => ({ ...a, minPerWeek: 0 }));
+    const element = await render(start, NO_MINIMUMS);
+    await openCounter(element);
+    expect(heads(element)).toEqual(["4still needed", "0over", "2to look at"]);
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
       schedule: schedule([FLAGPOLE, SOCCER], ["1,2,", "1,,"])
     });
     await press(cell(element, "1-1"), "Delete");
-    expect(qc(element, '[data-id="counter-list"]')).not.toBeNull();
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("true");
     // Bunk 1: Period 2 filled, Lunch open on both days; Bunk 2: Period 2 open on both days.
-    expect(qc(element, '[data-id="list-empty"]').textContent).toBe("5 open");
+    expect(heads(element)).toEqual(["5still needed", "0over"]);
   });
 
   it("over its weekly limit: only the session past the limit gets the dot, the latest in the week", async () => {
@@ -407,52 +415,38 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     input.dispatchEvent(new CustomEvent("input"));
     await flush();
     await press(input, "Enter");
-    qc(element, '[data-counter="stillNeeded"]').click();
-    await flush();
-    expect(listLines(element)).toContain("Kayak · Bunk 1: 1 still needed");
+    await openCounter(element);
+    // Once a week for each bunk: Bunk 2 has it, Bunk 1 not yet.
+    expect(activityRows(element)).toContain("Kayak1of 2");
   });
 
-  it("Accept hides a still needed line for this visit; it comes back when its numbers change", async () => {
-    // No overlap here: Soccer for Bunk 1 on Monday only.
+  it("an under or over row shows that activity, in Activity View", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
-    qc(element, '[data-counter="stillNeeded"]').click();
+    await openCounter(element);
+    expect(activityRows(element)).toEqual(["Swim0of 1", "Soccer1of 4"]);
+    activityRow(element, "Soccer").click();
     await flush();
-    expect(listLines(element)).toEqual([
-      "Swim · Bunk 1: 1 still needed",
-      "Soccer · Bunk 1: 1 still needed",
-      "Soccer · Bunk 2: 2 still needed"
-    ]);
-    acceptButton(element, "Soccer · Bunk 1: 1 still needed").click();
-    await flush();
-    expect(listLines(element)).toEqual([
-      "Swim · Bunk 1: 1 still needed",
-      "Soccer · Bunk 2: 2 still needed"
-    ]);
-    expect(counters(element)).toEqual(["0 Overlapping", "2 Still needed"]);
-    // Bunk 1's Soccer is cleared: its line now says 2, a different line, so it shows again.
-    saveSlots.mockResolvedValueOnce({
-      conflicts: [],
-      schedule: schedule([FLAGPOLE, SOCCER], ["1,,", "1,,"])
-    });
-    await press(cell(element, "0-1"), "Delete");
-    expect(counters(element)).toEqual(["0 Overlapping", "3 Still needed"]);
-    expect(listLines(element)).toContain("Soccer · Bunk 1: 2 still needed");
+    expect(
+      q(element, '[data-view="activity"]').getAttribute("aria-pressed")
+    ).toBe("true");
+    expect(q(element, ".drill-name").textContent).toBe("Soccer");
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("a line takes you to its bunk's week; an overlap's line puts focus on its cell", async () => {
+  it("a line to look at takes you to its bunk's week, with focus on its cell", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,2,"]));
-    qc(element, '[data-counter="stillNeeded"]').click();
+    await openCounter(element);
+    lineButton(
+      element,
+      "Bunk 2 · Monday · Period 2: Over its limit of 1 Bunk at once"
+    ).click();
     await flush();
-    lineButton(element, "Soccer · Bunk 2: 1 still needed").click();
-    await flush();
-    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
-    expect(q(element, '[data-view="group"]').className).toContain("on");
-    expect(
-      q(element, '[data-id="edit-grid"]').getAttribute("aria-label") ||
-        q(element, '[data-id="edit-grid"]').label
-    ).toBe("Bunk 2");
-    qc(element, '[data-counter="overlapping"]').click();
-    await flush();
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("false");
+    expect(q(element, '[data-view="group"]').getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(q(element, '[data-id="edit-grid"]').label).toBe("Bunk 2");
+    await openCounter(element);
     lineButton(
       element,
       "Bunk 1 · Monday · Period 2: Over its limit of 1 Bunk at once"
@@ -570,24 +564,21 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     const start = draft();
     start.schedule.days = [];
     const element = await render(start);
-    expect(qc(element, '[data-id="counters"]')).toBeNull();
+    expect(q(element, "c-shoresh-week-checks")).toBeNull();
   });
 
-  it("a counter with something in it shows the chevron; it names the list only while it is open", async () => {
+  it("the counter is one rail item with its chevron, never raised while closed", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
-    const needed = qc(element, '[data-counter="stillNeeded"]');
-    const overlapping = qc(element, '[data-counter="overlapping"]');
-    expect(needed.querySelector(".chevron")).not.toBeNull();
-    expect(overlapping.querySelector(".chevron")).toBeNull();
-    expect(needed.hasAttribute("aria-controls")).toBe(false);
-    needed.click();
+    const word = counterWord(element);
+    expect(word.querySelector(".shoresh-chevron")).not.toBeNull();
+    expect(word.className).toBe("shoresh-item");
+    expect(word.getAttribute("aria-controls")).toBeTruthy();
+    word.click();
     await flush();
-    expect(needed.getAttribute("aria-controls")).toBeTruthy();
-    // No open look on the counters (the desktop's manual route has none).
-    expect(needed.className).toBe("counter counter_due");
+    expect(word.className).toContain("shoresh-raised");
   });
 
-  it("the Spread counter shows when an activity has an early-week goal", async () => {
+  it("an early-week goal still short is a line to look at", async () => {
     const earlySwim = nsRecord({
       ...SETUP,
       activities: SETUP.activities.map((a) => {
@@ -600,14 +591,19 @@ describe("c-shoresh-manual-build: checks and counters", () => {
       draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]),
       earlySwim
     );
-    expect(counters(element)).toEqual([
-      "0 Overlapping",
-      "3 Still needed",
-      "1 Spread across the week"
+    await openCounter(element);
+    expect(heads(element)).toEqual([
+      "5still needed",
+      "4under",
+      "0over",
+      "1to look at"
+    ]);
+    expect(listLines(element)).toEqual([
+      "Swim · Bunk 1: 1 still needed by Monday"
     ]);
   });
 
-  it("another week shown brings accepted lines back and closes the list", async () => {
+  it("another week shown closes the dropdown", async () => {
     const twoWeeks = nsRecord({
       ...SETUP,
       weeks: [...SETUP.weeks, { Id: "w2", Name: "Week 2" }]
@@ -616,17 +612,12 @@ describe("c-shoresh-manual-build: checks and counters", () => {
       draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]),
       twoWeeks
     );
-    qc(element, '[data-counter="stillNeeded"]').click();
-    await flush();
-    qc(element, '[aria-label="Accept: Swim · Bunk 1: 1 still needed"]').click();
-    await flush();
-    expect(counters(element)).toContain("2 Still needed");
+    await openCounter(element);
     q(element, '[data-id="week"]').dispatchEvent(
       new CustomEvent("change", { detail: { value: "w2" } })
     );
     await flush();
-    expect(qc(element, '[data-id="counter-list"]')).toBeNull();
-    expect(counters(element)).toContain("3 Still needed");
+    expect(counterWord(element).getAttribute("aria-expanded")).toBe("false");
   });
 
   it("places come with the week too: a place made smaller elsewhere shows once the week is read again", async () => {
@@ -688,7 +679,8 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     await flush();
     // Two groups at a place that fits two: no conflict.
     expect(dotIn(element, "0-1")).toBeNull();
-    expect(counters(element)).toContain("0 Overlapping");
+    await openCounter(element);
+    expect(qc(element, '[data-id="look"]')).toBeNull();
 
     getDraft.mockResolvedValue({
       ...withRecords(start, pool),
@@ -700,7 +692,8 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(dotIn(element, "0-1").label).toBe(
       "More Bunks at Pool than fit, in use by Teen swim"
     );
-    expect(counters(element)).toContain("1 Overlapping");
+    await openCounter(element);
+    expect(heads(element)).toContain("1to look at");
 
     // What the user can't read comes with no name: the dot names nothing, and still shows.
     getDraft.mockResolvedValue({
@@ -810,16 +803,15 @@ describe("c-shoresh-manual-build: checks and counters", () => {
     expect(cell(element, "0-1").className).not.toMatch(/cell_pulse/);
   });
 
-  it("a line taken from the list lets go of what was picked up", async () => {
+  it("a row taken from the counter lets go of what was picked up", async () => {
     const element = await render(draft([FLAGPOLE, SOCCER], ["1,2,", "1,,"]));
     cell(element, "0-1").dispatchEvent(
       new CustomEvent("focusin", { bubbles: true, composed: true })
     );
     await press(cell(element, "0-1"), " ");
     expect(cell(element, "0-1").className).toContain("cell_picked");
-    qc(element, '[data-counter="stillNeeded"]').click();
-    await flush();
-    lineButton(element, "Soccer · Bunk 2: 2 still needed").click();
+    await openCounter(element);
+    activityRow(element, "Soccer").click();
     await flush();
     q(element, '[data-view="day"]').click();
     await flush();

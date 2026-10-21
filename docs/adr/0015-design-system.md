@@ -102,10 +102,11 @@ until the next PRs; nothing a director does works differently.
 
 ## Not done here
 
-- Manual Build's and Generated Schedule's rail, grid and drawer (the next PR), then the setup
-  screens. Until then they sit inside the new frame in their old look, with the new button
-  colours.
-- The line above each schedule's grid still has its own Update to match setup, and focus returns
-  there when the list closes. It goes when the rail is rebuilt, and focus then returns to the
-  menu's.
+- Manual Build's and Generated Schedule's grid and drawer (design step 2b), then the setup
+  screens. Their rail, Edit and counter are built (step 2a, ADR 0008 part 7), with the rail's
+  grammar as classes here (`.shoresh-item`, `.shoresh-pop` and its rows, `.shoresh-rail-line`,
+  `.shoresh-chevron`).
+- ~~The line above each schedule's grid still has its own Update to match setup.~~ Gone in step
+  2a: Update to match setup is only at the menu's foot, and focus returns there when the list
+  closes (ADR 0008 part 7 §9).
 - The earlier colour tokens are removed once no screen uses them.

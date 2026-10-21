@@ -50,6 +50,11 @@
   padding: var(--shoresh-space-pad);
 }
 
+/* A schedule's zones carry their own inset, and its hairlines run edge to edge. */
+.body_flush {
+  padding: 0;
+}
+
 /* The head zone is one item tall plus its inset, like the rail, so its line meets the menu's. */
 .head-row {
   display: flex;

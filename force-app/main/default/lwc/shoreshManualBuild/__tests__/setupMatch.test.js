@@ -270,10 +270,16 @@ const editorText = (element) => {
   return shown ? shown.textContent.trim() : null;
 };
 
+/** The menu's Update to match setup (ADR 0015 §9): the page calls the screen's. */
 async function openUpdate(element) {
-  q(element, '[data-id="update-to-match"]').click();
+  element.updateToMatchSetup();
   await flush();
 }
+/** Whether the screen last told the page it can be updated to match setup (the menu's foot). */
+const updatable = () => {
+  const last = toldStates[toldStates.length - 1];
+  return last ? last.changed : false;
+};
 
 describe("c-shoresh-manual-build: setup changed since the week started", () => {
   afterEach(() => {
@@ -317,7 +323,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(getDraft).toHaveBeenCalledTimes(1);
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
-    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+    expect(updatable()).toBe(true);
   });
 
   it("joins a setup dot to the checks' own words on the same placement", async () => {
@@ -335,17 +341,13 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
   });
 
-  it("says the week doesn't match setup, with Update to match setup", async () => {
+  it("says it at the menu's foot only: no line or button of its own (ADR 0015 §9)", async () => {
     const element = await render();
-    const line = q(element, '[data-id="setup-changed"]');
-    // Never "setup changed": an activity closed this week placed by hand differs from setup
-    // too, with setup unchanged.
-    expect(line.querySelector("c-shoresh-dot").label).toBe(
-      "Week 1 doesn't match setup"
-    );
-    expect(q(element, '[data-id="update-to-match"]').textContent.trim()).toBe(
-      "Update to match setup"
-    );
+    expect(updatable()).toBe(true);
+    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(q(element, '[data-id="update-to-match"]')).toBeNull();
+    // The cells it is about still carry their marks.
+    expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
   });
 
   it("tells the page it can be updated to match setup, and the menu's Update opens the same list", async () => {
@@ -382,19 +384,19 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
   });
 
   it("shows nothing when the week matches setup", async () => {
-    const element = await render(NOTHING);
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    await render(NOTHING);
+    expect(updatable()).toBe(false);
   });
 
-  it("says why the week can't be compared, with no button", async () => {
+  it("says why the week can't be compared, under the rail, and the menu offers nothing", async () => {
     const element = await render({
       ...NOTHING,
       problem: "No Bunks of Main are at camp in Week 1."
     });
-    expect(q(element, '[data-id="setup-changed"] c-shoresh-dot').label).toBe(
+    expect(q(element, '[data-id="setup-problem"]').textContent.trim()).toBe(
       "No Bunks of Main are at camp in Week 1."
     );
-    expect(q(element, '[data-id="update-to-match"]')).toBeNull();
+    expect(updatable()).toBe(false);
   });
 
   it("shows every change first, read fresh, and holds edits while it is open", async () => {
@@ -472,7 +474,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
       }
     });
     expect(dialog(element)).toBeNull();
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(updatable()).toBe(false);
     expect(q(element, "c-shoresh-week-editor").restoring).toBe(false);
   });
 
@@ -488,7 +490,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(dialog(element)).toBeNull();
-    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+    expect(updatable()).toBe(true);
   });
 
   it("Cancel changes nothing", async () => {
@@ -563,7 +565,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     getSetupChanges.mockRejectedValue({ body: { message: "No access." } });
     await saved(element);
     // Hiding them would make the week look as if it matched setup.
-    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+    expect(updatable()).toBe(true);
     expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
     expect(editorText(element)).toBe(
       "Shoresh couldn't check Week 1 against setup. No access."
@@ -571,7 +573,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     // Update to match setup reads fresh, fails the same way, and opens nothing.
     await openUpdate(element);
     expect(dialog(element)).toBeNull();
-    expect(q(element, '[data-id="update-to-match"]')).not.toBeNull();
+    expect(updatable()).toBe(true);
   });
 
   it("a read that works after a failed one clears the couldn't-check message", async () => {
@@ -583,7 +585,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
     getSetupChanges.mockResolvedValue(NOTHING);
     await saved(element);
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(updatable()).toBe(false);
     expect(editorText(element)).toBeNull();
   });
 
@@ -606,7 +608,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await openUpdate(element);
     expect(dialog(element)).toBeNull();
     expect(q(element, '[data-id="notice"]').textContent).toBe(problem);
-    expect(q(element, '[data-id="setup-changed"] c-shoresh-dot').label).toBe(
+    expect(q(element, '[data-id="setup-problem"]').textContent.trim()).toBe(
       problem
     );
   });
@@ -653,18 +655,16 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     saveSlots.mockReturnValue(pending().promise);
     clearCell(element, "0-1");
     await flush();
-    const button = q(element, '[data-id="update-to-match"]');
-    expect(button.disabled).toBe(true);
-    // Pressed anyway (the button drawn before the edit began): it still waits, and says so.
+    // The menu's Update is held (the page is told the week is busy) ...
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: true,
+      busy: true
+    });
+    // ... and asked anyway, it opens nothing.
     getSetupChanges.mockClear();
-    button.disabled = false;
-    button.click();
-    await flush();
+    await openUpdate(element);
     expect(getSetupChanges).not.toHaveBeenCalled();
     expect(dialog(element)).toBeNull();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "One moment: an edit is still saving."
-    );
   });
 
   it("drops an older answer that arrives after a newer one", async () => {
@@ -680,20 +680,20 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     first.resolve(PREVIEW);
     await flush();
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(updatable()).toBe(false);
     expect(dotIn(element, "0-1")).toBeNull();
   });
 
   it("another week shows none of the last week's setup changes while its own are read", async () => {
     const element = await render(PREVIEW, swimWeek(), TWO_WEEKS);
-    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+    expect(updatable()).toBe(true);
     getSetupChanges.mockReturnValue(pending().promise);
     q(element, '[data-id="week"]').dispatchEvent(
       new CustomEvent("change", { detail: { value: "w2" } })
     );
     await flush();
     expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(updatable()).toBe(false);
     expect(dotIn(element, "0-1")).toBeNull();
   });
 
@@ -718,17 +718,29 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(restoreVersion).toHaveBeenCalled();
     expect(getSetupChanges).toHaveBeenCalledTimes(2);
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(updatable()).toBe(false);
   });
 
-  it("Cancel puts focus back on Update to match setup", async () => {
+  it("Cancel puts focus back on the menu's Update to match setup, through the page", async () => {
+    const element = await render();
+    const asked = [];
+    element.addEventListener("setupfocus", (event) => {
+      asked.push(true);
+      event.detail.focused = true;
+    });
+    await openUpdate(element);
+    inDialog(element, '[data-id="close"]').click();
+    await flush();
+    expect(asked).toEqual([true]);
+  });
+
+  it("Cancel with no menu to take focus puts it on the grid", async () => {
     const element = await render();
     await openUpdate(element);
     inDialog(element, '[data-id="close"]').click();
     await flush();
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="update-to-match"]')
-    );
+    expect(dialog(element)).toBeNull();
+    expectFocusInGrid(element);
   });
 
   it("setup saved on another screen while the update list is open leaves the list's own reading alone", async () => {
@@ -855,7 +867,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     week2.resolve(swimWeek());
     await flush();
     expect(q(element, "c-shoresh-week-editor")).not.toBeNull();
-    expect(q(element, '[data-id="setup-changed"]')).toBeNull();
+    expect(updatable()).toBe(false);
     expect(dotIn(element, "0-1")).toBeNull();
   });
 
@@ -894,8 +906,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     // Reading the list fresh.
     const reading = pending();
     getSetupChanges.mockReturnValueOnce(reading.promise);
-    q(element, '[data-id="update-to-match"]').click();
-    await flush();
+    await openUpdate(element);
     expect(pickersLocked(element)).toEqual([true, true]);
     expect(q(element, '[data-id="versions"]').busy).toBe(true);
     expect(q(element, "c-shoresh-week-editor").restoring).toBe(true);
@@ -956,17 +967,20 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     );
   });
 
-  it("Update all with changes left: focus goes back to Update to match setup", async () => {
+  it("Update all with changes left: focus goes back to the menu's Update to match setup", async () => {
     const element = await render();
+    const asked = [];
+    element.addEventListener("setupfocus", (event) => {
+      asked.push(true);
+      event.detail.focused = true;
+    });
     await openUpdate(element);
     updateToMatchSetup.mockResolvedValue(made());
     getSetupChanges.mockResolvedValue(leaving(FLAGPOLE_NOW));
     inDialog(element, '[data-id="update-all"]').click();
     await flush();
     expect(dialog(element)).toBeNull();
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="update-to-match"]')
-    );
+    expect(asked).toEqual([true]);
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Updated 2 changes to match setup."
     );
@@ -1099,8 +1113,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     // Pressed meanwhile: its read of the setup changes is slow too.
     const asked = pending();
     getSetupChanges.mockReturnValueOnce(asked.promise);
-    q(element, '[data-id="update-to-match"]').click();
-    await flush();
+    await openUpdate(element);
     // The week arrives first and reads the setup changes again, overtaking the click's read.
     reload.resolve(swimWeek());
     await flush();
@@ -1162,7 +1175,7 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     first.resolve(NOTHING);
     await flush();
     expect(dotIn(element, "0-1").label).toBe("Deleted from setup");
-    expect(q(element, '[data-id="setup-changed"]')).not.toBeNull();
+    expect(updatable()).toBe(true);
   });
 
   it("an update whose answer comes after another week is chosen leaves that week as it is", async () => {

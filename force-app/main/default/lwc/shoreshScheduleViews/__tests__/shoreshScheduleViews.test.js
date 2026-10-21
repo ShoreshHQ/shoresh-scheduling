@@ -17,7 +17,11 @@ const t = buildTerms(LABELS);
 
 describe("c/shoreshScheduleViews", () => {
   it("names days and times the way a camp reads them", () => {
-    expect(dayLabel("2026-06-29")).toEqual({ label: "Monday", sub: "Jun 29" });
+    expect(dayLabel("2026-06-29")).toEqual({
+      label: "Monday",
+      short: "Mon",
+      sub: "Jun 29"
+    });
     expect(clock("09:00")).toBe("9:00 AM");
     expect(clock("12:30")).toBe("12:30 PM");
     expect(clock("00:15")).toBe("12:15 AM");

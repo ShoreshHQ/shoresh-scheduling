@@ -1,7 +1,7 @@
 <template>
   <div class="schedules" data-id="generated-schedule">
     <!-- One editor shell from the start, as in Manual Build: the week and program pickers sit in
-         its toolbar before the week is generated too, so they never move when it is drawn. -->
+         its rail before the week is generated too, so they never move when it is drawn. -->
     <c-shoresh-week-editor
       data-id="week-editor"
       terms={terms}
@@ -12,8 +12,9 @@
       restoring={editsWait}
       locks={editorLocks}
       check-with={checkWith}
-      lit={lit}
       setup-dots={setupDots}
+      edit-items={editItems}
+      oneditselect={handleEditSelect}
       add-activity-with={addActivityWith}
       onstatechange={handleEditorState}
       oneditstate={handleEditState}
@@ -24,26 +25,13 @@
       onunlockrequest={handleUnlockRequest}
       oncellfocus={handleCellFocus}
     >
-      <!-- Setup changed since the week was built: first under the toolbar and counters, where
-           Manual Build has it (ADR 0010 §56). -->
-      <template lwc:if={showSetupChanged}>
-        <div class="setup-changed" slot="status" data-id="setup-changed">
-          <c-shoresh-dot label={setupChangedText}></c-shoresh-dot>
-          <span aria-hidden="true">{setupChangedText}</span>
-          <template lwc:if={canUpdateToMatch}>
-            <!-- Waits for a build, an edit still saving and the rest: what it compares is the
-                 week as saved. -->
-            <button
-              type="button"
-              class="slds-button slds-button_neutral"
-              disabled={versionsBusy}
-              data-id="update-to-match"
-              onclick={handleSetupMatch}
-            >
-              Update to match setup
-            </button>
-          </template>
-        </div>
+      <!-- Setup changed since the week was built: the cells carry their marks and the menu's
+           foot says so, with Update to match setup, as on Manual Build (ADR 0015 §9). Here
+           only when it can't be compared, so that is never hidden. -->
+      <template lwc:if={showSetupProblem}>
+        <p class="notice" slot="status" data-id="setup-problem">
+          {setupProblem}
+        </p>
       </template>
 
       <template lwc:if={busy}>
@@ -149,7 +137,7 @@
         </p>
       </template>
 
-      <!-- Before the week is generated, under the toolbar: what building still needs, or the
+      <!-- Before the week is generated, under the rail: what building still needs, or the
            desktop's empty card. -->
       <template lwc:if={showNoDays}>
         <p class="empty-state" slot="outcome">{noDaysMessage}</p>
@@ -219,38 +207,46 @@
         </div>
       </template>
 
-      <!-- One toolbar, as on the desktop: the week, how to look at it (the editor's views), then
-           what changes it: Undo and Redo (the editor's), with Rebuild beside them (desktop
-           ScheduleScreen.jsx: "Sits with undo/redo", owner 2026-09-12). -->
+      <!-- The rail's left: the program (when there are several) and the week, as on Manual
+           Build, before Edit, Build and how to look at the week. -->
       <template lwc:if={hasSeveralPrograms}>
-        <lightning-combobox
+        <c-shoresh-rail-picker
           slot="pickers"
-          class="picker"
           label={programLabel}
           value={programId}
           options={programOptions}
           disabled={pickerDisabled}
           onchange={handleProgram}
           data-id="program"
-        ></lightning-combobox>
+        ></c-shoresh-rail-picker>
       </template>
       <template lwc:if={canChoose}>
-        <lightning-combobox
+        <c-shoresh-rail-picker
           slot="pickers"
-          class="picker"
           label={weekLabel}
           value={weekId}
           options={weekOptions}
           disabled={pickerDisabled}
+          arrows
           onchange={handleWeek}
           data-id="week"
-        ></lightning-combobox>
+        ></c-shoresh-rail-picker>
       </template>
       <template lwc:if={showWeek}>
-        <div class="actions" slot="tools" role="group" aria-label="Build">
+        <!-- Build, beside Edit (ADR 0010 §58): what Shoresh builds. Rebuild and Try another, Fill
+             the open cells, any option tried this visit brought back, then Start over. Edit holds
+             what is done by hand: Undo, Redo and Lock. -->
+        <c-shoresh-rail-pop
+          slot="tools"
+          label="Build"
+          menu
+          disabled={actionsDisabled}
+          data-id="build-menu"
+        >
           <button
             type="button"
-            class="slds-button slds-button_neutral"
+            role="menuitem"
+            class="shoresh-pop-row"
             disabled={actionsDisabled}
             onclick={handleRebuild}
             data-action="Rebuild"
@@ -259,69 +255,66 @@
           </button>
           <button
             type="button"
-            class="slds-button slds-button_neutral"
-            disabled={cannotFill}
-            onclick={handleFillOpen}
-            data-action="FillOpen"
-          >
-            Fill the open cells
-          </button>
-          <button
-            type="button"
-            class="slds-button slds-button_neutral"
+            role="menuitem"
+            class="shoresh-pop-row"
             disabled={actionsDisabled}
             onclick={handleTryAnother}
             data-action="TryAnother"
           >
             Try another
           </button>
-          <lightning-combobox
-            class="option"
-            label={optionLabel}
-            value={optionValue}
-            options={optionChoices}
-            disabled={actionsDisabled}
-            onchange={handleOption}
-            data-id="option"
-          ></lightning-combobox>
-        </div>
-        <div class="actions" slot="tools">
-          <lightning-button-menu
-            class="lock-menu"
-            label="Lock"
-            icon-name="utility:lock"
-            alternative-text="Lock"
-            disabled={lockDisabled}
-            onselect={handleLockSelect}
-            data-id="lock-menu"
+          <button
+            type="button"
+            role="menuitem"
+            class="shoresh-pop-row"
+            disabled={cannotFill}
+            onclick={handleFillOpen}
+            data-action="FillOpen"
           >
-            <template for:each={lockMenu} for:item="choice">
-              <lightning-menu-item
+            Fill the open cells
+          </button>
+          <div class="shoresh-pop-divider" role="separator"></div>
+          <div role="group" aria-label={optionLabel} data-id="option">
+            <template for:each={optionRows} for:item="choice">
+              <button
                 key={choice.value}
-                value={choice.value}
-                label={choice.label}
-                data-value={choice.value}
-              ></lightning-menu-item>
+                type="button"
+                role="menuitemradio"
+                class="shoresh-pop-row"
+                aria-checked={choice.checked}
+                disabled={actionsDisabled}
+                onclick={handleOptionRow}
+                data-option={choice.value}
+              >
+                {choice.label}
+              </button>
             </template>
-          </lightning-button-menu>
-        </div>
-        <button
-          slot="tools"
-          type="button"
-          class="slds-button slds-button_neutral"
-          disabled={actionsDisabled}
-          onclick={handleStartOver}
-          data-action="StartOver"
-        >
-          Start over
-        </button>
-        <!-- Versions and Publish at the right edge, as on Manual Build and the desktop. -->
-        <span class="spacer" slot="tools"></span>
-        <!-- Versions, set off by a divider as on the desktop and Manual Build: Restore, rename,
-             delete and Save version. -->
-        <div class="divider" slot="tools" aria-hidden="true"></div>
+          </div>
+          <div class="shoresh-pop-divider" role="separator"></div>
+          <button
+            type="button"
+            role="menuitem"
+            class="shoresh-pop-row"
+            disabled={actionsDisabled}
+            onclick={handleStartOver}
+            data-action="StartOver"
+          >
+            Start over
+          </button>
+        </c-shoresh-rail-pop>
+
+        <!-- The rail's right: the counter, in the same place and with the same words as on Manual
+             Build, then Versions and Publish at the edge. -->
+        <c-shoresh-week-checks
+          slot="checks"
+          measure={measure}
+          reset-key={checksResetKey}
+          onlocate={handleLocate}
+          onshowactivity={handleShowActivity}
+          data-id="counter"
+        ></c-shoresh-week-checks>
         <c-shoresh-versions
-          slot="tools"
+          slot="end"
           restore
           versions={versions}
           open-id={restoredId}
@@ -334,42 +327,53 @@
           onsave={handleSaveVersion}
           data-id="versions"
         ></c-shoresh-versions>
-        <!-- Publish, last on the toolbar, as on Manual Build: when the week was published, then
-             Unpublish (only while it is) and Publish. -->
-        <div class="publish" slot="tools" data-id="publish-area">
+        <div class="publish" slot="end" data-id="publish-area">
+          <!-- Published: when, and Unpublish, in a dropdown; the corner when the week changed
+               since. As Manual Build. -->
           <template lwc:if={publishState}>
-            <span class="published" data-id="published">
-              {publishedWord}<lightning-formatted-date-time
-                value={publishState.publishedAt}
-                month="short"
-                day="numeric"
-                hour="numeric"
-                minute="2-digit"
-              ></lightning-formatted-date-time
-              >{publishedBy}
-              <!-- Changed since it was published: the "needs a look" dot, not more grey words. -->
-              <template lwc:if={publishState.changedSince}>
-                <c-shoresh-dot
-                  class="changed-since"
-                  label="Changed since"
-                  focusable
-                  data-id="changed-since"
-                ></c-shoresh-dot>
-              </template>
-            </span>
-            <button
-              type="button"
-              class="slds-button slds-button_neutral"
-              data-id="unpublish"
-              disabled={publishDisabled}
-              onclick={handleUnpublish}
+            <c-shoresh-rail-pop
+              label="Published"
+              mark={publishState.changedSince}
+              alternative-text={publishedName}
+              align="right"
+              data-id="published-menu"
             >
-              Unpublish
-            </button>
+              <p class="shoresh-pop-row published" data-id="published">
+                <span
+                  >{publishedWord}<lightning-formatted-date-time
+                    value={publishState.publishedAt}
+                    month="short"
+                    day="numeric"
+                    hour="numeric"
+                    minute="2-digit"
+                  ></lightning-formatted-date-time
+                  >{publishedBy}</span
+                >
+                <template lwc:if={publishState.changedSince}>
+                  <c-shoresh-dot
+                    class="changed-since"
+                    label="Changed since"
+                    focusable
+                    data-id="changed-since"
+                  ></c-shoresh-dot>
+                </template>
+              </p>
+              <div class="shoresh-pop-divider" role="presentation"></div>
+              <button
+                type="button"
+                class="shoresh-pop-row"
+                data-pop-row
+                data-id="unpublish"
+                disabled={publishDisabled}
+                onclick={handleUnpublish}
+              >
+                Unpublish
+              </button>
+            </c-shoresh-rail-pop>
           </template>
           <button
             type="button"
-            class="slds-button slds-button_brand"
+            class="shoresh-item shoresh-item_primary"
             data-id="publish"
             disabled={publishDisabled}
             onclick={handlePublish}
@@ -377,17 +381,6 @@
             Publish
           </button>
         </div>
-
-        <!-- The counters under the toolbar, in the same place and with the same words as on
-             Manual Build (desktop ScheduleScreen.jsx; Greg's decision 3, 2026-10-20). -->
-        <c-shoresh-week-checks
-          slot="checks"
-          checked={checked}
-          reset-key={checksResetKey}
-          route="generated"
-          onlocate={handleLocate}
-          onhighlight={handleHighlight}
-        ></c-shoresh-week-checks>
       </template>
     </c-shoresh-week-editor>
 

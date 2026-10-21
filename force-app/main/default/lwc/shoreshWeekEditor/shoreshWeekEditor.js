@@ -36,6 +36,7 @@ import {
 import {
   RULE,
   checkWeek,
+  measureWeek,
   otherProgramsAt,
   reasonFor,
   readActivities,
@@ -112,7 +113,7 @@ function slotKey(slot) {
  * the week over with show(), and the editor tells it what changed (statechange, edited,
  * errorchange, reload). Saving goes through the host's saveRuns(edits), which answers
  * { status: "saved" | "refused", conflicts, schedule, message }. The host's own controls go in
- * the slots: pickers, tools, checks, status and outcome.
+ * the slots: pickers, tools, checks, end, status and outcome (the rail's, below).
  *
  * terms: the camp's words. setup: the season (SeasonSetupController.getSeasonSetup).
  *
@@ -128,7 +129,6 @@ function slotKey(slot) {
  * - checkWith(days, locks): the host's own check of the week (Generated's engine check, with its
  *   locks), used instead of the editor's: its flags draw the dots, and openReasons (cell key to
  *   words) a dot on an Open cell. The editor only draws what it is given.
- * - lit: the cells ("date|groupId|blockId") the host's counters light up.
  * - addActivityWith({ scheduleId, name }): how "Add <name> to activities" adds on the host's draft
  *   (Manual Build's draft when left out).
  * - say(text) and clearNotice(): the host's own line on the quiet line, and taking it away once
@@ -137,6 +137,12 @@ function slotKey(slot) {
  * What Manual Build adds: setupDots, a Map of cell ("date|groupId|blockId") to the words of its
  * "setup changed since the week started" dot (ADR 0008 part 6). They join any other dot on the
  * placement, after its words.
+ *
+ * The rail (ADR 0008 part 7): the host's slots are pickers (the week and program, at the left),
+ * tools (the host's own rail menus, after Edit), checks (the counter, at the right) and end
+ * (Versions and Publish, last). Edit is the editor's: Undo and Redo, then the host's editItems
+ * ([{ value, label, dataId, disabled }, { divider: true }, { value, label, dataId, children:
+ * [...] }]: a row with children opens them under it); choosing one fires editselect { value }.
  */
 // How often an edit is sent again, with nothing new to ask, before it is given up.
 const MAX_RESENDS = 2;
@@ -158,12 +164,14 @@ export default class ShoreshWeekEditor extends LightningElement {
   // The host's check of the week: (days, locks) => checkWeek's answer, plus openReasons. Left out,
   // the editor checks the week itself (Manual Build).
   @api checkWith;
-  // Cells the host's counters light up ("date|groupId|blockId"), or nothing.
-  @api lit;
+  // The host's rows in the Edit menu, after Undo and Redo (see above).
+  @api editItems;
   // Adds an activity on the host's draft: ({ scheduleId, name }) => the activity as offered.
   @api addActivityWith;
   // Setup changed since the week started (Manual Build): cell key to its dot's words, or nothing.
   @api setupDots;
+  // The Edit menu's row that has its rows open under it (Copy day to…), or null.
+  openEditGroup = null;
 
   // ManualBuildController's DraftView: { schedule, activities, away }, or null (not started).
   _draft = null;
@@ -181,7 +189,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   // An edit someone else's change got in the way of: { edit, where, theirs, yours }.
   conflict;
   announcement = "";
-  // A short line under the toolbar when something the director chose couldn't be made.
+  // A short line under the rail when something the director chose couldn't be made.
   notice;
   // A line said that the next save's announcement would talk over: said again with it, once.
   unrepeated = null;
@@ -190,7 +198,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   // "Cleared Monday" after a day or week tool: { text, stepId }, shown with Undo while Undo
   // would take back that step.
   toolNotice = null;
-  // After the line's Undo, focus goes to the toolbar's (the line itself goes away).
+  // After the line's Undo, focus goes to the Edit menu (the line itself goes away).
   focusUndoAfterRender = false;
   // After a day or week tool, focus goes to its line's Undo.
   focusToolUndoAfterRender = false;
@@ -205,6 +213,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   // The last check and what it was worked out from. Changed in place, so updating it while the
   // page renders doesn't ask for another render (so never @track it).
   checkMemo = { inputs: null, result: null };
+  measureMemo = { checked: null, activities: null, result: null };
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
   // { kind: "cell" | "resize", slot, key }.
   picked;
@@ -550,6 +559,40 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
+   * The week's measure (c/shoreshEngine measureWeek): what the rail's counter and the drawer
+   * show, from the same check, so they never disagree. Worked out again only with the check.
+   */
+  @api
+  get measure() {
+    const checked = this.checked;
+    const activities = (this.draft && this.draft.activities) || null;
+    const memo = this.measureMemo;
+    if (memo.checked !== checked || memo.activities !== activities) {
+      memo.checked = checked;
+      memo.activities = activities;
+      memo.result = measureWeek(
+        checked,
+        activities || [],
+        (this.schedule && this.schedule.days) || []
+      );
+    }
+    return memo.result;
+  }
+
+  /** The counter's row: that activity, in Activity View (the editor's own drill-down). */
+  @api
+  showActivity(activityId) {
+    if (!activityId || !this.draft) {
+      return;
+    }
+    this.closeEditor();
+    this.picked = null;
+    this.pulseKeys = [];
+    this.view = "activity";
+    this.activityId = activityId;
+  }
+
+  /**
    * A line takes the director to its bunk's week (desktop: Group View of that group, the list
    * closed); an overlapping cell's line also puts keyboard focus on that cell.
    */
@@ -592,16 +635,19 @@ export default class ShoreshWeekEditor extends LightningElement {
     return `${this.weekName} has no days ${this.programName} runs.`;
   }
 
+  /** Daily, Group and Activity: rail items, the one shown raised (the rail's one selected look). */
   get viewButtons() {
     return [
-      ["day", "Daily View"],
-      ["group", "Group View"],
-      ["activity", "Activity View"]
+      ["day", "Daily"],
+      ["group", "Group"],
+      ["activity", "Activity"]
     ].map(([key, label]) => ({
       key,
       label,
       className:
-        key === this.view ? "view-button view-button_on" : "view-button",
+        key === this.view
+          ? "shoresh-item view-button view-button_on shoresh-raised"
+          : "shoresh-item view-button",
       pressed: String(key === this.view)
     }));
   }
@@ -627,11 +673,29 @@ export default class ShoreshWeekEditor extends LightningElement {
     return this.t.s("TimeBlock");
   }
 
+  /** The week's days on the rail: "Mon" to "Fri", no dates (decision 33); read out in full. */
   get dayPills() {
     return days(this.schedule).map((day) => ({
       ...day,
-      className: day.index === this.dayIndex ? "pill pill_on" : "pill"
+      name: `${day.label}, ${day.sub}`,
+      pressed: String(day.index === this.dayIndex),
+      className:
+        day.index === this.dayIndex
+          ? "shoresh-item pill pill_on shoresh-raised"
+          : "shoresh-item pill"
     }));
+  }
+  get showDayPills() {
+    return !!this.draft && !this.hasNoDays && this.isDaily;
+  }
+  get showGroupPills() {
+    return !!this.draft && !this.hasNoDays && this.isGroup;
+  }
+  get dayWord() {
+    return "Day";
+  }
+  get groupWord() {
+    return this.t.s("Group");
   }
   /**
    * A day that can't be read, in camp words. Why (the server's reason, about how the day is
@@ -657,7 +721,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   get groupPills() {
     return groups(this.schedule).map((grp) => ({
       ...grp,
-      className: grp.key === this.groupKey ? "pill pill_on" : "pill"
+      pressed: String(grp.key === this.groupKey),
+      className:
+        grp.key === this.groupKey
+          ? "shoresh-item pill pill_on shoresh-raised"
+          : "shoresh-item pill"
     }));
   }
   get groupGridLabel() {
@@ -754,9 +822,6 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (cell.slot && saving.has(slotKey(cell.slot))) {
       result = { ...result, className: `${result.className} cell_saving` };
     }
-    if (cell.slot && this.isLitSlot(cell.slot)) {
-      result = { ...result, className: `${result.className} cell_lit` };
-    }
     return result;
   }
 
@@ -796,19 +861,6 @@ export default class ShoreshWeekEditor extends LightningElement {
       }
     });
     return words.length ? words.join(" · ") : null;
-  }
-
-  /** Whether the host's counters light up any block of the placement a slot is part of. */
-  isLitSlot(slot) {
-    if (!this.lit || !this.lit.size) {
-      return false;
-    }
-    const day = this.dayOf(slot);
-    const groupId = day.groups[slot.group].id;
-    const at = placement(day, slot.group, slot.block);
-    return day.blocks
-      .slice(at.first, at.first + at.length)
-      .some((block) => this.lit.has(lockKey(day.dateValue, groupId, block.id)));
   }
 
   /** The words of a placement's dot, if it has one (keyed by where it starts). */
@@ -1774,6 +1826,112 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
   get redoTitle() {
     return this.cannotRedo ? "Redo" : `Redo: ${this.history.redoLabel}`;
+  }
+
+  // ---------- the Edit menu ----------
+
+  /** The keys Undo and Redo answer to (undoShortcut), shown as on this computer. */
+  get onMac() {
+    const nav = typeof navigator === "undefined" ? null : navigator;
+    return !!nav && /Mac|iPhone|iPad/.test(nav.platform || nav.userAgent || "");
+  }
+  get undoHint() {
+    return this.onMac ? "⌘Z" : "Ctrl+Z";
+  }
+  get redoHint() {
+    return this.onMac ? "⇧⌘Z" : "Ctrl+Shift+Z";
+  }
+  get undoKeys() {
+    return "Control+Z Meta+Z";
+  }
+  get redoKeys() {
+    return "Control+Shift+Z Meta+Shift+Z Control+Y";
+  }
+
+  /**
+   * The host's rows after Undo and Redo, set off by a line: a row with children opens them under
+   * it, one step in.
+   */
+  get editRows() {
+    const items = this.editItems || [];
+    if (!items.length) {
+      return [];
+    }
+    const rows = [{ key: "divider-top", divider: true }];
+    items.forEach((item, i) => {
+      if (item.divider) {
+        rows.push({ key: `divider-${i}`, divider: true });
+        return;
+      }
+      const children = item.children || null;
+      if (children) {
+        const open = this.openEditGroup === item.value && !item.disabled;
+        rows.push({
+          key: item.value,
+          group: true,
+          value: item.value,
+          label: item.label,
+          dataId: item.dataId,
+          disabled: !!item.disabled || children.length === 0,
+          expanded: String(open),
+          chevronClass: open
+            ? "shoresh-chevron chevron_open"
+            : "shoresh-chevron"
+        });
+        if (open) {
+          children.forEach((child) =>
+            rows.push({
+              key: `${item.value}|${child.value}`,
+              value: child.value,
+              label: child.label,
+              dataId: child.dataId,
+              disabled: !!child.disabled,
+              className: "shoresh-pop-row shoresh-pop-row_inner"
+            })
+          );
+        }
+        return;
+      }
+      rows.push({
+        key: item.value,
+        value: item.value,
+        label: item.label,
+        dataId: item.dataId,
+        disabled: !!item.disabled,
+        className: "shoresh-pop-row"
+      });
+    });
+    return rows;
+  }
+
+  /** A row with rows under it (Copy day to…): they open, or close again. */
+  handleEditGroup(event) {
+    const value = event.currentTarget.dataset.group;
+    this.openEditGroup = this.openEditGroup === value ? null : value;
+  }
+
+  /** The Edit menu closed: a row's open rows close with it. */
+  handleEditToggle(event) {
+    if (!event.detail.open) {
+      this.openEditGroup = null;
+    }
+  }
+
+  /** One of the host's rows was chosen: the host does it. */
+  handleEditSelect(event) {
+    this.openEditGroup = null;
+    this.dispatchEvent(
+      new CustomEvent("editselect", { detail: { value: event.detail.value } })
+    );
+  }
+
+  /** Focus on the Edit menu's word (after a host's Edit row, when focus has nowhere better). */
+  @api
+  focusEditMenu() {
+    const menu = this.template.querySelector('[data-id="edit-menu"]');
+    if (menu) {
+      menu.focus();
+    }
   }
 
   handleUndo() {
@@ -2770,15 +2928,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   renderedCallback() {
     // A list whose counter went to zero is closed, so it doesn't open again by itself later.
     if (this.focusUndoAfterRender) {
+      // The line's Undo is gone with the line: focus goes to the Edit menu, where Undo and Redo
+      // are.
       this.focusUndoAfterRender = false;
-      const undo = this.template.querySelector('[data-id="undo"]');
-      const target =
-        undo && !undo.disabled
-          ? undo
-          : this.template.querySelector('[data-id="redo"]');
-      if (target) {
-        target.focus();
-      }
+      this.focusEditMenu();
     }
     if (this.focusToolUndoAfterRender) {
       this.focusToolUndoAfterRender = false;

@@ -5,7 +5,14 @@
  */
 import { createElement } from "lwc";
 import ShoreshGeneratedSchedule from "c/shoreshGeneratedSchedule";
-import { find } from "shoresh-jest/week-editor";
+import {
+  chooseLock,
+  counterText,
+  editorRoot,
+  find,
+  lockLabels,
+  lockRows
+} from "shoresh-jest/week-editor";
 import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveWeek";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
@@ -98,15 +105,10 @@ const q = (element, selector) => find(element, selector);
 const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cellAt = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);
-const menu = (element) => q(element, '[data-id="lock-menu"]');
-const menuLabels = (element) =>
-  [...element.shadowRoot.querySelectorAll("lightning-menu-item")].map(
-    (i) => i.label
-  );
-const filled = (element) =>
-  q(element, "c-shoresh-week-checks").shadowRoot.querySelector(
-    '[data-id="filled"]'
-  ).textContent;
+// Lock's choices are in the rail's Edit menu, after Undo and Redo (ADR 0010 §58).
+const editMenu = (element) => q(element, '[data-id="edit-menu"]');
+const menuLabels = (element) => lockLabels(element);
+const filled = (element) => counterText(element);
 
 /** Gives the page turns until done() says yes (a build runs in pieces). */
 async function until(done, tries = 200) {
@@ -124,12 +126,7 @@ async function focusCell(element, key) {
   await flush();
 }
 async function choose(element, label) {
-  const item = [
-    ...element.shadowRoot.querySelectorAll("lightning-menu-item")
-  ].find((i) => i.label === label);
-  menu(element).dispatchEvent(
-    new CustomEvent("select", { detail: { value: item.value } })
-  );
+  chooseLock(element, label);
   await flush();
 }
 
@@ -158,15 +155,21 @@ describe("locks on the Generated Schedule screen", () => {
     const element = await render(savedWeek([[",,1,", ",,,"]]));
     expect(cellAt(element, "0-2").querySelector(".cell-lock")).not.toBeNull();
     // Bunk 1: 3 periods a day, Bunk 2: 2 mornings; Swim twice: 2 of 9 (10 less the locked one).
-    expect(filled(element)).toContain("2 of 9");
+    expect(filled(element)).toBe("2of 9 placed");
     // Not Open: Fill the open cells passes it over (its dot says nothing about a gap either).
     expect(cellAt(element, "0-2").querySelector("c-shoresh-dot")).toBeNull();
   });
 
   it("the Lock menu offers the day shown, then the cell focus reached, its bunk's day too", async () => {
     const element = await render(savedWeek());
-    expect(menu(element).iconName).toBe("utility:lock");
-    expect(menu(element).label).toBe("Lock");
+    // In Edit, after Undo and Redo and a line.
+    expect(editMenu(element).label).toBe("Edit");
+    const rows = [
+      ...editorRoot(element).querySelectorAll(
+        '[data-id="edit-menu"] [role="menuitem"], [data-id="edit-menu"] [role="separator"]'
+      )
+    ].map((row) => row.dataset.id || row.getAttribute("role"));
+    expect(rows.slice(0, 3)).toEqual(["undo", "redo", "separator"]);
     expect(menuLabels(element)).toEqual(["Lock Monday"]);
     await focusCell(element, "0-1");
     expect(menuLabels(element)).toEqual([
@@ -329,7 +332,7 @@ describe("locks on the Generated Schedule screen", () => {
     expect(sent.days[0].rows[0].split(",")[2]).not.toBe("");
   });
 
-  it("after a Lock is saved, focus is back on the Lock menu", async () => {
+  it("after a Lock is saved, focus is back on the Edit menu", async () => {
     const element = await render(savedWeek());
     const after = savedWeek([[",1,,", ",,,"]]);
     setLocksOnServer.mockResolvedValue({
@@ -337,12 +340,9 @@ describe("locks on the Generated Schedule screen", () => {
       revision: "2026-06-29:2|2026-06-30:1",
       schedule: { days: after.days }
     });
-    // The test's stand-in for Salesforce's menu can't hold focus: see that it is asked to.
-    const focus = jest.fn();
-    menu(element).focus = focus;
     await choose(element, "Lock Monday");
     await flush();
-    expect(focus).toHaveBeenCalled();
+    expect(editorRoot(element).activeElement).toBe(editMenu(element));
   });
 
   it("another week chosen while a Lock saves: the screen isn't left waiting", async () => {
@@ -366,7 +366,7 @@ describe("locks on the Generated Schedule screen", () => {
     answer({ conflict: false, revision: "x", schedule: { days: [] } });
     await flush();
     expect(q(element, '[data-action="Rebuild"]').disabled).toBe(false);
-    expect(menu(element).disabled).toBe(false);
+    expect(lockRows(element).every((row) => !row.disabled)).toBe(true);
   });
 
   it("a cell reached in one week isn't offered in the next", async () => {
@@ -400,11 +400,10 @@ describe("locks on the Generated Schedule screen", () => {
     expect(cellAt(element, "0-2").querySelector(".cell-lock")).toBeNull();
   });
 
-  it("a day that can't be read: the Lock menu offers nothing, held (the server would refuse)", async () => {
+  it("a day that can't be read: Edit offers no Lock (the server would refuse)", async () => {
     const inputs = savedWeek();
     inputs.days[1] = { ...inputs.days[1], problem: "the grid has 3 rows" };
     const element = await render(inputs);
-    expect(menu(element).disabled).toBe(true);
     expect(menuLabels(element)).toEqual([]);
   });
 });

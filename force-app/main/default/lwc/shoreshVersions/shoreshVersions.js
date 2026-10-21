@@ -146,8 +146,9 @@ export default class ShoreshVersions extends LightningElement {
     }
   }
 
-  get buttonIcon() {
-    return this.isOpen ? "utility:chevronup" : "utility:chevrondown";
+  /** A rail menu (ADR 0008 part 7): never raised while closed, raised while open. */
+  get buttonClass() {
+    return this.isOpen ? "shoresh-item shoresh-raised" : "shoresh-item";
   }
 
   get rows() {

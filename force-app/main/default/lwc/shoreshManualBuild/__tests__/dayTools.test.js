@@ -77,10 +77,11 @@ async function render(first) {
 
 const q = (element, selector) => find(element, selector);
 const sentRuns = (call) => saveSlots.mock.calls[call][0].edits[0].runs;
+/** A tool with its days under it, in the Edit menu: the row opens them, then one is chosen. */
 const choose = async (element, id, value) => {
-  q(element, `[data-id="${id}"]`).dispatchEvent(
-    new CustomEvent("select", { detail: { value } })
-  );
+  q(element, `[data-id="${id}"]`).click();
+  await flush();
+  q(element, `[data-id="${id}-${value}"]`).click();
   await flush();
 };
 /** The line after a tool, as read: its words, then its Undo. */
@@ -173,15 +174,31 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     );
   });
 
-  it("the tools aren't in Activity View", async () => {
+  it("the tools are in the Edit menu after Undo and Redo, and not in Activity View", async () => {
     const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
-    expect(q(element, '[data-id="tools"]')).not.toBeNull();
+    const rows = () =>
+      [
+        ...editorRoot(element).querySelectorAll(
+          '[data-id="edit-menu"] [role="menuitem"]'
+        )
+      ].map((row) => row.textContent.replace(/\s+/g, " ").trim());
+    expect(rows()).toEqual([
+      expect.stringMatching(/^Undo/),
+      expect.stringMatching(/^Redo/),
+      "Clear day",
+      "Copy day to…",
+      "Clear week"
+    ]);
     q(element, '[data-view="activity"]').click();
     await flush();
-    expect(q(element, '[data-id="tools"]')).toBeNull();
+    expect(q(element, '[data-id="clear-week"]')).toBeNull();
+    expect(rows()).toEqual([
+      expect.stringMatching(/^Undo/),
+      expect.stringMatching(/^Redo/)
+    ]);
   });
 
-  it("Undo on the line takes the copy back in one step and puts focus on the toolbar", async () => {
+  it("Undo on the line takes the copy back in one step and puts focus on the Edit menu", async () => {
     const element = await render(start(["1,2,", "1,3,"], ["1,,", "1,,"]));
     await choose(element, "copy-day", "1");
     q(element, '[data-id="tool-undo"]').click();
@@ -190,8 +207,9 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       ["g2", [""]],
       ["g1", [""]]
     ]);
+    // The line is gone with its Undo: focus goes to Edit, where Undo and Redo are.
     const focused = editorRoot(element).activeElement;
-    expect(["undo", "redo"]).toContain(focused && focused.dataset.id);
+    expect(focused && focused.dataset.id).toBe("edit-menu");
   });
 
   it("the line goes once Undo would take back something else", async () => {
@@ -330,12 +348,22 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const first = start(["1,2,", "1,,"], ["1,,", "1,,"]);
     first.schedule.days.push(day("2026-07-01", ITEMS, ["1,,", "1,,"]));
     const element = await render(first);
+    expect(
+      q(element, '[data-id="copy-day"]').getAttribute("aria-expanded")
+    ).toBe("false");
+    q(element, '[data-id="copy-day"]').click();
+    await flush();
+    expect(
+      q(element, '[data-id="copy-day"]').getAttribute("aria-expanded")
+    ).toBe("true");
     const items = [
-      ...q(element, '[data-id="copy-day"]').querySelectorAll(
-        "lightning-menu-item"
-      )
-    ].map((i) => i.label);
+      ...editorRoot(element).querySelectorAll('[data-id^="copy-day-"]')
+    ].map((i) => i.textContent.trim());
     expect(items).toEqual(["Tuesday", "Wednesday", "All other days"]);
+    // Clicked again, its days close.
+    q(element, '[data-id="copy-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="copy-day-1"]')).toBeNull();
     await choose(element, "copy-day", "all");
     expect(new Set(sentRuns(0).map((run) => run.day))).toEqual(
       new Set(["2026-06-30", "2026-07-01"])

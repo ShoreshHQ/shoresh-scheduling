@@ -686,85 +686,6 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="versions"]').versions).toEqual([replaced]);
   });
 
-  it("a week whose still needed lines were all accepted publishes at once, as its counters say", async () => {
-    // Archery wants 3 a week: Bunk 1 has 2 and Bunk 2 has 1, so two still needed lines.
-    const element = await render({
-      ...finished(),
-      activityRecords: nsRecord([
-        { Id: "a8", Name: "Crafts", NoGroupLimit__c: true },
-        {
-          Id: "a9",
-          Name: "Archery",
-          TimesPerWeekMin__c: 3,
-          NoGroupLimit__c: true
-        }
-      ]),
-      groupRecords: nsRecord([
-        { Id: "g1", Name: "Bunk 1", Division__c: "d1" },
-        { Id: "g2", Name: "Bunk 2", Division__c: "d1" }
-      ])
-    });
-    const checks = q(element, "c-shoresh-week-checks");
-    checks.shadowRoot.querySelector('[data-counter="stillNeeded"]').click();
-    await flush();
-    const accepts = [
-      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
-    ];
-    expect(accepts).toHaveLength(2);
-    accepts[0].click();
-    await flush();
-    accepts[1].click();
-    await flush();
-    expect(
-      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]')
-        .textContent
-    ).toContain("0");
-    previewPublish.mockResolvedValue(FIRST_PREVIEW);
-    publish.mockResolvedValue(DONE);
-    await clickPublish(element);
-    expect(ask(element)).toBeNull();
-    expect(publish).toHaveBeenCalled();
-    expect(notice(element)).toBe("Published Week 1.");
-  });
-
-  it("asks with the counters' own lines: one of two still needed lines accepted leaves 1", async () => {
-    // Archery wants 3 a week: Bunk 1 has 2 and Bunk 2 has 1, so two still needed lines.
-    const element = await render({
-      ...finished(),
-      activityRecords: nsRecord([
-        { Id: "a8", Name: "Crafts", NoGroupLimit__c: true },
-        {
-          Id: "a9",
-          Name: "Archery",
-          TimesPerWeekMin__c: 3,
-          NoGroupLimit__c: true
-        }
-      ]),
-      groupRecords: nsRecord([
-        { Id: "g1", Name: "Bunk 1", Division__c: "d1" },
-        { Id: "g2", Name: "Bunk 2", Division__c: "d1" }
-      ])
-    });
-    const checks = q(element, "c-shoresh-week-checks");
-    const counter = () =>
-      checks.shadowRoot.querySelector('[data-counter="stillNeeded"]');
-    counter().click();
-    await flush();
-    const accepts = [
-      ...checks.shadowRoot.querySelectorAll('[aria-label^="Accept: "]')
-    ];
-    expect(accepts).toHaveLength(2);
-    accepts[0].click();
-    await flush();
-    expect(counter().textContent).toContain("1");
-    previewPublish.mockResolvedValue(FIRST_PREVIEW);
-    await clickPublish(element);
-    // The week's checks alone would say 2; the box says what the counter shows.
-    expect(ask(element).lines).toEqual(["Still needed: 1"]);
-    await answer(element, false);
-    expect(publish).not.toHaveBeenCalled();
-  });
-
   /** Someone else cleared Bunk 1's first activity on Monday: one cell Open. */
   function theirs(published = null) {
     const week = finished(published);
@@ -978,12 +899,16 @@ describe("c-shoresh-manual-build: Publish", () => {
     window.dispatchEvent(new CustomEvent("focus"));
     await flush();
     expect(publishButton().disabled).toBe(true);
-    q(element, '[data-id="clear-week"]').focus();
-    expect(element.shadowRoot.activeElement.dataset.id).toBe("clear-week");
+    const versionsButton = q(
+      element,
+      '[data-id="versions"]'
+    ).shadowRoot.querySelector('[data-id="versions-button"]');
+    versionsButton.focus();
+    expect(element.shadowRoot.activeElement.dataset.id).toBe("versions");
     reload.resolve(finished());
     await flush();
     expect(publishButton().disabled).toBe(false);
-    expect(element.shadowRoot.activeElement.dataset.id).toBe("clear-week");
+    expect(element.shadowRoot.activeElement.dataset.id).toBe("versions");
   });
 
   it("focus stays where the director put it while a refused publish read the week again", async () => {
@@ -1067,9 +992,13 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     element.remove();
     const published = await render(finished(PUBLISHED));
     expect(unpublishButton(published).textContent.trim()).toBe("Unpublish");
-    expect(unpublishButton(published).parentElement).toBe(
+    // In Published's dropdown, beside Publish on the rail.
+    const menu = q(published, '[data-id="published-menu"]');
+    expect(unpublishButton(published).parentElement).toBe(menu);
+    expect(menu.parentElement).toBe(
       q(published, '[data-id="publish"]').parentElement
     );
+    expect(menu.label).toBe("Published");
   });
 
   it("asks first, with Cancel focused; Cancel unpublishes nothing and focus goes back", async () => {
@@ -1091,7 +1020,10 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(unpublishAsk(element)).toBeNull();
     expect(q(element, '[data-id="published"]')).not.toBeNull();
     expect(unpublishButton(element).disabled).toBe(false);
-    expect(element.shadowRoot.activeElement).toBe(unpublishButton(element));
+    // Unpublish sits in Published's dropdown, closed by now: focus goes back to Published.
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="published-menu"]')
+    );
   });
 
   it("unpublishes the published schedule shown, and lists it in Versions straight away", async () => {
@@ -1159,7 +1091,7 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     );
   });
 
-  it("focus goes back to Unpublish once a refused unpublish has read the week again", async () => {
+  it("focus goes back to Published once a refused unpublish has read the week again", async () => {
     const element = await render(finished(PUBLISHED));
     unpublish.mockResolvedValue({ ...UNPUBLISHED, publishedChanged: true });
     const reload = pending();
@@ -1170,7 +1102,9 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     reload.resolve(finished({ ...PUBLISHED, id: "pub2" }));
     await flush();
     expect(unpublishButton(element).disabled).toBe(false);
-    expect(element.shadowRoot.activeElement).toBe(unpublishButton(element));
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="published-menu"]')
+    );
   });
 
   it("a failure says the week was not unpublished and keeps it as published", async () => {

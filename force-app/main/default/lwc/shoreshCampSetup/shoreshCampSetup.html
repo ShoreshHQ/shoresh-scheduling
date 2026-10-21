@@ -222,7 +222,7 @@
             </template>
           </div>
           <div class="shoresh-hairline" role="presentation"></div>
-          <div class="zone body">
+          <div class={bodyClass}>
             <!-- New season -->
             <template lwc:if={isNewSeason}>
               <h2
@@ -915,11 +915,9 @@
                 class={shown.generatedSchedule}
                 data-screen="generatedSchedule"
               >
-                <h2
-                  class="slds-text-heading_medium slds-m-bottom_small"
-                  tabindex="-1"
-                  data-heading
-                >
+                <!-- The menu shows which screen this is: its name is read out, not shown
+                     (decision 36: no title on the rail). -->
+                <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                   {labels.screens.generatedSchedule}
                 </h2>
                 <c-shoresh-generated-schedule
@@ -927,17 +925,16 @@
                   terms={terms}
                   onnavigate={handleNavigate}
                   onsetupstate={handleSetupState}
+                  onsetupfocus={handleSetupFocus}
                   data-setup-state="generatedSchedule"
                 ></c-shoresh-generated-schedule>
               </div>
 
               <!-- Manual Build: a program's week built by hand -->
               <div class={shown.manualBuild} data-screen="manualBuild">
-                <h2
-                  class="slds-text-heading_medium slds-m-bottom_small"
-                  tabindex="-1"
-                  data-heading
-                >
+                <!-- The menu shows which screen this is: its name is read out, not shown
+                     (decision 36: no title on the rail). -->
+                <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                   {labels.screens.manualBuild}
                 </h2>
                 <c-shoresh-manual-build
@@ -945,6 +942,7 @@
                   terms={terms}
                   onnavigate={handleNavigate}
                   onsetupstate={handleSetupState}
+                  onsetupfocus={handleSetupFocus}
                   data-setup-state="manualBuild"
                 ></c-shoresh-manual-build>
               </div>
