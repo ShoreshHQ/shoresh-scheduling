@@ -350,6 +350,29 @@ describe("c-shoresh-camp-setup", () => {
       expect(menu.setupChanged).toBe(true);
       expect(menu.setupBusy).toBe(true);
     });
+
+    it("the menu's foot drops the old season's setup changed when another season is picked", async () => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const menu = q(element, "c-shoresh-menu");
+      await openScreen(element, "manualBuild");
+      q(element, '[data-setup-state="manualBuild"]').dispatchEvent(
+        new CustomEvent("setupstate", {
+          detail: { changed: true, busy: false }
+        })
+      );
+      await flush();
+      expect(menu.setupChanged).toBe(true);
+      // The other season's read fails: the old season's notice must not stay up.
+      getSeasonSetup.mockRejectedValue({ body: { message: "No luck." } });
+      q(element, '[data-id="season-picker"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
+      await flush();
+      expect(menu.setupChanged).toBe(false);
+    });
   });
 
   it("creates a season for the camp", async () => {

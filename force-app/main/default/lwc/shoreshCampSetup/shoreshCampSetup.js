@@ -249,8 +249,10 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     if (this.setup && this.setup.season.Id !== this.seasonId) {
-      // Another season: start its tables fresh rather than carrying unsaved rows across.
+      // Another season: start its tables fresh rather than carrying unsaved rows across,
+      // and forget the old season's "setup changed".
       this.setup = null;
+      this.setupStates = {};
     }
     const ticket = ++this.loadTicket;
     const setup = await getSeasonSetup({
@@ -408,6 +410,8 @@ export default class ShoreshCampSetup extends LightningElement {
     this.setupStates = { ...this.setupStates, [screen]: event.detail };
   }
   get shownSetupState() {
+    // No season on screen (switching, or its read failed): nothing to say about setup.
+    if (!this.setup) return {};
     return (this.currentScreen && this.setupStates[this.currentScreen]) || {};
   }
   get menuSetupChanged() {
