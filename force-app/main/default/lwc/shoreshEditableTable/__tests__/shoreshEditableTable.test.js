@@ -1580,6 +1580,37 @@ describe("c-shoresh-editable-table", () => {
       expect(focused).toContain("add");
     });
 
+    it("keeps the row's week strip shown while the question is open (focus comes back to the tick)", async () => {
+      let reply;
+      const ask = jest.fn(
+        () =>
+          new Promise((resolve) => {
+            reply = resolve;
+          })
+      );
+      const element = render({
+        objectApiName: "Group__c",
+        columns: [COLUMNS[0]],
+        rows: [{ Id: "g1", Name: "Bunk 1" }],
+        weeks: [{ Id: "w1", Name: "Week 1" }],
+        weeksHeading: "Runs in",
+        beforeWeekOff: ask
+      });
+      await flush();
+      const row = () => rows(element)[0];
+      expect(row().classList).not.toContain("row_asking");
+      change(row().querySelector("input[data-week]"), false);
+      await flush();
+      expect(row().classList).toContain("row_asking");
+      // Only the row asked about.
+      expect(rows(element)[1].classList).not.toContain("row_asking");
+      reply(false);
+      await flush();
+      await flush();
+      expect(row().classList).not.toContain("row_asking");
+      expect(row().querySelector("input[data-week]").checked).toBe(true);
+    });
+
     it("asks before a week is turned off on a saved row; no puts the tick back", async () => {
       const ask = jest.fn();
       const element = render({

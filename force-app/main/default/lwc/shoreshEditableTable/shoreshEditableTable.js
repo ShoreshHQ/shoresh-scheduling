@@ -1008,7 +1008,8 @@ export default class ShoreshEditableTable extends LightningElement {
         "row shoresh-row",
         draft.isNew ? "add-row" : "",
         notSaved ? "not-saved" : "",
-        moreOpen ? "row_open" : ""
+        moreOpen ? "row_open" : "",
+        draft.asking ? "row_asking" : ""
       ]
         .filter((c) => c)
         .join(" "),
@@ -1145,12 +1146,22 @@ export default class ShoreshEditableTable extends LightningElement {
     if (!draft.isNew && !ticked && typeof this.beforeWeekOff === "function") {
       // A question first (the desktop's "Turn off … for Week 3?" when it has placements).
       const weekName = (this._weeks.find((w) => w.Id === week) || {}).Name;
-      const go = await this.beforeWeekOff({
-        recordId: draft.original.Id,
-        name: draft.values.Name,
-        weekId: week,
-        weekName
-      });
+      // The question takes focus and covers the row, so the row keeps its strip shown until it
+      // is answered: then the tick is still there for focus to come back to (WCAG 2.4.3).
+      draft.asking = true;
+      this.touch(draft);
+      let go;
+      try {
+        go = await this.beforeWeekOff({
+          recordId: draft.original.Id,
+          name: draft.values.Name,
+          weekId: week,
+          weekName
+        });
+      } finally {
+        draft.asking = false;
+        this.touch(draft);
+      }
       if (!go) {
         box.checked = true;
         this.touch(draft);

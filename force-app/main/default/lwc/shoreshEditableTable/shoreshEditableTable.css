@@ -240,13 +240,16 @@
   padding: 2px 0;
 }
 
+/* row_asking: a "Turn off ... ?" question about this row is open (it has focus and covers the row). */
 .row:hover .strip,
-.row:focus-within .strip {
+.row:focus-within .strip,
+.row_asking .strip {
   display: flex;
 }
 
 .row:hover .weeks-text,
-.row:focus-within .weeks-text {
+.row:focus-within .weeks-text,
+.row_asking .weeks-text {
   display: none;
 }
 

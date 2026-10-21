@@ -134,7 +134,9 @@ restyles the setup tables and five setup screens; step 3b the rest (see Not done
       or edited, a fine strip of the weeks takes its place, one numbered tick each (a real
       checkbox, still named "Cedar runs in Week 3"; on is a highlight tint, off an empty slot,
       the grid's own two states). Tab reaches them while the row has the cursor; they save the
-      moment they are clicked, and still ask first when the week has placements.
+      moment they are clicked, and still ask first when the week has placements. While that
+      question is open the row keeps its strip shown (the question covers the row and holds
+      focus), so answering it puts focus back on the tick (WCAG 2.4.3), as before.
     - **A clearly dashed blank row** at the end of each section, no fill and no raise, with a
       - before its name box ("Add Bunk"); Enter, + Add or leaving it filled in adds it, as
         before (ADR 0011 choice 2).

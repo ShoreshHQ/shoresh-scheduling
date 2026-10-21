@@ -22,8 +22,9 @@
  *   cells of its activity (the mouse again); and that Accept in the counter's dropdown is reached
  *   with the arrows, hides its line, is said, and moves focus on (ADR 0008 part 8);
  * - that a setup table row in the shared pattern (ADR 0015 choice 11) shows its week ticks
- *   while it is edited, Tab reaching them, and that its details open from its chevron with
- *   focus kept there; with --shots it also saves each restyled setup screen at rest and a
+ *   while it is edited, Tab reaching them; that unticking a week with placements asks first
+ *   and, cancelled, leaves focus back on the tick, still ticked; and that its details open from
+ *   its chevron with focus kept there; with --shots it also saves each restyled setup screen at rest and a
  *   group row under the pointer, for docs/design/screens/;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
@@ -804,6 +805,63 @@ async function seasonError() {
     await press("Enter", 500);
 }
 
+/** Whether the focused element (through shadow roots) is ticked. */
+const focusedChecked = () =>
+  page.evaluate(() => {
+    let a = document.activeElement;
+    while (a && a.shadowRoot && a.shadowRoot.activeElement)
+      a = a.shadowRoot.activeElement;
+    return a ? a.checked : null;
+  });
+
+/**
+ * From a group's week ticks: Space unticks Week 1, which has the seed's placements, so the
+ * "Turn off ... for Week 1?" question opens with focus in it; Escape cancels it, and focus must
+ * come back to the tick (WCAG 2.4.3), still ticked. The question covers the row and takes focus,
+ * so this proves the row keeps its ticks shown while it is open. Nothing is saved.
+ */
+async function askedAboutAWeek(G) {
+  const STEP =
+    "Unticking a week with placements: the question, then focus back on the tick";
+  const isWeek1 = (f) =>
+    !!f &&
+    f.tag === "input" &&
+    f.type === "checkbox" &&
+    / runs in Week 1$/.test(f.name);
+  const now = await focus();
+  const tick = isWeek1(now) ? now : await tabTo(isWeek1, { max: 12 });
+  if (!tick || !(await focusedChecked())) {
+    await shot(G, "Week 1 tick");
+    results.fail(G, STEP, "No ticked Week 1 tick was reached on the row.");
+    return;
+  }
+  await press("Space", 300);
+  const asked = await waitFocus({ inDialog: true }, 8000);
+  if (!focusMatches(asked, { inDialog: true })) {
+    await shot(G, "No question");
+    // Put the week back if it was turned off without a question.
+    if (isWeek1(await focus()) && !(await focusedChecked()))
+      await press("Space", 2000);
+    results.fail(
+      G,
+      STEP,
+      `No question opened; focus on ${formatFocus(asked)}.`
+    );
+    return;
+  }
+  await press("Escape", 800);
+  const back = await expectFocus(G, STEP, {
+    tag: "input",
+    type: "checkbox",
+    name: / runs in Week 1$/
+  });
+  if (isWeek1(back)) {
+    const kept = await focusedChecked();
+    if (kept) results.pass(G, "Cancel keeps the week ticked", "Still ticked.");
+    else results.fail(G, "Cancel keeps the week ticked", "The tick is off.");
+  }
+}
+
 /**
  * A setup table row in the shared pattern (ADR 0015 choice 11), on Groups: Tab into a group's
  * name box, then on to its week ticks (shown only while the row is pointed at or edited, so
@@ -842,6 +900,7 @@ async function setupRow() {
       "No week tick was reached from the row's name box."
     );
   }
+  await askedAboutAWeek(G);
   // Past the row's week ticks (one per week) and its delete.
   const chevron = await tabTo(named(/ details$/, { tag: "button" }), {
     max: 60
