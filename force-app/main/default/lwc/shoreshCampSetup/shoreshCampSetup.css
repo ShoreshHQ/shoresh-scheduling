@@ -1,0 +1,83 @@
+@import "c/shoreshTokens";
+
+/*
+ * The app frame as the round 13 mock-up draws it (docs/design/manual-build.html, .app): the
+ * page surface, the menu piece on the left, 12 away from the frame piece that holds the screen.
+ * Inside the frame, zones share one edge and are divided by the one hairline. ADR 0015.
+ * Screens inside the frame keep their own look until each is restyled.
+ */
+.app {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: var(--shoresh-space-page-margin);
+  background: var(--shoresh-surface-page);
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A piece: the shelf surface, one fine edge, the outer corner. */
+.piece {
+  min-width: 0;
+  background: var(--shoresh-surface-shelf);
+  border-radius: var(--shoresh-radius-piece);
+  box-shadow: var(--shoresh-piece-edge);
+}
+
+.welcome {
+  padding: var(--shoresh-space-pad);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--shoresh-menu-w) minmax(0, 1fr);
+  gap: var(--shoresh-space-gutter);
+  align-items: stretch;
+}
+
+.menu-col {
+  min-width: 0;
+}
+
+.frame {
+  display: flex;
+  flex-direction: column;
+}
+
+.zone {
+  min-width: 0;
+  padding: var(--shoresh-space-pad);
+}
+
+/* The head zone is one item tall plus its inset, like the rail, so its line meets the menu's. */
+.head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-height: var(--shoresh-control-h);
+}
+
+.head-picker {
+  width: calc(var(--shoresh-u) * 52);
+  max-width: 100%;
+}
+
+.head-actions {
+  margin-left: auto;
+}
+
+/* The season's details open under the row, below a hairline (raised is kept for choices). */
+.season-form {
+  margin-top: var(--shoresh-space-pad);
+  padding-top: var(--shoresh-space-pad);
+  border-top: 1px solid var(--shoresh-rule);
+}
+
+/* Narrow screens: the menu above the frame, as SLDS stacked them before. */
+@media (max-width: 47.9375em) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

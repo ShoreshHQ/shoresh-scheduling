@@ -1,9 +1,18 @@
 <template>
-  <nav class="slds-nav-vertical slds-nav-vertical_compact" aria-label="Shoresh">
+  <nav class="menu" aria-label="Shoresh">
+    <template lwc:if={campName}>
+      <div class="camp" data-id="camp">
+        <span class="camp-name" title={campName}>{campName}</span>
+        <template lwc:if={seasonName}>
+          <span class="season shoresh-num" data-id="season">{seasonName}</span>
+        </template>
+      </div>
+      <div class="shoresh-hairline bleed" role="presentation"></div>
+    </template>
     <template for:each={view} for:item="section">
-      <div key={section.key} class="slds-nav-vertical__section">
+      <div key={section.key} class={section.sectionClass}>
         <template lwc:if={section.title}>
-          <h2 class="slds-nav-vertical__title">{section.title}</h2>
+          <h2 class="section-title">{section.title}</h2>
         </template>
         <ul>
           <template for:each={section.items} for:item="item">
@@ -11,16 +20,14 @@
               <template lwc:if={item.disabled}>
                 <a
                   href="#"
-                  class="slds-nav-vertical__action slds-text-color_weak"
+                  class="menu-action menu-action_disabled"
                   aria-disabled="true"
                   data-coming={item.coming}
                   data-item={item.key}
                   onclick={handleDisabledClick}
                   ><span class="menu-label">{item.label}</span
                   ><template lwc:if={item.coming}
-                    ><span
-                      class="slds-badge slds-col_bump-left"
-                      aria-hidden="true"
+                    ><span class="slds-badge menu-coming" aria-hidden="true"
                       >Coming</span
                     ></template
                   ><span class="slds-assistive-text" data-reason={item.key}
@@ -31,11 +38,25 @@
               <template lwc:else>
                 <a
                   href="#"
-                  class="slds-nav-vertical__action"
+                  class={item.actionClass}
                   aria-current={item.ariaCurrent}
                   data-screen={item.key}
                   data-item={item.key}
                   onclick={handleClick}
+                  ><template lwc:if={item.isRoots}
+                    ><svg
+                      class="menu-icon"
+                      viewBox="0 0 16 16"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path d="M8 14V7"></path>
+                      <path d="M8 9C8 6 6 4.5 3 4.5c0 3 2 4.5 5 4.5Z"></path>
+                      <path
+                        d="M8 7.5c0-2.5 1.7-4 4.5-4 0 2.5-1.7 4-4.5 4Z"
+                      ></path></svg></template
                   ><span class="menu-label">{item.label}</span
                   ><template lwc:if={item.mark}
                     ><span
@@ -66,6 +87,23 @@
             </li>
           </template>
         </ul>
+      </div>
+    </template>
+    <template lwc:if={setupChanged}>
+      <div class="foot" data-id="setup-notice">
+        <div class="shoresh-hairline bleed" role="presentation"></div>
+        <p class="notice-what">
+          <span class="notice-dot" aria-hidden="true"></span>Setup changed
+        </p>
+        <button
+          type="button"
+          class="notice-go shoresh-raised"
+          disabled={setupBusy}
+          data-id="menu-update-to-match"
+          onclick={handleUpdateToMatch}
+        >
+          Update to match setup
+        </button>
       </div>
     </template>
   </nav>

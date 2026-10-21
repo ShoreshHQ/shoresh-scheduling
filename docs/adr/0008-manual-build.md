@@ -924,6 +924,14 @@ Build round 1 #5); a setup rename shows the new name, with no dot (round 2 #3).
    leaves as it was (`SetupMatchLocks`), and sends no view back for it (that screen reads its
    week again). Manual Build's behaviour and query bounds are unchanged.
 
+10. **Also at the foot of the menu** (round 13 mock-up, wiki decision 39; ADR 0015 §9). While the
+    week shown can be updated to match setup, the menu's foot says _Setup changed_ with **Update
+    to match setup** under it, as the mock-up draws it. It is the same action as the button above
+    the grid (the screen's `updateToMatchSetup()`, which opens the same list), held while that
+    button is held. Each schedule screen tells the page (`setupstate { changed, busy }`) only
+    when either changes. Focus after the list closes still goes to the button above the grid; it
+    moves to the menu's when the next design PR takes that line off the screen.
+
 ## Choices (keyboard, screen readers and words, 2026-10-20)
 
 From the look-and-feel review of the scheduling screens (findings the coordinator decides,

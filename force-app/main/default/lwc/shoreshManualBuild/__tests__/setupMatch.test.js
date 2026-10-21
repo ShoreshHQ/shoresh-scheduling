@@ -197,6 +197,8 @@ const TWO_WEEKS = nsRecord({
   ]
 });
 
+// What the screen told the page about setup changed, in order (the menu's foot, ADR 0015).
+const toldStates = [];
 async function render(preview = PREVIEW, start = swimWeek(), setup = SETUP) {
   getDraft.mockResolvedValue(start);
   getSetupChanges.mockResolvedValue(preview);
@@ -205,6 +207,9 @@ async function render(preview = PREVIEW, start = swimWeek(), setup = SETUP) {
   });
   element.terms = buildTerms(LABELS);
   element.setup = setup;
+  element.addEventListener("setupstate", (event) =>
+    toldStates.push(event.detail)
+  );
   document.body.appendChild(element);
   await flush();
   return element;
@@ -272,6 +277,7 @@ async function openUpdate(element) {
 
 describe("c-shoresh-manual-build: setup changed since the week started", () => {
   afterEach(() => {
+    toldStates.length = 0;
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
@@ -340,6 +346,39 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(q(element, '[data-id="update-to-match"]').textContent.trim()).toBe(
       "Update to match setup"
     );
+  });
+
+  it("tells the page it can be updated to match setup, and the menu's Update opens the same list", async () => {
+    const element = await render();
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: true,
+      busy: false
+    });
+    element.updateToMatchSetup();
+    await flush();
+    expect(dialog(element)).not.toBeNull();
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+    // While the list is open the week is busy: told once, not on every redraw.
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: true,
+      busy: true
+    });
+    const told = toldStates.length;
+    element.updateToMatchSetup();
+    await flush();
+    expect(toldStates.length).toBe(told);
+    expect(getSetupChanges).toHaveBeenCalledTimes(2);
+  });
+
+  it("tells the page nothing needs updating when the week matches setup", async () => {
+    const element = await render(NOTHING);
+    expect(toldStates[toldStates.length - 1]).toEqual({
+      changed: false,
+      busy: false
+    });
+    element.updateToMatchSetup();
+    await flush();
+    expect(dialog(element)).toBeNull();
   });
 
   it("shows nothing when the week matches setup", async () => {

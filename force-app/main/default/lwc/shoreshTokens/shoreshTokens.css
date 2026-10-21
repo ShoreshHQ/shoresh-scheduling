@@ -1,11 +1,152 @@
 /*
- * Shoresh's own colours from the design guide (wiki projects/shoresh-design-guide.md, Tokens),
- * for what SLDS has no hook for. Import with @import "c/shoreshTokens"; then use the variables.
- * Bronze is the caution hue (needs a look, unfinished). It is for dots and borders, never text:
- * on white it is too light to read. Navy (primary) is the brand; forest (secondary) a
- * structural accent, never a status; success (done) is for small marks only, never text.
+ * Shoresh's design system: colours, surfaces, spacing, type, the one raised treatment, the
+ * hairline and the needs-a-look mark. Import with @import "c/shoreshTokens"; then use the
+ * variables and classes. The visual spec is docs/design/ (round 13 mock-up and its spacing
+ * specs); the choices are docs/adr/0015-design-system.md.
  */
 :host {
+  /* ---------- colour: three colours, nothing else (wiki decisions 32, 35, 40) ---------- */
+  /* 1. The primary family, sage-greige: one colour in tonal steps, lightest (50) to the
+     primary itself (500), and one deeper step (700) that every shadow is made of. Gradients
+     between its steps are allowed. There is no separate accent: the lightest step is it. */
+  --shoresh-color-primary-50: #f6f8f5;
+  --shoresh-color-primary-100: #f3f5f2;
+  --shoresh-color-primary-150: #f1f3ef;
+  --shoresh-color-primary-200: #eff1ee;
+  --shoresh-color-primary-250: #ebede9;
+  --shoresh-color-primary-300: #e6e9e4;
+  --shoresh-color-primary-400: #d8dcd4;
+  --shoresh-color-primary-500: #aeb6a7;
+  --shoresh-color-primary-700: #808d74;
+  /* 2. The one highlight, forest, and its deeper tint for hover and pressed states. */
+  --shoresh-color-highlight: #1f6651;
+  --shoresh-color-highlight-press: #18503f;
+  /* 3. The text colour. */
+  --shoresh-color-text: #26231b;
+
+  /* Surfaces: steps of the primary, lightest at the back. */
+  --shoresh-surface-page: var(--shoresh-color-primary-100);
+  --shoresh-surface-shelf: var(--shoresh-color-primary-200);
+  --shoresh-surface-grid: var(--shoresh-color-primary-250);
+  --shoresh-surface-drawer: var(--shoresh-color-primary-300);
+  /* An item under the pointer (half-way from the lightest step to grid), the edge of a piece
+     and the hairline, and the shade every shadow is made of. */
+  --shoresh-surface-hover: var(--shoresh-color-primary-150);
+  --shoresh-edge: var(--shoresh-color-primary-400);
+  --shoresh-rule: var(--shoresh-color-primary-400);
+  --shoresh-shade: var(--shoresh-color-primary-700);
+  /* Words: value (the text colour) and rest (secondary words, 78% text on the drawer step). */
+  --shoresh-text-1: var(--shoresh-color-text);
+  --shoresh-text-2: #504f47;
+
+  /* ---------- spacing: one unit, six steps, named roles (docs/design/spacing-spec-continuous.md) ---------- */
+  /* The unit is the page width / 360: 4px at 1440 wide, never below 3 or above 5. */
+  --shoresh-u: clamp(3px, calc(100vw / 360), 5px);
+  --shoresh-s1: calc(var(--shoresh-u) * 1);
+  --shoresh-s2: calc(var(--shoresh-u) * 2);
+  --shoresh-s3: calc(var(--shoresh-u) * 3);
+  --shoresh-s4: calc(var(--shoresh-u) * 4);
+  --shoresh-s5: calc(var(--shoresh-u) * 6);
+  --shoresh-s6: calc(var(--shoresh-u) * 8);
+  /* number to its word, mark to its number, chevron to its word */
+  --shoresh-space-word: var(--shoresh-s1);
+  /* item to item inside a group */
+  --shoresh-space-in-group: var(--shoresh-s1);
+  /* each side of the line that ends a group */
+  --shoresh-space-group-side: var(--shoresh-s2);
+  /* side padding of every item, and the text inset of every header */
+  --shoresh-space-control-x: var(--shoresh-s2);
+  /* every item's height: rail items, menu rows, the bunk header row */
+  --shoresh-control-h: var(--shoresh-s6);
+  --shoresh-space-page-margin: var(--shoresh-s3);
+  /* menu to frame */
+  --shoresh-space-gutter: var(--shoresh-s3);
+  /* inside every zone, every side */
+  --shoresh-space-pad: var(--shoresh-s3);
+  /* between cells, rows, tiles, and header column to cells */
+  --shoresh-space-cell-gap: var(--shoresh-s2);
+  --shoresh-short-h: calc(var(--shoresh-u) * 7);
+  --shoresh-tile-h: calc(var(--shoresh-u) * 14);
+  --shoresh-head-w: calc(var(--shoresh-u) * 24);
+  --shoresh-menu-w: calc(var(--shoresh-u) * 52);
+  /* outer corners (a piece) and inner corners (an item): one step apart */
+  --shoresh-radius-piece: var(--shoresh-s3);
+  --shoresh-radius: var(--shoresh-s2);
+
+  /* ---------- shadows: all made of the shade ---------- */
+  --shoresh-piece-edge: 0 0 0 1px var(--shoresh-edge);
+  --shoresh-raise:
+    0 0 0 1px rgba(128, 141, 116, 0.22), 0 1px 2px rgba(128, 141, 116, 0.22);
+  --shoresh-well-in: inset 0 1px 2px rgba(128, 141, 116, 0.16);
+  --shoresh-pop-shadow:
+    0 0 0 1px rgba(128, 141, 116, 0.22), 0 1px 2px rgba(128, 141, 116, 0.22),
+    0 8px 24px -8px rgba(128, 141, 116, 0.4);
+  /* Keyboard focus: the highlight, outside the item. Selection is raised, never this ring. */
+  --shoresh-focus-ring:
+    0 0 0 2px var(--shoresh-color-primary-50),
+    0 0 0 4px var(--shoresh-color-highlight);
+
+  /* ---------- type: Inter (static resource ShoreshFonts), else the system font ---------- */
+  --shoresh-font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto,
+    sans-serif;
+  /* The one mono: times and the menu's section labels. */
+  --shoresh-font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --shoresh-font-size: 13px;
+  --shoresh-font-size-title: 14px;
+  --shoresh-font-size-label: 11px;
+
+  /* ---------- Salesforce's base components, in the same palette (SLDS styling hooks) ---------- */
+  --slds-c-button-brand-color-background: var(--shoresh-color-highlight);
+  --slds-c-button-brand-color-border: var(--shoresh-color-highlight);
+  --slds-c-button-brand-color-background-hover: var(
+    --shoresh-color-highlight-press
+  );
+  --slds-c-button-brand-color-border-hover: var(
+    --shoresh-color-highlight-press
+  );
+  --slds-c-button-brand-color-background-active: var(
+    --shoresh-color-highlight-press
+  );
+  --slds-c-button-brand-text-color: var(--shoresh-color-primary-50);
+  --slds-c-button-neutral-color-background: var(--shoresh-color-primary-50);
+  --slds-c-button-neutral-color-border: var(--shoresh-edge);
+  --slds-c-button-neutral-color-background-hover: var(--shoresh-surface-hover);
+  --slds-c-button-text-color: var(--shoresh-color-highlight);
+  --slds-c-button-text-color-hover: var(--shoresh-color-highlight-press);
+  --slds-c-button-radius-border: var(--shoresh-radius);
+  --slds-c-input-radius-border: var(--shoresh-radius);
+  --slds-c-input-color-border: var(--shoresh-edge);
+  --slds-c-input-text-color: var(--shoresh-text-1);
+  --slds-c-input-color-border-focus: var(--shoresh-color-highlight);
+  --slds-c-input-shadow-focus: 0 0 0 1px var(--shoresh-color-highlight);
+  --slds-c-combobox-radius-border: var(--shoresh-radius);
+  --slds-c-checkbox-color-background-checked: var(--shoresh-color-highlight);
+  --slds-c-checkbox-color-border-checked: var(--shoresh-color-highlight);
+  --slds-c-spinner-color-background: var(--shoresh-color-highlight);
+  --slds-g-color-brand-base-50: var(--shoresh-color-highlight);
+  --slds-g-color-brand-base-40: var(--shoresh-color-highlight-press);
+  /* SLDS 2's accent and link hooks (the earlier --lwc-brand* tokens are deprecated). */
+  --slds-g-color-accent-1: var(--shoresh-color-highlight);
+  --slds-g-color-accent-container-1: var(--shoresh-color-highlight);
+  --slds-g-color-accent-container-2: var(--shoresh-color-highlight-press);
+  --slds-s-link-color: var(--shoresh-color-highlight);
+  --slds-s-link-color-hover: var(--shoresh-color-highlight-press);
+  --slds-s-link-color-active: var(--shoresh-color-highlight-press);
+  /* Field errors stay Salesforce's red, at its SLDS 2 value: it reads at 5.9:1 on the shelf, where
+     SLDS 1's #ea001e reads 4.09:1. Both themes' hooks, so every org shows the same red. */
+  --slds-g-color-error-base-40: #b60554;
+  --slds-g-color-error-1: #b60554;
+
+  /* ---------- earlier colours (wiki shoresh-design-guide.md), kept until each screen is restyled ---------- */
+  /*
+   * Bronze is the caution hue (needs a look, unfinished). It is for dots and borders, never text:
+   * on white it is too light to read. Navy (primary) is the brand; forest (secondary) a
+   * structural accent, never a status; success (done) is for small marks only, never text.
+   * Manual Build, Generated and the setup screens still use these; each restyle PR moves its
+   * screen onto the colours above and the last one removes these.
+   */
   --shoresh-primary: #173b63;
   --shoresh-secondary: #2f6b58;
   --shoresh-caution: #b8833a;
@@ -15,4 +156,38 @@
   --shoresh-text-secondary: #5c6670;
   /* Slate: locked or fixed structure on the grid. */
   --shoresh-anchor: #5c6b7a;
+}
+
+/* Numbers that line up: counts, times, years. */
+.shoresh-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one raised treatment: the current menu item, the chosen view and day, a held tile, a
+   cell. Light surface, fine edge, soft shadow (wiki decision 34). */
+.shoresh-raised {
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+  border-radius: var(--shoresh-radius);
+}
+
+/* The one line that divides zones and pieces. */
+.shoresh-hairline {
+  height: 1px;
+  background: var(--shoresh-rule);
+  flex: none;
+  border: 0;
+  margin: 0;
+}
+
+/* The needs-a-look mark: a small solid corner in the text colour, the same on a cell's corner
+   and beside a count. 8 by 8, so it reads as a mark, not as text. */
+.shoresh-look-mark {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--shoresh-color-text);
+  border-top-right-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }

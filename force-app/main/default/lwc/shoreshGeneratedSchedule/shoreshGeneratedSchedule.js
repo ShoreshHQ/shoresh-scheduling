@@ -251,6 +251,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   renderedCallback() {
+    this.tellSetupState();
     // The editor is drawn from the start (so the pickers never move); with no week to show any
     // more (another week being read, one not generated yet) it lets the last one go.
     if (this.editorHasWeek && !this.showWeek && this.weekEditor) {
@@ -1609,6 +1610,32 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   get setupChangedText() {
     return this.setupProblem || `${this.weekName} doesn't match setup`;
   }
+  /**
+   * Tells the page whether this week can be updated to match setup, and whether its Update waits,
+   * when either changes: the menu's foot shows it too (ADR 0015). Fires: setupstate
+   * { changed, busy }.
+   */
+  tellSetupState() {
+    const changed = this.showSetupChanged && this.canUpdateToMatch;
+    const busy = !!this.versionsBusy;
+    const told = this.setupStateTold;
+    if (told && told.changed === changed && told.busy === busy) {
+      return;
+    }
+    this.setupStateTold = { changed, busy };
+    this.dispatchEvent(
+      new CustomEvent("setupstate", { detail: { changed, busy } })
+    );
+  }
+
+  /** The menu's Update to match setup: the same as the button under the toolbar. */
+  @api
+  updateToMatchSetup() {
+    if (this.showSetupChanged && this.canUpdateToMatch && !this.versionsBusy) {
+      this.handleSetupMatch();
+    }
+  }
+
   get canUpdateToMatch() {
     return this.setupChanges.length > 0 && !this.setupProblem;
   }

@@ -3,6 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import LightningConfirm from "lightning/confirm";
 import { loadStyle } from "lightning/platformResourceLoader";
 import DATE_BOX from "@salesforce/resourceUrl/ShoreshDateBox";
+import FONTS from "@salesforce/resourceUrl/ShoreshFonts";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
@@ -180,6 +181,8 @@ export default class ShoreshCampSetup extends LightningElement {
   // The Programs screen's live region: "Deleted Main" after a card's delete.
   programsAnnouncement = "";
   programsAnnounced = false;
+  // Whether each schedule screen's week can be updated to match setup: screen -> { changed, busy }.
+  setupStates = {};
   // Table rows are saved one at a time across the whole page, in the order they were left.
   rowSaves = Promise.resolve();
   // Each read of the season is numbered; an answer older than the latest read is dropped.
@@ -198,6 +201,8 @@ export default class ShoreshCampSetup extends LightningElement {
   connectedCallback() {
     // Date boxes' calendar buttons at least 24 by 24 (WCAG 2.5.8); without it they work, smaller.
     loadStyle(this, DATE_BOX).catch(() => {});
+    // Inter and the one mono (ADR 0015); without them every word shows in the system font.
+    loadStyle(this, `${FONTS}/fonts.css`).catch(() => {});
     this.loadCamps();
   }
 
@@ -244,8 +249,10 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     if (this.setup && this.setup.season.Id !== this.seasonId) {
-      // Another season: start its tables fresh rather than carrying unsaved rows across.
+      // Another season: start its tables fresh rather than carrying unsaved rows across,
+      // and forget the old season's "setup changed".
       this.setup = null;
+      this.setupStates = {};
     }
     const ticket = ++this.loadTicket;
     const setup = await getSeasonSetup({
@@ -392,6 +399,38 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
+  // ---------- setup changed, at the menu's foot ----------
+
+  /**
+   * Manual Build and Generated Schedule each say whether their week can be updated to match setup
+   * ({ changed, busy }); the menu's foot shows it for the one on screen.
+   */
+  handleSetupState(event) {
+    const screen = event.currentTarget.dataset.setupState;
+    this.setupStates = { ...this.setupStates, [screen]: event.detail };
+  }
+  get shownSetupState() {
+    // No season on screen (switching, or its read failed): nothing to say about setup.
+    if (!this.setup) return {};
+    return (this.currentScreen && this.setupStates[this.currentScreen]) || {};
+  }
+  get menuSetupChanged() {
+    return !!this.shownSetupState.changed;
+  }
+  get menuSetupBusy() {
+    return !!this.shownSetupState.busy;
+  }
+
+  /** The menu's Update to match setup: the schedule on screen opens its list of changes. */
+  handleMenuUpdateToMatch() {
+    const screen = this.template.querySelector(
+      `[data-setup-state="${this.currentScreen}"]`
+    );
+    if (screen) {
+      screen.updateToMatchSetup();
+    }
+  }
+
   /** Each setup screen's next screen ({ key, label }), or null: screen -> next. */
   get next() {
     const result = {};
@@ -421,6 +460,11 @@ export default class ShoreshCampSetup extends LightningElement {
   get campName() {
     const camp = this.camps.find((c) => c.Id === this.campId);
     return camp ? camp.Name : "";
+  }
+  /** The season shown, by name, for the menu's camp row. */
+  get seasonName() {
+    const season = this.seasons.find((s) => s.Id === this.seasonId);
+    return season ? season.Name : "";
   }
   get campOptions() {
     return this.camps.map((c) => ({ label: c.Name, value: c.Id }));

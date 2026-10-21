@@ -8,6 +8,8 @@
  * - where focus is after each menu, dialog and tool closes (through shadow roots);
  * - that the live regions say something after saves, builds and publishing;
  * - that every enabled toolbar action is reachable with Tab;
+ * - that a field's error (a blank season name, put back after) reads at 4.5:1 on the surface
+ *   behind it;
  * - that "Same location?" merges a place typed twice, and Ctrl+Z / Ctrl+Shift+Z undo and redo
  *   on Manual Build (also with nothing focused), never inside a box;
  * - that a placement's bottom handle stretches it with a real mouse drag on Manual Build (the
@@ -620,6 +622,102 @@ const SAVED = /^(✓ )?Saved\b/;
 
 // ---------- the screens ----------
 
+/**
+ * Every field error shown in Shoresh: its words' colour, the surface behind it (the first
+ * ancestor with a background, across shadow roots) and their WCAG contrast.
+ */
+function errorContrasts(app) {
+  const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+  const lum = ([r, g, b]) => {
+    const f = (v) => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const behind = (el) => {
+    for (let e = el; e; e = e.parentElement || e.getRootNode().host) {
+      const c = rgb(getComputedStyle(e).backgroundColor);
+      if (c.length >= 3 && (c.length < 4 || c[3] > 0)) return c.slice(0, 3);
+    }
+    return [255, 255, 255];
+  };
+  const found = [];
+  const walk = (root) => {
+    root.querySelectorAll("*").forEach((el) => {
+      if (el.shadowRoot) walk(el.shadowRoot);
+      if (
+        el.matches(".slds-form-element__help, .slds-text-color_error") &&
+        el.getClientRects().length &&
+        el.textContent.trim()
+      ) {
+        const fg = rgb(getComputedStyle(el).color);
+        const bg = behind(el);
+        const [hi, lo] = [lum(fg), lum(bg)].sort((a, b) => b - a);
+        found.push({
+          text: el.textContent.replace(/\s+/g, " ").trim(),
+          color: `rgb(${fg.slice(0, 3).join(", ")})`,
+          surface: `rgb(${bg.join(", ")})`,
+          ratio: Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100
+        });
+      }
+    });
+  };
+  walk(app.shadowRoot || app);
+  return found;
+}
+
+/**
+ * The season's details on the shelf: a blank name is refused and the field says why. Its
+ * words must read at 4.5:1 on the surface behind them (Salesforce's error red, not Shoresh's
+ * colour), and axe looks at the screen with the error shown. The name goes back as it was.
+ */
+async function seasonError() {
+  const S = "Season details";
+  const edit = await tabTo(named(/^Edit\b/, { tag: "button" }), {
+    max: 40,
+    back: true
+  });
+  if (!edit)
+    throw new Error("The season's Edit button was not reached with Tab.");
+  await press("Enter", 800);
+  const box = await tabTo(named(/ name$/i, { tag: "input" }), { max: 10 });
+  if (!box) throw new Error("The season's name box was not reached with Tab.");
+  const original = await page.evaluate(() => {
+    let a = document.activeElement;
+    while (a && a.shadowRoot && a.shadowRoot.activeElement)
+      a = a.shadowRoot.activeElement;
+    return a ? a.value : "";
+  });
+  if (!original) throw new Error("The season has no name to put back.");
+  await press("ControlOrMeta+a");
+  await press("Backspace");
+  await press("Tab", 800);
+  const list = await page.locator(APP).evaluate(errorContrasts);
+  const said = list
+    .map((e) => `"${e.text}" ${e.color} on ${e.surface}, ${e.ratio}:1`)
+    .join("; ");
+  if (!list.length) {
+    await shot(S, "Blank name");
+    results.fail(S, "Blank name: the field says why", "No error was shown.");
+  } else if (list.some((e) => e.ratio < 4.5)) {
+    await shot(S, "Blank name");
+    results.fail(S, "Blank name: the error reads at 4.5:1", said);
+  } else {
+    results.pass(S, "Blank name: the error reads at 4.5:1", said);
+  }
+  await axe("Season details, blank name");
+  // Put the name back exactly as it was, and close the details.
+  if (
+    !(await tabTo(named(/ name$/i, { tag: "input" }), { max: 10, back: true }))
+  )
+    throw new Error("The season's name box was not reached again.");
+  await type(original);
+  await press("Enter", 2500);
+  if (await tabTo(named(/^Edit\b/, { tag: "button" }), { max: 10, back: true }))
+    await press("Enter", 500);
+}
+
 async function campSetup() {
   const S = "Camp setup";
   await step(S, "Menu reachable by Tab from the top of the page", async () => {
@@ -640,6 +738,7 @@ async function campSetup() {
     });
     await axe("Roots");
   });
+  await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {
     await openFromMenu("Weeks", /^Weeks\b/);
     await axe("Weeks");
@@ -1280,7 +1379,9 @@ async function versions(S, openScreen) {
       dataId: "versions-button"
     });
     await press("Enter", 600);
-    if (!(await tabTo((f) => f.dataId === "save-name", { max: 60 }))) {
+    // Past every version in the list: three stops each, and the week keeps the schedules each
+    // run published (kept history), so the list grows run after run.
+    if (!(await tabTo((f) => f.dataId === "save-name", { max: 400 }))) {
       throw new Error("Name current version… not reached.");
     }
     const name = `Keyboard check ${new Date().toISOString().slice(11, 19)}`;
@@ -1296,7 +1397,8 @@ async function versions(S, openScreen) {
       named(new RegExp(`rename.*${name}|${name}.*rename`, "i")),
       {
         back: true,
-        max: 60
+        // Back past every version, as above.
+        max: 400
       }
     );
     if (!rename) throw new Error("The new version's rename not reached.");
