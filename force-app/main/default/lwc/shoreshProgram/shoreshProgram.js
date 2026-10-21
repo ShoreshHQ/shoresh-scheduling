@@ -39,6 +39,13 @@ export default class ShoreshProgram extends LightningElement {
   @api activities = [];
   /** Asked before a week is unticked on a saved row (passed to the tables; see the table). */
   @api beforeWeekOff;
+  /** The weeks in words, in the camp's word for a week (passed to the tables). */
+  @api weekWords;
+  /**
+   * The camp runs more than one program: each table is headed with its program's name (and a
+   * group's section with its program's too).
+   */
+  @api sectioned = false;
 
   name;
   days = {};
@@ -114,6 +121,11 @@ export default class ShoreshProgram extends LightningElement {
   }
   get hasDivisions() {
     return (this.entry.divisions || []).length > 0;
+  }
+
+  /** A program's own table (its time blocks, its divisions): headed with its name when sectioned. */
+  get sectionHeading() {
+    return this.sectioned ? this.entry.program.Name : undefined;
   }
 
   get programId() {
@@ -329,6 +341,7 @@ export default class ShoreshProgram extends LightningElement {
               required: true,
               // A new row is added under its own unit; a saved one can move.
               savedOnly: true,
+              more: true,
               options: this.divisionRecords.map((d) => ({
                 label: d.Name,
                 value: d.Id
@@ -338,7 +351,6 @@ export default class ShoreshProgram extends LightningElement {
         : [];
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
-      ...move,
       {
         fieldName: GROUP.Availability,
         label: this.terms.s("Availability"),
@@ -349,7 +361,10 @@ export default class ShoreshProgram extends LightningElement {
           { label: "Morning only", value: "MorningOnly" },
           { label: "Afternoon only", value: "AfternoonOnly" }
         ]
-      }
+      },
+      // The division is the section the group sits in, never a repeated column: a group moves
+      // from its details, opened from its row.
+      ...move
     ];
   }
 
@@ -375,9 +390,12 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   get divisions() {
-    return (this.entry.divisions || []).map((d) => ({
+    const program = this.sectioned ? `${this.entry.program.Name} · ` : "";
+    return (this.entry.divisions || []).map((d, index) => ({
       id: d.division.Id,
       title: `${this.terms.p("Group")} in ${d.division.Name}`,
+      heading: `${program}${d.division.Name}`,
+      first: index === 0,
       groups: d.groups,
       defaults: {
         [GROUP.Division]: d.division.Id,
@@ -439,6 +457,7 @@ export default class ShoreshProgram extends LightningElement {
       // What needs a look on a row: who is left out, a time block that changed (desktop: "Needs
       // attention"), not general notes.
       leftOut: "Needs attention",
+      weeksColumn: t.p("Week"),
       // What moving a group to another division changes.
       moving: "What changes"
     };

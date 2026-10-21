@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup · Activities</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+/* Setup round 1 · ACTIVITIES. Base: round13/manual-build.html (approved, decision 39).
+   Same unit, steps, menu, frame, rail grammar and the one raised style. Colours: decision 40.
+   Grammar for setup lists:
+   - a row is an object you can pick up: raised (same as a grid cell)
+   - an empty or editable place is a well (same as an empty slot): the add row, fields, set tracks
+   - the rule is quiet (t2), the exception is a value (t1, 500)
+   - the open row carries the 2 px selection line; its details sit in a side zone of the same frame */
+:root{
+  --u: clamp(3px, calc(100vw / 360), 5px);
+  --s1: calc(var(--u) * 1); --s2: calc(var(--u) * 2); --s3: calc(var(--u) * 3);
+  --s4: calc(var(--u) * 4); --s5: calc(var(--u) * 6); --s6: calc(var(--u) * 8);
+  --word: var(--s1); --in-group: var(--s1); --group-side: var(--s2); --control-x: var(--s2);
+  --control-h: var(--s6); --page-margin: var(--s3); --gutter: var(--s3); --pad: var(--s3);
+  --cell-gap: var(--s2);
+  --row-h: calc(var(--u) * 10);     /* 40: one list row */
+  --menu-w: calc(var(--u) * 52);    /* 208 */
+  --panel-w: calc(var(--u) * 96);   /* 384: details zone */
+  --r-mod: var(--s3); --r: var(--s2);
+
+  /* colour: decision 40. One primary family, one highlight, text. */
+  --primary:#AEB6A7; --accent:#F6F8F5; --text:#26231B; --hl:#1F6651;
+  --page:#F3F5F2; --module:#EFF1EE; --well:#EBEDE9; --well-2:#E6E9E4;
+  --edge:#D8DCD4; --rule:#D8DCD4; --shade:#808D74;
+  --t1:var(--text);
+  --t2:color-mix(in srgb, var(--text) 78%, var(--well-2));
+  --hl-tint:color-mix(in srgb, var(--hl) 45%, var(--well-2));
+
+  --mod-edge:0 0 0 1px var(--edge);
+  --raise: 0 0 0 1px color-mix(in srgb, var(--shade) 22%, transparent),
+           0 1px 2px color-mix(in srgb, var(--shade) 22%, transparent);
+  --well-in: inset 0 1px 2px color-mix(in srgb, var(--shade) 16%, transparent);
+
+  /* list columns: name | location | how often | who | weeks */
+  --list-cols: minmax(0,1.35fr) minmax(0,1fr) calc(var(--u) * 34) minmax(0,1.15fr) calc(var(--u) * 24);
+
+  --sans:"Inter",-apple-system,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--t1);font-family:var(--sans);font-size:13px;line-height:1.25;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"cv11" 1;width:1440px;height:900px;overflow:hidden}
+.num{font-variant-numeric:tabular-nums}
+svg{display:block;flex:none}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.chev{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* Salesforce header: theirs, untouched */
+.sf{height:40px;background:#F3F3F3;border-bottom:1px solid #DDDBDA;display:flex;align-items:center;padding:0 12px;gap:12px;font-family:-apple-system,system-ui,sans-serif}
+.sf .logo{width:44px;height:22px;border-radius:11px;background:#C9C7C5}
+.sf .search{margin:0 auto;width:560px;height:28px;background:#fff;border:1px solid #C9C7C5;border-radius:4px;display:flex;align-items:center;padding:0 10px;gap:8px;color:#706E6B;font-size:13px}
+.sf .icons{display:flex;gap:10px}
+.sf .icons span{width:22px;height:22px;border-radius:50%;background:#DDDBDA}
+.sf .icons span.av{background:#B0ADAB}
+
+.app{height:860px;padding:var(--page-margin);display:grid;gap:var(--gutter);grid-template-columns:var(--menu-w) 1fr}
+.mod{background:var(--module);border-radius:var(--r-mod);box-shadow:var(--mod-edge);min-width:0;min-height:0;position:relative}
+
+/* MENU: unchanged from round 13 */
+nav{padding:var(--pad);display:flex;flex-direction:column}
+.camp{height:var(--control-h);padding:0 var(--s2);display:flex;align-items:center;justify-content:space-between}
+.camp b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.camp span{font-size:13px;color:var(--t2)}
+.hair{height:1px;background:var(--rule);flex:none}
+nav .hair{margin:var(--pad) calc(-1 * var(--pad))}
+.item{display:flex;align-items:center;gap:var(--s2);height:var(--control-h);padding:0 var(--s2);border-radius:var(--r);color:var(--t2)}
+.item.cur{color:var(--t1);font-weight:500}
+.sec{height:var(--control-h);display:flex;align-items:flex-end;padding:0 var(--s2) var(--s2);margin-top:var(--s2);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}
+.sub .item{padding-left:34px;position:relative}
+.sub .item.cur::before{content:"";position:absolute;left:15px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--hl)}
+.foot{margin-top:auto}
+nav .foot .hair{margin-bottom:var(--pad)}
+.notice{display:flex;flex-direction:column;gap:var(--s2)}
+.notice .what{display:flex;align-items:center;gap:var(--s2);color:var(--t2);height:var(--s4);padding:0 var(--s2)}
+.notice .what i{width:6px;height:6px;border-radius:50%;background:var(--hl)}
+.notice .go{height:var(--control-h);display:flex;align-items:center;justify-content:center;color:var(--hl);font-weight:500}
+
+/* FRAME: one piece. Rail on top; below it the list zone and the details zone, one hairline between */
+.frame{display:flex;flex-direction:column}
+.zone{padding:var(--pad);min-height:0;min-width:0}
+.body{flex:1;display:flex;min-height:0}
+.vhair{width:1px;background:var(--rule);flex:none}
+
+/* RAIL: round 11 grammar, three zones (layout B) */
+.rail{display:flex;align-items:center;height:calc(var(--control-h) + 2 * var(--pad));flex:none}
+.grp{display:flex;align-items:center;gap:var(--in-group)}
+.vr{width:1px;height:var(--s4);background:var(--rule);margin:0 var(--group-side);flex:none}
+.c{height:var(--control-h);padding:0 var(--control-x);display:flex;align-items:center;gap:var(--word);border-radius:var(--r);color:var(--t2);white-space:nowrap}
+.c.on,.c.val{color:var(--t1);font-weight:500}
+.c b{font-weight:500;color:var(--t1);font-variant-numeric:tabular-nums}
+.c .ic{width:14px;height:14px}
+.spacer{flex:1}
+.saved{color:var(--t2)}
+.saved .ic{color:var(--hl)}
+
+/* LIST */
+.list{flex:1;display:flex;flex-direction:column;gap:var(--cell-gap)}
+.lrow{display:grid;grid-template-columns:var(--list-cols);gap:var(--cell-gap);align-items:center;height:var(--row-h);padding:0 var(--s3);flex:none;position:relative}
+.lrow.head{height:var(--control-h);color:var(--t2)}
+.lrow.head span{padding-left:0}
+.lrow > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lrow .name{font-weight:500}
+.rule{color:var(--t2)}
+.x{color:var(--t1);font-weight:500}
+.lrow.open{outline:2px solid var(--hl);outline-offset:1px}
+.lrow.hov{background:color-mix(in srgb, var(--accent) 50%, var(--well))}
+/* how often: number, then five pips: at least = filled, up to = tint */
+.often{display:flex;align-items:center;gap:var(--s2)}
+.often b{font-weight:500;min-width:calc(var(--u) * 7);font-variant-numeric:tabular-nums}
+.pips{display:flex;gap:2px}
+.pips i{width:6px;height:12px;border-radius:2px;background:var(--well-2);box-shadow:var(--well-in)}
+.pips i.min{background:var(--hl);box-shadow:none}
+.pips i.max{background:var(--hl-tint);box-shadow:none}
+/* the add row: a well, not a raised row */
+.add{background:var(--well-2);box-shadow:var(--well-in);border-radius:var(--r);color:var(--t2)}
+.add .name{display:flex;align-items:center;gap:var(--s2);font-weight:400}
+.add .ic{width:14px;height:14px}
+.end{margin-top:var(--s3);display:flex;justify-content:flex-end}
+.btn-primary{height:var(--control-h);padding:0 var(--s4);border-radius:var(--r);background:var(--hl);color:var(--accent);font-weight:500;display:flex;align-items:center;gap:var(--s2);
+  box-shadow:0 1px 2px color-mix(in srgb, var(--shade) 35%, transparent)}
+.btn-primary .ic{width:14px;height:14px}
+
+/* DETAILS ZONE */
+.panel{width:var(--panel-w);flex:none;display:flex;flex-direction:column;gap:var(--s5)}
+.ph{height:var(--control-h);display:flex;align-items:center;justify-content:space-between;padding-left:var(--control-x)}
+.ph b{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.ph .close{width:var(--control-h);height:var(--control-h);display:flex;align-items:center;justify-content:center;color:var(--t2);border-radius:var(--r)}
+.f{display:flex;flex-direction:column;gap:var(--s2)}
+.f label{color:var(--t2);padding-left:var(--control-x)}
+.well{background:var(--well-2);box-shadow:var(--well-in);border-radius:var(--r)}
+.field{height:var(--control-h);padding:0 var(--control-x);display:flex;align-items:center;justify-content:space-between;font-weight:500}
+.field .chev{color:var(--t2)}
+.set{display:flex;gap:2px;padding:2px;height:var(--control-h)}
+.set span{flex:1;display:flex;align-items:center;justify-content:center;color:var(--t2);border-radius:6px;white-space:nowrap}
+.set span.on{color:var(--t1);font-weight:500}
+.f.grow{flex:1}
+.notes{flex:1;padding:var(--s2) var(--control-x);line-height:1.5;font-weight:400}
+.panel .foot2{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-left:var(--control-x);color:var(--t2)}
+
+/* ONE raised treatment, last so it wins */
+.raised{background:var(--accent);box-shadow:var(--raise);border-radius:var(--r)}
+</style>
+</head>
+<body>
+<div class="sf">
+  <div class="logo"></div>
+  <div class="search"><svg class="ic" viewBox="0 0 16 16" style="width:14px;height:14px"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Search...</div>
+  <div class="icons"><span></span><span></span><span></span><span class="av"></span></div>
+</div>
+
+<div class="app">
+  <nav class="mod">
+    <div class="camp"><b>Camp Tamarack</b><span class="num">2027</span></div>
+    <div class="hair"></div>
+    <div class="item"><svg class="ic" viewBox="0 0 16 16"><path d="M8 14V7"/><path d="M8 9C8 6 6 4.5 3 4.5c0 3 2 4.5 5 4.5Z"/><path d="M8 7.5c0-2.5 1.7-4 4.5-4 0 2.5-1.7 4-4.5 4Z"/></svg>Roots</div>
+    <div class="sec">Camp</div>
+    <div class="sub">
+      <div class="item">Weeks</div><div class="item">Age divisions</div><div class="item">Groups</div><div class="item">Time blocks</div><div class="item">Locations</div>
+    </div>
+    <div class="sec">Activities</div>
+    <div class="sub">
+      <div class="item cur raised">Activities</div><div class="item">Fixed activities</div><div class="item">Recurring activities</div><div class="item">Special events</div>
+    </div>
+    <div class="sec">Schedules</div>
+    <div class="sub">
+      <div class="item">Generated Schedule</div><div class="item">Manual Build</div><div class="item">Schedules</div>
+    </div>
+    <div class="foot">
+      <div class="hair"></div>
+      <div class="notice">
+        <div class="what"><i></i>Setup changed</div>
+        <div class="go raised">Update to match setup</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="frame mod">
+    <div class="rail zone">
+      <div class="grp"><div class="c"><b id="count">12</b>activities</div></div>
+      <div class="spacer"></div>
+      <div class="grp"><div class="c saved"><svg class="ic" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>Saved</div></div>
+      <div class="vr"></div>
+      <div class="grp">
+        <div class="c"><svg class="ic" viewBox="0 0 16 16"><path d="M8 10V2.5M5 5.5l3-3 3 3"/><path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>Import a list</div>
+        <div class="c"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2.5V10M5 7l3 3 3-3"/><path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>Download this list</div>
+      </div>
+    </div>
+    <div class="hair"></div>
+    <div class="body">
+      <div class="list zone" id="list"></div>
+      <div class="vhair"></div>
+      <div class="panel zone">
+        <div class="ph"><b>Swim</b><div class="close"><svg class="ic" viewBox="0 0 16 16"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/></svg></div></div>
+        <div class="f"><label>Rain plan</label><div class="well field">Arts &amp; Crafts<svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5l3-3"/></svg></div></div>
+        <div class="f"><label>Bunks together</label><div class="well set"><span>Any bunks</span><span class="on raised">Same division</span></div></div>
+        <div class="f"><label>First time</label><div class="well set"><span>Any day</span><span class="on raised">By Tue</span><span>By Wed</span></div></div>
+        <div class="f grow"><label>Notes</label><div class="well notes">Swim tests on day one. Lifeguards from the waterfront staff only.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Synthetic Camp Tamarack activities. [name, location, min, max, who (null = everyone), weeks exception (null = every week)]
+const A=[
+ ["Archery","Archery Range",2,2,null,null],
+ ["Arts & Crafts","Arts Barn",2,3,null,null],
+ ["Boating","Lake Dock",2,3,"Inters, Seniors","Off Wk 1"],
+ ["Canoe","Lake Dock",1,2,"Seniors",null],
+ ["Drama","Rec Hall",1,2,null,"Off Wk 3"],
+ ["Gaga","Gaga Pit",1,3,"Juniors, Inters",null],
+ ["High Ropes & Zip Line","Ropes Course",1,1,"Seniors, Birch","Off Wk 1, 2"],
+ ["Nature Walk","Nature Shack",1,2,"Juniors",null],
+ ["Soccer","Upper Field",2,3,null,null],
+ ["Swim","Waterfront",5,5,null,null],
+ ["Tennis","Tennis Courts",1,2,"Inters, Seniors","Off Wk 5"],
+ ["Woodworking & Carving","Arts Barn",1,1,"Seniors",null]];
+const OPEN="Swim";
+const pips=(mn,mx)=>`<span class="pips">${[1,2,3,4,5].map(i=>`<i class="${i<=mn?'min':i<=mx?'max':''}"></i>`).join('')}</span>`;
+let h=`<div class="lrow head"><span>Activity</span><span>Location</span><span>How often</span><span>Who</span><span>Weeks</span></div>`;
+A.forEach(([n,l,mn,mx,w,wk])=>{
+  h+=`<div class="lrow raised${n===OPEN?' open':''}"><span class="name">${n}</span><span>${l}</span>`+
+     `<span class="often"><b>${mn===mx?mn:mn+'–'+mx}</b>${pips(mn,mx)}</span>`+
+     `<span class="${w?'x':'rule'}">${w||'Everyone'}</span><span class="${wk?'x':'rule'}">${wk||'Every week'}</span></div>`;
+});
+h+=`<div class="lrow add"><span class="name"><svg class="ic" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg>New activity</span><span></span><span></span><span></span><span></span></div>`;
+h+=`<div class="end"><div class="btn-primary">Fixed activities<svg class="ic" viewBox="0 0 16 16"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5"/></svg></div></div>`;
+document.getElementById('list').innerHTML=h;
+document.getElementById('count').textContent=A.length;
+</script>
+</body>
+</html>

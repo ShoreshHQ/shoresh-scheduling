@@ -1,12 +1,33 @@
 @import "c/shoreshTokens";
 
-/* Quiet: small secondary text; the tick alone in the success green (a mark, never text). */
+/* Quiet: secondary words with the rail's tick in the highlight (docs/design/setup/groups.html). */
 .saved {
-  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  font-size: var(--shoresh-font-size);
   white-space: nowrap;
-  color: var(--shoresh-text-secondary);
+  color: var(--shoresh-text-2);
 }
 
 .tick {
-  color: var(--shoresh-success);
+  display: block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--shoresh-color-highlight);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The ✓ stays in the words for anything that reads them as text, drawn as the tick above. */
+.tick-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

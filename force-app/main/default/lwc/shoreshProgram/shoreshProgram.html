@@ -78,6 +78,8 @@
     <c-shoresh-editable-table
       data-id="time-blocks"
       title={labels.timeBlocks}
+      heading={sectionHeading}
+      show-columns
       object-api-name={objects.TimeBlock}
       flag-same-names
       columns={blockColumns}
@@ -95,6 +97,8 @@
     <c-shoresh-editable-table
       data-id="divisions"
       title={labels.divisions}
+      heading={sectionHeading}
+      show-columns
       object-api-name={objects.Division}
       flag-same-names
       columns={divisionColumns}
@@ -115,6 +119,8 @@
           key={division.id}
           data-id="groups"
           title={division.title}
+          heading={division.heading}
+          show-columns={division.first}
           object-api-name={objects.Group}
           flag-same-names
           same-name-scope={groupDivisionField}
@@ -130,7 +136,8 @@
           draft-note-heading={labels.moving}
           weeks={weeks}
           week-exceptions={weekExceptions}
-          weeks-heading="Runs in"
+          weeks-heading={labels.weeksColumn}
+          week-words={weekWords}
           before-week-off={beforeWeekOff}
           week-phrase="runs in"
           busy={busy}
@@ -170,7 +177,8 @@
         new-row-defaults={fixedDefaults}
         weeks={weeks}
         week-exceptions={weekExceptions}
-        weeks-heading="Runs in"
+        weeks-heading={labels.weeksColumn}
+        week-words={weekWords}
         before-week-off={beforeWeekOff}
         week-phrase="runs in"
         notes-heading={labels.leftOut}
@@ -212,7 +220,8 @@
         new-row-defaults={recurringDefaults}
         weeks={weeks}
         week-exceptions={weekExceptions}
-        weeks-heading="Runs in"
+        weeks-heading={labels.weeksColumn}
+        week-words={weekWords}
         before-week-off={beforeWeekOff}
         week-phrase="runs in"
         notes-heading={labels.leftOut}

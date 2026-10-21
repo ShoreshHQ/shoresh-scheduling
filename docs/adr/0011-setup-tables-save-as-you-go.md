@@ -20,7 +20,10 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    Recurring activities all work this way. Programs, the season form, Camp words, and Activity
    details are forms, not tables, and keep their Save buttons. _Changed 2026-10-20 (ADR 0013,
    decision 26 (4)): the forms save as you go too, one field at a time, in this queue._
-2. **The blank last row** (desktop `InlineAddRow`). Always there, tinted like the desktop's,
+2. **The blank last row** (desktop `InlineAddRow`). _Since 2026-10-21 (ADR 0015 choice 11) it
+   is dashed, with no fill, at the end of each section, and the week ticks are a strip shown
+   while the row is pointed at or edited, the weeks said as the exception at rest; every
+   behaviour below is unchanged._ Always there, tinted like the desktop's,
    its first text field showing the table's add word ("Add Bunk") in grey. It starts with the
    screen's starting values (an activity's length 1 and so on; every week ticked). Names now
    start blank: the old "Week {n}" style names would make an untouched row look filled in.

@@ -86,3 +86,92 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------- a setup screen in the shared table pattern (ADR 0015 choice 11) ---------- */
+
+/* Its rail: the count on the left, Saved and the list's own actions on the right, one item
+   tall plus the zone's inset, as Manual Build's (round 11's grammar). */
+.setup-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.rail-count {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  white-space: pre;
+}
+
+.rail-count b {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+/* A choice of sections (Locations' types), centred over the list. */
+.rail-centre {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  margin-left: var(--shoresh-s4);
+}
+
+.rail-saved {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* The list under the rail; a short list reads as a list, not a band (880 at 1440). */
+.setup-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--shoresh-space-pad);
+}
+
+.list_narrow > * {
+  width: min(100%, calc(var(--shoresh-u) * 220));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.fill-weeks {
+  margin-bottom: var(--shoresh-s3);
+}
+
+.types {
+  margin-top: var(--shoresh-s6);
+}
+
+/* The next screen's button: at the end of the list, on the right. */
+.next {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--shoresh-s3);
+}
+
+.body_flush > .problems {
+  margin: var(--shoresh-space-pad);
+}
+
+.list_narrow > c-shoresh-program,
+.list_narrow > c-shoresh-editable-table {
+  display: block;
+}
+
+/* Import a list, opened: it takes the rail's whole width, under its items. */
+.rail-import.list-open {
+  flex-basis: 100%;
+  order: 10;
+  margin-top: var(--shoresh-space-pad);
+}

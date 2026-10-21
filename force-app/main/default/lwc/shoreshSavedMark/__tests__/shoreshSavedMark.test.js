@@ -35,9 +35,9 @@ describe("c-shoresh-saved-mark", () => {
     await flush();
     const first = region(element).textContent;
     expect(first).toContain("Saved");
-    expect(
-      region(element).querySelector('[aria-hidden="true"]').textContent
-    ).toContain("✓");
+    expect(region(element).querySelector(".tick-text").textContent).toContain(
+      "✓"
+    );
     element.saved();
     await flush();
     const second = region(element).textContent;
@@ -47,6 +47,22 @@ describe("c-shoresh-saved-mark", () => {
     element.clear();
     await flush();
     expect(region(element).textContent).toBe("");
+  });
+
+  it("silent: shown the same, never said (the rail, where the table says each save)", async () => {
+    const element = createElement("c-shoresh-saved-mark", {
+      is: ShoreshSavedMark
+    });
+    element.silent = true;
+    document.body.appendChild(element);
+    await flush();
+    expect(region(element).getAttribute("role")).toBeNull();
+    expect(region(element).getAttribute("aria-live")).toBeNull();
+    element.saved();
+    await flush();
+    expect(region(element).textContent).toContain("Saved");
+    expect(region(element).querySelector("svg.tick")).not.toBeNull();
+    await expect(element).toBeAccessible();
   });
 
   it("leftField: true when focus goes elsewhere, false when it stays inside the field", () => {

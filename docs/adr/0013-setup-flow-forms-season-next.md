@@ -41,7 +41,10 @@ season form on Weeks; Camp words' Cancel).
    hears it saved before the season is read again; a reload never puts back a field the director
    changed and has not had saved (changed and not sent, or sent and not answered).
 4. **A quiet "✓ Saved"** (`c-shoresh-saved-mark`, desktop `CampScreen` "✓ Saved") beside each
-   form once a field of it is saved, in small grey text with the tick in the success green. It
+   form once a field of it is saved, in small grey text with the tick in the success green.
+   _Changed 2026-10-21 (ADR 0015 choice 11): the setup tables' screens show it on their rail
+   too, once a row is saved (silent there: the table says each save); its words are the
+   secondary text and its tick the highlight, as the mock-ups draw it._ It
    stays until the director changes something in that form again (the desktop's fades after two
    seconds; a mark that stays needs no timer, and the screen reads the same each time). Screen
    readers hear "Saved" through a polite live region, again on every save. No toast: the
@@ -67,13 +70,17 @@ season form on Weeks; Camp words' Cancel).
    Finished changed nothing a director could see, and the desktop has no season status.
    `Season__c.Status__c` stays in the data (never dropped from a package): a new or copied season
    is still made "Planning", and nothing reads it.
-8. **The season is edited beside its picker (decision 26 (5)).** A pencil button beside the
+8. **The season is edited beside its picker (decision 26 (5)).** _The pickers and their
+   actions stay in this row above the rail until step 3b moves them into the menu's camp row
+   (ADR 0015, Not done here)._ A pencil button beside the
    season picker (named "Edit Summer 2026" for screen readers, `aria-expanded`) opens a box under
    the header with the season's name, first and last day, "Copied from …", Delete season, and the
    Saved mark. The Weeks screen keeps only Fill in weeks and the weeks table. The Programs screen
    stays (Salesforce lets a camp add more than one program).
 9. **Each setup screen ends with the next one (decision 26 (6)).** A brand button "Bunks →" at
-   the bottom right of each setup screen, under a rule, as on the desktop (`SetupScreenShell`). The
+   the bottom right of each setup screen, under a rule, as on the desktop (`SetupScreenShell`).
+   _Changed 2026-10-21 (ADR 0015 choice 11): on the screens in the shared table pattern it ends
+   the list, with no rule (the mock-ups' "Time blocks →")._ The
    order is the menu's (Weeks, Programs, Divisions, Groups, Time blocks, Locations, Camp words,
    Activities, Fixed activities, Recurring activities), following the desktop's rule that the
    next button and the menu take the same path (`navSections.js` `SETUP_SCREEN_ORDER`); screens
@@ -210,7 +217,9 @@ there.
   the desktop's (Age Divisions, Groups, Days, Time Blocks, Locations); the next buttons follow
   the menu, as the desktop's follow its sidebar.
 - The desktop's footer also holds Download Template / Import from Excel / Delete All; here the
-  list import stays at the top of each screen (not part of this decision).
+  list import stays at the top of each screen (not part of this decision). _Since 2026-10-21
+  (ADR 0015 choice 11), on Weeks, Age divisions, Groups, Time blocks and Locations it is
+  Import a list and Download this list on the screen's rail (Weeks has no list import)._
 - "✓ Saved" stays until the next change instead of fading after two seconds (choice 4).
 - "Same location?" keeps Keep separate before Merge (choice 17's rule); the desktop puts Merge
   first, though its other questions (ExclusionConfirmDialog.jsx) put Cancel first.

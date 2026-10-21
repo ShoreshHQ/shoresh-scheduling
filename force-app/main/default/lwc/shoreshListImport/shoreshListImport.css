@@ -149,3 +149,15 @@
   display: block;
   margin-top: 0.75rem;
 }
+
+/* On a setup screen's rail: two items, one in-group gap apart. */
+.rail-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+}
+
+.rail-glyph {
+  width: 14px;
+  height: 14px;
+}

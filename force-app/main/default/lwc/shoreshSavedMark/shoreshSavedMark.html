@@ -1,7 +1,9 @@
 <template>
-  <span class="saved" role="status" aria-live="polite" data-id="saved"
+  <span class="saved" role={role} aria-live={live} data-id="saved"
     ><template lwc:if={shown}
-      ><span class="tick" aria-hidden="true">✓ </span>{text}</template
+      ><svg class="tick" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="m3.5 8.5 3 3 6-7"></path></svg
+      ><span class="tick-text" aria-hidden="true">✓ </span>{text}</template
     ></span
   >
 </template>

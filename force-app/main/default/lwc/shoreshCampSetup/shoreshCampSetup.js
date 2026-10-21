@@ -3,6 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import LightningConfirm from "lightning/confirm";
 import { loadStyle } from "lightning/platformResourceLoader";
 import DATE_BOX from "@salesforce/resourceUrl/ShoreshDateBox";
+import TABLE from "@salesforce/resourceUrl/ShoreshTable";
 import FONTS from "@salesforce/resourceUrl/ShoreshFonts";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
 import getSeasons from "@salesforce/apex/SeasonSetupController.getSeasons";
@@ -50,8 +51,25 @@ const SEASON_INPUTS = {
 };
 // The two dates, saved together (see saveSeasonField).
 const SEASON_DATES = ["start", "end"];
-// The schedules: their rail, grid and drawer are the frame's zones (each with its own inset).
-const FLUSH_SCREENS = new Set(["manualBuild", "generatedSchedule"]);
+// The schedules: their rail, grid and drawer are the frame's zones (each with its own inset); and
+// the setup screens in the shared table pattern: their rail, then their list (ADR 0015 choice 11).
+const FLUSH_SCREENS = new Set([
+  "manualBuild",
+  "generatedSchedule",
+  "weeks",
+  "divisions",
+  "groups",
+  "timeBlocks",
+  "locations"
+]);
+// The setup screens with a rail: what each counts, and in which of the camp's words.
+const COUNTED = {
+  weeks: "Week",
+  divisions: "Division",
+  groups: "Group",
+  timeBlocks: "TimeBlock",
+  locations: "Location"
+};
 
 const SCREENS = [
   "roots",
@@ -203,6 +221,8 @@ export default class ShoreshCampSetup extends LightningElement {
   connectedCallback() {
     // Date boxes' calendar buttons at least 24 by 24 (WCAG 2.5.8); without it they work, smaller.
     loadStyle(this, DATE_BOX).catch(() => {});
+    // Setup tables' fields read as words at rest; without it they show as boxes, and work.
+    loadStyle(this, TABLE).catch(() => {});
     // Inter and the one mono (ADR 0015); without them every word shows in the system font.
     loadStyle(this, `${FONTS}/fonts.css`).catch(() => {});
     this.loadCamps();
@@ -603,14 +623,39 @@ export default class ShoreshCampSetup extends LightningElement {
   get locationTypeDefaults() {
     return { [FIELD.LocationType.Season]: this.seasonId };
   }
+  /**
+   * A place's row: its name, how many groups fit, what is held there (worked out from the
+   * activities, never edited here), and its weeks. Its type (the section it sits in) and its
+   * notes are its details, opened from the row.
+   */
   get locationColumns() {
     const t = this.terms;
+    const activities = (this.setup && this.setup.activities) || [];
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: LOCATION.GroupsThatFit,
+        label: t.s("GroupsThatFit"),
+        type: "number",
+        min: 1,
+        required: true,
+        width: 9
+      },
+      {
+        fieldName: "heldHere",
+        label: `${t.p("Activity")} held here`,
+        type: "readonly",
+        textFor: (saved) =>
+          activities
+            .filter((a) => saved.Id && a[ACTIVITY.Location] === saved.Id)
+            .map((a) => a.Name)
+            .join(", ")
+      },
       {
         fieldName: LOCATION.LocationType,
         label: t.s("LocationType"),
         type: "picklist",
+        more: true,
         options: [
           { label: "None", value: "" },
           ...((this.setup && this.setup.locationTypes) || []).map((type) => ({
@@ -619,14 +664,7 @@ export default class ShoreshCampSetup extends LightningElement {
           }))
         ]
       },
-      {
-        fieldName: LOCATION.GroupsThatFit,
-        label: t.s("GroupsThatFit"),
-        type: "number",
-        min: 1,
-        required: true
-      },
-      { fieldName: LOCATION.Notes, label: "Notes", type: "text" }
+      { fieldName: LOCATION.Notes, label: "Notes", type: "text", more: true }
     ];
   }
   get hasLocationTypes() {
@@ -635,7 +673,7 @@ export default class ShoreshCampSetup extends LightningElement {
   get locationFilterOptions() {
     const t = this.terms;
     return [
-      { label: `All ${t.pIn("LocationType")}`, value: "all" },
+      { label: "All", value: "all" },
       ...((this.setup && this.setup.locationTypes) || []).map((type) => ({
         label: type.Name,
         value: type.Id
@@ -650,13 +688,63 @@ export default class ShoreshCampSetup extends LightningElement {
     );
     return known ? this.locationFilter : "all";
   }
-  get locationTableFilter() {
-    return this.locationFilterValue === "all"
-      ? undefined
-      : this.locationFilterValue;
+  /** The rail's choices: All and each type (and "No type" while a place has none). */
+  get locationFilterItems() {
+    const chosen = this.locationFilterValue;
+    const untyped = this.untypedLocations.length > 0;
+    return this.locationFilterOptions
+      .filter((option) => option.value !== "" || untyped || chosen === "")
+      .map((option) => ({
+        ...option,
+        pressed: option.value === chosen ? "true" : "false",
+        className:
+          option.value === chosen
+            ? "shoresh-item shoresh-raised"
+            : "shoresh-item"
+      }));
+  }
+  get untypedLocations() {
+    return ((this.setup && this.setup.locations) || []).filter(
+      (l) => !l[LOCATION.LocationType]
+    );
+  }
+  /**
+   * Locations in sections, one per type in the camp's order, then the places with none ("No
+   * type", or no heading at all while the camp has no types); one section when a type is chosen
+   * on the rail. Each section is its own table with its own blank row, which starts in its type.
+   */
+  get locationSections() {
+    const t = this.terms;
+    const types = (this.setup && this.setup.locationTypes) || [];
+    const chosen = this.locationFilterValue;
+    const sections = types.map((type) => ({
+      key: `type-${type.Id}`,
+      value: type.Id,
+      heading: type.Name,
+      title: `${t.p("Location")}: ${type.Name}`
+    }));
+    if (!types.length) {
+      sections.push({
+        key: "type-none",
+        value: "",
+        heading: undefined,
+        title: t.p("Location")
+      });
+    } else if (this.untypedLocations.length || chosen === "") {
+      const none = `No ${t.sIn("LocationType")}`;
+      sections.push({
+        key: "type-none",
+        value: "",
+        heading: none,
+        title: `${t.p("Location")}: ${none}`
+      });
+    }
+    return sections
+      .filter((section) => chosen === "all" || section.value === chosen)
+      .map((section, index) => ({ ...section, first: index === 0 }));
   }
   handleLocationFilter(event) {
-    this.locationFilter = event.detail.value;
+    this.locationFilter = event.currentTarget.dataset.value;
   }
   get locationDefaults() {
     return {
@@ -757,6 +845,57 @@ export default class ShoreshCampSetup extends LightningElement {
     };
   }
 
+  /** Each counted screen's rail: how many, in the camp's word ("10 groups", "1 week"). */
+  get counts() {
+    const setup = this.setup || {};
+    const programs = setup.programs || [];
+    const inPrograms = (pick) =>
+      programs.reduce((sum, entry) => sum + pick(entry), 0);
+    const n = {
+      weeks: (setup.weeks || []).length,
+      divisions: inPrograms((e) => (e.divisions || []).length),
+      groups: inPrograms((e) =>
+        (e.divisions || []).reduce((sum, d) => sum + (d.groups || []).length, 0)
+      ),
+      timeBlocks: inPrograms((e) => (e.timeBlocks || []).length),
+      locations: (setup.locations || []).length
+    };
+    const t = this.terms;
+    const result = {};
+    Object.keys(COUNTED).forEach((screen) => {
+      const count = n[screen];
+      result[screen] = {
+        count,
+        noun: ` ${count === 1 ? t.sIn(COUNTED[screen]) : t.pIn(COUNTED[screen])}`
+      };
+    });
+    return result;
+  }
+
+  /**
+   * The weeks in words, in the camp's word for a week: "Every week", "Off Wk 3" (a camp that
+   * calls them sessions: "Every session", "Off Session 3").
+   */
+  get weekWords() {
+    const t = this.terms;
+    const standard = t.s("Week") === "Week";
+    return {
+      every: `Every ${t.sIn("Week")}`,
+      none: `No ${t.pIn("Week")}`,
+      off: "Off",
+      one: standard ? "Wk" : t.s("Week"),
+      many: standard ? "Wks" : t.p("Week")
+    };
+  }
+  /** A place is closed, not off (docs/design/setup/locations.html). */
+  get locationWeekWords() {
+    return { ...this.weekWords, off: "Closed" };
+  }
+  /** With more than one program, each program's tables are headed with its name. */
+  get hasSeveralPrograms() {
+    return this.programs.length > 1;
+  }
+
   get labels() {
     const t = this.terms;
     const screens = screenLabels(t);
@@ -781,6 +920,8 @@ export default class ShoreshCampSetup extends LightningElement {
       noPrograms: `No ${t.pIn("Program")} yet`,
       copiedFrom: `Copied from "${this.copiedFromName}".`,
       locationTypes: t.p("LocationType"),
+      showTypes: `Show ${t.pIn("LocationType")}`,
+      weeksColumn: t.p("Week"),
       addLocationType: `Add ${t.s("LocationType")}`,
       noLocationTypes: `No ${t.pIn("LocationType")} yet`,
       addLocation: `Add ${t.s("Location")}`,
@@ -1257,8 +1398,13 @@ export default class ShoreshCampSetup extends LightningElement {
   async saveOneRow(detail) {
     const { record, seen, extras, seenWho, onSaved, onFailure, onDone } =
       detail;
+    // A place's row with the cursor in it may leave its section once saved (its type changed).
+    const held = this.focusedLocation();
     let answered = false;
     this.error = null;
+    // The rail's quiet Saved: gone while a row is on its way, back once it is saved.
+    const screen = this.screen;
+    this.railSaved(screen, false);
     try {
       const result = await saveRow({
         record,
@@ -1267,6 +1413,13 @@ export default class ShoreshCampSetup extends LightningElement {
       });
       answered = true;
       onSaved(result);
+      // Someone else changed the row: the table asks, and nothing is saved yet.
+      const asked =
+        !!result &&
+        ((result.changed && result.changed.length > 0) || !!result.theirWho);
+      if (!asked) {
+        this.railSaved(screen, true);
+      }
       await this.loadSeason();
     } catch (e) {
       // What didn't happen, then why; a row saved whose screen didn't refresh says so.
@@ -1282,6 +1435,28 @@ export default class ShoreshCampSetup extends LightningElement {
     } finally {
       // Always: the table may only send its next row once this one is done.
       onDone();
+      if (held) {
+        // Once the table has redrawn without the row.
+        Promise.resolve().then(() => this.followMovedLocation(held));
+      }
+    }
+  }
+
+  /**
+   * The quiet "✓ Saved" on a setup screen's rail (decision 26 (4), ADR 0015 choice 11): shown
+   * once a row of that screen is saved, gone while the next is on its way. The table says each
+   * save to screen readers ("Cedar saved"), so the mark itself is silent.
+   */
+  railSaved(screen, saved) {
+    const mark = this.template.querySelector(
+      `[data-screen="${screen}"] [data-id="rail-saved"]`
+    );
+    if (mark) {
+      if (saved) {
+        mark.saved();
+      } else {
+        mark.clear();
+      }
     }
   }
 
@@ -1518,13 +1693,86 @@ export default class ShoreshCampSetup extends LightningElement {
     const from = this.sameLocation[0].id;
     this.sameLocation = null;
     this.sameLocationError = null;
-    this.locationsTable().focusRowOf(from);
+    this.locationsTable(from).focusRowOf(from);
   }
 
-  locationsTable() {
-    return this.template.querySelector(
+  /**
+   * The section showing this place (each type is its own table), else the first section, whose
+   * blank row takes the cursor when the place is gone.
+   */
+  locationsTable(recordId) {
+    const tables = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="locations"]'
+      )
+    ];
+    return (
+      tables.find((table) => table.showsRow(recordId)) ||
+      tables[0] || {
+        focusRowOf: () => {}
+      }
+    );
+  }
+
+  /** The place whose row holds the cursor, and the section table it is in, if any. */
+  focusedLocation() {
+    const tables = this.template.querySelectorAll(
       'c-shoresh-editable-table[data-id="locations"]'
     );
+    for (const table of tables) {
+      const row = table.focusedRow();
+      if (row) {
+        return { ...row, table };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * After a row is saved, a place that held the cursor and is no longer in its section (its
+   * type changed, ADR 0015 choice 11) takes the cursor along to its new section: the same field,
+   * its details open again if that is where the cursor was. If the rail shows only the old
+   * type, the cursor goes to that section's blank row. Either way the move is said aloud, so the
+   * cursor never drops to the top of the page (WCAG 2.4.3).
+   */
+  followMovedLocation(held) {
+    if (!held || !this.setup) {
+      return;
+    }
+    // Only when the cursor was lost with the row: never taken from where the director went.
+    const now = focusedElement();
+    if (now && now !== document.body) {
+      return;
+    }
+    const { table, recordId, field, inDetails } = held;
+    if (table.isConnected && table.showsRow(recordId)) {
+      return;
+    }
+    const place = (this.setup.locations || []).find((l) => l.Id === recordId);
+    if (!place) {
+      return;
+    }
+    const type = place[LOCATION.LocationType] || "";
+    const named = (this.setup.locationTypes || []).find((t) => t.Id === type);
+    const typeName = named
+      ? named.Name
+      : `No ${this.terms.sIn("LocationType")}`;
+    const tables = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="locations"]'
+      )
+    ];
+    const target =
+      tables.find((t) => t.showsRow(recordId)) ||
+      (table.isConnected ? table : tables[0]);
+    if (target) {
+      target.takeFocus(
+        recordId,
+        field,
+        inDetails,
+        `${place.Name} moved to ${typeName}`
+      );
+    }
   }
 
   /**
@@ -1548,7 +1796,7 @@ export default class ShoreshCampSetup extends LightningElement {
       this.sameLocation = null;
       this.toast(`Merged into "${kept.name}".`);
       await this.loadSeason();
-      this.locationsTable().focusRowOf(keepId);
+      this.locationsTable(keepId).focusRowOf(keepId);
     } catch (e) {
       if (merged) {
         // Done, but the screen couldn't read it back: said so (the page's usual words), never
@@ -1566,7 +1814,7 @@ export default class ShoreshCampSetup extends LightningElement {
       } else {
         this.sameLocation = null;
         this.error = why;
-        this.locationsTable().focusRowOf(keepId);
+        this.locationsTable(keepId).focusRowOf(keepId);
       }
     } finally {
       this.merging = false;

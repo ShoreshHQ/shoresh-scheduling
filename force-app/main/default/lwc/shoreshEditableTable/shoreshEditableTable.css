@@ -1,9 +1,374 @@
 @import "c/shoreshTokens";
 
-/* "Needs a look": the bronze dot (c/shoreshDot), its words on hover, focus, or tap. */
+/*
+ * The shared table pattern (docs/design/setup/groups.html; ADR 0015 choice 11). Rows sit raised,
+ * one under another with a fine gap, and their fields read as words at rest: the edges of a
+ * field, its chevron and the row's end tools show only under the pointer or while the row is
+ * being edited. Salesforce's fields are styled at rest by the page's ShoreshTable stylesheet
+ * (their insides are out of reach of this file).
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.section_apart {
+  margin-top: var(--shoresh-s5);
+}
+
+/* A section's heading: its name in the title style, its count in secondary words. */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  margin: 0 0 var(--shoresh-s1);
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.section-count {
+  color: var(--shoresh-text-2);
+  font-size: var(--shoresh-font-size);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* Wide tables (many columns) scroll inside themselves, never the page. */
+.scroll {
+  overflow-x: auto;
+}
+
+.list {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0 var(--shoresh-s1);
+}
+
+/* The column names: set like rail items, on the zone's own surface. */
+.th {
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.th_end .head-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The column names for the eye, above the first section: no row gap under them. */
+.list_head {
+  border-spacing: 0;
+}
+
+/* Read out with every cell, not shown: the copy above the first section is the one seen. */
+.head_hidden .th {
+  height: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.head_hidden .head-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- a row: the one raised treatment, across its cells ---------- */
+
+.row > td {
+  height: calc(var(--shoresh-u) * 9);
+  padding: 0 2px;
+  vertical-align: middle;
+  background: var(--shoresh-color-primary-50);
+  border-top: 1px solid rgba(128, 141, 116, 0.22);
+  border-bottom: 1px solid rgba(128, 141, 116, 0.22);
+  box-shadow: 0 1px 2px -1px rgba(128, 141, 116, 0.35);
+}
+
+.row > td:first-child {
+  border-left: 1px solid rgba(128, 141, 116, 0.22);
+  border-radius: var(--shoresh-radius) 0 0 var(--shoresh-radius);
+}
+
+.row > td:last-child {
+  border-right: 1px solid rgba(128, 141, 116, 0.22);
+  border-radius: 0 var(--shoresh-radius) var(--shoresh-radius) 0;
+}
+
+/* Under the pointer or being edited: the same half step darker as a grid cell. */
+.row:hover > td,
+.row:focus-within > td {
+  background: var(--shoresh-surface-hover);
+  border-color: rgba(128, 141, 116, 0.4);
+}
+
+/* A row whose details are open joins them: square bottom corners. */
+.row_open > td:first-child {
+  border-bottom-left-radius: 0;
+}
+
+.row_open > td:last-child {
+  border-bottom-right-radius: 0;
+}
+
+/* The blank row: no fill, no raise, a dashed edge; clearly not a row yet. */
+.add-row > td,
+.add-row:hover > td,
+.add-row:focus-within > td {
+  background: transparent;
+  box-shadow: none;
+  border-color: rgba(38, 35, 27, 0.28);
+  border-top-style: dashed;
+  border-bottom-style: dashed;
+}
+
+.add-row > td:first-child {
+  border-left-style: dashed;
+}
+
+.add-row > td:last-child {
+  border-right-style: dashed;
+}
+
+/* A refused change still on the row: a mark at its start until it is saved or put back. */
+.not-saved > td:first-child {
+  box-shadow: inset 3px 0 0 var(--shoresh-color-text);
+}
+
+.cell-line {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  min-width: 0;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.plus {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--shoresh-space-control-x);
+  fill: none;
+  stroke: var(--shoresh-text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Words that are not a field (a saved-only choice, what a place holds). */
+.fixed {
+  display: block;
+  padding: 0 var(--shoresh-space-control-x);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell_readonly .fixed {
+  color: var(--shoresh-text-2);
+}
+
+.who {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--shoresh-space-control-x);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell_note {
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  white-space: normal;
+}
+
+/* "Needs a look": the dot (c/shoreshDot), its words on hover, focus, or tap. */
 .flag {
   display: inline-block;
-  margin-top: 0.125rem;
+  flex: none;
+}
+
+.merge {
+  flex: none;
+  height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+}
+
+/* ---------- the weeks: the exception in words, the strip in its place on hover or edit ---------- */
+
+.cell_weeks {
+  padding: 0 var(--shoresh-space-control-x);
+  white-space: nowrap;
+}
+
+/* The rule is quiet; the exception is a value. */
+.weeks-text {
+  color: var(--shoresh-text-2);
+}
+
+.weeks-text.exception {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.strip {
+  display: none;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+/* row_asking: a "Turn off ... ?" question about this row is open (it has focus and covers the row). */
+.row:hover .strip,
+.row:focus-within .strip,
+.row_asking .strip {
+  display: flex;
+}
+
+.row:hover .weeks-text,
+.row:focus-within .weeks-text,
+.row_asking .weeks-text {
+  display: none;
+}
+
+/* One week: on is a highlight tint (the grid's filled state), off an empty slot. */
+.chip {
+  position: relative;
+  display: block;
+  flex: none;
+  margin: 0;
+  cursor: pointer;
+}
+
+.chip-box {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.chip-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--shoresh-s5);
+  height: calc(var(--shoresh-u) * 5);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+  color: var(--shoresh-text-2);
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+}
+
+.chip-box:checked + .chip-face {
+  background: rgba(31, 102, 81, 0.14);
+  box-shadow: none;
+  color: var(--shoresh-color-highlight-press);
+  font-weight: 500;
+}
+
+.chip-box:focus-visible + .chip-face {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.chip-box:disabled,
+.chip-box:disabled + .chip-face {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ---------- the row's end: delete and the details chevron, shown on hover or edit ---------- */
+
+.cell_end {
+  padding-right: var(--shoresh-s1);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tools {
+  /* The delete's bin in the secondary words, as the rail's glyphs. */
+  --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
+  --slds-c-button-text-color: var(--shoresh-text-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  vertical-align: middle;
+  opacity: 0;
+}
+
+/* Never hidden from the keyboard: the tools only fade, so Tab still reaches them. */
+.row:hover .tools,
+.row:focus-within .tools {
+  opacity: 1;
+}
+
+.more {
+  height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+  width: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+}
+
+.turned {
+  transform: rotate(90deg);
+}
+
+.add {
+  height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+}
+
+/* ---------- a row's details and its who list, under it ---------- */
+
+.extra > td {
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x) var(--shoresh-s3);
+  background: var(--shoresh-color-primary-50);
+  border: 1px solid rgba(128, 141, 116, 0.22);
+  border-top: 0;
+  border-radius: 0 0 var(--shoresh-radius) var(--shoresh-radius);
+}
+
+/* The details sit right under their row, not a gap away. */
+.row_open + .extra > td {
+  position: relative;
+  top: calc(-1 * var(--shoresh-s1));
+}
+
+.more-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s3);
+}
+
+.more-field {
+  flex: 0 1 calc(var(--shoresh-u) * 52);
+  min-width: 0;
+}
+
+.more-field_text {
+  flex-grow: 1;
 }
 
 /* Someone else changed the row: each field the question is about, one under another. */
@@ -25,19 +390,9 @@
 }
 
 .conflict-choices dt {
-  color: var(--shoresh-text-secondary);
+  color: var(--shoresh-text-2);
 }
 
 .conflict-choices dd {
   font-weight: 600;
-}
-
-/* The blank last row sits on the page colour, as on the desktop. */
-.add-row td {
-  background: var(--slds-g-color-neutral-base-95, #f4f3ef);
-}
-
-/* A refused change still on the row: a bronze edge until it is saved or put back. */
-.not-saved td:first-child {
-  box-shadow: inset 3px 0 0 var(--shoresh-caution);
 }

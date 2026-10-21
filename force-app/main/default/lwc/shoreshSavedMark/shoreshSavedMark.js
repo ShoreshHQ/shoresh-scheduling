@@ -7,8 +7,11 @@ import { LightningElement, api } from "lwc";
  * words are the same.
  *
  * saved(): show it (and say it). clear(): hide it.
+ * silent: shown only, never said - on a setup screen's rail, where the table already says each
+ * save ("Cedar saved"), so a screen reader hears it once (ADR 0015 choice 11).
  */
 export default class ShoreshSavedMark extends LightningElement {
+  @api silent = false;
   text = "";
   flip = false;
 
@@ -27,6 +30,14 @@ export default class ShoreshSavedMark extends LightningElement {
 
   get shown() {
     return !!this.text;
+  }
+
+  get role() {
+    return this.silent ? null : "status";
+  }
+
+  get live() {
+    return this.silent ? null : "polite";
   }
 }
 

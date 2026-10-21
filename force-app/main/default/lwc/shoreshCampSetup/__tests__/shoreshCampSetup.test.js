@@ -16,7 +16,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
-import { bareName, bareRecord, nsRecord } from "shoresh-jest/namespace";
+import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
@@ -234,7 +234,11 @@ describe("c-shoresh-camp-setup", () => {
       expect(loaded.filter((url) => url.includes("ShoreshFonts"))).toEqual([
         expect.stringMatching(/ShoreshFonts\/fonts\.css$/)
       ]);
-      expect(loadStyle).toHaveBeenCalledTimes(2);
+      // And the setup tables' fields at rest (ADR 0015 choice 11).
+      expect(loaded.filter((url) => url.includes("ShoreshTable"))).toHaveLength(
+        1
+      );
+      expect(loadStyle).toHaveBeenCalledTimes(3);
       const dates = [
         ...element.shadowRoot.querySelectorAll("lightning-input")
       ].filter((input) => input.type === "date");
@@ -291,6 +295,402 @@ describe("c-shoresh-camp-setup", () => {
       );
       expect(iconRule.body).toMatch(/width:\s*1\.5rem/);
       expect(iconRule.body).toMatch(/height:\s*1\.5rem/);
+    });
+  });
+
+  describe("setup tables' fields at rest (ADR 0015 choice 11)", () => {
+    it("the style reaches only fields in Shoresh's marked cells, and keeps a focus edge and the error edge", () => {
+      const fs = require("fs");
+      const path = require("path");
+      const css = fs
+        .readFileSync(
+          path.join(__dirname, "../../../staticresources/ShoreshTable.css"),
+          "utf8"
+        )
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map((m) => ({
+        selectors: m[1].split(",").map((x) => x.trim()),
+        body: m[2]
+      }));
+      expect(rules.length).toBeGreaterThan(0);
+      rules.forEach((rule) =>
+        rule.selectors.forEach((selector) =>
+          expect(selector).toMatch(
+            /^(\.shoresh-row\S* )?\.shoresh-(cell|name) /
+          )
+        )
+      );
+      const focus = rules.find((r) =>
+        r.selectors.some((x) => x.endsWith(".slds-input:focus"))
+      );
+      expect(focus.body).toMatch(
+        /border-color:\s*var\(--shoresh-color-highlight/
+      );
+      const error = rules.find((r) =>
+        r.selectors.some((x) => x.includes(".slds-has-error"))
+      );
+      expect(error.body).toMatch(/border-color:\s*var\(--slds-g-color-error-1/);
+    });
+  });
+
+  describe("setup screens in the shared table pattern (ADR 0015 choice 11)", () => {
+    const TYPES = [
+      { Id: "lt1", Name: "Waterfront" },
+      { Id: "lt2", Name: "Fields" }
+    ];
+    const PLACES = [
+      { Id: "l1", Name: "Lake", LocationType__c: "lt1", GroupsThatFit__c: 3 },
+      { Id: "l2", Name: "Pool", LocationType__c: "lt1", GroupsThatFit__c: 2 },
+      {
+        Id: "l3",
+        Name: "Upper field",
+        LocationType__c: "lt2",
+        GroupsThatFit__c: 2
+      },
+      { Id: "l4", Name: "Shed", GroupsThatFit__c: 1 }
+    ];
+    async function renderWith(overrides = {}) {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith(overrides)));
+      return render();
+    }
+    const rail = (element, screen) =>
+      q(element, `[data-screen="${screen}"] [data-id="setup-rail"]`);
+    const count = (element, screen) =>
+      rail(element, screen)
+        .querySelector('[data-id="count"]')
+        .textContent.replace(/\s+/g, " ")
+        .trim();
+    const sections = (element) =>
+      [
+        ...element.shadowRoot.querySelectorAll(
+          'c-shoresh-editable-table[data-id="locations"]'
+        )
+      ].map((t) => [t.heading, t.filterValue, t.showColumns]);
+
+    it("each screen's rail counts its list in the camp's words, one or many", async () => {
+      const element = await renderWith({
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main", Monday__c: true },
+            timeBlocks: [{ Id: "t1", Name: "Period 1" }],
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [
+                  { Id: "g1", Name: "Cedar" },
+                  { Id: "g2", Name: "Birch" }
+                ]
+              }
+            ]
+          }
+        ],
+        locations: PLACES,
+        locationTypes: TYPES
+      });
+      expect(count(element, "weeks")).toBe("1 week");
+      expect(count(element, "divisions")).toBe("1 division");
+      // A word the camp typed stays as typed.
+      expect(count(element, "groups")).toBe("2 Bunks");
+      expect(count(element, "timeBlocks")).toBe("1 time block");
+      expect(count(element, "locations")).toBe("4 locations");
+    });
+
+    it("the rail holds the screen's heading (read out), Saved, and Import a list as rail items", async () => {
+      const element = await renderWith();
+      await openScreen(element, "groups");
+      const groups = rail(element, "groups");
+      const heading = groups.querySelector("[data-heading]");
+      expect(heading.tagName).toBe("H2");
+      expect(heading.classList.contains("slds-assistive-text")).toBe(true);
+      expect(groups.querySelector('[data-id="rail-saved"]').silent).toBe(true);
+      const list = groups.querySelector("c-shoresh-list-import");
+      expect(list.variant).toBe("rail");
+      expect(list.screenKey).toBe("groups");
+      // The next screen's button is at the end of the list, under the rail.
+      const next = q(
+        element,
+        '[data-screen="groups"] .setup-list [data-id="next"]'
+      );
+      expect(next.label).toBe("Time blocks →");
+      await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
+    });
+
+    it("the rail's quiet Saved shows once a row is saved, and goes while the next is on its way", async () => {
+      const element = await renderWith();
+      await openScreen(element, "weeks");
+      const mark = q(element, '[data-screen="weeks"] [data-id="rail-saved"]');
+      const said = () =>
+        mark.shadowRoot.querySelector('[data-id="saved"]').textContent;
+      let answer;
+      saveRow.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            answer = resolve;
+          })
+      );
+      const send = () =>
+        q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
+          new CustomEvent("save", {
+            detail: nsRecord({
+              record: { sobjectType: "Week__c", Id: "w1", Name: "Week One" },
+              seen: { sobjectType: "Week__c", Name: "Week 1" },
+              extras: { weeksOff: [], weeksBackOn: [] },
+              onSaved: () => {},
+              onFailure: () => {},
+              onDone: () => {}
+            })
+          })
+        );
+      send();
+      await flush();
+      expect(said()).toBe("");
+      answer(nsRecord({ id: "w1", changed: [] }));
+      await flush();
+      expect(said()).toContain("Saved");
+      send();
+      await flush();
+      expect(said()).toBe("");
+      // Someone else changed it: the table asks, and nothing is Saved yet.
+      answer(
+        nsRecord({ id: "w1", changed: ["Name"], theirs: { Name: "Wk 1" } })
+      );
+      await flush();
+      expect(said()).toBe("");
+    });
+
+    it("locations sit in a section per type, then the places with none, each its own table", async () => {
+      const element = await renderWith({
+        locations: PLACES,
+        locationTypes: TYPES
+      });
+      await openScreen(element, "locations");
+      expect(sections(element)).toEqual([
+        ["Waterfront", "lt1", true],
+        ["Fields", "lt2", false],
+        ["No location type", "", false]
+      ]);
+      // axe on this screen takes too long for Jest on CI (three tables of places, each with
+      // every week's ticks): the real-browser check runs it on Locations in the test org, and
+      // c-shoresh-editable-table's own tests run it on a section.
+    });
+
+    it("a camp without types has one section with no heading", async () => {
+      const element = await renderWith({ locations: PLACES.slice(3) });
+      await openScreen(element, "locations");
+      expect(sections(element)).toEqual([[undefined, "", true]]);
+      expect(q(element, '[data-id="location-filter"]')).toBeNull();
+    });
+
+    it("the rail's type choices show one section; All shows them all again", async () => {
+      const element = await renderWith({
+        locations: PLACES,
+        locationTypes: TYPES
+      });
+      await openScreen(element, "locations");
+      const choices = () => [
+        ...q(element, '[data-id="location-filter"]').querySelectorAll("button")
+      ];
+      expect(
+        choices().map((b) => [
+          b.textContent.trim(),
+          b.getAttribute("aria-pressed")
+        ])
+      ).toEqual([
+        ["All", "true"],
+        ["Waterfront", "false"],
+        ["Fields", "false"],
+        ["No location type", "false"]
+      ]);
+      expect(
+        q(element, '[data-id="location-filter"]').getAttribute("role")
+      ).toBe("group");
+      choices()[2].click();
+      await flush();
+      expect(sections(element)).toEqual([["Fields", "lt2", true]]);
+      expect(choices()[2].getAttribute("aria-pressed")).toBe("true");
+      expect(choices()[2].classList.contains("shoresh-raised")).toBe(true);
+      choices()[0].click();
+      await flush();
+      expect(sections(element).length).toBe(3);
+    });
+
+    it("No type is offered only while a place has none", async () => {
+      const element = await renderWith({
+        locations: PLACES.slice(0, 3),
+        locationTypes: TYPES
+      });
+      await openScreen(element, "locations");
+      expect(
+        [
+          ...q(element, '[data-id="location-filter"]').querySelectorAll(
+            "button"
+          )
+        ].map((b) => b.textContent.trim())
+      ).toEqual(["All", "Waterfront", "Fields"]);
+      expect(sections(element).map(([h]) => h)).toEqual([
+        "Waterfront",
+        "Fields"
+      ]);
+    });
+
+    it("a place's row shows what is held there; its type and notes are its details", async () => {
+      const element = await renderWith({
+        locations: PLACES,
+        locationTypes: TYPES,
+        activities: [
+          { Id: "a1", Name: "Swim", Location__c: "l1" },
+          { Id: "a2", Name: "Canoe", Location__c: "l1" },
+          { Id: "a3", Name: "Soccer", Location__c: "l3" }
+        ]
+      });
+      await openScreen(element, "locations");
+      const table = q(element, 'c-shoresh-editable-table[data-id="locations"]');
+      const held = table.columns.find((c) => c.type === "readonly");
+      expect(held.label).toBe("Activities held here");
+      expect(held.textFor(nsRecord(PLACES[0]))).toBe("Swim, Canoe");
+      expect(held.textFor({})).toBe("");
+      expect(
+        table.columns.filter((c) => c.more).map((c) => bareName(c.fieldName))
+      ).toEqual(["LocationType__c", "Notes__c"]);
+    });
+
+    describe("a place whose type changes takes the cursor to its new section (WCAG 2.4.3)", () => {
+      const tables = (element) => [
+        ...element.shadowRoot.querySelectorAll(
+          'c-shoresh-editable-table[data-id="locations"]'
+        )
+      ];
+      const tableFor = (element, type) =>
+        tables(element).find((t) => t.filterValue === type);
+      const inTable = (table, selector) =>
+        table.shadowRoot.querySelector(selector);
+      /** The place's details open, its type changed, then Enter in its notes. */
+      async function moveLake(element, to, id = "l1", from = "lt1") {
+        const waterfront = tableFor(element, from);
+        inTable(
+          waterfront,
+          `[data-id="more"][data-row-key="row-${id}"]`
+        ).click();
+        await flush();
+        const type = inTable(
+          waterfront,
+          `[data-row-key="row-${id}"][data-field="${nsName("LocationType__c")}"]`
+        );
+        type.value = to;
+        type.dispatchEvent(
+          new CustomEvent("change", { detail: { value: to } })
+        );
+        await flush();
+        waterfront.shadowRoot
+          .querySelectorAll("lightning-input, lightning-combobox")
+          .forEach((i) => {
+            i.reportValidity = () => true;
+            i.checkValidity = () => true;
+          });
+        const notes = inTable(
+          waterfront,
+          `[data-row-key="row-${id}"][data-field="${nsName("Notes__c")}"]`
+        );
+        notes.tabIndex = 0;
+        notes.focus();
+        expect(waterfront.shadowRoot.activeElement).toBe(notes);
+        saveRow.mockResolvedValue(nsRecord({ id, changed: [] }));
+        getSeasonSetup.mockResolvedValue(
+          nsRecord(
+            setupWith({
+              locations: PLACES.map((p) => ({
+                ...p,
+                ...(p.Id === id ? { LocationType__c: to } : {})
+              })),
+              locationTypes: TYPES
+            })
+          )
+        );
+        // The test stand-in for a Salesforce input can't take focus itself: what took it is
+        // listed as section:row:field.
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        notes.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Enter",
+            bubbles: true,
+            composed: true
+          })
+        );
+        await flush();
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) =>
+            `${el.getRootNode().host.dataset.type}:${el.dataset.rowKey}:${bareName(el.dataset.field)}`
+        );
+        focus.mockRestore();
+        expect(saveRow).toHaveBeenCalledTimes(1);
+        return { notes, focused };
+      }
+
+      it("the same field in the place's row, its details open again, and the move said", async () => {
+        const element = await renderWith({
+          locations: PLACES,
+          locationTypes: TYPES
+        });
+        await openScreen(element, "locations");
+        const { notes, focused } = await moveLake(element, "lt2");
+        // Without this, the field with the cursor is gone and the cursor is at the page's top.
+        expect(notes.isConnected).toBe(false);
+        expect(tableFor(element, "lt1").showsRow("l1")).toBe(false);
+        const fields = tableFor(element, "lt2");
+        expect(fields.showsRow("l1")).toBe(true);
+        expect(focused).toEqual(["lt2:row-l1:Notes__c"]);
+        expect(
+          inTable(
+            fields,
+            '[data-id="more"][data-row-key="row-l1"]'
+          ).getAttribute("aria-expanded")
+        ).toBe("true");
+        expect(inTable(fields, '[data-id="announce"]').textContent).toContain(
+          "Lake moved to Fields"
+        );
+      });
+
+      it("while the rail shows only the old type, the cursor stays in that section's blank row", async () => {
+        const element = await renderWith({
+          locations: PLACES,
+          locationTypes: TYPES
+        });
+        await openScreen(element, "locations");
+        [
+          ...q(element, '[data-id="location-filter"]').querySelectorAll(
+            "button"
+          )
+        ][1].click();
+        await flush();
+        expect(tables(element).length).toBe(1);
+        const { focused } = await moveLake(element, "");
+        const waterfront = tableFor(element, "lt1");
+        expect(waterfront.showsRow("l1")).toBe(false);
+        expect(focused).toEqual(["lt1:add:Name"]);
+        expect(
+          inTable(waterfront, '[data-id="announce"]').textContent
+        ).toContain("Lake moved to No location type");
+      });
+
+      it("from a section that goes with it (the last place with no type): to its new one", async () => {
+        const element = await renderWith({
+          locations: PLACES,
+          locationTypes: TYPES
+        });
+        await openScreen(element, "locations");
+        const { focused } = await moveLake(element, "lt1", "l4", "");
+        expect(sections(element).map(([h]) => h)).toEqual([
+          "Waterfront",
+          "Fields"
+        ]);
+        expect(focused).toEqual(["lt1:row-l4:Notes__c"]);
+        expect(
+          inTable(tableFor(element, "lt1"), '[data-id="announce"]').textContent
+        ).toContain("Shed moved to Waterfront");
+      });
     });
   });
 
@@ -1206,7 +1606,13 @@ describe("c-shoresh-camp-setup", () => {
     });
     expect(shape(table("locations"))).toMatchObject({
       object: "Location__c",
-      columns: ["Name", "LocationType__c", "GroupsThatFit__c", "Notes__c"],
+      columns: [
+        "Name",
+        "GroupsThatFit__c",
+        "heldHere",
+        "LocationType__c",
+        "Notes__c"
+      ],
       defaults: { Season__c: "s1", GroupsThatFit__c: 1 }
     });
     expect(bareName(table("locations").filterField)).toBe("LocationType__c");
@@ -1492,12 +1898,14 @@ describe("c-shoresh-camp-setup", () => {
       element,
       'c-shoresh-editable-table[data-id="locations"]'
     );
-    expect(locations.weeksHeading).toBe("Open in");
+    expect(locations.weeksHeading).toBe("Weeks");
+    // A place is closed in a week, not off.
+    expect(locations.weekWords.off).toBe("Closed");
     expect(locations.weeks.map((w) => w.Id)).toEqual(["w1"]);
     expect(locations.weekExceptions.length).toBe(1);
     expect(
       q(element, 'c-shoresh-editable-table[data-id="activities"]').weeksHeading
-    ).toBe("Runs in");
+    ).toBe("Weeks");
     const { detail, calls } = rowSave({
       record: { sobjectType: "Location__c", Id: "l1", Name: "Pool" },
       seen: { sobjectType: "Location__c", Name: "pool" },

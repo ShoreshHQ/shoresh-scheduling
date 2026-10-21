@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup · Groups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+/* Setup round 1 · GROUPS. Base: round13/manual-build.html (approved, decision 39) and
+   round11/spacing-spec-continuous.md. Same unit, six steps, menu, frame, rail grammar, one raised style.
+   Colours: decision 40 (one sage-greige family, one forest highlight with tints, text). */
+:root{
+  --u: clamp(3px, calc(100vw / 360), 5px);
+  --s1: calc(var(--u) * 1); --s2: calc(var(--u) * 2); --s3: calc(var(--u) * 3);
+  --s4: calc(var(--u) * 4); --s5: calc(var(--u) * 6); --s6: calc(var(--u) * 8);
+  --word:var(--s1); --in-group:var(--s1); --group-side:var(--s2); --control-x:var(--s2);
+  --control-h:var(--s6); --page-margin:var(--s3); --gutter:var(--s3); --pad:var(--s3); --cell-gap:var(--s2);
+  --row-h: calc(var(--u) * 9);          /* 36: a group row */
+  --menu-w: calc(var(--u) * 52);        /* 208 */
+  --r-mod:var(--s3); --r:var(--s2);
+
+  --primary:#AEB6A7; --accent:#F6F8F5; --text:#26231B; --hl:#1F6651;
+  --page:#F3F5F2; --module:#EFF1EE; --well:#EBEDE9; --well-2:#E6E9E4;
+  --edge:#D8DCD4; --rule:#D8DCD4; --shade:#808D74;
+  --t1:var(--text);
+  --t2:color-mix(in srgb, var(--text) 78%, var(--well-2));
+  --mod-edge:0 0 0 1px var(--edge);
+  --raise: 0 0 0 1px color-mix(in srgb, var(--shade) 22%, transparent),
+           0 1px 2px color-mix(in srgb, var(--shade) 22%, transparent);
+  --well-in: inset 0 1px 2px color-mix(in srgb, var(--shade) 16%, transparent);
+
+  /* the list's columns: name has room; when; weeks; the row's own end */
+  --cols: 1fr calc(var(--u) * 44) calc(var(--u) * 60) var(--s6);
+  --sans:"Inter",-apple-system,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--t1);font-family:var(--sans);font-size:13px;line-height:1.25;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"cv11" 1;width:1440px;height:900px;overflow:hidden}
+.num{font-variant-numeric:tabular-nums}
+svg{display:block;flex:none}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.chev{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* Salesforce header: theirs, untouched */
+.sf{height:40px;background:#F3F3F3;border-bottom:1px solid #DDDBDA;display:flex;align-items:center;padding:0 12px;gap:12px;font-family:-apple-system,system-ui,sans-serif}
+.sf .logo{width:44px;height:22px;border-radius:11px;background:#C9C7C5}
+.sf .search{margin:0 auto;width:560px;height:28px;background:#fff;border:1px solid #C9C7C5;border-radius:4px;display:flex;align-items:center;padding:0 10px;gap:8px;color:#706E6B;font-size:13px}
+.sf .icons{display:flex;gap:10px}
+.sf .icons span{width:22px;height:22px;border-radius:50%;background:#DDDBDA}
+.sf .icons span.av{background:#B0ADAB}
+
+.app{height:860px;padding:var(--page-margin);display:grid;gap:var(--gutter);grid-template-columns:var(--menu-w) 1fr}
+.mod{background:var(--module);border-radius:var(--r-mod);box-shadow:var(--mod-edge);min-width:0;min-height:0;position:relative}
+
+/* MENU: identical to round 13, Groups current */
+nav{padding:var(--pad);display:flex;flex-direction:column}
+.camp{height:var(--control-h);padding:0 var(--s2);display:flex;align-items:center;justify-content:space-between}
+.camp b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.camp span{font-size:13px;color:var(--t2)}
+.hair{height:1px;background:var(--rule);flex:none}
+nav .hair{margin:var(--pad) calc(-1 * var(--pad))}
+.item{display:flex;align-items:center;gap:var(--s2);height:var(--control-h);padding:0 var(--s2);border-radius:var(--r);color:var(--t2)}
+.item.cur{color:var(--t1);font-weight:500}
+.sec{height:var(--control-h);display:flex;align-items:flex-end;padding:0 var(--s2) var(--s2);margin-top:var(--s2);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}
+.sub .item{padding-left:34px;position:relative}
+.sub .item.cur::before{content:"";position:absolute;left:15px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--hl)}
+.foot{margin-top:auto}
+nav .foot .hair{margin-bottom:var(--pad)}
+.notice{display:flex;flex-direction:column;gap:var(--s2)}
+.notice .what{display:flex;align-items:center;gap:var(--s2);color:var(--t2);height:var(--s4);padding:0 var(--s2)}
+.notice .what i{width:6px;height:6px;border-radius:50%;background:var(--hl)}
+.notice .go{height:var(--control-h);display:flex;align-items:center;justify-content:center;color:var(--hl);font-weight:500}
+
+/* FRAME */
+.frame{display:flex;flex-direction:column}
+.zone{padding:var(--pad);min-height:0}
+
+/* RAIL: the round 11 grammar, layout B (zones pinned left and right) */
+.rail{display:flex;align-items:center;height:calc(var(--control-h) + 2 * var(--pad));flex:none}
+.grp{display:flex;align-items:center;gap:var(--in-group)}
+.vr{width:1px;height:var(--s4);background:var(--rule);margin:0 var(--group-side);flex:none}
+.c{height:var(--control-h);padding:0 var(--control-x);display:flex;align-items:center;gap:var(--word);border-radius:var(--r);color:var(--t2);white-space:nowrap}
+.c.on{color:var(--t1);font-weight:500}
+.c b{font-weight:500;color:var(--t1);font-variant-numeric:tabular-nums}
+.c .ic{width:14px;height:14px}
+.spacer{flex:1}
+.saved .ic{width:14px;height:14px;color:var(--hl)}
+
+/* THE LIST: headers on the zone's own surface, set like rail items; rows share the one raised style */
+.list{flex:1;display:flex;flex-direction:column;overflow:hidden;align-items:center}
+.list>*{width:min(100%, calc(var(--u) * 220))}  /* 880: a list reads as a list, not a band */
+.cols,.row{display:grid;grid-template-columns:var(--cols);align-items:center;column-gap:var(--cell-gap)}
+.cols{height:var(--control-h);color:var(--t2);flex:none}
+.cols>*,.row>.f{padding:0 var(--control-x)}
+.div{margin-top:var(--s5)}
+.div:first-of-type{margin-top:var(--s2)}
+.dh{height:var(--control-h);display:flex;align-items:center;gap:var(--s2);padding:0 var(--control-x);margin-bottom:var(--s1)}
+.dh b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.dh span{color:var(--t2);font-variant-numeric:tabular-nums}
+.rows{display:flex;flex-direction:column;gap:var(--s1)}
+.row{height:var(--row-h);position:relative}
+.row .f{display:flex;align-items:center;gap:var(--word);height:100%;min-width:0;white-space:nowrap}
+.row .name{font-weight:500}
+/* show the exception, not the rule: the rule is quiet, the exception is a value */
+.rule{color:var(--t2)}
+.exc{color:var(--t1);font-weight:500}
+.row .end{display:flex;align-items:center;justify-content:center;height:100%;color:var(--t2);visibility:hidden}
+
+/* hover: the same half step darker as a grid cell; edit affordances appear in place */
+.row.hov{background:color-mix(in srgb, var(--accent) 50%, var(--well))}
+.row.hov .end{visibility:visible}
+.row .pick{display:none}
+.row.hov .pick{display:flex}
+.row.hov .when .chev{display:block}
+.row .when .chev{display:none;color:var(--t2)}
+.row.hov .when{gap:var(--s1)}
+.row.hov .weeks .txt{display:none}
+
+/* the fine week strip: on = raised, off = an empty slot (the grid's own two states) */
+.strip{display:flex;gap:2px}
+.strip i{width:var(--s5);height:calc(var(--u) * 5);border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:11px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.strip i.on{background:color-mix(in srgb, var(--hl) 14%, var(--accent));color:color-mix(in srgb, var(--hl) 70%, var(--text));font-weight:500}
+.strip i.off{background:transparent;box-shadow:inset 0 0 0 1px var(--edge);color:var(--t2)}
+
+/* the add row: no fill, no raise, a dashed edge; clearly not a group yet */
+.add{height:var(--row-h);border-radius:var(--r);display:grid;grid-template-columns:var(--cols);column-gap:var(--cell-gap);align-items:center;
+  outline:1px dashed color-mix(in srgb, var(--text) 28%, transparent);outline-offset:-1px;color:var(--t2)}
+.add .f{padding:0 var(--control-x);display:flex;align-items:center;gap:var(--s2)}
+.add .ic{width:14px;height:14px}
+
+.next{display:flex;justify-content:flex-end;margin-top:auto;padding-top:var(--s3);flex:none}
+.btn-primary{height:var(--control-h);padding:0 var(--s4);border-radius:var(--r);background:var(--hl);color:var(--accent);font-weight:500;display:flex;align-items:center;gap:var(--s2);
+  box-shadow:0 1px 2px color-mix(in srgb, var(--shade) 35%, transparent)}
+.btn-primary .ic{width:14px;height:14px}
+
+.cursor{position:absolute;z-index:3;pointer-events:none}
+
+/* ONE raised treatment, last so it wins */
+.raised{background:var(--accent);box-shadow:var(--raise);border-radius:var(--r)}
+.row.hov.raised{background:color-mix(in srgb, var(--accent) 50%, var(--well));box-shadow:0 0 0 1px color-mix(in srgb, var(--shade) 40%, transparent), 0 1px 2px color-mix(in srgb, var(--shade) 22%, transparent)}
+</style>
+</head>
+<body>
+<div class="sf">
+  <div class="logo"></div>
+  <div class="search"><svg class="ic" viewBox="0 0 16 16" style="width:14px;height:14px"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Search...</div>
+  <div class="icons"><span></span><span></span><span></span><span class="av"></span></div>
+</div>
+
+<div class="app">
+  <nav class="mod">
+    <div class="camp"><b>Camp Tamarack</b><span class="num">2027</span></div>
+    <div class="hair"></div>
+    <div class="item"><svg class="ic" viewBox="0 0 16 16"><path d="M8 14V7"/><path d="M8 9C8 6 6 4.5 3 4.5c0 3 2 4.5 5 4.5Z"/><path d="M8 7.5c0-2.5 1.7-4 4.5-4 0 2.5-1.7 4-4.5 4Z"/></svg>Roots</div>
+    <div class="sec">Camp</div>
+    <div class="sub">
+      <div class="item">Weeks</div><div class="item">Age divisions</div><div class="item cur raised">Groups</div><div class="item">Time blocks</div><div class="item">Locations</div>
+    </div>
+    <div class="sec">Activities</div>
+    <div class="sub">
+      <div class="item">Activities</div><div class="item">Fixed activities</div><div class="item">Recurring activities</div><div class="item">Special events</div>
+    </div>
+    <div class="sec">Schedules</div>
+    <div class="sub">
+      <div class="item">Generated Schedule</div><div class="item">Manual Build</div><div class="item">Schedules</div>
+    </div>
+    <div class="foot">
+      <div class="hair"></div>
+      <div class="notice">
+        <div class="what"><i></i>Setup changed</div>
+        <div class="go raised">Update to match setup</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="frame mod">
+    <div class="rail zone">
+      <div class="grp"><div class="c" id="total"><b>10</b>groups</div></div>
+      <div class="spacer"></div>
+      <div class="grp"><div class="c saved"><svg class="ic" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>Saved</div></div>
+      <div class="vr"></div>
+      <div class="grp">
+        <div class="c"><svg class="ic" viewBox="0 0 16 16"><path d="M8 10V2.5"/><path d="M5 5.5 8 2.5l3 3"/><path d="M2.5 10v2.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"/></svg>Import a list</div>
+        <div class="c"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2.5V10"/><path d="M5 7l3 3 3-3"/><path d="M2.5 10v2.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"/></svg>Download this list</div>
+      </div>
+    </div>
+    <div class="hair"></div>
+    <div class="list zone" id="list">
+      <div class="cols"><span>Name</span><span>When</span><span>Weeks</span><span></span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Synthetic Camp Tamarack 2027: 7 weeks, 10 groups in 3 divisions.
+const WEEKS=7;
+const D=[
+ ["Juniors",[["Sprouts","m",[]],["Cedar","d",[]],["Birch","d",[]]]],
+ ["Inters",[["Maple","d",[]],["Aspen","d",[3]],["Willow","d",[]],["Pine","d",[6,7]]]],
+ ["Seniors",[["Oak","d",[]],["Hemlock","d",[]],["Counselors in Training","d",[1]]]]];
+const HOVER="Aspen";
+const range=a=>{ // [6,7] -> "6–7", [3] -> "3"
+  const out=[];let s=a[0],p=a[0];
+  for(const n of a.slice(1).concat(null)){if(n===p+1){p=n;continue}out.push(s===p?`${s}`:`${s}–${p}`);s=p=n}
+  return out.join(", ");};
+const weeksText=off=>!off.length?'<span class="rule">Every week</span>':
+  `<span class="exc">Off ${off.length>1?'Wks':'Wk'} ${range(off)}</span>`;
+const whenText=w=>w==='d'?'<span class="rule">All day</span>':'<span class="exc">Mornings only</span>';
+const CH='<svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5l3-3"/></svg>';
+const OPEN='<svg class="ic" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg>';
+const PLUS='<svg class="ic" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg>';
+const strip=off=>`<span class="strip">${Array.from({length:WEEKS},(_,i)=>`<i class="${off.includes(i+1)?'off':'on'}">${i+1}</i>`).join('')}</span>`;
+let h='';
+D.forEach(([div,gs])=>{
+  h+=`<section class="div"><div class="dh"><b>${div}</b><span>${gs.length}</span></div><div class="rows">`;
+  gs.forEach(([n,w,off])=>{
+    h+=`<div class="row raised${n===HOVER?' hov':''}">
+      <div class="f"><span class="name">${n}</span></div>
+      <div class="f when">${whenText(w)}${CH}</div>
+      <div class="f weeks"><span class="txt">${weeksText(off)}</span><span class="pick">${strip(off)}</span></div>
+      <div class="end">${OPEN}</div></div>`;});
+  h+=`<div class="add"><div class="f">${PLUS}New group</div></div></div></section>`;
+});
+h+=`<div class="next"><div class="btn-primary">Time blocks<svg class="ic" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></svg></div></div>`;
+document.getElementById('list').insertAdjacentHTML('beforeend',h);
+document.querySelector('#total b').textContent=D.reduce((t,[,g])=>t+g.length,0);
+// cursor resting on the hovered row
+const hr=document.querySelector('.row.hov').getBoundingClientRect();
+document.body.insertAdjacentHTML('beforeend',`<svg class="cursor" style="left:${hr.left+150}px;top:${hr.top+12}px" width="16" height="20" viewBox="0 0 16 20"><path d="M2 2v14l3.6-3.4 2.4 5.4 2.2-1-2.4-5.3H13Z" fill="#F6F8F5" stroke="#26231B" stroke-width="1.2" stroke-linejoin="round"/></svg>`);
+</script>
+</body>
+</html>

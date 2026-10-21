@@ -8,7 +8,8 @@ desktop is the floor for meaning and words (decision 28); the look is the mock-u
 
 This step puts the system in place and restyles only the app frame and the left menu. Manual
 Build's and Generated Schedule's grids, rails and drawers, and the setup screens, keep their look
-until the next PRs; nothing a director does works differently.
+until the next PRs; nothing a director does works differently. _Step 3a (2026-10-21, choice 11)
+restyles the setup tables and five setup screens; step 3b the rest (see Not done here)._
 
 ## Choices
 
@@ -100,6 +101,75 @@ until the next PRs; nothing a director does works differently.
     (`scripts/a11y-browser-check.mjs`), which also blanks the season's name and measures the
     field error it shows against the shelf behind it.
 
+11. **The setup screens' shared table pattern (step 3a, 2026-10-21).** Design source: Greg's
+    approved mock-ups `docs/design/setup/` (groups, locations, activities, fixed; copied unchanged
+    from `design-research/setup-r1`) and decisions 26, 28-42 (42: one shared table language).
+    One pattern, in `c/shoreshEditableTable`, so every setup table takes it at once (Weeks, Age
+    divisions, Groups, Time blocks, Locations and their types, Activities, Fixed and Recurring
+    activities):
+    - **Rows sit raised**, one under another a fine gap apart, in the one raised treatment
+      (lightest step, fine edge, soft shade), a half step darker under the pointer or while
+      edited, as a grid cell. Their fields read as words at rest: a field's edge, its chevron,
+      clock or calendar show only while the row is pointed at or edited. Salesforce's fields
+      keep their insides out of a component's reach, so the page loads one small stylesheet,
+      static resource `ShoreshTable` (as `ShoreshDateBox`, ADR 0013 choice 24), that reaches
+      only fields in cells Shoresh marks `shoresh-cell`, keeps the highlight edge on the field
+      with the cursor and Salesforce's error edge on a refused one. Without it the fields show
+      as boxes and everything still works.
+    - **A section's heading, never a repeated column.** Each division's groups, each location
+      type's places, and (with more than one program) each program's tables are a section
+      headed by its name and its count ("Juniors 3"; read "Juniors, 3"). The column names show
+      once, above the first section, and are read out with every cell of the others. Moving a
+      group to another division, and a place's type and notes, are the row's **details**, not
+      columns: the chevron at the row's end opens them under the row (`aria-expanded`, named
+      "Cedar details"), saved with the row as before (leaving the row and its details saves).
+      A row whose save moves it to another section (a place given another type, Enter in its
+      notes) takes the cursor with it: the same box in its new section, its details open again,
+      and the move is said ("Pool moved to Fields"), so focus never drops to the top of the page
+      (WCAG 2.4.3). When the rail shows only the old type, the cursor goes to that section's
+      blank row instead, with the same words. Until it is saved the row stays where it is.
+    - **Names with room.** The table is laid out at fixed widths per kind of column; the name
+      (and words such as "Activities held here") share what is left. Nothing scrolls sideways
+      at 1280 to 1440 on these screens; a table with more columns than fit (Activities,
+      Recurring activities, until step 3b) scrolls inside itself, never the page.
+    - **The weeks as the exception.** One Weeks column replaces the column of ticks per week:
+      at rest it says "Every week" (quiet) or the exception as a value ("Off Wk 3", "Off Wks
+      1-2, 4", "No weeks"; a place "Closed Wk 5"; a camp with its own word for weeks uses it,
+      "Off Session 3"), numbered by the week's place in the season. While the row is pointed at
+      or edited, a fine strip of the weeks takes its place, one numbered tick each (a real
+      checkbox, still named "Cedar runs in Week 3"; on is a highlight tint, off an empty slot,
+      the grid's own two states). Tab reaches them while the row has the cursor; they save the
+      moment they are clicked, and still ask first when the week has placements. While that
+      question is open the row keeps its strip shown (the question covers the row and holds
+      focus), so answering it puts focus back on the tick (WCAG 2.4.3), as before.
+    - **A clearly dashed blank row** at the end of each section, no fill and no raise, with a
+      - before its name box ("Add Bunk"); Enter, + Add or leaving it filled in adds it, as
+        before (ADR 0011 choice 2).
+    - **The row's end**: its delete and its details chevron, faded in only under the pointer or
+      while the row is edited (faded, never hidden, so Tab still reaches them).
+    - **Words that are worked out**, never typed (a place's "Activities held here", from the
+      activities held there), are a read-only column (`type: "readonly"`), never sent.
+
+    Each of Weeks, Age divisions, Groups, Time blocks and Locations is then a screen in the
+    rail grammar of steps 2a/2b: a **rail** (the count in the camp's words, "10 groups"; on
+    the right a quiet **✓ Saved**, a rail line, and **Import a list** and **Download this
+    list** as rail items), one hairline, then the list, centred at 880 (Locations full width),
+    ending with the **next screen's button**. The screen's name is read out, not shown (the
+    menu shows it), as on Manual Build. Saved shows once a row of that screen is saved and goes
+    while the next is on its way; the table already says each save ("Cedar saved"), so the
+    rail's mark is silent (`c-shoresh-saved-mark` `silent`), and it is never shown for a save
+    someone else's change stopped. Import a list, opened, takes the rail's width under its
+    items. Locations' old **Show** list is the rail's type choices (All, each type, and "No
+    location type" while a place has none), centred, the chosen one raised and pressed; the
+    types themselves are a section of their own under the places.
+    Checked by `shoreshEditableTable.test.js` ("the shared table pattern"), `shoreshProgram`,
+    `shoreshCampSetup` ("setup screens in the shared table pattern", the `ShoreshTable` style
+    reaching only marked cells), `shoreshSavedMark` and `shoreshListImport` tests, and in the
+    test org by `scripts/a11y-browser-check.mjs` (a group's week ticks reached by Tab while it
+    is edited, its details opened from the chevron with focus kept, a place moved to another
+    type with the cursor following it, axe on each screen) with
+    screenshots next to the mock-ups in `docs/design/screens/` (`setup-*.png`).
+
 ## Not done here
 
 - The setup screens. Manual Build's and Generated Schedule's rail, Edit and counter are built
@@ -110,4 +180,9 @@ until the next PRs; nothing a director does works differently.
 - ~~The line above each schedule's grid still has its own Update to match setup.~~ Gone in step
   2a: Update to match setup is only at the menu's foot, and focus returns there when the list
   closes (ADR 0008 part 7 §9).
+- Step 3b (the setup screens' second part): Activities' "how often" bars at rest (decision 42) and its details panel on the right, Fixed activities and Recurring activities laid out
+  as their mock-ups (each in the shared table language, still separate screens), and the camp
+  and season pickers, with New season and Copy this season, moved into the menu's camp row.
+  Until then those three screens take the shared rows (raised, weeks in words, dashed blank
+  row) inside their earlier layout, and the season row stays above the rail.
 - The earlier colour tokens are removed once no screen uses them.

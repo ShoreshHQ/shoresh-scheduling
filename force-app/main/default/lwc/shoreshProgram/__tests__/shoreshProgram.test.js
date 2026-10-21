@@ -119,11 +119,54 @@ describe("c-shoresh-program", () => {
       Availability__c: "AllDay"
     });
     expect(bareRecord(groups.rows)).toEqual(ENTRY.divisions[0].groups);
-    expect(groups.weeksHeading).toBe("Runs in");
+    expect(groups.weeksHeading).toBe("Weeks");
     expect(groups.weeks).toEqual([{ Id: "w1", Name: "Week 1" }]);
     expect(bareRecord(groups.weekExceptions)).toEqual([
       { Id: "x1", Week__c: "w1", Group__c: "g1" }
     ]);
+  });
+
+  it("each division's groups are a section headed by its name; the column names show once", async () => {
+    const twoUnits = {
+      ...ENTRY,
+      divisions: [
+        ...ENTRY.divisions,
+        { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+      ],
+      recurringActivities: []
+    };
+    const element = createElement("c-shoresh-program", { is: ShoreshProgram });
+    element.entry = nsRecord(twoUnits);
+    element.terms = terms;
+    element.show = "groups";
+    element.activities = nsRecord([]);
+    document.body.appendChild(element);
+    await flush();
+    const tables = () => [
+      ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+    ];
+    expect(tables().map((t) => [t.heading, t.showColumns])).toEqual([
+      ["Juniors", true],
+      ["Seniors", false]
+    ]);
+    // With more than one program, each section also names its program.
+    element.sectioned = true;
+    await flush();
+    expect(tables().map((t) => t.heading)).toEqual([
+      "Main · Juniors",
+      "Main · Seniors"
+    ]);
+  });
+
+  it("a program's own tables are headed with its name only when the camp has several", async () => {
+    const element = await render("timeBlocks");
+    const table = () =>
+      element.shadowRoot.querySelector("c-shoresh-editable-table");
+    expect(table().heading).toBeUndefined();
+    expect(table().showColumns).toBe(true);
+    element.sectioned = true;
+    await flush();
+    expect(table().heading).toBe("Main");
   });
 
   it("lets a group move to another division of its program, saying what that changes", async () => {
@@ -149,6 +192,12 @@ describe("c-shoresh-program", () => {
       (c) => c.fieldName === nsName("Division__c")
     );
     expect(unit.label).toBe("Unit");
+    // One of the row's details, never a column repeating the section's own division.
+    expect(unit.more).toBe(true);
+    expect(groups.columns.filter((c) => !c.more).map((c) => c.label)).toEqual([
+      "Name",
+      "Availability"
+    ]);
     expect(unit.options).toEqual([
       { label: "Juniors", value: "d1" },
       { label: "Seniors", value: "d2" }
@@ -191,6 +240,9 @@ describe("c-shoresh-program", () => {
     const flagged = (table) =>
       !!table.shadowRoot.querySelector('[data-id="same-name"]');
     const moveFirstRow = async (table, to) => {
+      // The division is one of the row's details, opened from its chevron.
+      table.shadowRoot.querySelector('[data-id="more"]').click();
+      await flush();
       const unit = table.shadowRoot.querySelector(
         `[data-field="${nsName("Division__c")}"]`
       );
@@ -252,6 +304,9 @@ describe("c-shoresh-program", () => {
       element.show = "groups";
       element.activities = nsRecord([]);
       document.body.appendChild(element);
+      await flush();
+      // The division is one of the row's details, opened from its chevron.
+      tablesOf(element)[0].shadowRoot.querySelector('[data-id="more"]').click();
       await flush();
       const unit = tablesOf(element)[0].shadowRoot.querySelector(
         `[data-field="${nsName("Division__c")}"]`
@@ -716,7 +771,7 @@ describe("c-shoresh-program", () => {
         { label: "None", value: "" },
         { label: "Pool", value: "l1" }
       ]);
-      expect(fixed.weeksHeading).toBe("Runs in");
+      expect(fixed.weeksHeading).toBe("Weeks");
       expect(bareRecord(fixed.newRowDefaults)).toEqual({
         Program__c: "p1",
         Length__c: 1

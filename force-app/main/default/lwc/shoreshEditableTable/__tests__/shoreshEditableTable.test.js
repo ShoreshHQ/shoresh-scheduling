@@ -107,7 +107,7 @@ function field(element, rowIndex, name) {
 /** The table's rows, the blank row last (not the empty state or a who picker). */
 function rows(element) {
   return [...element.shadowRoot.querySelectorAll("tbody tr[data-row]")].filter(
-    (tr) => !tr.dataset.whoRow
+    (tr) => !tr.dataset.whoRow && !tr.dataset.moreRow
   );
 }
 
@@ -1539,9 +1539,7 @@ describe("c-shoresh-editable-table", () => {
       press(field(element, 1, "Name"), "Enter");
       await flush();
       const blank = rows(element)[1];
-      expect(blank.querySelector("lightning-input[data-week]").disabled).toBe(
-        true
-      );
+      expect(blank.querySelector("input[data-week]").disabled).toBe(true);
       expect(blank.querySelector('[data-id="who-toggle"]').disabled).toBe(true);
       // Every Change button is named for its row.
       expect(
@@ -1582,6 +1580,37 @@ describe("c-shoresh-editable-table", () => {
       expect(focused).toContain("add");
     });
 
+    it("keeps the row's week strip shown while the question is open (focus comes back to the tick)", async () => {
+      let reply;
+      const ask = jest.fn(
+        () =>
+          new Promise((resolve) => {
+            reply = resolve;
+          })
+      );
+      const element = render({
+        objectApiName: "Group__c",
+        columns: [COLUMNS[0]],
+        rows: [{ Id: "g1", Name: "Bunk 1" }],
+        weeks: [{ Id: "w1", Name: "Week 1" }],
+        weeksHeading: "Runs in",
+        beforeWeekOff: ask
+      });
+      await flush();
+      const row = () => rows(element)[0];
+      expect(row().classList).not.toContain("row_asking");
+      change(row().querySelector("input[data-week]"), false);
+      await flush();
+      expect(row().classList).toContain("row_asking");
+      // Only the row asked about.
+      expect(rows(element)[1].classList).not.toContain("row_asking");
+      reply(false);
+      await flush();
+      await flush();
+      expect(row().classList).not.toContain("row_asking");
+      expect(row().querySelector("input[data-week]").checked).toBe(true);
+    });
+
     it("asks before a week is turned off on a saved row; no puts the tick back", async () => {
       const ask = jest.fn();
       const element = render({
@@ -1594,8 +1623,7 @@ describe("c-shoresh-editable-table", () => {
       });
       const sent = listen(element);
       await flush();
-      const box = () =>
-        rows(element)[0].querySelector("lightning-input[data-week]");
+      const box = () => rows(element)[0].querySelector("input[data-week]");
       ask.mockResolvedValueOnce(false);
       change(box(), false);
       await flush();
@@ -1615,10 +1643,7 @@ describe("c-shoresh-editable-table", () => {
       await flush();
       expect(sent[0].extras.weeksOff).toEqual([{ target: "g1", week: "w1" }]);
       // The blank row's weeks are not asked about.
-      change(
-        rows(element)[1].querySelector("lightning-input[data-week]"),
-        false
-      );
+      change(rows(element)[1].querySelector("input[data-week]"), false);
       await flush();
       expect(ask).toHaveBeenCalledTimes(2);
     });
@@ -1844,11 +1869,7 @@ describe("c-shoresh-editable-table", () => {
     }
 
     function rowTicks(element, rowIndex) {
-      return [
-        ...rows(element)[rowIndex].querySelectorAll(
-          "lightning-input[data-week]"
-        )
-      ];
+      return [...rows(element)[rowIndex].querySelectorAll("input[data-week]")];
     }
     const ticks = (element, rowIndex) =>
       rowTicks(element, rowIndex).map((box) => box.checked);
@@ -1864,16 +1885,20 @@ describe("c-shoresh-editable-table", () => {
       ).toContain("Runs in");
       expect(ticks(element, 0)).toEqual([true, true, true]);
       expect(ticks(element, 1)).toEqual([true, true, false]);
-      expect(tick(element, 1, 2).label).toBe("Bunk 2 runs in Week 3");
+      expect(tick(element, 1, 2).getAttribute("aria-label")).toBe(
+        "Bunk 2 runs in Week 3"
+      );
       expect(ticks(element, 2)).toEqual([true, true, true]);
-      expect(tick(element, 2, 0).label).toBe("Add Bunk runs in Week 1");
+      expect(tick(element, 2, 0).getAttribute("aria-label")).toBe(
+        "Add Bunk runs in Week 1"
+      );
     });
 
     it("has no week ticks without a heading", async () => {
       const element = renderGroups({ weeksHeading: undefined });
       await flush();
       expect(
-        element.shadowRoot.querySelectorAll("lightning-input[data-week]").length
+        element.shadowRoot.querySelectorAll("input[data-week]").length
       ).toBe(0);
     });
 
@@ -2421,6 +2446,388 @@ describe("c-shoresh-editable-table", () => {
       const element = renderActivities({ detailsLabel: undefined });
       await flush();
       expect(buttons(element)).toEqual([]);
+    });
+  });
+
+  describe("the shared table pattern (ADR 0015 choice 11)", () => {
+    const WEEKS = [
+      { Id: "w1", Name: "Week 1" },
+      { Id: "w2", Name: "Week 2" },
+      { Id: "w3", Name: "Week 3" },
+      { Id: "w4", Name: "Week 4" }
+    ];
+    const GROUPS = [
+      { Id: "g1", Name: "Sprouts", Division__c: "d1" },
+      { Id: "g2", Name: "Cedar", Division__c: "d1" },
+      { Id: "g3", Name: "Pine", Division__c: "d1" },
+      { Id: "g4", Name: "Oak", Division__c: "d1" }
+    ];
+    // Cedar is off week 3; Pine off weeks 1, 2 and 4; Oak off every week.
+    const EXCEPTIONS = [
+      { Id: "x1", Week__c: "w3", Group__c: "g2" },
+      { Id: "x2", Week__c: "w1", Group__c: "g3" },
+      { Id: "x3", Week__c: "w2", Group__c: "g3" },
+      { Id: "x4", Week__c: "w4", Group__c: "g3" },
+      ...WEEKS.map((w, i) => ({
+        Id: `x${5 + i}`,
+        Week__c: w.Id,
+        Group__c: "g4"
+      }))
+    ];
+    const DIVISIONS = [
+      { label: "Juniors", value: "d1" },
+      { label: "Seniors", value: "d2" }
+    ];
+    const COLUMNS_MORE = [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "Division__c",
+        label: "Division",
+        type: "picklist",
+        required: true,
+        savedOnly: true,
+        more: true,
+        options: DIVISIONS
+      }
+    ];
+    const renderSection = (props = {}) =>
+      render({
+        title: "Bunks in Juniors",
+        objectApiName: "Group__c",
+        addLabel: "Add Bunk",
+        columns: COLUMNS_MORE,
+        rows: GROUPS,
+        weeks: WEEKS,
+        weekExceptions: EXCEPTIONS,
+        weeksHeading: "Weeks",
+        weekPhrase: "runs in",
+        newRowDefaults: { Division__c: "d1" },
+        ...props
+      });
+    const words = (element) =>
+      [...element.shadowRoot.querySelectorAll('[data-id="weeks-text"]')].map(
+        (el) => [el.textContent.trim(), el.classList.contains("exception")]
+      );
+    const q = (element, selector) => element.shadowRoot.querySelector(selector);
+
+    it("shows the weeks as the exception, in words, the rule quiet", async () => {
+      const element = renderSection();
+      await flush();
+      expect(words(element)).toEqual([
+        ["Every week", false],
+        ["Off Wk 3", true],
+        ["Off Wks 1–2, 4", true],
+        ["No weeks", true],
+        // The blank row runs in every week until a week is unticked.
+        ["Every week", false]
+      ]);
+    });
+
+    it("a place says Closed; the camp's own word for a week can replace Wk", async () => {
+      const element = renderSection({
+        weekWords: { every: "Every session", off: "Closed", one: "Session" }
+      });
+      await flush();
+      expect(words(element).map(([text]) => text)).toEqual([
+        "Every session",
+        "Closed Session 3",
+        "Closed Wks 1–2, 4",
+        "No weeks",
+        "Every session"
+      ]);
+    });
+
+    it("one Weeks column with a fine strip of numbered ticks, not a column per week", async () => {
+      const element = renderSection();
+      await flush();
+      const heads = [
+        ...element.shadowRoot.querySelectorAll("table[aria-label] thead th")
+      ].map((th) => th.textContent.trim());
+      // The division is a detail, not a column; the weeks are one column.
+      expect(heads).toEqual(["Name", "Weeks", "Actions"]);
+      const strip = rows(element)[1].querySelector('[data-id="week-strip"]');
+      expect(strip.getAttribute("role")).toBe("group");
+      expect(strip.getAttribute("aria-label")).toBe("Cedar: Weeks");
+      expect(
+        [...strip.querySelectorAll(".chip-face")].map((f) => f.textContent)
+      ).toEqual(["1", "2", "3", "4"]);
+      expect(
+        [...strip.querySelectorAll("input[data-week]")].map((i) => i.checked)
+      ).toEqual([true, true, false, true]);
+    });
+
+    it("the words follow a tick at once, before it is saved", async () => {
+      const element = renderSection();
+      listen(element);
+      await flush();
+      allValid(element);
+      change(rows(element)[0].querySelector('input[data-week="w2"]'), false);
+      await flush();
+      expect(words(element)[0]).toEqual(["Off Wk 2", true]);
+    });
+
+    it("a section's heading names it with its count; the column names show only when asked", async () => {
+      const element = renderSection({ heading: "Juniors" });
+      await flush();
+      const head = q(element, '[data-id="section-head"]');
+      expect(head.tagName).toBe("H3");
+      expect(head.textContent.replace(/\s+/g, " ").trim()).toBe("Juniors, 4");
+      // The table's own column names are read out with every cell, never shown.
+      expect(q(element, "table[aria-label] thead").classList).toContain(
+        "head_hidden"
+      );
+      expect(q(element, '[data-id="column-names"]')).toBeNull();
+      element.showColumns = true;
+      await flush();
+      // Shown once, above the heading, for the eye only (the table reads its own out).
+      const names = q(element, '[data-id="column-names"]');
+      expect(names.getAttribute("aria-hidden")).toBe("true");
+      expect(
+        [...names.querySelectorAll("th")].map((th) => th.textContent.trim())
+      ).toEqual(["Name", "Weeks", "Actions"]);
+      expect(
+        names.compareDocumentPosition(q(element, '[data-id="section-head"]')) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      // The table is still named for screen readers.
+      expect(
+        q(element, "table.list:not(.list_head)").getAttribute("aria-label")
+      ).toBe("Bunks in Juniors");
+    });
+
+    it("the count is what the section shows", async () => {
+      const element = renderSection({
+        heading: "Juniors",
+        filterField: "Division__c",
+        filterValue: "d1",
+        rows: [...GROUPS, { Id: "g9", Name: "Elm", Division__c: "d2" }]
+      });
+      await flush();
+      expect(q(element, '[data-id="section-count"]').textContent).toBe("4");
+    });
+
+    it("without a heading the table's title is read out, not shown", async () => {
+      const element = renderSection();
+      await flush();
+      expect(q(element, '[data-id="section-head"]')).toBeNull();
+      expect(q(element, "h3").classList.contains("slds-assistive-text")).toBe(
+        true
+      );
+    });
+
+    it("never squeezes the name: the table is at least its fixed columns plus room for it", async () => {
+      const element = renderSection();
+      await flush();
+      const table = q(element, "table[aria-label]");
+      // Name 12rem, Weeks 9rem (4 weeks), the end 5.5rem.
+      expect(table.getAttribute("style")).toContain("min-width: 26.5rem");
+      const widths = [...table.querySelectorAll("col")].map((c) =>
+        c.getAttribute("style")
+      );
+      expect(widths).toEqual([null, "width: 9rem", "width: 5.5rem"]);
+    });
+
+    it("the blank row is dashed, with a + before its name box", async () => {
+      const element = renderSection();
+      await flush();
+      const blank = rows(element)[4];
+      expect(blank.classList.contains("add-row")).toBe(true);
+      expect(blank.querySelector("svg.plus")).not.toBeNull();
+      expect(rows(element)[0].querySelector("svg.plus")).toBeNull();
+    });
+
+    it("a row's details open from its chevron, under it, and save with the row", async () => {
+      const element = renderSection();
+      const sent = listen(element);
+      await flush();
+      // Not a column: the division is in no row until its details open.
+      expect(
+        element.shadowRoot.querySelectorAll(
+          `[data-field="${nsName("Division__c")}"]`
+        ).length
+      ).toBe(0);
+      const chevrons = () => [
+        ...element.shadowRoot.querySelectorAll('[data-id="more"]')
+      ];
+      // Saved rows only: the blank row has no details yet.
+      expect(chevrons().map((b) => b.getAttribute("aria-label"))).toEqual([
+        "Sprouts details",
+        "Cedar details",
+        "Pine details",
+        "Oak details"
+      ]);
+      expect(chevrons()[1].getAttribute("aria-expanded")).toBe("false");
+      chevrons()[1].click();
+      await flush();
+      expect(chevrons()[1].getAttribute("aria-expanded")).toBe("true");
+      const more = q(element, "tr[data-more-row]");
+      expect(more.dataset.row).toBe("row-g2");
+      const division = more.querySelector(
+        `[data-field="${nsName("Division__c")}"]`
+      );
+      expect(division.label).toBe("Division");
+      expect(division.variant).not.toBe("label-hidden");
+      change(division, "d2");
+      await flush();
+      allValid(element);
+      // Moving from the row into its details is not leaving it.
+      const name = field(element, 1, "Name");
+      rows(element)[1].dispatchEvent(
+        new FocusEvent("focusout", { bubbles: true, relatedTarget: division })
+      );
+      expect(sent.length).toBe(0);
+      more.dispatchEvent(
+        new FocusEvent("focusout", { bubbles: true, relatedTarget: name })
+      );
+      expect(sent.length).toBe(0);
+      more.dispatchEvent(
+        new FocusEvent("focusout", { bubbles: true, relatedTarget: null })
+      );
+      expect(sent[0].record).toEqual({
+        sobjectType: "Group__c",
+        Id: "g2",
+        Division__c: "d2"
+      });
+      // Closing them keeps the row as it is.
+      chevrons()[1].click();
+      await flush();
+      expect(q(element, "tr[data-more-row]")).toBeNull();
+    });
+
+    it("details stay open across a reload", async () => {
+      const element = renderSection();
+      await flush();
+      element.shadowRoot.querySelectorAll('[data-id="more"]')[0].click();
+      await flush();
+      element.rows = packaged({ rows: [...GROUPS] }).rows;
+      await flush();
+      expect(q(element, "tr[data-more-row]").dataset.row).toBe("row-g1");
+    });
+
+    describe("a row that moved here from another section takes the cursor (WCAG 2.4.3)", () => {
+      /** Calls takeFocus and lists what took the focus, as row:field. */
+      async function take(element, ...args) {
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        element.takeFocus(...args);
+        await flush();
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+        );
+        focus.mockRestore();
+        return focused;
+      }
+      const said = (element) => q(element, '[data-id="announce"]').textContent;
+
+      it("the same field, its details opened again, and the move said", async () => {
+        const element = renderSection();
+        await flush();
+        const focused = await take(
+          element,
+          "g2",
+          nsName("Division__c"),
+          true,
+          "Cedar moved to Juniors"
+        );
+        expect(focused).toEqual([`row-g2:${nsName("Division__c")}`]);
+        expect(q(element, "tr[data-more-row]").dataset.row).toBe("row-g2");
+        expect(said(element)).toContain("Cedar moved to Juniors");
+      });
+
+      it("a field in the row itself, with its details left closed", async () => {
+        const element = renderSection();
+        await flush();
+        const focused = await take(element, "g3", nsName("Name"), false);
+        expect(focused).toEqual([`row-g3:${nsName("Name")}`]);
+        expect(q(element, "tr[data-more-row]")).toBeNull();
+      });
+
+      it("a row this section doesn't show: the blank row", async () => {
+        const element = renderSection({
+          filterField: "Division__c",
+          filterValue: "d2"
+        });
+        await flush();
+        const focused = await take(
+          element,
+          "g2",
+          nsName("Division__c"),
+          true,
+          "Cedar moved to Juniors"
+        );
+        expect(focused).toEqual([`add:${nsName("Name")}`]);
+        expect(said(element)).toContain("Cedar moved to Juniors");
+      });
+
+      it("focusedRow names the saved row and field with the cursor, never the blank row", async () => {
+        const element = renderSection();
+        await flush();
+        element.shadowRoot.querySelectorAll('[data-id="more"]')[1].click();
+        await flush();
+        const division = q(
+          element,
+          `tr[data-more-row] [data-field="${nsName("Division__c")}"]`
+        );
+        division.tabIndex = 0;
+        division.focus();
+        expect(element.focusedRow()).toEqual({
+          recordId: "g2",
+          field: nsName("Division__c"),
+          inDetails: true
+        });
+        const blank = field(element, 4, "Name");
+        blank.tabIndex = 0;
+        blank.focus();
+        expect(element.focusedRow()).toBeNull();
+      });
+    });
+
+    it("a readonly column shows words from the saved row, and is never sent", async () => {
+      const element = render({
+        objectApiName: "Location__c",
+        addLabel: "Add Location",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          {
+            fieldName: "held",
+            label: "Activities held here",
+            type: "readonly",
+            textFor: (saved) => (saved.Id === "l1" ? "Swim, Canoe" : "")
+          }
+        ],
+        rows: [
+          { Id: "l1", Name: "Lake" },
+          { Id: "l2", Name: "Barn" }
+        ]
+      });
+      const sent = listen(element);
+      await flush();
+      const held = [
+        ...element.shadowRoot.querySelectorAll('[data-id="readonly"]')
+      ].map((el) => el.textContent);
+      expect(held).toEqual(["Swim, Canoe", "", ""]);
+      change(field(element, 2, "Name"), "Field");
+      await flush();
+      allValid(element);
+      addButton(element).click();
+      expect(Object.keys(sent[0].record)).not.toContain("held");
+    });
+
+    it("its end tools: delete and details, named for the row", async () => {
+      const element = renderSection();
+      await flush();
+      const tools = rows(element)[0].querySelector(".tools");
+      expect(
+        [...tools.querySelectorAll("[data-id]")].map((b) => b.dataset.id)
+      ).toEqual(["delete", "more"]);
+    });
+
+    it("is accessible, with a section heading, its strip and its details open", async () => {
+      const element = renderSection({ heading: "Juniors", showColumns: true });
+      await flush();
+      element.shadowRoot.querySelectorAll('[data-id="more"]')[0].click();
+      await flush();
+      await expect(element).toBeAccessible();
     });
   });
 
