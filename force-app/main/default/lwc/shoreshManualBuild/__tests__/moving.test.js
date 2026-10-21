@@ -358,6 +358,77 @@ describe("c-shoresh-manual-build: moving things", () => {
     expect(saveSlots).toHaveBeenCalledTimes(1);
   });
 
+  describe("Ctrl+Z with nothing focused (after a click on the page or a drag)", () => {
+    // jsdom lays nothing out; in a browser the editor on screen has boxes, a hidden one none.
+    let onScreen;
+    beforeEach(() => {
+      onScreen = true;
+      jest
+        .spyOn(HTMLElement.prototype, "getClientRects")
+        .mockImplementation(() => (onScreen ? [{}] : []));
+    });
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("undoes and redoes, Cmd as Ctrl, and says what was undone", async () => {
+      const element = await render();
+      await press(cell(element, "1-1"), "Delete");
+      await press(document.body, "z", { ctrlKey: true });
+      expect(saveSlots).toHaveBeenCalledTimes(2);
+      expect(sentRuns(1)[0].after).toEqual(["A:a3"]);
+      expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+        "Undone: Cleared Bunk 2 · Monday · Period 2"
+      );
+      await press(document.body, "Z", { metaKey: true, shiftKey: true });
+      expect(sentRuns(2)[0].after).toEqual([""]);
+      expect(q(element, '[data-id="announce"]').textContent.trim()).toBe(
+        "Redone: Cleared Bunk 2 · Monday · Period 2"
+      );
+      await press(document.body, "z", { metaKey: true });
+      await press(document.body, "y", { ctrlKey: true });
+      expect(saveSlots).toHaveBeenCalledTimes(5);
+      expect(sentRuns(3)[0].after).toEqual(["A:a3"]);
+      expect(sentRuns(4)[0].after).toEqual([""]);
+    });
+
+    it("leaves a box elsewhere on the page its own Undo", async () => {
+      const element = await render();
+      await press(cell(element, "1-1"), "Delete");
+      const search = document.createElement("input");
+      document.body.appendChild(search);
+      await press(search, "z", { ctrlKey: true });
+      expect(saveSlots).toHaveBeenCalledTimes(1);
+    });
+
+    it("does nothing while the screen is hidden (another screen is shown)", async () => {
+      const element = await render();
+      await press(cell(element, "1-1"), "Delete");
+      onScreen = false;
+      await press(document.body, "z", { ctrlKey: true });
+      expect(saveSlots).toHaveBeenCalledTimes(1);
+    });
+
+    it("one press is one Undo, though it passes through the editor and the page", async () => {
+      const element = await render();
+      await press(cell(element, "1-1"), "Delete");
+      await press(cell(element, "0-1"), "Delete");
+      await press(cell(element, "0-1"), "z", { ctrlKey: true });
+      expect(saveSlots).toHaveBeenCalledTimes(3);
+      expect(q(element, '[data-id="redo"]').title).toBe(
+        "Redo: Cleared Bunk 1 · Monday · Period 2"
+      );
+    });
+
+    it("stops after the screen is gone", async () => {
+      const element = await render();
+      await press(cell(element, "1-1"), "Delete");
+      document.body.removeChild(element);
+      await press(document.body, "z", { ctrlKey: true });
+      expect(saveSlots).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("a drag that ended without a drop can't act later", async () => {
     const element = await render();
     await fire(cell(element, "0-1"), "dragstart");

@@ -109,4 +109,25 @@ describe("c-shoresh-build-palette", () => {
     await Promise.resolve();
     expect(dot.open).toBe(false);
   });
+  it("Ctrl+Z or Cmd+Shift+Z in Filter stays in the box: no schedule Undo around it", () => {
+    const element = render();
+    const outside = jest.fn();
+    element.addEventListener("keydown", outside);
+    const filter = q(element, '[data-id="palette-filter"]');
+    const press = (key, extra) =>
+      filter.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key,
+          bubbles: true,
+          composed: true,
+          ...extra
+        })
+      );
+    press("z", { ctrlKey: true });
+    press("Z", { metaKey: true, shiftKey: true });
+    press("y", { ctrlKey: true });
+    expect(outside).not.toHaveBeenCalled();
+    press("s");
+    expect(outside).toHaveBeenCalledTimes(1);
+  });
 });

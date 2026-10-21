@@ -463,5 +463,32 @@ describe("c-shoresh-versions", () => {
       await flush();
       expect(q(element, '[data-id="save-name"]').value).toBe("");
     });
+
+    it("Ctrl+Z or Cmd+Shift+Z in a name box stays in the box: no schedule Undo around it", async () => {
+      const element = await renderRestore();
+      const outside = jest.fn();
+      element.addEventListener("keydown", outside);
+      const press = (box, key, extra) =>
+        box.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key,
+            bubbles: true,
+            composed: true,
+            ...extra
+          })
+        );
+      const save = q(element, '[data-id="save-name"]');
+      press(save, "z", { ctrlKey: true });
+      press(save, "Z", { metaKey: true, shiftKey: true });
+      press(save, "y", { ctrlKey: true });
+      expect(outside).not.toHaveBeenCalled();
+      // Other keys still go on (Tab, Escape for the panel).
+      press(save, "a");
+      expect(outside).toHaveBeenCalledTimes(1);
+      q(element, '[data-id="s2"][data-action="rename"]').click();
+      await flush();
+      press(q(element, '[data-id="rename-input"]'), "z", { metaKey: true });
+      expect(outside).toHaveBeenCalledTimes(1);
+    });
   });
 });
