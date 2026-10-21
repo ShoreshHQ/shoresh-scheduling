@@ -1,8 +1,11 @@
 <template>
+  <span class="slds-assistive-text" aria-live="polite" data-id="accept-said"
+    >{acceptSaid}</span
+  >
   <c-shoresh-rail-pop
     count={placed}
     label={placedWords}
-    mark={offTarget}
+    mark={showMark}
     alternative-text={counterName}
     align="right"
     data-id="counter"
@@ -22,11 +25,12 @@
         <template lwc:if={underRows.length}>
           <ul aria-labelledby="under">
             <template for:each={underRows} for:item="row">
-              <li key={row.id}>
+              <li key={row.key} class="line">
                 <button
                   type="button"
                   class="shoresh-pop-row"
                   data-pop-row
+                  data-line
                   data-activity={row.id}
                   aria-label={row.said}
                   onclick={handleActivity}
@@ -35,6 +39,16 @@
                   <span class="shoresh-pop-end"
                     ><b>{row.placed}</b><span>of {row.goal}</span></span
                   >
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-pop-row accept"
+                  data-pop-row
+                  data-key={row.key}
+                  aria-label={row.acceptLabel}
+                  onclick={handleAccept}
+                >
+                  Accept
                 </button>
               </li>
             </template>
@@ -49,11 +63,12 @@
         <template lwc:if={overRows.length}>
           <ul aria-labelledby="over">
             <template for:each={overRows} for:item="row">
-              <li key={row.id}>
+              <li key={row.key} class="line">
                 <button
                   type="button"
                   class="shoresh-pop-row"
                   data-pop-row
+                  data-line
                   data-activity={row.id}
                   aria-label={row.said}
                   onclick={handleActivity}
@@ -67,6 +82,16 @@
                     ><b>{row.placed}</b><span>of {row.goal}</span></span
                   >
                 </button>
+                <button
+                  type="button"
+                  class="shoresh-pop-row accept"
+                  data-pop-row
+                  data-key={row.key}
+                  aria-label={row.acceptLabel}
+                  onclick={handleAccept}
+                >
+                  Accept
+                </button>
               </li>
             </template>
           </ul>
@@ -79,16 +104,29 @@
         </p>
         <ul aria-labelledby="look">
           <template for:each={lookRows} for:item="line">
-            <li key={line.key}>
+            <li key={line.key} class="line">
               <button
                 type="button"
                 class="shoresh-pop-row look-row"
                 data-pop-row
+                data-line
                 data-key={line.key}
                 onclick={handleLocate}
               >
                 {line.text}
               </button>
+              <template lwc:if={line.acceptable}>
+                <button
+                  type="button"
+                  class="shoresh-pop-row accept"
+                  data-pop-row
+                  data-key={line.key}
+                  aria-label={line.acceptLabel}
+                  onclick={handleAccept}
+                >
+                  Accept
+                </button>
+              </template>
             </li>
           </template>
         </ul>

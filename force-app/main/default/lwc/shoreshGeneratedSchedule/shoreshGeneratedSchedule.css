@@ -105,10 +105,6 @@
   }
 }
 
-.legend-icon {
-  --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
-}
-
 /* Versions, then Published and Publish, 4 apart at the rail's right edge (as Manual Build). */
 .publish {
   display: flex;

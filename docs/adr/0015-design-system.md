@@ -102,10 +102,11 @@ until the next PRs; nothing a director does works differently.
 
 ## Not done here
 
-- Manual Build's and Generated Schedule's grid and drawer (design step 2b), then the setup
-  screens. Their rail, Edit and counter are built (step 2a, ADR 0008 part 7), with the rail's
-  grammar as classes here (`.shoresh-item`, `.shoresh-pop` and its rows, `.shoresh-rail-line`,
-  `.shoresh-chevron`).
+- The setup screens. Manual Build's and Generated Schedule's rail, Edit and counter are built
+  (step 2a, ADR 0008 part 7), with the rail's grammar as classes here (`.shoresh-item`,
+  `.shoresh-pop` and its rows, `.shoresh-rail-line`, `.shoresh-chevron`), and their grid and
+  drawer (step 2b, ADR 0008 part 8), with the needs-a-look corner on cells (`c-shoresh-dot`
+  shape `corner`).
 - ~~The line above each schedule's grid still has its own Update to match setup.~~ Gone in step
   2a: Update to match setup is only at the menu's foot, and focus returns there when the list
   closes (ADR 0008 part 7 §9).

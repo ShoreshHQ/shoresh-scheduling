@@ -1,21 +1,33 @@
 @import "c/shoreshTokens";
 
-/* Shoresh desktop's schedule grid (scheduleGrid.css), in Salesforce's design tokens. */
+/*
+ * The schedule grid in the design system (docs/design/manual-build.html, spacing-spec-continuous.md
+ * "The grid"; ADR 0008 part 8). It sits on its zone's own surface: no frame, no lines. The headers
+ * are one more row and one more column of the same grid, with the same 8 px gap, aligned to the
+ * cells and set like a resting rail item.
+ */
 .frame-scroll {
   overflow-x: auto;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  line-height: 1.25;
+  color: var(--shoresh-text-1);
 }
 
 .frame {
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 12px;
-  overflow: hidden;
   width: 100%;
+  /* Room for the outlines, which sit 1 px outside a cell. */
+  padding: 3px;
+  box-sizing: border-box;
 }
 
 .grid {
   display: grid;
-  gap: 0;
+  gap: var(--shoresh-space-cell-gap);
+}
+
+.grid_header {
+  margin-bottom: var(--shoresh-space-cell-gap);
 }
 
 /* Rows keep their cells in the screen reader's tree without a box of their own. */
@@ -23,72 +35,59 @@
   display: contents;
 }
 
+/* The bunk (or day) names: one item tall, centred over their column, secondary words. */
 .head {
-  padding: 10px 14px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
-  border-bottom: 1.5px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  height: var(--shoresh-control-h);
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+}
+
+.head-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The times: 8 px in from the zone's edge, the same inset every rail item has. */
+.row-head {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-left: var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.block-time {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.head-sub {
-  text-transform: none;
-  letter-spacing: 0;
-  font-size: 11px;
-}
-
-.row-head {
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  border-right: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-}
-
-.block {
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-}
-
-.block-name {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--slds-g-color-neutral-base-10, #181818);
-}
-
-.block-time {
-  font-size: 10px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  white-space: nowrap;
-  font-family: var(--slds-g-font-family-monospace, monospace);
+/* Removed since: the name struck through (its words are for screen readers). */
+.head-name_gone,
+.row-head_gone .block-time,
+.cell-name_gone {
+  text-decoration: line-through;
+  color: var(--shoresh-text-2);
 }
 
 .cell {
-  padding: 8px 6px;
+  position: relative;
   min-width: 0;
-  border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  border-radius: var(--shoresh-radius);
 }
 
 .cell-inner {
-  border-radius: 8px;
-  padding: 10px 12px;
-  min-height: 56px;
-  height: 100%;
+  position: relative;
   box-sizing: border-box;
+  height: 100%;
+  padding: var(--shoresh-s2);
+  border-radius: var(--shoresh-radius);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -97,102 +96,143 @@
   gap: 2px;
 }
 
+/* The one raised look for every placed cell: an activity, a fixed or recurring one, something
+   not set up yet. */
+.cell_activity .cell-inner,
+.cell_set-time .cell-inner,
+.cell_not-set-up .cell-inner,
+.cell_problem .cell-inner,
+.cell_activity-here .cell-inner {
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+}
+
 .cell-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   overflow-wrap: anywhere;
 }
 
-/* An activity: a filled box, as the desktop draws a placed activity. */
-.cell_activity .cell-inner {
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  border: 1px solid var(--slds-g-color-brand-base-80, #aacbff);
+/* A fixed or recurring activity and a director's Lock: the lock before the name, on one line. */
+.cell_set-time .cell-inner,
+.cell_locked .cell-inner {
+  flex-direction: row;
+  gap: var(--shoresh-s2);
 }
 
-/* A fixed or recurring activity: the desktop's anchor look, a bar down the left. */
-.cell_set-time .cell-inner {
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 3px solid var(--slds-g-color-neutral-base-50, #747474);
+.cell-lock,
+.set-lock {
+  display: inline-flex;
+  flex: none;
+  line-height: 0;
+  color: var(--shoresh-text-2);
 }
 
-.cell_set-time .cell-name {
-  color: var(--slds-g-color-neutral-base-30, #444);
-  font-size: 11px;
+.lock {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: translateY(-0.5px);
 }
 
-/* Noted from a file but not set up in Shoresh yet: dashed, so it reads as unfinished. */
+/* A row every bunk spends on the same fixed activity (Lunch, Assembly): one slim cell. */
+.cell_slim .cell-inner {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Not set up yet: the raised cell with a dashed edge inside, so it reads as unfinished. */
 .cell_not-set-up .cell-inner {
-  border: 1.5px dashed var(--shoresh-caution);
-  background: var(--shoresh-caution-tint);
+  outline: 1px dashed var(--shoresh-text-2);
+  outline-offset: -4px;
 }
 
 .cell_not-set-up .cell-name {
   font-style: italic;
 }
 
-/* Nothing placed: the desktop's visible "Open", quiet. */
-.cell_open .cell-inner {
-  border: 1px dashed var(--slds-g-color-border-base-1, #e5e5e5);
-}
-
-.cell_open .cell-name {
-  color: var(--slds-g-color-neutral-base-60, #939393);
-  font-weight: 400;
-}
-
-.cell_problem .cell-inner {
-  background: var(--slds-g-color-error-base-95, #fef1ee);
-  color: var(--slds-g-color-error-base-40, #ba0517);
-}
-
-/* Activity View: where the activity is, a light tint and a bar; elsewhere, nothing. */
-.cell_activity-here {
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  border-left: 3px solid var(--slds-g-color-brand-base-50, #0176d3);
-}
-
-.cell_activity-here .cell-inner,
+/* Nothing placed: recessed, no word (it is the cell's name for screen readers). */
+.cell_open .cell-inner,
+.cell_locked-empty .cell-inner,
+.cell_away .cell-inner,
 .cell_activity-none .cell-inner {
-  min-height: 0;
-  padding: 0;
+  background: var(--shoresh-surface-drawer);
+  box-shadow: var(--shoresh-well-in);
 }
 
+/* A group not at camp in this block: recessed and hatched in the primary's own steps. */
+.cell_away .cell-inner {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--shoresh-surface-drawer) 0 5px,
+    var(--shoresh-color-primary-400) 5px 6px
+  );
+}
+
+/* Activity View: where the activity is, the raised cell with the bunks doing it. */
 .cell-group {
-  font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
-.note {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--shoresh-text-secondary);
+.cell_problem .cell-name {
+  color: var(--shoresh-text-2);
 }
 
-/* Manual Build: the cell keyboard focus is on. */
+/* Under the pointer: a half step darker. */
+.cell_activity:hover .cell-inner,
+.cell_set-time:hover .cell-inner,
+.cell_not-set-up:hover .cell-inner {
+  background: var(--shoresh-surface-hover);
+}
+
+.cell_open:hover .cell-inner {
+  background: var(--shoresh-color-primary-400);
+}
+
+/* Needs a look: the corner, and a fine edge in the text colour. */
+.cell_look .cell-inner {
+  box-shadow:
+    inset 0 0 0 1px rgba(38, 35, 27, 0.3),
+    var(--shoresh-raise);
+}
+
+.cell-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  line-height: 0;
+}
+
+/* Keyboard focus: the highlight ring outside the cell, as on every item. */
 .cell:focus {
   outline: none;
 }
 
 .cell:focus-visible .cell-inner {
-  outline: 2px solid var(--shoresh-primary);
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+/* Selected (picked up from the keyboard or a click): the highlight outline. */
+.cell_picked .cell-inner {
+  outline: 2px solid var(--shoresh-color-highlight);
   outline-offset: 1px;
 }
 
-/* A group not at camp in this block (morning or afternoon only): hatched, nothing to place. */
-.cell_away .cell-inner {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--slds-g-color-neutral-base-95, #f3f3f3) 0 6px,
-    var(--slds-g-color-neutral-base-100, #fff) 6px 12px
-  );
+/* Same activity (wiki decision 38, spacing-spec.md part 3): pale highlight, 1.5 px, 1 px outside.
+   Thinner and paler than the selection, and never on an Open cell. */
+.cell_same .cell-inner {
+  outline: 1.5px solid rgba(31, 102, 81, 0.45);
+  outline-offset: 1px;
 }
 
-.cell_away .cell-name {
-  color: var(--shoresh-text-secondary);
-  font-weight: 400;
+/* Fits here: dashed, inside the slot, only on Open cells while an activity is held. */
+.cell_fits .cell-inner {
+  outline: 1.5px dashed var(--shoresh-color-highlight);
+  outline-offset: -5px;
 }
 
 /* Saving: the edit shows at once, a little quieter until the server has it. */
@@ -200,18 +240,14 @@
   opacity: 0.6;
 }
 
-/* Manual Build: a placement that can be dragged, its bottom handle for a longer or shorter run,
-   and a slot picked up from the keyboard. */
+/* Manual Build: a placement that can be dragged. */
 .cell[draggable="true"] {
   cursor: grab;
 }
 
-.cell-inner {
-  position: relative;
-}
-
 /* The handle: a slim bar to see, in a 48 x 24 px area that is all of it to press, drag or click
-   (WCAG 2.5.8). touch-action: a finger on it stretches rather than scrolls the page. */
+   (WCAG 2.5.8). touch-action: a finger on it stretches rather than scrolls the page. Shown under
+   the pointer or with keyboard focus, so a cell at rest is its name only. */
 .handle {
   position: absolute;
   left: 50%;
@@ -221,39 +257,41 @@
   transform: translateX(-50%);
   cursor: ns-resize;
   touch-action: none;
+  z-index: 1;
 }
 
 .handle-bar {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  left: 12px;
+  right: 12px;
   top: 6px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--slds-g-color-brand-base-50, #0176d3);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--shoresh-color-primary-500);
+  opacity: 0;
+}
+
+.cell:hover .handle-bar,
+.cell:focus-visible .handle-bar,
+.cell_stretching .handle-bar {
+  opacity: 1;
 }
 
 /* Stretching by the handle (desktop useSpanExtendDrag.js): the cell itself grows or shrinks
-   under the pointer, drawn over the slots it now covers, outlined as the desktop marks where a
-   drag lands. */
+   under the pointer, drawn over the slots it now covers, with the highlight outline. */
 .cell_stretching {
-  position: relative;
   z-index: 2;
-  background: var(--slds-g-color-neutral-base-100, #fff);
   cursor: ns-resize;
 }
 
 .cell_stretching .cell-inner {
-  outline: 2px solid var(--shoresh-primary);
+  background: var(--shoresh-color-primary-50);
+  outline: 2px solid var(--shoresh-color-highlight);
   outline-offset: -2px;
 }
 
-/* The slot that stops it: what is there, faded, under a dashed ghost of the stretched name, in
-   neutral grey (desktop drag-truncated and drag-replace ghost: informational, never red). */
-.cell_stretch-blocked {
-  position: relative;
-}
-
+/* The slot that stops it: what is there, faded, under a dashed ghost of the stretched name
+   (desktop drag-truncated ghost: informational). Over one column of a slim row. */
 .cell_stretch-blocked .cell-inner {
   opacity: 0.35;
 }
@@ -261,48 +299,34 @@
 .cell_stretch-blocked::after {
   content: attr(data-ghost);
   position: absolute;
-  inset: 8px 6px;
-  border-radius: 8px;
-  border: 2px dashed var(--shoresh-text-secondary);
+  top: 0;
+  bottom: 0;
+  left: var(--ghost-left, 0);
+  width: var(--ghost-width, 100%);
+  box-sizing: border-box;
+  border-radius: var(--shoresh-radius);
+  border: 2px dashed var(--shoresh-text-2);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--shoresh-text-secondary);
+  font-weight: 500;
+  color: var(--shoresh-text-2);
   text-decoration: line-through;
   pointer-events: none;
   z-index: 3;
 }
 
-.cell_picked .cell-inner {
-  outline: 2px dashed var(--shoresh-primary);
-  outline-offset: 1px;
-}
-
-.cell_target .cell-inner {
-  box-shadow: inset 0 0 0 2px var(--shoresh-primary);
-}
-
-/* The bronze "needs a look" dot, in the cell's top corner. */
-.cell-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  line-height: 0;
-}
-
-/* A quiet acknowledgement when an edit changed a cell's dot (desktop useFlagChangeAck,
-   scheduleGrid.css flag-changed-ack): a neutral grey outline that fades once, never bronze or
-   red, even when the new dot is a problem. None under reduced motion. */
+/* A quiet acknowledgement when an edit changed a cell's mark (desktop useFlagChangeAck,
+   scheduleGrid.css flag-changed-ack): a neutral outline that fades once. None under reduced
+   motion. */
 .cell_pulse .cell-inner::after,
 .cell_pulse2 .cell-inner::after {
   content: "";
   position: absolute;
-  inset: 8px 6px;
-  border-radius: 8px;
-  border: 1px solid var(--shoresh-text-secondary);
+  inset: 0;
+  border-radius: var(--shoresh-radius);
+  border: 1px solid var(--shoresh-text-2);
   opacity: 0;
   pointer-events: none;
   z-index: 4;
@@ -344,26 +368,48 @@
   }
 }
 
-/* Generated Schedule: the cells a counter is about, lit while it is chosen (desktop
-   findingHighlight, one caution colour here: bronze is the caution hue). */
-.cell_lit .cell-inner {
-  outline: 2px solid var(--shoresh-caution);
-  outline-offset: 1px;
-  background: var(--shoresh-caution-tint);
+/* The quiet line under the grid: only the marks on it that don't say themselves. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s4);
+  margin: var(--shoresh-s3) 0 0;
+  padding-left: calc(
+    var(--shoresh-head-w) + var(--shoresh-space-cell-gap) + 3px
+  );
+  color: var(--shoresh-text-2);
 }
 
-/* Generated Schedule: a locked cell's lock, in the top left corner (the dot has the right), in
-   slate, the colour of structure that stays put. */
-.cell-lock {
-  position: absolute;
-  top: 5px;
-  left: 6px;
-  line-height: 0;
-  --slds-c-icon-color-foreground-default: var(--shoresh-anchor);
+.legend-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
 }
 
-/* A cell locked empty: kept empty on purpose, so not Open's dashed look; plain, with its lock. */
-.cell_locked-empty .cell-inner {
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  background: var(--slds-g-color-neutral-base-100, #fff);
+.legend-mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-mark_away {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--shoresh-surface-drawer) 0 2px,
+    var(--shoresh-color-primary-500) 2px 3px
+  );
+}
+
+.legend-mark_not-set-up {
+  background: var(--shoresh-color-primary-50);
+  border: 1px dashed var(--shoresh-text-2);
+  box-sizing: border-box;
+}
+
+.legend-mark_gone {
+  width: 14px;
+  height: 1.5px;
+  border-radius: 0;
+  background: var(--shoresh-text-2);
 }

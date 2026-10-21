@@ -24,6 +24,11 @@
   flex: none;
 }
 
+/* The needs-a-look corner (shape "corner"): the mark itself comes from c/shoreshTokens. */
+.corner {
+  display: block;
+}
+
 /* Overlap: two linked rings in the same hue, a different shape from the dot. */
 .overlap {
   flex: none;

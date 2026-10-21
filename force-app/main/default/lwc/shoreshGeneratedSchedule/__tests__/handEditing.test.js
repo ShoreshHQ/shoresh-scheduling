@@ -157,8 +157,10 @@ const cellAt = (element, key) =>
 const textAt = (element, key) =>
   cellAt(element, key).querySelector(".cell-name").textContent;
 const lockAt = (element, key) => {
-  const icon = cellAt(element, key).querySelector(".cell-lock lightning-icon");
-  return icon ? icon.alternativeText : null;
+  const words = cellAt(element, key).querySelector(
+    '.cell-lock [data-id="lock-words"]'
+  );
+  return words ? words.textContent : null;
 };
 // Lock's choices are in the rail's Edit menu (ADR 0010 §58).
 const menuLabels = (element) => lockLabels(element);
@@ -375,11 +377,32 @@ describe("hand editing on the Generated Schedule screen", () => {
     );
   });
 
-  it("shows the locks the week has, and the lock in the legend", async () => {
+  it("holding a drawer tile outlines its cells and marks only Open cells it fits, as on Manual Build", async () => {
+    const element = await render(savedWeek());
+    const drawer = q(element, "c-shoresh-build-palette");
+    const swim = drawer.tiles.find((t) => t.name === "Swim");
+    expect(swim).toBeTruthy();
+    drawer.shadowRoot.querySelector(`[data-id="${swim.id}"]`).click();
+    await flush();
+    const root = q(element, '[data-id="edit-grid"]').shadowRoot;
+    const fits = [...root.querySelectorAll(".cell_fits")];
+    expect(fits.length).toBeGreaterThan(0);
+    fits.forEach((c) => expect(c.className).toContain("cell_open"));
+    const same = [...root.querySelectorAll(".cell_same")];
+    expect(same.length).toBeGreaterThan(0);
+    same.forEach((c) =>
+      expect(c.querySelector(".cell-name").textContent).toBe("Swim")
+    );
+  });
+
+  it("shows the locks the week has, each lock with its words (it needs no legend)", async () => {
     const element = await render(savedWeek({ locks: [[",1,,", ",,,"]] }));
     expect(lockAt(element, "0-1")).toBe("Locked");
     expect(lockAt(element, "0-2")).toBeNull();
-    expect(q(element, ".legend").textContent).toContain("Locked");
+    const legend = q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
+      '[data-id="legend"]'
+    );
+    expect(legend ? legend.textContent : "").not.toContain("Locked");
   });
 
   it("Enter on a locked cell doesn't unlock it: the Lock menu offers its Unlock, the line says it is locked, and focus stays on the cell", async () => {
@@ -695,12 +718,12 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(saveSlots.mock.calls[0][0].edits[0].runs[0].after).toEqual([
       `A:${archery}`
     ]);
-    // Known to the checks at once: counted in the activity list before the week is read again.
+    // Known to the checks at once: counted in the drawer before the week is read again.
     expect(cellAt(element, "0-2").querySelector("c-shoresh-dot")).toBeNull();
     const palette = q(element, "c-shoresh-build-palette").shadowRoot;
-    const chip = palette.querySelector(`[data-id="${archery}"]`);
-    expect(chip.querySelector(".chip-count").textContent.trim()).toMatch(
-      /^1 placed/
+    const tile = palette.querySelector(`[data-id="${archery}"]`);
+    expect(tile.getAttribute("aria-label")).toMatch(
+      /^Archery, 1 (placed|of \d+)$/
     );
     // Its setup is known too: a second Archery this week goes over its weekly limit of 1.
     await press(cellAt(element, "0-3"), "Enter");

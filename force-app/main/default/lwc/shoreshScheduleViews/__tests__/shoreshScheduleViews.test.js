@@ -8,7 +8,8 @@ import {
   groupCells,
   groupGrid,
   groups,
-  kindLabel
+  kindLabel,
+  shortClock
 } from "c/shoreshScheduleViews";
 import { buildTerms } from "c/shoreshTerms";
 import { LABELS, opened } from "./data/scheduleFixture";
@@ -25,6 +26,9 @@ describe("c/shoreshScheduleViews", () => {
     expect(clock("09:00")).toBe("9:00 AM");
     expect(clock("12:30")).toBe("12:30 PM");
     expect(clock("00:15")).toBe("12:15 AM");
+    expect(shortClock("09:00")).toBe("9:00");
+    expect(shortClock("13:15")).toBe("1:15");
+    expect(shortClock("")).toBe("");
   });
 
   it("reads a group's row: what starts where, and how long it runs", () => {
@@ -43,8 +47,8 @@ describe("c/shoreshScheduleViews", () => {
     view.days[0].blocks = [{ ...first, name: "9:00 AM – 9:45 AM" }, ...rest];
     const grid = dailyGrid(view, 0, t);
     expect(grid.rows[0].name).toBe("9:00 AM – 9:45 AM");
-    expect(grid.rows[0].timeLines).toEqual([]);
-    expect(grid.rows[1].timeLines.length).toBe(2);
+    expect(grid.rows[0].said).toBe("9:00 AM – 9:45 AM");
+    expect(grid.rows[1].said).toMatch(/^Period 2, \d+:\d\d [AP]M – /);
   });
 
   it("Daily View: a column per group, a two-block activity spanning two rows", () => {
@@ -55,16 +59,18 @@ describe("c/shoreshScheduleViews", () => {
       "Period 2",
       "Lunch"
     ]);
-    expect(grid.rows[0].timeLines.map((l) => l.text)).toEqual([
-      "9:00 AM –",
-      "9:45 AM"
-    ]);
+    // The time column shows times only (decision 36); the block's name is for screen readers.
+    expect(grid.rows[0].time).toBe("9:00–9:45");
+    expect(grid.rows[0].said).toBe("Period 1, 9:00 AM – 9:45 AM");
     const swim = grid.cells.find((c) => c.key === "0-0");
     expect(swim.text).toBe("Swim");
     expect(swim.style).toContain("grid-row: 1 / span 2");
     expect(swim.className).toContain("cell_activity");
+    expect(swim.activityKey).toMatch(/^A:/);
     const lunch = grid.cells.find((c) => c.key === "0-2");
     expect(lunch.className).toContain("cell_set-time");
+    expect(lunch.setTime).toBe(true);
+    expect(lunch.activityKey).toBeNull();
     expect(lunch.title).toBe("Lunch: Fixed activity");
   });
 

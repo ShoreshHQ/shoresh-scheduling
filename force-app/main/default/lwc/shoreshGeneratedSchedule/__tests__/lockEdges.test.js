@@ -136,14 +136,14 @@ describe("a cell locked empty, and a lock left where a bunk is now away", () => 
     expect(kept.className).not.toContain("cell_open");
     expect(kept.querySelector(".cell-name").textContent).toBe("");
     expect(
-      kept.querySelector(".cell-lock lightning-icon").alternativeText
+      kept.querySelector('.cell-lock [data-id="lock-words"]').textContent
     ).toBe("Locked empty");
     // A locked activity still says Locked.
     document.body.removeChild(element);
     const locked = await render(savedWeek([[",1,,", ",,,"]]));
     expect(
-      cellAt(locked, "0-1").querySelector(".cell-lock lightning-icon")
-        .alternativeText
+      cellAt(locked, "0-1").querySelector('.cell-lock [data-id="lock-words"]')
+        .textContent
     ).toBe("Locked");
   });
 
@@ -180,13 +180,16 @@ describe("a cell locked empty, and a lock left where a bunk is now away", () => 
     expect(cellAt(element, "0-1").querySelector(".cell-lock")).not.toBeNull();
   });
 
-  it("the legend shows the lock", async () => {
-    const element = await render(savedWeek());
-    const legend = q(element, ".legend");
-    expect(legend.textContent).toContain("Locked");
-    expect(legend.querySelector("lightning-icon").iconName).toBe(
-      "utility:lock"
+  it("the lock carries its own words, so the quiet line under the grid leaves it out", async () => {
+    const element = await render(savedWeek([[",1,,", ",,,"]]));
+    expect(
+      cellAt(element, "0-1").querySelector('.cell-lock [data-id="lock-words"]')
+        .textContent
+    ).toBe("Locked");
+    const legend = q(element, '[data-id="edit-grid"]').shadowRoot.querySelector(
+      '[data-id="legend"]'
     );
+    expect(legend ? legend.textContent : "").not.toContain("Locked");
   });
 });
 

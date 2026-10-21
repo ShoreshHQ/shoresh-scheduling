@@ -212,8 +212,10 @@ const grid = (element) => q(element, '[data-id="edit-grid"]');
 const cellAt = (element, key) =>
   grid(element).shadowRoot.querySelector(`[data-cell="${key}"]`);
 const lockAt = (element, key) => {
-  const icon = cellAt(element, key).querySelector(".cell-lock lightning-icon");
-  return icon ? icon.alternativeText : null;
+  const words = cellAt(element, key).querySelector(
+    '.cell-lock [data-id="lock-words"]'
+  );
+  return words ? words.textContent : null;
 };
 async function press(target, key) {
   target.dispatchEvent(

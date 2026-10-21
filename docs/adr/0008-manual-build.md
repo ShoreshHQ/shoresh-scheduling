@@ -1117,7 +1117,8 @@ the grid and the activity list on its left keep their look.
      for the visit) and, on Generated, a counter lighting its cells and **Review all**. The
      approved dropdown has no place for them; what Accept hid is now counted per activity, and
      the cells it is about carry their corner. Publish still asks with the week's own checks
-     (`c/shoreshPublish`, unchanged words; see "Not done here").
+     (`c/shoreshPublish`, unchanged words; see "Not done here"). _Accept came back in part 8
+     (Greg's decision 43); the same-activity outlines replace lighting cells._
 7. **Published.** The published line (_Published from Manual Build Oct 18, 2:40 PM by Pat_, with
    _Changed since_) and **Unpublish** move into a **Published** dropdown beside Publish, the
    corner on its word when the week changed since it was published. Unpublish asks as before;
@@ -1144,6 +1145,109 @@ and Published with the keyboard (rows, Escape, focus), presses '›' onto the la
 the week) and runs axe with the counter open;
 screenshots next to the mock-up in `docs/design/screens/`.
 
+## Choices (part 8: the grid, the drawer and the outlines, 2026-10-21)
+
+Design build step 2b, on step 2a (part 7). Source: Greg's decisions 36 to 43 (wiki
+`projects/shoresh-scheduling-sf.md`), the visual spec in `docs/design/` (`manual-build.html`
+`#b`, `#hover-swim` and `#hold-archery`, `spacing-spec.md` part 3, `spacing-spec-continuous.md`
+"The grid"), values from `c/shoreshTokens` (ADR 0015). The desktop stays the floor for what each
+control does; the look is the mock-up's. The grid is the shared `c-shoresh-schedule-grid`, so
+Generated Schedule (ADR 0010) and the Schedules page get the same look.
+
+1. **The grid sits on its zone's surface** with no frame and no lines. The headers are one more
+   row and one more column of the same grid, with the same 8 px gap, set like a resting rail item
+   (13 px, regular, secondary words) and aligned to the cells: **times only** down the side
+   (_9:00–9:45_, no AM or PM, as the mock-up), **names only** across the top (the bunk; in Group
+   and Activity View the day, its date for screen readers only). The block's name ("Period 2")
+   and the full times ("9:50 AM – 10:35 AM") are what a screen reader hears on the row header.
+   Equal insets: the zone's 12 on every side (s3), 8 between cells (s2). Activity rows are at
+   least a tile tall (56), the header row one item (32).
+2. **One raised cell.** Every placed cell (an activity, a fixed or recurring activity, something
+   not set up yet) is the one raised look, its name in medium. A fixed or recurring activity
+   carries the round 13 lock before its name. A row where every bunk has the same fixed or
+   recurring activity for one block (Lunch, Assembly, a morning flagpole) is **one slim cell
+   across the bunks** (28 tall): it is one cell for screen readers too (`aria-colspan`), with
+   the first bunk's key. Its marks and words must match in every bunk, or the row stays per
+   bunk so nothing one bunk's cell says is lost. Up and Down through it come out in the column
+   they went in from; a drop or Space on it is refused as on any fixed cell.
+3. **Empty cells are recessed** (the drawer step, a soft inner shadow) and show no word; "Open"
+   is still the cell's name for screen readers (and in its title). A cell locked empty
+   (Generated) is recessed with its lock.
+4. **Marks, not colours.** Selection (picked up from the keyboard or a click) is the highlight
+   outline (2 px, 1 px outside); keyboard focus is the rail's focus ring. Needs a look is the
+   **corner mark** (`c-shoresh-dot` shape `corner`: same words on hover, tap and focus, in the
+   text colour, never bronze) with a fine edge. The other states keep their meaning with a mark
+   and words for screen readers, and no new hue: **not set up yet** a dashed edge inside the
+   raised cell; **removed** the name struck through (cells, bunks and blocks); **not at camp**
+   recessed and hatched in the primary's own steps. The handle shows under the pointer or
+   keyboard focus, so a cell at rest is its name only.
+5. **The colour legend goes.** Placed, fixed (the lock), Open (recessed), selection and the
+   corner say themselves. Three marks don't: so a **quiet single line** under the grid names
+   only those on the grid now (_not at camp_, _not set up yet_, _removed_), and none when there
+   are none. The Schedules page's own legend goes too (it described the old colours).
+6. **The drawer** replaces the activity list on the left. It is its own zone under the grid,
+   below the hairline, on the grid's columns: the time column holds **N under** (set like a rail
+   total, `measureWeek`'s under count, the counter's number) and the Filter box; each column
+   holds a tile. **More activities than columns wrap** onto more rows of the same columns. Chosen
+   over scrolling sideways because wrapping keeps every activity in view and in the Tab order,
+   keeps each tile under a column, and needs no hidden scroll a director has to discover; a camp
+   with many activities gets a taller drawer, and Filter narrows it. With many bunks the grid
+   and the drawer scroll sideways together (one scroll), so tiles stay under their columns.
+   - **A tile is its name only** (decision 41). An activity over its weekly limit carries the
+     corner. Under the pointer, with keyboard focus or held, the tile shows **placed of goal** in
+     the counter's words (_3 of 4_; the counter's over row for one over, _4 of 3_; _2 placed_
+     with no goal, or once past it, since _2 of 1_ would read as over). A screen reader hears
+     the name, those words and _Over its weekly limit_ on the tile always.
+   - **Order:** activities under their goal first, then the rest, each by name (the desktop
+     lists still needed first).
+   - **What it counts:** Daily View the camp, by `measureWeek` (the counter's numbers: a bunk
+     counts only up to its own goal; over counts only the bunks past the limit). Group View the
+     one bunk shown, measured the same way on its own (the desktop's list counts one group
+     there). This replaces the desktop's Daily View arithmetic (the camp's total against the
+     targets times the bunks, `countLabel`) so the drawer and the counter can never disagree
+     (`spacing-spec.md` part 1).
+   - **Every way to place stays:** drag a tile onto a cell; click (or Enter, or Space on) a tile
+     to hold it, then click a cell or press Space on it; type in a cell (Enter, F2 or a
+     double-click); drag a placement back onto the drawer to take it out.
+7. **Holding a tile** (picked up, or being dragged) outlines every cell of its activity and
+   draws the dashed **fits here** inside each Open cell where it fits: there is room for its
+   whole length (no bunk away, nothing locked or filled in the way) and putting it there gives
+   the week **no new needs-a-look mark**, by the same check that draws the marks (Manual Build's
+   `checkWeek`, Generated's own check). Worked out once per held activity and week shown; same
+   inputs, same cells. Escape lets go ("Put back."), as before.
+8. **Same-activity outlines** (decision 38, `spacing-spec.md` part 3). Pointing at a cell, or
+   keyboard focus on it, outlines every other cell of that activity: 1.5 px, the highlight at
+   45 %, 1 px outside, no fill. A tile under the pointer or with focus outlines its activity's
+   cells. Thinner and paler than selection; "fits here" is dashed, inside, and only on Open
+   cells, so the two never land on one cell. They replace Generated's counter lighting its cells.
+9. **Accept returns** (decision 43, as decision 16 and the desktop's FindingsRail). Hovering or
+   focusing a line in the counter's dropdown (an under or over row, or a line to look at) shows
+   **Accept**; it tucks that line away for this visit. It comes back when its numbers change or
+   a week is shown fresh. A cell that breaks a rule shared with other cells has no Accept, as on
+   the desktop (`FindingsRail.jsx`: an overlap goes when the clash is moved). Keyboard: Accept is
+   the row after its line (Down), Enter accepts; it says _Accepted for this visit: Swim, 3 of 4._, the dropdown stays open, and focus moves to the next line (else the one before, else the
+   counter). The numbers stay the week's (the drawer shows the same ones); the counter's corner
+   goes once every line is accepted, because each was looked at.
+10. **Group View and Activity View** use the same cells and headers: Group View's columns are
+    the days (names only), its drawer the bunk's; Activity View's cards are raised, its grid's
+    cells raised where the activity runs (the bunks in it) and recessed where it doesn't.
+
+Checked by Jest: `shoreshScheduleGrid.test.js` (times only with the block for screen readers,
+names only, the slim row and when it stays whole, Open's name, the marks' words, the quiet line,
+the corner, hover and focus outlines, a held activity's outlines and fits only on Open cells, Up
+and Down through a slim row), `shoreshBuildPalette.test.js` (N under, tiles on the columns, name
+only, the corner, placed of goal on hover, focus and hold, every event, axe), `counts.test.js`
+(the order, the counter's words, over, one bunk, at the limit, past the goal, Filter),
+`shoreshWeekChecks.test.js` (Accept on each kind of line and none on a clash, it hides and says
+so and moves focus, Down reaches it, the corner, a changed line and a fresh week bring it back),
+`moving.test.js` (the drawer's numbers equal the counter's, hover outlines, hold and fits by the
+checks, drag holds until it ends, placing where it fits leaves no mark, Group View counts the
+bunk) and the screens' suites with the slim rows. In the test org:
+`scripts/a11y-browser-check.mjs` holds a tile with the keyboard (outlines, fits only on Open
+cells, Escape), points at a cell with the mouse (the outlines) and accepts a line from the
+keyboard, on Manual Build and Generated. Screenshots next to the mock-up in
+`docs/design/screens/`.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
@@ -1153,15 +1257,13 @@ the screen and the server. Part 4b adds the `VersionReason__c` value **AutoSaved
 the one value. Part 5 adds `Schedule__c.PublishedAt__c` (date/time), `PublishedBy__c` (lookup to
 User, cleared if the user is deleted) and `PublishKey__c` (text 40, unique, case-sensitive:
 "programId:weekId" while published, cleared when replaced), as the data model names them. Part 6
-adds no fields: the automatic version reuses the AutoSaved reason.
+adds no fields: the automatic version reuses the AutoSaved reason. Parts 7 and 8 add none (look
+and screen behaviour only).
 
 ## Not done here
 
-- **Design step 2b** (the next PR): the grid (times only, bunks only, headers on the grid's
-  surface, the one raised cell, slim fixed rows with the lock, recessed empty cells, the
-  highlight outline for the picked cell, the corner for a dot), the drawer under the grid in
-  place of the activity list on the left (with "7 under", the tiles' corner and "3 of 4" on
-  hover or hold, every way to place kept), and the same-activity outlines.
+- **Fits here is a hint, not a promise of a clean week.** It checks the week as it is; two
+  Open cells that each fit may not both fit at once. Placing still draws any mark it causes.
 - **Publish's question still uses the cards' words** (_Filled: 34 of 36_, _Overlapping: 2_,
   _Still needed: 1_). Moving it to the counter's (_34 of 36 placed_, _N under_) is a small
   follow-up.

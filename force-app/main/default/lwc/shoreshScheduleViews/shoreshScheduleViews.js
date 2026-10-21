@@ -129,6 +129,24 @@ function weekBlocks(view) {
   );
 }
 
+/**
+ * How wide a schedule grid (and Manual Build's drawer under it, on the same columns) must be for
+ * every column: the time column, then each column at least 88 px and the gap after it.
+ */
+export function gridMinWidth(columns) {
+  return `calc(var(--shoresh-head-w) + ${columns} * (88px + var(--shoresh-space-cell-gap)))`;
+}
+
+/** "09:00" -> "9:00", "13:15" -> "1:15": a time as the grid's time column shows it. */
+export function shortClock(hhmm) {
+  if (!hhmm) {
+    return "";
+  }
+  const [h, m] = hhmm.split(":").map(Number);
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")}`;
+}
+
 /** The block's name is just its time range, "9:00 AM – 9:45 AM" (TimeBlockTriggerHandler). */
 function isTimeRange(block) {
   return block.name === `${clock(block.startTime)} – ${clock(block.endTime)}`;
@@ -141,34 +159,46 @@ function blockRows(blocks) {
       {
         key: "none",
         name: "",
-        timeLines: [],
+        time: "",
+        said: "",
         gone: false,
         style: "grid-row: 1 / span 1; grid-column: 1 / span 1;"
       }
     ];
   }
-  return blocks.map((block, index) => ({
-    key: refKey(block),
-    name: block.name,
-    // Two lines, "9:00 AM –" then "9:45 AM", as on the desktop; none when the name already is
-    // the time range (a block saved without a name, desktop timeBlockLabel.js blockLabelParts).
-    timeLines:
-      block.startTime && !isTimeRange(block)
-        ? [
-            { key: "start", text: `${clock(block.startTime)} –` },
-            { key: "end", text: clock(block.endTime) }
-          ]
-        : [],
-    gone: block.gone,
-    style: `grid-row: ${index + 1} / span 1; grid-column: 1 / span 1;`
-  }));
+  return blocks.map((block, index) => {
+    const range = block.startTime
+      ? `${clock(block.startTime)} – ${clock(block.endTime)}`
+      : null;
+    return {
+      key: refKey(block),
+      name: block.name,
+      // The time column shows times only (wiki decision 36, docs/design round 13): "9:00–9:45".
+      // A block saved without times shows its name instead.
+      time: block.startTime
+        ? `${shortClock(block.startTime)}–${shortClock(block.endTime)}`
+        : block.name,
+      // What a screen reader hears: the block's name and its times, once when the name already
+      // is the time range (a block saved without a name, desktop blockLabelParts).
+      said:
+        range && !isTimeRange(block) ? `${block.name}, ${range}` : block.name,
+      gone: block.gone,
+      style: `grid-row: ${index + 1} / span 1; grid-column: 1 / span 1;`
+    };
+  });
 }
 
 function place(rowIndex, columnIndex, length) {
   return `grid-row: ${rowIndex + 1} / span ${length}; grid-column: ${columnIndex + 2} / span 1;`;
 }
 
-/** What one cell shows. */
+/**
+ * What one cell shows. Every placed cell is the one raised look; what kind it is rides on flags
+ * the grid draws as marks (wiki decisions 36 to 41): setTime (a fixed or recurring activity: the
+ * lock), notSetUp (a dashed edge), gone (removed since: the name struck through). An Open cell
+ * is recessed and shows no word; "Open" stays its name for screen readers. activityKey says
+ * which activity a cell is, for the same-activity outlines.
+ */
 function cellView(item, t) {
   if (!item) {
     return {
@@ -183,6 +213,7 @@ function cellView(item, t) {
   if (NOT_SET_UP.has(item.kind)) {
     return {
       text: item.name,
+      notSetUp: true,
       className: "cell cell_not-set-up",
       note: "not set up yet",
       title: `${item.name}: ${kind}, not set up in Shoresh yet`
@@ -191,6 +222,9 @@ function cellView(item, t) {
   const setTime = item.kind === "F" || item.kind === "R";
   return {
     text: item.name,
+    setTime,
+    gone: !!item.gone,
+    activityKey: item.kind === "A" ? `A:${item.id}` : null,
     className: setTime ? "cell cell_set-time" : "cell cell_activity",
     note: item.gone ? "(removed)" : null,
     title: item.kind === "A" ? item.name : `${item.name}: ${kind}`

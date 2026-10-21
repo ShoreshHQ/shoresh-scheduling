@@ -13,6 +13,8 @@
       onkeydown={handleKeyDown}
       ondblclick={handleDoubleClick}
       onclick={handleClick}
+      onpointerover={handlePointerOver}
+      onpointerleave={handlePointerLeave}
       onpointerdown={handlePointerDown}
       onpointermove={handlePointerMove}
       onpointerup={handlePointerUp}
@@ -26,10 +28,10 @@
           <div
             role="columnheader"
             aria-colindex="1"
-            class="head row-head"
+            class="head corner"
             style="grid-row: 1 / span 1; grid-column: 1 / span 1"
           >
-            {corner}
+            <span class="slds-assistive-text">{corner}</span>
           </div>
           <template for:each={columns} for:item="column">
             <div
@@ -40,12 +42,12 @@
               style={column.style}
               data-column={column.key}
             >
-              <span>{column.label}</span>
+              <span class={column.labelClass}>{column.label}</span>
               <template lwc:if={column.sub}>
-                <span class="head-sub">{column.sub}</span>
+                <span class="slds-assistive-text">, {column.sub}</span>
               </template>
               <template lwc:if={column.note}>
-                <span class="note">{column.note}</span>
+                <span class="slds-assistive-text"> {column.note}</span>
               </template>
             </div>
           </template>
@@ -62,16 +64,11 @@
             <div
               role="rowheader"
               aria-colindex="1"
-              class="row-head block"
+              class={row.headClass}
               style={row.style}
             >
-              <span class="block-name">{row.name}</span>
-              <template for:each={row.timeLines} for:item="line">
-                <span key={line.key} class="block-time">{line.text}</span>
-              </template>
-              <template lwc:if={row.gone}>
-                <span class="note">(removed)</span>
-              </template>
+              <span class="block-time" aria-hidden="true">{row.time}</span>
+              <span class="slds-assistive-text">{row.said}</span>
             </div>
             <template for:each={row.cells} for:item="cell">
               <div
@@ -83,6 +80,7 @@
                 aria-selected={cell.ariaSelected}
                 aria-colindex={cell.colIndex}
                 aria-rowspan={cell.rowSpan}
+                aria-colspan={cell.colSpan}
                 class={cell.className}
                 style={cell.style}
                 title={cell.title}
@@ -96,26 +94,62 @@
                     </template>
                   </template>
                   <template lwc:else>
-                    <span class="cell-name">{cell.text}</span>
-                    <template lwc:if={cell.note}>
-                      <span class="note">{cell.note}</span>
+                    <template lwc:if={cell.locked}>
+                      <span class="cell-lock" title={cell.lockText}
+                        ><svg
+                          class="lock"
+                          viewBox="0 0 12 12"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <rect
+                            x="2.25"
+                            y="5.25"
+                            width="7.5"
+                            height="5.5"
+                            rx="1.5"
+                          ></rect>
+                          <path d="M4 5.25V3.75a2 2 0 0 1 4 0v1.5"></path></svg
+                        ><span class="slds-assistive-text" data-id="lock-words"
+                          >{cell.lockText}</span
+                        ></span
+                      >
                     </template>
-                  </template>
-                  <template lwc:if={cell.locked}>
-                    <span class="cell-lock"
-                      ><lightning-icon
-                        icon-name="utility:lock"
-                        size="xx-small"
-                        alternative-text={cell.lockText}
-                        title={cell.lockText}
-                      ></lightning-icon
-                    ></span>
+                    <template lwc:elseif={cell.setTimeLock}>
+                      <span class="set-lock" aria-hidden="true"
+                        ><svg
+                          class="lock"
+                          viewBox="0 0 12 12"
+                          focusable="false"
+                        >
+                          <rect
+                            x="2.25"
+                            y="5.25"
+                            width="7.5"
+                            height="5.5"
+                            rx="1.5"
+                          ></rect>
+                          <path d="M4 5.25V3.75a2 2 0 0 1 4 0v1.5"></path></svg
+                      ></span>
+                    </template>
+                    <template lwc:if={cell.quiet}>
+                      <span class="slds-assistive-text cell-name"
+                        >{cell.text}</span
+                      >
+                    </template>
+                    <template lwc:else>
+                      <span class={cell.nameClass}>{cell.text}</span>
+                    </template>
+                    <template lwc:if={cell.note}>
+                      <span class="slds-assistive-text"> {cell.note}</span>
+                    </template>
                   </template>
                   <template lwc:if={cell.dot}>
                     <span class="cell-dot"
                       ><c-shoresh-dot
                         label={cell.dot}
                         open={cell.dotOpen}
+                        shape="corner"
                         in-cell
                       ></c-shoresh-dot
                     ></span>
@@ -132,5 +166,15 @@
         </template>
       </div>
     </div>
+    <template lwc:if={hasLegend}>
+      <p class="legend" data-id="legend">
+        <template for:each={legend} for:item="entry">
+          <span key={entry.key} class="legend-entry"
+            ><span class={entry.className} aria-hidden="true"></span
+            >{entry.label}</span
+          >
+        </template>
+      </p>
+    </template>
   </div>
 </template>

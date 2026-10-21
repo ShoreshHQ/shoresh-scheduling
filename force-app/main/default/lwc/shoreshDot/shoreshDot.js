@@ -8,7 +8,9 @@ import { LightningElement, api } from "lwc";
  *
  * shape: "dot" (the default), or "overlap" for two things that overlap (two dates, say): two
  * linked rings, so it reads differently from a same-name dot without relying on colour
- * (WCAG 1.4.1).
+ * (WCAG 1.4.1). "corner" is the design system's needs-a-look mark (c/shoreshTokens, ADR 0015): a
+ * small solid corner in the text colour, as a grid cell carries it (ADR 0008 part 8); same words,
+ * same behaviour, no bronze.
  *
  * label: a few words in the camp's terms ("Not set up for Bunk 2"). open: the row it sits on has
  * focus or is highlighted, so the tooltip shows. focusable: the dot is its own tab stop (when the
@@ -66,6 +68,10 @@ export default class ShoreshDot extends LightningElement {
 
   get isOverlap() {
     return this.shape === "overlap";
+  }
+
+  get isCorner() {
+    return this.shape === "corner";
   }
 
   get showTip() {

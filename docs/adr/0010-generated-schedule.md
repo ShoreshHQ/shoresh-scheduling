@@ -1265,7 +1265,7 @@ menu's foot). What is Generated's own:
       does. Generate itself stays the one big button before the first build.
     - The counter is Manual Build's on both screens (decision 3 stays: one vocabulary). Its
       generated-only ways (each counter lighting its cells, Review all, Accept) go with the
-      cards (ADR 0008 part 7 §6).
+      cards (ADR 0008 part 7 §6). Accept comes back on both screens in §59.
 
 ## Tests (the rail)
 
@@ -1278,6 +1278,37 @@ activity; a line to look at takes focus to its cell (the second block of a two-b
 setup-changed box is gone and the menu's Update gets focus back. In the test org:
 `scripts/a11y-browser-check.mjs` (Build, Rebuild's question, Lock in Edit, Start over and its
 Undo, the counter).
+
+## Choices (the grid, the drawer and the outlines, 2026-10-21)
+
+Design build step 2b, as Manual Build (ADR 0008 part 8: the grid on its zone's surface, times
+and names only, the one raised cell, slim whole-camp rows with the lock, recessed wordless Open
+cells, marks with words instead of colours, the quiet line in place of the legend, the drawer
+under the grid, holding a tile, same-activity outlines, Accept). What is Generated's own:
+
+59. **Locks in the new language.** A director's Lock is the round 13 lock before the name (it
+    was a slate icon in the top left), still saying _Locked_ or _Locked empty_ to screen
+    readers; a cell locked empty is recessed with its lock. A fixed or recurring activity
+    carries the same lock without those words (it is not the director's Lock). The legend's
+    _Locked_ entry goes: the lock says itself. Locked cells are never "fits here" (a held
+    activity can't go there) and still can't be dropped on.
+60. **The drawer on Generated** is Manual Build's: the editor's, from the week's measure
+    (Generated's own check, so an activity closed this week has no numbers and no corner). Its
+    "fits here" asks Generated's own check (`checkGeneratedWeek`, with the locks), so a cell
+    fits when putting the activity there adds no mark that check would draw.
+61. **Lighting cells is replaced** by the same-activity outlines (decision 43): pointing at a
+    cell, or holding a tile, outlines that activity's cells. Accept returns in the counter's
+    dropdown on both screens (ADR 0008 part 8 §9); _Review all_ does not (the dropdown already
+    lists every line).
+
+## Tests (the grid and the drawer)
+
+Jest: the locks' words on the new lock (`lockScreen`, `lockEdges`, `handEditing`, `versions`,
+the editor's `seams`), no _Locked_ in the quiet line, the slim Flagpole row with its lock and
+focus through it, the quiet line naming the hatch, Delete on the slim fixed row still refused
+without a whole-week save, and holding a drawer tile outlines its cells with "fits here" only
+on Open cells. In the test org: `scripts/a11y-browser-check.mjs` points at a cell (the outlines)
+and accepts a counter line from the keyboard on Generated Schedule.
 
 ## Choices that are hard to undo after release
 
@@ -1299,6 +1330,8 @@ Publish: none (no objects, fields or global members; `revisionOf`'s text is neve
 
 Versions: none (no objects, fields, picklist values or global members; the name "Before Restore"
 is Manual Build's, ADR 0008 part 4b).
+
+The grid and the drawer (§59 to §61): none (look and screen behaviour only).
 
 G4:
 

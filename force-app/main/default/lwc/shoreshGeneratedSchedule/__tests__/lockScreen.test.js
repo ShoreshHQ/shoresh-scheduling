@@ -143,9 +143,10 @@ describe("locks on the Generated Schedule screen", () => {
     const element = await render(savedWeek([[",1,,", ",,,"]]));
     const swim = cellAt(element, "0-1");
     expect(swim.querySelector(".cell-name").textContent).toBe("Swim");
-    const icon = swim.querySelector(".cell-lock lightning-icon");
-    expect(icon.iconName).toBe("utility:lock");
-    expect(icon.alternativeText).toBe("Locked");
+    expect(swim.querySelector(".cell-lock svg.lock")).not.toBeNull();
+    expect(
+      swim.querySelector('.cell-lock [data-id="lock-words"]').textContent
+    ).toBe("Locked");
     expect(cellAt(element, "0-2").querySelector(".cell-lock")).toBeNull();
     expect(cellAt(element, "1-1").querySelector(".cell-lock")).toBeNull();
   });
