@@ -66,7 +66,10 @@ until the next PRs; nothing a director does works differently.
    that step with the edge, buttons and inputs get the 8 px corner, inputs a highlight focus edge, checkboxes and the
    spinner the highlight. SLDS 2's accent and link hooks are set to the highlight too, not the
    deprecated `--lwc-*` tokens (Code Analyzer refuses them), and the checkbox's mark colour is left
-   to Salesforce (SLDS 2 has no hook for it). Only Shoresh's own page changes;
+   to Salesforce (SLDS 2 has no hook for it). Field errors keep Salesforce's red, but at its SLDS 2
+   value (#b60554) in both themes' error hooks: on the shelf, SLDS 1's #ea001e reads only 4.09:1,
+   below WCAG's 4.5:1, while #b60554 reads 5.89:1. It is Salesforce's colour for a refusal, not a
+   fourth Shoresh colour. Only Shoresh's own page changes;
    the rest of Salesforce keeps its look.
 8. **The frame and the menu, as the mock-up draws them.** The page is the page surface with a
    12 margin. The menu is its own piece, 208 wide, 12 from the frame. Its top row is the camp's
@@ -86,7 +89,7 @@ until the next PRs; nothing a director does works differently.
    setup**, the same action as the button above that screen's grid (ADR 0008 part 6 §10). Only
    Manual Build and Generated Schedule have it, and each says so only for itself.
 10. **Checked by** `shoreshTokens.test.js` (only the three colours, exact, the primary's steps in order, the surfaces, the steps, every
-    allowed pair of words and surface at 4.5:1, the button hooks), `shoreshLock.test.js` (one
+    allowed pair of words and surface at 4.5:1, the error hooks on every surface at 4.5:1, the button hooks), `shoreshLock.test.js` (one
     padlock, hidden unless it has words, accessible), `shoreshMenu.test.js` (the camp row, one
     raised entry, Roots' sprout, the foot and its Update, held while busy, accessible),
     `shoreshCampSetup.test.js` (the fonts load once, the font files and licences are there and
@@ -94,7 +97,8 @@ until the next PRs; nothing a director does works differently.
     and both screens' `setupMatch.test.js` (they tell the page, once per change, and the menu's
     Update opens the same list). In the test org, a real-browser check: screenshots next to the
     mock-up (`docs/design/screens/`), contrast and focus, and the full keyboard and axe check
-    (`scripts/a11y-browser-check.mjs`).
+    (`scripts/a11y-browser-check.mjs`), which also blanks the season's name and measures the
+    field error it shows against the shelf behind it.
 
 ## Not done here
 

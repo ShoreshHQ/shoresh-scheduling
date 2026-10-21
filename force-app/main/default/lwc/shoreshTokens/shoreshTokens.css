@@ -134,6 +134,10 @@
   --slds-s-link-color: var(--shoresh-color-highlight);
   --slds-s-link-color-hover: var(--shoresh-color-highlight-press);
   --slds-s-link-color-active: var(--shoresh-color-highlight-press);
+  /* Field errors stay Salesforce's red, at its SLDS 2 value: it reads at 5.9:1 on the shelf, where
+     SLDS 1's #ea001e reads 4.09:1. Both themes' hooks, so every org shows the same red. */
+  --slds-g-color-error-base-40: #b60554;
+  --slds-g-color-error-1: #b60554;
 
   /* ---------- earlier colours (wiki shoresh-design-guide.md), kept until each screen is restyled ---------- */
   /*

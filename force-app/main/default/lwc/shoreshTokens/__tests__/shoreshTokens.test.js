@@ -132,6 +132,24 @@ describe("c/shoreshTokens", () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("Salesforce's field errors read at 4.5:1 on every surface, in SLDS 1 and SLDS 2", () => {
+    const surfaces = [
+      "--shoresh-surface-page",
+      "--shoresh-surface-shelf",
+      "--shoresh-surface-grid",
+      "--shoresh-surface-drawer",
+      "--shoresh-surface-hover",
+      "--shoresh-color-primary-50"
+    ];
+    ["--slds-g-color-error-base-40", "--slds-g-color-error-1"].forEach((hook) =>
+      surfaces.forEach((surface) =>
+        expect(contrast(colour(hook), colour(surface))).toBeGreaterThanOrEqual(
+          4.5
+        )
+      )
+    );
+  });
+
   it("Salesforce's buttons take the highlight (SLDS styling hooks)", () => {
     expect(tokens["--slds-c-button-brand-color-background"]).toBe(
       "var(--shoresh-color-highlight)"
