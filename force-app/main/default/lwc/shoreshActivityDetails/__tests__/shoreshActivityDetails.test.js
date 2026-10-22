@@ -149,12 +149,15 @@ describe("c-shoresh-activity-details", () => {
     expect(q(element, '[data-id="who-note"]')).toBeNull();
     expect(who.label).toBe("Who can do it");
     expect(element.shadowRoot.textContent).not.toContain("rules most");
-    // One button: Close.
+    // One button: the panel's close (an ×, named for what it closes).
+    expect(element.shadowRoot.querySelectorAll("lightning-button").length).toBe(
+      0
+    );
     expect(
-      [...element.shadowRoot.querySelectorAll("lightning-button")].map(
-        (b) => b.label
+      [...element.shadowRoot.querySelectorAll("lightning-button-icon")].map(
+        (b) => [b.dataset.id, b.alternativeText]
       )
-    ).toEqual(["Close"]);
+    ).toEqual([["close", "Close Archery details"]]);
   });
 
   it("nobody chosen means every group", async () => {
@@ -172,7 +175,7 @@ describe("c-shoresh-activity-details", () => {
     const element = await render();
     const closed = jest.fn();
     element.addEventListener("close", closed);
-    q(element, 'lightning-button[data-id="close"]').click();
+    q(element, '[data-id="close"]').click();
     await flush();
     expect(q(element, '[data-id="details"]')).toBeNull();
     expect(closed.mock.calls[0][0].detail).toEqual({ activityId: "a1" });
@@ -205,7 +208,7 @@ describe("c-shoresh-activity-details", () => {
       ]
     });
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["d1", "g2"]);
-    expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
+    expect(q(element, '[data-field="sameDivision"]').value).toBe("same");
     expect(q(element, '[data-field="earlyCount"]').value).toBe(2);
     expect(q(element, '[data-field="earlyDay"]').value).toBe("Wednesday");
     expect(q(element, '[data-field="notes"]').value).toBe("Life jackets");
@@ -216,7 +219,7 @@ describe("c-shoresh-activity-details", () => {
     const handler = jest.fn();
     element.addEventListener("save", handler);
     allValid(element);
-    change(q(element, '[data-field="sameDivision"]'), true);
+    change(q(element, '[data-field="sameDivision"]'), "same");
     change(q(element, '[data-field="earlyDay"]'), "Wednesday");
     await flush();
     const saves = sent(handler);
@@ -420,17 +423,17 @@ describe("c-shoresh-activity-details", () => {
     const element = await render();
     const handler = jest.fn();
     element.addEventListener("save", handler);
-    change(q(element, '[data-field="sameDivision"]'), true);
+    change(q(element, '[data-field="sameDivision"]'), "same");
     await flush();
     element.setup = nsRecord({ ...SETUP });
     await flush();
-    expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
+    expect(q(element, '[data-field="sameDivision"]').value).toBe("same");
     handler.mock.calls[0][0].detail.onSaved();
     const saved = JSON.parse(JSON.stringify(SETUP));
     saved.activities[0].SameDivisionOnly__c = true;
     element.setup = nsRecord(saved);
     await flush();
-    expect(q(element, '[data-field="sameDivision"]').checked).toBe(true);
+    expect(q(element, '[data-field="sameDivision"]').value).toBe("same");
   });
 
   it("with no activities there is nothing to open", async () => {
@@ -470,7 +473,7 @@ describe("c-shoresh-activity-details", () => {
     expect(element.openActivityId).toBe("a1");
     expect(q(element, '[data-id="who-can-do-it"]').value).toEqual(["g1", "g2"]);
     // Close asks too.
-    q(element, 'lightning-button[data-id="close"]').click();
+    q(element, '[data-id="close"]').click();
     await flush();
     expect(LightningConfirm.open).toHaveBeenCalledTimes(2);
     expect(element.openActivityId).toBe("a1");
@@ -506,5 +509,136 @@ describe("c-shoresh-activity-details", () => {
     await element.open("a2");
     await flush();
     expect(LightningConfirm.open).not.toHaveBeenCalled();
+  });
+
+  describe("the panel beside the table (step 3b, activities.html)", () => {
+    const PANEL = {
+      ...SETUP,
+      activities: [
+        {
+          Id: "a1",
+          Name: "Archery",
+          Length__c: 2,
+          GroupsAtOnce__c: 3,
+          NoGroupLimit__c: false,
+          NoWeeklyMax__c: true,
+          Priority__c: "High",
+          Outdoor__c: true,
+          RainPlan__c: "a3",
+          SameDivisionOnly__c: true
+        },
+        { Id: "a2", Name: "Lake", Outdoor__c: true },
+        { Id: "a3", Name: "Arts", Outdoor__c: false },
+        { Id: "a4", Name: "Drama", Outdoor__c: false }
+      ]
+    };
+
+    it("holds the table's other fields: length, groups at once, priority, outdoors, rain plan, no weekly maximum", async () => {
+      const element = await render(PANEL);
+      const value = (key) => {
+        const input = q(element, `[data-field="${key}"]`);
+        return input.type === "checkbox" ? input.checked : input.value;
+      };
+      expect(
+        [
+          "rainPlan",
+          "sameDivision",
+          "length",
+          "priority",
+          "groupsAtOnce",
+          "noGroupLimit",
+          "outdoor",
+          "noWeeklyMax"
+        ].map((key) => [key, value(key)])
+      ).toEqual([
+        ["rainPlan", "a3"],
+        ["sameDivision", "same"],
+        ["length", 2],
+        ["priority", "High"],
+        ["groupsAtOnce", 3],
+        ["noGroupLimit", false],
+        ["outdoor", true],
+        ["noWeeklyMax", true]
+      ]);
+      // Bunks together, in the camp's words.
+      expect(
+        q(element, '[data-field="sameDivision"]').options.map((o) => o.label)
+      ).toEqual(["Any Bunks", "Same Unit"]);
+      expect(q(element, '[data-field="sameDivision"]').label).toBe(
+        "Bunks together"
+      );
+      // A rain plan: none, or an indoor activity; never itself, never an outdoor one.
+      expect(
+        q(element, '[data-field="rainPlan"]').options.map((o) => o.label)
+      ).toEqual(["None", "Arts", "Drama"]);
+      // The name heads the panel; its full name is read out.
+      expect(q(element, "h2").textContent).toBe("Archery details");
+      await expect(element).toBeAccessible();
+    });
+
+    it("a dropdown or tick of the activity's own saves at once, as a record of that field only", async () => {
+      const element = await render(PANEL);
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      allValid(element);
+      change(q(element, '[data-field="priority"]'), "Low");
+      change(q(element, '[data-field="outdoor"]'), false);
+      change(q(element, '[data-field="rainPlan"]'), "");
+      change(q(element, '[data-field="noWeeklyMax"]'), false);
+      await flush();
+      const saves = sent(handler);
+      expect(saves.map((save) => save.records)).toEqual([
+        [{ sobjectType: "Activity__c", Id: "a1", Priority__c: "Low" }],
+        [{ sobjectType: "Activity__c", Id: "a1", Outdoor__c: false }],
+        [{ sobjectType: "Activity__c", Id: "a1", RainPlan__c: null }],
+        [{ sobjectType: "Activity__c", Id: "a1", NoWeeklyMax__c: false }]
+      ]);
+      // Not a rule: who can do it is not sent with it.
+      expect(saves[0].whoCanDoIt).toBeUndefined();
+      expect(typeof saves[0].shown).toBe("function");
+    });
+
+    it("a number of its own saves on leaving it, or Enter; a blank length is not sent", async () => {
+      const element = await render(PANEL);
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      allValid(element);
+      const length = q(element, '[data-field="length"]');
+      change(length, "3");
+      await flush();
+      expect(handler).not.toHaveBeenCalled();
+      length.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      const groups = q(element, '[data-field="groupsAtOnce"]');
+      change(groups, "");
+      leave(groups);
+      await flush();
+      expect(sent(handler).map((save) => save.records)).toEqual([
+        [{ sobjectType: "Activity__c", Id: "a1", Length__c: 3 }],
+        [{ sobjectType: "Activity__c", Id: "a1", GroupsAtOnce__c: null }]
+      ]);
+      // A blank length: the field says it needs one, nothing is sent.
+      change(length, "");
+      length.reportValidity = () => false;
+      leave(length);
+      await flush();
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it("a refusal of its own field shows next to that field, and the typing stays", async () => {
+      const element = await render(PANEL);
+      const handler = jest.fn();
+      element.addEventListener("save", handler);
+      allValid(element);
+      change(q(element, '[data-field="priority"]'), "Low");
+      await flush();
+      handler.mock.calls[0][0].detail.onFailure("Not saved. No.");
+      await flush();
+      expect(q(element, '[data-error="priority"]').textContent.trim()).toBe(
+        "Not saved. No."
+      );
+      element.setup = nsRecord({ ...PANEL });
+      await flush();
+      expect(q(element, '[data-field="priority"]').value).toBe("Low");
+    });
   });
 });

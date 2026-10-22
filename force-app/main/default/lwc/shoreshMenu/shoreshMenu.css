@@ -42,6 +42,11 @@ ul {
   padding: 0 var(--shoresh-space-control-x);
 }
 
+/* The page's camp and season controls: the camp row, as tall as it needs. */
+.camp-controls {
+  min-width: 0;
+}
+
 /* A long name keeps its room: the season gives way first (it is also in the picker). */
 .camp-name {
   flex: 0 1 auto;

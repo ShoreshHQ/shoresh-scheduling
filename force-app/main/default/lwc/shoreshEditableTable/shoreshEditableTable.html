@@ -158,6 +158,85 @@
                         </template>
                       </div>
                     </template>
+                    <template lwc:elseif={cell.isOften}>
+                      <!-- How often: bars at rest; the two numbers in their place under the
+                           pointer or while the row is edited (decision 42). -->
+                      <div class={cell.oftenClass}>
+                        <template lwc:if={cell.showBars}>
+                          <span
+                            class="bars rest"
+                            role="img"
+                            aria-label={cell.oftenName}
+                            data-id="often-bars"
+                          >
+                            <template for:each={cell.bars} for:item="bar">
+                              <i key={bar.key} class={bar.className}></i>
+                            </template>
+                          </span>
+                        </template>
+                        <span class="often-fields">
+                          <lightning-input
+                            type="number"
+                            label={cell.minLabel}
+                            variant="label-hidden"
+                            value={cell.value}
+                            required={cell.required}
+                            min={cell.min}
+                            step="1"
+                            data-row-key={row.key}
+                            data-field={cell.fieldName}
+                            disabled={cell.disabled}
+                            onchange={handleChange}
+                          ></lightning-input>
+                          <span class="often-dash" aria-hidden="true">–</span>
+                          <lightning-input
+                            type="number"
+                            label={cell.maxLabel}
+                            variant="label-hidden"
+                            value={cell.maxValue}
+                            min={cell.min}
+                            step="1"
+                            data-row-key={row.key}
+                            data-field={cell.maxField}
+                            disabled={cell.disabled}
+                            onchange={handleChange}
+                          ></lightning-input>
+                        </span>
+                      </div>
+                    </template>
+                    <template lwc:elseif={cell.isDays}>
+                      <!-- Days: the rule quiet, an exception a value; the ticks in their place
+                           under the pointer or while the row is edited. -->
+                      <span class={cell.daysTextClass} data-id="days-text"
+                        >{cell.daysText}</span
+                      >
+                      <span
+                        class="strip"
+                        role="group"
+                        aria-label={cell.daysName}
+                        data-id="day-strip"
+                      >
+                        <template for:each={cell.dayCells} for:item="day">
+                          <label key={day.key} class="chip">
+                            <input
+                              type="checkbox"
+                              class="chip-box"
+                              aria-label={day.label}
+                              checked={day.checked}
+                              data-row-key={row.key}
+                              data-field={day.fieldName}
+                              disabled={day.disabled}
+                              onchange={handleChange}
+                            />
+                            <span
+                              class="chip-face chip-face_day"
+                              aria-hidden="true"
+                              >{day.short}</span
+                            >
+                          </label>
+                        </template>
+                      </span>
+                    </template>
                     <template lwc:elseif={cell.isNumber}>
                       <lightning-input
                         type="number"
@@ -214,14 +293,15 @@
                     </template>
                     <template lwc:elseif={cell.isWho}>
                       <div class="cell-line">
-                        <span class="who" data-id="who">
+                        <span class={cell.whoClass} data-id="who">
                           {cell.whoSummary}
                         </span>
                         <button
                           type="button"
-                          class="shoresh-item"
+                          class="shoresh-item who-change"
                           aria-label={cell.whoName}
                           data-row-key={row.key}
+                          data-field="who"
                           data-id="who-toggle"
                           disabled={row.locked}
                           onclick={handleWhoToggle}
@@ -235,6 +315,7 @@
                         label={cell.label}
                         variant="label-hidden"
                         value={cell.value}
+                        placeholder={cell.pickPlaceholder}
                         options={cell.options}
                         required={cell.required}
                         data-row-key={row.key}
@@ -250,7 +331,7 @@
                     </template>
                     <template lwc:elseif={cell.isReadonly}>
                       <span
-                        class="fixed"
+                        class={cell.fixedClass}
                         data-id="readonly"
                         data-column={cell.fieldName}
                         title={cell.fixedText}
@@ -331,19 +412,6 @@
                         >Not saved</span
                       >
                     </template>
-                    <template lwc:if={row.hasDetails}>
-                      <button
-                        type="button"
-                        class="shoresh-item"
-                        aria-label={row.detailsName}
-                        aria-expanded={row.detailsOpen}
-                        data-id="details"
-                        data-row-key={row.key}
-                        onclick={handleDetails}
-                      >
-                        {detailsLabel}
-                      </button>
-                    </template>
                     <span class="tools">
                       <lightning-button-icon
                         icon-name="utility:delete"
@@ -368,6 +436,28 @@
                         >
                           <svg
                             class={row.moreGlyphClass}
+                            viewBox="0 0 16 16"
+                            aria-hidden="true"
+                          >
+                            <path d="m6 4 4 4-4 4"></path>
+                          </svg>
+                        </button>
+                      </template>
+                      <!-- Its details beside the table (Activities): the same chevron, the
+                           page opens them. -->
+                      <template lwc:if={row.hasDetails}>
+                        <button
+                          type="button"
+                          class="shoresh-item shoresh-item_icon more"
+                          aria-label={row.detailsName}
+                          title={row.detailsName}
+                          aria-expanded={row.detailsOpen}
+                          data-id="details"
+                          data-row-key={row.key}
+                          onclick={handleDetails}
+                        >
+                          <svg
+                            class={row.detailsGlyphClass}
                             viewBox="0 0 16 16"
                             aria-hidden="true"
                           >

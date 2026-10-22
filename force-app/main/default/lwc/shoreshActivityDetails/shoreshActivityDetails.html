@@ -1,74 +1,78 @@
 <template>
   <template lwc:if={activity}>
+    <!-- The details zone beside the Activities table (docs/design/setup/activities.html): one
+         hairline from the list, the activity's name, its fields as wells, saved as you go. -->
     <section
-      class="slds-m-top_large slds-box"
+      class="panel"
       data-id="details"
       aria-labelledby="activity-details-title"
     >
-      <div
-        class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small"
-      >
+      <div class="panel-head">
         <h2
           id="activity-details-title"
-          class="slds-text-heading_medium"
+          class="panel-title"
           tabindex="-1"
           data-heading
         >
-          {labels.title}
+          {labels.name}<span class="slds-assistive-text"> details</span>
         </h2>
-        <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
-        <lightning-button
-          class="slds-col_bump-left"
+        <c-shoresh-saved-mark class="panel-saved"></c-shoresh-saved-mark>
+        <lightning-button-icon
+          class="panel-close"
           data-id="close"
-          label="Close"
+          icon-name="utility:close"
+          variant="bare"
+          alternative-text={labels.close}
+          title={labels.close}
           onclick={handleClose}
-        ></lightning-button>
+        ></lightning-button-icon>
       </div>
 
-      <lightning-checkbox-group
-        data-id="who-can-do-it"
-        label={whoLabel}
-        options={targetOptions}
-        value={whoCanDoIt}
-        onchange={handleWhoChange}
-      ></lightning-checkbox-group>
-      <template lwc:if={whoError}>
-        <div
-          class="slds-form-element__help slds-text-color_error"
-          role="alert"
-          data-error="who"
-        >
-          {whoError}
-        </div>
-      </template>
+      <div class="field">
+        <lightning-combobox
+          data-field="rainPlan"
+          label={labels.rainPlan}
+          value={rainPlan}
+          options={rainPlanOptions}
+          onchange={handleRule}
+        ></lightning-combobox>
+        <template lwc:if={fieldErrors.rainPlan}>
+          <div
+            class="slds-form-element__help slds-text-color_error"
+            role="alert"
+            data-error="rainPlan"
+          >
+            {fieldErrors.rainPlan}
+          </div>
+        </template>
+      </div>
 
-      <h3
-        class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small"
-      >
-        {labels.moreRules}
-      </h3>
-      <lightning-input
-        type="checkbox"
-        data-field="sameDivision"
-        label={labels.sameDivision}
-        checked={sameDivision}
-        onchange={handleRule}
-      ></lightning-input>
-      <template lwc:if={sameDivisionError}>
-        <div
-          class="slds-form-element__help slds-text-color_error"
-          role="alert"
-          data-error="sameDivision"
-        >
-          {sameDivisionError}
-        </div>
-      </template>
-      <fieldset class="slds-form-element slds-m-top_x-small" data-id="early">
-        <legend class="slds-form-element__legend slds-form-element__label">
-          {labels.early}
-        </legend>
-        <div class="slds-grid slds-wrap slds-gutters_small">
-          <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+      <div class="field">
+        <lightning-radio-group
+          class="set"
+          type="button"
+          data-field="sameDivision"
+          label={labels.together}
+          options={togetherOptions}
+          value={together}
+          onchange={handleRule}
+        ></lightning-radio-group>
+        <template lwc:if={sameDivisionError}>
+          <div
+            class="slds-form-element__help slds-text-color_error"
+            role="alert"
+            data-error="sameDivision"
+          >
+            {sameDivisionError}
+          </div>
+        </template>
+      </div>
+
+      <fieldset class="slds-form-element field" data-id="early">
+        <!-- A label over its fields, not SLDS's floated legend. -->
+        <legend class="slds-form-element__label">{labels.early}</legend>
+        <div class="pair">
+          <div class="pair-part">
             <lightning-input
               type="number"
               data-field="earlyCount"
@@ -78,6 +82,7 @@
               step="1"
               onchange={handleRule}
               onfocusout={handleRuleLeave}
+              onkeydown={handleRuleKey}
             ></lightning-input>
             <template lwc:if={earlyCountError}>
               <div
@@ -89,7 +94,7 @@
               </div>
             </template>
           </div>
-          <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+          <div class="pair-part">
             <lightning-combobox
               data-field="earlyDay"
               label={labels.earlyDay}
@@ -109,23 +114,167 @@
           </div>
         </div>
       </fieldset>
-      <lightning-textarea
-        class="slds-m-top_x-small"
-        data-field="notes"
-        label={labels.notes}
-        value={notes}
-        onchange={handleRule}
-        onfocusout={handleRuleLeave}
-      ></lightning-textarea>
-      <template lwc:if={notesError}>
-        <div
-          class="slds-form-element__help slds-text-color_error"
-          role="alert"
-          data-error="notes"
-        >
-          {notesError}
+
+      <div class="field">
+        <lightning-checkbox-group
+          data-id="who-can-do-it"
+          label={whoLabel}
+          options={targetOptions}
+          value={whoCanDoIt}
+          onchange={handleWhoChange}
+        ></lightning-checkbox-group>
+        <template lwc:if={whoError}>
+          <div
+            class="slds-form-element__help slds-text-color_error"
+            role="alert"
+            data-error="who"
+          >
+            {whoError}
+          </div>
+        </template>
+      </div>
+
+      <div class="pair field">
+        <div class="pair-part">
+          <lightning-input
+            type="number"
+            data-field="length"
+            label={labels.length}
+            value={length}
+            min="1"
+            step="1"
+            required
+            onchange={handleRule}
+            onfocusout={handleRuleLeave}
+            onkeydown={handleRuleKey}
+          ></lightning-input>
+          <template lwc:if={fieldErrors.length}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="length"
+            >
+              {fieldErrors.length}
+            </div>
+          </template>
         </div>
-      </template>
+        <div class="pair-part">
+          <lightning-combobox
+            data-field="priority"
+            label={labels.priority}
+            value={priority}
+            options={priorityOptions}
+            onchange={handleRule}
+          ></lightning-combobox>
+          <template lwc:if={fieldErrors.priority}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="priority"
+            >
+              {fieldErrors.priority}
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="pair field">
+        <div class="pair-part">
+          <lightning-input
+            type="number"
+            data-field="groupsAtOnce"
+            label={labels.groupsAtOnce}
+            value={groupsAtOnce}
+            min="1"
+            step="1"
+            onchange={handleRule}
+            onfocusout={handleRuleLeave}
+            onkeydown={handleRuleKey}
+          ></lightning-input>
+          <template lwc:if={fieldErrors.groupsAtOnce}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="groupsAtOnce"
+            >
+              {fieldErrors.groupsAtOnce}
+            </div>
+          </template>
+        </div>
+        <div class="pair-part pair-tick">
+          <lightning-input
+            type="checkbox"
+            data-field="noGroupLimit"
+            label={labels.noGroupLimit}
+            checked={noGroupLimit}
+            onchange={handleRule}
+          ></lightning-input>
+          <template lwc:if={fieldErrors.noGroupLimit}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="noGroupLimit"
+            >
+              {fieldErrors.noGroupLimit}
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="ticks field">
+        <lightning-input
+          type="checkbox"
+          data-field="outdoor"
+          label={labels.outdoor}
+          checked={outdoor}
+          onchange={handleRule}
+        ></lightning-input>
+        <template lwc:if={fieldErrors.outdoor}>
+          <div
+            class="slds-form-element__help slds-text-color_error"
+            role="alert"
+            data-error="outdoor"
+          >
+            {fieldErrors.outdoor}
+          </div>
+        </template>
+        <lightning-input
+          type="checkbox"
+          data-field="noWeeklyMax"
+          label={labels.noWeeklyMax}
+          checked={noWeeklyMax}
+          onchange={handleRule}
+        ></lightning-input>
+        <template lwc:if={fieldErrors.noWeeklyMax}>
+          <div
+            class="slds-form-element__help slds-text-color_error"
+            role="alert"
+            data-error="noWeeklyMax"
+          >
+            {fieldErrors.noWeeklyMax}
+          </div>
+        </template>
+      </div>
+
+      <div class="field field_grow">
+        <lightning-textarea
+          class="notes"
+          data-field="notes"
+          label={labels.notes}
+          value={notes}
+          onchange={handleRule}
+          onfocusout={handleRuleLeave}
+        ></lightning-textarea>
+        <template lwc:if={notesError}>
+          <div
+            class="slds-form-element__help slds-text-color_error"
+            role="alert"
+            data-error="notes"
+          >
+            {notesError}
+          </div>
+        </template>
+      </div>
     </section>
   </template>
 </template>

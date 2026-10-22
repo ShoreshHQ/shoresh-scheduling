@@ -160,6 +160,22 @@ const button = (element, label) =>
   [...element.shadowRoot.querySelectorAll("lightning-button")].find(
     (b) => b.label === label
   );
+/**
+ * New season or Copy this season: the camp row's small menu (step 3b), opened, then the row
+ * chosen, as a director would.
+ */
+async function seasonAction(element, label) {
+  const menu = q(element, '[data-id="season-menu"]');
+  menu.shadowRoot.querySelector('[data-id="button"]').click();
+  await flush();
+  const row = [
+    ...element.shadowRoot.querySelectorAll(
+      '[data-id="season-menu"] [role="menuitem"]'
+    )
+  ].find((r) => r.textContent.trim() === label);
+  row.click();
+  await flush();
+}
 /** Opens a screen from the left-hand menu, as a director would. */
 async function openScreen(element, screen) {
   q(element, "c-shoresh-menu")
@@ -694,6 +710,223 @@ describe("c-shoresh-camp-setup", () => {
     });
   });
 
+  describe("setup screens, step 3b (ADR 0015 choice 12)", () => {
+    const ACTIVITIES = [
+      {
+        Id: "a1",
+        Name: "Archery",
+        TimesPerWeekMin__c: 2,
+        TimesPerWeekMax__c: 3,
+        Eligibilities__r: []
+      },
+      {
+        Id: "a2",
+        Name: "Canoe",
+        TimesPerWeekMin__c: 1,
+        TimesPerWeekMax__c: 7,
+        Eligibilities__r: [{ Division__c: "d1" }, { Group__c: "g1" }]
+      }
+    ];
+    const PROGRAMS = [
+      {
+        program: { Id: "p1", Name: "Main", Monday__c: true },
+        timeBlocks: [{ Id: "t1", Name: "Period 1" }],
+        divisions: [
+          {
+            division: { Id: "d1", Name: "Juniors" },
+            groups: [{ Id: "g1", Name: "Cedar" }]
+          }
+        ],
+        fixedActivities: [{ Id: "f1", Name: "Lunch", TimeBlock__c: "t1" }],
+        recurringActivities: [
+          { Id: "r1", Name: "Swim", TimeBlock__c: "t1" },
+          { Id: "r2", Name: "Lake", TimeBlock__c: "t1" }
+        ]
+      }
+    ];
+    async function renderWith(overrides = {}, camps = [CAMP]) {
+      getCamps.mockResolvedValue(nsRecord(camps));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({
+            activities: ACTIVITIES,
+            programs: PROGRAMS,
+            ...overrides
+          })
+        )
+      );
+      return render();
+    }
+    const railCount = (element, screen) =>
+      q(element, `[data-screen="${screen}"] [data-id="count"]`)
+        .textContent.replace(/\s+/g, " ")
+        .trim();
+
+    it("Activities, Fixed and Recurring activities each have the rail: count, Saved, Import a list", async () => {
+      const element = await renderWith();
+      expect(railCount(element, "activities")).toBe("2 activities");
+      expect(railCount(element, "fixedActivities")).toBe("1 fixed activity");
+      expect(railCount(element, "recurringActivities")).toBe(
+        "2 recurring activities"
+      );
+      ["activities", "fixedActivities", "recurringActivities"].forEach(
+        (screen) => {
+          const rail = q(
+            element,
+            `[data-screen="${screen}"] [data-id="setup-rail"]`
+          );
+          expect(rail.querySelector("[data-heading]").tagName).toBe("H2");
+          expect(rail.querySelector('[data-id="rail-saved"]').silent).toBe(
+            true
+          );
+          const list = rail.querySelector("c-shoresh-list-import");
+          expect([list.variant, list.screenKey]).toEqual(["rail", screen]);
+        }
+      );
+      // Fixed and Recurring are separate screens (decision 42), each with its programs' tables.
+      await openScreen(element, "recurringActivities");
+      expect(
+        q(element, '[data-screen="recurringActivities"] c-shoresh-program').show
+      ).toBe("recurringActivities");
+      expect(
+        q(element, '[data-screen="fixedActivities"] c-shoresh-program').show
+      ).toBe("fixedActivities");
+      // Their rail, grid and list are the frame's zones, as on the other setup screens.
+      expect(q(element, ".body_flush")).not.toBeNull();
+    });
+
+    it("how often is on one scale, the camp's highest weekly count; who is quiet Everyone unless limited", async () => {
+      const element = await renderWith();
+      await openScreen(element, "activities");
+      const table = q(
+        element,
+        'c-shoresh-editable-table[data-id="activities"]'
+      );
+      const often = table.columns.find((c) => c.type === "often");
+      expect(often.scale).toBe(7);
+      expect(often.label).toBe("How often");
+      expect(bareName(often.maxField)).toBe("TimesPerWeekMax__c");
+      expect(bareName(often.noMaxField)).toBe("NoWeeklyMax__c");
+      const who = table.columns.find((c) => c.fieldName === "whoCanDoIt");
+      const [archery, canoe] = nsRecord(ACTIVITIES);
+      expect([who.textFor(archery), who.exceptionFor(archery)]).toEqual([
+        "Everyone",
+        false
+      ]);
+      expect([who.textFor(canoe), who.exceptionFor(canoe)]).toEqual([
+        "Juniors, Cedar",
+        true
+      ]);
+      expect(table.columns[0].label).toBe("Activity");
+    });
+
+    it("an activity's details open beside the table, and its own fields save as records", async () => {
+      saveRecords.mockResolvedValue(nsRecord(["a1"]));
+      const element = await renderWith();
+      await openScreen(element, "activities");
+      const details = q(element, "c-shoresh-activity-details");
+      // In the zone beside the list, not under it.
+      expect(details.parentElement.className).toBe("setup-split");
+      const onSaved = jest.fn();
+      details.dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            records: [
+              nsRecord({
+                sobjectType: "Activity__c",
+                Id: "a1",
+                Priority__c: "High"
+              })
+            ],
+            onSaved,
+            onFailure: jest.fn(),
+            shown: () => true
+          }
+        })
+      );
+      await flush();
+      await flush();
+      expect(sentTo(saveRecords)).toContainEqual({
+        records: [{ sobjectType: "Activity__c", Id: "a1", Priority__c: "High" }]
+      });
+      expect(saveActivityDetails).not.toHaveBeenCalled();
+      expect(onSaved).toHaveBeenCalled();
+    });
+
+    describe("the camp and season in the menu's camp row", () => {
+      const head = (element) => q(element, '[data-id="camp-head"]');
+
+      it("sits in the menu, not in a row above the rail", async () => {
+        const element = await renderWith();
+        const menu = q(element, "c-shoresh-menu");
+        expect(menu.controls).toBe(true);
+        expect(head(element).slot).toBe("camp");
+        expect(head(element).parentElement).toBe(menu);
+        expect(q(element, '[data-id="frame-head"]')).toBeNull();
+        // One camp: its name as words; the season picker and its pencil under it.
+        expect(q(element, '[data-id="camp-picker"]')).toBeNull();
+        expect(q(element, '[data-id="camp-name"]').textContent).toBe(
+          "Camp Willow"
+        );
+        ["season-picker", "edit-season", "season-menu"].forEach((id) =>
+          expect(
+            head(element).querySelector(`[data-id="${id}"]`)
+          ).not.toBeNull()
+        );
+        // The season's details open there too, under the pickers.
+        q(element, '[data-id="edit-season"]').click();
+        await flush();
+        expect(
+          head(element).querySelector('[data-id="season-form"]')
+        ).not.toBeNull();
+      });
+
+      it("several camps: the camp's name is its picker", async () => {
+        const element = await renderWith({}, [
+          CAMP,
+          { Id: "c2", Name: "Camp Oak" }
+        ]);
+        const picker = head(element).querySelector('[data-id="camp-picker"]');
+        expect(picker.options.map((o) => o.label)).toEqual([
+          "Camp Willow",
+          "Camp Oak"
+        ]);
+        expect(q(element, '[data-id="camp-name"]')).toBeNull();
+      });
+
+      it("New season and Copy this season are a small menu, named, held while the page is busy", async () => {
+        const element = await renderWith();
+        const menu = q(element, '[data-id="season-menu"]');
+        expect(menu.menu).toBe(true);
+        expect(menu.alternativeText).toBe("Season actions");
+        const rows = () => [
+          ...element.shadowRoot.querySelectorAll(
+            '[data-id="season-menu"] [role="menuitem"]'
+          )
+        ];
+        expect(rows().map((r) => r.textContent.trim())).toEqual([
+          "New season",
+          "Copy this season"
+        ]);
+        expect(rows().map((r) => r.dataset.value)).toEqual(["new", "copy"]);
+        // While the page is busy (filling in weeks, here) nothing opens from it.
+        addWeeksFromSeasonDates.mockReturnValue(new Promise(() => {}));
+        const fresh = await renderWith({ weeks: [] });
+        await openScreen(fresh, "weeks");
+        q(fresh, '[data-id="fill-weeks"]').click();
+        await flush();
+        expect(
+          [
+            ...fresh.shadowRoot.querySelectorAll(
+              '[data-id="season-menu"] [role="menuitem"]'
+            )
+          ].map((r) => r.disabled)
+        ).toEqual([true, true]);
+      });
+    });
+  });
+
   describe("the frame (ADR 0015)", () => {
     it("ships Inter and the one mono with their licences, and the style names only those files", () => {
       const fs = require("fs");
@@ -858,7 +1091,9 @@ describe("c-shoresh-camp-setup", () => {
     expect(bareRecord(weeks.newRowDefaults)).toEqual({ Season__c: "s1" });
     // Overlapping weeks get a heads-up, in the camp's word.
     expect(weeks.overlapLabel).toBe("Overlaps another week");
-    expect(button(element, "Copy this season")).toBeDefined();
+    expect(q(element, '[data-id="copy-season"]').textContent.trim()).toBe(
+      "Copy this season"
+    );
   });
 
   it("the Bunks screen's problems and table are accessible", async () => {
@@ -1617,21 +1852,11 @@ describe("c-shoresh-camp-setup", () => {
     });
     expect(bareName(table("locations").filterField)).toBe("LocationType__c");
     await openScreen(element, "activities");
+    // As docs/design/setup/activities.html: activity, location, how often (at least and at
+    // most, one column), who; the rest is in the details beside the table.
     expect(shape(table("activities"))).toEqual({
       object: "Activity__c",
-      columns: [
-        "Name",
-        "Location__c",
-        "Length__c",
-        "TimesPerWeekMin__c",
-        "TimesPerWeekMax__c",
-        "NoWeeklyMax__c",
-        "Priority__c",
-        "Outdoor__c",
-        "RainPlan__c",
-        "GroupsAtOnce__c",
-        "NoGroupLimit__c"
-      ],
+      columns: ["Name", "Location__c", "TimesPerWeekMin__c", "whoCanDoIt"],
       defaults: {
         Season__c: "s1",
         Length__c: 1,
@@ -1701,11 +1926,11 @@ describe("c-shoresh-camp-setup", () => {
     const heading = q(element, '[data-screen="weeks"] [data-heading]');
     await openScreen(element, "weeks");
     expect(element.shadowRoot.activeElement).toBe(heading);
-    q(element, '[data-id="new-season"]').focus();
+    q(element, '[data-id="season-menu"]').focus();
     await openScreen(element, "weeks");
     expect(element.shadowRoot.activeElement).toBe(heading);
     // Nothing left waiting: the next redraw puts the cursor where that action says.
-    button(element, "New season").click();
+    await seasonAction(element, "New season");
     await flush();
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="new-season-title"]')
@@ -1761,21 +1986,22 @@ describe("c-shoresh-camp-setup", () => {
       });
     try {
       const element = await render();
-      button(element, "New season").click();
+      await seasonAction(element, "New season");
       await flush();
       expect(focused.pop().dataset.id).toBe("new-season-title");
       expect(element.shadowRoot.textContent).not.toContain("Give it a name");
       expect(element.shadowRoot.textContent).not.toContain("go back and use");
       button(element, "Cancel").click();
       await flush();
-      expect(focused.pop().dataset.id).toBe("new-season");
-      button(element, "Copy this season").click();
+      // Back on the camp row's menu that opened it (its rows show only while it is open).
+      expect(focused.pop().dataset.id).toBe("button");
+      await seasonAction(element, "Copy this season");
       await flush();
       q(element, "c-shoresh-copy-season").dispatchEvent(
         new CustomEvent("cancel")
       );
       await flush();
-      expect(focused.pop().dataset.id).toBe("copy-season");
+      expect(focused.pop().dataset.id).toBe("button");
     } finally {
       spy.mockRestore();
     }
@@ -1786,7 +2012,7 @@ describe("c-shoresh-camp-setup", () => {
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
-    button(element, "Copy this season").click();
+    await seasonAction(element, "Copy this season");
     await flush();
     expect(q(element, "c-shoresh-copy-season")).not.toBeNull();
     expect(shownScreens(element)).toEqual([]);
@@ -1808,7 +2034,7 @@ describe("c-shoresh-camp-setup", () => {
     );
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
     const element = await render();
-    button(element, "Copy this season").click();
+    await seasonAction(element, "Copy this season");
     await flush();
     q(element, "c-shoresh-copy-season").dispatchEvent(
       new CustomEvent("copied", { detail: { seasonId: "s2" } })
@@ -2814,9 +3040,7 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       expect(details.openActivityId).toBe("a2");
       expect(swim.getAttribute("aria-expanded")).toBe("true");
-      details.shadowRoot
-        .querySelector('lightning-button[data-id="close"]')
-        .click();
+      details.shadowRoot.querySelector('[data-id="close"]').click();
       await flush();
       await flush();
       expect(details.openActivityId).toBeNull();
@@ -2878,7 +3102,7 @@ describe("c-shoresh-camp-setup", () => {
       await openScreen(element, "campWords");
       const words = q(element, "c-shoresh-camp-labels");
       // Leaving the box starts the save; the click lands before it answers.
-      button(element, "New season").click();
+      await seasonAction(element, "New season");
       await flush();
       words.dispatchEvent(new CustomEvent("saved"));
       await flush();
@@ -2889,7 +3113,7 @@ describe("c-shoresh-camp-setup", () => {
 
       button(element, "Cancel").click();
       await flush();
-      button(element, "Copy this season").click();
+      await seasonAction(element, "Copy this season");
       await flush();
       words.dispatchEvent(new CustomEvent("saved"));
       await flush();
@@ -3186,7 +3410,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(element.shadowRoot.textContent).not.toContain(
         "Start a new season"
       );
-      button(element, "New season").click();
+      await seasonAction(element, "New season");
       await flush();
       expect(element.shadowRoot.textContent).toContain("Start a new season");
     });

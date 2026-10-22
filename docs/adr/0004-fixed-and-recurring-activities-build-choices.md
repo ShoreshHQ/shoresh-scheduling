@@ -61,7 +61,10 @@ wins.
    with the row, all or none, so a new recurring activity can be saved already narrowed to its
    bunks. (A details panel below the table, as for activities, would have saved a new row as
    "everyone" first, and could be refused for that.) New recurring rows start with no day
-   ticked; only the program's days are offered.
+   ticked; only the program's days are offered. _Since 2026-10-21 (step 3b, ADR 0015 choice 12) the days are one column, "Every day" or the exception in words with a tick per day on
+   hover or edit; the list is in sections by who an item covers (Whole camp, each division),
+   and a section's blank row starts covering its division; length and location are the row's
+   details. Everything is still saved with the row._
 8. **Deletes.** Deleting a fixed or recurring activity takes its week ticks and who rows with
    it. Deleting what one depends on is refused with its name: the time block it starts in, its
    location, a group or division in who it covers, or its program. Deleting a time block it

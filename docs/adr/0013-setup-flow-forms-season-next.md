@@ -70,9 +70,11 @@ season form on Weeks; Camp words' Cancel).
    Finished changed nothing a director could see, and the desktop has no season status.
    `Season__c.Status__c` stays in the data (never dropped from a package): a new or copied season
    is still made "Planning", and nothing reads it.
-8. **The season is edited beside its picker (decision 26 (5)).** _The pickers and their
-   actions stay in this row above the rail until step 3b moves them into the menu's camp row
-   (ADR 0015, Not done here)._ A pencil button beside the
+8. **The season is edited beside its picker (decision 26 (5)).** _Changed 2026-10-21 (step 3b,
+   ADR 0015 choice 12): the pickers are the menu's camp row (the camp's name, or its picker;
+   under it the season picker and its pencil), New season and Copy this season are a small menu
+   beside the pencil ("Season actions"), and the season's box opens there, under them, one
+   field under another._ A pencil button beside the
    season picker (named "Edit Summer 2026" for screen readers, `aria-expanded`) opens a box under
    the header with the season's name, first and last day, "Copied from …", Delete season, and the
    Saved mark. The Weeks screen keeps only Fill in weeks and the weeks table. The Programs screen
@@ -97,7 +99,8 @@ real-browser behaviour is still to be checked by hand (Known limits).
 8. **The cursor follows the director.** Picking a screen from the menu, Roots, or a screen's
    own link puts the cursor on that screen's heading, like the next buttons (Roots, Camp words
    and Import last year focus their own, `focusHeading()`). New season and Copy this season move
-   it to their heading; Cancel puts it back on the button that opened them. Import a list:
+   it to their heading; Cancel puts it back on the button that opened them (_since step 3b, the
+   camp row's Season actions menu they open from, ADR 0015 choice 12_). Import a list:
    opening it goes to its heading, closing it back to "Import a list", answering a question to
    the next open question (or Save once none is left), Change to that question's first choice,
    and saving to "Saved". Import last year does the same for its questions, its steps and its
@@ -128,7 +131,8 @@ real-browser behaviour is still to be checked by hand (Known limits).
     18 and 19): the ticks' label says "Who can do it: everyone"; with no activities there is no
     row to open details from, so the table's own empty state is the only one._
 15. **Camp words over working words.** The left-out column on Fixed and Recurring activities is
-    headed "Needs attention" (the desktop's term for these), not "Notes"; the group-move column
+    headed "Needs attention" (the desktop's term for these), not "Notes" (_since step 3b it
+    shows only while a row needs it, ADR 0015 choice 12_); the group-move column
     "What changes", not "Moving". "Early in the week" groups its two fields ("How many", "By").
     "remembered" is "Remembered" everywhere; Import last year's last button is "Back to Roots"
     (as at the top) and Import a list's is "Close" (as at the top). Import last year's
@@ -161,7 +165,13 @@ real-browser behaviour is still to be checked by hand (Known limits).
     Opening moves the cursor to the heading; Close moves it back to the row's button. An
     activity deleted meanwhile closes its details. Differences: the desktop opens a dialog with
     Save and Cancel; here the details save as you go (choice 1), so they stay on the page under
-    the table, with Close.
+    the table, with Close. _Changed 2026-10-21 (step 3b, ADR 0015 choice 12): the row's chevron
+    (still named "Archery details") opens them in a panel beside the table
+    (docs/design/setup/activities.html), headed by the activity's name (read "Archery
+    details") and closed with its × ("Close Archery details"); the cursor moves as before. The
+    panel also holds the fields that were the table's other columns (length, groups at once,
+    priority, outdoors, rain plan, no weekly maximum), saved as you go, the field that changed
+    only._
 20. **Import last year recedes once the camp has setup** (Greg, 2026-10-20; desktop
     `SeedScreen.jsx` and `navSections.js` `ADMIN_MENU_ITEMS` "Re-import last year"). On Roots, a
     camp with no divisions, groups or time blocks (the desktop's `campHasSetupData`: its required

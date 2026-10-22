@@ -764,6 +764,13 @@ describe("c-shoresh-program", () => {
         "Length__c",
         "Location__c"
       ]);
+      // One section, the whole camp's (docs/design/setup/fixed.html); length and location
+      // are the row's details, not columns.
+      expect(fixed.heading).toBe("Whole camp");
+      expect(fixed.showColumns).toBe(true);
+      expect(
+        fixed.columns.filter((c) => c.more).map((c) => bareName(c.fieldName))
+      ).toEqual(["Length__c", "Location__c"]);
       expect(fixed.columns[1].options).toEqual([
         { label: "Period 1", value: "t1" }
       ]);
@@ -808,18 +815,32 @@ describe("c-shoresh-program", () => {
       const element = await render("recurringActivities", SET_TIME);
       const recurring = table(element);
       expect(bareName(recurring.objectApiName)).toBe("RecurringActivity__c");
+      // As docs/design/setup/fixed.html: name, who, time, days, (weeks); length and location
+      // are the row's details.
       expect(recurring.columns.map((c) => bareName(c.fieldName))).toEqual([
         "Name",
+        "Coverages__r",
         "TimeBlock__c",
+        "days",
         "Length__c",
-        "Location__c",
-        "Monday__c",
-        "Tuesday__c",
-        "Wednesday__c",
-        "Thursday__c",
-        "Coverages__r"
+        "Location__c"
       ]);
-      const who = recurring.columns[8];
+      expect(
+        recurring.columns
+          .filter((c) => c.more)
+          .map((c) => bareName(c.fieldName))
+      ).toEqual(["Length__c", "Location__c"]);
+      // One days column: a tick for each day the program runs.
+      const days = recurring.columns[3];
+      expect(days.type).toBe("days");
+      expect(days.days.map((d) => [bareName(d.fieldName), d.label])).toEqual([
+        ["Monday__c", "Monday"],
+        ["Tuesday__c", "Tuesday"],
+        ["Wednesday__c", "Wednesday"],
+        ["Thursday__c", "Thursday"]
+      ]);
+      expect(days.every).toBe("Every day");
+      const who = recurring.columns[1];
       expect(who.type).toBe("who");
       expect(who.everyone).toBe("Everyone in Main");
       expect(who.options).toEqual([
@@ -835,6 +856,178 @@ describe("c-shoresh-program", () => {
         Wednesday__c: false,
         Thursday__c: false,
         Friday__c: false
+      });
+    });
+
+    it("shows Needs attention only while a row needs a look", async () => {
+      const element = await render("fixedActivities", {
+        ...SET_TIME,
+        divisions: [
+          {
+            division: { Id: "d1", Name: "Juniors" },
+            groups: [{ Id: "g1", Name: "Bunk 1", Availability__c: "AllDay" }]
+          }
+        ]
+      });
+      expect(table(element).notesHeading).toBeUndefined();
+    });
+
+    it("with several programs, the fixed section is headed by the program", async () => {
+      const element = await render("fixedActivities", SET_TIME);
+      element.sectioned = true;
+      await flush();
+      expect(table(element).heading).toBe("Main");
+    });
+
+    describe("recurring activities in sections (fixed.html)", () => {
+      const TWO = {
+        ...SET_TIME,
+        divisions: [
+          {
+            division: { Id: "d1", Name: "Juniors" },
+            groups: [
+              { Id: "g1", Name: "Bunk 1", Availability__c: "AllDay" },
+              { Id: "g2", Name: "Bunk 2", Availability__c: "AllDay" }
+            ]
+          },
+          {
+            division: { Id: "d2", Name: "Seniors" },
+            groups: [{ Id: "g3", Name: "Bunk 3", Availability__c: "AllDay" }]
+          }
+        ],
+        recurringActivities: [
+          { Id: "r1", Name: "Swim", Coverages__r: [{ Group__c: "g1" }] },
+          { Id: "r2", Name: "Flag", Coverages__r: [] },
+          { Id: "r3", Name: "Lake", Coverages__r: [{ Division__c: "d2" }] }
+        ]
+      };
+      const sections = (element) => [
+        ...element.shadowRoot.querySelectorAll(
+          'c-shoresh-editable-table[data-id="recurring-activities"]'
+        )
+      ];
+
+      it("the whole camp's, then one per division, each showing its own rows", async () => {
+        const element = await render("recurringActivities", TWO);
+        const tables = sections(element);
+        expect(tables.map((t) => t.heading)).toEqual([
+          "Whole camp",
+          "Juniors",
+          "Seniors"
+        ]);
+        // The column names once, above the first section.
+        expect(tables.map((t) => !!t.showColumns)).toEqual([
+          true,
+          false,
+          false
+        ]);
+        // Every section gets every row; each shows its own.
+        tables.forEach((t) =>
+          expect(t.rows.map((r) => r.Id)).toEqual(["r1", "r2", "r3"])
+        );
+        expect(
+          tables.map((t) => ["r1", "r2", "r3"].filter((id) => t.showsRow(id)))
+        ).toEqual([["r2"], ["r1"], ["r3"]]);
+      });
+
+      it("covering the whole section reads quietly; a new row starts covering it", async () => {
+        const element = await render("recurringActivities", TWO);
+        const [all, juniors] = sections(element);
+        expect(all.whoRule).toEqual({ ids: [], words: "Every Bunk" });
+        expect(all.newRowWho).toEqual([]);
+        expect(juniors.whoRule).toEqual({ ids: ["d1"], words: "Every Bunk" });
+        expect(juniors.newRowWho).toEqual(["d1"]);
+      });
+
+      it("an item across divisions has a section of its own, only while there is one", async () => {
+        const element = await render("recurringActivities", {
+          ...TWO,
+          recurringActivities: [
+            ...TWO.recurringActivities,
+            {
+              Id: "r4",
+              Name: "Trip",
+              Coverages__r: [{ Group__c: "g2" }, { Division__c: "d2" }]
+            }
+          ]
+        });
+        const tables = sections(element);
+        expect(tables.map((t) => t.heading)).toEqual([
+          "Whole camp",
+          "Juniors",
+          "Seniors",
+          "More than one Unit"
+        ]);
+        expect(tables[3].showsRow("r4")).toBe(true);
+        expect(tables[3].newRowWho).toEqual(["d1", "d2"]);
+      });
+
+      it("with several programs, each section is headed with its program", async () => {
+        const element = await render("recurringActivities", TWO);
+        element.sectioned = true;
+        await flush();
+        expect(sections(element).map((t) => t.heading)).toEqual([
+          "Main · Whole camp",
+          "Main · Juniors",
+          "Main · Seniors"
+        ]);
+      });
+
+      it("an item whose who moves it to another section takes the cursor there, and says so", async () => {
+        const element = await render("recurringActivities", TWO);
+        const [, juniors] = sections(element);
+        const saves = jest.fn();
+        element.addEventListener("save", saves);
+        // In Swim's row: Change, tick Seniors only, Done (the cursor stays on Done).
+        const inJuniors = (selector) =>
+          juniors.shadowRoot.querySelector(selector);
+        inJuniors('[data-id="who-toggle"][data-row-key="row-r1"]').click();
+        await flush();
+        const picker = inJuniors('[data-id="who-picker"]');
+        picker.dispatchEvent(
+          new CustomEvent("change", { detail: { value: ["d2"] } })
+        );
+        await flush();
+        juniors.shadowRoot
+          .querySelectorAll("lightning-input, lightning-combobox")
+          .forEach((input) => {
+            input.reportValidity = () => true;
+          });
+        const done = inJuniors('[data-id="who-toggle"][data-row-key="row-r1"]');
+        done.focus();
+        done.click();
+        await flush();
+        expect(saves).toHaveBeenCalledTimes(1);
+        const detail = saves.mock.calls[0][0].detail;
+        detail.onSaved({});
+        // The season comes back with Swim covering Seniors; its old row (and Done) are gone.
+        element.entry = nsRecord({
+          ...TWO,
+          recurringActivities: [
+            { Id: "r1", Name: "Swim", Coverages__r: [{ Division__c: "d2" }] },
+            ...TWO.recurringActivities.slice(1)
+          ]
+        });
+        await flush();
+        const [, newJuniors, newSeniors] = sections(element);
+        const focus = jest.spyOn(HTMLElement.prototype, "focus");
+        detail.onDone();
+        await flush();
+        await flush();
+        await flush();
+        const focused = focus.mock.contexts.map(
+          (el) =>
+            `${el.getRootNode().host.heading}:${el.dataset.rowKey}:${el.dataset.field}`
+        );
+        focus.mockRestore();
+        expect(newJuniors.showsRow("r1")).toBe(false);
+        expect(newSeniors.showsRow("r1")).toBe(true);
+        // Back on the same control (Change), in its new section, and the move said.
+        expect(focused).toEqual(["Seniors:row-r1:who"]);
+        expect(
+          newSeniors.shadowRoot.querySelector('[data-id="announce"]')
+            .textContent
+        ).toContain("Swim moved to Seniors");
       });
     });
 

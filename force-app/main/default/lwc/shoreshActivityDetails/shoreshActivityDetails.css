@@ -1,0 +1,115 @@
+/*
+ * The values are the design system's (c/shoreshTokens), inherited from the camp setup page that
+ * holds this panel: importing the module again here would only repeat them.
+ *
+ * The details zone of docs/design/setup/activities.html: beside the list, one hairline from it,
+ * 384 wide at 1440 (here 72 units, 288, so the five columns keep their room), its fields one under
+ * another a step apart. It slides in from the row's side when an activity is opened. ADR 0015
+ * choice 12.
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s4);
+  width: calc(var(--shoresh-u) * 72);
+  max-width: 100%;
+  min-height: 100%;
+  padding: var(--shoresh-space-pad);
+  border-left: 1px solid var(--shoresh-rule);
+  animation: slide-in 160ms ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--shoresh-s4));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  padding-left: var(--shoresh-space-control-x);
+}
+
+.panel-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.panel-saved {
+  flex: none;
+}
+
+.panel-close {
+  flex: none;
+  --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
+  --slds-c-icon-color-foreground: var(--shoresh-text-2);
+  --slds-c-button-text-color: var(--shoresh-text-2);
+  --sds-c-button-text-color: var(--shoresh-text-2);
+}
+
+.field {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Two fields side by side (a count and its day, length and priority). */
+.pair {
+  display: flex;
+  gap: var(--shoresh-s2);
+  align-items: flex-start;
+}
+
+.pair-part {
+  flex: 1;
+  min-width: 0;
+}
+
+.pair-tick {
+  align-self: flex-end;
+  padding-bottom: var(--shoresh-s2);
+}
+
+.ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2) var(--shoresh-s4);
+}
+
+/* The two choices sit as one set, each half the width (the mock-up's well with a raised choice). */
+.set {
+  display: block;
+}
+
+.field_grow {
+  flex: 1;
+}

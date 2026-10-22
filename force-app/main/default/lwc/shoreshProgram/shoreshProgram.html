@@ -165,9 +165,12 @@
 
   <template lwc:if={isFixed}>
     <template lwc:if={hasTimeBlocks}>
+      <!-- The whole camp's fixed activities: one section (docs/design/setup/fixed.html). -->
       <c-shoresh-editable-table
         data-id="fixed-activities"
         title={labels.fixed}
+        heading={fixedHeading}
+        show-columns
         object-api-name={objects.FixedActivity}
         flag-same-names
         columns={fixedColumns}
@@ -181,7 +184,7 @@
         week-words={weekWords}
         before-week-off={beforeWeekOff}
         week-phrase="runs in"
-        notes-heading={labels.leftOut}
+        notes-heading={fixedNotesHeading}
         row-notes={fixedNotes}
         row-actions={fixedActions}
         busy={busy}
@@ -208,29 +211,40 @@
 
   <template lwc:if={isRecurring}>
     <template lwc:if={hasTimeBlocks}>
-      <c-shoresh-editable-table
-        data-id="recurring-activities"
-        title={labels.recurring}
-        object-api-name={objects.RecurringActivity}
-        flag-same-names
-        columns={recurringColumns}
-        rows={entry.recurringActivities}
-        add-label={labels.addRecurring}
-        empty-message={labels.noRecurring}
-        new-row-defaults={recurringDefaults}
-        weeks={weeks}
-        week-exceptions={weekExceptions}
-        weeks-heading={labels.weeksColumn}
-        week-words={weekWords}
-        before-week-off={beforeWeekOff}
-        week-phrase="runs in"
-        notes-heading={labels.leftOut}
-        row-notes={recurringNotes}
-        row-actions={recurringActions}
-        busy={busy}
-        onsave={handleChildSave}
-        ondelete={handleChildDelete}
-      ></c-shoresh-editable-table>
+      <!-- A section per division (and the whole camp's, and those across divisions), each its
+           own table over every row (rowFilter), so names and order are the program's. -->
+      <template for:each={recurringSections} for:item="section">
+        <c-shoresh-editable-table
+          key={section.key}
+          data-id="recurring-activities"
+          data-section={section.key}
+          title={section.title}
+          heading={section.heading}
+          show-columns={section.first}
+          row-filter={section.filter}
+          who-rule={section.rule}
+          new-row-who={section.who}
+          object-api-name={objects.RecurringActivity}
+          flag-same-names
+          columns={recurringColumns}
+          rows={entry.recurringActivities}
+          add-label={labels.addRecurring}
+          empty-message={labels.noRecurring}
+          new-row-defaults={recurringDefaults}
+          weeks={weeks}
+          week-exceptions={weekExceptions}
+          weeks-heading={labels.weeksColumn}
+          week-words={weekWords}
+          before-week-off={beforeWeekOff}
+          week-phrase="runs in"
+          notes-heading={recurringNotesHeading}
+          row-notes={recurringNotes}
+          row-actions={recurringActions}
+          busy={busy}
+          onsave={handleChildSave}
+          ondelete={handleChildDelete}
+        ></c-shoresh-editable-table>
+      </template>
     </template>
     <template lwc:else>
       <div class="slds-m-bottom_medium" data-id="needs-blocks">

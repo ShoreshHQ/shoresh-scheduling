@@ -31,7 +31,21 @@ const WIDTHS = {
   time: 8.5,
   date: 10,
   checkbox: 5,
-  who: 14
+  who: 14,
+  often: 9,
+  days: 11
+};
+// A shared column's least room (rem), unless the column says (minWidth).
+const SHARED_MIN = 12;
+// Short day names, as the mock-up writes them ("Mon Wed Fri", "Off Fri").
+const SHORT_DAYS = {
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun"
 };
 
 /**
@@ -94,6 +108,15 @@ const WIDTHS = {
  *   worked out from the saved row (textFor(saved)), never edited or sent.
  * weekWords: { every, none, off, one, many } - the weeks in words ("Every week", "No weeks",
  *   "Off Wk 3", "Off Wks 6–7"); a place says "Closed".
+ * Step 3b (ADR 0015 choice 12) adds three kinds of column. type "often" (fieldName: at least,
+ *   maxField: at most, noMaxField, minLabel, maxLabel, scale): bars at rest, scaled to scale (the
+ *   camp's highest weekly count), the two numbers in their place on hover or edit. type "days"
+ *   (days: [{ fieldName, label }], every, none): "Every day" quiet, "Mon Wed Fri" or "Off Fri" a
+ *   value, a tick per day on hover or edit, saved with the row. A readonly column's
+ *   exceptionFor(saved) makes its words a value rather than quiet. rowFilter / whoRule /
+ *   newRowWho: sections a field can't name (a recurring activity's division, from who it covers).
+ *   With detailsLabel, the row's end holds a chevron that asks the page to open its details
+ *   beside the table; the row whose details are open carries the 2 px selection line.
  *
  * Fires:
  *   pendingnames { moved: { scope: [names] } } - with sameNameScope, whenever the saved rows
@@ -155,6 +178,22 @@ export default class ShoreshEditableTable extends LightningElement {
   @api heading;
   /** The column names show above the rows (else they are read out only). */
   @api showColumns = false;
+  /**
+   * Optional: which saved rows this section shows, (record, who) -> boolean, for sections a
+   * field can't name (a recurring activity's division, from who it covers). Every row is still
+   * handed over, so names and order are compared across the sections.
+   */
+  @api rowFilter;
+  /**
+   * Optional, with a who column: the choice that is this section's rule, read quietly
+   * ({ ids, words }: a division's section, [division], "Every bunk"); anything else is a value.
+   */
+  @api whoRule;
+  /**
+   * The weeks column's widest (rem): a long season's strip wraps rather than squeeze the other
+   * columns. Narrower where a panel shares the screen (Activities' details).
+   */
+  @api weeksMax = 20;
 
   drafts = [];
   addRow = this.blankRow();
@@ -193,6 +232,18 @@ export default class ShoreshEditableTable extends LightningElement {
   }
   set newRowDefaults(value) {
     this._defaults = value && typeof value === "object" ? value : {};
+    if (!this.addRow.dirty && !this.addRow.adding) {
+      this.addRow = this.blankRow();
+    }
+  }
+
+  /** Who the blank row starts covering (a division's section: that division). */
+  @api
+  get newRowWho() {
+    return this._newRowWho || [];
+  }
+  set newRowWho(value) {
+    this._newRowWho = Array.isArray(value) ? value : [];
     if (!this.addRow.dirty && !this.addRow.adding) {
       this.addRow = this.blankRow();
     }
@@ -280,12 +331,19 @@ export default class ShoreshEditableTable extends LightningElement {
           draft.weekTicks.set(week, ticked);
         }
       });
-      if (!sameIds(old.who, draft.savedWho)) {
+      // Only a choice made here and not saved yet is kept; a section that never changed the
+      // row takes who the reload says (another section's table may have changed it).
+      if (
+        !sameIds(old.who, old.savedWho) &&
+        !sameIds(old.who, draft.savedWho)
+      ) {
         draft.who = old.who;
         draft.seenWho = old.seenWho;
       }
       draft.whoOpen = old.whoOpen;
       draft.moreOpen = old.moreOpen;
+      // A question about this row is still open (its strip stays shown for focus to return).
+      draft.asking = old.asking;
       draft.inFlight = old.inFlight;
       draft.refused = old.refused;
       old.changed.forEach((field) => {
@@ -336,7 +394,7 @@ export default class ShoreshEditableTable extends LightningElement {
       seen: {},
       weekTicks: new Map(),
       savedWho: [],
-      who: [],
+      who: [...(this._newRowWho || [])],
       seenWho: null,
       whoOpen: false,
       isNew: true,
@@ -371,6 +429,38 @@ export default class ShoreshEditableTable extends LightningElement {
 
   get whoColumn() {
     return this.columns.find((col) => col.type === "who");
+  }
+
+  /**
+   * Every field a row edits, as a column of its own: "how often" is two numbers (at least, at
+   * most) and "days" one tick per day, each named as the director reads it.
+   */
+  get fieldColumns() {
+    return this.columns.flatMap((col) => {
+      if (col.type === "often") {
+        return [
+          { ...col, type: "number", label: col.minLabel || col.label },
+          {
+            fieldName: col.maxField,
+            label: col.maxLabel || col.label,
+            type: "number",
+            min: col.min
+          }
+        ];
+      }
+      if (col.type === "days") {
+        return (col.days || []).map((day) => ({
+          fieldName: day.fieldName,
+          label: day.label,
+          type: "checkbox"
+        }));
+      }
+      return [col];
+    });
+  }
+
+  fieldColumn(field) {
+    return this.fieldColumns.find((col) => col.fieldName === field);
   }
 
   whoOf(record) {
@@ -433,14 +523,18 @@ export default class ShoreshEditableTable extends LightningElement {
   get widths() {
     const widths = this.mainColumns.map((col) => ({
       key: `col-${col.fieldName}`,
-      rem: col.width || WIDTHS[col.type] || null
+      rem: col.width || WIDTHS[col.type] || null,
+      least: col.minWidth || SHARED_MIN
     }));
     if (this.hasWeeks) {
       // Room for the strip: one fine tick per week, or the words. At most 20rem: a long
       // season's strip wraps rather than squeeze the name.
       widths.push({
         key: "col-weeks",
-        rem: Math.min(20, Math.max(9, this._weeks.length * 1.625 + 1))
+        rem: Math.min(
+          Number(this.weeksMax) || 20,
+          Math.max(9, this._weeks.length * 1.625 + 1)
+        )
       });
     }
     if (this.hasNotes) {
@@ -460,7 +554,10 @@ export default class ShoreshEditableTable extends LightningElement {
    * a name to nothing.
    */
   get tableStyle() {
-    const rem = this.widths.reduce((sum, w) => sum + (w.rem || 12), 0);
+    const rem = this.widths.reduce(
+      (sum, w) => sum + (w.rem || w.least || SHARED_MIN),
+      0
+    );
     return `min-width: ${rem}rem`;
   }
 
@@ -574,18 +671,21 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   get visibleDrafts() {
-    if (
-      !this.filterField ||
-      this.filterValue === undefined ||
-      this.filterValue === null
-    ) {
+    const byField =
+      !!this.filterField &&
+      this.filterValue !== undefined &&
+      this.filterValue !== null;
+    const byRule = typeof this.rowFilter === "function";
+    if (!byField && !byRule) {
       return this.drafts;
     }
     // A row being changed stays until it is saved: changing its type mustn't hide it unsaved.
     const offWeeks = this.offWeeks;
     return this.drafts.filter(
       (draft) =>
-        (draft.original[this.filterField] || "") === this.filterValue ||
+        ((!byField ||
+          (draft.original[this.filterField] || "") === this.filterValue) &&
+          (!byRule || this.rowFilter(draft.original, draft.savedWho))) ||
         this.hasChanges(draft, offWeeks) ||
         draft.key === this.sending
     );
@@ -914,7 +1014,12 @@ export default class ShoreshEditableTable extends LightningElement {
     const rows = this.visibleDrafts.map((draft) =>
       this.tableRow(draft, shared)
     );
-    if (rows.length === 0) {
+    // A section a rule picks (rowFilter) with none of its own shows just its blank row; only the
+    // first says the list is empty, once, when nothing is set up at all.
+    const quiet =
+      typeof this.rowFilter === "function" &&
+      (this.hasRows || !this.showColumns);
+    if (rows.length === 0 && !quiet) {
       rows.push({
         key: "empty",
         isEmptyState: true,
@@ -957,6 +1062,14 @@ export default class ShoreshEditableTable extends LightningElement {
     const hasMore = !draft.isNew && this.moreColumns.length > 0;
     const moreOpen = hasMore && !!draft.moreOpen;
     const name = draft.values.Name || "";
+    // A field's name for screen readers: what the blank row adds, or that a refused row's
+    // change isn't saved, read as the director tabs through.
+    const named = (label) => {
+      if (draft.isNew) {
+        return `${this.addLabel}: ${label}`;
+      }
+      return notSaved ? `${label}, not saved` : label;
+    };
     const cell = (col) => {
       const value = draft.values[col.fieldName];
       const className = `cell cell_${col.type || "text"} shoresh-cell${
@@ -964,13 +1077,22 @@ export default class ShoreshEditableTable extends LightningElement {
       }`;
       if (col.type === "readonly") {
         const saved = draft.isNew ? {} : draft.original || {};
+        // The rule reads quietly; an exception (exceptionFor) is a value.
+        const exception = !!col.exceptionFor && !!col.exceptionFor(saved);
         return {
           key: `${draft.key}-${col.fieldName}`,
           fieldName: col.fieldName,
           className,
           isReadonly: true,
+          fixedClass: exception ? "fixed exception" : "fixed",
           fixedText: col.textFor ? col.textFor(saved) || "" : ""
         };
+      }
+      if (col.type === "often") {
+        return this.oftenCell(col, draft, className, named);
+      }
+      if (col.type === "days") {
+        return this.daysCell(col, draft, className, named);
       }
       if (col.savedOnly && draft.isNew) {
         const shown = (col.options || []).find((o) => o.value === value);
@@ -990,11 +1112,7 @@ export default class ShoreshEditableTable extends LightningElement {
           : className,
         // The blank row's fields say what they add ("Add Bunk: Name"); a refused row's
         // fields say they aren't saved, read as the director tabs through them.
-        label: draft.isNew
-          ? `${this.addLabel}: ${col.label}`
-          : notSaved
-            ? `${col.label}, not saved`
-            : col.label,
+        label: named(col.label),
         // The blank row says what it is for in its first text field.
         placeholder:
           draft.isNew && col.fieldName === firstText ? this.addLabel : "",
@@ -1003,6 +1121,8 @@ export default class ShoreshEditableTable extends LightningElement {
         required: !!col.required && !draft.isNew,
         disabled: draft.isNew && !!draft.adding,
         options: this.rowOptions(col, draft),
+        // A choice not made reads as the column's name, quietly, never "Select an Option".
+        pickPlaceholder: col.label,
         isText: this.isTextColumn(col),
         sameName: col.fieldName === "Name" && sameNames.has(draft.key),
         canMerge: col.fieldName === "Name" && mergeable,
@@ -1020,18 +1140,22 @@ export default class ShoreshEditableTable extends LightningElement {
         isWho: col.type === "who",
         whoSummary:
           col.type === "who" ? this.whoSummary(col, draft) : undefined,
+        whoClass:
+          col.type === "who" && !this.whoIsRule(draft)
+            ? "who exception"
+            : "who",
         whoButton: draft.whoOpen ? "Done" : "Change",
         // Named for its row, so a screen reader can tell the buttons apart.
         whoName: `${draft.whoOpen ? "Done" : "Change"}: ${col.label}, ${
           name || this.addLabel
         }`,
-        value:
-          col.type === "checkbox" || col.type === "who" ? undefined : value,
+        value: this.shownChoice(col, draft, value),
         checked: col.type === "checkbox" ? !!value : undefined
       };
     };
     const weekCells = this.weekCells(draft, offWeeks);
     const weeks = this.weeksInWords(weekCells);
+    const selected = !draft.isNew && draft.original.Id === this.detailsOpenFor;
     return {
       key: draft.key,
       isRow: true,
@@ -1047,10 +1171,8 @@ export default class ShoreshEditableTable extends LightningElement {
         : "",
       hasDetails: !!this.detailsLabel && !draft.isNew,
       detailsName: `${name} details`.trim(),
-      detailsOpen:
-        !draft.isNew && draft.original.Id === this.detailsOpenFor
-          ? "true"
-          : "false",
+      detailsOpen: selected ? "true" : "false",
+      detailsGlyphClass: selected ? "shoresh-glyph turned" : "shoresh-glyph",
       // The row's own details (its more columns), opened from its chevron.
       hasMore,
       moreOpen,
@@ -1075,6 +1197,8 @@ export default class ShoreshEditableTable extends LightningElement {
         draft.isNew ? "add-row" : "",
         notSaved ? "not-saved" : "",
         moreOpen ? "row_open" : "",
+        // Its details are open beside the table: the 2 px selection line (activities.html).
+        selected ? "row_selected" : "",
         draft.asking ? "row_asking" : ""
       ]
         .filter((c) => c)
@@ -1131,9 +1255,123 @@ export default class ShoreshEditableTable extends LightningElement {
     };
   }
 
-  /** "Everyone", or the names chosen. */
+  /** The section's rule in its words ("Every bunk"), "Everyone", or the names chosen. */
   whoSummary(column, draft) {
+    const rule = this.whoRule;
+    if (rule && sameIds(draft.who, rule.ids || [])) {
+      return rule.words;
+    }
     return this.whoNames(column, draft.who);
+  }
+
+  /** Whether the row covers who it would by default: everyone, or its section's rule. */
+  whoIsRule(draft) {
+    const rule = this.whoRule;
+    return rule ? sameIds(draft.who, rule.ids || []) : draft.who.length === 0;
+  }
+
+  /**
+   * "How often": bars at rest, scaled to the camp's highest weekly count (column scale), never
+   * capped at five (decision 42); the two numbers in their place under the pointer or while the
+   * row is edited. At least is filled, up to at most is a tint, the rest empty slots.
+   */
+  oftenCell(col, draft, className, named) {
+    const min = draft.values[col.fieldName];
+    const max = draft.values[col.maxField];
+    const noMax = !!col.noMaxField && !!draft.values[col.noMaxField];
+    const least = Number(min) || 0;
+    const most = noMax ? least : Math.max(Number(max) || 0, least);
+    const scale = Math.max(Number(col.scale) || 1, least, most);
+    const bars = [];
+    for (let i = 1; i <= scale; i += 1) {
+      const kind =
+        i <= least ? " bar_min" : noMax || i <= most ? " bar_max" : "";
+      bars.push({ key: `${draft.key}-bar-${i}`, className: `bar${kind}` });
+    }
+    let words = isBlank(min) ? "" : `${least}`;
+    if (!isBlank(min) && noMax) {
+      words = `${least} or more`;
+    } else if (!isBlank(min) && most > least) {
+      words = `${least}–${most}`;
+    }
+    return {
+      key: `${draft.key}-${col.fieldName}`,
+      fieldName: col.fieldName,
+      className,
+      isOften: true,
+      // The blank row is typed in, so it shows its numbers, not bars.
+      showBars: !draft.isNew,
+      oftenClass: draft.isNew ? "often often_open" : "often",
+      bars,
+      oftenName: `${col.label}: ${words}`.trim(),
+      value: min,
+      maxValue: max,
+      maxField: col.maxField,
+      minLabel: named(col.minLabel || col.label),
+      maxLabel: named(col.maxLabel || col.label),
+      min: col.min,
+      required: !!col.required && !draft.isNew,
+      disabled: draft.isNew && !!draft.adding
+    };
+  }
+
+  /**
+   * The days, as the weeks: every day is the rule, read quietly ("Every day"); otherwise the
+   * days it runs ("Mon Wed Fri"), or the one it skips ("Off Fri"). Under the pointer or while the
+   * row is edited, one tick per day in their place, saved with the row.
+   */
+  daysCell(col, draft, className, named) {
+    const days = col.days || [];
+    const short = (day) => day.short || SHORT_DAYS[day.label] || day.label;
+    const on = days.filter((day) => !!draft.values[day.fieldName]);
+    const off = days.filter((day) => !draft.values[day.fieldName]);
+    let text;
+    if (off.length === 0) {
+      text = col.every || "Every day";
+    } else if (on.length === 0) {
+      text = col.none || "No days";
+    } else if (off.length === 1 && on.length > 1) {
+      text = `Off ${short(off[0])}`;
+    } else {
+      text = on.map(short).join(" ");
+    }
+    const name = draft.values.Name || this.addLabel;
+    return {
+      key: `${draft.key}-${col.fieldName}`,
+      fieldName: col.fieldName,
+      className,
+      isDays: true,
+      daysText: text,
+      // The blank row's days are still to choose: quiet, not an exception.
+      daysTextClass:
+        off.length === 0 || draft.isNew
+          ? "rest days-text"
+          : "rest days-text exception",
+      daysName: `${name}: ${col.label}`,
+      dayCells: days.map((day) => ({
+        key: `${draft.key}-${day.fieldName}`,
+        fieldName: day.fieldName,
+        short: short(day),
+        label: named(day.label),
+        checked: !!draft.values[day.fieldName],
+        disabled: draft.isNew && !!draft.adding
+      }))
+    };
+  }
+
+  /** A field's value as shown: a blank choice is its "None" option, when it has one. */
+  shownChoice(col, draft, value) {
+    if (col.type === "checkbox" || col.type === "who") {
+      return undefined;
+    }
+    if (
+      col.type === "picklist" &&
+      isBlank(value) &&
+      (this.rowOptions(col, draft) || []).some((o) => o.value === "")
+    ) {
+      return "";
+    }
+    return value;
   }
 
   /** A picklist's choices in one row: its own (optionsFor), less the row's own record. */
@@ -1208,7 +1446,7 @@ export default class ShoreshEditableTable extends LightningElement {
     const { rowKey, week } = event.target.dataset;
     const box = event.target;
     const ticked = box.checked;
-    const draft = this.rowFor(rowKey);
+    let draft = this.rowFor(rowKey);
     if (!draft.isNew && !ticked && typeof this.beforeWeekOff === "function") {
       // A question first (the desktop's "Turn off … for Week 3?" when it has placements).
       const weekName = (this._weeks.find((w) => w.Id === week) || {}).Name;
@@ -1225,6 +1463,13 @@ export default class ShoreshEditableTable extends LightningElement {
           weekName
         });
       } finally {
+        // Back on the tick (WCAG 2.4.3), while the row still shows its strip: the page can't
+        // reach inside this table to put it there itself.
+        if (box.isConnected && typeof box.focus === "function") {
+          box.focus();
+        }
+        // The page may have redrawn meanwhile (it is busy while it looks), making a new row.
+        draft = this.rowFor(rowKey) || draft;
         draft.asking = false;
         this.touch(draft);
       }
@@ -1246,7 +1491,7 @@ export default class ShoreshEditableTable extends LightningElement {
   handleChange(event) {
     const { rowKey, field } = event.target.dataset;
     const draft = this.rowFor(rowKey);
-    const column = this.columns.find((col) => col.fieldName === field);
+    const column = this.fieldColumn(field);
     let value =
       event.target.type === "checkbox" || event.target.type === "toggle"
         ? event.target.checked
@@ -1531,6 +1776,9 @@ export default class ShoreshEditableTable extends LightningElement {
       const added = this.draftFor(values);
       added.original = { ...values };
       added.values = { ...values };
+      // Who it covers, as sent, so its section keeps showing it until the reload says so.
+      added.savedWho = [...draft.who];
+      added.who = [...draft.who];
       this.drafts = [...this.drafts, added];
       this.announce(`${draft.values.Name || ""} added`.trim());
       // Its fields were locked while it was added, so nothing typed since is lost.
@@ -1597,7 +1845,7 @@ export default class ShoreshEditableTable extends LightningElement {
     const theirs = answer.theirs || {};
     const name = draft.values.Name || draft.original.Name || "";
     const rows = (answer.changed || []).map((field) => {
-      const column = this.columns.find((c) => c.fieldName === field) || {
+      const column = this.fieldColumn(field) || {
         fieldName: field,
         label: field
       };
@@ -1633,7 +1881,7 @@ export default class ShoreshEditableTable extends LightningElement {
       if (row.theirWho) {
         return { ...row, theirs: this.whoNames(whoColumn, row.theirWho, true) };
       }
-      const column = this.columns.find((c) => c.fieldName === row.field) || {};
+      const column = this.fieldColumn(row.field) || {};
       return {
         ...row,
         theirs: shownValue(column, row.theirsValue),

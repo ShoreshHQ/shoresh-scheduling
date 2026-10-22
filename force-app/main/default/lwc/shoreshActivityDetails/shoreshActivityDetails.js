@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import LightningConfirm from "lightning/confirm";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { leftField } from "c/shoreshSavedMark";
+import { rainPlanChoices } from "c/shoreshSetupRules";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const ACTIVITY = FIELD.Activity;
@@ -15,14 +16,38 @@ const RULE_FIELDS = {
   earlyDay: ACTIVITY.EarlyWeekByDay,
   notes: ACTIVITY.Notes
 };
+// The activity's own fields that were the table's columns before step 3b (ADR 0015 choice 12):
+// they live here now, saved as the program's own fields are (only the field that changed).
+const ROW_FIELDS = {
+  length: ACTIVITY.Length,
+  groupsAtOnce: ACTIVITY.GroupsAtOnce,
+  noGroupLimit: ACTIVITY.NoGroupLimit,
+  noWeeklyMax: ACTIVITY.NoWeeklyMax,
+  priority: ACTIVITY.Priority,
+  outdoor: ACTIVITY.Outdoor,
+  rainPlan: ACTIVITY.RainPlan
+};
+const INPUT_FIELDS = { ...RULE_FIELDS, ...ROW_FIELDS };
+const ROW_SET = new Set(Object.values(ROW_FIELDS));
+// Fields typed in (saved on leaving them); the rest are chosen once and saved at once.
+const NUMBER_FIELDS = new Set([
+  ACTIVITY.EarlyWeekCount,
+  ACTIVITY.Length,
+  ACTIVITY.GroupsAtOnce
+]);
 // "This many early in the week" and "by which day": both set or both blank (EarlyWeekComplete),
 // so they are always saved together.
 const EARLY_WEEK_INPUTS = ["earlyCount", "earlyDay"];
 const EARLY_WEEK = EARLY_WEEK_INPUTS.map((key) => RULE_FIELDS[key]);
+// Bunks together: the two choices of the one tick it is saved as.
+const ANY = "any";
+const SAME = "same";
 
 /**
- * One activity's details: who can do it (every group, or only chosen divisions and groups) and
- * the less common rules. Opened from the activity's row in the Activities table (open(id)), as
+ * One activity's details, in the panel beside the Activities table (step 3b, ADR 0015 choice
+ * 12; docs/design/setup/activities.html): who can do it (every group, or only chosen divisions
+ * and groups), the less common rules, and the activity's own fields that are not the table's
+ * columns (length, groups at once, priority, outdoors, rain plan, no weekly maximum). Opened from the activity's row in the Activities table (open(id)), as
  * the desktop's row Edit opens its details (ActivitiesScreen.jsx); hidden until then, and Close
  * hides it again. Who can do it is a list of ticks, as on the desktop (ActivitiesScreen.jsx,
  * "Eligible Age Divisions" and the group ticks). They save as you go, like the tables (ADR 0011,
@@ -31,6 +56,10 @@ const EARLY_WEEK = EARLY_WEEK_INPUTS.map((key) => RULE_FIELDS[key]);
  * go together (who can do it is always sent whole: the server replaces the list). "Saved" shows
  * quietly; a refusal shows next to the field, with what was typed kept. If something else on the
  * screen is saved meanwhile, what was typed here stays.
+ *
+ * The activity's own fields go as the program's own do: save { records: [{ Id, field }], onSaved,
+ * onFailure(message), shown() }, only the field that changed (last save wins, as every setup
+ * form; ADR 0013 Known limits).
  *
  * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }
  * (shown: whether the form still shows that activity; a refusal it can't show is said at the top);
@@ -114,7 +143,7 @@ export default class ShoreshActivityDetails extends LightningElement {
       return null;
     }
     const rules = {};
-    Object.values(RULE_FIELDS).forEach((field) => {
+    Object.values(INPUT_FIELDS).forEach((field) => {
       rules[field] = activity[field] === undefined ? null : activity[field];
     });
     const whoCanDoIt = (activity[CHILDREN.Activity.Eligibilities] || []).map(
@@ -146,6 +175,68 @@ export default class ShoreshActivityDetails extends LightningElement {
       });
     });
     return [...divisions, ...groups];
+  }
+
+  /** Rain plan: none, or an indoor activity (the one it holds already, too); never itself. */
+  get rainPlanOptions() {
+    const held = this.rules[ACTIVITY.RainPlan];
+    return [
+      { label: "None", value: "" },
+      ...rainPlanChoices(this.activities, held).filter(
+        (option) => option.value !== this.activityId
+      )
+    ];
+  }
+
+  get priorityOptions() {
+    return [
+      { label: "High", value: "High" },
+      { label: "Low", value: "Low" }
+    ];
+  }
+
+  /** Bunks together: any bunks, or only the same division's (the one tick it is saved as). */
+  get togetherOptions() {
+    const t = this.terms;
+    return [
+      { label: `Any ${t.pIn("Group")}`, value: ANY },
+      { label: `Same ${t.sIn("Division")}`, value: SAME }
+    ];
+  }
+
+  get together() {
+    return this.rules[ACTIVITY.SameDivisionOnly] ? SAME : ANY;
+  }
+
+  get rainPlan() {
+    return this.rules[ACTIVITY.RainPlan] || "";
+  }
+  get length() {
+    return this.rules[ACTIVITY.Length];
+  }
+  get groupsAtOnce() {
+    return this.rules[ACTIVITY.GroupsAtOnce];
+  }
+  get noGroupLimit() {
+    return !!this.rules[ACTIVITY.NoGroupLimit];
+  }
+  get noWeeklyMax() {
+    return !!this.rules[ACTIVITY.NoWeeklyMax];
+  }
+  get priority() {
+    return this.rules[ACTIVITY.Priority];
+  }
+  get outdoor() {
+    return !!this.rules[ACTIVITY.Outdoor];
+  }
+
+  /** Why the last save of an activity field was refused, by its input (data-field). */
+  get fieldErrors() {
+    const result = {};
+    Object.keys(ROW_FIELDS).forEach((key) => {
+      result[key] = this.errors[ROW_FIELDS[key]];
+    });
+    return result;
   }
 
   get dayOptions() {
@@ -204,10 +295,21 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   get labels() {
     const t = this.terms;
+    const name = this.activity ? this.activity.Name : "";
     return {
-      title: `${this.activity ? this.activity.Name : ""} details`.trim(),
+      title: `${name} details`.trim(),
+      // The panel's heading shows the name; its full name is read out.
+      name,
+      close: `Close ${name} details`.replace(/\s+/g, " ").trim(),
+      length: t.s("Length"),
+      groupsAtOnce: t.s("GroupsAtOnce"),
+      noGroupLimit: "No limit",
+      noWeeklyMax: "No weekly maximum",
+      priority: "Priority",
+      outdoor: "Outdoors",
+      rainPlan: t.s("RainPlan"),
+      together: `${t.p("Group")} together`,
       whoCanDoIt: "Who can do it",
-      moreRules: "More rules",
       sameDivision: `Only ${t.pIn("Group")} from the same ${t.sIn("Division")} at the same time`,
       // One group, read as "Early in the week: How many … By …" (WCAG 1.3.1).
       early: "Early in the week",
@@ -287,31 +389,46 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   /** A number or the notes: saved on leaving the field. */
   handleRuleLeave(event) {
-    const field = RULE_FIELDS[event.currentTarget.dataset.field];
+    const field = INPUT_FIELDS[event.currentTarget.dataset.field];
     if (field && leftField(event)) {
       this.save(field, event.currentTarget);
     }
   }
 
+  /** Enter in a number saves it too, as in every setup form (ADR 0013 choice 1). */
+  handleRuleKey(event) {
+    const field = INPUT_FIELDS[event.currentTarget.dataset.field];
+    if (event.key === "Enter" && field) {
+      this.save(field, event.currentTarget);
+    }
+  }
+
   handleRule(event) {
-    const field = RULE_FIELDS[event.target.dataset.field];
+    const field = INPUT_FIELDS[event.target.dataset.field];
     if (!field) {
       return;
     }
+    const target = event.target;
+    const radio = target.tagName === "LIGHTNING-RADIO-GROUP";
     let value =
-      event.target.type === "checkbox"
-        ? event.target.checked
-        : event.detail.value;
-    if (field === ACTIVITY.EarlyWeekCount) {
+      target.type === "checkbox" ? target.checked : event.detail.value;
+    if (radio) {
+      // Bunks together is saved as its one tick: the same division's only.
+      value = value === SAME;
+    }
+    if (NUMBER_FIELDS.has(field)) {
       value = value === "" || value === null ? null : Number(value);
     }
     if (value === "") {
       value = null;
     }
     this.update(field, { rules: { ...this.draft.rules, [field]: value } });
-    // A tick or a dropdown is chosen once, so it is saved at once.
-    const target = event.target;
-    if (target.type === "checkbox" || target.tagName === "LIGHTNING-COMBOBOX") {
+    // A tick, a choice or a dropdown is chosen once, so it is saved at once.
+    if (
+      target.type === "checkbox" ||
+      radio ||
+      target.tagName === "LIGHTNING-COMBOBOX"
+    ) {
       this.save(field);
     }
   }
@@ -360,6 +477,11 @@ export default class ShoreshActivityDetails extends LightningElement {
         rules[f] = this.draft.rules[f];
       }
     });
+    // The activity's own field (not a rule): sent as a record, as the program's own fields are.
+    const own = ROW_SET.has(field);
+    if (own && field === ACTIVITY.RainPlan && rules[field] === "") {
+      rules[field] = null;
+    }
     const activityId = this.activityId;
     const done = () => {
       fields.forEach((f) => {
@@ -404,15 +526,18 @@ export default class ShoreshActivityDetails extends LightningElement {
       });
       this.errors = shown;
     };
+    const shown = () => activityId === this.activityId;
     this.dispatchEvent(
       new CustomEvent("save", {
-        detail: {
-          rules,
-          whoCanDoIt: [...this.draft.whoCanDoIt],
-          onSaved,
-          onFailure,
-          shown: () => activityId === this.activityId
-        }
+        detail: own
+          ? { records: [rules], onSaved, onFailure, shown }
+          : {
+              rules,
+              whoCanDoIt: [...this.draft.whoCanDoIt],
+              onSaved,
+              onFailure,
+              shown
+            }
       })
     );
   }

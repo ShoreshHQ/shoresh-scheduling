@@ -1,6 +1,14 @@
 <template>
   <nav class="menu" aria-label="Shoresh">
-    <template lwc:if={campName}>
+    <template lwc:if={controls}>
+      <!-- The page's own camp and season controls (step 3b): its pickers read as the camp
+           row's words; the season's actions and details sit with them. -->
+      <div class="camp-controls" data-id="camp">
+        <slot name="camp"></slot>
+      </div>
+      <div class="shoresh-hairline bleed" role="presentation"></div>
+    </template>
+    <template lwc:elseif={campName}>
       <div class="camp" data-id="camp">
         <span class="camp-name" title={campName}>{campName}</span>
         <template lwc:if={seasonName}>

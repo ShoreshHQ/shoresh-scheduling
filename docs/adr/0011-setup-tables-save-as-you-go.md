@@ -93,6 +93,10 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    Conflicts screen ("Two devices changed the same thing at once. Keep one."); it never picks
    one (its CRDT ADR, "Decision"). Salesforce has one copy of the data, so the question is asked
    at save time instead, which keeps the same rule: nothing is overwritten unseen.
+   _Since 2026-10-21 (step 3b, ADR 0015 choice 12) an activity's length, groups at once, No
+   limit, priority, outdoors, rain plan and no weekly maximum are in its details beside the
+   table, saved as a form's fields are (the last save wins, ADR 0013 Known limits); its name,
+   location, how often (at least, at most) and weeks stay in the row and keep this check._
 6. **Messages.** A row save shows no "Saved." toast (the desktop's row saves are silent); screen
    readers hear "Swim saved" or "Swim added", again each time even when the words are the
    same. A refusal is the screen's usual message, naming the row, and the typing stays to fix.

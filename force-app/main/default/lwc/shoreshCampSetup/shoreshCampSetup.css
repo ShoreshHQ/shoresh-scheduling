@@ -55,29 +55,78 @@
   padding: 0;
 }
 
-/* The head zone is one item tall plus its inset, like the rail, so its line meets the menu's. */
-.head-row {
+/* ---------- the camp row in the menu (step 3b, ADR 0015 choice 12) ---------- */
+
+/* The camp, then the season, each one item tall; the season's details open under them. */
+.camp-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.camp-line {
+  display: flex;
   align-items: center;
   gap: var(--shoresh-space-in-group);
   min-height: var(--shoresh-control-h);
+  min-width: 0;
 }
 
-.head-picker {
-  width: calc(var(--shoresh-u) * 52);
-  max-width: 100%;
+/* The camp's name, as the mock-up's camp row draws it. */
+.camp-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.head-actions {
-  margin-left: auto;
+/* A picker that reads as words at rest (ShoreshTable reaches its insides: shoresh-row/-cell). */
+.head-pick {
+  flex: 1;
+  min-width: 0;
 }
 
-/* The season's details open under the row, below a hairline (raised is kept for choices). */
+.season-pick {
+  --slds-c-input-text-color: var(--shoresh-text-2);
+}
+
+.season-menu,
+.season-edit {
+  flex: none;
+}
+
+/* The pencil's glyph in the secondary words, as the rail's glyphs. */
+.season-edit {
+  --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
+  --slds-c-icon-color-foreground: var(--shoresh-text-2);
+  --slds-c-button-text-color: var(--shoresh-text-2);
+  --sds-c-button-text-color: var(--shoresh-text-2);
+}
+
+/* The season's details: under the camp row, one field under another. */
 .season-form {
-  margin-top: var(--shoresh-space-pad);
-  padding-top: var(--shoresh-space-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+  margin-top: var(--shoresh-s2);
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x) 0;
   border-top: 1px solid var(--shoresh-rule);
+}
+
+.season-note {
+  color: var(--shoresh-text-2);
+}
+
+.season-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s2);
 }
 
 /* Narrow screens: the menu above the frame, as SLDS stacked them before. */
@@ -174,4 +223,21 @@
   flex-basis: 100%;
   order: 10;
   margin-top: var(--shoresh-space-pad);
+}
+
+/* Activities: the list, and one activity's details in a zone beside it (activities.html). */
+.setup-split {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.setup-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.setup-side {
+  flex: none;
+  max-width: 50%;
 }

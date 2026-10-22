@@ -1604,11 +1604,21 @@ describe("c-shoresh-editable-table", () => {
       expect(row().classList).toContain("row_asking");
       // Only the row asked about.
       expect(rows(element)[1].classList).not.toContain("row_asking");
+      // The page redraws while it looks (it is busy): the columns come again, the row with them.
+      element.columns = packaged({ columns: [COLUMNS[0]] }).columns;
+      await flush();
+      expect(row().classList).toContain("row_asking");
+      // The question had focus; the page put it elsewhere (it can't reach inside the table).
+      document.body.focus();
       reply(false);
       await flush();
       await flush();
       expect(row().classList).not.toContain("row_asking");
       expect(row().querySelector("input[data-week]").checked).toBe(true);
+      // The table puts it back on the tick itself.
+      expect(element.shadowRoot.activeElement).toBe(
+        row().querySelector("input[data-week]")
+      );
     });
 
     it("asks before a week is turned off on a saved row; no puts the tick back", async () => {
@@ -2427,10 +2437,19 @@ describe("c-shoresh-editable-table", () => {
       expect(buttons(element).map((b) => b.getAttribute("aria-label"))).toEqual(
         ["Swim details", "Art details"]
       );
-      expect(buttons(element)[0].textContent.trim()).toBe("Details");
+      // The row's chevron (step 3b): no words, named for its row, among the row's end tools.
+      expect(buttons(element)[0].textContent.trim()).toBe("");
+      expect(buttons(element)[0].closest(".tools")).not.toBeNull();
       expect(
         buttons(element).map((b) => b.getAttribute("aria-expanded"))
       ).toEqual(["false", "true"]);
+      // The row whose details are open carries the selection line; the chevron turns.
+      expect(
+        rows(element).map((tr) => tr.classList.contains("row_selected"))
+      ).toEqual([false, true, false]);
+      expect(
+        buttons(element)[1].querySelector("svg").getAttribute("class")
+      ).toContain("turned");
       buttons(element)[0].click();
       expect(handler.mock.calls[0][0].detail).toEqual({ recordId: "a1" });
     });
@@ -3086,6 +3105,432 @@ describe("c-shoresh-editable-table", () => {
       const element = render({ columns: WEEK_COLUMNS, rows: weeks });
       await flush();
       expect(tags(element)).toEqual([null, null, null, null]);
+    });
+  });
+
+  describe("step 3b's columns (ADR 0015 choice 12)", () => {
+    const OFTEN = {
+      fieldName: nsName("TimesPerWeekMin__c"),
+      type: "often",
+      label: "How often",
+      minLabel: "Times per week: at least",
+      maxLabel: "Times per week: at most",
+      maxField: nsName("TimesPerWeekMax__c"),
+      noMaxField: nsName("NoWeeklyMax__c"),
+      min: 0,
+      required: true,
+      scale: 7
+    };
+    const ACTS = [
+      {
+        Id: "a1",
+        Name: "Archery",
+        TimesPerWeekMin__c: 2,
+        TimesPerWeekMax__c: 3,
+        SortOrder__c: 1
+      },
+      {
+        Id: "a2",
+        Name: "Swim",
+        TimesPerWeekMin__c: 5,
+        TimesPerWeekMax__c: 5,
+        SortOrder__c: 2
+      },
+      {
+        Id: "a3",
+        Name: "Gaga",
+        TimesPerWeekMin__c: 1,
+        NoWeeklyMax__c: true,
+        SortOrder__c: 3
+      }
+    ];
+    const renderOften = () => {
+      const element = createElement("c-shoresh-editable-table", {
+        is: ShoreshEditableTable
+      });
+      Object.assign(element, {
+        title: "Activities",
+        objectApiName: nsName("Activity__c"),
+        addLabel: "Add Activity",
+        columns: [
+          {
+            fieldName: "Name",
+            label: "Activity",
+            type: "text",
+            required: true
+          },
+          OFTEN
+        ],
+        rows: nsRecord(ACTS)
+      });
+      document.body.appendChild(element);
+      return element;
+    };
+    // At least "#", up to at most "+", an empty slot ".".
+    const barMark = (className) => {
+      if (className.includes("bar_min")) {
+        return "#";
+      }
+      return className.includes("bar_max") ? "+" : ".";
+    };
+    const bars = (element) =>
+      [...element.shadowRoot.querySelectorAll('[data-id="often-bars"]')].map(
+        (b) =>
+          [...b.querySelectorAll("i")].map((i) => barMark(i.className)).join("")
+      );
+
+    it("how often: bars on the camp's scale, never capped at five; at least filled, up to at most tinted", async () => {
+      const element = renderOften();
+      await flush();
+      expect(bars(element)).toEqual(["##+....", "#####..", "#++++++"]);
+      expect(
+        [...element.shadowRoot.querySelectorAll('[data-id="often-bars"]')].map(
+          (b) => b.getAttribute("aria-label")
+        )
+      ).toEqual(["How often: 2–3", "How often: 5", "How often: 1 or more"]);
+      // A count past the scale stretches it rather than being cut off.
+      element.rows = nsRecord([
+        { ...ACTS[0], TimesPerWeekMin__c: 9, TimesPerWeekMax__c: 9 }
+      ]);
+      await flush();
+      expect(bars(element)).toEqual(["#########"]);
+    });
+
+    it("how often: the two numbers are the row's own fields, typed and saved with the row", async () => {
+      const element = renderOften();
+      const sent = listen(element);
+      await flush();
+      // Each row has its two numbers in place of the bars (shown on hover or edit), named.
+      const most = field(element, 0, "TimesPerWeekMax__c");
+      expect(most.label).toBe("Times per week: at most");
+      expect(field(element, 0, "TimesPerWeekMin__c").label).toBe(
+        "Times per week: at least"
+      );
+      // The blank row is typed in: its numbers show, no bars.
+      expect(bars(element).length).toBe(3);
+      expect(field(element, 3, "TimesPerWeekMin__c").label).toBe(
+        "Add Activity: Times per week: at least"
+      );
+      change(most, "4");
+      await flush();
+      allValid(element);
+      leave(element, 0);
+      expect(sent.length).toBe(1);
+      // A number, as Salesforce wants it.
+      expect(sent[0].record).toEqual({
+        sobjectType: "Activity__c",
+        Id: "a1",
+        TimesPerWeekMax__c: 4
+      });
+      expect(sent[0].seen).toEqual({
+        sobjectType: "Activity__c",
+        TimesPerWeekMax__c: 3
+      });
+    });
+
+    it("how often: someone else's change to at most is asked about in the director's words", async () => {
+      const element = renderOften();
+      const sent = listen(element);
+      await flush();
+      change(field(element, 0, "TimesPerWeekMax__c"), "4");
+      await flush();
+      allValid(element);
+      leave(element, 0);
+      const detail = sent[0];
+      detail.onSaved({
+        changed: [nsName("TimesPerWeekMax__c")],
+        theirs: nsRecord({ TimesPerWeekMax__c: 6 })
+      });
+      await flush();
+      const where = element.shadowRoot.querySelector(".conflict-where");
+      expect(where.textContent).toBe("Archery · Times per week: at most");
+      expect(
+        element.shadowRoot.querySelector('[data-id="theirs"]').textContent
+      ).toBe("6");
+    });
+
+    const DAYS = {
+      fieldName: "days",
+      label: "Days",
+      type: "days",
+      every: "Every day",
+      none: "No days",
+      days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(
+        (day) => ({ fieldName: nsName(`${day}__c`), label: day })
+      )
+    };
+    const week = (on) =>
+      Object.fromEntries(
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d) => [
+          `${d}__c`,
+          on.includes(d.slice(0, 3))
+        ])
+      );
+    const renderDays = () => {
+      const element = createElement("c-shoresh-editable-table", {
+        is: ShoreshEditableTable
+      });
+      Object.assign(element, {
+        title: "Recurring activities",
+        objectApiName: nsName("RecurringActivity__c"),
+        addLabel: "Add Recurring activity",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          DAYS
+        ],
+        rows: nsRecord([
+          {
+            Id: "r1",
+            Name: "Breakfast",
+            ...week(["Mon", "Tue", "Wed", "Thu", "Fri"])
+          },
+          {
+            Id: "r2",
+            Name: "Rest hour",
+            ...week(["Mon", "Tue", "Wed", "Thu"])
+          },
+          { Id: "r3", Name: "Swim", ...week(["Mon", "Wed", "Fri"]) },
+          { Id: "r4", Name: "Trip", ...week([]) }
+        ])
+      });
+      document.body.appendChild(element);
+      return element;
+    };
+
+    it("days: every day is quiet; the days it runs, or the one it skips, stand out", async () => {
+      const element = renderDays();
+      await flush();
+      const texts = [
+        ...element.shadowRoot.querySelectorAll('[data-id="days-text"]')
+      ];
+      expect(texts.map((t) => t.textContent)).toEqual([
+        "Every day",
+        "Off Fri",
+        "Mon Wed Fri",
+        "No days",
+        "No days"
+      ]);
+      // The blank row's days are still to choose: quiet.
+      expect(texts.map((t) => t.className.includes("exception"))).toEqual([
+        false,
+        true,
+        true,
+        true,
+        false
+      ]);
+    });
+
+    it("days: a tick per day in their place, named as before, saved with the row", async () => {
+      const element = renderDays();
+      const sent = listen(element);
+      await flush();
+      const strip = element.shadowRoot.querySelectorAll(
+        '[data-id="day-strip"]'
+      )[2];
+      expect(strip.getAttribute("aria-label")).toBe("Swim: Days");
+      const ticks = [...strip.querySelectorAll("input")];
+      expect(ticks.map((t) => t.getAttribute("aria-label"))).toEqual([
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+      ]);
+      expect(ticks.map((t) => t.checked)).toEqual([
+        true,
+        false,
+        true,
+        false,
+        true
+      ]);
+      ticks[1].checked = true;
+      ticks[1].dispatchEvent(new CustomEvent("change"));
+      await flush();
+      // Not at once: with the row, as the old day columns were.
+      expect(sent.length).toBe(0);
+      expect(
+        element.shadowRoot.querySelectorAll('[data-id="days-text"]')[2]
+          .textContent
+      ).toBe("Off Thu");
+      allValid(element);
+      leave(element, 2);
+      expect(sent.length).toBe(1);
+      expect(sent[0].record).toEqual({
+        sobjectType: "RecurringActivity__c",
+        Id: "r3",
+        Tuesday__c: true
+      });
+      // The blank row's ticks say what they add.
+      const blank = element.shadowRoot.querySelectorAll(
+        '[data-id="day-strip"]'
+      )[4];
+      expect(blank.querySelector("input").getAttribute("aria-label")).toBe(
+        "Add Recurring activity: Monday"
+      );
+    });
+
+    it("a choice not made reads as its None, or quietly as the column's name, never Select an Option", async () => {
+      const element = render({
+        objectApiName: "Activity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          {
+            fieldName: "Location__c",
+            label: "Location",
+            type: "picklist",
+            options: [
+              { label: "None", value: "" },
+              { label: "Pool", value: "l1" }
+            ]
+          },
+          {
+            fieldName: "Priority__c",
+            label: "Priority",
+            type: "picklist",
+            options: [{ label: "High", value: "High" }]
+          }
+        ],
+        rows: [{ Id: "a1", Name: "Swim", Location__c: null, Priority__c: null }]
+      });
+      await flush();
+      expect(field(element, 0, "Location__c").value).toBe("");
+      expect(field(element, 0, "Priority__c").value).toBeNull();
+      expect(field(element, 0, "Priority__c").placeholder).toBe("Priority");
+      expect(field(element, 1, "Location__c").placeholder).toBe("Location");
+    });
+
+    it("a worked-out column reads quietly unless its row is an exception", async () => {
+      const element = render({
+        objectApiName: "Activity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          {
+            fieldName: "whoCanDoIt",
+            label: "Who",
+            type: "readonly",
+            textFor: (saved) => (saved.Id === "a2" ? "Seniors" : "Everyone"),
+            exceptionFor: (saved) => saved.Id === "a2"
+          }
+        ],
+        rows: [
+          { Id: "a1", Name: "Swim" },
+          { Id: "a2", Name: "Canoe" }
+        ]
+      });
+      await flush();
+      const cells = [
+        ...element.shadowRoot.querySelectorAll('[data-id="readonly"]')
+      ];
+      expect(cells.map((c) => [c.textContent, c.className])).toEqual([
+        ["Everyone", "fixed"],
+        ["Seniors", "fixed exception"],
+        // The blank row: worked out from nothing saved yet.
+        ["Everyone", "fixed"]
+      ]);
+    });
+
+    describe("sections a field can't name (rowFilter, whoRule, newRowWho)", () => {
+      const WHO = {
+        fieldName: "Coverages__r",
+        label: "Who",
+        type: "who",
+        everyone: "Everyone in Main",
+        options: [
+          { label: "Unit: Juniors", value: "d1" },
+          { label: "Bunk 1 (Juniors)", value: "g1" }
+        ]
+      };
+      const ITEMS = [
+        { Id: "r1", Name: "Swim", Coverages__r: [{ Division__c: "d1" }] },
+        { Id: "r2", Name: "Canoe", Coverages__r: [{ Group__c: "g1" }] },
+        { Id: "r3", Name: "Flag", Coverages__r: [] }
+      ];
+      const juniors = (props = {}) =>
+        render({
+          objectApiName: "RecurringActivity__c",
+          addLabel: "Add Recurring activity",
+          columns: [
+            { fieldName: "Name", label: "Name", type: "text", required: true },
+            WHO
+          ],
+          rows: ITEMS,
+          rowFilter: (record, who) => who.length > 0,
+          whoRule: { ids: ["d1"], words: "Every Bunk" },
+          newRowWho: ["d1"],
+          ...props
+        });
+
+      it("shows only its rows, though it is handed every row", async () => {
+        const element = juniors();
+        await flush();
+        expect(rows(element).map((tr) => tr.dataset.row)).toEqual([
+          "row-r1",
+          "row-r2",
+          "add"
+        ]);
+        expect(element.showsRow("r3")).toBe(false);
+      });
+
+      it("a section with none of its own shows only its blank row; the first says when nothing is set up", async () => {
+        const element = juniors({ rowFilter: () => false });
+        await flush();
+        expect(
+          element.shadowRoot.querySelector('[data-id="empty"]')
+        ).toBeNull();
+        expect(rows(element).map((tr) => tr.dataset.row)).toEqual(["add"]);
+        const first = juniors({ rows: [], showColumns: true });
+        await flush();
+        expect(
+          first.shadowRoot.querySelector('[data-id="none-shown"]')
+        ).not.toBeNull();
+      });
+
+      it("covering the whole section reads quietly in its words; fewer is a value", async () => {
+        const element = juniors();
+        await flush();
+        const who = [...element.shadowRoot.querySelectorAll('[data-id="who"]')];
+        expect(
+          who.map((w) => [
+            w.textContent.trim(),
+            w.className.includes("exception")
+          ])
+        ).toEqual([
+          ["Every Bunk", false],
+          ["Bunk 1 (Juniors)", true],
+          ["Every Bunk", false]
+        ]);
+      });
+
+      it("the blank row starts covering the section, and is added covering it", async () => {
+        const element = juniors();
+        const sent = listen(element);
+        await flush();
+        const name = field(element, 2, "Name");
+        change(name, "Archery");
+        await flush();
+        allValid(element);
+        press(name, "Enter");
+        expect(sent.length).toBe(1);
+        expect(sent[0].extras.who).toEqual([{ row: 0, targets: ["d1"] }]);
+        // Shown at once in its section, as saved, until the reload says so.
+        sent[0].onSaved({ id: "r9" });
+        await flush();
+        expect(element.showsRow("r9")).toBe(true);
+      });
+
+      it("another section's change to who, read back, is taken, not kept as typing", async () => {
+        const element = juniors({ rowFilter: undefined });
+        await flush();
+        element.rows = nsRecord([
+          { ...ITEMS[0], Coverages__r: [{ Group__c: "g1" }] },
+          ITEMS[1],
+          ITEMS[2]
+        ]);
+        await flush();
+        expect(
+          element.shadowRoot.querySelector('[data-id="who"]').textContent.trim()
+        ).toBe("Bunk 1 (Juniors)");
+      });
     });
   });
 });
