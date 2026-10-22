@@ -18,6 +18,15 @@ module.exports = defineConfig([
     extends: [lwcConfig]
   },
 
+  // The living dot field draws its frames with requestAnimationFrame, the browser's own clock
+  // for animation (ADR 0015 choice 13). One file, one rule; the same in code-analyzer.yml.
+  {
+    files: ["**/lwc/shoreshDotField/shoreshDotField.js"],
+    rules: {
+      "@lwc/lwc/no-async-operation": "off"
+    }
+  },
+
   // LWC configuration with override for LWC test files
   {
     files: ["**/lwc/**/*.test.js"],

@@ -44,6 +44,9 @@
  *   mark it, carries the needs-a-look corner; Tab reaches it, Enter opens its words with the
  *   cursor on Looks right, Escape puts the cursor back on the mark, and Looks right clears it,
  *   said, with the cursor on that row's "at least" box;
+ * - the living dot field on Roots (ADR 0015 choice 13): it is drawn, hidden from screen readers,
+ *   glows when the mouse moves near it and settles back to rest, logs no errors, and with reduced
+ *   motion asked for (emulated) it stays still while the mouse moves;
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
@@ -1213,6 +1216,119 @@ async function setupShots() {
   }
 }
 
+/**
+ * The living dot field behind Roots (wiki decision 49, ADR 0015 choice 13): drawn, decoration
+ * only, glowing under a moving mouse and settling back to the same picture, no errors in the
+ * console, and still (the same picture under a moving mouse) when reduced motion is asked for.
+ */
+async function dotField() {
+  const S = "Roots";
+  const field = shown('[data-screen="roots"] c-shoresh-dot-field').first();
+  const canvas = field.locator('canvas[data-id="dots"]');
+  const errors = [];
+  const onConsole = (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  };
+  const onError = (e) => errors.push(e.message);
+  page.on("console", onConsole);
+  page.on("pageerror", onError);
+  const picture = () => canvas.evaluate((c) => c.toDataURL());
+  const motion = () =>
+    field.locator('[data-id="field"]').getAttribute("data-motion");
+  // Along the field's top edge, right of the title: dots, no words.
+  const sweep = async () => {
+    const box = await field.boundingBox();
+    const y = box.y + 12;
+    await page.mouse.move(box.x + box.width - 200, y);
+    for (let i = 1; i <= 8; i++) {
+      await page.mouse.move(box.x + box.width - 200 + i * 20, y);
+      await pause(16);
+    }
+  };
+  try {
+    await field.scrollIntoViewIfNeeded();
+    const hidden = await canvas.getAttribute("aria-hidden");
+    const rest = await picture();
+    const blank = await canvas.evaluate((c) => {
+      const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+      return !d.some((v, i) => i % 4 === 3 && v > 0);
+    });
+    if (hidden !== "true" || blank) {
+      results.fail(
+        S,
+        "The dot field is drawn, for the eye only",
+        `aria-hidden: ${hidden}; ${blank ? "nothing drawn" : "drawn"}.`
+      );
+    } else {
+      results.pass(
+        S,
+        "The dot field is drawn, for the eye only",
+        "Dots drawn; the canvas is hidden from screen readers."
+      );
+    }
+    const live = await motion();
+    await sweep();
+    const glowing = await picture();
+    await page.mouse.move(2, 2);
+    await pause(4000);
+    const settled = await picture();
+    if (live === "live" && glowing !== rest && settled === rest) {
+      results.pass(
+        S,
+        "The dot field glows under the mouse, then settles",
+        "Changed while the mouse moved; the same as at rest four seconds later."
+      );
+    } else {
+      await shot(S, "Dot field glow");
+      results.fail(
+        S,
+        "The dot field glows under the mouse, then settles",
+        `motion ${live}; ${glowing === rest ? "no glow" : "glowed"}; ${settled === rest ? "settled" : "not settled"}.`
+      );
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await pause(300);
+    const still = await motion();
+    const before = await picture();
+    await sweep();
+    const after = await picture();
+    if (still === "still" && after === before) {
+      results.pass(
+        S,
+        "The dot field is still with reduced motion",
+        "Reduced motion asked for: the same picture while the mouse moved."
+      );
+    } else {
+      await shot(S, "Dot field reduced motion");
+      results.fail(
+        S,
+        "The dot field is still with reduced motion",
+        `motion ${still}; ${after === before ? "unchanged" : "changed"} under the mouse.`
+      );
+    }
+  } finally {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.mouse.move(2, 2);
+    page.off("console", onConsole);
+    page.off("pageerror", onError);
+  }
+  // Salesforce's own page logs its own errors; ours name a Shoresh component or the field.
+  const ours = errors.filter((t) => /shoresh|dot.?field/i.test(t));
+  if (ours.length) {
+    results.fail(
+      S,
+      "The dot field logs no errors",
+      `${ours.length} error(s), first: ${scrub(ours[0]).slice(0, 200)}`
+    );
+  } else {
+    results.pass(
+      S,
+      "The dot field logs no errors",
+      `No Shoresh errors in the console (${errors.length} from Salesforce's own page).`
+    );
+  }
+}
+
 async function campSetup() {
   const S = "Camp setup";
   await step(S, "Menu reachable by Tab from the top of the page", async () => {
@@ -1233,6 +1349,7 @@ async function campSetup() {
     });
     await axe("Roots");
   });
+  await step(S, "Roots: the living dot field", dotField);
   await step(S, "Season details: a blank name says why, readably", seasonError);
   await step(S, "Weeks", async () => {
     await openFromMenu("Weeks", /^Weeks\b/);

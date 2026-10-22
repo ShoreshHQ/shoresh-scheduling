@@ -65,6 +65,13 @@ suppressions:
     - rule_selector: "pmd:AvoidBooleanMethodParameters"
       max_suppressed_violations: 1
       reason: "The setter of a Boolean property the screen sends (Ask.versionKept)."
+  # The living dot field animates with requestAnimationFrame, the browser's clock for drawing, which
+  # pauses itself in a hidden tab (ADR 0015 choice 13); not a timer. Inline disables are refused,
+  # so eslint.config.js turns the rule off for this one file too.
+  "main/default/lwc/shoreshDotField/shoreshDotField.js":
+    - rule_selector: "eslint:@lwc/lwc/no-async-operation"
+      max_suppressed_violations: 1
+      reason: "requestAnimationFrame for the dot field's frames, one call."
   # Jest tests fake real browser keyboard and mouse events, which are bubbling and composed in a
   # browser; components themselves never fire composed events.
   "main/default/lwc/shoreshAsk/__tests__":

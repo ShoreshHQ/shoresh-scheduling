@@ -24,6 +24,17 @@ describe("c-shoresh-empty-state", () => {
     expect(root.textContent.trim()).toBe("No programs yet");
   });
 
+  it("sits on the living dot field (wiki decision 49)", async () => {
+    const element = createElement("c-shoresh-empty-state", {
+      is: ShoreshEmptyState
+    });
+    element.title = "No weeks yet";
+    document.body.appendChild(element);
+    await Promise.resolve();
+    const field = element.shadowRoot.querySelector("c-shoresh-dot-field");
+    expect(field.querySelector('[data-id="empty-state"]')).not.toBeNull();
+  });
+
   it("draws a tent, not a software inbox tray", async () => {
     const element = createElement("c-shoresh-empty-state", {
       is: ShoreshEmptyState

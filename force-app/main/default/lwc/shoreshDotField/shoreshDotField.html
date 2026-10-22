@@ -1,0 +1,6 @@
+<template>
+  <div class="field" data-id="field" data-motion={motion}>
+    <canvas class="dots" data-id="dots" aria-hidden="true"></canvas>
+    <slot onslotchange={handleSlotChange}></slot>
+  </div>
+</template>
