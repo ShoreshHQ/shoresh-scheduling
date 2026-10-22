@@ -411,12 +411,7 @@ export default class ShoreshActivityDetails extends LightningElement {
    */
   async mayLeave() {
     const activityId = this.activityId;
-    let waiting = this.ownWaiting.filter((w) => w.activityId === activityId);
-    while (waiting.length) {
-      // eslint-disable-next-line no-await-in-loop
-      await Promise.all(waiting.map((w) => w.answer));
-      waiting = this.ownWaiting.filter((w) => w.activityId === activityId);
-    }
+    await this.ownAnswered(activityId);
     if (activityId !== this.activityId || this.conflict) {
       // Left meanwhile, or the question is open: it is answered before anything else.
       return false;
@@ -431,6 +426,15 @@ export default class ShoreshActivityDetails extends LightningElement {
       variant: "header",
       theme: "warning"
     });
+  }
+
+  /** Resolves once every own-field save of this activity has its answer (sent meanwhile too). */
+  async ownAnswered(activityId) {
+    const waiting = this.ownWaiting.filter((w) => w.activityId === activityId);
+    if (waiting.length) {
+      await Promise.all(waiting.map((w) => w.answer));
+      await this.ownAnswered(activityId);
+    }
   }
 
   /** Close: the details go (asking first about a refused change still unsaved). */
