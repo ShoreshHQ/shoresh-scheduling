@@ -825,6 +825,90 @@ describe("c-shoresh-activity-details", () => {
         ).toEqual(["Yes", "No"]);
       });
 
+      it("closing before the answer waits for it: the question is asked and the details stay", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        const closed = jest.fn();
+        element.addEventListener("save", handler);
+        element.addEventListener("close", closed);
+        const save = await typeLength(element, handler);
+        // Sent, so nothing is unsaved; the close waits for the answer.
+        q(element, '[data-id="close"]').click();
+        await flush();
+        expect(closed).not.toHaveBeenCalled();
+        expect(element.openActivityId).toBe("a1");
+        save.onSaved(theirLength(4));
+        await flush();
+        expect(closed).not.toHaveBeenCalled();
+        expect(element.openActivityId).toBe("a1");
+        expect(dialog(element)).not.toBeNull();
+        expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe("4");
+        expect(q(element, '[data-id="yours"]').textContent.trim()).toBe("3");
+        expect(LightningConfirm.open).not.toHaveBeenCalled();
+        // Answered, the close works as ever.
+        q(element, '[data-id="keep-theirs"]').click();
+        await flush();
+        q(element, '[data-id="close"]').click();
+        await flush();
+        expect(closed).toHaveBeenCalledTimes(1);
+      });
+
+      it("switching before the answer waits for it: the question is asked and the details stay", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        element.addEventListener("save", handler);
+        const save = await typeLength(element, handler);
+        const switching = element.open("a2");
+        await flush();
+        expect(element.openActivityId).toBe("a1");
+        save.onSaved(theirLength(4));
+        expect(await switching).toBe(false);
+        await flush();
+        expect(element.openActivityId).toBe("a1");
+        expect(dialog(element)).not.toBeNull();
+        expect(q(element, '[data-field="length"]').value).toBe(3);
+        // Use yours sends it again; once saved, switching goes ahead without asking.
+        q(element, '[data-id="use-yours"]').click();
+        await flush();
+        const again = handler.mock.calls[1][0].detail;
+        const next = element.open("a2");
+        again.onSaved(nsRecord({ id: "a1", changed: [] }));
+        expect(await next).toBe(true);
+        expect(element.openActivityId).toBe("a2");
+        expect(LightningConfirm.open).not.toHaveBeenCalled();
+      });
+
+      it("closing before a save that goes through closes once it is saved", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        const closed = jest.fn();
+        element.addEventListener("save", handler);
+        element.addEventListener("close", closed);
+        const save = await typeLength(element, handler);
+        q(element, '[data-id="close"]').click();
+        await flush();
+        expect(closed).not.toHaveBeenCalled();
+        save.onSaved(nsRecord({ id: "a1", changed: [] }));
+        await flush();
+        expect(closed).toHaveBeenCalledTimes(1);
+        expect(element.openActivityId).toBeNull();
+      });
+
+      it("closing before a refused save asks first, as for any refused change", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        const closed = jest.fn();
+        element.addEventListener("save", handler);
+        element.addEventListener("close", closed);
+        const save = await typeLength(element, handler);
+        q(element, '[data-id="close"]').click();
+        await flush();
+        save.onFailure("Not saved.");
+        await flush();
+        // The refusal leaves the typing unsaved: leaving asks, as for any refused change.
+        expect(LightningConfirm.open).toHaveBeenCalledTimes(1);
+      });
+
       it("a save waiting behind another of the same field compares with what that one saved", async () => {
         const element = await render(PANEL);
         const handler = jest.fn();

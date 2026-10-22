@@ -101,7 +101,10 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    save's turn comes, so a second save of the same field compares with what the first saved).
    Changed by someone else, nothing is saved and the details ask the same question, **Changed
    by someone else**, "Swim · Length", **Theirs** and **Yours**, **Keep theirs** (Escape) or
-   **Use yours**, with the cursor back in the field afterwards. They never save last-write-wins
+   **Use yours**, with the cursor back in the field afterwards. Closing the details or opening
+   another activity while such a save is on its way waits for its answer, so the question is
+   never dropped: if someone else changed the field, the question is asked and the details stay
+   on that activity until it is answered. They never save last-write-wins
    as a form's fields do (ADR 0013 Known limits). Checked by `shoreshActivityDetails.test.js`
    ("someone else changed the field since it was shown") and `shoreshCampSetup.test.js`; the
    server path is `RowSaves`, unchanged and covered by `RowSavesTest`._

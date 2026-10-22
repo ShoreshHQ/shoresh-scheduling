@@ -69,7 +69,8 @@ const SAME = "same";
  * seen() is what that field held when the director saw it, read when the save's turn comes (so
  * a save waiting behind another of the same field compares with what that one saved). If
  * someone else changed it since, result.changed names it and nothing is saved: the panel asks
- * Manual Build's question, "Changed by someone else", Keep theirs or Use yours.
+ * Manual Build's question, "Changed by someone else", Keep theirs or Use yours. Closing or
+ * opening another activity waits for those saves' answers, so the question is never dropped.
  *
  * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }
  * (shown: whether the form still shows that activity; a refusal it can't show is said at the top);
@@ -96,6 +97,9 @@ export default class ShoreshActivityDetails extends LightningElement {
   conflictFocused = false;
   // The field to put the cursor back in once the question is answered.
   focusFieldNext = null;
+  // The activity's own-field saves not yet answered: { activityId, answer (a promise) }.
+  // Leaving waits for them, so "someone else changed it" is always asked, never dropped.
+  ownWaiting = [];
 
   /** The season setup from SeasonSetupController (activities, programs). */
   @api
@@ -400,8 +404,23 @@ export default class ShoreshActivityDetails extends LightningElement {
     }
   }
 
-  /** Whether the activity shown may be left: a refused change still unsaved is asked about. */
+  /**
+   * Whether the activity shown may be left. Its own fields' saves on their way are waited for
+   * first: if someone else changed one, the question is asked and the details stay until it is
+   * answered (ADR 0011 choice 5). Then a refused change still unsaved is asked about.
+   */
   async mayLeave() {
+    const activityId = this.activityId;
+    let waiting = this.ownWaiting.filter((w) => w.activityId === activityId);
+    while (waiting.length) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(waiting.map((w) => w.answer));
+      waiting = this.ownWaiting.filter((w) => w.activityId === activityId);
+    }
+    if (activityId !== this.activityId || this.conflict) {
+      // Left meanwhile, or the question is open: it is answered before anything else.
+      return false;
+    }
     if (!this.activityId || !this.dirty.size) {
       return true;
     }
@@ -603,39 +622,65 @@ export default class ShoreshActivityDetails extends LightningElement {
       Name: name,
       [field]: activityId === this.activityId ? this.seen[field] : undefined
     });
+    let answer;
+    const waiting = {
+      activityId,
+      answer: new Promise((resolve) => {
+        answer = resolve;
+      })
+    };
+    this.ownWaiting.push(waiting);
+    const stopWaiting = () => {
+      this.ownWaiting = this.ownWaiting.filter((w) => w !== waiting);
+      answer();
+    };
+    const refused = (message) => {
+      onFailure(message);
+      stopWaiting();
+    };
     const answered = (result) => {
-      const changed = (result && result.changed) || [];
-      if (!changed.length) {
-        if (activityId === this.activityId) {
-          // Saved: typing since is compared with what was sent.
-          this.seen[field] = record[field];
-        }
-        onSaved();
-        return;
+      try {
+        this.answerOwn(field, record, result, { activityId, done, onSaved });
+      } finally {
+        stopWaiting();
       }
-      if (activityId !== this.activityId) {
-        return;
-      }
-      done();
-      if (this.sending.has(field)) {
-        // A newer save of the same field is on its way, and gets its own answer.
-        return;
-      }
-      // Someone else changed it: nothing saved; the typing stays until the director chooses.
-      this.dirty.add(field);
-      const theirs = result.theirs ? result.theirs[field] : null;
-      this.conflictFocused = false;
-      this.conflict = {
-        field,
-        theirs: theirs === undefined ? null : theirs,
-        yours: record[field]
-      };
     };
     this.dispatchEvent(
       new CustomEvent("save", {
-        detail: { record, seen, onSaved: answered, onFailure, shown }
+        detail: { record, seen, onSaved: answered, onFailure: refused, shown }
       })
     );
+  }
+
+  /** The answer to one own-field save: saved, or the question if someone else changed it. */
+  answerOwn(field, record, result, { activityId, done, onSaved }) {
+    const changed = (result && result.changed) || [];
+    if (!changed.length) {
+      if (activityId === this.activityId) {
+        // Saved: typing since is compared with what was sent.
+        this.seen[field] = record[field];
+      }
+      onSaved();
+      return;
+    }
+    if (activityId !== this.activityId) {
+      // Leaving waits for this answer, so only a deleted activity's details are gone by now.
+      return;
+    }
+    done();
+    if (this.sending.has(field)) {
+      // A newer save of the same field is on its way, and gets its own answer.
+      return;
+    }
+    // Someone else changed it: nothing saved; the typing stays until the director chooses.
+    this.dirty.add(field);
+    const theirs = result.theirs ? result.theirs[field] : null;
+    this.conflictFocused = false;
+    this.conflict = {
+      field,
+      theirs: theirs === undefined ? null : theirs,
+      yours: record[field]
+    };
   }
 
   // ---------- someone else changed the field (the setup tables' question) ----------
