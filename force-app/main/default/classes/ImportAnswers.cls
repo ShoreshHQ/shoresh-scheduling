@@ -78,6 +78,30 @@ public with sharing class ImportAnswers {
     Database.delete(deletes, true, AccessLevel.USER_MODE);
   }
 
+  /**
+   * Remembers one answer for the camp, outside an import: a delete on a setup screen remembers
+   * "deleted" (SetupDeletions). Two queries at most: the row, if any, then the write.
+   */
+  public static void remember(Id campId, String question, String answer) {
+    String key = keyOf(campId, question);
+    List<ImportAnswer__c> saved = [
+      SELECT Id
+      FROM ImportAnswer__c
+      WHERE Key__c = :key
+      WITH USER_MODE
+      LIMIT 1
+    ];
+    ImportAnswer__c row = saved.isEmpty()
+      ? new ImportAnswer__c(
+          Camp__c = campId,
+          Key__c = key,
+          QuestionKey__c = question
+        )
+      : new ImportAnswer__c(Id = saved[0].Id);
+    row.Answer__c = answer.left(255);
+    UserModeWrites.save(new List<SObject>{ row });
+  }
+
   /** Camp and question: the camp's Id and a digest of the full question key. */
   private static String keyOf(Id campId, String question) {
     return campId +

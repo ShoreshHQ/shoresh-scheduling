@@ -5,6 +5,7 @@
  * the rest are added.
  */
 import { FIELD } from "c/shoreshSchema";
+import { deletedAs, deletionsIn } from "./deleted";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 
@@ -160,7 +161,14 @@ function matchBlock(block, program, context) {
   }
   const [current] = touchingBlocks(block, program);
   if (!current) {
-    return { isNew: true };
+    // Deleted on a setup screen before: left out with what is in it, until brought back.
+    const gone = deletedAs(
+      context.deletions,
+      "TimeBlock",
+      context.programName,
+      block.name
+    );
+    return gone ? { leftOut: true, deleted: gone } : { isNew: true };
   }
   const noChange = context.shared.has(current.id);
   const id = `change|block|${program.name}|${current.name}|${clock(block.start)}-${clock(block.end)}`;
@@ -227,6 +235,7 @@ export function mapPrograms(reading, existing, answers) {
   const taken = new Set(programs.map((p) => looseKey(p.name)));
   const asks = [];
   const used = new Set();
+  const deletions = deletionsIn(answers);
   let created = 0;
   const result = reading.timetables.map((timetable) => {
     const groups = groupsOfTimetable(reading, timetable.index);
@@ -263,6 +272,8 @@ export function mapPrograms(reading, existing, answers) {
     const context = {
       answers,
       asks,
+      deletions,
+      programName: name,
       shared: sharedBlocks(timetable.blocks, program)
     };
     const blocks = timetable.blocks.map((block) => ({

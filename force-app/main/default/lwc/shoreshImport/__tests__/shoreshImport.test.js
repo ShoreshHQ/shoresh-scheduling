@@ -464,6 +464,66 @@ describe("c-shoresh-import", () => {
       expect(places.querySelector("p")).toBeNull();
     });
 
+    it("a place deleted before is not brought back silently: it is listed with Bring back", async () => {
+      // Deleted on the Locations screen after an earlier import that ticked it.
+      getAnswers.mockResolvedValue([
+        { key: "place|Pool", answer: "add" },
+        { key: "deleted|Location||Pool", answer: "deleted" }
+      ]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim (Pool),Art (Art room)",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      expect($(element, '[data-place="place|Pool"]')).toBeNull();
+      const deleted = $(element, '[data-id="deleted"]');
+      expect(
+        deleted.querySelector(".import-section-label").textContent.trim()
+      ).toBe("Deleted before; not brought back");
+      const row = deleted.querySelector(
+        '[data-deleted="deleted|Location||Pool"]'
+      );
+      expect(row.textContent).toContain("Pool");
+      expect(row.textContent).toContain("location");
+      const button = row.querySelector("button");
+      expect(button.getAttribute("aria-label")).toBe(
+        "Bring back Pool, location"
+      );
+      button.click();
+      await flush();
+      expect($(element, '[data-id="deleted"]')).toBeNull();
+      const pool = $(element, '[data-place="place|Pool"]');
+      expect(pool.querySelector("lightning-input").checked).toBe(true);
+    });
+
+    it("an activity deleted before is left out until Bring back", async () => {
+      getAnswers.mockResolvedValue([
+        { key: "deleted|Activity||Art", answer: "deleted" }
+      ]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim,Art",
+        "10:00-10:45,Art,Swim",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      expect(
+        $(element, '[data-deleted="deleted|Activity||Art"]').textContent
+      ).toContain("Art");
+      $(element, '[data-deleted="deleted|Activity||Art"] button').click();
+      await flush();
+      expect($(element, '[data-id="deleted"]')).toBeNull();
+    });
+
     it("the summary says where last year's schedule went, and the import can be undone", async () => {
       getAnswers.mockResolvedValue([
         { key: "similar|activity|music|musik|Music|Musik", answer: "a" },

@@ -118,6 +118,36 @@ describe("c-shoresh-list-import", () => {
     jest.clearAllMocks();
   });
 
+  it("an activity deleted before is listed with Bring back, not added; brought back, the save forgets the deletion", async () => {
+    getAnswers.mockResolvedValue([
+      { key: "deleted|Activity||Canoeing", answer: "deleted" }
+    ]);
+    const element = await openWith(
+      ["Activity,Length", "Canoeing,1", "Hiking,1"].join("\n")
+    );
+    const deleted = $(element, '[data-id="deleted"]');
+    expect(deleted.textContent).toContain("Canoeing");
+    expect($(element, '[data-id="new"]').textContent).not.toContain("Canoeing");
+    const button = deleted.querySelector(
+      'button[data-key="deleted|Activity||Canoeing"]'
+    );
+    expect(button.getAttribute("aria-label")).toBe(
+      "Bring back Canoeing, activity"
+    );
+    button.click();
+    await flush();
+    expect($(element, '[data-id="deleted"]')).toBeNull();
+    expect($(element, '[data-id="new"]').textContent).toContain("Canoeing");
+    $(element, 'lightning-button[data-id="save"]').click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(plan.records.map((r) => r.fields.Name)).toEqual([
+      "Canoeing",
+      "Hiking"
+    ]);
+    expect(plan.forget).toEqual(["deleted|Activity||Canoeing"]);
+  });
+
   it("shows the columns, what is new, what differs, and waits for Keep or Change", async () => {
     const element = await openWith(
       [

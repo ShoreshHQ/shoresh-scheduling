@@ -10,7 +10,10 @@
  * Pure JavaScript: the screen calls listProposal again on every answer.
  */
 import {
+  BRING_BACK,
   LEAVE_OUT,
+  deletedAs,
+  deletionsIn,
   looseKey,
   mergesFrom,
   similarPairs,
@@ -1089,7 +1092,13 @@ export function listProposal(input) {
   }
   result.pairs.push(...rainPlans.pairs);
   finishRepeats(read);
-  result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
+  const deletions = {
+    gone: deletionsIn(answers),
+    back: deletionsIn(answers, BRING_BACK)
+  };
+  result.rows = read.map((r) =>
+    describeRow(r, used, screen, setup, answers, deletions)
+  );
   result.targets = targets;
   result.setupActivities = setup.activities || [];
   result.setup = setup;
@@ -1101,6 +1110,8 @@ export function listProposal(input) {
     blocks: programRefs.blocks,
     days: days.added
   });
+  result.deleted = leaveOutDeletedAdds(result, deletions);
+  result.broughtBack = broughtBackAdds(result, deletions);
   return result;
 }
 
@@ -1169,6 +1180,55 @@ function alsoAdded(rows, used, asked) {
   return alsoAdd;
 }
 
+const ADD_KIND = { location: "Location", locationType: "LocationType" };
+
+/**
+ * Places and kinds of place a row names that the camp deleted before (Greg, decision 45) are
+ * not added with the list: they are taken out of alsoAdd and returned, so the screen lists them
+ * with Bring back, and the rows naming them wait ("Review here") until then. Together with the
+ * rows themselves marked "deleted": [{ key, kind, name, program }].
+ */
+function leaveOutDeletedAdds(result, deletions) {
+  const deleted = result.rows
+    .filter((row) => row.status === "deleted")
+    .map((row) => ({
+      key: row.deletedKey,
+      kind: result.screen.kind,
+      name: row.name,
+      program: result.screen.scope === "program" ? row.programName || "" : ""
+    }));
+  Object.keys(ADD_KIND).forEach((ref) => {
+    const names = result.alsoAdd[ref];
+    if (!names) {
+      return;
+    }
+    result.alsoAdd[ref] = names.filter((name) => {
+      const key = deletedAs(deletions.gone, ADD_KIND[ref], "", name);
+      if (key) {
+        deleted.push({ key, kind: ADD_KIND[ref], name, program: "" });
+      }
+      return !key;
+    });
+  });
+  return deleted;
+}
+
+/** Deletions this list's save forgets: rows and added places that were brought back. */
+function broughtBackAdds(result, deletions) {
+  const keys = result.rows
+    .filter((row) => row.status === "new" && row.broughtBack)
+    .map((row) => row.broughtBack);
+  Object.keys(ADD_KIND).forEach((ref) => {
+    (result.alsoAdd[ref] || []).forEach((name) => {
+      const key = deletedAs(deletions.back, ADD_KIND[ref], "", name);
+      if (key) {
+        keys.push(key);
+      }
+    });
+  });
+  return [...new Set(keys)].sort();
+}
+
 /** Whether a row will save its value for a column: a new row, or a difference answered Change. */
 function usesValue(row, key) {
   return (
@@ -1210,7 +1270,19 @@ function differs(column, r, from, to) {
   return !same(normal(column, from), normal(column, to));
 }
 
-function describeRow(r, used, screen, setup, answers) {
+/**
+ * An item the camp deleted on its setup screen before (Greg, decision 45): the remembered key
+ * when this new row would add it again, and the key when it was brought back in this import.
+ */
+function deletedRow(r, screen, deletions) {
+  const scope = screen.scope === "program" && r.program ? r.program.name : "";
+  return {
+    gone: deletedAs(deletions.gone, screen.kind, scope, r.name),
+    back: deletedAs(deletions.back, screen.kind, scope, r.name)
+  };
+}
+
+function describeRow(r, used, screen, setup, answers, deletions) {
   const row = {
     rowNumber: r.rowNumber,
     name: r.name,
@@ -1234,11 +1306,21 @@ function describeRow(r, used, screen, setup, answers) {
     return { ...row, status: "asked" };
   }
   if (!r.existing) {
+    const deleted = deletedRow(r, screen, deletions);
+    if (deleted.gone) {
+      // Left out until brought back: never added again silently.
+      return { ...row, status: "deleted", deletedKey: deleted.gone };
+    }
     const values = {};
     screen.columns.forEach((column) => {
       values[column.key] = newValueOf(column, r);
     });
-    return { ...row, status: "new", values };
+    return {
+      ...row,
+      status: "new",
+      values,
+      ...(deleted.back ? { broughtBack: deleted.back } : {})
+    };
   }
   const differences = [];
   used.forEach(({ column }) => {

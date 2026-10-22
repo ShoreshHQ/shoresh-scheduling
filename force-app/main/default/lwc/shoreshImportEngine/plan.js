@@ -4,6 +4,7 @@
  * but not set up.
  */
 import { FIELD } from "c/shoreshSchema";
+import { broughtBack } from "./deleted";
 import { clock, shortClock } from "./text";
 import { dayList, nameList } from "./questions";
 
@@ -189,6 +190,8 @@ export function answersToKeep(proposal, answers) {
       remember.push({ key: id, answer: String(answers[id]) });
     }
   }
+  // Brought back: the camp no longer remembers it as deleted.
+  forget.push(...broughtBack(answers));
   return { remember, forget };
 }
 
@@ -318,8 +321,9 @@ export function foundLists(proposal, t) {
           key: `${x.key}|${b.fileKey}`,
           name: blockText(b),
           detail: timetables.length > 1 ? x.name : "",
-          tag:
-            b.leftOut || b.untimed
+          tag: b.deleted
+            ? "deleted before"
+            : b.leftOut || b.untimed
               ? "left out"
               : b.change
                 ? "changes"
@@ -334,7 +338,11 @@ export function foundLists(proposal, t) {
         key: g.name,
         name: g.name,
         detail: g.division || "",
-        tag: g.leftOut ? "left out" : tag(g.isNew)
+        tag: g.deleted
+          ? "deleted before"
+          : g.leftOut
+            ? "left out"
+            : tag(g.isNew)
       }))
     },
     {
@@ -392,6 +400,11 @@ export function foundLists(proposal, t) {
 
 const UNPLACED_WHY = {
   leftOut: () => "left out for now",
+  deleted: () => "deleted before; not brought back",
+  groupDeleted: (t) =>
+    `its ${t.sIn("Group")} was deleted before; not brought back`,
+  blockDeleted: (t) =>
+    `its ${t.sIn("TimeBlock")} was deleted before; not brought back`,
   programLeftOut: (t) => `its ${t.sIn("Program")} is left out`,
   groupLeftOut: (t) => `its ${t.sIn("Group")} is left out`,
   blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,

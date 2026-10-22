@@ -128,7 +128,7 @@ function itemKeyFinder(proposal) {
     }
     const d = decisions.get(`${t.index}|${p.text}`);
     if (!d || d.leftOut) {
-      return null;
+      return d && d.deleted ? { deleted: true } : null;
     }
     const programId = t.program ? t.program.id : null;
     if (d.kind === "activity") {
@@ -173,8 +173,8 @@ function dayGrid(t, groups, placements, context) {
     const g = groups.findIndex((x) => x.name === p.group);
     const item = context.itemOf(p, t);
     const start = column.get(p.blockIndex);
-    if (!item) {
-      context.unmatched.push({ ...p, why: "leftOut" });
+    if (!item || item.deleted) {
+      context.unmatched.push({ ...p, why: item ? "deleted" : "leftOut" });
     } else if (g < 0) {
       context.unmatched.push({ ...p, why: "groupLeftOut" });
     } else if (start === undefined || rows[g][start] !== "") {
@@ -244,10 +244,16 @@ function reasonFor(p, proposal) {
   if (!t || t.leftOut) {
     return "programLeftOut";
   }
+  if (group && group.deleted) {
+    return "groupDeleted";
+  }
   if (!group || group.leftOut) {
     return "groupLeftOut";
   }
   const block = t.blocks.find((b) => b.fileKey === p.blockKey);
+  if (block && block.deleted) {
+    return "blockDeleted";
+  }
   if (!block || block.leftOut || block.untimed) {
     return "blockLeftOut";
   }

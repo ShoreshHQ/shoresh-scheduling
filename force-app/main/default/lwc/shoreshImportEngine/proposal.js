@@ -13,6 +13,7 @@ import {
   setTimeRecords,
   usablePlacements
 } from "./items";
+import { deletedAs, deletionsIn } from "./deleted";
 import { mapGroups } from "./people";
 import { mapPrograms } from "./programs";
 import { LEAVE_OUT, readImport } from "./reading";
@@ -266,6 +267,8 @@ function groupsAtOncePer(usable) {
 
 function placesFor(records, existing, answers, usable) {
   const fits = groupsAtOncePer(usable);
+  const deletions = deletionsIn(answers);
+  const deleted = [];
   const camp = new Map(
     ((existing && existing.locations) || []).map((l) => [l.Name, l.Id])
   );
@@ -284,6 +287,12 @@ function placesFor(records, existing, answers, usable) {
       continue;
     }
     const id = `place|${name}`;
+    // Deleted on a setup screen before: not offered until brought back (Bring back ticks it).
+    const gone = deletedAs(deletions, "Location", "", name);
+    if (gone) {
+      deleted.push({ key: gone, kind: "Location", name, program: "" });
+      continue;
+    }
     const ticked = answers[id] === "add";
     offered.push({
       id,
@@ -305,13 +314,56 @@ function placesFor(records, existing, answers, usable) {
   records.forEach((r) => {
     r.locationKey = keyOfPlace.get(r.place) || null;
   });
-  return { offered, locations };
+  return { offered, locations, deleted };
 }
 
 function leftOutNames(decisions) {
   return [
-    ...new Set(decisions.filter((d) => d.leftOut).map((d) => d.name))
+    ...new Set(
+      decisions.filter((d) => d.leftOut && !d.deleted).map((d) => d.name)
+    )
   ].sort();
+}
+
+/**
+ * What the camp deleted before and this import leaves out (Greg, decision 45), each once:
+ * [{ key (the remembered question, answered BRING_BACK to bring it back), kind, name, program }].
+ */
+function deletedItems(decisions, groups, timetables, places) {
+  const all = [
+    ...decisions
+      .filter((d) => d.deleted)
+      .map((d) => ({
+        key: d.deleted.key,
+        kind: d.deleted.kind,
+        name: d.name,
+        program: d.deleted.kind === "Activity" ? "" : d.timetable.name
+      })),
+    ...groups
+      .filter((g) => g.deleted)
+      .map((g) => ({
+        key: g.deleted,
+        kind: "Group",
+        name: g.recordName,
+        program: (timetables[g.timetable] || {}).name || ""
+      })),
+    ...timetables.flatMap((t) =>
+      t.blocks
+        .filter((b) => b.deleted)
+        .map((b) => ({
+          key: b.deleted,
+          kind: "TimeBlock",
+          name: b.name,
+          program: t.name
+        }))
+    ),
+    ...places
+  ];
+  const byKey = new Map();
+  all.forEach((item) => byKey.set(item.key, byKey.get(item.key) || item));
+  return [...byKey.values()].sort(
+    (a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key)
+  );
 }
 
 function notedList(usable, kinds) {
@@ -364,6 +416,7 @@ export function buildProposal(input) {
     camp: campItems(input.existing),
     timetables: programs.timetables,
     answers,
+    deletions: deletionsIn(answers),
     asks: [],
     notes: [...people.notes],
     updates: { fixed: [], recurring: [], activities: [] },
@@ -403,6 +456,12 @@ export function buildProposal(input) {
     updates: ctx.updates,
     noted: notedList(usable, noted.kinds),
     leftOutNames: leftOutNames(decisions),
+    deleted: deletedItems(
+      decisions,
+      people.groups,
+      programs.timetables,
+      places.deleted
+    ),
     leftOutCells: leftOut,
     notes: ctx.notes,
     asks: [...programs.asks, ...people.asks, ...ctx.asks],

@@ -6,6 +6,7 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import LightningConfirm from "lightning/confirm";
 import {
+  BRING_BACK,
   LAYOUTS,
   LEAVE_OUT,
   buildProposal,
@@ -406,6 +407,36 @@ export default class ShoreshImport extends LightningElement {
   }
   get hasPlaces() {
     return this.places.length > 0;
+  }
+
+  /**
+   * What the camp deleted before and this import leaves out (Greg, decision 45), each with
+   * Bring back. A place brought back is ticked, as the director means to add it.
+   */
+  get deletedItems() {
+    const t = this.terms;
+    return ((this.proposal && this.proposal.deleted) || []).map((item) => {
+      const detail = `${t.sIn(item.kind)}${item.program ? ` · ${item.program}` : ""}`;
+      return {
+        ...item,
+        detail,
+        place: item.kind === "Location" ? `place|${item.name}` : "",
+        bringBackLabel: `Bring back ${item.name}, ${detail}`
+      };
+    });
+  }
+  get hasDeleted() {
+    return this.deletedItems.length > 0;
+  }
+
+  handleBringBack(event) {
+    const { key, placeAnswer } = event.currentTarget.dataset;
+    const answers = { ...this.answers, [key]: BRING_BACK };
+    if (placeAnswer) {
+      answers[placeAnswer] = "add";
+    }
+    this.answers = answers;
+    this.recompute();
   }
 
   handlePlace(event) {

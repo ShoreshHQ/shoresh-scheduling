@@ -272,6 +272,39 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     answer per camp and question (`Key__c`, unique: the camp and a SHA-256 digest of the key; the
     full key is in `QuestionKey__c`).
 
+20. **Things you delete stay deleted** (Greg, build log decision 45, 2026-10-21; desktop Director
+    Guide §2 "Things you delete stay deleted", `electron/ops/ingest.js` `rejectedSlotKeys` and
+    `fieldProvenance.js` `isHumanDeleted`). A setup item a director deletes on a setup screen
+    (`SeasonSetupController.deleteRecord`) is remembered for the camp, with the answers above:
+    `SetupDeletions` writes `ImportAnswer__c` with the key
+    `deleted|<kind>|<program>|<name>` answered `deleted`, in the same all-or-none step as the
+    delete (a refused delete remembers nothing). Kinds are the import's own words: Activity,
+    Location, LocationType and Program (season items, no program), and Division, Group,
+    TimeBlock, FixedActivity and RecurringActivity (named with their program). Keys are names,
+    never Ids, so a deletion holds in next year's season too.
+    - **Only a director's delete counts**, as on the desktop (a delete with source "human"):
+      Undo last import, a season's delete (and what goes with it), and "Same location?" merges
+      remember nothing. Weeks and seasons are not remembered: weeks follow the season's dates.
+    - **Something the camp has wins**, as the desktop's "live wins over tombstone": a name set
+      up again by hand is matched as usual. Only an item an import would add is left out.
+    - **Import last year** (`c/shoreshImportEngine`, `deleted.js`) leaves out a deleted
+      activity (any of activity, fixed or recurring of that name, for its program), group, new
+      time block, or place, without asking its questions (its kind, its division); placements
+      in it are listed as not in last year's version, "deleted before; not brought back" (or
+      "its group / time block was deleted before; not brought back"). A place deleted before is
+      not offered, even with its tick remembered.
+    - **Import a list and the camp workbook** (`c/shoreshLists`) mark such a row `deleted`
+      instead of `new`; a place or kind of place a row names is not added with the list, and
+      the rows naming it wait ("Review here") until it is brought back.
+    - **Shown, never silent**: both screens list them under "Deleted before; not brought back",
+      each with **Bring back** (one click). Bring back answers the key `back`: the item is then
+      added like any other, and the save forgets the deletion (`forget`). The summary of Import
+      last year lists what stayed out.
+    - Names compare as similar names do (`foldName`: case, spaces and punctuation ignored).
+    - Not covered yet: divisions and programs Import last year would add (a new program's name
+      is made up by the import, so it can't match), and divisions, time blocks and programs a
+      list adds because its rows name them.
+
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 
 - **Layout can be changed per file** (the desktop only displayed it): kept.

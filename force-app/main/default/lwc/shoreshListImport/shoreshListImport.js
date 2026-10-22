@@ -7,6 +7,7 @@ import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import {
+  BRING_BACK,
   csvFile,
   isCsv,
   isReadable,
@@ -411,6 +412,7 @@ export default class ShoreshListImport extends LightningElement {
       text: `Row ${r.rowNumber}${r.name ? ` · ${r.name}` : ""} · ${r.problems.join("; ")}`
     }));
     const leftOutRows = this.leftOutRowsOf(p);
+    const deletedRows = this.deletedRowsOf(p);
     return {
       key: `section-${key}`,
       label,
@@ -434,6 +436,8 @@ export default class ShoreshListImport extends LightningElement {
       leftOutRows,
       hasLeftOut: leftOutRows.length > 0,
       leftOutHeading: `Left out (${leftOutRows.length})`,
+      deletedRows,
+      hasDeleted: deletedRows.length > 0,
       lists: []
     };
   }
@@ -730,6 +734,27 @@ export default class ShoreshListImport extends LightningElement {
             : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
+  /**
+   * What the camp deleted before and this list leaves out (Greg, decision 45), each with Bring
+   * back: rows of the list, and places or kinds of place its rows name.
+   */
+  deletedRowsOf(p) {
+    const t = this.terms;
+    return (p.deleted || []).map((item) => {
+      const detail = `${t.sIn(item.kind)}${item.program ? ` · ${item.program}` : ""}`;
+      return {
+        key: item.key,
+        name: item.name,
+        detail,
+        bringBackLabel: `Bring back ${item.name}, ${detail}`
+      };
+    });
+  }
+
+  handleBringBack(event) {
+    this.answer(event.currentTarget.dataset.key, BRING_BACK);
+  }
+
   get askedCount() {
     return this.rowsWith("asked").length;
   }
