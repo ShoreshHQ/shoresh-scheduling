@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import setUpItem from "@salesforce/apex/ManualBuildController.setUpItem";
+import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";

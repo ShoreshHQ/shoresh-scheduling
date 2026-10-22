@@ -24,13 +24,13 @@ public with sharing class ScheduleGridRules {
     'D'
   };
 
+  private static final Pattern ITEM_NUMBER = Pattern.compile('[0-9]{1,6}');
+
   /** Whether an item points at a record set up in Shoresh (an activity, a placed special event...). */
   public static Boolean isSetUp(ScheduleGrid.Item item) {
     return SET_UP_KINDS.contains(item.kind) ||
       (SET_UP_LATER_KINDS.contains(item.kind) && String.isNotBlank(item.id));
   }
-
-  private static final Pattern ITEM_NUMBER = Pattern.compile('[0-9]{1,6}');
 
   /** Why a grid cannot be stored or read, in words that finish "could not be read: ...". */
   public class GridException extends Exception {

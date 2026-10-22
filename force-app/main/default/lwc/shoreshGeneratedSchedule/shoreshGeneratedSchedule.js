@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import setUpItem from "@salesforce/apex/GeneratedScheduleController.setUpItem";
+import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import previewPublish from "@salesforce/apex/GeneratedScheduleController.previewPublish";
 import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";

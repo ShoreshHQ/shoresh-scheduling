@@ -11,19 +11,26 @@ private class WeekSpecialsTest {
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
   private static final Date TUESDAY = Date.newInstance(2026, 6, 30);
 
-  /** A run over cells of a week day, from what they held to what they should hold. */
-  private static List<SlotEdits.Edit> edits(
+  /** A run over cells of a week day: its blocks, then what they held and should hold. */
+  private static SlotEdits.Run runOn(
     Date day,
     Id groupId,
-    List<String> blockIds,
-    List<String> before,
-    List<String> after
+    List<String> blockIds
   ) {
     SlotEdits.Run run = new SlotEdits.Run();
     run.day = day;
     run.groupId = groupId;
     run.firstBlockId = blockIds[0];
     run.blockIds = blockIds;
+    return run;
+  }
+
+  /** One edit of one run: from what its cells held to what they should hold. */
+  private static List<SlotEdits.Edit> edits(
+    SlotEdits.Run run,
+    List<String> before,
+    List<String> after
+  ) {
     run.before = before;
     run.after = after;
     SlotEdits.Edit edit = new SlotEdits.Edit();
@@ -136,9 +143,7 @@ private class WeekSpecialsTest {
         ManualBuildController.saveSlots(
           view.schedule.schedule.id,
           edits(
-            TUESDAY,
-            ids.get('Group A'),
-            new List<String>{ blockId },
+            runOn(TUESDAY, ids.get('Group A'), new List<String>{ blockId }),
             new List<String>{ '' },
             new List<String>{ 'A:' + ids.get('Swim') }
           )
@@ -176,9 +181,7 @@ private class WeekSpecialsTest {
       SlotEdits.Result saved = ManualBuildController.saveSlots(
         draftId,
         edits(
-          MONDAY,
-          ids.get('Group A'),
-          blocks,
+          runOn(MONDAY, ids.get('Group A'), blocks),
           new List<String>{ '', '' },
           new List<String>{ event, '^' + event }
         )
@@ -220,9 +223,7 @@ private class WeekSpecialsTest {
       ManualBuildController.saveSlots(
         draftId,
         edits(
-          MONDAY,
-          ids.get('Group A'),
-          blocks,
+          runOn(MONDAY, ids.get('Group A'), blocks),
           new List<String>{ event, '^' + event },
           new List<String>{ '', '' }
         )
@@ -245,9 +246,11 @@ private class WeekSpecialsTest {
         ManualBuildController.saveSlots(
           view.schedule.schedule.id,
           edits(
-            MONDAY,
-            ids.get('Group A'),
-            new List<String>{ view.schedule.days[0].blocks[0].id },
+            runOn(
+              MONDAY,
+              ids.get('Group A'),
+              new List<String>{ view.schedule.days[0].blocks[0].id }
+            ),
             new List<String>{ '' },
             new List<String>{ 'S:' + elsewhere }
           )

@@ -254,8 +254,7 @@ public with sharing class ManualBuildViews {
     view.specials = WeekSpecials.read(
       read.program.Season__c,
       read.week,
-      read.groups,
-      knownIds(read)
+      read.groups
     );
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
@@ -270,18 +269,6 @@ public with sharing class ManualBuildViews {
       names
     );
     return view;
-  }
-
-  /** The groups and activities just read: a special day's schedule needn't look them up again. */
-  private static Set<String> knownIds(Read read) {
-    Set<String> ids = new Set<String>();
-    for (Group__c grp : read.groups) {
-      ids.add(grp.Id);
-    }
-    for (Activity__c activity : read.activities) {
-      ids.add(activity.Id);
-    }
-    return ids;
   }
 
   /** Setup's names now, from what the view has read (ManualBuildNamesNow). */

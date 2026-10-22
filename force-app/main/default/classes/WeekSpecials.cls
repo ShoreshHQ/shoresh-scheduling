@@ -49,13 +49,12 @@ public with sharing class WeekSpecials {
   /**
    * The season's events and the week's replaced days. groups: the program's groups, in order: a
    * replaced day shows their columns of the special day (the whole camp's when it has none of
-   * them). known: record Ids already known to be there (the program's setup), or null.
+   * them).
    */
   public static Specials read(
     Id seasonId,
     Week__c week,
-    List<Group__c> groups,
-    Set<String> known
+    List<Group__c> groups
   ) {
     Specials result = new Specials();
     if (!readable()) {
@@ -107,7 +106,7 @@ public with sharing class WeekSpecials {
       grid.problem = plan.problem;
       grids.add(grid);
     }
-    List<ScheduleViews.DayView> views = ScheduleViews.dayViews(grids, known);
+    List<ScheduleViews.DayView> views = ScheduleViews.dayViews(grids);
     for (Integer i = 0; i < views.size(); i++) {
       result.days[i].plan = views[i];
     }
@@ -132,6 +131,41 @@ public with sharing class WeekSpecials {
     ]) {
       result.put(row.Day__c, row.SpecialDay__r.Name);
     }
+    return result;
+  }
+
+  /** The days of a week a special day replaces, for refusing an edit there. */
+  public class Replaced {
+    // Weekday ("Friday") => the special day's name.
+    private Map<String, String> names = new Map<String, String>();
+    private CampLabels labels;
+
+    /** 'Friday is the special day "Visiting Day". Open it to change that day.' */
+    public void refuseOn(Date day) {
+      String weekday = day == null ? null : WeekCalendar.weekdayName(day);
+      if (names.containsKey(weekday)) {
+        throw new ShoreshException(
+          weekday +
+            ' is the ' +
+            labels.singularInSentence('SpecialDay') +
+            ' "' +
+            names.get(weekday) +
+            '". Open it to change that day.'
+        );
+      }
+    }
+  }
+
+  /** No day replaced (a week just started from another, which no one else can see yet). */
+  public static Replaced noneReplaced() {
+    return new Replaced();
+  }
+
+  /** The week's days a special day replaces, read now. */
+  public static Replaced replacedOn(Id weekId, CampLabels labels) {
+    Replaced result = new Replaced();
+    result.names = replacedNames(weekId);
+    result.labels = labels;
     return result;
   }
 

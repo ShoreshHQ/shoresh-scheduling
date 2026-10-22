@@ -116,10 +116,12 @@ describe("c-shoresh-special-details: put on a day", () => {
     q(element, "put").click();
     await flush();
     expect(putOnDay).toHaveBeenCalledWith({
-      specialDayId: "sd1",
-      weekId: "w2",
-      day: "Friday",
-      replace: false
+      request: {
+        specialDayId: "sd1",
+        weekId: "w2",
+        day: "Friday",
+        answer: null
+      }
     });
     expect(q(element, "place-said").textContent.trim()).toBe(
       '"Visiting Day" is on Friday of "Week 2".'
@@ -152,10 +154,12 @@ describe("c-shoresh-special-details: put on a day", () => {
     use.click();
     await flush();
     expect(putOnDay).toHaveBeenLastCalledWith({
-      specialDayId: "sd1",
-      weekId: "w1",
-      day: "Monday",
-      replace: true
+      request: {
+        specialDayId: "sd1",
+        weekId: "w1",
+        day: "Monday",
+        answer: "replace"
+      }
     });
     expect(q(element, "place-said").textContent.trim()).toBe(
       '"Visiting Day" is on Monday of "Week 1".'

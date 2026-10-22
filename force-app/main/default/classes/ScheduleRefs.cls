@@ -27,7 +27,7 @@ public with sharing class ScheduleRefs {
     if (ids.isEmpty()) {
       return found;
     }
-    lookUp(ids, found);
+    found.addAll(ScheduleRecordsThere.of(ids));
     return found;
   }
 
@@ -40,102 +40,6 @@ public with sharing class ScheduleRefs {
       }
     }
     return rest;
-  }
-
-  /**
-   * Each kind of record a day points at is looked for only when the day points at one, so a
-   * week with no special events costs no query for them.
-   */
-  private static void lookUp(Set<Id> ids, Set<String> found) {
-    Set<Schema.SObjectType> types = new Set<Schema.SObjectType>();
-    for (Id recordId : ids) {
-      types.add(recordId.getSObjectType());
-    }
-    if (types.contains(TimeBlock__c.SObjectType)) {
-      for (TimeBlock__c row : [
-        SELECT Id
-        FROM TimeBlock__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
-    if (types.contains(Group__c.SObjectType)) {
-      for (Group__c row : [
-        SELECT Id
-        FROM Group__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
-    if (types.contains(Activity__c.SObjectType)) {
-      for (Activity__c row : [
-        SELECT Id
-        FROM Activity__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
-    if (types.contains(FixedActivity__c.SObjectType)) {
-      for (FixedActivity__c row : [
-        SELECT Id
-        FROM FixedActivity__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
-    if (types.contains(RecurringActivity__c.SObjectType)) {
-      for (RecurringActivity__c row : [
-        SELECT Id
-        FROM RecurringActivity__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
-    lookUpSpecial(ids, types, found);
-  }
-
-  /** Special events placed on a grid, and special days set up from one (ADR 0014 slice 4). */
-  private static void lookUpSpecial(
-    Set<Id> ids,
-    Set<Schema.SObjectType> types,
-    Set<String> found
-  ) {
-    if (
-      types.contains(SpecialEvent__c.SObjectType) &&
-      Schema.sObjectType.SpecialEvent__c.isAccessible()
-    ) {
-      for (SpecialEvent__c row : [
-        SELECT Id
-        FROM SpecialEvent__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
-    if (
-      types.contains(SpecialDay__c.SObjectType) &&
-      Schema.sObjectType.SpecialDay__c.isAccessible()
-    ) {
-      for (SpecialDay__c row : [
-        SELECT Id
-        FROM SpecialDay__c
-        WHERE Id IN :ids
-        WITH USER_MODE
-      ]) {
-        found.add(row.Id);
-      }
-    }
   }
 
   /** Whether the text is the Id of a record found still there (15 or 18 characters). */

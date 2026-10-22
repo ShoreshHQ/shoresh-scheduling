@@ -9,6 +9,27 @@ private class SpecialPlacingTest {
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
   private static final Date WEDNESDAY = Date.newInstance(2026, 7, 1);
 
+  /** Put this special day on the week's weekday (asking before replacing another). */
+  private static SpecialDayPlacing.Request request(
+    Id specialDayId,
+    Id weekId,
+    String day
+  ) {
+    SpecialDayPlacing.Request asked = new SpecialDayPlacing.Request();
+    asked.specialDayId = specialDayId;
+    asked.weekId = weekId;
+    asked.day = day;
+    return asked;
+  }
+
+  /** The same, the answer to the question being yes. */
+  private static SpecialDayPlacing.Request replacing(
+    SpecialDayPlacing.Request asked
+  ) {
+    asked.answer = SpecialDayPlacing.REPLACE;
+    return asked;
+  }
+
   private static List<SpecialDate__c> daysOf(Id weekId) {
     return [
       SELECT Day__c, SpecialDay__r.Name, SpecialEvent__r.Name
@@ -32,30 +53,18 @@ private class SpecialPlacingTest {
       Test.startTest();
       Integer before = Limits.getQueries();
       SpecialDayPlacing.Placed first = SpecialPlacingController.putOnDay(
-        ids.get('Field Day'),
-        week,
-        'Tuesday',
-        false
+        request(ids.get('Field Day'), week, 'Tuesday')
       );
       Integer used = Limits.getQueries() - before;
       SpecialDayPlacing.Placed asked = SpecialPlacingController.putOnDay(
-        visiting,
-        week,
-        'Tuesday',
-        false
+        request(visiting, week, 'Tuesday')
       );
       List<SpecialDate__c> afterAsking = daysOf(week);
       SpecialDayPlacing.Placed replaced = SpecialPlacingController.putOnDay(
-        visiting,
-        week,
-        'Tuesday',
-        true
+        replacing(request(visiting, week, 'Tuesday'))
       );
       SpecialDayPlacing.Placed again = SpecialPlacingController.putOnDay(
-        visiting,
-        week,
-        'Tuesday',
-        false
+        request(visiting, week, 'Tuesday')
       );
       Test.stopTest();
 
@@ -113,10 +122,7 @@ private class SpecialPlacingTest {
       String refusal;
       try {
         SpecialPlacingController.putOnDay(
-          ids.get('Field Day'),
-          shortWeek.Id,
-          'Monday',
-          false
+          request(ids.get('Field Day'), shortWeek.Id, 'Monday')
         );
       } catch (AuraHandledException e) {
         refusal = e.getMessage();
@@ -130,8 +136,7 @@ private class SpecialPlacingTest {
   /** The Manual Build draft of Week 1, with one cell of Monday holding what a file noted. */
   private static Id draftNoting(
     Map<String, Id> ids,
-    String kind,
-    String name,
+    ScheduleGrid.Item noted,
     Date day
   ) {
     ManualBuildViews.DraftView view = ManualBuildController.startBlankWeek(
@@ -141,7 +146,7 @@ private class SpecialPlacingTest {
     Id draftId = view.schedule.schedule.id;
     for (ScheduleDays.DayGrid read : ScheduleDays.read(draftId)) {
       if (read.day == day) {
-        read.grid.items.add(new ScheduleGrid.Item(kind, '', name));
+        read.grid.items.add(noted);
         read.grid.rows[0][0] = String.valueOf(read.grid.items.size());
         read.grid.rows[1][0] = String.valueOf(read.grid.items.size());
         ScheduleDaySaves.write(
@@ -159,11 +164,15 @@ private class SpecialPlacingTest {
   static void settingUpANotedEventMakesItAndPointsItsCellsAtIt() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
-      Id draftId = draftNoting(ids, 'S', 'Color War', MONDAY);
+      Id draftId = draftNoting(
+        ids,
+        new ScheduleGrid.Item('S', '', 'Color War'),
+        MONDAY
+      );
 
       Test.startTest();
       Integer before = Limits.getQueries();
-      SpecialSetUp.Done done = ManualBuildController.setUpItem(
+      SpecialSetUp.Done done = SpecialPlacingController.setUpItem(
         draftId,
         'S',
         'Color War'
@@ -204,10 +213,14 @@ private class SpecialPlacingTest {
   static void settingUpANotedSpecialDayPutsItOnTheDaysTheFileHadIt() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
-      Id draftId = draftNoting(ids, 'D', 'Visiting day ', WEDNESDAY);
+      Id draftId = draftNoting(
+        ids,
+        new ScheduleGrid.Item('D', '', 'Visiting day '),
+        WEDNESDAY
+      );
 
       Test.startTest();
-      SpecialSetUp.Done done = ManualBuildController.setUpItem(
+      SpecialSetUp.Done done = SpecialPlacingController.setUpItem(
         draftId,
         'D',
         'Visiting day '
@@ -238,11 +251,15 @@ private class SpecialPlacingTest {
   static void settingUpADayAlreadyTakenLeavesTheOtherSpecialDay() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
-      Id draftId = draftNoting(ids, 'D', 'Visiting Day', WEDNESDAY);
+      Id draftId = draftNoting(
+        ids,
+        new ScheduleGrid.Item('D', '', 'Visiting Day'),
+        WEDNESDAY
+      );
       SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Wednesday');
 
       Test.startTest();
-      SpecialSetUp.Done done = ManualBuildController.setUpItem(
+      SpecialSetUp.Done done = SpecialPlacingController.setUpItem(
         draftId,
         'D',
         'Visiting Day'

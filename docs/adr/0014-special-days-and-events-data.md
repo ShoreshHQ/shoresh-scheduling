@@ -263,15 +263,15 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
       it with the activities; Copy, Paste and Copy day to carry it (`tools.js isPlaceable`);
       Start from another week leaves it out and says so ("… a special event is put on each day by
       hand").
-    - **Saved** as Manual Build's edits are (`SlotSaves`, `SlotRules.withEvents`): only the
+    - **Saved** as Manual Build's edits are (`SlotSaves`, `SlotRules.withEvents`, `SlotEvents`): only the
       season's events, read once per save (another season's or a deleted one is refused).
     - **The checks and counts leave it out** (desktop: the generator skips it, never "Unfillable"):
       no dots, not counted as filled or to fill (`checks.js filledCount`), so the counter and
       "Still to place" don't see it. **The generator keeps it like a lock**: a full build never
       clears, moves or fills over it (`GeneratedChecks`: something kept "stays where it is").
 
-20. **An event's days follow the grids** (`SpecialEventDays`, from `ScheduleDayTrigger` after a
-    day is saved or deleted). An event is on a week's weekday (a `SpecialDate__c` row, choice 4)
+20. **An event's days follow the grids** (`SpecialEventDays`, from `ScheduleDayTriggerHandler`
+    after a day is saved or deleted). An event is on a week's weekday (a `SpecialDate__c` row, choice 4)
     while a **draft** of that week (Manual Build or Generated, any program) holds it that day, so
     "Placed on" on the Special events screen and the delete refusal (choice 8) see the grid
     however its cells were written (an edit, Paste, Restore, Set it up). Versions and published
@@ -311,8 +311,9 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
       Start over leaves that day's cells too. With every day replaced, Generate says "Every day
       this week is a special day, so there is nothing to generate."
 
-23. **"Set it up" on an imported "not set up yet" cell** (`SpecialSetUp`, on Manual Build and
-    Generated Schedule). With focus on a cell an import noted as a special event or special day,
+23. **"Set it up" on an imported "not set up yet" cell** (`SpecialSetUp` with `NotedItems` and
+    `SpecialNamed`, from `SpecialPlacingController.setUpItem`, on Manual Build and Generated
+    Schedule, each draft locked as its own edits lock it). With focus on a cell an import noted as a special event or special day,
     a line offers **Set it up** ("Color War isn't set up yet · Set it up"); one click makes it
     from what the file had, its name and where it was:
     - an **event**: the season's event of that name (spaces and capitals aside), made when there

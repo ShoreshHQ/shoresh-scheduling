@@ -1338,7 +1338,8 @@ ADR 0014 choices 19 to 25 (Special Events slice 4; desktop ADRs
    Start over leaves that day's cells too; Lock offers nothing there. With every day replaced,
    Generate says "Every day this week is a special day, so there is nothing to generate."
 3. The week editor draws the replaced day, the events and "Set it up" as on Manual Build (ADR
-   0008 part 10); "Set it up" here goes through `GeneratedScheduleController.setUpItem`.
+   0008 part 10); "Set it up" here goes through the same `SpecialPlacingController.setUpItem`, which locks the
+   Generated draft as its own edits do.
 
 Checked by `c/shoreshEngine` `specials.test.js` and `WeekSpecialsTest`
 (`generatedScheduleIsSentThemToo`).

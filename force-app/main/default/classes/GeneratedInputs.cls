@@ -97,13 +97,11 @@ public with sharing class GeneratedInputs {
         days
       );
     }
-    Set<String> known = stillThere(setup, inputs);
-    inputs.days = ScheduleViews.dayViews(days, known);
+    inputs.days = ScheduleViews.dayViews(days, stillThere(setup, inputs));
     inputs.specials = WeekSpecials.read(
       setup.program.Season__c,
       setup.week,
-      setup.groups,
-      known
+      setup.groups
     );
     return inputs;
   }

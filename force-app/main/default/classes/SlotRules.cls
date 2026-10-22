@@ -7,7 +7,8 @@
 public with sharing class SlotRules {
   private CampLabels labels;
   private Map<Id, Activity__c> activities = new Map<Id, Activity__c>();
-  private Map<Id, SpecialEvent__c> events = new Map<Id, SpecialEvent__c>();
+  // The special events the edits place (SlotEvents); none unless withEvents read them.
+  private SlotEvents events = SlotEvents.none();
   private Id seasonId;
   private Map<Id, Group__c> groups = new Map<Id, Group__c>();
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
@@ -40,32 +41,9 @@ public with sharing class SlotRules {
     }
   }
 
-  /**
-   * The season's special events the edits place, read once (none read when they place none).
-   * One from another season, or deleted, is refused when it is placed (startToken).
-   */
+  /** The season's special events the edits place, read once (SlotEvents). */
   public SlotRules withEvents(List<SlotEdits.Edit> edits) {
-    Set<Id> eventIds = new Set<Id>();
-    for (SlotEdits.Edit edit : edits) {
-      for (SlotEdits.Run run : edit?.runs ?? new List<SlotEdits.Run>()) {
-        for (String slot : run?.after ?? new List<String>()) {
-          Id eventId = SlotIds.eventIn(SlotIds.owner(slot));
-          if (eventId != null) {
-            eventIds.add(eventId);
-          }
-        }
-      }
-    }
-    if (!eventIds.isEmpty()) {
-      events = new Map<Id, SpecialEvent__c>(
-        [
-          SELECT Id, Name
-          FROM SpecialEvent__c
-          WHERE Id IN :eventIds AND Season__c = :seasonId
-          WITH USER_MODE
-        ]
-      );
-    }
+    events = SlotEvents.read(seasonId, labels, edits);
     return this;
   }
 
@@ -86,11 +64,9 @@ public with sharing class SlotRules {
   private static Set<Id> activityIdsIn(SlotEdits.Run run) {
     Set<Id> result = new Set<Id>();
     for (String slot : run.after == null ? new List<String>() : run.after) {
-      Id activityId = SlotIds.activityIn(slot);
-      if (activityId != null) {
-        result.add(activityId);
-      }
+      result.add(SlotIds.activityIn(slot));
     }
+    result.remove(null);
     return result;
   }
 
@@ -127,18 +103,8 @@ public with sharing class SlotRules {
         return String.valueOf(i + 1);
       }
     }
-    Id eventId = SlotIds.eventIn(slot);
-    if (eventId != null) {
-      SpecialEvent__c event = events.get(eventId);
-      if (event == null) {
-        throw new ShoreshException(
-          'That ' +
-            labels.singularInSentence('SpecialEvent') +
-            ' was not found. It may have been deleted.'
-        );
-      }
-      grid.items.add(new ScheduleGrid.Item('S', event.Id, event.Name));
-      return String.valueOf(grid.items.size());
+    if (SlotIds.eventIn(slot) != null) {
+      return events.startToken(grid, slot);
     }
     Activity__c activity = seasonActivity(slot);
     grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));

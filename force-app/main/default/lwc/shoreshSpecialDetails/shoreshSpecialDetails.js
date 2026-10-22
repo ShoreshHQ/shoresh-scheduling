@@ -450,10 +450,13 @@ export default class ShoreshSpecialDetails extends LightningElement {
     this.placing = { ...asked, working: true };
     try {
       const result = await putOnDay({
-        specialDayId: itemId,
-        weekId: asked.weekId,
-        day: asked.day,
-        replace
+        request: {
+          specialDayId: itemId,
+          weekId: asked.weekId,
+          day: asked.day,
+          // The answer to "Use this one instead?" (SpecialDayPlacing.REPLACE), or none yet.
+          answer: replace ? "replace" : null
+        }
       });
       if (this.itemId !== itemId) {
         return;
