@@ -1,0 +1,76 @@
+# 0016: Reading a choices sheet
+
+Status: proposed (2026-10-21), electives slice E3a. Design source: the wiki electives plan
+(`projects/shoresh-sf-electives-plan.md` §2 "Choices", §3 "Privacy", §6.3, §8 slice E3a), Greg's
+decision 44 (electives are one piece of work), and Shoresh desktop's choices-sheet reader
+(`src/ingest/preferenceSheet.js`) with its ADR `2026-09-27-elective-preference-etl-canonical-record-and-learned-axis-binding`
+(§4.1-4.4, §8, §14.1, §14.1a), adapted under Apache-2.0 (see `NOTICE`). The design guide's
+import rule applies: ask about what we found, never about the file's shape.
+
+This slice is the reader's core only: no screen, no objects, nothing saved. Slice E6 builds the
+review screens and the save on it.
+
+## Choices
+
+1. **A pure module, `c/shoreshChoicesReader`,** beside `c/shoreshImportEngine` and using its file
+   reading (`csvFile`, `workbookFile`) and text helpers. `readChoices(file, { activities })`
+   takes a file of sheets and returns campers with their choices, plus what it could not read.
+   Like the schedule engine (ADR 0010 §1) it runs in the browser: the file never leaves it.
+2. **No file shape is refused, and the director is never asked what the shape is** (desktop
+   §14.1, §14.1a). The reader finds the heading row itself (below a title, or a two-row heading
+   with "Choices" or a day merged over 1, 2, 3) and reads every shape the corpus holds: ranked
+   columns in any of their usual words (#1, Choice 1, First choice, 1st choice, Rank 1, Pref 1),
+   one row per choice (with or without a rank, day or period column), choices per period named
+   in the heading ("Tue P2 - 1st choice", "Monday Period 3"), a choice per period plus a ranked
+   list for the week, every choice in one cell, first and last name in two columns, camper
+   numbers, division and bunk, and a planner that is one camper's own sheet (days across, periods
+   down). What it can't read it lists, by place: rows above the table, columns it doesn't use,
+   rows with no name, rows with no choices (footers like "Total campers"), cells that aren't a
+   choice ("8", "Yes"), sheets with no choices, and a menu of what is offered.
+3. **Headings, never cell contents, decide what a column is** (as ADR 0007 §2). A column the
+   reader doesn't use is named by its heading only; **what it holds is never copied** into the
+   reading (an email address, a date of birth, a parent's name). The plan's minimal-data rule
+   starts here.
+4. **Three kinds of choice** (desktop §4.2): _ranked_ (one of an ordered list, for the week or
+   for one period), _cell_ (the camper's one choice for a day or period, rank 1), and
+   _unordered_ (rank blank). **Unordered is never made into a rank** (desktop §4.1, owner
+   2026-09-29): a list in one cell, one row per choice with no rank, and two columns both headed
+   #1 are unordered. A list found inside a ranked cell is read as unordered choices and marked to
+   check, never as one activity called "Swim, Drama".
+5. **Who is who** (desktop §4.4, plan §2). A camper is one camper number, or with none, one name
+   (capitals, spacing and punctuation aside); division is never part of who they are. A camper's
+   rows are one camper when they give different choices (one row per choice, one row per
+   period). **Two rows with one name, no number, and different choices for the same rank are two
+   campers the reader can't tell apart:** neither becomes a camper; both rows are listed with
+   their division and bunk for the director (the one thing the reader will not decide). One
+   name with a number on some rows and not others stays two campers and is marked to check (the
+   desktop's partial-id fork). One number with two names, and one camper's rows giving two
+   divisions or bunks, are marked to check; the first is kept.
+6. **Comments and opt-outs are read, shown, and never kept** (plan question 3, pending Greg's
+   answer; the recommendation is "show, never save"). They come back in their own list,
+   `notKept`, apart from the campers, so a save of the campers can't carry them by accident. E6
+   shows them during the review and must not save them. If Greg decides otherwise, only E6 changes.
+7. **Choice names the camp doesn't have are listed** (`newNames`, with how many campers chose
+   each) when the camp's activities are passed in. Settling them (Add, or Same as) is E6's
+   question, asked once per name (plan §2).
+8. **Same file, same reading.** Campers come back in the order the sheet first names them, and
+   choices in sheet order. Nothing depends on time or chance.
+9. **Tested against a generated corpus of 28 synthetic sheets** (`docs/samples/choices/`, made by
+   `scripts/make-choices-samples.mjs` with a fixed seed). Every sheet is read from its file bytes
+   and compared in full with what the generator put in it, so "silently wrong" (a sheet read
+   differently from what it holds) is a failing test, and must stay zero. **Names are made up**:
+   every camper name is a first name and an invented surname from `names.json`, and a test
+   checks every name in the corpus and every name the reader finds against that list (the
+   desktop's §8.0 control, since no gate can spot a real child's name). Never commit a real
+   camp's sheet, in any form.
+
+## Not done here
+
+- The review screens, camper records, the run and the save (E6); reading one camper back in words
+  ("Maya: 1 Archery, 2 Drama") is the review screen's.
+- Matching a sheet's day and period words to the camp's time blocks and the elective times on
+  the grid (E6, against the set's placement). Periods come back as "Period 3" or "Block 2";
+  days as weekday names.
+- Remembering a camp's confirmed reading for next time (`ImportAnswer__c`, E6).
+- A camp-platform export nobody has seen (desktop class H) is not modelled; the corpus is shapes
+  we imagined, which is the limit the desktop owner accepted.

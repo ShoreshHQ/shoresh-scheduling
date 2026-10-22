@@ -1,0 +1,7195 @@
+[
+  {
+    "file": "01-ranked-hash.csv",
+    "shape": "ranked columns headed #1, #2, #3; division only",
+    "campers": [
+      {
+        "name": "Zoe Brightwater",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Juniperhill",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Brightwater",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Marblecrest",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Larkspur",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Mossbank",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Pebblestone",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Noa Copperleaf",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Felix Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "02-ranked-words.csv",
+    "shape": "ranked columns headed First Choice ... Fourth Choice; bunk only",
+    "campers": [
+      {
+        "name": "Hana Hollyridge",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Ambergate",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jonah Sparrowdale",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Felix Willowmere",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Caleb Quillfield",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Caleb Pebblestone",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Copperleaf",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Sam Ravenford",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Talia Saltmarsh",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Levi Birchwick",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 4,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "03-ranked-ordinals.csv",
+    "shape": "ranked columns headed 1st choice, 2nd choice; the division is an Edah",
+    "campers": [
+      {
+        "name": "Ben Hollyridge",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ella Birchwick",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Fernwood",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Thistledown",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Saltmarsh",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Saltmarsh",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Hollyridge",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Copperleaf",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Noa Marblecrest",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "04-camper-numbers.csv",
+    "shape": "camper numbers, division and bunk columns, Rank 1-3",
+    "campers": [
+      {
+        "name": "Sam Cloverbeck",
+        "number": "1001",
+        "division": "Middlers",
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Marblecrest",
+        "number": "1002",
+        "division": "Seniors",
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ada Saltmarsh",
+        "number": "1003",
+        "division": "Juniors",
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ada Willowmere",
+        "number": "1004",
+        "division": "Middlers",
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Juniperhill",
+        "number": "1005",
+        "division": "Juniors",
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Mossbank",
+        "number": "1006",
+        "division": "Middlers",
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Zoe Oakhollow",
+        "number": "1007",
+        "division": "Juniors",
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Gabe Ambergate",
+        "number": "1008",
+        "division": "Seniors",
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jonah Larkspur",
+        "number": "1009",
+        "division": "Middlers",
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jonah Thistledown",
+        "number": "1010",
+        "division": "Juniors",
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "05-split-name.csv",
+    "shape": "first and last name in two columns",
+    "campers": [
+      {
+        "name": "Zoe Fernwood",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Copperleaf",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Elderglen",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ada Hollyridge",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Elderglen",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Copperleaf",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Fernwood",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Larkspur",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Rosa Birchwick",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "06-one-row-per-choice.csv",
+    "shape": "one row per choice, with a rank column",
+    "campers": [
+      {
+        "name": "Nina Brightwater",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Zoe Ambergate",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ella Brightwater",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Fernwood",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Mossbank",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Talia Copperleaf",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Theo Ambergate",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Dina Ravenford",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "07-one-row-per-choice-sorted.csv",
+    "shape": "one row per choice, sorted by activity, with camper numbers and a bunk",
+    "campers": [
+      {
+        "name": "Ruby Cloverbeck",
+        "number": "1014",
+        "division": null,
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Birchwick",
+        "number": "1015",
+        "division": null,
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Pebblestone",
+        "number": "1016",
+        "division": null,
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ruby Juniperhill",
+        "number": "1017",
+        "division": null,
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Thistledown",
+        "number": "1012",
+        "division": null,
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Asher Thistledown",
+        "number": "1013",
+        "division": null,
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Sparrowdale",
+        "number": "1018",
+        "division": null,
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Brightwater",
+        "number": "1011",
+        "division": null,
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "08-one-row-per-choice-no-rank.csv",
+    "shape": "one row per choice with no rank (unordered)",
+    "campers": [
+      {
+        "name": "Micah Ravenford",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Pebblestone",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Juniperhill",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Thistledown",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Larkspur",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Theo Marblecrest",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Zoe Mossbank",
+        "number": null,
+        "division": null,
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "09-merged-choices-header.xlsx",
+    "shape": "two-row heading: Choices merged over 1, 2, 3",
+    "campers": [
+      {
+        "name": "Jude Hollyridge",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Rosa Larkspur",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Ravenford",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Hana Larkspur",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jude Brightwater",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ella Larkspur",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Sparrowdale",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ada Ravenford",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Hana Brightwater",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "10-merged-days-header.xlsx",
+    "shape": "two-row heading: each day merged over 1st, 2nd, 3rd",
+    "campers": [
+      {
+        "name": "Maya Brightwater",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Sparrowdale",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Fernwood",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Zoe Ravenford",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Saltmarsh",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ella Mossbank",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Hana Ambergate",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Fernwood",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "11-choice-per-period.csv",
+    "shape": "one choice per period, day and period in each heading",
+    "campers": [
+      {
+        "name": "Talia Sparrowdale",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Rosa Marblecrest",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Micah Sparrowdale",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Talia Pebblestone",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Levi Willowmere",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Theo Oakhollow",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Levi Copperleaf",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Nina Larkspur",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Noa Ravenford",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      },
+      {
+        "name": "Eli Thistledown",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Friday",
+            "period": "Period 3"
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "12-ranked-per-period.csv",
+    "shape": "ranked choices within each period, abbreviated headings",
+    "campers": [
+      {
+        "name": "Ruby Copperleaf",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Talia Fernwood",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Sam Pebblestone",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Ivy Thistledown",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Ezra Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Jonah Copperleaf",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Micah Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      },
+      {
+        "name": "Dina Saltmarsh",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": "Thursday",
+            "period": "Period 2"
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "13-per-period-and-fallback.csv",
+    "shape": "a choice per period plus a ranked list for the week",
+    "campers": [
+      {
+        "name": "Ada Larkspur",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Cloverbeck",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Mossbank",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Oakhollow",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Hana Elderglen",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Saltmarsh",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Felix Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Willowmere",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 4"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "14-division-and-bunk.csv",
+    "shape": "division and bunk columns, Pref 1-3",
+    "campers": [
+      {
+        "name": "Ada Quillfield",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Gabe Ravenford",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jude Mossbank",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 3",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Mossbank",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Asher Willowmere",
+        "number": null,
+        "division": "Juniors",
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Theo Cloverbeck",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ella Sparrowdale",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Willowmere",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jude Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Pebblestone",
+        "number": null,
+        "division": "Juniors",
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "15-blank-rows.csv",
+    "shape": "blank rows between campers and at the end",
+    "campers": [
+      {
+        "name": "Felix Fernwood",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ada Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jude Larkspur",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Caleb Thistledown",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Asher Copperleaf",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Marblecrest",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ella Pebblestone",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Rosa Juniperhill",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Felix Oakhollow",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "16-title-above.csv",
+    "shape": "a title and a season line above the table",
+    "campers": [
+      {
+        "name": "Levi Marblecrest",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Ambergate",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Eli Ambergate",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Hollyridge",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Ravenford",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Hana Ravenford",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Rosa Willowmere",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Thistledown",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [
+      {
+        "kind": "aboveTable",
+        "sheet": "16-title-above.csv",
+        "row": 1
+      },
+      {
+        "kind": "aboveTable",
+        "sheet": "16-title-above.csv",
+        "row": 2
+      }
+    ],
+    "toCheck": []
+  },
+  {
+    "file": "17-comments-and-opt-out.csv",
+    "shape": "a swim opt-out column and a parent comments column",
+    "campers": [
+      {
+        "name": "Lila Quillfield",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ben Marblecrest",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Talia Brightwater",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jude Copperleaf",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Caleb Saltmarsh",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Fernwood",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Juniperhill",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Brightwater",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Elderglen",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Theo Mossbank",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [
+      {
+        "name": "Lila Quillfield",
+        "kind": "comment",
+        "heading": "Comments",
+        "text": "Please keep with her bunk friends"
+      },
+      {
+        "name": "Ben Marblecrest",
+        "kind": "optOut",
+        "heading": "Swim opt-out",
+        "text": "Yes"
+      },
+      {
+        "name": "Jude Copperleaf",
+        "kind": "comment",
+        "heading": "Comments",
+        "text": "Please keep with her bunk friends"
+      },
+      {
+        "name": "Nina Fernwood",
+        "kind": "optOut",
+        "heading": "Swim opt-out",
+        "text": "Yes"
+      },
+      {
+        "name": "Shira Juniperhill",
+        "kind": "comment",
+        "heading": "Comments",
+        "text": "Please keep with her bunk friends"
+      },
+      {
+        "name": "Theo Mossbank",
+        "kind": "optOut",
+        "heading": "Swim opt-out",
+        "text": "Yes"
+      },
+      {
+        "name": "Theo Mossbank",
+        "kind": "comment",
+        "heading": "Comments",
+        "text": "Please keep with her bunk friends"
+      }
+    ],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "18-extra-columns.csv",
+    "shape": "a form export with timestamp, email, parent and size columns",
+    "campers": [
+      {
+        "name": "Ben Ambergate",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Brightwater",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ruby Ambergate",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Rosa Copperleaf",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Oakhollow",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Sparrowdale",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Sparrowdale",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Cloverbeck",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [
+      {
+        "kind": "column",
+        "sheet": "18-extra-columns.csv",
+        "column": "A"
+      },
+      {
+        "kind": "column",
+        "sheet": "18-extra-columns.csv",
+        "column": "B"
+      },
+      {
+        "kind": "column",
+        "sheet": "18-extra-columns.csv",
+        "column": "D"
+      },
+      {
+        "kind": "column",
+        "sheet": "18-extra-columns.csv",
+        "column": "F"
+      }
+    ],
+    "toCheck": []
+  },
+  {
+    "file": "19-list-in-one-cell.csv",
+    "shape": "all choices packed in one cell, no order",
+    "campers": [
+      {
+        "name": "Rosa Quillfield",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Ravenford",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Asher Larkspur",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Talia Birchwick",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Felix Brightwater",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Eli Sparrowdale",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Thistledown",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ruby Marblecrest",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Ambergate",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "20-list-in-a-ranked-cell.csv",
+    "shape": "two campers packed two activities into one ranked cell",
+    "campers": [
+      {
+        "name": "Hana Marblecrest",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Theo Hollyridge",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Sam Ambergate",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Talia Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Caleb Juniperhill",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Willowmere",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Zoe Larkspur",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Jude Pebblestone",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": [
+      {
+        "kind": "listInOneCell",
+        "sheet": "20-list-in-a-ranked-cell.csv",
+        "row": 4,
+        "column": "D"
+      },
+      {
+        "kind": "listInOneCell",
+        "sheet": "20-list-in-a-ranked-cell.csv",
+        "row": 7,
+        "column": "D"
+      }
+    ]
+  },
+  {
+    "file": "21-footer-rows.csv",
+    "shape": "footer lines below the table (a total, a reminder)",
+    "campers": [
+      {
+        "name": "Eli Hollyridge",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Levi Mossbank",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Maya Cloverbeck",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Eli Quillfield",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Gabe Fernwood",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Noa Birchwick",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Noa Ambergate",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Hollyridge",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [
+      {
+        "kind": "notAChoice",
+        "sheet": "21-footer-rows.csv",
+        "row": 11,
+        "column": "C"
+      },
+      {
+        "kind": "noChoices",
+        "sheet": "21-footer-rows.csv",
+        "row": 11
+      },
+      {
+        "kind": "noChoices",
+        "sheet": "21-footer-rows.csv",
+        "row": 12
+      }
+    ],
+    "toCheck": []
+  },
+  {
+    "file": "22-same-name-no-number.csv",
+    "shape": "two campers share a name, no camper numbers",
+    "campers": [
+      {
+        "name": "Zoe Sparrowdale",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Levi Juniperhill",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Sam Thistledown",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Mossbank",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Elderglen",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Levi Ravenford",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Dina Pebblestone",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [
+      {
+        "name": "Gabe Elderglen",
+        "rows": [4, 9]
+      }
+    ],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "23-same-name-numbers.csv",
+    "shape": "one name, two numbers; and a name with a number on only one of its rows",
+    "campers": [
+      {
+        "name": "Sam Willowmere",
+        "number": "1019",
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Fernwood",
+        "number": "1020",
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Nina Marblecrest",
+        "number": "1021",
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Saltmarsh",
+        "number": "1022",
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Rosa Oakhollow",
+        "number": "1023",
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Sam Quillfield",
+        "number": "1024",
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Woodworking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Sam Willowmere",
+        "number": "1025",
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Mira Saltmarsh",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": [
+      {
+        "kind": "numberOnSomeRows",
+        "sheet": "23-same-name-numbers.csv",
+        "row": 9
+      }
+    ]
+  },
+  {
+    "file": "24-tied-rank-headings.csv",
+    "shape": "two columns both headed #1",
+    "campers": [
+      {
+        "name": "Gabe Brightwater",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Soccer",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Shira Birchwick",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Levi Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Swim",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ezra Copperleaf",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Hana Saltmarsh",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Gaga",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ivy Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Micah Brightwater",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": null,
+            "kind": "unordered",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": [
+      {
+        "kind": "sameRankTwice",
+        "sheet": "24-tied-rank-headings.csv",
+        "column": "C"
+      }
+    ]
+  },
+  {
+    "file": "25-planner-one-camper.xlsx",
+    "shape": "a planner: one camper's own sheet, days across, periods down",
+    "campers": [
+      {
+        "name": "Ada Brightwater",
+        "number": null,
+        "division": null,
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 1"
+          },
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 1"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 1"
+          },
+          {
+            "name": "Dance",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 2"
+          },
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Monday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Wednesday",
+            "period": "Period 3"
+          },
+          {
+            "name": "Ceramics",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 3"
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  },
+  {
+    "file": "26-offerings-menu.xlsx",
+    "shape": "a menu of what is offered, two per period: no camper's choices",
+    "campers": [],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [
+      {
+        "kind": "menu",
+        "sheet": "What we offer"
+      }
+    ],
+    "toCheck": []
+  },
+  {
+    "file": "27-instructions-then-choices.xlsx",
+    "shape": "instructions on the first sheet, choices on the second",
+    "campers": [
+      {
+        "name": "Eli Mossbank",
+        "number": null,
+        "division": "Juniors",
+        "bunk": "Bunk 2",
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Drama",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Theo Copperleaf",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Asher Ravenford",
+        "number": null,
+        "division": "Juniors",
+        "bunk": "Bunk 1",
+        "choices": [
+          {
+            "name": "Swim",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Robotics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Talia Ravenford",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Lila Juniperhill",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 5",
+        "choices": [
+          {
+            "name": "Robotics",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Cooking",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Dina Sparrowdale",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Dance",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Owen Copperleaf",
+        "number": null,
+        "division": "Seniors",
+        "bunk": "Bunk 6",
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Archery",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Rock climbing",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      },
+      {
+        "name": "Ari Cloverbeck",
+        "number": null,
+        "division": "Middlers",
+        "bunk": "Bunk 4",
+        "choices": [
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Ceramics",
+            "rank": 2,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          },
+          {
+            "name": "Pottery",
+            "rank": 3,
+            "kind": "ranked",
+            "day": null,
+            "period": null
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [
+      {
+        "kind": "sheet",
+        "sheet": "Instructions"
+      }
+    ],
+    "toCheck": []
+  },
+  {
+    "file": "28-day-and-period-columns.csv",
+    "shape": "one row per period choice, with Day and Period columns",
+    "campers": [
+      {
+        "name": "Gabe Quillfield",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Rock climbing",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 5"
+          },
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 5"
+          }
+        ]
+      },
+      {
+        "name": "Owen Hollyridge",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 5"
+          },
+          {
+            "name": "Pottery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 5"
+          }
+        ]
+      },
+      {
+        "name": "Eli Marblecrest",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 5"
+          },
+          {
+            "name": "Gaga",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 5"
+          }
+        ]
+      },
+      {
+        "name": "Dina Cloverbeck",
+        "number": null,
+        "division": "Middlers",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Archery",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 5"
+          },
+          {
+            "name": "Cooking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 5"
+          }
+        ]
+      },
+      {
+        "name": "Noa Elderglen",
+        "number": null,
+        "division": "Juniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 5"
+          },
+          {
+            "name": "Woodworking",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 5"
+          }
+        ]
+      },
+      {
+        "name": "Mira Oakhollow",
+        "number": null,
+        "division": "Seniors",
+        "bunk": null,
+        "choices": [
+          {
+            "name": "Soccer",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Tuesday",
+            "period": "Period 5"
+          },
+          {
+            "name": "Drama",
+            "rank": 1,
+            "kind": "cell",
+            "day": "Thursday",
+            "period": "Period 5"
+          }
+        ]
+      }
+    ],
+    "notKept": [],
+    "cantTellApart": [],
+    "notRead": [],
+    "toCheck": []
+  }
+]
