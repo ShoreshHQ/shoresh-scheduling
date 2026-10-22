@@ -50,7 +50,7 @@ public with sharing class SetupGuessConfirm {
     ]) {
       return new Found(
         row.Season__r.Camp__c,
-        SetupGuessValues.item(row.Season__c, 'Activity', '', row.Name)
+        SetupGuessValues.item(row.Season__c, 'Activity', row.Name)
       );
     }
     return null;
@@ -65,7 +65,7 @@ public with sharing class SetupGuessConfirm {
     ]) {
       return new Found(
         row.Season__r.Camp__c,
-        SetupGuessValues.item(row.Season__c, 'Location', '', row.Name)
+        SetupGuessValues.item(row.Season__c, 'Location', row.Name)
       );
     }
     return null;
@@ -84,9 +84,8 @@ public with sharing class SetupGuessConfirm {
     ]) {
       return new Found(
         row.Division__r.Program__r.Season__r.Camp__c,
-        SetupGuessValues.item(
+        SetupGuessValues.bunk(
           row.Division__r.Program__r.Season__c,
-          'Group',
           row.Division__r.Program__r.Name,
           row.Name
         )

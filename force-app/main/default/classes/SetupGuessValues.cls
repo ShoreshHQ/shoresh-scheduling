@@ -28,19 +28,17 @@ public with sharing class SetupGuessValues {
     return fields == null ? new Set<String>() : fields;
   }
 
-  /** The item a key names: "guessed|<season Id>|<kind>|<scope>|<name>". */
-  public static String item(
-    Id seasonId,
-    String kind,
-    String scope,
-    String name
-  ) {
+  /** An activity or place a key names: "guessed|<season Id>|<kind>||<name>". */
+  public static String item(Id seasonId, String kind, String name) {
+    return PREFIX + seasonId + '|' + kind + '||' + name;
+  }
+
+  /** A group a key names, by its program: "guessed|<season Id>|Group|<program>|<name>". */
+  public static String bunk(Id seasonId, String program, String name) {
     return PREFIX +
       seasonId +
-      '|' +
-      kind +
-      '|' +
-      (scope == null ? '' : scope) +
+      '|Group|' +
+      (program == null ? '' : program) +
       '|' +
       name;
   }

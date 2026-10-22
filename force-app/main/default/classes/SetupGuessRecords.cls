@@ -45,12 +45,7 @@ public with sharing class SetupGuessRecords {
       WHERE Id IN :ids
       WITH USER_MODE
     ]) {
-      String item = SetupGuessValues.item(
-        row.Season__c,
-        'Activity',
-        '',
-        row.Name
-      );
+      String item = SetupGuessValues.item(row.Season__c, 'Activity', row.Name);
       Set<String> fields = fieldsOf.get(row.Id);
       if (fields.contains(SetupGuessValues.OFTEN)) {
         result.put(
@@ -100,7 +95,7 @@ public with sharing class SetupGuessRecords {
     ]) {
       result.put(
         SetupGuessValues.question(
-          SetupGuessValues.item(row.Season__c, 'Location', '', row.Name),
+          SetupGuessValues.item(row.Season__c, 'Location', row.Name),
           SetupGuessValues.FITS
         ),
         SetupGuessValues.wholeText(row.GroupsThatFit__c)
@@ -128,9 +123,8 @@ public with sharing class SetupGuessRecords {
     ]) {
       result.put(
         SetupGuessValues.question(
-          SetupGuessValues.item(
+          SetupGuessValues.bunk(
             row.Division__r.Program__r.Season__c,
-            'Group',
             row.Division__r.Program__r.Name,
             row.Name
           ),

@@ -77,12 +77,7 @@ public with sharing class SetupGuesses {
           );
           standing.check(
             g,
-            SetupGuessValues.item(
-              seasonId,
-              'Group',
-              entry.program.Name,
-              g.Name
-            ),
+            SetupGuessValues.bunk(seasonId, entry.program.Name, g.Name),
             new Map<String, String>{
               SetupGuessValues.DIVISION => d.division.Name
             }
@@ -93,7 +88,7 @@ public with sharing class SetupGuesses {
     for (Location__c row : setup.locations) {
       standing.check(
         row,
-        SetupGuessValues.item(seasonId, 'Location', '', row.Name),
+        SetupGuessValues.item(seasonId, 'Location', row.Name),
         new Map<String, String>{
           SetupGuessValues.FITS => SetupGuessValues.wholeText(
             row.GroupsThatFit__c
@@ -112,7 +107,7 @@ public with sharing class SetupGuesses {
       }
       standing.check(
         row,
-        SetupGuessValues.item(seasonId, 'Activity', '', row.Name),
+        SetupGuessValues.item(seasonId, 'Activity', row.Name),
         new Map<String, String>{
           SetupGuessValues.OFTEN => SetupGuessValues.often(row),
           SetupGuessValues.WHO => SetupGuessValues.who(names)
