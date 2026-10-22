@@ -5,7 +5,8 @@
  * rename (SchedulePublish, SchedulesController.renameSchedule), which allow() around their writes.
  * Anything else (a record page, a list view, the API) is refused with a message in the camp's own
  * words, and so is making a schedule published other than by Publish. One is never deleted.
- * Called from before triggers on Schedule__c and ScheduleDay__c.
+ * Called from before triggers on Schedule__c, ScheduleDay__c and PublishedPlan__c (the special
+ * days' and events' plans a published schedule carries).
  */
 public with sharing class PublishedGuard {
   private static final String PUBLISHED = 'Published';
@@ -71,12 +72,29 @@ public with sharing class PublishedGuard {
 
   /** Before insert, update or delete of days: refused when their schedule is published history. */
   public static void checkDays(List<ScheduleDay__c> days) {
+    checkChildren(days, ScheduleDay__c.Schedule__c);
+  }
+
+  /**
+   * Before insert, update or delete of the special days' and events' plans a published schedule
+   * carries (PublishedPlan__c, ADR 0014 slice 5): refused, as its days are, unless Publish writes
+   * them.
+   */
+  public static void checkCarried(List<PublishedPlan__c> plans) {
+    checkChildren(plans, PublishedPlan__c.Schedule__c);
+  }
+
+  /** Rows of a schedule (scheduleField: their schedule), refused when it is published history. */
+  private static void checkChildren(
+    List<SObject> rows,
+    Schema.SObjectField scheduleField
+  ) {
     if (allowed > 0) {
       return;
     }
     Set<Id> scheduleIds = new Set<Id>();
-    for (ScheduleDay__c day : days) {
-      scheduleIds.add(day.Schedule__c);
+    for (SObject row : rows) {
+      scheduleIds.add((Id) row.get(scheduleField));
     }
     scheduleIds.removeAll(notHistory);
     if (scheduleIds.isEmpty()) {
@@ -113,10 +131,11 @@ public with sharing class PublishedGuard {
     }
     List<SObject> refused = new List<SObject>();
     List<Schedule__c> shown = new List<Schedule__c>();
-    for (ScheduleDay__c day : days) {
-      if (history.containsKey(day.Schedule__c)) {
-        refused.add(day);
-        shown.add(history.get(day.Schedule__c));
+    for (SObject row : rows) {
+      Id scheduleId = (Id) row.get(scheduleField);
+      if (history.containsKey(scheduleId)) {
+        refused.add(row);
+        shown.add(history.get(scheduleId));
       }
     }
     refuse(refused, shown, repeated('days', refused.size()));

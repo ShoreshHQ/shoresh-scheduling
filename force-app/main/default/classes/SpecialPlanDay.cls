@@ -14,19 +14,53 @@ public with sharing class SpecialPlanDay {
     String problem,
     SpecialSchedule.Owner owner
   ) {
-    Boolean isEvent = owner.isEvent();
-    ScheduleViews.DayView day = new ScheduleViews.DayView();
-    day.dateValue = SpecialSchedule.PLAN_DAY;
-    day.problem = problem;
-    if (grid == null) {
-      return day;
-    }
     ScheduleDays.DayGrid read = new ScheduleDays.DayGrid();
     read.day = SpecialSchedule.PLAN_DAY;
     read.grid = grid;
-    Set<String> there = ScheduleRefs.stillThere(
-      new List<ScheduleDays.DayGrid>{ read }
-    );
+    read.problem = problem;
+    return ofAll(
+      new List<ScheduleDays.DayGrid>{ read },
+      new List<Boolean>{ owner.isEvent() }
+    )[0];
+  }
+
+  /**
+   * Several plans at once, each as its day (plan.day its date), with one look-up for all of them
+   * (ADR 0014 slice 5: a week's special days and events). isEvent: for each plan, whether it is
+   * an event's (its columns are stations, never gone).
+   */
+  public static List<ScheduleViews.DayView> ofAll(
+    List<ScheduleDays.DayGrid> plans,
+    List<Boolean> isEvent
+  ) {
+    List<ScheduleDays.DayGrid> readable = new List<ScheduleDays.DayGrid>();
+    for (ScheduleDays.DayGrid plan : plans) {
+      if (plan.grid != null) {
+        readable.add(plan);
+      }
+    }
+    Set<String> there = readable.isEmpty()
+      ? new Set<String>()
+      : ScheduleRefs.stillThere(readable);
+    List<ScheduleViews.DayView> result = new List<ScheduleViews.DayView>();
+    for (Integer i = 0; i < plans.size(); i++) {
+      result.add(build(plans[i], isEvent[i], there));
+    }
+    return result;
+  }
+
+  private static ScheduleViews.DayView build(
+    ScheduleDays.DayGrid plan,
+    Boolean isEvent,
+    Set<String> there
+  ) {
+    ScheduleViews.DayView day = new ScheduleViews.DayView();
+    day.dateValue = plan.day;
+    day.problem = plan.problem;
+    ScheduleGrid grid = plan.grid;
+    if (grid == null) {
+      return day;
+    }
     for (ScheduleGrid.Block block : grid.blocks) {
       ScheduleViews.Ref ref = ref(block.id, block.name, false);
       ref.startTime = block.startTime;

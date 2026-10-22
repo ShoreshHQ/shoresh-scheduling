@@ -1,7 +1,7 @@
 # 0014: Special days and special events, the data
 
 Status: proposed (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22; slice 4 added
-2026-10-22), Special Events and Special Days slices 1 to 4 of 6 (plan: wiki
+2026-10-22; slice 5 added 2026-10-22), Special Events and Special Days slices 1 to 5 of 6 (plan: wiki
 `projects/shoresh-sf-parity-gaps`, "Build plan"). Design source: wiki
 `projects/shoresh-scheduling-data-model` (`SpecialEvent__c`, `SpecialDay__c`, `PlanPart__c`,
 `SpecialDate__c`). Where the data model is looser, the desktop decides: desktop ADRs
@@ -16,7 +16,10 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
 `2026-08-22-event-internal-subschedule` and `2026-08-22-event-schedule-import`. Slice 4 (choices 19
 to 25) puts them on the week's schedules: design source decisions 47.2 to 47.4 and 51 and the
 approved mock-ups `design-research/special-r1/placed.html`, `placed.png` and `placed-day.png`;
-desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-binds-to-a-week-day`._
+desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-binds-to-a-week-day`.
+Slice 5 (choices 26 to 31) puts them on Publish and the Schedules page: desktop ADR
+`2026-10-09-special-day-binds-to-a-week-day` D6 (rendering) and D7 (export), `ScheduleScreen.jsx`,
+`replacedLane.js`; Publish is Greg's (ADR 0008 part 5; the desktop has none)._
 
 ## Choices
 
@@ -389,7 +392,91 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     test org by `scripts/a11y-browser-check.mjs` (Put on a day by keyboard, what was done said,
     axe with it open).
 
+26. **Publish carries them** (`ScheduleSpecials`, from `SchedulePublish`; desktop has no publish,
+    so the rule is the data model's "published rows copy the names they show, so later edits do
+    not rewrite what a past week said"). The published copy keeps the week's days exactly as the
+    draft has them (ADR 0008 part 5), the cells under a replaced day included, and beside them a new
+    detail of the schedule, `PublishedPlan__c`, holds what the week's special days and events were
+    when it was published: for each day a special day replaces (its weekday must be a day the
+    program's schedule has), the special day's name, notes and own schedule with the schedule's
+    groups only; for each special event placed on a day not replaced that has a schedule of its
+    own, its name (as the grid names it) and its schedule. A plan is written in the schedule-day
+    format and parts (ADR 0005), so the same reader reads it back; `Item__c` keeps the record's Id
+    as text, so a special day or event deleted later still says which it was and is never blocked
+    by the history. Only Publish writes it: `PublishedGuard` refuses any other insert, change or
+    delete, as for a published schedule's days. A special day's or event's schedule that can't be
+    read is refused, nothing published ("The schedule of "Field Day" could not be read (…), so
+    nothing was published."), as a day of the week that can't be read is.
+27. **What changes in them is said before publishing again**, first in the list
+    (`ScheduleSpecials.addChanges`, `PublishedChanges.addBetween`): "Tuesday: the regular day →
+    Field Day" (or back, or one special day for another, or renamed), "Tuesday · Field Day: notes
+    changed", "… time blocks changed", "… bunks changed" (the camp's words), "Color War: stations
+    changed", then each changed cell inside them as a week's cells are said ("Group A · Tuesday ·
+    Field Day · Period 1: Open → Swim"). The week's own cells under a day replaced on either side
+    are out of sight and not compared. The question counts them apart ("1 special day changes",
+    "2 special events change", `Preview.specialDayCount`, `eventCount`; a cell inside them is a
+    cell), "already published as it is" and Manual Build's and Generated Schedule's "· changed
+    since" include them, so putting a special day on a day after publishing is something to
+    publish. An event placed or cleared is a change of the week's cells, said there.
+28. **The Schedules page shows them** (`ScheduleViews.openWithSpecials`, `ScheduleSpecials.shown`;
+    desktop D6). A schedule that is or was published (Status Published or `PublishedAt__c`) shows
+    what it carried, whatever changed since; any other (a saved or imported version, a draft) shows
+    the week's special days and events as they are now, as Manual Build and Generated Schedule do
+    (the desktop applies the replacement to whatever is on screen). In the page
+    (`c/shoreshScheduleViews withSpecials`):
+    - **Daily View**: the day's pill reads "Tuesday Jun 30 · Field Day"; the grid is the special
+      day's own time blocks and the program's bunks, read-only like every cell here; under it the
+      special day's line, as on Manual Build (its name, the camp's word for it, its notes; no
+      "Open": this page shows what the version holds, and the special day's own screen edits
+      today's). One with no schedule yet says "Field Day has no schedule yet." in the grid's place
+      (desktop D11.2).
+    - **Group View**: the day's column is headed "Tuesday · Field Day" and laid out on the special
+      day's own time blocks: one at the same times as a week's time block shares its row, one at
+      other times gets a row of its own in time order (desktop D6: "laid out on the special day's
+      own time blocks"). Manual Build's Group View draws the day as one named cell (choice 22);
+      this page shows a version's content, so it shows the cells. One with no schedule yet is one
+      named cell down its column.
+    - **Activity View** counts nothing on a replaced day (desktop: the drilldown ignores it); in an
+      activity's grid that day's column is one quiet cell named for the special day.
+    - **An event's own schedule**: under a day's grid, each special event placed on it that has a
+      schedule of its own is listed with its flag, the camp's word, and **Open <name> →**; that
+      shows the event's schedule (its time blocks down, its stations across) read-only in the
+      grid's place, headed by "← Monday", its name and the camp's word, as Activity View's
+      drilldown. Focus goes to "← Monday" and back to the event's Open (WCAG 2.4.3). Changing the
+      day or the view closes it.
+29. **Export to Excel and Print** (ADR 0005 §13; desktop D7: the special day's grid and its notes
+    in place of the normal day). A replaced day's sheet is the special day's own schedule, then a
+    blank row, "Field Day (Special day)" and its notes; it is in All Bunks (what each bunk does that
+    day) and left out of All Activities, as Activity View leaves it out. Each event with a schedule
+    of its own gets a sheet named for it (time blocks down, stations across) after the days. On
+    paper, Daily View's page for a replaced day is titled "Tuesday, Jun 30 · Field Day" with its
+    notes under the table (or "Field Day has no schedule yet."), and each event's schedule follows
+    the days on its own page ("Color War (Special event)"); Group and Activity View print as they
+    show.
+30. **Fixed in passing**: a special day's own time blocks on Manual Build and Generated Schedule
+    were sent marked "removed" (their ids are the plan's own, never records), so the time column
+    struck them through. `SpecialPlanDay.ofAll` now builds every plan view (one look-up for all),
+    and `WeekSpecials` uses it.
+31. **Checked by** `ScheduleSpecialsTest` (as a scheduler, records made inside the same
+    `System.runAs`: what Publish carries, preview at most 10 queries and publish 25 with a special
+    day and an event; the published copy showing them as published after Field Day changed while
+    the draft shows them now, opening at most 20; a preview naming an event's stations and a cell
+    inside the special day; a day replaced after publishing as the one change, "· changed since"
+    and publishing again; only Publish writing `PublishedPlan__c`), `WeekSpecialsTest` (a special
+    day's own time blocks not removed), `SchedulePublishTest` and `GeneratedPublishTest`
+    unchanged, `shoreshScheduleViews` `specialDays.test.js`, `shoreshScheduleExport`
+    `specials.test.js`, `shoreshSchedules` `specials.test.js`, `shoreshSchedulePrint.test.js`
+    (notes and "no schedule yet" on paper) and `shoreshPublish.test.js` (the counts in words), and
+    in the test org by `scripts/a11y-browser-check.mjs` (the Schedules page: a replaced day's pill
+    and line, axe; an event's Open by keyboard, focus on the way back, axe, back with focus on its
+    Open).
+
 ## Names
+
+`PublishedPlan__c` (slice 5): `Schedule__c` (master-detail), `Kind__c` (`D` or `S`, the grid
+format's letters), `Item__c` (the record Id as text), `Date__c`, `Notes__c`, `Part__c`, `Plan__c`,
+`GridFormatVersion__c`, `Revision__c`; Name is the item's name as published. Hard to undo once
+camps have published schedules carrying it.
 
 Every object and field is reached through typed Apex references and `c/shoreshSchema`
 (regenerated), never written as text (ADR 0009). Messages use camp labels for `SpecialDay`,
@@ -397,6 +484,5 @@ Every object and field is reached through typed Apex references and `c/shoreshSc
 
 ## Not in this slice
 
-Showing special days and events on Publish and the Schedules page (slice 5), taking a special
-day off a day, and Needs attention for a special day whose weekday or groups no longer match (a group added to the camp after a special day was made is not one of its
+Taking a special day off a day, and Needs attention for a special day whose weekday or groups no longer match (a group added to the camp after a special day was made is not one of its
 columns until then), and the week delete warning (slice 6).

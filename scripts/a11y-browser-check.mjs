@@ -57,6 +57,11 @@
  * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
  *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
  *   (Greg, 2026-10-22; ADR 0015 choice 6);
+ * - the Schedules page with special days and events (ADR 0014 slice 5): on a version made for the
+ *   check (by Apex) with a special day on Tuesday and an event on Monday, the Tuesday pill names
+ *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
+ *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
+ *   Open again; axe on both. The special day, the event and the version are deleted after;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -3366,6 +3371,134 @@ async function publish(S, openScreen) {
   });
 }
 
+const CHECK_DAY = "Check visit day";
+const CHECK_EVENT = "Check event";
+const CHECK_VERSION = "Check specials (made up)";
+
+/** Deletes the check's special day, event and version from its camp, if a run left them. */
+function clearSpecials() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+delete [SELECT Id FROM Schedule__c WHERE Name = '${CHECK_VERSION}' AND Status__c = 'Version' AND PublishedAt__c = NULL AND Program__r.Season__r.Camp__c = :camp.Id];
+delete [SELECT Id FROM SpecialDate__c WHERE (SpecialDay__r.Name = '${CHECK_DAY}' OR SpecialEvent__r.Name = '${CHECK_EVENT}') AND Season__r.Camp__c = :camp.Id];
+delete [SELECT Id FROM PlanPart__c WHERE (SpecialDay__r.Name = '${CHECK_DAY}' OR SpecialEvent__r.Name = '${CHECK_EVENT}') AND Season__r.Camp__c = :camp.Id];
+delete [SELECT Id FROM SpecialDay__c WHERE Name = '${CHECK_DAY}' AND Season__r.Camp__c = :camp.Id];
+delete [SELECT Id FROM SpecialEvent__c WHERE Name = '${CHECK_EVENT}' AND Season__r.Camp__c = :camp.Id];
+`);
+}
+
+/**
+ * A special day on Tuesday of the check's week (starting from the regular day, as one added on
+ * the Special events screen does), an event with one time block and one station, and a version
+ * of the week's Manual Build draft with the event in the first bunk's first time block on Monday:
+ * the newest version, so the Schedules page opens it by itself.
+ */
+function seedSpecials() {
+  clearSpecials();
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Week__c week = [SELECT Id, Season__c FROM Week__c WHERE Season__r.Camp__c = :camp.Id AND Name = '${week}' ORDER BY StartDate__c DESC LIMIT 1];
+Schedule__c draft = [SELECT Id, Program__c FROM Schedule__c WHERE Week__c = :week.Id AND Status__c = 'Draft' AND Origin__c = 'Manual' LIMIT 1];
+Id dayId = SetupTablesController.saveRow(new SpecialDay__c(Season__c = week.Season__c, Name = '${CHECK_DAY}', SortOrder__c = 99), null, null).id;
+SpecialDates.place(dayId, week.Id, 'Tuesday');
+SpecialEvent__c event = new SpecialEvent__c(Season__c = week.Season__c, Name = '${CHECK_EVENT}');
+insert event;
+SpecialScheduleFrame.Change block = new SpecialScheduleFrame.Change();
+block.action = 'addBlock';
+block.name = 'Relays';
+block.startTime = '09:00';
+block.endTime = '10:00';
+SpecialScheduleController.changeFrame(event.Id, null, block);
+SpecialScheduleFrame.Change station = new SpecialScheduleFrame.Change();
+station.action = 'addStation';
+station.name = 'Blue';
+SpecialScheduleController.changeFrame(event.Id, 1, station);
+List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
+for (Integer i = 0; i < days.size(); i++) {
+  ScheduleGrid grid = days[i].grid;
+  if (i == 0) {
+    grid.items.add(new ScheduleGrid.Item('S', event.Id, '${CHECK_EVENT}'));
+    grid.rows[0][0] = String.valueOf(grid.items.size());
+  }
+  saves.add(new ScheduleDaySaves.DaySave(days[i].day, grid, null));
+}
+Schedule__c version = new Schedule__c(Program__c = draft.Program__c, Week__c = week.Id, Name = '${CHECK_VERSION}', Status__c = 'Version', Origin__c = 'Manual', VersionReason__c = 'SavedByHand');
+insert version;
+ScheduleDaySaves.write(version.Id, saves);
+`);
+}
+
+/**
+ * The Schedules page (ADR 0014 slice 5), on the version seedSpecials makes: the Tuesday pill
+ * names the special day, and chosen, its line shows under the grid (axe); Monday's event is
+ * listed under its grid, its Open reached by Tab shows the event's own schedule with focus on
+ * "← Monday" (axe), and Enter there goes back with focus on that Open.
+ */
+async function schedulesPage() {
+  const S = "Schedules";
+  await step(S, "A special day and an event's own schedule", async () => {
+    seedSpecials();
+    try {
+      await openFromMenu(S, /^Schedules$/);
+      await pickWeek();
+      const tuesday = named(new RegExp(`^Tuesday\\b.*· ${CHECK_DAY}$`), {
+        tag: "button"
+      });
+      if (!(await tabTo(tuesday, { max: 40 })))
+        throw new Error(
+          `No Tuesday pill naming "${CHECK_DAY}" was reached with Tab.`
+        );
+      await press("Enter", 800);
+      if (await exists('[data-id="special-line"]')) {
+        results.pass(
+          S,
+          "A replaced day: its pill names the special day, its line is under the grid",
+          `"${CHECK_DAY}" on Tuesday.`
+        );
+      } else {
+        await shot(S, "A replaced day's line");
+        results.fail(
+          S,
+          "A replaced day: its pill names the special day, its line is under the grid",
+          "No special day's line under Tuesday's grid."
+        );
+      }
+      await axe("Schedules, a day a special day replaces");
+      if (
+        !(await tabTo(named(/^Monday\b/, { tag: "button" }), {
+          max: 10,
+          back: true
+        }))
+      )
+        throw new Error("The Monday pill was not reached with Tab.");
+      await press("Enter", 800);
+      const open = named(new RegExp(`^Open ${CHECK_EVENT}$`), {
+        tag: "button"
+      });
+      if (!(await tabTo(open, { max: 80 })))
+        throw new Error(`"Open ${CHECK_EVENT}" was not reached with Tab.`);
+      await press("Enter", 800);
+      await expectFocus(
+        S,
+        "Open an event's own schedule: focus on the way back",
+        {
+          tag: "button",
+          name: /^← Monday$/
+        }
+      );
+      await axe("Schedules, an event's own schedule");
+      await press("Enter", 800);
+      await expectFocus(S, "Back from the event: focus on its Open again", {
+        tag: "button",
+        name: new RegExp(`^Open ${CHECK_EVENT}$`)
+      });
+    } finally {
+      clearSpecials();
+    }
+  });
+}
+
 /** Deletes the made-up fixed activity by keyboard; false when it isn't there. */
 async function deleteSetupChange(S) {
   await openFromMenu(S, /^Fixed activities/);
@@ -3633,6 +3766,7 @@ async function main() {
     await updateToMatch("Generated Schedule", openGenerated);
     await publish("Manual Build", openManual);
     await publish("Generated Schedule", openGenerated);
+    await schedulesPage();
   } finally {
     const version = browser.version();
     await browser.close();

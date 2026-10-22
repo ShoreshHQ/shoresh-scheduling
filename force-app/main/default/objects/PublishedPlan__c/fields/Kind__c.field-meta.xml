@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Kind__c</fullName>
+    <description
+  >What this is the plan of, in the grid format's letters: D for a special day, S for a special event.</description>
+    <caseSensitive>true</caseSensitive>
+    <externalId>false</externalId>
+    <label>Kind</label>
+    <length>1</length>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

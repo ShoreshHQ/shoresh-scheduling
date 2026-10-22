@@ -13,6 +13,12 @@
  *
  * Printing follows the view on screen: Daily View prints one page per day, Group View one per
  * group, Activity View one per activity that runs this week (ADR 0005 part 2).
+ *
+ * Special days and events (ADR 0014 slice 5; desktop ADR 2026-10-09-special-day-binds-to-a-week-day
+ * D7): given the view as the page shows it (c/shoreshScheduleViews withSpecials), a day a special
+ * day replaces is its own schedule, with its name and notes under it, and left out of All
+ * Activities as Activity View leaves it out; each special event placed on the week with a
+ * schedule of its own gets a sheet, and in Daily View a page, after the days.
  */
 import { sanitizeCell } from "c/shoreshLists";
 import {
@@ -21,6 +27,7 @@ import {
   clock,
   dailyGrid,
   days,
+  eventPlans,
   groupCells,
   groupGrid,
   groups,
@@ -95,6 +102,27 @@ function guarded(rows) {
   return rows.map((row) => row.map(sanitizeCell));
 }
 
+/** A day's (or a special event's) grid as rows: the time block, then a column per group or station. */
+function gridRows(day, t) {
+  const byGroup = day.groups.map((grp, g) => itemsByBlock(day, g));
+  return [
+    [t.s("TimeBlock"), ...day.groups.map((g) => withRemoved(g.name, g.gone))],
+    ...day.blocks.map((block, b) => [
+      blockText(block),
+      ...byGroup.map((items) => itemText(items[b], t))
+    ])
+  ];
+}
+
+/** Under a special day's grid: its name and kind, then its notes. */
+function specialRows(special, t) {
+  const rows = [[], [`${special.name} (${t.s("SpecialDay")})`]];
+  if (special.notes) {
+    rows.push([special.notes]);
+  }
+  return rows;
+}
+
 /**
  * The Excel file's sheets for an opened schedule: [{ name, rows, widths }]. catalogue: the
  * season's activities (their order is Activity View's).
@@ -102,28 +130,33 @@ function guarded(rows) {
 export function scheduleSheets(view, catalogue, t) {
   const allDays = (view && view.days) || [];
   const labels = allDays.map(dayName);
-  const names = uniqueNames(
-    labels.map((d) => ({ name: d.label, fallback: `${d.label} ${d.sub}` }))
-  );
+  const events = eventPlans(view);
+  const names = uniqueNames([
+    ...labels.map((d) => ({ name: d.label, fallback: `${d.label} ${d.sub}` })),
+    ...events.map((e) => ({ name: e.name, fallback: `${e.name} (event)` }))
+  ]);
 
   const daySheets = allDays.map((day, i) => {
     if (day.problem) {
       return { name: names[i], rows: [[CANT_BE_SHOWN]], widths: [22] };
     }
-    const byGroup = day.groups.map((grp, g) => itemsByBlock(day, g));
-    const rows = [
-      [t.s("TimeBlock"), ...day.groups.map((g) => withRemoved(g.name, g.gone))],
-      ...day.blocks.map((block, b) => [
-        blockText(block),
-        ...byGroup.map((items) => itemText(items[b], t))
-      ])
-    ];
+    const rows = gridRows(day, t);
+    if (day.special) {
+      rows.push(...specialRows(day.special, t));
+    }
     return {
       name: names[i],
       rows: guarded(rows),
       widths: [22, ...day.groups.map(() => 16)]
     };
   });
+
+  // Each special event's own schedule: its time blocks down, its stations across.
+  const eventSheets = events.map((event, i) => ({
+    name: names[allDays.length + i],
+    rows: guarded(gridRows(event.plan, t)),
+    widths: [22, ...event.plan.groups.map(() => 16)]
+  }));
 
   // Every group's week, one row per thing placed (desktop: All Groups).
   const groupRows = [];
@@ -153,7 +186,7 @@ export function scheduleSheets(view, catalogue, t) {
   const activityRows = [];
   activityCards(view, catalogue, t).forEach((card) => {
     allDays.forEach((day, i) => {
-      if (day.problem) {
+      if (day.problem || day.special) {
         return;
       }
       const byGroup = day.groups.map((grp, g) => itemsByBlock(day, g));
@@ -176,6 +209,7 @@ export function scheduleSheets(view, catalogue, t) {
 
   return [
     ...daySheets,
+    ...eventSheets,
     {
       name: `All ${t.p("Group")}`,
       rows: guarded([
@@ -262,7 +296,10 @@ export function printTable(grid) {
 
 /**
  * The printout of an opened schedule, following the view on screen ("day", "group", "activity"):
- * [{ key, title, table | null }]. A day that can't be read prints its title and "Can't be shown".
+ * [{ key, title, table | null, notes, empty }]. A day that can't be read prints its title and
+ * "Can't be shown". In Daily View a day a special day replaces prints its own schedule titled with
+ * its name, its notes under it ("empty" when it has no schedule yet), and each special event's own
+ * schedule follows the days on a page of its own.
  */
 export function printPages(view, viewKey, catalogue, t) {
   if (!view) {
@@ -277,7 +314,7 @@ export function printPages(view, viewKey, catalogue, t) {
   }
   if (viewKey === "activity") {
     return activityCards(view, catalogue, t)
-      .map((card) => ({ card, grid: activityGrid(view, card.key) }))
+      .map((card) => ({ card, grid: activityGrid(view, card.key, t) }))
       .filter(({ grid }) =>
         grid.cells.some((cell) => cell.names && cell.names.length)
       )
@@ -287,14 +324,42 @@ export function printPages(view, viewKey, catalogue, t) {
         table: printTable(grid)
       }));
   }
-  return days(view).map((day) => {
+  const dayPages = days(view).map((day) => {
+    const shown = view.days[day.index];
+    const special = shown.special;
+    if (special && !shown.problem && !shown.blocks.length) {
+      return {
+        key: `day-${day.key}`,
+        title: `${day.label}, ${day.sub} · ${special.name}`,
+        table: null,
+        notes: special.notes,
+        empty: noScheduleYet(special.name)
+      };
+    }
     const grid = dailyGrid(view, day.index, t);
     return {
       key: `day-${day.key}`,
-      title: `${day.label}, ${day.sub}`,
-      table: grid ? printTable(grid) : null
+      title: special
+        ? `${day.label}, ${day.sub} · ${special.name}`
+        : `${day.label}, ${day.sub}`,
+      table: grid ? printTable(grid) : null,
+      notes: special ? special.notes : null,
+      empty: null
     };
   });
+  const eventPages = eventPlans(view).map((event) => ({
+    key: `event-${event.eventId}`,
+    title: `${event.name} (${t.s("SpecialEvent")})`,
+    table: printTable(dailyGrid({ days: [event.plan] }, 0, t)),
+    notes: null,
+    empty: null
+  }));
+  return [...dayPages, ...eventPages];
+}
+
+/** What a special day with no time blocks yet says in place of its grid. */
+export function noScheduleYet(name) {
+  return `${name} has no schedule yet.`;
 }
 
 export { CANT_BE_SHOWN };

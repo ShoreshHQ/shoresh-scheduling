@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Part__c</fullName>
+    <defaultValue>1</defaultValue>
+    <description
+  >Which part of the plan this record holds, from 1. A plan is split into parts (whole rows, in order) only when it would be over 100,000 characters.</description>
+    <label>Part</label>
+    <precision>9</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>
