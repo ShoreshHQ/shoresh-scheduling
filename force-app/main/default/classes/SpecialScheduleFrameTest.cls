@@ -141,6 +141,8 @@ private class SpecialScheduleFrameTest {
         new List<String>{ 'Blue: Swim,^', 'Gold: ,' },
         SpecialScheduleTestData.cells(saved.schedule.days[0])
       );
+      // The frame changes after the filling get their own limits (each is a request of its own).
+      Test.startTest();
       // Moving a time block cuts the placement in two.
       SpecialSchedule.PlanView view = SpecialScheduleController.changeFrame(
         eventId,
@@ -170,6 +172,7 @@ private class SpecialScheduleFrameTest {
         8,
         SpecialScheduleTestData.change('removeStation', 's2', null)
       );
+      Test.stopTest();
       Assert.areEqual(
         new List<String>{ 'Blue team: Swim,Swim' },
         SpecialScheduleTestData.cells(view.schedule.days[0])
