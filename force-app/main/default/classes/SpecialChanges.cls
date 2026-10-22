@@ -6,9 +6,7 @@
  * notes, its time blocks or groups changed; an event's time blocks or stations changed; and each
  * cell changed in either's own schedule, as a week's cells are said ("Bunk 1 · Friday · Visiting
  * Day · Period 2: Swim → Archery"). An event placed or taken off is a change of the week's cells,
- * said there; an event that stays placed while its own schedule is added or removed (carried on
- * one side only) is said here ("Color War: schedule added"). The camp's words are read only when a
- * line needs them.
+ * said there. The camp's words are read only when a line needs them.
  */
 public with sharing class SpecialChanges {
   private static final String REGULAR_DAY = 'the regular day';
@@ -22,16 +20,10 @@ public with sharing class SpecialChanges {
     this.campId = campId;
   }
 
-  /**
-   * Adds what changes from was (carried when published) to now. wasDays, nowDays: the published
-   * copy's days and the week's now, which tell whether an event carried on one side only is still
-   * placed on the other.
-   */
+  /** Adds what changes from was (carried when published) to now. */
   public void add(
     List<ScheduleSpecials.Special> was,
-    List<ScheduleSpecials.Special> now,
-    List<ScheduleDays.DayGrid> wasDays,
-    List<ScheduleDays.DayGrid> nowDays
+    List<ScheduleSpecials.Special> now
   ) {
     Map<String, ScheduleSpecials.Special> wasByKey = byKey(was);
     Map<String, ScheduleSpecials.Special> nowByKey = byKey(now);
@@ -41,57 +33,12 @@ public with sharing class SpecialChanges {
       String key = ScheduleSpecials.DAY + String.valueOf(day);
       addDay(day, wasByKey.get(key), nowByKey.get(key));
     }
-    Set<String> placedBefore;
     for (ScheduleSpecials.Special after : now) {
-      if (after.kind != ScheduleSpecials.EVENT) {
-        continue;
-      }
       ScheduleSpecials.Special before = wasByKey.get(after.key());
-      if (before != null) {
+      if (after.kind == ScheduleSpecials.EVENT && before != null) {
         addPlan(after.name, before, after);
-        continue;
-      }
-      // Not carried when published: placed then with no schedule of its own (or not placed then,
-      // a change of the week's cells, said there).
-      placedBefore = placedBefore ?? placed(wasDays, was);
-      if (placedBefore.contains(after.itemId)) {
-        changes.addEvent(after.name + ': schedule added');
       }
     }
-    Set<String> placedNow;
-    for (ScheduleSpecials.Special before : was) {
-      if (
-        before.kind != ScheduleSpecials.EVENT ||
-        nowByKey.containsKey(before.key())
-      ) {
-        continue;
-      }
-      placedNow = placedNow ?? placed(nowDays, now);
-      if (placedNow.contains(before.itemId)) {
-        changes.addEvent(before.name + ': schedule removed');
-      }
-    }
-  }
-
-  /** The events (Ids as text) placed on the days that side's special days don't replace. */
-  private static Set<String> placed(
-    List<ScheduleDays.DayGrid> days,
-    List<ScheduleSpecials.Special> specials
-  ) {
-    Set<String> result = new Set<String>();
-    for (
-      Id eventId : SpecialsNow.eventsOn(
-          days,
-          ScheduleSpecials.replacedDates(
-            specials,
-            new List<ScheduleSpecials.Special>()
-          )
-        )
-        .keySet()
-    ) {
-      result.add(String.valueOf(eventId));
-    }
-    return result;
   }
 
   /** One day a special day replaces on either side. */

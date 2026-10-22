@@ -135,8 +135,8 @@ public with sharing class SpecialsNow {
 
   /**
    * The special events placed (with their records) on the days not replaced, each with its name
-   * as the schedule has it. Also what SpecialChanges reads to tell an event still placed whose own
-   * schedule was added or removed.
+   * as the schedule has it. Also what EventScheduleChanges reads to tell an event still placed whose
+   * own schedule was added or removed.
    */
   public static Map<Id, String> eventsOn(
     List<ScheduleDays.DayGrid> days,

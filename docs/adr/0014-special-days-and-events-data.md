@@ -420,8 +420,9 @@ Slice 5 (choices 26 to 31) puts them on Publish and the Schedules page: desktop 
     since" include them, so putting a special day on a day after publishing is something to
     publish. An event placed or cleared is a change of the week's cells, said there; an event
     that stays placed while its own schedule is built or removed after publishing (carried on one
-    side only) is said as an event change, "Color War: schedule added" or "… schedule removed",
-    so building an event's stations after publishing is something to publish too.
+    side only) is said as an event change (`EventScheduleChanges`), "Color War: schedule added"
+    or "… schedule removed", so building an event's stations after publishing is something to
+    publish too.
     **Reads**: the week's special days are one query (none on Manual Build and Generated Schedule
     when the week was read with them), their plans one more when there are any, and what a
     published copy carries one, once per request (published history never changes). A preview

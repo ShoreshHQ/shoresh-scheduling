@@ -351,7 +351,7 @@ public with sharing class SchedulePublish {
 
   /**
    * What changes from a published schedule to the week now: its special days and events first
-   * (SpecialChanges), then the week's renames and cells, leaving out the cells of a day a special
+   * (SpecialChanges, EventScheduleChanges), then the week's renames and cells, leaving out the cells of a day a special
    * day replaces on either side (out of sight). campId: whose words the lines use, listing the
    * first MOST_LINES; null when only the count matters (no lines kept).
    */
@@ -367,8 +367,12 @@ public with sharing class SchedulePublish {
       campId == null ? 0 : MOST_LINES
     );
     List<ScheduleDays.DayGrid> publishedDays = ScheduleDays.read(publishedId);
-    new SpecialChanges(changes, campId)
-      .add(carried, week.specials, publishedDays, week.days);
+    new SpecialChanges(changes, campId).add(carried, week.specials);
+    EventScheduleChanges.add(
+      changes,
+      new EventScheduleChanges.Side(carried, publishedDays),
+      new EventScheduleChanges.Side(week.specials, week.days)
+    );
     changes.hidden = ScheduleSpecials.replacedDates(carried, week.specials);
     PublishedChanges.addBetween(changes, publishedDays, week.days);
     return changes;

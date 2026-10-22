@@ -28,21 +28,26 @@ private class ScheduleSpecialsTest {
         ids.get('Season'),
         'Color War'
       );
-      ScheduleGrid plan = new ScheduleGrid();
-      plan.blocks.add(
-        new ScheduleGrid.Block('b1', 'Relays').at('09:00', '10:00')
-      );
-      plan.groups.add(new ScheduleGrid.GroupRef('s1', 'Blue'));
-      plan.groups.add(new ScheduleGrid.GroupRef('s2', 'Gold'));
-      plan.rows.add(new List<String>{ '' });
-      plan.rows.add(new List<String>{ '' });
-      SpecialPlans.write(colorWar, plan, null);
+      buildColorWarsSchedule(colorWar);
       ids.put('Color War', colorWar);
       SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
       ids.put('Draft', draftWithColorWar(ids));
     }
     ids.put('Scheduler', scheduler.Id);
     KeptCamp.keepIds(ids);
+  }
+
+  /** Color War's own schedule: one time block (Relays), Blue and Gold. */
+  private static void buildColorWarsSchedule(Id colorWar) {
+    ScheduleGrid plan = new ScheduleGrid();
+    plan.blocks.add(
+      new ScheduleGrid.Block('b1', 'Relays').at('09:00', '10:00')
+    );
+    plan.groups.add(new ScheduleGrid.GroupRef('s1', 'Blue'));
+    plan.groups.add(new ScheduleGrid.GroupRef('s2', 'Gold'));
+    plan.rows.add(new List<String>{ '' });
+    plan.rows.add(new List<String>{ '' });
+    SpecialPlans.write(colorWar, plan, null);
   }
 
   private static Id draftWithColorWar(Map<String, Id> ids) {
@@ -317,19 +322,6 @@ private class ScheduleSpecialsTest {
     );
   }
 
-  /** Color War's one time block and Blue and Gold, as the setup builds it. */
-  private static void buildColorWarsSchedule(Map<String, Id> ids) {
-    ScheduleGrid plan = new ScheduleGrid();
-    plan.blocks.add(
-      new ScheduleGrid.Block('b1', 'Relays').at('09:00', '10:00')
-    );
-    plan.groups.add(new ScheduleGrid.GroupRef('s1', 'Blue'));
-    plan.groups.add(new ScheduleGrid.GroupRef('s2', 'Gold'));
-    plan.rows.add(new List<String>{ '' });
-    plan.rows.add(new List<String>{ '' });
-    SpecialPlans.write(ids.get('Color War'), plan, null);
-  }
-
   @IsTest
   static void anEventsScheduleBuiltAfterPublishingIsSomethingToPublish() {
     // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
@@ -342,7 +334,7 @@ private class ScheduleSpecialsTest {
       Test.startTest();
       Id firstId = publishNow(ids.get('Draft')).published.id;
       Assert.areEqual(1, carried(firstId).size(), 'Field Day only');
-      buildColorWarsSchedule(ids);
+      buildColorWarsSchedule(ids.get('Color War'));
       SchedulePublish.Preview preview = ManualBuildController.previewPublish(
         ids.get('Draft')
       );
