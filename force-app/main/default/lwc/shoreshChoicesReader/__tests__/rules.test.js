@@ -39,8 +39,7 @@ describe("what a heading means", () => {
     ["Rank", { use: "rankValue" }],
     ["Day", { use: "dayValue" }],
     ["Period", { use: "periodValue" }],
-    ["Comments", { use: "comment" }],
-    ["Swim opt-out", { use: "optOut" }]
+    ["Comments", { use: "comment" }]
   ])("%s", (heading, meaning) => {
     expect(headingMeaning(heading)).toEqual(meaning);
   });
@@ -57,7 +56,15 @@ describe("what a heading means", () => {
     "Allergies",
     "Medications",
     "Health concerns",
-    "Dietary needs"
+    "Dietary needs",
+    "Swim opt-out",
+    "Opt out of swim",
+    "Excused from swim",
+    "Swim opt-out notes",
+    "Opt out request",
+    "Excused - comments",
+    "Sit out message",
+    "No swim request"
   ])("%s is not a field the reader uses", (heading) => {
     expect(headingMeaning(heading)).toBeNull();
   });
@@ -99,19 +106,31 @@ describe("reading", () => {
     ]);
   });
 
-  it("keeps comments and opt-outs out of the campers", () => {
+  it("keeps comments out of the campers", () => {
     const reading = read(
-      lines(
-        "Camper Name,#1,Comments,Swim opt-out",
-        "Maya Fernwood,Archery,A note from home,Yes"
-      )
+      lines("Camper Name,#1,Comments", "Maya Fernwood,Archery,A note from home")
     );
     expect(JSON.stringify(reading.campers)).not.toContain("A note from home");
     expect(reading.notKept).toEqual([
-      expect.objectContaining({ kind: "comment", text: "A note from home" }),
-      expect.objectContaining({ kind: "optOut", text: "Yes" })
+      expect.objectContaining({ kind: "comment", text: "A note from home" })
     ]);
     expect(reading.notKept[0].camper).toBe(reading.campers[0].key);
+  });
+
+  // Greg, 2026-10-22: Shoresh has no opt-outs; a camp places such a camper itself. An opt-out
+  // column is one more column the reader does not use.
+  it("never reads an opt-out column", () => {
+    const reading = read(
+      lines(
+        "Camper Name,#1,Swim opt-out",
+        "Maya Fernwood,Archery,Yes - doctor's note"
+      )
+    );
+    expect(JSON.stringify(reading)).not.toContain("doctor");
+    expect(reading.notKept).toEqual([]);
+    expect(reading.notRead).toEqual([
+      expect.objectContaining({ kind: "column", heading: "Swim opt-out" })
+    ]);
   });
 
   it("does not take a list in one ranked cell for one activity", () => {
