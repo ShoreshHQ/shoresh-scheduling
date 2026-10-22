@@ -185,3 +185,9 @@
   font-weight: 600;
   color: var(--shoresh-text-secondary);
 }
+
+/* Export or Print under way: held, but still focusable (see exportBusy). */
+.shoresh-item[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}

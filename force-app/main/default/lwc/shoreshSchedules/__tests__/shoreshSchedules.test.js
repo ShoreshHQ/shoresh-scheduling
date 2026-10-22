@@ -564,6 +564,62 @@ describe("c-shoresh-schedules", () => {
       expect(window.print).toHaveBeenCalledTimes(1);
     });
 
+    // aria-disabled, not disabled, while under way: a focused button that turns disabled drops
+    // the cursor to the top of the page.
+    it("keep the cursor on Print while printing, and a second press does nothing", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      let whilePrinting;
+      window.print = jest.fn(() => {
+        const button = q(element, '[data-id="print"]');
+        whilePrinting = {
+          disabled: button.disabled,
+          busy: button.getAttribute("aria-disabled"),
+          focused: element.shadowRoot.activeElement === button
+        };
+        button.click();
+      });
+      q(element, '[data-id="print"]').focus();
+      q(element, '[data-id="print"]').click();
+      await flush();
+      expect(whilePrinting).toEqual({
+        disabled: false,
+        busy: "true",
+        focused: true
+      });
+      expect(window.print).toHaveBeenCalledTimes(1);
+      window.dispatchEvent(new CustomEvent("afterprint"));
+      await flush();
+      const button = q(element, '[data-id="print"]');
+      expect(button.getAttribute("aria-disabled")).toBe("false");
+      expect(element.shadowRoot.activeElement).toBe(button);
+    });
+
+    it("keep the cursor on Export while the file is made, and a second press does nothing", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      let finish;
+      downloadWorkbook.mockImplementationOnce(
+        () => new Promise((resolve) => (finish = resolve))
+      );
+      const element = await render();
+      const button = q(element, '[data-id="export"]');
+      button.focus();
+      button.click();
+      await flush();
+      expect(button.disabled).toBe(false);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(element.shadowRoot.activeElement).toBe(button);
+      button.click();
+      await flush();
+      expect(downloadWorkbook).toHaveBeenCalledTimes(1);
+      finish();
+      await flush();
+      expect(button.getAttribute("aria-disabled")).toBe("false");
+      expect(element.shadowRoot.activeElement).toBe(button);
+    });
+
     it("can't export or print a version with no days", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(({ scheduleId }) =>

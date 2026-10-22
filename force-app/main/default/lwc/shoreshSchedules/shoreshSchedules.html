@@ -56,7 +56,8 @@
               type="button"
               class="shoresh-item"
               data-id="export"
-              disabled={cannotExport}
+              disabled={cannotGetOut}
+              aria-disabled={exportBusy}
               onclick={handleExport}
             >
               <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
@@ -71,7 +72,8 @@
               type="button"
               class="shoresh-item"
               data-id="print"
-              disabled={cannotPrint}
+              disabled={cannotGetOut}
+              aria-disabled={printBusy}
               onclick={handlePrint}
             >
               <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">

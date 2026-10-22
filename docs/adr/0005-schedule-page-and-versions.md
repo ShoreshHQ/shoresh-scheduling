@@ -180,6 +180,10 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       rule is for paper only and only for a page with a printout on it (`body:has(.shoresh-print)`),
       so printing any other Salesforce page is unchanged. Without the style (refused or not
       loaded) it still prints, with the page around it.
+    - **While under way** (the file being made, the printout on the page) the button is held
+      with `aria-disabled`, not `disabled`, and a press does nothing: the director just pressed
+      it, and a focused button that turns disabled drops the cursor to the top of the page (WCAG
+      2.4.3), as ADR 0008's counters. The cursor is still on it when the print dialog closes.
     - Checked by `shoreshScheduleExport.test.js` (the sheets, the formula guard, the same file
       every time, the pages per view), `shoreshSchedulePrint.test.js` (the table, the page style
       reaching only a page with a printout), `shoreshSchedules.test.js` ("Export to Excel and

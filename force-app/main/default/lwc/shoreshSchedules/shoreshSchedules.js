@@ -360,11 +360,24 @@ export default class ShoreshSchedules extends LightningElement {
 
   // ---------- getting it out: Excel and print ----------
 
+  /** Nothing to get out: no version open, or one with no days, or the page is busy. */
+  get cannotGetOut() {
+    return !this.opened || this.hasNoDays || this.busy;
+  }
+  // While a download or a printout is under way the button stays focusable (aria-disabled) and a
+  // click does nothing: a focused button that turns disabled drops the cursor to the top of the
+  // page (WCAG 2.4.3), and the director just pressed it.
+  get exportBusy() {
+    return this.exporting ? "true" : "false";
+  }
+  get printBusy() {
+    return this.printout ? "true" : "false";
+  }
   get cannotExport() {
-    return !this.opened || this.hasNoDays || this.busy || this.exporting;
+    return this.cannotGetOut || this.exporting;
   }
   get cannotPrint() {
-    return !this.opened || this.hasNoDays || this.busy || !!this.printout;
+    return this.cannotGetOut || !!this.printout;
   }
   /** The version on screen as an Excel file: a sheet per day, then every group's and activity's week. */
   async handleExport() {
