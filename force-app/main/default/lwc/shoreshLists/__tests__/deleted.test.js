@@ -119,30 +119,97 @@ describe("a list naming something the camp deleted", () => {
     ]);
   });
 
-  it("a deleted place a row names is not added with the list: the row waits until it is brought back", () => {
+  it("a deleted place a row names is not added: the row is saved without it, and the rest of the list saves", () => {
     const rows = [
       ["Activity", "Location"],
-      ["Canoeing", "Lake"]
+      ["Canoeing", "Lake"],
+      ["Sailing", "Lake"],
+      ["Archery", "Gym"]
     ];
     const lake = deletedKey("Location", "", "Lake");
-    const p = read("activities", rows, { [lake]: DELETED });
+    const gone = { [lake]: DELETED };
+    const p = read("activities", rows, gone);
     expect(p.alsoAdd.location).toEqual([]);
+    // Listed once, with Bring back.
     expect(p.deleted).toEqual([
       { key: lake, kind: "Location", name: "Lake", program: "" }
     ]);
-    expect(waitingFor(p, terms, { [lake]: DELETED })).toContain(
-      "Review here: Canoeing"
-    );
+    expect(row(p, "Canoeing")).toMatchObject({
+      status: "new",
+      droppedPlace: { kind: "Location", name: "Lake" }
+    });
+    expect(waitingFor(p, terms, gone)).toEqual([]);
+    const plan = listPlan(p, gone, "s1", "f");
+    expect(
+      plan.records.map((r) => [
+        r.kind,
+        r.fields.Name,
+        Object.values(r.refs).filter((v) => v)
+      ])
+    ).toEqual([
+      ["Activity", "Canoeing", []],
+      ["Activity", "Sailing", []],
+      ["Activity", "Archery", ["l1"]]
+    ]);
+    expect(plan.forget).toEqual([]);
+    // Brought back: added with the list, and the save forgets the deletion.
     const answers = { [lake]: BRING_BACK };
     const back = read("activities", rows, answers);
     expect(back.alsoAdd.location).toEqual(["Lake"]);
     expect(back.deleted).toEqual([]);
-    const plan = listPlan(back, answers, "s1", "f");
-    expect(plan.records.map((r) => [r.kind, r.fields.Name])).toEqual([
+    expect(row(back, "Canoeing").droppedPlace).toBeNull();
+    const backPlan = listPlan(back, answers, "s1", "f");
+    expect(backPlan.records.map((r) => [r.kind, r.fields.Name])).toEqual([
       ["Location", "Lake"],
-      ["Activity", "Canoeing"]
+      ["Activity", "Canoeing"],
+      ["Activity", "Sailing"],
+      ["Activity", "Archery"]
     ]);
-    expect(plan.forget).toEqual([lake]);
+    expect(backPlan.forget).toEqual([lake]);
+  });
+
+  it("an item the camp has keeps its place when the file names a deleted one", () => {
+    const s = setup();
+    s.activities = [{ Id: "a1", Name: "Canoeing", Location__c: "l1" }];
+    const lake = deletedKey("Location", "", "Lake");
+    const p = listProposal({
+      screenKey: "activities",
+      file: csv([
+        ["Activity", "Location"],
+        ["Canoeing", "Lake"]
+      ]),
+      setup: s,
+      terms,
+      answers: { [lake]: DELETED }
+    });
+    expect(row(p, "Canoeing").status).toBe("unchanged");
+    expect(p.deleted.map((d) => d.name)).toEqual(["Lake"]);
+    expect(waitingFor(p, terms, { [lake]: DELETED })).toEqual([
+      "Nothing to change"
+    ]);
+  });
+
+  it("a deleted kind of place: the location is saved without it", () => {
+    const outdoor = deletedKey("LocationType", "", "Outdoor");
+    const gone = { [outdoor]: DELETED };
+    const p = read(
+      "locations",
+      [
+        ["Location", "Location type"],
+        ["Field", "Outdoor"]
+      ],
+      gone
+    );
+    expect(p.alsoAdd.locationType).toEqual([]);
+    expect(p.deleted).toEqual([
+      { key: outdoor, kind: "LocationType", name: "Outdoor", program: "" }
+    ]);
+    expect(waitingFor(p, terms, gone)).toEqual([]);
+    const plan = listPlan(p, gone, "s1", "f");
+    expect(plan.records.map((r) => [r.kind, r.fields.Name])).toEqual([
+      ["Location", "Field"]
+    ]);
+    expect(Object.values(plan.records[0].refs).filter((v) => v)).toEqual([]);
   });
 });
 

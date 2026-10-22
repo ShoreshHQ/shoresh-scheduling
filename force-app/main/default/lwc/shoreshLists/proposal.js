@@ -1105,6 +1105,7 @@ export function listProposal(input) {
         )
       );
     });
+  const deletedPlaces = leaveOutDeletedPlaces(leads, used, deletions.gone);
   const programRefs = resolveProgramRefs(
     leads,
     used,
@@ -1157,7 +1158,8 @@ export function listProposal(input) {
     blocks: programRefs.blocks,
     days: days.added
   });
-  result.deleted = leaveOutDeletedAdds(result, deletions, [
+  result.deleted = deletedOfList(result, [
+    ...deletedPlaces,
     ...programs.deleted,
     ...divisions.deleted,
     ...programRefs.deleted
@@ -1235,11 +1237,37 @@ const ADD_KIND = { location: "Location", locationType: "LocationType" };
 
 /**
  * Places and kinds of place a row names that the camp deleted before (Greg, decision 45) are
- * not added with the list: they are taken out of alsoAdd and returned, so the screen lists them
- * with Bring back, and the rows naming them wait ("Review here") until then. Together with the
- * rows themselves marked "deleted": [{ key, kind, name, program }].
+ * not added with the list: the row is saved without it, as if the file said nothing about its
+ * place (a row the camp has keeps the place it has), as Import last year saves a placement
+ * without a place it no longer offers. Returns them, once each, to be listed with Bring back.
  */
-function leaveOutDeletedAdds(result, deletions, deletedRefs) {
+function leaveOutDeletedPlaces(leads, used, gone) {
+  const deleted = new Map();
+  used
+    .filter(({ column }) => ADD_KIND[column.ref])
+    .forEach(({ column }) => {
+      const kind = ADD_KIND[column.ref];
+      leads.filter(usable).forEach((r) => {
+        const target = (r.targets || {})[column.key];
+        const key =
+          target && target.add && deletedAs(gone, kind, "", target.add);
+        if (key) {
+          delete r.values[column.key];
+          delete r.targets[column.key];
+          r.droppedPlace = { kind, name: target.add };
+          deleted.set(key, { key, kind, name: target.add, program: "" });
+        }
+      });
+    });
+  return [...deleted.values()].sort((x, y) => x.name.localeCompare(y.name));
+}
+
+/**
+ * What the list leaves out because the camp deleted it before: its own rows marked "deleted",
+ * then places, programs, divisions and time blocks its rows name (resolvePrograms,
+ * leaveOutDeletedRefs, leaveOutDeletedPlaces): [{ key, kind, name, program }].
+ */
+function deletedOfList(result, deletedRefs) {
   const deleted = result.rows
     .filter((row) => row.status === "deleted")
     .map((row) => ({
@@ -1248,21 +1276,6 @@ function leaveOutDeletedAdds(result, deletions, deletedRefs) {
       name: row.name,
       program: result.screen.scope === "program" ? row.programName || "" : ""
     }));
-  Object.keys(ADD_KIND).forEach((ref) => {
-    const names = result.alsoAdd[ref];
-    if (!names) {
-      return;
-    }
-    result.alsoAdd[ref] = names.filter((name) => {
-      const key = deletedAs(deletions.gone, ADD_KIND[ref], "", name);
-      if (key) {
-        deleted.push({ key, kind: ADD_KIND[ref], name, program: "" });
-      }
-      return !key;
-    });
-  });
-  // Programs, divisions and time blocks: their rows are left out (resolvePrograms,
-  // leaveOutDeletedRefs).
   deleted.push(...deletedRefs);
   return deleted;
 }
@@ -1377,6 +1390,7 @@ function describeRow(r, used, screen, setup, answers, deletions) {
     sameAs: r.sameAs || null,
     usedRow: r.usedRow || null,
     droppedPlan: r.droppedPlan || null,
+    droppedPlace: r.droppedPlace || null,
     startingValues: r.startingValues || [],
     targets: r.targets || {},
     programId: r.program ? r.program.id : null,

@@ -709,18 +709,26 @@ export default class ShoreshListImport extends LightningElement {
     this.recompute();
   }
 
-  /** Rows saved without the rain plan the file gave them, for the summary. */
+  /**
+   * Rows saved without the rain plan the file gave them, or without a place (or kind of place)
+   * the camp deleted before, for the summary.
+   */
   get droppedPlans() {
-    return this.proposals
+    const saved = this.proposals
       .flatMap((p) => p.rows || [])
-      .filter(
-        (r) =>
-          r.droppedPlan && ["new", "changed", "unchanged"].includes(r.status)
-      )
-      .map((r) => ({
-        key: `dropped-${r.rowNumber}`,
-        text: `${r.name} · ${r.status === "new" ? "no" : "unchanged"} ${this.terms.sIn("RainPlan")}`
-      }));
+      .filter((r) => ["new", "changed", "unchanged"].includes(r.status));
+    const line = (r, what, kind) => ({
+      key: `dropped-${what}-${r.rowNumber}`,
+      text: `${r.name} · ${r.status === "new" ? "no" : "unchanged"} ${this.terms.sIn(kind)}`
+    });
+    return [
+      ...saved
+        .filter((r) => r.droppedPlan)
+        .map((r) => line(r, "plan", "RainPlan")),
+      ...saved
+        .filter((r) => r.droppedPlace)
+        .map((r) => line(r, "place", r.droppedPlace.kind))
+    ];
   }
 
   rowsOf(p, status) {

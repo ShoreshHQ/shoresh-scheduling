@@ -151,6 +151,33 @@ describe("c-shoresh-list-import", () => {
     expect(plan.forget).toEqual(["deleted|Activity||Canoeing"]);
   });
 
+  it("a place deleted before is listed with Bring back; the rows naming it save without it, with the rest", async () => {
+    getAnswers.mockResolvedValue([
+      { key: "deleted|Location||Lake", answer: "deleted" }
+    ]);
+    const element = await openWith(
+      ["Activity,Location", "Canoeing,Lake", "Hiking,Pool"].join("\n")
+    );
+    const deleted = $(element, '[data-id="deleted"]');
+    expect(deleted.textContent).toContain("Lake");
+    expect($(element, '[data-id="also-add"]')).toBeNull();
+    expect($(element, '[data-id="waiting"]')).toBeNull();
+    const save = $(element, 'lightning-button[data-id="save"]');
+    expect(save.disabled).toBe(false);
+    save.click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(
+      plan.records.map((r) => [r.fields.Name, r.refs.Location__c || null])
+    ).toEqual([
+      ["Canoeing", null],
+      ["Hiking", "l2"]
+    ]);
+    expect($(element, '[data-id="summary"]').textContent).toContain(
+      "Canoeing · no location"
+    );
+  });
+
   it("Bring back keeps the cursor on the way: the next Bring back, Save, or the question it opens", async () => {
     const focused = [];
     const spy = jest

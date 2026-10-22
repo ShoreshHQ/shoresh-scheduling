@@ -294,8 +294,12 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       "its group / time block was deleted before; not brought back"). A place deleted before is
       not offered, even with its tick remembered.
     - **Import a list and the camp workbook** (`c/shoreshLists`) mark such a row `deleted`
-      instead of `new`; a place or kind of place a row names is not added with the list, and
-      the rows naming it wait ("Review here") until it is brought back.
+      instead of `new`. A place or kind of place a row names is not added with the list: the
+      row is saved without it, as if the file said nothing about its place (an item the camp
+      has keeps the place it has), as Import last year saves a placement without a place it
+      no longer offers (review of #101: the rows used to wait, which held up the whole save
+      until the director undid their own delete). The rest of the list saves; the summary
+      says "<row> · no location" (or "unchanged location").
     - **Shown, never silent**: both screens list them under "Deleted before; not brought back",
       each with **Bring back** (one click). Bring back answers the key `back`: the item is then
       added like any other, and the save forgets the deletion (`forget`). The summary of Import
