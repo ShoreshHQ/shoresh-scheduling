@@ -38,18 +38,54 @@ public with sharing class SpecialDaySeed {
 
   /** Saves the special day's first plan and says what it holds. Called once, when it is added. */
   public static Seed seed(Id specialDayId) {
-    Id seasonId = seasonOf(specialDayId);
+    SpecialDayStart start = startOf(seasonOf(specialDayId));
+    if (start == null) {
+      return new Seed();
+    }
+    SpecialPlans.write(specialDayId, start.grid, null);
+    return start.seed;
+  }
+
+  /**
+   * The time blocks a special day of the season starts with, as the setup is now: how an import
+   * tells whether the director changed them (SpecialImportFrame). One query.
+   */
+  public static List<ScheduleGrid.Block> startingBlocks(Id seasonId) {
+    Program__c program = firstWithBlocks(seasonId);
+    return program == null
+      ? new List<ScheduleGrid.Block>()
+      : new SpecialDayStart(program, new List<Group__c>()).grid.blocks;
+  }
+
+  /**
+   * The fixed and recurring activities a special day of the season starts with, as the setup is
+   * now: the only ones a cell edit may put back once its plan dropped them (SpecialSetTimes).
+   */
+  public static Set<Id> broughtInIds(Id seasonId) {
+    Set<Id> result = new Set<Id>();
+    SpecialDayStart start = startOf(seasonId);
+    for (
+      ScheduleGrid.Item item : start == null
+        ? new List<ScheduleGrid.Item>()
+        : start.grid.items
+    ) {
+      result.add(Id.valueOf(item.id));
+    }
+    return result;
+  }
+
+  /** A new special day's first plan for the season; null when no program has time blocks. */
+  private static SpecialDayStart startOf(Id seasonId) {
     Program__c program = firstWithBlocks(seasonId);
     if (program == null) {
-      return new Seed();
+      return null;
     }
     SpecialDayStart start = new SpecialDayStart(program, groupsOf(seasonId));
     SetTimePlan plan = setTimePlan(seasonId);
     if (plan != null) {
       start.bringIn(plan);
     }
-    SpecialPlans.write(specialDayId, start.grid, null);
-    return start.seed;
+    return start;
   }
 
   private static Id seasonOf(Id specialDayId) {

@@ -175,7 +175,15 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
       treats it as ordinary wherever it is given `planName` (`staysPut`, `isMovable` in
       `slotEdits.js`), and `SpecialScheduleEdits` lets it be written over, reading it back by Id
       when Undo puts back one the plan no longer lists. It can't be typed in by name (only the
-      season's activities can). On a week's schedule fixed and recurring activities keep their
+      season's activities can), so the server puts one in a cell by Id **only if the special day
+      starts with it** (`SpecialSetTimes`, `SpecialDaySeed.broughtInIds`: what choice 12 brings in
+      from the setup as it is now; the same setup gives the same answer). Any other fixed or
+      recurring activity of the season is refused with nothing saved ("Assembly can't be put in
+      Field Day. Only the fixed activities and recurring activities it started with can be put
+      back."), and an event, which starts with none, takes none ("…have their own times and aren't
+      placed in it."). A fixed activity changed in setup since the day started so that it would no
+      longer be brought in can't be put back by Undo once no group holds it; it is refused, never
+      placed quietly. On a week's schedule fixed and recurring activities keep their
       padlock. **Clear schedule** (Edit menu, asked first) empties every cell. No checks or dots
       on a special schedule (the desktop's special days have no engine either).
 
@@ -217,7 +225,25 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     time blocks and the fixed and recurring activities brought in, choice 12) is not an entry:
     the file replaces it, and the screen says so ("Replaced by the file, brought in when Field
     Day started: Lunch."). Once any cell holds something typed (an activity), the import is
-    refused. Nothing is left out quietly: the screen says how many cells were filled, what it
+    refused.
+    **The file's time blocks replace the plan's** (and an event's stations its columns), so every
+    change to them is named in the same place (`SpecialImportFrame`): a time block with the same
+    name and times is kept, one at the same times under another name is renamed, the rest are
+    removed or added; stations are matched by name ("Periods renamed by the file: Opening to 9:00
+    AM – 9:45 AM.", "Periods removed by the file: Lunch.", "Stations added by the file: Green.").
+    **Once the director has changed the frame, an import that would rename or remove any of it
+    asks first** and saves nothing until they say yes: "Replace the periods in Field Day?" with
+    the same lines and "This can't be undone." (Import, or Cancel: nothing imported). An event's
+    time blocks and stations are all the director's; a special day's count as changed once they
+    differ, name and times in order, from those it starts with (`SpecialDaySeed.startingBlocks`,
+    the setup as it is now, so a setup changed since also asks: asking once too often loses
+    nothing). An import onto a frame the director has not touched, or one that only adds, goes
+    ahead and names its changes. The server decides (`Outcome.asks`, sent again with
+    `Imported.replaceEdited`), so the question can't be skipped and a save in between still refuses the
+    import as stale. The desktop adds an import's rows beside an event's seeded ones and never
+    removes any (its §6, Non-goals "replace seed axis on import"); here the file's frame replaces
+    the plan's, so it is said and, over the director's own changes, asked, the desktop's
+    refuse-or-ask rule for anything the director made. Nothing is left out quietly: the screen says how many cells were filled, what it
     replaced, the activities added, columns that name no group, rows with no times, places
     written in cells (not kept), and when only the first of several schedules was read.
 
@@ -228,10 +254,14 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     dropped it, another season's activity refused, an event's time blocks and stations
     added, moved, renamed, taken out, a placement cut in two, Clear, a stale revision refused, an
     import for an event and for a special day, a second import refused, an import onto a
-    special day holding only what it started with (replaced and named) and one with a typed
-    cell refused, Add <name> at 0 times a
+    special day holding only what it started with (replaced and named, its time blocks' changes
+    named without asking) and one with a typed cell refused, a renamed time block asked about
+    with nothing saved and replaced on yes, an event's changed stations asked about, a fixed or
+    recurring activity the day did not start with refused by Id and one in an event refused;
+    putting a brought-in one back reads what the day starts with, so its bound is 30, Add <name> at 0 times a
     week, no access), `shoreshSpecialSchedule.test.js` and `fromFile.test.js` (the screen, typing
-    saved as Manual Build's, the frame, Clear, Import and Download, a file read into a plan),
+    saved as Manual Build's, the frame, Clear, Import and Download, a file read into a plan, an
+    import's frame changes named, its question and Yes and Cancel),
     `shoreshWeekEditor.test.js` (planName; a brought-in fixed activity typed over), `shoreshSpecialDetails.test.js` and
     `shoreshCampSetup.test.js` (Open schedule and back), and in the test org by
     `scripts/a11y-browser-check.mjs` (the special day added in the Special events step: its

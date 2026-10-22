@@ -145,6 +145,17 @@ private class SpecialScheduleImportTest {
 
       Assert.isTrue(used <= 25, 'Queries to import: ' + used);
       Assert.areEqual(new List<String>{ 'Lunch break' }, outcome.replaced);
+      // The time blocks it started with are replaced without asking, each change named.
+      Assert.isFalse(outcome.asks);
+      Assert.areEqual(
+        new List<String>{ 'Period 1 > 9:00 AM – 9:45 AM' },
+        renames(outcome.frame)
+      );
+      Assert.areEqual(
+        new List<String>{ 'Period 2', 'Lunch' },
+        outcome.frame.removed
+      );
+      Assert.areEqual(new List<String>{ 'Stations' }, outcome.frame.added);
       Assert.areEqual(
         new List<String>{ 'Group A: Soccer,', 'Group B: ,', 'Group C: ,' },
         SpecialScheduleTestData.cells(outcome.plan.schedule.days[0])
@@ -162,5 +173,105 @@ private class SpecialScheduleImportTest {
       }
       Assert.areEqual(2, SpecialPlans.read(dayId).revision);
     }
+  }
+
+  // A time block the director renamed is not replaced quietly: the import asks first (nothing
+  // saved), names each change, and replaces them only once the director says yes.
+  @IsTest
+  static void anImportAsksBeforeReplacingTimeBlocksTheDirectorChanged() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id dayId = ids.get('Field Day');
+      SpecialScheduleFrame.Change rename = SpecialScheduleTestData.block(
+        'Opening',
+        '09:00',
+        '09:45'
+      );
+      rename.action = 'changeBlock';
+      rename.targetId = 'b1';
+      SpecialScheduleController.changeFrame(dayId, 1, rename);
+      SpecialScheduleImport.Imported imported = SpecialScheduleTestData.sportsDay(
+        new List<SpecialScheduleImport.ImportedColumn>{
+          SpecialScheduleTestData.column(
+            'Group A',
+            new List<String>{ 'Soccer', '' }
+          )
+        }
+      );
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SpecialScheduleImport.Outcome asked = SpecialScheduleController.importPlan(
+        dayId,
+        2,
+        imported
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 25, 'Queries to ask: ' + used);
+      Assert.isTrue(asked.asks);
+      Assert.isNull(asked.plan);
+      Assert.areEqual(
+        new List<String>{ 'Opening > 9:00 AM – 9:45 AM' },
+        renames(asked.frame)
+      );
+      Assert.areEqual(
+        new List<String>{ 'Period 2', 'Lunch' },
+        asked.frame.removed
+      );
+      Assert.areEqual(2, SpecialPlans.read(dayId).revision, 'Nothing saved');
+
+      imported.replaceEdited = true;
+      SpecialScheduleImport.Outcome done = SpecialScheduleController.importPlan(
+        dayId,
+        2,
+        imported
+      );
+      Assert.isFalse(done.asks);
+      Assert.areEqual(
+        new List<String>{ 'b1 9:00 AM – 9:45 AM', 'b2 Stations' },
+        SpecialScheduleTestData.blockNames(done.plan.schedule.days[0])
+      );
+      Assert.areEqual(new List<String>{ 'Stations' }, done.frame.added);
+    }
+  }
+
+  // An event's time blocks and stations are all the director's: an import that changes them asks.
+  @IsTest
+  static void anEventsImportAsksBeforeReplacingItsStations() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id eventId = SpecialScheduleTestData.colorWar(SetTimeTestData.camp());
+      SpecialScheduleImport.Outcome asked = SpecialScheduleController.importPlan(
+        eventId,
+        4,
+        SpecialScheduleTestData.sportsDay(
+          new List<SpecialScheduleImport.ImportedColumn>{
+            SpecialScheduleTestData.column(
+              'Blue',
+              new List<String>{ 'Tug of war', '' }
+            ),
+            SpecialScheduleTestData.column('Green', new List<String>{ '', '' })
+          }
+        )
+      );
+      Assert.isTrue(asked.asks);
+      Assert.areEqual(new List<String>{ 'Gold' }, asked.frame.stationsRemoved);
+      Assert.areEqual(new List<String>{ 'Green' }, asked.frame.stationsAdded);
+      Assert.areEqual(
+        new List<String>{ 'Relays > Stations' },
+        renames(asked.frame)
+      );
+      Assert.areEqual(new List<String>(), asked.frame.removed);
+      Assert.areEqual(4, SpecialPlans.read(eventId).revision, 'Nothing saved');
+    }
+  }
+
+  private static List<String> renames(SpecialImportFrame.FrameChanges frame) {
+    List<String> result = new List<String>();
+    for (SpecialImportFrame.BlockRename rename : frame.renamed) {
+      result.add(rename.was + ' > ' + rename.now);
+    }
+    return result;
   }
 }

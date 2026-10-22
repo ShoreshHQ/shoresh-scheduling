@@ -95,7 +95,8 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   form = null;
   blocksOpen = false;
   stationsOpen = false;
-  // A question before something that empties cells: { action, targetId, heading, lines, label }.
+  // A question before something that empties cells or replaces the frame:
+  // { action, targetId, heading, lines, label, said, back }, and an import's pending file.
   ask = null;
   announcement = "";
   focusHeadingNext = false;
@@ -435,25 +436,102 @@ export default class ShoreshSpecialSchedule extends LightningElement {
         this.error = noSide;
         return;
       }
-      const outcome = await importPlan({
-        itemId: this._itemId,
-        revision: this.view.revision,
-        imported
-      });
-      // Read again, so activities the import added join the ones to type in.
-      await this.load(false);
-      this.importLines = this.importSaid(
-        file.name,
-        outcome,
-        noTimes,
-        places,
-        pages.length
+      await this.sendImport(
+        {
+          fileName: file.name,
+          imported,
+          noTimes,
+          places,
+          pageCount: pages.length,
+          revision: this.view.revision
+        },
+        false
       );
-      this.announce(this.importLines.join(" "));
-      this.markSaved();
-      this.dispatchEvent(new CustomEvent("changed"));
     } catch (e) {
       this.error = failed(`${file.name} wasn't imported.`, e);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  /**
+   * Saves a file read into a plan. Time blocks or stations the director changed are not replaced
+   * unasked: the server answers asks (nothing saved) with what the file changes, and the question
+   * goes to the director; yes sends it again with replaceEdited.
+   */
+  async sendImport(pending, replaceEdited) {
+    const outcome = await importPlan({
+      itemId: this._itemId,
+      revision: pending.revision,
+      imported: { ...pending.imported, replaceEdited }
+    });
+    if (outcome.asks) {
+      this.ask = {
+        action: "import",
+        pending,
+        heading: `Replace ${this.frameWords} in ${this.name}?`,
+        lines: [...this.frameSaid(outcome.frame, ""), "This can't be undone."],
+        label: "Import",
+        back: '[data-id="import"]'
+      };
+      return;
+    }
+    // Read again, so activities the import added join the ones to type in.
+    await this.load(false);
+    this.importLines = this.importSaid(
+      pending.fileName,
+      outcome,
+      pending.noTimes,
+      pending.places,
+      pending.pageCount
+    );
+    this.announce(this.importLines.join(" "));
+    this.markSaved();
+    this.dispatchEvent(new CustomEvent("changed"));
+  }
+
+  /** "the time blocks", or for an event "the time blocks and stations", in the camp's words. */
+  get frameWords() {
+    const blocks = `the ${this.t.pIn("TimeBlock")}`;
+    return this.isEvent ? `${blocks} and stations` : blocks;
+  }
+
+  /** Each change an import makes to the frame, a line each; by: " by the file" once made. */
+  frameSaid(frame, by) {
+    if (!frame) {
+      return [];
+    }
+    const blocks = this.blocksWord;
+    const lines = [];
+    const add = (what, verb, names) => {
+      if (names && names.length) {
+        lines.push(`${what} ${verb}${by}: ${listed(names)}.`);
+      }
+    };
+    add(
+      blocks,
+      "renamed",
+      (frame.renamed || []).map((r) => `${r.was} to ${r.now}`)
+    );
+    add(blocks, "removed", frame.removed);
+    add(blocks, "added", frame.added);
+    add("Stations", "removed", frame.stationsRemoved);
+    add("Stations", "added", frame.stationsAdded);
+    return lines;
+  }
+
+  /** The director's answer to replacing what they changed: yes imports, no leaves it. */
+  async answerImport(ask, yes) {
+    this.focusAfter = ask.back;
+    if (!yes) {
+      this.announce(`${ask.pending.fileName} not imported`);
+      return;
+    }
+    this.busy = true;
+    try {
+      await this.sendImport(ask.pending, true);
+    } catch (e) {
+      this.error = failed(`${ask.pending.fileName} wasn't imported.`, e);
     } finally {
       this.busy = false;
     }
@@ -479,6 +557,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
         `Replaced by the file, brought in when ${this.name} started: ${listed(outcome.replaced)}.`
       );
     }
+    lines.push(...this.frameSaid(outcome.frame, " by the file"));
     if (outcome.added.length) {
       lines.push(`Added to ${t.pIn("Activity")}: ${listed(outcome.added)}.`);
     }
@@ -742,6 +821,10 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   async handleAnswer(event) {
     const ask = this.ask;
     this.ask = null;
+    if (ask.action === "import") {
+      await this.answerImport(ask, event.detail.yes);
+      return;
+    }
     if (event.detail.yes) {
       await this.frame(
         { action: ask.action, targetId: ask.targetId || null },
