@@ -237,6 +237,8 @@ export function collectGroups(noted, timetableOfPage) {
         base: entry.base || name,
         hint: entry.hint || null,
         votes: new Map(),
+        // Divisions a page states for it, not only its file's name.
+        stated: new Set(),
         timetable: timetableOfPage.get(entry.page),
         order: byName.size,
         onlyInCells: true
@@ -247,6 +249,9 @@ export function collectGroups(noted, timetableOfPage) {
     if (entry.division && !entry.weakDivision) {
       const votes = byName.get(name).votes;
       votes.set(entry.division, (votes.get(entry.division) || 0) + 1);
+      if (!entry.fromFileName) {
+        byName.get(name).stated.add(entry.division);
+      }
     }
   }
   // Groups only ever listed inside cells (by-activity files) come in no order of their own:
@@ -273,6 +278,8 @@ export function collectGroups(noted, timetableOfPage) {
       base: group.base,
       hint: group.hint,
       division,
+      // Its division only a file's name gave: a guess (ADR 0006 §21).
+      divisionGuessed: !!division && !group.stated.has(division),
       timetable: group.timetable,
       order
     };

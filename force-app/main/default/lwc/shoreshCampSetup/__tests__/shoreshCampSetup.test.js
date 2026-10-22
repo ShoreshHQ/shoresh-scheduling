@@ -16,6 +16,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
+import confirmGuess from "@salesforce/apex/SeasonSetupController.confirmGuess";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -40,6 +41,9 @@ jest.mock("@salesforce/apex/SeasonSetupController.saveRecords", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/SeasonSetupController.deleteRecord", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/SeasonSetupController.confirmGuess", () => apex(), {
   virtual: true
 });
 jest.mock(
@@ -3604,6 +3608,137 @@ describe("c-shoresh-camp-setup", () => {
       await seasonAction(element, "New season");
       await flush();
       expect(element.shadowRoot.textContent).toContain("Start a new season");
+    });
+  });
+
+  describe("rules Shoresh guessed, marked for a look (ADR 0006 §21)", () => {
+    const GUESSED = {
+      activities: [
+        {
+          Id: "a1",
+          Name: "Archery",
+          TimesPerWeekMin__c: 2,
+          TimesPerWeekMax__c: 3,
+          Eligibilities__r: []
+        }
+      ],
+      locations: [{ Id: "l1", Name: "Pool", GroupsThatFit__c: 2 }],
+      programs: [
+        {
+          program: { Id: "p1", Name: "Main", Monday__c: true },
+          timeBlocks: [{ Id: "t1", Name: "Period 1" }],
+          divisions: [
+            {
+              division: { Id: "d1", Name: "Juniors" },
+              groups: [
+                { Id: "g1", Name: "Cedar" },
+                { Id: "g2", Name: "Birch" }
+              ]
+            }
+          ]
+        }
+      ],
+      guesses: [
+        { recordId: "a1", field: "often" },
+        { recordId: "a1", field: "who" },
+        { recordId: "l1", field: "fits" },
+        { recordId: "g1", field: "division", value: "Juniors" }
+      ]
+    };
+    async function renderWith(overrides = {}) {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(setupWith({ ...GUESSED, ...overrides }))
+      );
+      return render();
+    }
+    const table = (element, id) =>
+      q(element, `c-shoresh-editable-table[data-id="${id}"]`);
+
+    it("each table gets its marks, on the guessed cell, in the camp's words", async () => {
+      const element = await renderWith();
+      const activities = table(element, "activities").guesses;
+      expect(activities.a1).toEqual({
+        [nsName("TimesPerWeekMin__c")]: {
+          field: "often",
+          words: "Guessed from your file",
+          name: "How often for Archery: guessed from your file"
+        },
+        whoCanDoIt: {
+          field: "who",
+          words: "Guessed from your file",
+          name: "Who for Archery: guessed from your file"
+        }
+      });
+      expect(
+        table(element, "locations").guesses.l1[nsName("GroupsThatFit__c")]
+      ).toEqual(expect.objectContaining({ field: "fits" }));
+      // Why a bunk is in its unit: only the one whose unit came from its file's name.
+      const groups = q(
+        element,
+        '[data-screen="groups"] c-shoresh-program'
+      ).guesses;
+      expect(groups.g1).toEqual({
+        Name: {
+          field: "division",
+          words: "Juniors guessed from the file name",
+          name: "Cedar: Juniors guessed from the file name"
+        }
+      });
+      expect(groups.g2).toBeUndefined();
+    });
+
+    it("nothing guessed, nothing marked", async () => {
+      const element = await renderWith({ guesses: [] });
+      expect(table(element, "activities").guesses).toEqual({});
+    });
+
+    it("Looks right: the camp forgets it, the season is read again, then the table is told", async () => {
+      confirmGuess.mockResolvedValue(undefined);
+      const element = await renderWith();
+      const order = [];
+      getSeasonSetup.mockImplementation(() => {
+        order.push("reload");
+        return Promise.resolve(
+          nsRecord(setupWith({ ...GUESSED, guesses: [] }))
+        );
+      });
+      table(element, "activities").dispatchEvent(
+        new CustomEvent("confirmguess", {
+          detail: {
+            recordId: "a1",
+            field: "often",
+            onDone: () => order.push("table told")
+          }
+        })
+      );
+      await flush();
+      await flush();
+      await flush();
+      expect(confirmGuess).toHaveBeenCalledWith({
+        recordId: "a1",
+        field: "often"
+      });
+      expect(order).toEqual(["reload", "table told"]);
+      expect(table(element, "activities").guesses).toEqual({});
+    });
+
+    it("a refusal says so and changes nothing", async () => {
+      confirmGuess.mockRejectedValue({ body: { message: "Not found." } });
+      const element = await renderWith();
+      const onDone = jest.fn();
+      table(element, "locations").dispatchEvent(
+        new CustomEvent("confirmguess", {
+          detail: { recordId: "l1", field: "fits", onDone }
+        })
+      );
+      await flush();
+      await flush();
+      expect(onDone).not.toHaveBeenCalled();
+      expect(element.shadowRoot.textContent).toContain(
+        "Not marked as looked at. Nothing was changed."
+      );
     });
   });
 });

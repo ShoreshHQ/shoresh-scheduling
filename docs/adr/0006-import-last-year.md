@@ -344,6 +344,57 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     - Not covered: a name in a "who" list added as a group or division (asked of the director
       each time, never silently).
 
+21. **Rules Shoresh guessed are marked for a look** (Greg, build log decision 45, 2026-10-21: "yes
+    to shoresh rules being guessed at"; desktop `src/utils/ruleProvenance.js`,
+    `ActivitiesScreen.jsx` RuleProvenanceDot, `LocationsScreen.jsx` CapacityProvenanceDot,
+    `GroupsScreen.jsx` DivisionProvenanceDot, ADR 2026-08-09 activity-rule hand-edit
+    provenance). Until now what the import worked out was shown only in the review (item 10).
+    - **What counts as guessed** is what the desktop marks "inferred": a new activity's times a
+      week and who can do it; a new place's groups that fit ("Shoresh set a few capacities from
+      your old schedule"); and a new group's division when only its file's name gave it (item
+      15: a file-name hint matching a division the camp has or a page states, left as
+      preselected). The desktop's "observed" values are read outright and carry no mark: an
+      activity's place and groups at once, and a division a page states. A choice the director
+      made on the preview (a division picked, even the one suggested) is theirs. Main for a
+      program with no divisions is not a guess about the group, so it is not marked (the desktop
+      has no division then). Nothing an import matches or changes is marked; only what it adds.
+    - **Stored with the import answers.** The plan names them (`guessed`: kind, key, fields;
+      `c/shoreshImportEngine` plan.js), and the save (`SetupGuesses`, same all-or-none step)
+      remembers each in `ImportAnswer__c` with the key
+      `guessed|<kind>|<program, for a group>|<name>|<field>` (fields `often`, `who`, `fits`,
+      `division`) answered with the value saved: "2-3" (or "2-none" for no weekly maximum),
+      who as each division or group by program and name in order ("everyone" when empty; a list
+      longer than an answer holds as its SHA-256 digest), the number that fits, the division's
+      name. Names, never Ids, as every remembered answer.
+    - **Shown on the setup screens** (`SeasonSetupReader` guesses, one query: the camp's
+      answers): a guess stands while the record still holds the value saved and was there when
+      it was guessed. So **a change anywhere clears it** (this screen, Salesforce's record page,
+      a list import), as the desktop's "the last write was the director's", with no hook in each
+      save path; and an item set up again later by hand with the same name (after Undo last
+      import, a delete, or in a copied season) is the director's, not marked. A value set back
+      by hand to exactly what was guessed shows the mark again (the desktop would keep it
+      confirmed); comparing values keeps this exact and testable, as Undo does (item 18).
+    - **The mark is the design system's needs-a-look corner** (ADR 0015 choice 6; the desktop's
+      one bronze dot, owner ruling 2026-10-09: one visible state) in the top right corner of the
+      guessed cell: Activities' How often and Who, Locations' groups that fit, and a bunk's name
+      for its unit (its unit is the section it sits in). It is a button (`c/shoreshGuessMark`),
+      named for whose it is ("How often for Swim: guessed from your file"; "Bunk 1: Juniors
+      guessed from the file name", which is why the bunk is in its unit). Pressed, a one-line pop
+      beside it says "Guessed from your file" (or the unit's reason) and offers **Looks right**,
+      the desktop's Confirm, with the cursor on it; Escape or leaving closes it, Escape putting
+      the cursor back on the mark. Looks right forgets that one guess
+      (`SeasonSetupController.confirmGuess`, two queries) and the season is read again; the
+      cursor goes to that cell's field (else the row's first) and "<name>: looks right" is said.
+      The desktop's per-row popover listing every field, its tier words and "why" sentences
+      are not shown: one mark per guessed cell says which value it is, with fewer words.
+    - Checked by `guessed.test.js` (what the plan names), `shoreshGuessMark.test.js`,
+      `shoreshEditableTable.test.js` and `shoreshCampSetup.test.js` ("rules Shoresh guessed"),
+      `SetupGuessesTest` (stored with the values saved, shown, cleared by a change anywhere,
+      Looks right, refused fields, a record made later, query bounds), the large camp in
+      `ImportSetupSavesTest` (60 activities' guesses inside the same bounds), and in the test org
+      by `scripts/a11y-browser-check.mjs` (the mark reached by Tab, opened, Escape, Looks right
+      said and the cursor kept).
+
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 
 - **Layout can be changed per file** (the desktop only displayed it): kept.

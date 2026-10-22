@@ -3535,6 +3535,77 @@ describe("c-shoresh-editable-table", () => {
       });
     });
   });
+
+  describe("what an import guessed (ADR 0006 §21)", () => {
+    const guessesFor = () => ({
+      a1: {
+        [nsName("StartTime__c")]: {
+          field: "often",
+          words: "Guessed from your file",
+          name: "Start for Period 1: guessed from your file"
+        }
+      }
+    });
+    const marks = (element) =>
+      element.shadowRoot.querySelectorAll('[data-id="guess"]');
+
+    it("marks only the guessed cell of the saved row, in its corner", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: ROWS,
+        guesses: guessesFor()
+      });
+      await flush();
+      const all = marks(element);
+      expect(all).toHaveLength(1);
+      const mark = all[0];
+      expect(mark.dataset.guessRow).toBe("row-a1");
+      expect(mark.dataset.guessColumn).toBe(nsName("StartTime__c"));
+      expect(mark.label).toBe("Guessed from your file");
+      expect(mark.name).toBe("Start for Period 1: guessed from your file");
+      expect(mark.closest("td").className).toContain("has-guess");
+      await expect(element).toBeAccessible();
+    });
+
+    it("no guesses, no marks", async () => {
+      const element = render({ columns: COLUMNS, rows: ROWS });
+      await flush();
+      expect(marks(element)).toHaveLength(0);
+    });
+
+    it("Looks right asks the screen, then says so and keeps the cursor in that cell", async () => {
+      const element = render({
+        columns: COLUMNS,
+        rows: ROWS,
+        guesses: guessesFor()
+      });
+      await flush();
+      const handler = jest.fn();
+      element.addEventListener("confirmguess", handler);
+      marks(element)[0].dispatchEvent(new CustomEvent("confirm"));
+      await flush();
+      expect(handler).toHaveBeenCalledTimes(1);
+      const detail = handler.mock.calls[0][0].detail;
+      expect([detail.recordId, detail.field]).toEqual(["a1", "often"]);
+      // The screen forgot it and read the season again: no mark now.
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      element.guesses = {};
+      await flush();
+      detail.onDone();
+      await flush();
+      const focused = focus.mock.contexts.map(
+        (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+      );
+      focus.mockRestore();
+      expect(marks(element)).toHaveLength(0);
+      expect(focused).toEqual([`row-a1:${nsName("StartTime__c")}`]);
+      expect(
+        element.shadowRoot
+          .querySelector('[data-id="announce"]')
+          .textContent.trim()
+      ).toBe("Period 1: looks right");
+    });
+  });
 });
 
 /** Equal as the server compares: blanks alike, numbers by value. */

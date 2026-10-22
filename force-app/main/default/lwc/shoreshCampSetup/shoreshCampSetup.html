@@ -635,9 +635,11 @@
                       week-exceptions={setup.weekExceptions}
                       week-words={weekWords}
                       busy={busy}
+                      guesses={guessesByRecord}
                       onsave={handleSaveRecords}
                       ondelete={handleDeleteRecord}
                       onnavigate={handleNavigate}
+                      onconfirmguess={handleConfirmGuess}
                     ></c-shoresh-program>
                   </template>
                   <template lwc:if={hasNoPrograms}>
@@ -799,6 +801,8 @@
                       week-phrase="is open in"
                       merge-label={labels.sameLocation}
                       busy={busy}
+                      guesses={guessesByRecord}
+                      onconfirmguess={handleConfirmGuess}
                       onsave={handleSaveRecords}
                       ondelete={handleDeleteRecord}
                       onmerge={handleSameLocation}
@@ -904,6 +908,8 @@
                         busy={busy}
                         details-label="Details"
                         details-open-for={activityDetailsFor}
+                        guesses={guessesByRecord}
+                        onconfirmguess={handleConfirmGuess}
                         onsave={handleSaveRecords}
                         ondelete={handleDeleteRecord}
                         ondetails={handleOpenActivityDetails}

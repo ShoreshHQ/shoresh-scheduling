@@ -88,8 +88,24 @@ public with sharing class ImportAnswers {
     List<String> questions,
     String answer
   ) {
-    Map<String, String> questionOf = new Map<String, String>();
+    Map<String, String> answerOf = new Map<String, String>();
     for (String question : questions) {
+      answerOf.put(question, answer);
+    }
+    rememberEach(campId, answerOf);
+  }
+
+  /**
+   * Remembers an answer per question for the camp, outside an import's questions: what an import
+   * guessed, with the value it saved (SetupGuesses). Two queries at most: the rows there are, then
+   * the write.
+   */
+  public static void rememberEach(Id campId, Map<String, String> answerOf) {
+    if (answerOf.isEmpty()) {
+      return;
+    }
+    Map<String, String> questionOf = new Map<String, String>();
+    for (String question : answerOf.keySet()) {
       questionOf.put(keyOf(campId, question), question);
     }
     Set<String> keys = questionOf.keySet();
@@ -111,10 +127,23 @@ public with sharing class ImportAnswers {
             Key__c = key,
             QuestionKey__c = questionOf.get(key)
           );
-      row.Answer__c = answer.left(255);
+      row.Answer__c = answerOf.get(questionOf.get(key)).left(255);
       writes.add(row);
     }
     UserModeWrites.save(writes);
+  }
+
+  /** Forgets answers for the camp (a guess the director says looks right). Two queries at most. */
+  public static void forget(Id campId, Set<String> questions) {
+    Set<String> keys = new Set<String>();
+    for (String question : questions) {
+      keys.add(keyOf(campId, question));
+    }
+    Database.delete(
+      [SELECT Id FROM ImportAnswer__c WHERE Key__c IN :keys WITH USER_MODE],
+      true,
+      AccessLevel.USER_MODE
+    );
   }
 
   /** Camp and question: the camp's Id and a digest of the full question key. */

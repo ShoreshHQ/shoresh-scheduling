@@ -1,0 +1,54 @@
+@import "c/shoreshTokens";
+
+/* The mark sits in its cell's top right corner (the cell is its containing block). */
+:host {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.wrap {
+  position: relative;
+  display: block;
+}
+
+/* A touch target bigger than the 8 px corner itself, the corner at its top right. */
+.mark {
+  display: flex;
+  justify-content: flex-end;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 2px;
+  border: 0;
+  border-radius: 0 var(--shoresh-radius) 0 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mark:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+/* One line beside the mark, opening toward the cell, so it stays inside the row. */
+.pop {
+  top: 0;
+  right: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.words {
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+.looks-right {
+  width: auto;
+  font-weight: 500;
+}

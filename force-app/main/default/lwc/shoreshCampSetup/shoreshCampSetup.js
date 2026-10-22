@@ -18,6 +18,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
+import confirmGuess from "@salesforce/apex/SeasonSetupController.confirmGuess";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
@@ -835,6 +836,71 @@ export default class ShoreshCampSetup extends LightningElement {
         exceptionFor: (saved) => whoIds(saved).length > 0
       }
     ];
+  }
+
+  /**
+   * What an import guessed and no one has looked at or changed since (ADR 0006 §21; the desktop's
+   * provenance dots), for the tables: record Id -> { [column]: { field, words, name } }. A new
+   * activity's how often and who, a new place's groups that fit, and a bunk's unit when only its
+   * file's name gave it.
+   */
+  get guessesByRecord() {
+    const t = this.terms;
+    const names = new Map();
+    const setup = this.setup || {};
+    (setup.activities || []).forEach((a) => names.set(a.Id, a.Name));
+    (setup.locations || []).forEach((l) => names.set(l.Id, l.Name));
+    (setup.programs || []).forEach((entry) =>
+      (entry.divisions || []).forEach((d) =>
+        (d.groups || []).forEach((g) => names.set(g.Id, g.Name))
+      )
+    );
+    const fromFile = "Guessed from your file";
+    const columns = {
+      often: { column: ACTIVITY.TimesPerWeekMin, label: "How often" },
+      who: { column: "whoCanDoIt", label: "Who" },
+      fits: { column: LOCATION.GroupsThatFit, label: t.s("GroupsThatFit") }
+    };
+    const result = {};
+    for (const guess of setup.guesses || []) {
+      const name = names.get(guess.recordId) || "";
+      let mark;
+      if (guess.field === "division") {
+        const words = `${guess.value} guessed from the file name`;
+        mark = { column: "Name", words, name: `${name}: ${words}` };
+      } else if (columns[guess.field]) {
+        const { column, label } = columns[guess.field];
+        mark = {
+          column,
+          words: fromFile,
+          name: `${label} for ${name}: ${fromFile.toLowerCase()}`
+        };
+      }
+      if (mark) {
+        result[guess.recordId] = {
+          ...(result[guess.recordId] || {}),
+          [mark.column]: {
+            field: guess.field,
+            words: mark.words,
+            name: mark.name
+          }
+        };
+      }
+    }
+    return result;
+  }
+
+  /** Looks right on a guess: the camp forgets it, and the season is read again. */
+  async handleConfirmGuess(event) {
+    const { recordId, field, onDone } = event.detail;
+    await this.run(async () => {
+      await confirmGuess({ recordId, field });
+      this.changedOnServer = true;
+      await this.loadSeason();
+      if (onDone) {
+        onDone();
+      }
+    }, "Not marked as looked at. Nothing was changed.");
   }
 
   /** Division and group names by Id, across the season's programs (for who can do it). */
