@@ -62,6 +62,20 @@ public with sharing class GeneratedScheduleController {
     }
   }
 
+  /** "Set it up" on a not-set-up cell, as on Manual Build (SpecialSetUp, ADR 0014 slice 4). */
+  @AuraEnabled
+  public static SpecialSetUp.Done setUpItem(
+    Id scheduleId,
+    String kind,
+    String name
+  ) {
+    try {
+      return SpecialSetUp.setUp(scheduleId, true, kind, name);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** Lock or unlock a cell, a day or a group (decision 3); a conflict if the week changed since. */
   @AuraEnabled
   public static GeneratedWeek.Locked setLocks(

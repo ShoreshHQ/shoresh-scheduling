@@ -1,11 +1,14 @@
 /**
- * What a Manual Build edit may do (SlotSaves): place the season's activities, never move or cover a
+ * What a Manual Build edit may do (SlotSaves): place the season's activities and special events
+ * (ADR 0014 slice 4), never move or cover a
  * fixed or recurring activity (they stay where setup puts them), and never place anything where a
  * group is not at camp. Reads what the edits need once, in user mode.
  */
 public with sharing class SlotRules {
   private CampLabels labels;
   private Map<Id, Activity__c> activities = new Map<Id, Activity__c>();
+  private Map<Id, SpecialEvent__c> events = new Map<Id, SpecialEvent__c>();
+  private Id seasonId;
   private Map<Id, Group__c> groups = new Map<Id, Group__c>();
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
 
@@ -19,7 +22,7 @@ public with sharing class SlotRules {
 
   /** The rules on setup already read, with the activities the edits place. */
   public SlotRules(Setup setup, Set<Id> activityIds) {
-    Id seasonId = setup.seasonId;
+    seasonId = setup.seasonId;
     labels = setup.labels;
     activities = new Map<Id, Activity__c>(
       [
@@ -35,6 +38,35 @@ public with sharing class SlotRules {
     for (TimeBlock__c block : setup.blocks) {
       blocks.put(block.Id, block);
     }
+  }
+
+  /**
+   * The season's special events the edits place, read once (none read when they place none).
+   * One from another season, or deleted, is refused when it is placed (startToken).
+   */
+  public SlotRules withEvents(List<SlotEdits.Edit> edits) {
+    Set<Id> eventIds = new Set<Id>();
+    for (SlotEdits.Edit edit : edits) {
+      for (SlotEdits.Run run : edit?.runs ?? new List<SlotEdits.Run>()) {
+        for (String slot : run?.after ?? new List<String>()) {
+          Id eventId = SlotIds.eventIn(SlotIds.owner(slot));
+          if (eventId != null) {
+            eventIds.add(eventId);
+          }
+        }
+      }
+    }
+    if (!eventIds.isEmpty()) {
+      events = new Map<Id, SpecialEvent__c>(
+        [
+          SELECT Id, Name
+          FROM SpecialEvent__c
+          WHERE Id IN :eventIds AND Season__c = :seasonId
+          WITH USER_MODE
+        ]
+      );
+    }
+    return this;
   }
 
   /** The activities a Manual Build save's edits place; refuses an edit that can't be read. */
@@ -94,6 +126,19 @@ public with sharing class SlotRules {
       if (SlotIds.of(grid.items[i]).equals(slot)) {
         return String.valueOf(i + 1);
       }
+    }
+    Id eventId = SlotIds.eventIn(slot);
+    if (eventId != null) {
+      SpecialEvent__c event = events.get(eventId);
+      if (event == null) {
+        throw new ShoreshException(
+          'That ' +
+            labels.singularInSentence('SpecialEvent') +
+            ' was not found. It may have been deleted.'
+        );
+      }
+      grid.items.add(new ScheduleGrid.Item('S', event.Id, event.Name));
+      return String.valueOf(grid.items.size());
     }
     Activity__c activity = seasonActivity(slot);
     grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));

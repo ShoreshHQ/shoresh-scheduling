@@ -9,9 +9,14 @@
 export const OPEN = "";
 const CARRIES_ON = "^";
 const SET_UP = new Set(["A", "F", "R"]);
+const SET_UP_LATER = new Set(["S", "D"]);
 
 export function identity(item) {
-  return `${item.kind}:${SET_UP.has(item.kind) ? item.id : item.name}`;
+  // A special event or day with its record (ADR 0014 slice 4) is that record; one noted from a
+  // file is its name.
+  const byRecord =
+    SET_UP.has(item.kind) || (SET_UP_LATER.has(item.kind) && Boolean(item.id));
+  return `${item.kind}:${byRecord ? item.id : item.name}`;
 }
 
 /** The item a slot belongs to, whether it starts there or carries on into it. */

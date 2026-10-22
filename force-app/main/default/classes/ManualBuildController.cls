@@ -65,6 +65,23 @@ public with sharing class ManualBuildController {
     }
   }
 
+  /**
+   * "Set it up" on a cell an import noted as not set up yet: the special event or special day it
+   * names, made from what the file had (SpecialSetUp, ADR 0014 slice 4).
+   */
+  @AuraEnabled
+  public static SpecialSetUp.Done setUpItem(
+    Id scheduleId,
+    String kind,
+    String name
+  ) {
+    try {
+      return SpecialSetUp.setUp(scheduleId, false, kind, name);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** Save version: the draft as it is now, kept under a name. */
   @AuraEnabled
   public static Id saveVersion(Id scheduleId, String name) {

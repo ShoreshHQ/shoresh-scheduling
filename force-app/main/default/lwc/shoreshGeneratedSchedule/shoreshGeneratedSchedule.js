@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import setUpItem from "@salesforce/apex/GeneratedScheduleController.setUpItem";
 import previewPublish from "@salesforce/apex/GeneratedScheduleController.previewPublish";
 import publish from "@salesforce/apex/GeneratedScheduleController.publish";
 import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
@@ -497,6 +498,34 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
   }
 
   /** Coming back to the window shows other people's saves, unless something is under way. */
+  /**
+   * "Set it up" on a cell noted from a file as a special event or day (ADR 0014 slice 4): made
+   * on the server from what the file had, then the week and the season are read again (the
+   * Special events screen lists it). Resolves to what to say.
+   */
+  setUpWith = async ({ kind, name }) => {
+    const scheduleId = this.loaded && this.loaded.scheduleId;
+    if (!scheduleId) {
+      return null;
+    }
+    const done = await setUpItem({ scheduleId, kind, name });
+    this.dispatchEvent(new CustomEvent("seasonchanged"));
+    this.load(true);
+    return done && done.said;
+  };
+
+  /** "Open <special day>" from a day it replaces: its schedule, on the Special events screen. */
+  handleOpenSpecial(event) {
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: {
+          screen: "specialEvents",
+          specialItemId: event.detail.itemId
+        }
+      })
+    );
+  }
+
   refresh() {
     if (
       this.loaded &&
@@ -599,7 +628,20 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
    */
   engineInput(days, extra = {}, action = null) {
     const base = action ? inputFor(this.loaded, action) : this.loaded.input;
-    return { ...base, days, terms: this.t, ...extra };
+    return {
+      ...base,
+      days,
+      terms: this.t,
+      // Days a special day replaces: nothing is built, checked or counted there (ADR 0014).
+      replacedDates: this.replacedDates,
+      ...extra
+    };
+  }
+
+  /** The week's days a special day replaces ("YYYY-MM-DD"). */
+  get replacedDates() {
+    const specials = this.loaded && this.loaded.input.specials;
+    return ((specials && specials.days) || []).map((day) => day.dateValue);
   }
 
   /**
@@ -632,7 +674,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     const locked = lockedKeys(locks);
     // A cell the director locked empty is kept empty: not Open, not to fill (G4 §31).
     const open = openCells(
-      week.days,
+      week.checkedDays,
       week.isAway,
       this.t,
       week.shortest,
@@ -799,7 +841,7 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     let days;
     try {
       if (action === ACTION.START_OVER) {
-        days = clearedDays(loaded.input.days);
+        days = clearedDays(loaded.input.days, new Set(this.replacedDates));
       } else {
         const result = await buildInPieces(
           this.engineInput(
@@ -1175,7 +1217,12 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     ) {
       return [];
     }
-    const cells = weekCells(this.week.days, this.week.locked, this.week.isAway);
+    // A day a special day replaces has nothing to lock: it shows the special day's schedule.
+    const cells = weekCells(
+      this.week.checkedDays,
+      this.week.locked,
+      this.week.isAway
+    );
     const pill = this.isDaily
       ? this.dayPills.find((d) => d.index === this.dayIndex)
       : null;
@@ -1371,7 +1418,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
     return {
       schedule: { schedule: { id: this.loaded.scheduleId }, days: week.days },
       activities: activityOptions(this.loaded.input, week.days),
-      away: awayRows(week.days, week.isAway)
+      away: awayRows(week.days, week.isAway),
+      // The season's special events and the week's special days (ADR 0014 slice 4).
+      specials: this.loaded.input.specials || null
     };
   }
 

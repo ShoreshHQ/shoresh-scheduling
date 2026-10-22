@@ -127,6 +127,12 @@ public with sharing class ManualWeekStart {
   /** Why an item can't be copied into this week at all, or null when it can. */
   public String whyNotItem(String slot) {
     Id activityId = SlotIds.activityIn(slot);
+    if (SlotIds.eventIn(slot) != null) {
+      // A special event is put on each day by hand (desktop: placed day by day, never copied).
+      return 'a ' +
+        setup.labels().singularInSentence('SpecialEvent') +
+        ' is put on each day by hand';
+    }
     if (activityId == null) {
       return 'not set up yet';
     }

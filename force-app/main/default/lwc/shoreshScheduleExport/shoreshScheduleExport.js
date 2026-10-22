@@ -24,12 +24,12 @@ import {
   groupCells,
   groupGrid,
   groups,
+  isSetUpItem,
   kindLabel
 } from "c/shoreshScheduleViews";
 
 const REMOVED = "(removed)";
 const CANT_BE_SHOWN = "Can't be shown";
-const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
 function withRemoved(name, gone) {
   return gone ? `${name} ${REMOVED}` : name;
@@ -55,7 +55,7 @@ export function itemText(item, t, bracket = false) {
   if (!item) {
     return "";
   }
-  const name = withRemoved(item.name, item.gone && !NOT_SET_UP.has(item.kind));
+  const name = withRemoved(item.name, item.gone && isSetUpItem(item));
   return bracket && item.kind !== "A"
     ? `[${kindLabel(item.kind, t)}] ${name}`
     : name;

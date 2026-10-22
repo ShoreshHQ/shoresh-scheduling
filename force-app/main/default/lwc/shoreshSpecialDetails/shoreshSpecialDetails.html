@@ -64,6 +64,110 @@
         </template>
       </dl>
 
+      <!-- Put on a day (ADR 0014 slice 4): the week and the weekday; asks before replacing. -->
+      <template lwc:if={canPlace}>
+        <div class="place" data-id="place">
+          <template lwc:if={placing}>
+            <div class="place-pick">
+              <label class="place-field">
+                <span class="place-label">{weekLabel}</span>
+                <select
+                  class="place-select"
+                  data-id="place-week"
+                  onchange={handlePlaceWeek}
+                >
+                  <template for:each={weekOptions} for:item="option">
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      selected={option.selected}
+                    >
+                      {option.label}
+                    </option>
+                  </template>
+                </select>
+              </label>
+              <label class="place-field">
+                <span class="place-label">Day</span>
+                <select
+                  class="place-select"
+                  data-id="place-day"
+                  onchange={handlePlaceDay}
+                >
+                  <template for:each={dayOptions} for:item="option">
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      selected={option.selected}
+                    >
+                      {option.label}
+                    </option>
+                  </template>
+                </select>
+              </label>
+            </div>
+            <template lwc:if={placing.asks}>
+              <p class="place-ask" role="alert" data-id="place-ask">
+                {placing.asks}
+              </p>
+              <div class="place-actions">
+                <button
+                  type="button"
+                  class="open-schedule place-primary"
+                  data-id="use-instead"
+                  aria-disabled={placing.working}
+                  onclick={handleUse}
+                >
+                  {useLabel}
+                </button>
+                <button
+                  type="button"
+                  class="open-schedule"
+                  data-id="cancel-place"
+                  onclick={handleCancelPlacing}
+                >
+                  Cancel
+                </button>
+              </div>
+            </template>
+            <template lwc:else>
+              <div class="place-actions">
+                <button
+                  type="button"
+                  class="open-schedule place-primary"
+                  data-id="put"
+                  aria-disabled={cannotPut}
+                  onclick={handlePut}
+                >
+                  Put on
+                </button>
+                <button
+                  type="button"
+                  class="open-schedule"
+                  data-id="cancel-place"
+                  onclick={handleCancelPlacing}
+                >
+                  Cancel
+                </button>
+              </div>
+            </template>
+          </template>
+          <template lwc:else>
+            <button
+              type="button"
+              class="open-schedule"
+              data-id="put-on-day"
+              onclick={handleStartPlacing}
+            >
+              Put on a day
+            </button>
+          </template>
+          <p class="place-said" role="status" data-id="place-said">
+            {placedSaid}
+          </p>
+        </div>
+      </template>
+
       <template lwc:if={isSpecialDay}>
         <div class="periods" data-id="periods">
           <h3 class="periods-title">{labels.timeBlocks}</h3>

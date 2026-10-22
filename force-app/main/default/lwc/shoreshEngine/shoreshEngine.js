@@ -50,6 +50,8 @@ export const MODE = Object.freeze({ FULL: "full", FILL_OPEN: "fillOpen" });
  *     programs' groups in a place (or doing an activity) at a clock time; counted against
  *     groups that fit and groups at once
  *   terms: the camp's words (c/shoreshTerms), for the reasons
+ *   replacedDates: the days ("YYYY-MM-DD") a special day replaces (ADR 0014 slice 4; desktop ADR
+ *     2026-10-09 D4): nothing is built or counted there, and they come back exactly as sent
  *
  * Returns { ok: true, days, flags, stillNeeded, spread, stillNeededBy, spreadBy, overlapping, cells,
  * openCells, ruleChecks }
@@ -103,11 +105,14 @@ export function* generateWeekSteps(input) {
     };
   }
   const groups = readGroups(input.groups);
-  const days = readDays(input.days, readPartsOfDay(input.timeBlocks));
+  const { built: toBuild, replaced } = splitReplaced(input);
+  const days = readDays(toBuild, readPartsOfDay(input.timeBlocks));
   if (!days.length) {
     return {
       ok: false,
-      error: `This ${t.sIn("Week")} has no days to build.`
+      error: replaced.length
+        ? `Every day this ${t.sIn("Week")} is a ${t.sIn("SpecialDay")}, so there is nothing to generate.`
+        : `This ${t.sIn("Week")} has no days to build.`
     };
   }
   const option = optionOf(input.option);
@@ -182,7 +187,7 @@ export function* generateWeekSteps(input) {
   const { state, built, checked } = chosen;
   return {
     ok: true,
-    days: built,
+    days: withReplaced(built, replaced),
     flags: flagCells(built, checked),
     stillNeeded: checked.stillNeeded,
     spread: checked.spread,
@@ -220,7 +225,8 @@ export function checkGeneratedWeek(input) {
     input.weekId || null
   );
   const groups = readGroups(input.groups);
-  const days = readDays(input.days, readPartsOfDay(input.timeBlocks));
+  const { built: checkedDays, replaced } = splitReplaced(input);
+  const days = readDays(checkedDays, readPartsOfDay(input.timeBlocks));
   const model = {
     days,
     groups,
@@ -253,7 +259,10 @@ export function checkGeneratedWeek(input) {
     !groups.has(groupId) || check.isAway(groupId, blockId);
   const shown = days.map((day) => day.frame);
   return {
-    days: shown,
+    // Every day, a replaced one too (the screen shows the special day there), in date order.
+    days: withReplaced(shown, replaced),
+    // The days checked and counted: those a special day doesn't replace.
+    checkedDays: shown,
     checked: checkWeek(
       shown,
       { ...check, isAway },
@@ -266,6 +275,30 @@ export function checkGeneratedWeek(input) {
       ? Math.min(...activities.running.map((a) => a.span))
       : null
   };
+}
+
+/**
+ * The week's days split into those to build or check and those a special day replaces
+ * (input.replacedDates): a replaced day is never built, checked or counted (desktop ADR
+ * 2026-10-09 D4), and is kept exactly as it was.
+ */
+function splitReplaced(input) {
+  const replacedDates = new Set(input.replacedDates || []);
+  const all = (input.days || []).filter((day) => day && day.dateValue);
+  return {
+    built: all.filter((day) => !replacedDates.has(day.dateValue)),
+    replaced: all.filter((day) => replacedDates.has(day.dateValue))
+  };
+}
+
+/** The days with the replaced ones put back as they were, in date order. */
+function withReplaced(days, replaced) {
+  if (!replaced.length) {
+    return days;
+  }
+  return [...days, ...replaced].sort((a, b) =>
+    compareText(a.dateValue, b.dateValue)
+  );
 }
 
 /**

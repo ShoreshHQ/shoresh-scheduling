@@ -1169,6 +1169,7 @@
                       week-words={weekWords}
                       onclose={handleCloseSpecialDetails}
                       onopenschedule={handleOpenSpecialSchedule}
+                      onplaced={handleSeasonChanged}
                     ></c-shoresh-special-details>
                   </div>
                 </div>
@@ -1188,6 +1189,7 @@
                   setup={setup}
                   terms={terms}
                   onnavigate={handleNavigate}
+                  onseasonchanged={handleSeasonChanged}
                   onsetupstate={handleSetupState}
                   onsetupfocus={handleSetupFocus}
                   data-setup-state="generatedSchedule"
@@ -1205,6 +1207,7 @@
                   setup={setup}
                   terms={terms}
                   onnavigate={handleNavigate}
+                  onseasonchanged={handleSeasonChanged}
                   onsetupstate={handleSetupState}
                   onsetupfocus={handleSetupFocus}
                   data-setup-state="manualBuild"

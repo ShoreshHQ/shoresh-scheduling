@@ -44,6 +44,10 @@
         <apexClass>SpecialScheduleController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>SpecialPlacingController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <applicationVisibilities>
         <application>Shoresh</application>
         <visible>true</visible>

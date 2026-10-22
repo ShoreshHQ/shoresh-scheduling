@@ -184,7 +184,7 @@ public with sharing class ScheduleViews {
       Ref ref = ref(item.id, item.name, stillThere);
       ref.kind = item.kind;
       // Things not set up in Shoresh yet point at nothing, so nothing can be gone.
-      ref.gone = ScheduleGridRules.SET_UP_KINDS.contains(item.kind) && ref.gone;
+      ref.gone = ScheduleGridRules.isSetUp(item) && ref.gone;
       view.items.add(ref);
     }
     for (List<String> cells : day.grid.rows) {

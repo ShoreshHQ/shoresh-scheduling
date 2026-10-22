@@ -31,10 +31,14 @@ function overlaps(a, b) {
  * Start over (ADR 0010 decision 2): every activity cleared, so each of those cells is Open again;
  * fixed and recurring activities and things not set up yet (elective, trip...) stay, as a full
  * build keeps them. Items no cell uses any more are dropped and the rest numbered in the order
- * cells use them, as the engine writes a day.
+ * cells use them, as the engine writes a day. A day a special day replaces (replacedDates) is kept
+ * as it is: its cells are out of sight, and come back as they were when it is taken off.
  */
-export function clearedDays(days) {
+export function clearedDays(days, replacedDates = new Set()) {
   return (days || []).map((day) => {
+    if (replacedDates.has(day.dateValue)) {
+      return day;
+    }
     const items = [];
     const numbers = new Map();
     const rows = (day.rows || []).map((row) => {

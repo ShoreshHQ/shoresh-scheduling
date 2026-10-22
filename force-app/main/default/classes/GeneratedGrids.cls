@@ -42,9 +42,7 @@ public with sharing class GeneratedGrids {
       }
     }
     for (ScheduleGrid.Item item : grid.items) {
-      item.id = ScheduleGridRules.SET_UP_KINDS.contains(item.kind)
-        ? fullId(item.id)
-        : item.id;
+      item.id = ScheduleGridRules.isSetUp(item) ? fullId(item.id) : item.id;
     }
   }
 

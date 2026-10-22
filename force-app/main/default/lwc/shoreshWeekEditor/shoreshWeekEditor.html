@@ -164,7 +164,9 @@
                 data-index={day.index}
                 onclick={handleDay}
               >
-                {day.short}
+                {day.short}<template lwc:if={day.special}
+                  ><span class="pill-special"> · {day.special}</span></template
+                >
               </button>
             </template>
           </div>
@@ -194,7 +196,10 @@
         </template>
       </div>
       <div class="side side_right">
-        <slot name="checks"></slot>
+        <!-- The counter is the week's: not on a day a special day replaces (decision 47.4). -->
+        <template lwc:if={showChecks}>
+          <slot name="checks"></slot>
+        </template>
         <template lwc:if={draft}>
           <span class="shoresh-rail-line" role="presentation"></span>
         </template>
@@ -224,6 +229,23 @@
         <template lwc:if={notice}>
           <p class="notice" data-id="notice">{notice}</p>
         </template>
+        <!-- A cell noted from a file as a special event or day: one click sets it up. -->
+        <template lwc:if={setUpOffer}>
+          <p class="notice" data-id="set-up-offer">
+            <span>{setUpOffer.text} ·</span>
+            <button
+              type="button"
+              class="slds-button tool-undo"
+              data-id="set-up"
+              aria-label={setUpOffer.label}
+              aria-disabled={settingUp}
+              onmousedown={handleKeepFocus}
+              onclick={handleSetUp}
+            >
+              Set it up
+            </button>
+          </p>
+        </template>
         <slot name="status"></slot>
 
         <div class="slds-assistive-text" aria-live="polite" data-id="announce">
@@ -241,7 +263,24 @@
           </template>
           <template lwc:else>
             <template lwc:if={isDaily}>
-              <template lwc:if={dayProblem}>
+              <template lwc:if={replacedShown}>
+                <!-- A day a special day replaces: its own schedule, read-only (decision 47.4). -->
+                <template lwc:if={planShown}>
+                  <c-shoresh-schedule-grid
+                    data-id="special-day-grid"
+                    grid={planShown}
+                    corner={corner}
+                    label={replacedShown.name}
+                  ></c-shoresh-schedule-grid>
+                </template>
+                <template lwc:else>
+                  <c-shoresh-empty-state
+                    title={planMissing}
+                    data-id="special-day-empty"
+                  ></c-shoresh-empty-state>
+                </template>
+              </template>
+              <template lwc:elseif={dayProblem}>
                 <div
                   class="slds-notify slds-notify_alert slds-alert_warning"
                   role="alert"
@@ -358,12 +397,44 @@
             heading={paletteHeading}
             filter={filter}
             picked-id={heldActivityId}
+            events={eventTiles}
+            events-heading={eventsHeading}
+            picked-event-id={heldEventId}
             onfilter={handleFilter}
             onpickactivity={handlePickActivity}
             onactivitydragstart={handleActivityDragStart}
+            onpickevent={handlePickEvent}
+            oneventdragstart={handleEventDragStart}
             ontilehover={handleTileHover}
             onremovedrop={handleRemoveDrop}
           ></c-shoresh-build-palette>
+        </div>
+      </template>
+      <!-- On a day a special day replaces, the drawer's place is the special day's own line:
+           its name, its notes, and the way to open it (mockup placed-day.png). -->
+      <template lwc:if={specialLine}>
+        <div class="shoresh-hairline" role="presentation"></div>
+        <div class="special-line" data-id="special-line">
+          <div class="special-name">
+            <span class="special-title">{specialLine.name}</span>
+            <span class="special-kind">{specialLine.kind}</span>
+          </div>
+          <p class="special-notes" data-id="special-notes">
+            {specialLine.notes}
+          </p>
+          <div class="special-actions">
+            <button
+              type="button"
+              class="shoresh-item special-open"
+              data-id="open-special"
+              onclick={handleOpenSpecial}
+            >
+              {specialLine.open}
+              <svg viewBox="0 0 16 16" class="special-arrow" aria-hidden="true">
+                <path d="M3 8h10M9 4l4 4-4 4"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       </template>
     </div>
@@ -411,7 +482,13 @@
               onmousedown={handleOptionMouseDown}
               onclick={handleOptionClick}
             >
-              <span>{option.label}</span>
+              <span class="option-label"
+                ><template lwc:if={option.flag}
+                  ><svg class="flag" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 10.5V1.75"></path>
+                    <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg></template
+                >{option.label}</span
+              >
               <template lwc:if={option.tag}>
                 <c-shoresh-dot
                   label={option.tag}

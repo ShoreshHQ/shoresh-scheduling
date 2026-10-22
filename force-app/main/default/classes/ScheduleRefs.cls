@@ -1,6 +1,6 @@
 /**
  * Which of the records a schedule's days point at (time blocks, groups, activities, fixed and
- * recurring activities) still exist and can be seen, so the page can mark the rest as gone.
+ * recurring activities, special events and days) still exist and can be seen, so the page can mark the rest as gone.
  */
 public with sharing class ScheduleRefs {
   public static Set<String> stillThere(List<ScheduleDays.DayGrid> days) {
@@ -42,46 +42,99 @@ public with sharing class ScheduleRefs {
     return rest;
   }
 
+  /**
+   * Each kind of record a day points at is looked for only when the day points at one, so a
+   * week with no special events costs no query for them.
+   */
   private static void lookUp(Set<Id> ids, Set<String> found) {
-    for (TimeBlock__c row : [
-      SELECT Id
-      FROM TimeBlock__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
+    Set<Schema.SObjectType> types = new Set<Schema.SObjectType>();
+    for (Id recordId : ids) {
+      types.add(recordId.getSObjectType());
     }
-    for (Group__c row : [
-      SELECT Id
-      FROM Group__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
+    if (types.contains(TimeBlock__c.SObjectType)) {
+      for (TimeBlock__c row : [
+        SELECT Id
+        FROM TimeBlock__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
     }
-    for (Activity__c row : [
-      SELECT Id
-      FROM Activity__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
+    if (types.contains(Group__c.SObjectType)) {
+      for (Group__c row : [
+        SELECT Id
+        FROM Group__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
     }
-    for (FixedActivity__c row : [
-      SELECT Id
-      FROM FixedActivity__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
+    if (types.contains(Activity__c.SObjectType)) {
+      for (Activity__c row : [
+        SELECT Id
+        FROM Activity__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
     }
-    for (RecurringActivity__c row : [
-      SELECT Id
-      FROM RecurringActivity__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
+    if (types.contains(FixedActivity__c.SObjectType)) {
+      for (FixedActivity__c row : [
+        SELECT Id
+        FROM FixedActivity__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
+    }
+    if (types.contains(RecurringActivity__c.SObjectType)) {
+      for (RecurringActivity__c row : [
+        SELECT Id
+        FROM RecurringActivity__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
+    }
+    lookUpSpecial(ids, types, found);
+  }
+
+  /** Special events placed on a grid, and special days set up from one (ADR 0014 slice 4). */
+  private static void lookUpSpecial(
+    Set<Id> ids,
+    Set<Schema.SObjectType> types,
+    Set<String> found
+  ) {
+    if (
+      types.contains(SpecialEvent__c.SObjectType) &&
+      Schema.sObjectType.SpecialEvent__c.isAccessible()
+    ) {
+      for (SpecialEvent__c row : [
+        SELECT Id
+        FROM SpecialEvent__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
+    }
+    if (
+      types.contains(SpecialDay__c.SObjectType) &&
+      Schema.sObjectType.SpecialDay__c.isAccessible()
+    ) {
+      for (SpecialDay__c row : [
+        SELECT Id
+        FROM SpecialDay__c
+        WHERE Id IN :ids
+        WITH USER_MODE
+      ]) {
+        found.add(row.Id);
+      }
     }
   }
 

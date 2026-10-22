@@ -16,6 +16,19 @@ public with sharing class ScheduleGridRules {
     'S',
     'T'
   };
+  // Kinds that point at a record once one is set up in Shoresh, and are noted by name until then
+  // (an import's "not set up yet"): a special event placed on the grid, or set up from a file
+  // (ADR 0014 slice 4); a special day set up from a file.
+  public static final Set<String> SET_UP_LATER_KINDS = new Set<String>{
+    'S',
+    'D'
+  };
+
+  /** Whether an item points at a record set up in Shoresh (an activity, a placed special event...). */
+  public static Boolean isSetUp(ScheduleGrid.Item item) {
+    return SET_UP_KINDS.contains(item.kind) ||
+      (SET_UP_LATER_KINDS.contains(item.kind) && String.isNotBlank(item.id));
+  }
 
   private static final Pattern ITEM_NUMBER = Pattern.compile('[0-9]{1,6}');
 

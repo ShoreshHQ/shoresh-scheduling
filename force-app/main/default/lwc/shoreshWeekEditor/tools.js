@@ -48,6 +48,13 @@ function gone(day, slot) {
 const isSetTime = (slot) => slot.startsWith("F:") || slot.startsWith("R:");
 
 /**
+ * What a tool may clear, copy or paste: an activity, or a special event placed on the grid (its
+ * record's Id after "S:", ADR 0014 slice 4); not something noted from a file by name.
+ */
+const PLACED_EVENT = /^S:[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
+const isPlaceable = (slot) => slot.startsWith("A:") || PLACED_EVENT.test(slot);
+
+/**
  * A group's day sorted: the placements Undo could put back (`clear`), the ones that stay and why
  * (`stayed`: { first, slot, why }), and where someone else's are (`skipped`: first blocks). Fixed and
  * recurring activities are none of these.
@@ -61,7 +68,7 @@ function sortRow(day, row, isAwayAt, skipAt) {
     const p = placementIn(row, b);
     const blocks = [...Array(p.length).keys()].map((i) => b + i);
     let why = null;
-    if (!slot.startsWith("A:")) {
+    if (!isPlaceable(slot)) {
       why = LEFT_OUT.NOT_SET_UP;
     } else if (gone(day, slot)) {
       why = LEFT_OUT.GONE;
@@ -235,7 +242,7 @@ function placeAt(row, at, slot, isGone, { isAwayAt, skipAt }) {
   if (at.every((tb, i) => row[tb] === wanted[i])) {
     return null;
   }
-  if (!slot.startsWith("A:")) {
+  if (!isPlaceable(slot)) {
     return { why: LEFT_OUT.NOT_SET_UP };
   }
   if (isGone) {

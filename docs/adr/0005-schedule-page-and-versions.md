@@ -84,7 +84,9 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    - `g`: groups, in order: id, name.
    - `i`: what is placed: kind, id, name. Kinds: `A` activity, `F` fixed activity, `R`
      recurring activity (each needs an id); `E` elective, `D` special day, `S` special event,
-     `T` trip (not set up in Shoresh yet: no id, the name as it appeared in the file).
+     `T` trip (not set up in Shoresh yet: no id, the name as it appeared in the file). _Since
+     2026-10-22 (ADR 0014 choice 19): an `S` placed on the grid, or an `S` or `D` set up from a
+     file's cell, has its record's id; one without an id is still "not set up yet"._
    - `r`: one row per group (in `g`'s order), one cell per time block (in `b`'s order),
      separated by commas. A cell is empty (nothing placed), a number (an item in `i`, from 1),
      or `^` (the item above carries on into this block: how a two-block activity is stored).

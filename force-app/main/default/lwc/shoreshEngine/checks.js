@@ -487,7 +487,8 @@ function stillToPlace(ctx) {
 }
 
 /**
- * Cells filled, of the cells to fill: at camp, not a fixed or recurring activity, and not a cell
+ * Cells filled, of the cells to fill: at camp, not a fixed or recurring activity, not a special
+ * event or day (counters and Still to place leave them out, ADR 0014 slice 4), and not a cell
  * the director locked empty (Generated Schedule: a Lock on an Open cell keeps it empty).
  */
 function filledCount(ctx) {
@@ -504,6 +505,8 @@ function filledCount(ctx) {
           ctx.isAway(grp.id, day.blocks[b].id) ||
           item.startsWith("F:") ||
           item.startsWith("R:") ||
+          item.startsWith("S:") ||
+          item.startsWith("D:") ||
           (item === OPEN &&
             ctx.isLockedOpen(grp.id, day.dateValue, day.blocks[b].id))
         ) {

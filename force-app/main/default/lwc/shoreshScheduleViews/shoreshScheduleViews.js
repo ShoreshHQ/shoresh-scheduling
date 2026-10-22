@@ -13,6 +13,20 @@
 const CARRIES_ON = "^";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
+/**
+ * Whether an item points at something set up in Shoresh: an activity, a fixed or recurring
+ * activity, or a special event (or day) with its record (ADR 0014 slice 4). An elective, trip,
+ * special day or event noted from a file by name only is "not set up yet".
+ */
+export function isSetUpItem(item) {
+  return !NOT_SET_UP.has(item.kind) || Boolean(item.id);
+}
+
+/** A special event placed on the grid (with its record), not one noted from a file. */
+export function isEventItem(item) {
+  return !!item && item.kind === "S" && Boolean(item.id);
+}
+
 /** "Monday", "Mon" and "Jun 29" for a date sent as "2026-06-29", whatever the browser's time zone. */
 export function dayLabel(dateValue) {
   const [y, m, d] = String(dateValue).split("-").map(Number);
@@ -49,9 +63,9 @@ export function kindLabel(kind, t) {
 
 /** The same item on every day: by record for things set up, by kind and name otherwise. */
 export function itemKey(item) {
-  return NOT_SET_UP.has(item.kind)
-    ? `${item.kind}:${item.name}`
-    : `${item.kind}:${item.id}`;
+  return isSetUpItem(item)
+    ? `${item.kind}:${item.id}`
+    : `${item.kind}:${item.name}`;
 }
 
 function refKey(ref) {
@@ -197,7 +211,10 @@ function place(rowIndex, columnIndex, length) {
  * the grid draws as marks (wiki decisions 36 to 41): setTime (a fixed or recurring activity: the
  * lock), notSetUp (a dashed edge), gone (removed since: the name struck through). An Open cell
  * is recessed and shows no word; "Open" stays its name for screen readers. activityKey says
- * which activity a cell is, for the same-activity outlines.
+ * which activity a cell is, for the same-activity outlines. A special event placed on the grid
+ * (decision 47.3) carries its quiet flag before the name (event), and eventKey says which event
+ * it is: in Daily View the bunks next to each other holding it over the same blocks are drawn as
+ * one cell (c-shoresh-schedule-grid; mockup design-research/special-r1 placed.html).
  */
 function cellView(item, t) {
   if (!item) {
@@ -210,7 +227,18 @@ function cellView(item, t) {
     };
   }
   const kind = kindLabel(item.kind, t);
-  if (NOT_SET_UP.has(item.kind)) {
+  if (isEventItem(item)) {
+    return {
+      text: item.name,
+      event: true,
+      eventKey: `S:${item.id}`,
+      gone: !!item.gone,
+      className: "cell cell_event",
+      note: item.gone ? "(removed)" : null,
+      title: `${item.name}: ${kind}`
+    };
+  }
+  if (!isSetUpItem(item)) {
     return {
       text: item.name,
       notSetUp: true,
@@ -275,21 +303,24 @@ export function dailyGrid(view, dayIndex, t) {
   }
   const cells = [];
   day.groups.forEach((grp, g) => {
-    groupCells(day, g).forEach((c) =>
-      cells.push(
-        cell(
-          `${g}-${c.blockIndex}`,
-          {
-            row: c.blockIndex,
-            column: g,
-            length: c.length,
-            slot: { day: dayIndex, group: g, block: c.blockIndex }
-          },
-          c.item,
-          t
-        )
-      )
-    );
+    groupCells(day, g).forEach((c) => {
+      const drawn = cell(
+        `${g}-${c.blockIndex}`,
+        {
+          row: c.blockIndex,
+          column: g,
+          length: c.length,
+          slot: { day: dayIndex, group: g, block: c.blockIndex }
+        },
+        c.item,
+        t
+      );
+      // The same event over the same blocks in bunks side by side is one cell (ADR 0014).
+      if (drawn.eventKey) {
+        drawn.mergeKey = `${drawn.eventKey}|${c.blockIndex}|${c.length}`;
+      }
+      cells.push(drawn);
+    });
   });
   return {
     columns: day.groups.map((grp) =>

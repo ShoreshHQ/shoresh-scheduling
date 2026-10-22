@@ -25,7 +25,7 @@ public with sharing class SlotIds {
   }
 
   public static String of(ScheduleGrid.Item item) {
-    if (!ScheduleGridRules.SET_UP_KINDS.contains(item.kind)) {
+    if (!ScheduleGridRules.isSetUp(item)) {
       return item.kind + ':' + item.name;
     }
     try {
@@ -62,6 +62,21 @@ public with sharing class SlotIds {
     }
   }
 
+  /** The special event a slot's identity starts ('S:<Id>'), or null (one not set up yet). */
+  public static Id eventIn(String slot) {
+    if (slot == null || !slot.startsWith('S:')) {
+      return null;
+    }
+    try {
+      Id recordId = Id.valueOf(slot.substring(2));
+      return recordId.getSObjectType() == SpecialEvent__c.SObjectType
+        ? recordId
+        : null;
+    } catch (StringException e) {
+      return null;
+    }
+  }
+
   /** The same identity however the screen wrote the record Id (15 or 18 characters). */
   public static String normal(String slot) {
     if (String.isBlank(slot)) {
@@ -70,6 +85,18 @@ public with sharing class SlotIds {
     String carry = isCarryOn(slot) ? ScheduleGrid.CARRIES_ON : '';
     String item = slot.substring(carry.length());
     String kind = item.substringBefore(':');
+    if (ScheduleGridRules.SET_UP_LATER_KINDS.contains(kind)) {
+      // A special event or day by its record (written either length), or one not set up yet by
+      // name (a name is never a record Id).
+      try {
+        return carry +
+          kind +
+          ':' +
+          String.valueOf(Id.valueOf(item.substringAfter(':')));
+      } catch (Exception e) {
+        return carry + item;
+      }
+    }
     if (!ScheduleGridRules.SET_UP_KINDS.contains(kind)) {
       return carry + item;
     }

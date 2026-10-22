@@ -1315,6 +1315,34 @@ no click, a Shift-drag never moves a cell, focus moved by an arrow says nothing 
 cells with Shift and Right, copies and pastes them with the keys on Manual Build, and checks what
 is said and Undo.
 
+## Choices (part 10: special days and events on the week, 2026-10-22)
+
+ADR 0014 choices 19 to 25 (Special Events slice 4; decisions 47.2 to 47.4 and 51; mock-ups
+`design-research/special-r1/placed.html` and `placed-day.png`), on Manual Build and, through the
+same week editor, Generated Schedule:
+
+1. **Events in the drawer and the typing box.** The drawer ends with an **Events** section, a
+   tile per season's special event with its quiet flag (`c-shoresh-build-palette` `events`).
+   Picked and put down, dragged, or picked while cells are chosen together, it covers those cells;
+   typed into a cell (or the cells chosen), the typing box lists events after the activities. Its
+   cells in bunks side by side over the same blocks are one cell with the flag and its place.
+   Delete clears it from all of them as one step; it is not dragged or stretched. It saves as an
+   edit does (§4), checked by `SlotRules.withEvents`.
+2. **The counter and the drawer leave events out** (no dots, not counted as filled or to fill).
+3. **A day a special day replaces** shows its own schedule read-only (its name on the day's pill,
+   "Fri · Visiting Day"), the special day's line in the drawer's place with **Open <name>**, and
+   no counter; Group View shows that day as one named cell, Activity View counts nothing there.
+   The week's own cells for that day are kept unchanged: edits there are refused by the server,
+   and Clear week, Copy day to and Paste leave that day and say so.
+4. **Set it up**: with focus on a cell an import noted as a special event or special day ("not
+   set up yet"), "Set it up" makes it from what the file had (ADR 0014 choice 23), then the week
+   and the season are read again.
+5. **Start from another week** leaves a placed event out, named: "… a special event is put on
+   each day by hand" (desktop: events are placed day by day).
+
+Checked by `WeekSpecialsTest`, `SpecialPlacingTest`, `shoreshWeekEditor` `specialDays.test.js`
+and `specials.test.js`, `shoreshScheduleGrid` `merged.test.js`.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
