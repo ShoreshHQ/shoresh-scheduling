@@ -4885,22 +4885,10 @@
         "text": "Please keep with her bunk friends"
       },
       {
-        "name": "Ben Marblecrest",
-        "kind": "optOut",
-        "heading": "Swim opt-out",
-        "text": "Yes"
-      },
-      {
         "name": "Jude Copperleaf",
         "kind": "comment",
         "heading": "Comments",
         "text": "Please keep with her bunk friends"
-      },
-      {
-        "name": "Nina Fernwood",
-        "kind": "optOut",
-        "heading": "Swim opt-out",
-        "text": "Yes"
       },
       {
         "name": "Shira Juniperhill",
@@ -4910,19 +4898,19 @@
       },
       {
         "name": "Theo Mossbank",
-        "kind": "optOut",
-        "heading": "Swim opt-out",
-        "text": "Yes"
-      },
-      {
-        "name": "Theo Mossbank",
         "kind": "comment",
         "heading": "Comments",
         "text": "Please keep with her bunk friends"
       }
     ],
     "cantTellApart": [],
-    "notRead": [],
+    "notRead": [
+      {
+        "kind": "column",
+        "sheet": "17-comments-and-opt-out.csv",
+        "column": "F"
+      }
+    ],
     "toCheck": []
   },
   {

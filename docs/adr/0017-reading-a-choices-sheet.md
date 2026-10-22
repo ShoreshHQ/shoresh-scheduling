@@ -60,10 +60,14 @@ review screens and the save on it.
    still shown, with no camper), and when one camper's rows name different activities for the
    same rank, the first row's choice is kept and the clash is marked to check, so a camper never
    holds another child's choices or two choices of one rank (desktop §4.1).
-6. **Comments and opt-outs are read, shown, and never kept** (plan question 3, pending Greg's
-   answer; the recommendation is "show, never save"). They come back in their own list,
-   `notKept`, apart from the campers, so a save of the campers can't carry them by accident. E6
-   shows them during the review and must not save them. If Greg decides otherwise, only E6 changes.
+6. **Comments are read, shown, and never kept; opt-outs are not read at all.** Parent comments
+   come back in their own list, `notKept`, apart from the campers, so a save of the campers can't
+   carry them by accident. E6 shows them during the review and must not save them (saving them
+   with the camper is planned later; if so, only E6 changes). Shoresh has no opt-out concept
+   (Greg, 2026-10-22, amending decision 48(3)): "There can be no opt-outs. If someone opted out,
+   the camp would place them separately from here." So an opt-out column ("Swim opt-out",
+   "Excused") is like any other column the reader does not use: listed by its heading in
+   `notRead`, its cells never read or carried, the same as a health column.
 7. **Choice names the camp doesn't have are listed** (`newNames`, with how many campers chose
    each) when the camp's activities are passed in. Settling them (Add, or Same as) is E6's
    question, asked once per name (plan §2).

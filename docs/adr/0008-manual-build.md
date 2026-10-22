@@ -1172,7 +1172,9 @@ Generated Schedule (ADR 0010) and the Schedules page get the same look.
    they went in from; a drop or Space on it is refused as on any fixed cell.
 3. **Empty cells are recessed** (the drawer step, a soft inner shadow) and show no word; "Open"
    is still the cell's name for screen readers (and in its title). A cell locked empty
-   (Generated) is recessed with its lock.
+   (Generated) is recessed with its lock. _A director's Lock (Greg, 2026-10-22, ADR 0015 choice
+   6):_ the padlock in the cell's bottom-right corner, no border or outline for the lock, so the
+   corner mark (top right) and a special event's flag (before its name) show with it.
 4. **Marks, not colours.** Selection (picked up from the keyboard or a click) is the highlight
    outline (2 px, 1 px outside); keyboard focus is the rail's focus ring. Needs a look is the
    **corner mark** (`c-shoresh-dot` shape `corner`: same words on hover, tap and focus, in the

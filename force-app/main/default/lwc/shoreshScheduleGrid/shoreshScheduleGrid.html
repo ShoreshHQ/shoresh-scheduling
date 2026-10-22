@@ -96,21 +96,11 @@
                   </template>
                   <template lwc:else>
                     <template lwc:if={cell.locked}>
+                      <!-- The director's Lock: the padlock in the cell's bottom-right corner (the
+                           top-right is the look corner, the left the special event flag). First
+                           in the cell, so a screen reader still hears "Locked" before the name. -->
                       <span class="cell-lock" title={cell.lockText}
-                        ><svg
-                          class="lock"
-                          viewBox="0 0 12 12"
-                          aria-hidden="true"
-                          focusable="false"
-                        >
-                          <rect
-                            x="2.25"
-                            y="5.25"
-                            width="7.5"
-                            height="5.5"
-                            rx="1.5"
-                          ></rect>
-                          <path d="M4 5.25V3.75a2 2 0 0 1 4 0v1.5"></path></svg
+                        ><c-shoresh-lock></c-shoresh-lock
                         ><span class="slds-assistive-text" data-id="lock-words"
                           >{cell.lockText}</span
                         ></span

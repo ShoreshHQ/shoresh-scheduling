@@ -6,8 +6,8 @@
  * three written forms, a day and period named in a heading, split first and last names, camper
  * numbers, one row per choice, the unordered-activities column, and the header row found below a
  * title). New here: two-row headings (a merged "Choices" or day over 1, 2, 3), the division and
- * the bunk told apart, and comment and opt-out columns recognised so they can be shown and not
- * kept. See the NOTICE file.
+ * the bunk told apart, and comment columns recognised so they can be shown and not kept. See
+ * the NOTICE file.
  *
  * Headings, never cell contents, decide what a column is (as in ADR 0007 §2). A heading this file
  * does not know is "not used": the reader names it and never copies what the column holds.
@@ -64,10 +64,6 @@ const FIELDS = [
   ],
   ["bunk", new RegExp(`^(?:${WHO} )?(?:bunk|cabin|tent|group)(?: name)?$`)],
   [
-    "optOut",
-    /\bopt ?out\b|\bsit out\b|\bnot participat|\bexcused\b|\bno swim\b/
-  ],
-  [
     "comment",
     /\bcomments?\b|\bnotes?\b|\banything else\b|\bquestions?\b|\bmessage\b|\brequests?\b|\btell us\b/
   ],
@@ -91,6 +87,11 @@ const FIELDS = [
 // not even as a comment: like a date of birth, it is named by its heading only (the plan's
 // privacy rule; ADR 0017 §3).
 const HEALTH = /\bmedic|\ballerg|\bhealth\b|\bdietary\b/;
+
+// Shoresh has no opt-outs (Greg, 2026-10-22; ADR 0017 §6): a camp places such a camper itself, so
+// a column about sitting out is never read either, even when its heading also says "notes".
+const OPT_OUT =
+  /\bopt ?out\b|\bsit out\b|\bnot participat|\bexcused\b|\bno swim\b/;
 
 /** A heading in lower case, punctuation as spaces, a bracketed aside dropped. "#" is kept. */
 function normal(heading) {
@@ -177,13 +178,13 @@ function choiceHeading(text) {
 /**
  * What a heading means, or null when the reader does not use it:
  * { use: "name" | "firstName" | "lastName" | "number" | "division" | "bunk" | "comment" |
- *   "optOut" | "rankValue" | "choiceValue" | "choices" | "dayValue" | "periodValue" }, or
+ *   "rankValue" | "choiceValue" | "choices" | "dayValue" | "periodValue" }, or
  * { use: "choice", rank, day, period } for a column holding one choice (a rank, a day and
  * period, or both).
  */
 export function headingMeaning(heading) {
   const text = normal(heading);
-  if (!text || HEALTH.test(text)) return null;
+  if (!text || HEALTH.test(text) || OPT_OUT.test(text)) return null;
   for (const [use, pattern] of FIELDS) {
     if (pattern.test(text)) return { use };
   }

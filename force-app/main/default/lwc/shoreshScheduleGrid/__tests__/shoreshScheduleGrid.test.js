@@ -135,6 +135,89 @@ describe("c-shoresh-schedule-grid", () => {
       expect(lockOf("1-0")).toBeNull();
     });
 
+    it("a locked cell shows the shared padlock, before its name for screen readers, and nothing else", async () => {
+      const element = editable([
+        { ...GRID.cells[0], locked: true, dot: "Twice in a day" },
+        {
+          ...GRID.cells[2],
+          text: "",
+          locked: true,
+          lockLabel: "Locked empty",
+          className: "cell cell_locked-empty"
+        },
+        GRID.cells[1]
+      ]);
+      await flush();
+      const cell = (key) =>
+        element.shadowRoot.querySelector(`[data-cell="${key}"]`);
+      // A placement running two blocks: one padlock, on the one cell that spans them.
+      const swim = cell("0-0");
+      expect(swim.getAttribute("aria-rowspan")).toBe("2");
+      expect(swim.querySelectorAll(".cell-lock c-shoresh-lock")).toHaveLength(
+        1
+      );
+      expect(swim.querySelector(".cell-lock svg")).toBeNull();
+      expect(swim.querySelector(".cell-lock").getAttribute("title")).toBe(
+        "Locked"
+      );
+      // The look corner and the padlock together, each in its own corner.
+      expect(swim.querySelector(".cell-dot c-shoresh-dot")).not.toBeNull();
+      // Said as before: "Locked", then the name.
+      const inner = swim.querySelector(".cell-inner");
+      expect(inner.firstElementChild.className).toBe("cell-lock");
+      expect(inner.textContent.trim()).toMatch(/^Locked\s*Swim/);
+      // Locked empty: only the padlock shows; its words are for screen readers.
+      const kept = cell("1-1");
+      expect(kept.querySelector(".cell-lock c-shoresh-lock")).not.toBeNull();
+      expect(kept.querySelector('[data-id="lock-words"]').textContent).toBe(
+        "Locked empty"
+      );
+      expect(kept.querySelector(".cell-name").className).toContain(
+        "slds-assistive-text"
+      );
+      expect(cell("1-0").querySelector("c-shoresh-lock")).toBeNull();
+      await expect(element).toBeAccessible();
+    });
+
+    it("the padlock sits in the bottom-right corner, the mark in the top-right, and a lock draws no edge", () => {
+      const fs = require("fs");
+      const path = require("path");
+      const css = fs
+        .readFileSync(
+          path.join(__dirname, "../shoreshScheduleGrid.css"),
+          "utf8"
+        )
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      const rules = [...css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)].map((m) => ({
+        selector: m[1].trim(),
+        body: m[2]
+      }));
+      const body = (selector) =>
+        rules
+          .filter((r) => r.selector.split(/\s*,\s*/).includes(selector))
+          .map((r) => r.body)
+          .join(";");
+      const lock = body(".cell-lock");
+      expect(lock).toMatch(/position:\s*absolute/);
+      expect(lock).toMatch(/right:\s*6px/);
+      expect(lock).toMatch(/bottom:\s*6px/);
+      expect(lock).not.toMatch(/top:/);
+      const dot = body(".cell-dot");
+      expect(dot).toMatch(/top:\s*6px/);
+      expect(dot).toMatch(/right:\s*6px/);
+      // No border, outline or edge for a lock: the padlock is the whole mark. (Locked empty
+      // keeps the recessed look every empty cell has.)
+      rules
+        .filter((r) => /\.cell_locked(?![-\w])|\.cell-lock/.test(r.selector))
+        .forEach((r) =>
+          expect(r.body).not.toMatch(/border|outline|box-shadow/)
+        );
+      // The name keeps clear of the padlock (6 + 12) and of the mark above.
+      const locked = body(".cell_locked .cell-inner");
+      expect(locked).toMatch(/padding-top:\s*18px/);
+      expect(locked).toMatch(/padding-bottom:\s*18px/);
+    });
+
     it("says which cell focus reached, the cell's dot included", async () => {
       const element = editable([
         { ...GRID.cells[0], dot: "Twice in a day" },
