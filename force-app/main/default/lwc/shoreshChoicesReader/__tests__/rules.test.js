@@ -175,6 +175,36 @@ describe("reading", () => {
   });
 
   it.each([
+    ["the same bunk", ["Bunk 1", "Bunk 1", "Bunk 1", "Bunk 1"]],
+    ["different bunks", ["Bunk 1", "Bunk 2", "Bunk 1", "Bunk 2"]]
+  ])(
+    "keeps one name apart when unranked rows name one activity twice (%s)",
+    (_, bunks) => {
+      // Desktop preferenceSheet.js: an unranked choice's slot is the activity it names, so two
+      // rows naming Drama collide (sameNameCampers) instead of merging into one camper.
+      const activities = ["Drama", "Swim", "Drama", "Gaga"];
+      const reading = read(
+        lines(
+          "Name,Bunk,Activity",
+          ...activities.map((a, i) => `Maya Fernwood,${bunks[i]},${a}`)
+        )
+      );
+      expect(reading.campers).toEqual([]);
+      expect(reading.cantTellApart).toEqual([
+        {
+          name: "Maya Fernwood",
+          rows: bunks.map((bunk, i) => ({
+            sheet: "choices.csv",
+            row: i + 2,
+            division: null,
+            bunk
+          }))
+        }
+      ]);
+    }
+  );
+
+  it.each([
     [
       "choices that don't contradict",
       ["Maya Cohen,Swim,Art,", "Maya Cohen,,,Drama"]

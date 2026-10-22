@@ -253,18 +253,23 @@ function slotOf(c) {
     : `${c.day}|${c.period}|${c.rank}`;
 }
 
-/** Whether two rows give different choices for one slot: two campers, or a contradiction. */
-function clash(rowsOfOne) {
+/**
+ * Whether two rows fill one slot: two campers, or a contradiction. A ranked slot clashes when
+ * the rows name different activities for it; an unranked slot is the activity itself, so two
+ * rows naming it clash (desktop preferenceSheet.js, sameNameCampers). With a camper number the
+ * rows are one child, so only a ranked contradiction counts (byName false).
+ */
+function clash(rowsOfOne, byName) {
   const seen = new Map();
   for (const row of rowsOfOne) {
     for (const c of row.choices) {
-      if (c.kind === UNORDERED) continue;
+      if (c.kind === UNORDERED && !byName) continue;
       const slot = slotOf(c);
       const before = seen.get(slot);
       if (
         before &&
         before.row !== row &&
-        foldName(before.name) !== foldName(c.name)
+        (c.kind === UNORDERED || foldName(before.name) !== foldName(c.name))
       ) {
         return row;
       }
@@ -359,7 +364,7 @@ function campersFrom(rows, out) {
           out.notKept.push({ camper: null, name: other.name, ...note });
       }
       const kept = rowsOfOne.filter((r) => !isOther(r));
-      const contradiction = clash(kept);
+      const contradiction = clash(kept, false);
       if (contradiction) {
         out.toCheck.push({
           kind: "sameRankTwice",
@@ -372,7 +377,7 @@ function campersFrom(rows, out) {
       continue;
     }
     const repeated = rowsOfOne.filter((r) => r.oneRowEach).length > 1;
-    if (repeated || clash(rowsOfOne)) {
+    if (repeated || clash(rowsOfOne, true)) {
       // Two campers with one name and nothing to tell them apart: the one thing the reader
       // will not decide (desktop §4.4, §13.1). Rows of one name collide when they give
       // different choices for one rank, or when the sheet has one row per camper, where a

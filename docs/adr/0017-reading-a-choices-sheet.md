@@ -46,7 +46,8 @@ review screens and the save on it.
    (capitals, spacing and punctuation aside); division is never part of who they are. A camper's
    rows are one camper when they give different choices (one row per choice, one row per
    period). **Two rows with one name and no number are two campers the reader can't tell apart
-   when they give different choices for the same rank, or when the sheet has one row per camper**
+   when they give different choices for the same rank, or both name one activity with no rank
+   (an unranked choice's slot is the activity it names; desktop `preferenceSheet.js`), or when the sheet has one row per camper**
    (ranked columns, choices per period in the headings, every choice in one cell), even if their
    choices don't contradict or are identical: there a repeated name is two children or a form
    sent twice (desktop §4.4 and §13.1: rows collide when they share a coordinate, or when none
