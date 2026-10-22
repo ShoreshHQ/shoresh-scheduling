@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ByHand__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>The scheduler placed or moved this seat by hand.</description>
+    <label>By Hand</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

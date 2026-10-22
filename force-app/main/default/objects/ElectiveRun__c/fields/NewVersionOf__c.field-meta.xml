@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NewVersionOf__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The final run this one was started from as a new version.</description>
+    <label>New Version Of</label>
+    <referenceTo>ElectiveRun__c</referenceTo>
+    <relationshipLabel>New Versions</relationshipLabel>
+    <relationshipName>NewVersions</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

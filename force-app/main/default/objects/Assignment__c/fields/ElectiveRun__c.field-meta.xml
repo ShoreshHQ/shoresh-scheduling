@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ElectiveRun__c</fullName>
+    <description>The run this seat belongs to.</description>
+    <label>Elective Run</label>
+    <referenceTo>ElectiveRun__c</referenceTo>
+    <relationshipLabel>Assignments</relationshipLabel>
+    <relationshipName>Assignments</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <trackTrending>false</trackTrending>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

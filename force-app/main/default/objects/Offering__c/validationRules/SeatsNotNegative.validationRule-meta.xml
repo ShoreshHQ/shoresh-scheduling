@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SeatsNotNegative</fullName>
+    <active>true</active>
+    <description
+  >Seats are 0 (closed) or more, unless there is no limit.</description>
+    <errorConditionFormula
+  >AND(NOT(NoSeatLimit__c), NOT(ISBLANK(Seats__c)), Seats__c &lt; 0)</errorConditionFormula>
+    <errorDisplayField>Seats__c</errorDisplayField>
+    <errorMessage>Must be 0 or more, or tick No limit.</errorMessage>
+</ValidationRule>

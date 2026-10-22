@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ParentComments__c</fullName>
+    <description
+  >What a parent wrote in a choices sheet's comments box, word for word, so it is there when seats are placed. Never read as choices and never put in a download.</description>
+    <label>Parent Comments</label>
+    <length>32768</length>
+    <securityClassification>Restricted</securityClassification>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
