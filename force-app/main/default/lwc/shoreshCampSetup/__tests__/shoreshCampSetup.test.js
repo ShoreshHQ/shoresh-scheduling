@@ -16,7 +16,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
-import confirmGuess from "@salesforce/apex/SeasonSetupController.confirmGuess";
+import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
@@ -43,9 +43,13 @@ jest.mock("@salesforce/apex/SeasonSetupController.saveRecords", () => apex(), {
 jest.mock("@salesforce/apex/SeasonSetupController.deleteRecord", () => apex(), {
   virtual: true
 });
-jest.mock("@salesforce/apex/SeasonSetupController.confirmGuess", () => apex(), {
-  virtual: true
-});
+jest.mock(
+  "@salesforce/apex/SetupGuessesController.confirmGuess",
+  () => apex(),
+  {
+    virtual: true
+  }
+);
 jest.mock(
   "@salesforce/apex/SeasonSetupController.addWeeksFromSeasonDates",
   () => apex(),

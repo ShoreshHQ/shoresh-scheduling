@@ -18,7 +18,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
-import confirmGuess from "@salesforce/apex/SeasonSetupController.confirmGuess";
+import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";

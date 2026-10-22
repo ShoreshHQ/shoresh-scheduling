@@ -116,19 +116,6 @@ public with sharing class SeasonSetupController {
     }
   }
 
-  /**
-   * "Looks right" on something an import guessed (ADR 0006 §21): the camp forgets the guess, and
-   * the setup screen no longer marks it.
-   */
-  @AuraEnabled
-  public static void confirmGuess(Id recordId, String field) {
-    try {
-      SetupGuesses.confirm(recordId, field);
-    } catch (Exception e) {
-      throw ScreenErrors.of(e);
-    }
-  }
-
   /** Saves the camp's own words. A term with both words blank goes back to the model term. */
   @AuraEnabled
   public static void saveCampLabels(

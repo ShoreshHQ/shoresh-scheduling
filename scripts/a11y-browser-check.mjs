@@ -253,7 +253,7 @@ System.debug('A11Y_WEEK[' + week.Name + ']');
 }
 
 /**
- * An activity of the check's camp marked as an import marks what it guessed (SetupGuesses): its
+ * An activity of the check's camp marked as an import marks what it guessed (SetupGuessRecords): its
  * how often, with the value it holds now, so the Activities screen shows the needs-a-look corner
  * on it. Looks right clears it in the check, so every run marks it again. Returns its name.
  */
@@ -261,7 +261,7 @@ function seedGuess() {
   const logs = apex(`
 Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
 Activity__c activity = [SELECT Id, Name FROM Activity__c WHERE Season__r.Camp__c = :camp.Id ORDER BY Season__r.CreatedDate, SortOrder__c NULLS LAST, Name LIMIT 1];
-SetupGuesses.remember(camp.Id, new Map<Id, Set<String>>{ activity.Id => new Set<String>{ SetupGuesses.OFTEN } });
+SetupGuessRecords.remember(camp.Id, new Map<Id, Set<String>>{ activity.Id => new Set<String>{ SetupGuessValues.OFTEN } });
 System.debug('A11Y_GUESS[' + activity.Name + ']');
 `);
   const name = /A11Y_GUESS\[([^\]']+)\]/.exec(logs);

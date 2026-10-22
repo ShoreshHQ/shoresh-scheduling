@@ -6,6 +6,15 @@
  */
 @IsTest
 private class SetupGuessesTest {
+  private static final Set<String> ALL_MARKS = new Set<String>{
+    'Swim|often',
+    'Swim|who',
+    'Boating|often',
+    'Boating|who',
+    'Hall|fits',
+    'Bunk 1|division|Juniors'
+  };
+
   /** A new camp's week (ImportTestPlans.newCamp), with what the screen marks as guessed. */
   private static Map<String, Object> guessedPlan(Id seasonId) {
     Map<String, Object> plan = ImportTestPlans.newCamp(seasonId);
@@ -38,7 +47,7 @@ private class SetupGuessesTest {
   private static Map<String, String> answersOf(Id campId) {
     Map<String, String> result = new Map<String, String>();
     for (ImportAnswers.Answer answer : ImportController.getAnswers(campId)) {
-      if (answer.key.startsWith(SetupGuesses.PREFIX)) {
+      if (answer.key.startsWith(SetupGuessValues.PREFIX)) {
         result.put(answer.key, answer.answer);
       }
     }
@@ -101,15 +110,6 @@ private class SetupGuessesTest {
     ]
     .Id;
   }
-
-  private static final Set<String> ALL_MARKS = new Set<String>{
-    'Swim|often',
-    'Swim|who',
-    'Boating|often',
-    'Boating|who',
-    'Hall|fits',
-    'Bunk 1|division|Juniors'
-  };
 
   @IsTest
   static void anImportRemembersWhatItGuessedAndSetupMarksIt() {
@@ -209,9 +209,9 @@ private class SetupGuessesTest {
 
       Test.startTest();
       Integer before = Limits.getQueries();
-      SeasonSetupController.confirmGuess(swim, 'often');
+      SetupGuessesController.confirmGuess(swim, 'often');
       Integer queries = Limits.getQueries() - before;
-      SeasonSetupController.confirmGuess(bunk, 'division');
+      SetupGuessesController.confirmGuess(bunk, 'division');
       Test.stopTest();
 
       Assert.isTrue(queries <= 3, 'Looks right: ' + queries + ' queries');
@@ -247,7 +247,7 @@ private class SetupGuessesTest {
         }
       ) {
         try {
-          SeasonSetupController.confirmGuess((Id) call[0], (String) call[1]);
+          SetupGuessesController.confirmGuess((Id) call[0], (String) call[1]);
           Assert.fail('refused: ' + call);
         } catch (AuraHandledException e) {
           Assert.areEqual(
@@ -286,7 +286,7 @@ private class SetupGuessesTest {
     for (Integer i = 0; i < 40; i++) {
       targets.add('main/bunk number ' + i);
     }
-    String digest = SetupGuesses.whoNow(targets);
+    String digest = SetupGuessValues.who(targets);
     Assert.isTrue(digest.startsWith('sha256:'), digest);
     Assert.isTrue(digest.length() <= 255);
     List<String> reversed = new List<String>();
@@ -295,10 +295,10 @@ private class SetupGuessesTest {
     }
     Assert.areEqual(
       digest,
-      SetupGuesses.whoNow(reversed),
+      SetupGuessValues.who(reversed),
       'the same who in any order'
     );
-    Assert.areEqual('everyone', SetupGuesses.whoNow(new List<String>()));
+    Assert.areEqual('everyone', SetupGuessValues.who(new List<String>()));
   }
 
   @IsTest

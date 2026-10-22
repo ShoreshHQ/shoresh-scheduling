@@ -359,14 +359,14 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       program with no divisions is not a guess about the group, so it is not marked (the desktop
       has no division then). Nothing an import matches or changes is marked; only what it adds.
     - **Stored with the import answers.** The plan names them (`guessed`: kind, key, fields;
-      `c/shoreshImportEngine` plan.js), and the save (`SetupGuesses`, same all-or-none step)
+      `c/shoreshImportEngine` plan.js), and the save (`SetupGuesses`, `SetupGuessRecords`, with keys and values in `SetupGuessValues`; same all-or-none step)
       remembers each in `ImportAnswer__c` with the key
       `guessed|<kind>|<program, for a group>|<name>|<field>` (fields `often`, `who`, `fits`,
       `division`) answered with the value saved: "2-3" (or "2-none" for no weekly maximum),
       who as each division or group by program and name in order ("everyone" when empty; a list
       longer than an answer holds as its SHA-256 digest), the number that fits, the division's
       name. Names, never Ids, as every remembered answer.
-    - **Shown on the setup screens** (`SeasonSetupReader` guesses, one query: the camp's
+    - **Shown on the setup screens** (`SeasonSetupReader` guesses via `SetupGuessStanding`, one query: the camp's
       answers): a guess stands while the record still holds the value saved and was there when
       it was guessed. So **a change anywhere clears it** (this screen, Salesforce's record page,
       a list import), as the desktop's "the last write was the director's", with no hook in each
@@ -383,7 +383,7 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       beside it says "Guessed from your file" (or the unit's reason) and offers **Looks right**,
       the desktop's Confirm, with the cursor on it; Escape or leaving closes it, Escape putting
       the cursor back on the mark. Looks right forgets that one guess
-      (`SeasonSetupController.confirmGuess`, two queries) and the season is read again; the
+      (`SetupGuessesController.confirmGuess`, `SetupGuessConfirm`, two queries) and the season is read again; the
       cursor goes to that cell's field (else the row's first) and "<name>: looks right" is said.
       The desktop's per-row popover listing every field, its tier words and "why" sentences
       are not shown: one mark per guessed cell says which value it is, with fewer words.
