@@ -246,6 +246,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   focusToolUndoAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
+  // "Set it up" done: { key } of its cell, focused once drawn ("Open <name>" if the day is replaced).
+  focusAfterSetUp = null;
   // focusCell asked before the grid was drawn (a week just started): { key }, kept until it is.
   focusCellWhenDrawn = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -1222,10 +1224,13 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (!offer || this.settingUp) {
       return;
     }
+    const key = this.focusKey;
     this.settingUp = true;
     try {
       const said = await this.setUpWith({ kind: offer.kind, name: offer.name });
       this.sayOnce(said || `${offer.name} is set up.`);
+      // The button goes with the offer: keyboard focus goes back where the director was.
+      this.focusAfterSetUp = { key };
     } catch (e) {
       this.reportError(
         failed(`${offer.name} wasn't set up. Nothing was changed.`, e)
@@ -4043,6 +4048,17 @@ export default class ShoreshWeekEditor extends LightningElement {
       const grid = this.template.querySelector('[data-id="edit-grid"]');
       if (grid) {
         grid.focusCell(cellKey);
+      }
+    }
+    if (this.focusAfterSetUp) {
+      const { key } = this.focusAfterSetUp;
+      this.focusAfterSetUp = null;
+      const open = this.template.querySelector('[data-id="open-special"]');
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (open) {
+        open.focus();
+      } else if (grid) {
+        grid.focusCell(key);
       }
     }
     if (this.focusCellWhenDrawn) {

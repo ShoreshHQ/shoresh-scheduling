@@ -402,6 +402,82 @@ describe("c-shoresh-week-editor: special days and events", () => {
     );
   });
 
+  it("puts focus back on the cell once a noted event is set up", async () => {
+    const noted = { kind: "S", id: "", name: "Color War", gone: false };
+    const colorWar = {
+      kind: "S",
+      id: "a0E000000000002AAA",
+      name: "Color War",
+      gone: false
+    };
+    const host = {};
+    const setUpWith = jest.fn(() => {
+      host.element.show(draft([FLAGPOLE, colorWar], ["1,2,", "1,,"]), false);
+      return Promise.resolve('"Color War" is set up as a special event.');
+    });
+    const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+      setUpWith
+    });
+    host.element = element;
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    const button = q(element, '[data-id="set-up"]');
+    button.focus();
+    button.click();
+    await flush();
+    expect(q(element, '[data-id="set-up"]')).toBeNull();
+    const focused = grid(element).shadowRoot.activeElement;
+    expect(focused && focused.dataset.cell).toBe("0-1");
+  });
+
+  it("puts focus on Open <name> once a noted special day replaces the day", async () => {
+    const noted = { kind: "D", id: "", name: "Visiting Day", gone: false };
+    const mondayVisit = {
+      ...VISITING_DAY,
+      dateValue: "2026-06-29",
+      day: "Monday"
+    };
+    const host = {};
+    const setUpWith = jest.fn(() => {
+      host.element.show(
+        {
+          ...draft([FLAGPOLE, noted], ["1,2,", "1,,"]),
+          specials: { days: [mondayVisit] }
+        },
+        false
+      );
+      return Promise.resolve('"Visiting Day" is set up as a special day.');
+    });
+    const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+      setUpWith,
+      specials: { days: [] }
+    });
+    host.element = element;
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    const button = q(element, '[data-id="set-up"]');
+    button.focus();
+    button.click();
+    await flush();
+    const open = q(element, '[data-id="open-special"]');
+    expect(open.textContent.trim()).toBe("Open Visiting Day");
+    expect(element.shadowRoot.activeElement).toBe(open);
+  });
+
+  it("keeps focus on Set it up when it fails", async () => {
+    const noted = { kind: "S", id: "", name: "Color War", gone: false };
+    const setUpWith = jest.fn().mockRejectedValue(new Error("nope"));
+    const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+      setUpWith
+    });
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    const button = q(element, '[data-id="set-up"]');
+    button.focus();
+    button.click();
+    await flush();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="set-up"]')
+    );
+  });
+
   it("offers nothing to set up when the host can't", async () => {
     const noted = { kind: "D", id: "", name: "Field Day", gone: false };
     const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"]);
