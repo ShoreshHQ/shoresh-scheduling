@@ -7,12 +7,12 @@ and publishing, that every toolbar action is reachable with Tab, and runs axe-co
 screen. It fixes nothing in the app and changes only its own made-up camp; failures are
 listed for follow-up.
 
-- Code checked: `8896500`
+- Code checked: `93e4750`
 - Browser: Google Chrome 155.0.8059.85 (headless)
 - axe-core 4.13.0, rules: WCAG 2.0, 2.1 and 2.2, levels A and AA
 - Data: the made-up camp "Keyboard check camp (made up)" (the walkthrough's seed, `scripts/apex/sample-version.apex`, under its own name), on Week 30, the check's own week, made fresh for this run
 
-**233 passed, 0 failed, 0 not run.**
+**225 passed, 0 failed, 0 not run.**
 
 ## Failed
 
@@ -52,19 +52,11 @@ Every step ran.
 | Groups | Bunk 1 to Juniors: "What changes" says so before it is saved | Said: "Moves to Juniors: Bunk 1 is now in Library time (for Juniors).". |
 | Groups | Bunk 1 to Juniors: the move is said | Said: "Bunk 1 moved to Juniors". |
 | Groups | Bunk 1 to Juniors: the cursor goes with it to its name in Juniors | Name, in Juniors. |
-| Weeks | Open from the menu: focus on the heading | Focus on h2 "Weeks". |
-| Divisions | Open from the menu: focus on the heading | Focus on h2 "Divisions". |
-| Time blocks | Open from the menu: focus on the heading | Focus on h2 "Time blocks". |
-| Locations | Open from the menu: focus on the heading | Focus on h2 "Locations". |
-| Activities | Open from the menu: focus on the heading | Focus on h2 "Activities". |
-| Fixed activities | Open from the menu: focus on the heading | Focus on h2 "Fixed activities". |
-| Recurring activities | Open from the menu: focus on the heading | Focus on h2 "Recurring activities". |
-| Groups | Open from the menu: focus on the heading | Focus on h2 "Groups". |
 | Programs | Open from the menu: focus on the heading | Focus on h2 "Programs". |
 | Programs | Deleting the card Program 2: it is said | Said: "Deleted Program 2". |
 | Programs | After deleting the last card: focus on the card above's name | Focus on input "*Program name". |
 | Camp words | Open from the menu: focus on the heading | Focus on h2 "Words Keyboard check camp (made up) uses". |
-| Camp words | axe | No violations (21 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (83), color-contrast (1). |
+| Camp words | axe | No violations (20 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (83), color-contrast (1). |
 | Camp words | Leaving a changed pair of words: Saved is said | Said: "✓ Saved". |
 | Camp words | Putting the words back: Saved is said again | Said: "✓ Saved". |
 | Locations | Open from the menu: focus on the heading | Focus on h2 "Locations". |
@@ -74,7 +66,7 @@ Every step ran.
 | Locations | After merging: focus on the kept place's row | Focus on input "*Name". |
 | Locations | Open from the menu: focus on the heading | Focus on h2 "Locations". |
 | Locations | Pool to Check type from its details: the move is said | Said: "Pool moved to Check type". |
-| Locations | Pool to Check type: the cursor goes with it to its notes in the new section | Notes, in the section for type "a0ARL00000Ir0XO2AZ". |
+| Locations | Pool to Check type: the cursor goes with it to its notes in the new section | Notes, in the section for type "a0ARL00000IrLC12AN". |
 | Locations | Pool to No location type from its details: the move is said | Said: "Pool moved to No location type". |
 | Locations | Pool to No location type: the cursor goes with it to its notes in the new section | Notes, in the section for type "none". |
 | New season | Opening it: focus on its heading | Focus on h2 "Start a new season". |
@@ -204,18 +196,18 @@ Every step ran.
 | Manual Build | Versions: Enter opens the list | aria-expanded is true. |
 | Manual Build: Versions open | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (6), color-contrast (1). |
 | Manual Build | Versions: Escape closes it, focus on Versions | Focus on button "Versions". |
-| Manual Build | Save version: it is said | Said: "Saved Keyboard check 13:03:22.". |
+| Manual Build | Save version: it is said | Said: "Saved Keyboard check 14:41:42.". |
 | Manual Build | Save version: focus not lost | Focus on input "Name current version…". |
 | Manual Build | rename: focus in the name box | Focus on input "New name". |
-| Manual Build | Escape in the name box: focus back on its rename | Focus on button "Rename Keyboard check 13:03:22". |
+| Manual Build | Escape in the name box: focus back on its rename | Focus on button "Rename Keyboard check 14:41:42". |
 | Generated Schedule | Open from the menu: focus on the heading | Focus on h2 "Generated Schedule". |
 | Generated Schedule | Versions: Enter opens the list | aria-expanded is true. |
 | Generated Schedule: Versions open | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (7), color-contrast (1). |
 | Generated Schedule | Versions: Escape closes it, focus on Versions | Focus on button "Versions". |
-| Generated Schedule | Save version: it is said | Said: "Saved Keyboard check 13:03:52.". |
+| Generated Schedule | Save version: it is said | Said: "Saved Keyboard check 14:42:11.". |
 | Generated Schedule | Save version: focus not lost | Focus on input "Name current version…". |
 | Generated Schedule | rename: focus in the name box | Focus on input "New name". |
-| Generated Schedule | Escape in the name box: focus back on its rename | Focus on button "Rename Keyboard check 13:03:52". |
+| Generated Schedule | Escape in the name box: focus back on its rename | Focus on button "Rename Keyboard check 14:42:11". |
 | Fixed activities | Open from the menu: focus on the heading | Focus on h2 "Fixed activities". |
 | Fixed activities | Delete Assembly asks: focus in the question | Focus on h1 "Delete" in a dialog, in Salesforce's own confirm box (lightning-confirm), not c-shoresh-ask. |
 | Fixed activities | Deleting Assembly: it is said | Said: "Deleted Assembly". |
@@ -230,7 +222,7 @@ Every step ran.
 | Manual Build | One row's Update: it is said | Said: "Updated to match setup.". |
 | Manual Build | One row's Update: focus stays in the dialog | Focus on button "Update Bunk 2 · Monday · Period 6" in a dialog. |
 | Manual Build | Update all: it is said | Said: "Updated to match setup.". |
-| Manual Build | Update all leaves nothing: focus on the grid | Focus on div "Open" in the grid. |
+| Manual Build | Update all leaves nothing: focus on the grid | Focus on div "Art" in the grid. |
 | Generated Schedule | Open from the menu: focus on the heading | Focus on h2 "Generated Schedule". |
 | Generated Schedule | It opens: focus on Cancel | Focus on button "Cancel" in a dialog. |
 | Generated Schedule: Update to match setup | axe | No violations (22 rules passed). axe could not decide, for a person to look at: aria-valid-attr-value (9), color-contrast (1). |
