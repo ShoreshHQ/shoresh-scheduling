@@ -901,6 +901,148 @@ describe("c-shoresh-camp-setup", () => {
       ).toEqual(["High", "Low"]);
     });
 
+    describe("activities grouped by priority (desktop ActivitiesScreen.jsx, decision 45)", () => {
+      const sections = (element) => [
+        ...element.shadowRoot.querySelectorAll(
+          'c-shoresh-editable-table[data-id="activities"]'
+        )
+      ];
+      const section = (element, priority) =>
+        q(
+          element,
+          `c-shoresh-editable-table[data-id="activities"][data-priority="${priority}"]`
+        );
+      const chevron = (table, id) =>
+        table.shadowRoot.querySelector(
+          `[data-id="details"][data-row-key="row-${id}"]`
+        );
+      const withPriorities = (archery, canoe) => ({
+        activities: [
+          { ...ACTIVITIES[0], Priority__c: archery },
+          { ...ACTIVITIES[1], Priority__c: canoe }
+        ]
+      });
+
+      it("High then Low, each headed with its count, the columns above the first", async () => {
+        const element = await renderWith(withPriorities("High", "Low"));
+        await openScreen(element, "activities");
+        const [high, low] = sections(element);
+        expect(sections(element).length).toBe(2);
+        expect([high.heading, high.showColumns]).toEqual([
+          "High priority",
+          true
+        ]);
+        expect([low.heading, low.showColumns]).toEqual(["Low priority", false]);
+        expect(high.title).toBe("Activity catalogue: High priority");
+        // Every activity is handed to both, so same-name dots compare across sections.
+        expect(high.rows.length).toBe(2);
+        expect(low.rows.length).toBe(2);
+        expect([high.showsRow("a1"), high.showsRow("a2")]).toEqual([
+          true,
+          false
+        ]);
+        expect([low.showsRow("a1"), low.showsRow("a2")]).toEqual([false, true]);
+        expect(
+          high.shadowRoot.querySelector(".section-count").textContent.trim()
+        ).toBe("1");
+        // Each blank row starts in its section's priority; the rest are the usual defaults.
+        expect(bareRecord(high.newRowDefaults)).toEqual(
+          expect.objectContaining({ Priority__c: "High", Length__c: 1 })
+        );
+        expect(bareRecord(low.newRowDefaults)).toEqual(
+          expect.objectContaining({ Priority__c: "Low", Length__c: 1 })
+        );
+      });
+
+      it("a blank priority is Low; High shows only while it holds an activity", async () => {
+        const element = await renderWith(withPriorities(undefined, "Low"));
+        await openScreen(element, "activities");
+        const only = sections(element);
+        expect(only.map((t) => t.dataset.priority)).toEqual(["Low"]);
+        expect([only[0].heading, only[0].showColumns]).toEqual([
+          "Low priority",
+          true
+        ]);
+        expect([only[0].showsRow("a1"), only[0].showsRow("a2")]).toEqual([
+          true,
+          true
+        ]);
+      });
+
+      it("Low stays, holding the blank row new activities start in, when every activity is High", async () => {
+        const element = await renderWith(withPriorities("High", "High"));
+        await openScreen(element, "activities");
+        const [high, low] = sections(element);
+        expect([high.dataset.priority, low.dataset.priority]).toEqual([
+          "High",
+          "Low"
+        ]);
+        expect([low.showsRow("a1"), low.showsRow("a2")]).toEqual([
+          false,
+          false
+        ]);
+        expect(
+          low.shadowRoot.querySelector('[data-row-key="add"]')
+        ).not.toBeNull();
+      });
+
+      it("with no activities, only the empty list: no heading", async () => {
+        const element = await renderWith({ activities: [] });
+        await openScreen(element, "activities");
+        const only = sections(element);
+        expect(only.length).toBe(1);
+        expect(only[0].heading).toBeUndefined();
+        expect(only[0].title).toBe("Activity catalogue");
+        expect(
+          only[0].shadowRoot.querySelector("c-shoresh-empty-state").title
+        ).toBe("No activities yet");
+      });
+
+      it("a priority changed in the details moves the row to its section, still marked open; Close goes to its chevron there", async () => {
+        saveRow.mockResolvedValue(nsRecord({ id: "a2", changed: [] }));
+        const element = await renderWith(withPriorities("High", "High"));
+        await openScreen(element, "activities");
+        chevron(section(element, "High"), "a2").click();
+        await flush();
+        await flush();
+        const details = q(element, "c-shoresh-activity-details");
+        expect(details.openActivityId).toBe("a2");
+        // The save, then the season read again with Canoe now Low.
+        getSeasonSetup.mockResolvedValue(
+          nsRecord(
+            setupWith({
+              programs: PROGRAMS,
+              ...withPriorities("High", "Low")
+            })
+          )
+        );
+        const priority = details.shadowRoot.querySelector(
+          '[data-field="priority"]'
+        );
+        priority.value = "Low";
+        priority.dispatchEvent(
+          new CustomEvent("change", { detail: { value: "Low" } })
+        );
+        await flush();
+        await flush();
+        await flush();
+        expect(sentTo(saveRow)[0].record).toEqual({
+          sobjectType: "Activity__c",
+          Id: "a2",
+          Priority__c: "Low"
+        });
+        // Archery keeps High showing, above; Canoe is in Low now, its row still marked open.
+        const low = section(element, "Low");
+        expect(low.showsRow("a2")).toBe(true);
+        expect(section(element, "High").showsRow("a2")).toBe(false);
+        expect(chevron(low, "a2").getAttribute("aria-expanded")).toBe("true");
+        details.shadowRoot.querySelector('[data-id="close"]').click();
+        await flush();
+        await flush();
+        expect(low.shadowRoot.activeElement).toBe(chevron(low, "a2"));
+      });
+    });
+
     describe("the camp and season in the menu's camp row", () => {
       const head = (element) => q(element, '[data-id="camp-head"]');
 

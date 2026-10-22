@@ -32,7 +32,9 @@
  *   group row under the pointer, for docs/design/screens/;
  * - step 3b (ADR 0015 choice 12): on Activities, that a row's "how often" numbers show while it
  *   is edited, Tab reaching them, and that its chevron opens its details beside the table with
- *   focus on their heading, Close putting focus back on the chevron; on Recurring activities,
+ *   focus on their heading, Close putting focus back on the chevron; that an activity whose
+ *   priority is changed in its details moves to that priority's section, still marked open, the
+ *   cursor kept on Priority, and Close finds its chevron there; on Recurring activities,
  *   that a row's day ticks show while it is edited, Tab reaching them; and that New season and
  *   Copy this season open from the camp row's small menu (Season actions) and Cancel puts focus
  *   back on it;
@@ -1387,6 +1389,11 @@ async function campSetup() {
     "Activities: how often and the details beside the table",
     activityPanel
   );
+  await step(
+    S,
+    "Activities: a priority changed in the details moves the row to its section",
+    activityChangesPriority
+  );
   await step(S, "Fixed activities", async () => {
     await openFromMenu("Fixed activities", /^Fixed activities/);
     await axe("Fixed activities");
@@ -1460,6 +1467,113 @@ async function activityPanel() {
     tag: "button",
     name: new RegExp(`^${chevron.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
   });
+}
+
+/**
+ * Activities grouped by priority (desktop ActivitiesScreen.jsx, decision 45): an activity whose
+ * priority is changed in its details moves to the other section, its row still marked open and
+ * the cursor kept on Priority; Close puts the cursor on its chevron in the section it is in now.
+ * The step changes the first activity to the other priority and back, so the camp ends as it
+ * began.
+ */
+async function activityChangesPriority() {
+  const A = "Activities";
+  await openFromMenu(A, /^Activities\b/);
+  const sections = 'c-shoresh-editable-table[data-id="activities"]';
+  // Which section shows the activity (each is its own table), and whether its row is marked
+  // open there.
+  const sectionOf = (name) =>
+    page
+      .locator(APP)
+      .locator(sections)
+      .evaluateAll((tables, n) => {
+        for (const t of tables) {
+          const box = [
+            ...t.shadowRoot.querySelectorAll(
+              'lightning-input[data-field="Name"]'
+            )
+          ].find((i) => i.value === n && i.dataset.rowKey !== "add");
+          if (box) {
+            const chevron = t.shadowRoot.querySelector(
+              `[data-id="details"][data-row-key="${box.dataset.rowKey}"]`
+            );
+            return {
+              priority: t.dataset.priority,
+              open: chevron && chevron.getAttribute("aria-expanded") === "true"
+            };
+          }
+        }
+        return null;
+      }, name);
+  const inputs = shown(`${sections} lightning-input[data-field="Name"] input`);
+  const name = (await inputs.evaluateAll((els) => els.map((e) => e.value)))[0];
+  if (!name) throw new Error("No activity in the camp.");
+  const from = (await sectionOf(name)).priority;
+  const to = from === "High" ? "Low" : "High";
+  await inputs.first().focus();
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const chevron = await tabTo(
+    named(new RegExp(`^${escaped} details$`), { tag: "button" }),
+    { max: 40 }
+  );
+  if (!chevron) throw new Error(`${name}'s details chevron not reached.`);
+  await press("Enter", 1500);
+  /** Priority, by keyboard: Enter opens it, the arrow picks the other, Enter chooses it. */
+  const change = async (want, arrow) => {
+    if (
+      !(await tabTo((f) => f.role === "combobox" && /^Priority/.test(f.name), {
+        max: 20
+      }))
+    )
+      throw new Error(`${name}'s Priority not reached with Tab.`);
+    await press("Enter", 400);
+    await press(arrow, 200);
+    await press("Enter", 3000);
+    const now = await sectionOf(name);
+    const STEP = `${name} to ${want}: its row moves to the ${want} section, still marked open`;
+    if (now && now.priority === want && now.open) {
+      results.pass(A, STEP, `In the ${want} section, its chevron expanded.`);
+    } else {
+      await shot(A, STEP);
+      results.fail(
+        A,
+        STEP,
+        `Section ${now && now.priority}, chevron expanded ${now && now.open}.`
+      );
+    }
+    await expectFocus(A, `${name} to ${want}: the cursor stays on Priority`, {
+      role: "combobox",
+      name: /^Priority/
+    });
+  };
+  // The choices are High, then Low.
+  await change(to, to === "High" ? "ArrowUp" : "ArrowDown");
+  await change(from, from === "High" ? "ArrowUp" : "ArrowDown");
+  await change(to, to === "High" ? "ArrowUp" : "ArrowDown");
+  if (
+    !(await tabTo(named(/^Close .* details$/, { tag: "button" }), {
+      max: 20,
+      back: true
+    }))
+  )
+    throw new Error("The details' Close was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(
+    A,
+    `Closing the details: focus on ${name}'s chevron in the ${to} section`,
+    { tag: "button", name: new RegExp(`^${escaped} details$`) }
+  );
+  // Back as it began: the details again, Priority back.
+  await press("Enter", 1500);
+  await change(from, from === "High" ? "ArrowUp" : "ArrowDown");
+  if (
+    !(await tabTo(named(/^Close .* details$/, { tag: "button" }), {
+      max: 20,
+      back: true
+    }))
+  )
+    throw new Error("The details' Close was not reached with Tab.");
+  await press("Enter", 800);
 }
 
 /**

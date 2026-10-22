@@ -205,6 +205,20 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       panel asks the tables' question (**Changed by someone else**, Theirs and Yours, **Keep
       theirs** or **Use yours**). They never fall back to a form's last save wins (ADR 0013
       Known limits). The rules and who can do it still go through `ActivityDetails`.
+    - **Activities are grouped by priority** (wiki decision 45, 2026-10-22; the desktop's
+      `ActivitiesScreen.jsx`, "High Priority" then "Low Priority"): two sections, **High
+      priority** then **Low priority**, each headed with its count, the column names above the
+      first. A blank priority is Low (ADR 0002 choice 10). As Recurring activities' sections,
+      each is a table over every activity showing its own (`rowFilter`), so same-name dots
+      compare across both, and its blank row starts in its priority. As on the desktop, High
+      shows only while it holds an activity. Low always shows, even when every activity is
+      High: new activities start Low (Greg, 2026-10-16), so its blank row is where they are
+      added; the desktop's Add opens a form instead, so it needs no empty section. With no
+      activities at all there is no heading, only "No activities yet". Priority stays in the
+      details (it is not a column): changing it there moves the row to the other section once
+      it is saved and the season read again, its row still carrying the selection line and the
+      cursor kept on Priority in the panel; Close puts the cursor on the row's chevron in the
+      section it is in now.
     - **Fixed activities and Recurring activities stay separate screens** (decision 42), each
       with the rail and in the shared table language. Fixed activities are one section headed
       **Whole camp** (with several programs, the program's name), columns Name, the time block
@@ -256,10 +270,12 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       section's who taken on reload), `shoreshActivityDetails.test.js` ("the panel beside the
       table"; "someone else changed the field since it was shown"), `shoreshProgram.test.js` (Whole camp, the division sections, the cursor following
       a moved item), `shoreshCampSetup.test.js` ("setup screens, step 3b": the rails, how often's
-      scale, the panel's saves, the camp row) and in the test org by
+      scale, the panel's saves, the camp row, activities grouped by priority and a row moved by
+      its priority) and in the test org by
       `scripts/a11y-browser-check.mjs` (how often's numbers and a recurring row's day ticks
       reached by Tab while the row is edited, the details opened from the chevron with focus on
-      their heading and back on Close, New season and Copy this season from Season actions, axe
+      their heading and back on Close, an activity moved to the other priority's section and back
+      with the cursor kept on Priority and Close finding its chevron there, New season and Copy this season from Season actions, axe
       on each screen), with screenshots next to the mock-ups in `docs/design/screens/`.
 
 ## Not done here

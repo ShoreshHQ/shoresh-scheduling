@@ -173,7 +173,10 @@ it or press **Escape**.
    closes it and puts the cursor back on Soccer's **›**.
 4. In Gym games' details, set **Groups at once** to 5 and press **Enter**. Needs attention now
    says the Gym fits 3, so scheduling will use 3. Put it back to 1. (**Length** and
-   **Priority** sit beside each other in the same panel, saved the same way.)
+   **Priority** sit beside each other in the same panel, saved the same way.) Set Gym games'
+   **Priority** to _High_: its row moves up into a new **High priority** section above **Low
+   priority**, still marked, while the cursor stays on Priority. Set it back to _Low_ and the
+   High section goes away again (it shows only while it holds an activity).
 5. Open Swim's details. Under **Who can do it: everyone**, tick _Bunk 1_: it is saved at once
    and the label now reads **Who can do it**. Only Bunk 1 can swim now; nothing ticked means
    every bunk. Swim's **Who** in the table now reads _Bunk 1_. (Tab reaches each tick; Space
