@@ -23,9 +23,17 @@ public with sharing class SpecialPlanShape {
         at = b;
       }
     }
-    putAt(grid.blocks, at, block);
+    if (at == grid.blocks.size()) {
+      grid.blocks.add(block);
+    } else {
+      grid.blocks.add(at, block);
+    }
     for (List<String> row : identities) {
-      putAt(row, at, SlotIds.OPEN);
+      if (at == row.size()) {
+        row.add(SlotIds.OPEN);
+      } else {
+        row.add(at, SlotIds.OPEN);
+      }
     }
   }
 
@@ -144,13 +152,5 @@ public with sharing class SpecialPlanShape {
       row[b - 1] != SlotIds.OPEN &&
       SlotIds.owner(row[b - 1]).equals(item);
     return carries ? ScheduleGrid.CARRIES_ON : tokenOf.get(item);
-  }
-
-  private static void putAt(List<Object> values, Integer at, Object value) {
-    if (at == values.size()) {
-      values.add(value);
-    } else {
-      values.add(at, value);
-    }
   }
 }
