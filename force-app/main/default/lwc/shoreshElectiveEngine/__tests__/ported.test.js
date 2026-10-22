@@ -1,0 +1,2009 @@
+// Ported from the desktop's src/engine/buildElectiveAssignments.test.js
+// (Scheduling-Project- 69dbd34, Apache-2.0) with the test bodies unchanged. Only the imports and
+// the formatting differ: Jest's globals replace vitest's, and the engine is reached through
+// ./data/desktopShape.js, which renames the desktop's fields to assignSeats's.
+// T196 — the elective assignment engine.
+//
+// Built against ADR D14's rewritten premise: preferences are ranked GLOBALLY,
+// so a camper takes a choice at most once across the week and occurrences are
+// coupled. Owner rulings R3 (never unplaced — assign best available and flag)
+// and R4 (fairness NOT modeled in this pass).
+import { buildElectiveAssignments } from "./data/desktopShape";
+
+// Two occurrences, three activities, capacity 1 each unless overridden.
+const occ = (id) => ({ id });
+const offering = (occurrence_id, labelKey, activity_id, capacity = 1) => ({
+  occurrence_id,
+  labelKey,
+  activity_id,
+  capacity
+});
+const pref = (camper_id, labelKey, rank, rank_kind) => ({
+  camper_id,
+  labelKey,
+  rank,
+  rank_kind
+});
+// T247 linked-choice inputs, mirroring elective_choices / elective_choice_offerings.
+const choice = (id, labelKey, is_linked = 0) => ({ id, labelKey, is_linked });
+const member = (choice_id, occurrence_id, activity_id) => ({
+  choice_id,
+  occurrence_id,
+  activity_id
+});
+
+describe("buildElectiveAssignments", () => {
+  it("gives every camper their first choice when there is room", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch"),
+        offering("o1", "gaga", "a-gaga")
+      ],
+      preferences: [pref("c1", "archery", 1), pref("c2", "gaga", 1)]
+    });
+    expect(
+      out.assignments.map((a) => [
+        a.camper_id,
+        a.activity_id,
+        a.preference_rank
+      ])
+    ).toEqual([
+      ["c1", "a-arch", 1],
+      ["c2", "a-gaga", 1]
+    ]);
+    expect(out.assignments.every((a) => a.flags.length === 0)).toBe(true);
+  });
+
+  // R3: never unplaced. A camper bumped off their #1 is still placed, and the
+  // slot carries a flag so staff can see it was not a top pick.
+  it("places a bumped camper in their next choice and flags it", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1)
+      ],
+      preferences: [
+        pref("c1", "archery", 1, "cell-choice"),
+        pref("c1", "gaga", 2, "cell-choice"),
+        pref("c2", "archery", 1, "cell-choice"),
+        pref("c2", "gaga", 2, "cell-choice")
+      ]
+    });
+    const ranks = out.assignments.map((a) => a.preference_rank).sort();
+    expect(ranks).toEqual([1, 2]);
+    const bumped = out.assignments.find((a) => a.preference_rank === 2);
+    expect(bumped.flags).toContain("NOT_TOP_CHOICE");
+  });
+
+  // Owner ruling 2026-09-18: repeats ARE normal — a camper swims twice a week.
+  // An earlier build forbade them, inferring "the preference is consumed" from
+  // D14 to mean "the camper may never attend again". Those are different rules,
+  // and collapsing them left 332 of 2550 camper-slots unfillable on a
+  // 100-camper fixture, because with 4 offerings per period a camper ran out of
+  // choices they had not already used. This test replaces the one that asserted
+  // the opposite; the old behaviour is in git history, not silently dropped.
+  it("allows a camper the same choice in more than one period", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch"),
+        offering("o2", "archery", "a-arch")
+      ],
+      preferences: [pref("c1", "archery", 1)]
+    });
+    expect(out.assignments).toHaveLength(2);
+    expect(out.assignments.every((a) => a.activity_id === "a-arch")).toBe(true);
+    expect(out.assignments.every((a) => a.preference_rank === 1)).toBe(true);
+    expect(out.findings).toEqual([]);
+  });
+
+  // R3 again, at its hardest: nothing the camper ranked is left.
+  it("places a camper into something they never asked for rather than leaving them out", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch"),
+        offering("o2", "woodworking", "a-wood")
+      ],
+      preferences: [pref("c1", "archery", 1)]
+    });
+    expect(out.assignments).toHaveLength(2);
+    const unranked = out.assignments.find((a) => a.labelKey === "woodworking");
+    expect(unranked.preference_rank).toBeNull();
+    expect(unranked.flags).toContain("NOT_REQUESTED");
+  });
+
+  it("leaves a camper unplaced only when no offering has room, and says so", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch", 1)],
+      preferences: [pref("c1", "archery", 1), pref("c2", "archery", 1)]
+    });
+    expect(out.assignments).toHaveLength(1);
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({
+        kind: "NO_CAPACITY",
+        occurrence_id: "o1",
+        camper_ids: ["c2"]
+      })
+    );
+  });
+
+  // THE test that distinguishes a real min-cost assignment from greedy-by-rank.
+  //
+  // Greedy sorted by (rank, camper) assigns c1->archery (its only #1), which
+  // leaves c2 — whose only options are archery(1) and gaga(3) — on gaga, for a
+  // total of 1+3 = 4. The optimal assignment gives archery to c2 and gaga to
+  // c1, total 2+1 = 3. A greedy implementation passes every other test here
+  // and fails this one.
+  it("finds the lower-total-cost assignment that greedy-by-rank misses", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1)
+      ],
+      preferences: [
+        pref("c1", "archery", 1),
+        pref("c1", "gaga", 2),
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 3)
+      ]
+    });
+    const total = out.assignments.reduce((s, a) => s + a.preference_rank, 0);
+    expect(total).toBe(3);
+    expect(out.assignments.find((a) => a.camper_id === "c2").activity_id).toBe(
+      "a-arch"
+    );
+  });
+
+  // Determinism is the property buildSchedule is held to, for the same reason:
+  // a director regenerating must not get a different week.
+  it("is deterministic regardless of input array order", () => {
+    const inputs = {
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 2),
+        offering("o1", "gaga", "a-gaga", 2),
+        offering("o2", "archery", "a-arch", 2),
+        offering("o2", "gaga", "a-gaga", 2)
+      ],
+      preferences: [
+        pref("c1", "archery", 1),
+        pref("c1", "gaga", 2),
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 2),
+        pref("c3", "gaga", 1),
+        pref("c3", "archery", 2)
+      ]
+    };
+    const shuffled = {
+      ...inputs,
+      campers: [...inputs.campers].reverse(),
+      offerings: [...inputs.offerings].reverse(),
+      preferences: [...inputs.preferences].reverse()
+    };
+    const key = (o) =>
+      o.assignments
+        .map((a) => `${a.occurrence_id}:${a.camper_id}:${a.activity_id}`)
+        .sort()
+        .join("|");
+    expect(key(buildElectiveAssignments(inputs))).toBe(
+      key(buildElectiveAssignments(shuffled))
+    );
+  });
+
+  // T231 — an occurrence nobody can attend, or with nothing on offer, used to
+  // `continue` with no finding at all. Found by a real-data probe against a
+  // camp database: a malformed attendance map made every camper ineligible and
+  // the engine returned `{assignments: [], findings: []}` — a clean, empty,
+  // successful-looking result. Silence is the wrong answer here: a director
+  // whose division names do not match their tier names gets an empty schedule
+  // and no reason for it.
+  it("reports an occurrence nobody is eligible for, instead of skipping it silently", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch")],
+      preferences: [pref("c1", "archery", 1)],
+      attendance: {} // nobody attends anything — the shape a wrapper-passing caller produces
+    });
+    expect(out.assignments).toEqual([]);
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({ kind: "NO_CAMPERS", occurrence_id: "o1" })
+    );
+  });
+
+  // Board item (2026-09-30) — buildAttendance.js now scopes a same-tier
+  // occurrence to the group(s) that actually created it. At the solver level
+  // that just means: a camper excluded by the attendance map for a given
+  // occurrence is never placed there, and if the occurrence's only carrying
+  // group has no campers at all, NO_CAMPERS fires exactly as it does for the
+  // pre-existing "malformed map" case above — the solver does not need to
+  // know WHY a camper is ineligible, only that the map says so.
+  it("does not place a camper the attendance map excludes for that occurrence, and fires NO_CAMPERS when the occurrence's only carrying group has no campers", () => {
+    const out = buildElectiveAssignments({
+      // c1 is in the group that created o1 (attends o1 only); c2 is in the
+      // group that created o2 (attends o2 only) but o2 has no offerings-eligible
+      // camper of its own group represented here — o2's only carrying group
+      // contributed zero campers to this solve.
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch"),
+        offering("o2", "gaga", "a-gaga")
+      ],
+      preferences: [pref("c1", "archery", 1), pref("c1", "gaga", 1)],
+      attendance: { c1: ["o1"] } // c1's group only carries o1
+    });
+    expect(out.assignments.map((a) => [a.camper_id, a.occurrence_id])).toEqual([
+      ["c1", "o1"]
+    ]);
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({ kind: "NO_CAMPERS", occurrence_id: "o2" })
+    );
+  });
+
+  it("reports an occurrence with no offerings, instead of skipping it silently", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [offering("o1", "archery", "a-arch")],
+      preferences: [pref("c1", "archery", 1)]
+    });
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({ kind: "NO_OFFERINGS", occurrence_id: "o2" })
+    );
+  });
+
+  // ---- T246: locked seats survive regeneration and pre-consume capacity.
+  //
+  // `lockedAssignments` is camelCase while the rest of the engine's inputs are
+  // snake_case; that is the ticket's chosen shape (T246 Scope), pinned here so
+  // nobody "normalizes" it away.
+  const locked = (camperId, occurrenceId, activityId) => ({
+    camperId,
+    occurrenceId,
+    activityId
+  });
+
+  it("never re-decides a locked seat, whatever the preferences and offering order say", () => {
+    const solve = (preferences, offerings) =>
+      buildElectiveAssignments({
+        campers: [{ id: "c1" }],
+        occurrences: [occ("o1")],
+        offerings,
+        preferences,
+        lockedAssignments: [locked("c1", "o1", "a-arch")]
+      });
+    const a = solve(
+      [pref("c1", "gaga", 1), pref("c1", "archery", 2)],
+      [offering("o1", "archery", "a-arch"), offering("o1", "gaga", "a-gaga")]
+    );
+    const b = solve(
+      [pref("c1", "gaga", 1)],
+      [offering("o1", "gaga", "a-gaga"), offering("o1", "archery", "a-arch")]
+    );
+    expect(
+      a.assignments.map((x) => [x.camper_id, x.activity_id, x.source, x.locked])
+    ).toEqual([["c1", "a-arch", "manual", true]]);
+    // Compared on the decision, not on preference_rank — the two solves were
+    // handed different preference inputs, which is the point.
+    expect(
+      b.assignments.map((x) => [x.camper_id, x.activity_id, x.source, x.locked])
+    ).toEqual([["c1", "a-arch", "manual", true]]);
+  });
+
+  it("makes a locked seat\u2019s capacity unavailable to another camper in the same solve", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      occurrences: [occ("o1")],
+      // Archery holds 2. c1's locked seat takes one, so only ONE of c2/c3 can
+      // have it — without the subtraction all three would be seated there.
+      offerings: [
+        offering("o1", "archery", "a-arch", 2),
+        offering("o1", "gaga", "a-gaga", 5)
+      ],
+      preferences: [
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 2),
+        pref("c3", "archery", 1),
+        pref("c3", "gaga", 2)
+      ],
+      lockedAssignments: [locked("c1", "o1", "a-arch")]
+    });
+    expect(
+      out.assignments.filter((a) => a.activity_id === "a-arch").length
+    ).toBe(2);
+    // And the locked camper is one of them, never re-decided into Gaga.
+    expect(out.assignments.find((a) => a.camper_id === "c1").activity_id).toBe(
+      "a-arch"
+    );
+  });
+
+  // The locked-seat / linked-choice contract this ticket owns (T246 Scope).
+  // T247's tier-1 bipartite solve must consume this function's
+  // lockedAssignments-ADJUSTED remaining capacity, where a linked choice's
+  // capacity is min() over its member occurrences. Expressed here as the
+  // engine-level property that contract rests on, on observable output: a
+  // locked seat in ONE member occurrence lowers that member's remaining
+  // capacity, hence the min() across a two-member linked choice, hence what
+  // tier 1 could place into the choice as a whole.
+  it("reduces a two-member linked choice\u2019s min() capacity by a locked seat in one member", () => {
+    // o1 and o2 are the two member occurrences of a linked choice; each offers
+    // Archery at capacity 2, so min() over the members is 2 before any lock.
+    // c1 prefers Gaga, so the ONLY thing c1's lock changes is o1's Archery
+    // capacity — not who wanted what.
+    const input = {
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 2),
+        offering("o1", "gaga", "a-gaga", 5),
+        offering("o2", "archery", "a-arch", 2),
+        offering("o2", "gaga", "a-gaga", 5)
+      ],
+      preferences: [
+        pref("c1", "gaga", 1),
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 2),
+        pref("c3", "archery", 1),
+        pref("c3", "gaga", 2)
+      ]
+    };
+    const freeCampersInBothMembers = (out) =>
+      ["c2", "c3"].filter(
+        (id) =>
+          out.assignments.filter(
+            (a) => a.camper_id === id && a.activity_id === "a-arch"
+          ).length === 2
+      );
+
+    // Unlocked: min() is 2, and two free campers hold Archery in both members.
+    expect(freeCampersInBothMembers(buildElectiveAssignments(input))).toEqual([
+      "c2",
+      "c3"
+    ]);
+
+    // One locked seat in o1 only. o1's Archery remaining drops to 1 while o2's
+    // stays 2, so min() across the linked choice is 1 — exactly one free camper
+    // can hold Archery in BOTH members, which is what a tier-1 linked-choice
+    // solve reading this adjusted capacity would be able to place.
+    const after = buildElectiveAssignments({
+      ...input,
+      lockedAssignments: [locked("c1", "o1", "a-arch")]
+    });
+    expect(freeCampersInBothMembers(after).length).toBe(1);
+    // The locked seat still occupies o1's Archery: 1 locked + 1 free = 2.
+    expect(
+      after.assignments.filter(
+        (a) => a.occurrence_id === "o1" && a.activity_id === "a-arch"
+      ).length
+    ).toBe(2);
+  });
+
+  it("produces identical output however lockedAssignments is ordered", () => {
+    const base = {
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 2),
+        offering("o1", "gaga", "a-gaga", 2),
+        offering("o2", "archery", "a-arch", 2),
+        offering("o2", "gaga", "a-gaga", 2)
+      ],
+      preferences: [
+        pref("c1", "archery", 1),
+        pref("c2", "gaga", 1),
+        pref("c3", "archery", 1)
+      ]
+    };
+    const set = [
+      locked("c2", "o1", "a-arch"),
+      locked("c1", "o2", "a-gaga"),
+      locked("c3", "o1", "a-gaga")
+    ];
+    const first = buildElectiveAssignments({ ...base, lockedAssignments: set });
+    expect(first.assignments.filter((a) => a.locked).length).toBe(3);
+    const shuffled = buildElectiveAssignments({
+      ...base,
+      lockedAssignments: [set[2], set[0], set[1]]
+    });
+    const reversed = buildElectiveAssignments({
+      ...base,
+      lockedAssignments: [...set].reverse()
+    });
+    expect(shuffled).toEqual(first);
+    expect(reversed).toEqual(first);
+  });
+
+  it("ignores a locked row naming an unknown occurrence or a non-offered activity", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch", 1)],
+      preferences: [pref("c1", "archery", 1)],
+      lockedAssignments: [locked("c9", "o-gone", "a-arch")]
+    });
+    expect(out.assignments.map((a) => [a.camper_id, a.activity_id])).toEqual([
+      ["c1", "a-arch"]
+    ]);
+  });
+
+  // Both early-exit guards below `continue`, so a locked seat is only emitted
+  // if the emission runs ABOVE them. These two pin that, and the second is a
+  // regression guard for T231's NO_CAMPERS diagnostic, which must keep firing
+  // on a malformed attendance map even when one locked seat exists.
+  it("emits a locked seat in an occurrence with no offerings, and still reports NO_OFFERINGS", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1")],
+      offerings: [],
+      preferences: [pref("c1", "archery", 1)],
+      lockedAssignments: [locked("c1", "o1", "a-arch")]
+    });
+    expect(
+      out.assignments.map((a) => [
+        a.camper_id,
+        a.activity_id,
+        a.source,
+        a.locked
+      ])
+    ).toEqual([["c1", "a-arch", "manual", true]]);
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({ kind: "NO_OFFERINGS", occurrence_id: "o1" })
+    );
+  });
+
+  it("still reports NO_CAMPERS when every camper is ineligible but one seat is locked", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch")],
+      preferences: [pref("c1", "archery", 1)],
+      attendance: {}, // malformed map — nobody is eligible for anything
+      lockedAssignments: [locked("c1", "o1", "a-arch")]
+    });
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({ kind: "NO_CAMPERS", occurrence_id: "o1" })
+    );
+    expect(
+      out.assignments.map((a) => [a.camper_id, a.activity_id, a.locked])
+    ).toEqual([["c1", "a-arch", true]]);
+  });
+
+  it("behaves exactly as before when lockedAssignments is omitted", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch"),
+        offering("o1", "gaga", "a-gaga")
+      ],
+      preferences: [pref("c1", "archery", 1), pref("c2", "gaga", 1)]
+    });
+    expect(
+      out.assignments.map((a) => [
+        a.camper_id,
+        a.activity_id,
+        a.preference_rank
+      ])
+    ).toEqual([
+      ["c1", "a-arch", 1],
+      ["c2", "a-gaga", 1]
+    ]);
+    expect(out.assignments.some((a) => a.locked)).toBe(false);
+  });
+
+  // The empty-input case must stay quiet — no occurrences means no work, not a
+  // problem to report. Without this the fix would make every empty preview
+  // shout.
+  it("returns empty rather than throwing on empty input", () => {
+    const out = buildElectiveAssignments({
+      campers: [],
+      occurrences: [],
+      offerings: [],
+      preferences: []
+    });
+    expect(out.assignments).toEqual([]);
+    expect(out.findings).toEqual([]);
+  });
+
+  // ---- T247: linked choices via the tier-1 choice-level bipartite pass.
+  //
+  // A choice is LINKED for tier-1 purposes when `choiceOfferings` gives it more
+  // than one member occurrence — the member count, not the `is_linked` column
+  // (which nothing writes as 1 today). Tier 1 places a camper into the choice as
+  // a whole; tier 2 then runs per occurrence against the reduced capacity.
+
+  // THE ADR's WORKED EXAMPLE, VERBATIM (2026-09-23 decision (c)).
+  //
+  // capacity(o1) = capacity(o2) = 15, choice C = {o1, o2}, two campers both
+  // ranking C. The rejected chain construction placed ONE camper camp-wide and
+  // reported the second NO_CAPACITY with 14 seats open at each occurrence. Tier
+  // 1 is an ordinary bipartite match with capacity[C] = min(15, 15) = 15, so it
+  // places both, and each occurrence must show 13 seats left afterwards.
+  //
+  // The 13 is asserted OBSERVABLY, not by reading an internal: 20 further
+  // campers who ranked NOTHING are in the run, archery is the only offering, so
+  // R3 seats as many of them as capacity allows — exactly 13 per occurrence,
+  // with 7 reported unplaced. The fillers deliberately have no preference: any
+  // camper who ranks archery necessarily ranks the linked CHOICE (the choice is
+  // what the label resolves to), so a ranked filler would be a tier-1 row and
+  // could not stand in for tier-2 demand.
+  //
+  // NOT a tier-1 discriminator, and it is not claimed as one: with one offering
+  // per period these counts are the same whether tier 1 runs or not. It is the
+  // ADR's correctness claim, pinned. The test below it ('keeps a linked choice
+  // whole …') is the one that fails without tier 1.
+  it("places both campers of the ADR worked example and leaves 13 seats in each member", () => {
+    const fillers = Array.from(
+      { length: 20 },
+      (_, i) => `f${String(i).padStart(2, "0")}`
+    );
+    const out = buildElectiveAssignments({
+      campers: [
+        { id: "alice" },
+        { id: "bob" },
+        ...fillers.map((id) => ({ id }))
+      ],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 15),
+        offering("o2", "archery", "a-arch", 15)
+      ],
+      preferences: [pref("alice", "archery", 5), pref("bob", "archery", 5)],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+
+    // Atomic expansion: each linked camper holds the choice in BOTH members.
+    for (const id of ["alice", "bob"]) {
+      expect(
+        out.assignments
+          .filter((a) => a.camper_id === id)
+          .map((a) => a.occurrence_id)
+      ).toEqual(["o1", "o2"]);
+      expect(
+        out.assignments
+          .filter((a) => a.camper_id === id)
+          .every((a) => a.activity_id === "a-arch")
+      ).toBe(true);
+    }
+    // 2 linked + 13 filler = 15, the real capacity, in each member.
+    for (const occurrenceId of ["o1", "o2"]) {
+      expect(
+        out.assignments.filter((a) => a.occurrence_id === occurrenceId).length
+      ).toBe(15);
+      const noCapacity = out.findings.find(
+        (f) => f.kind === "NO_CAPACITY" && f.occurrence_id === occurrenceId
+      );
+      expect(noCapacity.camper_ids.length).toBe(7);
+    }
+  });
+
+  // THE test that distinguishes tier 1 from tier 2 alone — the atomicity
+  // property, on a shape where independent per-occurrence solving provably
+  // SPLITS the linked set between two campers.
+  //
+  // Global ranks mean two occurrences offering the same menu always seat the
+  // same camper, so a split needs the menus to differ: o1 offers archery+gaga,
+  // o2 offers archery+woodworking, all capacity 1. A ranks gaga above
+  // woodworking; B ranks woodworking above gaga. Tier 2 on its own minimises
+  // each period separately and hands o1's archery to B (1+3 beats 2+1... the
+  // cheaper pairing is A→gaga, B→archery) and o2's archery to A — neither
+  // camper ends up holding the linked set. Tier 1 solves the choice first
+  // (capacity min(1,1) = 1), gives the whole set to one camper, and leaves the
+  // other to tier 2.
+  it("keeps a linked choice whole where per-occurrence solving would split it", () => {
+    const base = {
+      campers: [{ id: "a" }, { id: "b" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1),
+        offering("o2", "archery", "a-arch", 1),
+        offering("o2", "woodworking", "a-wood", 1)
+      ],
+      preferences: [
+        pref("a", "archery", 1),
+        pref("a", "gaga", 2),
+        pref("a", "woodworking", 3),
+        pref("b", "archery", 1),
+        pref("b", "woodworking", 2),
+        pref("b", "gaga", 3)
+      ]
+    };
+    const archeryPeriods = (out, camperId) =>
+      out.assignments
+        .filter((x) => x.camper_id === camperId && x.activity_id === "a-arch")
+        .map((x) => x.occurrence_id);
+
+    // Tier 2 alone splits the set: one period each, nobody holds both.
+    const without = buildElectiveAssignments(base);
+    expect(archeryPeriods(without, "a")).toEqual(["o2"]);
+    expect(archeryPeriods(without, "b")).toEqual(["o1"]);
+
+    // Tier 1 keeps it whole.
+    const withTier1 = buildElectiveAssignments({
+      ...base,
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(archeryPeriods(withTier1, "a")).toEqual(["o1", "o2"]);
+    expect(archeryPeriods(withTier1, "b")).toEqual([]);
+  });
+
+  it("emits a tier-1 placement as ordinary solver output, not as a manual locked row", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [pref("c1", "archery", 2, "cell-choice")],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(out.assignments).toHaveLength(2);
+    for (const a of out.assignments) {
+      expect(a.source).toBeUndefined();
+      expect(a.locked).toBeUndefined();
+      expect(a.labelKey).toBe("archery");
+      expect(a.preference_rank).toBe(2);
+      expect(a.flags).toEqual(["NOT_TOP_CHOICE"]);
+    }
+  });
+
+  it("resolves a preference that names choice_id instead of labelKey", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [{ camper_id: "c1", choice_id: "C", rank: 1 }],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(
+      out.assignments.map((a) => [
+        a.occurrence_id,
+        a.activity_id,
+        a.preference_rank
+      ])
+    ).toEqual([
+      ["o1", "a-arch", 1],
+      ["o2", "a-arch", 1]
+    ]);
+  });
+
+  // T265 round-4 (this change) — PER-CELL preference honoring.
+  //
+  // SYSTEM-LEVEL PREDICATE this whole block verifies: for every (camper,
+  // occurrence) the solver places, the rank it costs against is the rank that
+  // camper gave for THAT occurrence if one exists, else their whole-run
+  // fallback (an unscoped preference row), else none — never a rank borrowed
+  // from, or overwritten by, a different cell. Each test below checks a
+  // narrower slice of that predicate (stated per test); none of them alone
+  // is the full claim, and that is called out explicitly rather than implied.
+  describe("per-cell preferences (T265 round 4)", () => {
+    // Narrower predicate checked here: a camper's rank in occurrence A is
+    // independent of their rank in occurrence B for the SAME activity, and
+    // the difference is observable in the PLACEMENT, not only in the label.
+    // A wrong implementation (best-rank-wins / first-seen-wins / last-seen-wins)
+    // feeds ONE constant rank into both cost matrices and still places
+    // correctly by accident when capacity is generous — so capacity here is
+    // tight enough that only the correct rank produces the correct placement.
+    it("costs a camper differently in two occurrences for the same activity, and the difference decides placement", () => {
+      const out = buildElectiveAssignments({
+        campers: [{ id: "c1" }, { id: "c2" }],
+        occurrences: [occ("oA"), occ("oB")],
+        offerings: [
+          offering("oA", "archery", "a-arch", 1),
+          offering("oA", "gaga", "a-gaga", 1),
+          offering("oB", "archery", "a-arch", 1),
+          offering("oB", "gaga", "a-gaga", 1)
+        ],
+        preferences: [
+          // c1 ranks archery #1 in oA, #4 in oB. c2 ranks archery #2 in both
+          // (an unscoped fallback would also give c1 rank #1 in oB, which
+          // would make c1 win oB over c2 — the wrong outcome this pins).
+          {
+            camper_id: "c1",
+            occurrence_id: "oA",
+            labelKey: "archery",
+            rank: 1
+          },
+          {
+            camper_id: "c1",
+            occurrence_id: "oB",
+            labelKey: "archery",
+            rank: 4
+          },
+          pref("c2", "archery", 2),
+          pref("c1", "gaga", 3),
+          pref("c2", "gaga", 3)
+        ]
+      });
+      // With capacity 1 each and c1 costing 4 (worse than c2's 2) in oB, the
+      // solver's own optimum gives oB's archery seat to c2, not c1 — a wrong
+      // rank (shared, or borrowed from oA) would instead seat c1 in both.
+      const byOcc = Object.fromEntries(
+        out.assignments.map((a) => [`${a.occurrence_id}:${a.camper_id}`, a])
+      );
+      expect(byOcc["oA:c1"].activity_id).toBe("a-arch");
+      expect(byOcc["oA:c1"].preference_rank).toBe(1);
+      expect(byOcc["oB:c2"].activity_id).toBe("a-arch");
+      expect(byOcc["oB:c1"].activity_id).toBe("a-gaga");
+      expect(byOcc["oB:c1"].preference_rank).toBe(3);
+    });
+
+    // Narrower predicate: an occurrence-scoped row must never leak into a
+    // DIFFERENT cell as a fallback. c1 ranks archery only in oA; in oB they
+    // must show NO rank for archery (NOT_REQUESTED if placed there).
+    it("never lets an occurrence-scoped rank leak into a different cell", () => {
+      const out = buildElectiveAssignments({
+        campers: [{ id: "c1" }],
+        occurrences: [occ("oA"), occ("oB")],
+        offerings: [
+          offering("oA", "archery", "a-arch", 5),
+          offering("oB", "archery", "a-arch", 5)
+        ],
+        preferences: [
+          { camper_id: "c1", occurrence_id: "oA", labelKey: "archery", rank: 1 }
+        ]
+      });
+      const oA = out.assignments.find((a) => a.occurrence_id === "oA");
+      const oB = out.assignments.find((a) => a.occurrence_id === "oB");
+      expect(oA.preference_rank).toBe(1);
+      expect(oB.preference_rank).toBeNull();
+      expect(oB.flags).toContain("NOT_REQUESTED");
+    });
+
+    // Back-compat: an entirely unscoped preference set (no occurrence_id
+    // anywhere, exactly what every pre-T265 caller passes) must produce the
+    // SAME assignments as before this change — pinned against a captured run.
+    it("produces the same assignments for an entirely unscoped preference set (back-compat)", () => {
+      const input = {
+        campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+        occurrences: [occ("o1"), occ("o2")],
+        offerings: [
+          offering("o1", "archery", "a-arch", 1),
+          offering("o1", "gaga", "a-gaga", 2),
+          offering("o2", "archery", "a-arch", 1),
+          offering("o2", "gaga", "a-gaga", 2)
+        ],
+        preferences: [
+          pref("c1", "archery", 1),
+          pref("c1", "gaga", 2),
+          pref("c2", "archery", 1),
+          pref("c2", "gaga", 2),
+          pref("c3", "gaga", 1)
+        ]
+      };
+      const out = buildElectiveAssignments(input);
+      // Captured from a run of this exact fixture before the per-cell change.
+      expect(
+        out.assignments.map((a) => [
+          a.occurrence_id,
+          a.camper_id,
+          a.activity_id,
+          a.preference_rank
+        ])
+      ).toEqual([
+        ["o1", "c1", "a-arch", 1],
+        ["o1", "c2", "a-gaga", 2],
+        ["o1", "c3", "a-gaga", 1],
+        ["o2", "c1", "a-arch", 1],
+        ["o2", "c2", "a-gaga", 2],
+        ["o2", "c3", "a-gaga", 1]
+      ]);
+      expect(out.findings).toEqual([]);
+    });
+
+    // Mixed mode: a scoped row for cell A plus an unscoped fallback. A must
+    // use the scoped rank; every OTHER cell must use the fallback.
+    it("uses the scoped rank in its cell and the unscoped fallback everywhere else", () => {
+      const out = buildElectiveAssignments({
+        campers: [{ id: "c1" }],
+        occurrences: [occ("oA"), occ("oB"), occ("oC")],
+        offerings: [
+          offering("oA", "archery", "a-arch", 5),
+          offering("oB", "archery", "a-arch", 5),
+          offering("oC", "archery", "a-arch", 5)
+        ],
+        preferences: [
+          pref("c1", "archery", 3), // unscoped fallback
+          { camper_id: "c1", occurrence_id: "oA", labelKey: "archery", rank: 1 } // scoped override for oA only
+        ]
+      });
+      const byOcc = Object.fromEntries(
+        out.assignments.map((a) => [a.occurrence_id, a])
+      );
+      expect(byOcc.oA.preference_rank).toBe(1);
+      expect(byOcc.oB.preference_rank).toBe(3);
+      expect(byOcc.oC.preference_rank).toBe(3);
+    });
+
+    // Tier 1 (linked choices): a member occurrence with no rank is silent —
+    // not a vote against, not UNRANKED_COST, not an exclusion. Partial
+    // coverage must keep the camper a wants() candidate.
+    it("keeps a camper eligible for a linked choice when only one of its member occurrences is ranked", () => {
+      const out = buildElectiveAssignments({
+        campers: [{ id: "c1" }],
+        occurrences: [occ("o1"), occ("o2")],
+        offerings: [
+          offering("o1", "coding", "a-code", 5),
+          offering("o2", "coding", "a-code", 5)
+        ],
+        preferences: [
+          { camper_id: "c1", occurrence_id: "o1", choice_id: "C", rank: 2 }
+          // no row at all for (c1, o2, C)
+        ],
+        choices: [choice("C", "coding")],
+        choiceOfferings: [
+          member("C", "o1", "a-code"),
+          member("C", "o2", "a-code")
+        ]
+      });
+      expect(
+        out.assignments.map((a) => [
+          a.occurrence_id,
+          a.activity_id,
+          a.preference_rank
+        ])
+      ).toEqual([
+        ["o1", "a-code", 2],
+        ["o2", "a-code", 2]
+      ]);
+      expect(
+        out.findings.some((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
+      ).toBe(false);
+    });
+
+    // Tier 1 min-rule: ranked #1 in one member cell, #5 in another — the
+    // MINIMUM (best) rank is used, never the mean (3) and never the
+    // last-seen value (whichever rank happens to appear last in the input
+    // array). Run BOTH input orderings and require the SAME result, so a
+    // last-write-wins implementation (which would flip with order) fails.
+    it("uses the minimum (best) rank across a linked choice's member occurrences, regardless of input order", () => {
+      const base = {
+        campers: [{ id: "c1" }],
+        occurrences: [occ("o1"), occ("o2")],
+        offerings: [
+          offering("o1", "coding", "a-code", 5),
+          offering("o2", "coding", "a-code", 5)
+        ],
+        choices: [choice("C", "coding")],
+        choiceOfferings: [
+          member("C", "o1", "a-code"),
+          member("C", "o2", "a-code")
+        ]
+      };
+      const rowHigh = {
+        camper_id: "c1",
+        occurrence_id: "o1",
+        choice_id: "C",
+        rank: 5
+      };
+      const rowLow = {
+        camper_id: "c1",
+        occurrence_id: "o2",
+        choice_id: "C",
+        rank: 1
+      };
+
+      const forward = buildElectiveAssignments({
+        ...base,
+        preferences: [rowHigh, rowLow]
+      });
+      const reversed = buildElectiveAssignments({
+        ...base,
+        preferences: [rowLow, rowHigh]
+      });
+
+      for (const out of [forward, reversed]) {
+        const row = out.assignments.find((a) => a.occurrence_id === "o1");
+        expect(row.preference_rank).toBe(1);
+        expect(row.preference_rank).not.toBe(5);
+        expect(row.preference_rank).not.toBe(3);
+      }
+    });
+  });
+
+  // Clause 3 — a choice with exactly ONE member offering is not linked, so tier
+  // 1 never sees it and the result must be identical to the same fixture run
+  // with no choice inputs at all.
+  it("leaves a single-member choice entirely to tier 2, byte-identical to no choice input", () => {
+    const base = {
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 2),
+        offering("o1", "gaga", "a-gaga", 2),
+        offering("o2", "archery", "a-arch", 2),
+        offering("o2", "gaga", "a-gaga", 2)
+      ],
+      preferences: [
+        pref("c1", "archery", 1),
+        pref("c1", "gaga", 2),
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 2),
+        pref("c3", "gaga", 1),
+        pref("c3", "archery", 2)
+      ]
+    };
+    const withChoices = buildElectiveAssignments({
+      ...base,
+      choices: [choice("C-arch", "archery"), choice("C-gaga", "gaga")],
+      choiceOfferings: [
+        member("C-arch", "o1", "a-arch"),
+        member("C-gaga", "o2", "a-gaga")
+      ]
+    });
+    expect(withChoices).toEqual(buildElectiveAssignments(base));
+  });
+
+  // UNSUPPORTED_LINKED_CHOICE case (a) — a member names an occurrence the run
+  // does not contain. A data problem, and it reads as one.
+  it("reports UNSUPPORTED_LINKED_CHOICE when a member names an occurrence outside the run", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch", 5)],
+      preferences: [pref("c1", "archery", 1)],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o-gone", "a-arch")
+      ]
+    });
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({
+        kind: "UNSUPPORTED_LINKED_CHOICE",
+        choice_ids: ["C"]
+      })
+    );
+    // Refused from tier 1, not mis-solved: the camper is still placed by tier 2.
+    expect(
+      out.assignments.map((a) => [a.occurrence_id, a.activity_id])
+    ).toEqual([["o1", "a-arch"]]);
+  });
+
+  // Case (b) — the camper does not attend every member occurrence.
+  it("reports UNSUPPORTED_LINKED_CHOICE for a camper ineligible for a member occurrence", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [pref("c1", "archery", 1), pref("c2", "archery", 1)],
+      attendance: { c1: ["o1"], c2: ["o1", "o2"] },
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({
+        kind: "UNSUPPORTED_LINKED_CHOICE",
+        choice_ids: ["C"],
+        camper_ids: ["c1"]
+      })
+    );
+    // ROUND-2 FINDING 1, the other half: c1 attends SOME (o1) but not ALL of
+    // C's periods — genuinely half-eligible, not a sibling-division label
+    // collision — so the finding must still fire, with today's wording. The
+    // round-2 fix (silencing the "attends none of them" case) must not
+    // silence this one too.
+    expect(
+      out.findings.find((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE").message
+    ).toMatch(/do not attend every period it covers/);
+    // c1 falls through to tier 2 and is still placed where they do attend.
+    expect(
+      out.assignments
+        .filter((a) => a.camper_id === "c1")
+        .map((a) => a.occurrence_id)
+    ).toEqual(["o1"]);
+    // c2 is unaffected and still placed atomically across both members.
+    expect(
+      out.assignments
+        .filter((a) => a.camper_id === "c2")
+        .map((a) => a.occurrence_id)
+    ).toEqual(["o1", "o2"]);
+  });
+
+  // Case (c) — the NEW case. Two linked choices sharing a member occurrence is
+  // an implementation limit of the two-tier construction, not bad data.
+  it("refuses two linked choices that share a member occurrence, naming the limitation", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1"), occ("o2"), occ("o3")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5),
+        offering("o2", "gaga", "a-gaga", 5),
+        offering("o3", "gaga", "a-gaga", 5)
+      ],
+      preferences: [pref("c1", "archery", 1), pref("c2", "gaga", 1)],
+      choices: [choice("C1", "archery"), choice("C2", "gaga")],
+      choiceOfferings: [
+        member("C1", "o1", "a-arch"),
+        member("C1", "o2", "a-arch"),
+        member("C2", "o2", "a-gaga"),
+        member("C2", "o3", "a-gaga")
+      ]
+    });
+    const finding = out.findings.find(
+      (f) => f.kind === "UNSUPPORTED_LINKED_CHOICE"
+    );
+    expect(finding.choice_ids).toEqual(["C1", "C2"]);
+    expect(finding.occurrence_id).toBe("o2");
+    expect(finding.message).toMatch(/limit of the scheduler/);
+    // Both choices are refused from tier 1, and their campers fall through to
+    // tier 2 as ordinary per-occurrence rows — never a silently wrong placement.
+    expect(out.assignments.every((a) => a.source === undefined)).toBe(true);
+    expect(
+      out.assignments.filter((a) => a.camper_id === "c1").length
+    ).toBeGreaterThan(0);
+  });
+
+  // Ordinary capacity infeasibility is NOT this finding — it stays an ordinary
+  // unassigned/NO_CAPACITY outcome, per the ADR's scope line.
+  it("does not report UNSUPPORTED_LINKED_CHOICE when a linked choice is merely full", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o2", "archery", "a-arch", 1)
+      ],
+      preferences: [pref("c1", "archery", 1), pref("c2", "archery", 1)],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(
+      out.findings.some((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
+    ).toBe(false);
+    // One camper held the choice atomically; the other competed per occurrence
+    // in tier 2 and found no room, which is the ordinary outcome.
+    expect(out.assignments).toHaveLength(2);
+    expect(out.findings.filter((f) => f.kind === "NO_CAPACITY").length).toBe(2);
+  });
+
+  // HIGH 2 (round-2 review), confirmed by execution before it was fixed: a
+  // camper holding a T246 locked seat at o1 was still placed into a linked
+  // choice whose member set includes o1, so the engine emitted TWO rows for
+  // (camper, o1) — the locked one and a tier-1 one. That breaks constraint 1 in
+  // this module's header, and at the persistence layer it is worse than a
+  // duplicate: deriveElectiveAssignmentId excludes activity_id, so both rows
+  // collide on one derived id and both are skipped, while the camper's OTHER
+  // member row is written normally — half a linked choice, and a consumed seat,
+  // with no finding at all.
+  it("refuses a linked choice for a camper who already holds a locked seat in one of its periods", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "x" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "gaga", "a-gaga", 5),
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [pref("x", "archery", 1)],
+      lockedAssignments: [locked("x", "o1", "a-gaga")],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(out.findings).toContainEqual(
+      expect.objectContaining({
+        kind: "UNSUPPORTED_LINKED_CHOICE",
+        choice_ids: ["C"],
+        camper_ids: ["x"]
+      })
+    );
+    expect(
+      out.findings.find((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE").message
+    ).toMatch(/by hand/);
+    // The lock stands and wins; exactly one row per (camper, occurrence).
+    expect(
+      out.assignments.map((a) => [
+        a.occurrence_id,
+        a.activity_id,
+        a.source ?? "solver"
+      ])
+    ).toEqual([
+      ["o1", "a-gaga", "manual"],
+      ["o2", "a-arch", "solver"]
+    ]);
+  });
+
+  // THE GENERAL INVARIANT, not a case test. Constraint 1 of this module's
+  // header — each (camper, occurrence) gets exactly one activity — is what
+  // protects deriveElectiveAssignmentId's (run, camper, occurrence) key. Its
+  // absence is why HIGH 2 shipped, so it is asserted over a fixture that
+  // combines locks, TWO linked choices and ordinary preferences at once.
+  it("never emits two rows for one (camper, occurrence), across locks and two linked choices", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }, { id: "c4" }],
+      occurrences: [occ("o1"), occ("o2"), occ("o3"), occ("o4")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 2),
+        offering("o1", "craft", "a-craft", 2),
+        offering("o2", "archery", "a-arch", 2),
+        offering("o2", "craft", "a-craft", 2),
+        offering("o3", "boating", "a-boat", 2),
+        offering("o3", "craft", "a-craft", 2),
+        offering("o4", "boating", "a-boat", 2),
+        offering("o4", "craft", "a-craft", 2)
+      ],
+      preferences: ["c1", "c2", "c3", "c4"].flatMap((id) => [
+        pref(id, "archery", 1),
+        pref(id, "boating", 2),
+        pref(id, "craft", 3)
+      ]),
+      lockedAssignments: [
+        locked("c1", "o1", "a-craft"), // a member period, a DIFFERENT activity
+        locked("c2", "o3", "a-boat"), // a member period, the SAME activity
+        locked("c3", "o2", "a-arch") // the other choice's member period
+      ],
+      // Two linked choices, deliberately sharing no occurrence so both survive
+      // case (c) and both actually reach the tier-1 solve.
+      choices: [choice("C-arch", "archery"), choice("C-boat", "boating")],
+      choiceOfferings: [
+        member("C-arch", "o1", "a-arch"),
+        member("C-arch", "o2", "a-arch"),
+        member("C-boat", "o3", "a-boat"),
+        member("C-boat", "o4", "a-boat")
+      ]
+    });
+    const seen = new Set();
+    const duplicates = [];
+    for (const a of out.assignments) {
+      const key = `${a.camper_id}@${a.occurrence_id}`;
+      if (seen.has(key)) duplicates.push(key);
+      seen.add(key);
+    }
+    expect(duplicates).toEqual([]);
+    // Non-vacuous: the fixture must actually exercise tier 1 and the locks.
+    expect(out.assignments.filter((a) => a.locked).length).toBe(3);
+    expect(out.assignments.length).toBeGreaterThan(3);
+  });
+
+  it("is deterministic regardless of the order of choices and choiceOfferings", () => {
+    const base = {
+      campers: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      occurrences: [occ("o1"), occ("o2"), occ("o3")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 2),
+        offering("o2", "archery", "a-arch", 1),
+        offering("o2", "gaga", "a-gaga", 2),
+        offering("o3", "archery", "a-arch", 2),
+        offering("o3", "gaga", "a-gaga", 2)
+      ],
+      preferences: [
+        pref("c1", "archery", 1),
+        pref("c1", "gaga", 2),
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 2),
+        pref("c3", "gaga", 1),
+        pref("c3", "archery", 2)
+      ]
+    };
+    const choices = [choice("C-arch", "archery"), choice("C-gaga", "gaga")];
+    const offeringsOfChoices = [
+      member("C-arch", "o1", "a-arch"),
+      member("C-arch", "o2", "a-arch"),
+      member("C-gaga", "o1", "a-gaga"),
+      member("C-gaga", "o3", "a-gaga")
+    ];
+    const first = buildElectiveAssignments({
+      ...base,
+      choices,
+      choiceOfferings: offeringsOfChoices
+    });
+    expect(first.assignments.length).toBeGreaterThan(0);
+    const reversed = buildElectiveAssignments({
+      ...base,
+      campers: [...base.campers].reverse(),
+      preferences: [...base.preferences].reverse(),
+      choices: [...choices].reverse(),
+      choiceOfferings: [...offeringsOfChoices].reverse()
+    });
+    expect(reversed).toEqual(first);
+  });
+});
+
+// T301 (docs/adr/2026-09-29-linked-elective-bundles.md D4) — the rank
+// collision. A bundle serving more than one tier expands into one
+// elective_choices row PER TIER (D3), and every tier's row deliberately
+// shares the bundle's one name (D6) so a camper's sheet-recorded preference
+// matches regardless of division. `choiceByLabelKey` keeps only the
+// LOWEST-id choice per label, so BEFORE the fix a labelKey-only preference's
+// rank is recorded against only that one choice's id — every OTHER
+// same-labelled choice's `choiceRankMinOverMembers` lookup returns null for
+// every camper, and tier 1 never even attempts to place them, silently,
+// with no UNSUPPORTED_LINKED_CHOICE finding (nothing is ever added to
+// `wanted` for that column, so `exclude()` is never called).
+//
+// This is deliberately built on the SAME crossed-preference construction as
+// "keeps a linked choice whole where per-occurrence solving would split it"
+// above: a single, uncontested camper cannot distinguish "tier 1 placed this
+// atomically" from "tier 2 placed it period-by-period and got lucky" (that
+// test's own comment says so), so division 2 needs two competing campers
+// whose per-occurrence menus differ, or a coincidental tier-2 placement
+// would mask the very defect this test exists to catch.
+describe("two same-labelled per-tier linked choices (T301, ADR D4 — the rank-collision fix)", () => {
+  // Division 1's choice id ('CA') sorts below division 2's ('CB'), so CA is
+  // the id `choiceByLabelKey` keeps for every labelKey-only 'archery'
+  // preference — including division 2's — before the fix.
+  const base = {
+    campers: [{ id: "d1" }, { id: "d2x" }, { id: "d2y" }],
+    occurrences: [occ("oDa"), occ("oDb"), occ("o2a"), occ("o2b")],
+    offerings: [
+      offering("oDa", "archery", "a-arch", 5),
+      offering("oDb", "archery", "a-arch", 5),
+      offering("o2a", "archery", "a-arch", 1),
+      offering("o2a", "gaga", "a-gaga", 1),
+      offering("o2b", "archery", "a-arch", 1),
+      offering("o2b", "woodworking", "a-wood", 1)
+    ],
+    // Division-scoped attendance: division 1 only attends its own periods,
+    // division 2 only attends its own — two tiers' periods never overlap.
+    attendance: {
+      d1: ["oDa", "oDb"],
+      d2x: ["o2a", "o2b"],
+      d2y: ["o2a", "o2b"]
+    },
+    // OCCURRENCE-SCOPED preferences throughout (T265's real per-cell shape),
+    // including d1's. A whole-run FALLBACK row (no occurrence_id) broadcasts
+    // to every same-labelled choice's `entry.fallback`, which
+    // choiceRankMinOverMembers folds into ANY member occurrence regardless of
+    // attendance — so an unscoped 'archery' preference bleeds into the OTHER
+    // division's choice too. THIS WAS A BUG (round-2 finding 1): the bled-in
+    // camper attends none of the other division's periods, and the tier-1
+    // exclusion logic used to accuse them of asking for that choice and
+    // skipping a period — a false, if confident, finding. It is fixed below
+    // (see "raises no finding against a sibling division's choice…"), which
+    // exercises the unscoped shape directly. Every preference in THIS fixture
+    // stays scoped regardless, to keep this fixture isolated to the
+    // rank-collision property it was built to test.
+    preferences: [
+      { camper_id: "d1", occurrence_id: "oDa", labelKey: "archery", rank: 1 },
+      { camper_id: "d1", occurrence_id: "oDb", labelKey: "archery", rank: 1 },
+      { camper_id: "d2x", occurrence_id: "o2a", labelKey: "archery", rank: 1 },
+      { camper_id: "d2x", occurrence_id: "o2a", labelKey: "gaga", rank: 2 },
+      { camper_id: "d2x", occurrence_id: "o2b", labelKey: "archery", rank: 1 },
+      {
+        camper_id: "d2x",
+        occurrence_id: "o2b",
+        labelKey: "woodworking",
+        rank: 3
+      },
+      { camper_id: "d2y", occurrence_id: "o2a", labelKey: "archery", rank: 1 },
+      { camper_id: "d2y", occurrence_id: "o2a", labelKey: "gaga", rank: 3 },
+      { camper_id: "d2y", occurrence_id: "o2b", labelKey: "archery", rank: 1 },
+      {
+        camper_id: "d2y",
+        occurrence_id: "o2b",
+        labelKey: "woodworking",
+        rank: 2
+      }
+    ],
+    choices: [choice("CA", "archery"), choice("CB", "archery")],
+    choiceOfferings: [
+      member("CA", "oDa", "a-arch"),
+      member("CA", "oDb", "a-arch"),
+      member("CB", "o2a", "a-arch"),
+      member("CB", "o2b", "a-arch")
+    ]
+  };
+
+  const archeryPeriods = (out, camperId) =>
+    out.assignments
+      .filter((a) => a.camper_id === camperId && a.activity_id === "a-arch")
+      .map((a) => a.occurrence_id);
+
+  it("division 1 (the id-collision's accidental winner) is placed atomically either way", () => {
+    const out = buildElectiveAssignments(base);
+    expect(archeryPeriods(out, "d1")).toEqual(["oDa", "oDb"]);
+  });
+
+  // THE FIX: exactly one of division 2's campers holds archery in BOTH of
+  // its own periods together — the same atomic, all-or-nothing guarantee
+  // division 1 gets, even though division 2's choice (CB) is not the
+  // label's id-winner. BEFORE the fix, neither camper ever reaches tier 1 at
+  // all (CB's `wanted` set is empty), so tier 2 places them independently
+  // per occurrence and the crossed gaga/woodworking preferences provably
+  // SPLIT archery between the two of them — nobody holds both periods, and
+  // nothing says why.
+  it("gives one of division 2's campers the atomic guarantee — before the fix, neither camper does", () => {
+    const out = buildElectiveAssignments(base);
+    const bothTogether =
+      archeryPeriods(out, "d2x").length === 2 ||
+      archeryPeriods(out, "d2y").length === 2;
+    expect(bothTogether).toBe(true);
+    // A length of exactly 1 IS the split — the shape the bug produces — and
+    // it must not survive the fix for either camper.
+    expect(archeryPeriods(out, "d2x").length).not.toBe(1);
+    expect(archeryPeriods(out, "d2y").length).not.toBe(1);
+  });
+
+  // Silence is the other half of the bug: tier 1 never even attempts
+  // division 2's choice before the fix, so no UNSUPPORTED_LINKED_CHOICE
+  // finding ever names CB — the "no finding" ADR D4 describes. After the
+  // fix, CB is handled by tier 1 exactly like CA and needs no such finding
+  // either (both campers are legitimately eligible), so this holds on both
+  // sides of the fix — it is the SPLIT above that discriminates, not this.
+  it("never raises UNSUPPORTED_LINKED_CHOICE for either division in this fixture", () => {
+    const out = buildElectiveAssignments(base);
+    expect(
+      out.findings.filter((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
+    ).toEqual([]);
+  });
+
+  // ROUND-2 FINDING 1 (HIGH): the false positive the comment above warned
+  // about, now fixed rather than merely fenced off. d1 here carries an
+  // UNSCOPED whole-run fallback preference — the ordinary shape most real
+  // sheets use — which D4's broadcast correctly folds into BOTH divisions'
+  // same-labelled choice (CA and CB). d1 attends NONE of CB's periods (they
+  // are in division 1, not 2), so before this fix they landed in CB's
+  // `absent` set and the tier-1 exclusion logic accused them of asking for
+  // CB's archery and skipping a period — a confident, specific, and entirely
+  // wrong finding, since d1 never asked for CB at all; the label match was
+  // incidental. Excluding them from CB is still correct (they cannot be
+  // given it), but no finding should name them for it.
+  it("raises no finding against a sibling division's choice for a camper who attends none of its periods (round-2 finding 1)", () => {
+    const out = buildElectiveAssignments({
+      ...base,
+      preferences: [
+        pref("d1", "archery", 1), // unscoped — broadcasts to CA AND CB
+        ...base.preferences.filter((p) => p.camper_id !== "d1")
+      ]
+    });
+    expect(
+      out.findings.filter((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE")
+    ).toEqual([]);
+    // Still placed atomically in their OWN division's choice.
+    expect(archeryPeriods(out, "d1")).toEqual(["oDa", "oDb"]);
+  });
+
+  // A LATENT gap beyond the ADR's own stated caveat, found by execution while
+  // implementing D4. The ADR's "what this fix cannot see" note covers an
+  // EXPLICIT, VALID (but wrong) choice_id — deliberately left untouched,
+  // since choice_id resolution is exactly-one-match by construction. This is
+  // a DIFFERENT shape: a choice_id that is PRESENT but STALE — it resolves to
+  // nothing in this run's `choices` (exactly what a re-solve after choices
+  // were re-derived can produce) — riding alongside a labelKey on the same
+  // preference row. The resolution chain's `ch` variable silently falls
+  // through to the labelKey match for a stale choice_id, but
+  // `p.choice_id != null && ch` cannot tell "resolved DIRECTLY by choice_id"
+  // apart from "fell through to labelKey while a stale choice_id happened to
+  // be present" — so it wrongly takes the single-choice branch instead of
+  // broadcasting, reproducing the exact collision D4 exists to fix.
+  it("broadcasts a labelKey-resolved rank even when a STALE, non-resolving choice_id rides along on the same preference row", () => {
+    const out = buildElectiveAssignments({
+      ...base,
+      preferences: [
+        { camper_id: "d1", occurrence_id: "oDa", labelKey: "archery", rank: 1 },
+        { camper_id: "d1", occurrence_id: "oDb", labelKey: "archery", rank: 1 },
+        // d2x/d2y each carry a STALE choice_id (not in `choices` below) PLUS
+        // their real labelKey — the shape a re-solve can produce.
+        {
+          camper_id: "d2x",
+          occurrence_id: "o2a",
+          choice_id: "stale-id",
+          labelKey: "archery",
+          rank: 1
+        },
+        { camper_id: "d2x", occurrence_id: "o2a", labelKey: "gaga", rank: 2 },
+        {
+          camper_id: "d2x",
+          occurrence_id: "o2b",
+          choice_id: "stale-id",
+          labelKey: "archery",
+          rank: 1
+        },
+        {
+          camper_id: "d2x",
+          occurrence_id: "o2b",
+          labelKey: "woodworking",
+          rank: 3
+        },
+        {
+          camper_id: "d2y",
+          occurrence_id: "o2a",
+          choice_id: "stale-id",
+          labelKey: "archery",
+          rank: 1
+        },
+        { camper_id: "d2y", occurrence_id: "o2a", labelKey: "gaga", rank: 3 },
+        {
+          camper_id: "d2y",
+          occurrence_id: "o2b",
+          choice_id: "stale-id",
+          labelKey: "archery",
+          rank: 1
+        },
+        {
+          camper_id: "d2y",
+          occurrence_id: "o2b",
+          labelKey: "woodworking",
+          rank: 2
+        }
+      ]
+    });
+    const bothTogether =
+      archeryPeriods(out, "d2x").length === 2 ||
+      archeryPeriods(out, "d2y").length === 2;
+    expect(bothTogether).toBe(true);
+  });
+});
+
+// ---- T247 clause 7: the 100-camper fixture's REPORTED repeat distribution.
+//
+// Owner ruling Q3 (2026-09-23) scores repeats independently per occurrence and
+// reserves the right to revisit AFTER SEEING REAL OUTPUT. This block exists to
+// make that revisit trigger observable: the figure is PRINTED on every ordinary
+// `vitest run`, not merely computable by hand from an assignment dump. If it is
+// not reported, the ruling silently becomes permanent.
+//
+// Camper names are obviously synthetic (Camper 001, …) — owner ruling Q4, real
+// camper data stays refused until at-rest encryption ships.
+describe("buildElectiveAssignments — 100-camper repeat distribution (Q3 revisit trigger)", () => {
+  const CAMPERS = 100;
+  const OCCURRENCES = 25;
+  const ACTIVITIES = 25;
+  const PER_OCCURRENCE = 4;
+
+  const labelOf = (i) => `act${String(i).padStart(2, "0")}`;
+  const activityOf = (i) => `a-${labelOf(i)}`;
+  // Two deliberately scarce activities, so the fixture also produces campers
+  // who ranked something and received none of it — the other half of the Q3
+  // figure. 104 seats per occurrence still seats all 100 campers.
+  const capacityOf = (i) => (i < 2 ? 2 : 50);
+
+  // Deterministic per-camper preference order — a fixed LCG, no Math.random,
+  // so the printed figure is the same on every run and in CI.
+  const permutation = (seed) => {
+    const order = Array.from({ length: ACTIVITIES }, (_, i) => i);
+    let s = seed;
+    for (let i = order.length - 1; i > 0; i--) {
+      s = (s * 1103515245 + 12345) & 0x7fffffff;
+      const j = s % (i + 1);
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    return order;
+  };
+
+  const buildFixture = () => {
+    const campers = Array.from({ length: CAMPERS }, (_, i) => ({
+      id: `camper-${String(i + 1).padStart(3, "0")}`,
+      display_name: `Camper ${String(i + 1).padStart(3, "0")}`
+    }));
+    const occurrences = Array.from({ length: OCCURRENCES }, (_, i) =>
+      occ(`occ-${String(i).padStart(2, "0")}`)
+    );
+    const offerings = [];
+    for (let o = 0; o < OCCURRENCES; o++) {
+      for (let k = 0; k < PER_OCCURRENCE; k++) {
+        const a = (o * PER_OCCURRENCE + k) % ACTIVITIES;
+        offerings.push(
+          offering(occurrences[o].id, labelOf(a), activityOf(a), capacityOf(a))
+        );
+      }
+    }
+    const preferences = [];
+    campers.forEach((c, i) => {
+      permutation(i + 1).forEach((a, rank) =>
+        preferences.push(pref(c.id, labelOf(a), rank + 1))
+      );
+    });
+    const choices = Array.from({ length: ACTIVITIES }, (_, i) =>
+      choice(`choice-${labelOf(i)}`, labelOf(i))
+    );
+    // One multi-member linked choice: the first two occurrences that offer
+    // act10, so tier 1 actually runs on this fixture.
+    const linkedActivity = 10;
+    const linkedOccurrences = offerings
+      .filter((o) => o.activity_id === activityOf(linkedActivity))
+      .map((o) => o.occurrence_id)
+      .sort()
+      .slice(0, 2);
+    expect(linkedOccurrences).toHaveLength(2);
+    const choiceOfferings = linkedOccurrences.map((occurrenceId) => ({
+      choice_id: `choice-${labelOf(linkedActivity)}`,
+      occurrence_id: occurrenceId,
+      activity_id: activityOf(linkedActivity)
+    }));
+    return {
+      campers,
+      occurrences,
+      offerings,
+      preferences,
+      choices,
+      choiceOfferings
+    };
+  };
+
+  // Exists to satisfy the Q3 revisit trigger: the owner accepted per-occurrence
+  // independent scoring on the condition that the real distribution be visible.
+  //
+  // THE CROSS-TAB IS KEYED ON THE CAMPER, not on an activity set. Round-2
+  // review caught the first version keying on activities — it filtered the whole
+  // fixture's shut-out list by "activities some camper anywhere reached k", sets
+  // that overlap heavily across k, so the x2 row printed the entire overall
+  // total and the column summed to 2.6x the truth. The ruling's words are "how
+  // many ranked-but-unplaced campers that COINCIDED with", and a camper is the
+  // thing that coincides: a row's shut-out figures are held by that row's own
+  // campers and by nobody else.
+  //
+  // Rows OVERLAP by construction — one camper can hold one activity twice and
+  // another four times, so they appear in two rows. That is disclosed in the
+  // printed note rather than hidden behind a tidy partition that would lie.
+  function summariseRepeats({ assignments, campers, preferences, offerings }) {
+    const activityByLabel = new Map(
+      offerings.map((o) => [o.labelKey, o.activity_id])
+    );
+    const counts = new Map(); // `${camperId}\u0000${activityId}` -> occurrences held
+    for (const a of assignments) {
+      const key = `${a.camper_id}\u0000${a.activity_id}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const shutOut = []; // ranked the activity, received none of its occurrences
+    for (const p of preferences) {
+      const activityId = activityByLabel.get(p.labelKey);
+      if (!activityId) continue;
+      if (!counts.has(`${p.camper_id}\u0000${activityId}`))
+        shutOut.push({ camper_id: p.camper_id, activity_id: activityId });
+    }
+    const levels = new Map();
+    for (const [key, k] of counts) {
+      if (k < 2) continue;
+      const [camperId] = key.split("\u0000");
+      if (!levels.has(k)) levels.set(k, { pairs: 0, campers: new Set() });
+      const bucket = levels.get(k);
+      bucket.pairs += 1;
+      bucket.campers.add(camperId);
+    }
+    const rows = [...levels.keys()]
+      .sort((a, b) => a - b)
+      .map((k) => {
+        const bucket = levels.get(k);
+        const mine = shutOut.filter((s) => bucket.campers.has(s.camper_id));
+        return {
+          repeats: k,
+          pairs: bucket.pairs,
+          campers: bucket.campers.size,
+          shutOutCampers: new Set(mine.map((s) => s.camper_id)).size,
+          shutOutPairs: mine.length
+        };
+      });
+    return {
+      rows,
+      totalAssignments: assignments.length,
+      totalCounted: [...counts.values()].reduce((s, k) => s + k, 0),
+      totalShutOut: shutOut.length,
+      campersShutOutAtLeastOnce: new Set(shutOut.map((s) => s.camper_id)).size,
+      totalCampers: campers.length
+    };
+  }
+
+  it("reports the per-camper repeat distribution and the ranked-but-unplaced cross-tab", () => {
+    const fixture = buildFixture();
+    const startedAt = Date.now();
+    const out = buildElectiveAssignments(fixture);
+    const elapsedMs = Date.now() - startedAt;
+    const summary = summariseRepeats({
+      ...fixture,
+      assignments: out.assignments
+    });
+
+    const lines = [
+      "",
+      "T247 / owner ruling Q3 — per-camper repeat distribution",
+      `  fixture: ${summary.totalCampers} campers, ${OCCURRENCES} occurrences, ${PER_OCCURRENCE} offerings each, ${ACTIVITIES} rankable choices (1 linked, 2 members)`,
+      `  solve wall-clock: ${elapsedMs}ms; ${summary.totalAssignments} assignments`,
+      "",
+      "  THE ROWS OVERLAP. One camper can hold one activity 2x and another 4x, so the same",
+      "  camper is counted in more than one row. The rows are not a partition of the campers",
+      "  and the columns do not sum to the overall totals printed underneath them.",
+      "",
+      "  repeats | pairs | campers | shutOutCampers | shutOutPairs",
+      "  --------+-------+---------+----------------+-------------",
+      ...summary.rows.map(
+        (r) =>
+          `  ${String(r.repeats).padStart(7)} | ${String(r.pairs).padStart(5)} | ${String(r.campers).padStart(7)} | ${String(r.shutOutCampers).padStart(14)} | ${String(r.shutOutPairs).padStart(12)}`
+      ),
+      "",
+      "  What each column counts:",
+      "    repeats         occurrences of ONE activity a camper received, exactly this many",
+      "    pairs           (camper, activity) pairs held exactly `repeats` times",
+      "    campers         distinct campers holding at least one such pair",
+      "    shutOutCampers  of THOSE campers, how many received none of some activity they ranked",
+      "    shutOutPairs    (camper, activity) shut-out pairs held by THOSE campers",
+      "",
+      "  Overall totals — NOT a sum of the rows above, because the rows overlap:",
+      `    ranked-but-unplaced (camper, activity) pairs: ${summary.totalShutOut}`,
+      `    campers shut out of at least one activity they ranked: ${summary.campersShutOutAtLeastOnce} of ${summary.totalCampers}`,
+      ""
+    ];
+    // WRITTEN STRAIGHT TO STDOUT, NOT console.log — this is load-bearing.
+    //
+    // vitest intercepts `console.log` and hands it to the reporter, which drops
+    // it entirely when stdout is not a TTY. Measured in this repo with a
+    // throwaway test: redirect a run to a file and a `console.log` marker is
+    // absent from the log while a `process.stdout.write` marker is present. So
+    // the table below appeared on an interactive terminal and was invisible in
+    // CI, in a redirected run, and in any captured `npm run verify` output —
+    // which is every way a reader other than the test's author would meet it.
+    //
+    // This is the Q3 REVISIT TRIGGER, not debug logging. Owner ruling Q3
+    // accepted per-occurrence repeat scoring on the condition that the real
+    // distribution be observable; a figure that only renders on one developer's
+    // screen makes the ruling permanent by omission, which is exactly the
+    // failure the ticket warns about. It must survive a captured run.
+    //
+    // Deliberately NOT guarded by a stdout spy — a test asserting its own
+    // stdout is self-referential and would pass on a spy while the real stream
+    // stayed empty. This comment is the guard.
+    process.stdout.write(lines.join("\n") + "\n");
+
+    // Non-vacuous: the fixture must genuinely produce repeats, or it is not
+    // exercising the behaviour the owner ruled on.
+    expect(summary.rows.length).toBeGreaterThan(0);
+    expect(summary.rows.some((r) => r.pairs > 0)).toBe(true);
+    // And the halves of the figure must reconcile against the assignment count.
+    expect(summary.totalCounted).toBe(summary.totalAssignments);
+    expect(summary.totalShutOut).toBeGreaterThan(0);
+
+    // TRIPWIRE for the round-2 HIGH 1 defect: the per-row shut-out figure used
+    // to be the WHOLE fixture's shut-out list filtered by "activities some
+    // camper anywhere reached k". Those activity sets are not disjoint across k,
+    // so the x2 row printed the entire overall total and the column summed to
+    // 2.6x the truth. A row's cohort is a strict subset of the campers, so its
+    // figure must be strictly smaller than the overall total.
+    const partialCohorts = summary.rows.filter(
+      (r) => r.campers < summary.totalCampers
+    );
+    expect(partialCohorts.length).toBeGreaterThan(0);
+    for (const r of partialCohorts) {
+      expect(r.shutOutPairs).toBeLessThan(summary.totalShutOut);
+      expect(r.shutOutCampers).toBeLessThanOrEqual(r.campers);
+    }
+  });
+});
+
+// T318 round 2 — NOT_TOP_CHOICE is a fabricated ordinal unless the WINNING
+// preference row carries positive evidence of ordering (`rank_kind` exactly
+// 'cell-choice' or 'ordered-fallback'). Round 1 closed this on the committed-run
+// display surfaces (camperElectiveWeek's rankLabel); this closes the same
+// defect at its source, the engine that emits the flag both display surfaces
+// read. Two emission sites, tier 2 (rankAt) and tier 1 linked-choice
+// (choiceRankMinOverMembers), covered separately below because they are
+// independent code paths.
+describe("buildElectiveAssignments — NOT_TOP_CHOICE requires positive ordering evidence (T318 round 2)", () => {
+  it("tier 2: does not flag an unordered-set camper bumped to rank 2", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1)
+      ],
+      preferences: [
+        pref("c1", "archery", 1, "unordered-set"),
+        pref("c1", "gaga", 2, "unordered-set"),
+        pref("c2", "archery", 1, "unordered-set"),
+        pref("c2", "gaga", 2, "unordered-set")
+      ]
+    });
+    const bumped = out.assignments.find((a) => a.preference_rank === 2);
+    expect(bumped.flags).not.toContain("NOT_TOP_CHOICE");
+  });
+
+  it("tier 1 (linked choice): does not flag an unordered-set camper whose winning rank is 2", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [pref("c1", "archery", 2, "unordered-set")],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(out.assignments).toHaveLength(2);
+    for (const a of out.assignments) expect(a.flags).toEqual([]);
+  });
+
+  it("tier 2: an ordered-fallback camper bumped to rank 2 is still flagged", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1)
+      ],
+      preferences: [
+        pref("c1", "archery", 1, "ordered-fallback"),
+        pref("c1", "gaga", 2, "ordered-fallback"),
+        pref("c2", "archery", 1, "ordered-fallback"),
+        pref("c2", "gaga", 2, "ordered-fallback")
+      ]
+    });
+    const bumped = out.assignments.find((a) => a.preference_rank === 2);
+    expect(bumped.flags).toContain("NOT_TOP_CHOICE");
+  });
+
+  it("safe default: a preference with no rank_kind at all does not flag NOT_TOP_CHOICE", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1)
+      ],
+      preferences: [
+        pref("c1", "archery", 1),
+        pref("c1", "gaga", 2),
+        pref("c2", "archery", 1),
+        pref("c2", "gaga", 2)
+      ]
+    });
+    const bumped = out.assignments.find((a) => a.preference_rank === 2);
+    expect(bumped.flags).not.toContain("NOT_TOP_CHOICE");
+  });
+
+  // THE FOLD (i) — a strictly better rank arriving from a DIFFERENT row carries
+  // that row's kind with it, not the kind of the row seen first. Two whole-run
+  // fallback rows for the same (camper, labelKey): the first names #5 as an
+  // unordered set, the second corrects it to #2 as an ordered cell-choice. The
+  // held value after both is folded (`better`) must be the SECOND row's kind,
+  // because it is the row that actually won.
+  it("fold: the kind travels with the winning (lower) rank from a different row", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch", 1)],
+      preferences: [
+        {
+          camper_id: "c1",
+          labelKey: "archery",
+          rank: 5,
+          rank_kind: "unordered-set"
+        },
+        {
+          camper_id: "c1",
+          labelKey: "archery",
+          rank: 2,
+          rank_kind: "cell-choice"
+        }
+      ]
+    });
+    const a = out.assignments.find((x) => x.camper_id === "c1");
+    expect(a.preference_rank).toBe(2);
+    expect(a.flags).toContain("NOT_TOP_CHOICE");
+  });
+
+  // THE FOLD (ii) — owner ruling 2026-09-29: a TIE (equal rank, differing kinds)
+  // collapses to "no positive evidence", the safe direction. A camper holding
+  // rank 2 from both an ordered and an unordered row has not unambiguously
+  // expressed a second choice.
+  it("fold: a tie between differing kinds at the same rank does not flag NOT_TOP_CHOICE", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1")],
+      offerings: [offering("o1", "archery", "a-arch", 1)],
+      preferences: [
+        {
+          camper_id: "c1",
+          labelKey: "archery",
+          occurrence_id: "o1",
+          rank: 2,
+          rank_kind: "unordered-set"
+        },
+        {
+          camper_id: "c1",
+          labelKey: "archery",
+          occurrence_id: "o1",
+          rank: 2,
+          rank_kind: "cell-choice"
+        }
+      ]
+    });
+    const a = out.assignments.find((x) => x.camper_id === "c1");
+    expect(a.preference_rank).toBe(2);
+    expect(a.flags).not.toContain("NOT_TOP_CHOICE");
+  });
+
+  // Red Hat MEDIUM-HIGH — the tie rule's FIRST version collapsed to
+  // "no evidence" whenever the two kinds differed AS STRINGS, which is right
+  // for ordered-vs-unordered but wrong for ordered-vs-ordered: 'cell-choice'
+  // and 'ordered-fallback' are BOTH positive evidence, so that version also
+  // suppressed a REAL ordinal here — the opposite defect from the one this
+  // ticket closes. Reachable specifically on the TIER-1 LINKED-CHOICE path:
+  // `choiceBestOverMembers` seeds `best` from the camper's whole-run fallback
+  // row (labelKey-broadcast, no occurrence_id, `rank_kind: 'ordered-fallback'`)
+  // and folds in a cell-scoped row for one member occurrence
+  // (`rank_kind: 'cell-choice'`) at the SAME rank — a tie between two rows
+  // that both carry ordering evidence but are different literal kinds. Tier 2
+  // cannot reach this (`bestAt` overrides the fallback rather than folding
+  // it), so this fixture must go through `choiceOfferings`/`choices`, not a
+  // bare tier-2 preference.
+  it("fold: an ordered-vs-ordered tie (tier 1) still emits NOT_TOP_CHOICE, not just ordered-vs-unordered", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [
+        // Whole-run fallback (no occurrence_id) — broadcasts to every choice
+        // sharing this labelKey, same as a real ETL row with no cell scope.
+        {
+          camper_id: "c1",
+          labelKey: "archery",
+          rank: 2,
+          rank_kind: "ordered-fallback"
+        },
+        // A cell-scoped row for ONE member occurrence, same rank, different kind.
+        {
+          camper_id: "c1",
+          labelKey: "archery",
+          occurrence_id: "o1",
+          rank: 2,
+          rank_kind: "cell-choice"
+        }
+      ],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    });
+    expect(out.assignments).toHaveLength(2);
+    for (const a of out.assignments) {
+      expect(a.preference_rank).toBe(2);
+      expect(a.flags).toEqual(["NOT_TOP_CHOICE"]);
+    }
+  });
+
+  // Code Reviewer HIGH (round 2 of round 2) — `elective_preferences.rank` is a
+  // nullable INTEGER (electron/db/schema.sql), so a stored preference row can
+  // legitimately hold `rank: null` for one member occurrence of a linked
+  // choice while another member occurrence holds a real rank. Before this fix,
+  // `choiceBestOverMembers` read that stored `null` off `entry.byOccurrence`
+  // and dereferenced `.rank` on it directly, crashing the ENTIRE solve for
+  // every camper rather than degrading just this one camper's fold — strictly
+  // worse than the pre-T318 behaviour (a silent wrong answer). A null-rank row
+  // expresses no preference and must be excluded from the fold outright: it
+  // must not win, and it must not carry its kind into whatever does win.
+  it("does not crash when one member occurrence of a linked choice holds a null-rank row, and the ranked row still wins", () => {
+    const args = {
+      campers: [{ id: "c1" }],
+      occurrences: [occ("o1"), occ("o2")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 5),
+        offering("o2", "archery", "a-arch", 5)
+      ],
+      preferences: [
+        {
+          camper_id: "c1",
+          choice_id: "C",
+          occurrence_id: "o1",
+          rank: null,
+          rank_kind: null
+        },
+        {
+          camper_id: "c1",
+          choice_id: "C",
+          occurrence_id: "o2",
+          rank: 2,
+          rank_kind: "cell-choice"
+        }
+      ],
+      choices: [choice("C", "archery")],
+      choiceOfferings: [
+        member("C", "o1", "a-arch"),
+        member("C", "o2", "a-arch")
+      ]
+    };
+    let out;
+    expect(() => {
+      out = buildElectiveAssignments(args);
+    }).not.toThrow();
+    expect(out.assignments).toHaveLength(2);
+    for (const a of out.assignments) {
+      expect(a.preference_rank).toBe(2);
+      expect(a.flags).toEqual(["NOT_TOP_CHOICE"]);
+    }
+  });
+
+  // PLACEMENT IDENTITY — rank_kind must never change WHO gets WHAT. A fixture
+  // with a unique min-cost optimum (no ties, so there is only one correct
+  // placement) hand-verified below: c1's only cheap option is archery (cost 1
+  // vs 5 for gaga), c2's is gaga (cost 1 vs 2 for archery); swapping either
+  // camper strictly increases total cost, so this is the one optimal
+  // assignment regardless of which rank_kind each preference carries. The
+  // expected array is a literal computed by hand from the cost matrix, not by
+  // calling buildElectiveAssignments — comparing a function's output to itself
+  // proves nothing.
+  it("placement identity: rank_kind affects flags only, never who gets what", () => {
+    const out = buildElectiveAssignments({
+      campers: [{ id: "c1" }, { id: "c2" }],
+      occurrences: [occ("o1")],
+      offerings: [
+        offering("o1", "archery", "a-arch", 1),
+        offering("o1", "gaga", "a-gaga", 1)
+      ],
+      preferences: [
+        pref("c1", "archery", 1, "cell-choice"),
+        pref("c1", "gaga", 5, "unordered-set"),
+        pref("c2", "archery", 2, "unordered-set"),
+        pref("c2", "gaga", 1, "cell-choice")
+      ]
+    });
+    const placements = out.assignments.map((a) => ({
+      camper_id: a.camper_id,
+      occurrence_id: a.occurrence_id,
+      labelKey: a.labelKey,
+      activity_id: a.activity_id,
+      preference_rank: a.preference_rank
+    }));
+    expect(placements).toEqual([
+      {
+        camper_id: "c1",
+        occurrence_id: "o1",
+        labelKey: "archery",
+        activity_id: "a-arch",
+        preference_rank: 1
+      },
+      {
+        camper_id: "c2",
+        occurrence_id: "o1",
+        labelKey: "gaga",
+        activity_id: "a-gaga",
+        preference_rank: 1
+      }
+    ]);
+  });
+});
