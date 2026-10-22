@@ -20,6 +20,17 @@ public with sharing class ScheduleGridFrameRules {
     }
   }
 
+  /**
+   * A stored row's cells. With no time blocks a row has none (a special day's or event's plan
+   * before its first time block, ADR 0014 choice 16), though its text is the same as one cell's.
+   */
+  public static List<String> cellsOf(String row, Integer blockCount) {
+    if (blockCount == 0 && String.isEmpty(row)) {
+      return new List<String>();
+    }
+    return row.split(',', -1);
+  }
+
   private static void checkBlock(ScheduleGrid.Block block, Integer position) {
     if (!isNamedRecord(block.id, block.name)) {
       throw new ScheduleGridRules.GridException(

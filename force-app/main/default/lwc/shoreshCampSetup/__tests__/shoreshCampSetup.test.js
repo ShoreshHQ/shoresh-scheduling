@@ -17,12 +17,16 @@ import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
+import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** Every call an Apex mock got, as the screen sent it, with bare names (bareRecord checks). */
 const sentTo = (mock) => mock.mock.calls.map((call) => bareRecord(call[0]));
 
 const apex = () => ({ default: jest.fn() });
+jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
   virtual: true
 });
@@ -3996,6 +4000,57 @@ describe("c-shoresh-camp-setup", () => {
       expect(details.openItemId).toBeNull();
       expect(carnival.getAttribute("aria-expanded")).toBe("false");
       expect(events.shadowRoot.activeElement).toBe(carnival);
+    });
+
+    it("Open schedule opens the item's schedule in the list's place; back finds the list as it was", async () => {
+      const element = await renderSpecial();
+      openPlan.mockResolvedValue({
+        itemId: "se1",
+        kind: "SpecialEvent",
+        name: "Carnival",
+        revision: null,
+        schedule: {
+          schedule: { id: "se1", name: "Carnival" },
+          days: [
+            {
+              dateValue: "2000-01-03",
+              blocks: [],
+              groups: [],
+              items: [],
+              rows: [],
+              locks: []
+            }
+          ]
+        },
+        activities: []
+      });
+      list(element, "events")
+        .shadowRoot.querySelector('[data-id="details"][data-row-key="row-se1"]')
+        .click();
+      await flush();
+      const details = q(element, "c-shoresh-special-details");
+      details.shadowRoot.querySelector('[data-id="open-schedule"]').click();
+      await flush();
+      const schedule = q(element, "c-shoresh-special-schedule");
+      expect(schedule.itemId).toBe("se1");
+      expect(openPlan).toHaveBeenCalledWith({ itemId: "se1" });
+      expect(q(element, '[data-id="special-list"]').className).toBe(
+        "slds-hide"
+      );
+      // Something saved inside: the season is read again on the way back, for the list's counts.
+      const reads = getSeasonSetup.mock.calls.length;
+      schedule.dispatchEvent(new CustomEvent("changed"));
+      schedule.dispatchEvent(
+        new CustomEvent("close", { detail: { itemId: "se1" } })
+      );
+      await flush();
+      expect(q(element, "c-shoresh-special-schedule")).toBeNull();
+      expect(q(element, '[data-id="special-list"]').className).toBe("");
+      expect(details.openItemId).toBe("se1");
+      expect(details.shadowRoot.activeElement).toBe(
+        details.shadowRoot.querySelector('[data-id="open-schedule"]')
+      );
+      expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
     });
 
     it("a row's delete asks, then deletes it and reads the season again", async () => {

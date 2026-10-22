@@ -93,6 +93,31 @@ describe("c-shoresh-week-editor", () => {
 
   // Manual Build asks for the first cell just after Start, and in Salesforce the editor may not
   // have drawn the new week's grid yet: focus fell to the page (real-browser check, 2026-10-20).
+  // A special day's or event's own schedule (ADR 0014 choice 15): one day, called by its name.
+  it("planName: one named day, with no view buttons, day pills or drawer", async () => {
+    const element = createElement("c-shoresh-week-editor", {
+      is: ShoreshWeekEditor
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    element.planName = "Color War";
+    element.saveRuns = jest.fn();
+    document.body.appendChild(element);
+    element.show(draft(), true);
+    await flush();
+    expect(q(element, '[data-view="day"]')).toBeNull();
+    expect(q(element, '[data-id="day-pills"]')).toBeNull();
+    expect(q(element, "c-shoresh-build-palette")).toBeNull();
+    expect(grid(element).label).toBe("Color War");
+    await press(
+      grid(element).shadowRoot.querySelector('[data-cell="0-1"]'),
+      "Enter"
+    );
+    expect(
+      q(element, '[data-id="slot-editor"]').getAttribute("aria-label")
+    ).toMatch(/Color War/);
+  });
+
   it("focusCell asked before the grid is drawn puts focus on it once it is", async () => {
     const element = createElement("c-shoresh-week-editor", {
       is: ShoreshWeekEditor

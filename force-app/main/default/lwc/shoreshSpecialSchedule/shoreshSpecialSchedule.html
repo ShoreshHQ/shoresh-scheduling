@@ -1,0 +1,379 @@
+<template>
+  <div class="special-schedule" data-id="special-schedule">
+    <!-- The grid editor every schedule uses (ADR 0014 choice 15), as one day: the rail's left
+         is the way back and the name, its right Saved, Import and Download (design-research
+         special-r1 special-day.html). -->
+    <c-shoresh-week-editor
+      data-id="week-editor"
+      terms={terms}
+      setup={setup}
+      plan-name={name}
+      week-name={name}
+      program-name={name}
+      save-runs={saveRuns}
+      restoring={busy}
+      tools={toolsOff}
+      check-with={noChecks}
+      add-activity-with={addActivityWith}
+      edit-items={editItems}
+      onstatechange={handleEditorState}
+      onsaved={handleSaved}
+      onerrorchange={handleEditorError}
+      onreload={handleEditorReload}
+      oneditselect={handleEditSelect}
+    >
+      <div slot="pickers" class="where">
+        <button
+          type="button"
+          class="shoresh-item back"
+          data-id="back"
+          onclick={handleBack}
+        >
+          <svg class="back-chevron" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M7.5 3 4.5 6l3 3"></path>
+          </svg>
+          <span>{backLabel}</span>
+        </button>
+        <span class="shoresh-rail-line" role="presentation"></span>
+        <h2 class="plan-name" tabindex="-1" data-heading data-id="plan-name">
+          {name}
+        </h2>
+      </div>
+      <div slot="end" class="end">
+        <c-shoresh-saved-mark
+          class="saved"
+          data-id="saved"
+          silent
+        ></c-shoresh-saved-mark>
+        <button
+          type="button"
+          class="shoresh-item"
+          data-id="import"
+          disabled={controlsDisabled}
+          onclick={handleImport}
+        >
+          <svg class="rail-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 11V3M5 6l3-3 3 3M3 11v2h10v-2"></path>
+          </svg>
+          <span>Import</span>
+        </button>
+        <button
+          type="button"
+          class="shoresh-item"
+          data-id="download"
+          disabled={controlsDisabled}
+          onclick={handleDownload}
+        >
+          <svg class="rail-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 3v8M5 8l3 3 3-3M3 11v2h10v-2"></path>
+          </svg>
+          <span>Download</span>
+        </button>
+        <input
+          type="file"
+          class="file"
+          accept=".xlsx,.xlsm,.xls,.csv"
+          tabindex="-1"
+          aria-hidden="true"
+          data-id="import-file"
+          onchange={handleFile}
+        />
+      </div>
+      <div slot="outcome">
+        <template lwc:if={error}>
+          <div
+            class="slds-notify slds-notify_alert slds-alert_error message"
+            role="alert"
+            data-id="error"
+          >
+            {error}
+          </div>
+        </template>
+        <template lwc:if={problem}>
+          <div
+            class="slds-notify slds-notify_alert slds-alert_warning message"
+            role="alert"
+            data-id="problem"
+          >
+            {problem}
+          </div>
+        </template>
+        <template lwc:if={hasImportLines}>
+          <ul class="import-lines" data-id="import-lines">
+            <template for:each={importLines} for:item="line">
+              <li key={line}>{line}</li>
+            </template>
+          </ul>
+        </template>
+        <template lwc:if={emptyMessage}>
+          <c-shoresh-empty-state
+            title={emptyMessage}
+            data-id="empty"
+          ></c-shoresh-empty-state>
+        </template>
+      </div>
+    </c-shoresh-week-editor>
+
+    <!-- Under the grid: its own time blocks (and an event's stations) added, changed, moved and
+         taken out (ADR 0014 choice 16). -->
+    <div class="frame" data-id="frame">
+      <div class="frame-actions">
+        <button
+          type="button"
+          class="shoresh-item add"
+          data-id="add-block"
+          disabled={controlsDisabled}
+          onclick={handleAddBlock}
+        >
+          {addBlockLabel}
+        </button>
+        <template lwc:if={isEvent}>
+          <button
+            type="button"
+            class="shoresh-item add"
+            data-id="add-station"
+            disabled={controlsDisabled}
+            onclick={handleAddStation}
+          >
+            + Station
+          </button>
+        </template>
+        <template lwc:if={hasBlocks}>
+          <button
+            type="button"
+            class="shoresh-item"
+            aria-expanded={blocksExpanded}
+            aria-controls="frame-blocks"
+            data-id="edit-blocks"
+            onclick={handleToggleBlocks}
+          >
+            <span>{blocksWord}</span>
+            <svg class="shoresh-chevron" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M3 4.5 6 7.5l3-3"></path>
+            </svg>
+          </button>
+        </template>
+        <template lwc:if={hasStations}>
+          <button
+            type="button"
+            class="shoresh-item"
+            aria-expanded={stationsExpanded}
+            aria-controls="frame-stations"
+            data-id="edit-stations"
+            onclick={handleToggleStations}
+          >
+            <span>Stations</span>
+            <svg class="shoresh-chevron" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M3 4.5 6 7.5l3-3"></path>
+            </svg>
+          </button>
+        </template>
+      </div>
+
+      <template lwc:if={form}>
+        <div
+          class="frame-form"
+          role="group"
+          aria-label={formTitle}
+          data-id="frame-form"
+          onkeydown={handleFormKeyDown}
+        >
+          <p class="form-title" aria-hidden="true">{formTitle}</p>
+          <lightning-input
+            label="Name"
+            value={form.name}
+            maxlength="80"
+            data-field="name"
+            data-id="form-name"
+            onchange={handleFormInput}
+          ></lightning-input>
+          <template lwc:if={isBlockForm}>
+            <lightning-input
+              type="time"
+              label="Starts"
+              value={form.start}
+              required
+              data-field="start"
+              data-id="form-start"
+              onchange={handleFormInput}
+            ></lightning-input>
+            <lightning-input
+              type="time"
+              label="Ends"
+              value={form.end}
+              required
+              data-field="end"
+              data-id="form-end"
+              onchange={handleFormInput}
+            ></lightning-input>
+          </template>
+          <div class="form-buttons">
+            <lightning-button
+              label="Cancel"
+              onclick={handleFormCancel}
+              data-id="form-cancel"
+            ></lightning-button>
+            <lightning-button
+              variant="brand"
+              label={formSaveLabel}
+              disabled={busy}
+              onclick={handleFormSave}
+              data-id="form-save"
+            ></lightning-button>
+          </div>
+        </div>
+      </template>
+
+      <template lwc:if={blocksOpen}>
+        <ol class="frame-list" id="frame-blocks" data-id="blocks">
+          <template for:each={blocks} for:item="block">
+            <li key={block.key} class="frame-row" data-block={block.id}>
+              <span class="frame-when shoresh-num">{block.when}</span>
+              <span class="frame-name">{block.name}</span>
+              <span class="frame-buttons">
+                <button
+                  type="button"
+                  class="shoresh-item"
+                  aria-label={block.changeLabel}
+                  disabled={controlsDisabled}
+                  data-id="change-block"
+                  data-target={block.id}
+                  onclick={handleChangeBlock}
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-item shoresh-item_icon"
+                  aria-label={block.earlierLabel}
+                  title={block.earlierLabel}
+                  disabled={block.first}
+                  data-action="moveBlock"
+                  data-target={block.id}
+                  data-direction="-1"
+                  onclick={handleMove}
+                >
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 7.5 6 4.5l3 3"></path>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-item shoresh-item_icon"
+                  aria-label={block.laterLabel}
+                  title={block.laterLabel}
+                  disabled={block.last}
+                  data-action="moveBlock"
+                  data-target={block.id}
+                  data-direction="1"
+                  onclick={handleMove}
+                >
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 4.5 6 7.5l3-3"></path>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-item"
+                  aria-label={block.removeLabel}
+                  disabled={controlsDisabled}
+                  data-action="removeBlock"
+                  data-target={block.id}
+                  onclick={handleRemove}
+                >
+                  Remove
+                </button>
+              </span>
+            </li>
+          </template>
+        </ol>
+      </template>
+
+      <template lwc:if={stationsOpen}>
+        <ol class="frame-list" id="frame-stations" data-id="stations">
+          <template for:each={stations} for:item="station">
+            <li key={station.key} class="frame-row" data-station={station.id}>
+              <span class="frame-name">{station.name}</span>
+              <span class="frame-buttons">
+                <button
+                  type="button"
+                  class="shoresh-item"
+                  aria-label={station.renameLabel}
+                  disabled={controlsDisabled}
+                  data-id="rename-station"
+                  data-target={station.id}
+                  onclick={handleRenameStation}
+                >
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-item shoresh-item_icon"
+                  aria-label={station.leftLabel}
+                  title={station.leftLabel}
+                  disabled={station.first}
+                  data-action="moveStation"
+                  data-target={station.id}
+                  data-direction="-1"
+                  onclick={handleMove}
+                >
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M7.5 3 4.5 6l3 3"></path>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-item shoresh-item_icon"
+                  aria-label={station.rightLabel}
+                  title={station.rightLabel}
+                  disabled={station.last}
+                  data-action="moveStation"
+                  data-target={station.id}
+                  data-direction="1"
+                  onclick={handleMove}
+                >
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M4.5 3 7.5 6l-3 3"></path>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="shoresh-item"
+                  aria-label={station.removeLabel}
+                  disabled={controlsDisabled}
+                  data-action="removeStation"
+                  data-target={station.id}
+                  onclick={handleRemove}
+                >
+                  Remove
+                </button>
+              </span>
+            </li>
+          </template>
+        </ol>
+      </template>
+    </div>
+
+    <template lwc:if={hasNotes}>
+      <div class="shoresh-hairline" role="presentation"></div>
+      <div class="notes" data-id="notes">
+        <span class="notes-label">Notes</span>
+        <p class="notes-text">{notes}</p>
+      </div>
+    </template>
+
+    <div class="slds-assistive-text" aria-live="polite" data-id="announce">
+      {announcement}
+    </div>
+
+    <template lwc:if={ask}>
+      <c-shoresh-ask
+        heading={ask.heading}
+        lines={ask.lines}
+        confirm-label={ask.label}
+        onanswer={handleAnswer}
+        data-id="ask"
+      ></c-shoresh-ask>
+    </template>
+  </div>
+</template>

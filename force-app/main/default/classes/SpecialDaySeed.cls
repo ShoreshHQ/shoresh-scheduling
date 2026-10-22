@@ -86,10 +86,10 @@ public with sharing class SpecialDaySeed {
     return null;
   }
 
-  /** Every group in the camp, in the order the screens list them. */
-  private static List<Group__c> groupsOf(Id seasonId) {
+  /** Every group in the camp, in the order the screens list them (also SpecialSchedule's rows). */
+  public static List<Group__c> groupsOf(Id seasonId) {
     return [
-      SELECT Id, Name
+      SELECT Id, Name, Division__c
       FROM Group__c
       WHERE Division__r.Program__r.Season__c = :seasonId
       WITH USER_MODE

@@ -124,24 +124,26 @@
           <template lwc:if={showTools}>
             <slot name="tools"></slot>
           </template>
-          <div class="views">
-            <span class="shoresh-rail-line" role="presentation"></span>
-            <div class="group" role="group" aria-label="View">
-              <template for:each={viewButtons} for:item="button">
-                <button
-                  key={button.key}
-                  type="button"
-                  class={button.className}
-                  aria-pressed={button.pressed}
-                  data-view={button.key}
-                  onclick={handleView}
-                >
-                  {button.label}
-                </button>
-              </template>
+          <template lwc:if={showViews}>
+            <div class="views">
+              <span class="shoresh-rail-line" role="presentation"></span>
+              <div class="group" role="group" aria-label="View">
+                <template for:each={viewButtons} for:item="button">
+                  <button
+                    key={button.key}
+                    type="button"
+                    class={button.className}
+                    aria-pressed={button.pressed}
+                    data-view={button.key}
+                    onclick={handleView}
+                  >
+                    {button.label}
+                  </button>
+                </template>
+              </div>
+              <span class="shoresh-rail-line" role="presentation"></span>
             </div>
-            <span class="shoresh-rail-line" role="presentation"></span>
-          </div>
+          </template>
         </template>
       </div>
       <div class="mid">

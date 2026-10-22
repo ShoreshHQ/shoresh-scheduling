@@ -89,16 +89,15 @@
         </div>
       </template>
 
-      <!-- The schedule inside comes with the next slice: its door is here, held, and says so,
-           as the menu's entries not built yet do. -->
+      <!-- The schedule inside (ADR 0014 choice 14): opened in the screen's place. -->
       <div class="door">
         <button
           type="button"
           class="open-schedule"
           data-id="open-schedule"
-          aria-disabled="true"
+          onclick={handleOpenSchedule}
         >
-          Open schedule<span class="coming">Coming</span>
+          Open schedule
         </button>
       </div>
     </section>

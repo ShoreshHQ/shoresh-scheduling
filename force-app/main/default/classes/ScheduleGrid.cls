@@ -177,7 +177,9 @@ public with sharing class ScheduleGrid {
       grid.items.add(new Item(i[0], i[1], i[2]));
     }
     for (Object row : listAt(raw, 'r')) {
-      grid.rows.add(String.valueOf(row).split(',', -1));
+      grid.rows.add(
+        ScheduleGridFrameRules.cellsOf(String.valueOf(row), grid.blocks.size())
+      );
     }
     ScheduleGridLocks.read(raw.get('l'), grid);
     ScheduleGridRules.check(grid);

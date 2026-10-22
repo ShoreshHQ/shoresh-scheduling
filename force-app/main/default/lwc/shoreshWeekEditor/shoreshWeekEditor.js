@@ -138,6 +138,10 @@ function slotKey(slot) {
  * "setup changed since the week started" dot (ADR 0008 part 6). They join any other dot on the
  * placement, after its words.
  *
+ * What a special day's or event's own schedule adds (c/shoreshSpecialSchedule, ADR 0014 choice
+ * 15): planName. Its one day is drawn as Daily View with no view buttons, day pills or drawer,
+ * and called by that name wherever a week's lines would name a weekday.
+ *
  * The rail (ADR 0008 part 7): the host's slots are pickers (the week and program, at the left),
  * tools (the host's own rail menus, after Edit), checks (the counter, at the right) and end
  * (Versions and Publish, last). Edit is the editor's: Undo and Redo, then the host's editItems
@@ -170,6 +174,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api addActivityWith;
   // Setup changed since the week started (Manual Build): cell key to its dot's words, or nothing.
   @api setupDots;
+  // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
+  // no views, day pills or drawer. Left out for a week.
+  @api planName;
   // The Edit menu's row that has its rows open under it (Copy day to…), or null.
   openEditGroup = null;
   // Cells chosen together (Shift or Cmd/Ctrl with a click, a Shift-drag, Shift with Left or
@@ -575,7 +582,7 @@ export default class ShoreshWeekEditor extends LightningElement {
         isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
         ...otherProgramsAt(readOtherPrograms(draft.otherPrograms), weekDays)
       },
-      { t: this.t, dayName: (dateValue) => dayLabel(dateValue).label }
+      { t: this.t, dayName: (dateValue) => this.dayNameOf(dateValue) }
     );
   }
 
@@ -708,7 +715,15 @@ export default class ShoreshWeekEditor extends LightningElement {
     }));
   }
   get showDayPills() {
-    return !!this.draft && !this.hasNoDays && this.isDaily;
+    return !!this.draft && !this.hasNoDays && this.isDaily && !this.planName;
+  }
+  /** Daily, Group and Activity: a week's, not a special day's or event's own schedule. */
+  get showViews() {
+    return !this.planName;
+  }
+  /** What a day is called in lines and questions: its weekday, or the plan's name. */
+  dayNameOf(dateValue) {
+    return this.planName || dayLabel(dateValue).label;
   }
   get showGroupPills() {
     return !!this.draft && !this.hasNoDays && this.isGroup;
@@ -726,10 +741,13 @@ export default class ShoreshWeekEditor extends LightningElement {
   get dayProblem() {
     const day = this.schedule && this.schedule.days[this.dayIndex];
     return day && day.problem
-      ? `${dayLabel(day.dateValue).label} can't be shown. Nothing on it was changed.`
+      ? `${this.dayNameOf(day.dateValue)} can't be shown. Nothing on it was changed.`
       : null;
   }
   get dailyGridLabel() {
+    if (this.planName) {
+      return this.planName;
+    }
     const day = this.dayPills.find((pill) => pill.index === this.dayIndex);
     return day ? day.label : null;
   }
@@ -962,7 +980,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     const day = this.dayOf(slot);
     return [
       day.groups[slot.group].name,
-      dayLabel(day.dateValue).label,
+      this.dayNameOf(day.dateValue),
       day.blocks[block].name
     ].join(" · ");
   }
@@ -2144,7 +2162,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** The things a placement is named by in a line: "Swim · Bunk 3 · Tuesday". */
   placementName(week, dayIndex, group, slot) {
     const day = week[dayIndex];
-    return `${this.nameOf(slot, day)} · ${day.groups[group].name} · ${dayLabel(day.dateValue).label}`;
+    return `${this.nameOf(slot, day)} · ${day.groups[group].name} · ${this.dayNameOf(day.dateValue)}`;
   }
 
   /** "2 stayed: Archery · Bunk 1 · Monday (removed); …" (at most five named). */
@@ -2166,7 +2184,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   leftOutText(week, from, leftOut) {
     const source = week[from];
     const why = (o) => {
-      const target = dayLabel(week[o.day].dateValue).label;
+      const target = this.dayNameOf(week[o.day].dateValue);
       switch (o.why) {
         case LEFT_OUT.AWAY:
           return "not at camp then";
@@ -2186,7 +2204,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       leftOut,
       "left out",
       (o) =>
-        `${this.nameOf(o.slot, source)} · ${source.groups[o.group].name} · ${dayLabel(week[o.day].dateValue).label}: ${why(o)}`
+        `${this.nameOf(o.slot, source)} · ${source.groups[o.group].name} · ${this.dayNameOf(week[o.day].dateValue)}: ${why(o)}`
     );
   }
 
@@ -2210,7 +2228,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       const where =
         o.day === null
           ? ""
-          : ` · ${week[o.day].groups[o.group].name} · ${dayLabel(week[o.day].dateValue).label}`;
+          : ` · ${week[o.day].groups[o.group].name} · ${this.dayNameOf(week[o.day].dateValue)}`;
       return `${o.name}${where}: ${why(o)}`;
     });
   }
@@ -2728,7 +2746,7 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** The drawer under the grid, in Daily and Group View with a grid to place on. */
   get showPalette() {
-    return !this.isActivity && !!this.editGrid;
+    return !this.isActivity && !!this.editGrid && !this.planName;
   }
 
   /**
@@ -3166,7 +3184,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** "Bunk 1 · Monday" */
   dayGroupName(slot) {
     const day = this.dayOf(slot);
-    return `${day.groups[slot.group].name} · ${dayLabel(day.dateValue).label}`;
+    return `${day.groups[slot.group].name} · ${this.dayNameOf(day.dateValue)}`;
   }
 
   resizeTo(slot, key, lastBlock) {

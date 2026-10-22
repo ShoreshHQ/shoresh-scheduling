@@ -1,7 +1,7 @@
 # 0014: Special days and special events, the data
 
-Status: proposed (2026-10-20; slice 2 added 2026-10-22), Special Events and Special Days slices 1
-and 2 of 6 (plan: wiki
+Status: proposed (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22), Special Events
+and Special Days slices 1 to 3 of 6 (plan: wiki
 `projects/shoresh-sf-parity-gaps`, "Build plan"). Design source: wiki
 `projects/shoresh-scheduling-data-model` (`SpecialEvent__c`, `SpecialDay__c`, `PlanPart__c`,
 `SpecialDate__c`). Where the data model is looser, the desktop decides: desktop ADRs
@@ -10,7 +10,10 @@ and 2 of 6 (plan: wiki
 this slice. _Slice 2 (2026-10-22, choices 11 to 13) adds the setup screen: design source Greg's
 decision 47 and the approved mock-up `design-research/special-r1/special-events.html`; desktop
 `SpecialEventsScreen.jsx`, `specialDay/copyCampTimeBlocks.js` and ADR
-`2026-08-29-unify-special-events-screen`._
+`2026-08-29-unify-special-events-screen`. Slice 3 (choices 14 to 18) adds the schedule inside each
+item: design source decision 47.5 and the approved mock-up `design-research/special-r1/special-day.html`;
+desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
+`2026-08-22-event-internal-subschedule` and `2026-08-22-event-schedule-import`._
 
 ## Choices
 
@@ -86,9 +89,8 @@ decision 47 and the approved mock-up `design-research/special-r1/special-events.
       same zone as an activity's details: its name, Where, Placed on, its notes, and for a
       special day its own time blocks with what is in each ("11:30–12:20 Lunch: Lunch, Rest").
       Focus goes to the panel's heading; Close puts it back on the row's chevron. **Open
-      schedule** is there, held and marked "Coming" as the menu marks screens not built, until
-      the schedule inside is built (slice 3). Nothing in the panel is edited: every field an
-      item has is in its row.
+      schedule** is there (live since slice 3, choice 14). Nothing in the panel is edited: every
+      field an item has is in its row.
     - **Deleting** is the row's delete, asked first as every setup row; one that is on a day is
       refused with choice 8's message. Deleting a season now lists its special days and events
       among what goes with it.
@@ -136,6 +138,83 @@ decision 47 and the approved mock-up `design-research/special-r1/special-events.
     its note read out, its details opened from the chevron with focus on their heading and back
     on Close, then deleted).
 
+14. **The schedule inside an item opens from its details** (decision 47.1; slice 3). "Open
+    schedule" shows it in the Special events screen's place, the list kept as it was underneath:
+    the rail's left is "‹ Special events" and the item's name (a heading, where focus goes on
+    opening), its right **✓ Saved**, **Import** and **Download**, as the mock-up. Back puts the
+    list back, read again if anything inside was saved, with focus on that item's Open schedule.
+    Under the grid: **+ <time block>** (the camp's word; the mock-up's "+ Period"), for an event
+    **+ Station**, the item's time blocks and stations each in a list that opens from its own
+    button, and the item's **Notes** (read only: notes are edited in the row). Not in this slice:
+    the mock-up's "On Wk 5 Thu" (putting an item on a day is slice 4).
+
+15. **One grid editor for every schedule** (decision 47.5: an event's schedule reuses the
+    special-day grid, with stations across). The grid is `c-shoresh-week-editor`, Manual Build's,
+    given the plan as one day (`planName`: no Daily, Group and Activity buttons, no day pills, no
+    drawer, and lines name the item where a week's name a weekday). A special day's columns are
+    every group in the camp, an event's its stations; its own time blocks run down. So typing a
+    name in a cell, Delete, drag and stretch, Copy and Paste, Undo and Redo (this visit), "keep
+    theirs or use yours" and the padlock and corner conventions (ADR 0015 choice 6) work as they
+    do on Manual Build. Cell edits are sent as Manual Build's are (`SlotEdits`) and made only if
+    their cells still hold what the director saw (`SpecialScheduleEdits`); the plan is saved
+    whole under its item's lock with a new revision (`SpecialPlans`, choice 6).
+    - **What can be typed**: the season's activities. "Add <name> to activities" (the editor's)
+      adds a new one at **0 times a week** (`SpecialActivities`), so Generated Schedule never
+      places it in a regular week; the desktop makes such an activity a one-off for the same
+      reason. A name the season has, spaces and capitals aside, is that activity.
+    - **A fixed or recurring activity brought in** when a special day started (choice 12) keeps
+      its padlock and stays where it is, as on every schedule ("Fixed activities and recurring
+      activities stay where they are."); **Clear schedule** (Edit menu, asked first) empties every
+      cell, those too. The desktop's special-day grid lets such a cell be typed over; here the
+      grid is the shared one, whose padlock means "stays", so taking one out is Clear (or slice
+      6's follow-up). No checks or dots on a special schedule (the desktop's special days have no
+      engine either).
+
+16. **Time blocks and stations** (`SpecialScheduleFrame`, on `SpecialPlanShape`). A time block has a start and an end
+    ("HH:mm", end after start) and a name; with none it is called by its times ("9:00 AM – 9:45
+    AM", as setup's time blocks are). A new one goes where its start falls; Change keeps its
+    place; ↑ and ↓ move it. An event's stations are added, renamed, moved left and right and
+    taken out; a special day's columns are the camp's groups and are refused here ("A special
+    day has a column for every group in camp."). What is in a cell moves with its time block or
+    station, and a placement a change cuts in two becomes two. Taking out a time block or station
+    with something in it asks first ("Remove Lunch? 2 cells in it go with it."), as the desktop
+    does; the last time block can't be taken out while there are columns. Ids are the plan's own
+    ("b3", "s2", never reused while the plan has them). Each change names the revision the screen
+    read and is refused if the plan was saved since ("Someone else changed this special event
+    since you opened it…"). **An event starts with no plan** (choice 12): its first open says
+    "Add a <time block> and a station to start, or import this schedule from a file." (The
+    desktop seeds an event's columns from the camp's groups; decision 47.5 calls them stations,
+    so they start empty.)
+
+17. **Download and Import of one item's schedule** (desktop ADR `2026-08-22-event-schedule-import`).
+    Download saves the grid as an Excel file of one sheet named for the item, time blocks down and
+    columns across, as Schedules' daily sheet (`c/shoreshScheduleExport`). Import reads an Excel
+    or .csv file with the import's own reader (`c/shoreshImportEngine`: `filesToPages`,
+    `blockFromLabel`, `cellName`, now exported), the first schedule in it: its rows' times are
+    the time blocks (a row with only a start ends where the next starts), its columns an event's
+    stations or, for a special day, the camp's groups matched by name, and each cell's name the
+    season's activity of that name or a new one (choice 15). A cell merged down the rows carries
+    on. **Only an empty schedule is imported into**, as on the desktop: one with entries is
+    refused ("Color War already has entries. Clear it first if you want to replace it with an
+    import, or add to it by hand."). Nothing is left out quietly: the screen says how many cells
+    were filled, the activities added, columns that name no group, rows with no times, places
+    written in cells (not kept), and when only the first of several schedules was read.
+
+18. **Checked by** `SpecialScheduleTest`, `SpecialScheduleFrameTest` and `SpecialScheduleImportTest` (as a scheduler, records made in the same
+    `System.runAs`, each request's queries bounded: open at most 20, a cell save 25, a frame
+    change 20, an import 25; a special day's own time blocks and groups, typing, a conflict, a
+    fixed activity kept, another season's activity refused, an event's time blocks and stations
+    added, moved, renamed, taken out, a placement cut in two, Clear, a stale revision refused, an
+    import for an event and for a special day, a second import refused, Add <name> at 0 times a
+    week, no access), `shoreshSpecialSchedule.test.js` and `fromFile.test.js` (the screen, typing
+    saved as Manual Build's, the frame, Clear, Import and Download, a file read into a plan),
+    `shoreshWeekEditor.test.js` (planName), `shoreshSpecialDetails.test.js` and
+    `shoreshCampSetup.test.js` (Open schedule and back), and in the test org by
+    `scripts/a11y-browser-check.mjs` (the special day added in the Special events step: its
+    schedule opened from its details with focus on its name, axe on it, a name typed into a cell
+    and its save said, back with focus on Open schedule). A plan with no time blocks yet now reads
+    back (`ScheduleGrid` takes a row with no cells when there are no time blocks).
+
 ## Names
 
 Every object and field is reached through typed Apex references and `c/shoreshSchema`
@@ -144,5 +223,7 @@ Every object and field is reached through typed Apex references and `c/shoreshSc
 
 ## Not in this slice
 
-Screens other than the setup screen (slices 3 to 5), replacing a placed special day with a confirm, Needs attention for a
-special day whose weekday or groups no longer match, and the week delete warning (slice 6).
+Putting a special day or event on a day and showing it on the schedules (slices 4 and 5),
+replacing a placed special day with a confirm, Needs attention for a special day whose weekday or
+groups no longer match (a group added to the camp after a special day was made is not one of its
+columns until then), and the week delete warning (slice 6).

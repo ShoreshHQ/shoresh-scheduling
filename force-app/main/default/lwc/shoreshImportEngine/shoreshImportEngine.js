@@ -9,6 +9,10 @@
  */
 import { parseCsv } from "./sheets";
 
+// The reader on its own (one special day's or event's schedule from a file, ADR 0014 choice 17).
+export { filesToPages } from "./sheets";
+export { blockFromLabel } from "./structure";
+
 export { buildProposal, LEAVE_OUT } from "./proposal";
 export { LAYOUTS } from "./layouts";
 export { weekdayWeeks, weeksToFill } from "./weeks";
@@ -80,5 +84,6 @@ export {
   dayOf,
   timeRange,
   clock,
-  shortClock
+  shortClock,
+  cellName
 } from "./text";

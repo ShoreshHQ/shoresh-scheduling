@@ -41,8 +41,10 @@
  *   Copy this season open from the camp row's small menu (Season actions) and Cancel puts focus
  *   back on it;
  * - Special events (ADR 0014 choices 11 and 12): a special day added by keyboard says what it
- *   started from; its details open from its chevron with focus on their heading and Close puts
- *   focus back on the chevron; it is deleted again;
+ *   started from; its details open from its chevron with focus on their heading; its schedule
+ *   opens from Open schedule with focus on its name, a name typed into a cell is saved and said,
+ *   and the way back puts focus on Open schedule (choices 14 and 15); Close puts focus back on
+ *   the chevron; it is deleted again;
  * - rules Shoresh guessed (ADR 0006 §21): an activity's how often, marked as an import would
  *   mark it, carries the needs-a-look corner; Tab reaches it, Enter opens its words with the
  *   cursor on Looks right, Escape puts the cursor back on the mark, and Looks right clears it,
@@ -1651,7 +1653,7 @@ async function campSetup() {
   );
   await step(
     S,
-    "Special events: a special day added, its details, then deleted",
+    "Special events: a special day added, its details and schedule, then deleted",
     specialEvents
   );
 }
@@ -1704,11 +1706,13 @@ async function specialEvents() {
     name: new RegExp(`^${DAY} details$`)
   });
   await axe("Special events, an item's details open");
+  await specialSchedule(E, DAY);
   if (
     !(await tabTo(
       named(new RegExp(`^Close ${DAY} details$`), { tag: "button" }),
       {
-        max: 8
+        max: 8,
+        back: true
       }
     ))
   )
@@ -1730,6 +1734,54 @@ async function specialEvents() {
   await press("Enter", 3000);
   if ((await names()).includes(DAY))
     throw new Error(`"${DAY}" was not deleted: delete it by hand.`);
+}
+
+/**
+ * The schedule inside a special day (ADR 0014 choices 14 and 15), from its details: Open schedule
+ * opens it with focus on its name, axe looks at it, a name typed into a cell is saved and said,
+ * and "Special events" goes back with focus on Open schedule. The cell typed in is the special
+ * day's own, which the step deletes after.
+ */
+async function specialSchedule(E, DAY) {
+  if (!(await tabTo(named(/^Open schedule$/, { tag: "button" }), { max: 12 })))
+    throw new Error("Open schedule was not reached with Tab.");
+  await press("Enter", 3000);
+  await expectFocus(E, "Open schedule: focus on the schedule's name", {
+    tag: /^h[1-3]$/,
+    name: new RegExp(`^${DAY}$`)
+  });
+  await axe("Special events, a special day's schedule");
+  const cell = await tabTo(grid, { max: 40 });
+  if (!cell)
+    throw new Error("No cell of the special day's grid reached with Tab.");
+  await press("Enter", 500);
+  await expectFocus(
+    E,
+    "Enter on a special day's cell: focus in the typing box",
+    {
+      dataId: "slot-input"
+    }
+  );
+  await type("Swim");
+  await pause(400);
+  await expectLive(
+    E,
+    "A name typed into a special day's cell: its save is said",
+    /Swim/,
+    () => press("Enter")
+  );
+  if (
+    !(await tabTo(named(/^Special events$/, { tag: "button" }), {
+      max: 40,
+      back: true
+    }))
+  )
+    throw new Error("The schedule's way back was not reached with Tab.");
+  await press("Enter", 2000);
+  await expectFocus(E, "Back to Special events: focus on Open schedule", {
+    tag: "button",
+    name: /^Open schedule$/
+  });
 }
 
 /** The first saved row's name box in the screen's tables, reached with Tab. */

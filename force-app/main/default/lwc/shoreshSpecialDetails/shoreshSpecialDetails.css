@@ -181,7 +181,7 @@
   padding: 0 var(--shoresh-space-control-x);
 }
 
-/* Held until the schedule inside is built: quiet, and named Coming as the menu's entries are. */
+/* The way into the schedule inside (ADR 0014 choice 14). */
 .open-schedule {
   display: inline-flex;
   align-items: center;
@@ -191,22 +191,17 @@
   padding: 0 var(--shoresh-space-control-x);
   border: 1px solid var(--shoresh-edge);
   border-radius: var(--shoresh-radius);
-  background: transparent;
-  color: var(--shoresh-text-2);
+  background: var(--shoresh-surface-shelf);
+  color: var(--shoresh-text-1);
   font: inherit;
-  cursor: default;
+  cursor: pointer;
+}
+
+.open-schedule:hover {
+  background: var(--shoresh-surface-hover);
 }
 
 .open-schedule:focus-visible {
   outline: none;
   box-shadow: var(--shoresh-focus-ring);
-}
-
-.coming {
-  padding: 0 var(--shoresh-s1);
-  border: 1px solid var(--shoresh-edge);
-  border-radius: var(--shoresh-s1);
-  font-family: var(--shoresh-font-mono);
-  font-size: var(--shoresh-font-size-label);
-  line-height: 16px;
 }
