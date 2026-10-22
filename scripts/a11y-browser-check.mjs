@@ -2127,7 +2127,7 @@ async function manualBuild(openManual) {
     holdTile(S)
   );
   await step(S, "Same-activity outlines: point at a cell", () =>
-    hoverOutlines(S)
+    hoverOutlines(S, { arrange: true })
   );
   await step(S, "Clear day, then its Undo", async () => {
     // Clear day is in the rail's Edit menu, after Undo and Redo.
@@ -2188,56 +2188,176 @@ async function manualBuild(openManual) {
   );
 }
 
+/** The drawer's activity names, in its order. */
+async function drawerNames() {
+  return shown("c-shoresh-build-palette")
+    .first()
+    .evaluate((d) =>
+      [
+        ...(d.shadowRoot || d).querySelectorAll(
+          "[data-id='drawer-tiles'] .tile-name"
+        )
+      ]
+        .map((n) => n.textContent.trim())
+        .filter(Boolean)
+    );
+}
+
 /**
- * Copy and paste (Greg decision 45, ADR 0008 part 9), keyboard only: on the second time block,
- * Shift+Right chooses two bunks' cells (said, and both marked chosen), Ctrl/Cmd+C copies them,
- * Down lets the choice go and moves to the next block, Ctrl/Cmd+V pastes there with focus kept
- * on the grid, and Ctrl/Cmd+Z takes the paste back in one step.
+ * Copy and paste (Greg decision 45, ADR 0008 part 9), keyboard only. Bunks 1 and 2 must hold an
+ * activity each in the second time block (one is typed in first when Open), and a later block
+ * must be Open for both. Shift+Right chooses the two cells (said, and both marked chosen),
+ * Ctrl/Cmd+C copies them, Down lets the choice go and moves to that Open block, Ctrl/Cmd+V
+ * pastes there with focus kept on the grid, and the two cells must then hold the copied
+ * activities. Ctrl/Cmd+Z takes the paste back in one step: both cells Open again. "Nothing to
+ * paste" is never a pass. Whatever was typed in to arrange it is undone after.
  */
 async function copyPasteCells(S) {
-  const cell = await tabTo(grid);
-  if (!cell) throw new Error("No grid cell reached with Tab.");
-  // Down to the second time block: the first holds the made-up camp's Morning meeting.
-  await press("ArrowDown", 200);
-  await expectLive(
-    S,
-    "Shift+Right: two cells chosen, said",
-    /^2 selected$/,
-    () => press("Shift+ArrowRight", 300)
-  );
-  const chosen = (await gridCells()).filter((c) =>
-    /\bcell_chosen\b/.test(c.classes)
-  );
-  if (chosen.length === 2) {
-    results.pass(S, "Shift+Right: two cells marked chosen", "2 marked.");
-  } else {
-    await shot(S, "Two cells chosen");
-    results.fail(
-      S,
-      "Shift+Right: two cells marked chosen",
-      `${chosen.length} marked.`
-    );
-  }
-  await expectLive(S, "Ctrl+C: Copied is said", /^Copied /, () =>
-    press("ControlOrMeta+c")
-  );
-  await press("ArrowDown", 200);
-  const said = await expectLive(
-    S,
-    "Ctrl+V on the next block: it is said",
-    /^(Pasted |Nothing pasted|Nothing to paste)/,
-    () => press("ControlOrMeta+v")
-  );
-  await expectFocus(S, "After pasting: focus stays on the grid", {
-    inGrid: true
+  const name = "Copy and paste: the pasted cells hold the copied activities";
+  const at = (cells, key) => cells.find((c) => c.key === key);
+  let cells = await gridCells();
+  const from = ["0-1", "1-1"];
+  const names = await drawerNames();
+  // As found, to put back: the activity in each, or null for Open.
+  const found = from.map((k) => {
+    const c = at(cells, k);
+    return c && isPlaced(c) ? c.name : null;
   });
-  if (said && /^Pasted /.test(said)) {
+  let placed = 0;
+  let to = null;
+  try {
+    for (const key of from) {
+      const c = at(cells, key);
+      if (c && isPlaced(c)) continue;
+      if (!c || !isFreeOpen(c) || !names.length) {
+        results.notRun(
+          S,
+          name,
+          `${key} holds neither an activity nor an Open cell to type one into.`
+        );
+        return;
+      }
+      // Counted first: a typing that fails halfway may still have saved.
+      placed += 1;
+      await placeAt(key, names[(placed - 1) % names.length]);
+      cells = await gridCells();
+    }
+    const copied = from.map((k) => at(cells, k).name);
+    const rows = [...new Set(cells.map((c) => Number(c.key.split("-")[1])))]
+      .filter((r) => r > 1)
+      .sort((x, y) => x - y);
+    const row = rows.find((r) =>
+      ["0", "1"].every((g) => {
+        const c = at(cells, `${g}-${r}`);
+        return c && isFreeOpen(c);
+      })
+    );
+    if (row === undefined) {
+      results.notRun(
+        S,
+        name,
+        "No later time block is Open for both Bunk 1 and Bunk 2 to paste onto."
+      );
+      return;
+    }
+    to = ["0", "1"].map((g) => `${g}-${row}`);
+    await focusCell(from[0]);
+    await expectLive(
+      S,
+      "Shift+Right: two cells chosen, said",
+      /^2 selected$/,
+      () => press("Shift+ArrowRight", 300)
+    );
+    const chosen = (await gridCells()).filter((c) =>
+      /\bcell_chosen\b/.test(c.classes)
+    );
+    if (chosen.length === 2) {
+      results.pass(S, "Shift+Right: two cells marked chosen", "2 marked.");
+    } else {
+      await shot(S, "Two cells chosen");
+      results.fail(
+        S,
+        "Shift+Right: two cells marked chosen",
+        `${chosen.length} marked.`
+      );
+    }
+    await expectLive(S, "Ctrl+C: Copied is said", /^Copied /, () =>
+      press("ControlOrMeta+c")
+    );
+    // Down lets the choice go and moves on; the paste lands at the cell with focus, Bunk 1's.
+    for (let r = 1; r < row; r++) await press("ArrowDown", 200);
+    if ((await focusedCellKey()) !== to[0]) await focusCell(to[0]);
+    const said = await expectLive(
+      S,
+      "Ctrl+V on an Open block: it is said",
+      /^(Pasted |Nothing pasted|Nothing to paste)/,
+      () => press("ControlOrMeta+v")
+    );
+    await expectFocus(S, "After pasting: focus stays on the grid", {
+      inGrid: true
+    });
+    if (!said || !/^Pasted /.test(said)) {
+      results.notRun(
+        S,
+        name,
+        `Nothing was pasted (${said ? `"${said}"` : "nothing said"}), so the paste and its Undo were not checked.`
+      );
+      return;
+    }
+    await pause(500);
+    cells = await gridCells();
+    const now = to.map((k) => (at(cells, k) || {}).name);
+    if (now.every((n, i) => n === copied[i])) {
+      results.pass(S, name, `${to.join(", ")} now hold ${copied.join(", ")}.`);
+    } else {
+      await shot(S, "Pasted cells");
+      results.fail(
+        S,
+        name,
+        `Copied ${copied.join(", ")}; ${to.join(", ")} hold ${now.join(", ")}.`
+      );
+    }
     await expectLive(
       S,
       "Ctrl+Z: the paste is undone in one step",
       /^Undone: Pasted /,
       () => press("ControlOrMeta+z")
     );
+    await pause(500);
+    cells = await gridCells();
+    const back = to.map((k) => at(cells, k));
+    if (back.every((c) => c && isFreeOpen(c))) {
+      results.pass(
+        S,
+        "One Undo: both pasted cells are Open again",
+        `${to.join(", ")} Open.`
+      );
+    } else {
+      await shot(S, "After undoing the paste");
+      results.fail(
+        S,
+        "One Undo: both pasted cells are Open again",
+        `${to.map((k, i) => `${k} ${(back[i] || {}).name}`).join(", ")}.`
+      );
+    }
+  } finally {
+    // Put the camp back whatever happened above: the paste first (its cells were Open), then
+    // what was typed in, each Undo said and stopping once the cells are as found.
+    const isBack = async (keys, want) => {
+      const now = await gridCells();
+      return keys.every((k, i) => {
+        const c = at(now, k);
+        return c && (want[i] === null ? isFreeOpen(c) : c.name === want[i]);
+      });
+    };
+    await focusCell(from[0]);
+    if (to) {
+      await undoSteps(1, {
+        re: /^Undone: Pasted /,
+        done: () => isBack(to, [null, null])
+      });
+    }
+    await undoSteps(placed, { done: () => isBack(from, found) });
   }
 }
 
@@ -2349,7 +2469,10 @@ async function stretchByHandle(S) {
   );
 }
 
-/** The grid's cells on screen, as { key, name, classes } (through the grid's shadow root). */
+/**
+ * The grid's cells on screen, as { key, name, classes, span } (through the grid's shadow root);
+ * span is how many time blocks the cell runs.
+ */
 async function gridCells() {
   return shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
     .first()
@@ -2359,10 +2482,94 @@ async function gridCells() {
         return {
           key: c.dataset.cell,
           name: name ? name.textContent.trim() : "",
-          classes: c.className
+          classes: c.className,
+          span: Number(c.getAttribute("aria-rowspan") || 1)
         };
       })
     );
+}
+
+/** A one-block cell a director can type an activity into: Open, not locked or away. */
+const isFreeOpen = (c) =>
+  /\bcell_open\b/.test(c.classes) &&
+  !/\bcell_(locked|locked-empty|away)\b/.test(c.classes) &&
+  c.span === 1;
+
+/** A one-block placed activity a director put there (not a fixed one, not locked). */
+const isPlaced = (c) =>
+  /\bcell_activity\b/.test(c.classes) &&
+  !/\bcell_locked\b/.test(c.classes) &&
+  c.span === 1 &&
+  c.name;
+
+/** Puts focus on a grid cell by its key ("bunk-block"), as a click would. */
+async function focusCell(key) {
+  await shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
+    .first()
+    .locator(`[data-cell="${key}"]`)
+    .focus();
+  await pause(200);
+}
+
+/** The key of the grid cell with focus, or null. */
+async function focusedCellKey() {
+  return page.evaluate(() => {
+    let el = document.activeElement;
+    while (el && el.shadowRoot && el.shadowRoot.activeElement) {
+      el = el.shadowRoot.activeElement;
+    }
+    const cell = el && el.closest && el.closest("[data-cell]");
+    return cell ? cell.dataset.cell : null;
+  });
+}
+
+/**
+ * Arranging a step: types an activity into a cell (Enter, its name, Return) and waits until the
+ * grid shows it there. Undo takes it back as one step. Throws if it never shows.
+ */
+async function placeAt(key, activity) {
+  await focusCell(key);
+  await press("Enter", 500);
+  const f = await focus();
+  if (!f || f.dataId !== "slot-input")
+    throw new Error(`Enter on ${key} did not open the typing box.`);
+  await type(activity);
+  await pause(400);
+  await press("Enter", 300);
+  const end = Date.now() + 15000;
+  while (Date.now() < end) {
+    const c = (await gridCells()).find((x) => x.key === key);
+    if (c && c.name === activity) return;
+    await pause(200);
+  }
+  throw new Error(`${activity} did not show in ${key} after typing it.`);
+}
+
+/**
+ * Undoes up to `n` steps with Ctrl/Cmd+Z (arranging, not checked). Each press must be said
+ * ("Undone: ...", matching `re` when given) before the next; one that is not stops it, so a later
+ * press can't take back a change the check did not make. `done`, when given, is asked first each
+ * time and stops it once the cells are back as found.
+ */
+async function undoSteps(n, { re = /^Undone: /, done } = {}) {
+  for (let i = 0; i < n; i++) {
+    if (done && (await done())) return;
+    await watchLive();
+    await press("ControlOrMeta+z");
+    const end = Date.now() + 15000;
+    let said = null;
+    while (!said && Date.now() < end) {
+      const texts = await page.evaluate(() => window.__a11yLive || []);
+      said = texts.find((t) => /^Undone: /.test(t));
+      if (!said) await pause(100);
+    }
+    if (!said || !re.test(said)) {
+      say(
+        `Putting the camp back: Undo ${said ? `said "${said}"` : "said nothing"}; stopped there.`
+      );
+      return;
+    }
+  }
 }
 
 /**
@@ -2448,55 +2655,92 @@ async function holdTile(S) {
 
 /**
  * Same-activity outlines with the mouse (wiki decision 38): pointing at a placed activity
- * outlines every other cell of it, and never an Open cell.
+ * outlines every other cell of it, and never an Open cell. With `arrange` (Manual Build), when no
+ * activity is placed twice on the day, one placed activity is typed into an Open cell of another
+ * bunk first, and that is undone after.
  */
-async function hoverOutlines(S) {
-  const cells = await gridCells();
-  const counts = new Map();
-  cells
-    .filter((c) => /\bcell_activity\b/.test(c.classes) && c.name)
-    .forEach((c) => counts.set(c.name, (counts.get(c.name) || 0) + 1));
-  const [name] = [...counts].find(([, n]) => n > 1) || [];
-  if (!name) {
-    results.notRun(
-      S,
-      "Pointing at a cell outlines its activity",
-      "No activity is placed twice on this day."
-    );
-    return;
+async function hoverOutlines(S, { arrange = false } = {}) {
+  const tally = (list) => {
+    const counts = new Map();
+    list
+      .filter((c) => /\bcell_activity\b/.test(c.classes) && c.name)
+      .forEach((c) => counts.set(c.name, (counts.get(c.name) || 0) + 1));
+    return counts;
+  };
+  let cells = await gridCells();
+  let counts = tally(cells);
+  let [name] = [...counts].find(([, n]) => n > 1) || [];
+  let placed = 0;
+  let undoAt = null;
+  try {
+    if (!name && arrange) {
+      const first = cells.find(isPlaced);
+      const bunk = first && first.key.split("-")[0];
+      const open =
+        first &&
+        cells.find((c) => isFreeOpen(c) && c.key.split("-")[0] !== bunk);
+      if (first && open) {
+        placed = 1;
+        undoAt = open.key;
+        await placeAt(open.key, first.name);
+        await page.mouse.move(2, 2);
+        cells = await gridCells();
+        counts = tally(cells);
+        [name] = [...counts].find(([, n]) => n > 1) || [];
+      }
+    }
+    if (!name) {
+      results.notRun(
+        S,
+        "Pointing at a cell outlines its activity",
+        "No activity is placed twice on this day."
+      );
+      return;
+    }
+    const target = cells.find((c) => c.name === name);
+    const editGrid = shown(
+      'c-shoresh-schedule-grid[data-id="edit-grid"]'
+    ).first();
+    const at = editGrid.locator(`[data-cell="${target.key}"]`);
+    await at.scrollIntoViewIfNeeded();
+    await at.hover();
+    await pause(300);
+    const now = await gridCells();
+    const same = now.filter((c) => /\bcell_same\b/.test(c.classes));
+    if (
+      same.length === counts.get(name) - 1 &&
+      same.every((c) => c.name === name && c.key !== target.key)
+    ) {
+      results.pass(
+        S,
+        "Pointing at a cell outlines its activity",
+        `${name}: the other ${same.length} outlined.`
+      );
+    } else {
+      await shot(S, "Hover outlines");
+      results.fail(
+        S,
+        "Pointing at a cell outlines its activity",
+        `${name}: outlined ${same.map((c) => `${c.key} ${c.name}`).join(", ") || "none"}.`
+      );
+    }
+    if (args.includes("--shots")) {
+      await page.screenshot({ path: join(shotsDir, "hover-cell.png") });
+    }
+    await page.mouse.move(2, 2);
+    await pause(200);
+  } finally {
+    if (placed) {
+      await page.mouse.move(2, 2);
+      await focusCell(undoAt);
+      // Done once the cell typed into is Open again.
+      const done = async () => {
+        const c = (await gridCells()).find((x) => x.key === undoAt);
+        return Boolean(c && isFreeOpen(c));
+      };
+      await undoSteps(placed, { done });
+    }
   }
-  const target = cells.find((c) => c.name === name);
-  const editGrid = shown(
-    'c-shoresh-schedule-grid[data-id="edit-grid"]'
-  ).first();
-  const at = editGrid.locator(`[data-cell="${target.key}"]`);
-  await at.scrollIntoViewIfNeeded();
-  await at.hover();
-  await pause(300);
-  const now = await gridCells();
-  const same = now.filter((c) => /\bcell_same\b/.test(c.classes));
-  if (
-    same.length === counts.get(name) - 1 &&
-    same.every((c) => c.name === name && c.key !== target.key)
-  ) {
-    results.pass(
-      S,
-      "Pointing at a cell outlines its activity",
-      `${name}: the other ${same.length} outlined.`
-    );
-  } else {
-    await shot(S, "Hover outlines");
-    results.fail(
-      S,
-      "Pointing at a cell outlines its activity",
-      `${name}: outlined ${same.map((c) => `${c.key} ${c.name}`).join(", ") || "none"}.`
-    );
-  }
-  if (args.includes("--shots")) {
-    await page.screenshot({ path: join(shotsDir, "hover-cell.png") });
-  }
-  await page.mouse.move(2, 2);
-  await pause(200);
 }
 
 /**
@@ -2680,7 +2924,94 @@ async function generated(openGenerated) {
 async function lockLook(S) {
   const name =
     "Locked cells: the padlock bottom right, no edge, clear of the mark";
-  const found = await shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
+  let found = await measureLocks();
+  // A locked cell that also has the needs-a-look corner: lock one that has the mark when none does.
+  let arranged = null;
+  let retyped = null;
+  try {
+    if (!found.some((c) => c.lock && c.mark && c.mark !== "hidden")) {
+      const isMarked = (c) =>
+        /\bcell_look\b/.test(c.classes) &&
+        !/\bcell_(locked|locked-empty|away)\b/.test(c.classes);
+      let marked = (await gridCells()).find(isMarked);
+      if (!marked) {
+        // Break a rule on purpose: a bunk's activity typed over another of its cells that day
+        // ("Twice in a day"), put back after.
+        const cells = await gridCells();
+        const bunkOf = (c) => c.key.split("-")[0];
+        const pair = cells
+          .filter(isPlaced)
+          .map((a) => [
+            a,
+            cells.find(
+              (b) => isPlaced(b) && bunkOf(b) === bunkOf(a) && b.name !== a.name
+            )
+          ])
+          .find(([, b]) => b);
+        if (pair) {
+          const [a, b] = pair;
+          // Noted first: a typing that fails halfway may still have saved.
+          retyped = { key: b.key, name: b.name };
+          await placeAt(b.key, a.name);
+          // A hand edit on Generated Schedule is locked as it saves; then it is the cell wanted.
+          const end = Date.now() + 8000;
+          while (Date.now() < end && !marked && !arranged) {
+            await pause(300);
+            const c = (await gridCells()).find((x) => x.key === b.key);
+            if (c && /\bcell_look\b/.test(c.classes)) {
+              if (/\bcell_locked\b/.test(c.classes)) arranged = b.key;
+              else marked = c;
+            }
+          }
+          found = await measureLocks();
+        }
+      }
+      if (marked) {
+        await focusCell(marked.key);
+        if (!(await openRailMenu(/^Edit$/)))
+          throw new Error("Edit not reached.");
+        if (!(await arrowTo(/^Lock /))) {
+          await press("Escape", 300);
+          throw new Error(`No Lock choice in Edit for ${marked.key}.`);
+        }
+        arranged = marked.key;
+        await expectLive(
+          S,
+          `Lock ${marked.key}, which has the corner mark: it is said`,
+          /lock/i,
+          () => press("Enter")
+        );
+        await pause(500);
+        found = await measureLocks();
+      }
+    }
+    await judgeLocks(S, name, found);
+  } finally {
+    if (arranged) await unlockCell(arranged);
+    if (retyped) {
+      await placeAt(retyped.key, retyped.name);
+      // Typed back by hand, it is locked again as it saves: it was not locked before.
+      await pause(1500);
+      const c = (await gridCells()).find((x) => x.key === retyped.key);
+      if (c && /\bcell_locked\b/.test(c.classes)) await unlockCell(retyped.key);
+    }
+  }
+}
+
+/** Arranging, put back: unlocks a cell from the rail's Edit menu. */
+async function unlockCell(key) {
+  await focusCell(key);
+  if ((await openRailMenu(/^Edit$/)) && (await arrowTo(/^Unlock /))) {
+    await press("Enter", 1500);
+  } else {
+    await press("Escape", 300);
+    say(`Could not unlock ${key} again (a draft, deleted next run).`);
+  }
+}
+
+/** Every locked cell's box, padlock, name and corner mark, measured on screen. */
+async function measureLocks() {
+  return shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
     .first()
     .evaluate((g) => {
       const box = (el) => {
@@ -2739,6 +3070,9 @@ async function lockLook(S) {
         }
       );
     });
+}
+
+async function judgeLocks(S, name, found) {
   if (!found.length) {
     results.notRun(S, name, "No locked cell on the day shown.");
     return;
@@ -2780,6 +3114,24 @@ async function lockLook(S) {
       S,
       name,
       `${found.length} locked cell(s), ${withMark} with the corner mark as well.`
+    );
+  }
+  const both =
+    "A locked cell with the corner mark: padlock and mark both shown, apart";
+  const pair = found.find((c) => c.lock && c.mark && c.mark !== "hidden");
+  if (!pair) {
+    results.notRun(
+      S,
+      both,
+      "No cell on the day shown has the corner mark to lock."
+    );
+  } else if (overlap(pair.lock, pair.mark)) {
+    results.fail(S, both, `${pair.key}: they overlap.`);
+  } else {
+    results.pass(
+      S,
+      both,
+      `${pair.key}: padlock at ${Math.round(pair.lock.l)},${Math.round(pair.lock.t)}, mark at ${Math.round(pair.mark.l)},${Math.round(pair.mark.t)}, no overlap.`
     );
   }
 }
