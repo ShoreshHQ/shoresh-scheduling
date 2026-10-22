@@ -2511,11 +2511,22 @@ export default class ShoreshWeekEditor extends LightningElement {
     };
   }
 
+  /**
+   * Whether there is a cell for Copy or Paste to start from, without working out the grid again
+   * (the Edit menu asks on every render).
+   */
+  get hasCellToUse() {
+    return (
+      !!this.schedule &&
+      !this.isActivity &&
+      !!((this.chosen && this.chosen.keys.size) || this.focusKey)
+    );
+  }
   get cannotCopy() {
-    return this.copyCells.length === 0;
+    return !this.hasCellToUse;
   }
   get cannotPaste() {
-    return !this.clipboard || !this.pasteOrigin;
+    return !this.clipboard || !this.hasCellToUse;
   }
 
   /** The day, bunk and time block (indexes) at a row and column of the grid on screen, or null. */
