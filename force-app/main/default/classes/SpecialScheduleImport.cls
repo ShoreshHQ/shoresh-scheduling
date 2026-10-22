@@ -70,7 +70,7 @@ public with sharing class SpecialScheduleImport {
     grid.groups = columns.rows;
     Outcome outcome = new Outcome();
     outcome.notGroups = columns.notGroups;
-    outcome.replaced = SpecialSchedule.setTimesIn(plan.grid);
+    outcome.replaced = SpecialPlanEntries.setTimesIn(plan.grid);
     SpecialActivities.Named found = activitiesFor(owner, columns.filling);
     outcome.added = found.added;
     for (ImportedColumn column : columns.filling) {
@@ -96,7 +96,7 @@ public with sharing class SpecialScheduleImport {
           ' since you opened it. Open it again to see their changes, then make yours.'
       );
     }
-    if (plan.problem == null && SpecialSchedule.hasEntries(plan.grid)) {
+    if (plan.problem == null && SpecialPlanEntries.hasEntries(plan.grid)) {
       throw new ShoreshException(
         owner.name +
         ' already has entries. Clear it first if you want to replace it with an import, or add to it by hand.'

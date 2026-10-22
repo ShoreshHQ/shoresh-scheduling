@@ -23,7 +23,8 @@ private class SpecialScheduleTest {
       Assert.areEqual('SpecialDay', view.kind);
       Assert.areEqual('Field Day', view.name);
       Assert.areEqual(1, view.revision);
-      Assert.isTrue(view.hasEntries);
+      // Only what it started with: not an entry, so an import can replace it.
+      Assert.isFalse(view.hasEntries);
       ScheduleViews.DayView day = view.schedule.days[0];
       Assert.areEqual(SpecialSchedule.PLAN_DAY, day.dateValue);
       Assert.areEqual(
@@ -112,28 +113,21 @@ private class SpecialScheduleTest {
       String lunch =
         'F:' + SpecialSchedule.open(dayId).schedule.days[0].items[0].id;
 
+      // Typed over in Group B, cleared in A and C: Lunch break leaves the plan's list.
+      SlotEdits.Edit edit = new SlotEdits.Edit();
+      edit.runs = new List<SlotEdits.Run>{
+        over(ids.get('Group A'), lunch, ''),
+        over(ids.get('Group B'), lunch, swim),
+        over(ids.get('Group C'), lunch, '')
+      };
       SlotEdits.Result saved = SpecialScheduleController.saveCells(
         dayId,
-        SpecialScheduleTestData.edits(over(ids.get('Group B'), lunch, swim))
+        new List<SlotEdits.Edit>{ edit }
       );
       Assert.areEqual(0, saved.conflicts.size());
       Assert.areEqual(
-        new List<String>{
-          'Group A: ,,Lunch break',
-          'Group B: ,,Swim',
-          'Group C: ,,Lunch break'
-        },
+        new List<String>{ 'Group A: ,,', 'Group B: ,,Swim', 'Group C: ,,' },
         SpecialScheduleTestData.cells(saved.schedule.days[0])
-      );
-
-      // Cleared in the other two groups, Lunch break leaves the plan's list...
-      SpecialScheduleController.saveCells(
-        dayId,
-        SpecialScheduleTestData.edits(over(ids.get('Group A'), lunch, ''))
-      );
-      SpecialScheduleController.saveCells(
-        dayId,
-        SpecialScheduleTestData.edits(over(ids.get('Group C'), lunch, ''))
       );
 
       // ...and Undo puts it back, read again by its Id.

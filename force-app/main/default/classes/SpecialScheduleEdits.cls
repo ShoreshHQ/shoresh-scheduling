@@ -33,7 +33,7 @@ public with sharing class SpecialScheduleEdits {
     }
     SpecialScheduleEdits saver = new SpecialScheduleEdits(owner);
     saver.readActivities(SlotRules.activityIdsIn(edits));
-    saver.readSetTimes(setTimeIdsIn(edits, plan.grid));
+    saver.setTimes = SpecialSetTimes.dropped(edits, plan.grid, owner.seasonId);
     SlotEdits.Result result = new SlotEdits.Result();
     ScheduleGrid grid = plan.grid;
     Boolean changed = false;
@@ -67,61 +67,6 @@ public with sharing class SpecialScheduleEdits {
         WHERE Id IN :activityIds AND Season__c = :seasonId
         WITH USER_MODE
       ]
-    );
-  }
-
-  /**
-   * The fixed and recurring activities edits place that the plan no longer lists (Undo after
-   * the last cell of one was typed over), to be read back by Id.
-   */
-  private static Set<Id> setTimeIdsIn(
-    List<SlotEdits.Edit> edits,
-    ScheduleGrid grid
-  ) {
-    Set<String> listed = new Set<String>();
-    for (ScheduleGrid.Item item : grid.items) {
-      listed.add(SlotIds.of(item));
-    }
-    Set<Id> result = new Set<Id>();
-    for (SlotEdits.Edit edit : edits) {
-      for (SlotEdits.Run run : edit.runs) {
-        for (
-          String after : run.after == null ? new List<String>() : run.after
-        ) {
-          String slot = SlotIds.owner(SlotIds.normal(after));
-          if (SlotIds.isSetTime(slot) && !listed.contains(slot)) {
-            result.add(Id.valueOf(slot.substring(2)));
-          }
-        }
-      }
-    }
-    return result;
-  }
-
-  private void readSetTimes(Set<Id> ids) {
-    if (ids.isEmpty()) {
-      return;
-    }
-    Id seasonId = owner.seasonId;
-    setTimes.putAll(
-      new Map<Id, FixedActivity__c>(
-        [
-          SELECT Id, Name
-          FROM FixedActivity__c
-          WHERE Id IN :ids AND Program__r.Season__c = :seasonId
-          WITH USER_MODE
-        ]
-      )
-    );
-    setTimes.putAll(
-      new Map<Id, RecurringActivity__c>(
-        [
-          SELECT Id, Name
-          FROM RecurringActivity__c
-          WHERE Id IN :ids AND Program__r.Season__c = :seasonId
-          WITH USER_MODE
-        ]
-      )
     );
   }
 
