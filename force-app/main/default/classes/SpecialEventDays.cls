@@ -6,8 +6,8 @@
  * the cells were written (a hand edit, Paste, Copy day to, Restore, Set it up...). Versions and
  * published copies are history and don't count.
  *
- * Called after schedule days are saved or deleted, and around deleting or restoring a schedule or
- * program (their days go and come back with them without a trigger of their own). A save whose
+ * Called after schedule days are saved or deleted, and by DeletedDrafts when a draft or its program
+ * is deleted or restored (its days go and come back with no trigger of their own). A save whose
  * days hold no special event, before or after, costs nothing; one that does costs four queries and
  * a write of the days that changed.
  * An event the grid holds that is since deleted (or of another season) is on no day.
@@ -62,67 +62,6 @@ public with sharing class SpecialEventDays {
     }
   }
 
-  // Weeks whose drafts a delete in progress takes along (beforeRemoval, afterRemoval).
-  private static Set<Id> weeksLeaving = new Set<Id>();
-
-  /**
-   * Before schedules or programs are deleted (their ids). Salesforce runs no trigger on the days
-   * a delete takes along with them, so the weeks whose drafts go and that have an event on a day
-   * are noted here and made again after the delete (afterRemoval). One query.
-   */
-  public static void beforeRemoval(Set<Id> scheduleOrProgramIds) {
-    for (Schedule__c schedule : [
-      SELECT Week__c
-      FROM Schedule__c
-      WHERE
-        (Id IN :scheduleOrProgramIds
-        OR Program__c IN :scheduleOrProgramIds)
-        AND Status__c = :ManualDrafts.DRAFT
-        AND Week__c IN (
-          SELECT Week__c
-          FROM SpecialDate__c
-          WHERE SpecialEvent__c != NULL
-        )
-      WITH USER_MODE
-    ]) {
-      weeksLeaving.add(schedule.Week__c);
-    }
-  }
-
-  /** After schedules or programs are deleted: the weeks noted before it, made what is left. */
-  public static void afterRemoval() {
-    if (weeksLeaving.isEmpty()) {
-      return;
-    }
-    Set<Id> weekIds = weeksLeaving;
-    weeksLeaving = new Set<Id>();
-    if (Schema.sObjectType.SpecialDate__c.isCreateable()) {
-      sync(weekIds);
-    }
-  }
-
-  /** After schedules or programs come back from the Recycle Bin: their drafts' weeks again. */
-  public static void afterRestore(Set<Id> scheduleOrProgramIds) {
-    if (!Schema.sObjectType.SpecialDate__c.isCreateable()) {
-      return;
-    }
-    Set<Id> weekIds = new Set<Id>();
-    for (Schedule__c schedule : [
-      SELECT Week__c
-      FROM Schedule__c
-      WHERE
-        (Id IN :scheduleOrProgramIds
-        OR Program__c IN :scheduleOrProgramIds)
-        AND Status__c = :ManualDrafts.DRAFT
-      WITH USER_MODE
-    ]) {
-      weekIds.add(schedule.Week__c);
-    }
-    if (!weekIds.isEmpty()) {
-      sync(weekIds);
-    }
-  }
-
   /** Whether a stored grid (or part of one) holds a placed special event. */
   @TestVisible
   private static Boolean holdsEvent(String gridText) {
@@ -130,7 +69,7 @@ public with sharing class SpecialEventDays {
   }
 
   /** The weeks' event days made what their drafts hold. */
-  private static void sync(Set<Id> weekIds) {
+  public static void sync(Set<Id> weekIds) {
     // What the drafts hold: "weekId|Friday|eventId", with the season of each week.
     Map<String, SpecialDate__c> wanted = new Map<String, SpecialDate__c>();
     for (ScheduleDay__c part : [

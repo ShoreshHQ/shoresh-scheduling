@@ -370,10 +370,10 @@ describe("c-shoresh-week-editor: special days and events", () => {
       dateValue: "2026-06-29",
       day: "Monday"
     };
-    let element;
+    const host = {};
     // As the host does: set it up, then send the week back with Monday replaced.
     const setUpWith = jest.fn(() => {
-      element.show(
+      host.element.show(
         {
           ...draft([FLAGPOLE, noted], ["1,2,", "1,,"]),
           specials: { days: [mondayVisit] }
@@ -382,10 +382,11 @@ describe("c-shoresh-week-editor: special days and events", () => {
       );
       return Promise.resolve('"Visiting Day" is set up as a special day.');
     });
-    ({ element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+    const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
       setUpWith,
       specials: { days: [] }
-    }));
+    });
+    host.element = element;
     await fromGrid(element, "cellfocus", { key: "0-1" });
     const button = q(element, '[data-id="set-up"]');
     expect(button.getAttribute("aria-label")).toBe(

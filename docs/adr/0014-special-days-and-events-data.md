@@ -284,7 +284,7 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     another season: it shows as removed on the grid, is on no day, and never stops the save, so
     such a version can always be restored. **Deleting a draft or its program** (a program whose
     schedules are all drafts can be deleted from Camp Setup) takes its days along with no trigger
-    of their own, so `ScheduleTriggerHandler` and `ProgramTriggerHandler` note the weeks before
+    of their own, so `DeletedDrafts` (from the schedule and program triggers) notes the weeks before
     the delete (drafts of weeks that have an event on a day: one query) and make those weeks' event
     days again after it; one restored from the Recycle Bin puts them back. Otherwise an event
     would stay "on" a day no schedule shows, and could never be deleted.

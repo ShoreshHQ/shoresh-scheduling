@@ -2,7 +2,7 @@
  * Schedules: a schedule's week must be in the same season as its program, so a version can
  * never belong to another season's week; published history is kept (PublishedGuard). A draft
  * deleted or restored takes its special events off their days or puts them back
- * (SpecialEventDays).
+ * (DeletedDrafts).
  */
 public with sharing class ScheduleTriggerHandler {
   public static void handle(
@@ -12,15 +12,15 @@ public with sharing class ScheduleTriggerHandler {
   ) {
     if (operation == TriggerOperation.BEFORE_DELETE) {
       PublishedGuard.refuseScheduleDeletes(oldMap.values());
-      SpecialEventDays.beforeRemoval(oldMap.keySet());
+      DeletedDrafts.beforeDelete(oldMap.keySet());
       return;
     }
     if (operation == TriggerOperation.AFTER_DELETE) {
-      SpecialEventDays.afterRemoval();
+      DeletedDrafts.afterDelete();
       return;
     }
     if (operation == TriggerOperation.AFTER_UNDELETE) {
-      SpecialEventDays.afterRestore(new Map<Id, Schedule__c>(news).keySet());
+      DeletedDrafts.afterUndelete(new Map<Id, Schedule__c>(news).keySet());
       return;
     }
     PublishedGuard.checkSchedules(news, oldMap);
