@@ -291,20 +291,23 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     exists; the replaced day's line has room for "Take off <day>", as the mock-up).
 
 22. **A replaced day shows the special day on both schedules** (desktop D4 and D6; decision 47.4;
-    mock-up `placed-day.png`). Both screens are sent the week's specials (`WeekSpecials`: the
-    season's events, and each day a special day replaces with its own schedule as that date's
-    day, the program's groups as its columns; at most three queries plus one look-up per kind of
-    record). In Daily View that day's pill reads "Fri · Visiting Day"; its grid is the special
+    mock-up `placed-day.png`). Both screens are sent the week's specials (`WeekSpecials`: each
+    day a special day replaces, with its own schedule as that date's day and the program's groups
+    as its columns; one query for the week's special days, none on Generated Schedule, which reads
+    them with its week, `ProgramReads.weekWithSpecialDays`, then one for their plans and one
+    look-up per kind of record they point at). The season's events come with the season setup the
+    screens already have. In Daily View that day's pill reads "Fri · Visiting Day"; its grid is the special
     day's own time blocks, read-only, every cell flat with a fine edge (it is changed in the
     special day), the same thing over the same blocks in bunks side by side one cell; where the
     drawer was, the special day's line: its name, the camp's word for it, its notes, and **Open
     <name> →**, which opens its schedule on the Special events screen. **No counter** on that day.
     In Group View its column is one named cell; Activity View counts nothing there.
     - **The week's own cells for that day are kept**, out of sight (desktop D4.6: non-destructive):
-      taken off, the day is as it was. So nothing changes them meanwhile: an edit on that day is
-      refused on the server ("Tuesday is the special day "Field Day". Open it to change that
-      day."), and Clear week, Copy day to and Paste leave it as it is and say so ("Tuesday is
-      Visiting Day: left as it is."); Copy day to from it is refused.
+      taken off, the day is as it was. So the screens never change them meanwhile: that day shows no
+      cell to edit, and Clear week, Copy day to and Paste leave it as it is and say so ("Tuesday is
+      Visiting Day: left as it is."); Copy day to from it is refused. (The server doesn't refuse an edit there: that would cost a
+      query on every save, and an edit that reached a hidden cell only waits there, as the
+      desktop keeps such rows.)
     - **Nothing is generated or counted there** (desktop D4.1 to D4.3): the engine takes the
       replaced dates (`replacedDates`), builds and checks only the other days, and sends the
       replaced ones back exactly as they were; weekly counts are judged on the days that run.
@@ -331,9 +334,8 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     shortened, as on the Special events screen, choice 11). The flag is the mock-up's. A special
     day's notes show as written. No new colours: the flat read-only cell uses the edge token.
 
-25. **Checked by** `WeekSpecialsTest` (a week sent its events and its replaced day with the
-    special day's own schedule, in a bounded open; Generated sent them too; an edit on a replaced
-    day refused; an event placed on the grid is on that day, can't be deleted while it is, and
+25. **Checked by** `WeekSpecialsTest` (a week sent its replaced day with the special
+    day's own schedule, in a bounded open; Generated sent it too; an event placed on the grid is on that day, can't be deleted while it is, and
     is on no day once cleared; another season's event refused), `SpecialPlacingTest` (Put on a
     day, the question before replacing and the answer, already on that day, a weekday the week
     lacks; Set it up for an event and for a special day, and a day already taken),

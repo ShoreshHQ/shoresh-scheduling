@@ -11,7 +11,7 @@
 import { dailyGrid } from "c/shoreshScheduleViews";
 import { OPEN, placementIn, rebaseRun, slots, staysPut } from "./slotEdits";
 
-const NO_SPECIALS = { events: [], days: [] };
+const NO_SPECIALS = { days: [] };
 
 /** The week's specials, or none. */
 export function specialsOf(draft) {

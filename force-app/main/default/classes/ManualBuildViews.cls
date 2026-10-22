@@ -50,8 +50,7 @@ public with sharing class ManualBuildViews {
     // or null when the week has not been published.
     @AuraEnabled
     public SchedulePublish.PublishState published;
-    // The season's special events to place, and the week's days a special day replaces
-    // (WeekSpecials, ADR 0014 slice 4).
+    // The week's days a special day replaces (WeekSpecials, ADR 0014 slice 4).
     @AuraEnabled
     public WeekSpecials.Specials specials = new WeekSpecials.Specials();
   }
@@ -164,6 +163,8 @@ public with sharing class ManualBuildViews {
     private List<TimeBlock__c> blocks;
     private List<WeekException__c> exceptions;
     private List<Activity__c> activities;
+    // The week was read with its special days (GeneratedSetup): none to read again.
+    private Boolean weekHasSpecialDays = false;
   }
 
   /** The draft opened for Manual Build. */
@@ -199,6 +200,7 @@ public with sharing class ManualBuildViews {
     read.blocks = setup.blocks;
     read.exceptions = setup.exceptions;
     read.activities = setup.activityRecords();
+    read.weekHasSpecialDays = true;
     return viewOf(read);
   }
 
@@ -251,11 +253,9 @@ public with sharing class ManualBuildViews {
       names.applyTo(view.schedule);
     }
     view.away = away(read.groups, read.blocks);
-    view.specials = WeekSpecials.read(
-      read.program.Season__c,
-      read.week,
-      read.groups
-    );
+    view.specials = read.weekHasSpecialDays
+      ? WeekSpecials.ofWeek(read.week, read.groups)
+      : WeekSpecials.read(read.week, read.groups);
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
     // Beside the days as Publish would put them out (SchedulePublish), so a rename since the

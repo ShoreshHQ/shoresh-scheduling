@@ -68,8 +68,8 @@ export async function loadWeek(programId, weekId) {
       locks: locksOf(r.days || []),
       // Other programs' published schedules, or fixed and recurring activities, this week (G5).
       otherPrograms: readOtherPrograms(r.otherPrograms),
-      // The season's special events, and the week's days a special day replaces (ADR 0014).
-      specials: r.specials || { events: [], days: [] }
+      // The week's days a special day replaces (ADR 0014 slice 4).
+      specials: r.specials || { days: [] }
     }
   };
 }

@@ -1332,8 +1332,8 @@ same week editor, Generated Schedule:
 3. **A day a special day replaces** shows its own schedule read-only (its name on the day's pill,
    "Fri · Visiting Day"), the special day's line in the drawer's place with **Open <name>**, and
    no counter; Group View shows that day as one named cell, Activity View counts nothing there.
-   The week's own cells for that day are kept unchanged: edits there are refused by the server,
-   and Clear week, Copy day to and Paste leave that day and say so.
+   The week's own cells for that day are kept unchanged: the screen shows none to edit, and
+   Clear week, Copy day to and Paste leave that day and say so.
 4. **Set it up**: with focus on a cell an import noted as a special event or special day ("not
    set up yet"), "Set it up" makes it from what the file had (ADR 0014 choice 23), then the week
    and the season are read again.

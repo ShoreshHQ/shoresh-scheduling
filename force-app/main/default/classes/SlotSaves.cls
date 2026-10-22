@@ -20,9 +20,6 @@ public with sharing class SlotSaves {
   private Set<Date> changed = new Set<Date>();
   // Generated Schedule: what an edit fills is locked.
   private Boolean lockEdits = false;
-  // The week's weekdays a special day replaces, and its name: nothing is changed there (the
-  // special day's own schedule is changed in it). Empty for Start from another week.
-  private WeekSpecials.Replaced replaced = WeekSpecials.noneReplaced();
 
   /**
    * Makes the edits that still fit, in order; the answer has the schedule as it now is, by
@@ -94,7 +91,6 @@ public with sharing class SlotSaves {
     setup = setupOf(schedule.Program__r);
     rules = new SlotRules(setup, SlotRules.activityIdsIn(edits))
       .withEvents(edits);
-    replaced = WeekSpecials.replacedOn(schedule.Week__c, setup.labels);
     return saveAll(schedule.Id, edits);
   }
 
@@ -160,7 +156,6 @@ public with sharing class SlotSaves {
 
   /** A day of the schedule that can be read; anything else is refused, not a conflict. */
   private ScheduleDays.DayGrid readable(Date day) {
-    replaced.refuseOn(day);
     ScheduleDays.DayGrid read = days.get(day);
     if (read == null) {
       throw new ShoreshException(

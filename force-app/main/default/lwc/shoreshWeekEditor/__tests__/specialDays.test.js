@@ -9,7 +9,19 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { GROUPS, draft } from "./data/draftFixture";
 
-const SETUP = { activities: [], locations: [] };
+const EVENT_ID_FOR_SETUP = "a0E000000000001AAA";
+// The season setup carries its special events (SeasonSetupController: special.specialEvents).
+const SETUP = {
+  activities: [],
+  locations: [{ Id: "l1", Name: "Main field" }],
+  special: {
+    specialDays: [],
+    specialEvents: [
+      { Id: EVENT_ID_FOR_SETUP, Name: "Carnival", Location__c: "l1" }
+    ],
+    briefs: []
+  }
+};
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
@@ -42,10 +54,7 @@ const VISITING_DAY = {
   }
 };
 
-const SPECIALS = {
-  events: [{ id: EVENT_ID, name: "Carnival", location: "Main field" }],
-  days: [VISITING_DAY]
-};
+const SPECIALS = { days: [VISITING_DAY] };
 
 const flush = () =>
   [...Array(10)].reduce(

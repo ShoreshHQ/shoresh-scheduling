@@ -18,7 +18,7 @@ const never = () => false;
 describe("specials.js", () => {
   it("finds the days a special day replaces, by date", () => {
     const replaced = replacedDays({
-      specials: { events: [], days: [{ dateValue: "2026-06-30", name: "V" }] }
+      specials: { days: [{ dateValue: "2026-06-30", name: "V" }] }
     });
     expect([...replaced.keys()]).toEqual(["2026-06-30"]);
     expect(replacedDays(null).size).toBe(0);

@@ -1,7 +1,6 @@
 /**
  * Special days and events on a week's schedules (ADR 0014 slice 4): Manual Build and Generated
- * Schedule are sent the season's events and the week's days a special day replaces (with its own
- * schedule); an edit on a replaced day is refused; an event placed on the grid is on that day
+ * Schedule are sent the week's days a special day replaces (with its own schedule); an event placed on the grid is on that day
  * (its special date follows the drafts that hold it) and can't be deleted while it is; Start from
  * another week names an event it leaves out. As a scheduler, with records made inside the same
  * System.runAs; each request's queries are bounded.
@@ -56,7 +55,7 @@ private class WeekSpecialsTest {
   }
 
   @IsTest
-  static void aWeekIsSentItsEventsAndTheDaysASpecialDayReplaces() {
+  static void aWeekIsSentTheDaysASpecialDayReplaces() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
       Id carnival = SpecialScheduleTestData.addEvent(
@@ -84,9 +83,6 @@ private class WeekSpecialsTest {
       Test.stopTest();
 
       Assert.isTrue(used <= 40, 'Queries to open a week: ' + used);
-      Assert.areEqual(1, view.specials.events.size());
-      Assert.areEqual('Carnival', view.specials.events[0].name);
-      Assert.areEqual('Field A', view.specials.events[0].location);
       Assert.areEqual(1, view.specials.days.size());
       WeekSpecials.ReplacedDay replaced = view.specials.days[0];
       Assert.areEqual(TUESDAY, replaced.dateValue);
@@ -125,37 +121,6 @@ private class WeekSpecialsTest {
       Assert.areEqual(
         Date.newInstance(2026, 7, 1),
         inputs.specials.days[0].dateValue
-      );
-    }
-  }
-
-  @IsTest
-  static void anEditOnAReplacedDayIsRefused() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
-      ManualBuildViews.DraftView view = blankWeek(ids);
-      SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
-      String blockId = view.schedule.days[1].blocks[0].id;
-
-      Test.startTest();
-      String refusal;
-      try {
-        ManualBuildController.saveSlots(
-          view.schedule.schedule.id,
-          edits(
-            runOn(TUESDAY, ids.get('Group A'), new List<String>{ blockId }),
-            new List<String>{ '' },
-            new List<String>{ 'A:' + ids.get('Swim') }
-          )
-        );
-      } catch (AuraHandledException e) {
-        refusal = e.getMessage();
-      }
-      Test.stopTest();
-
-      Assert.areEqual(
-        'Tuesday is the special day "Field Day". Open it to change that day.',
-        refusal
       );
     }
   }

@@ -51,6 +51,41 @@ public with sharing class ProgramReads {
     return found[0];
   }
 
+  /**
+   * The same, with the week's special days (ADR 0014 slice 4) in the same query, for
+   * WeekSpecials.ofWeek; just the week when the user may not read special days.
+   */
+  public static Week__c weekWithSpecialDays(Id weekId, Program__c program) {
+    if (!Schema.sObjectType.SpecialDate__c.isAccessible()) {
+      return weekOf(weekId, program);
+    }
+    List<Week__c> found = [
+      SELECT
+        Id,
+        Name,
+        StartDate__c,
+        EndDate__c,
+        Season__c,
+        (
+          SELECT
+            Id,
+            Day__c,
+            SpecialDay__c,
+            SpecialDay__r.Name,
+            SpecialDay__r.Notes__c
+          FROM SpecialDates__r
+          WHERE SpecialDay__c != NULL
+          ORDER BY Day__c, Id
+        )
+      FROM Week__c
+      WHERE Id = :weekId
+      WITH USER_MODE
+    ];
+    return found.isEmpty() || found[0].Season__c != program.Season__c
+      ? weekOf(weekId, program)
+      : found[0];
+  }
+
   public static List<TimeBlock__c> blocksOf(Id programId) {
     return [
       SELECT Id, Name, StartTime__c, EndTime__c, PartOfDay__c, SortOrder__c

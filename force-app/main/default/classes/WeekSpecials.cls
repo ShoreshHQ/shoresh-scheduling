@@ -1,30 +1,18 @@
 /**
- * What a week's schedules need of special days and events (ADR 0014 slice 4; desktop ADRs
- * 2026-08-22-events-overlay-placement and 2026-10-09-special-day-binds-to-a-week-day): the
- * season's special events, to place on the grid (the drawer's Events section and the typing box),
- * and the week's days a special day replaces, each with the special day's own schedule to show in
- * that day's place, on Manual Build and Generated Schedule alike. At most three queries for the
- * special objects, however many, plus one look-up per kind of record the plans point at. Runs in
- * user mode; someone who may not read the special objects gets none, and the week shows as it is.
+ * What a week's schedules need of special days (ADR 0014 slice 4; desktop ADR
+ * 2026-10-09-special-day-binds-to-a-week-day): the week's days a special day replaces, each with
+ * the special day's own schedule to show in that day's place, on Manual Build and Generated
+ * Schedule alike. (The season's special events, to place on the grid, come with the season setup
+ * the screens already have.) The week's special days are one query (none for Generated Schedule,
+ * which reads them with its week: ProgramReads.weekWithSpecialDays), their plans one more, plus
+ * one look-up per kind of record the plans point at. Runs in user mode; someone who may not read
+ * the special objects gets none, and the week shows as it is.
  */
 public with sharing class WeekSpecials {
   public class Specials {
-    // The season's special events, in the Special events screen's order.
-    @AuraEnabled
-    public List<EventOption> events = new List<EventOption>();
     // The week's days a special day replaces, in date order.
     @AuraEnabled
     public List<ReplacedDay> days = new List<ReplacedDay>();
-  }
-
-  public class EventOption {
-    @AuraEnabled
-    public Id id;
-    @AuraEnabled
-    public String name;
-    // Its place's name, or null.
-    @AuraEnabled
-    public String location;
   }
 
   /** One day of the week a special day replaces, for the whole camp. */
@@ -47,32 +35,45 @@ public with sharing class WeekSpecials {
   }
 
   /**
-   * The season's events and the week's replaced days. groups: the program's groups, in order: a
-   * replaced day shows their columns of the special day (the whole camp's when it has none of
-   * them).
+   * The week's replaced days, read now. groups: the program's groups, in order: a replaced day
+   * shows their columns of the special day (the whole camp's when it has none of them).
    */
-  public static Specials read(
-    Id seasonId,
+  public static Specials read(Week__c week, List<Group__c> groups) {
+    if (!readable()) {
+      return new Specials();
+    }
+    return fromDates(
+      week,
+      [
+        SELECT
+          Id,
+          Day__c,
+          SpecialDay__c,
+          SpecialDay__r.Name,
+          SpecialDay__r.Notes__c
+        FROM SpecialDate__c
+        WHERE Week__c = :week.Id AND SpecialDay__c != NULL
+        WITH USER_MODE
+        ORDER BY Day__c, Id
+      ],
+      groups
+    );
+  }
+
+  /** The same, from a week read with its special days (ProgramReads.weekWithSpecialDays). */
+  public static Specials ofWeek(Week__c week, List<Group__c> groups) {
+    if (!readable() || week.SpecialDates__r == null) {
+      return new Specials();
+    }
+    return fromDates(week, week.SpecialDates__r, groups);
+  }
+
+  private static Specials fromDates(
     Week__c week,
+    List<SpecialDate__c> placed,
     List<Group__c> groups
   ) {
     Specials result = new Specials();
-    if (!readable()) {
-      return result;
-    }
-    result.events = eventsOf(seasonId);
-    List<SpecialDate__c> placed = [
-      SELECT
-        Id,
-        Day__c,
-        SpecialDay__c,
-        SpecialDay__r.Name,
-        SpecialDay__r.Notes__c
-      FROM SpecialDate__c
-      WHERE Week__c = :week.Id AND SpecialDay__c != NULL
-      WITH USER_MODE
-      ORDER BY Day__c, Id
-    ];
     if (placed.isEmpty()) {
       return result;
     }
@@ -134,63 +135,10 @@ public with sharing class WeekSpecials {
     return result;
   }
 
-  /** The days of a week a special day replaces, for refusing an edit there. */
-  public class Replaced {
-    // Weekday ("Friday") => the special day's name.
-    private Map<String, String> names = new Map<String, String>();
-    private CampLabels labels;
-
-    /** 'Friday is the special day "Visiting Day". Open it to change that day.' */
-    public void refuseOn(Date day) {
-      String weekday = day == null ? null : WeekCalendar.weekdayName(day);
-      if (names.containsKey(weekday)) {
-        throw new ShoreshException(
-          weekday +
-            ' is the ' +
-            labels.singularInSentence('SpecialDay') +
-            ' "' +
-            names.get(weekday) +
-            '". Open it to change that day.'
-        );
-      }
-    }
-  }
-
-  /** No day replaced (a week just started from another, which no one else can see yet). */
-  public static Replaced noneReplaced() {
-    return new Replaced();
-  }
-
-  /** The week's days a special day replaces, read now. */
-  public static Replaced replacedOn(Id weekId, CampLabels labels) {
-    Replaced result = new Replaced();
-    result.names = replacedNames(weekId);
-    result.labels = labels;
-    return result;
-  }
-
   private static Boolean readable() {
     return Schema.sObjectType.SpecialDate__c.isAccessible() &&
       Schema.sObjectType.SpecialDay__c.isAccessible() &&
       Schema.sObjectType.SpecialEvent__c.isAccessible();
-  }
-
-  private static List<EventOption> eventsOf(Id seasonId) {
-    List<EventOption> result = new List<EventOption>();
-    for (SpecialEvent__c event : [
-      SELECT Id, Name, Location__r.Name
-      FROM SpecialEvent__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY SortOrder__c NULLS LAST, Name, Id
-    ]) {
-      EventOption option = new EventOption();
-      option.id = event.Id;
-      option.name = event.Name;
-      option.location = event.Location__r?.Name;
-      result.add(option);
-    }
-    return result;
   }
 
   /**

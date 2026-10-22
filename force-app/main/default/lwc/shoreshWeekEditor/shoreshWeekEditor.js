@@ -148,8 +148,8 @@ function slotKey(slot) {
  * "setup changed since the week started" dot (ADR 0008 part 6). They join any other dot on the
  * placement, after its words.
  *
- * Special days and events on a week (ADR 0014 slice 4): the draft's `specials` ({ events, days
- * }, WeekSpecials). A day a special day replaces shows its own schedule, read-only, in Daily View
+ * Special days and events on a week (ADR 0014 slice 4): the draft's `specials` ({ days },
+ * WeekSpecials) and the season setup's special events. A day a special day replaces shows its own schedule, read-only, in Daily View
  * (its name on the day's pill, "Fri · Visiting Day"), one named cell in Group View, and nothing in
  * Activity View; it is left out of the checks and counts, the counter (the host's checks slot) is
  * not shown on it, and the drawer's place has the special day's line: its name, notes and "Open
@@ -261,6 +261,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   fitsMemo = { key: null, checked: null, result: [] };
   // The week's replaced days, worked out once per draft's specials.
   replacedMemo = { of: null, days: new Map() };
+  // The season's special events, worked out once per setup.
+  eventsMemo = { of: null, list: [] };
   // The drawer tile under the pointer or with keyboard focus (its activity is outlined).
   hoverActivityId = null;
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
@@ -967,9 +969,27 @@ export default class ShoreshWeekEditor extends LightningElement {
     };
   }
 
-  /** The season's special events, to place ({ id, name, location }). */
+  /**
+   * The season's special events, to place ({ id, name, location }), from the season setup
+   * (SeasonSetupController: special.specialEvents, in the Special events screen's order).
+   */
   get events() {
-    return this.specials.events || [];
+    const setup = this.setup || {};
+    const memo = this.eventsMemo;
+    if (memo.of !== setup) {
+      const places = new Map(
+        (setup.locations || []).map((place) => [place.Id, place.Name])
+      );
+      memo.of = setup;
+      memo.list = ((setup.special && setup.special.specialEvents) || []).map(
+        (event) => ({
+          id: event.Id,
+          name: event.Name,
+          location: places.get(event[FIELD.SpecialEvent.Location]) || null
+        })
+      );
+    }
+    return memo.list;
   }
 
   eventFor(item) {
