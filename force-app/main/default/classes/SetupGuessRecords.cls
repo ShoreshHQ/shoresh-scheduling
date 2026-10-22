@@ -28,6 +28,7 @@ public with sharing class SetupGuessRecords {
       SELECT
         Id,
         Name,
+        Season__c,
         TimesPerWeekMin__c,
         TimesPerWeekMax__c,
         NoWeeklyMax__c,
@@ -44,7 +45,12 @@ public with sharing class SetupGuessRecords {
       WHERE Id IN :ids
       WITH USER_MODE
     ]) {
-      String item = SetupGuessValues.item('Activity', '', row.Name);
+      String item = SetupGuessValues.item(
+        row.Season__c,
+        'Activity',
+        '',
+        row.Name
+      );
       Set<String> fields = fieldsOf.get(row.Id);
       if (fields.contains(SetupGuessValues.OFTEN)) {
         result.put(
@@ -87,14 +93,14 @@ public with sharing class SetupGuessRecords {
       return result;
     }
     for (Location__c row : [
-      SELECT Id, Name, GroupsThatFit__c
+      SELECT Id, Name, Season__c, GroupsThatFit__c
       FROM Location__c
       WHERE Id IN :ids
       WITH USER_MODE
     ]) {
       result.put(
         SetupGuessValues.question(
-          SetupGuessValues.item('Location', '', row.Name),
+          SetupGuessValues.item(row.Season__c, 'Location', '', row.Name),
           SetupGuessValues.FITS
         ),
         SetupGuessValues.wholeText(row.GroupsThatFit__c)
@@ -110,7 +116,12 @@ public with sharing class SetupGuessRecords {
       return result;
     }
     for (Group__c row : [
-      SELECT Id, Name, Division__r.Name, Division__r.Program__r.Name
+      SELECT
+        Id,
+        Name,
+        Division__r.Name,
+        Division__r.Program__r.Name,
+        Division__r.Program__r.Season__c
       FROM Group__c
       WHERE Id IN :ids
       WITH USER_MODE
@@ -118,6 +129,7 @@ public with sharing class SetupGuessRecords {
       result.put(
         SetupGuessValues.question(
           SetupGuessValues.item(
+            row.Division__r.Program__r.Season__c,
             'Group',
             row.Division__r.Program__r.Name,
             row.Name

@@ -118,17 +118,18 @@ private class SetupGuessesTest {
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2027');
       ImportController.saveSetup(JSON.serialize(guessedPlan(season.Id)));
 
+      String inSeason = 'guessed|' + season.Id + '|';
       Assert.areEqual(
         new Map<String, String>{
-          'guessed|Activity||Swim|often' => '1-2',
-          'guessed|Activity||Swim|who' => 'everyone',
-          'guessed|Activity||Boating|often' => '0-1',
-          'guessed|Activity||Boating|who' => 'main/seniors',
-          'guessed|Location||Hall|fits' => '4',
-          'guessed|Group|Main|Bunk 1|division' => 'Juniors'
+          inSeason + 'Activity||Swim|often' => '1-2',
+          inSeason + 'Activity||Swim|who' => 'everyone',
+          inSeason + 'Activity||Boating|often' => '0-1',
+          inSeason + 'Activity||Boating|who' => 'main/seniors',
+          inSeason + 'Location||Hall|fits' => '4',
+          inSeason + 'Group|Main|Bunk 1|division' => 'Juniors'
         },
         answersOf(camp.Id),
-        'each guess with the value saved; names, never Ids'
+        'each guess with the value saved; the season by Id, the rest by names'
       );
 
       Test.startTest();
@@ -220,8 +221,62 @@ private class SetupGuessesTest {
       expected.remove('Bunk 1|division|Juniors');
       Assert.areEqual(expected, marks(season.Id));
       Assert.isFalse(
-        answersOf(camp.Id).containsKey('guessed|Activity||Swim|often'),
+        answersOf(camp.Id)
+          .containsKey('guessed|' + season.Id + '|Activity||Swim|often'),
         'forgotten, not kept as an answer'
+      );
+    }
+  }
+
+  /**
+   * A camp that imports into two seasons: each season keeps its own guesses. A second import that
+   * guesses differently, a Looks right in one season, or a guess already looked at in the other
+   * never changes what the other season marks.
+   */
+  @IsTest
+  static void eachSeasonKeepsItsOwnGuesses() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Maple Grove (made up)');
+      Season__c first = ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Season__c second = ShoreshTestData.season(camp.Id, 'Summer 2028');
+      ImportController.saveSetup(JSON.serialize(guessedPlan(first.Id)));
+      SetupGuessesController.confirmGuess(idOf(first.Id, 'Hall'), 'fits');
+      // The second import guesses Swim differently: 1 to 3 times a week.
+      Map<String, Object> plan = guessedPlan(second.Id);
+      for (Object row : (List<Object>) plan.get('activities')) {
+        Map<String, Object> activity = (Map<String, Object>) row;
+        if (activity.get('name') == 'Swim') {
+          activity.put('max', 3);
+        }
+      }
+
+      Test.startTest();
+      ImportController.saveSetup(JSON.serialize(plan));
+      SetupGuessesController.confirmGuess(idOf(second.Id, 'Boating'), 'often');
+      Test.stopTest();
+
+      Set<String> firstMarks = new Set<String>(ALL_MARKS);
+      firstMarks.remove('Hall|fits');
+      Assert.areEqual(
+        firstMarks,
+        marks(first.Id),
+        'the first season: Swim still marked, Boating not looked at, Hall still looked at'
+      );
+      Set<String> secondMarks = new Set<String>(ALL_MARKS);
+      secondMarks.remove('Boating|often');
+      Assert.areEqual(
+        secondMarks,
+        marks(second.Id),
+        'the second season: its own guesses, Boating looked at'
+      );
+      Map<String, String> answers = answersOf(camp.Id);
+      Assert.areEqual(
+        '1-2',
+        answers.get('guessed|' + first.Id + '|Activity||Swim|often')
+      );
+      Assert.areEqual(
+        '1-3',
+        answers.get('guessed|' + second.Id + '|Activity||Swim|often')
       );
     }
   }

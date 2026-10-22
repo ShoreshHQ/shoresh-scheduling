@@ -1,8 +1,9 @@
 /**
- * Keys and values for what an import guessed (SetupGuesses, ADR 0006 §21). A key is built from
- * names, never record Ids: "guessed|<kind>|<program, for a group>|<name>|<field>". A value is
- * what the field holds, written the same way when the import saves it and when a setup screen
- * reads it, so a change anywhere shows as a different value.
+ * Keys and values for what an import guessed (SetupGuesses, ADR 0006 §21). A key names the
+ * season by its Id, so a guess in one season never marks, or is cleared by, another season of the
+ * camp, and the rest by names: "guessed|<season Id>|<kind>|<program, for a group>|<name>|<field>".
+ * A value is what the field holds, written the same way when the import saves it and when a setup
+ * screen reads it, so a change anywhere shows as a different value.
  */
 public with sharing class SetupGuessValues {
   public static final String PREFIX = 'guessed|';
@@ -27,9 +28,21 @@ public with sharing class SetupGuessValues {
     return fields == null ? new Set<String>() : fields;
   }
 
-  /** The item a key names: "guessed|<kind>|<scope>|<name>". */
-  public static String item(String kind, String scope, String name) {
-    return PREFIX + kind + '|' + (scope == null ? '' : scope) + '|' + name;
+  /** The item a key names: "guessed|<season Id>|<kind>|<scope>|<name>". */
+  public static String item(
+    Id seasonId,
+    String kind,
+    String scope,
+    String name
+  ) {
+    return PREFIX +
+      seasonId +
+      '|' +
+      kind +
+      '|' +
+      (scope == null ? '' : scope) +
+      '|' +
+      name;
   }
 
   /** One field of an item. */

@@ -43,14 +43,14 @@ public with sharing class SetupGuessConfirm {
 
   private static Found activity(Id recordId) {
     for (Activity__c row : [
-      SELECT Name, Season__r.Camp__c
+      SELECT Name, Season__c, Season__r.Camp__c
       FROM Activity__c
       WHERE Id = :recordId
       WITH USER_MODE
     ]) {
       return new Found(
         row.Season__r.Camp__c,
-        SetupGuessValues.item('Activity', '', row.Name)
+        SetupGuessValues.item(row.Season__c, 'Activity', '', row.Name)
       );
     }
     return null;
@@ -58,14 +58,14 @@ public with sharing class SetupGuessConfirm {
 
   private static Found location(Id recordId) {
     for (Location__c row : [
-      SELECT Name, Season__r.Camp__c
+      SELECT Name, Season__c, Season__r.Camp__c
       FROM Location__c
       WHERE Id = :recordId
       WITH USER_MODE
     ]) {
       return new Found(
         row.Season__r.Camp__c,
-        SetupGuessValues.item('Location', '', row.Name)
+        SetupGuessValues.item(row.Season__c, 'Location', '', row.Name)
       );
     }
     return null;
@@ -76,6 +76,7 @@ public with sharing class SetupGuessConfirm {
       SELECT
         Name,
         Division__r.Program__r.Name,
+        Division__r.Program__r.Season__c,
         Division__r.Program__r.Season__r.Camp__c
       FROM Group__c
       WHERE Id = :recordId
@@ -84,6 +85,7 @@ public with sharing class SetupGuessConfirm {
       return new Found(
         row.Division__r.Program__r.Season__r.Camp__c,
         SetupGuessValues.item(
+          row.Division__r.Program__r.Season__c,
           'Group',
           row.Division__r.Program__r.Name,
           row.Name

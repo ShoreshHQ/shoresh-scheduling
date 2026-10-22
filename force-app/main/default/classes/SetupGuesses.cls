@@ -3,8 +3,8 @@
  * `src/utils/ruleProvenance.js`, `LocationsScreen.jsx` CapacityProvenanceDot, `GroupsScreen.jsx`
  * DivisionProvenanceDot; ADR 0006 §21). What Import last year worked out from the file rather
  * than read outright is remembered for the camp, where import answers are (ImportAnswer__c), with
- * the value it saved (SetupGuessValues). The setup screens mark it until the director says it
- * looks right (SetupGuessConfirm) or changes it. As on the desktop, that is:
+ * the value it saved (SetupGuessValues), for that season only. The setup screens mark it until the
+ * director says it looks right (SetupGuessConfirm) or changes it. As on the desktop, that is:
  * - a new activity's times a week ("often") and who can do it ("who");
  * - a new place's groups that fit ("fits");
  * - a new group's division ("division"), when only its file's name gave it.
@@ -58,6 +58,7 @@ public with sharing class SetupGuesses {
    */
   public static List<Guess> forSetup(SeasonSetupReader.SeasonSetup setup) {
     SetupGuessStanding standing = new SetupGuessStanding(setup.season.Camp__c);
+    Id seasonId = setup.season.Id;
     if (standing.isEmpty()) {
       return standing.result;
     }
@@ -76,7 +77,12 @@ public with sharing class SetupGuesses {
           );
           standing.check(
             g,
-            SetupGuessValues.item('Group', entry.program.Name, g.Name),
+            SetupGuessValues.item(
+              seasonId,
+              'Group',
+              entry.program.Name,
+              g.Name
+            ),
             new Map<String, String>{
               SetupGuessValues.DIVISION => d.division.Name
             }
@@ -87,7 +93,7 @@ public with sharing class SetupGuesses {
     for (Location__c row : setup.locations) {
       standing.check(
         row,
-        SetupGuessValues.item('Location', '', row.Name),
+        SetupGuessValues.item(seasonId, 'Location', '', row.Name),
         new Map<String, String>{
           SetupGuessValues.FITS => SetupGuessValues.wholeText(
             row.GroupsThatFit__c
@@ -106,7 +112,7 @@ public with sharing class SetupGuesses {
       }
       standing.check(
         row,
-        SetupGuessValues.item('Activity', '', row.Name),
+        SetupGuessValues.item(seasonId, 'Activity', '', row.Name),
         new Map<String, String>{
           SetupGuessValues.OFTEN => SetupGuessValues.often(row),
           SetupGuessValues.WHO => SetupGuessValues.who(names)

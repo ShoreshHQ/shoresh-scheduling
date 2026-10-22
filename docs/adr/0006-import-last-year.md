@@ -361,11 +361,14 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     - **Stored with the import answers.** The plan names them (`guessed`: kind, key, fields;
       `c/shoreshImportEngine` plan.js), and the save (`SetupGuesses`, `SetupGuessRecords`, with keys and values in `SetupGuessValues`; same all-or-none step)
       remembers each in `ImportAnswer__c` with the key
-      `guessed|<kind>|<program, for a group>|<name>|<field>` (fields `often`, `who`, `fits`,
+      `guessed|<season Id>|<kind>|<program, for a group>|<name>|<field>` (fields `often`, `who`, `fits`,
       `division`) answered with the value saved: "2-3" (or "2-none" for no weekly maximum),
       who as each division or group by program and name in order ("everyone" when empty; a list
       longer than an answer holds as its SHA-256 digest), the number that fits, the division's
-      name. Names, never Ids, as every remembered answer.
+      name. Names, as every remembered answer, except the season: a guess belongs to the season
+      it was made in, by Id, so a camp that imports into two seasons keeps each one's marks (a
+      second import guessing differently, or Looks right in one season, never clears the other's,
+      and a guess looked at stays looked at), and a season renamed keeps its marks.
     - **Shown on the setup screens** (`SeasonSetupReader` guesses via `SetupGuessStanding`, one query: the camp's
       answers): a guess stands while the record still holds the value saved and was there when
       it was guessed. So **a change anywhere clears it** (this screen, Salesforce's record page,
@@ -390,7 +393,7 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     - Checked by `guessed.test.js` (what the plan names), `shoreshGuessMark.test.js`,
       `shoreshEditableTable.test.js` and `shoreshCampSetup.test.js` ("rules Shoresh guessed"),
       `SetupGuessesTest` (stored with the values saved, shown, cleared by a change anywhere,
-      Looks right, refused fields, a record made later, query bounds), the large camp in
+      Looks right, refused fields, a record made later, two seasons of one camp, query bounds), the large camp in
       `ImportSetupSavesTest` (60 activities' guesses inside the same bounds), and in the test org
       by `scripts/a11y-browser-check.mjs` (the mark reached by Tab, opened, Escape, Looks right
       said and the cursor kept).
