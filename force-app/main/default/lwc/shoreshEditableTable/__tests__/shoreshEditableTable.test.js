@@ -3612,6 +3612,50 @@ describe("c-shoresh-editable-table", () => {
           .textContent.trim()
       ).toBe("Period 1: looks right");
     });
+
+    it("Looks right on a Who mark keeps the cursor on that cell's Change button", async () => {
+      const WHO = {
+        fieldName: "whoCanDoIt",
+        label: "Who",
+        type: "who",
+        everyone: "Everyone in Main",
+        options: [{ label: "Unit: Juniors", value: "d1" }]
+      };
+      const element = render({
+        columns: [COLUMNS[0], WHO],
+        rows: [{ Id: "a1", Name: "Swim", Coverages__r: [] }],
+        guesses: {
+          a1: {
+            whoCanDoIt: {
+              field: "who",
+              words: "Guessed from your file",
+              name: "Who for Swim: guessed from your file"
+            }
+          }
+        }
+      });
+      await flush();
+      const where = (spy) =>
+        spy.mock.contexts.map(
+          (el) => `${el.dataset.rowKey}:${el.dataset.id || el.dataset.field}`
+        );
+      const handler = jest.fn();
+      element.addEventListener("confirmguess", handler);
+      const first = jest.spyOn(HTMLElement.prototype, "focus");
+      marks(element)[0].dispatchEvent(new CustomEvent("confirm"));
+      await flush();
+      const cursorFirst = where(first);
+      first.mockRestore();
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      element.guesses = {};
+      await flush();
+      handler.mock.calls[0][0].detail.onDone();
+      await flush();
+      const focused = where(focus);
+      focus.mockRestore();
+      expect(cursorFirst).toEqual(["row-a1:who-toggle"]);
+      expect(focused).toEqual(["row-a1:who-toggle"]);
+    });
   });
 });
 

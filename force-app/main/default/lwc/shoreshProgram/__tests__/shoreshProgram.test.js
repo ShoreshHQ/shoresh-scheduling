@@ -1163,7 +1163,7 @@ describe("c-shoresh-program", () => {
         expect(newJuniors.showsRow("r1")).toBe(false);
         expect(newSeniors.showsRow("r1")).toBe(true);
         // Back on the same control (Change), in its new section, and the move said.
-        expect(focused).toEqual(["Seniors:row-r1:who"]);
+        expect(focused).toEqual([`Seniors:row-r1:${nsName("Coverages__r")}`]);
         expect(
           newSeniors.shadowRoot.querySelector('[data-id="announce"]')
             .textContent
