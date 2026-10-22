@@ -27,15 +27,20 @@ public with sharing class PublishedChanges {
     public Integer events = 0;
     // The lines past mostLines, not listed ("…and N more.").
     public Integer moreLines = 0;
+    // The days a special day replaces (on either side), whose own cells are out of sight and not
+    // compared (SpecialChanges says what changes there).
+    public Set<Date> hidden = new Set<Date>();
     private Integer mostLines;
 
-    // A special day or event changed, one line each (isEvent: a special event's).
-    public void addSpecial(String line, Boolean isEvent) {
-      if (isEvent) {
-        events++;
-      } else {
-        specialDays++;
-      }
+    // A special day changed, one line.
+    public void addSpecialDay(String line) {
+      specialDays++;
+      add(line, 1);
+    }
+
+    // A special event's own schedule changed, one line.
+    public void addEvent(String line) {
+      events++;
       add(line, 1);
     }
 
@@ -57,7 +62,7 @@ public with sharing class PublishedChanges {
     Integer mostLines
   ) {
     Changes result = none(mostLines);
-    addBetween(result, published, draft, new Set<Date>());
+    addBetween(result, published, draft);
     return result;
   }
 
@@ -68,46 +73,28 @@ public with sharing class PublishedChanges {
     return result;
   }
 
-  /**
-   * Adds the changes from published to draft to result. hidden: the days a special day replaces
-   * (on either side), whose own cells are out of sight and not compared (ScheduleSpecials says
-   * what changes there).
-   */
+  /** Adds the changes from published to draft to result, leaving out its hidden days. */
   public static void addBetween(
     Changes result,
     List<ScheduleDays.DayGrid> published,
-    List<ScheduleDays.DayGrid> draft,
-    Set<Date> hidden
+    List<ScheduleDays.DayGrid> draft
   ) {
     Map<Date, ScheduleDays.DayGrid> wasDays = byDay(published);
     Map<Date, ScheduleDays.DayGrid> nowDays = byDay(draft);
     Set<Date> dateSet = new Set<Date>(wasDays.keySet());
     dateSet.addAll(nowDays.keySet());
-    dateSet.removeAll(hidden);
+    dateSet.removeAll(result.hidden);
     List<Date> dates = new List<Date>(dateSet);
     dates.sort();
     PublishedRenames.addTo(result, published, draft);
     for (Date day : dates) {
-      addDay(
-        result,
-        WeekCalendar.weekdayName(day),
-        wasDays.get(day),
-        nowDays.get(day)
-      );
+      new DayCompare(
+          WeekCalendar.weekdayName(day),
+          wasDays.get(day),
+          nowDays.get(day)
+        )
+        .addTo(result);
     }
-  }
-
-  /**
-   * One day's changed cells, named dayName in each line ("Monday", or a special day's or event's
-   * own schedule: "Friday · Visiting Day"); either side null when it has no such day.
-   */
-  public static void addDay(
-    Changes result,
-    String dayName,
-    ScheduleDays.DayGrid was,
-    ScheduleDays.DayGrid now
-  ) {
-    new DayCompare(dayName, was, now).addTo(result);
   }
 
   private static Map<Date, ScheduleDays.DayGrid> byDay(
@@ -120,8 +107,12 @@ public with sharing class PublishedChanges {
     return result;
   }
 
-  /** One day, published (was) against draft (now); either is null when that side has no such day. */
-  private class DayCompare {
+  /**
+   * One day, published (was) against draft (now); either is null when that side has no such day.
+   * dayName names it in each line ("Monday", or a special day's or event's own schedule: "Friday ·
+   * Visiting Day", SpecialChanges).
+   */
+  public class DayCompare {
     private String dayName;
     private ScheduleDays.DayGrid was;
     // Groups and time blocks in the draft's order, then any only the published day had.
@@ -132,7 +123,7 @@ public with sharing class PublishedChanges {
     private Map<String, PublishedCells.Item> wasCells;
     private Map<String, PublishedCells.Item> nowCells;
 
-    private DayCompare(
+    public DayCompare(
       String dayName,
       ScheduleDays.DayGrid was,
       ScheduleDays.DayGrid now
@@ -165,7 +156,7 @@ public with sharing class PublishedChanges {
       }
     }
 
-    private void addTo(Changes result) {
+    public void addTo(Changes result) {
       if (was != null && was.grid == null) {
         // Nothing to compare against: the whole day is replaced, and said once. Every cell of
         // the day being published counts (at least one: the day changes even when it is empty).

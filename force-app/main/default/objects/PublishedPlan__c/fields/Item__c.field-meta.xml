@@ -3,7 +3,6 @@
     <fullName>Item__c</fullName>
     <description
   >The record Id of the special day or special event, as text, so it still says which one after that record is deleted.</description>
-    <caseSensitive>true</caseSensitive>
     <externalId>false</externalId>
     <label>Item</label>
     <length>18</length>
