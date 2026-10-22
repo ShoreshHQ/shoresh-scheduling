@@ -69,7 +69,7 @@ const FIELDS = [
   ],
   [
     "comment",
-    /\bcomments?\b|\bnotes?\b|\banything else\b|\bquestions?\b|\bmessage\b|\brequests?\b|\bmedical\b|\ballerg|\btell us\b/
+    /\bcomments?\b|\bnotes?\b|\banything else\b|\bquestions?\b|\bmessage\b|\brequests?\b|\btell us\b/
   ],
   [
     "rankValue",
@@ -86,6 +86,11 @@ const FIELDS = [
   ["dayValue", /^day(?: of (?:the )?week)?$/],
   ["periodValue", /^(?:period|time block|block|time slot|slot)$/]
 ];
+
+// A column about a camper's health ("Medical notes", "Allergies", "Medications") is never read,
+// not even as a comment: like a date of birth, it is named by its heading only (the plan's
+// privacy rule; ADR 0017 §3).
+const HEALTH = /\bmedic|\ballerg|\bhealth\b|\bdietary\b/;
 
 /** A heading in lower case, punctuation as spaces, a bracketed aside dropped. "#" is kept. */
 function normal(heading) {
@@ -178,7 +183,7 @@ function choiceHeading(text) {
  */
 export function headingMeaning(heading) {
   const text = normal(heading);
-  if (!text) return null;
+  if (!text || HEALTH.test(text)) return null;
   for (const [use, pattern] of FIELDS) {
     if (pattern.test(text)) return { use };
   }

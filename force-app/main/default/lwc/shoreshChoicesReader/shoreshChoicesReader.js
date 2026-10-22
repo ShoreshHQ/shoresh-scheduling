@@ -3,7 +3,7 @@
  * with their choices, and saying what could not be read. Pure JavaScript, no server calls and no
  * saving: the screen (slice E6) reads the file with c/shoreshImportEngine's csvFile or
  * workbookFile, calls readChoices, shows the reading, and saves only what the director confirms.
- * Decisions: docs/adr/0016-reading-a-choices-sheet.md.
+ * Decisions: docs/adr/0017-reading-a-choices-sheet.md.
  *
  * Adapted from Shoresh desktop (https://github.com/gfeitel1-maker/Scheduling-Project-,
  * Apache-2.0): src/ingest/preferenceSheet.js (parsePreferenceSheet: one reading for every
@@ -134,7 +134,8 @@ function readTable(sheet, table, out) {
       for (const c of choicesInCell(
         cellAt(row, col.index),
         rule,
-        report(col.index)
+        report(col.index),
+        out.known
       )) {
         choices.push({
           ...c,
@@ -149,7 +150,8 @@ function readTable(sheet, table, out) {
       for (const c of choicesInCell(
         cellAt(row, fields.choices),
         rule,
-        report(fields.choices)
+        report(fields.choices),
+        out.known
       )) {
         choices.push({
           ...c,
@@ -160,7 +162,7 @@ function readTable(sheet, table, out) {
       }
     }
     if (fields.choiceValue !== undefined) {
-      choices.push(...valueChoices(sheet, row, r, fields, report));
+      choices.push(...valueChoices(sheet, row, r, fields, report, out.known));
     }
 
     const notesHere = [];
@@ -186,7 +188,10 @@ function readTable(sheet, table, out) {
           : null,
       bunk: fields.bunk !== undefined ? cellAt(row, fields.bunk) || null : null,
       choices,
-      notes: notesHere
+      notes: notesHere,
+      // A sheet with one row per camper (no Activity column): a name on two of its rows is two
+      // submissions or two campers, never one camper's rows.
+      oneRowEach: fields.choiceValue === undefined
     };
     if (choices.length === 0) {
       out.notRead.push({ kind: "noChoices", ...at(r), name: name || number });
@@ -196,7 +201,7 @@ function readTable(sheet, table, out) {
 }
 
 /** One row per choice: the choice, and its rank, day and period when the sheet has them. */
-function valueChoices(sheet, row, r, fields, report) {
+function valueChoices(sheet, row, r, fields, report, known) {
   const day =
     fields.dayValue !== undefined ? cellAt(row, fields.dayValue) || null : null;
   const periodText =
@@ -225,7 +230,8 @@ function valueChoices(sheet, row, r, fields, report) {
   return choicesInCell(
     cellAt(row, fields.choiceValue),
     rule,
-    report(fields.choiceValue)
+    report(fields.choiceValue),
+    known
   ).map((c) => ({
     ...c,
     sheet: sheet.name,
@@ -349,9 +355,13 @@ function campersFrom(rows, out) {
       campers.push(camperFrom(key, rowsOfOne, out));
       continue;
     }
-    if (clash(rowsOfOne)) {
+    const repeated = rowsOfOne.filter((r) => r.oneRowEach).length > 1;
+    if (repeated || clash(rowsOfOne)) {
       // Two campers with one name and nothing to tell them apart: the one thing the reader
-      // will not decide (desktop §4.4). Neither becomes a camper until the director says.
+      // will not decide (desktop §4.4, §13.1). Rows of one name collide when they give
+      // different choices for one rank, or when the sheet has one row per camper, where a
+      // name on two rows is two children or a form sent twice, even with the same choices.
+      // Neither becomes a camper until the director says.
       out.cantTellApart.push({
         name: rowsOfOne[0].name,
         rows: rowsOfOne.map((r) => ({
@@ -407,7 +417,8 @@ function newNames(campers, activities) {
 /**
  * Read a choices file: { name, sheets: [{ name, rows, merges }] } (c/shoreshImportEngine's
  * csvFile or workbookFile). `activities` (names, or records with a name) are the camp's own; when
- * given, choices that name none of them are listed in newNames.
+ * given, a cell naming one of them is read as that activity before any splitting ("Arts, Crafts"
+ * stays one), and choices that name none of them are listed in newNames.
  *
  * Returns:
  * - campers: [{ key, name, number, division, bunk, rows, choices: [{ name, rank, kind, day,
@@ -417,6 +428,7 @@ function newNames(campers, activities) {
  *   sheet, row, column }). Shown to the director, never saved (pending Greg's answer, plan
  *   question 3). They are kept apart from the campers so a save of the campers cannot carry them.
  * - cantTellApart: campers sharing a name with no camper number ({ name, rows }); not in campers.
+ *   On a sheet with one row per camper, any name on two rows without a number is here.
  * - notRead: what was not read ({ kind, sheet, row?, column?, ... }): aboveTable, column (a
  *   heading the reader does not use; its contents are never copied), noName, noChoices,
  *   notAChoice, sheet (no choices on it), menu (a list of what is offered), outsideTable.
@@ -427,6 +439,13 @@ function newNames(campers, activities) {
 export function readChoices(file, { activities } = {}) {
   const out = {
     rows: [],
+    known: activities
+      ? new Set(
+          activities.map((a) =>
+            foldName(typeof a === "string" ? a : a && a.name)
+          )
+        )
+      : null,
     notKept: [],
     cantTellApart: [],
     notRead: [],

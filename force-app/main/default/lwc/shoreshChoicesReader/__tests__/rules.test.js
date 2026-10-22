@@ -1,4 +1,4 @@
-// The reader's rules one at a time, on small made-up sheets (docs/adr/0016-reading-a-choices-sheet.md).
+// The reader's rules one at a time, on small made-up sheets (docs/adr/0017-reading-a-choices-sheet.md).
 import { csvFile } from "c/shoreshImportEngine";
 import { headingMeaning, readChoices } from "c/shoreshChoicesReader";
 import { corpusFrom } from "./data/corpus";
@@ -51,7 +51,13 @@ describe("what a heading means", () => {
     "Monday Night Live",
     "T-shirt size",
     "Date of birth",
-    "Timestamp"
+    "Timestamp",
+    "Medical",
+    "Medical notes",
+    "Allergies",
+    "Medications",
+    "Health concerns",
+    "Dietary needs"
   ])("%s is not a field the reader uses", (heading) => {
     expect(headingMeaning(heading)).toBeNull();
   });
@@ -71,6 +77,25 @@ describe("reading", () => {
     expect(reading.notRead.map((n) => n.heading)).toEqual([
       "Parent Email",
       "Date of birth"
+    ]);
+  });
+
+  it("never copies what a medical or allergy column holds", () => {
+    const reading = read(
+      lines(
+        "Name,#1,Medical,Allergies,Medical notes",
+        "Maya Fernwood,Archery,asthma inhaler,peanuts,epipen"
+      )
+    );
+    const text = JSON.stringify(reading);
+    for (const held of ["asthma", "peanuts", "epipen"]) {
+      expect(text).not.toContain(held);
+    }
+    expect(reading.notKept).toEqual([]);
+    expect(reading.notRead.map((n) => n.heading)).toEqual([
+      "Medical",
+      "Allergies",
+      "Medical notes"
     ]);
   });
 
@@ -95,6 +120,26 @@ describe("reading", () => {
       ["Swim", "unordered"],
       ["Drama", "unordered"]
     ]);
+  });
+
+  it("reads a cell naming one of the camp's activities as that one activity", () => {
+    const reading = read(
+      lines(
+        "Name,#1,#2,Activities",
+        'Maya Fernwood,"Arts, Crafts",Rock / Rope,"Arts, Crafts; Swim"'
+      ),
+      { activities: ["arts & crafts", "Arts, Crafts", "Rock / Rope", "Swim"] }
+    );
+    expect(
+      reading.campers[0].choices.map((c) => [c.name, c.rank, c.kind])
+    ).toEqual([
+      ["Arts, Crafts", 1, "ranked"],
+      ["Rock / Rope", 2, "ranked"],
+      ["Arts", null, "unordered"],
+      ["Crafts", null, "unordered"],
+      ["Swim", null, "unordered"]
+    ]);
+    expect(reading.toCheck).toEqual([]);
   });
 
   it("names the choices the camp has no activity for", () => {
@@ -128,6 +173,31 @@ describe("reading", () => {
       }
     ]);
   });
+
+  it.each([
+    [
+      "choices that don't contradict",
+      ["Maya Cohen,Swim,Art,", "Maya Cohen,,,Drama"]
+    ],
+    [
+      "the same row twice",
+      ["Maya Cohen,Swim,Art,Drama", "Maya  cohen,Swim,Art,Drama"]
+    ]
+  ])(
+    "keeps one name on two rows of a one-row-per-camper sheet apart (%s)",
+    (_, rows) => {
+      const reading = read(lines("Name,#1,#2,#3", ...rows));
+      expect(reading.campers).toEqual([]);
+      expect(reading.cantTellApart).toEqual([
+        expect.objectContaining({
+          rows: [
+            expect.objectContaining({ row: 2 }),
+            expect.objectContaining({ row: 3 })
+          ]
+        })
+      ]);
+    }
+  );
 
   it("merges one camper's rows when they name different choices", () => {
     const reading = read(

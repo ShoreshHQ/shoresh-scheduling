@@ -129,7 +129,12 @@ export function readPlanner(file, sheet, out) {
       const report = (list, item) =>
         out[list].push({ ...item, ...at(r), column: columnLetter(index) });
       const rule = { rank: 1, kind: CHOICE_KINDS.CELL, day, period };
-      for (const c of choicesInCell(cellAt(row, index), rule, report)) {
+      for (const c of choicesInCell(
+        cellAt(row, index),
+        rule,
+        report,
+        out.known
+      )) {
         choices.push({
           ...c,
           sheet: sheet.name,

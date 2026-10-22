@@ -2,7 +2,7 @@
  * Cells of a choices sheet: what one cell holds, and the kinds of choice. Shared by the table
  * reader (shoreshChoicesReader.js) and the planner reader (planner.js).
  */
-import { tidy } from "c/shoreshImportEngine";
+import { foldName, tidy } from "c/shoreshImportEngine";
 
 /** How a choice was stated. */
 export const CHOICE_KINDS = {
@@ -41,11 +41,21 @@ const partsOf = (text) =>
     .filter((p) => p && !NOTHING.test(p));
 
 /**
- * One cell's choices under a column's meaning. `report` receives the cell's findings.
+ * One cell's choices under a column's meaning. `report` receives the cell's findings. `known`
+ * is the camp's own activity names, folded (foldName): a cell naming one of them is that one
+ * activity, even with a comma or a slash in its name ("Arts, Crafts"), and is never split.
  * Returns choices: [{ name, rank, kind, day, period }].
  */
-export function choicesInCell(text, { rank, kind, day, period }, report) {
+export function choicesInCell(
+  text,
+  { rank, kind, day, period },
+  report,
+  known
+) {
   if (!text || NOTHING.test(text)) return [];
+  if (known && known.has(foldName(text))) {
+    return [{ name: text, rank, kind, day, period }];
+  }
   if (NOT_A_NAME.test(text)) {
     report("notRead", { kind: "notAChoice", text });
     return [];

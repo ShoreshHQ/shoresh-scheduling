@@ -1,5 +1,5 @@
 // Writes the made-up camper-choices sheets the electives choices reader is tested against
-// (c/shoreshChoicesReader, docs/adr/0016-reading-a-choices-sheet.md) into docs/samples/choices/,
+// (c/shoreshChoicesReader, docs/adr/0017-reading-a-choices-sheet.md) into docs/samples/choices/,
 // with manifest.json: for every file, what a correct reading finds in it.
 // Run: node scripts/make-choices-samples.mjs
 //
