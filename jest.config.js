@@ -11,8 +11,9 @@ module.exports = {
     "<rootDir>/jest/selector-cache.js"
   ],
   // CI's shared runners run these tests four to seven times slower than a Mac, more while
-  // several runs share them: the axe checks over a whole screen (about 1 s here) and Generated
-  // Schedule's builds passed 5 s there (#99). 20 s still stops a test that hangs.
+  // several runs share them: Generated Schedule's builds (up to about 3 s here) and, before
+  // jest/sa11y-setup.js kept selector answers during a check, the axe checks over a whole screen
+  // passed 5 s there (#99). 20 s still stops a test that hangs.
   testTimeout: 20000,
   // CSS-only modules (shared colours) have no JavaScript for Jest to find.
   moduleNameMapper: {

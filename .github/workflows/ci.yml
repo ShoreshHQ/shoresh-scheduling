@@ -54,6 +54,7 @@ jobs:
         # scripts/apex-reserved-words.js: `Integer number` fails only in the org's compiler (#46).
         run: npm run check:reserved-words
       - name: Install Salesforce CLI and Code Analyzer
+        id: install-sf
         run: |
           npm install --global @salesforce/cli@2.154.4
           sf plugins install code-analyzer@5.16.0
@@ -67,7 +68,9 @@ jobs:
           --severity-threshold 3 --output-file code-analyzer.html
       - name: AppExchange security-review report
         # The same scan Salesforce documents for security review, on its own, for the submission.
-        if: always()
+        # Runs even when the scan above fails, but only once the CLI is installed: when an earlier
+        # check (Jest) fails, the install is skipped and this would only say "sf: command not found".
+        if: ${{ !cancelled() && steps.install-sf.outcome == 'success' }}
         run: >-
           sf code-analyzer run --workspace force-app
           --rule-selector AppExchange --rule-selector Recommended:Security
