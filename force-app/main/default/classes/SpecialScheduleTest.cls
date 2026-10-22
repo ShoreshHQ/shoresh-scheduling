@@ -97,34 +97,81 @@ private class SpecialScheduleTest {
       );
       Assert.areEqual(new List<Integer>{ 0 }, again.conflicts);
       Assert.areEqual(2, SpecialPlans.read(dayId).revision);
-
-      // Lunch break was brought in: it stays where it is.
-      List<String> lunch = SpecialSchedule.open(dayId)
-        .schedule.days[0]
-        .rows[1]
-        .split(',', -1);
-      String fixedId =
-        'F:' + SpecialSchedule.open(dayId).schedule.days[0].items[0].id;
-      SlotEdits.Run takeOut = SpecialScheduleTestData.run(
-        ids.get('Group B'),
-        new List<String>{ 'b3' },
-        new List<String>{ '' }
-      );
-      takeOut.before = new List<String>{ fixedId };
-      try {
-        SpecialScheduleController.saveCells(
-          dayId,
-          SpecialScheduleTestData.edits(takeOut)
-        );
-        Assert.fail('A fixed activity is kept');
-      } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'Fixed activities and recurring activities stay where they are.',
-          e.getMessage()
-        );
-      }
-      Assert.areEqual('1', lunch[2]);
     }
+  }
+
+  // ADR 0014 choice 15: what a special day started with is an ordinary cell of it, as on the
+  // desktop (SpecialDayGridEditor.jsx): typed over in one group, and put back by Undo even once
+  // no group holds it any more.
+  @IsTest
+  static void aBroughtInCellIsTypedOverAndPutBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id dayId = ids.get('Field Day');
+      String swim = 'A:' + ids.get('Swim');
+      String lunch =
+        'F:' + SpecialSchedule.open(dayId).schedule.days[0].items[0].id;
+
+      SlotEdits.Result saved = SpecialScheduleController.saveCells(
+        dayId,
+        SpecialScheduleTestData.edits(over(ids.get('Group B'), lunch, swim))
+      );
+      Assert.areEqual(0, saved.conflicts.size());
+      Assert.areEqual(
+        new List<String>{
+          'Group A: ,,Lunch break',
+          'Group B: ,,Swim',
+          'Group C: ,,Lunch break'
+        },
+        SpecialScheduleTestData.cells(saved.schedule.days[0])
+      );
+
+      // Cleared in the other two groups, Lunch break leaves the plan's list...
+      SpecialScheduleController.saveCells(
+        dayId,
+        SpecialScheduleTestData.edits(over(ids.get('Group A'), lunch, ''))
+      );
+      SpecialScheduleController.saveCells(
+        dayId,
+        SpecialScheduleTestData.edits(over(ids.get('Group C'), lunch, ''))
+      );
+
+      // ...and Undo puts it back, read again by its Id.
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SlotEdits.Result undone = SpecialScheduleController.saveCells(
+        dayId,
+        SpecialScheduleTestData.edits(over(ids.get('Group B'), swim, lunch))
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 25, 'Queries to put one back: ' + used);
+      Assert.areEqual(0, undone.conflicts.size());
+      Assert.areEqual(
+        new List<String>{
+          'Group A: ,,',
+          'Group B: ,,Lunch break',
+          'Group C: ,,'
+        },
+        SpecialScheduleTestData.cells(undone.schedule.days[0])
+      );
+      Assert.areEqual(
+        'F',
+        SpecialSchedule.open(dayId).schedule.days[0].items[0].kind
+      );
+    }
+  }
+
+  /** One group's third time block, from what it held to what it should hold. */
+  private static SlotEdits.Run over(Id groupId, String was, String now) {
+    SlotEdits.Run run = SpecialScheduleTestData.run(
+      groupId,
+      new List<String>{ 'b3' },
+      new List<String>{ now }
+    );
+    run.before = new List<String>{ was };
+    return run;
   }
 
   @IsTest

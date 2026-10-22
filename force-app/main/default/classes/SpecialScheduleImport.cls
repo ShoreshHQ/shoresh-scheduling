@@ -5,9 +5,12 @@
  * saves it as the item's plan. For an event the columns become its stations; for a special day
  * each column is matched to a group of the camp by name, and a column that names none is left
  * out and said. Each name in a cell is the season's activity of that name, or a new one
- * (SpecialActivities). Only an empty schedule is filled: one that already has entries is
- * refused, as on the desktop, so a file never writes over what the director typed. Runs in user
- * mode; the plan is saved all at once under its item's lock.
+ * (SpecialActivities). Only a schedule with nothing the director put there is filled: one that
+ * has entries is refused, as on the desktop, so a file never writes over what the director typed.
+ * What a special day started with (its time blocks and the fixed and recurring activities
+ * brought in) is not an entry, as the desktop's seed is not (its ADR 2026-08-22-event-schedule-import
+ * §6): the file replaces it, and the screen names what it replaced. Runs in user mode; the plan
+ * is saved all at once under its item's lock.
  */
 public with sharing class SpecialScheduleImport {
   /** What the screen read from the file. */
@@ -46,6 +49,9 @@ public with sharing class SpecialScheduleImport {
     /** Columns that name no group of the camp (a special day's), left out. */
     @AuraEnabled
     public List<String> notGroups = new List<String>();
+    /** Brought in when the special day started, and replaced by the file (each name once). */
+    @AuraEnabled
+    public List<String> replaced = new List<String>();
     /** How many cells were filled. */
     @AuraEnabled
     public Integer placed = 0;
@@ -64,6 +70,7 @@ public with sharing class SpecialScheduleImport {
     grid.groups = columns.rows;
     Outcome outcome = new Outcome();
     outcome.notGroups = columns.notGroups;
+    outcome.replaced = SpecialSchedule.setTimesIn(plan.grid);
     SpecialActivities.Named found = activitiesFor(owner, columns.filling);
     outcome.added = found.added;
     for (ImportedColumn column : columns.filling) {

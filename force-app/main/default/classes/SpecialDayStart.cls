@@ -4,7 +4,9 @@
  * or recurring activity that runs every day its program runs and in every week, in time blocks
  * the day has (matched by name and times), brought into the groups it takes. A morning-only or
  * afternoon-only group takes the part it is there for, as Start a blank week does (BlankDay); a
- * slot already taken is left as it is. Everything left out is named in the seed, with why.
+ * slot already taken is left as it is. Everything left out is named in the seed, with why. What
+ * is brought in is an ordinary cell of the day, as on the desktop: the director can type over it
+ * in one group (SpecialScheduleEdits), and an import replaces it (SpecialScheduleImport).
  */
 public with sharing class SpecialDayStart {
   public final ScheduleGrid grid = new ScheduleGrid();

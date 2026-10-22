@@ -113,7 +113,10 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
       day its program runs and in every week**, in time blocks the special day has (matched by
       name and times, so another program's item lands only where its time blocks are the same).
       A morning-only or afternoon-only group takes the part it is there for, as Start a blank
-      week does (`BlankDay.atCampPart`, now shared). A slot already taken is left as it is;
+      week does (`BlankDay.atCampPart`, now shared). A slot already taken is left as it is.
+      What is brought in is an **ordinary cell of the special day**, as on the desktop (its
+      fixed events land as plain activity cells in the day's own slots): the director can type
+      over it in one group (choice 15), and an import replaces it (choice 17);
     - **nothing is left out quietly**: what was not brought in is named, with why, under the
       Special days section right after it is added (read out): "Not brought in, since they don't
       run every day: Swim." (also: every week; other time blocks; the time was already taken).
@@ -162,13 +165,19 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
       adds a new one at **0 times a week** (`SpecialActivities`), so Generated Schedule never
       places it in a regular week; the desktop makes such an activity a one-off for the same
       reason. A name the season has, spaces and capitals aside, is that activity.
-    - **A fixed or recurring activity brought in** when a special day started (choice 12) keeps
-      its padlock and stays where it is, as on every schedule ("Fixed activities and recurring
-      activities stay where they are."); **Clear schedule** (Edit menu, asked first) empties every
-      cell, those too. The desktop's special-day grid lets such a cell be typed over; here the
-      grid is the shared one, whose padlock means "stays", so taking one out is Clear (or slice
-      6's follow-up). No checks or dots on a special schedule (the desktop's special days have no
-      engine either).
+    - **A fixed or recurring activity brought in** when a special day started (choice 12) is an
+      ordinary cell of that day, as on the desktop (`SpecialDayGridEditor.jsx`,
+      `SpecialDayCell.jsx`: brought-in events are plain activity cells the director types over).
+      It is typed over, cleared, moved, stretched, copied and put back by Undo like any other
+      cell, in one group without touching the rest; it has no padlock and is not drawn as a slim
+      row across the groups. It is still stored as what it is (kind F or R in the plan, so its
+      name and record stay right and an import can tell it from what was typed); the editor
+      treats it as ordinary wherever it is given `planName` (`staysPut`, `isMovable` in
+      `slotEdits.js`), and `SpecialScheduleEdits` lets it be written over, reading it back by Id
+      when Undo puts back one the plan no longer lists. It can't be typed in by name (only the
+      season's activities can). On a week's schedule fixed and recurring activities keep their
+      padlock. **Clear schedule** (Edit menu, asked first) empties every cell. No checks or dots
+      on a special schedule (the desktop's special days have no engine either).
 
 16. **Time blocks and stations** (`SpecialScheduleFrame`, on `SpecialPlanShape`). A time block has a start and an end
     ("HH:mm", end after start) and a name; with none it is called by its times ("9:00 AM – 9:45
@@ -200,21 +209,30 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     only a start ends where the next starts), the other side an event's stations or, for a
     special day, the camp's groups matched by name, and each cell's name the season's activity
     of that name or a new one (choice 15). A merged cell carries on along the times.
-    **Only an empty schedule is imported into**, as on the desktop: one with entries is refused
-    ("Color War already has entries. Clear it first if you want to replace it with an
-    import, or add to it by hand."). Nothing is left out quietly: the screen says how many cells
-    were filled, the activities added, columns that name no group, rows with no times, places
+    **Only a schedule with nothing the director put there is imported into**, as on the desktop:
+    one with entries is refused ("Color War already has entries. Clear it first if you want to
+    replace it with an import, or add to it by hand."). The desktop has no import onto a special
+    day; its import rule (ADR `2026-08-22-event-schedule-import` §6) refuses over authored cells
+    and says its first-open seed "is not a conflict". So what a special day started with (its
+    time blocks and the fixed and recurring activities brought in, choice 12) is not an entry:
+    the file replaces it, and the screen says so ("Replaced by the file, brought in when Field
+    Day started: Lunch."). Once any cell holds something typed (an activity), the import is
+    refused. Nothing is left out quietly: the screen says how many cells were filled, what it
+    replaced, the activities added, columns that name no group, rows with no times, places
     written in cells (not kept), and when only the first of several schedules was read.
 
 18. **Checked by** `SpecialScheduleTest`, `SpecialScheduleFrameTest` and `SpecialScheduleImportTest` (as a scheduler, records made in the same
     `System.runAs`, each request's queries bounded: open at most 20, a cell save 25, a frame
     change 20, an import 25; a special day's own time blocks and groups, typing, a conflict, a
-    fixed activity kept, another season's activity refused, an event's time blocks and stations
+    brought-in fixed activity typed over in one group and put back by Undo after the plan
+    dropped it, another season's activity refused, an event's time blocks and stations
     added, moved, renamed, taken out, a placement cut in two, Clear, a stale revision refused, an
-    import for an event and for a special day, a second import refused, Add <name> at 0 times a
+    import for an event and for a special day, a second import refused, an import onto a
+    special day holding only what it started with (replaced and named) and one with a typed
+    cell refused, Add <name> at 0 times a
     week, no access), `shoreshSpecialSchedule.test.js` and `fromFile.test.js` (the screen, typing
     saved as Manual Build's, the frame, Clear, Import and Download, a file read into a plan),
-    `shoreshWeekEditor.test.js` (planName), `shoreshSpecialDetails.test.js` and
+    `shoreshWeekEditor.test.js` (planName; a brought-in fixed activity typed over), `shoreshSpecialDetails.test.js` and
     `shoreshCampSetup.test.js` (Open schedule and back), and in the test org by
     `scripts/a11y-browser-check.mjs` (the special day added in the Special events step: its
     schedule opened from its details with focus on its name, axe on it, a name typed into a cell

@@ -25,6 +25,25 @@ function listed(names) {
   return names.join(", ");
 }
 
+/**
+ * Whether a day holds something the director put there. What a special day started with (a
+ * fixed or recurring activity brought in) is not that: an import replaces it, as the desktop's
+ * seed never stops an import (its ADR 2026-08-22-event-schedule-import §6; SpecialScheduleImport).
+ */
+function hasTyped(day) {
+  return (day.rows || []).some((row) =>
+    String(row)
+      .split(",")
+      .some((cell) => {
+        if (!cell || cell === "^") {
+          return false;
+        }
+        const item = day.items[Number(cell) - 1];
+        return !item || (item.kind !== "F" && item.kind !== "R");
+      })
+  );
+}
+
 /** How many cells of a day hold something, in a time block (blockIndex) or a row (groupIndex). */
 function filledIn(day, { blockIndex = null, groupIndex = null }) {
   let count = 0;
@@ -223,6 +242,11 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     const day = this.day;
     return !!day && filledIn(day, {}) > 0;
   }
+  /** Something the director put there: an import is refused then. */
+  get hasTypedEntries() {
+    const day = this.day;
+    return !!day && hasTyped(day);
+  }
   get blockWord() {
     return this.t ? this.t.s("TimeBlock") : "Time block";
   }
@@ -277,7 +301,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
         ...this.view,
         schedule: result.schedule,
         revision: Number(result.revision),
-        hasEntries: filledIn(result.schedule.days[0], {}) > 0
+        hasEntries: hasTyped(result.schedule.days[0])
       };
       return {
         status: "saved",
@@ -369,8 +393,8 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   }
 
   handleImport() {
-    if (this.hasEntries) {
-      // Desktop: an import fills an empty schedule only, never over what was typed.
+    if (this.hasTypedEntries) {
+      // Desktop: an import never fills over what was typed; what the day started with it replaces.
       this.error = `${this.name} already has entries. Clear it first if you want to replace it with an import, or add to it by hand.`;
       return;
     }
@@ -450,6 +474,11 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     const lines = [
       `Imported ${fileName}: ${outcome.placed} ${outcome.placed === 1 ? "cell" : "cells"} filled.`
     ];
+    if (outcome.replaced && outcome.replaced.length) {
+      lines.push(
+        `Replaced by the file, brought in when ${this.name} started: ${listed(outcome.replaced)}.`
+      );
+    }
     if (outcome.added.length) {
       lines.push(`Added to ${t.pIn("Activity")}: ${listed(outcome.added)}.`);
     }

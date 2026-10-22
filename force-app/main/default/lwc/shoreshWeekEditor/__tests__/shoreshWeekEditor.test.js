@@ -118,6 +118,39 @@ describe("c-shoresh-week-editor", () => {
     ).toMatch(/Color War/);
   });
 
+  // ADR 0014 choice 15: what a special day started with is an ordinary cell of it, as on the
+  // desktop (SpecialDayGridEditor.jsx), not a fixed activity's padlocked one.
+  it("planName: a fixed activity brought in is an ordinary cell, typed over in one bunk", async () => {
+    const element = createElement("c-shoresh-week-editor", {
+      is: ShoreshWeekEditor
+    });
+    element.terms = buildTerms(LABELS);
+    element.setup = nsRecord(SETUP);
+    element.planName = "Color War";
+    const saveRuns = jest
+      .fn()
+      .mockResolvedValue({ status: "saved", conflicts: [], schedule: null });
+    element.saveRuns = saveRuns;
+    document.body.appendChild(element);
+    element.show(draft(), true);
+    await flush();
+    const flagpole =
+      grid(element).shadowRoot.querySelector('[data-cell="0-0"]');
+    expect(flagpole.getAttribute("aria-readonly")).toBeNull();
+    expect(flagpole.className).not.toMatch(/set-time/);
+    await press(flagpole, "Enter");
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "boating";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    expect(saveRuns).toHaveBeenCalled();
+    const run = saveRuns.mock.calls[0][0][0].runs[0];
+    expect(run.groupId).toBe("g1");
+    expect(run.before[0]).toBe("F:f1");
+    expect(run.after[0]).toBe("A:a2");
+  });
+
   it("focusCell asked before the grid is drawn puts focus on it once it is", async () => {
     const element = createElement("c-shoresh-week-editor", {
       is: ShoreshWeekEditor

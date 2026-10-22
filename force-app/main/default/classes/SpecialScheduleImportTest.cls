@@ -115,4 +115,52 @@ private class SpecialScheduleImportTest {
       );
     }
   }
+
+  // What a special day started with is not an entry (the desktop's seed never stops an import,
+  // its ADR 2026-08-22-event-schedule-import §6): the file replaces it and the outcome names it.
+  // Once the director types a cell, an import is refused.
+  @IsTest
+  static void aSeededSpecialDayIsImportedIntoAndSaysWhatWasReplaced() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id dayId = ids.get('Field Day');
+      SpecialScheduleImport.Imported imported = SpecialScheduleTestData.sportsDay(
+        new List<SpecialScheduleImport.ImportedColumn>{
+          SpecialScheduleTestData.column(
+            'Group A',
+            new List<String>{ 'Soccer', '' }
+          )
+        }
+      );
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SpecialScheduleImport.Outcome outcome = SpecialScheduleController.importPlan(
+        dayId,
+        1,
+        imported
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 25, 'Queries to import: ' + used);
+      Assert.areEqual(new List<String>{ 'Lunch break' }, outcome.replaced);
+      Assert.areEqual(
+        new List<String>{ 'Group A: Soccer,', 'Group B: ,', 'Group C: ,' },
+        SpecialScheduleTestData.cells(outcome.plan.schedule.days[0])
+      );
+      Assert.isTrue(outcome.plan.hasEntries);
+
+      try {
+        SpecialScheduleController.importPlan(dayId, 2, imported);
+        Assert.fail('A typed cell is never written over');
+      } catch (AuraHandledException e) {
+        Assert.areEqual(
+          'Field Day already has entries. Clear it first if you want to replace it with an import, or add to it by hand.',
+          e.getMessage()
+        );
+      }
+      Assert.areEqual(2, SpecialPlans.read(dayId).revision);
+    }
+  }
 }

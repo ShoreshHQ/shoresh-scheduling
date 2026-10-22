@@ -3,14 +3,17 @@
  * editor as Manual Build's are (SlotEdits): each run says what its cells held when the director
  * saw them, and is made only if they still do, so two people can fill the same plan at once and
  * nobody's change is overwritten unseen (a conflict, for the screen to ask "keep theirs or use
- * yours"). Only the season's activities can be typed in; a fixed or recurring activity brought
- * in when the special day started stays where it is, as on every schedule (its lock). The plan
- * is saved all at once under its item's lock (SpecialPlans). Runs in user mode.
+ * yours"). Only the season's activities can be typed in. A fixed or recurring activity brought
+ * in when the special day started is an ordinary cell of the day, as on the desktop
+ * (SpecialDayGridEditor.jsx): typed over, cleared, moved, copied or put back by Undo like any
+ * other. The plan is saved all at once under its item's lock (SpecialPlans). Runs in user mode.
  */
 public with sharing class SpecialScheduleEdits {
   private final SpecialSchedule.Owner owner;
   private final CampLabels labels;
   private Map<Id, Activity__c> activities = new Map<Id, Activity__c>();
+  // Brought-in fixed and recurring activities an edit puts back after the plan dropped them.
+  private Map<Id, SObject> setTimes = new Map<Id, SObject>();
 
   private SpecialScheduleEdits(SpecialSchedule.Owner owner) {
     this.owner = owner;
@@ -30,6 +33,7 @@ public with sharing class SpecialScheduleEdits {
     }
     SpecialScheduleEdits saver = new SpecialScheduleEdits(owner);
     saver.readActivities(SlotRules.activityIdsIn(edits));
+    saver.readSetTimes(setTimeIdsIn(edits, plan.grid));
     SlotEdits.Result result = new SlotEdits.Result();
     ScheduleGrid grid = plan.grid;
     Boolean changed = false;
@@ -63,6 +67,61 @@ public with sharing class SpecialScheduleEdits {
         WHERE Id IN :activityIds AND Season__c = :seasonId
         WITH USER_MODE
       ]
+    );
+  }
+
+  /**
+   * The fixed and recurring activities edits place that the plan no longer lists (Undo after
+   * the last cell of one was typed over), to be read back by Id.
+   */
+  private static Set<Id> setTimeIdsIn(
+    List<SlotEdits.Edit> edits,
+    ScheduleGrid grid
+  ) {
+    Set<String> listed = new Set<String>();
+    for (ScheduleGrid.Item item : grid.items) {
+      listed.add(SlotIds.of(item));
+    }
+    Set<Id> result = new Set<Id>();
+    for (SlotEdits.Edit edit : edits) {
+      for (SlotEdits.Run run : edit.runs) {
+        for (
+          String after : run.after == null ? new List<String>() : run.after
+        ) {
+          String slot = SlotIds.owner(SlotIds.normal(after));
+          if (SlotIds.isSetTime(slot) && !listed.contains(slot)) {
+            result.add(Id.valueOf(slot.substring(2)));
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  private void readSetTimes(Set<Id> ids) {
+    if (ids.isEmpty()) {
+      return;
+    }
+    Id seasonId = owner.seasonId;
+    setTimes.putAll(
+      new Map<Id, FixedActivity__c>(
+        [
+          SELECT Id, Name
+          FROM FixedActivity__c
+          WHERE Id IN :ids AND Program__r.Season__c = :seasonId
+          WITH USER_MODE
+        ]
+      )
+    );
+    setTimes.putAll(
+      new Map<Id, RecurringActivity__c>(
+        [
+          SELECT Id, Name
+          FROM RecurringActivity__c
+          WHERE Id IN :ids AND Program__r.Season__c = :seasonId
+          WITH USER_MODE
+        ]
+      )
     );
   }
 
@@ -111,7 +170,6 @@ public with sharing class SpecialScheduleEdits {
     if (slot.equals(row[b])) {
       return;
     }
-    checkNotSetTime(row[b], slot);
     if (slot == SlotIds.OPEN) {
       grid.rows[g][b] = SlotIds.OPEN;
     } else if (SlotIds.isCarryOn(slot)) {
@@ -119,18 +177,6 @@ public with sharing class SpecialScheduleEdits {
       grid.rows[g][b] = ScheduleGrid.CARRIES_ON;
     } else {
       grid.rows[g][b] = startToken(grid, slot);
-    }
-  }
-
-  /** A fixed or recurring activity brought in stays where it is (its padlock). */
-  private void checkNotSetTime(String was, String slot) {
-    if (SlotIds.isSetTime(was) || SlotIds.isSetTime(slot)) {
-      throw new ShoreshException(
-        labels.plural('FixedActivity') +
-          ' and ' +
-          labels.pluralInSentence('RecurringActivity') +
-          ' stay where they are.'
-      );
     }
   }
 
@@ -150,6 +196,9 @@ public with sharing class SpecialScheduleEdits {
         return String.valueOf(i + 1);
       }
     }
+    if (SlotIds.isSetTime(slot)) {
+      return setTimeToken(grid, slot);
+    }
     Activity__c activity = activities.get(SlotIds.activityIn(slot));
     if (activity == null) {
       throw new ShoreshException(
@@ -159,6 +208,28 @@ public with sharing class SpecialScheduleEdits {
       );
     }
     grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));
+    return String.valueOf(grid.items.size());
+  }
+
+  /** A fixed or recurring activity put back after the plan dropped it, read back by Id. */
+  private String setTimeToken(ScheduleGrid grid, String slot) {
+    SObject record = setTimes.get(Id.valueOf(slot.substring(2)));
+    if (record == null) {
+      throw new ShoreshException(
+        'That ' +
+          labels.singularInSentence(
+            slot.startsWith('F:') ? 'FixedActivity' : 'RecurringActivity'
+          ) +
+          ' was not found. It may have been deleted.'
+      );
+    }
+    grid.items.add(
+      new ScheduleGrid.Item(
+        slot.substring(0, 1),
+        record.Id,
+        (String) record.get('Name')
+      )
+    );
     return String.valueOf(grid.items.size());
   }
 }

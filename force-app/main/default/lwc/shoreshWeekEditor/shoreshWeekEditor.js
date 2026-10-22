@@ -16,9 +16,10 @@ import {
   OPEN,
   applyRun,
   editRun,
-  isSetTime,
+  isMovable,
   owner,
-  placement
+  placement,
+  staysPut
 } from "./slotEdits";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { LEFT_OUT, replan, toolRuns } from "./tools";
@@ -823,8 +824,15 @@ export default class ShoreshWeekEditor extends LightningElement {
       ).slot;
       result = {
         ...cell,
+        ...(this.ownPlan && cell.setTime
+          ? {
+              setTime: false,
+              className: "cell cell_activity",
+              title: cell.text
+            }
+          : {}),
         readOnly: this.lockedReason(cell.slot) !== null,
-        movable: here.startsWith("A:"),
+        movable: isMovable(here, this.ownPlan),
         dot: joinWords(
           this.dotFor(cell.slot) ||
             (cell.open && this.openReasonFor(cell.slot)) ||
@@ -985,6 +993,14 @@ export default class ShoreshWeekEditor extends LightningElement {
     ].join(" · ");
   }
 
+  /**
+   * A special day's or event's own schedule: what it started with (a fixed or recurring activity
+   * brought in) is an ordinary cell of it, as on the desktop (ADR 0014 choice 15).
+   */
+  get ownPlan() {
+    return Boolean(this.planName);
+  }
+
   cellByKey(key) {
     const grid = this.editGrid;
     return grid ? grid.cells.find((cell) => cell.key === key) : null;
@@ -994,7 +1010,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   lockedReason(slot) {
     const day = this.dayOf(slot);
     const at = placement(day, slot.group, slot.block);
-    if (isSetTime(at.slot)) {
+    if (staysPut(at.slot, this.ownPlan)) {
       return `${this.nameOf(at.slot, day)} stays where it is set up.`;
     }
     // A placement left there from an earlier setup can still be cleared.
@@ -1363,7 +1379,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       length,
       this.awayIn(slot),
       // A longer activity stops at a locked cell, as it stops at a filled one.
-      (block) => this.isLockedSlot({ ...slot, block })
+      (block) => this.isLockedSlot({ ...slot, block }),
+      this.ownPlan
     );
     if (!run) {
       const head = placement(day, slot.group, slot.block).first;
@@ -2604,7 +2621,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     cells.forEach((cell) => {
       const day = this.dayOf(cell.slot);
       const at = placement(day, cell.slot.group, cell.slot.block);
-      if (isSetTime(at.slot)) {
+      if (staysPut(at.slot, this.ownPlan)) {
         return;
       }
       if (at.slot === OPEN) {
@@ -2867,7 +2884,8 @@ export default class ShoreshWeekEditor extends LightningElement {
         `A:${id}`,
         length,
         this.awayIn(slot),
-        (block) => this.isLockedSlot({ ...slot, block })
+        (block) => this.isLockedSlot({ ...slot, block }),
+        this.ownPlan
       );
       if (!run || run.after.filter((x) => x !== OPEN).length < length) {
         return;
@@ -3138,8 +3156,12 @@ export default class ShoreshWeekEditor extends LightningElement {
       placement(fromDay, from.group, from.block).slot,
       fromDay
     );
-    const result = moveEdit(this.schedule.days, from, cell.slot, (p) =>
-      this.isAwaySlot(p)
+    const result = moveEdit(
+      this.schedule.days,
+      from,
+      cell.slot,
+      (p) => this.isAwaySlot(p),
+      this.ownPlan
     );
     if (!result) {
       // Put down where it already is.
@@ -3165,7 +3187,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   removeAt(slot) {
     const day = this.dayOf(slot);
     const name = this.nameOf(placement(day, slot.group, slot.block).slot, day);
-    const result = removeEdit(this.schedule.days, slot);
+    const result = removeEdit(this.schedule.days, slot, this.ownPlan);
     if (result && !this.runsLocked(result.runs)) {
       this.commit(
         result.runs,
@@ -3195,8 +3217,12 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.say(`${name} can't end before it starts.`);
       return;
     }
-    const result = resizeEdit(this.schedule.days, slot, lastBlock, (p) =>
-      this.isAwaySlot(p)
+    const result = resizeEdit(
+      this.schedule.days,
+      slot,
+      lastBlock,
+      (p) => this.isAwaySlot(p),
+      this.ownPlan
     );
     if (!result) {
       return;

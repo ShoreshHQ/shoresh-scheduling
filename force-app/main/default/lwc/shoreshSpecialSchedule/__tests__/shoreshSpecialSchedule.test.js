@@ -316,7 +316,7 @@ describe("c-shoresh-special-schedule", () => {
   });
 
   it("Import over entries is refused, as on the desktop; Download saves the grid", async () => {
-    const { element } = await render(dayPlan());
+    const { element } = await render(dayPlan(["2,1", ",1"]));
     q(element, '[data-id="import"]').click();
     await flush();
     expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
@@ -333,6 +333,40 @@ describe("c-shoresh-special-schedule", () => {
       "Lunch",
       "Lunch"
     ]);
+  });
+
+  it("a special day holding only what it started with is imported into, and says what the file replaced", async () => {
+    const { element } = await render(dayPlan());
+    q(element, '[data-id="import"]').click();
+    await flush();
+    expect(q(element, '[data-id="error"]')).toBeNull();
+    importPlan.mockResolvedValue({
+      plan: dayPlan(["2,", ","]),
+      added: [],
+      notGroups: [],
+      replaced: ["Lunch"],
+      placed: 1
+    });
+    openPlan.mockResolvedValue(dayPlan(["2,", ","]));
+    const input = q(element, '[data-id="import-file"]');
+    Object.defineProperty(input, "files", {
+      value: [
+        {
+          name: "Color War.csv",
+          text: () => Promise.resolve("Time,Cedar\n9:00-9:45,Relay races")
+        }
+      ],
+      configurable: true
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect(importPlan).toHaveBeenCalledTimes(1);
+    const lines = [
+      ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
+    ].map((li) => li.textContent);
+    expect(lines).toContain(
+      "Replaced by the file, brought in when Color War started: Lunch."
+    );
   });
 
   it("an event's schedule is imported from a file, and what it did is said", async () => {
