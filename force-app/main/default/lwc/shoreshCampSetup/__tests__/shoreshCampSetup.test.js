@@ -1153,8 +1153,7 @@ describe("c-shoresh-camp-setup", () => {
     await expect(q(element, '[data-id="problems"]')).toBeAccessible();
     // The Bunks screen itself: the other screens are on the page too, hidden.
     await expect(q(element, '[data-screen="groups"]')).toBeAccessible();
-    // About 1 s here, but CI's runners are four to seven times slower than this Mac (#99).
-  }, 20000);
+  });
 
   it("fills in weeks from the season dates", async () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
