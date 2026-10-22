@@ -59,7 +59,12 @@ describe("what a heading means", () => {
     "Dietary needs",
     "Swim opt-out",
     "Opt out of swim",
-    "Excused from swim"
+    "Excused from swim",
+    "Swim opt-out notes",
+    "Opt out request",
+    "Excused - comments",
+    "Sit out message",
+    "No swim request"
   ])("%s is not a field the reader uses", (heading) => {
     expect(headingMeaning(heading)).toBeNull();
   });

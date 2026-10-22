@@ -444,8 +444,8 @@ function newNames(campers, activities) {
  *   period, sheet, row, column }] }], in the order the file first names them. A camper is one
  *   camper number, or with none, one name. Division and bunk are as the sheet writes them.
  * - notKept: parents' comments ({ camper, name, kind: "comment", heading, text,
- *   sheet, row, column }). Shown to the director, never saved (pending Greg's answer, plan
- *   question 3). They are kept apart from the campers so a save of the campers cannot carry them.
+ *   sheet, row, column }). Shown to the director; saving them with the camper comes
+ *   later (Greg, 2026-10-21, plan question 3). They are kept apart from the campers so a save of the campers cannot carry them.
  * - cantTellApart: campers sharing a name with no camper number ({ name, rows }); not in campers.
  *   On a sheet with one row per camper, any name on two rows without a number is here.
  * - notRead: what was not read ({ kind, sheet, row?, column?, ... }): aboveTable, column (a

@@ -88,6 +88,11 @@ const FIELDS = [
 // privacy rule; ADR 0017 §3).
 const HEALTH = /\bmedic|\ballerg|\bhealth\b|\bdietary\b/;
 
+// Shoresh has no opt-outs (Greg, 2026-10-22; ADR 0017 §6): a camp places such a camper itself, so
+// a column about sitting out is never read either, even when its heading also says "notes".
+const OPT_OUT =
+  /\bopt ?out\b|\bsit out\b|\bnot participat|\bexcused\b|\bno swim\b/;
+
 /** A heading in lower case, punctuation as spaces, a bracketed aside dropped. "#" is kept. */
 function normal(heading) {
   return tidy(heading)
@@ -179,7 +184,7 @@ function choiceHeading(text) {
  */
 export function headingMeaning(heading) {
   const text = normal(heading);
-  if (!text || HEALTH.test(text)) return null;
+  if (!text || HEALTH.test(text) || OPT_OUT.test(text)) return null;
   for (const [use, pattern] of FIELDS) {
     if (pattern.test(text)) return { use };
   }
