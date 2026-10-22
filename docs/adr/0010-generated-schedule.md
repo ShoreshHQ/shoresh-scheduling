@@ -775,7 +775,9 @@ edits)` adds each run's `locksBefore` and resolves to `saved` with the week to g
     - **the lock icon** (`utility:lock`, slate: the design guide's colour for structure that
       stays put; "Locked" in assistive text) on every locked cell, in its top left corner (the
       dot has the right), on every block of a locked placement; the legend shows it (_Locked_), as the desktop's lists its
-      locked mark. **A cell locked empty** reads as kept empty, not as Open (Greg confirmed,
+      locked mark. _Since restyled (ADR 0008 part 8, ADR 0015 choice 6): the design system's
+      padlock in the cell's bottom-right corner, once per placement, and no legend entry._
+      **A cell locked empty** reads as kept empty, not as Open (Greg confirmed,
       2026-10-18): no _Open_ word and not Open's dashed look, just the cell and its lock,
       _Locked empty_ in assistive text; Open names only cells still to fill;
     - **one Lock menu** in the toolbar (the word **Lock**, the lock icon), offering what applies
