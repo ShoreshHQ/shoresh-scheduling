@@ -5,48 +5,53 @@
  */
 @IsTest
 private class SpecialItemsTest {
-  @IsTest
-  static void theSeasonReadBringsEachItemWithItsPlanInBriefAndItsDays() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
-      Id seasonId = ids.get('Season');
-      SetTimeTestData.save(
-        new List<SObject>{ SetTimeTestData.fixed(ids, 'Lunch break', 'Lunch') }
-      );
-      Id colorWar = SetupTablesController.saveRow(
-          new SpecialDay__c(
-            Season__c = seasonId,
-            Name = 'Color War',
-            SortOrder__c = 2
-          ),
-          null,
-          null
-        )
-        .id;
-      Id rainy = SetupTablesController.saveRow(
-          new SpecialDay__c(
-            Season__c = seasonId,
-            Name = 'Rainy Day',
-            SortOrder__c = 1
-          ),
-          null,
-          null
-        )
-        .id;
-      SpecialEvent__c carnival = new SpecialEvent__c(
-        Season__c = seasonId,
-        Name = 'Carnival',
-        Location__c = ids.get('Field A'),
-        Notes__c = 'Seniors run the booths'
-      );
-      Database.insert(carnival, AccessLevel.USER_MODE);
-      SpecialDates.place(colorWar, ids.get('Week 5'), 'Thursday');
-      SpecialDates.place(carnival.Id, ids.get('Week 2'), 'Tuesday');
-      SpecialDates.place(carnival.Id, ids.get('Week 1'), 'Wednesday');
+  /**
+   * Main's camp with Lunch break every day; special days Rainy Day (first) and Color War (on
+   * Thursday of Week 5), added as the screen adds them; Carnival on Tuesday of Week 2 and
+   * Wednesday of Week 1. Returns the ids, the items' among them.
+   */
+  private static Map<String, Id> seasonWithItems() {
+    Map<String, Id> ids = SetTimeTestData.camp();
+    Id seasonId = ids.get('Season');
+    SetTimeTestData.save(
+      new List<SObject>{ SetTimeTestData.fixed(ids, 'Lunch break', 'Lunch') }
+    );
+    ids.put('Color War', addDay(seasonId, 'Color War', 2));
+    ids.put('Rainy Day', addDay(seasonId, 'Rainy Day', 1));
+    SpecialEvent__c carnival = new SpecialEvent__c(
+      Season__c = seasonId,
+      Name = 'Carnival',
+      Location__c = ids.get('Field A'),
+      Notes__c = 'Seniors run the booths'
+    );
+    Database.insert(carnival, AccessLevel.USER_MODE);
+    ids.put('Carnival', carnival.Id);
+    SpecialDates.place(ids.get('Color War'), ids.get('Week 5'), 'Thursday');
+    SpecialDates.place(carnival.Id, ids.get('Week 2'), 'Tuesday');
+    SpecialDates.place(carnival.Id, ids.get('Week 1'), 'Wednesday');
+    return ids;
+  }
 
+  private static Id addDay(Id seasonId, String name, Integer order) {
+    return SetupTablesController.saveRow(
+        new SpecialDay__c(
+          Season__c = seasonId,
+          Name = name,
+          SortOrder__c = order
+        ),
+        null,
+        null
+      )
+      .id;
+  }
+
+  @IsTest
+  static void theSeasonReadBringsItemsInOrderInFourQueries() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = seasonWithItems();
       Test.startTest();
       Integer before = Limits.getQueries();
-      SpecialItems.Setup setup = SpecialItems.forSeason(seasonId);
+      SpecialItems.Setup setup = SpecialItems.forSeason(ids.get('Season'));
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
@@ -57,9 +62,23 @@ private class SpecialItemsTest {
       Assert.areEqual(1, setup.specialEvents.size());
       Assert.areEqual(ids.get('Field A'), setup.specialEvents[0].Location__c);
       Assert.areEqual(3, setup.briefs.size());
+      // The screen gets it with the rest of the season.
+      SeasonSetupReader.SeasonSetup season = SeasonSetupReader.read(
+        ids.get('Season')
+      );
+      Assert.areEqual(3, season.special.briefs.size());
+      Assert.areEqual(ids.get('Rainy Day'), season.special.specialDays[0].Id);
+    }
+  }
+
+  @IsTest
+  static void eachItemComesWithItsPlanInBriefAndItsDays() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = seasonWithItems();
+      SpecialItems.Setup setup = SpecialItems.forSeason(ids.get('Season'));
 
       SpecialItems.Brief war = setup.briefs[1];
-      Assert.areEqual(colorWar, war.itemId);
+      Assert.areEqual(ids.get('Color War'), war.itemId);
       Assert.isTrue(war.planned);
       Assert.areEqual(3, war.rows, 'Group A, Group B and Group C');
       Assert.areEqual(3, war.periods.size());
@@ -73,17 +92,12 @@ private class SpecialItemsTest {
       Assert.areEqual('Thursday', war.days[0].day);
 
       SpecialItems.Brief fair = setup.briefs[2];
-      Assert.areEqual(carnival.Id, fair.itemId);
+      Assert.areEqual(ids.get('Carnival'), fair.itemId);
       Assert.isFalse(fair.planned, 'No plan until its schedule is made');
       Assert.areEqual(0, fair.periods.size());
       Assert.areEqual(2, fair.days.size());
       Assert.areEqual(ids.get('Week 1'), fair.days[0].weekId, 'In week order');
       Assert.areEqual('Wednesday', fair.days[0].day);
-
-      // The screen gets it with the rest of the season.
-      SeasonSetupReader.SeasonSetup season = SeasonSetupReader.read(seasonId);
-      Assert.areEqual(3, season.special.briefs.size());
-      Assert.areEqual(rainy, season.special.specialDays[0].Id);
     }
   }
 

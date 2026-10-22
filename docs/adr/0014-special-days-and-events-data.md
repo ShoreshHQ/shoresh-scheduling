@@ -102,7 +102,8 @@ decision 47 and the approved mock-up `design-research/special-r1/special-events.
     "bring recurring events in"). The desktop asks "Start from your time blocks?" after a special
     day is created; here it is done without asking (product principle: do what the same action
     does by hand, and show it), in the same save as the special day, all or none
-    (`RowSaves` → `SpecialDaySeed`):
+    (`RowSaves` → `SpecialDaySeed`, which reads the camp, and `SpecialDayStart`, which builds the
+    plan):
     - its time blocks are a copy of the **first program's** (screens' order) that has any, with
       ids of its own ("b1", "b2", choice 6); its rows are **every group in the camp**, in the
       screens' order;
@@ -110,7 +111,7 @@ decision 47 and the approved mock-up `design-research/special-r1/special-events.
       day its program runs and in every week**, in time blocks the special day has (matched by
       name and times, so another program's item lands only where its time blocks are the same).
       A morning-only or afternoon-only group takes the part it is there for, as Start a blank
-      week does (`BlankDay`). A slot already taken is left as it is;
+      week does (`BlankDay.atCampPart`, now shared). A slot already taken is left as it is;
     - **nothing is left out quietly**: what was not brought in is named, with why, under the
       Special days section right after it is added (read out): "Not brought in, since they don't
       run every day: Swim." (also: every week; other time blocks; the time was already taken).
