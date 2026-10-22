@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import { gridMinWidth } from "c/shoreshScheduleViews";
 
 const EDIT_KEYS = new Set(["Enter", "F2"]);
+const ARROWS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 
 /** What a drag carried as text, if anything. */
 function dragData(event) {
@@ -46,6 +47,14 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * the page can offer actions on it (a dot in the cell taking focus, tapped, counts as the cell).
  * A locked cell's lock says `lockLabel` ("Locked" when not given) in assistive text.
  *
+ * Choosing cells together (Greg decision 45, for Copy and Paste): Cmd/Ctrl with a click asks to
+ * add or take off a cell ("cellselect" { key, toggle: true }); Shift with a click, a drag with
+ * Shift held, Shift with Left or Right, and Cmd/Ctrl+Shift with any arrow ask to reach from where
+ * the choice started to a cell ("cellselect" { key, extend: true }). Shift with Up or Down stays
+ * the length (desktop SlotCell.jsx: range selection gave that chord up). Focus follows the cell
+ * reached, and its "cellfocus" says `extend: true`, so the page keeps what is chosen; focus
+ * moved any other way says nothing of it. The page marks the chosen cells (`selected`).
+ *
  * The look (docs/design round 13, wiki decisions 36 to 43, ADR 0008 part 8): the grid sits on its
  * zone's surface with no lines; times only down the side, names only across the top, both aligned
  * to the cells. Every placed cell is the one raised look; an Open cell is recessed and wordless
@@ -81,6 +90,10 @@ export default class ShoreshScheduleGrid extends LightningElement {
   swallowClick = false;
   // The column Up and Down keep to (a slim row spans them all).
   navColumn = null;
+  // A drag with Shift held, choosing cells: { pointerId, key } (the cell last reached), or null.
+  choosing = null;
+  // The cell focus is being moved to while cells are chosen (its cellfocus says extend), or null.
+  extendFocusKey = null;
 
   /** Moves keyboard focus to a cell (after an editor closes, say). */
   @api
@@ -115,6 +128,11 @@ export default class ShoreshScheduleGrid extends LightningElement {
 
   get frameRole() {
     return this.editable ? "grid" : "table";
+  }
+
+  /** Editable, several cells can be chosen together (for Copy and Paste). */
+  get multiSelectable() {
+    return this.editable ? "true" : null;
   }
 
   get columns() {
@@ -412,7 +430,13 @@ export default class ShoreshScheduleGrid extends LightningElement {
     const key = at ? at.dataset.cell : null;
     if (this.editable && key) {
       this.activeKey = key;
-      this.dispatchEvent(new CustomEvent("cellfocus", { detail: { key } }));
+      const extend = key === this.extendFocusKey;
+      this.extendFocusKey = null;
+      this.dispatchEvent(
+        new CustomEvent("cellfocus", {
+          detail: extend ? { key, extend } : { key }
+        })
+      );
     }
     this.focusedKey = key || null;
   }
@@ -448,6 +472,21 @@ export default class ShoreshScheduleGrid extends LightningElement {
       cell.colSpan > 1 && this.navColumn !== null
         ? this.navColumn
         : cell.column;
+    const sideways = event.key === "ArrowLeft" || event.key === "ArrowRight";
+    if (
+      event.shiftKey &&
+      ARROWS.has(event.key) &&
+      (sideways || event.ctrlKey || event.metaKey)
+    ) {
+      // Choosing cells together: reach the next cell from where the choice started.
+      event.preventDefault();
+      const next = this.nextCell(cell, column, event.key);
+      if (next) {
+        this.navColumn = next.colSpan > 1 ? column : next.column;
+        this.choose(next.key, { extend: true });
+      }
+      return;
+    }
     if (
       event.shiftKey &&
       (event.key === "ArrowUp" || event.key === "ArrowDown")
@@ -464,35 +503,46 @@ export default class ShoreshScheduleGrid extends LightningElement {
       this.send(event.key === " " ? "cellspace" : "cellescape", { key });
       return;
     }
-    let next;
-    switch (event.key) {
-      case "ArrowUp":
-        next = this.cellAt(cell.row - 1, column);
-        break;
-      case "ArrowDown":
-        next = this.cellAt(cell.row + (cell.length || 1), column);
-        break;
-      case "ArrowLeft":
-        next = this.cellAt(cell.row, cell.column - 1);
-        break;
-      case "ArrowRight":
-        next = this.cellAt(cell.row, cell.column + (cell.colSpan || 1));
-        break;
-      default:
-        if (EDIT_KEYS.has(event.key)) {
-          event.preventDefault();
-          this.ask("editcell", key, event.target);
-        } else if (CLEAR_KEYS.has(event.key)) {
-          event.preventDefault();
-          this.ask("clearcell", key, event.target);
-        }
-        return;
+    if (!ARROWS.has(event.key)) {
+      if (EDIT_KEYS.has(event.key)) {
+        event.preventDefault();
+        this.ask("editcell", key, event.target);
+      } else if (CLEAR_KEYS.has(event.key)) {
+        event.preventDefault();
+        this.ask("clearcell", key, event.target);
+      }
+      return;
     }
     event.preventDefault();
+    const next = this.nextCell(cell, column, event.key);
     if (next) {
       this.navColumn = next.colSpan > 1 ? column : next.column;
       this.focusCell(next.key);
     }
+  }
+
+  /** The cell an arrow key goes to from a cell (in `column`, for Up and Down), if any. */
+  nextCell(cell, column, arrow) {
+    switch (arrow) {
+      case "ArrowUp":
+        return this.cellAt(cell.row - 1, column);
+      case "ArrowDown":
+        return this.cellAt(cell.row + (cell.length || 1), column);
+      case "ArrowLeft":
+        return this.cellAt(cell.row, cell.column - 1);
+      default:
+        return this.cellAt(cell.row, cell.column + (cell.colSpan || 1));
+    }
+  }
+
+  /** Asks the page to choose a cell with others (see above); focus follows it. */
+  choose(key, how) {
+    this.send("cellselect", { key, ...how });
+    const focused = this.focusedKey;
+    if (key !== focused) {
+      this.extendFocusKey = key;
+    }
+    this.focusCell(key);
   }
 
   handleDoubleClick(event) {
@@ -530,6 +580,11 @@ export default class ShoreshScheduleGrid extends LightningElement {
     if (!key) {
       return;
     }
+    // A drag with Shift (or Cmd/Ctrl) held chooses cells; it never also moves one.
+    if (this.choosing || event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      return;
+    }
     // The handle stretches (pointer events below); it never also starts a move of the cell.
     if (event.target.closest("[data-handle]")) {
       event.preventDefault();
@@ -552,6 +607,22 @@ export default class ShoreshScheduleGrid extends LightningElement {
       return;
     }
     const key = this.cellKeyOf(event);
+    if (
+      key &&
+      (event.shiftKey || event.ctrlKey || event.metaKey) &&
+      !event.target.closest("[data-handle]")
+    ) {
+      // Choosing cells: no text selection, no drag, and the click after it is this, not a click.
+      event.preventDefault();
+      this.swallowClick = true;
+      if (event.shiftKey) {
+        this.choosing = { pointerId: event.pointerId, key };
+        this.choose(key, { extend: true });
+      } else {
+        this.choose(key, { toggle: true });
+      }
+      return;
+    }
     const cell = key && this.allCells.find((c) => c.key === key);
     if (!cell || !cell.movable || !event.target.closest("[data-handle]")) {
       return;
@@ -573,6 +644,20 @@ export default class ShoreshScheduleGrid extends LightningElement {
   }
 
   handlePointerMove(event) {
+    const choosing = this.choosing;
+    if (choosing && event.pointerId === choosing.pointerId) {
+      if (event.buttons === 0) {
+        // Let go somewhere the grid didn't hear it.
+        this.choosing = null;
+        return;
+      }
+      const key = this.cellKeyOf(event);
+      if (key && key !== choosing.key) {
+        choosing.key = key;
+        this.choose(key, { extend: true });
+      }
+      return;
+    }
     const pressed = this.pressed;
     if (!pressed || event.pointerId !== pressed.pointerId) {
       return;
@@ -605,6 +690,10 @@ export default class ShoreshScheduleGrid extends LightningElement {
   }
 
   handlePointerUp(event) {
+    if (this.choosing && event.pointerId === this.choosing.pointerId) {
+      this.choosing = null;
+      return;
+    }
     const pressed = this.pressed;
     if (!pressed || event.pointerId !== pressed.pointerId) {
       return;
@@ -625,6 +714,9 @@ export default class ShoreshScheduleGrid extends LightningElement {
   }
 
   handlePointerCancel(event) {
+    if (this.choosing && event.pointerId === this.choosing.pointerId) {
+      this.choosing = null;
+    }
     if (this.pressed && event.pointerId === this.pressed.pointerId) {
       this.endStretch(this.pressed.pointerId);
       this.pressed = null;

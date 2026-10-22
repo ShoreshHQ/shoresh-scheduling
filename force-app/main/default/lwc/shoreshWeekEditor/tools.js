@@ -30,7 +30,10 @@ export const LEFT_OUT = Object.freeze({
   // Deleted from setup since it was placed.
   GONE: "gone",
   // Not set up yet (an imported elective, say): only activities can be placed.
-  NOT_SET_UP: "notSetUp"
+  NOT_SET_UP: "notSetUp",
+  // Pasted where the grid has no room for it (past its last time block or column, or where the
+  // day lacks a block it runs into).
+  NO_ROOM: "noRoom"
 });
 
 const never = () => false;
@@ -213,21 +216,29 @@ function blocksOn(head, source, target) {
  * Places a source placement on a target row at the same blocks. Returns null when it went in or
  * is already there, { skipped } (a block) when someone else's cell is in the way, or why not.
  */
-function place(row, head, source, target, { isAwayAt, skipAt }) {
+function place(row, head, source, target, checks) {
   const { at, missing } = blocksOn(head, source, target);
   if (!at) {
     return { why: LEFT_OUT.NO_BLOCK, missing };
   }
+  return placeAt(row, at, head.slot, gone(source, head.slot), checks);
+}
+
+/**
+ * Puts a placement (`slot`) on a row's blocks `at` (indexes, next to each other), as place()
+ * does; `isGone`: deleted from setup since it was placed.
+ */
+function placeAt(row, at, slot, isGone, { isAwayAt, skipAt }) {
   const wanted = at.map((tb, i) => {
-    return i === 0 ? head.slot : CARRIES_ON + head.slot;
+    return i === 0 ? slot : CARRIES_ON + slot;
   });
   if (at.every((tb, i) => row[tb] === wanted[i])) {
     return null;
   }
-  if (!head.slot.startsWith("A:")) {
+  if (!slot.startsWith("A:")) {
     return { why: LEFT_OUT.NOT_SET_UP };
   }
-  if (gone(source, head.slot)) {
+  if (isGone) {
     return { why: LEFT_OUT.GONE };
   }
   const theirs = at.find(skipAt);
@@ -245,6 +256,104 @@ function place(row, head, source, target, { isAwayAt, skipAt }) {
     row[tb] = wanted[i];
   });
   return null;
+}
+
+/**
+ * Pastes copied cells (Edit > Paste, Ctrl/Cmd+V; Greg decision 45) as one change, by the same
+ * rules as Copy day to…: what goes in is an activity still in setup, at a time its bunk is at
+ * camp; fixed and recurring activities stay where setup put them; what can't go is left out
+ * whole and listed. tool: { items: [{ date, groupId, blockIds, slot, gone, name }] (each
+ * placement, by the blocks it goes onto, next to each other), opens: [cell keys] (copied Open
+ * cells: what is there is cleared), outside: [{ slot, name }] (no room on the grid) }. Every
+ * placement Undo could put back that a pasted cell touches is cleared whole first. Returns {
+ * runs, leftOut: [{ day, group, block, slot, name, why, blocking }], skipped } (day and group
+ * indexes, null for no room).
+ */
+export function pasteEdit(days, tool, options = {}) {
+  const { isAway = never, skip = never } = options;
+  const rows = new Rows(days);
+  const noRoom = (o) => ({
+    day: null,
+    group: null,
+    block: null,
+    slot: o.slot,
+    name: o.name,
+    why: LEFT_OUT.NO_ROOM
+  });
+  const leftOut = (tool.outside || []).map(noRoom);
+  const skipped = new Set();
+  // Where cells go on this week: { d, g, at } (block indexes next to each other), or null.
+  const onto = (date, groupId, blockIds) => {
+    const d = days.findIndex((x) => x.dateValue === date);
+    const day = days[d];
+    if (!day || day.problem) {
+      return null;
+    }
+    const g = day.groups.findIndex((x) => x.id === groupId);
+    const at = blockIds.map((id) => day.blocks.findIndex((x) => x.id === id));
+    const apart = at.some((b, i) => b < 0 || (i > 0 && b !== at[i - 1] + 1));
+    return g < 0 || apart ? null : { d, g, at };
+  };
+  // Each bunk's day the paste reaches: the blocks it covers and the placements going onto it.
+  const targets = new Map();
+  const targetOf = ({ d, g }) => {
+    const key = `${d}|${g}`;
+    if (!targets.has(key)) {
+      targets.set(key, { d, g, covered: new Set(), placements: [] });
+    }
+    return targets.get(key);
+  };
+  (tool.items || []).forEach((item) => {
+    const where = onto(item.date, item.groupId, item.blockIds);
+    if (!where) {
+      leftOut.push(noRoom(item));
+      return;
+    }
+    const target = targetOf(where);
+    where.at.forEach((b) => target.covered.add(b));
+    target.placements.push({ item, at: where.at });
+  });
+  (tool.opens || []).forEach((key) => {
+    const [date, groupId, blockId] = key.split("|");
+    const where = onto(date, groupId, [blockId]);
+    if (where) {
+      targetOf(where).covered.add(where.at[0]);
+    }
+  });
+  targets.forEach(({ d, g, covered, placements }) => {
+    const row = rows.get(d, g);
+    const isAwayAt = (b) => isAway(d, g, b);
+    const skipAt = (b) => skip(d, g, b);
+    const touches = (first, length) =>
+      [...Array(length).keys()].some((i) => covered.has(first + i));
+    const sorted = sortRow(days[d], row, isAwayAt, skipAt);
+    sorted.skipped
+      .filter((b) => touches(b, placementIn(row, b).length))
+      .forEach((b) => skipped.add(`${d}|${g}|${b}`));
+    clearPlacements(
+      row,
+      sorted.clear.filter((p) => touches(p.first, p.length))
+    );
+    placements.forEach(({ item, at }) => {
+      const result = placeAt(row, at, item.slot, !!item.gone, {
+        isAwayAt,
+        skipAt
+      });
+      if (result && result.skipped !== undefined) {
+        skipped.add(`${d}|${g}|${result.skipped}`);
+      } else if (result) {
+        leftOut.push({
+          day: d,
+          group: g,
+          block: at[0],
+          slot: item.slot,
+          name: item.name,
+          ...result
+        });
+      }
+    });
+  });
+  return { runs: rows.runs(), leftOut, skipped: skipped.size };
 }
 
 // ---------- a tool, by day dates and Ids, and worked out again after someone else's change ----------
@@ -312,8 +421,8 @@ export function resultOf(week, runs) {
 }
 
 /**
- * A tool's runs on a week. tool: { kind: "clear", dates, groupId } or { kind: "copy", from,
- * dates } (days by date). Options: isAway(week, day, group, block); skip(key) for a cell to leave
+ * A tool's runs on a week. tool: { kind: "clear", dates, groupId }, { kind: "copy", from,
+ * dates } (days by date) or { kind: "paste", dates, items, opens, outside } (pasteEdit). Options: isAway(week, day, group, block); skip(key) for a cell to leave
  * as it is; source, the day to copy from (by default the week's own). Returns the tool's result
  * (runs, stayed or leftOut, skipped) and `week`, the week its indexes are on.
  */
@@ -333,6 +442,9 @@ export function toolRuns(tool, week, options = {}) {
       week
     };
   }
+  if (tool.kind === "paste") {
+    return { ...pasteEdit(week, tool, { isAway: away, skip: skipAt }), week };
+  }
   const from = indexOf(tool.from);
   if (from < 0) {
     return { runs: [], leftOut: [], skipped: 0, week };
@@ -347,10 +459,18 @@ export function toolRuns(tool, week, options = {}) {
 /**
  * The placements on a tool's target days, each as its cells' keys and what it is: every
  * placement there now (in `saved`) and, for a copy, every placement copied from `source`, listed
- * first on each day.
+ * first on each day; for a paste, every placement pasted, listed first of all.
  */
 function placementGroups(tool, source, saved) {
-  const groups = [];
+  const groups =
+    tool.kind === "paste"
+      ? (tool.items || []).map((item) => ({
+          slot: item.slot,
+          keys: item.blockIds.map(
+            (blockId) => `${item.date}|${item.groupId}|${blockId}`
+          )
+        }))
+      : [];
   tool.dates.forEach((date) => {
     const target = saved.find((d) => d.dateValue === date);
     if (!target || target.problem) {
@@ -406,7 +526,7 @@ function wholeOf(groups, cells) {
  * touches a cell that holds something else than in the week the director saw (`seen`, the week
  * the tool was made on, never anything newer), nor a cell kept in an earlier round (`kept`). A
  * copy comes from the source day as the director saw it, and a target whose source cell someone
- * else changed is kept as well. A copy goes placement by placement, whole or not at all: when any
+ * else changed is kept as well. A copy (and a paste) goes placement by placement, whole or not at all: when any
  * cell of a copied placement (on the target day) or of what is there now is kept, all of its
  * cells are, so nothing is cleared for a copy that can't come. The director's own edits still
  * waiting to save aren't in `saved` (the server's week), so they never count as anyone else's.
@@ -450,10 +570,9 @@ export function replan(tool, seen, saved, kept, isAway, locked = new Set()) {
   }
   const groups = placementGroups(tool, source, saved);
   const withLocks = wholeOf(groups, [...others, ...locked]);
-  const all =
-    tool.kind === "copy" && source
-      ? withLocks
-      : new Set([...others, ...locked]);
+  // A copy or a paste goes placement by placement, whole or not at all.
+  const whole = (tool.kind === "copy" && !!source) || tool.kind === "paste";
+  const all = whole ? withLocks : new Set([...others, ...locked]);
   const result = toolRuns(tool, saved, {
     isAway,
     skip: (key) => all.has(key),
@@ -482,7 +601,7 @@ export function replan(tool, seen, saved, kept, isAway, locked = new Set()) {
     // Only the cells kept for someone else's change: a cell kept only because a lock took its
     // placement out whole is worked out again from the locks in the next round, so it is said
     // as locked there too, not as changed.
-    kept: tool.kind === "copy" && source ? othersWhole : others,
+    kept: whole ? othersWhole : others,
     missed: missedKeys.length,
     missedPlacements: placementsOf(missedKeys, groups).length,
     lockedCells

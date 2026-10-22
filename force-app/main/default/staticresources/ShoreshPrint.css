@@ -1,0 +1,42 @@
+/*
+ * Printing a schedule from the Schedules page (c-shoresh-schedule-print, ADR 0005 part 2): only
+ * the printout goes on the paper, not Salesforce's header, the menu or the screen around it. The
+ * page loads this once (loadStyle), the first time Print is pressed, as the camp setup page loads
+ * ShoreshTable. Every rule applies only on paper and only while a printout is on the page
+ * (.shoresh-print, rendered just before printing and taken away after it), so printing any other
+ * Salesforce page is as it was.
+ */
+@media print {
+  /* Everything that neither is, holds nor is inside the printout: not printed. */
+  body:has(.shoresh-print) *:not(.shoresh-print):not(.shoresh-print *):not(:has(.shoresh-print)) {
+    display: none !important;
+  }
+
+  /* What holds the printout: no frame, scroll, height or shade of its own, so the pages flow. */
+  body:has(.shoresh-print),
+  body:has(.shoresh-print) *:has(.shoresh-print) {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    transform: none !important;
+  }
+
+  /* Its pages lie on their side: a day's columns are its groups. */
+  body:has(.shoresh-print) .shoresh-print .page {
+    page: shoresh-schedule;
+  }
+}
+
+@page shoresh-schedule {
+  size: landscape;
+  margin: 12mm;
+}

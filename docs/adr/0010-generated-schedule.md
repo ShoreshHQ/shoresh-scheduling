@@ -1310,6 +1310,14 @@ without a whole-week save, and holding a drawer tile outlines its cells with "fi
 on Open cells. In the test org: `scripts/a11y-browser-check.mjs` points at a cell (the outlines)
 and accepts a counter line from the keyboard on Generated Schedule.
 
+## Choices (copy and paste cells, 2026-10-21)
+
+Copy and Paste come with the week editor (Greg's decision 45; ADR 0008 part 9), the same here
+as on Manual Build. A paste is a hand edit, so **the pasted cells lock** (decision 2). A cell
+already locked is **left out** of a paste and listed (_Swim · Bunk 1 · Tuesday: locked._): a
+Lock beats what is pasted. Checked by `copyPaste.test.js` (Generated: the pasted cell locks; a
+locked cell is left out and the rest pasted).
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).

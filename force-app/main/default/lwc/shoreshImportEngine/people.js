@@ -11,6 +11,7 @@
  * keep it where it is, add a new one, or leave it out; the card says what moving changes.
  */
 import { CHILDREN, FIELD } from "c/shoreshSchema";
+import { deletedAs, deletionsIn } from "./deleted";
 import { LEAVE_OUT } from "./reading-constants";
 import { looseKey } from "./text";
 
@@ -280,6 +281,22 @@ function groupRecord(group, here, fileDivisions, ctx) {
   if (group.division && others.length === 1) {
     return movedGroup(group, others[0], here, ctx);
   }
+  // Deleted on a setup screen before: left out, not asked about, until brought back.
+  const gone = deletedAs(
+    ctx.deletions,
+    "Group",
+    timetable.name,
+    group.recordName
+  );
+  if (gone) {
+    return {
+      name: group.name,
+      recordName: group.recordName,
+      leftOut: true,
+      isNew: true,
+      deleted: gone
+    };
+  }
   return unitChoice(group, here, fileDivisions, ctx);
 }
 
@@ -292,6 +309,7 @@ export function mapGroups(reading, timetables, existing, answers) {
   const ctx = {
     existing,
     answers,
+    deletions: deletionsIn(answers),
     asks: [],
     notes: [],
     camp: campGroups(existing, reading.identities),

@@ -21,6 +21,9 @@
  *   here" only on Open cells, and Escape lets go; that pointing at a cell outlines the other
  *   cells of its activity (the mouse again); and that Accept in the counter's dropdown is reached
  *   with the arrows, hides its line, is said, and moves focus on (ADR 0008 part 8);
+ * - that cells chosen with Shift+Right on Manual Build are copied with Ctrl/Cmd+C and pasted with
+ *   Ctrl/Cmd+V on the next time block, said, focus kept on the grid, and undone in one step
+ *   (ADR 0008 part 9);
  * - that a setup table row in the shared pattern (ADR 0015 choice 11) shows its week ticks
  *   while it is edited, Tab reaching them; that unticking a week with placements asks first
  *   and, cancelled, leaves focus back on the tick, still ticked; and that its details open from
@@ -1564,6 +1567,62 @@ async function manualBuild(openManual) {
     });
     if (f && f.dataId === "tool-undo") await press("Enter", 1500);
   });
+  await step(S, "Copy and paste cells with the keys, then its Undo", () =>
+    copyPasteCells(S)
+  );
+}
+
+/**
+ * Copy and paste (Greg decision 45, ADR 0008 part 9), keyboard only: on the second time block,
+ * Shift+Right chooses two bunks' cells (said, and both marked chosen), Ctrl/Cmd+C copies them,
+ * Down lets the choice go and moves to the next block, Ctrl/Cmd+V pastes there with focus kept
+ * on the grid, and Ctrl/Cmd+Z takes the paste back in one step.
+ */
+async function copyPasteCells(S) {
+  const cell = await tabTo(grid);
+  if (!cell) throw new Error("No grid cell reached with Tab.");
+  // Down to the second time block: the first holds the made-up camp's Morning meeting.
+  await press("ArrowDown", 200);
+  await expectLive(
+    S,
+    "Shift+Right: two cells chosen, said",
+    /^2 selected$/,
+    () => press("Shift+ArrowRight", 300)
+  );
+  const chosen = (await gridCells()).filter((c) =>
+    /\bcell_chosen\b/.test(c.classes)
+  );
+  if (chosen.length === 2) {
+    results.pass(S, "Shift+Right: two cells marked chosen", "2 marked.");
+  } else {
+    await shot(S, "Two cells chosen");
+    results.fail(
+      S,
+      "Shift+Right: two cells marked chosen",
+      `${chosen.length} marked.`
+    );
+  }
+  await expectLive(S, "Ctrl+C: Copied is said", /^Copied /, () =>
+    press("ControlOrMeta+c")
+  );
+  await press("ArrowDown", 200);
+  const said = await expectLive(
+    S,
+    "Ctrl+V on the next block: it is said",
+    /^(Pasted |Nothing pasted|Nothing to paste)/,
+    () => press("ControlOrMeta+v")
+  );
+  await expectFocus(S, "After pasting: focus stays on the grid", {
+    inGrid: true
+  });
+  if (said && /^Pasted /.test(said)) {
+    await expectLive(
+      S,
+      "Ctrl+Z: the paste is undone in one step",
+      /^Undone: Pasted /,
+      () => press("ControlOrMeta+z")
+    );
+  }
 }
 
 /**

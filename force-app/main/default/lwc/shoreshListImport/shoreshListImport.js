@@ -7,6 +7,7 @@ import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import {
+  BRING_BACK,
   csvFile,
   isCsv,
   isReadable,
@@ -62,6 +63,20 @@ function timeText(minutes) {
  * screenKey: which list (activities, locations, ...); setup: the season setup; terms: the
  * camp's words. Fires: imported (after a save or an Undo, so the page reloads the season).
  */
+/**
+ * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
+ * one before it; null when none is left.
+ */
+function nextKeyOf(keysBefore, clicked, keysAfter) {
+  const left = new Set(keysAfter);
+  const at = keysBefore.indexOf(clicked);
+  const order = [
+    ...keysBefore.slice(at + 1),
+    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
+  ];
+  return order.find((k) => left.has(k)) || null;
+}
+
 export default class ShoreshListImport extends LightningElement {
   @api screenKey;
   @api setup;
@@ -101,6 +116,12 @@ export default class ShoreshListImport extends LightningElement {
     let target = null;
     if (next.selector) {
       target = this.template.querySelector(next.selector);
+    } else if (next.bringBack !== undefined) {
+      target = next.bringBack
+        ? [...this.template.querySelectorAll("[data-deleted] button")].find(
+            (el) => el.dataset.key === next.bringBack
+          )
+        : this.template.querySelector('[data-id="save"]');
     } else {
       const cards = this.cards;
       let id = next.card;
@@ -411,6 +432,7 @@ export default class ShoreshListImport extends LightningElement {
       text: `Row ${r.rowNumber}${r.name ? ` · ${r.name}` : ""} · ${r.problems.join("; ")}`
     }));
     const leftOutRows = this.leftOutRowsOf(p);
+    const deletedRows = this.deletedRowsOf(p);
     return {
       key: `section-${key}`,
       label,
@@ -434,6 +456,8 @@ export default class ShoreshListImport extends LightningElement {
       leftOutRows,
       hasLeftOut: leftOutRows.length > 0,
       leftOutHeading: `Left out (${leftOutRows.length})`,
+      deletedRows,
+      hasDeleted: deletedRows.length > 0,
       lists: []
     };
   }
@@ -685,18 +709,26 @@ export default class ShoreshListImport extends LightningElement {
     this.recompute();
   }
 
-  /** Rows saved without the rain plan the file gave them, for the summary. */
+  /**
+   * Rows saved without the rain plan the file gave them, or without a place (or kind of place)
+   * the camp deleted before, for the summary.
+   */
   get droppedPlans() {
-    return this.proposals
+    const saved = this.proposals
       .flatMap((p) => p.rows || [])
-      .filter(
-        (r) =>
-          r.droppedPlan && ["new", "changed", "unchanged"].includes(r.status)
-      )
-      .map((r) => ({
-        key: `dropped-${r.rowNumber}`,
-        text: `${r.name} · ${r.status === "new" ? "no" : "unchanged"} ${this.terms.sIn("RainPlan")}`
-      }));
+      .filter((r) => ["new", "changed", "unchanged"].includes(r.status));
+    const line = (r, what, kind) => ({
+      key: `dropped-${what}-${r.rowNumber}`,
+      text: `${r.name} · ${r.status === "new" ? "no" : "unchanged"} ${this.terms.sIn(kind)}`
+    });
+    return [
+      ...saved
+        .filter((r) => r.droppedPlan)
+        .map((r) => line(r, "plan", "RainPlan")),
+      ...saved
+        .filter((r) => r.droppedPlace)
+        .map((r) => line(r, "place", r.droppedPlace.kind))
+    ];
   }
 
   rowsOf(p, status) {
@@ -730,6 +762,47 @@ export default class ShoreshListImport extends LightningElement {
             : `Row ${r.rowNumber} · ${r.name}`
     }));
   }
+  /**
+   * What the camp deleted before and this list leaves out (Greg, decision 45), each with Bring
+   * back: rows of the list, and places or kinds of place its rows name.
+   */
+  deletedRowsOf(p) {
+    const t = this.terms;
+    return (p.deleted || []).map((item) => {
+      const detail = `${t.sIn(item.kind)}${item.program ? ` · ${item.program}` : ""}`;
+      return {
+        key: item.key,
+        name: item.name,
+        detail,
+        bringBackLabel: `Bring back ${item.name}, ${detail}`
+      };
+    });
+  }
+
+  handleBringBack(event) {
+    const key = event.currentTarget.dataset.key;
+    const keysBefore = this.deletedKeys();
+    const openBefore = new Set(this.openIds());
+    this.answer(key, BRING_BACK);
+    // The clicked button is gone with the row (WCAG 2.4.3): to the question it opened (a new
+    // program's days, a time block's times), else the next Bring back, else Save.
+    const opened = this.openIds().find((id) => !openBefore.has(id));
+    this.focusNext = opened
+      ? { card: opened }
+      : { bringBack: nextKeyOf(keysBefore, key, this.deletedKeys()) };
+  }
+
+  /** Every Bring back listed, section by section, in the order shown. */
+  deletedKeys() {
+    return this.sections.flatMap((section) =>
+      (section.deletedRows || []).map((row) => row.key)
+    );
+  }
+
+  openIds() {
+    return this.cards.filter((c) => !c.answered).map((c) => c.id);
+  }
+
   get askedCount() {
     return this.rowsWith("asked").length;
   }

@@ -1,0 +1,85 @@
+/*
+ * A schedule on paper: black words on white, fine black lines, no colour, no shade, one page per
+ * day, group or activity. On screen it takes no room (the page only shows it while printing).
+ */
+.shoresh-print {
+  display: none;
+}
+
+@media print {
+  .shoresh-print {
+    display: block;
+    color: #000;
+    background: #fff;
+    font-family: var(--shoresh-font-sans, sans-serif);
+    font-size: 10pt;
+  }
+
+  .page {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12pt;
+    margin: 0 0 8pt;
+  }
+
+  .title {
+    margin: 0;
+    font-size: 16pt;
+    font-weight: 600;
+  }
+
+  .sub {
+    margin: 0;
+    font-size: 9pt;
+  }
+
+  .grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .grid th,
+  .grid td {
+    border: 0.75pt solid #000;
+    padding: 4pt;
+    vertical-align: top;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .grid thead th {
+    font-weight: 600;
+  }
+
+  .corner,
+  .time {
+    width: 18%;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .col-sub,
+  .note {
+    display: block;
+    font-size: 8pt;
+    font-weight: 400;
+  }
+
+  .problem {
+    font-size: 12pt;
+  }
+}
