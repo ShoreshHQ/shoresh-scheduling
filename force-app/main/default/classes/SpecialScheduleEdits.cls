@@ -6,7 +6,7 @@
  * yours"). Only the season's activities can be typed in. A fixed or recurring activity brought
  * in when the special day started is an ordinary cell of the day, as on the desktop
  * (SpecialDayGridEditor.jsx): typed over, cleared, moved, copied or put back by Undo like any
- * other. The plan is saved all at once under its item's lock (SpecialPlans). Runs in user mode.
+ * other; only those the special day starts with are put back by Id (SpecialSetTimes). The plan is saved all at once under its item's lock (SpecialPlans). Runs in user mode.
  */
 public with sharing class SpecialScheduleEdits {
   private final SpecialSchedule.Owner owner;
@@ -33,7 +33,7 @@ public with sharing class SpecialScheduleEdits {
     }
     SpecialScheduleEdits saver = new SpecialScheduleEdits(owner);
     saver.readActivities(SlotRules.activityIdsIn(edits));
-    saver.setTimes = SpecialSetTimes.dropped(edits, plan.grid, owner.seasonId);
+    saver.setTimes = SpecialSetTimes.dropped(edits, plan.grid, owner);
     SlotEdits.Result result = new SlotEdits.Result();
     ScheduleGrid grid = plan.grid;
     Boolean changed = false;
