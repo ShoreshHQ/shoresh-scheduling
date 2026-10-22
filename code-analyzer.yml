@@ -87,3 +87,9 @@ suppressions:
     - rule_selector: "pmd:AvoidLwcBubblesComposedTrue"
       max_suppressed_violations: 1
       reason: "Test fakes a real browser keydown, which is composed."
+  # The desktop's Q3 test prints the repeat-distribution table straight to the test output on purpose
+  # (owner ruling Q3: the figure must survive a captured run); a test, never shipped.
+  "main/default/lwc/shoreshElectiveEngine/__tests__/ported.test.js":
+    - rule_selector: "eslint:@lwc/lwc-platform/no-process-env"
+      max_suppressed_violations: 1
+      reason: "Test prints the repeat-distribution table to its output (desktop ruling Q3)."
