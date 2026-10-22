@@ -10,7 +10,11 @@
  * Pure JavaScript: the screen calls listProposal again on every answer.
  */
 import {
+  BRING_BACK,
   LEAVE_OUT,
+  deletedAs,
+  deletionsIn,
+  programGroupKeys,
   looseKey,
   mergesFrom,
   similarPairs,
@@ -554,12 +558,42 @@ function programEntry(setup, programId) {
 }
 
 /**
+ * A program's division or time block the camp deleted on its setup screen (Greg, decision 45):
+ * the rows naming it are left out, without asking when it is, until it is brought back.
+ */
+function leaveOutDeletedRefs(rows, column, context, deleted) {
+  const { deletions, t } = context;
+  const kind = column.ref === "division" ? "Division" : "TimeBlock";
+  rows.filter(usable).forEach((r) => {
+    const target = (r.targets || {})[column.key];
+    const gone =
+      target && target.add
+        ? deletedAs(deletions, kind, r.program.name, target.add)
+        : null;
+    if (gone) {
+      r.leftOut = true;
+      r.reason = `its ${t.sIn(kind)} was deleted before; not brought back`;
+      if (!deleted.some((d) => d.key === gone)) {
+        deleted.push({
+          key: gone,
+          kind,
+          name: target.add,
+          program: r.program.name
+        });
+      }
+    }
+  });
+}
+
+/**
  * A program's divisions or time blocks a row names, resolved within the row's program
  * (refs.js); a division it doesn't have is added; a time block is added once the director says
- * when it is (adds.js). Returns { pairs, cards, blocks: [{ programId, name, start, end }] }.
+ * when it is (adds.js). One the camp deleted is not (leaveOutDeletedRefs). Returns { pairs,
+ * cards, blocks: [{ programId, name, start, end }], deleted }.
  */
-function resolveProgramRefs(leads, used, setup, answers, t, kinds) {
-  const result = { pairs: [], cards: [], blocks: [] };
+function resolveProgramRefs(leads, used, setup, context, kinds) {
+  const { answers, t } = context;
+  const result = { pairs: [], cards: [], blocks: [], deleted: [] };
   used
     .filter(({ column }) => kinds.includes(column.ref))
     .forEach(({ column }) => {
@@ -582,6 +616,7 @@ function resolveProgramRefs(leads, used, setup, answers, t, kinds) {
           )
         );
       });
+      leaveOutDeletedRefs(rows, column, context, result.deleted);
       if (column.ref !== "timeBlock") {
         return;
       }
@@ -1015,7 +1050,18 @@ export function listProposal(input) {
   }
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
-  const programs = resolvePrograms(read, screen, setup, answers, t);
+  const deletions = {
+    gone: deletionsIn(answers),
+    back: deletionsIn(answers, BRING_BACK)
+  };
+  const programs = resolvePrograms(
+    read,
+    screen,
+    setup,
+    answers,
+    t,
+    deletions.gone
+  );
   result.pairs.push(...programs.pairs);
   result.cards.push(...programs.cards);
   // Asked per block once its program is settled (the key is the program as resolved).
@@ -1023,9 +1069,13 @@ export function listProposal(input) {
   result.cards.push(...resolveDayAsks(read, answers));
   // A group's division is resolved before rows are settled: a group is its program,
   // division, and name, by the division it resolves to, not as written.
-  const divisions = resolveProgramRefs(read, used, setup, answers, t, [
-    "division"
-  ]);
+  const divisions = resolveProgramRefs(
+    read,
+    used,
+    setup,
+    { answers, t, deletions: deletions.gone },
+    ["division"]
+  );
   result.pairs.push(...divisions.pairs);
   const settled = settleLeads(
     read,
@@ -1055,9 +1105,14 @@ export function listProposal(input) {
         )
       );
     });
-  const programRefs = resolveProgramRefs(leads, used, setup, answers, t, [
-    "timeBlock"
-  ]);
+  const deletedPlaces = leaveOutDeletedPlaces(leads, used, deletions.gone);
+  const programRefs = resolveProgramRefs(
+    leads,
+    used,
+    setup,
+    { answers, t, deletions: deletions.gone },
+    ["timeBlock"]
+  );
   result.pairs.push(...programRefs.pairs);
   result.cards.push(...programRefs.cards);
   const targets = whoTargets(setup);
@@ -1089,7 +1144,9 @@ export function listProposal(input) {
   }
   result.pairs.push(...rainPlans.pairs);
   finishRepeats(read);
-  result.rows = read.map((r) => describeRow(r, used, screen, setup, answers));
+  result.rows = read.map((r) =>
+    describeRow(r, used, screen, setup, answers, deletions)
+  );
   result.targets = targets;
   result.setupActivities = setup.activities || [];
   result.setup = setup;
@@ -1101,6 +1158,13 @@ export function listProposal(input) {
     blocks: programRefs.blocks,
     days: days.added
   });
+  result.deleted = deletedOfList(result, [
+    ...deletedPlaces,
+    ...programs.deleted,
+    ...divisions.deleted,
+    ...programRefs.deleted
+  ]);
+  result.broughtBack = broughtBackAdds(result, deletions);
   return result;
 }
 
@@ -1169,6 +1233,101 @@ function alsoAdded(rows, used, asked) {
   return alsoAdd;
 }
 
+const ADD_KIND = { location: "Location", locationType: "LocationType" };
+
+/**
+ * Places and kinds of place a row names that the camp deleted before (Greg, decision 45) are
+ * not added with the list: the row is saved without it, as if the file said nothing about its
+ * place (a row the camp has keeps the place it has), as Import last year saves a placement
+ * without a place it no longer offers. Returns them, once each, to be listed with Bring back.
+ */
+function leaveOutDeletedPlaces(leads, used, gone) {
+  const deleted = new Map();
+  used
+    .filter(({ column }) => ADD_KIND[column.ref])
+    .forEach(({ column }) => {
+      const kind = ADD_KIND[column.ref];
+      leads.filter(usable).forEach((r) => {
+        const target = (r.targets || {})[column.key];
+        const key =
+          target && target.add && deletedAs(gone, kind, "", target.add);
+        if (key) {
+          delete r.values[column.key];
+          delete r.targets[column.key];
+          r.droppedPlace = { kind, name: target.add };
+          deleted.set(key, { key, kind, name: target.add, program: "" });
+        }
+      });
+    });
+  return [...deleted.values()].sort((x, y) => x.name.localeCompare(y.name));
+}
+
+/**
+ * What the list leaves out because the camp deleted it before: its own rows marked "deleted",
+ * then places, programs, divisions and time blocks its rows name (resolvePrograms,
+ * leaveOutDeletedRefs, leaveOutDeletedPlaces): [{ key, kind, name, program }].
+ */
+function deletedOfList(result, deletedRefs) {
+  const deleted = result.rows
+    .filter((row) => row.status === "deleted")
+    .map((row) => ({
+      key: row.deletedKey,
+      kind: result.screen.kind,
+      name: row.name,
+      program: result.screen.scope === "program" ? row.programName || "" : ""
+    }));
+  deleted.push(...deletedRefs);
+  return deleted;
+}
+
+/** The program's name for a program id: an Id of the camp's, or "Program:<name>" for one added. */
+function programNameOf(setup, programId) {
+  const entry = programEntry(setup, programId);
+  if (entry) {
+    return entry.program.Name;
+  }
+  return String(programId || "").replace(/^Program:/, "");
+}
+
+/**
+ * Deletions this list's save forgets: rows, added places, programs, divisions and time blocks
+ * that were brought back.
+ */
+function broughtBackAdds(result, deletions) {
+  const keys = result.rows
+    .filter((row) => row.status === "new" && row.broughtBack)
+    .map((row) => row.broughtBack);
+  const add = result.alsoAdd;
+  const back = (kind, program, name) => {
+    const key = deletedAs(deletions.back, kind, program, name);
+    if (key) {
+      keys.push(key);
+    }
+  };
+  (add.program || []).forEach((p) => {
+    const key = deletedAs(deletions.back, "Program", "", p.name);
+    if (key) {
+      // With the groups remembered with it (Import last year's, deleted.js deletedPrograms).
+      keys.push(key, ...programGroupKeys(deletions.gone, p.name));
+    }
+  });
+  (add.division || []).forEach((d) =>
+    back("Division", programNameOf(result.setup, d.programId), d.name)
+  );
+  (add.timeBlock || []).forEach((b) =>
+    back("TimeBlock", programNameOf(result.setup, b.programId), b.name)
+  );
+  Object.keys(ADD_KIND).forEach((ref) => {
+    (result.alsoAdd[ref] || []).forEach((name) => {
+      const key = deletedAs(deletions.back, ADD_KIND[ref], "", name);
+      if (key) {
+        keys.push(key);
+      }
+    });
+  });
+  return [...new Set(keys)].sort();
+}
+
 /** Whether a row will save its value for a column: a new row, or a difference answered Change. */
 function usesValue(row, key) {
   return (
@@ -1210,7 +1369,19 @@ function differs(column, r, from, to) {
   return !same(normal(column, from), normal(column, to));
 }
 
-function describeRow(r, used, screen, setup, answers) {
+/**
+ * An item the camp deleted on its setup screen before (Greg, decision 45): the remembered key
+ * when this new row would add it again, and the key when it was brought back in this import.
+ */
+function deletedRow(r, screen, deletions) {
+  const scope = screen.scope === "program" && r.program ? r.program.name : "";
+  return {
+    gone: deletedAs(deletions.gone, screen.kind, scope, r.name),
+    back: deletedAs(deletions.back, screen.kind, scope, r.name)
+  };
+}
+
+function describeRow(r, used, screen, setup, answers, deletions) {
   const row = {
     rowNumber: r.rowNumber,
     name: r.name,
@@ -1219,6 +1390,7 @@ function describeRow(r, used, screen, setup, answers) {
     sameAs: r.sameAs || null,
     usedRow: r.usedRow || null,
     droppedPlan: r.droppedPlan || null,
+    droppedPlace: r.droppedPlace || null,
     startingValues: r.startingValues || [],
     targets: r.targets || {},
     programId: r.program ? r.program.id : null,
@@ -1228,17 +1400,31 @@ function describeRow(r, used, screen, setup, answers) {
     return { ...row, status: "unreadable" };
   }
   if (r.leftOut) {
-    return { ...row, status: "leftOut" };
+    return {
+      ...row,
+      status: "leftOut",
+      ...(r.reason ? { reason: r.reason } : {})
+    };
   }
   if (r.open) {
     return { ...row, status: "asked" };
   }
   if (!r.existing) {
+    const deleted = deletedRow(r, screen, deletions);
+    if (deleted.gone) {
+      // Left out until brought back: never added again silently.
+      return { ...row, status: "deleted", deletedKey: deleted.gone };
+    }
     const values = {};
     screen.columns.forEach((column) => {
       values[column.key] = newValueOf(column, r);
     });
-    return { ...row, status: "new", values };
+    return {
+      ...row,
+      status: "new",
+      values,
+      ...(deleted.back ? { broughtBack: deleted.back } : {})
+    };
   }
   const differences = [];
   used.forEach(({ column }) => {

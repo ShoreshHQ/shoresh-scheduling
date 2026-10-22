@@ -482,3 +482,160 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
     expect(element.shadowRoot.activeElement.dataset.cell).toBe("0-2");
   });
 });
+
+describe("c-shoresh-schedule-grid: choosing cells together (Greg decision 45)", () => {
+  const flush = () =>
+    [...Array(4)].reduce(
+      (chain) => chain.then(() => undefined),
+      Promise.resolve()
+    );
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+  });
+
+  async function editable() {
+    const element = createElement("c-shoresh-schedule-grid", {
+      is: ShoreshScheduleGrid
+    });
+    element.grid = {
+      ...GRID,
+      cells: GRID.cells.map((c) => ({ ...c, movable: true }))
+    };
+    element.editable = true;
+    const heard = [];
+    [
+      "cellselect",
+      "cellfocus",
+      "cellresize",
+      "cellclick",
+      "celldragstart"
+    ].forEach((name) =>
+      element.addEventListener(name, (e) =>
+        heard.push({ name, detail: e.detail })
+      )
+    );
+    document.body.appendChild(element);
+    await flush();
+    return { element, heard };
+  }
+  const at = (element, key) =>
+    element.shadowRoot.querySelector(`[data-cell="${key}"]`);
+  const named = (heard, name) =>
+    heard.filter((h) => h.name === name).map((h) => h.detail);
+  async function press(element, cellKey, init) {
+    at(element, cellKey).dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+        ...init
+      })
+    );
+    await flush();
+  }
+  /** A pointer event as Chrome and Safari send them (jsdom has no PointerEvent). */
+  function pointer(target, type, init = {}) {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      button: type === "pointermove" ? -1 : 0,
+      ...init
+    });
+    Object.defineProperty(event, "pointerId", { value: 1 });
+    Object.defineProperty(event, "isPrimary", { value: true });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  it("is a grid where several cells can be chosen", async () => {
+    const { element } = await editable();
+    expect(
+      element.shadowRoot
+        .querySelector('[role="grid"]')
+        .getAttribute("aria-multiselectable")
+    ).toBe("true");
+    const table = render("Monday").shadowRoot.querySelector('[role="table"]');
+    expect(table.getAttribute("aria-multiselectable")).toBeNull();
+  });
+
+  it("Shift with Right reaches the next cell; focus follows and says it extends", async () => {
+    const { element, heard } = await editable();
+    at(element, "0-0").focus();
+    await flush();
+    await press(element, "0-0", { key: "ArrowRight", shiftKey: true });
+    expect(named(heard, "cellselect")).toEqual([{ key: "1-0", extend: true }]);
+    expect(element.shadowRoot.activeElement.dataset.cell).toBe("1-0");
+    expect(named(heard, "cellfocus").pop()).toEqual({
+      key: "1-0",
+      extend: true
+    });
+  });
+
+  it("Shift with Down stays the length; Cmd/Ctrl+Shift with Down reaches the cell below", async () => {
+    const { element, heard } = await editable();
+    await press(element, "1-0", { key: "ArrowDown", shiftKey: true });
+    expect(named(heard, "cellresize")).toEqual([{ key: "1-0", delta: 1 }]);
+    expect(named(heard, "cellselect")).toEqual([]);
+    await press(element, "1-0", {
+      key: "ArrowDown",
+      shiftKey: true,
+      metaKey: true
+    });
+    expect(named(heard, "cellselect")).toEqual([{ key: "1-1", extend: true }]);
+  });
+
+  it("Shift with a click reaches a cell, Cmd/Ctrl with a click adds or takes one off; neither is a click", async () => {
+    const { element, heard } = await editable();
+    const down = pointer(at(element, "1-1"), "pointerdown", { shiftKey: true });
+    expect(down.defaultPrevented).toBe(true);
+    pointer(at(element, "1-1"), "pointerup", { shiftKey: true });
+    at(element, "1-1").dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true, shiftKey: true })
+    );
+    pointer(at(element, "0-2"), "pointerdown", { metaKey: true });
+    at(element, "0-2").dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true, metaKey: true })
+    );
+    await flush();
+    expect(named(heard, "cellselect")).toEqual([
+      { key: "1-1", extend: true },
+      { key: "0-2", toggle: true }
+    ]);
+    expect(named(heard, "cellclick")).toEqual([]);
+  });
+
+  it("a drag with Shift held reaches each cell it passes, and never moves one", async () => {
+    const { element, heard } = await editable();
+    pointer(at(element, "0-0"), "pointerdown", { shiftKey: true });
+    const drag = new MouseEvent("dragstart", {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      shiftKey: true
+    });
+    at(element, "0-0").dispatchEvent(drag);
+    expect(drag.defaultPrevented).toBe(true);
+    pointer(at(element, "1-0"), "pointermove", { buttons: 1, shiftKey: true });
+    pointer(at(element, "1-1"), "pointermove", { buttons: 1, shiftKey: true });
+    pointer(at(element, "1-1"), "pointerup", { shiftKey: true });
+    // Once let go, moving over cells chooses nothing.
+    pointer(at(element, "0-2"), "pointermove", { buttons: 0 });
+    await flush();
+    expect(named(heard, "cellselect").map((d) => d.key)).toEqual([
+      "0-0",
+      "1-0",
+      "1-1"
+    ]);
+    expect(named(heard, "celldragstart")).toEqual([]);
+  });
+
+  it("focus moved any other way says nothing of extending", async () => {
+    const { element, heard } = await editable();
+    at(element, "0-0").focus();
+    await press(element, "0-0", { key: "ArrowRight" });
+    expect(named(heard, "cellfocus").pop()).toEqual({ key: "1-0" });
+  });
+});

@@ -1,10 +1,14 @@
 import { LightningElement, api } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
+import { loadStyle } from "lightning/platformResourceLoader";
+import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { printPages, scheduleSheets } from "c/shoreshScheduleExport";
 import {
   activityCards,
   activityGrid,
@@ -25,7 +29,8 @@ const ORIGINS = {
  * The schedule page (desktop: the schedule screen): pick a program and a week; its newest version
  * opens by itself, Versions switches to another, and the director looks at it in Daily View (all groups for one day), Group View (one
  * group's week), or Activity View (where one activity runs across the week). Read-only: placing
- * and moving things comes with Manual Build.
+ * and moving things comes with Manual Build. Export to Excel and Print, beside Versions, take out
+ * the version on screen (ADR 0005 part 2): the version open is the choice, so nothing asks which.
  *
  * setup: the season (SeasonSetupController.getSeasonSetup). terms: the camp's words.
  */
@@ -50,6 +55,12 @@ export default class ShoreshSchedules extends LightningElement {
   loadedFor;
   // Each open asks the server once; only the latest answer is shown.
   openTicket = 0;
+  exporting = false;
+  // The printout's pages while it is being printed (c-shoresh-schedule-print), else null.
+  printout = null;
+  printPending = false;
+  printStyleLoaded = false;
+  afterPrint = null;
 
   @api
   get setup() {
@@ -347,7 +358,98 @@ export default class ShoreshSchedules extends LightningElement {
     this.activityId = null;
   }
 
+  // ---------- getting it out: Excel and print ----------
+
+  /** Nothing to get out: no version open, or one with no days, or the page is busy. */
+  get cannotGetOut() {
+    return !this.opened || this.hasNoDays || this.busy;
+  }
+  // While a download or a printout is under way the button stays focusable (aria-disabled) and a
+  // click does nothing: a focused button that turns disabled drops the cursor to the top of the
+  // page (WCAG 2.4.3), and the director just pressed it.
+  get exportBusy() {
+    return this.exporting ? "true" : "false";
+  }
+  get printBusy() {
+    return this.printout ? "true" : "false";
+  }
+  get cannotExport() {
+    return this.cannotGetOut || this.exporting;
+  }
+  get cannotPrint() {
+    return this.cannotGetOut || !!this.printout;
+  }
+  /** The version on screen as an Excel file: a sheet per day, then every group's and activity's week. */
+  async handleExport() {
+    if (this.cannotExport) {
+      return;
+    }
+    this.exporting = true;
+    this.error = null;
+    try {
+      await downloadWorkbook(
+        this,
+        scheduleSheets(this.opened, this.catalogue, this.t),
+        fileNameOf(`${this.weekName} - ${this.openedName}`)
+      );
+    } catch (e) {
+      this.error = failed("The schedule wasn't downloaded.", e);
+    } finally {
+      this.exporting = false;
+    }
+  }
+
+  /**
+   * The version on screen on paper, a page per day, group or activity as the view shows them:
+   * the printout is put on the page, the browser's print opens, and the printout goes after.
+   */
+  async handlePrint() {
+    if (this.cannotPrint) {
+      return;
+    }
+    if (!this.printStyleLoaded) {
+      try {
+        await loadStyle(this, PRINT_STYLE);
+        this.printStyleLoaded = true;
+      } catch {
+        // Without it the paper also shows the page around the printout; it still prints.
+      }
+    }
+    this.printout = printPages(this.opened, this.view, this.catalogue, this.t);
+    this.printPending = true;
+  }
+  get printWeek() {
+    return this.weekName;
+  }
+  get printVersion() {
+    return this.opened ? this.opened.schedule.name : "";
+  }
+
+  startPrint() {
+    this.printPending = false;
+    this.afterPrint = () => this.endPrint();
+    window.addEventListener("afterprint", this.afterPrint);
+    window.print();
+  }
+  endPrint() {
+    if (this.afterPrint) {
+      window.removeEventListener("afterprint", this.afterPrint);
+      this.afterPrint = null;
+    }
+    this.printout = null;
+  }
+
+  disconnectedCallback() {
+    this.endPrint();
+  }
+
   renderedCallback() {
+    if (
+      this.printPending &&
+      this.template.querySelector("c-shoresh-schedule-print")
+    ) {
+      this.startPrint();
+    }
     if (!this.focusAfter) {
       return;
     }

@@ -464,6 +464,143 @@ describe("c-shoresh-import", () => {
       expect(places.querySelector("p")).toBeNull();
     });
 
+    it("a place deleted before is not brought back silently: it is listed with Bring back", async () => {
+      // Deleted on the Locations screen after an earlier import that ticked it.
+      getAnswers.mockResolvedValue([
+        { key: "place|Pool", answer: "add" },
+        { key: "deleted|Location||Pool", answer: "deleted" }
+      ]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim (Pool),Art (Art room)",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      expect($(element, '[data-place="place|Pool"]')).toBeNull();
+      const deleted = $(element, '[data-id="deleted"]');
+      expect(
+        deleted.querySelector(".import-section-label").textContent.trim()
+      ).toBe("Deleted before; not brought back");
+      const row = deleted.querySelector(
+        '[data-deleted="deleted|Location||Pool"]'
+      );
+      expect(row.textContent).toContain("Pool");
+      expect(row.textContent).toContain("location");
+      const button = row.querySelector("button");
+      expect(button.getAttribute("aria-label")).toBe(
+        "Bring back Pool, location"
+      );
+      button.click();
+      await flush();
+      expect($(element, '[data-id="deleted"]')).toBeNull();
+      const pool = $(element, '[data-place="place|Pool"]');
+      expect(pool.querySelector("lightning-input").checked).toBe(true);
+    });
+
+    it("Bring back keeps the cursor on the way: the next Bring back, then the question it opens", async () => {
+      const focused = [];
+      const spy = jest
+        .spyOn(HTMLElement.prototype, "focus")
+        .mockImplementation(function record() {
+          focused.push(this);
+        });
+      try {
+        getAnswers.mockResolvedValue([
+          { key: "deleted|Location||Pool", answer: "deleted" },
+          { key: "deleted|Group|Main|Bunk 2", answer: "deleted" },
+          { key: "deleted|Activity||Art", answer: "deleted" }
+        ]);
+        const element = await renderWith({
+          ...WITH_WEEK,
+          programs: [
+            {
+              program: {
+                Id: "p1",
+                Name: "Main",
+                Monday__c: true,
+                Tuesday__c: true,
+                Wednesday__c: true,
+                Thursday__c: true,
+                Friday__c: true
+              },
+              timeBlocks: [],
+              divisions: [
+                {
+                  division: { Id: "d1", Name: "Juniors" },
+                  groups: [{ Id: "g1", Name: "Bunk 1" }]
+                },
+                { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+              ],
+              fixedActivities: [],
+              recurringActivities: []
+            }
+          ]
+        });
+        const rows = [
+          "Time,Bunk 1,Bunk 2",
+          "9:00-9:45,Swim (Pool),Art",
+          "10:00-10:45,Art,Swim (Pool)",
+          "12:00-12:45,Lunch,Lunch"
+        ].join("\n");
+        await choose(element, ["Monday.csv", "Tuesday.csv"], {
+          "Monday.csv": rows,
+          "Tuesday.csv": rows
+        });
+        const bringBack = (key) => $(element, `[data-deleted="${key}"] button`);
+        // The clicked button is gone with the item (WCAG 2.4.3). The last one: the one before it.
+        bringBack("deleted|Location||Pool").click();
+        await flush();
+        expect(focused.pop()).toBe(bringBack("deleted|Group|Main|Bunk 2"));
+        // Art's kind is asked on the review, not here: on to the next Bring back.
+        bringBack("deleted|Activity||Art").click();
+        await flush();
+        expect(focused.pop()).toBe(bringBack("deleted|Group|Main|Bunk 2"));
+        // Bunk 2 back opens its division, the question that takes the cursor.
+        bringBack("deleted|Group|Main|Bunk 2").click();
+        await flush();
+        expect(focused.pop()).toBe(
+          $(element, 'lightning-combobox[data-id="division|Bunk 2"]')
+        );
+        expect($(element, '[data-id="deleted"]')).toBeNull();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("an activity deleted before is left out until Bring back", async () => {
+      getAnswers.mockResolvedValue([
+        { key: "deleted|Activity||Art", answer: "deleted" }
+      ]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim,Art",
+        "10:00-10:45,Art,Swim",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      expect(
+        $(element, '[data-deleted="deleted|Activity||Art"]').textContent
+      ).toContain("Art");
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      try {
+        $(element, '[data-deleted="deleted|Activity||Art"] button').click();
+        await flush();
+        expect($(element, '[data-id="deleted"]')).toBeNull();
+        // Nothing left to bring back and no question opened: the step's main button.
+        expect(focus.mock.contexts.pop().dataset.id).toBe("review");
+      } finally {
+        focus.mockRestore();
+      }
+    });
+
     it("the summary says where last year's schedule went, and the import can be undone", async () => {
       getAnswers.mockResolvedValue([
         { key: "similar|activity|music|musik|Music|Musik", answer: "a" },
