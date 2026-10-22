@@ -7,8 +7,9 @@
  * are listed as coming, not hidden.
  */
 
-// Built in a later slice: listed, not reachable yet.
-const COMING = new Set(["specialEvents"]);
+// Built in a later slice: listed, not reachable yet (none just now; Special events came in ADR
+// 0014 slice 2).
+const COMING = new Set([]);
 // Everything else needs a season first.
 const WITHOUT_SEASON = new Set(["campWords"]);
 

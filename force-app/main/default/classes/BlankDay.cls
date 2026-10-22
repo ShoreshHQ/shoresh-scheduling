@@ -73,8 +73,11 @@ public with sharing class BlankDay {
       : null;
   }
 
-  /** The item's blocks the group is at camp for: from the first such block, unbroken. */
-  private static List<Integer> atCampPart(
+  /**
+   * The item's blocks the group is at camp for: from the first such block, unbroken. Also how a
+   * new special day brings an item in (SpecialDayStart).
+   */
+  public static List<Integer> atCampPart(
     SetTimePlan.Item item,
     Group__c grp,
     List<Integer> span

@@ -30,6 +30,13 @@ import {
   screenLabels
 } from "c/shoreshScreens";
 import { leftField } from "c/shoreshSavedMark";
+import {
+  briefOf,
+  placedOnText,
+  scheduleText,
+  seededLines,
+  specialOf
+} from "c/shoreshSpecialDetails";
 import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema).
@@ -58,7 +65,8 @@ const FLUSH_SCREENS = new Set([
   "locations",
   "activities",
   "fixedActivities",
-  "recurringActivities"
+  "recurringActivities",
+  "specialEvents"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -84,6 +92,7 @@ const SCREENS = [
   "activities",
   "fixedActivities",
   "recurringActivities",
+  "specialEvents",
   "generatedSchedule",
   "manualBuild",
   "schedules",
@@ -115,7 +124,9 @@ export function seasonContents(setup, t) {
     [
       "RecurringActivity",
       inPrograms((e) => (e.recurringActivities || []).length)
-    ]
+    ],
+    ["SpecialDay", specialOf(setup).specialDays.length],
+    ["SpecialEvent", specialOf(setup).specialEvents.length]
   ];
   const lines = counts
     .filter(([, n]) => n > 0)
@@ -198,6 +209,10 @@ export default class ShoreshCampSetup extends LightningElement {
   sameLocation = null;
   // The activity whose details are open (opened from its row), or null.
   activityDetailsFor = null;
+  // The special day or event whose details are open, or null.
+  specialDetailsFor = null;
+  // What the special day just added started from, said under the list (role=status).
+  seededNote = "";
   // Why the last Merge was refused, shown in the question only (one alert, not two).
   sameLocationError = null;
   // Merging: the question's buttons wait.
@@ -971,6 +986,150 @@ export default class ShoreshCampSetup extends LightningElement {
     };
   }
 
+  // ---------- special events (ADR 0014 choice 11) ----------
+
+  /**
+   * The words for events on this screen: the camp's own word when it has one, else "Event", as
+   * the approved mock-up and the desktop say it (the screen's own name already says "Special").
+   */
+  get eventWords() {
+    const t = this.terms;
+    if (t.s("SpecialEvent") === "Special event") {
+      return { s: "Event", p: "Events", sIn: "event", pIn: "events" };
+    }
+    return {
+      s: t.s("SpecialEvent"),
+      p: t.p("SpecialEvent"),
+      sIn: t.sIn("SpecialEvent"),
+      pIn: t.pIn("SpecialEvent")
+    };
+  }
+
+  get special() {
+    return specialOf(this.setup);
+  }
+
+  /** The rail: "3 special days" and "4 events". */
+  get specialCounts() {
+    const t = this.terms;
+    const events = this.eventWords;
+    const days = this.special.specialDays.length;
+    const count = this.special.specialEvents.length;
+    return {
+      days,
+      daysNoun: ` ${days === 1 ? t.sIn("SpecialDay") : t.pIn("SpecialDay")}`,
+      events: count,
+      eventsNoun: ` ${count === 1 ? events.sIn : events.pIn}`
+    };
+  }
+
+  /**
+   * The columns both lists share, as design-research special-r1 special-events.html draws them:
+   * Name, Where, Schedule, Placed on, Notes. Schedule and Placed on are worked out (the plan in
+   * brief, the days it is on), quiet while there is none. Widths are fixed so the two lists'
+   * columns line up.
+   */
+  specialColumns(isEvent) {
+    const t = this.terms;
+    const setup = this.setup;
+    const weeks = (setup && setup.weeks) || [];
+    const brief = (saved) => briefOf(setup, saved.Id);
+    const where = isEvent
+      ? {
+          fieldName: FIELD.SpecialEvent.Location,
+          label: "Where",
+          type: "picklist",
+          width: 11,
+          options: [
+            { label: "None", value: "" },
+            ...((setup && setup.locations) || []).map((l) => ({
+              label: l.Name,
+              value: l.Id
+            }))
+          ]
+        }
+      : {
+          fieldName: "where",
+          label: "Where",
+          type: "readonly",
+          width: 11,
+          textFor: () => "Whole camp"
+        };
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      where,
+      {
+        fieldName: "schedule",
+        label: "Schedule",
+        type: "readonly",
+        width: 9,
+        // The blank row has nothing to show yet.
+        textFor: (saved) => {
+          if (!saved.Id) return "";
+          return scheduleText(brief(saved), isEvent, t) || "None";
+        },
+        exceptionFor: (saved) => !!saved.Id && brief(saved).planned
+      },
+      {
+        fieldName: "placedOn",
+        label: "Placed on",
+        type: "readonly",
+        width: 11,
+        textFor: (saved) => {
+          if (!saved.Id) return "";
+          return (
+            placedOnText(brief(saved), weeks, this.weekWords) || "Not placed"
+          );
+        },
+        exceptionFor: (saved) => !!saved.Id && brief(saved).days.length > 0
+      },
+      {
+        fieldName: isEvent ? FIELD.SpecialEvent.Notes : FIELD.SpecialDay.Notes,
+        label: "Notes",
+        type: "text"
+      }
+    ];
+  }
+
+  get specialDayColumns() {
+    return this.specialColumns(false);
+  }
+
+  get specialEventColumns() {
+    return this.specialColumns(true);
+  }
+
+  get specialDayDefaults() {
+    return { [FIELD.SpecialDay.Season]: this.seasonId };
+  }
+
+  get specialEventDefaults() {
+    return { [FIELD.SpecialEvent.Season]: this.seasonId };
+  }
+
+  /** A row's chevron: its details open beside the lists (decision 47.1). */
+  handleOpenSpecialDetails(event) {
+    const { recordId } = event.detail;
+    const details = this.template.querySelector("c-shoresh-special-details");
+    if (details && details.open(recordId)) {
+      this.specialDetailsFor = recordId;
+    }
+  }
+
+  /** Closed: the cursor goes back to that row's chevron. */
+  handleCloseSpecialDetails(event) {
+    const { itemId } = event.detail;
+    this.specialDetailsFor = null;
+    const table = [
+      ...this.template.querySelectorAll(
+        '[data-screen="specialEvents"] c-shoresh-editable-table'
+      )
+    ].find((list) => list.showsRow(itemId));
+    if (table) {
+      table.focusDetailsOf(itemId);
+    }
+  }
+
   /** Each counted screen's rail: how many, in the camp's word ("10 groups", "1 week"). */
   get counts() {
     const setup = this.setup || {};
@@ -1061,7 +1220,13 @@ export default class ShoreshCampSetup extends LightningElement {
       sameLocation: `Same ${t.sIn("Location")}?`,
       catalogue: `${t.s("Activity")} catalogue`,
       addActivity: `Add ${t.s("Activity")}`,
-      noActivities: `No ${t.pIn("Activity")} yet`
+      noActivities: `No ${t.pIn("Activity")} yet`,
+      specialDays: t.p("SpecialDay"),
+      addSpecialDay: `Add ${t.s("SpecialDay")}`,
+      noSpecialDays: `No ${t.pIn("SpecialDay")} yet`,
+      specialEvents: this.eventWords.p,
+      addSpecialEvent: `Add ${this.eventWords.s}`,
+      noSpecialEvents: `No ${this.eventWords.pIn} yet`
     };
   }
 
@@ -1570,6 +1735,13 @@ export default class ShoreshCampSetup extends LightningElement {
       });
       answered = true;
       onSaved(result);
+      if (result && result.seeded) {
+        this.seededNote = seededLines(
+          result.seeded,
+          record.Name,
+          this.terms
+        ).join(" ");
+      }
       // Someone else changed the row: the table asks, and nothing is saved yet.
       const asked =
         !!result &&

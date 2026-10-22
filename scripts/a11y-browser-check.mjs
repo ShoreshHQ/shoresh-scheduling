@@ -40,6 +40,9 @@
  *   that a row's day ticks show while it is edited, Tab reaching them; and that New season and
  *   Copy this season open from the camp row's small menu (Season actions) and Cancel puts focus
  *   back on it;
+ * - Special events (ADR 0014 choices 11 and 12): a special day added by keyboard says what it
+ *   started from; its details open from its chevron with focus on their heading and Close puts
+ *   focus back on the chevron; it is deleted again;
  * - rules Shoresh guessed (ADR 0006 §21): an activity's how often, marked as an import would
  *   mark it, carries the needs-a-look corner; Tab reaches it, Enter opens its words with the
  *   cursor on Looks right, Escape puts the cursor back on the mark, and Looks right clears it,
@@ -1646,6 +1649,87 @@ async function campSetup() {
     "Recurring activities: a row's day ticks by keyboard",
     recurringRow
   );
+  await step(
+    S,
+    "Special events: a special day added, its details, then deleted",
+    specialEvents
+  );
+}
+
+/**
+ * Special events (ADR 0014 choices 11 and 12): axe on the screen; a special day typed into the
+ * Special days section's blank row and added with Enter, what it started from read out (role
+ * status); its chevron opens its details beside the list with focus on their heading, axe on
+ * them open, Close putting focus back on the chevron; then the row's delete and the question's
+ * button delete it again (only the special day this step added).
+ */
+async function specialEvents() {
+  const E = "Special events";
+  const DAY = "Check day";
+  await openFromMenu(E, /^Special events/);
+  await axe(E);
+  const days = 'c-shoresh-editable-table[data-id="special-days"]';
+  const names = () =>
+    shown(`${days} lightning-input[data-field="Name"] input`).evaluateAll(
+      (inputs) => inputs.map((i) => i.value).filter(Boolean)
+    );
+  if ((await names()).includes(DAY)) {
+    throw new Error(
+      `"${DAY}" is already a special day: a run before this one stopped part way.`
+    );
+  }
+  await shown(`${days} [data-row-key="add"][data-field="Name"] input`).focus();
+  await type(DAY);
+  await expectLive(
+    E,
+    "A special day added: what it started from is said",
+    new RegExp(`^"${DAY}" (starts from|has no)`),
+    () => press("Enter", 4000)
+  );
+  if (!(await names()).includes(DAY))
+    throw new Error(`"${DAY}" was not added.`);
+  const inputs = shown(`${days} lightning-input[data-field="Name"] input`);
+  const at = (
+    await inputs.evaluateAll((els) => els.map((e) => e.value))
+  ).indexOf(DAY);
+  await inputs.nth(at).focus();
+  const chevron = await tabTo(
+    named(new RegExp(`^${DAY} details$`), { tag: "button" }),
+    { max: 20 }
+  );
+  if (!chevron) throw new Error(`${DAY}'s details chevron not reached.`);
+  await press("Enter", 1200);
+  await expectFocus(E, "Opening an item's details: focus on their heading", {
+    tag: /^h[1-3]$/,
+    name: new RegExp(`^${DAY} details$`)
+  });
+  await axe("Special events, an item's details open");
+  if (
+    !(await tabTo(
+      named(new RegExp(`^Close ${DAY} details$`), { tag: "button" }),
+      {
+        max: 8
+      }
+    ))
+  )
+    throw new Error("The details' Close was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(E, "Closing the details: focus back on the row's chevron", {
+    tag: "button",
+    name: new RegExp(`^${DAY} details$`)
+  });
+  await inputs.nth(at).focus();
+  if (!(await tabTo(named(new RegExp(`^Delete ${DAY}$`)), { max: 20 })))
+    throw new Error(`"${DAY}"'s delete not reached with Tab.`);
+  await press("Enter", 1200);
+  const go = await tabTo(
+    (g) => g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
+    { max: 6, anywhere: true }
+  );
+  if (!go) throw new Error("The delete question's button not reached.");
+  await press("Enter", 3000);
+  if ((await names()).includes(DAY))
+    throw new Error(`"${DAY}" was not deleted: delete it by hand.`);
 }
 
 /** The first saved row's name box in the screen's tables, reached with Tab. */

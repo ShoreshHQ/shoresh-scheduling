@@ -1,12 +1,16 @@
 # 0014: Special days and special events, the data
 
-Status: proposed (2026-10-20), Special Events and Special Days slice 1 of 6 (plan: wiki
+Status: proposed (2026-10-20; slice 2 added 2026-10-22), Special Events and Special Days slices 1
+and 2 of 6 (plan: wiki
 `projects/shoresh-sf-parity-gaps`, "Build plan"). Design source: wiki
 `projects/shoresh-scheduling-data-model` (`SpecialEvent__c`, `SpecialDay__c`, `PlanPart__c`,
 `SpecialDate__c`). Where the data model is looser, the desktop decides: desktop ADRs
 `2026-10-09-special-day-binds-to-a-week-day`, `2026-08-20-special-days-authoring-and-day-override-repoint`,
 `2026-08-22-events-overlay-placement` and `2026-08-22-event-internal-subschedule`. No screens in
-this slice (slice 2 is the setup screen).
+this slice. _Slice 2 (2026-10-22, choices 11 to 13) adds the setup screen: design source Greg's
+decision 47 and the approved mock-up `design-research/special-r1/special-events.html`; desktop
+`SpecialEventsScreen.jsx`, `specialDay/copyCampTimeBlocks.js` and ADR
+`2026-08-29-unify-special-events-screen`._
 
 ## Choices
 
@@ -59,6 +63,79 @@ this slice (slice 2 is the setup screen).
     number of plans one more (`SpecialPlans.readAll`); a plan save is four. Tests assert these as
     a scheduler, records made inside the same `System.runAs`.
 
+11. **One Special events screen** (slice 2) replaces the menu's "Coming" entry, as the desktop's
+    one unified screen for both kinds (its ADR 2026-08-29). It is a setup screen in the shared
+    table language (ADR 0015 choices 11 and 12), placed last in the setup order, so Recurring
+    activities' next button now leads to it:
+    - **The rail** counts both ("3 special days", "4 events") with the quiet ✓ Saved.
+    - **Two sections, one list**: **Special days**, then **Events**, each headed with its count,
+      the column names once above the first, each with its dashed blank row ("Add Special day",
+      "Add Event"). Columns, as the mock-up: **Name**, **Where** (a special day is "Whole camp",
+      quiet; an event picks one of the season's places, or None), **Schedule** (a special day's
+      time blocks, "7 time blocks"; an event's stations, "4 stations"; "None" quiet until it has
+      one), **Placed on** (the days it is on, "Wk 5 Thu, Wk 6 Tue", numbered by the week's place
+      in the season and in the camp's word for weeks; "Not placed" quiet) and **Notes**. Name,
+      an event's place and Notes are edited in the row and saved as you go (ADR 0011); Schedule
+      and Placed on are worked out, never typed. The two lists' columns have the same fixed
+      widths so they line up.
+    - **Words.** Special days use the camp's word. Events use the camp's word when the camp has
+      its own; the default "Special event" is shortened to **Event** on this screen, as the
+      mock-up and the desktop say it (the screen's own name already says "special"). Schedule
+      counts time blocks in the camp's word, where the mock-up wrote "periods".
+    - **An item's details open beside the list** from its row's chevron (decision 47.1), in the
+      same zone as an activity's details: its name, Where, Placed on, its notes, and for a
+      special day its own time blocks with what is in each ("11:30–12:20 Lunch: Lunch, Rest").
+      Focus goes to the panel's heading; Close puts it back on the row's chevron. **Open
+      schedule** is there, held and marked "Coming" as the menu marks screens not built, until
+      the schedule inside is built (slice 3). Nothing in the panel is edited: every field an
+      item has is in its row.
+    - **Deleting** is the row's delete, asked first as every setup row; one that is on a day is
+      refused with choice 8's message. Deleting a season now lists its special days and events
+      among what goes with it.
+    - The season read (`SeasonSetupReader`) carries them (`SpecialItems.forSeason`: the items,
+      each plan in brief and its days, in four queries for any number). Someone who may not read
+      the four objects gets none rather than a refusal of the whole season.
+    - Not on this screen yet: the mock-up's **Import a list** and **Download this list** (no
+      import or download of special items yet), and putting an item on a day (slice 4).
+
+12. **A special day starts from the camp's regular day** (desktop "seeded from time blocks" and
+    "bring recurring events in"). The desktop asks "Start from your time blocks?" after a special
+    day is created; here it is done without asking (product principle: do what the same action
+    does by hand, and show it), in the same save as the special day, all or none
+    (`RowSaves` → `SpecialDaySeed`, which reads the camp, and `SpecialDayStart`, which builds the
+    plan):
+    - its time blocks are a copy of the **first program's** (screens' order) that has any, with
+      ids of its own ("b1", "b2", choice 6); its rows are **every group in the camp**, in the
+      screens' order;
+    - a **fixed or recurring activity is brought in** to the groups it takes when it runs **every
+      day its program runs and in every week**, in time blocks the special day has (matched by
+      name and times, so another program's item lands only where its time blocks are the same).
+      A morning-only or afternoon-only group takes the part it is there for, as Start a blank
+      week does (`BlankDay.atCampPart`, now shared). A slot already taken is left as it is;
+    - **nothing is left out quietly**: what was not brought in is named, with why, under the
+      Special days section right after it is added (read out): "Not brought in, since they don't
+      run every day: Swim." (also: every week; other time blocks; the time was already taken).
+      The desktop's offer of a placed day's weekday-only recurring events ("Also bring 2
+      recurring events from Tuesday?") comes with putting a special day on a day (slice 4): a
+      new special day is never on a day yet;
+    - with no program time blocks, it starts empty and says so; someone who may not read fixed
+      and recurring activities (`SetTimeAccess`) gets the time blocks only. An event starts with
+      no plan.
+    - The same setup always gives the same plan. A row save that adds a special day costs about a
+      dozen queries (`SpecialDaySeedTest` asserts at most 40, as a scheduler).
+
+13. **Checked by** `SpecialDaySeedTest` (what is brought in and left out and why, the plan's own
+    time blocks and cells, morning-only groups, the same plan twice, no time blocks, an event,
+    a refused duplicate leaving no plan), `SpecialItemsTest` (the read in four queries, briefs
+    and days in order, a carried-on item, the screen's delete, fields the screen may not send),
+    `shoreshSpecialDetails.test.js` (the worked-out words, the panel for each kind, Close, an
+    item gone), `shoreshCampSetup.test.js` ("Special events": the rail, sections, columns and
+    widths, camp words, the seeded note, the panel from the chevron and back, the delete, the
+    season's delete count), `shoreshMenu.test.js`, and in the test org by
+    `scripts/a11y-browser-check.mjs` (axe on the screen, a special day added by keyboard with
+    its note read out, its details opened from the chevron with focus on their heading and back
+    on Close, then deleted).
+
 ## Names
 
 Every object and field is reached through typed Apex references and `c/shoreshSchema`
@@ -67,5 +144,5 @@ Every object and field is reached through typed Apex references and `c/shoreshSc
 
 ## Not in this slice
 
-Screens (slices 2 to 5), replacing a placed special day with a confirm, Needs attention for a
+Screens other than the setup screen (slices 3 to 5), replacing a placed special day with a confirm, Needs attention for a
 special day whose weekday or groups no longer match, and the week delete warning (slice 6).
