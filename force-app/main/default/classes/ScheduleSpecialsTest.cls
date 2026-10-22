@@ -303,6 +303,88 @@ private class ScheduleSpecialsTest {
     }
   }
 
+  /** Takes Color War's own schedule away (as before its stations were built). */
+  private static void clearColorWarsSchedule(Map<String, Id> ids) {
+    Database.delete(
+      [
+        SELECT Id
+        FROM PlanPart__c
+        WHERE SpecialEvent__c = :ids.get('Color War')
+        WITH USER_MODE
+      ],
+      true,
+      AccessLevel.USER_MODE
+    );
+  }
+
+  /** Color War's one time block and Blue and Gold, as the setup builds it. */
+  private static void buildColorWarsSchedule(Map<String, Id> ids) {
+    ScheduleGrid plan = new ScheduleGrid();
+    plan.blocks.add(
+      new ScheduleGrid.Block('b1', 'Relays').at('09:00', '10:00')
+    );
+    plan.groups.add(new ScheduleGrid.GroupRef('s1', 'Blue'));
+    plan.groups.add(new ScheduleGrid.GroupRef('s2', 'Gold'));
+    plan.rows.add(new List<String>{ '' });
+    plan.rows.add(new List<String>{ '' });
+    SpecialPlans.write(ids.get('Color War'), plan, null);
+  }
+
+  @IsTest
+  static void anEventsScheduleBuiltAfterPublishingIsSomethingToPublish() {
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
+      // Color War placed on Monday before its stations are built.
+      clearColorWarsSchedule(ids);
+
+      Test.startTest();
+      Id firstId = publishNow(ids.get('Draft')).published.id;
+      Assert.areEqual(1, carried(firstId).size(), 'Field Day only');
+      buildColorWarsSchedule(ids);
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        ids.get('Draft')
+      );
+      SchedulePublish.Result result = ManualBuildController.publish(
+        ids.get('Draft'),
+        preview.revisions,
+        preview.published.id
+      );
+      Test.stopTest();
+
+      Assert.isTrue(preview.published.changedSince);
+      Assert.areEqual(1, preview.eventCount, String.valueOf(preview.changes));
+      Assert.areEqual(1, preview.changeCount, String.valueOf(preview.changes));
+      Assert.areEqual('Color War: schedule added', preview.changes[0]);
+      Assert.isFalse(result.unchanged, 'Published again');
+      Assert.areNotEqual(firstId, result.published.id);
+      Assert.areEqual(2, carried(result.published.id).size());
+    }
+  }
+
+  @IsTest
+  static void anEventsScheduleRemovedAfterPublishingIsSomethingToPublish() {
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
+
+      Test.startTest();
+      publishNow(ids.get('Draft'));
+      clearColorWarsSchedule(ids);
+      SchedulePublish.Preview preview = ManualBuildController.previewPublish(
+        ids.get('Draft')
+      );
+      Test.stopTest();
+
+      Assert.isTrue(preview.published.changedSince);
+      Assert.areEqual(1, preview.eventCount, String.valueOf(preview.changes));
+      Assert.areEqual(1, preview.changeCount, String.valueOf(preview.changes));
+      Assert.areEqual('Color War: schedule removed', preview.changes[0]);
+    }
+  }
+
   @IsTest
   static void onlyPublishWritesWhatAPublishedCopyCarries() {
     // Read outside System.runAs: the kept record is the test runner's (KeptCamp).

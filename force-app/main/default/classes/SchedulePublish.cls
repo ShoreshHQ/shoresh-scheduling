@@ -366,13 +366,11 @@ public with sharing class SchedulePublish {
     PublishedChanges.Changes changes = PublishedChanges.none(
       campId == null ? 0 : MOST_LINES
     );
-    new SpecialChanges(changes, campId).add(carried, week.specials);
+    List<ScheduleDays.DayGrid> publishedDays = ScheduleDays.read(publishedId);
+    new SpecialChanges(changes, campId)
+      .add(carried, week.specials, publishedDays, week.days);
     changes.hidden = ScheduleSpecials.replacedDates(carried, week.specials);
-    PublishedChanges.addBetween(
-      changes,
-      ScheduleDays.read(publishedId),
-      week.days
-    );
+    PublishedChanges.addBetween(changes, publishedDays, week.days);
     return changes;
   }
 
