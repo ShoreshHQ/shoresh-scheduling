@@ -2,22 +2,59 @@
  * The week's special days and events as they are now, for these days of a schedule of it (ADR 0014
  * slice 5, ScheduleSpecials): each day a special day replaces (a weekday the schedule has), with
  * its own schedule and only the day's groups, then each special event placed on a day not
- * replaced that has a schedule of its own, by name. Two queries at most: the week's special days,
- * then every plan. Runs in user mode; someone who may not read the special objects gets none.
+ * replaced that has a schedule of its own, by name. Two queries at most: the week's special days
+ * (none when the week was read with them, ProgramReads.weekWithSpecialDays), then every plan.
+ * Runs in user mode; someone who may not read the special objects gets none.
  */
 public with sharing class SpecialsNow {
+  /** The week's (by Id): its special days are read here. */
   public static List<ScheduleSpecials.Special> of(
     Id weekId,
     List<ScheduleDays.DayGrid> days
   ) {
-    if (!readable() || days.isEmpty()) {
+    if (!usable(days)) {
       return new List<ScheduleSpecials.Special>();
     }
+    List<SpecialDate__c> rows = [
+      SELECT
+        Day__c,
+        SpecialDay__c,
+        SpecialDay__r.Name,
+        SpecialDay__r.Notes__c,
+        Week__r.StartDate__c,
+        Week__r.EndDate__c
+      FROM SpecialDate__c
+      WHERE Week__c = :weekId AND SpecialDay__c != NULL
+      WITH USER_MODE
+      ORDER BY Day__c, Id
+    ];
+    return rows.isEmpty()
+      ? fromRows(new Week__c(Id = weekId), rows, days)
+      : fromRows(rows[0].Week__r, rows, days);
+  }
+
+  /** The same, from a week read with its special days (ProgramReads.weekWithSpecialDays). */
+  public static List<ScheduleSpecials.Special> ofWeek(
+    Week__c week,
+    List<ScheduleDays.DayGrid> days
+  ) {
+    if (!usable(days)) {
+      return new List<ScheduleSpecials.Special>();
+    }
+    return fromRows(week, week.SpecialDates__r, days);
+  }
+
+  /** week: its dates; rows: its special days. */
+  private static List<ScheduleSpecials.Special> fromRows(
+    Week__c week,
+    List<SpecialDate__c> rows,
+    List<ScheduleDays.DayGrid> days
+  ) {
     Map<Date, ScheduleDays.DayGrid> byDate = new Map<Date, ScheduleDays.DayGrid>();
     for (ScheduleDays.DayGrid day : days) {
       byDate.put(day.day, day);
     }
-    List<ScheduleSpecials.Special> result = replacedDays(weekId, byDate);
+    List<ScheduleSpecials.Special> result = replacedDays(week, rows, byDate);
     Map<Id, String> eventNames = eventsOn(
       days,
       ScheduleSpecials.replacedDates(
@@ -48,28 +85,17 @@ public with sharing class SpecialsNow {
     return result;
   }
 
-  /** The days of the schedule a special day replaces, in date order (one query). */
+  /** The days of the schedule a special day replaces. */
   private static List<ScheduleSpecials.Special> replacedDays(
-    Id weekId,
+    Week__c week,
+    List<SpecialDate__c> rows,
     Map<Date, ScheduleDays.DayGrid> byDate
   ) {
     List<ScheduleSpecials.Special> result = new List<ScheduleSpecials.Special>();
-    for (SpecialDate__c row : [
-      SELECT
-        Day__c,
-        SpecialDay__c,
-        SpecialDay__r.Name,
-        SpecialDay__r.Notes__c,
-        Week__r.StartDate__c,
-        Week__r.EndDate__c
-      FROM SpecialDate__c
-      WHERE Week__c = :weekId AND SpecialDay__c != NULL
-      WITH USER_MODE
-      ORDER BY Day__c, Id
-    ]) {
+    for (SpecialDate__c row : rows) {
       Date onDate = SpecialDates.dateOf(
-        row.Week__r.StartDate__c,
-        row.Week__r.EndDate__c,
+        week.StartDate__c,
+        week.EndDate__c,
         row.Day__c
       );
       // The week no longer has that weekday, or this schedule doesn't run on it: not replaced.
@@ -146,7 +172,7 @@ public with sharing class SpecialsNow {
 
   private static Set<Id> groupIdsOf(ScheduleDays.DayGrid day) {
     Set<Id> result = new Set<Id>();
-    if (day == null || day.grid == null) {
+    if (day.grid == null) {
       return result;
     }
     for (ScheduleGrid.GroupRef grp : day.grid.groups) {
@@ -167,6 +193,11 @@ public with sharing class SpecialsNow {
     } catch (StringException e) {
       return null;
     }
+  }
+
+  /** Some days, and the special objects readable. */
+  private static Boolean usable(List<ScheduleDays.DayGrid> days) {
+    return !days.isEmpty() && readable();
   }
 
   private static Boolean readable() {

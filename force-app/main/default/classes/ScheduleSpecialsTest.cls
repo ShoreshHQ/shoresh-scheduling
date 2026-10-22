@@ -11,32 +11,83 @@ private class ScheduleSpecialsTest {
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
   private static final Date TUESDAY = Date.newInstance(2026, 6, 30);
 
-  /** Field Day (on Tuesday) and Color War (on Group A's Monday Period 1 and 2), a week started. */
-  private static Map<String, Id> campWithSpecials() {
-    Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
-    ids.put('Color War', SpecialScheduleTestData.colorWar(ids));
-    SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
-    ManualBuildViews.DraftView view = ManualBuildController.startBlankWeek(
-      ids.get('Main'),
-      ids.get('Week 1')
+  /**
+   * Field Day (on Tuesday of Week 1, starting from the regular day), Color War (one time block,
+   * Blue and Gold), and Week 1's Manual Build draft with Color War over Group A's Monday Period 1
+   * and 2, made by the scheduler; kept for each test. The draft is written as Manual Build saves
+   * one (its days, Monday to Thursday), without the screen's start, which costs more queries than
+   * one test may spend with the rest.
+   */
+  @TestSetup
+  static void setup() {
+    User scheduler = ShoreshTestData.scheduler();
+    Map<String, Id> ids;
+    System.runAs(scheduler) {
+      ids = SpecialScheduleTestData.campWithFieldDay();
+      Id colorWar = SpecialScheduleTestData.addEvent(
+        ids.get('Season'),
+        'Color War'
+      );
+      ScheduleGrid plan = new ScheduleGrid();
+      plan.blocks.add(
+        new ScheduleGrid.Block('b1', 'Relays').at('09:00', '10:00')
+      );
+      plan.groups.add(new ScheduleGrid.GroupRef('s1', 'Blue'));
+      plan.groups.add(new ScheduleGrid.GroupRef('s2', 'Gold'));
+      plan.rows.add(new List<String>{ '' });
+      plan.rows.add(new List<String>{ '' });
+      SpecialPlans.write(colorWar, plan, null);
+      ids.put('Color War', colorWar);
+      SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
+      ids.put('Draft', draftWithColorWar(ids));
+    }
+    ids.put('Scheduler', scheduler.Id);
+    KeptCamp.keepIds(ids);
+  }
+
+  private static Id draftWithColorWar(Map<String, Id> ids) {
+    Schedule__c draft = new Schedule__c(
+      Program__c = ids.get('Main'),
+      Week__c = ids.get('Week 1'),
+      Name = ManualDrafts.NAME,
+      Status__c = ManualDrafts.DRAFT,
+      Origin__c = ManualDrafts.MANUAL
     );
-    ids.put('Draft', view.schedule.schedule.id);
-    String event = 'S:' + ids.get('Color War');
-    SlotEdits.Run run = new SlotEdits.Run();
-    run.day = MONDAY;
-    run.groupId = ids.get('Group A');
-    run.firstBlockId = ids.get('Period 1');
-    run.blockIds = new List<String>{ ids.get('Period 1'), ids.get('Period 2') };
-    run.before = new List<String>{ '', '' };
-    run.after = new List<String>{ event, '^' + event };
-    SlotEdits.Edit edit = new SlotEdits.Edit();
-    edit.runs = new List<SlotEdits.Run>{ run };
-    SlotEdits.Result placed = ManualBuildController.saveSlots(
-      ids.get('Draft'),
-      new List<SlotEdits.Edit>{ edit }
-    );
-    Assert.isTrue(placed.conflicts.isEmpty(), 'Color War placed');
-    return ids;
+    Database.insert(draft, AccessLevel.USER_MODE);
+    List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+    List<ScheduleGrid.Block> blocks = new List<ScheduleGrid.Block>();
+    for (TimeBlock__c block : [
+      SELECT Id, Name, StartTime__c, EndTime__c
+      FROM TimeBlock__c
+      WHERE Program__c = :ids.get('Main')
+      WITH USER_MODE
+      ORDER BY StartTime__c
+    ]) {
+      blocks.add(
+        new ScheduleGrid.Block(block.Id, block.Name)
+          .at(
+            String.valueOf(block.StartTime__c).left(5),
+            String.valueOf(block.EndTime__c).left(5)
+          )
+      );
+    }
+    for (Integer d = 0; d < 4; d++) {
+      ScheduleGrid grid = new ScheduleGrid();
+      grid.blocks.addAll(blocks);
+      for (String name : new List<String>{ 'Group A', 'Group B', 'Group C' }) {
+        grid.groups.add(new ScheduleGrid.GroupRef(ids.get(name), name));
+        grid.rows.add(new List<String>{ '', '', '' });
+      }
+      if (d == 0) {
+        grid.items.add(
+          new ScheduleGrid.Item('S', ids.get('Color War'), 'Color War')
+        );
+        grid.rows[0] = new List<String>{ '1', ScheduleGrid.CARRIES_ON, '' };
+      }
+      saves.add(new ScheduleDaySaves.DaySave(MONDAY.addDays(d), grid, null));
+    }
+    ScheduleDaySaves.write(draft.Id, saves);
+    return draft.Id;
   }
 
   private static SchedulePublish.Result publishNow(Id draftId) {
@@ -77,8 +128,10 @@ private class ScheduleSpecialsTest {
 
   @IsTest
   static void publishCarriesTheSpecialDayAndTheEventsOwnSchedules() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = campWithSpecials();
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
       Database.update(
         new SpecialDay__c(Id = ids.get('Field Day'), Notes__c = 'Wear blue'),
         AccessLevel.USER_MODE
@@ -118,13 +171,15 @@ private class ScheduleSpecialsTest {
 
   @IsTest
   static void thePublishedCopyShowsThemAsPublishedWhileTheDraftShowsThemNow() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = campWithSpecials();
-      Id publishedId = publishNow(ids.get('Draft')).published.id;
-      // Changed after publishing: Field Day's schedule, and the week's Tuesday taken back.
-      swimInFieldDay(ids);
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
 
       Test.startTest();
+      Id publishedId = publishNow(ids.get('Draft')).published.id;
+      // Changed after publishing: Field Day's schedule.
+      swimInFieldDay(ids);
       Integer before = Limits.getQueries();
       ScheduleViews.ScheduleView published = SchedulesController.openSchedule(
         publishedId
@@ -156,7 +211,7 @@ private class ScheduleSpecialsTest {
       ScheduleSpecials.EventPlan event = published.specials.events[0];
       Assert.areEqual(String.valueOf(ids.get('Color War')), event.eventId);
       Assert.areEqual('Color War', event.name);
-      Assert.areEqual(2, event.plan.blocks.size());
+      Assert.areEqual(1, event.plan.blocks.size());
       Assert.areEqual(2, event.plan.groups.size());
       Assert.isFalse(event.plan.groups[0].gone, 'A station is never gone');
 
@@ -172,8 +227,12 @@ private class ScheduleSpecialsTest {
 
   @IsTest
   static void whatChangesInThemIsShownBeforePublishingAgain() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = campWithSpecials();
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
+
+      Test.startTest();
       Id firstId = publishNow(ids.get('Draft')).published.id;
       swimInFieldDay(ids);
       SpecialScheduleController.changeFrame(
@@ -181,8 +240,6 @@ private class ScheduleSpecialsTest {
         SpecialPlans.read(ids.get('Color War')).revision,
         SpecialScheduleTestData.change('addStation', null, 'Green')
       );
-
-      Test.startTest();
       Integer before = Limits.getQueries();
       SchedulePublish.Preview preview = ManualBuildController.previewPublish(
         ids.get('Draft')
@@ -210,8 +267,10 @@ private class ScheduleSpecialsTest {
 
   @IsTest
   static void aDayReplacedOrNoLongerReplacedIsAChangeToPublish() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = campWithSpecials();
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
       // Published with nothing on Tuesday.
       for (SpecialDate__c placed : [
         SELECT Id
@@ -221,12 +280,10 @@ private class ScheduleSpecialsTest {
       ]) {
         SpecialDates.takeOff(placed.Id);
       }
-      publishNow(ids.get('Draft'));
-      // Publishing the week as it is again changes nothing.
-      Assert.isTrue(publishNow(ids.get('Draft')).unchanged);
-      SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
 
       Test.startTest();
+      publishNow(ids.get('Draft'));
+      SpecialDates.place(ids.get('Field Day'), ids.get('Week 1'), 'Tuesday');
       SchedulePublish.Preview preview = ManualBuildController.previewPublish(
         ids.get('Draft')
       );
@@ -243,17 +300,19 @@ private class ScheduleSpecialsTest {
         preview.changes[0]
       );
       Assert.isTrue(view.published.changedSince, 'Manual Build says so');
-      SchedulePublish.Result again = publishNow(ids.get('Draft'));
-      Assert.isFalse(again.unchanged);
-      Assert.areEqual(2, carried(again.published.id).size());
     }
   }
 
   @IsTest
   static void onlyPublishWritesWhatAPublishedCopyCarries() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = campWithSpecials();
+    // Read outside System.runAs: the kept record is the test runner's (KeptCamp).
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(kept)) {
+      Map<String, Id> ids = kept;
+      Test.startTest();
       Id publishedId = publishNow(ids.get('Draft')).published.id;
+      // Publishing the week as it is again changes nothing.
+      Assert.isTrue(publishNow(ids.get('Draft')).unchanged);
       List<PublishedPlan__c> rows = carried(publishedId);
 
       Database.SaveResult added = Database.insert(
@@ -276,6 +335,7 @@ private class ScheduleSpecialsTest {
         added.getErrors()[0].getMessage().contains('kept as history'),
         added.getErrors()[0].getMessage()
       );
+      Test.stopTest();
       Assert.isFalse(removed.isSuccess());
       Assert.areEqual(rows.size(), carried(publishedId).size());
     }

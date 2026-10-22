@@ -94,6 +94,8 @@ private class WeekSpecialsTest {
       // Its own time blocks, and the program's groups (all three are in Main).
       Assert.areEqual(3, replaced.plan.blocks.size());
       Assert.areEqual('b1', replaced.plan.blocks[0].id);
+      // Its own time blocks (ids of its own), never marked removed (ADR 0014 choice 30).
+      Assert.isFalse(replaced.plan.blocks[0].gone);
       Assert.areEqual(3, replaced.plan.groups.size());
       Assert.isFalse(replaced.plan.groups[0].gone);
       // The week's own Tuesday is kept as it is, out of sight.

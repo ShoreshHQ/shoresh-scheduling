@@ -117,6 +117,20 @@ public with sharing class ScheduleSpecials {
     return SpecialsNow.of(weekId, days);
   }
 
+  /**
+   * The same for a draft the caller made (new Schedule__c(...), never one read by SOQL): its
+   * Week__c, or its Week__r when that was set to the week read with its special days
+   * (ProgramReads.weekWithSpecialDays; Manual Build), so they aren't read again.
+   */
+  public static List<Special> nowFor(
+    Schedule__c draft,
+    List<ScheduleDays.DayGrid> days
+  ) {
+    return draft.Week__r == null
+      ? now(draft.Week__c, days)
+      : SpecialsNow.ofWeek(draft.Week__r, days);
+  }
+
   /** What a schedule that is or was published carried when it was published (SpecialsCarried). */
   public static List<Special> carriedBy(Id scheduleId) {
     return SpecialsCarried.read(scheduleId);

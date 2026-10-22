@@ -392,7 +392,8 @@ Slice 5 (choices 26 to 31) puts them on Publish and the Schedules page: desktop 
     test org by `scripts/a11y-browser-check.mjs` (Put on a day by keyboard, what was done said,
     axe with it open).
 
-26. **Publish carries them** (`ScheduleSpecials`, from `SchedulePublish`; desktop has no publish,
+26. **Publish carries them** (`ScheduleSpecials` with `SpecialsNow` and `SpecialsCarried`, from
+    `SchedulePublish`; desktop has no publish,
     so the rule is the data model's "published rows copy the names they show, so later edits do
     not rewrite what a past week said"). The published copy keeps the week's days exactly as the
     draft has them (ADR 0008 part 5), the cells under a replaced day included, and beside them a new
@@ -408,7 +409,7 @@ Slice 5 (choices 26 to 31) puts them on Publish and the Schedules page: desktop 
     read is refused, nothing published ("The schedule of "Field Day" could not be read (…), so
     nothing was published."), as a day of the week that can't be read is.
 27. **What changes in them is said before publishing again**, first in the list
-    (`ScheduleSpecials.addChanges`, `PublishedChanges.addBetween`): "Tuesday: the regular day →
+    (`SpecialChanges`, `PublishedChanges.addBetween`): "Tuesday: the regular day →
     Field Day" (or back, or one special day for another, or renamed), "Tuesday · Field Day: notes
     changed", "… time blocks changed", "… bunks changed" (the camp's words), "Color War: stations
     changed", then each changed cell inside them as a week's cells are said ("Group A · Tuesday ·
@@ -418,6 +419,10 @@ Slice 5 (choices 26 to 31) puts them on Publish and the Schedules page: desktop 
     cell), "already published as it is" and Manual Build's and Generated Schedule's "· changed
     since" include them, so putting a special day on a day after publishing is something to
     publish. An event placed or cleared is a change of the week's cells, said there.
+    **Reads**: the week's special days are one query (none on Manual Build and Generated Schedule
+    when the week was read with them), their plans one more when there are any, and what a
+    published copy carries one, once per request (published history never changes). A preview
+    is now at most 7 queries (ADR 0008 part 5 item 7).
 28. **The Schedules page shows them** (`ScheduleViews.openWithSpecials`, `ScheduleSpecials.shown`;
     desktop D6). A schedule that is or was published (Status Published or `PublishedAt__c`) shows
     what it carried, whatever changed since; any other (a saved or imported version, a draft) shows
@@ -457,14 +462,16 @@ Slice 5 (choices 26 to 31) puts them on Publish and the Schedules page: desktop 
     were sent marked "removed" (their ids are the plan's own, never records), so the time column
     struck them through. `SpecialPlanDay.ofAll` now builds every plan view (one look-up for all),
     and `WeekSpecials` uses it.
-31. **Checked by** `ScheduleSpecialsTest` (as a scheduler, records made inside the same
-    `System.runAs`: what Publish carries, preview at most 10 queries and publish 25 with a special
+31. **Checked by** `ScheduleSpecialsTest` (as a scheduler, its camp, Field Day, Color War and the
+    week's draft made inside the same `System.runAs` in its `@TestSetup`, `KeptCamp`: what Publish
+    carries, preview at most 10 queries and publish 25 with a special
     day and an event; the published copy showing them as published after Field Day changed while
     the draft shows them now, opening at most 20; a preview naming an event's stations and a cell
     inside the special day; a day replaced after publishing as the one change, "· changed since"
     and publishing again; only Publish writing `PublishedPlan__c`), `WeekSpecialsTest` (a special
-    day's own time blocks not removed), `SchedulePublishTest` and `GeneratedPublishTest`
-    unchanged, `shoreshScheduleViews` `specialDays.test.js`, `shoreshScheduleExport`
+    day's own time blocks not removed), `SchedulePublishTest` and `GeneratedPublishTest` (a
+    preview's bound now 7; two Generated tests read their last results before `Test.stopTest()`,
+    as publishing in their setup costs two more queries), `shoreshScheduleViews` `specialDays.test.js`, `shoreshScheduleExport`
     `specials.test.js`, `shoreshSchedules` `specials.test.js`, `shoreshSchedulePrint.test.js`
     (notes and "no schedule yet" on paper) and `shoreshPublish.test.js` (the counts in words), and
     in the test org by `scripts/a11y-browser-check.mjs` (the Schedules page: a replaced day's pill

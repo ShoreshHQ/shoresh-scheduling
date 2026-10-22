@@ -104,30 +104,35 @@ public with sharing class SchedulePublish {
     }
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
     shownBy.applyTo(days);
-    return stateBeside(published, days, draft.Week__c);
+    // Manual Build may have the week read with its special days (Week__r).
+    return stateBeside(
+      published,
+      new WeekNow(days, ScheduleSpecials.nowFor(draft, days))
+    );
   }
 
   /**
    * The week's published schedule beside the draft's days as the caller already has them (a
-   * screen that has just read or saved them), or null when the week has none.
+   * screen that has just read or saved them), or null when the week has none. week: read with
+   * its special days (ProgramReads.weekWithSpecialDays), so they aren't read again.
    */
   public static PublishState stateOf(
     Id programId,
-    Id weekId,
+    Week__c week,
     List<ScheduleDays.DayGrid> draftDays
   ) {
-    Schedule__c published = publishedOf(programId, weekId);
-    return published == null ? null : stateBeside(published, draftDays, weekId);
+    Schedule__c published = publishedOf(programId, week.Id);
+    return published == null
+      ? null
+      : stateBeside(
+          published,
+          new WeekNow(draftDays, SpecialsNow.ofWeek(week, draftDays))
+        );
   }
 
-  private static PublishState stateBeside(
-    Schedule__c published,
-    List<ScheduleDays.DayGrid> draftDays,
-    Id weekId
-  ) {
+  private static PublishState stateBeside(Schedule__c published, WeekNow week) {
     PublishState state = stateFor(published);
-    state.changedSince =
-      changesFrom(published.Id, new WeekNow(weekId, draftDays), null).count > 0;
+    state.changedSince = changesFrom(published.Id, week, null).count > 0;
     return state;
   }
 
@@ -137,7 +142,7 @@ public with sharing class SchedulePublish {
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
     result.revisions = ScheduleDays.stamp(days);
     ManualBuildSetupNow.asShown(draft, days);
-    WeekNow week = new WeekNow(draft.Week__c, days);
+    WeekNow week = new WeekNow(days, ScheduleSpecials.now(draft.Week__c, days));
     ScheduleSpecials.refuseUnreadable(week.specials);
     Schedule__c published = publishedOf(draft.Program__c, draft.Week__c);
     if (published == null) {
@@ -180,7 +185,7 @@ public with sharing class SchedulePublish {
       return result;
     }
     ManualBuildSetupNow.asShown(draft, readable(days));
-    WeekNow week = new WeekNow(draft.Week__c, days);
+    WeekNow week = new WeekNow(days, ScheduleSpecials.now(draft.Week__c, days));
     ScheduleSpecials.refuseUnreadable(week.specials);
     List<Schedule__c> published = PublishedRows.locked(
       draft.Program__c,
@@ -335,9 +340,12 @@ public with sharing class SchedulePublish {
     private List<ScheduleDays.DayGrid> days;
     private List<ScheduleSpecials.Special> specials;
 
-    private WeekNow(Id weekId, List<ScheduleDays.DayGrid> days) {
+    private WeekNow(
+      List<ScheduleDays.DayGrid> days,
+      List<ScheduleSpecials.Special> specials
+    ) {
       this.days = days;
-      this.specials = ScheduleSpecials.now(weekId, days);
+      this.specials = specials;
     }
   }
 

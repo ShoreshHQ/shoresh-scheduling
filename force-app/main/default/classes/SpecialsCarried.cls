@@ -6,12 +6,23 @@
  * then events by name. Runs in user mode.
  */
 public with sharing class SpecialsCarried {
+  // Published history never changes (PublishedGuard): what a schedule carries is read once per
+  // request however many times it is compared.
+  private static Map<Id, List<ScheduleSpecials.Special>> readBefore = new Map<Id, List<ScheduleSpecials.Special>>();
+
   /** What the schedule carried when it was published (one query); none when it can't be read. */
   public static List<ScheduleSpecials.Special> read(Id scheduleId) {
-    List<ScheduleSpecials.Special> result = new List<ScheduleSpecials.Special>();
     if (!Schema.sObjectType.PublishedPlan__c.isAccessible()) {
-      return result;
+      return new List<ScheduleSpecials.Special>();
     }
+    if (!readBefore.containsKey(scheduleId)) {
+      readBefore.put(scheduleId, readNow(scheduleId));
+    }
+    return readBefore.get(scheduleId);
+  }
+
+  private static List<ScheduleSpecials.Special> readNow(Id scheduleId) {
+    List<ScheduleSpecials.Special> result = new List<ScheduleSpecials.Special>();
     Map<String, List<PublishedPlan__c>> partsByKey = new Map<String, List<PublishedPlan__c>>();
     for (PublishedPlan__c part : [
       SELECT
