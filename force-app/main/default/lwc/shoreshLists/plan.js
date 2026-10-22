@@ -378,6 +378,8 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       remember.push({ key: id, answer });
     }
   });
+  // A deleted item brought back: the camp no longer remembers it as deleted.
+  forget.push(...(proposal.broughtBack || []));
   return {
     seasonId,
     screen: screen.key,

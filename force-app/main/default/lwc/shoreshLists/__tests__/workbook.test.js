@@ -1127,3 +1127,47 @@ describe("namespace safety: what the workbook reads and writes", () => {
     ]);
   });
 });
+
+describe("a workbook naming a place the camp deleted (decision 45)", () => {
+  it("leaves the place out, saves the rows naming it without it, and saves the rest", () => {
+    const lake = "deleted|Location||Lake";
+    const gone = { [lake]: "deleted" };
+    const p = propose(
+      freshSeason(),
+      file([
+        {
+          name: "Locations",
+          rows: [
+            ["Location", "Groups that fit"],
+            ["Lake", 2],
+            ["Gym", 1]
+          ]
+        },
+        {
+          name: "Activities",
+          rows: [
+            ["Activity", "Location"],
+            ["Canoeing", "Lake"],
+            ["Archery", "Gym"]
+          ]
+        }
+      ]),
+      gone
+    );
+    const deleted = p.sections
+      .filter((s) => !s.extra)
+      .flatMap((s) => s.proposal.deleted || []);
+    expect(deleted.map((d) => [d.kind, d.name])).toEqual([
+      ["Location", "Lake"],
+      ["Location", "Lake"]
+    ]);
+    expect(workbookWaiting(p, gone)).toEqual([]);
+    const plan = workbookPlan(p, gone, "s2");
+    expect(linksResolve(plan)).toEqual([]);
+    expect(plan.records.map((r) => [r.kind, r.fields.Name])).toEqual([
+      ["Location", "Gym"],
+      ["Activity", "Canoeing"],
+      ["Activity", "Archery"]
+    ]);
+  });
+});

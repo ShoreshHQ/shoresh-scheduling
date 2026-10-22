@@ -198,6 +198,30 @@
         </section>
       </template>
 
+      <template lwc:if={hasDeleted}>
+        <section class="import-section" data-id="deleted">
+          <div class="import-section-label">
+            Deleted before; not brought back
+          </div>
+          <template for:each={deletedItems} for:item="item">
+            <div key={item.key} class="import-place" data-deleted={item.key}>
+              <span class="import-chip-name">{item.name}</span>
+              <span class="import-weak">{item.detail}</span>
+              <button
+                type="button"
+                class="slds-button slds-button_neutral"
+                aria-label={item.bringBackLabel}
+                data-key={item.key}
+                data-place-answer={item.place}
+                onclick={handleBringBack}
+              >
+                Bring back
+              </button>
+            </div>
+          </template>
+        </section>
+      </template>
+
       <template for:each={lists} for:item="list">
         <section key={list.key} class="import-section" data-list={list.key}>
           <div class="import-section-label">{list.title}</div>
@@ -387,6 +411,18 @@
           <ul class="slds-list_dotted">
             <template for:each={leftOutLines} for:item="line">
               <li key={line.key}>{line.text}</li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <template lwc:if={hasDeleted}>
+        <section class="import-section" data-id="deleted-summary">
+          <div class="import-section-label">
+            Deleted before; not brought back
+          </div>
+          <ul class="slds-list_dotted">
+            <template for:each={deletedItems} for:item="item">
+              <li key={item.key}>{item.name} · {item.detail}</li>
             </template>
           </ul>
         </section>

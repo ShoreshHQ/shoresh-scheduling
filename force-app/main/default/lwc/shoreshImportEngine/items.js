@@ -5,6 +5,7 @@
  * where the file disagrees with them, the director is asked whether to change them.
  */
 import { classifyName, notedKindByWords, specialDayNames } from "./classify";
+import { deletedActivity } from "./deleted";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS } from "./text";
 
@@ -134,6 +135,16 @@ function verdictFor(name, t, facts, cells, ctx) {
   const known = existingKind(name, t, ctx.camp);
   if (known) {
     return { ...decided, kind: known, existing: true };
+  }
+  // Deleted on a setup screen before: left out, not asked about, until brought back.
+  const gone = deletedActivity(ctx.deletions, t.name, name);
+  if (gone) {
+    return {
+      ...decided,
+      kind: decided.verdict === "ask" ? "activity" : decided.verdict,
+      leftOut: true,
+      deleted: gone
+    };
   }
   if (decided.verdict !== "ask") {
     return { ...decided, kind: decided.verdict };

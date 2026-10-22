@@ -69,12 +69,15 @@ const $$ = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)
 ];
 
-async function openWith(text) {
+async function openWith(
+  text,
+  { screenKey = "activities", setup = SETUP } = {}
+) {
   const element = createElement("c-shoresh-list-import", {
     is: ShoreshListImport
   });
-  element.screenKey = "activities";
-  element.setup = nsRecord(SETUP);
+  element.screenKey = screenKey;
+  element.setup = nsRecord(setup);
   element.terms = buildTerms([]);
   document.body.appendChild(element);
   $(element, 'lightning-button[data-id="open"]').click();
@@ -116,6 +119,128 @@ describe("c-shoresh-list-import", () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+  });
+
+  it("an activity deleted before is listed with Bring back, not added; brought back, the save forgets the deletion", async () => {
+    getAnswers.mockResolvedValue([
+      { key: "deleted|Activity||Canoeing", answer: "deleted" }
+    ]);
+    const element = await openWith(
+      ["Activity,Length", "Canoeing,1", "Hiking,1"].join("\n")
+    );
+    const deleted = $(element, '[data-id="deleted"]');
+    expect(deleted.textContent).toContain("Canoeing");
+    expect($(element, '[data-id="new"]').textContent).not.toContain("Canoeing");
+    const button = deleted.querySelector(
+      'button[data-key="deleted|Activity||Canoeing"]'
+    );
+    expect(button.getAttribute("aria-label")).toBe(
+      "Bring back Canoeing, activity"
+    );
+    button.click();
+    await flush();
+    expect($(element, '[data-id="deleted"]')).toBeNull();
+    expect($(element, '[data-id="new"]').textContent).toContain("Canoeing");
+    $(element, 'lightning-button[data-id="save"]').click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(plan.records.map((r) => r.fields.Name)).toEqual([
+      "Canoeing",
+      "Hiking"
+    ]);
+    expect(plan.forget).toEqual(["deleted|Activity||Canoeing"]);
+  });
+
+  it("a place deleted before is listed with Bring back; the rows naming it save without it, with the rest", async () => {
+    getAnswers.mockResolvedValue([
+      { key: "deleted|Location||Lake", answer: "deleted" }
+    ]);
+    const element = await openWith(
+      ["Activity,Location", "Canoeing,Lake", "Hiking,Pool"].join("\n")
+    );
+    const deleted = $(element, '[data-id="deleted"]');
+    expect(deleted.textContent).toContain("Lake");
+    expect($(element, '[data-id="also-add"]')).toBeNull();
+    expect($(element, '[data-id="waiting"]')).toBeNull();
+    const save = $(element, 'lightning-button[data-id="save"]');
+    expect(save.disabled).toBe(false);
+    save.click();
+    await flush();
+    const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+    expect(
+      plan.records.map((r) => [r.fields.Name, r.refs.Location__c || null])
+    ).toEqual([
+      ["Canoeing", null],
+      ["Hiking", "l2"]
+    ]);
+    expect($(element, '[data-id="summary"]').textContent).toContain(
+      "Canoeing · no location"
+    );
+  });
+
+  it("Bring back keeps the cursor on the way: the next Bring back, Save, or the question it opens", async () => {
+    const focused = [];
+    const spy = jest
+      .spyOn(HTMLElement.prototype, "focus")
+      .mockImplementation(function record() {
+        focused.push(this);
+      });
+    try {
+      getAnswers.mockResolvedValue([
+        { key: "deleted|Activity||Canoeing", answer: "deleted" },
+        { key: "deleted|Activity||Hiking", answer: "deleted" }
+      ]);
+      const element = await openWith(
+        ["Activity,Length", "Canoeing,1", "Hiking,1"].join("\n")
+      );
+      const bringBack = (key) => $(element, `button[data-key="${key}"]`);
+      bringBack("deleted|Activity||Canoeing").click();
+      await flush();
+      // The clicked button is gone with the row (WCAG 2.4.3): on to the next Bring back.
+      expect(focused.pop()).toBe(bringBack("deleted|Activity||Hiking"));
+      bringBack("deleted|Activity||Hiking").click();
+      await flush();
+      // None left, nothing asked: Save.
+      expect(focused.pop().dataset.id).toBe("save");
+
+      // A program brought back asks its days: that question takes the cursor.
+      getAnswers.mockResolvedValue([
+        { key: "deleted|Program||Teens", answer: "deleted" }
+      ]);
+      const program = await openWith(
+        ["Program,Division", "Main,Juniors", "Teens,Hikers"].join("\n"),
+        {
+          screenKey: "divisions",
+          setup: {
+            ...SETUP,
+            programs: [
+              {
+                program: { Id: "p1", Name: "Main", Monday__c: true },
+                timeBlocks: [],
+                divisions: [],
+                fixedActivities: [],
+                recurringActivities: []
+              },
+              {
+                program: { Id: "p2", Name: "Seniors", Monday__c: true },
+                timeBlocks: [],
+                divisions: [],
+                fixedActivities: [],
+                recurringActivities: []
+              }
+            ]
+          }
+        }
+      );
+      $(program, 'button[data-key="deleted|Program||Teens"]').click();
+      await flush();
+      const target = focused.pop();
+      expect(target.closest("[data-card]").dataset.card).toBe(
+        "programAdd|teens"
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("shows the columns, what is new, what differs, and waits for Keep or Change", async () => {

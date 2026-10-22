@@ -61,6 +61,15 @@ export {
   undoMessage
 } from "./plan";
 export { versionName } from "./version";
+export {
+  BRING_BACK,
+  DELETED,
+  deletedKey,
+  deletedAs,
+  deletionsIn,
+  programGroupKeys,
+  broughtBack
+} from "./deleted";
 
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).
 export { similarity, foldName, similarPairs, mergesFrom } from "./names";

@@ -6,6 +6,7 @@ import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import LightningConfirm from "lightning/confirm";
 import {
+  BRING_BACK,
   LAYOUTS,
   LEAVE_OUT,
   buildProposal,
@@ -42,6 +43,20 @@ function layoutWords(t) {
  * setup: the season setup (SeasonSetupController.getSeasonSetup); terms: the camp's words.
  * Fires: imported (after a save, so the page reloads the season), close.
  */
+/**
+ * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
+ * one before it; null when none is left.
+ */
+function nextKeyOf(keysBefore, clicked, itemsAfter) {
+  const left = new Set(itemsAfter.map((item) => item.key));
+  const at = keysBefore.indexOf(clicked);
+  const order = [
+    ...keysBefore.slice(at + 1),
+    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
+  ];
+  return order.find((k) => left.has(k)) || null;
+}
+
 export default class ShoreshImport extends LightningElement {
   @api setup;
   @api terms;
@@ -80,6 +95,22 @@ export default class ShoreshImport extends LightningElement {
     let target = null;
     if (next.selector) {
       target = this.template.querySelector(next.selector);
+    } else if (next.question) {
+      // A question card's first choice, or a dropdown (a program or a division).
+      const card = [...this.template.querySelectorAll("[data-card]")].find(
+        (el) => el.dataset.card === next.question
+      );
+      target = card
+        ? card.querySelector("lightning-button")
+        : [...this.template.querySelectorAll("lightning-combobox")].find(
+            (el) => el.dataset.id === next.question
+          );
+    } else if (next.bringBack !== undefined) {
+      target = next.bringBack
+        ? [...this.template.querySelectorAll("[data-deleted] button")].find(
+            (el) => el.dataset.key === next.bringBack
+          )
+        : this.template.querySelector('[data-id="review"]');
     } else {
       const cards = this.isReview ? this.reviewCards : this.previewCards;
       let id = next.card;
@@ -406,6 +437,51 @@ export default class ShoreshImport extends LightningElement {
   }
   get hasPlaces() {
     return this.places.length > 0;
+  }
+
+  /**
+   * What the camp deleted before and this import leaves out (Greg, decision 45), each with
+   * Bring back. A place brought back is ticked, as the director means to add it.
+   */
+  get deletedItems() {
+    const t = this.terms;
+    return ((this.proposal && this.proposal.deleted) || []).map((item) => {
+      const detail = `${t.sIn(item.kind)}${item.program ? ` · ${item.program}` : ""}`;
+      return {
+        ...item,
+        detail,
+        place: item.kind === "Location" ? `place|${item.name}` : "",
+        bringBackLabel: `Bring back ${item.name}, ${detail}`
+      };
+    });
+  }
+  get hasDeleted() {
+    return this.deletedItems.length > 0;
+  }
+
+  handleBringBack(event) {
+    const { key, placeAnswer } = event.currentTarget.dataset;
+    const keysBefore = this.deletedItems.map((item) => item.key);
+    const openBefore = new Set(this.openPreviewIds());
+    const answers = { ...this.answers, [key]: BRING_BACK };
+    if (placeAnswer) {
+      answers[placeAnswer] = "add";
+    }
+    this.answers = answers;
+    this.recompute();
+    // The clicked button is gone with the item (WCAG 2.4.3): to the question it opened (its
+    // division, its program), else the next Bring back, else the step's main button.
+    const opened = this.openPreviewIds().find((id) => !openBefore.has(id));
+    this.focusNext = opened
+      ? { question: opened }
+      : { bringBack: nextKeyOf(keysBefore, key, this.deletedItems) };
+  }
+
+  /** The preview's questions still open, cards and dropdowns, in the order shown. */
+  openPreviewIds() {
+    return this.cards
+      .filter((c) => c.stage === "preview" && !c.answered)
+      .map((c) => c.id);
   }
 
   handlePlace(event) {
