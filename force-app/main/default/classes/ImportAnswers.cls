@@ -79,27 +79,42 @@ public with sharing class ImportAnswers {
   }
 
   /**
-   * Remembers one answer for the camp, outside an import: a delete on a setup screen remembers
-   * "deleted" (SetupDeletions). Two queries at most: the row, if any, then the write.
+   * Remembers answers for the camp, outside an import: a delete on a setup screen remembers
+   * "deleted" (SetupDeletions), for the item and, for a program, the groups that went with it.
+   * Two queries at most, whatever the number: the rows there are, then the write.
    */
-  public static void remember(Id campId, String question, String answer) {
-    String key = keyOf(campId, question);
-    List<ImportAnswer__c> saved = [
-      SELECT Id
+  public static void remember(
+    Id campId,
+    List<String> questions,
+    String answer
+  ) {
+    Map<String, String> questionOf = new Map<String, String>();
+    for (String question : questions) {
+      questionOf.put(keyOf(campId, question), question);
+    }
+    Set<String> keys = questionOf.keySet();
+    Map<String, Id> saved = new Map<String, Id>();
+    for (ImportAnswer__c row : [
+      SELECT Id, Key__c
       FROM ImportAnswer__c
-      WHERE Key__c = :key
+      WHERE Key__c IN :keys
       WITH USER_MODE
-      LIMIT 1
-    ];
-    ImportAnswer__c row = saved.isEmpty()
-      ? new ImportAnswer__c(
-          Camp__c = campId,
-          Key__c = key,
-          QuestionKey__c = question
-        )
-      : new ImportAnswer__c(Id = saved[0].Id);
-    row.Answer__c = answer.left(255);
-    UserModeWrites.save(new List<SObject>{ row });
+    ]) {
+      saved.put(row.Key__c, row.Id);
+    }
+    List<ImportAnswer__c> writes = new List<ImportAnswer__c>();
+    for (String key : questionOf.keySet()) {
+      ImportAnswer__c row = saved.containsKey(key)
+        ? new ImportAnswer__c(Id = saved.get(key))
+        : new ImportAnswer__c(
+            Camp__c = campId,
+            Key__c = key,
+            QuestionKey__c = questionOf.get(key)
+          );
+      row.Answer__c = answer.left(255);
+      writes.add(row);
+    }
+    UserModeWrites.save(writes);
   }
 
   /** Camp and question: the camp's Id and a digest of the full question key. */

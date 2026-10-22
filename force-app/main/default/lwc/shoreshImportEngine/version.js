@@ -241,6 +241,9 @@ function reasonFor(p, proposal) {
   const group = proposal.groups.find(
     (g) => g.name === p.group && g.timetable === p.timetable
   );
+  if (t && t.deleted) {
+    return "programDeleted";
+  }
   if (!t || t.leftOut) {
     return "programLeftOut";
   }

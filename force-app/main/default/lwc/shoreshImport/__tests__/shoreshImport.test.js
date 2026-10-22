@@ -501,6 +501,76 @@ describe("c-shoresh-import", () => {
       expect(pool.querySelector("lightning-input").checked).toBe(true);
     });
 
+    it("Bring back keeps the cursor on the way: the next Bring back, then the question it opens", async () => {
+      const focused = [];
+      const spy = jest
+        .spyOn(HTMLElement.prototype, "focus")
+        .mockImplementation(function record() {
+          focused.push(this);
+        });
+      try {
+        getAnswers.mockResolvedValue([
+          { key: "deleted|Location||Pool", answer: "deleted" },
+          { key: "deleted|Group|Main|Bunk 2", answer: "deleted" },
+          { key: "deleted|Activity||Art", answer: "deleted" }
+        ]);
+        const element = await renderWith({
+          ...WITH_WEEK,
+          programs: [
+            {
+              program: {
+                Id: "p1",
+                Name: "Main",
+                Monday__c: true,
+                Tuesday__c: true,
+                Wednesday__c: true,
+                Thursday__c: true,
+                Friday__c: true
+              },
+              timeBlocks: [],
+              divisions: [
+                {
+                  division: { Id: "d1", Name: "Juniors" },
+                  groups: [{ Id: "g1", Name: "Bunk 1" }]
+                },
+                { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+              ],
+              fixedActivities: [],
+              recurringActivities: []
+            }
+          ]
+        });
+        const rows = [
+          "Time,Bunk 1,Bunk 2",
+          "9:00-9:45,Swim (Pool),Art",
+          "10:00-10:45,Art,Swim (Pool)",
+          "12:00-12:45,Lunch,Lunch"
+        ].join("\n");
+        await choose(element, ["Monday.csv", "Tuesday.csv"], {
+          "Monday.csv": rows,
+          "Tuesday.csv": rows
+        });
+        const bringBack = (key) => $(element, `[data-deleted="${key}"] button`);
+        // The clicked button is gone with the item (WCAG 2.4.3). The last one: the one before it.
+        bringBack("deleted|Location||Pool").click();
+        await flush();
+        expect(focused.pop()).toBe(bringBack("deleted|Group|Main|Bunk 2"));
+        // Art's kind is asked on the review, not here: on to the next Bring back.
+        bringBack("deleted|Activity||Art").click();
+        await flush();
+        expect(focused.pop()).toBe(bringBack("deleted|Group|Main|Bunk 2"));
+        // Bunk 2 back opens its division, the question that takes the cursor.
+        bringBack("deleted|Group|Main|Bunk 2").click();
+        await flush();
+        expect(focused.pop()).toBe(
+          $(element, 'lightning-combobox[data-id="division|Bunk 2"]')
+        );
+        expect($(element, '[data-id="deleted"]')).toBeNull();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
     it("an activity deleted before is left out until Bring back", async () => {
       getAnswers.mockResolvedValue([
         { key: "deleted|Activity||Art", answer: "deleted" }
@@ -519,9 +589,16 @@ describe("c-shoresh-import", () => {
       expect(
         $(element, '[data-deleted="deleted|Activity||Art"]').textContent
       ).toContain("Art");
-      $(element, '[data-deleted="deleted|Activity||Art"] button').click();
-      await flush();
-      expect($(element, '[data-id="deleted"]')).toBeNull();
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      try {
+        $(element, '[data-deleted="deleted|Activity||Art"] button').click();
+        await flush();
+        expect($(element, '[data-id="deleted"]')).toBeNull();
+        // Nothing left to bring back and no question opened: the step's main button.
+        expect(focus.mock.contexts.pop().dataset.id).toBe("review");
+      } finally {
+        focus.mockRestore();
+      }
     });
 
     it("the summary says where last year's schedule went, and the import can be undone", async () => {

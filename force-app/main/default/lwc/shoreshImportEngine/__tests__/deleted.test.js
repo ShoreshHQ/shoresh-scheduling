@@ -5,7 +5,12 @@ import {
   foundLists,
   unplacedLines
 } from "./data/engine";
-import { csv, existingSetup, terms } from "./data/samples";
+import {
+  csv,
+  existingSetup,
+  program as campProgram,
+  terms
+} from "./data/samples";
 import {
   BRING_BACK,
   DELETED,
@@ -14,6 +19,15 @@ import {
   deletedAs,
   broughtBack
 } from "../deleted";
+
+/** A program deleted on its setup screen, remembered with its groups (Apex SetupDeletions). */
+function deletedProgram(name, groups, value = DELETED) {
+  const answers = { [deletedKey("Program", "", name)]: value };
+  groups.forEach((g) => {
+    answers[deletedKey("ProgramGroup", name, g)] = DELETED;
+  });
+  return answers;
+}
 
 // Things you delete stay deleted (Greg, decision 45): a setup item deleted on a setup screen is
 // remembered as an answer, and a later import leaves it out and says so, until brought back.
@@ -198,5 +212,78 @@ describe("things you delete stay deleted", () => {
     const plan = planFor(p, season(), "s", { answers });
     expect(plan.activities.map((a) => a.name)).toContain("Archery");
     expect(plan.forget).toEqual([key]);
+  });
+});
+
+describe("a deleted program stays deleted", () => {
+  const juniors = deletedKey("Program", "", "Juniors");
+  const bunks = ["Bunk 1", "Bunk 2", "Bunk 3"];
+
+  it("last year's timetable for its groups is left out whole, under its own name, without asking", () => {
+    const answers = deletedProgram("Juniors", bunks);
+    const p = propose(answers);
+    expect(p.timetables[0]).toMatchObject({
+      name: "Juniors",
+      leftOut: true,
+      deleted: juniors
+    });
+    expect(p.asks.some((a) => a.type === "program")).toBe(false);
+    expect(p.deleted).toEqual([
+      { key: juniors, kind: "Program", name: "Juniors", program: "" }
+    ]);
+    expect(p.groups.filter((g) => !g.leftOut)).toEqual([]);
+    const lines = unplacedLines(p, terms);
+    expect(lines.length).toBeGreaterThan(0);
+    expect(
+      lines.every(
+        (l) => l.why === "its program was deleted before; not brought back"
+      )
+    ).toBe(true);
+    const plan = planFor(p, season(), "s", { answers });
+    expect(plan.programs).toEqual([]);
+    expect(plan.forget).toEqual([]);
+  });
+
+  it("is known by any of its groups, and not by a program the camp has", () => {
+    // One group in common is enough when no program of the camp's has any of them.
+    expect(
+      propose(deletedProgram("Juniors", ["Bunk 2", "Bunk 9"])).timetables[0]
+        .deleted
+    ).toBe(juniors);
+    // Groups remembered with another program: not this timetable's.
+    expect(
+      propose(deletedProgram("Juniors", ["Bunk 7"])).timetables[0].deleted
+    ).toBeUndefined();
+    // A program of that name set up again by hand: what the camp has wins.
+    const again = season({ programs: [campProgram("p1", "Juniors")] });
+    const p = propose(deletedProgram("Juniors", bunks), again);
+    expect(p.timetables[0].leftOut).toBe(false);
+    expect(p.deleted).toEqual([]);
+    // Its groups in a program the camp has: that program's, not the deleted one's.
+    const owned = season({
+      programs: [
+        campProgram("p2", "Main", {
+          divisions: [["d1", "Juniors", [["g1", "Bunk 1"]]]]
+        })
+      ]
+    });
+    expect(
+      propose(deletedProgram("Juniors", bunks), owned).timetables[0].name
+    ).toBe("Main");
+  });
+
+  it("Bring back adds it again under its own name, and the save forgets it with its groups", () => {
+    const answers = answered(deletedProgram("Juniors", bunks, BRING_BACK));
+    const p = propose(answers);
+    expect(p.timetables[0]).toMatchObject({ name: "Juniors", leftOut: false });
+    expect(p.deleted).toEqual([]);
+    const plan = planFor(p, season(), "s", { answers });
+    expect(plan.programs.map((x) => x.name)).toEqual(["Juniors"]);
+    expect(plan.forget).toEqual(
+      [
+        juniors,
+        ...bunks.map((g) => deletedKey("ProgramGroup", "Juniors", g))
+      ].sort()
+    );
   });
 });

@@ -15,17 +15,58 @@ public with sharing class SetupDeletions {
   public static final String PREFIX = 'deleted|';
   public static final String DELETED = 'deleted';
 
-  /** Remembers, for the record's camp, that it was deleted. Called before the delete; 3 queries. */
+  /**
+   * Remembers, for the record's camp, that it was deleted. Called before the delete; 3 queries
+   * (4 for a program or division).
+   *
+   * A program's divisions, groups and time blocks go with it. Its groups are remembered with it,
+   * as "deleted|ProgramGroup|<program>|<group>": Import last year makes up a new program's name
+   * ("Program 2"), so only its groups can tell that last year's timetable for them was this
+   * program's, and leave it out (c/shoreshImportEngine deleted.js deletedPrograms). A division's
+   * groups go with it too: each is remembered as a deleted group of its program, which an import
+   * matches as it does a group deleted by itself.
+   */
   public static void remember(Id recordId) {
     Item found = itemOf(recordId);
     if (found == null || found.campId == null || String.isBlank(found.name)) {
       return;
     }
-    ImportAnswers.remember(
-      found.campId,
-      PREFIX + found.kind + '|' + found.scope + '|' + found.name,
-      DELETED
-    );
+    List<String> questions = new List<String>{
+      PREFIX +
+      found.kind +
+      '|' +
+      found.scope +
+      '|' +
+      found.name
+    };
+    if (found.kind == 'Program') {
+      questions.addAll(groupsOf(recordId, 'ProgramGroup', found.name));
+    } else if (found.kind == 'Division') {
+      questions.addAll(groupsOf(recordId, 'Group', found.scope));
+    }
+    ImportAnswers.remember(found.campId, questions, DELETED);
+  }
+
+  /** The groups of a program or division, each once, as remembered with it. */
+  private static List<String> groupsOf(
+    Id parentId,
+    String kind,
+    String program
+  ) {
+    Set<String> questions = new Set<String>();
+    for (Group__c row : [
+      SELECT Name
+      FROM Group__c
+      WHERE Division__r.Program__c = :parentId OR Division__c = :parentId
+      WITH USER_MODE
+      ORDER BY Name
+      LIMIT 2000
+    ]) {
+      if (String.isNotBlank(row.Name)) {
+        questions.add(PREFIX + kind + '|' + program + '|' + row.Name);
+      }
+    }
+    return new List<String>(questions);
   }
 
   private class Item {

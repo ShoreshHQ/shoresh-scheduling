@@ -301,9 +301,29 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       added like any other, and the save forgets the deletion (`forget`). The summary of Import
       last year lists what stayed out.
     - Names compare as similar names do (`foldName`: case, spaces and punctuation ignored).
-    - Not covered yet: divisions and programs Import last year would add (a new program's name
-      is made up by the import, so it can't match), and divisions, time blocks and programs a
-      list adds because its rows name them.
+    - **A deleted program stays deleted with all it had** (review of #101). Its divisions,
+      groups and time blocks go with it, and Import last year makes up a new program's name
+      ("Program 2"), so the program's own key alone could never match. Its groups are
+      remembered with it, as `deleted|ProgramGroup|<program>|<group>` (the same delete step,
+      one query for the groups). Last year's timetable whose groups match one of them (any
+      group; the most, then by name), when no program the camp has holds any of its groups and
+      none has its name, is that program: left out whole, without asking which program, listed
+      under "Deleted before; not brought back", its placements "its program was deleted
+      before; not brought back". Brought back, it is added again under its own name, and the
+      save forgets it and its remembered groups.
+    - **Import a list** leaves out the rows naming a deleted program (not asked which days),
+      division, or time block (not asked when it is), each "its <kind> was deleted before; not
+      brought back", and lists the program, division or time block with Bring back; brought
+      back, it is asked about and added as any new one, and the save forgets it.
+    - **Bring back keeps the cursor on the way** (WCAG 2.4.3): the button goes with the item,
+      so the cursor moves to the question it opened on that screen (its division, a new
+      program's days, a time block's times), else the next Bring back still listed (else the
+      one before it), else the step's main button (Review on Import last year, Save on a list).
+    - **A deleted division's groups go with it**: each is remembered as a deleted group of its
+      program (`deleted|Group|<program>|<group>`), so Import last year and Import a list leave
+      it out and list it, as a group deleted by itself.
+    - Not covered: a name in a "who" list added as a group or division (asked of the director
+      each time, never silently).
 
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 

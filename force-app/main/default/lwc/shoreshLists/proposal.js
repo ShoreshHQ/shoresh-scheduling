@@ -14,6 +14,7 @@ import {
   LEAVE_OUT,
   deletedAs,
   deletionsIn,
+  programGroupKeys,
   looseKey,
   mergesFrom,
   similarPairs,
@@ -557,12 +558,42 @@ function programEntry(setup, programId) {
 }
 
 /**
+ * A program's division or time block the camp deleted on its setup screen (Greg, decision 45):
+ * the rows naming it are left out, without asking when it is, until it is brought back.
+ */
+function leaveOutDeletedRefs(rows, column, context, deleted) {
+  const { deletions, t } = context;
+  const kind = column.ref === "division" ? "Division" : "TimeBlock";
+  rows.filter(usable).forEach((r) => {
+    const target = (r.targets || {})[column.key];
+    const gone =
+      target && target.add
+        ? deletedAs(deletions, kind, r.program.name, target.add)
+        : null;
+    if (gone) {
+      r.leftOut = true;
+      r.reason = `its ${t.sIn(kind)} was deleted before; not brought back`;
+      if (!deleted.some((d) => d.key === gone)) {
+        deleted.push({
+          key: gone,
+          kind,
+          name: target.add,
+          program: r.program.name
+        });
+      }
+    }
+  });
+}
+
+/**
  * A program's divisions or time blocks a row names, resolved within the row's program
  * (refs.js); a division it doesn't have is added; a time block is added once the director says
- * when it is (adds.js). Returns { pairs, cards, blocks: [{ programId, name, start, end }] }.
+ * when it is (adds.js). One the camp deleted is not (leaveOutDeletedRefs). Returns { pairs,
+ * cards, blocks: [{ programId, name, start, end }], deleted }.
  */
-function resolveProgramRefs(leads, used, setup, answers, t, kinds) {
-  const result = { pairs: [], cards: [], blocks: [] };
+function resolveProgramRefs(leads, used, setup, context, kinds) {
+  const { answers, t } = context;
+  const result = { pairs: [], cards: [], blocks: [], deleted: [] };
   used
     .filter(({ column }) => kinds.includes(column.ref))
     .forEach(({ column }) => {
@@ -585,6 +616,7 @@ function resolveProgramRefs(leads, used, setup, answers, t, kinds) {
           )
         );
       });
+      leaveOutDeletedRefs(rows, column, context, result.deleted);
       if (column.ref !== "timeBlock") {
         return;
       }
@@ -1018,7 +1050,18 @@ export function listProposal(input) {
   }
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
-  const programs = resolvePrograms(read, screen, setup, answers, t);
+  const deletions = {
+    gone: deletionsIn(answers),
+    back: deletionsIn(answers, BRING_BACK)
+  };
+  const programs = resolvePrograms(
+    read,
+    screen,
+    setup,
+    answers,
+    t,
+    deletions.gone
+  );
   result.pairs.push(...programs.pairs);
   result.cards.push(...programs.cards);
   // Asked per block once its program is settled (the key is the program as resolved).
@@ -1026,9 +1069,13 @@ export function listProposal(input) {
   result.cards.push(...resolveDayAsks(read, answers));
   // A group's division is resolved before rows are settled: a group is its program,
   // division, and name, by the division it resolves to, not as written.
-  const divisions = resolveProgramRefs(read, used, setup, answers, t, [
-    "division"
-  ]);
+  const divisions = resolveProgramRefs(
+    read,
+    used,
+    setup,
+    { answers, t, deletions: deletions.gone },
+    ["division"]
+  );
   result.pairs.push(...divisions.pairs);
   const settled = settleLeads(
     read,
@@ -1058,9 +1105,13 @@ export function listProposal(input) {
         )
       );
     });
-  const programRefs = resolveProgramRefs(leads, used, setup, answers, t, [
-    "timeBlock"
-  ]);
+  const programRefs = resolveProgramRefs(
+    leads,
+    used,
+    setup,
+    { answers, t, deletions: deletions.gone },
+    ["timeBlock"]
+  );
   result.pairs.push(...programRefs.pairs);
   result.cards.push(...programRefs.cards);
   const targets = whoTargets(setup);
@@ -1092,10 +1143,6 @@ export function listProposal(input) {
   }
   result.pairs.push(...rainPlans.pairs);
   finishRepeats(read);
-  const deletions = {
-    gone: deletionsIn(answers),
-    back: deletionsIn(answers, BRING_BACK)
-  };
   result.rows = read.map((r) =>
     describeRow(r, used, screen, setup, answers, deletions)
   );
@@ -1110,7 +1157,11 @@ export function listProposal(input) {
     blocks: programRefs.blocks,
     days: days.added
   });
-  result.deleted = leaveOutDeletedAdds(result, deletions);
+  result.deleted = leaveOutDeletedAdds(result, deletions, [
+    ...programs.deleted,
+    ...divisions.deleted,
+    ...programRefs.deleted
+  ]);
   result.broughtBack = broughtBackAdds(result, deletions);
   return result;
 }
@@ -1188,7 +1239,7 @@ const ADD_KIND = { location: "Location", locationType: "LocationType" };
  * with Bring back, and the rows naming them wait ("Review here") until then. Together with the
  * rows themselves marked "deleted": [{ key, kind, name, program }].
  */
-function leaveOutDeletedAdds(result, deletions) {
+function leaveOutDeletedAdds(result, deletions, deletedRefs) {
   const deleted = result.rows
     .filter((row) => row.status === "deleted")
     .map((row) => ({
@@ -1210,14 +1261,49 @@ function leaveOutDeletedAdds(result, deletions) {
       return !key;
     });
   });
+  // Programs, divisions and time blocks: their rows are left out (resolvePrograms,
+  // leaveOutDeletedRefs).
+  deleted.push(...deletedRefs);
   return deleted;
 }
 
-/** Deletions this list's save forgets: rows and added places that were brought back. */
+/** The program's name for a program id: an Id of the camp's, or "Program:<name>" for one added. */
+function programNameOf(setup, programId) {
+  const entry = programEntry(setup, programId);
+  if (entry) {
+    return entry.program.Name;
+  }
+  return String(programId || "").replace(/^Program:/, "");
+}
+
+/**
+ * Deletions this list's save forgets: rows, added places, programs, divisions and time blocks
+ * that were brought back.
+ */
 function broughtBackAdds(result, deletions) {
   const keys = result.rows
     .filter((row) => row.status === "new" && row.broughtBack)
     .map((row) => row.broughtBack);
+  const add = result.alsoAdd;
+  const back = (kind, program, name) => {
+    const key = deletedAs(deletions.back, kind, program, name);
+    if (key) {
+      keys.push(key);
+    }
+  };
+  (add.program || []).forEach((p) => {
+    const key = deletedAs(deletions.back, "Program", "", p.name);
+    if (key) {
+      // With the groups remembered with it (Import last year's, deleted.js deletedPrograms).
+      keys.push(key, ...programGroupKeys(deletions.gone, p.name));
+    }
+  });
+  (add.division || []).forEach((d) =>
+    back("Division", programNameOf(result.setup, d.programId), d.name)
+  );
+  (add.timeBlock || []).forEach((b) =>
+    back("TimeBlock", programNameOf(result.setup, b.programId), b.name)
+  );
   Object.keys(ADD_KIND).forEach((ref) => {
     (result.alsoAdd[ref] || []).forEach((name) => {
       const key = deletedAs(deletions.back, ADD_KIND[ref], "", name);
@@ -1300,7 +1386,11 @@ function describeRow(r, used, screen, setup, answers, deletions) {
     return { ...row, status: "unreadable" };
   }
   if (r.leftOut) {
-    return { ...row, status: "leftOut" };
+    return {
+      ...row,
+      status: "leftOut",
+      ...(r.reason ? { reason: r.reason } : {})
+    };
   }
   if (r.open) {
     return { ...row, status: "asked" };

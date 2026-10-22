@@ -61,9 +61,77 @@ export function deletedActivity(deletions, program, name) {
   return null;
 }
 
-/** Deletions brought back in this import: forgotten when it is saved. */
+const PROGRAM_PREFIX = `${DELETED_PREFIX}Program||`;
+const PROGRAM_GROUP_PREFIX = `${DELETED_PREFIX}ProgramGroup|`;
+
+/**
+ * Programs deleted on the setup screen, deleted still or brought back in this import, with the
+ * names of the groups that went with them (remembered with the program as
+ * "deleted|ProgramGroup|<program>|<group>", so last year's timetable for them can be known:
+ * an import makes up a new program's name, which could never match the deleted one):
+ * [{ key, name, back, groups: Set of folded group names }].
+ */
+export function deletedPrograms(answers) {
+  const all = answers || {};
+  const programs = new Map();
+  Object.keys(all)
+    .filter(
+      (k) =>
+        k.startsWith(PROGRAM_PREFIX) &&
+        (all[k] === DELETED || all[k] === BRING_BACK)
+    )
+    .sort()
+    .forEach((k) => {
+      const name = k.slice(PROGRAM_PREFIX.length);
+      programs.set(foldName(name), {
+        key: k,
+        name,
+        back: all[k] === BRING_BACK,
+        groups: new Set()
+      });
+    });
+  Object.keys(all)
+    .filter((k) => k.startsWith(PROGRAM_GROUP_PREFIX))
+    .forEach((k) => {
+      const [program, ...group] = k
+        .slice(PROGRAM_GROUP_PREFIX.length)
+        .split("|");
+      const found = programs.get(foldName(program));
+      if (found) {
+        found.groups.add(foldName(group.join("|")));
+      }
+    });
+  return [...programs.values()];
+}
+
+/** The groups remembered with a deleted program: their keys as stored, from deletionsIn. */
+export function programGroupKeys(deletions, program) {
+  const prefix = folded(`${PROGRAM_GROUP_PREFIX}${program}|`);
+  return [...deletions]
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([, stored]) => stored)
+    .sort();
+}
+
+/**
+ * Deletions brought back in this import: forgotten when it is saved, with the groups remembered
+ * with a program brought back.
+ */
 export function broughtBack(answers) {
-  return Object.keys(answers || {})
-    .filter((k) => k.startsWith(DELETED_PREFIX) && answers[k] === BRING_BACK)
+  const all = answers || {};
+  const programsBack = new Set(
+    deletedPrograms(all)
+      .filter((p) => p.back)
+      .map((p) => foldName(p.name))
+  );
+  return Object.keys(all)
+    .filter(
+      (k) =>
+        (k.startsWith(DELETED_PREFIX) && all[k] === BRING_BACK) ||
+        (k.startsWith(PROGRAM_GROUP_PREFIX) &&
+          programsBack.has(
+            foldName(k.slice(PROGRAM_GROUP_PREFIX.length).split("|")[0])
+          ))
+    )
     .sort();
 }

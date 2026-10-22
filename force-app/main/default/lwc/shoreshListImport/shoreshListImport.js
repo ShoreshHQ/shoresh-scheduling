@@ -63,6 +63,20 @@ function timeText(minutes) {
  * screenKey: which list (activities, locations, ...); setup: the season setup; terms: the
  * camp's words. Fires: imported (after a save or an Undo, so the page reloads the season).
  */
+/**
+ * The Bring back that takes the cursor once one is clicked: the next one still listed, else the
+ * one before it; null when none is left.
+ */
+function nextKeyOf(keysBefore, clicked, keysAfter) {
+  const left = new Set(keysAfter);
+  const at = keysBefore.indexOf(clicked);
+  const order = [
+    ...keysBefore.slice(at + 1),
+    ...keysBefore.slice(0, Math.max(at, 0)).reverse()
+  ];
+  return order.find((k) => left.has(k)) || null;
+}
+
 export default class ShoreshListImport extends LightningElement {
   @api screenKey;
   @api setup;
@@ -102,6 +116,12 @@ export default class ShoreshListImport extends LightningElement {
     let target = null;
     if (next.selector) {
       target = this.template.querySelector(next.selector);
+    } else if (next.bringBack !== undefined) {
+      target = next.bringBack
+        ? [...this.template.querySelectorAll("[data-deleted] button")].find(
+            (el) => el.dataset.key === next.bringBack
+          )
+        : this.template.querySelector('[data-id="save"]');
     } else {
       const cards = this.cards;
       let id = next.card;
@@ -752,7 +772,27 @@ export default class ShoreshListImport extends LightningElement {
   }
 
   handleBringBack(event) {
-    this.answer(event.currentTarget.dataset.key, BRING_BACK);
+    const key = event.currentTarget.dataset.key;
+    const keysBefore = this.deletedKeys();
+    const openBefore = new Set(this.openIds());
+    this.answer(key, BRING_BACK);
+    // The clicked button is gone with the row (WCAG 2.4.3): to the question it opened (a new
+    // program's days, a time block's times), else the next Bring back, else Save.
+    const opened = this.openIds().find((id) => !openBefore.has(id));
+    this.focusNext = opened
+      ? { card: opened }
+      : { bringBack: nextKeyOf(keysBefore, key, this.deletedKeys()) };
+  }
+
+  /** Every Bring back listed, section by section, in the order shown. */
+  deletedKeys() {
+    return this.sections.flatMap((section) =>
+      (section.deletedRows || []).map((row) => row.key)
+    );
+  }
+
+  openIds() {
+    return this.cards.filter((c) => !c.answered).map((c) => c.id);
   }
 
   get askedCount() {

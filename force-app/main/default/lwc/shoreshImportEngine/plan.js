@@ -405,6 +405,8 @@ const UNPLACED_WHY = {
     `its ${t.sIn("Group")} was deleted before; not brought back`,
   blockDeleted: (t) =>
     `its ${t.sIn("TimeBlock")} was deleted before; not brought back`,
+  programDeleted: (t) =>
+    `its ${t.sIn("Program")} was deleted before; not brought back`,
   programLeftOut: (t) => `its ${t.sIn("Program")} is left out`,
   groupLeftOut: (t) => `its ${t.sIn("Group")} is left out`,
   blockLeftOut: (t) => `its ${t.sIn("TimeBlock")} is left out or has no times`,

@@ -5,7 +5,8 @@
  * the rest are added.
  */
 import { FIELD } from "c/shoreshSchema";
-import { deletedAs, deletionsIn } from "./deleted";
+import { deletedAs, deletedPrograms, deletionsIn } from "./deleted";
+import { foldName } from "./names";
 import { LEAVE_OUT } from "./reading";
 import { WEEKDAYS, clock, looseKey } from "./text";
 
@@ -48,6 +49,39 @@ function baseGroupsOfTimetable(reading, index) {
     .map((g) => g.base || g.name);
 }
 
+/**
+ * The program deleted on the setup screen that a timetable's groups went with, when none of its
+ * groups is in a program the camp has: the one most of its groups were remembered with (then
+ * by name). Something the camp has wins: a program of that name set up again is not deleted.
+ */
+function deletedProgramOf(reading, index, programs, gone, context) {
+  const bases = baseGroupsOfTimetable(reading, index);
+  if (programs.some((p) => bases.some((g) => p.groups.includes(g)))) {
+    return null;
+  }
+  const names = new Set(
+    reading.groups
+      .filter((g) => g.timetable === index)
+      .map((g) => foldName(g.recordName || g.name))
+  );
+  let best = null;
+  let most = 0;
+  for (const program of gone) {
+    if (
+      context.claimed.has(program.key) ||
+      context.taken.has(looseKey(program.name))
+    ) {
+      continue;
+    }
+    const count = [...names].filter((n) => program.groups.has(n)).length;
+    if (count > most) {
+      best = program;
+      most = count;
+    }
+  }
+  return best;
+}
+
 function newProgramName(taken, count) {
   if (count === 0 && !taken.has("main")) {
     return "Main";
@@ -73,7 +107,7 @@ function sureProgram(bases, programs, free, context) {
   if (owners.length === 1 && free.includes(owners[0])) {
     return owners[0].name;
   }
-  if (programs.length === 0) {
+  if (programs.length === 0 || context.broughtBack) {
     return "new";
   }
   if (programs.length === 1 && context.count === 1 && owners.length === 0) {
@@ -236,19 +270,35 @@ export function mapPrograms(reading, existing, answers) {
   const asks = [];
   const used = new Set();
   const deletions = deletionsIn(answers);
+  const gone = deletedPrograms(answers);
+  const campNames = new Set(taken);
+  const claimed = new Set();
   let created = 0;
   const result = reading.timetables.map((timetable) => {
     const groups = groupsOfTimetable(reading, timetable.index);
-    const choice = chooseProgram(
-      groups,
-      programs,
-      {
-        used,
-        count: reading.timetables.length,
-        bases: baseGroupsOfTimetable(reading, timetable.index)
-      },
-      answers
-    );
+    // Its program was deleted on the setup screen: left out with all it has, without asking,
+    // until brought back; brought back, it is added again under its own name.
+    const deleted = deletedProgramOf(reading, timetable.index, programs, gone, {
+      claimed,
+      taken: campNames
+    });
+    if (deleted) {
+      claimed.add(deleted.key);
+    }
+    const choice =
+      deleted && !deleted.back
+        ? { leftOut: true }
+        : chooseProgram(
+            groups,
+            programs,
+            {
+              used,
+              count: reading.timetables.length,
+              bases: baseGroupsOfTimetable(reading, timetable.index),
+              broughtBack: !!deleted
+            },
+            answers
+          );
     if (choice.ask) {
       asks.push(choice.ask);
     }
@@ -263,7 +313,10 @@ export function mapPrograms(reading, existing, answers) {
     );
     const program = choice.program;
     let name = program ? program.name : null;
-    if (!program && !choice.leftOut) {
+    if (deleted && !program) {
+      name = deleted.name;
+      taken.add(looseKey(name));
+    } else if (!program && !choice.leftOut) {
       name = newProgramName(taken, programs.length + created);
       taken.add(looseKey(name));
       created++;
@@ -294,6 +347,7 @@ export function mapPrograms(reading, existing, answers) {
       name,
       groups,
       leftOut: !!choice.leftOut,
+      ...(deleted && !deleted.back ? { deleted: deleted.key } : {}),
       unanswered: !!choice.unanswered,
       ...days,
       blocks

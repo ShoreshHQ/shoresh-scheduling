@@ -67,6 +67,7 @@ export {
   deletedKey,
   deletedAs,
   deletionsIn,
+  programGroupKeys,
   broughtBack
 } from "./deleted";
 

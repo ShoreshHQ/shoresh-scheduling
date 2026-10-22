@@ -347,6 +347,14 @@ function deletedItems(decisions, groups, timetables, places) {
         name: g.recordName,
         program: (timetables[g.timetable] || {}).name || ""
       })),
+    ...timetables
+      .filter((t) => t.deleted)
+      .map((t) => ({
+        key: t.deleted,
+        kind: "Program",
+        name: t.name,
+        program: ""
+      })),
     ...timetables.flatMap((t) =>
       t.blocks
         .filter((b) => b.deleted)

@@ -7,7 +7,12 @@ import {
   csvFile,
   deletedKey
 } from "c/shoreshImportEngine";
-import { listPlan, listProposal, waitingFor } from "./data/lists";
+import {
+  listPlan,
+  listProposal,
+  questionCards,
+  waitingFor
+} from "./data/lists";
 
 const terms = buildTerms([]);
 
@@ -138,5 +143,106 @@ describe("a list naming something the camp deleted", () => {
       ["Activity", "Canoeing"]
     ]);
     expect(plan.forget).toEqual([lake]);
+  });
+});
+
+describe("a list naming a program, division or time block the camp deleted", () => {
+  it("a deleted program is not asked about or added: its rows are left out until it is brought back", () => {
+    const rows = [
+      ["Program", "Division"],
+      ["Main", "Middlers"],
+      ["Teens", "Hikers"]
+    ];
+    const teens = deletedKey("Program", "", "Teens");
+    const remembered = deletedKey("ProgramGroup", "Teens", "Bunk 9");
+    const gone = { [teens]: DELETED, [remembered]: DELETED };
+    const p = read("divisions", rows, gone);
+    expect(questionCards(p, terms, gone)).toEqual([]);
+    expect(row(p, "Hikers")).toMatchObject({
+      status: "leftOut",
+      reason: "its program was deleted before; not brought back"
+    });
+    expect(p.deleted).toEqual([
+      { key: teens, kind: "Program", name: "Teens", program: "" }
+    ]);
+    expect(
+      listPlan(p, gone, "s1", "f").records.map((r) => r.fields.Name)
+    ).toEqual(["Middlers"]);
+    // Brought back: asked which days, as any new program, then added.
+    const back = { ...gone, [teens]: BRING_BACK };
+    const [card] = questionCards(read("divisions", rows, back), terms, back);
+    expect(card.title).toBe("“Teens” is a new program. Which days?");
+    const answers = { ...back, [card.id]: "Monday" };
+    const done = read("divisions", rows, answers);
+    expect(done.deleted).toEqual([]);
+    const plan = listPlan(done, answers, "s1", "f");
+    expect(plan.records.map((r) => [r.kind, r.fields.Name])).toEqual([
+      ["Program", "Teens"],
+      ["Division", "Middlers"],
+      ["Division", "Hikers"]
+    ]);
+    // Forgotten with the groups remembered with it.
+    expect(plan.forget).toEqual([remembered, teens].sort());
+  });
+
+  it("a deleted division a row names is not added: the row is left out until it is brought back", () => {
+    const rows = [
+      ["Division", "Group", "Availability"],
+      ["Seniors", "Bunk 7", "All day"],
+      ["Juniors", "Bunk 8", "All day"]
+    ];
+    const seniors = deletedKey("Division", "Main", "Seniors");
+    const p = read("groups", rows, { [seniors]: DELETED });
+    expect(row(p, "Bunk 7")).toMatchObject({
+      status: "leftOut",
+      reason: "its division was deleted before; not brought back"
+    });
+    expect(p.alsoAdd.division).toEqual([]);
+    expect(p.deleted).toEqual([
+      { key: seniors, kind: "Division", name: "Seniors", program: "Main" }
+    ]);
+    const answers = { [seniors]: BRING_BACK };
+    const back = read("groups", rows, answers);
+    expect(back.deleted).toEqual([]);
+    expect(back.alsoAdd.division.map((d) => d.name)).toEqual(["Seniors"]);
+    expect(listPlan(back, answers, "s1", "f").forget).toEqual([seniors]);
+  });
+
+  it("a deleted time block is not asked when it is: the row is left out until it is brought back", () => {
+    const rows = [
+      ["Fixed activity", "Time block"],
+      ["Snack", "Period 9"]
+    ];
+    const period = deletedKey("TimeBlock", "Main", "Period 9");
+    const p = read("fixedActivities", rows, { [period]: DELETED });
+    expect(questionCards(p, terms, { [period]: DELETED })).toEqual([]);
+    expect(row(p, "Snack")).toMatchObject({
+      status: "leftOut",
+      reason: "its time block was deleted before; not brought back"
+    });
+    expect(p.deleted).toEqual([
+      { key: period, kind: "TimeBlock", name: "Period 9", program: "Main" }
+    ]);
+    const back = { [period]: BRING_BACK };
+    const [card] = questionCards(
+      read("fixedActivities", rows, back),
+      terms,
+      back
+    );
+    expect(card.title).toBe(
+      "“Period 9” is a new time block in Main. When is it?"
+    );
+    const answers = { ...back, [card.id]: "14:00-14:30" };
+    const plan = listPlan(
+      read("fixedActivities", rows, answers),
+      answers,
+      "s1",
+      "f"
+    );
+    expect(plan.records.map((r) => [r.kind, r.fields.Name])).toEqual([
+      ["TimeBlock", "Period 9"],
+      ["FixedActivity", "Snack"]
+    ]);
+    expect(plan.forget).toEqual([period]);
   });
 });

@@ -70,6 +70,70 @@ private class SetupDeletionsTest {
   }
 
   @IsTest
+  static void aProgramIsRememberedWithTheGroupsThatGoWithIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Program__c program = ShoreshTestData.program(season.Id, 'Juniors');
+      Division__c main = ShoreshTestData.division(program.Id, 'Main');
+      Division__c lake = ShoreshTestData.division(program.Id, 'Lakeside');
+      ShoreshTestData.groupIn(main.Id, 'Bunk 1');
+      ShoreshTestData.groupIn(main.Id, 'Bunk 2');
+      // The same name in two divisions is remembered once.
+      ShoreshTestData.groupIn(lake.Id, 'Bunk 2');
+      ShoreshTestData.timeBlock(program.Id, 'Period 1', 9);
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      SeasonSetupController.deleteRecord(program.Id);
+      Integer queries = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(
+        queries < 30,
+        'A program delete stays well under 100 queries: ' + queries
+      );
+      Assert.areEqual(
+        new Map<String, String>{
+          'deleted|Program||Juniors' => 'deleted',
+          'deleted|ProgramGroup|Juniors|Bunk 1' => 'deleted',
+          'deleted|ProgramGroup|Juniors|Bunk 2' => 'deleted'
+        },
+        answersOf(camp.Id)
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Group__c WITH USER_MODE],
+        'its groups go with it'
+      );
+    }
+  }
+
+  @IsTest
+  static void aDivisionIsRememberedWithItsGroups() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow (made up)');
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Program__c program = ShoreshTestData.program(season.Id, 'Juniors');
+      Division__c lake = ShoreshTestData.division(program.Id, 'Lakeside');
+      Division__c main = ShoreshTestData.division(program.Id, 'Main');
+      ShoreshTestData.groupIn(lake.Id, 'Bunk 7');
+      ShoreshTestData.groupIn(main.Id, 'Bunk 1');
+      Test.startTest();
+      SeasonSetupController.deleteRecord(lake.Id);
+      Test.stopTest();
+      Assert.areEqual(
+        new Map<String, String>{
+          'deleted|Division|Juniors|Lakeside' => 'deleted',
+          'deleted|Group|Juniors|Bunk 7' => 'deleted'
+        },
+        answersOf(camp.Id),
+        'only its own groups, as groups of its program'
+      );
+    }
+  }
+
+  @IsTest
   static void deletingTheSameNameTwiceIsOneAnswer() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow (made up)');
