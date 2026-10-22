@@ -114,7 +114,13 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       }
     }
     if (this.focusAfter) {
-      const target = this.template.querySelector(this.focusAfter);
+      // One selector, or a list tried in order (the first one on screen and enabled gets focus).
+      const target = []
+        .concat(this.focusAfter)
+        .reduce(
+          (found, selector) => found || this.template.querySelector(selector),
+          null
+        );
       if (target) {
         this.focusAfter = null;
         target.focus();
@@ -471,6 +477,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     if (!day) {
       return [];
     }
+    const off = this.controlsDisabled;
     return day.blocks.map((block, index) => ({
       key: block.id,
       id: block.id,
@@ -480,8 +487,8 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       earlierLabel: `Move ${block.name} earlier`,
       laterLabel: `Move ${block.name} later`,
       removeLabel: `Remove ${block.name}`,
-      first: index === 0,
-      last: index === day.blocks.length - 1
+      earlierOff: off || index === 0,
+      laterOff: off || index === day.blocks.length - 1
     }));
   }
 
@@ -490,6 +497,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     if (!day || !this.isEvent) {
       return [];
     }
+    const off = this.controlsDisabled;
     return day.groups.map((grp, index) => ({
       key: grp.id,
       id: grp.id,
@@ -498,8 +506,8 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       leftLabel: `Move ${grp.name} left`,
       rightLabel: `Move ${grp.name} right`,
       removeLabel: `Remove ${grp.name}`,
-      first: index === 0,
-      last: index === day.groups.length - 1
+      leftOff: off || index === 0,
+      rightOff: off || index === day.groups.length - 1
     }));
   }
 
@@ -642,11 +650,19 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     const { target, action, direction } = event.currentTarget.dataset;
     const list = action === "moveBlock" ? this.day.blocks : this.day.groups;
     const item = list.find((x) => x.id === target);
+    const other = direction === "1" ? "-1" : "1";
+    const rename = action === "moveBlock" ? "change-block" : "rename-station";
     this.frame(
       { action, targetId: target, direction: Number(direction) },
       `${item.name} moved`
     ).then(() => {
-      this.focusAfter = `[data-action="${action}"][data-target="${target}"][data-direction="${direction}"]:not([disabled])`;
+      // Back to the button pressed; once the item is first or last that one is off, so its
+      // other move button, then its Change or Rename.
+      this.focusAfter = [
+        `[data-action="${action}"][data-target="${target}"][data-direction="${direction}"]:not([disabled])`,
+        `[data-action="${action}"][data-target="${target}"][data-direction="${other}"]:not([disabled])`,
+        `[data-id="${rename}"][data-target="${target}"]`
+      ];
     });
   }
 
@@ -701,6 +717,10 @@ export default class ShoreshSpecialSchedule extends LightningElement {
 
   /** One change to the frame, saved; the grid shows the plan as it now is. Resolves whether it saved. */
   async frame(change, said) {
+    if (this.busy) {
+      // A second click while the last change saves would send an old revision.
+      return false;
+    }
     if (this.editorBusy) {
       this.error = "One moment: a change is still being saved. Try again.";
       return false;

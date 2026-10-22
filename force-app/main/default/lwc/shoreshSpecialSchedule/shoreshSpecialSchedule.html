@@ -247,7 +247,7 @@
                   class="shoresh-item shoresh-item_icon"
                   aria-label={block.earlierLabel}
                   title={block.earlierLabel}
-                  disabled={block.first}
+                  disabled={block.earlierOff}
                   data-action="moveBlock"
                   data-target={block.id}
                   data-direction="-1"
@@ -262,7 +262,7 @@
                   class="shoresh-item shoresh-item_icon"
                   aria-label={block.laterLabel}
                   title={block.laterLabel}
-                  disabled={block.last}
+                  disabled={block.laterOff}
                   data-action="moveBlock"
                   data-target={block.id}
                   data-direction="1"
@@ -311,7 +311,7 @@
                   class="shoresh-item shoresh-item_icon"
                   aria-label={station.leftLabel}
                   title={station.leftLabel}
-                  disabled={station.first}
+                  disabled={station.leftOff}
                   data-action="moveStation"
                   data-target={station.id}
                   data-direction="-1"
@@ -326,7 +326,7 @@
                   class="shoresh-item shoresh-item_icon"
                   aria-label={station.rightLabel}
                   title={station.rightLabel}
-                  disabled={station.last}
+                  disabled={station.rightOff}
                   data-action="moveStation"
                   data-target={station.id}
                   data-direction="1"

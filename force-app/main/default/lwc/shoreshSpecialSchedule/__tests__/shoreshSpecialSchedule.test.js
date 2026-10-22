@@ -402,6 +402,75 @@ describe("c-shoresh-special-schedule", () => {
     expect(q(element, '[data-id="announce"]').textContent).toBe("Cedar moved");
   });
 
+  it("moving an item to the end keeps focus on that item's other move button", async () => {
+    const plan = dayPlan([",", ","], {
+      kind: "SpecialEvent",
+      itemId: "ev1",
+      name: "Sports Day",
+      notes: null
+    });
+    const { element } = await render(plan);
+    q(element, '[data-id="edit-stations"]').click();
+    await flush();
+    const moved = dayPlan([",", ","], {
+      kind: "SpecialEvent",
+      itemId: "ev1",
+      name: "Sports Day",
+      notes: null,
+      revision: 2
+    });
+    moved.schedule.days[0].groups = [ref("g2", "Birch"), ref("g1", "Cedar")];
+    changeFrame.mockResolvedValue(moved);
+    q(
+      element,
+      '[data-action="moveStation"][data-target="g1"][data-direction="1"]'
+    ).click();
+    await flush();
+    const right = q(
+      element,
+      '[data-action="moveStation"][data-target="g1"][data-direction="1"]'
+    );
+    expect(right.disabled).toBe(true);
+    expect(element.shadowRoot.activeElement).toBe(
+      q(
+        element,
+        '[data-action="moveStation"][data-target="g1"][data-direction="-1"]'
+      )
+    );
+  });
+
+  it("a second move while the first saves waits instead of sending an old revision", async () => {
+    const plan = dayPlan();
+    const { element } = await render(plan);
+    q(element, '[data-id="edit-blocks"]').click();
+    await flush();
+    let finish;
+    changeFrame.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const later = () =>
+      q(
+        element,
+        '[data-action="moveBlock"][data-target="b1"][data-direction="1"]'
+      );
+    later().click();
+    await flush();
+    expect(later().disabled).toBe(true);
+    // A click that still lands (it was on its way) changes nothing.
+    element.shadowRoot
+      .querySelectorAll('[data-action="moveBlock"]')
+      .forEach((b) => b.dispatchEvent(new CustomEvent("click")));
+    await flush();
+    expect(changeFrame).toHaveBeenCalledTimes(1);
+    finish({ ...plan, revision: 2 });
+    await flush();
+    expect(q(element, '[data-id="error"]')).toBeNull();
+    expect(later().disabled).toBe(false);
+  });
+
   it("back goes to Special events", async () => {
     const { element, heard } = await render(dayPlan());
     q(element, '[data-id="back"]').click();
