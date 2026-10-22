@@ -877,31 +877,38 @@
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-split">
                   <div class="setup-list setup-main">
-                    <c-shoresh-editable-table
-                      data-id="activities"
-                      title={labels.catalogue}
-                      show-columns
-                      object-api-name={objects.Activity}
-                      flag-same-names
-                      columns={activityColumns}
-                      rows={setup.activities}
-                      add-label={labels.addActivity}
-                      empty-message={labels.noActivities}
-                      new-row-defaults={activityDefaults}
-                      weeks={setup.weeks}
-                      week-exceptions={setup.weekExceptions}
-                      weeks-heading={labels.weeksColumn}
-                      week-words={weekWords}
-                      before-week-off={beforeWeekOff}
-                      week-phrase="runs in"
-                      weeks-max="12"
-                      busy={busy}
-                      details-label="Details"
-                      details-open-for={activityDetailsFor}
-                      onsave={handleSaveRecords}
-                      ondelete={handleDeleteRecord}
-                      ondetails={handleOpenActivityDetails}
-                    ></c-shoresh-editable-table>
+                    <!-- One section per priority, High then Low (activitySections). -->
+                    <template for:each={activitySections} for:item="section">
+                      <c-shoresh-editable-table
+                        key={section.key}
+                        data-id="activities"
+                        data-priority={section.value}
+                        heading={section.heading}
+                        show-columns={section.first}
+                        row-filter={section.rowFilter}
+                        title={section.title}
+                        object-api-name={objects.Activity}
+                        flag-same-names
+                        columns={activityColumns}
+                        rows={setup.activities}
+                        add-label={labels.addActivity}
+                        empty-message={labels.noActivities}
+                        new-row-defaults={section.defaults}
+                        weeks={setup.weeks}
+                        week-exceptions={setup.weekExceptions}
+                        weeks-heading={labels.weeksColumn}
+                        week-words={weekWords}
+                        before-week-off={beforeWeekOff}
+                        week-phrase="runs in"
+                        weeks-max="12"
+                        busy={busy}
+                        details-label="Details"
+                        details-open-for={activityDetailsFor}
+                        onsave={handleSaveRecords}
+                        ondelete={handleDeleteRecord}
+                        ondetails={handleOpenActivityDetails}
+                      ></c-shoresh-editable-table>
+                    </template>
                     <template lwc:if={next.activities}>
                       <div class="next">
                         <lightning-button

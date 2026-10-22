@@ -129,6 +129,14 @@ export function seasonContents(setup, t) {
 }
 
 /** The element with focus, looking inside components (their shadow roots). */
+/** An activity's priority section: High, or Low (blank is Low, ADR 0002 choice 10). */
+function isHighPriority(activity) {
+  return activity[ACTIVITY.Priority] === "High";
+}
+function isLowPriority(activity) {
+  return !isHighPriority(activity);
+}
+
 function focusedElement() {
   let element = document.activeElement;
   while (element && element.shadowRoot && element.shadowRoot.activeElement) {
@@ -841,6 +849,47 @@ export default class ShoreshCampSetup extends LightningElement {
     return names;
   }
 
+  /**
+   * Activities in two sections by priority, High then Low (the desktop's ActivitiesScreen.jsx:
+   * "High Priority", "Low Priority"; a blank priority is Low, ADR 0002 choice 10). Each section
+   * is a table over every activity showing its own (rowFilter), so same-name dots compare
+   * across both; its blank row starts in its priority. As on the desktop, High shows only
+   * while it holds an activity. Low always shows: new activities start Low (Greg, 2026-10-16),
+   * so its blank row is where they are added. With no activities at all there is no heading,
+   * only the empty list. An activity whose priority is changed in its details moves to the
+   * other section on the next read.
+   */
+  get activitySections() {
+    const activities = (this.setup && this.setup.activities) || [];
+    const anyHigh = activities.some(isHighPriority);
+    const sections = [];
+    if (anyHigh) {
+      sections.push({
+        key: "priority-high",
+        value: "High",
+        heading: "High priority",
+        rowFilter: isHighPriority
+      });
+    }
+    sections.push({
+      key: "priority-low",
+      value: "Low",
+      heading: activities.length ? "Low priority" : undefined,
+      rowFilter: isLowPriority
+    });
+    return sections.map((section, index) => ({
+      ...section,
+      first: index === 0,
+      title: section.heading
+        ? `${this.labels.catalogue}: ${section.heading}`
+        : this.labels.catalogue,
+      defaults: {
+        ...this.activityDefaults,
+        [ACTIVITY.Priority]: section.value
+      }
+    }));
+  }
+
   get activityDefaults() {
     // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
     return {
@@ -1315,12 +1364,16 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /** Closed: the cursor goes back to that row's Details button. */
   handleCloseActivityDetails(event) {
+    const { activityId } = event.detail;
     this.activityDetailsFor = null;
-    const table = this.template.querySelector(
-      'c-shoresh-editable-table[data-id="activities"]'
-    );
+    // The section the row is in now: its priority may have moved it while the panel was open.
+    const table = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="activities"]'
+      )
+    ].find((section) => section.showsRow(activityId));
     if (table) {
-      table.focusDetailsOf(event.detail.activityId);
+      table.focusDetailsOf(activityId);
     }
   }
 
