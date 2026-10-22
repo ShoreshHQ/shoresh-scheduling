@@ -16,11 +16,20 @@ import {
   OPEN,
   applyRun,
   editRun,
+  identity,
   isMovable,
   owner,
   placement,
   staysPut
 } from "./slotEdits";
+import {
+  eventRuns,
+  mergedWith,
+  planGrid,
+  replacedDays,
+  rowsCovered,
+  specialsOf
+} from "./specials";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./moves";
 import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { History } from "./history";
@@ -139,6 +148,17 @@ function slotKey(slot) {
  * "setup changed since the week started" dot (ADR 0008 part 6). They join any other dot on the
  * placement, after its words.
  *
+ * Special days and events on a week (ADR 0014 slice 4): the draft's `specials` ({ days },
+ * WeekSpecials) and the season setup's special events. A day a special day replaces shows its own schedule, read-only, in Daily View
+ * (its name on the day's pill, "Fri · Visiting Day"), one named cell in Group View, and nothing in
+ * Activity View; it is left out of the checks and counts, the counter (the host's checks slot) is
+ * not shown on it, and the drawer's place has the special day's line: its name, notes and "Open
+ * <name>" ("openspecial" { itemId }). The season's special events are placed from the drawer's
+ * Events section or by typing a name, over one cell or the cells chosen together; bunks side by
+ * side holding one over the same blocks are one cell. A cell noted from a file as a special event
+ * or day "not set up yet" offers "Set it up" while it has focus: the host's setUpWith({ kind, name
+ * }) makes it (and answers with what to say).
+ *
  * What a special day's or event's own schedule adds (c/shoreshSpecialSchedule, ADR 0014 choice
  * 15): planName. Its one day is drawn as Daily View with no view buttons, day pills or drawer,
  * and called by that name wherever a week's lines would name a weekday.
@@ -178,6 +198,11 @@ export default class ShoreshWeekEditor extends LightningElement {
   // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
   // no views, day pills or drawer. Left out for a week.
   @api planName;
+  // Sets up what a cell noted from a file names (ADR 0014 slice 4): ({ kind, name }) => Promise
+  // of the words to say. Left out, no "Set it up" is offered.
+  @api setUpWith;
+  // "Set it up" is under way.
+  settingUp = false;
   // The Edit menu's row that has its rows open under it (Copy day to…), or null.
   openEditGroup = null;
   // Cells chosen together (Shift or Cmd/Ctrl with a click, a Shift-drag, Shift with Left or
@@ -221,6 +246,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   focusToolUndoAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
+  // "Set it up" done: { key } of its cell, focused once drawn ("Open <name>" if the day is replaced).
+  focusAfterSetUp = null;
   // focusCell asked before the grid was drawn (a week just started): { key }, kept until it is.
   focusCellWhenDrawn = null;
   // Placements whose dot the last edit changed: a quiet pulse acknowledges it (desktop
@@ -234,6 +261,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   // The drawer's measure in Group View (one bunk's), and the Open cells a held activity fits.
   bunkMeasureMemo = { key: null, checked: null, result: null };
   fitsMemo = { key: null, checked: null, result: [] };
+  // The week's replaced days, worked out once per draft's specials.
+  replacedMemo = { of: null, days: new Map() };
+  // The season's special events, worked out once per setup.
+  eventsMemo = { of: null, list: [] };
   // The drawer tile under the pointer or with keyboard focus (its activity is outlined).
   hoverActivityId = null;
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
@@ -556,8 +587,12 @@ export default class ShoreshWeekEditor extends LightningElement {
    */
   checkDays(weekDays) {
     if (this.checkWith) {
+      // The host's engine leaves out the days a special day replaces itself.
       return this.checkWith(weekDays, this.liveLocks);
     }
+    // A day a special day replaces is not checked or counted (ADR 0014 slice 4).
+    const replaced = this.replaced;
+    weekDays = weekDays.filter((day) => !replaced.has(day.dateValue));
     const draft = this.draft || {};
     const entry = {
       divisions: [{ groups: draft.groupRecords || [] }],
@@ -705,9 +740,14 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** The week's days on the rail: "Mon" to "Fri", no dates (decision 33); read out in full. */
   get dayPills() {
+    const replaced = this.replaced;
     return days(this.schedule).map((day) => ({
       ...day,
-      name: `${day.label}, ${day.sub}`,
+      // A day a special day replaces carries its name: "Fri · Visiting Day".
+      special: this.specialOn(day.index),
+      name: [`${day.label}, ${day.sub}`, this.specialOn(day.index, replaced)]
+        .filter(Boolean)
+        .join(", "),
       pressed: String(day.index === this.dayIndex),
       className:
         day.index === this.dayIndex
@@ -795,10 +835,409 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     const saving = new Set(this.queue.map((entry) => entry.slotKey));
     const locks = this.liveLocks;
+    const cells = grid.cells.map((cell) => this.decorate(cell, saving, locks));
     return {
       ...grid,
-      cells: grid.cells.map((cell) => this.decorate(cell, saving, locks))
+      cells: this.isGroup ? this.withReplacedColumns(cells, grid) : cells
     };
+  }
+
+  // ---------- special days and events (ADR 0014 slice 4) ----------
+
+  get specials() {
+    return specialsOf(this.draft);
+  }
+
+  /** The week's days a special day replaces, by date (worked out once per draft). */
+  get replaced() {
+    const specials = this.specials;
+    if (this.replacedMemo.of !== specials) {
+      this.replacedMemo = { of: specials, days: replacedDays(this.draft) };
+    }
+    return this.replacedMemo.days;
+  }
+
+  /** The special day's name on a day of the week (by index), or null. */
+  specialOn(dayIndex, replaced = this.replaced) {
+    const day = this.schedule && this.schedule.days[dayIndex];
+    const special = day && replaced.get(day.dateValue);
+    return special ? special.name : null;
+  }
+
+  /** The day a special day replaces, shown in Daily View (a week's, not a plan's), or null. */
+  get replacedShown() {
+    if (!this.isDaily || this.planName || !this.schedule) {
+      return null;
+    }
+    const day = this.schedule.days[this.dayIndex];
+    return (day && this.replaced.get(day.dateValue)) || null;
+  }
+
+  /** Its own schedule, as that day's grid (read-only). */
+  get planShown() {
+    return planGrid(this.replacedShown, this.t);
+  }
+
+  /** Why its schedule isn't drawn: it can't be read, or it has no time blocks yet. */
+  get planMissing() {
+    const shown = this.replacedShown;
+    if (!shown || this.planShown) {
+      return null;
+    }
+    return shown.plan && shown.plan.problem
+      ? `${shown.name}'s schedule can't be shown.`
+      : `${shown.name} has no schedule yet.`;
+  }
+
+  /** The drawer's place on a replaced day: the special day, its notes, and the way to open it. */
+  get specialLine() {
+    const shown = this.replacedShown;
+    if (!shown) {
+      return null;
+    }
+    return {
+      name: shown.name,
+      kind: this.t.s("SpecialDay"),
+      notes: shown.notes || "",
+      open: `Open ${shown.name}`
+    };
+  }
+
+  /** The counter is the week's: not shown on a day a special day replaces (decision 47.4). */
+  get showChecks() {
+    return !this.replacedShown;
+  }
+
+  handleOpenSpecial() {
+    const shown = this.replacedShown;
+    if (shown) {
+      this.dispatchEvent(
+        new CustomEvent("openspecial", {
+          detail: { itemId: shown.specialDayId }
+        })
+      );
+    }
+  }
+
+  /**
+   * Group View: a day a special day replaces is one cell down its column, named for it (its
+   * schedule is the special day's, shown in Daily View).
+   */
+  withReplacedColumns(cells, grid) {
+    const replaced = this.replaced;
+    if (!replaced.size) {
+      return cells;
+    }
+    const rows = Math.max(1, grid.rows.length);
+    const out = cells.filter(
+      (cell) =>
+        !cell.slot || !replaced.has(this.schedule.days[cell.slot.day].dateValue)
+    );
+    this.schedule.days.forEach((day, d) => {
+      const special = replaced.get(day.dateValue);
+      if (special) {
+        out.push({
+          key: `${d}-special`,
+          row: 0,
+          column: d,
+          length: rows,
+          style: `grid-row: 1 / span ${rows}; grid-column: ${d + 2} / span 1;`,
+          text: special.name,
+          className: "cell cell_plan",
+          title: `${special.name}: ${this.t.s("SpecialDay")}`
+        });
+      }
+    });
+    return out;
+  }
+
+  /** The week for Activity View: a day a special day replaces counts nothing. */
+  get activitySchedule() {
+    const replaced = this.replaced;
+    if (!replaced.size || !this.schedule) {
+      return this.schedule;
+    }
+    return {
+      ...this.schedule,
+      days: this.schedule.days.map((day) => {
+        if (!replaced.has(day.dateValue)) {
+          return day;
+        }
+        return {
+          ...day,
+          rows: day.rows.map((row) => row.replace(/[^,]/g, ""))
+        };
+      })
+    };
+  }
+
+  /**
+   * The season's special events, to place ({ id, name, location }), from the season setup
+   * (SeasonSetupController: special.specialEvents, in the Special events screen's order).
+   */
+  get events() {
+    const setup = this.setup || {};
+    const memo = this.eventsMemo;
+    if (memo.of !== setup) {
+      const places = new Map(
+        (setup.locations || []).map((place) => [place.Id, place.Name])
+      );
+      memo.of = setup;
+      memo.list = ((setup.special && setup.special.specialEvents) || []).map(
+        (event) => ({
+          id: event.Id,
+          name: event.Name,
+          location: places.get(event[FIELD.SpecialEvent.Location]) || null
+        })
+      );
+    }
+    return memo.list;
+  }
+
+  eventFor(item) {
+    return this.events.find((e) => `S:${e.id}` === item) || null;
+  }
+
+  /** The drawer's Events section: the events, filtered as the activities are. */
+  get eventTiles() {
+    const typed = loose(this.filter);
+    return this.events
+      .filter((e) => !typed || loose(e.name).includes(typed))
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        said: [e.name, this.t.s("SpecialEvent"), e.location]
+          .filter(Boolean)
+          .join(", ")
+      }));
+  }
+
+  get eventsHeading() {
+    return this.t.s("SpecialEvent") === "Special event"
+      ? "Events"
+      : this.t.p("SpecialEvent");
+  }
+
+  /** The event held: picked up from its tile, or being dragged. */
+  get heldEventId() {
+    if (this.picked && this.picked.kind === "event") {
+      return this.picked.id;
+    }
+    return this.dragging && this.dragging.kind === "event"
+      ? this.dragging.id
+      : null;
+  }
+
+  handlePickEvent(event) {
+    const { id } = event.detail;
+    if (this.heldEventId === id) {
+      this.letGo();
+      return;
+    }
+    const found = this.events.find((e) => e.id === id);
+    // Cells already chosen together: the event goes over them at once (decision 47.2).
+    const chosen =
+      this.chosen && this.editGrid
+        ? this.editGrid.cells.find((c) => c.slot && this.chosen.keys.has(c.key))
+        : null;
+    if (chosen) {
+      this.placeEvent(id, chosen);
+      return;
+    }
+    this.picked = { kind: "event", id };
+    this.announce(`${found ? found.name : ""} picked up.`);
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    if (grid) {
+      grid.focusCell();
+    }
+  }
+
+  handleEventDragStart(event) {
+    const { id } = event.detail;
+    const found = this.events.find((e) => e.id === id);
+    this.dragging = { kind: "event", id, name: found ? found.name : "" };
+  }
+
+  /**
+   * The cells an event put down on a cell (or typed into it) covers: the cells chosen together
+   * when the cell is one of them, else the cells drawn as one with it (an event side by side),
+   * else the cell itself.
+   */
+  rangeFor(cell) {
+    const grid = this.editGrid;
+    const cells = ((grid && grid.cells) || []).filter((c) => c.slot);
+    if (this.chosen && this.chosen.keys.has(cell.key)) {
+      return cells.filter((c) => this.chosen.keys.has(c.key));
+    }
+    return mergedWith(cells, cell);
+  }
+
+  /** "Aspen to Oak · Wednesday · 9:00 to 10:35": where a range is, for Undo and the line. */
+  rangeName(rows) {
+    const weekDays = this.schedule.days;
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    const day = weekDays[first.day];
+    const groupsSaid =
+      rows.length === 1 || first.group === last.group
+        ? day.groups[first.group].name
+        : `${day.groups[first.group].name} to ${day.groups[last.group].name}`;
+    const dayNames = [...new Set(rows.map((r) => r.day))]
+      .map((d) => this.dayNameOf(weekDays[d].dateValue))
+      .join(", ");
+    const top = Math.min(...rows.map((r) => r.first));
+    const bottom = Math.max(...rows.map((r) => r.last));
+    const blocks =
+      top === bottom
+        ? day.blocks[top].name
+        : `${day.blocks[top].name} to ${day.blocks[bottom].name}`;
+    return [groupsSaid, dayNames, blocks].join(" · ");
+  }
+
+  /** Puts a special event over a cell, or the cells it covers (rangeFor), as one Undo step. */
+  placeEvent(eventId, cell) {
+    const found = this.events.find((e) => e.id === eventId);
+    if (!found || !cell || !cell.slot) {
+      return;
+    }
+    const weekDays = this.schedule.days;
+    const rows = rowsCovered(weekDays, this.rangeFor(cell)).sort(
+      (a, b) => a.day - b.day || a.group - b.group
+    );
+    const result = eventRuns(weekDays, rows, `S:${eventId}`, {
+      isAway: (slot) => this.isAwaySlot(slot),
+      isLocked: (slot) => this.isLockedSlot(slot)
+    });
+    if (result.refused) {
+      const at = result.at;
+      if (result.refused === "locked") {
+        this.refuseLocked(at);
+      } else if (result.refused === "away") {
+        this.refuse(
+          `${weekDays[at.day].groups[at.group].name} isn't at camp then.`
+        );
+      } else {
+        this.refuse(this.lockedReason(at));
+      }
+      return;
+    }
+    if (!result.runs.length) {
+      this.announce("Put back.");
+      return;
+    }
+    if (
+      this.commit(
+        result.runs,
+        `Placed ${found.name} · ${this.rangeName(rows)}`,
+        cell.key
+      )
+    ) {
+      // The cell keeps focus, or the cell it is now drawn as one with (its own may be gone).
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (grid) {
+        grid.focusCell(cell.key);
+      }
+    }
+  }
+
+  /**
+   * Clears a cell; an event drawn as one across bunks is cleared from all of them, as one Undo
+   * step (it was placed as one).
+   */
+  clearRange(cell) {
+    const merged = mergedWith(
+      ((this.editGrid && this.editGrid.cells) || []).filter((c) => c.slot),
+      cell
+    );
+    if (merged.length < 2) {
+      this.change(cell.slot, cell.key, OPEN, 1);
+      return;
+    }
+    const weekDays = this.schedule.days;
+    const runs = [];
+    merged.forEach((c) => {
+      const run = editRun(
+        weekDays[c.slot.day],
+        c.slot.group,
+        c.slot.block,
+        OPEN,
+        1,
+        this.awayIn(c.slot)
+      );
+      if (run) {
+        runs.push({ day: c.slot.day, group: c.slot.group, ...run });
+      }
+    });
+    if (!runs.length || this.runsLocked(runs)) {
+      return;
+    }
+    const rows = rowsCovered(weekDays, merged);
+    this.commit(
+      runs,
+      `Cleared ${cell.text} · ${this.rangeName(rows)}`,
+      cell.key
+    );
+  }
+
+  /**
+   * "Set it up" on the cell with focus: offered while it holds a special event or day noted from
+   * a file ("not set up yet"), when the host can make it.
+   */
+  get setUpOffer() {
+    // A day a special day replaces shows its own schedule: the week's hidden cells under it,
+    // noted ones too, have nothing to offer (once set up, the day is replaced at once).
+    if (
+      !this.setUpWith ||
+      !this.focusKey ||
+      this.isActivity ||
+      this.replacedShown
+    ) {
+      return null;
+    }
+    const cell = this.cellByKey(this.focusKey);
+    if (!cell || !cell.slot || !cell.notSetUp) {
+      return null;
+    }
+    const day = this.dayOf(cell.slot);
+    const item = this.savedItem(
+      placement(day, cell.slot.group, cell.slot.block).slot,
+      day
+    );
+    if (!item || (item.kind !== "S" && item.kind !== "D")) {
+      return null;
+    }
+    return {
+      kind: item.kind,
+      name: item.name,
+      text: `${item.name} isn't set up yet`,
+      label: `Set up ${item.name} as ${item.kind === "S" ? "an event" : `a ${this.t.sIn("SpecialDay")}`}`
+    };
+  }
+
+  /** A press on "Set it up" keeps focus on the cell, so the offer stays while it works. */
+  handleKeepFocus(event) {
+    event.preventDefault();
+  }
+
+  async handleSetUp() {
+    const offer = this.setUpOffer;
+    if (!offer || this.settingUp) {
+      return;
+    }
+    const key = this.focusKey;
+    this.settingUp = true;
+    try {
+      const said = await this.setUpWith({ kind: offer.kind, name: offer.name });
+      this.sayOnce(said || `${offer.name} is set up.`);
+      // The button goes with the offer: keyboard focus goes back where the director was.
+      this.focusAfterSetUp = { key };
+    } catch (e) {
+      this.reportError(
+        failed(`${offer.name} wasn't set up. Nothing was changed.`, e)
+      );
+    } finally {
+      this.settingUp = false;
+    }
   }
 
   /** Whether any time block of the placement a slot is part of is locked. */
@@ -840,6 +1279,16 @@ export default class ShoreshWeekEditor extends LightningElement {
           this.setupDotFor(cell.slot)
         )
       };
+      if (cell.event) {
+        // An event's place, under its name (mockup placed.html: "Carnival / Main field").
+        const event = this.eventFor(cell.eventKey);
+        result.where = event ? event.location : null;
+        if (event) {
+          result.title = [cell.title, event.location]
+            .filter(Boolean)
+            .join(", ");
+        }
+      }
       if (this.isLockedSlot(cell.slot, locks)) {
         result.locked = true;
         result.movable = false;
@@ -942,17 +1391,19 @@ export default class ShoreshWeekEditor extends LightningElement {
     return location ? location.Name : null;
   }
   get activityCards() {
-    return activityCards(this.schedule, this.catalogue, this.t).map((card) => ({
-      ...card,
-      nameClass: card.gone ? "card-name card-name_gone" : "card-name",
-      location: this.locationName(card.key)
-    }));
+    return activityCards(this.activitySchedule, this.catalogue, this.t).map(
+      (card) => ({
+        ...card,
+        nameClass: card.gone ? "card-name card-name_gone" : "card-name",
+        location: this.locationName(card.key)
+      })
+    );
   }
   get selectedActivity() {
     return this.activityCards.find((card) => card.key === this.activityId);
   }
   get activityGrid() {
-    return activityGrid(this.schedule, this.activityId);
+    return activityGrid(this.activitySchedule, this.activityId);
   }
   get allActivitiesLabel() {
     return `← All ${this.t.p("Activity")}`;
@@ -1023,10 +1474,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** The day's saved item a slot's identity is, if the day has it. */
   savedItem(slot, day) {
     const item = owner(slot);
-    return day.items.find(
-      (i) =>
-        `${i.kind}:${["A", "F", "R"].includes(i.kind) ? i.id : i.name}` === item
-    );
+    return day.items.find((i) => identity(i) === item);
   }
 
   /** What a slot's identity is called: the day's saved name, else the activity's. */
@@ -1039,7 +1487,16 @@ export default class ShoreshWeekEditor extends LightningElement {
       return saved.name;
     }
     const activity = this.activityFor(owner(slot));
-    return activity ? activity.name : `${this.t.s("Activity")} (removed)`;
+    if (activity) {
+      return activity.name;
+    }
+    const event = this.eventFor(owner(slot));
+    if (event) {
+      return event.name;
+    }
+    return owner(slot).startsWith("S:")
+      ? `${this.t.s("SpecialEvent")} (removed)`
+      : `${this.t.s("Activity")} (removed)`;
   }
 
   activityFor(item) {
@@ -1098,7 +1555,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.refuseLocked(cell.slot);
       return;
     }
-    this.change(cell.slot, cell.key, OPEN, 1);
+    this.clearRange(cell);
   }
 
   /** A locked cell was asked to change: the host is asked to unlock it, and focus stays on it. */
@@ -1211,9 +1668,22 @@ export default class ShoreshWeekEditor extends LightningElement {
         tag: reasonFor(RULE.ELIGIBILITY, { groupName: grp.name })
       })
     );
+    // The season's special events, after the activities (desktop: the typeahead lists them).
+    this.events
+      .filter((e) => !typed || loose(e.name).includes(typed))
+      .forEach((e) =>
+        options.push({
+          key: `event-${e.id}`,
+          kind: "event",
+          label: e.name,
+          event: e,
+          flag: true
+        })
+      );
     const name = text.trim().replace(/\s+/g, " ");
     if (
       name &&
+      !this.events.some((e) => loose(e.name) === typed) &&
       !((this.draft && this.draft.activities) || []).some(
         (a) => loose(a.name) === typed
       )
@@ -1330,7 +1800,11 @@ export default class ShoreshWeekEditor extends LightningElement {
       return;
     }
     if (option.kind === "open") {
-      this.change(cell.slot, cell.key, OPEN, 1);
+      this.clearRange(cell);
+      return;
+    }
+    if (option.kind === "event") {
+      this.placeEvent(option.event.id, cell);
       return;
     }
     let activity = option.activity;
@@ -1655,6 +2129,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   itemFor(item) {
+    if (item.startsWith("S:")) {
+      const event = this.eventFor(item);
+      return { kind: "S", id: item.slice(2), name: event ? event.name : "" };
+    }
     const activity = this.activityFor(item);
     return {
       kind: "A",
@@ -2297,7 +2775,13 @@ export default class ShoreshWeekEditor extends LightningElement {
    * goes with the change: after a question, the tool is worked out again around anyone else's.
    */
   @api
-  runTool(tool, { keepFocus = false } = {}) {
+  runTool(asked, { keepFocus = false } = {}) {
+    // A day a special day replaces is left as it is: its cells are out of sight (ADR 0014).
+    const { tool, replacedNote } = this.withoutReplaced(asked);
+    if (!tool) {
+      this.say(replacedNote || this.toolNothing(asked, null));
+      return;
+    }
     const seen = this.schedule.days;
     const isAway = (week, d, g, b) => this.isAwayOn(week, d, g, b);
     // A paste leaves locked cells (Generated) as they are, and lists them, as a tool does a cell
@@ -2310,7 +2794,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     const said =
       [
         this.toolWords(tool, result),
-        locked ? this.lockedText(tool, seen, result.lockedCells) : null
+        locked ? this.lockedText(tool, seen, result.lockedCells) : null,
+        replacedNote
       ]
         .filter(Boolean)
         .join(" ") || null;
@@ -2336,6 +2821,48 @@ export default class ShoreshWeekEditor extends LightningElement {
     // Its Undo is the most useful next stop, and the menu or button that ran it may be held
     // while it saves (which drops focus). A shortcut on the grid keeps focus where it is.
     this.focusToolUndoAfterRender = !keepFocus;
+  }
+
+  /**
+   * A tool without the days a special day replaces: { tool, replacedNote }, the note naming
+   * them ("Friday is Visiting Day: left as it is."); no tool when nothing is left to do.
+   */
+  withoutReplaced(tool) {
+    const replaced = this.replaced;
+    const hit = new Set();
+    const keep = (date) => {
+      if (replaced.has(date)) {
+        hit.add(date);
+        return false;
+      }
+      return true;
+    };
+    if (tool.kind === "copy" && replaced.has(tool.from)) {
+      const special = replaced.get(tool.from);
+      return {
+        tool: null,
+        replacedNote: `${dayLabel(tool.from).label} is ${special.name}: open it to change that day.`
+      };
+    }
+    const next = { ...tool, dates: (tool.dates || []).filter(keep) };
+    if (tool.kind === "paste") {
+      next.items = (tool.items || []).filter((item) => keep(item.date));
+      next.opens = (tool.opens || []).filter((key) =>
+        keep(String(key).split("|")[0])
+      );
+    }
+    const note = hit.size
+      ? [...hit]
+          .sort()
+          .map(
+            (date) => `${dayLabel(date).label} is ${replaced.get(date).name}`
+          )
+          .join(", ") + ": left as it is."
+      : null;
+    const empty =
+      !next.dates.length ||
+      (tool.kind === "paste" && !next.items.length && !next.opens.length);
+    return { tool: empty ? null : next, replacedNote: note };
   }
 
   showToolNotice(label, said, stepId) {
@@ -2763,7 +3290,12 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** The drawer under the grid, in Daily and Group View with a grid to place on. */
   get showPalette() {
-    return !this.isActivity && !!this.editGrid && !this.planName;
+    return (
+      !this.isActivity &&
+      !!this.editGrid &&
+      !this.planName &&
+      !this.replacedShown
+    );
   }
 
   /**
@@ -3117,6 +3649,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** What was dragged or picked up, put down on a cell. */
   putDown(what, cell, at = 0) {
     if (!what || !cell || !cell.slot) {
+      return;
+    }
+    if (what.kind === "event") {
+      this.placeEvent(what.id, cell);
       return;
     }
     if (what.kind === "activity") {
@@ -3512,6 +4048,17 @@ export default class ShoreshWeekEditor extends LightningElement {
       const grid = this.template.querySelector('[data-id="edit-grid"]');
       if (grid) {
         grid.focusCell(cellKey);
+      }
+    }
+    if (this.focusAfterSetUp) {
+      const { key } = this.focusAfterSetUp;
+      this.focusAfterSetUp = null;
+      const open = this.template.querySelector('[data-id="open-special"]');
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (open) {
+        open.focus();
+      } else if (grid) {
+        grid.focusCell(key);
       }
     }
     if (this.focusCellWhenDrawn) {

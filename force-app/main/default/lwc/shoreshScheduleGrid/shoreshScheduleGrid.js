@@ -65,6 +65,13 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  * marks with words for screen readers, and a quiet line under the grid names the marks on it:
  * not set up yet (a dashed edge), removed (the name struck through), not at camp (hatched).
  *
+ * Cells with the same `mergeKey` in the same row, in columns side by side, are drawn as one
+ * cell across those columns (ADR 0014 slice 4: a special event over several bunks, decision
+ * 47.3; a special day's own schedule doing one thing in every bunk). The first one's key stands
+ * for them all. A special event's cell (`event`) has its quiet flag before the name and its
+ * place (`where`) under it; with the padlock bottom-right and the look mark top-right, all three
+ * show at once (decision 51).
+ *
  * Same-activity outlines (wiki decision 38): pointing at a cell, or keyboard focus on it, gives
  * every other cell of that activity (`activityKey`) a pale highlight outline. `held` ({
  * activityKey, fits: [cell keys] }), from the page, outlines every cell of a held activity and
@@ -191,6 +198,62 @@ export default class ShoreshScheduleGrid extends LightningElement {
    * rest go; the slot is read-only, so nothing is lost by sending the first one's key).
    */
   get drawnCells() {
+    return this.merged(this.slimDrawn());
+  }
+
+  /**
+   * Cells with the same mergeKey in one row, in columns side by side, as one cell spanning them:
+   * the first one's, with colSpan and mergedKeys (every key it stands for).
+   */
+  merged(cells) {
+    const runs = new Map();
+    cells.forEach((cell) => {
+      if (!cell.mergeKey || cell.colSpan) {
+        return;
+      }
+      // Only cells that look the same are one: the same lock and the same look mark.
+      const key = `${cell.row}|${cell.mergeKey}|${!!cell.locked}|${cell.dot || ""}`;
+      if (!runs.has(key)) {
+        runs.set(key, []);
+      }
+      runs.get(key).push(cell);
+    });
+    const covered = new Map();
+    runs.forEach((list) => {
+      list.sort((a, b) => a.column - b.column);
+      let start = 0;
+      for (let i = 1; i <= list.length; i++) {
+        if (i === list.length || list[i].column !== list[i - 1].column + 1) {
+          if (i - start > 1) {
+            const first = list[start];
+            covered.set(first.key, list.slice(start, i));
+            list.slice(start + 1, i).forEach((c) => covered.set(c.key, null));
+          }
+          start = i;
+        }
+      }
+    });
+    if (!covered.size) {
+      return cells;
+    }
+    return cells
+      .filter((cell) => covered.get(cell.key) !== null)
+      .map((cell) => {
+        const group = covered.get(cell.key);
+        if (!group) {
+          return cell;
+        }
+        return {
+          ...cell,
+          colSpan: group.length,
+          mergedKeys: group.map((c) => c.key),
+          selected: group.some((c) => c.selected) || cell.selected,
+          style: `grid-row: ${cell.row + 1} / span ${cell.length || 1}; grid-column: ${cell.column + 2} / span ${group.length};`
+        };
+      });
+  }
+
+  slimDrawn() {
     const slim = this.slimRows;
     const columns = ((this.grid && this.grid.columns) || []).length;
     return this.allCells
@@ -216,11 +279,18 @@ export default class ShoreshScheduleGrid extends LightningElement {
       });
   }
 
-  /** The cell keyboard focus sits on: the last one used, else the first. */
+  /**
+   * The cell keyboard focus sits on: the last one used (or the cell drawn as one with it, when
+   * it is no longer drawn on its own), else the first.
+   */
   get currentKey() {
     const cells = this.drawnCells;
-    if (cells.some((cell) => cell.key === this.activeKey)) {
-      return this.activeKey;
+    const key = this.activeKey;
+    const cell = cells.find(
+      (c) => c.key === key || (c.mergedKeys && c.mergedKeys.includes(key))
+    );
+    if (cell) {
+      return cell.key;
     }
     return cells.length ? cells[0].key : null;
   }
@@ -308,6 +378,8 @@ export default class ShoreshScheduleGrid extends LightningElement {
             // Open, not at camp, locked empty: no word on the cell, only for screen readers.
             quiet: !!cell.open || !!cell.away || cell.text === "",
             nameClass: cell.gone ? "cell-name cell-name_gone" : "cell-name",
+            // A special event: its quiet flag before the name, its place under it.
+            flag: !!cell.event,
             colIndex: cell.column + 2,
             colSpan: cell.colSpan || null,
             rowSpan: cell.length || 1

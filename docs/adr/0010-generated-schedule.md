@@ -1320,6 +1320,30 @@ already locked is **left out** of a paste and listed (_Swim · Bunk 1 · Tuesday
 Lock beats what is pasted. Checked by `copyPaste.test.js` (Generated: the pasted cell locks; a
 locked cell is left out and the rest pasted).
 
+## Choices (special days and events, 2026-10-22)
+
+ADR 0014 choices 19 to 25 (Special Events slice 4; desktop ADRs
+`2026-08-22-events-overlay-placement` §6 and `2026-10-09-special-day-binds-to-a-week-day` D4):
+
+1. **A placed special event is kept like a lock.** A full build keeps it where it is (as it keeps
+   anything not an activity, §3), never fills over it and never counts it: it is no cell to fill
+   (`checks.js filledCount`), so Filled, the counter and Still to place leave it out. The server's
+   re-check refuses a build that changes it ("… stays where it is"). Hand edits place and clear
+   it as on Manual Build, locked like any hand edit (decision 2).
+2. **A day a special day replaces is not built.** The screen passes the week's replaced dates to
+   the engine (`replacedDates`, from `GeneratedInputs.specials`): `generateWeek` builds only the
+   other days and sends the replaced ones back exactly as they were (the week's own cells for
+   that day are kept, out of sight); `checkGeneratedWeek` checks and counts only the other days
+   (`checkedDays`) while showing all of them. Weekly goals are judged on the days that run.
+   Start over leaves that day's cells too; Lock offers nothing there. With every day replaced,
+   Generate says "Every day this week is a special day, so there is nothing to generate."
+3. The week editor draws the replaced day, the events and "Set it up" as on Manual Build (ADR
+   0008 part 10); "Set it up" here goes through the same `SpecialPlacingController.setUpItem`, which locks the
+   Generated draft as its own edits do.
+
+Checked by `c/shoreshEngine` `specials.test.js` and `WeekSpecialsTest`
+(`generatedScheduleIsSentThemToo`).
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).

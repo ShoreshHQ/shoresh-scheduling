@@ -260,3 +260,94 @@
   min-width: 24px;
   padding: 0 0.5rem;
 }
+
+/* A day a special day replaces: its name after the day on the pill, "Fri · Visiting Day"
+   (mockup design-research/special-r1 placed.html); quiet until the pill is the one shown. */
+.pill-special {
+  font-weight: 400;
+  color: var(--shoresh-text-2);
+}
+
+.pill_on .pill-special {
+  font-weight: 500;
+  color: var(--shoresh-text-1);
+}
+
+/* The drawer's place on a replaced day: the special day's name and kind in the time column, its
+   notes across, and the way to open it at the end (mockup placed-day.png). */
+.special-line {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-cell-gap);
+  min-height: var(--shoresh-tile-h);
+  padding: var(--shoresh-space-pad);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-text-1);
+}
+
+.special-name {
+  flex: none;
+  width: var(--shoresh-head-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  padding-left: var(--shoresh-space-control-x);
+}
+
+.special-title {
+  font-weight: 500;
+}
+
+.special-kind {
+  color: var(--shoresh-text-2);
+}
+
+.special-notes {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  white-space: pre-line;
+}
+
+.special-actions {
+  flex: none;
+  display: flex;
+  gap: var(--shoresh-space-in-group);
+}
+
+.special-open {
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+}
+
+.special-arrow {
+  width: 14px;
+  height: 14px;
+  margin-left: var(--shoresh-s1);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* An event in the typing box: its quiet flag before the name, as on its cells. */
+.option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flag {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--shoresh-text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

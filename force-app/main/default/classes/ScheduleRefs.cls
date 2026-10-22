@@ -1,6 +1,6 @@
 /**
  * Which of the records a schedule's days point at (time blocks, groups, activities, fixed and
- * recurring activities) still exist and can be seen, so the page can mark the rest as gone.
+ * recurring activities, special events and days) still exist and can be seen, so the page can mark the rest as gone.
  */
 public with sharing class ScheduleRefs {
   public static Set<String> stillThere(List<ScheduleDays.DayGrid> days) {
@@ -27,7 +27,7 @@ public with sharing class ScheduleRefs {
     if (ids.isEmpty()) {
       return found;
     }
-    lookUp(ids, found);
+    found.addAll(ScheduleRecordsThere.of(ids));
     return found;
   }
 
@@ -40,49 +40,6 @@ public with sharing class ScheduleRefs {
       }
     }
     return rest;
-  }
-
-  private static void lookUp(Set<Id> ids, Set<String> found) {
-    for (TimeBlock__c row : [
-      SELECT Id
-      FROM TimeBlock__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
-    }
-    for (Group__c row : [
-      SELECT Id
-      FROM Group__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
-    }
-    for (Activity__c row : [
-      SELECT Id
-      FROM Activity__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
-    }
-    for (FixedActivity__c row : [
-      SELECT Id
-      FROM FixedActivity__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
-    }
-    for (RecurringActivity__c row : [
-      SELECT Id
-      FROM RecurringActivity__c
-      WHERE Id IN :ids
-      WITH USER_MODE
-    ]) {
-      found.add(row.Id);
-    }
   }
 
   /** Whether the text is the Id of a record found still there (15 or 18 characters). */

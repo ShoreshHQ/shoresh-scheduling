@@ -1,8 +1,34 @@
 import { LightningElement, api } from "lwc";
+import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
+import { failed } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
 
 const DAY = FIELD.SpecialDay;
 const EVENT = FIELD.SpecialEvent;
+const WEEK = FIELD.Week;
+// The weekdays a special day can be put on (SpecialDate__c.Day__c).
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+/** The weekdays a week has, from its dates ("2026-06-29" to "2026-07-03"), Monday to Friday. */
+export function weekdaysOf(week) {
+  const start = week && week[WEEK.StartDate];
+  const end = week && week[WEEK.EndDate];
+  if (!start || !end) {
+    return [];
+  }
+  const has = new Set();
+  const [y, m, d] = start.split("-").map(Number);
+  const last = end;
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(Date.UTC(y, m - 1, d + i));
+    const text = date.toISOString().slice(0, 10);
+    if (text > last) {
+      break;
+    }
+    has.add(WEEKDAYS[(date.getUTCDay() + 6) % 7]);
+  }
+  return WEEKDAYS.filter((day) => has.has(day));
+}
 // Short day names, as the mock-up writes them ("Wk 5 Thu").
 const SHORT_DAYS = {
   Monday: "Mon",
@@ -123,8 +149,14 @@ function clock(value) {
  * day, its own time blocks with what is in each. Its fields are edited in the row; nothing here
  * saves. "Open schedule" opens the schedule inside it (c/shoreshSpecialSchedule).
  *
+ * A special day is put on a day here (ADR 0014 slice 4; desktop "+ Place on a day"): "Put on a
+ * day" picks the week and the weekday; one that already has another special day asks first
+ * ("Use this one instead? … stays saved"), as the desktop does. Its days then show it on Manual
+ * Build and Generated Schedule. (Taking one off a day comes later, slice 6.)
+ *
  * Fires: close { itemId } (Close pressed: the page puts the cursor back on the row's chevron),
- * openschedule { itemId } (Open schedule pressed).
+ * openschedule { itemId } (Open schedule pressed), placed { itemId } (it was put on a day: the
+ * page reads the season again).
  */
 export default class ShoreshSpecialDetails extends LightningElement {
   @api terms;
@@ -133,6 +165,10 @@ export default class ShoreshSpecialDetails extends LightningElement {
   itemId = null;
   _setup;
   focusHeadingNext = false;
+  // Putting the special day on a day: { weekId, day, asks, replaces, working }, or null.
+  placing = null;
+  // What the last put said (role=status), until the details close or another item opens.
+  placedSaid = null;
 
   /** The season setup from SeasonSetupController (special, weeks, locations). */
   @api
@@ -162,6 +198,10 @@ export default class ShoreshSpecialDetails extends LightningElement {
     );
     if (!known) {
       return false;
+    }
+    if (this.itemId !== itemId) {
+      this.placing = null;
+      this.placedSaid = null;
     }
     this.itemId = itemId;
     this.focusHeadingNext = true;
@@ -200,6 +240,8 @@ export default class ShoreshSpecialDetails extends LightningElement {
   handleClose() {
     const itemId = this.itemId;
     this.itemId = null;
+    this.placing = null;
+    this.placedSaid = null;
     this.dispatchEvent(new CustomEvent("close", { detail: { itemId } }));
   }
 
@@ -300,6 +342,156 @@ export default class ShoreshSpecialDetails extends LightningElement {
 
   get hasPeriods() {
     return this.periods.length > 0 && !this.problem;
+  }
+
+  // ---------- put on a day (special days) ----------
+
+  get weeks() {
+    return (this._setup && this._setup.weeks) || [];
+  }
+
+  /** The camp's word for a week, over its picker. */
+  get weekLabel() {
+    return this.terms ? this.terms.s("Week") : "Week";
+  }
+
+  get canPlace() {
+    return this.isSpecialDay && this.weeks.length > 0;
+  }
+
+  get weekOptions() {
+    const chosen = this.placing && this.placing.weekId;
+    return this.weeks.map((week) => ({
+      value: week.Id,
+      label: week.Name,
+      selected: week.Id === chosen
+    }));
+  }
+
+  get dayOptions() {
+    const week = this.weeks.find(
+      (w) => this.placing && w.Id === this.placing.weekId
+    );
+    const chosen = this.placing && this.placing.day;
+    return weekdaysOf(week).map((day) => ({
+      value: day,
+      label: day,
+      selected: day === chosen
+    }));
+  }
+
+  get cannotPut() {
+    return !this.placing || !this.placing.day || this.placing.working;
+  }
+
+  get useLabel() {
+    return `Use ${this.name}`;
+  }
+
+  handleStartPlacing() {
+    const week = this.weeks[0];
+    const days = weekdaysOf(week);
+    this.placedSaid = null;
+    this.placing = {
+      weekId: week ? week.Id : null,
+      day: days.length ? days[0] : null,
+      asks: null,
+      working: false
+    };
+    Promise.resolve().then(() => {
+      const select = this.template.querySelector('[data-id="place-week"]');
+      if (select) {
+        select.focus();
+      }
+    });
+  }
+
+  handlePlaceWeek(event) {
+    const days = weekdaysOf(
+      this.weeks.find((w) => w.Id === event.target.value)
+    );
+    const day = days.includes(this.placing.day) ? this.placing.day : days[0];
+    this.placing = {
+      ...this.placing,
+      weekId: event.target.value,
+      day: day || null,
+      asks: null
+    };
+  }
+
+  handlePlaceDay(event) {
+    this.placing = { ...this.placing, day: event.target.value, asks: null };
+  }
+
+  handleCancelPlacing() {
+    this.placing = null;
+    Promise.resolve().then(() => {
+      const button = this.template.querySelector('[data-id="put-on-day"]');
+      if (button) {
+        button.focus();
+      }
+    });
+  }
+
+  handlePut() {
+    this.put(false);
+  }
+
+  handleUse() {
+    this.put(true);
+  }
+
+  async put(replace) {
+    if (this.cannotPut) {
+      return;
+    }
+    const itemId = this.itemId;
+    const asked = this.placing;
+    this.placing = { ...asked, working: true };
+    try {
+      const result = await putOnDay({
+        request: {
+          specialDayId: itemId,
+          weekId: asked.weekId,
+          day: asked.day,
+          // The answer to "Use this one instead?" (SpecialDayPlacing.REPLACE), or none yet.
+          answer: replace ? "replace" : null
+        }
+      });
+      if (this.itemId !== itemId) {
+        return;
+      }
+      if (result.asks) {
+        this.placing = {
+          ...asked,
+          asks: result.asks,
+          replaces: result.replaces,
+          working: false
+        };
+        Promise.resolve().then(() => {
+          const use = this.template.querySelector('[data-id="use-instead"]');
+          if (use) {
+            use.focus();
+          }
+        });
+        return;
+      }
+      this.placing = null;
+      this.placedSaid = result.said;
+      this.dispatchEvent(new CustomEvent("placed", { detail: { itemId } }));
+      Promise.resolve().then(() => {
+        const button = this.template.querySelector('[data-id="put-on-day"]');
+        if (button) {
+          button.focus();
+        }
+      });
+    } catch (e) {
+      this.placing = { ...asked, working: false };
+      this.placedSaid = failed(
+        `${this.name} wasn't put on a day. Nothing was changed.`,
+        e
+      );
+    }
   }
 
   /** An event's schedule in brief, or none yet. */

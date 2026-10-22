@@ -89,7 +89,8 @@ public with sharing class SlotSaves {
     List<SlotEdits.Edit> edits
   ) {
     setup = setupOf(schedule.Program__r);
-    rules = new SlotRules(setup, SlotRules.activityIdsIn(edits));
+    rules = new SlotRules(setup, SlotRules.activityIdsIn(edits))
+      .withEvents(edits);
     return saveAll(schedule.Id, edits);
   }
 

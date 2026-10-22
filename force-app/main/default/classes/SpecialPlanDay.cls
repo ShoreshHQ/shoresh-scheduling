@@ -42,8 +42,7 @@ public with sharing class SpecialPlanDay {
       ScheduleViews.Ref ref = ref(
         item.id,
         item.name,
-        ScheduleGridRules.SET_UP_KINDS.contains(item.kind) &&
-        !ScheduleRefs.isThere(item.id, there)
+        ScheduleGridRules.isSetUp(item) && !ScheduleRefs.isThere(item.id, there)
       );
       ref.kind = item.kind;
       day.items.add(ref);

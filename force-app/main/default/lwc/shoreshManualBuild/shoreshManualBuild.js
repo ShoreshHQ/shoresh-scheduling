@@ -1,4 +1,5 @@
 import { LightningElement, api } from "lwc";
+import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
@@ -484,6 +485,34 @@ export default class ShoreshManualBuild extends LightningElement {
    * Coming back to the window shows other people's changes, unless an edit, a Restore or a start
    * is under way. Returns whether the week is read again.
    */
+  /**
+   * "Set it up" on a cell noted from a file as a special event or day (ADR 0014 slice 4): made
+   * on the server from what the file had, then the week and the season are read again (the
+   * Special events screen lists it). Resolves to what to say.
+   */
+  setUpWith = async ({ kind, name }) => {
+    const scheduleId = this.schedule && this.schedule.schedule.id;
+    if (!scheduleId) {
+      return null;
+    }
+    const done = await setUpItem({ scheduleId, kind, name });
+    this.dispatchEvent(new CustomEvent("seasonchanged"));
+    this.load(true);
+    return done && done.said;
+  };
+
+  /** "Open <special day>" from a day it replaces: its schedule, on the Special events screen. */
+  handleOpenSpecial(event) {
+    this.dispatchEvent(
+      new CustomEvent("navigate", {
+        detail: {
+          screen: "specialEvents",
+          specialItemId: event.detail.itemId
+        }
+      })
+    );
+  }
+
   refresh() {
     if (
       this.draft &&

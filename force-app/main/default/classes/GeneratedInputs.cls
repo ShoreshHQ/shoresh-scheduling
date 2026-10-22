@@ -58,6 +58,10 @@ public with sharing class GeneratedInputs {
     // null when the week has none or has not been generated yet (ADR 0010 "Publish").
     @AuraEnabled
     public SchedulePublish.PublishState published;
+    // The week's days a special day replaces: the engine builds and counts nothing there
+    // (WeekSpecials, ADR 0014 slice 4).
+    @AuraEnabled
+    public WeekSpecials.Specials specials = new WeekSpecials.Specials();
   }
 
   public static Inputs read(Id programId, Id weekId) {
@@ -94,6 +98,7 @@ public with sharing class GeneratedInputs {
       );
     }
     inputs.days = ScheduleViews.dayViews(days, stillThere(setup, inputs));
+    inputs.specials = WeekSpecials.ofWeek(setup.week, setup.groups);
     return inputs;
   }
 

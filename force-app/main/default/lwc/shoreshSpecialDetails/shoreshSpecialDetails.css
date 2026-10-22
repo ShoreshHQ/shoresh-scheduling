@@ -205,3 +205,74 @@
   outline: none;
   box-shadow: var(--shoresh-focus-ring);
 }
+
+/* Put on a day (ADR 0014 slice 4): the week and the weekday side by side, then the buttons. */
+.place {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.place-pick {
+  display: flex;
+  gap: var(--shoresh-s2);
+}
+
+.place-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+}
+
+.place-label {
+  color: var(--shoresh-text-2);
+}
+
+.place-select {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-s2);
+  border: 1px solid var(--shoresh-edge);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-shelf);
+  color: var(--shoresh-text-1);
+  font: inherit;
+}
+
+.place-select:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.place-actions {
+  display: flex;
+  gap: var(--shoresh-s2);
+}
+
+.place-primary {
+  border-color: var(--shoresh-color-highlight);
+  background: var(--shoresh-color-highlight);
+  color: #fff;
+  font-weight: 500;
+}
+
+.place-primary:hover {
+  background: var(--shoresh-color-highlight-press);
+}
+
+.place-ask {
+  margin: 0;
+}
+
+.place-said {
+  margin: 0;
+  color: var(--shoresh-text-2);
+}
+
+.place-said:empty {
+  display: none;
+}

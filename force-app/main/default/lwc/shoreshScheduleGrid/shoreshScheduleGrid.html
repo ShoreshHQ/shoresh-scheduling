@@ -128,6 +128,22 @@
                         >{cell.text}</span
                       >
                     </template>
+                    <template lwc:elseif={cell.flag}>
+                      <span class="event-name"
+                        ><svg
+                          class="flag"
+                          viewBox="0 0 12 12"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path d="M3 10.5V1.75"></path>
+                          <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg
+                        ><span class={cell.nameClass}>{cell.text}</span></span
+                      >
+                      <template lwc:if={cell.where}>
+                        <span class="event-where">{cell.where}</span>
+                      </template>
+                    </template>
                     <template lwc:else>
                       <span class={cell.nameClass}>{cell.text}</span>
                     </template>

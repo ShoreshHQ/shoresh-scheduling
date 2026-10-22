@@ -1,11 +1,15 @@
 /**
- * What a Manual Build edit may do (SlotSaves): place the season's activities, never move or cover a
+ * What a Manual Build edit may do (SlotSaves): place the season's activities and special events
+ * (ADR 0014 slice 4), never move or cover a
  * fixed or recurring activity (they stay where setup puts them), and never place anything where a
  * group is not at camp. Reads what the edits need once, in user mode.
  */
 public with sharing class SlotRules {
   private CampLabels labels;
   private Map<Id, Activity__c> activities = new Map<Id, Activity__c>();
+  // The special events the edits place (SlotEvents); none unless withEvents read them.
+  private SlotEvents events = SlotEvents.none();
+  private Id seasonId;
   private Map<Id, Group__c> groups = new Map<Id, Group__c>();
   private Map<Id, TimeBlock__c> blocks = new Map<Id, TimeBlock__c>();
 
@@ -19,7 +23,7 @@ public with sharing class SlotRules {
 
   /** The rules on setup already read, with the activities the edits place. */
   public SlotRules(Setup setup, Set<Id> activityIds) {
-    Id seasonId = setup.seasonId;
+    seasonId = setup.seasonId;
     labels = setup.labels;
     activities = new Map<Id, Activity__c>(
       [
@@ -35,6 +39,12 @@ public with sharing class SlotRules {
     for (TimeBlock__c block : setup.blocks) {
       blocks.put(block.Id, block);
     }
+  }
+
+  /** The season's special events the edits place, read once (SlotEvents). */
+  public SlotRules withEvents(List<SlotEdits.Edit> edits) {
+    events = SlotEvents.read(seasonId, labels, edits);
+    return this;
   }
 
   /** The activities a Manual Build save's edits place; refuses an edit that can't be read. */
@@ -54,11 +64,9 @@ public with sharing class SlotRules {
   private static Set<Id> activityIdsIn(SlotEdits.Run run) {
     Set<Id> result = new Set<Id>();
     for (String slot : run.after == null ? new List<String>() : run.after) {
-      Id activityId = SlotIds.activityIn(slot);
-      if (activityId != null) {
-        result.add(activityId);
-      }
+      result.add(SlotIds.activityIn(slot));
     }
+    result.remove(null);
     return result;
   }
 
@@ -94,6 +102,9 @@ public with sharing class SlotRules {
       if (SlotIds.of(grid.items[i]).equals(slot)) {
         return String.valueOf(i + 1);
       }
+    }
+    if (SlotIds.eventIn(slot) != null) {
+      return events.startToken(grid, slot);
     }
     Activity__c activity = seasonActivity(slot);
     grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));

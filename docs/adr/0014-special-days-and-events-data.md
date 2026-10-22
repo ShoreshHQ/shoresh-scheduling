@@ -1,7 +1,7 @@
 # 0014: Special days and special events, the data
 
-Status: proposed (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22), Special Events
-and Special Days slices 1 to 3 of 6 (plan: wiki
+Status: proposed (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22; slice 4 added
+2026-10-22), Special Events and Special Days slices 1 to 4 of 6 (plan: wiki
 `projects/shoresh-sf-parity-gaps`, "Build plan"). Design source: wiki
 `projects/shoresh-scheduling-data-model` (`SpecialEvent__c`, `SpecialDay__c`, `PlanPart__c`,
 `SpecialDate__c`). Where the data model is looser, the desktop decides: desktop ADRs
@@ -13,7 +13,10 @@ decision 47 and the approved mock-up `design-research/special-r1/special-events.
 `2026-08-29-unify-special-events-screen`. Slice 3 (choices 14 to 18) adds the schedule inside each
 item: design source decision 47.5 and the approved mock-up `design-research/special-r1/special-day.html`;
 desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
-`2026-08-22-event-internal-subschedule` and `2026-08-22-event-schedule-import`._
+`2026-08-22-event-internal-subschedule` and `2026-08-22-event-schedule-import`. Slice 4 (choices 19
+to 25) puts them on the week's schedules: design source decisions 47.2 to 47.4 and 51 and the
+approved mock-ups `design-research/special-r1/placed.html`, `placed.png` and `placed-day.png`;
+desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-binds-to-a-week-day`._
 
 ## Choices
 
@@ -269,6 +272,123 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     and its save said, back with focus on Open schedule). A plan with no time blocks yet now reads
     back (`ScheduleGrid` takes a row with no cells when there are no time blocks).
 
+19. **A special event is placed on the grid as cells** (desktop `2026-08-22-events-overlay-placement`:
+    an opaque named cell on the campwide schedule, placed day by day). In the week's compact grid
+    (ADR 0005 §6) it is kind `S` with its record's Id; an `S` or `D` without an Id is still an
+    import's "not set up yet" (`ScheduleGridRules.isSetUp`, `SET_UP_LATER_KINDS`; the browser's
+    `identity` in `slotEdits.js` and `c/shoreshEngine` `grid.js` the same). It covers the bunks and
+    time blocks chosen: each bunk's cells hold it (a run per bunk, `S` then `^`), and in Daily
+    View bunks side by side holding it over the same blocks are drawn as **one named cell**
+    (`mergeKey`, `c-shoresh-schedule-grid`), with its **quiet flag before the name** (decision
+    47.3) and its place under it, as the mock-up. With the padlock bottom-right and the look mark
+    top-right, all three show at once (decision 51). Several days means placing it on each.
+    - **Placed** from the drawer's own **Events** section at the end (decision 47.2; the camp's
+      word when it has its own): a tile picked and put down on a cell, dragged onto one, or picked
+      while cells are chosen together, which puts it over them at once; or by **typing its name**
+      into a cell or the cells chosen together (the typing box lists the season's events after
+      the activities, each with its flag). Whatever was in those cells goes in full; a fixed or
+      recurring activity, a bunk not at camp or a locked cell refuses it, saying which. Keyboard
+      focus stays on the placed cell, or on the cell it is now drawn as one with when bunks side
+      by side merge (the focused cell's own may be gone).
+    - **Cleared** with Delete: one drawn across bunks goes from all of them, as one Undo step.
+      It is not dragged or stretched (it is placed again instead). Clear day and Clear week clear
+      it with the activities; Copy, Paste and Copy day to carry it (`tools.js isPlaceable`);
+      Start from another week leaves it out and says so ("… a special event is put on each day by
+      hand").
+    - **Saved** as Manual Build's edits are (`SlotSaves`, `SlotRules.withEvents`, `SlotEvents`): only the
+      season's events, read once per save (another season's or a deleted one is refused).
+    - **The checks and counts leave it out** (desktop: the generator skips it, never "Unfillable"):
+      no dots, not counted as filled or to fill (`checks.js filledCount`), so the counter and
+      "Still to place" don't see it. **The generator keeps it like a lock**: a full build never
+      clears, moves or fills over it (`GeneratedChecks`: something kept "stays where it is").
+
+20. **An event's days follow the grids** (`SpecialEventDays`, from `ScheduleDayTriggerHandler`
+    after a day is saved or deleted). An event is on a week's weekday (a `SpecialDate__c` row, choice 4)
+    while a **draft** of that week (Manual Build or Generated, any program) holds it that day, so
+    "Placed on" on the Special events screen and the delete refusal (choice 8) see the grid
+    however its cells were written (an edit, Paste, Restore, Set it up). Versions and published
+    copies are history and don't count. A save whose days hold no placed event, before or after,
+    costs nothing (a text test on the stored grid); one that does costs four queries and the
+    rows that changed. Only Monday to Friday a week still has. A grid can still hold an event
+    since deleted (a version saved before it was cleared and deleted, then restored) or one of
+    another season: it shows as removed on the grid, is on no day, and never stops the save, so
+    such a version can always be restored. **Deleting a draft or its program** (a program whose
+    schedules are all drafts can be deleted from Camp Setup) takes its days along with no trigger
+    of their own, so `DeletedDrafts` (from the schedule and program triggers) notes the weeks before
+    the delete (drafts of weeks that have an event on a day: one query) and make those weeks' event
+    days again after it; one restored from the Recycle Bin puts them back. Otherwise an event
+    would stay "on" a day no schedule shows, and could never be deleted.
+
+21. **A special day goes on a day from its details** (desktop "+ Place on a day"; Director Guide
+    §7): **Put on a day** in the details panel (decision 47.1) picks the week and the weekday (the
+    weekdays that week has) and **Put on** puts it there (`SpecialDayPlacing`,
+    `SpecialPlacingController`). A day that has another special day **asks first**, as the desktop
+    does (its D11.4: "Week 2 Tuesday already uses Color War. Use Visiting Day instead?"): "Tuesday
+    of "Week 1" already has the special day "Field Day". Use this one instead? "Field Day" stays
+    saved." with **Use <name>** and Cancel; the answer replaces it in one save, nothing changed
+    by asking. What was done is said (role status) and the season is read again, so Manual Build
+    and Generated Schedule show it. Taking one off a day is slice 6 (`SpecialDates.takeOff`
+    exists; the replaced day's line has room for "Take off <day>", as the mock-up).
+
+22. **A replaced day shows the special day on both schedules** (desktop D4 and D6; decision 47.4;
+    mock-up `placed-day.png`). Both screens are sent the week's specials (`WeekSpecials`: each
+    day a special day replaces, with its own schedule as that date's day and the program's groups
+    as its columns; one query for the week's special days, none on Generated Schedule, which reads
+    them with its week, `ProgramReads.weekWithSpecialDays`, then one for their plans and one
+    look-up per kind of record they point at). The season's events come with the season setup the
+    screens already have. In Daily View that day's pill reads "Fri · Visiting Day"; its grid is the special
+    day's own time blocks, read-only, every cell flat with a fine edge (it is changed in the
+    special day), the same thing over the same blocks in bunks side by side one cell; where the
+    drawer was, the special day's line: its name, the camp's word for it, its notes, and **Open
+    <name> →**, which opens its schedule on the Special events screen. **No counter** on that day.
+    In Group View its column is one named cell; Activity View counts nothing there.
+    - **The week's own cells for that day are kept**, out of sight (desktop D4.6: non-destructive):
+      taken off, the day is as it was. So the screens never change them meanwhile: that day shows no
+      cell to edit, and Clear week, Copy day to and Paste leave it as it is and say so ("Tuesday is
+      Visiting Day: left as it is."); Copy day to from it is refused. (The server doesn't refuse an edit there: that would cost a
+      query on every save, and an edit that reached a hidden cell only waits there, as the
+      desktop keeps such rows.)
+    - **Nothing is generated or counted there** (desktop D4.1 to D4.3): the engine takes the
+      replaced dates (`replacedDates`), builds and checks only the other days, and sends the
+      replaced ones back exactly as they were; weekly counts are judged on the days that run.
+      Start over leaves that day's cells too. With every day replaced, Generate says "Every day
+      this week is a special day, so there is nothing to generate."
+
+23. **"Set it up" on an imported "not set up yet" cell** (`SpecialSetUp` with `NotedItems` and
+    `SpecialNamed`, from `SpecialPlacingController.setUpItem`, on Manual Build and Generated
+    Schedule, each draft locked as its own edits lock it). With focus on a cell an import noted as a special event or special day,
+    a line offers **Set it up** ("Color War isn't set up yet · Set it up"); one click makes it
+    from what the file had, its name and where it was:
+    - an **event**: the season's event of that name (spaces and capitals aside), made when there
+      is none; every cell of the draft that named it now holds it, where it was (choice 20 then
+      puts it on those days);
+    - a **special day**: the season's special day of that name, made when there is none and
+      starting from the camp's regular day as one added on the Special events screen does
+      (choice 12), put on each weekday of the week where the file had it. A day that already has
+      another special day keeps it and is named ("Wednesday already has "Field Day", so it isn't
+      on that day."). The draft's cells for those days stay, out of sight (choice 22).
+      The screen says what was done and reads the week and the season again. Electives and trips
+      noted from a file are not set up here (they have no setup yet).
+
+24. **Words and looks.** "Events" is the drawer section's word (the default "Special event"
+    shortened, as on the Special events screen, choice 11). The flag is the mock-up's. A special
+    day's notes show as written. No new colours: the flat read-only cell uses the edge token.
+
+25. **Checked by** `WeekSpecialsTest` (a week sent its replaced day with the special
+    day's own schedule, in a bounded open; Generated sent it too; an event placed on the grid is on that day, can't be deleted while it is, and
+    is on no day once cleared; another season's event refused), `SpecialPlacingTest` (Put on a
+    day, the question before replacing and the answer, already on that day, a weekday the week
+    lacks; Set it up for an event and for a special day, and a day already taken),
+    `specialDays.test.js` and `specials.test.js` (the week editor: the pill, the read-only day,
+    its line and no counter, checks without it, Group View, the Events section, typing over
+    chosen cells, one cell across bunks, clearing it, refusals, Set it up, the tools leaving the
+    day), `c/shoreshEngine` `specials.test.js` (an event kept, left out of the counts; a replaced
+    day never built, sent back, left out of the check; every day replaced),
+    `shoreshScheduleViews` `events.test.js`, `shoreshScheduleGrid` `merged.test.js` (one cell,
+    flag, padlock and mark together), `shoreshSpecialDetails` `putOnDay.test.js`, and in the
+    test org by `scripts/a11y-browser-check.mjs` (Put on a day by keyboard, what was done said,
+    axe with it open).
+
 ## Names
 
 Every object and field is reached through typed Apex references and `c/shoreshSchema`
@@ -277,7 +397,6 @@ Every object and field is reached through typed Apex references and `c/shoreshSc
 
 ## Not in this slice
 
-Putting a special day or event on a day and showing it on the schedules (slices 4 and 5),
-replacing a placed special day with a confirm, Needs attention for a special day whose weekday or
-groups no longer match (a group added to the camp after a special day was made is not one of its
+Showing special days and events on Publish and the Schedules page (slice 5), taking a special
+day off a day, and Needs attention for a special day whose weekday or groups no longer match (a group added to the camp after a special day was made is not one of its
 columns until then), and the week delete warning (slice 6).

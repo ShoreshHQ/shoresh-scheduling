@@ -7,13 +7,20 @@
  */
 .drawer {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: var(--shoresh-space-cell-gap);
   padding: 0 3px;
   font-family: var(--shoresh-font-sans);
   font-size: var(--shoresh-font-size);
   line-height: 1.25;
   color: var(--shoresh-text-1);
+}
+
+/* The activities, then the events: each a row of the time column and the grid's columns. */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--shoresh-space-cell-gap);
 }
 
 /* "7 under", set like a rail total, and the Filter box: in the time column. */
@@ -149,4 +156,27 @@
   margin: 0;
   align-self: center;
   color: var(--shoresh-text-2);
+}
+
+/* "Events": the section's word in the time column, quiet as a heading there. */
+.events-head {
+  justify-content: center;
+}
+
+/* An event's quiet flag before its name (decision 47.3), as on its cells. */
+.tile_event .tile-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+}
+
+.flag {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--shoresh-text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

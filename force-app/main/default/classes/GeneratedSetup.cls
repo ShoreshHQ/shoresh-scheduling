@@ -18,7 +18,8 @@ public with sharing class GeneratedSetup {
 
   public GeneratedSetup(Id programId, Id weekId) {
     program = ProgramReads.programOf(programId);
-    week = ProgramReads.weekOf(weekId, program);
+    // With its special days (ADR 0014 slice 4), in the same query.
+    week = ProgramReads.weekWithSpecialDays(weekId, program);
     blocks = ProgramReads.blocksOf(program.Id);
     groups = ProgramReads.groupsOf(program.Id);
     exceptions = [

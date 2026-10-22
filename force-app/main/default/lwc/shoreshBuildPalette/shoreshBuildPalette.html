@@ -6,56 +6,87 @@
     ondragover={handleDragOver}
     ondrop={handleDrop}
   >
-    <div class="head">
-      <span class="under" data-id="drawer-under"
-        ><b>{under}</b><span>under</span></span
-      >
-      <input
-        class="filter"
-        type="search"
-        placeholder="Filter"
-        aria-label={filterLabel}
-        value={filter}
-        oninput={handleFilter}
-        onkeydown={handleFilterKey}
-        data-id="palette-filter"
-      />
-    </div>
-    <template lwc:if={noMatches}>
-      <p class="no-matches">No matches</p>
-    </template>
-    <ul class="tiles" style={tilesStyle} data-id="drawer-tiles">
-      <template for:each={shownTiles} for:item="tile">
-        <li key={tile.id}>
-          <button
-            type="button"
-            class={tile.className}
-            draggable="true"
-            aria-pressed={tile.pressed}
-            aria-label={tile.said}
-            data-id={tile.id}
-            onclick={handlePick}
-            ondragstart={handleDragStart}
-            onmouseenter={handleEnter}
-            onmouseleave={handleLeave}
-            onfocus={handleEnter}
-            onblur={handleLeave}
-          >
-            <span class="tile-name">{tile.name}</span>
-            <template lwc:if={tile.over}>
-              <span
-                class="shoresh-look-mark tile-mark"
-                aria-hidden="true"
-              ></span>
-            </template>
-            <template lwc:if={tile.showWords}>
-              <span class="tile-words" aria-hidden="true" data-id="tile-words"
-                >{tile.words}</span
-              >
-            </template>
-          </button>
-        </li>
+    <div class="row">
+      <div class="head">
+        <span class="under" data-id="drawer-under"
+          ><b>{under}</b><span>under</span></span
+        >
+        <input
+          class="filter"
+          type="search"
+          placeholder="Filter"
+          aria-label={filterLabel}
+          value={filter}
+          oninput={handleFilter}
+          onkeydown={handleFilterKey}
+          data-id="palette-filter"
+        />
+      </div>
+      <template lwc:if={noMatches}>
+        <p class="no-matches">No matches</p>
       </template>
-    </ul>
+      <ul class="tiles" style={tilesStyle} data-id="drawer-tiles">
+        <template for:each={shownTiles} for:item="tile">
+          <li key={tile.id}>
+            <button
+              type="button"
+              class={tile.className}
+              draggable="true"
+              aria-pressed={tile.pressed}
+              aria-label={tile.said}
+              data-id={tile.id}
+              onclick={handlePick}
+              ondragstart={handleDragStart}
+              onmouseenter={handleEnter}
+              onmouseleave={handleLeave}
+              onfocus={handleEnter}
+              onblur={handleLeave}
+            >
+              <span class="tile-name">{tile.name}</span>
+              <template lwc:if={tile.over}>
+                <span
+                  class="shoresh-look-mark tile-mark"
+                  aria-hidden="true"
+                ></span>
+              </template>
+              <template lwc:if={tile.showWords}>
+                <span class="tile-words" aria-hidden="true" data-id="tile-words"
+                  >{tile.words}</span
+                >
+              </template>
+            </button>
+          </li>
+        </template>
+      </ul>
+    </div>
+    <!-- The season's special events, their own section at the end (decision 47.2). -->
+    <template lwc:if={hasEvents}>
+      <div class="row" data-id="drawer-events">
+        <span class="head events-head">{eventsHeading}</span>
+        <ul class="tiles" style={tilesStyle}>
+          <template for:each={shownEvents} for:item="tile">
+            <li key={tile.id}>
+              <button
+                type="button"
+                class={tile.className}
+                draggable="true"
+                aria-pressed={tile.pressed}
+                aria-label={tile.said}
+                data-id={tile.id}
+                onclick={handlePickEvent}
+                ondragstart={handleEventDragStart}
+              >
+                <span class="tile-name">
+                  <svg class="flag" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 10.5V1.75"></path>
+                    <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg
+                  >{tile.name}</span
+                >
+              </button>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
   </section>
 </template>

@@ -440,6 +440,28 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     this.openScreen(screen);
+    const itemId = event.detail.specialItemId;
+    if (itemId) {
+      // "Open <special day>" from a day it replaces (ADR 0014 slice 4): its details, then its
+      // schedule in the list's place, as Open schedule there does.
+      Promise.resolve().then(() => {
+        const details = this.template.querySelector(
+          "c-shoresh-special-details"
+        );
+        if (details && details.open(itemId)) {
+          this.specialDetailsFor = itemId;
+          this.specialScheduleFor = itemId;
+        }
+      });
+    }
+  }
+
+  /**
+   * Something on another screen changed the season's special days or events (Set it up on a
+   * schedule, Put on a day): the season is read again, so every screen shows it.
+   */
+  handleSeasonChanged() {
+    this.loadSeason().catch(() => {});
   }
 
   /**

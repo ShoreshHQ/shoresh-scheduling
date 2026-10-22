@@ -1,5 +1,6 @@
 trigger ProgramTrigger on Program__c(
   before delete,
+  after delete,
   after update,
   after undelete
 ) {

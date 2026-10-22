@@ -18,8 +18,15 @@ import { LightningElement, api } from "lwc";
  * under" number. columns: how many columns the grid above has. heading: the camp's word for
  * activities. pickedId: the activity held (picked up or being dragged), if any.
  *
- * Events: filter { value }, pickactivity { id }, activitydragstart { id }, tilehover { id }
- * (null when the pointer or focus leaves the tile), removedrop { data }.
+ * The season's special events have their own section at the end (decision 47.2; mockup
+ * design-research/special-r1): "Events" in the time column, then a tile per event with its quiet
+ * flag before the name (decision 47.3). An event tile is picked or dragged as an activity's is,
+ * and put down on a cell or the cells chosen together. events: [{ id, name, said }];
+ * eventsHeading: the section's word; pickedEventId: the event held.
+ *
+ * Events: filter { value }, pickactivity { id }, activitydragstart { id }, pickevent { id },
+ * eventdragstart { id }, tilehover { id } (null when the pointer or focus leaves the tile),
+ * removedrop { data }.
  */
 export default class ShoreshBuildPalette extends LightningElement {
   @api tiles = [];
@@ -28,6 +35,9 @@ export default class ShoreshBuildPalette extends LightningElement {
   @api heading;
   @api filter = "";
   @api pickedId;
+  @api events = [];
+  @api eventsHeading = "Events";
+  @api pickedEventId;
 
   // The tile under the pointer or with keyboard focus: its numbers show.
   hoverId = null;
@@ -60,8 +70,43 @@ export default class ShoreshBuildPalette extends LightningElement {
     });
   }
 
+  get shownEvents() {
+    return (this.events || []).map((event) => {
+      const held = event.id === this.pickedEventId;
+      return {
+        ...event,
+        pressed: String(held),
+        className: held ? "tile tile_event tile_held" : "tile tile_event"
+      };
+    });
+  }
+
+  get hasEvents() {
+    return (this.events || []).length > 0;
+  }
+
+  handlePickEvent(event) {
+    this.dispatchEvent(
+      new CustomEvent("pickevent", {
+        detail: { id: event.currentTarget.dataset.id }
+      })
+    );
+  }
+
+  handleEventDragStart(event) {
+    const { id } = event.currentTarget.dataset;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "copy";
+      const tile = (this.events || []).find((t) => t.id === id);
+      event.dataTransfer.setData("text/plain", tile ? tile.name : "");
+    }
+    this.dispatchEvent(new CustomEvent("eventdragstart", { detail: { id } }));
+  }
+
   get noMatches() {
-    return !!this.filter && !(this.tiles || []).length;
+    return (
+      !!this.filter && !(this.tiles || []).length && !(this.events || []).length
+    );
   }
 
   handleFilter(event) {
