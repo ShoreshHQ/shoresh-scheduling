@@ -12,6 +12,10 @@ The per-screen list import (force-app/main/default/lwc/shoreshLists) adapts its
 src/ingest/entityColumnMapping.js heading synonyms and src/utils/exportSanitize.js
 spreadsheet-formula guard, rewritten the same way (see
 docs/adr/0007-import-a-list-on-a-screen.md).
+The elective seat assignment (force-app/main/default/lwc/shoreshElectiveEngine) adapts its
+src/engine/buildElectiveAssignments.js and src/engine/rankKind.js and ports their tests,
+rewritten the same way (see docs/adr/0016-elective-seat-engine.md).
+
 The electives choices reader (force-app/main/default/lwc/shoreshChoicesReader) adapts its
 src/ingest/preferenceSheet.js, rewritten the same way (see
 docs/adr/0017-reading-a-choices-sheet.md).
