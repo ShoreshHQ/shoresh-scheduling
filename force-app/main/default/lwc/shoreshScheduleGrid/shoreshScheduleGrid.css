@@ -222,6 +222,18 @@
   outline-offset: 1px;
 }
 
+/* Chosen together for Copy and Paste (Greg decision 45): the selection's highlight outline over
+   a tint of the highlight, the same tint as a ticked chip (ADR 0015: a state of the highlight is
+   a tint of it). */
+.cell_chosen .cell-inner {
+  outline: 2px solid var(--shoresh-color-highlight);
+  outline-offset: 1px;
+  background-image: linear-gradient(
+    rgba(31, 102, 81, 0.14),
+    rgba(31, 102, 81, 0.14)
+  );
+}
+
 /* Same activity (wiki decision 38, spacing-spec.md part 3): pale highlight, 1.5 px, 1 px outside.
    Thinner and paler than the selection, and never on an Open cell. */
 .cell_same .cell-inner {

@@ -49,6 +49,33 @@
               <span>Redo</span>
               <span class="shoresh-pop-end" aria-hidden="true">{redoHint}</span>
             </button>
+            <div class="shoresh-pop-divider" role="separator"></div>
+            <button
+              type="button"
+              role="menuitem"
+              class="shoresh-pop-row"
+              aria-keyshortcuts={copyKeys}
+              disabled={cannotCopy}
+              onclick={handleCopyClick}
+              data-id="copy"
+            >
+              <span>Copy</span>
+              <span class="shoresh-pop-end" aria-hidden="true">{copyHint}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              class="shoresh-pop-row"
+              aria-keyshortcuts={pasteKeys}
+              disabled={cannotPaste}
+              onclick={handlePasteClick}
+              data-id="paste"
+            >
+              <span>Paste</span>
+              <span class="shoresh-pop-end" aria-hidden="true"
+                >{pasteHint}</span
+              >
+            </button>
             <template for:each={editRows} for:item="row">
               <template lwc:if={row.divider}>
                 <div
@@ -231,6 +258,7 @@
                   oneditcell={handleEditCell}
                   onclearcell={handleClearCell}
                   oncellfocus={handleCellFocus}
+                  oncellselect={handleCellSelect}
                   oncellspace={handleCellSpace}
                   oncellclick={handleCellClick}
                   oncellescape={handleCellEscape}
@@ -255,6 +283,7 @@
                   oneditcell={handleEditCell}
                   onclearcell={handleClearCell}
                   oncellfocus={handleCellFocus}
+                  oncellselect={handleCellSelect}
                   oncellspace={handleCellSpace}
                   oncellclick={handleCellClick}
                   oncellescape={handleCellEscape}
