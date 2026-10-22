@@ -14,6 +14,11 @@
 public with sharing class SetupDeletions {
   public static final String PREFIX = 'deleted|';
   public static final String DELETED = 'deleted';
+  /** The groups that go with a deleted program or division, remembered as these kinds. */
+  private static final Map<String, String> GROUPS_GO_AS = new Map<String, String>{
+    'Program' => 'ProgramGroup',
+    'Division' => 'Group'
+  };
 
   /**
    * Remembers, for the record's camp, that it was deleted. Called before the delete; 3 queries
@@ -39,10 +44,9 @@ public with sharing class SetupDeletions {
       '|' +
       found.name
     };
-    if (found.kind == 'Program') {
-      questions.addAll(groupsOf(recordId, 'ProgramGroup', found.name));
-    } else if (found.kind == 'Division') {
-      questions.addAll(groupsOf(recordId, 'Group', found.scope));
+    String groupKind = GROUPS_GO_AS.get(found.kind);
+    if (groupKind != null) {
+      questions.addAll(groupsOf(recordId, groupKind, found.program));
     }
     ImportAnswers.remember(found.campId, questions, DELETED);
   }
@@ -62,9 +66,7 @@ public with sharing class SetupDeletions {
       ORDER BY Name
       LIMIT 2000
     ]) {
-      if (String.isNotBlank(row.Name)) {
-        questions.add(PREFIX + kind + '|' + program + '|' + row.Name);
-      }
+      questions.add(PREFIX + kind + '|' + program + '|' + row.Name);
     }
     return new List<String>(questions);
   }
@@ -74,6 +76,8 @@ public with sharing class SetupDeletions {
     String scope = '';
     String name;
     Id campId;
+    // The program its groups are named with: the program itself, or the one it is in.
+    String program;
 
     Item(String kind, String name, Id campId) {
       this.kind = kind;
@@ -119,7 +123,9 @@ public with sharing class SetupDeletions {
         WHERE Id = :recordId
         WITH USER_MODE
       ]) {
-        return new Item('Program', row.Name, row.Season__r.Camp__c);
+        Item program = new Item('Program', row.Name, row.Season__r.Camp__c);
+        program.program = row.Name;
+        return program;
       }
     } else {
       return programItemOf(recordId, type);
@@ -154,6 +160,7 @@ public with sharing class SetupDeletions {
     }
     Item found = new Item(kind, name, program.Season__r.Camp__c);
     found.scope = program.Name == null ? '' : program.Name;
+    found.program = found.scope;
     return found;
   }
 
