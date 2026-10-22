@@ -167,7 +167,7 @@ function writeXlsx(file, sheets) {
 
 /**
  * One corpus entry. `expect` is what a correct reading finds: campers (in the order the sheet
- * first names them), the comments and opt-outs it shows but never keeps, campers it can't tell
+ * first names them), the comments it shows but never keeps, campers it can't tell
  * apart, and what it reports as not read or worth a look (kind and place only).
  */
 function add(file, shape, expect) {
@@ -552,7 +552,8 @@ rankedSheet("14-division-and-bunk.csv", "division and bunk columns, Pref 1-3", {
   });
 }
 
-// 17: a parent comments box and a swim opt-out. Shown, never kept.
+// 17: a parent comments box and a swim opt-out. Comments are shown, never kept; Shoresh has no
+// opt-outs (Greg, 2026-10-22), so the opt-out column is one the reader does not use.
 {
   const file = "17-comments-and-opt-out.csv";
   const people = campers(10);
@@ -580,13 +581,6 @@ rankedSheet("14-division-and-bunk.csv", "division and bunk columns, Pref 1-3", {
     const comment = i % 3 === 0 ? COMMENTS[i % COMMENTS.length] : "";
     rows.push([c.name, c.division, ...ch, optOut, comment]);
     truth.push(truthCamper(c, ranked(ch)));
-    if (optOut)
-      notKept.push({
-        name: c.name,
-        kind: "optOut",
-        heading: "Swim opt-out",
-        text: optOut
-      });
     if (comment)
       notKept.push({
         name: c.name,
@@ -598,7 +592,8 @@ rankedSheet("14-division-and-bunk.csv", "division and bunk columns, Pref 1-3", {
   writeCsv(file, rows);
   add(file, "a swim opt-out column and a parent comments column", {
     campers: truth,
-    notKept
+    notKept,
+    notRead: [{ kind: "column", sheet: file, column: "F" }]
   });
 }
 

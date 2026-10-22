@@ -8,7 +8,7 @@
  * Adapted from Shoresh desktop (https://github.com/gfeitel1-maker/Scheduling-Project-,
  * Apache-2.0): src/ingest/preferenceSheet.js (parsePreferenceSheet: one reading for every
  * shape, rank kinds, ties kept unordered, packed cells, footer rows, campers who share a name,
- * a name with and without a camper number, comments and opt-outs that are not choices, a
+ * a name with and without a camper number, comments that are not choices, a
  * planner that is one camper's own sheet, a menu told apart by how many options a period holds)
  * and its ADR 2026-09-27-elective-preference-etl (§4.1-4.4, §14.1, §14.1a). See the NOTICE file.
  *
@@ -31,8 +31,6 @@ export { headingMeaning } from "./headings";
 export { CHOICE_KINDS, columnLetter } from "./cells";
 
 const { RANKED, CELL, UNORDERED } = CHOICE_KINDS;
-// An opt-out cell saying "not opted out".
-const NO = /^(?:no|n|false|0)$/i;
 
 /** Which columns hold what: the first column of each field wins; the rest are "not used". */
 function plan(columns) {
@@ -47,7 +45,7 @@ function plan(columns) {
       unused.push(col);
     } else if (m.use === "choice") {
       choiceColumns.push(col);
-    } else if (m.use === "comment" || m.use === "optOut") {
+    } else if (m.use === "comment") {
       notes.push(col);
     } else if (fields[m.use] === undefined) {
       fields[m.use] = col.index;
@@ -168,7 +166,7 @@ function readTable(sheet, table, out) {
     const notesHere = [];
     for (const col of notes) {
       const text = cellAt(row, col.index);
-      if (!text || (col.meaning.use === "optOut" && NO.test(text))) continue;
+      if (!text) continue;
       notesHere.push({
         kind: col.meaning.use,
         heading: col.heading,
@@ -445,7 +443,7 @@ function newNames(campers, activities) {
  * - campers: [{ key, name, number, division, bunk, rows, choices: [{ name, rank, kind, day,
  *   period, sheet, row, column }] }], in the order the file first names them. A camper is one
  *   camper number, or with none, one name. Division and bunk are as the sheet writes them.
- * - notKept: comments and opt-outs ({ camper, name, kind: "comment" | "optOut", heading, text,
+ * - notKept: parents' comments ({ camper, name, kind: "comment", heading, text,
  *   sheet, row, column }). Shown to the director, never saved (pending Greg's answer, plan
  *   question 3). They are kept apart from the campers so a save of the campers cannot carry them.
  * - cantTellApart: campers sharing a name with no camper number ({ name, rows }); not in campers.

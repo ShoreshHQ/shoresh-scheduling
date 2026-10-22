@@ -6,8 +6,8 @@
  * three written forms, a day and period named in a heading, split first and last names, camper
  * numbers, one row per choice, the unordered-activities column, and the header row found below a
  * title). New here: two-row headings (a merged "Choices" or day over 1, 2, 3), the division and
- * the bunk told apart, and comment and opt-out columns recognised so they can be shown and not
- * kept. See the NOTICE file.
+ * the bunk told apart, and comment columns recognised so they can be shown and not kept. See
+ * the NOTICE file.
  *
  * Headings, never cell contents, decide what a column is (as in ADR 0007 §2). A heading this file
  * does not know is "not used": the reader names it and never copies what the column holds.
@@ -63,10 +63,6 @@ const FIELDS = [
     new RegExp(`^(?:${WHO} )?(?:division|edah|eidah|unit|age group|grade)$`)
   ],
   ["bunk", new RegExp(`^(?:${WHO} )?(?:bunk|cabin|tent|group)(?: name)?$`)],
-  [
-    "optOut",
-    /\bopt ?out\b|\bsit out\b|\bnot participat|\bexcused\b|\bno swim\b/
-  ],
   [
     "comment",
     /\bcomments?\b|\bnotes?\b|\banything else\b|\bquestions?\b|\bmessage\b|\brequests?\b|\btell us\b/
@@ -177,7 +173,7 @@ function choiceHeading(text) {
 /**
  * What a heading means, or null when the reader does not use it:
  * { use: "name" | "firstName" | "lastName" | "number" | "division" | "bunk" | "comment" |
- *   "optOut" | "rankValue" | "choiceValue" | "choices" | "dayValue" | "periodValue" }, or
+ *   "rankValue" | "choiceValue" | "choices" | "dayValue" | "periodValue" }, or
  * { use: "choice", rank, day, period } for a column holding one choice (a rank, a day and
  * period, or both).
  */
