@@ -220,12 +220,61 @@ describe("reading", () => {
       )
     );
     expect(reading.campers).toHaveLength(1);
+    expect(reading.campers[0].name).toBe("Maya Fernwood");
+    expect(reading.campers[0].choices.map((c) => c.name)).toEqual(["Archery"]);
     expect(reading.toCheck).toEqual([
       expect.objectContaining({
         kind: "oneNumberTwoNames",
         row: 3,
         number: "1001"
       })
+    ]);
+  });
+
+  it("keeps only the first name's choices when one camper number carries two names", () => {
+    const reading = read(
+      lines(
+        "ID,Name,#1,#2,Comments",
+        "101,Maya Elderglen,Archery,Drama,",
+        "101,Noa Brightwater,Swim,Art,Loves the pool"
+      )
+    );
+    expect(reading.campers).toHaveLength(1);
+    const [maya] = reading.campers;
+    expect(maya.name).toBe("Maya Elderglen");
+    expect(maya.rows).toEqual([expect.objectContaining({ row: 2 })]);
+    expect(maya.choices.map((c) => [c.name, c.rank])).toEqual([
+      ["Archery", 1],
+      ["Drama", 2]
+    ]);
+    expect(reading.toCheck).toEqual([
+      expect.objectContaining({
+        kind: "oneNumberTwoNames",
+        row: 3,
+        number: "101",
+        name: "Noa Brightwater"
+      })
+    ]);
+    expect(reading.notKept).toEqual([
+      expect.objectContaining({ camper: null, name: "Noa Brightwater", row: 3 })
+    ]);
+  });
+
+  it("keeps the first choice when one camper's rows give two choices for one rank", () => {
+    const reading = read(
+      lines(
+        "ID,Name,#1,#2",
+        "101,Maya Elderglen,Archery,Drama",
+        "101,Maya Elderglen,Swim,Drama"
+      )
+    );
+    expect(reading.campers).toHaveLength(1);
+    expect(reading.campers[0].choices.map((c) => [c.name, c.rank])).toEqual([
+      ["Archery", 1],
+      ["Drama", 2]
+    ]);
+    expect(reading.toCheck).toEqual([
+      expect.objectContaining({ kind: "sameRankTwice", row: 3, number: "101" })
     ]);
   });
 

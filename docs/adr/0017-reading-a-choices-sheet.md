@@ -54,7 +54,11 @@ review screens and the save on it.
    director (the one thing the reader will not decide). One
    name with a number on some rows and not others stays two campers and is marked to check (the
    desktop's partial-id fork). One number with two names, and one camper's rows giving two
-   divisions or bunks, are marked to check; the first is kept.
+   divisions or bunks, are marked to check; the first is kept. **Kept means only the first:** a
+   row with the number's second name adds none of its choices to the camper (its comments are
+   still shown, with no camper), and when one camper's rows name different activities for the
+   same rank, the first row's choice is kept and the clash is marked to check, so a camper never
+   holds another child's choices or two choices of one rank (desktop §4.1).
 6. **Comments and opt-outs are read, shown, and never kept** (plan question 3, pending Greg's
    answer; the recommendation is "show, never save"). They come back in their own list,
    `notKept`, apart from the campers, so a save of the campers can't carry them by accident. E6

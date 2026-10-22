@@ -307,8 +307,18 @@ function camperFrom(key, rowsOfOne, out) {
       }
     }
     for (const c of row.choices) {
-      if (!camper.choices.some((had) => sameChoice(had, c)))
-        camper.choices.push(c);
+      if (camper.choices.some((had) => sameChoice(had, c))) continue;
+      // A later row naming something else for a rank the camper already has contradicts it:
+      // the first is kept and the clash is marked to check (campersFrom), so a saved camper
+      // never holds two first choices for one period.
+      if (
+        c.kind !== UNORDERED &&
+        camper.choices.some(
+          (had) => had.kind !== UNORDERED && slotOf(had) === slotOf(c)
+        )
+      )
+        continue;
+      camper.choices.push(c);
     }
     for (const note of row.notes)
       out.notKept.push({ camper: key, name: camper.name, ...note });
@@ -331,19 +341,25 @@ function campersFrom(rows, out) {
   const campers = [];
   for (const [key, rowsOfOne] of groups) {
     if (key.startsWith("number:")) {
-      const names = rowsOfOne.filter((r) => r.name);
-      const other = names.find(
-        (r) => foldName(r.name) !== foldName(names[0].name)
-      );
-      if (other) {
+      // One number with two names: the first name's rows are the camper; a row with another
+      // name is marked to check and none of its choices join the camper (ADR 0017 §5). Its
+      // comments are still shown, with no camper.
+      const firstName = rowsOfOne.find((r) => r.name);
+      const isOther = (r) =>
+        r.name && foldName(r.name) !== foldName(firstName.name);
+      for (const other of rowsOfOne.filter(isOther)) {
         out.toCheck.push({
           kind: "oneNumberTwoNames",
           sheet: other.sheet,
           row: other.row,
-          number: other.number
+          number: other.number,
+          name: other.name
         });
+        for (const note of other.notes)
+          out.notKept.push({ camper: null, name: other.name, ...note });
       }
-      const contradiction = clash(rowsOfOne);
+      const kept = rowsOfOne.filter((r) => !isOther(r));
+      const contradiction = clash(kept);
       if (contradiction) {
         out.toCheck.push({
           kind: "sameRankTwice",
@@ -352,7 +368,7 @@ function campersFrom(rows, out) {
           number: contradiction.number
         });
       }
-      campers.push(camperFrom(key, rowsOfOne, out));
+      campers.push(camperFrom(key, kept, out));
       continue;
     }
     const repeated = rowsOfOne.filter((r) => r.oneRowEach).length > 1;
