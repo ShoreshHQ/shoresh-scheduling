@@ -1,5 +1,5 @@
 /**
- * Rules that hold for every camp, checked on 600 made-up ones (data/electiveCamp.js): one seat per
+ * Rules that hold for every camp, checked on 300 made-up ones (data/electiveCamp.js): one seat per
  * camper per time, never over an offering's seats, locks kept exactly, seats only where a camper
  * attends, a dropped offering is empty, a linked choice is all or nothing, and nobody is left
  * out while a seat they could take is free (desktop owner ruling R3).
@@ -116,20 +116,20 @@ function check(input) {
 }
 
 describe("seat assignment properties", () => {
-  it("hold on 600 random camps", () => {
+  it("hold on 300 random camps", () => {
     let seats = 0;
     let linked = 0;
     let dropped = 0;
-    for (let seed = 1; seed <= 600; seed++) {
+    for (let seed = 1; seed <= 300; seed++) {
       const out = check(randomElectiveCamp(seed));
       seats += out.seats.length;
       linked += out.seats.filter((s) => s.linkedChoiceId).length;
       dropped += out.findings.filter((f) => f.kind === "BELOW_MINIMUM").length;
     }
     // Not vacuous: the camps seat people, place linked choices and drop offerings.
-    expect(seats).toBeGreaterThan(5000);
-    expect(linked).toBeGreaterThan(50);
-    expect(dropped).toBeGreaterThan(50);
+    expect(seats).toBeGreaterThan(2500);
+    expect(linked).toBeGreaterThan(25);
+    expect(dropped).toBeGreaterThan(25);
   });
 
   it("leave the inputs as they were", () => {

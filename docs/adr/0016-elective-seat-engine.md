@@ -34,8 +34,9 @@ no objects: nothing uses the module yet, so nothing a director sees changes.
    slice E7 will pass the activity's Id) or a linked choice by `linkedChoiceId`. A choice by key
    reaches every linked choice with that key, because a linked choice offered to two divisions
    arrives as one per division (D4); building those per-division linked choices from
-   `LinkedChoice__c` is slice E8's. Seats come back as `{ camperId, timeId, activityId, key,
-   rank, flags, notRequestedReason?, locked?, linkedChoiceId? }`.
+   `LinkedChoice__c` is slice E8's. Each seat comes back with `camperId`, `timeId`,
+   `activityId`, `key`, `rank` and `flags`, and when they apply `notRequestedReason`, `locked`
+   and `linkedChoiceId`.
 4. **Seat limits, as the plan states them.** `noLimit` true is no limit; otherwise `seats`, and
    **0 means closed**. A limited offering with blank seats stops the whole assignment with the
    desktop's words, "Fill blank capacities first.", and the offerings' names, rather than
@@ -52,7 +53,7 @@ no objects: nothing uses the module yet, so nothing a director sees changes.
    unseated camper on every step, which is fine for "tens of campers" but took seconds per time
    at camp sizes. The port finds the same camper with one backwards search from the offerings
    with room, then runs the desktop's own search for that camper alone, so ties break exactly as
-   before. A test runs both on 3,000 random tables and requires identical answers; a one-off
+   before. A test runs both on 1,000 random tables and requires identical answers; a one-off
    check during this work ran the whole port against the desktop engine on 3,150 random camps
    with identical results. If the backwards search ever fails to settle, the step falls back to
    the desktop's way.
@@ -87,19 +88,20 @@ needed (plan §2, "Desktop machinery not carried over").
   rank collision, minimum to run and its cascade, and the 100-camper repeat distribution, which
   prints its table to the test output (the condition on owner ruling Q3).
 - `minCostAssign.test.js`: the same seats as the desktop's own function (kept as test data) on
-  3,000 random tables, and optimal against brute force on 1,500 small ones.
-- `properties.test.js`: 600 random camps (two divisions, per-time and whole-week choices,
+  1,000 random tables, and optimal against brute force on 500 small ones.
+- `properties.test.js`: 300 random camps (two divisions, per-time and whole-week choices,
   unordered choices, no limit, closed, minimums, campers away, locks, linked choices): one seat
   per camper per time; never over an offering's seats except where locks alone fill it; locks
   back exactly; seats only where a camper attends and in something offered and running; every
   attending camper seated or named as unplaced, and unplaced only when everything running is
   full; a linked choice all of its times or none; inputs left as they were.
 - `determinism.test.js`: 20 shuffled input orders give identical output, for a 100-camper camp
-  and three random ones; the 100-camper camp's result is pinned (counts by rank, findings and a
+  and a random one; the 100-camper camp's result is pinned (counts by rank, findings and a
   fingerprint of every seat).
 - `assignSeats.test.js`: the seat limits, time order, the camp's words, names in findings, and
   which linked choice a seat came from.
-- `performance.test.js`, the size check: 500 campers, 12 offerings, 10 times. About 3 s on a
-  laptop with all 500 at every time (the worst case: one division of 500), under 1 s in four
-  divisions of 125. Bounds are loose for slower CI runners. E7 decides whether the screen needs
-  a progress state for the worst case.
+- `performance.test.js`, the size check: 500 campers in four divisions, 12 offerings, 10 times
+  each: about 0.8 s on a laptop, slower on CI, with a loose bound. The worst case, all 500 in
+  one division at every time, measured by hand at about 3 s on a laptop (both cases together took
+  about 13 s on CI); it is not run in CI, to keep the suite quick, since CI's Jest runs already
+  brush against their 5 s per-test limit. E7 decides whether the screen needs a progress state.

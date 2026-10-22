@@ -49,8 +49,8 @@ function bestByBruteForce(cost, capacity) {
 }
 
 describe("minCostAssign", () => {
-  it("seats the same rows as the desktop's on 3000 random tables", () => {
-    for (let seed = 1; seed <= 3000; seed++) {
+  it("seats the same rows as the desktop's on 1000 random tables", () => {
+    for (let seed = 1; seed <= 1000; seed++) {
       const { cost, capacity } = randomTable(seed, { maxRows: 30, maxCols: 7 });
       expect([seed, minCostAssign(cost, capacity)]).toEqual([
         seed,
@@ -60,7 +60,7 @@ describe("minCostAssign", () => {
   });
 
   it("seats as many as possible at the lowest total cost", () => {
-    for (let seed = 1; seed <= 1500; seed++) {
+    for (let seed = 1; seed <= 500; seed++) {
       const { cost, capacity } = randomTable(seed, { maxRows: 6, maxCols: 3 });
       const placed = minCostAssign(cost, capacity);
       const seated = placed.filter((j) => j != null).length;

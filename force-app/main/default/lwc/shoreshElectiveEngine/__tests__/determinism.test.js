@@ -61,12 +61,7 @@ function pinnedCamp() {
 
 describe("determinism", () => {
   it("gives identical seats for 20 shuffled orders of the same camp", () => {
-    for (const input of [
-      pinnedCamp(),
-      randomElectiveCamp(7),
-      randomElectiveCamp(19),
-      randomElectiveCamp(101)
-    ]) {
+    for (const input of [pinnedCamp(), randomElectiveCamp(19)]) {
       const expected = assignSeats(input);
       for (let k = 1; k <= 20; k++) {
         expect(assignSeats(shuffled(input, k))).toEqual(expected);
