@@ -272,6 +272,63 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     answer per camp and question (`Key__c`, unique: the camp and a SHA-256 digest of the key; the
     full key is in `QuestionKey__c`).
 
+20. **Things you delete stay deleted** (Greg, build log decision 45, 2026-10-21; desktop Director
+    Guide §2 "Things you delete stay deleted", `electron/ops/ingest.js` `rejectedSlotKeys` and
+    `fieldProvenance.js` `isHumanDeleted`). A setup item a director deletes on a setup screen
+    (`SeasonSetupController.deleteRecord`) is remembered for the camp, with the answers above:
+    `SetupDeletions` writes `ImportAnswer__c` with the key
+    `deleted|<kind>|<program>|<name>` answered `deleted`, in the same all-or-none step as the
+    delete (a refused delete remembers nothing). Kinds are the import's own words: Activity,
+    Location, LocationType and Program (season items, no program), and Division, Group,
+    TimeBlock, FixedActivity and RecurringActivity (named with their program). Keys are names,
+    never Ids, so a deletion holds in next year's season too.
+    - **Only a director's delete counts**, as on the desktop (a delete with source "human"):
+      Undo last import, a season's delete (and what goes with it), and "Same location?" merges
+      remember nothing. Weeks and seasons are not remembered: weeks follow the season's dates.
+    - **Something the camp has wins**, as the desktop's "live wins over tombstone": a name set
+      up again by hand is matched as usual. Only an item an import would add is left out.
+    - **Import last year** (`c/shoreshImportEngine`, `deleted.js`) leaves out a deleted
+      activity (any of activity, fixed or recurring of that name, for its program), group, new
+      time block, or place, without asking its questions (its kind, its division); placements
+      in it are listed as not in last year's version, "deleted before; not brought back" (or
+      "its group / time block was deleted before; not brought back"). A place deleted before is
+      not offered, even with its tick remembered.
+    - **Import a list and the camp workbook** (`c/shoreshLists`) mark such a row `deleted`
+      instead of `new`. A place or kind of place a row names is not added with the list: the
+      row is saved without it, as if the file said nothing about its place (an item the camp
+      has keeps the place it has), as Import last year saves a placement without a place it
+      no longer offers (review of #101: the rows used to wait, which held up the whole save
+      until the director undid their own delete). The rest of the list saves; the summary
+      says "<row> · no location" (or "unchanged location").
+    - **Shown, never silent**: both screens list them under "Deleted before; not brought back",
+      each with **Bring back** (one click). Bring back answers the key `back`: the item is then
+      added like any other, and the save forgets the deletion (`forget`). The summary of Import
+      last year lists what stayed out.
+    - Names compare as similar names do (`foldName`: case, spaces and punctuation ignored).
+    - **A deleted program stays deleted with all it had** (review of #101). Its divisions,
+      groups and time blocks go with it, and Import last year makes up a new program's name
+      ("Program 2"), so the program's own key alone could never match. Its groups are
+      remembered with it, as `deleted|ProgramGroup|<program>|<group>` (the same delete step,
+      one query for the groups). Last year's timetable whose groups match one of them (any
+      group; the most, then by name), when no program the camp has holds any of its groups and
+      none has its name, is that program: left out whole, without asking which program, listed
+      under "Deleted before; not brought back", its placements "its program was deleted
+      before; not brought back". Brought back, it is added again under its own name, and the
+      save forgets it and its remembered groups.
+    - **Import a list** leaves out the rows naming a deleted program (not asked which days),
+      division, or time block (not asked when it is), each "its <kind> was deleted before; not
+      brought back", and lists the program, division or time block with Bring back; brought
+      back, it is asked about and added as any new one, and the save forgets it.
+    - **Bring back keeps the cursor on the way** (WCAG 2.4.3): the button goes with the item,
+      so the cursor moves to the question it opened on that screen (its division, a new
+      program's days, a time block's times), else the next Bring back still listed (else the
+      one before it), else the step's main button (Review on Import last year, Save on a list).
+    - **A deleted division's groups go with it**: each is remembered as a deleted group of its
+      program (`deleted|Group|<program>|<group>`), so Import last year and Import a list leave
+      it out and list it, as a group deleted by itself.
+    - Not covered: a name in a "who" list added as a group or division (asked of the director
+      each time, never silently).
+
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 
 - **Layout can be changed per file** (the desktop only displayed it): kept.

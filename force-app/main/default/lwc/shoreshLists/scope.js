@@ -8,6 +8,7 @@ import { FIELD } from "c/shoreshSchema";
 import {
   LEAVE_OUT,
   WEEKDAYS,
+  deletedAs,
   looseKey,
   mergesFrom,
   similarPairs
@@ -40,10 +41,12 @@ function programCard(name, answer, t) {
 
 /**
  * Gives each readable row its program: r.program = { id (an Id, or "Program:<name>" for one
- * added), name, days, isNew }. Returns { pairs, cards, adds: [{ name, days }] }.
+ * added), name, days, isNew }. Returns { pairs, cards, adds: [{ name, days }], deleted }.
+ * A program the camp deleted on its setup screen (deletions, Greg decision 45) is not asked
+ * about or added: its rows are left out until it is brought back, and it is in deleted.
  */
-export function resolvePrograms(read, screen, setup, answers, t) {
-  const result = { pairs: [], cards: [], adds: [] };
+export function resolvePrograms(read, screen, setup, answers, t, deletions) {
+  const result = { pairs: [], cards: [], adds: [], deleted: [] };
   const programs = (setup.programs || []).map((entry) => entry.program);
   const daysOf = (p) => WEEKDAYS.filter((d) => p[FIELD.Program[d]]);
   const rows = read.filter((r) => !r.problems.length);
@@ -101,6 +104,15 @@ export function resolvePrograms(read, screen, setup, answers, t) {
         days: daysOf(existing),
         isNew: false
       };
+      return;
+    }
+    const gone = deletedAs(deletions, "Program", "", name);
+    if (gone) {
+      r.leftOut = true;
+      r.reason = `its ${t.sIn("Program")} was deleted before; not brought back`;
+      if (!result.deleted.some((d) => d.key === gone)) {
+        result.deleted.push({ key: gone, kind: "Program", name, program: "" });
+      }
       return;
     }
     if (!asked.has(name)) {

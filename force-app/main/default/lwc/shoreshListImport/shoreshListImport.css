@@ -99,6 +99,19 @@
   list-style: disc;
 }
 
+.list-deleted {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.list-deleted > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .list-footer {
   display: flex;
   align-items: flex-start;

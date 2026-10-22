@@ -4,6 +4,8 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { buildTerms } from "c/shoreshTerms";
+import { loadStyle } from "lightning/platformResourceLoader";
+import { downloadWorkbook } from "c/shoreshDownload";
 import { nsRecord } from "shoresh-jest/namespace";
 import {
   LABELS,
@@ -20,6 +22,11 @@ jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {
 jest.mock("@salesforce/apex/SchedulesController.renameSchedule", () => apex(), {
   virtual: true
 });
+
+jest.mock("c/shoreshDownload", () => ({
+  ...jest.requireActual("c/shoreshDownload"),
+  downloadWorkbook: jest.fn(() => Promise.resolve())
+}));
 
 const SETUP = {
   season: { Id: "se1", Name: "Summer 2026" },
@@ -436,5 +443,192 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, "c-shoresh-versions").versions[0].name).toBe(
       "Before my changes"
     );
+  });
+  describe("Export to Excel and Print", () => {
+    beforeEach(() => {
+      window.print = jest.fn();
+    });
+    afterEach(() => {
+      delete window.print;
+    });
+
+    it("sit beside Versions, in its group, once a version is open", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      const group = q(element, '[aria-label="Versions and export"]');
+      expect(group.getAttribute("role")).toBe("group");
+      expect(group.querySelector('[data-id="export"]').textContent.trim()).toBe(
+        "Export to Excel"
+      );
+      expect(group.querySelector('[data-id="print"]').textContent.trim()).toBe(
+        "Print"
+      );
+      await expect(element).toBeAccessible();
+    });
+
+    it("are not there while nothing is open", async () => {
+      getVersions.mockResolvedValue([]);
+      const element = await render();
+      expect(q(element, '[data-id="export"]')).toBeNull();
+      expect(q(element, '[data-id="print"]')).toBeNull();
+    });
+
+    it("downloads the version on screen, without asking which: a sheet per day, then the flat ones", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      q(element, '[data-id="export"]').click();
+      await flush();
+      expect(downloadWorkbook).toHaveBeenCalledTimes(1);
+      const [, sheets, fileName] = downloadWorkbook.mock.calls[0];
+      expect(sheets.map((x) => x.name)).toEqual([
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "All Bunks",
+        "All Activities"
+      ]);
+      expect(fileName).toBe("Week 1 - Before my changes.xlsx");
+    });
+
+    it("says a download that failed, and why only in Shoresh's words", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      downloadWorkbook.mockRejectedValueOnce(new Error("XLSX is not defined"));
+      const element = await render();
+      q(element, '[data-id="export"]').click();
+      await flush();
+      expect(q(element, '[data-id="schedules-error"]').textContent).toBe(
+        "The schedule wasn't downloaded. Try again."
+      );
+    });
+
+    it("prints a page per day from Daily View, and takes the printout away after", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      expect(q(element, "c-shoresh-schedule-print")).toBeNull();
+      let pagesWhilePrinting;
+      window.print = jest.fn(() => {
+        pagesWhilePrinting = q(element, "c-shoresh-schedule-print").pages;
+      });
+      q(element, '[data-id="print"]').click();
+      await flush();
+      expect(loadStyle).toHaveBeenCalledTimes(1);
+      expect(loadStyle.mock.calls[0][1]).toContain("ShoreshPrint");
+      expect(window.print).toHaveBeenCalledTimes(1);
+      expect(pagesWhilePrinting.map((p) => p.title)).toEqual([
+        "Monday, Jun 29",
+        "Tuesday, Jun 30",
+        "Wednesday, Jul 1"
+      ]);
+      const printout = q(element, "c-shoresh-schedule-print");
+      expect(printout.week).toBe("Week 1");
+      expect(printout.version).toBe("Before my changes");
+      window.dispatchEvent(new CustomEvent("afterprint"));
+      await flush();
+      expect(q(element, "c-shoresh-schedule-print")).toBeNull();
+
+      // Printing again doesn't load the style again.
+      q(element, '[data-id="print"]').click();
+      await flush();
+      expect(loadStyle).toHaveBeenCalledTimes(1);
+      expect(window.print).toHaveBeenCalledTimes(2);
+    });
+
+    it("prints a page per bunk from Group View", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      q(element, '[data-view="group"]').click();
+      await flush();
+      let titles;
+      window.print = jest.fn(() => {
+        titles = q(element, "c-shoresh-schedule-print").pages.map(
+          (p) => p.title
+        );
+      });
+      q(element, '[data-id="print"]').click();
+      await flush();
+      expect(titles).toEqual(["Bunk 1", "Bunk 2"]);
+    });
+
+    it("still prints when the print style can't be loaded", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      loadStyle.mockRejectedValueOnce(new Error("blocked"));
+      const element = await render();
+      q(element, '[data-id="print"]').click();
+      await flush();
+      expect(window.print).toHaveBeenCalledTimes(1);
+    });
+
+    // aria-disabled, not disabled, while under way: a focused button that turns disabled drops
+    // the cursor to the top of the page.
+    it("keep the cursor on Print while printing, and a second press does nothing", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      let whilePrinting;
+      window.print = jest.fn(() => {
+        const button = q(element, '[data-id="print"]');
+        whilePrinting = {
+          disabled: button.disabled,
+          busy: button.getAttribute("aria-disabled"),
+          focused: element.shadowRoot.activeElement === button
+        };
+        button.click();
+      });
+      q(element, '[data-id="print"]').focus();
+      q(element, '[data-id="print"]').click();
+      await flush();
+      expect(whilePrinting).toEqual({
+        disabled: false,
+        busy: "true",
+        focused: true
+      });
+      expect(window.print).toHaveBeenCalledTimes(1);
+      window.dispatchEvent(new CustomEvent("afterprint"));
+      await flush();
+      const button = q(element, '[data-id="print"]');
+      expect(button.getAttribute("aria-disabled")).toBe("false");
+      expect(element.shadowRoot.activeElement).toBe(button);
+    });
+
+    it("keep the cursor on Export while the file is made, and a second press does nothing", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      let finish;
+      downloadWorkbook.mockImplementationOnce(
+        () => new Promise((resolve) => (finish = resolve))
+      );
+      const element = await render();
+      const button = q(element, '[data-id="export"]');
+      button.focus();
+      button.click();
+      await flush();
+      expect(button.disabled).toBe(false);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(element.shadowRoot.activeElement).toBe(button);
+      button.click();
+      await flush();
+      expect(downloadWorkbook).toHaveBeenCalledTimes(1);
+      finish();
+      await flush();
+      expect(button.getAttribute("aria-disabled")).toBe("false");
+      expect(element.shadowRoot.activeElement).toBe(button);
+    });
+
+    it("can't export or print a version with no days", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(({ scheduleId }) =>
+        answerFor({ scheduleId }).then((v) => ({ ...v, days: [] }))
+      );
+      const element = await render();
+      expect(q(element, '[data-id="no-days"]')).not.toBeNull();
+      expect(q(element, '[data-id="export"]').disabled).toBe(true);
+      expect(q(element, '[data-id="print"]').disabled).toBe(true);
+    });
   });
 });

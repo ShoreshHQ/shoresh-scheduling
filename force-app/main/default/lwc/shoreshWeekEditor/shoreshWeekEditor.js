@@ -172,6 +172,15 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api setupDots;
   // The Edit menu's row that has its rows open under it (Copy day to…), or null.
   openEditGroup = null;
+  // Cells chosen together (Shift or Cmd/Ctrl with a click, a Shift-drag, Shift with Left or
+  // Right, Cmd/Ctrl+Shift with an arrow): { anchor, keys } by grid key, or null (then the cell
+  // with keyboard focus is the one Copy takes).
+  chosen = null;
+  // The grid cell keyboard focus last reached (Copy's and Paste's cell), or null.
+  focusKey = null;
+  // What Copy took, by where it sat on the grid: { items: [{ dr, dc, slot, length, name, gone
+  // }], opens: [{ dr, dc }] }, offsets from its top left cell; kept for this visit to the week.
+  clipboard = null;
 
   // ManualBuildController's DraftView: { schedule, activities, away }, or null (not started).
   _draft = null;
@@ -415,6 +424,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (fresh && draft) {
       this.toolNotice = null;
       this.pulseKeys = [];
+      this.chosen = null;
+      this.focusKey = null;
       this.dayIndex = 0;
       const all = groups(draft.schedule);
       this.groupKey = all.length ? all[0].key : null;
@@ -433,6 +444,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     // Undo is for this visit to this week (Greg #10).
     this.startHistoryOver();
     this.picked = null;
+    // So is what was copied (Copy day to… works within the week too).
+    this.chosen = null;
+    this.focusKey = null;
+    this.clipboard = null;
   }
 
   /** The week after a Restore: Undo starts over, as on the desktop. */
@@ -671,6 +686,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.closeEditor();
     this.pulseKeys = [];
     this.picked = null;
+    this.letGoOfCells();
     if (this.view !== "activity") {
       this.activityId = null;
     }
@@ -722,6 +738,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.closeEditor();
     this.pulseKeys = [];
     this.picked = null;
+    this.letGoOfCells();
   }
 
   get groupPills() {
@@ -743,6 +760,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.closeEditor();
     this.pulseKeys = [];
     this.picked = null;
+    this.letGoOfCells();
   }
 
   /** The grid on screen (Daily or Group View), with away and saving slots marked. */
@@ -809,6 +827,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       }
       if (this.picked && this.picked.key === cell.key) {
         result.className = `${result.className} cell_picked`;
+        result.selected = true;
+      } else if (this.chosen && this.chosen.keys.has(cell.key)) {
+        result.className = `${result.className} cell_chosen`;
         result.selected = true;
       }
       if (this.pulseKeys.includes(this.placementKeyOf(cell.slot))) {
@@ -965,20 +986,25 @@ export default class ShoreshWeekEditor extends LightningElement {
     return null;
   }
 
+  /** The day's saved item a slot's identity is, if the day has it. */
+  savedItem(slot, day) {
+    const item = owner(slot);
+    return day.items.find(
+      (i) =>
+        `${i.kind}:${["A", "F", "R"].includes(i.kind) ? i.id : i.name}` === item
+    );
+  }
+
   /** What a slot's identity is called: the day's saved name, else the activity's. */
   nameOf(slot, day) {
     if (slot === OPEN) {
       return "Open";
     }
-    const item = owner(slot);
-    const saved = day.items.find(
-      (i) =>
-        `${i.kind}:${["A", "F", "R"].includes(i.kind) ? i.id : i.name}` === item
-    );
+    const saved = this.savedItem(slot, day);
     if (saved) {
       return saved.name;
     }
-    const activity = this.activityFor(item);
+    const activity = this.activityFor(owner(slot));
     return activity ? activity.name : `${this.t.s("Activity")} (removed)`;
   }
 
@@ -1085,6 +1111,11 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** Said to the host: the cell keyboard focus reached (the grid's key, and where it is). */
   handleCellFocus(event) {
+    // Focus moved on by itself (an arrow, a click): the cells chosen together are let go.
+    if (!event.detail.extend) {
+      this.chosen = null;
+    }
+    this.focusKey = event.detail.key;
     const cell = this.cellByKey(event.detail.key);
     this.dispatchEvent(
       new CustomEvent("cellfocus", {
@@ -1822,6 +1853,18 @@ export default class ShoreshWeekEditor extends LightningElement {
   get redoKeys() {
     return "Control+Shift+Z Meta+Shift+Z Control+Y";
   }
+  get copyHint() {
+    return this.onMac ? "⌘C" : "Ctrl+C";
+  }
+  get pasteHint() {
+    return this.onMac ? "⌘V" : "Ctrl+V";
+  }
+  get copyKeys() {
+    return "Control+C Meta+C";
+  }
+  get pasteKeys() {
+    return "Control+V Meta+V";
+  }
 
   /**
    * The host's rows after Undo and Redo, set off by a line: a row with children opens them under
@@ -1956,6 +1999,12 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (path.some(takesTyping)) {
       return;
     }
+    const inGrid = path.some(
+      (node) => node && node.dataset && node.dataset.id === "edit-grid"
+    );
+    if (inGrid && this.clipboardShortcut(event)) {
+      return;
+    }
     this.undoShortcut(event);
   }
 
@@ -1979,6 +2028,11 @@ export default class ShoreshWeekEditor extends LightningElement {
       !root ||
       root.getClientRects().length === 0
     ) {
+      return;
+    }
+    // Copy only takes cells chosen together here: with nothing chosen, Ctrl+C is the page's.
+    const key = String(event.key).toLowerCase();
+    if ((key === "c" && !this.chosen) || this.clipboardShortcut(event)) {
       return;
     }
     this.undoShortcut(event);
@@ -2037,6 +2091,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (tool.kind === "clear") {
       return this.stayedText(result.week, result.stayed);
     }
+    if (tool.kind === "paste") {
+      return this.pasteLeftOutText(result.week, result.leftOut);
+    }
     const from = result.week.findIndex((d) => d.dateValue === tool.from);
     return from < 0
       ? null
@@ -2055,6 +2112,9 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** "Cleared Monday", "Copied Monday to Tuesday": a tool's words for Undo and the line. */
   toolLabel(tool) {
+    if (tool.kind === "paste") {
+      return `Pasted ${tool.what} · ${tool.where}`;
+    }
     return tool.kind === "clear"
       ? `Cleared ${tool.name}`
       : `Copied ${tool.fromName} to ${tool.toName}`;
@@ -2062,6 +2122,11 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** What a tool says when it changes nothing. */
   toolNothing(tool, said) {
+    if (tool.kind === "paste") {
+      return said
+        ? `Nothing pasted. ${said}`
+        : `Nothing to paste: ${tool.where} already matches.`;
+    }
     if (tool.kind === "clear") {
       const where = `${tool.inWeek ? "in" : "on"} ${tool.name}`;
       return said
@@ -2125,6 +2190,31 @@ export default class ShoreshWeekEditor extends LightningElement {
     );
   }
 
+  /** "2 left out: Swim · Bunk 2 · Tuesday: not at camp then; Boating: no room there." */
+  pasteLeftOutText(week, leftOut) {
+    const why = (o) => {
+      switch (o.why) {
+        case LEFT_OUT.AWAY:
+          return "not at camp then";
+        case LEFT_OUT.GONE:
+          return "removed";
+        case LEFT_OUT.NOT_SET_UP:
+          return "not set up yet";
+        case LEFT_OUT.NO_ROOM:
+          return "no room there";
+        default:
+          return `${this.nameOf(o.blocking, week[o.day])} is set up there`;
+      }
+    };
+    return this.listText(leftOut, "left out", (o) => {
+      const where =
+        o.day === null
+          ? ""
+          : ` · ${week[o.day].groups[o.group].name} · ${dayLabel(week[o.day].dateValue).label}`;
+      return `${o.name}${where}: ${why(o)}`;
+    });
+  }
+
   /**
    * The placements a tool left out because they are locked, in the words of the other lists:
    * "1 stayed: Swim · Bunk 1 · Monday (locked)." for a clear (what stays in the cell), "1 left
@@ -2172,12 +2262,23 @@ export default class ShoreshWeekEditor extends LightningElement {
    * goes with the change: after a question, the tool is worked out again around anyone else's.
    */
   @api
-  runTool(tool) {
+  runTool(tool, { keepFocus = false } = {}) {
     const seen = this.schedule.days;
-    const result = toolRuns(tool, seen, {
-      isAway: (week, d, g, b) => this.isAwayOn(week, d, g, b)
-    });
-    const said = this.toolWords(tool, result);
+    const isAway = (week, d, g, b) => this.isAwayOn(week, d, g, b);
+    // A paste leaves locked cells (Generated) as they are, and lists them, as a tool does a cell
+    // locked meanwhile: a Lock beats what is pasted.
+    const locks = tool.kind === "paste" ? this.liveLocks : null;
+    const locked = locks && locks.size ? new Set(locks) : null;
+    const result = locked
+      ? replan(tool, seen, seen, new Set(), isAway, locked)
+      : toolRuns(tool, seen, { isAway });
+    const said =
+      [
+        this.toolWords(tool, result),
+        locked ? this.lockedText(tool, seen, result.lockedCells) : null
+      ]
+        .filter(Boolean)
+        .join(" ") || null;
     const label = this.toolLabel(tool);
     if (!result.runs.length) {
       this.say(this.toolNothing(tool, said));
@@ -2190,14 +2291,16 @@ export default class ShoreshWeekEditor extends LightningElement {
     const entry = this.queue[this.queue.length - 1];
     if (entry && entry.stepId === this.stepSeq) {
       // The week as the director saw it goes with the change, for working it out again.
-      entry.tool = { ...tool, seen, kept: new Set() };
+      entry.tool = locked
+        ? { ...tool, seen, kept: new Set(), locked }
+        : { ...tool, seen, kept: new Set() };
       // What stayed or was left out is said with the save too.
       entry.extra = said;
     }
     this.showToolNotice(label, said, this.stepSeq);
     // Its Undo is the most useful next stop, and the menu or button that ran it may be held
-    // while it saves (which drops focus).
-    this.focusToolUndoAfterRender = true;
+    // while it saves (which drops focus). A shortcut on the grid keeps focus where it is.
+    this.focusToolUndoAfterRender = !keepFocus;
   }
 
   showToolNotice(label, said, stepId) {
@@ -2300,6 +2403,325 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.showServerAndWaiting();
     this.showToolNotice(except, said, stepId);
     this.saveNext();
+  }
+
+  // ---------- copy and paste (Greg decision 45) ----------
+
+  /** The cells chosen together and the cell with focus are let go (another day, bunk or view). */
+  letGoOfCells() {
+    this.chosen = null;
+    this.focusKey = null;
+  }
+
+  /**
+   * The grid's cells inside the block of rows and columns two cells reach, the block grown down
+   * or up until no cell in it runs out of it (a placement is chosen whole).
+   */
+  cellsInBlock(a, b) {
+    const cells = this.editGrid.cells.filter((c) => c.slot);
+    const end = (c) => c.row + (c.length || 1) - 1;
+    const left = Math.min(a.column, b.column);
+    const right = Math.max(a.column, b.column);
+    const reach = {
+      top: Math.min(a.row, b.row),
+      bottom: Math.max(end(a), end(b))
+    };
+    const inside = (c) =>
+      c.column >= left &&
+      c.column <= right &&
+      c.row <= reach.bottom &&
+      end(c) >= reach.top;
+    // A cell running out of the block, while there is one.
+    const out = (c) =>
+      inside(c) && (c.row < reach.top || end(c) > reach.bottom);
+    for (let found = cells.find(out); found; found = cells.find(out)) {
+      reach.top = Math.min(reach.top, found.row);
+      reach.bottom = Math.max(reach.bottom, end(found));
+    }
+    return cells.filter(inside);
+  }
+
+  /**
+   * Cells chosen together (desktop useClipboardSelection: Cmd/Ctrl with a click adds or takes
+   * off a cell; here Shift with a click, a Shift-drag, Shift with Left or Right, and Cmd/Ctrl+
+   * Shift with an arrow also choose the block from where it started).
+   */
+  handleCellSelect(event) {
+    if (this.picked) {
+      this.handleCellSpace(event);
+      return;
+    }
+    const { key, extend } = event.detail;
+    const cell = this.cellByKey(key);
+    if (!cell || !cell.slot) {
+      return;
+    }
+    let anchor = key;
+    let keys;
+    if (extend) {
+      anchor = (this.chosen && this.chosen.anchor) || this.focusKey || key;
+      const from = this.cellByKey(anchor) || cell;
+      keys = new Set(this.cellsInBlock(from, cell).map((c) => c.key));
+    } else {
+      const focused = this.focusKey && this.cellByKey(this.focusKey);
+      keys = new Set(
+        this.chosen ? this.chosen.keys : focused ? [this.focusKey] : []
+      );
+      if (keys.has(key)) {
+        keys.delete(key);
+      } else {
+        keys.add(key);
+      }
+    }
+    this.focusKey = key;
+    this.chosen = keys.size ? { anchor, keys } : null;
+    this.announce(`${keys.size} selected`);
+  }
+
+  /** The cells Copy takes: those chosen together, else the one with keyboard focus. */
+  get copyCells() {
+    const grid = this.editGrid;
+    if (!grid) {
+      return [];
+    }
+    const keys = this.chosen
+      ? this.chosen.keys
+      : new Set(this.focusKey ? [this.focusKey] : []);
+    return grid.cells.filter((c) => c.slot && keys.has(c.key));
+  }
+
+  /**
+   * Where Paste puts the top left of what was copied: the top left of the cells chosen, else the
+   * cell with keyboard focus ({ row, column } on the grid), or null.
+   */
+  get pasteOrigin() {
+    const grid = this.editGrid;
+    if (!grid) {
+      return null;
+    }
+    const cells = this.chosen
+      ? grid.cells.filter((c) => c.slot && this.chosen.keys.has(c.key))
+      : grid.cells.filter((c) => c.slot && c.key === this.focusKey);
+    if (!cells.length) {
+      return null;
+    }
+    return {
+      row: Math.min(...cells.map((c) => c.row)),
+      column: Math.min(...cells.map((c) => c.column))
+    };
+  }
+
+  /**
+   * Whether there is a cell for Copy or Paste to start from, without working out the grid again
+   * (the Edit menu asks on every render).
+   */
+  get hasCellToUse() {
+    return (
+      !!this.schedule &&
+      !this.isActivity &&
+      !!((this.chosen && this.chosen.keys.size) || this.focusKey)
+    );
+  }
+  get cannotCopy() {
+    return !this.hasCellToUse;
+  }
+  get cannotPaste() {
+    return !this.clipboard || !this.hasCellToUse;
+  }
+
+  /** The day, bunk and time block (indexes) at a row and column of the grid on screen, or null. */
+  slotAtGrid(grid, row, column) {
+    if (
+      row < 0 ||
+      column < 0 ||
+      row >= grid.rows.length ||
+      column >= grid.columns.length
+    ) {
+      return null;
+    }
+    const week = this.schedule.days;
+    if (this.isDaily) {
+      const day = week[this.dayIndex];
+      return day && day.groups[column] && day.blocks[row]
+        ? { day: this.dayIndex, group: column, block: row }
+        : null;
+    }
+    const day = week[column];
+    if (!day || day.problem) {
+      return null;
+    }
+    const refKey = (ref) => ref.id || ref.name;
+    const group = day.groups.findIndex((grp) => refKey(grp) === this.groupKey);
+    const block = day.blocks.findIndex(
+      (blk) => refKey(blk) === grid.rows[row].key
+    );
+    return group < 0 || block < 0 ? null : { day: column, group, block };
+  }
+
+  /** "Swim", "3 activities and 2 Open": what was copied, in a line. */
+  copiedWords(items, opens) {
+    if (items.length === 1 && !opens.length) {
+      return items[0].name;
+    }
+    const open = opens.length ? `${opens.length} Open` : "";
+    if (!items.length) {
+      return opens.length === 1 ? "Open" : open;
+    }
+    const placed = `${items.length} ${items.length === 1 ? this.t.sIn("Activity") : this.t.pIn("Activity")}`;
+    return open ? `${placed} and ${open}` : placed;
+  }
+
+  /**
+   * Copy (Edit, or Cmd/Ctrl+C on the grid): what the cells hold, by where they sit, for Paste.
+   * Fixed and recurring activities stay where setup put them, so they aren't taken; nor is a
+   * time a bunk isn't at camp.
+   */
+  handleCopy() {
+    const cells = this.copyCells;
+    if (!cells.length) {
+      return;
+    }
+    const items = [];
+    const opens = [];
+    cells.forEach((cell) => {
+      const day = this.dayOf(cell.slot);
+      const at = placement(day, cell.slot.group, cell.slot.block);
+      if (isSetTime(at.slot)) {
+        return;
+      }
+      if (at.slot === OPEN) {
+        if (!this.isAwaySlot(cell.slot)) {
+          opens.push({ row: cell.row, column: cell.column });
+        }
+        return;
+      }
+      const saved = this.savedItem(at.slot, day);
+      items.push({
+        row: cell.row,
+        column: cell.column,
+        slot: at.slot,
+        length: at.length,
+        name: this.nameOf(at.slot, day),
+        gone: !!(saved && saved.gone)
+      });
+    });
+    if (!items.length && !opens.length) {
+      this.refuse(this.lockedReason(cells[0].slot) || "Nothing to copy there.");
+      return;
+    }
+    const all = [...items, ...opens];
+    const top = Math.min(...all.map((c) => c.row));
+    const left = Math.min(...all.map((c) => c.column));
+    const offset = ({ row, column, ...rest }) => ({
+      ...rest,
+      dr: row - top,
+      dc: column - left
+    });
+    this.clipboard = { items: items.map(offset), opens: opens.map(offset) };
+    this.say(`Copied ${this.copiedWords(items, opens)}.`);
+  }
+
+  /**
+   * Paste (Edit, or Cmd/Ctrl+V on the grid): what was copied goes in with its top left at the
+   * cell with focus (or the top left of the cells chosen), on this bunk or day or another, as one
+   * Undo step and by Copy day to…'s rules (tools.js pasteEdit). What has no room on the grid is
+   * left out and said.
+   */
+  handlePaste({ keepFocus = false } = {}) {
+    const clip = this.clipboard;
+    const origin = this.pasteOrigin;
+    const grid = this.editGrid;
+    if (!clip || !origin || !grid) {
+      return;
+    }
+    const items = [];
+    const outside = [];
+    const opens = [];
+    const dates = new Set();
+    clip.items.forEach((c) => {
+      const at = this.slotAtGrid(grid, origin.row + c.dr, origin.column + c.dc);
+      const day = at && this.dayOf(at);
+      if (!at || at.block + c.length > day.blocks.length) {
+        outside.push({ slot: c.slot, name: c.name });
+        return;
+      }
+      dates.add(day.dateValue);
+      items.push({
+        date: day.dateValue,
+        groupId: day.groups[at.group].id,
+        blockIds: day.blocks
+          .slice(at.block, at.block + c.length)
+          .map((b) => b.id),
+        slot: c.slot,
+        gone: c.gone,
+        name: c.name
+      });
+    });
+    clip.opens.forEach((c) => {
+      const at = this.slotAtGrid(grid, origin.row + c.dr, origin.column + c.dc);
+      if (at) {
+        const day = this.dayOf(at);
+        dates.add(day.dateValue);
+        opens.push(
+          lockKey(
+            day.dateValue,
+            day.groups[at.group].id,
+            day.blocks[at.block].id
+          )
+        );
+      }
+    });
+    const first = this.slotAtGrid(grid, origin.row, origin.column);
+    this.chosen = null;
+    this.runTool(
+      {
+        kind: "paste",
+        dates: [...dates],
+        items,
+        opens,
+        outside,
+        what: this.copiedWords(clip.items, clip.opens),
+        where: first
+          ? this.slotName(first)
+          : this.isDaily
+            ? this.dailyGridLabel
+            : this.groupGridLabel
+      },
+      { keepFocus }
+    );
+  }
+
+  handleCopyClick() {
+    this.handleCopy();
+  }
+
+  handlePasteClick() {
+    this.handlePaste();
+  }
+
+  /** Cmd/Ctrl+C and Cmd/Ctrl+V on the grid: Copy and Paste. True when it was one of them. */
+  clipboardShortcut(event) {
+    if (
+      !(event.ctrlKey || event.metaKey) ||
+      event.altKey ||
+      event.shiftKey ||
+      this.editor ||
+      this.conflict
+    ) {
+      return false;
+    }
+    const key = String(event.key).toLowerCase();
+    if (key === "c") {
+      event.preventDefault();
+      this.handleCopy();
+      return true;
+    }
+    if (key === "v") {
+      event.preventDefault();
+      this.handlePaste({ keepFocus: true });
+      return true;
+    }
+    return false;
   }
 
   // ---------- the drawer ----------
@@ -2567,6 +2989,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.handleCellSpace(event);
       return;
     }
+    this.chosen = null;
     const cell = this.cellByKey(event.detail.key);
     if (cell && cell.locked) {
       this.requestUnlock(cell);
@@ -2597,6 +3020,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   handleCellEscape() {
     if (this.picked) {
       this.letGo();
+    } else if (this.chosen) {
+      this.chosen = null;
     }
   }
 

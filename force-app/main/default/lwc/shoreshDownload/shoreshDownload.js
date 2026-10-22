@@ -1,7 +1,8 @@
 /**
  * Saves sheets as an Excel file in the browser (slice 4c part C), with SheetJS (the static
- * resource, loaded only when a file is saved). sheets: [{ name, rows }], rows already in the
- * import's layout and guarded against spreadsheet formulas (c/shoreshLists export.js).
+ * resource, loaded only when a file is saved). sheets: [{ name, rows, widths }], rows already
+ * guarded against spreadsheet formulas (c/shoreshLists export.js, c/shoreshScheduleExport);
+ * widths (optional): each column's width in characters, as the desktop's schedule export sets.
  */
 import { loadScript } from "lightning/platformResourceLoader";
 import SHEETJS from "@salesforce/resourceUrl/SheetJS";
@@ -17,12 +18,12 @@ export async function downloadWorkbook(component, sheets, fileName) {
   // SheetJS puts itself on window when its script runs.
   const XLSX = window.XLSX;
   const workbook = XLSX.utils.book_new();
-  sheets.forEach(({ name, rows }) => {
-    XLSX.utils.book_append_sheet(
-      workbook,
-      XLSX.utils.aoa_to_sheet(rows),
-      sheetName(name)
-    );
+  sheets.forEach(({ name, rows, widths }) => {
+    const sheet = XLSX.utils.aoa_to_sheet(rows);
+    if (widths) {
+      sheet["!cols"] = widths.map((wch) => ({ wch }));
+    }
+    XLSX.utils.book_append_sheet(workbook, sheet, sheetName(name));
   });
   // A Blob, not a data: link, so a large camp's file isn't cut off by the browser's link limit.
   const data = XLSX.write(workbook, { type: "array", bookType: "xlsx" });

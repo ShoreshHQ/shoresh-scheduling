@@ -185,6 +185,8 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(rows()).toEqual([
       expect.stringMatching(/^Undo/),
       expect.stringMatching(/^Redo/),
+      expect.stringMatching(/^Copy ?(Ctrl\+|⌘)C$/),
+      expect.stringMatching(/^Paste ?(Ctrl\+|⌘)V$/),
       "Clear day",
       "Copy day to…",
       "Clear week"
@@ -194,7 +196,9 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     expect(q(element, '[data-id="clear-week"]')).toBeNull();
     expect(rows()).toEqual([
       expect.stringMatching(/^Undo/),
-      expect.stringMatching(/^Redo/)
+      expect.stringMatching(/^Redo/),
+      expect.stringMatching(/^Copy/),
+      expect.stringMatching(/^Paste/)
     ]);
   });
 

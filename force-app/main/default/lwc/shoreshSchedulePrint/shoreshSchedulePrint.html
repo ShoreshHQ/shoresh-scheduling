@@ -1,0 +1,59 @@
+<template>
+  <div class="shoresh-print" data-id="print">
+    <template for:each={pages} for:item="page">
+      <section key={page.key} class="page" data-page={page.key}>
+        <header class="head">
+          <h2 class="title">{page.title}</h2>
+          <p class="sub">{week} · {version}</p>
+        </header>
+        <template lwc:if={page.table}>
+          <table class="grid">
+            <thead>
+              <tr>
+                <th scope="col" class="corner">{corner}</th>
+                <template for:each={page.table.columns} for:item="col">
+                  <th key={col.key} scope="col">
+                    {col.label}
+                    <template lwc:if={col.sub}>
+                      <span class="col-sub">{col.sub}</span>
+                    </template>
+                    <template lwc:if={col.note}>
+                      <span class="note">{col.note}</span>
+                    </template>
+                  </th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <template for:each={page.table.rows} for:item="row">
+                <tr key={row.key}>
+                  <th scope="row" class="time">
+                    {row.time}
+                    <template lwc:if={row.note}>
+                      <span class="note">{row.note}</span>
+                    </template>
+                  </th>
+                  <template for:each={row.cells} for:item="cell">
+                    <td
+                      key={cell.key}
+                      class={cell.className}
+                      rowspan={cell.rowspan}
+                    >
+                      {cell.text}
+                      <template lwc:if={cell.note}>
+                        <span class="note">{cell.note}</span>
+                      </template>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+        <template lwc:else>
+          <p class="problem">{cantBeShown}</p>
+        </template>
+      </section>
+    </template>
+  </div>
+</template>

@@ -93,3 +93,7 @@ suppressions:
     - rule_selector: "eslint:@lwc/lwc-platform/no-process-env"
       max_suppressed_violations: 1
       reason: "Test prints the repeat-distribution table to its output (desktop ruling Q3)."
+  "main/default/lwc/shoreshWeekEditor/__tests__/copyPaste.test.js":
+    - rule_selector: "pmd:AvoidLwcBubblesComposedTrue"
+      max_suppressed_violations: 1
+      reason: "Test fakes a real browser Cmd/Ctrl keydown, which is composed."

@@ -104,6 +104,8 @@ public with sharing class SeasonSetupController {
     SetTimeGuard.defer();
     Savepoint beforeDelete = Database.setSavepoint();
     try {
+      // Remembered first, while its name can still be read: a later import leaves it out.
+      SetupDeletions.remember(recordId);
       WeekExceptions.deleteWithWeeks(recordId);
       SetTimeGuard.checkPending();
     } catch (Exception e) {

@@ -1250,6 +1250,69 @@ cells, Escape), points at a cell with the mouse (the outlines) and accepts a lin
 keyboard, on Manual Build and Generated. Screenshots next to the mock-up in
 `docs/design/screens/`.
 
+## Choices (part 9: copy and paste cells, 2026-10-21)
+
+Greg's decision 45 (wiki `projects/shoresh-scheduling-sf.md`, 2026-10-21: build multi-select
+copy and paste; Manual Build round 2 #5 had left it for later). Desktop:
+`src/screens/schedule/useClipboardSelection.js`, `src/screens/ScheduleScreen.jsx` (the paste
+line), `src/components/schedule/SlotCell.jsx:332-336` (Shift with an arrow). It lives in the
+week editor (`c-shoresh-week-editor`) and the grid (`c-shoresh-schedule-grid`), so Manual Build
+and Generated Schedule both have it.
+
+1. **Choosing cells.** Cmd/Ctrl with a click adds a cell to the cells chosen, or takes it off
+   (the desktop's gesture). Shift with a click, and a drag with Shift held, choose the block from
+   where the choice started (the cell with focus) to that cell; from the keyboard, Shift with
+   Left or Right and Cmd/Ctrl+Shift with any arrow do the same. **Shift with Up or Down stays the
+   length** (part 2): the desktop gave that chord to length and dropped range selection for it
+   (`SlotCell.jsx`), so a block grows down or up with Cmd/Ctrl+Shift. A block takes a placement
+   running several blocks whole. Escape, a plain click, or focus moved on by an arrow lets go;
+   so do another day, bunk or view. A plain drag still moves a placement. The grid is
+   `aria-multiselectable`, and the chosen cells are `aria-selected`; "3 selected" is said.
+2. **The look** (ADR 0015): a chosen cell wears the selection's highlight outline (2 px, as a
+   picked-up cell) over a tint of the highlight, the tint of a ticked chip (14% forest). No new
+   colour.
+3. **Copy** (Edit > Copy, or Cmd/Ctrl+C on the grid) takes the cells chosen, else the cell with
+   focus, by where they sit (offsets from the top left one). Fixed and recurring activities aren't
+   taken (they stay where setup put them), nor a time a bunk isn't at camp; an Open cell is
+   taken as Open. It says _Copied Swim._ or _Copied 3 activities and 2 Open._ on the quiet line.
+   What was copied stays for this visit to the week (another day, bunk or view keeps it; another
+   week doesn't, as Copy day to… works within the week).
+4. **Paste** (Edit > Paste, or Cmd/Ctrl+V on the grid) puts it with its top left at the cell
+   with focus (or the top left of the cells chosen), on the same or another bunk (Daily View) or
+   day (Group View), as **one Undo step**, through the same queue and checks as every edit. It
+   is a day tool like Clear day and Copy day to… (tools.js `pasteEdit`, `toolRuns`, `replan`):
+   every placement Undo could put back that a pasted cell touches is cleared whole first; an
+   Open cell clears; an activity goes in whole or not at all; fixed and recurring activities stay;
+   what can't go is left out and listed: _not at camp then_, _removed_, _not set up yet_,
+   _Flagpole is set up there_, and _no room there_ when it runs past the grid's last time block
+   or column (or the day lacks a block it runs into). A cell someone else changed since asks
+   _Keep theirs_ or _Use yours_, and Keep theirs pastes the rest around theirs (§24). The line
+   says _Pasted Swim · Bunk 2 · Monday · Period 2_ (or _Pasted 3 activities · …_) with its Undo
+   and what was left out; with nothing to change, _Nothing pasted._ and why. From the menu focus
+   goes to the line's Undo, as for the other tools; with the shortcut it stays on the grid.
+5. **Generated Schedule:** pasted cells lock, as every hand edit there does (`locks.js`
+   `foldRun`). A cell the director locked is **left out** and listed (_Swim · Bunk 1 · Tuesday:
+   locked._): a Lock beats what is pasted, as it beats a build. (Clear day and Copy day to…,
+   which Generated doesn't offer, still treat a lock the director saw as part of their change.)
+6. **Not built:** the desktop's Ctrl+A (choose every filled cell) and its click-by-click paste
+   (_Paste Swim (3 left)_): one paste of the whole block is one Undo step and says what was left
+   out, which the click-by-click way can't. The browser's own clipboard isn't used: nothing is
+   copied out of or into other programs.
+
+Checked by Jest: `paste.test.js` (pasted on another bunk clearing what is there whole, a
+several-block placement onto another day, Open clears, each reason left out, the same activity
+needs nothing, someone else's cell skipped, `replan` keeping their change and leaving a locked
+placement out whole), `copyPaste.test.js` (the shortcuts as one Undo step, a Shift block with a
+cell left out, no room, fixed activities, Open, Cmd/Ctrl-click and Escape, focus keeping or
+letting go of the choice, Edit's rows held and focus after Paste, Group View onto another day,
+another day keeps the copy and another week doesn't, Generated locks the pasted cell and leaves
+a locked cell out), `shoreshScheduleGrid.test.js` (multiselectable, Shift with Right, Shift
+with Down stays the length and Cmd/Ctrl+Shift with Down chooses, Shift and Cmd/Ctrl clicks are
+no click, a Shift-drag never moves a cell, focus moved by an arrow says nothing of extending),
+`dayTools.test.js` (Edit's rows). In the test org: `scripts/a11y-browser-check.mjs` chooses two
+cells with Shift and Right, copies and pastes them with the keys on Manual Build, and checks what
+is said and Undo.
+
 ## Choices that are hard to undo after release
 
 None in parts 1 to 3: no new objects, fields, or picklist values. The draft uses ADR 0005's
@@ -1259,7 +1322,7 @@ the screen and the server. Part 4b adds the `VersionReason__c` value **AutoSaved
 the one value. Part 5 adds `Schedule__c.PublishedAt__c` (date/time), `PublishedBy__c` (lookup to
 User, cleared if the user is deleted) and `PublishKey__c` (text 40, unique, case-sensitive:
 "programId:weekId" while published, cleared when replaced), as the data model names them. Part 6
-adds no fields: the automatic version reuses the AutoSaved reason. Parts 7 and 8 add none (look
+adds no fields: the automatic version reuses the AutoSaved reason. Parts 7 to 9 add none (look
 and screen behaviour only).
 
 ## Not done here
