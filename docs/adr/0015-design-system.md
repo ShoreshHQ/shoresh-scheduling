@@ -127,7 +127,8 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       columns: the chevron at the row's end opens them under the row (`aria-expanded`, named
       "Cedar details"), saved with the row as before (leaving the row and its details saves).
       A row whose save moves it to another section (a place given another type, Enter in its
-      notes) takes the cursor with it: the same box in its new section, its details open again,
+      notes; a group given another division; a recurring activity covering other divisions)
+      takes the cursor with it: the same box in its new section, its details open again,
       and the move is said ("Pool moved to Fields"), so focus never drops to the top of the page
       (WCAG 2.4.3). When the rail shows only the old type, the cursor goes to that section's
       blank row instead, with the same words. Until it is saved the row stays where it is.
