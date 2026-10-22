@@ -44,6 +44,9 @@
  *   mark it, carries the needs-a-look corner; Tab reaches it, Enter opens its words with the
  *   cursor on Looks right, Escape puts the cursor back on the mark, and Looks right clears it,
  *   said, with the cursor on that row's "at least" box;
+ * - that a locked cell on Generated Schedule shows the padlock in its bottom-right corner, with
+ *   no edge drawn for the lock, clear of its name and of the needs-a-look corner, both visible
+ *   (Greg, 2026-10-22; ADR 0015 choice 6);
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -2435,6 +2438,7 @@ async function generated(openGenerated) {
     );
     await expectFocusKept(S, "After locking: focus not lost");
   });
+  await step(S, "The lock's look", () => lockLook(S));
   await step(S, "Start over, then its Undo", async () => {
     if (!(await openRailMenu(/^Build$/))) {
       throw new Error("Build not reached.");
@@ -2465,6 +2469,118 @@ async function generated(openGenerated) {
       await pause(3000);
     }
   });
+}
+
+/**
+ * The lock's look (Greg, 2026-10-22; ADR 0015 choice 6): every locked cell on the grid shows the
+ * padlock (c-shoresh-lock) inside its bottom-right corner, draws no border or outline for the
+ * lock, and the padlock overlaps neither the cell's name nor its needs-a-look corner, both shown.
+ */
+async function lockLook(S) {
+  const name =
+    "Locked cells: the padlock bottom right, no edge, clear of the mark";
+  const found = await shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
+    .first()
+    .evaluate((g) => {
+      const box = (el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          l: r.left,
+          t: r.top,
+          r: r.right,
+          b: r.bottom,
+          w: r.width,
+          h: r.height
+        };
+      };
+      const seen = (el) => {
+        const st = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return (
+          st.visibility !== "hidden" &&
+          st.display !== "none" &&
+          r.width > 0 &&
+          r.height > 0
+        );
+      };
+      return [...(g.shadowRoot || g).querySelectorAll(".cell_locked")].map(
+        (c) => {
+          const inner = c.querySelector(".cell-inner");
+          const st = getComputedStyle(inner);
+          const outlined = /\bcell_(picked|chosen|same|fits|stretching)\b/.test(
+            c.className
+          );
+          const lock = c.querySelector(".cell-lock c-shoresh-lock");
+          const svg = lock && (lock.shadowRoot || lock).querySelector("svg");
+          const nameEl = c.querySelector(
+            ".cell-name:not(.slds-assistive-text)"
+          );
+          const corner = c.querySelector(".cell-dot c-shoresh-dot");
+          const mark =
+            corner &&
+            (corner.shadowRoot || corner).querySelector(
+              '[data-id="corner-mark"]'
+            );
+          return {
+            key: c.dataset.cell,
+            cell: box(inner),
+            border: ["Top", "Right", "Bottom", "Left"].some(
+              (side) => parseFloat(st[`border${side}Width`]) > 0
+            ),
+            outline:
+              !outlined &&
+              st.outlineStyle !== "none" &&
+              parseFloat(st.outlineWidth) > 0,
+            lock: svg && seen(svg) ? box(svg) : null,
+            name: nameEl && nameEl.textContent.trim() ? box(nameEl) : null,
+            mark: mark ? (seen(mark) ? box(mark) : "hidden") : null
+          };
+        }
+      );
+    });
+  if (!found.length) {
+    results.notRun(S, name, "No locked cell on the day shown.");
+    return;
+  }
+  const overlap = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+  const wrong = [];
+  let withMark = 0;
+  found.forEach((c) => {
+    if (!c.lock) {
+      wrong.push(`${c.key}: no padlock`);
+      return;
+    }
+    if (c.border || c.outline)
+      wrong.push(`${c.key}: an edge drawn for the lock`);
+    const inCorner =
+      c.lock.r <= c.cell.r &&
+      c.lock.b <= c.cell.b &&
+      c.lock.l >= c.cell.l + c.cell.w / 2 &&
+      c.lock.t >= c.cell.t + c.cell.h / 2;
+    if (!inCorner)
+      wrong.push(`${c.key}: the padlock is not in the bottom-right corner`);
+    if (c.name && overlap(c.lock, c.name))
+      wrong.push(`${c.key}: the padlock covers the name`);
+    if (c.mark === "hidden") wrong.push(`${c.key}: the corner mark is hidden`);
+    else if (c.mark) {
+      withMark += 1;
+      if (overlap(c.lock, c.mark))
+        wrong.push(`${c.key}: the padlock covers the corner mark`);
+    }
+  });
+  if (args.includes("--shots")) {
+    await page.screenshot({ path: join(shotsDir, "locked-cell.png") });
+  }
+  if (wrong.length) {
+    await shot(S, "Lock look");
+    results.fail(S, name, wrong.join("; ") + ".");
+  } else {
+    results.pass(
+      S,
+      name,
+      `${found.length} locked cell(s), ${withMark} with the corner mark as well.`
+    );
+  }
 }
 
 async function versions(S, openScreen) {

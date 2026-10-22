@@ -113,19 +113,47 @@
   overflow-wrap: anywhere;
 }
 
-/* A fixed or recurring activity and a director's Lock: the lock before the name, on one line. */
-.cell_set-time .cell-inner,
-.cell_locked .cell-inner {
+/* A fixed or recurring activity: the lock before the name, on one line. */
+.cell_set-time .cell-inner {
   flex-direction: row;
   gap: var(--shoresh-s2);
 }
 
-.cell-lock,
 .set-lock {
   display: inline-flex;
   flex: none;
   line-height: 0;
   color: var(--shoresh-text-2);
+}
+
+/* A director's Lock (Greg, 2026-10-22): the padlock (c-shoresh-lock) in the cell's bottom-right
+   corner, in the colour of the cell's words, and no edge of its own. The top-right corner is the
+   look mark's and the left of the name the special event flag's, so all three show at once. On a
+   placement running several blocks it is once, on the last block. The words keep 18 px clear
+   above and below (6 px in plus the 12 px padlock), so a long name wrapping in a narrow cell
+   never runs under the padlock or the mark, and stays centred. */
+.cell_locked .cell-inner {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.cell-lock {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.cell-lock c-shoresh-lock {
+  color: inherit;
+}
+
+/* High contrast (forced colours): the padlock and the mark take the system's text colour. */
+@media (forced-colors: active) {
+  .cell-lock c-shoresh-lock {
+    color: CanvasText;
+  }
 }
 
 .lock {

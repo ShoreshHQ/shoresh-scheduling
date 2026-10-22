@@ -62,7 +62,19 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
    8 px solid corner in the text colour, for a cell's corner and beside a count. The lock is a
    component, `c-shoresh-lock`: the mock-up's 12 px padlock in the colour of the words around it,
    with optional words for screen readers ("Locked empty"). The grids start using the mark and the
-   lock when they are restyled.
+   lock when they are restyled. _On every schedule grid (Greg, 2026-10-22):_ a locked cell's lock
+   is this padlock in the cell's **bottom-right corner** (6 px in), in the colour of the cell's
+   words, and the lock draws no border or outline of its own. The top-right corner is the
+   needs-a-look mark's, and the special event flag (decision 47.3) sits before the event's name
+   on the left, so all three show at once without touching: the words keep 18 px clear above and
+   below on a locked cell. A placement locked over several blocks shows it once, on its last
+   block (the one cell spanning them); a cell locked empty shows only the padlock. Screen readers
+   still hear "Locked" (or "Locked empty") before the name. In high contrast (forced colours) the
+   padlock and the mark are drawn in the system's text colour. A fixed or recurring activity
+   keeps its lock before its name (the round 13 mock-up). Checked by `shoreshScheduleGrid.test.js`
+   (the padlock once on a two-block cell, before the name for screen readers, the corners, no
+   edge) and the real-browser check (the padlock inside the bottom-right corner, no edge, clear of
+   the name and the mark).
 7. **Salesforce's base components take the palette through SLDS styling hooks**, set in the same
    module: brand buttons are the highlight with words in the primary's lightest step, neutral buttons
    that step with the edge, buttons and inputs get the 8 px corner, inputs a highlight focus edge, checkboxes and the

@@ -40,8 +40,9 @@ const CLEAR_KEYS = new Set(["Delete", "Backspace"]);
  *
  * A cell with `dot` (its words) shows the bronze "needs a look" dot (c-shoresh-dot): the words
  * on hover, tap, or while the cell has keyboard focus, and always in assistive text. The grid
- * doesn't know why; the page says. A cell with `locked` shows the lock icon (Generated Schedule:
- * the director's Lock keeps it through every build), "Locked" in assistive text.
+ * doesn't know why; the page says. A cell with `locked` shows the padlock (c-shoresh-lock) in
+ * its bottom-right corner (Generated Schedule: the director's Lock keeps it through every build),
+ * "Locked" in assistive text before the name.
  *
  * Editable, it says which cell keyboard focus has reached ("cellfocus", with the cell's key), so
  * the page can offer actions on it (a dot in the cell taking focus, tapped, counts as the cell).

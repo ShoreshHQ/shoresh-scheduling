@@ -192,6 +192,15 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
+/* High contrast (forced colours) paints every background over, which would leave the mark
+   blank: there it is drawn in the system's text colour. */
+@media (forced-colors: active) {
+  .shoresh-look-mark {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
 /* ---------- the rail's grammar (docs/design/spacing-spec-continuous.md, "The grammar") ---------- */
 
 /* One item: 32 tall, 8 side padding, 13 px. At rest: regular, secondary words. */
