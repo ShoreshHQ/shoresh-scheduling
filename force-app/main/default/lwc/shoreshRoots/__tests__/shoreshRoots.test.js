@@ -99,6 +99,13 @@ describe("c-shoresh-roots", () => {
     );
   });
 
+  it("sits on the living dot field (wiki decision 49), all of it inside", async () => {
+    const element = await render();
+    const fields = element.shadowRoot.querySelectorAll("c-shoresh-dot-field");
+    expect(fields.length).toBe(1);
+    expect(fields[0].querySelector('[data-id="roots"]')).not.toBeNull();
+  });
+
   it("shows the desktop's cards, in their places, in the camp's words", async () => {
     const element = await render();
     const cards = [...element.shadowRoot.querySelectorAll("[data-card]")].map(

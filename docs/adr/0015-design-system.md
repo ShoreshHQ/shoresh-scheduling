@@ -10,7 +10,8 @@ This step puts the system in place and restyles only the app frame and the left 
 Build's and Generated Schedule's grids, rails and drawers, and the setup screens, keep their look
 until the next PRs; nothing a director does works differently. _Step 3a (2026-10-21, choice 11)
 restyles the setup tables and five setup screens; step 3b (2026-10-21, choice 12) Activities,
-Fixed and Recurring activities, and the camp and season in the menu's camp row._
+Fixed and Recurring activities, and the camp and season in the menu's camp row. Choice 13
+(2026-10-22) adds the living dot field behind Roots and around empty states._
 
 ## Choices
 
@@ -278,6 +279,50 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       their heading and back on Close, an activity moved to the other priority's section and back
       with the cursor kept on Priority and Close finding its chevron there, New season and Copy this season from Season actions, axe
       on each screen), with screenshots next to the mock-ups in `docs/design/screens/`.
+
+13. **The living dot field (wiki decision 49, 2026-10-22).** Design source: Greg's decision 49
+    and the approved proof of concept (`design-research/antimetal/poc.html`). One component,
+    `c-shoresh-dot-field`, wraps what it decorates: a faint field of dots in the primary
+    (`-500`, sage) every 18 px, showing at the field's edges and fading out a fifth of the way
+    in, drawn on one canvas behind its content. Dots within 90 px of a moving mouse glow: they
+    grow and take on up to 60% of the highlight (forest), then settle back to rest (their glow
+    falls by e every half second). Both colours are read from `c/shoreshTokens` on the page.
+    - **Where:** behind Roots, and around every empty state (`c-shoresh-empty-state`, so every
+      screen that has nothing to show yet). Never behind a schedule grid: an empty state takes
+      the grid's place, it is never shown with it. Salesforce's sign-in page is its own and a
+      package cannot change it, so the field is not there (decision 49).
+    - **Decoration only.** The canvas is `aria-hidden`, takes no focus and no clicks, and says
+      nothing. **No dot is drawn under words or a control:** the field measures the words (each
+      run of text), pictures, form controls and inner components put inside it and keeps 6 px
+      clear of each, measured again when its size changes, its content changes or the page
+      scrolls (a sticky list moves over it). So it never changes how anything reads; a glowing
+      dot under grey words would fail WCAG AA, which is why measuring, not a fainter dot, is
+      the rule.
+    - **Motion only when wanted.** With reduced motion asked for, or on a touch screen (no
+      mouse that hovers), the field is drawn once, still, and never follows a pointer; touch
+      and pen pointers are ignored everywhere. Turning reduced motion on stops it at once.
+      Where a browser can't say whether motion is wanted, nothing is drawn.
+    - **Cheap.** No frames while the mouse is still; a frame is asked for only while a dot
+      glows, one at a time however fast the mouse moves. It stops while off screen
+      (IntersectionObserver) and while the browser tab is hidden. Rest dots are filled in eight
+      steps of fade, one fill each; the canvas is at most twice the screen's pixel density.
+      Everything is let go when the component is removed (Lightning keeps tabs alive).
+    - **Lightning Web Security:** a 2D canvas, `requestAnimationFrame`, observers and media
+      queries, all on the component's own elements or the window; no library, no `innerHTML`,
+      nothing loaded. `requestAnimationFrame` is the browser's clock for drawing, not a timer:
+      the LWC rule against timers is turned off for this one file in `eslint.config.js` and
+      suppressed for it alone (one use) in `code-analyzer.yml`, since inline disables are
+      refused.
+    - Checked by `shoreshDotField.test.js` (decoration only and accessible; drawn once and no
+      frames at rest; glows toward forest near a mouse and settles; one frame at a time; still
+      for reduced motion, also when turned on while glowing; still on touch and deaf to touch
+      and pen; paused off screen and in a hidden tab; lets go when removed; nothing without
+      media queries; no dot under the words or the picture of an empty state; the same field
+      for the same box; colours equal to the tokens), `shoreshRoots.test.js` and
+      `shoreshEmptyState.test.js` (each sits on the field), and in the test org by
+      `scripts/a11y-browser-check.mjs` (on Roots: drawn and hidden from screen readers, glows
+      under a moving mouse and is the same picture again four seconds later, still under the
+      mouse with reduced motion emulated, no Shoresh errors in the console).
 
 ## Not done here
 
