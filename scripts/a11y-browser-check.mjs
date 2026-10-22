@@ -1519,12 +1519,11 @@ async function activityChangesPriority() {
   if (!chevron) throw new Error(`${name}'s details chevron not reached.`);
   await press("Enter", 1500);
   /** Priority, by keyboard: Enter opens it, the arrow picks the other, Enter chooses it. */
+  const onPriority = (f) =>
+    !!f && f.role === "combobox" && /^Priority/.test(f.name);
   const change = async (want, arrow) => {
-    if (
-      !(await tabTo((f) => f.role === "combobox" && /^Priority/.test(f.name), {
-        max: 20
-      }))
-    )
+    // The cursor stays on Priority after a change, so it may be there already.
+    if (!onPriority(await focus()) && !(await tabTo(onPriority, { max: 20 })))
       throw new Error(`${name}'s Priority not reached with Tab.`);
     await press("Enter", 400);
     await press(arrow, 200);
