@@ -20,6 +20,8 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   otherwise in the build log (`projects/shoresh-scheduling-sf.md`). Ask Greg only when the desktop is silent or can't apply, and then
   say what it does and why it can't.
 - Build choices for this repo: `docs/adr/`. Walkthrough for Greg: `docs/try-camp-setup.md`.
+- **Every screen follows the design system:** the visual spec in `docs/design/` and its tokens in
+  `c/shoreshTokens` (`docs/adr/0015-design-system.md`). Never invent a screen's own look.
 - No namespace, package, or package version without Greg's go-ahead.
 - **Merging is by hand** (Greg, 2026-10-16): a PR is merged (squash) only after both CI checks pass
   on its latest commit and an independent review is done. GitHub auto-merge stays off: on the free

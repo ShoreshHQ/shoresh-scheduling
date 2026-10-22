@@ -4,6 +4,11 @@
  * that name the old or the new division, and not the group itself. Lists are told apart by
  * record, not name: two recurring activities can share a name (staggered lunches, one per
  * division, ADR 0006).
+ *
+ * And what it already has in its schedules: an activity it leaves that it is placed in keeps
+ * those cells, marked "Not set up for <group>" there (ADR 0008); the note says how many first,
+ * so nothing shifts unseen (ADR 0006 §16). The placements come from the server
+ * (GroupPlacements), asked once per group the first time a move would leave an activity.
  */
 import { CHILDREN, FIELD } from "c/shoreshSchema";
 
@@ -41,7 +46,41 @@ function nameList(names) {
     : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/** The note for a group whose division was changed on screen, or null when nothing changes. */
+/** "4 cells" or "1 cell". */
+function cells(count) {
+  return `${count} ${count === 1 ? "cell" : "cells"}`;
+}
+
+/**
+ * What the group's schedules already hold of the activities it leaves, or "" when nothing (or
+ * not known yet: the note is drawn again when the answer comes).
+ * placements: { placed: [{ activity, cells }], complete } | "failed" | undefined.
+ */
+function placedNote(placements, leftActivities, name) {
+  if (placements === "failed") {
+    return " Its schedules could not be checked.";
+  }
+  if (!placements) {
+    return "";
+  }
+  const kept = (placements.placed || [])
+    .filter((p) => leftActivities.has(p.activity) && p.cells > 0)
+    .map((p) => ({ name: leftActivities.get(p.activity), cells: p.cells }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const more =
+    placements.complete === false ? " Not every schedule could be read." : "";
+  if (!kept.length) {
+    return more;
+  }
+  const listed = nameList(kept.map((k) => `${k.name} (${cells(k.cells)})`));
+  return ` Its schedules keep ${listed}, marked “Not set up for ${name}”.${more}`;
+}
+
+/**
+ * The note for a group whose division was changed on screen, or null when nothing changes.
+ * context: { divisions, activities, recurringActivities, placements: groupId -> what
+ * GroupPlacements answered (or "failed"), want(groupId): asks for a group's placements }.
+ */
 export function moveNote(values, original, context) {
   const division = FIELD.Group.Division;
   if (!original.Id || values[division] === original[division]) {
@@ -66,6 +105,26 @@ export function moveNote(values, original, context) {
   // A list naming both divisions keeps the group either way.
   const left = onlyIn(before, after);
   const joined = onlyIn(after, before);
+  // The activities it leaves (not recurring ones: those are the setup-changed marks).
+  const beforeActivities = namingDivision(
+    original[division],
+    original.Id,
+    context.activities,
+    []
+  );
+  const afterActivities = namingDivision(
+    values[division],
+    original.Id,
+    context.activities,
+    []
+  );
+  const leftActivities = new Map(
+    [...beforeActivities].filter(([id]) => !afterActivities.has(id))
+  );
+  const placements = (context.placements || {})[original.Id];
+  if (leftActivities.size && !placements && context.want) {
+    context.want(original.Id);
+  }
   const parts = [];
   if (left.length) {
     parts.push(`is no longer in ${nameList(left)} (for ${from})`);
@@ -74,6 +133,10 @@ export function moveNote(values, original, context) {
     parts.push(`is now in ${nameList(joined)} (for ${to})`);
   }
   return parts.length
-    ? `Moves to ${to}: ${name} ${parts.join(" and ")}.`
+    ? `Moves to ${to}: ${name} ${parts.join(" and ")}.${placedNote(
+        placements,
+        leftActivities,
+        name
+      )}`
     : null;
 }

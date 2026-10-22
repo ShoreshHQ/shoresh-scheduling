@@ -27,6 +27,19 @@ public with sharing class SetupTablesController {
     }
   }
 
+  /**
+   * Which activities a bunk is placed in across its program's drafts, and in how many cells,
+   * asked when it is moved to another division (GroupPlacements).
+   */
+  @AuraEnabled
+  public static GroupPlacements.Result groupPlacements(Id groupId) {
+    try {
+      return GroupPlacements.of(groupId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
   /** "Same location?": keeps one place, moves everything at the others to it, deletes them. */
   @AuraEnabled
   public static void mergeLocations(

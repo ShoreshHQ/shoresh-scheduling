@@ -28,7 +28,9 @@
  *   while it is edited, Tab reaching them; that unticking a week with placements asks first
  *   and, cancelled, leaves focus back on the tick, still ticked; and that its details open from
  *   its chevron with focus kept there; that a place whose type is changed in its details moves
- *   to its new section with the cursor kept in its notes, the move said; with --shots it also saves each restyled setup screen at rest and a
+ *   to its new section with the cursor kept in its notes, the move said; that a bunk given
+ *   another unit in its details says what changes before it is saved, and once saved moves to
+ *   that unit's section with the cursor in its name, the move said; with --shots it also saves each restyled setup screen at rest and a
  *   group row under the pointer, for docs/design/screens/;
  * - step 3b (ADR 0015 choice 12): on Activities, that a row's "how often" numbers show while it
  *   is edited, Tab reaching them, and that its chevron opens its details beside the table with
@@ -950,6 +952,99 @@ async function setupRow() {
 }
 
 /**
+ * A bunk moved to another unit on Groups (ADR 0006 §16, ADR 0015 choice 11): Bunk 1's unit
+ * changed to Seniors in its details shows "What changes" before it is saved (the seed's Library
+ * time covers Juniors only), then Enter in its name box saves it, the move is said and the
+ * cursor goes with it to its name box in Seniors. Moved back the same way, so the camp ends as
+ * it began.
+ */
+async function bunkMoves() {
+  const G = "Groups";
+  const BUNK = "Bunk 1";
+  await openFromMenu(G, /^Groups\b/);
+  const groups = 'c-shoresh-editable-table[data-id="groups"]';
+  // Which unit's table, and which box, has the cursor (through shadow roots).
+  const where = () =>
+    page.evaluate(() => {
+      let el = document.activeElement;
+      let division = null;
+      let field = null;
+      while (el) {
+        if (el.tagName === "C-SHORESH-EDITABLE-TABLE")
+          division = el.heading || null;
+        if (el.dataset && el.dataset.field) field = el.dataset.field;
+        if (!el.shadowRoot || !el.shadowRoot.activeElement) break;
+        el = el.shadowRoot.activeElement;
+      }
+      return { division, field };
+    });
+  /** Bunk 1's name box, wherever it is on screen. */
+  const nameBox = async () => {
+    const inputs = shown(`${groups} lightning-input[data-field="Name"] input`);
+    const at = (
+      await inputs.evaluateAll((els) => els.map((e) => e.value))
+    ).indexOf(BUNK);
+    if (at < 0) throw new Error(`${BUNK} is not on Groups.`);
+    return inputs.nth(at);
+  };
+  /** Bunk 1's unit chosen in its details, its note read, then Enter in its name box. */
+  const move = async (from, to, expectedNote) => {
+    await (await nameBox()).focus();
+    const chevron = new RegExp(`^${BUNK} details$`);
+    if (!(await tabTo(named(chevron, { tag: "button" }), { max: 60 })))
+      throw new Error(`${BUNK}'s details chevron not reached with Tab.`);
+    await press("Enter", 600);
+    if (!(await tabTo((f) => f.role === "combobox", { max: 6 })))
+      throw new Error(`${BUNK}'s unit not reached with Tab.`);
+    await chooseOption(new RegExp(`^${to}$`));
+    // The note, once the server has said what the bunk's schedules hold.
+    await pause(2500);
+    const notes = await shown(`${groups} [data-id="note"]`).evaluateAll(
+      (cells) =>
+        cells.map((c) => (c.innerText || "").replace(/\s+/g, " ").trim())
+    );
+    const note = notes.find((n) => n.startsWith(`Moves to ${to}:`));
+    const noteStep = `${BUNK} to ${to}: "What changes" says so before it is saved`;
+    if (note && (!expectedNote || expectedNote.test(note))) {
+      results.pass(G, noteStep, `Said: "${note}".`);
+    } else {
+      await shot(G, noteStep);
+      results.fail(
+        G,
+        noteStep,
+        `Notes shown: ${notes.map((n) => `"${n}"`).join(", ") || "none"}.`
+      );
+    }
+    // Back in its name box (the row is still where it was until it is saved).
+    await (await nameBox()).focus();
+    await expectLive(
+      G,
+      `${BUNK} to ${to}: the move is said`,
+      new RegExp(`^${BUNK} moved to ${to}$`),
+      () => press("Enter", 3000)
+    );
+    const now = await where();
+    const step = `${BUNK} to ${to}: the cursor goes with it to its name in ${to}`;
+    if (
+      now.field === "Name" &&
+      (now.division || "").endsWith(to) &&
+      now.division !== from
+    ) {
+      results.pass(G, step, `Name, in ${now.division}.`);
+    } else {
+      await shot(G, step);
+      results.fail(
+        G,
+        step,
+        `Focus on ${formatFocus(await focus())} (unit ${now.division}, box ${now.field}).`
+      );
+    }
+  };
+  await move("Juniors", "Seniors", /no longer in Library time \(for Juniors\)/);
+  await move("Seniors", "Juniors", /is now in Library time \(for Juniors\)/);
+}
+
+/**
  * Locations in a section per type (ADR 0015 choice 11): a place whose type is changed in its
  * details, then Enter in its notes, moves to its new section, and the cursor goes with it to
  * the same box (WCAG 2.4.3), the move said. The step adds a type, moves Pool there and back,
@@ -1119,6 +1214,7 @@ async function campSetup() {
     await axe("Weeks");
   });
   await step(S, "Groups: a row's week ticks and details by keyboard", setupRow);
+  await step(S, "Groups: a bunk moved to another unit", bunkMoves);
   await step(S, "Setup screens: screenshots", setupShots);
   await step(S, "Programs: add a card, then delete it", async () => {
     await openFromMenu("Programs", /^Programs\b/);

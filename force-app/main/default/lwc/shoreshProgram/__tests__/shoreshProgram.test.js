@@ -2,6 +2,13 @@ import { createElement } from "lwc";
 import ShoreshProgram from "c/shoreshProgram";
 import { buildTerms } from "c/shoreshTerms";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
+
+jest.mock(
+  "@salesforce/apex/SetupTablesController.groupPlacements",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -343,6 +350,139 @@ describe("c-shoresh-program", () => {
       await flush();
       await flush();
       expect(tablesOf(element).map(flagged)).toEqual([false]);
+    });
+  });
+
+  describe("a bunk moved to another unit", () => {
+    const twoUnits = {
+      ...ENTRY,
+      divisions: [
+        {
+          division: { Id: "d1", Name: "Juniors" },
+          groups: [{ Id: "g1", Name: "Bunk 1", Division__c: "d1" }]
+        },
+        {
+          division: { Id: "d2", Name: "Seniors" },
+          groups: [{ Id: "g2", Name: "Bunk 2", Division__c: "d2" }]
+        }
+      ],
+      recurringActivities: []
+    };
+    const tablesOf = (element) => [
+      ...element.shadowRoot.querySelectorAll("c-shoresh-editable-table")
+    ];
+
+    async function renderUnits() {
+      const element = createElement("c-shoresh-program", {
+        is: ShoreshProgram
+      });
+      element.entry = nsRecord(twoUnits);
+      element.terms = terms;
+      element.show = "groups";
+      element.activities = nsRecord([
+        { Id: "a1", Name: "Swim", Eligibilities__r: [{ Division__c: "d1" }] }
+      ]);
+      document.body.appendChild(element);
+      await flush();
+      return element;
+    }
+
+    async function moveBunk1(element) {
+      const juniors = tablesOf(element)[0];
+      juniors.shadowRoot.querySelector('[data-id="more"]').click();
+      await flush();
+      const unit = juniors.shadowRoot.querySelector(
+        `[data-field="${nsName("Division__c")}"]`
+      );
+      unit.value = "d2";
+      unit.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "d2" } })
+      );
+      // The note, the server's answer, then the note again.
+      await [...Array(10)].reduce(
+        (chain) => chain.then(() => undefined),
+        Promise.resolve()
+      );
+      return juniors;
+    }
+
+    const noteOf = (table) => {
+      const note = table.shadowRoot.querySelector('[data-id="note"]');
+      return note ? note.textContent.trim() : null;
+    };
+
+    afterEach(() => groupPlacements.mockReset());
+
+    it("says, before it is saved, what its schedules keep that the new unit is not set up for", async () => {
+      groupPlacements.mockResolvedValue({
+        complete: true,
+        placed: [{ activity: "a1", cells: 3 }]
+      });
+      const element = await renderUnits();
+      const juniors = await moveBunk1(element);
+      expect(groupPlacements).toHaveBeenCalledTimes(1);
+      expect(groupPlacements).toHaveBeenCalledWith({ groupId: "g1" });
+      expect(noteOf(juniors)).toBe(
+        "Moves to Seniors: Bunk 1 is no longer in Swim (for Juniors). Its schedules keep Swim (3 cells), marked “Not set up for Bunk 1”."
+      );
+      await expect(element).toBeAccessible();
+    });
+
+    it("says so when its schedules can't be checked", async () => {
+      groupPlacements.mockRejectedValue(new Error("offline"));
+      const element = await renderUnits();
+      const juniors = await moveBunk1(element);
+      expect(noteOf(juniors)).toBe(
+        "Moves to Seniors: Bunk 1 is no longer in Swim (for Juniors). Its schedules could not be checked."
+      );
+    });
+
+    it("once saved, takes the cursor to its row in the new unit, and says so", async () => {
+      groupPlacements.mockResolvedValue({ complete: true, placed: [] });
+      const element = await renderUnits();
+      const [juniors] = tablesOf(element);
+      // The cursor on the row's own details button.
+      juniors.shadowRoot
+        .querySelector('[data-id="more"][data-row-key="row-g1"]')
+        .focus();
+      const saves = jest.fn();
+      element.addEventListener("save", saves);
+      const onDone = jest.fn();
+      // The table sends the row's save while the cursor is still in it.
+      juniors.dispatchEvent(new CustomEvent("save", { detail: { onDone } }));
+      expect(saves).toHaveBeenCalledTimes(1);
+      const detail = saves.mock.calls[0][0].detail;
+      // The season comes back with Bunk 1 in Seniors; its old row (and the cursor) are gone.
+      element.entry = nsRecord({
+        ...twoUnits,
+        divisions: [
+          { ...twoUnits.divisions[0], groups: [] },
+          {
+            ...twoUnits.divisions[1],
+            groups: [
+              { Id: "g1", Name: "Bunk 1", Division__c: "d2" },
+              ...twoUnits.divisions[1].groups
+            ]
+          }
+        ]
+      });
+      await flush();
+      const [, seniors] = tablesOf(element);
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      detail.onDone();
+      await flush();
+      await flush();
+      await flush();
+      const focused = focus.mock.contexts.map(
+        (el) =>
+          `${el.getRootNode().host.heading}:${el.dataset.rowKey}:${el.dataset.field}`
+      );
+      focus.mockRestore();
+      expect(onDone).toHaveBeenCalled();
+      expect(focused).toEqual(["Seniors:row-g1:Name"]);
+      expect(
+        seniors.shadowRoot.querySelector('[data-id="announce"]').textContent
+      ).toContain("Bunk 1 moved to Seniors");
     });
   });
 

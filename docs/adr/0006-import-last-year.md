@@ -204,6 +204,21 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     moved on Salesforce's own record page changes who it is eligible for with no card (the
     clash check still runs); and schedules already built may show a moved group in an activity
     it is no longer eligible for, with nothing pointing it out.
+    - **Schedules already built (2026-10-22, Groups screen).** The schedules mark such a cell
+      "Not set up for <group>" (ADR 0008). Before the move is saved, the Groups screen's "What
+      changes" note also says what the group's schedules keep: _Its schedules keep Swim (4
+      cells), marked "Not set up for Bunk 3"._ It counts the group's cells, in its program's
+      Manual Build and Generated Schedule drafts, of each activity the move takes it out of
+      (`GroupPlacements`, asked once per group the first time a move would take it out of an
+      activity; user mode; days read 25 at a time, with a query cap, past which the note adds
+      _Not every schedule could be read._, and _Its schedules could not be checked._ if the
+      question fails). Nothing in a schedule changes: the director decides, on the schedule,
+      what to do with each cell. Saved versions and published schedules are not counted; they
+      are history and keep what they said. Recurring activities the group leaves or joins are
+      named in the same note and show as setup changes on the schedule (ADR 0008 part 6).
+      The desktop moves a group with no note at all (GroupsScreen.jsx: the age division is a
+      plain field of the row); the note is Shoresh's "never shift unseen" rule.
+    - A group moved on Salesforce's own record page still gets no note (unchanged).
 
 ## Part 2: the imported version, Undo last import, remembered answers
 
