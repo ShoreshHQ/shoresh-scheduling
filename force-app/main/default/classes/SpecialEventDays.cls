@@ -7,7 +7,8 @@
  * published copies are history and don't count.
  *
  * Called after schedule days are saved or deleted. A save whose days hold no special event, before
- * or after, costs nothing; one that does costs three queries and a write of the days that changed.
+ * or after, costs nothing; one that does costs four queries and a write of the days that changed.
+ * An event the grid holds that is since deleted (or of another season) is on no day.
  * Runs in user mode: whoever may place an event may put it on a day.
  */
 public with sharing class SpecialEventDays {
@@ -106,8 +107,39 @@ public with sharing class SpecialEventDays {
     if (!stale.isEmpty()) {
       Database.delete(stale, true, AccessLevel.USER_MODE);
     }
+    keepStandingEvents(wanted);
     if (!wanted.isEmpty()) {
       Database.insert(wanted.values(), true, AccessLevel.USER_MODE);
+    }
+  }
+
+  /**
+   * Leaves out an event since deleted, or of another season: a grid can still hold one (a
+   * version restored from before it was deleted, say). It shows as removed on the grid and is on
+   * no day; it never stops the save.
+   */
+  private static void keepStandingEvents(Map<String, SpecialDate__c> wanted) {
+    if (wanted.isEmpty()) {
+      return;
+    }
+    Set<Id> eventIds = new Set<Id>();
+    for (SpecialDate__c placed : wanted.values()) {
+      eventIds.add(placed.SpecialEvent__c);
+    }
+    Map<Id, SpecialEvent__c> standing = new Map<Id, SpecialEvent__c>(
+      [
+        SELECT Id, Season__c
+        FROM SpecialEvent__c
+        WHERE Id IN :eventIds
+        WITH USER_MODE
+      ]
+    );
+    for (String key : new List<String>(wanted.keySet())) {
+      SpecialDate__c placed = wanted.get(key);
+      SpecialEvent__c event = standing.get(placed.SpecialEvent__c);
+      if (event == null || event.Season__c != placed.Season__c) {
+        wanted.remove(key);
+      }
     }
   }
 

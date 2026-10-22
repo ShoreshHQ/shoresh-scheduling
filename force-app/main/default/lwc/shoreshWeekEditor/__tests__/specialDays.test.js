@@ -255,6 +255,50 @@ describe("c-shoresh-week-editor: special days and events", () => {
     expect(cells).toEqual([expect.objectContaining({ colSpan: "2" })]);
   });
 
+  it("keeps focus on the cell an event merged into, typed over a range", async () => {
+    const { element } = await render();
+    const gridElement = grid(element);
+    // Shift+Right from Bunk 1 chose Bunk 1 and Bunk 2, and left focus on Bunk 2's cell.
+    gridElement.shadowRoot.querySelector('[data-cell="1-1"]').focus();
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    await fromGrid(element, "cellselect", { key: "1-1", extend: true });
+    await fromGrid(element, "editcell", {
+      key: "1-1",
+      rect: { bottom: 0, left: 0 }
+    });
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "carn";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+    );
+    await flush();
+    expect(
+      gridElement.shadowRoot.querySelector('[data-cell="1-1"]')
+    ).toBeNull();
+    const focused = gridElement.shadowRoot.activeElement;
+    expect(focused && focused.dataset.cell).toBe("0-1");
+    expect(focused.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("keeps focus on the cell an event merged into, put down beside itself", async () => {
+    const { element } = await render([FLAGPOLE, CARNIVAL], ["1,2,", "1,,"]);
+    const gridElement = grid(element);
+    gridElement.shadowRoot.querySelector('[data-cell="1-1"]').focus();
+    q(element, "c-shoresh-build-palette").dispatchEvent(
+      new CustomEvent("pickevent", { detail: { id: EVENT_ID } })
+    );
+    await flush();
+    gridElement.shadowRoot.querySelector('[data-cell="1-1"]').focus();
+    await fromGrid(element, "editcell", { key: "1-1" });
+    expect(
+      gridElement.shadowRoot.querySelector('[data-cell="1-1"]')
+    ).toBeNull();
+    const focused = gridElement.shadowRoot.activeElement;
+    expect(focused && focused.dataset.cell).toBe("0-1");
+  });
+
   it("clears an event drawn across bunks from all of them at once", async () => {
     const { element, saveRuns } = await render(
       [FLAGPOLE, CARNIVAL],

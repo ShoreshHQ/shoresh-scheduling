@@ -198,6 +198,62 @@ private class WeekSpecialsTest {
   }
 
   @IsTest
+  static void aVersionHoldingADeletedEventCanBeRestored() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id carnival = SpecialScheduleTestData.addEvent(
+        ids.get('Season'),
+        'Carnival'
+      );
+      ManualBuildViews.DraftView view = blankWeek(ids);
+      Id draftId = view.schedule.schedule.id;
+      SlotEdits.Run run = runOn(
+        MONDAY,
+        ids.get('Group A'),
+        new List<String>{ view.schedule.days[0].blocks[0].id }
+      );
+      String event = 'S:' + carnival;
+      ManualBuildController.saveSlots(
+        draftId,
+        edits(run, new List<String>{ '' }, new List<String>{ event })
+      );
+      Id versionId = ManualBuildController.saveVersion(draftId, 'Carnival');
+      ManualBuildController.saveSlots(
+        draftId,
+        edits(run, new List<String>{ event }, new List<String>{ '' })
+      );
+      // On no day now, so it can be deleted (ADR 0014 choice 8).
+      Database.delete(
+        new SpecialEvent__c(Id = carnival),
+        true,
+        AccessLevel.USER_MODE
+      );
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
+        draftId,
+        versionId,
+        ScheduleDays.stamp(ScheduleDays.read(draftId))
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 40, 'Queries to restore: ' + used);
+      Assert.isFalse(restored.changedSince);
+      Boolean found = false;
+      for (ScheduleViews.Ref item : restored.schedule.days[0].items) {
+        if (item.kind == 'S') {
+          found = true;
+          Assert.isTrue(item.gone, 'Shown as removed');
+        }
+      }
+      Assert.isTrue(found, 'The version\'s cell comes back');
+      Assert.areEqual(0, eventDays(carnival).size(), 'On no day');
+    }
+  }
+
+  @IsTest
   static void anEventOfAnotherSeasonIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();

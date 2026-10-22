@@ -279,11 +279,18 @@ export default class ShoreshScheduleGrid extends LightningElement {
       });
   }
 
-  /** The cell keyboard focus sits on: the last one used, else the first. */
+  /**
+   * The cell keyboard focus sits on: the last one used (or the cell drawn as one with it, when
+   * it is no longer drawn on its own), else the first.
+   */
   get currentKey() {
     const cells = this.drawnCells;
-    if (cells.some((cell) => cell.key === this.activeKey)) {
-      return this.activeKey;
+    const key = this.activeKey;
+    const cell = cells.find(
+      (c) => c.key === key || (c.mergedKeys && c.mergedKeys.includes(key))
+    );
+    if (cell) {
+      return cell.key;
     }
     return cells.length ? cells[0].key : null;
   }

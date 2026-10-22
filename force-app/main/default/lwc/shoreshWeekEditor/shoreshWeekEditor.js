@@ -1123,11 +1123,19 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.announce("Put back.");
       return;
     }
-    this.commit(
-      result.runs,
-      `Placed ${found.name} · ${this.rangeName(rows)}`,
-      cell.key
-    );
+    if (
+      this.commit(
+        result.runs,
+        `Placed ${found.name} · ${this.rangeName(rows)}`,
+        cell.key
+      )
+    ) {
+      // The cell keeps focus, or the cell it is now drawn as one with (its own may be gone).
+      const grid = this.template.querySelector('[data-id="edit-grid"]');
+      if (grid) {
+        grid.focusCell(cell.key);
+      }
+    }
   }
 
   /**

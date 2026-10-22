@@ -257,7 +257,9 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
       while cells are chosen together, which puts it over them at once; or by **typing its name**
       into a cell or the cells chosen together (the typing box lists the season's events after
       the activities, each with its flag). Whatever was in those cells goes in full; a fixed or
-      recurring activity, a bunk not at camp or a locked cell refuses it, saying which.
+      recurring activity, a bunk not at camp or a locked cell refuses it, saying which. Keyboard
+      focus stays on the placed cell, or on the cell it is now drawn as one with when bunks side
+      by side merge (the focused cell's own may be gone).
     - **Cleared** with Delete: one drawn across bunks goes from all of them, as one Undo step.
       It is not dragged or stretched (it is placed again instead). Clear day and Clear week clear
       it with the activities; Copy, Paste and Copy day to carry it (`tools.js isPlaceable`);
@@ -276,8 +278,11 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     "Placed on" on the Special events screen and the delete refusal (choice 8) see the grid
     however its cells were written (an edit, Paste, Restore, Set it up). Versions and published
     copies are history and don't count. A save whose days hold no placed event, before or after,
-    costs nothing (a text test on the stored grid); one that does costs three queries and the
-    rows that changed. Only Monday to Friday a week still has.
+    costs nothing (a text test on the stored grid); one that does costs four queries and the
+    rows that changed. Only Monday to Friday a week still has. A grid can still hold an event
+    since deleted (a version saved before it was cleared and deleted, then restored) or one of
+    another season: it shows as removed on the grid, is on no day, and never stops the save, so
+    such a version can always be restored.
 
 21. **A special day goes on a day from its details** (desktop "+ Place on a day"; Director Guide
     §7): **Put on a day** in the details panel (decision 47.1) picks the week and the weekday (the
