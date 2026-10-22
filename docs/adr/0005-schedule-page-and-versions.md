@@ -139,6 +139,53 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
 12. **Screens read in user mode**: `SchedulesController` (versions, open, rename), with the
     Shoresh Scheduler permission set granting the new objects, fields, and class.
 
+13. **Export to Excel and Print** (2026-10-21, parity items 9 and 10 in wiki
+    `projects/shoresh-sf-parity-gaps.md`). Desktop: `src/utils/exportSchedule.js`,
+    `ExportChooserModal.jsx`, `ScheduleScreen.jsx` ("Versions and export"), Director Guide §10,
+    ADR 2026-08-08-export-formula-injection-sanitizer.
+    - **Where.** On the Schedules page, in the toolbar's end group with Versions ("Versions and
+      export", as the desktop groups them), after one rail line: **Export to Excel** and
+      **Print** as rail items (ADR 0015's `.shoresh-item`, with a glyph each), shown once a
+      version is open and held while a version with no days is open. Not on Manual Build or
+      Generated Schedule yet: their rails belong to the week editor's own PRs, and the Schedules
+      page already opens every version of every week (a published one included, from Versions),
+      so nothing is out of reach meanwhile.
+    - **Which schedule.** The version on screen. The desktop asks "Export which?" every time
+      because its button sits on a screen that can hold two schedules, and remembering would be
+      the app picking a winner. Here the director has already picked by opening one, and the
+      name on the strip above the grid says which, so there is nothing to ask and nothing is
+      remembered.
+    - **The Excel file** (`c/shoreshScheduleExport` `scheduleSheets`, saved by
+      `c/shoreshDownload` with SheetJS): one sheet per day as the desktop's (the time block, then
+      a column per group; a cell that runs several blocks is written in each, as the desktop
+      writes a slot per block; nothing placed is an empty cell), then **All Groups** in camp words ("All Bunks"; the
+      desktop's All Groups: group, day, time block, and what is there, with anything not an
+      activity named by kind, "[Fixed activity] Lunch") and **All Activities** (where each
+      activity runs: activity, day, time block, the groups there), so the file holds what Daily,
+      Group and Activity View show. Headings and sheet names are in camp words; a block reads
+      "Period 1 (9:00 AM – 9:45 AM)", or just its times when they are its name; "(removed)"
+      marks what was deleted since. A day that can't be read is a sheet saying "Can't be shown"
+      and is left out of the flat sheets. Every text cell goes through the formula guard.
+      Column widths are the desktop's (`shoreshDownload` now takes them per sheet). The file is
+      named "Week 1 - <version>.xlsx".
+    - **Print** (`c/shoreshSchedulePrint`, static resource `ShoreshPrint`) follows the view on
+      screen: Daily View prints a page per day, Group View a page per group, Activity View a page
+      per activity that runs this week (none for one that doesn't). Each page is a plain
+      black-on-white table, landscape, titled ("Monday, Jun 29", "Bunk 1"), with the week and the
+      version's name, time blocks down the side and a long activity one cell over its blocks;
+      Open cells are blank. The browser's own print opens (`window.print()`); its dialog chooses
+      pages and printer. The printout is put on the page only while printing and taken away
+      after (`afterprint`). Salesforce's header and the menu stay off the paper through
+      `ShoreshPrint`, loaded once the first time Print is pressed (as ShoreshTable is): every
+      rule is for paper only and only for a page with a printout on it (`body:has(.shoresh-print)`),
+      so printing any other Salesforce page is unchanged. Without the style (refused or not
+      loaded) it still prints, with the page around it.
+    - Checked by `shoreshScheduleExport.test.js` (the sheets, the formula guard, the same file
+      every time, the pages per view), `shoreshSchedulePrint.test.js` (the table, the page style
+      reaching only a page with a printout), `shoreshSchedules.test.js` ("Export to Excel and
+      Print") and `shoreshDownload.test.js` (column widths). Not yet checked in a real browser in
+      the test org (the paper's look in Lightning).
+
 ## Choices that are hard to undo after release
 
 - Object and field names: `Schedule__c` (`Program__c`, `Week__c`, `Status__c`, `Origin__c`,

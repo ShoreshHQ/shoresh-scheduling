@@ -23,6 +23,8 @@
 
 /* Versions sits apart, after a divider, as on the desktop. */
 .toolbar-end {
+  display: flex;
+  align-items: center;
   padding-left: 12px;
   border-left: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
 }

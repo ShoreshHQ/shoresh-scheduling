@@ -39,7 +39,10 @@ describe("c-shoresh-download", () => {
       reader.onload = () => resolve(new Uint8Array(reader.result));
       reader.readAsArrayBuffer(blob);
     });
-    return { wb: XLSX.read(bytes, { type: "array" }), type: blob.type };
+    return {
+      wb: XLSX.read(bytes, { type: "array", cellStyles: true }),
+      type: blob.type
+    };
   }
 
   it("saves the sheets, named as given, with the rows as given", async () => {
@@ -74,6 +77,20 @@ describe("c-shoresh-download", () => {
       ["Activity", "Length"],
       ["Swim", 2]
     ]);
+  });
+
+  it("gives a sheet's columns the widths asked for, and leaves others as Excel has them", async () => {
+    await downloadWorkbook(
+      {},
+      [
+        { name: "Monday", rows: [["Time block", "Bunk 1"]], widths: [22, 16] },
+        { name: "Plain", rows: [["A"]] }
+      ],
+      "week.xlsx"
+    );
+    const { wb } = await workbookAt(clicked[0].href);
+    expect(wb.Sheets.Monday["!cols"].map((c) => c.wch)).toEqual([22, 16]);
+    expect(wb.Sheets.Plain["!cols"]).toBeUndefined();
   });
 
   it("file names leave out what computers refuse", () => {
