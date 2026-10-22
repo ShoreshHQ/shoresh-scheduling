@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import { CHILDREN, FIELD, OBJECT } from "c/shoreshSchema";
 import { setTimeNote, spanChange } from "c/shoreshSetupRules";
 import { leftField } from "c/shoreshSavedMark";
+import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
 import { moveNote } from "./groupMoves";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -70,6 +71,10 @@ export default class ShoreshProgram extends LightningElement {
   divisionRecords = [];
   // Bunks switched to another unit on screen and not saved yet: table's unit -> { unit: [names] }.
   pendingMoves = {};
+  // What each bunk is placed in across its program's drafts (GroupPlacements), asked the first
+  // time a move would take it out of an activity: groupId -> the answer, or "failed".
+  placements = {};
+  askedPlacements = new Set();
   _entry;
 
   /** { program, timeBlocks, divisions: [{ division, groups }] } from SeasonSetupController. */
@@ -507,9 +512,31 @@ export default class ShoreshProgram extends LightningElement {
     const context = {
       divisions: this.divisionRecords,
       activities: this.activities,
-      recurringActivities: this._entry.recurringActivities
+      recurringActivities: this._entry.recurringActivities,
+      placements: this.placements,
+      want: (groupId) => this.askPlacements(groupId)
     };
     return (values, original) => moveNote(values, original, context);
+  }
+
+  /**
+   * Asks once what a bunk is placed in; the note is drawn again with the answer. Asked after the
+   * note in hand is drawn, never while it is.
+   */
+  askPlacements(groupId) {
+    if (this.askedPlacements.has(groupId)) {
+      return;
+    }
+    this.askedPlacements.add(groupId);
+    const answered = (answer) => {
+      this.placements = { ...this.placements, [groupId]: answer };
+    };
+    Promise.resolve()
+      .then(() => groupPlacements({ groupId }))
+      .then(
+        (result) => answered(result || { placed: [], complete: true }),
+        () => answered("failed")
+      );
   }
 
   get blockDefaults() {
@@ -729,9 +756,10 @@ export default class ShoreshProgram extends LightningElement {
   handleChildSave(event) {
     event.stopPropagation();
     const detail = event.detail;
-    // A recurring activity whose save moves it to another section (who it covers changed) may
-    // hold the cursor: once the season is read again, the cursor follows it there.
-    const held = this.isRecurring ? this.focusedRecurring() : null;
+    // A recurring activity whose save moves it to another section (who it covers changed), or a
+    // group moved to another division, may hold the cursor: once the season is read again, the
+    // cursor follows it there.
+    const held = this.isRecurring || this.isGroups ? this.focusedRow() : null;
     const onDone = detail.onDone;
     const sent =
       held && typeof onDone === "function"
@@ -746,12 +774,19 @@ export default class ShoreshProgram extends LightningElement {
     this.dispatchEvent(new CustomEvent("save", { detail: sent }));
   }
 
-  /** The recurring activity whose row holds the cursor, and its section's table, if any. */
-  focusedRecurring() {
-    const tables = this.template.querySelectorAll(
-      'c-shoresh-editable-table[data-id="recurring-activities"]'
-    );
-    for (const table of tables) {
+  /** This screen's sectioned tables: a recurring activity's, or each division's groups. */
+  sectionTables() {
+    const id = this.isGroups ? "groups" : "recurring-activities";
+    return [
+      ...this.template.querySelectorAll(
+        `c-shoresh-editable-table[data-id="${id}"]`
+      )
+    ];
+  }
+
+  /** The recurring activity or group whose row holds the cursor, and its table, if any. */
+  focusedRow() {
+    for (const table of this.sectionTables()) {
       const row = table.focusedRow();
       if (row) {
         return { ...row, table };
@@ -761,10 +796,10 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   /**
-   * After a save, a recurring activity that held the cursor and left its section (who it covers
-   * moved it to another division's) takes the cursor along: the same control in its new
-   * section, the move said aloud (WCAG 2.4.3), as a place whose type changed does (ADR 0015
-   * choice 11). Only when the cursor was lost with the row.
+   * After a save, a recurring activity or group that held the cursor and left its section (who
+   * it covers moved it to another division's, or it moved to another division) takes the cursor
+   * along: the same control in its new section, the move said aloud (WCAG 2.4.3), as a place
+   * whose type changed does (ADR 0015 choice 11). Only when the cursor was lost with the row.
    */
   followMoved(held) {
     const now = focusedElement();
@@ -775,27 +810,40 @@ export default class ShoreshProgram extends LightningElement {
     if (table.isConnected && table.showsRow(recordId)) {
       return;
     }
-    const tables = [
-      ...this.template.querySelectorAll(
-        'c-shoresh-editable-table[data-id="recurring-activities"]'
-      )
-    ];
-    const target = tables.find((t) => t.showsRow(recordId));
-    const item = (this._entry.recurringActivities || []).find(
-      (r) => r.Id === recordId
-    );
-    if (!target || !item) {
+    const target = this.sectionTables().find((t) => t.showsRow(recordId));
+    const moved = target ? this.movedTo(recordId, target) : null;
+    if (!moved) {
       return;
     }
-    const section = this.recurringSections.find(
-      (s) => s.key === target.dataset.section
-    );
     target.takeFocus(
       recordId,
       field,
       inDetails,
-      `${item.Name} moved to ${section ? section.heading : ""}`.trim()
+      `${moved.name} moved to ${moved.heading}`.trim()
     );
+  }
+
+  /** A moved row's name and the heading of the section it is now in. */
+  movedTo(recordId, target) {
+    if (this.isGroups) {
+      const division = this.divisions.find(
+        (d) => d.id === target.dataset.division
+      );
+      const grp = division
+        ? (division.groups || []).find((g) => g.Id === recordId)
+        : null;
+      return grp ? { name: grp.Name, heading: division.heading } : null;
+    }
+    const item = (this._entry.recurringActivities || []).find(
+      (r) => r.Id === recordId
+    );
+    if (!item) {
+      return null;
+    }
+    const section = this.recurringSections.find(
+      (s) => s.key === target.dataset.section
+    );
+    return { name: item.Name, heading: section ? section.heading : "" };
   }
 
   handleChildDelete(event) {
