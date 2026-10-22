@@ -1,7 +1,9 @@
 trigger ScheduleTrigger on Schedule__c(
   before insert,
   before update,
-  before delete
+  before delete,
+  after delete,
+  after undelete
 ) {
   ScheduleTriggerHandler.handle(
     Trigger.operationType,

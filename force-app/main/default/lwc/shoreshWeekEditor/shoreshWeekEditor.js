@@ -1182,7 +1182,14 @@ export default class ShoreshWeekEditor extends LightningElement {
    * a file ("not set up yet"), when the host can make it.
    */
   get setUpOffer() {
-    if (!this.setUpWith || !this.focusKey || this.isActivity) {
+    // A day a special day replaces shows its own schedule: the week's hidden cells under it,
+    // noted ones too, have nothing to offer (once set up, the day is replaced at once).
+    if (
+      !this.setUpWith ||
+      !this.focusKey ||
+      this.isActivity ||
+      this.replacedShown
+    ) {
       return null;
     }
     const cell = this.cellByKey(this.focusKey);

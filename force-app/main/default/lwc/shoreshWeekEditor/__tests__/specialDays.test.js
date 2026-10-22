@@ -363,6 +363,44 @@ describe("c-shoresh-week-editor: special days and events", () => {
     );
   });
 
+  it("lets the offer go once a noted special day is set up and replaces its day", async () => {
+    const noted = { kind: "D", id: "", name: "Visiting Day", gone: false };
+    const mondayVisit = {
+      ...VISITING_DAY,
+      dateValue: "2026-06-29",
+      day: "Monday"
+    };
+    let element;
+    // As the host does: set it up, then send the week back with Monday replaced.
+    const setUpWith = jest.fn(() => {
+      element.show(
+        {
+          ...draft([FLAGPOLE, noted], ["1,2,", "1,,"]),
+          specials: { days: [mondayVisit] }
+        },
+        false
+      );
+      return Promise.resolve('"Visiting Day" is set up as a special day.');
+    });
+    ({ element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"], {
+      setUpWith,
+      specials: { days: [] }
+    }));
+    await fromGrid(element, "cellfocus", { key: "0-1" });
+    const button = q(element, '[data-id="set-up"]');
+    expect(button.getAttribute("aria-label")).toBe(
+      "Set up Visiting Day as a special day"
+    );
+    button.click();
+    await flush();
+    expect(setUpWith).toHaveBeenCalledWith({ kind: "D", name: "Visiting Day" });
+    expect(q(element, '[data-id="set-up-offer"]')).toBeNull();
+    expect(q(element, '[data-id="set-up"]')).toBeNull();
+    expect(q(element, '[data-id="notice"]').textContent).toBe(
+      '"Visiting Day" is set up as a special day.'
+    );
+  });
+
   it("offers nothing to set up when the host can't", async () => {
     const noted = { kind: "D", id: "", name: "Field Day", gone: false };
     const { element } = await render([FLAGPOLE, noted], ["1,2,", "1,,"]);

@@ -1,7 +1,8 @@
 /**
  * Special days and events on a week's schedules (ADR 0014 slice 4): Manual Build and Generated
  * Schedule are sent the week's days a special day replaces (with its own schedule); an event placed on the grid is on that day
- * (its special date follows the drafts that hold it) and can't be deleted while it is; Start from
+ * (its special date follows the drafts that hold it, also when a draft or its program is deleted)
+ * and can't be deleted while it is; Start from
  * another week names an event it leaves out. As a scheduler, with records made inside the same
  * System.runAs; each request's queries are bounded.
  */
@@ -194,6 +195,79 @@ private class WeekSpecialsTest {
         )
       );
       Assert.areEqual(0, eventDays(carnival).size());
+    }
+  }
+
+  /** Carnival placed on Monday of Week 1 in the Main program's draft; its draft's id. */
+  private static Id draftWithCarnival(Map<String, Id> ids, Id carnival) {
+    ManualBuildViews.DraftView view = blankWeek(ids);
+    Id draftId = view.schedule.schedule.id;
+    ManualBuildController.saveSlots(
+      draftId,
+      edits(
+        runOn(
+          MONDAY,
+          ids.get('Group A'),
+          new List<String>{ view.schedule.days[0].blocks[0].id }
+        ),
+        new List<String>{ '' },
+        new List<String>{ 'S:' + carnival }
+      )
+    );
+    Assert.areEqual(1, eventDays(carnival).size(), 'On Monday of Week 1');
+    return draftId;
+  }
+
+  @IsTest
+  static void deletingAProgramTakesItsDraftsEventsOffTheirDays() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id carnival = SpecialScheduleTestData.addEvent(
+        ids.get('Season'),
+        'Carnival'
+      );
+      draftWithCarnival(ids, carnival);
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      // The draft and its days go with the program, with no trigger of their own.
+      Database.delete(ids.get('Main'), true, AccessLevel.USER_MODE);
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 40, 'Queries to delete the program: ' + used);
+      Assert.areEqual(0, eventDays(carnival).size(), 'On no day');
+      // So it can be deleted (ADR 0014 choice 8).
+      Assert.isTrue(
+        Database.delete(
+            new SpecialEvent__c(Id = carnival),
+            false,
+            AccessLevel.USER_MODE
+          )
+          .isSuccess()
+      );
+    }
+  }
+
+  @IsTest
+  static void aDeletedDraftTakesItsEventsOffAndARestoredOnePutsThemBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id carnival = SpecialScheduleTestData.addEvent(
+        ids.get('Season'),
+        'Carnival'
+      );
+      Id draftId = draftWithCarnival(ids, carnival);
+
+      Test.startTest();
+      Database.delete(draftId, true, AccessLevel.USER_MODE);
+      Assert.areEqual(0, eventDays(carnival).size(), 'On no day');
+      Database.undelete(draftId, true, AccessLevel.USER_MODE);
+      Test.stopTest();
+
+      List<SpecialDate__c> days = eventDays(carnival);
+      Assert.areEqual(1, days.size(), 'Back on Monday of Week 1');
+      Assert.areEqual('Monday', days[0].Day__c);
     }
   }
 

@@ -282,7 +282,12 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     rows that changed. Only Monday to Friday a week still has. A grid can still hold an event
     since deleted (a version saved before it was cleared and deleted, then restored) or one of
     another season: it shows as removed on the grid, is on no day, and never stops the save, so
-    such a version can always be restored.
+    such a version can always be restored. **Deleting a draft or its program** (a program whose
+    schedules are all drafts can be deleted from Camp Setup) takes its days along with no trigger
+    of their own, so `ScheduleTriggerHandler` and `ProgramTriggerHandler` note the weeks before
+    the delete (drafts of weeks that have an event on a day: one query) and make those weeks' event
+    days again after it; one restored from the Recycle Bin puts them back. Otherwise an event
+    would stay "on" a day no schedule shows, and could never be deleted.
 
 21. **A special day goes on a day from its details** (desktop "+ Place on a day"; Director Guide
     §7): **Put on a day** in the details panel (decision 47.1) picks the week and the weekday (the
