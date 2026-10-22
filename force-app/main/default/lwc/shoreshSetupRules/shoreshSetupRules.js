@@ -25,7 +25,8 @@ export function setupProblems(setup, terms) {
     ...weekProblems(setup, terms),
     ...structureProblems(setup, terms),
     ...activityProblems(setup, terms),
-    ...setTimeProblems(setup, terms)
+    ...setTimeProblems(setup, terms),
+    ...specialDayProblems(setup, terms)
   ];
   return problems.map((problem, i) => ({ key: `p${i}`, ...problem }));
 }
@@ -53,6 +54,118 @@ function weekProblems(setup, terms) {
   if (weeks.length === 0) {
     add(season.Name, `No ${terms.pIn("Week")} yet.`);
   }
+  return problems;
+}
+
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const MS_PER_MINUTE = 60000;
+
+/** The weekdays (Monday to Friday) a week's dates include. */
+function weekdaysIn(week) {
+  const start = week[WEEK.StartDate];
+  const end = week[WEEK.EndDate];
+  const has = new Set();
+  if (!start || !end) {
+    return has;
+  }
+  const [y, m, d] = start.split("-").map(Number);
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(Date.UTC(y, m - 1, d + i));
+    if (date.toISOString().slice(0, 10) > end) {
+      break;
+    }
+    has.add(WEEKDAYS[(date.getUTCDay() + 6) % 7]);
+  }
+  return has;
+}
+
+/** Minutes past midnight from a time block's time (milliseconds) or a plan's ("HH:mm"). */
+function minutesOf(value) {
+  if (typeof value === "number") {
+    return Math.round(value / MS_PER_MINUTE);
+  }
+  const match = /^(\d{1,2}):(\d{2})/.exec(value || "");
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+/** "12:30" from minutes, as a special day's details write its times. */
+function clockOf(minutes) {
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** A name compared as setup compares names: spaces and capitals aside. */
+function nameKey(name) {
+  return (name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * Special days (ADR 0014 slice 6), on the Special events screen. Shown, never fixed: a special
+ * day's plan is the director's own.
+ * - On a weekday its week no longer has (the week's dates moved: ADR 0014 choice 4); that day
+ *   shows nothing special. Taking it off that day is the fix.
+ * - Its time blocks no longer match the regular day's: a time block with the same name as one of
+ *   the program's it started from (the first program with time blocks, ADR 0014 choice 12) but
+ *   other times, as when Lunch moved in setup after the special day was made. Time blocks of its
+ *   own (another name) are the point of a special day and are not flagged.
+ */
+function specialDayProblems(setup, terms) {
+  const special = setup.special || {};
+  const briefs = new Map((special.briefs || []).map((b) => [b.itemId, b]));
+  const weeks = new Map((setup.weeks || []).map((w) => [w.Id, w]));
+  const program = (setup.programs || []).find(
+    (entry) => (entry.timeBlocks || []).length > 0
+  );
+  const regular = new Map();
+  ((program && program.timeBlocks) || []).forEach((block) => {
+    const key = nameKey(block.Name);
+    if (key && !regular.has(key)) {
+      regular.set(key, {
+        start: minutesOf(block[BLOCK.StartTime]),
+        end: minutesOf(block[BLOCK.EndTime])
+      });
+    }
+  });
+  const problems = [];
+  (special.specialDays || []).forEach((specialDay) => {
+    const brief = briefs.get(specialDay.Id);
+    if (!brief) {
+      return;
+    }
+    const add = (why) =>
+      problems.push({ screen: "specialEvents", name: specialDay.Name, why });
+    (brief.days || []).forEach((onDay) => {
+      const week = weeks.get(onDay.weekId);
+      if (week && !weekdaysIn(week).has(onDay.day)) {
+        add(
+          `On ${onDay.day} of "${week.Name}", which that ${terms.sIn("Week")} no longer has. Take it off that day.`
+        );
+      }
+    });
+    if (brief.problem) {
+      return;
+    }
+    const differ = [];
+    (brief.periods || []).forEach((period) => {
+      const was = regular.get(nameKey(period.name));
+      const start = minutesOf(period.startTime);
+      const end = minutesOf(period.endTime);
+      if (
+        was &&
+        was.start !== null &&
+        start !== null &&
+        (was.start !== start || was.end !== end)
+      ) {
+        differ.push(
+          `${period.name} is ${clockOf(start)}–${clockOf(end)} here and ${clockOf(was.start)}–${clockOf(was.end)} there`
+        );
+      }
+    });
+    if (differ.length) {
+      add(
+        `Its ${terms.pIn("TimeBlock")} no longer match ${program.program.Name}'s: ${differ.join("; ")}.`
+      );
+    }
+  });
   return problems;
 }
 

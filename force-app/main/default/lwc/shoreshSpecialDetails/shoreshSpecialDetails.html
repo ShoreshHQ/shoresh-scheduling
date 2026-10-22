@@ -46,7 +46,44 @@
         </div>
         <div class="fact">
           <dt>Placed on</dt>
-          <dd class={placedOnClass} data-id="placed-on">{placedOn}</dd>
+          <template lwc:if={hasDaysToTakeOff}>
+            <!-- A special day's days, each with its Take off (slice 6; desktop chips' x). -->
+            <dd class="value" data-id="placed-on">
+              <ul class="placed-days">
+                <template for:each={daysToTakeOff} for:item="placed">
+                  <li key={placed.key} class="placed-day" data-id="placed-day">
+                    <span>{placed.text}</span>
+                    <button
+                      type="button"
+                      class="placed-off"
+                      data-id="take-off"
+                      data-key={placed.key}
+                      aria-label={placed.offLabel}
+                      title={placed.offLabel}
+                      aria-disabled={takingOff}
+                      onclick={handleTakeOff}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M4.5 4.5l7 7 M11.5 4.5l-7 7"></path>
+                      </svg>
+                    </button>
+                  </li>
+                </template>
+              </ul>
+            </dd>
+          </template>
+          <template lwc:else>
+            <dd class={placedOnClass} data-id="placed-on">{placedOn}</dd>
+          </template>
         </div>
         <template lwc:if={isEvent}>
           <div class="fact">
@@ -165,6 +202,20 @@
           <p class="place-said" role="status" data-id="place-said">
             {placedSaid}
           </p>
+          <!-- Undo of Take off: puts it on that day again (slice 6). -->
+          <template lwc:if={takenOff}>
+            <div class="place-actions">
+              <button
+                type="button"
+                class="open-schedule"
+                data-id="put-back"
+                aria-label={putBackLabel}
+                onclick={handlePutBack}
+              >
+                Put back
+              </button>
+            </div>
+          </template>
         </div>
       </template>
 

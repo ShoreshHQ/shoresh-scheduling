@@ -318,6 +318,11 @@
   gap: var(--shoresh-space-in-group);
 }
 
+/* "Take off <day>": quiet beside the way in, as the mock-up (placed-day.png). */
+.special-off {
+  color: var(--shoresh-text-2);
+}
+
 .special-open {
   color: var(--shoresh-color-highlight);
   font-weight: 500;

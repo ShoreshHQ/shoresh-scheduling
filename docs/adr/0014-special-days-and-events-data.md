@@ -1,7 +1,7 @@
 # 0014: Special days and special events, the data
 
 Status: proposed (2026-10-20; slice 2 added 2026-10-22; slice 3 added 2026-10-22; slice 4 added
-2026-10-22), Special Events and Special Days slices 1 to 4 of 6 (plan: wiki
+2026-10-22; slice 6 added 2026-10-22), Special Events and Special Days slices 1 to 4 and 6 of 6 (plan: wiki
 `projects/shoresh-sf-parity-gaps`, "Build plan"). Design source: wiki
 `projects/shoresh-scheduling-data-model` (`SpecialEvent__c`, `SpecialDay__c`, `PlanPart__c`,
 `SpecialDate__c`). Where the data model is looser, the desktop decides: desktop ADRs
@@ -16,7 +16,11 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
 `2026-08-22-event-internal-subschedule` and `2026-08-22-event-schedule-import`. Slice 4 (choices 19
 to 25) puts them on the week's schedules: design source decisions 47.2 to 47.4 and 51 and the
 approved mock-ups `design-research/special-r1/placed.html`, `placed.png` and `placed-day.png`;
-desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-binds-to-a-week-day`._
+desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-binds-to-a-week-day`.
+Slice 6 (choices 26 to 30) takes a special day off a day and cleans up: desktop
+`specialDay/SpecialDayPlacements.jsx` ("Placed on" chips, "Remove from this day"), Director Guide
+"Take it off a day", ADR `2026-10-09-special-day-binds-to-a-week-day` D4.6 and D8, and the mock-up
+`placed.html`'s "Take off Friday"._
 
 ## Choices
 
@@ -39,8 +43,8 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
    restrict-delete) and `Day__c` (Monday to Friday, the days a program can run), as the desktop
    binds to (week, day). A week whose dates are moved keeps its special days on the same
    weekdays. `SpecialDates.dateOf` gives the date in the week today; a weekday the week no longer
-   has is refused on save ("Short week" has no Monday.) and, after a move, is null (to be shown
-   under Needs attention in slice 6).
+   has is refused on save ("Short week" has no Monday.) and, after a move, is null (shown under
+   Needs attention, choice 28).
 5. **Several days means several rows** (desktop 2026-08-22 ADRs): no date ranges. A special event
    can be on many days, but only once on each; a special day and events can share a day. The
    event's start and end times in the data model were not added: an event covers time blocks on
@@ -63,8 +67,8 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
 9. **What goes with what.** Deleting a week takes its special days and events off its days (they
    mean nothing without the week; the items are kept), as its drafts and versions go with it. Deleting
    a season clears its special dates, plans and special events first (restrict-delete lookups
-   would otherwise block it, platform check (a)). The week's delete warning does not yet count
-   them (slice 6).
+   would otherwise block it, platform check (a)). The week's delete question names them (choice
+   29).
 10. **Reads are bounded.** A season's special dates are one query (`SpecialDates.forSeason`), any
     number of plans one more (`SpecialPlans.readAll`); a plan save is four. Tests assert these as
     a scheduler, records made inside the same `System.runAs`.
@@ -327,8 +331,7 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     of "Week 1" already has the special day "Field Day". Use this one instead? "Field Day" stays
     saved." with **Use <name>** and Cancel; the answer replaces it in one save, nothing changed
     by asking. What was done is said (role status) and the season is read again, so Manual Build
-    and Generated Schedule show it. Taking one off a day is slice 6 (`SpecialDates.takeOff`
-    exists; the replaced day's line has room for "Take off <day>", as the mock-up).
+    and Generated Schedule show it. Taking one off a day: choice 26.
 
 22. **A replaced day shows the special day on both schedules** (desktop D4 and D6; decision 47.4;
     mock-up `placed-day.png`). Both screens are sent the week's specials (`WeekSpecials`: each
@@ -389,6 +392,64 @@ desktop ADRs `2026-08-22-events-overlay-placement` and `2026-10-09-special-day-b
     test org by `scripts/a11y-browser-check.mjs` (Put on a day by keyboard, what was done said,
     axe with it open).
 
+26. **A special day is taken off a day** (desktop `SpecialDayPlacements.jsx`: the "Placed on"
+    chips' x and "Remove from this day"; Director Guide "Take it off a day"; mock-up `placed.html`
+    "Take off Friday"). Two ways, as the desktop has two:
+    - in its **details**, each day under **Placed on** has its own Take off (an x, named "Take
+      Field Day off Tuesday of Week 2" for screen readers); an event has none (its days follow
+      the grids, choice 20: it comes off a day when it is cleared from the grid);
+    - on **Manual Build and Generated Schedule**, the replaced day's line has **Take off
+      <weekday>** beside Open <name>, quiet, as the mock-up (`takeOffWith` on
+      `c-shoresh-week-editor`, given by both screens). The week is read again and focus goes to
+      that day's pill, which stays chosen.
+      Both call `SpecialPlacingController.takeOffDay` (`SpecialDayPlacing.takeOff`: the special
+      date of that special day on that week day, locked, deleted in user mode). **What comes back
+      is said** (role status): 'Tuesday of "Week 2" has its regular schedule again. "Field Day"
+      stays saved.' One already off says so and changes nothing ('"Field Day" is not on Tuesday
+      of "Week 2".'); an event's Id is refused ("That can't be taken off a day.").
+27. **Safe, and undone by putting it back** (desktop D4.6 and D8: unbinding is lossless; "bind it
+    again to undo"). Taking off changes nothing but the special date: the week's own cells for
+    that day were kept, out of sight, all along (choice 22), so they are back exactly as they
+    were, and the special day and its plan stay saved. So it is not asked first, as on the
+    desktop. In the details, **Put back** appears with what was said and takes the focus: it
+    puts the special day on that day again, as Put on a day does, so a special day put there
+    since asks first (choice 21). On the week's screens the line says the special day stays
+    saved; it is put back from its details.
+28. **Needs attention on the Special events screen** (and on Roots), shown and never fixed (a
+    special day's plan is the director's own; `shoreshSetupRules` `specialDayProblems`):
+    - a special day on a **weekday its week no longer has** (the week's dates moved, choice 4):
+      'On Monday of "Short week", which that week no longer has. Take it off that day.' That
+      day shows nothing special (choice 22);
+    - a special day whose **time blocks no longer match the regular day's**: a time block with
+      the same name (spaces and capitals aside) as one of the time blocks it started from (the
+      first program with time blocks, choice 12) but other times, as when Lunch moved in setup
+      after Field Day was made: "Its time blocks no longer match Main's: Lunch is 12:00–12:45
+      here and 12:30–13:15 there." Its own time blocks under other names (Families arrive) are
+      the point of a special day and are not flagged. The desktop has no such check (its special
+      days copy time blocks once, `copyCampTimeBlocks.js`, and never compare again); this is the
+      build plan's (Greg-approved) "Needs attention for a special day whose periods no longer
+      match".
+    - Not flagged: a group added to the camp since a special day started, which is not one of
+      its columns (choice 16 refuses adding a group column, so there would be nothing to do
+      about it yet).
+29. **Deleting names where an item is.** A special day or event on a day is refused with the days
+    named (choice 8), and the details' Take off is now the way to take a special day off them.
+    Deleting a **week** asks as before and now also names what it takes off its days (choice 9;
+    the items stay saved): 'Delete "Week 2"? Anything inside it is deleted too. It takes "Field
+    Day" off Tuesday and "Carnival" off Wednesday and Thursday.'
+30. **Checked by** `SpecialPlacingTest` (taken off with the week's own days unchanged, Tuesday
+    too, the special day and its plan kept, nothing replacing the day, at most 10 queries, as a
+    scheduler with records made in the same `System.runAs`; already off; another special day
+    left where it is; an event refused), `shoreshSpecialDetails` `takeOff.test.js` (each day's
+    Take off and its name, none for an event, what is said, focus on Put back, Put back and its
+    question, a refusal), `shoreshWeekEditor` `specialDays.test.js` (Take off <day> only when the
+    host can, the day back with its pill focused, a refusal), `shoreshManualBuild`
+    `takeOff.test.js` (the week shown, the week and season read again), `shoreshSetupRules`
+    (both Needs attention items, and what is not flagged), `shoreshCampSetup` (the week's delete
+    question), and in the test org by `scripts/a11y-browser-check.mjs` (Take off by keyboard in
+    the details, what comes back said, focus on Put back, axe; the step no longer takes it off
+    by Apex before deleting it).
+
 ## Names
 
 Every object and field is reached through typed Apex references and `c/shoreshSchema`
@@ -397,6 +458,5 @@ Every object and field is reached through typed Apex references and `c/shoreshSc
 
 ## Not in this slice
 
-Showing special days and events on Publish and the Schedules page (slice 5), taking a special
-day off a day, and Needs attention for a special day whose weekday or groups no longer match (a group added to the camp after a special day was made is not one of its
-columns until then), and the week delete warning (slice 6).
+Showing special days and events on Publish and the Schedules page (slice 5). A special day's
+column for a group added to the camp after it started (choice 28).
