@@ -9,8 +9,11 @@
  * has entries is refused, as on the desktop, so a file never writes over what the director typed.
  * What a special day started with (its time blocks and the fixed and recurring activities
  * brought in) is not an entry, as the desktop's seed is not (its ADR 2026-08-22-event-schedule-import
- * §6): the file replaces it, and the screen names what it replaced. Runs in user mode; the plan
- * is saved all at once under its item's lock.
+ * §6): the file replaces it, and the screen names what it replaced. The file's time blocks (and an
+ * event's stations) replace the plan's, and every change to them is named (SpecialImportFrame);
+ * once the director has changed them, an import that would rename or remove any is not saved
+ * until the director says yes (replaceEdited), so nothing they made goes quietly. Runs in user
+ * mode; the plan is saved all at once under its item's lock.
  */
 public with sharing class SpecialScheduleImport {
   /** What the screen read from the file. */
@@ -55,9 +58,27 @@ public with sharing class SpecialScheduleImport {
     /** How many cells were filled. */
     @AuraEnabled
     public Integer placed = 0;
+    /** What the file changes in the time blocks (and an event's stations). */
+    @AuraEnabled
+    public SpecialImportFrame.FrameChanges frame;
+    /**
+     * True when nothing was saved: the director changed the time blocks or stations the file
+     * renames or removes (frame), and is asked first; sent again with replaceEdited to go ahead.
+     */
+    @AuraEnabled
+    public Boolean asks = false;
   }
 
-  public static Outcome apply(Id itemId, Integer revision, Imported imported) {
+  /**
+   * Fills an empty schedule from the file. replaceEdited: the director said yes to replacing
+   * time blocks or stations they changed (asked when an Outcome came back with asks).
+   */
+  public static Outcome apply(
+    Id itemId,
+    Integer revision,
+    Imported imported,
+    Boolean replaceEdited
+  ) {
     SpecialImportCheck.check(imported);
     SpecialSchedule.Owner owner = SpecialSchedule.lockedOwnerOf(itemId);
     SpecialPlans.Plan plan = SpecialPlans.read(itemId);
@@ -69,6 +90,15 @@ public with sharing class SpecialScheduleImport {
       : SpecialImportShape.forGroups(groupsOf(owner, plan), imported);
     grid.groups = columns.rows;
     Outcome outcome = new Outcome();
+    outcome.frame = SpecialImportFrame.between(
+      plan.grid,
+      grid,
+      owner.isEvent()
+    );
+    if (replaceEdited != true && asksFirst(owner, plan, outcome.frame)) {
+      outcome.asks = true;
+      return outcome;
+    }
     outcome.notGroups = columns.notGroups;
     outcome.replaced = SpecialPlanEntries.setTimesIn(plan.grid);
     SpecialActivities.Named found = activitiesFor(owner, columns.filling);
@@ -81,6 +111,24 @@ public with sharing class SpecialScheduleImport {
     SpecialPlans.write(itemId, grid, plan.revision);
     outcome.plan = SpecialSchedule.reread(owner);
     return outcome;
+  }
+
+  /** Whether the import renames or removes time blocks or stations the director changed. */
+  private static Boolean asksFirst(
+    SpecialSchedule.Owner owner,
+    SpecialPlans.Plan plan,
+    SpecialImportFrame.FrameChanges frame
+  ) {
+    if (!frame.losesAny()) {
+      return false;
+    }
+    return SpecialImportFrame.edited(
+      plan.grid,
+      owner.isEvent()
+        ? new List<ScheduleGrid.Block>()
+        : SpecialDaySeed.startingBlocks(owner.seasonId),
+      owner.isEvent()
+    );
   }
 
   /** Refused when the plan was saved since the screen read it, or has entries. */

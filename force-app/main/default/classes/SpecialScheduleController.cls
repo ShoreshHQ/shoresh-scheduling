@@ -61,15 +61,24 @@ public with sharing class SpecialScheduleController {
     }
   }
 
-  /** An empty schedule filled from a file the screen has read. */
+  /**
+   * An empty schedule filled from a file the screen has read. replaceEdited: yes to replacing
+   * time blocks or stations the director changed (asked first, Outcome.asks).
+   */
   @AuraEnabled
   public static SpecialScheduleImport.Outcome importPlan(
     Id itemId,
     Integer revision,
-    SpecialScheduleImport.Imported imported
+    SpecialScheduleImport.Imported imported,
+    Boolean replaceEdited
   ) {
     try {
-      return SpecialScheduleImport.apply(itemId, revision, imported);
+      return SpecialScheduleImport.apply(
+        itemId,
+        revision,
+        imported,
+        replaceEdited
+      );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

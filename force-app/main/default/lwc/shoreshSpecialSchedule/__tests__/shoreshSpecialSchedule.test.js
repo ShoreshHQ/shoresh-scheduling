@@ -345,7 +345,15 @@ describe("c-shoresh-special-schedule", () => {
       added: [],
       notGroups: [],
       replaced: ["Lunch"],
-      placed: 1
+      placed: 1,
+      asks: false,
+      frame: {
+        renamed: [{ was: "Opening", now: "9:00 AM – 9:45 AM" }],
+        removed: ["Lunch"],
+        added: [],
+        stationsRemoved: [],
+        stationsAdded: []
+      }
     });
     openPlan.mockResolvedValue(dayPlan(["2,", ","]));
     const input = q(element, '[data-id="import-file"]');
@@ -361,11 +369,102 @@ describe("c-shoresh-special-schedule", () => {
     input.dispatchEvent(new CustomEvent("change"));
     await flush();
     expect(importPlan).toHaveBeenCalledTimes(1);
+    expect(importPlan.mock.calls[0][0].replaceEdited).toBe(false);
     const lines = [
       ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
     ].map((li) => li.textContent);
-    expect(lines).toContain(
-      "Replaced by the file, brought in when Color War started: Lunch."
+    // Every change to the frame is named where what it replaced is.
+    expect(lines).toEqual([
+      "Imported Color War.csv: 1 cell filled.",
+      "Replaced by the file, brought in when Color War started: Lunch.",
+      "Periods renamed by the file: Opening to 9:00 AM – 9:45 AM.",
+      "Periods removed by the file: Lunch."
+    ]);
+  });
+
+  /** Chooses a file for Import, as the director does. */
+  async function chooseFile(element, name, text) {
+    const input = q(element, '[data-id="import-file"]');
+    Object.defineProperty(input, "files", {
+      value: [{ name, text: () => Promise.resolve(text) }],
+      configurable: true
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+  }
+
+  const ASKS = {
+    asks: true,
+    plan: null,
+    added: [],
+    notGroups: [],
+    replaced: [],
+    placed: 0,
+    frame: {
+      renamed: [{ was: "Relays", now: "Stations" }],
+      removed: [],
+      added: [],
+      stationsRemoved: ["Gold"],
+      stationsAdded: ["Green"]
+    }
+  };
+
+  it("an import that would replace time blocks or stations the director changed asks first, and goes ahead on yes", async () => {
+    const plan = dayPlan([",", ","], {
+      kind: "SpecialEvent",
+      itemId: "ev1",
+      name: "Sports Day",
+      revision: 4
+    });
+    const { element } = await render(plan);
+    importPlan.mockResolvedValueOnce(ASKS).mockResolvedValueOnce({
+      ...ASKS,
+      asks: false,
+      plan,
+      placed: 1
+    });
+    await chooseFile(element, "Sports Day.csv", "Time,Blue\n9:00-9:45,Relay");
+    const ask = q(element, '[data-id="ask"]');
+    expect(ask.heading).toBe("Replace the Periods and stations in Sports Day?");
+    expect(ask.lines).toEqual([
+      "Periods renamed: Relays to Stations.",
+      "Stations removed: Gold.",
+      "Stations added: Green.",
+      "This can't be undone."
+    ]);
+    expect(ask.confirmLabel).toBe("Import");
+    expect(q(element, '[data-id="import-lines"]')).toBeNull();
+
+    ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: true } }));
+    await flush();
+    expect(importPlan).toHaveBeenCalledTimes(2);
+    const [first, second] = importPlan.mock.calls.map((call) => call[0]);
+    expect(second).toEqual({ ...first, replaceEdited: true });
+    expect(second.revision).toBe(4);
+    const lines = [
+      ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
+    ].map((li) => li.textContent);
+    expect(lines).toEqual([
+      "Imported Sports Day.csv: 1 cell filled.",
+      "Periods renamed by the file: Relays to Stations.",
+      "Stations removed by the file: Gold.",
+      "Stations added by the file: Green."
+    ]);
+  });
+
+  it("no to replacing what the director changed imports nothing", async () => {
+    const { element } = await render(dayPlan([",", ","]));
+    importPlan.mockResolvedValueOnce(ASKS);
+    await chooseFile(element, "Sports Day.csv", "Time,Cedar\n9:00-9:45,Relay");
+    const ask = q(element, '[data-id="ask"]');
+    expect(ask.heading).toBe("Replace the Periods in Color War?");
+    ask.dispatchEvent(new CustomEvent("answer", { detail: { yes: false } }));
+    await flush();
+    expect(importPlan).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="ask"]')).toBeNull();
+    expect(q(element, '[data-id="import-lines"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="import"]')
     );
   });
 

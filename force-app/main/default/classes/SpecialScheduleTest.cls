@@ -168,6 +168,70 @@ private class SpecialScheduleTest {
     return run;
   }
 
+  // ADR 0014 choice 15: fixed and recurring activities can't be typed in by name, so the only
+  // ones a cell edit may put by Id are those the special day starts with (Undo); any other, and
+  // any in an event, is refused with nothing saved.
+  @IsTest
+  static void onlyWhatTheDayStartedWithIsPutBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id dayId = ids.get('Field Day');
+      // Mondays only: not brought in.
+      Id assembly = SetTimeTestData.save(
+        new List<SObject>{
+          SetTimeTestData.recurring(ids, 'Assembly', 'Period 1')
+        }
+      )[0];
+      Id lunch = (Id) SpecialSchedule.open(dayId).schedule.days[0].items[0].id;
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      String refused = refusal(
+        dayId,
+        SpecialScheduleTestData.run(
+          ids.get('Group A'),
+          new List<String>{ 'b1' },
+          new List<String>{ 'R:' + assembly }
+        )
+      );
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 30, 'Queries to refuse one: ' + used);
+      Assert.areEqual(
+        'Assembly can\'t be put in Field Day. Only the fixed activities and recurring activities it started with can be put back.',
+        refused
+      );
+      Assert.areEqual(
+        'Lunch break can\'t be put in Color War: fixed activities and recurring activities have their own times and aren\'t placed in it.',
+        refusal(
+          eventId,
+          SpecialScheduleTestData.run(
+            SpecialSchedule.open(eventId).schedule.days[0].groups[0].id,
+            new List<String>{ 'b1' },
+            new List<String>{ 'F:' + lunch }
+          )
+        )
+      );
+      Assert.areEqual(1, SpecialPlans.read(dayId).revision, 'Nothing saved');
+      Assert.areEqual(4, SpecialPlans.read(eventId).revision, 'Nothing saved');
+    }
+  }
+
+  private static String refusal(Id itemId, SlotEdits.Run run) {
+    try {
+      SpecialScheduleController.saveCells(
+        itemId,
+        SpecialScheduleTestData.edits(run)
+      );
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    Assert.fail('Placed by Id although it was not brought in');
+    return null;
+  }
+
   @IsTest
   static void anActivityOfAnotherSeasonIsRefused() {
     System.runAs(ShoreshTestData.scheduler()) {
