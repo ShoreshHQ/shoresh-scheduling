@@ -1255,6 +1255,10 @@ export default class ShoreshEditableTable extends LightningElement {
       return;
     }
     const name = draft.values.Name || "";
+    // The cursor goes to the cell's field now, while the row still holds it (a field shown only
+    // while the row is edited, such as how often's numbers, can't take it once the mark is gone).
+    this.focusTaken = { key: guessRow, field: guessColumn };
+    this.applyTakenFocus();
     this.dispatchEvent(
       new CustomEvent("confirmguess", {
         detail: {

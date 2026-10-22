@@ -3582,8 +3582,14 @@ describe("c-shoresh-editable-table", () => {
       await flush();
       const handler = jest.fn();
       element.addEventListener("confirmguess", handler);
+      // The cursor moves to the cell's field at once, while the row still holds it.
+      const first = jest.spyOn(HTMLElement.prototype, "focus");
       marks(element)[0].dispatchEvent(new CustomEvent("confirm"));
       await flush();
+      const cursorFirst = first.mock.contexts.map(
+        (el) => `${el.dataset.rowKey}:${el.dataset.field}`
+      );
+      first.mockRestore();
       expect(handler).toHaveBeenCalledTimes(1);
       const detail = handler.mock.calls[0][0].detail;
       expect([detail.recordId, detail.field]).toEqual(["a1", "often"]);
@@ -3599,6 +3605,7 @@ describe("c-shoresh-editable-table", () => {
       focus.mockRestore();
       expect(marks(element)).toHaveLength(0);
       expect(focused).toEqual([`row-a1:${nsName("StartTime__c")}`]);
+      expect(cursorFirst).toEqual([`row-a1:${nsName("StartTime__c")}`]);
       expect(
         element.shadowRoot
           .querySelector('[data-id="announce"]')
