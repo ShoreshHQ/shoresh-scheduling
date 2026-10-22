@@ -105,35 +105,57 @@ public with sharing class GroupPlacements {
 
   /** Adds the group's activity cells in one day part; a part that can't be read adds nothing. */
   private static void tally(String text, Id groupId, Map<Id, Integer> cells) {
-    ScheduleGrid grid;
-    try {
-      grid = ScheduleGrid.fromText(text);
-    } catch (Exception e) {
+    ScheduleGrid grid = readGrid(text);
+    if (grid == null) {
       return;
     }
     for (Integer g = 0; g < grid.rows.size() && g < grid.groups.size(); g++) {
-      if (asId(grid.groups[g].id) != groupId) {
-        continue;
-      }
-      ScheduleGrid.Item carrying;
-      for (String cell : grid.rows[g]) {
-        ScheduleGrid.Item item;
-        if (cell == ScheduleGrid.CARRIES_ON) {
-          item = carrying;
-        } else if (String.isNotBlank(cell)) {
-          Integer at = Integer.valueOf(cell) - 1;
-          item = at >= 0 && at < grid.items.size() ? grid.items[at] : null;
-        }
-        carrying = item;
-        Id activityId = item != null && item.kind == 'A' ? asId(item.id) : null;
-        if (activityId != null) {
-          cells.put(
-            activityId,
-            (cells.containsKey(activityId) ? cells.get(activityId) : 0) + 1
-          );
-        }
+      if (asId(grid.groups[g].id) == groupId) {
+        tallyRow(grid, grid.rows[g], cells);
       }
     }
+  }
+
+  private static ScheduleGrid readGrid(String text) {
+    try {
+      return ScheduleGrid.fromText(text);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /** One group's row: each block of an activity counts one cell, "^" carrying the one above on. */
+  private static void tallyRow(
+    ScheduleGrid grid,
+    List<String> row,
+    Map<Id, Integer> cells
+  ) {
+    ScheduleGrid.Item carrying;
+    for (String cell : row) {
+      carrying = cell == ScheduleGrid.CARRIES_ON
+        ? carrying
+        : itemAt(grid, cell);
+      Id activityId = activityOf(carrying);
+      if (activityId != null) {
+        cells.put(
+          activityId,
+          (cells.containsKey(activityId) ? cells.get(activityId) : 0) + 1
+        );
+      }
+    }
+  }
+
+  /** The item a cell names ("1" is the first), or null for an empty cell or one out of range. */
+  private static ScheduleGrid.Item itemAt(ScheduleGrid grid, String cell) {
+    if (String.isBlank(cell) || !cell.isNumeric()) {
+      return null;
+    }
+    Integer at = Integer.valueOf(cell) - 1;
+    return at >= 0 && at < grid.items.size() ? grid.items[at] : null;
+  }
+
+  private static Id activityOf(ScheduleGrid.Item item) {
+    return item != null && item.kind == 'A' ? asId(item.id) : null;
   }
 
   private static Id asId(String value) {

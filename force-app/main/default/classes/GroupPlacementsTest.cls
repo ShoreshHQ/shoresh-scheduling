@@ -8,6 +8,8 @@ private class GroupPlacementsTest {
   private class Camp {
     Map<String, Id> ids = new Map<String, Id>();
     List<Week__c> weeks;
+    // How many days of each week a schedule written by write() has.
+    Integer daysPerWeek = 1;
   }
 
   private static Camp camp() {
@@ -42,10 +44,12 @@ private class GroupPlacementsTest {
   }
 
   /**
-   * A day of the program's two blocks: Group A has the first item in Period 1 carrying on into
-   * Lunch; Group B has the second item in Period 1.
+   * A day of the program's two blocks: Group A has the first activity in Period 1 carrying on
+   * into Lunch; Group B has the second in Period 1.
    */
-  private static ScheduleGrid day(Camp c, String first, String second) {
+  private static ScheduleGrid day(Camp c, List<String> activities) {
+    String first = activities[0];
+    String second = activities[1];
     ScheduleGrid grid = new ScheduleGrid();
     grid.blocks.add(
       new ScheduleGrid.Block(c.ids.get('Period 1'), 'Period 1')
@@ -63,13 +67,11 @@ private class GroupPlacementsTest {
     return grid;
   }
 
-  /** Each schedule gets the same day on each of the first `days` days of its week. */
+  /** Each schedule gets the same day on each of the first c.daysPerWeek days of its week. */
   private static void write(
     Camp c,
     List<Schedule__c> schedules,
-    Integer days,
-    String first,
-    String second
+    List<String> activities
   ) {
     Database.insert(schedules, AccessLevel.SYSTEM_MODE);
     Map<Id, Date> starts = new Map<Id, Date>();
@@ -79,11 +81,11 @@ private class GroupPlacementsTest {
     Map<Id, List<ScheduleDaySaves.DaySave>> saves = new Map<Id, List<ScheduleDaySaves.DaySave>>();
     for (Schedule__c schedule : schedules) {
       List<ScheduleDaySaves.DaySave> week = new List<ScheduleDaySaves.DaySave>();
-      for (Integer d = 0; d < days; d++) {
+      for (Integer d = 0; d < c.daysPerWeek; d++) {
         week.add(
           new ScheduleDaySaves.DaySave(
             starts.get(schedule.Week__c).addDays(d),
-            day(c, first, second),
+            day(c, activities),
             null
           )
         );
@@ -115,17 +117,13 @@ private class GroupPlacementsTest {
           schedule(c, c.weeks[0], 'Draft/Manual'),
           schedule(c, c.weeks[1], 'Draft/Generated')
         },
-        1,
-        'Swim',
-        'Gym games'
+        new List<String>{ 'Swim', 'Gym games' }
       );
       // A saved version is history: it is not counted.
       write(
         c,
         new List<Schedule__c>{ schedule(c, c.weeks[2], 'Version/Imported') },
-        1,
-        'Soccer',
-        'Gym games'
+        new List<String>{ 'Soccer', 'Gym games' }
       );
       Test.startTest();
       GroupPlacements.Result groupA = SetupTablesController.groupPlacements(
@@ -158,7 +156,8 @@ private class GroupPlacementsTest {
         drafts.add(schedule(c, week, 'Draft/Generated'));
       }
       // 6 weeks, 2 drafts each, 5 days: 60 days.
-      write(c, drafts, 5, 'Swim', 'Soccer');
+      c.daysPerWeek = 5;
+      write(c, drafts, new List<String>{ 'Swim', 'Soccer' });
       Test.startTest();
       Integer before = Limits.getQueries();
       GroupPlacements.Result result = SetupTablesController.groupPlacements(
@@ -180,12 +179,11 @@ private class GroupPlacementsTest {
   static void pastItsBudgetItSaysTheCountIsNotComplete() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
+      c.daysPerWeek = 3;
       write(
         c,
         new List<Schedule__c>{ schedule(c, c.weeks[0], 'Draft/Manual') },
-        3,
-        'Swim',
-        'Soccer'
+        new List<String>{ 'Swim', 'Soccer' }
       );
       GroupPlacements.partsAtOnce = 1;
       GroupPlacements.queryBudget = 2;
