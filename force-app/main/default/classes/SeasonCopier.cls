@@ -1,7 +1,9 @@
 /**
  * "Copy last season": makes a new season with new dates and new records for everything set up
  * in it (structure, locations, activities, who can do them, fixed and recurring activities and
- * who they cover, week exceptions), each linked to its original by CopiedFrom__c (decision: setup belongs to a season).
+ * who they cover, week exceptions, elective sets with their offerings and linked choices), each
+ * linked to its original by CopiedFrom__c (decision: setup belongs to a season). Campers and
+ * elective runs are not copied.
  * The original season and everything in it is only read, never written.
  *
  * Dates move by the number of days between the old and new start dates, so each week keeps its
@@ -93,6 +95,7 @@ public with sharing class SeasonCopier {
       copies.putAll(copyIds(blockCopies));
       copies.putAll(new SetupCopier(source.Id, season.Id).copy(copies));
       copies.putAll(new SetTimeCopier(source.Id, season.Id, copies).copy());
+      new ElectiveCopier(source.Id, season.Id, copies).copy();
       copyWeekExceptions(weekCopies, copies);
       // A copy of a season without clashes has none, but check before keeping it.
       SetTimeGuard.checkPending();

@@ -8,8 +8,12 @@ public with sharing class InUse {
   private static final Integer MAX_NAMES = 20;
 
   public static String reason(Id recordId) {
-    // Fixed and recurring activities too (locations are covered below), in one refusal.
-    return SetTimeInUse.alongside(activityUseReason(recordId), recordId);
+    // Fixed and recurring activities and electives too (locations are covered below), in one
+    // refusal.
+    return ElectivesInUse.alongside(
+      SetTimeInUse.alongside(activityUseReason(recordId), recordId),
+      recordId
+    );
   }
 
   private static String activityUseReason(Id recordId) {

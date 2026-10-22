@@ -1,7 +1,8 @@
 /**
  * Who a recurring activity covers: the row belongs to the recurring activity's season, and the
  * division or group named must be in the recurring activity's own program. After a save or
- * delete, the clash check runs (removing a row can widen it to everyone).
+ * delete, the clash check runs (removing a row can widen it to everyone). Rows owned by a linked
+ * choice are checked by ElectiveSetupTriggers and take no part in the clash check.
  */
 public with sharing class CoverageTriggerHandler {
   // The program of each division and group named.
@@ -19,13 +20,41 @@ public with sharing class CoverageTriggerHandler {
     ) {
       beforeSave(rows);
     } else {
-      SetTimeTriggers.coverageChanged(
+      List<Coverage__c> recurring = recurringRows(
         operation == System.TriggerOperation.AFTER_DELETE ? oldRows : rows
       );
+      if (!recurring.isEmpty()) {
+        SetTimeTriggers.coverageChanged(recurring);
+      }
     }
   }
 
-  public static void beforeSave(List<Coverage__c> rows) {
+  private static List<Coverage__c> recurringRows(List<Coverage__c> rows) {
+    List<Coverage__c> result = new List<Coverage__c>();
+    for (Coverage__c row : rows) {
+      if (row.RecurringActivity__c != null) {
+        result.add(row);
+      }
+    }
+    return result;
+  }
+
+  public static void beforeSave(List<Coverage__c> allRows) {
+    List<Coverage__c> rows = new List<Coverage__c>();
+    List<Coverage__c> linkedChoiceRows = new List<Coverage__c>();
+    for (Coverage__c row : allRows) {
+      if (row.LinkedChoice__c != null) {
+        linkedChoiceRows.add(row);
+      } else {
+        rows.add(row);
+      }
+    }
+    if (!linkedChoiceRows.isEmpty()) {
+      ElectiveSetupTriggers.linkedChoiceCoverageSaving(linkedChoiceRows);
+    }
+    if (rows.isEmpty()) {
+      return;
+    }
     Set<Id> ownerIds = new Set<Id>();
     Set<Id> targetIds = new Set<Id>();
     for (Coverage__c row : rows) {
