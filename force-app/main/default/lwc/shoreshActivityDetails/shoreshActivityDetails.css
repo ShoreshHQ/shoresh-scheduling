@@ -73,7 +73,6 @@
   --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
   --slds-c-icon-color-foreground: var(--shoresh-text-2);
   --slds-c-button-text-color: var(--shoresh-text-2);
-  --sds-c-button-text-color: var(--shoresh-text-2);
 }
 
 .field {
