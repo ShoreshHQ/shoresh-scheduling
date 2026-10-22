@@ -1,0 +1,165 @@
+/*
+ * The values are the design system's (c/shoreshTokens), inherited from the camp setup page that
+ * holds this panel: importing the module again here would only repeat them. Its classes don't
+ * reach in here, so the × is the rail's square item written out (.shoresh-item_icon).
+ *
+ * The details zone of docs/design/setup/activities.html: beside the list, one hairline from it,
+ * 384 wide at 1440 (here 72 units, 288, so the five columns keep their room), its fields one under
+ * another a step apart. It slides in from the row's side when an activity is opened. ADR 0015
+ * choice 12.
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s4);
+  width: calc(var(--shoresh-u) * 72);
+  max-width: 100%;
+  min-height: 100%;
+  padding: var(--shoresh-space-pad);
+  border-left: 1px solid var(--shoresh-rule);
+  animation: slide-in 160ms ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--shoresh-s4));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  padding-left: var(--shoresh-space-control-x);
+}
+
+.panel-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.panel-saved {
+  flex: none;
+}
+
+.panel-close {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--shoresh-control-h);
+  height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  color: var(--shoresh-text-2);
+  cursor: pointer;
+}
+
+/* A bare tool (ADR 0015 choice 12): the secondary words at rest, the highlight under the
+   pointer and with keyboard focus. No other hue. */
+.panel-close:hover {
+  background: var(--shoresh-surface-hover);
+  color: var(--shoresh-color-highlight);
+}
+
+.panel-close:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+  color: var(--shoresh-color-highlight);
+}
+
+.field {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Two fields side by side (a count and its day, length and priority). */
+.pair {
+  display: flex;
+  gap: var(--shoresh-s2);
+  align-items: flex-start;
+}
+
+.pair-part {
+  flex: 1;
+  min-width: 0;
+}
+
+.pair-tick {
+  align-self: flex-end;
+  padding-bottom: var(--shoresh-s2);
+}
+
+.ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2) var(--shoresh-s4);
+}
+
+/* The two choices sit as one set, each half the width (the mock-up's well with a raised choice). */
+.set {
+  display: block;
+}
+
+.field_grow {
+  flex: 1;
+}
+
+/* Someone else changed the field: the setup tables' question, laid out as theirs (ADR 0011
+   choice 5; shoreshEditableTable.css). */
+.conflict-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conflict-where {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.conflict-choices {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+}
+
+.conflict-choices dt {
+  color: var(--shoresh-text-2);
+}
+
+.conflict-choices dd {
+  font-weight: 600;
+}

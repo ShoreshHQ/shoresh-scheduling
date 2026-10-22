@@ -11,7 +11,7 @@ import { LightningElement, api } from "lwc";
  * shown no longer matches setup, its foot says so, with Update to match setup.
  *
  * sections: from shoreshScreens.menuSections. current: the screen shown. campName, seasonName:
- * the camp row. setupChanged: the schedule shown can be updated to match setup. setupBusy: that
+ * the camp row (or controls: the page's own, in the slot "camp"). setupChanged: the schedule shown can be updated to match setup. setupBusy: that
  * schedule is busy (an edit saving, a build), so its Update waits, as the one on the screen does.
  * Fires: navigate { screen }, updatetomatch
  */
@@ -20,6 +20,12 @@ export default class ShoreshMenu extends LightningElement {
   @api current;
   @api campName;
   @api seasonName;
+  /**
+   * The page puts its own camp and season controls in the camp row (slot "camp"): the camp
+   * picker, the season picker and its pencil, New season and Copy this season (step 3b, ADR
+   * 0015 choice 12). Without it the row shows the camp's name and season as words.
+   */
+  @api controls = false;
   @api setupChanged = false;
   @api setupBusy = false;
 

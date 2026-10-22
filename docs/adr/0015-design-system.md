@@ -9,7 +9,8 @@ desktop is the floor for meaning and words (decision 28); the look is the mock-u
 This step puts the system in place and restyles only the app frame and the left menu. Manual
 Build's and Generated Schedule's grids, rails and drawers, and the setup screens, keep their look
 until the next PRs; nothing a director does works differently. _Step 3a (2026-10-21, choice 11)
-restyles the setup tables and five setup screens; step 3b the rest (see Not done here)._
+restyles the setup tables and five setup screens; step 3b (2026-10-21, choice 12) Activities,
+Fixed and Recurring activities, and the camp and season in the menu's camp row._
 
 ## Choices
 
@@ -84,7 +85,9 @@ restyles the setup tables and five setup screens; step 3b the rest (see Not done
    top (the season picker, its pencil, New season, Copy season), one hairline, then the screen.
    The pickers' visible labels are gone (their names are still read out): the picker shows the
    season, so the word "Season" over it explained nothing. The row is one item tall plus its
-   inset, so its hairline meets the menu's under the camp name.
+   inset, so its hairline meets the menu's under the camp name. _Changed in step 3b (choice
+   12): the season row is gone; the pickers are the menu's camp row, and the frame is the screen
+   alone._
 9. **"Setup changed" at the foot of the menu** (rounds 11 to 13). While the schedule shown can be
    updated to match setup, the menu's foot shows _Setup changed_ and a raised **Update to match
    setup**, the same action as the button above that screen's grid (ADR 0008 part 6 §10). Only
@@ -170,6 +173,95 @@ restyles the setup tables and five setup screens; step 3b the rest (see Not done
     type with the cursor following it, axe on each screen) with
     screenshots next to the mock-ups in `docs/design/screens/` (`setup-*.png`).
 
+12. **The setup screens' second part (step 3b, 2026-10-21).** Design source: the same approved
+    mock-ups (`docs/design/setup/activities.html`, `fixed.html`) and decision 42. Every
+    behaviour, refusal, question and keyboard path stays; what moves is said here.
+    - **Activities** is the shared table with the mock-up's five columns: **Activity**,
+      **Location**, **How often**, **Who** and **Weeks**, with the rail of the other setup
+      screens (the count, a silent Saved, Import a list and Download this list).
+      **How often** shows one thing at a time (decision 42): at rest, one bar per time a week,
+      on one scale for the whole camp, its highest weekly count (never capped at five; a count
+      past it stretches it), at least filled in the highlight, up to at most in its tint, "no
+      weekly maximum" tinted to the end; read out as "How often: 2–3". Under the pointer or
+      while the row is edited the two numbers (at least, at most) take the bars' place, the
+      row's own fields, saved with the row as before. **Who** is worked out from who can do it:
+      a quiet "Everyone", or the divisions and groups as a value. The other fields (length,
+      groups at once and No limit, priority, outdoors, rain plan, no weekly maximum) left the
+      table: they are in the activity's **details**, which now open **beside the table**, in a
+      zone of the frame one hairline from the list (the mock-up's, 288 wide at 1440 rather than
+      its 384, so the five columns keep their room; the weeks' strip wraps sooner there),
+      sliding in from the row's
+      side (no motion with reduced motion). The row's end has a chevron (named "Archery
+      details", `aria-expanded`), as every setup row; the open row carries the 2 px selection
+      line. Opening puts the cursor on the panel's heading (the activity's name, read "Archery
+      details"); its × ("Close Archery details") puts it back on the chevron. The panel holds
+      rain plan, bunks together (Any bunks / Same division, one choice of two: the "same
+      division only" tick it was), early in the week, who can do it, length and priority,
+      groups at once and No limit, outdoors and no weekly maximum, then notes. They save as
+      the details always have (ADR 0013 choice 1): a choice at once, a number on leaving it or
+      Enter. The fields that were columns keep the table's compare and set (ADR 0011 choice
+      5): each is sent alone through `SetupTablesController.saveRow` with what it held when
+      the director saw it, and if someone else changed it since, nothing is saved and the
+      panel asks the tables' question (**Changed by someone else**, Theirs and Yours, **Keep
+      theirs** or **Use yours**). They never fall back to a form's last save wins (ADR 0013
+      Known limits). The rules and who can do it still go through `ActivityDetails`.
+    - **Fixed activities and Recurring activities stay separate screens** (decision 42), each
+      with the rail and in the shared table language. Fixed activities are one section headed
+      **Whole camp** (with several programs, the program's name), columns Name, the time block
+      and Weeks. Recurring activities are in sections: **Whole camp** (covering everyone in the
+      program), then one per division (an item covering that division or some of its groups),
+      then **More than one division** while an item covers several. Each section is a table
+      over every row, showing its own (`rowFilter`), so same-name dots and the order are the
+      program's; its blank row starts covering that division (`newRowWho`). Columns: Name,
+      **Who**, the time block, **Days** and Weeks. Defaults read quietly, exceptions stand out:
+      covering the whole section is "Every bunk" (`whoRule`), fewer is the names; every day the
+      program runs is "Every day", otherwise the days it runs ("Mon Wed Fri") or the one it
+      skips ("Off Fri"). Under the pointer or while the row is edited, a tick per day takes the
+      words' place (each still named "Monday"), saved with the row as the day columns were;
+      Change for who fades in with the row's tools. Length and location are the row's
+      **details**, from its chevron, saved with the row. **Needs attention** shows only while a
+      row needs it. An item whose who moves it to another section takes the cursor along to
+      the same control there, the move said ("Swim moved to Seniors"), as a place whose type
+      changes (choice 11). A table now takes who a reload brings unless the director changed it
+      there and it is not saved yet, so a section that never touched the row shows another
+      section's change.
+    - **"Turn off … for Week 1?" gives focus back to the tick itself** (found by the real-browser
+      check in this step): the page could not reach the tick inside the table (in Salesforce a
+      component can't look into another's), so after Cancel focus fell to the page; and a
+      redraw while the question was open (the page is busy while it looks for placements)
+      dropped the row's mark that keeps its strip shown. The table now keeps that mark across
+      redraws and puts focus back on the tick when the question is answered.
+    - **Bare icon buttons are the design system's tools**: the season's pencil, the details'
+      × and a row's trash can were Salesforce's bare icon buttons, drawn in its blue. They are
+      now the rail's square item (`shoresh-item shoresh-item_icon`) with a 16 px stroked
+      glyph: the secondary words' colour at rest, the highlight under the pointer and with
+      keyboard focus (`shoresh-item_tool`), and the focus ring. No new hue. The details
+      panel writes the item out (`.panel-close`) rather than importing `c/shoreshTokens`
+      again. Jest's jsdom keeps 1000 compiled selectors and the setup page now holds about
+      that many, so `jest/selector-cache.js` gives it room for 10000 (matching unchanged);
+      without it an axe check over a setup screen took over 5 s.
+    - **The camp and season are the menu's camp row.** The old season row above the rail is
+      gone; the frame is the screen alone. The camp row holds the camp's name (a picker that
+      reads as the name while the director has several camps); under it the season picker,
+      reading as the season's name, its pencil, and a small menu, **Season actions**
+      (`c-shoresh-rail-pop`, a menu button: Enter or Down opens it on its first row, the arrows
+      move, Escape closes it), with **New season** and **Copy this season**. The season's
+      details open under them in the menu, next in tab order.
+      New season and Copy this season keep their forms, refusals and questions; Cancel puts the
+      cursor back on Season actions (the rows show only while the menu is open). Both rows wait
+      while the page is busy.
+      Checked by `shoreshEditableTable.test.js` ("step 3b's columns": the bars and their scale, the
+      numbers saved with the row and named in the question, days in words and ticks, worked-out
+      words quiet unless an exception, sections by rowFilter, whoRule and newRowWho, another
+      section's who taken on reload), `shoreshActivityDetails.test.js` ("the panel beside the
+      table"; "someone else changed the field since it was shown"), `shoreshProgram.test.js` (Whole camp, the division sections, the cursor following
+      a moved item), `shoreshCampSetup.test.js` ("setup screens, step 3b": the rails, how often's
+      scale, the panel's saves, the camp row) and in the test org by
+      `scripts/a11y-browser-check.mjs` (how often's numbers and a recurring row's day ticks
+      reached by Tab while the row is edited, the details opened from the chevron with focus on
+      their heading and back on Close, New season and Copy this season from Season actions, axe
+      on each screen), with screenshots next to the mock-ups in `docs/design/screens/`.
+
 ## Not done here
 
 - The setup screens. Manual Build's and Generated Schedule's rail, Edit and counter are built
@@ -180,9 +272,10 @@ restyles the setup tables and five setup screens; step 3b the rest (see Not done
 - ~~The line above each schedule's grid still has its own Update to match setup.~~ Gone in step
   2a: Update to match setup is only at the menu's foot, and focus returns there when the list
   closes (ADR 0008 part 7 §9).
-- Step 3b (the setup screens' second part): Activities' "how often" bars at rest (decision 42) and its details panel on the right, Fixed activities and Recurring activities laid out
-  as their mock-ups (each in the shared table language, still separate screens), and the camp
-  and season pickers, with New season and Copy this season, moved into the menu's camp row.
-  Until then those three screens take the shared rows (raised, weeks in words, dashed blank
-  row) inside their earlier layout, and the season row stays above the rail.
+- ~~Step 3b (the setup screens' second part).~~ Done in choice 12.
+- The section headings of the mock-up's Recurring activities list a division's groups beside its
+  name ("Juniors Cedar · Birch · Maple"); here they show the count, as every other section.
+- The mock-up's "First time" (Any day / By Tue / By Wed) stays the two fields "Early in the
+  week" (how many, by which day), since a camp can ask for more than one early session (ADR 0013
+  choice 15).
 - The earlier colour tokens are removed once no screen uses them.

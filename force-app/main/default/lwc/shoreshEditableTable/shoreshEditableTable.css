@@ -121,6 +121,34 @@
   border-color: rgba(128, 141, 116, 0.4);
 }
 
+/* A row whose details are open beside the table: the 2 px selection line (activities.html). */
+.row_selected > td,
+.row_selected:hover > td,
+.row_selected:focus-within > td {
+  border-color: var(--shoresh-color-highlight);
+  box-shadow:
+    inset 0 1px 0 var(--shoresh-color-highlight),
+    inset 0 -1px 0 var(--shoresh-color-highlight);
+}
+
+.row_selected > td:first-child {
+  box-shadow:
+    inset 0 1px 0 var(--shoresh-color-highlight),
+    inset 0 -1px 0 var(--shoresh-color-highlight),
+    inset 1px 0 0 var(--shoresh-color-highlight);
+}
+
+.row_selected > td:last-child {
+  box-shadow:
+    inset 0 1px 0 var(--shoresh-color-highlight),
+    inset 0 -1px 0 var(--shoresh-color-highlight),
+    inset -1px 0 0 var(--shoresh-color-highlight);
+}
+
+.row_selected .tools {
+  opacity: 1;
+}
+
 /* A row whose details are open joins them: square bottom corners. */
 .row_open > td:first-child {
   border-bottom-left-radius: 0;
@@ -191,6 +219,7 @@
 }
 
 .who {
+  color: var(--shoresh-text-2);
   flex: 1;
   min-width: 0;
   padding-left: var(--shoresh-space-control-x);
@@ -203,6 +232,88 @@
   padding: 0 var(--shoresh-space-control-x);
   color: var(--shoresh-text-2);
   white-space: normal;
+}
+
+/* Who it covers: the rule is quiet, a narrower choice is a value; its Change shows with the
+   row's tools (faded, never hidden, so Tab still reaches it). */
+.who.exception,
+.fixed.exception {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.who-change {
+  flex: none;
+  opacity: 0;
+}
+
+.row:hover .who-change,
+.row:focus-within .who-change,
+.who-change[aria-label^="Done"] {
+  opacity: 1;
+}
+
+/* ---------- how often: bars at rest, the numbers in their place on hover or edit ---------- */
+
+.often {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.bars {
+  display: flex;
+  gap: 2px;
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* One slot a week: at least is the highlight, up to at most its tint, the rest empty wells. */
+.bar {
+  display: block;
+  flex: none;
+  width: 6px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--shoresh-color-primary-300);
+  box-shadow: inset 0 1px 2px rgba(128, 141, 116, 0.16);
+}
+
+.bar_min {
+  background: var(--shoresh-color-highlight);
+  box-shadow: none;
+}
+
+.bar_max {
+  background: rgba(31, 102, 81, 0.45);
+  box-shadow: none;
+}
+
+.often-fields {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.often-fields lightning-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.often-dash {
+  flex: none;
+  color: var(--shoresh-text-2);
+}
+
+.row:hover .often-fields,
+.row:focus-within .often-fields,
+.often_open .often-fields {
+  display: flex;
+}
+
+.row:hover .bars,
+.row:focus-within .bars {
+  display: none;
 }
 
 /* "Needs a look": the dot (c/shoreshDot), its words on hover, focus, or tap. */
@@ -228,6 +339,13 @@
   color: var(--shoresh-text-2);
 }
 
+.days-text {
+  display: block;
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+.days-text.exception,
 .weeks-text.exception {
   color: var(--shoresh-text-1);
   font-weight: 500;
@@ -249,8 +367,21 @@
 
 .row:hover .weeks-text,
 .row:focus-within .weeks-text,
-.row_asking .weeks-text {
+.row_asking .weeks-text,
+.row:hover .days-text,
+.row:focus-within .days-text {
   display: none;
+}
+
+/* A day's tick holds its short name. */
+.cell_days .strip {
+  padding: 2px var(--shoresh-space-control-x);
+}
+
+.chip-face_day {
+  width: auto;
+  min-width: calc(var(--shoresh-u) * 8);
+  padding: 0 var(--shoresh-s1);
 }
 
 /* One week: on is a highlight tint (the grid's filled state), off an empty slot. */
@@ -311,9 +442,6 @@
 }
 
 .tools {
-  /* The delete's bin in the secondary words, as the rail's glyphs. */
-  --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
-  --slds-c-button-text-color: var(--shoresh-text-2);
   display: inline-flex;
   align-items: center;
   gap: var(--shoresh-space-in-group);
@@ -330,6 +458,13 @@
 .more {
   height: calc(var(--shoresh-control-h) - var(--shoresh-s2));
   width: calc(var(--shoresh-control-h) - var(--shoresh-s2));
+}
+
+/* A bare tool (ADR 0015 choice 12): the rail's item, in the secondary words at rest, the
+   highlight under the pointer and with keyboard focus. No other hue. */
+.shoresh-item_tool:hover:not(:disabled),
+.shoresh-item_tool:focus-visible {
+  color: var(--shoresh-color-highlight);
 }
 
 .turned {

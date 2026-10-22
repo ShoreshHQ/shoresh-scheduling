@@ -30,6 +30,12 @@
  *   its chevron with focus kept there; that a place whose type is changed in its details moves
  *   to its new section with the cursor kept in its notes, the move said; with --shots it also saves each restyled setup screen at rest and a
  *   group row under the pointer, for docs/design/screens/;
+ * - step 3b (ADR 0015 choice 12): on Activities, that a row's "how often" numbers show while it
+ *   is edited, Tab reaching them, and that its chevron opens its details beside the table with
+ *   focus on their heading, Close putting focus back on the chevron; on Recurring activities,
+ *   that a row's day ticks show while it is edited, Tab reaching them; and that New season and
+ *   Copy this season open from the camp row's small menu (Season actions) and Cancel puts focus
+ *   back on it;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -1059,6 +1065,9 @@ async function setupShots() {
     ["Divisions", /^Divisions\b/],
     ["Time blocks", /^Time blocks\b/],
     ["Locations", /^Locations\b/],
+    ["Activities", /^Activities\b/],
+    ["Fixed activities", /^Fixed activities/],
+    ["Recurring activities", /^Recurring activities/],
     ["Groups", /^Groups\b/]
   ]) {
     await openFromMenu(screen, re);
@@ -1266,13 +1275,31 @@ async function campSetup() {
     "Locations: a place whose type changes takes the cursor to its new section",
     placeChangesType
   );
+  /** The camp row's small menu (step 3b): Enter opens it on New season; the arrows move. */
+  const seasonAction = async (re) => {
+    const menu =
+      (await tabTo(named(/^Season actions$/, { tag: "button" }), {
+        back: true,
+        max: 60
+      })) ||
+      (await tabTo(named(/^Season actions$/, { tag: "button" }), { max: 280 }));
+    if (!menu) throw new Error("Season actions not reached with Tab.");
+    await press("Enter", 500);
+    for (let i = 0; i < 3; i++) {
+      const f = await focus();
+      if (f && re.test(f.name)) {
+        await press("Enter", 800);
+        return;
+      }
+      await press("ArrowDown", 200);
+    }
+    throw new Error(`${re} not reached in Season actions with the arrows.`);
+  };
   await step(
     S,
-    "New season: heading, then Cancel back to the button",
+    "New season: from Season actions, heading, then Cancel back to the menu",
     async () => {
-      const b = await tabTo(named(/^New season$/, { tag: "button" }));
-      if (!b) throw new Error("New season not reached with Tab.");
-      await press("Enter", 800);
+      await seasonAction(/^New season$/);
       await expectFocus("New season", "Opening it: focus on its heading", {
         tag: /^h[1-3]$/,
         name: /new season/i
@@ -1281,19 +1308,17 @@ async function campSetup() {
       if (!(await tabTo(named(/^Cancel$/), { max: 15 })))
         throw new Error("Cancel not reached.");
       await press("Enter", 800);
-      await expectFocus("New season", "Cancel: focus back on New season", {
+      await expectFocus("New season", "Cancel: focus back on Season actions", {
         tag: "button",
-        name: /^New season$/
+        name: /^Season actions$/
       });
     }
   );
   await step(
     S,
-    "Copy this season: heading, then Cancel back to the button",
+    "Copy this season: from Season actions, heading, then Cancel back to the menu",
     async () => {
-      const b = await tabTo(named(/^Copy this season$/, { tag: "button" }));
-      if (!b) throw new Error("Copy this season not reached with Tab.");
-      await press("Enter", 800);
+      await seasonAction(/^Copy this season$/);
       await expectFocus(
         "Copy this season",
         "Opening it: focus on its heading",
@@ -1308,21 +1333,21 @@ async function campSetup() {
       await press("Enter", 800);
       await expectFocus(
         "Copy this season",
-        "Cancel: focus back on Copy this season",
+        "Cancel: focus back on Season actions",
         {
           tag: "button",
-          name: /^Copy this season$/
+          name: /^Season actions$/
         }
       );
     }
   );
   await step(S, "Season pencil: open and close keep focus on it", async () => {
-    // The pencil sits just before New season and Copy this season (where the step before left
-    // focus), so Shift+Tab reaches it at once; going forward would cross the whole screen first.
+    // The pencil sits just before Season actions in the menu's camp row (where the step before
+    // left focus), so Shift+Tab reaches it at once.
     const b =
       (await tabTo(named(/^Edit /, { tag: "button" }), {
         back: true,
-        max: 10
+        max: 6
       })) || (await tabTo(named(/^Edit /, { tag: "button" }), { max: 280 }));
     if (!b) throw new Error("The season's pencil not reached with Tab.");
     await press("Enter", 800);
@@ -1335,7 +1360,7 @@ async function campSetup() {
       }
     );
     await axe("Season details");
-    // Into the box (it comes after New season and Copy this season), back to the pencil.
+    // Into the box (after the camp row's controls), back to the pencil.
     if (!(await tabTo((f) => f.tag === "input", { max: 6 }))) {
       throw new Error("The season's name box not reached with Tab.");
     }
@@ -1357,10 +1382,116 @@ async function campSetup() {
       throw new Error("The season's box did not close.");
     }
   });
+  await step(
+    S,
+    "Activities: how often and the details beside the table",
+    activityPanel
+  );
   await step(S, "Fixed activities", async () => {
     await openFromMenu("Fixed activities", /^Fixed activities/);
     await axe("Fixed activities");
   });
+  await step(
+    S,
+    "Recurring activities: a row's day ticks by keyboard",
+    recurringRow
+  );
+}
+
+/** The first saved row's name box in the screen's tables, reached with Tab. */
+const rowNameBox = (max = 30) =>
+  tabTo(
+    (f) =>
+      f.tag === "input" &&
+      f.type !== "checkbox" &&
+      f.components.includes("c-shoresh-editable-table") &&
+      !/^Add /.test(f.name),
+    { max }
+  );
+
+/**
+ * Activities in the step 3b layout (docs/design/setup/activities.html): from a row's name box,
+ * Tab reaches its "how often" numbers (bars at rest, the numbers in their place while the row is
+ * edited); its chevron opens its details beside the table with focus on their heading, axe looks
+ * at them open, and Close puts focus back on the chevron.
+ */
+async function activityPanel() {
+  const A = "Activities";
+  await openFromMenu(A, /^Activities\b/);
+  await axe("Activities");
+  if (!(await rowNameBox()))
+    throw new Error("No activity's name box was reached with Tab.");
+  const often = await tabTo(named(/: at least$/, { tag: "input" }), { max: 6 });
+  const STEP =
+    "While a row is edited, how often's numbers show and Tab reaches them";
+  if (often) results.pass(A, STEP, `Reached "${often.name}".`);
+  else {
+    await shot(A, "How often");
+    results.fail(
+      A,
+      STEP,
+      "No 'at least' box was reached from the row's name box."
+    );
+  }
+  const chevron = await tabTo(named(/ details$/, { tag: "button" }), {
+    max: 40
+  });
+  if (!chevron) throw new Error("The row's details chevron was not reached.");
+  await press("Enter", 1500);
+  await expectFocus(A, "Opening a row's details: focus on their heading", {
+    tag: /^h[1-3]$/,
+    name: / details$/
+  });
+  await axe("Activities, a row's details open");
+  if (args.includes("--shots")) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.mouse.move(2, 2);
+    await pause(400);
+    await page.screenshot({
+      path: join(shotsDir, "setup-activities-details.png")
+    });
+  }
+  if (
+    !(await tabTo(named(/^Close .* details$/, { tag: "button" }), { max: 6 }))
+  )
+    throw new Error("The details' Close was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(A, "Closing the details: focus back on the row's chevron", {
+    tag: "button",
+    name: new RegExp(`^${chevron.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
+  });
+}
+
+/**
+ * Recurring activities in sections (docs/design/setup/fixed.html): from a row's name box, Tab
+ * reaches its day ticks (the days in words at rest, a tick per day while the row is edited).
+ * Nothing is changed.
+ */
+async function recurringRow() {
+  const R = "Recurring activities";
+  await openFromMenu(R, /^Recurring activities/);
+  await axe("Recurring activities");
+  if (!(await rowNameBox())) {
+    results.notRun(
+      R,
+      "A row's day ticks by keyboard",
+      "No recurring activity in the camp."
+    );
+    return;
+  }
+  const day = await tabTo(
+    (f) =>
+      f.tag === "input" &&
+      f.type === "checkbox" &&
+      /^(Monday|Tuesday|Wednesday|Thursday|Friday)$/.test(f.name),
+    { max: 8 }
+  );
+  const STEP = "While a row is edited, its day ticks show and Tab reaches them";
+  if (day) results.pass(R, STEP, `Reached "${day.name}".`);
+  else {
+    await shot(R, "Day ticks");
+    results.fail(R, STEP, "No day tick was reached from the row's name box.");
+  }
 }
 
 /**
@@ -2242,7 +2373,8 @@ async function addSetupChange(S) {
   await type(SETUP_CHANGE);
   await press("Tab", 200);
   await chooseOption(SETUP_CHANGE_BLOCK);
-  await press("Tab", 200);
+  // Back to its name box: Enter there adds the row (its length is in the row's details now).
+  await press("Shift+Tab", 200);
   await expectLive(
     S,
     `Adding ${SETUP_CHANGE} with Enter: it is said`,

@@ -20,13 +20,7 @@ import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActiv
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { undoMessage } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
-import {
-  menuMarks,
-  rainPlanChoices,
-  rainPlanOptions,
-  setupProblems,
-  turnOffQuestion
-} from "c/shoreshSetupRules";
+import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
 import { failed } from "c/shoreshErrors";
 import {
   canOpen,
@@ -35,7 +29,7 @@ import {
   screenLabels
 } from "c/shoreshScreens";
 import { leftField } from "c/shoreshSavedMark";
-import { FIELD, OBJECT, PARENT } from "c/shoreshSchema";
+import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
@@ -60,7 +54,10 @@ const FLUSH_SCREENS = new Set([
   "divisions",
   "groups",
   "timeBlocks",
-  "locations"
+  "locations",
+  "activities",
+  "fixedActivities",
+  "recurringActivities"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -68,7 +65,10 @@ const COUNTED = {
   divisions: "Division",
   groups: "Group",
   timeBlocks: "TimeBlock",
-  locations: "Location"
+  locations: "Location",
+  activities: "Activity",
+  fixedActivities: "FixedActivity",
+  recurringActivities: "RecurringActivity"
 };
 
 const SCREENS = [
@@ -752,18 +752,37 @@ export default class ShoreshCampSetup extends LightningElement {
       [LOCATION.GroupsThatFit]: 1
     };
   }
+  /**
+   * An activity's row, as docs/design/setup/activities.html draws it (ADR 0015 choice 12): its
+   * name, where it is held, how often (bars at rest, scaled to the camp's highest weekly count,
+   * decision 42), who can do it (quiet "Everyone" unless limited) and its weeks. Everything else
+   * is in its details beside the table.
+   */
   get activityColumns() {
     const t = this.terms;
-    const none = { label: "None", value: "" };
     const activities = (this.setup && this.setup.activities) || [];
+    const who = this.whoNames;
+    const whoIds = (saved) =>
+      (saved[CHILDREN.Activity.Eligibilities] || []).map(
+        (row) =>
+          row[FIELD.ActivityEligibility.Division] ||
+          row[FIELD.ActivityEligibility.Group]
+      );
     return [
-      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "Name",
+        label: t.s("Activity"),
+        type: "text",
+        required: true,
+        minWidth: 8
+      },
       {
         fieldName: ACTIVITY.Location,
         label: t.s("Location"),
         type: "picklist",
+        width: 9,
         options: [
-          none,
+          { label: "None", value: "" },
           ...((this.setup && this.setup.locations) || []).map((l) => ({
             label: l.Name,
             value: l.Id
@@ -771,65 +790,57 @@ export default class ShoreshCampSetup extends LightningElement {
         ]
       },
       {
-        fieldName: ACTIVITY.Length,
-        label: t.s("Length"),
-        type: "number",
-        min: 1,
-        required: true
-      },
-      {
         fieldName: ACTIVITY.TimesPerWeekMin,
-        label: `${t.s("TimesPerWeek")}: at least`,
-        type: "number",
+        type: "often",
+        label: "How often",
+        minLabel: `${t.s("TimesPerWeek")}: at least`,
         min: 0,
-        required: true
+        required: true,
+        maxField: ACTIVITY.TimesPerWeekMax,
+        maxLabel: `${t.s("TimesPerWeek")}: at most`,
+        noMaxField: ACTIVITY.NoWeeklyMax,
+        // The camp's highest weekly count: every activity's bars on one scale.
+        scale: activities.reduce(
+          (most, a) =>
+            Math.max(
+              most,
+              Number(a[ACTIVITY.TimesPerWeekMin]) || 0,
+              Number(a[ACTIVITY.TimesPerWeekMax]) || 0
+            ),
+          1
+        )
       },
       {
-        fieldName: ACTIVITY.TimesPerWeekMax,
-        label: `${t.s("TimesPerWeek")}: at most`,
-        type: "number",
-        min: 0
-      },
-      {
-        fieldName: ACTIVITY.NoWeeklyMax,
-        label: "No weekly maximum",
-        type: "checkbox"
-      },
-      {
-        fieldName: ACTIVITY.Priority,
-        label: "Priority",
-        type: "picklist",
-        options: [
-          { label: "High", value: "High" },
-          { label: "Low", value: "Low" }
-        ]
-      },
-      { fieldName: ACTIVITY.Outdoor, label: "Outdoors", type: "checkbox" },
-      {
-        fieldName: ACTIVITY.RainPlan,
-        label: t.s("RainPlan"),
-        type: "picklist",
-        excludeSelf: true,
-        options: [none, ...rainPlanOptions(activities)],
-        // Only the activity holding an outdoor rain plan shows it (desktop :339-341).
-        optionsFor: (saved) => [
-          none,
-          ...rainPlanChoices(activities, saved[ACTIVITY.RainPlan])
-        ]
-      },
-      {
-        fieldName: ACTIVITY.GroupsAtOnce,
-        label: t.s("GroupsAtOnce"),
-        type: "number",
-        min: 1
-      },
-      {
-        fieldName: ACTIVITY.NoGroupLimit,
-        label: "No limit",
-        type: "checkbox"
+        fieldName: "whoCanDoIt",
+        label: "Who",
+        type: "readonly",
+        minWidth: 7,
+        textFor: (saved) => {
+          const ids = whoIds(saved);
+          return ids.length
+            ? ids
+                .map((id) => who.get(id))
+                .filter((name) => name)
+                .join(", ")
+            : "Everyone";
+        },
+        exceptionFor: (saved) => whoIds(saved).length > 0
       }
     ];
   }
+
+  /** Division and group names by Id, across the season's programs (for who can do it). */
+  get whoNames() {
+    const names = new Map();
+    ((this.setup && this.setup.programs) || []).forEach((entry) => {
+      (entry.divisions || []).forEach((d) => {
+        names.set(d.division.Id, d.division.Name);
+        (d.groups || []).forEach((g) => names.set(g.Id, g.Name));
+      });
+    });
+    return names;
+  }
+
   get activityDefaults() {
     // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
     return {
@@ -858,7 +869,12 @@ export default class ShoreshCampSetup extends LightningElement {
         (e.divisions || []).reduce((sum, d) => sum + (d.groups || []).length, 0)
       ),
       timeBlocks: inPrograms((e) => (e.timeBlocks || []).length),
-      locations: (setup.locations || []).length
+      locations: (setup.locations || []).length,
+      activities: (setup.activities || []).length,
+      fixedActivities: inPrograms((e) => (e.fixedActivities || []).length),
+      recurringActivities: inPrograms(
+        (e) => (e.recurringActivities || []).length
+      )
     };
     const t = this.terms;
     const result = {};
@@ -904,6 +920,7 @@ export default class ShoreshCampSetup extends LightningElement {
       camp: "Camp",
       season: t.s("Season"),
       newSeason: `New ${t.sIn("Season")}`,
+      seasonActions: `${t.s("Season")} actions`,
       copySeason: `Copy this ${t.sIn("Season")}`,
       seasonName: `${t.s("Season")} name`,
       editSeason: `Edit ${(this.setup && this.setup.season.Name) || t.sIn("Season")}`,
@@ -1138,6 +1155,18 @@ export default class ShoreshCampSetup extends LightningElement {
     }, `"${this.setup.season.Name}" not deleted. Nothing was removed.`);
   }
 
+  /** The camp row's small menu (step 3b): New season, or Copy this season. */
+  handleSeasonMenu(event) {
+    if (this.busy) {
+      return;
+    }
+    if (event.detail.value === "new") {
+      this.handleStartNewSeason();
+    } else if (event.detail.value === "copy" && this.setup) {
+      this.handleStartCopy();
+    }
+  }
+
   handleStartNewSeason() {
     this.newSeason = {};
     this.mode = "newSeason";
@@ -1177,7 +1206,8 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   handleCancelNewSeason() {
-    const selector = '[data-id="new-season"]';
+    // Back on the camp row's menu that opened it (its rows show only while it is open).
+    const selector = '[data-id="season-menu"]';
     if (this.seasonId) {
       this.mode = "screens";
       this.focusAfter = selector;
@@ -1241,7 +1271,7 @@ export default class ShoreshCampSetup extends LightningElement {
 
   handleCancelCopy() {
     this.mode = "screens";
-    this.focusAfter = '[data-id="copy-season"]';
+    this.focusAfter = '[data-id="season-menu"]';
   }
 
   // ---------- weeks, programs, and everything inside ----------
@@ -1294,11 +1324,19 @@ export default class ShoreshCampSetup extends LightningElement {
     }
   }
 
-  /** A field of an activity's details, saved as the director leaves it. */
+  /**
+   * A field of an activity's details, saved as the director leaves it: a rule or who can do it
+   * (ActivityDetails), or one of the activity's own fields, compared and set as a table row.
+   */
   handleSaveActivityDetails(event) {
-    const { rules, whoCanDoIt, onSaved, onFailure, shown } = event.detail;
+    const { rules, whoCanDoIt, record, seen, onSaved, onFailure, shown } =
+      event.detail;
     return this.saveForm({
-      save: () => saveActivityDetails({ rules, whoCanDoIt }),
+      // The activity's own field: compared and set as the table's rows are (ADR 0011 choice
+      // 5); seen() is read when its turn comes. The panel hears what someone else changed.
+      save: record
+        ? () => saveRow({ record, seen: seen(), extras: null })
+        : () => saveActivityDetails({ rules, whoCanDoIt }),
       what: `${this.terms.s("Activity")} details not saved. Your changes are still here.`,
       onSaved,
       onFailure,
@@ -1354,10 +1392,10 @@ export default class ShoreshCampSetup extends LightningElement {
         let saved = false;
         this.error = null;
         try {
-          await (save ? save() : saveRecords({ records }));
+          const result = await (save ? save() : saveRecords({ records }));
           saved = true;
           if (onSaved) {
-            onSaved();
+            onSaved(result);
           }
           await this.loadSeason();
           if (reloadSeasons) {

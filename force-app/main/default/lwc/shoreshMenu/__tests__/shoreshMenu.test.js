@@ -134,6 +134,21 @@ describe("c-shoresh-menu", () => {
     expect(bare.shadowRoot.querySelector('[data-id="camp"]')).toBeNull();
   });
 
+  it("with the page's own controls, the camp row is their slot, under the same hairline", async () => {
+    const element = await render(
+      true,
+      "roots",
+      {},
+      { campName: "Camp Willow", seasonName: "Summer 2026", controls: true }
+    );
+    const camp = element.shadowRoot.querySelector('[data-id="camp"]');
+    expect(camp.querySelector('slot[name="camp"]')).not.toBeNull();
+    // The words are the page's pickers now, never shown twice.
+    expect(camp.querySelector(".camp-name")).toBeNull();
+    expect(camp.querySelector('[data-id="season"]')).toBeNull();
+    expect(camp.nextElementSibling.classList).toContain("shoresh-hairline");
+  });
+
   it("its foot says setup changed, with Update to match setup, only when asked", async () => {
     const element = await render(true, "manualBuild");
     expect(

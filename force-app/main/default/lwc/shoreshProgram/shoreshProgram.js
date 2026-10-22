@@ -5,6 +5,15 @@ import { leftField } from "c/shoreshSavedMark";
 import { moveNote } from "./groupMoves";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+/** The element with focus, looking inside components (their shadow roots). */
+function focusedElement() {
+  let element = document.activeElement;
+  while (element && element.shadowRoot && element.shadowRoot.activeElement) {
+    element = element.shadowRoot.activeElement;
+  }
+  return element;
+}
 // Names as the package has them (c/shoreshSchema).
 const PROGRAM = FIELD.Program;
 const BLOCK = FIELD.TimeBlock;
@@ -13,6 +22,8 @@ const RECURRING = FIELD.RecurringActivity;
 const GROUP = FIELD.Group;
 // The operating days, saved together (see saveProgram).
 const DAYS_KEY = "Days";
+// The section of what everyone in the program does (docs/design/setup/fixed.html).
+const WHOLE_CAMP = "Whole camp";
 
 /**
  * One part of one program, for the screen showing it (show): "program" (its name and operating
@@ -172,35 +183,40 @@ export default class ShoreshProgram extends LightningElement {
     ];
   }
 
+  /** The time block: what fixed and recurring activities' rows share ("Time", fixed.html). */
+  timeColumn(fields) {
+    return {
+      fieldName: fields.TimeBlock,
+      label: this.terms.s("TimeBlock"),
+      type: "picklist",
+      required: true,
+      options: (this.entry.timeBlocks || []).map((block) => ({
+        label: block.Name,
+        value: block.Id
+      }))
+    };
+  }
+
   /**
-   * Name, time block, length, and location: what fixed and recurring activities share, each in
-   * its own object's fields.
+   * Length and location: the row's details, opened from its chevron (docs/design/setup/
+   * fixed.html shows name, who, time, days and weeks; ADR 0015 choice 12). Saved with the row.
    */
-  setTimeColumns(fields) {
+  detailColumns(fields) {
     const t = this.terms;
     return [
-      { fieldName: "Name", label: "Name", type: "text", required: true },
-      {
-        fieldName: fields.TimeBlock,
-        label: t.s("TimeBlock"),
-        type: "picklist",
-        required: true,
-        options: (this.entry.timeBlocks || []).map((block) => ({
-          label: block.Name,
-          value: block.Id
-        }))
-      },
       {
         fieldName: fields.Length,
         label: t.s("Length"),
         type: "number",
         min: 1,
-        required: true
+        required: true,
+        more: true
       },
       {
         fieldName: fields.Location,
         label: t.s("Location"),
         type: "picklist",
+        more: true,
         options: [
           { label: "None", value: "" },
           ...(this.locations || []).map((l) => ({ label: l.Name, value: l.Id }))
@@ -210,28 +226,146 @@ export default class ShoreshProgram extends LightningElement {
   }
 
   get fixedColumns() {
-    return this.setTimeColumns(FIXED);
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      this.timeColumn(FIXED),
+      ...this.detailColumns(FIXED)
+    ];
   }
 
-  /** Plus a tick for each day the program runs, and who it covers. */
+  /**
+   * Name, who it covers, its time block, the days it runs (one column: "Every day" quiet, the
+   * exception a value, a tick per day on hover or edit) and its weeks.
+   */
   get recurringColumns() {
     const program = this.entry.program;
     const days = DAYS.filter((day) => program[PROGRAM[day]]).map((day) => ({
       fieldName: RECURRING[day],
-      label: day,
-      type: "checkbox"
+      label: day
     }));
     return [
-      ...this.setTimeColumns(RECURRING),
-      ...days,
+      {
+        fieldName: "Name",
+        label: "Name",
+        type: "text",
+        required: true,
+        minWidth: 9
+      },
       {
         fieldName: CHILDREN.RecurringActivity.Coverages,
         label: "Who",
         type: "who",
         everyone: `Everyone in ${program.Name}`,
-        options: this.whoOptions
-      }
+        options: this.whoOptions,
+        width: 12
+      },
+      this.timeColumn(RECURRING),
+      {
+        fieldName: "days",
+        label: "Days",
+        type: "days",
+        width: 9,
+        days,
+        every: "Every day",
+        none: "No days"
+      },
+      ...this.detailColumns(RECURRING)
     ];
+  }
+
+  /** The whole camp's fixed activities: one section ("Whole camp"; a program's name if several). */
+  get fixedHeading() {
+    return this.sectioned ? this.entry.program.Name : WHOLE_CAMP;
+  }
+
+  /** "Needs attention" only while a row needs it: the rule is quiet, the exception stands out. */
+  get fixedNotesHeading() {
+    return Object.values(this.fixedNotes).some((note) => note)
+      ? this.labels.leftOut
+      : undefined;
+  }
+
+  get recurringNotesHeading() {
+    return Object.values(this.recurringNotes).some((note) => note)
+      ? this.labels.leftOut
+      : undefined;
+  }
+
+  /**
+   * Recurring activities in sections (docs/design/setup/fixed.html): the whole camp's, then one
+   * per division, then those covering more than one division (only while there are any). An
+   * item's section is worked out from who it covers; a section's blank row starts covering that
+   * division, and covering it all reads quietly ("Every bunk"). Each section is a table over
+   * every row, showing its own (rowFilter).
+   */
+  get recurringSections() {
+    const entry = this._entry;
+    if (
+      this._sectionsFor === entry &&
+      this._sectionsTerms === this.terms &&
+      this._sectionsSectioned === this.sectioned
+    ) {
+      return this._sections;
+    }
+    const t = this.terms;
+    const program = entry.program.Name;
+    const prefix = this.sectioned ? `${program} · ` : "";
+    const every = `Every ${t.sIn("Group")}`;
+    const divisions = (entry.divisions || []).map((d) => d.division);
+    const divisionOf = new Map();
+    (entry.divisions || []).forEach((d) => {
+      divisionOf.set(d.division.Id, d.division.Id);
+      (d.groups || []).forEach((g) => divisionOf.set(g.Id, d.division.Id));
+    });
+    const sectionOf = (who) => {
+      const found = new Set(
+        (who || []).map((id) => divisionOf.get(id)).filter((id) => id)
+      );
+      if (found.size === 0) {
+        return "all";
+      }
+      return found.size === 1 ? [...found][0] : "several";
+    };
+    const whoField = FIELD.Coverage;
+    const coverage = CHILDREN.RecurringActivity.Coverages;
+    const savedWho = (record) =>
+      (record[coverage] || []).map(
+        (row) => row[whoField.Division] || row[whoField.Group]
+      );
+    const title = (name) =>
+      `${t.p("RecurringActivity")} in ${program}: ${name}`;
+    const section = (key, name, rule, who) => ({
+      key,
+      heading: `${prefix}${name}`,
+      title: title(name),
+      rule,
+      who,
+      filter: (record, shown) => sectionOf(shown || savedWho(record)) === key
+    });
+    const sections = [
+      section("all", WHOLE_CAMP, { ids: [], words: every }, []),
+      ...divisions.map((d) =>
+        section(d.Id, d.Name, { ids: [d.Id], words: every }, [d.Id])
+      )
+    ];
+    const several = (entry.recurringActivities || []).some(
+      (item) => sectionOf(savedWho(item)) === "several"
+    );
+    if (several) {
+      sections.push(
+        section(
+          "several",
+          `More than one ${t.sIn("Division")}`,
+          null,
+          divisions.map((d) => d.Id)
+        )
+      );
+    }
+    this._sectionsFor = entry;
+    this._sectionsTerms = this.terms;
+    this._sectionsSectioned = this.sectioned;
+    this._sections = sections.map((s, index) => ({ ...s, first: index === 0 }));
+    return this._sections;
   }
 
   /** The program's divisions, then its groups (with their division), as in "Who can do it". */
@@ -594,7 +728,74 @@ export default class ShoreshProgram extends LightningElement {
   // Tables inside pass their events straight up.
   handleChildSave(event) {
     event.stopPropagation();
-    this.dispatchEvent(new CustomEvent("save", { detail: event.detail }));
+    const detail = event.detail;
+    // A recurring activity whose save moves it to another section (who it covers changed) may
+    // hold the cursor: once the season is read again, the cursor follows it there.
+    const held = this.isRecurring ? this.focusedRecurring() : null;
+    const onDone = detail.onDone;
+    const sent =
+      held && typeof onDone === "function"
+        ? {
+            ...detail,
+            onDone: () => {
+              onDone();
+              Promise.resolve().then(() => this.followMoved(held));
+            }
+          }
+        : detail;
+    this.dispatchEvent(new CustomEvent("save", { detail: sent }));
+  }
+
+  /** The recurring activity whose row holds the cursor, and its section's table, if any. */
+  focusedRecurring() {
+    const tables = this.template.querySelectorAll(
+      'c-shoresh-editable-table[data-id="recurring-activities"]'
+    );
+    for (const table of tables) {
+      const row = table.focusedRow();
+      if (row) {
+        return { ...row, table };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * After a save, a recurring activity that held the cursor and left its section (who it covers
+   * moved it to another division's) takes the cursor along: the same control in its new
+   * section, the move said aloud (WCAG 2.4.3), as a place whose type changed does (ADR 0015
+   * choice 11). Only when the cursor was lost with the row.
+   */
+  followMoved(held) {
+    const now = focusedElement();
+    if (now && now !== document.body) {
+      return;
+    }
+    const { table, recordId, field, inDetails } = held;
+    if (table.isConnected && table.showsRow(recordId)) {
+      return;
+    }
+    const tables = [
+      ...this.template.querySelectorAll(
+        'c-shoresh-editable-table[data-id="recurring-activities"]'
+      )
+    ];
+    const target = tables.find((t) => t.showsRow(recordId));
+    const item = (this._entry.recurringActivities || []).find(
+      (r) => r.Id === recordId
+    );
+    if (!target || !item) {
+      return;
+    }
+    const section = this.recurringSections.find(
+      (s) => s.key === target.dataset.section
+    );
+    target.takeFocus(
+      recordId,
+      field,
+      inDetails,
+      `${item.Name} moved to ${section ? section.heading : ""}`.trim()
+    );
   }
 
   handleChildDelete(event) {

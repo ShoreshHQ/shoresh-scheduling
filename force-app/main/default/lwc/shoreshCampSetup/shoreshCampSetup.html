@@ -46,8 +46,8 @@
     </template>
 
     <template lwc:if={hasCamp}>
-      <!-- The workbench: the menu, then the frame (season controls above one hairline, the
-           screen below). docs/design/manual-build.html; ADR 0015. -->
+      <!-- The workbench: the menu, then the frame (the screen). docs/design/manual-build.html;
+           ADR 0015. The camp and season sit in the menu's camp row (step 3b, choice 12). -->
       <div class="layout">
         <div class="menu-col">
           <c-shoresh-menu
@@ -55,76 +55,115 @@
             current={currentScreen}
             camp-name={campName}
             season-name={seasonName}
+            controls
             setup-changed={menuSetupChanged}
             setup-busy={menuSetupBusy}
             onnavigate={handleNavigate}
             onupdatetomatch={handleMenuUpdateToMatch}
-          ></c-shoresh-menu>
-        </div>
-        <div class="piece frame">
-          <!-- Header: camp, season, actions -->
-          <div class="zone head" data-id="frame-head">
-            <div class="head-row">
-              <template lwc:if={hasSeveralCamps}>
-                <lightning-combobox
-                  class="head-picker"
-                  data-id="camp-picker"
-                  label={labels.camp}
-                  variant="label-hidden"
-                  value={campId}
-                  options={campOptions}
-                  onchange={handleCampChange}
-                ></lightning-combobox>
-              </template>
-              <template lwc:if={hasSeasons}>
-                <lightning-combobox
-                  class="head-picker"
-                  data-id="season-picker"
-                  label={labels.season}
-                  variant="label-hidden"
-                  value={seasonId}
-                  options={seasonOptions}
-                  onchange={handleSeasonChange}
-                ></lightning-combobox>
-                <template lwc:if={setup}>
-                  <lightning-button-icon
-                    data-id="edit-season"
-                    icon-name="utility:edit"
-                    variant="border-filled"
-                    alternative-text={labels.editSeason}
-                    title={labels.editSeason}
-                    aria-expanded={seasonOpenText}
-                    onclick={handleToggleSeason}
-                  ></lightning-button-icon>
+          >
+            <div slot="camp" class="camp-head" data-id="camp-head">
+              <!-- The camp: its name, or a picker that reads as its name while there are
+                   several. -->
+              <div class="camp-line">
+                <template lwc:if={hasSeveralCamps}>
+                  <div class="head-pick shoresh-row">
+                    <lightning-combobox
+                      class="shoresh-cell shoresh-name camp-pick"
+                      data-id="camp-picker"
+                      label={labels.camp}
+                      variant="label-hidden"
+                      value={campId}
+                      options={campOptions}
+                      onchange={handleCampChange}
+                    ></lightning-combobox>
+                  </div>
                 </template>
-              </template>
-              <lightning-button-group class="head-actions">
-                <lightning-button
-                  data-id="new-season"
-                  label={labels.newSeason}
-                  onclick={handleStartNewSeason}
-                  disabled={busy}
-                ></lightning-button>
-                <template lwc:if={setup}>
-                  <lightning-button
-                    data-id="copy-season"
-                    label={labels.copySeason}
-                    onclick={handleStartCopy}
-                    disabled={busy}
-                  ></lightning-button>
-                </template>
-              </lightning-button-group>
-            </div>
-            <template lwc:if={showSeasonForm}>
-              <section
-                class="season-form"
-                data-id="season-form"
-                aria-label={labels.seasonDetails}
-              >
-                <div class="slds-grid slds-wrap slds-gutters_small">
-                  <div
-                    class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3"
+                <template lwc:else>
+                  <span class="camp-name" title={campName} data-id="camp-name"
+                    >{campName}</span
                   >
+                </template>
+              </div>
+              <!-- The season: a picker that reads as its name, its pencil, and the small menu
+                   with New season and Copy this season. -->
+              <div class="camp-line">
+                <template lwc:if={hasSeasons}>
+                  <div class="head-pick shoresh-row">
+                    <lightning-combobox
+                      class="shoresh-cell season-pick"
+                      data-id="season-picker"
+                      label={labels.season}
+                      variant="label-hidden"
+                      value={seasonId}
+                      options={seasonOptions}
+                      onchange={handleSeasonChange}
+                    ></lightning-combobox>
+                  </div>
+                  <template lwc:if={setup}>
+                    <button
+                      type="button"
+                      class="shoresh-item shoresh-item_icon shoresh-item_tool season-edit"
+                      data-id="edit-season"
+                      aria-label={labels.editSeason}
+                      title={labels.editSeason}
+                      aria-expanded={seasonOpenText}
+                      onclick={handleToggleSeason}
+                    >
+                      <svg
+                        class="shoresh-glyph"
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M10.5 3.5l2 2L6 12l-2.5.5L4 10z M9 5l2 2"
+                        ></path>
+                      </svg>
+                    </button>
+                  </template>
+                </template>
+                <template lwc:else>
+                  <span class="head-pick"></span>
+                </template>
+                <c-shoresh-rail-pop
+                  class="season-menu"
+                  data-id="season-menu"
+                  label=""
+                  alternative-text={labels.seasonActions}
+                  menu
+                  align="right"
+                  onselect={handleSeasonMenu}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="shoresh-pop-row"
+                    data-value="new"
+                    data-id="new-season"
+                    disabled={busy}
+                  >
+                    {labels.newSeason}
+                  </button>
+                  <template lwc:if={setup}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="shoresh-pop-row"
+                      data-value="copy"
+                      data-id="copy-season"
+                      disabled={busy}
+                    >
+                      {labels.copySeason}
+                    </button>
+                  </template>
+                </c-shoresh-rail-pop>
+              </div>
+              <template lwc:if={showSeasonForm}>
+                <section
+                  class="season-form"
+                  data-id="season-form"
+                  aria-label={labels.seasonDetails}
+                >
+                  <div class="season-field">
                     <lightning-input
                       data-form="season"
                       data-field="name"
@@ -145,9 +184,7 @@
                       </div>
                     </template>
                   </div>
-                  <div
-                    class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3"
-                  >
+                  <div class="season-field">
                     <lightning-input
                       data-form="season"
                       data-field="start"
@@ -170,9 +207,7 @@
                       </div>
                     </template>
                   </div>
-                  <div
-                    class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3"
-                  >
+                  <div class="season-field">
                     <lightning-input
                       data-form="season"
                       data-field="end"
@@ -195,33 +230,28 @@
                       </div>
                     </template>
                   </div>
-                </div>
-                <template lwc:if={copiedFromName}>
-                  <p
-                    class="slds-text-color_weak slds-m-top_x-small"
-                    data-id="copied-from"
-                  >
-                    {labels.copiedFrom}
-                  </p>
-                </template>
-                <div
-                  class="slds-m-top_small slds-grid slds-grid_vertical-align-center"
-                >
-                  <lightning-button
-                    variant="destructive-text"
-                    label={labels.deleteSeason}
-                    onclick={handleDeleteSeason}
-                    disabled={busy}
-                  ></lightning-button>
-                  <c-shoresh-saved-mark
-                    class="slds-m-left_small"
-                    data-id="season-saved"
-                  ></c-shoresh-saved-mark>
-                </div>
-              </section>
-            </template>
-          </div>
-          <div class="shoresh-hairline" role="presentation"></div>
+                  <template lwc:if={copiedFromName}>
+                    <p class="season-note" data-id="copied-from">
+                      {labels.copiedFrom}
+                    </p>
+                  </template>
+                  <div class="season-end">
+                    <lightning-button
+                      variant="destructive-text"
+                      label={labels.deleteSeason}
+                      onclick={handleDeleteSeason}
+                      disabled={busy}
+                    ></lightning-button>
+                    <c-shoresh-saved-mark
+                      data-id="season-saved"
+                    ></c-shoresh-saved-mark>
+                  </div>
+                </section>
+              </template>
+            </div>
+          </c-shoresh-menu>
+        </div>
+        <div class="piece frame">
           <div class={bodyClass}>
             <!-- New season -->
             <template lwc:if={isNewSeason}>
@@ -816,182 +846,221 @@
                 </div>
               </div>
 
-              <!-- Activities, with the weeks each runs in, and each one's details -->
+              <!-- Activities (docs/design/setup/activities.html): the list, and one activity's
+                   details in a zone beside it, opened from its row's chevron. -->
               <div class={shown.activities} data-screen="activities">
-                <h2
-                  class="slds-text-heading_medium slds-m-bottom_small"
-                  tabindex="-1"
-                  data-heading
-                >
-                  {labels.screens.activities}
-                </h2>
-                <div class="slds-m-bottom_small">
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+                    {labels.screens.activities}
+                  </h2>
+                  <span class="rail-count" data-id="count"
+                    ><b class="shoresh-num">{counts.activities.count}</b
+                    >{counts.activities.noun}</span
+                  >
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
                   <c-shoresh-list-import
+                    class="rail-import"
                     data-id="activities-list-import"
+                    variant="rail"
                     screen-key="activities"
                     setup={setup}
                     terms={terms}
                     onimported={handleImported}
                   ></c-shoresh-list-import>
                 </div>
-                <c-shoresh-editable-table
-                  data-id="activities"
-                  title={labels.catalogue}
-                  object-api-name={objects.Activity}
-                  flag-same-names
-                  columns={activityColumns}
-                  rows={setup.activities}
-                  add-label={labels.addActivity}
-                  empty-message={labels.noActivities}
-                  new-row-defaults={activityDefaults}
-                  weeks={setup.weeks}
-                  week-exceptions={setup.weekExceptions}
-                  weeks-heading={labels.weeksColumn}
-                  week-words={weekWords}
-                  before-week-off={beforeWeekOff}
-                  week-phrase="runs in"
-                  busy={busy}
-                  details-label="Details"
-                  details-open-for={activityDetailsFor}
-                  onsave={handleSaveRecords}
-                  ondelete={handleDeleteRecord}
-                  ondetails={handleOpenActivityDetails}
-                ></c-shoresh-editable-table>
-                <c-shoresh-activity-details
-                  setup={setup}
-                  terms={terms}
-                  busy={busy}
-                  onsave={handleSaveActivityDetails}
-                  onclose={handleCloseActivityDetails}
-                ></c-shoresh-activity-details>
-                <template lwc:if={next.activities}>
-                  <div
-                    class="slds-border_top slds-m-top_large slds-p-top_medium slds-text-align_right"
-                  >
-                    <lightning-button
-                      variant="brand"
-                      label={next.activities.label}
-                      data-id="next"
-                      data-next={next.activities.key}
-                      onclick={handleNext}
-                    ></lightning-button>
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-split">
+                  <div class="setup-list setup-main">
+                    <c-shoresh-editable-table
+                      data-id="activities"
+                      title={labels.catalogue}
+                      show-columns
+                      object-api-name={objects.Activity}
+                      flag-same-names
+                      columns={activityColumns}
+                      rows={setup.activities}
+                      add-label={labels.addActivity}
+                      empty-message={labels.noActivities}
+                      new-row-defaults={activityDefaults}
+                      weeks={setup.weeks}
+                      week-exceptions={setup.weekExceptions}
+                      weeks-heading={labels.weeksColumn}
+                      week-words={weekWords}
+                      before-week-off={beforeWeekOff}
+                      week-phrase="runs in"
+                      weeks-max="12"
+                      busy={busy}
+                      details-label="Details"
+                      details-open-for={activityDetailsFor}
+                      onsave={handleSaveRecords}
+                      ondelete={handleDeleteRecord}
+                      ondetails={handleOpenActivityDetails}
+                    ></c-shoresh-editable-table>
+                    <template lwc:if={next.activities}>
+                      <div class="next">
+                        <lightning-button
+                          variant="brand"
+                          label={next.activities.label}
+                          data-id="next"
+                          data-next={next.activities.key}
+                          onclick={handleNext}
+                        ></lightning-button>
+                      </div>
+                    </template>
                   </div>
-                </template>
+                  <c-shoresh-activity-details
+                    class="setup-side"
+                    setup={setup}
+                    terms={terms}
+                    busy={busy}
+                    onsave={handleSaveActivityDetails}
+                    onclose={handleCloseActivityDetails}
+                  ></c-shoresh-activity-details>
+                </div>
               </div>
 
-              <!-- Fixed activities, per program, with the weeks each runs in -->
+              <!-- Fixed activities (docs/design/setup/fixed.html): the whole camp's, per program -->
               <div class={shown.fixedActivities} data-screen="fixedActivities">
-                <h2
-                  class="slds-text-heading_medium slds-m-bottom_small"
-                  tabindex="-1"
-                  data-heading
-                >
-                  {labels.screens.fixedActivities}
-                </h2>
-                <div class="slds-m-bottom_small">
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+                    {labels.screens.fixedActivities}
+                  </h2>
+                  <span class="rail-count" data-id="count"
+                    ><b class="shoresh-num">{counts.fixedActivities.count}</b
+                    >{counts.fixedActivities.noun}</span
+                  >
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
                   <c-shoresh-list-import
+                    class="rail-import"
                     data-id="fixedActivities-list-import"
+                    variant="rail"
                     screen-key="fixedActivities"
                     setup={setup}
                     terms={terms}
                     onimported={handleImported}
                   ></c-shoresh-list-import>
                 </div>
-                <template for:each={programs} for:item="item">
-                  <c-shoresh-program
-                    key={item.key}
-                    before-week-off={beforeWeekOff}
-                    data-id="fixed-activities"
-                    show="fixedActivities"
-                    entry={item.entry}
-                    terms={terms}
-                    locations={setup.locations}
-                    weeks={setup.weeks}
-                    week-exceptions={setup.weekExceptions}
-                    week-words={weekWords}
-                    busy={busy}
-                    onsave={handleSaveRecords}
-                    ondelete={handleDeleteRecord}
-                    onnavigate={handleNavigate}
-                  ></c-shoresh-program>
-                </template>
-                <template lwc:if={hasNoPrograms}>
-                  <c-shoresh-empty-state
-                    title={labels.noPrograms}
-                  ></c-shoresh-empty-state>
-                </template>
-                <template lwc:if={next.fixedActivities}>
-                  <div
-                    class="slds-border_top slds-m-top_large slds-p-top_medium slds-text-align_right"
-                  >
-                    <lightning-button
-                      variant="brand"
-                      label={next.fixedActivities.label}
-                      data-id="next"
-                      data-next={next.fixedActivities.key}
-                      onclick={handleNext}
-                    ></lightning-button>
-                  </div>
-                </template>
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-list">
+                  <template for:each={programs} for:item="item">
+                    <c-shoresh-program
+                      key={item.key}
+                      before-week-off={beforeWeekOff}
+                      data-id="fixed-activities"
+                      show="fixedActivities"
+                      sectioned={hasSeveralPrograms}
+                      entry={item.entry}
+                      terms={terms}
+                      locations={setup.locations}
+                      weeks={setup.weeks}
+                      week-exceptions={setup.weekExceptions}
+                      week-words={weekWords}
+                      busy={busy}
+                      onsave={handleSaveRecords}
+                      ondelete={handleDeleteRecord}
+                      onnavigate={handleNavigate}
+                    ></c-shoresh-program>
+                  </template>
+                  <template lwc:if={hasNoPrograms}>
+                    <c-shoresh-empty-state
+                      title={labels.noPrograms}
+                    ></c-shoresh-empty-state>
+                  </template>
+                  <template lwc:if={next.fixedActivities}>
+                    <div class="next">
+                      <lightning-button
+                        variant="brand"
+                        label={next.fixedActivities.label}
+                        data-id="next"
+                        data-next={next.fixedActivities.key}
+                        onclick={handleNext}
+                      ></lightning-button>
+                    </div>
+                  </template>
+                </div>
               </div>
 
-              <!-- Recurring activities, per program: days, who, and weeks -->
+              <!-- Recurring activities (docs/design/setup/fixed.html): a section per division -->
               <div
                 class={shown.recurringActivities}
                 data-screen="recurringActivities"
               >
-                <h2
-                  class="slds-text-heading_medium slds-m-bottom_small"
-                  tabindex="-1"
-                  data-heading
-                >
-                  {labels.screens.recurringActivities}
-                </h2>
-                <div class="slds-m-bottom_small">
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+                    {labels.screens.recurringActivities}
+                  </h2>
+                  <span class="rail-count" data-id="count"
+                    ><b class="shoresh-num"
+                      >{counts.recurringActivities.count}</b
+                    >{counts.recurringActivities.noun}</span
+                  >
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
                   <c-shoresh-list-import
+                    class="rail-import"
                     data-id="recurringActivities-list-import"
+                    variant="rail"
                     screen-key="recurringActivities"
                     setup={setup}
                     terms={terms}
                     onimported={handleImported}
                   ></c-shoresh-list-import>
                 </div>
-                <template for:each={programs} for:item="item">
-                  <c-shoresh-program
-                    key={item.key}
-                    before-week-off={beforeWeekOff}
-                    data-id="recurring-activities"
-                    show="recurringActivities"
-                    entry={item.entry}
-                    terms={terms}
-                    locations={setup.locations}
-                    weeks={setup.weeks}
-                    week-exceptions={setup.weekExceptions}
-                    week-words={weekWords}
-                    busy={busy}
-                    onsave={handleSaveRecords}
-                    ondelete={handleDeleteRecord}
-                    onnavigate={handleNavigate}
-                  ></c-shoresh-program>
-                </template>
-                <template lwc:if={hasNoPrograms}>
-                  <c-shoresh-empty-state
-                    title={labels.noPrograms}
-                  ></c-shoresh-empty-state>
-                </template>
-                <template lwc:if={next.recurringActivities}>
-                  <div
-                    class="slds-border_top slds-m-top_large slds-p-top_medium slds-text-align_right"
-                  >
-                    <lightning-button
-                      variant="brand"
-                      label={next.recurringActivities.label}
-                      data-id="next"
-                      data-next={next.recurringActivities.key}
-                      onclick={handleNext}
-                    ></lightning-button>
-                  </div>
-                </template>
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-list">
+                  <template for:each={programs} for:item="item">
+                    <c-shoresh-program
+                      key={item.key}
+                      before-week-off={beforeWeekOff}
+                      data-id="recurring-activities"
+                      show="recurringActivities"
+                      sectioned={hasSeveralPrograms}
+                      entry={item.entry}
+                      terms={terms}
+                      locations={setup.locations}
+                      weeks={setup.weeks}
+                      week-exceptions={setup.weekExceptions}
+                      week-words={weekWords}
+                      busy={busy}
+                      onsave={handleSaveRecords}
+                      ondelete={handleDeleteRecord}
+                      onnavigate={handleNavigate}
+                    ></c-shoresh-program>
+                  </template>
+                  <template lwc:if={hasNoPrograms}>
+                    <c-shoresh-empty-state
+                      title={labels.noPrograms}
+                    ></c-shoresh-empty-state>
+                  </template>
+                  <template lwc:if={next.recurringActivities}>
+                    <div class="next">
+                      <lightning-button
+                        variant="brand"
+                        label={next.recurringActivities.label}
+                        data-id="next"
+                        data-next={next.recurringActivities.key}
+                        onclick={handleNext}
+                      ></lightning-button>
+                    </div>
+                  </template>
+                </div>
               </div>
 
               <!-- Generated Schedule: a program's week built by Shoresh -->
