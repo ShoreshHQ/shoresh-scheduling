@@ -369,7 +369,7 @@ describe("c-shoresh-special-schedule", () => {
     input.dispatchEvent(new CustomEvent("change"));
     await flush();
     expect(importPlan).toHaveBeenCalledTimes(1);
-    expect(importPlan.mock.calls[0][0].replaceEdited).toBe(false);
+    expect(importPlan.mock.calls[0][0].imported.replaceEdited).toBe(false);
     const lines = [
       ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')
     ].map((li) => li.textContent);
@@ -439,7 +439,10 @@ describe("c-shoresh-special-schedule", () => {
     await flush();
     expect(importPlan).toHaveBeenCalledTimes(2);
     const [first, second] = importPlan.mock.calls.map((call) => call[0]);
-    expect(second).toEqual({ ...first, replaceEdited: true });
+    expect(second).toEqual({
+      ...first,
+      imported: { ...first.imported, replaceEdited: true }
+    });
     expect(second.revision).toBe(4);
     const lines = [
       ...element.shadowRoot.querySelectorAll('[data-id="import-lines"] li')

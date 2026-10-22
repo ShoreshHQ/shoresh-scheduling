@@ -239,7 +239,7 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     the setup as it is now, so a setup changed since also asks: asking once too often loses
     nothing). An import onto a frame the director has not touched, or one that only adds, goes
     ahead and names its changes. The server decides (`Outcome.asks`, sent again with
-    `replaceEdited`), so the question can't be skipped and a save in between still refuses the
+    `Imported.replaceEdited`), so the question can't be skipped and a save in between still refuses the
     import as stale. The desktop adds an import's rows beside an event's seeded ones and never
     removes any (its §6, Non-goals "replace seed axis on import"); here the file's frame replaces
     the plan's, so it is said and, over the director's own changes, asked, the desktop's
@@ -257,8 +257,8 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     special day holding only what it started with (replaced and named, its time blocks' changes
     named without asking) and one with a typed cell refused, a renamed time block asked about
     with nothing saved and replaced on yes, an event's changed stations asked about, a fixed or
-    recurring activity the day did not start with refused by Id and one in an event refused
-    (query bound 30), Add <name> at 0 times a
+    recurring activity the day did not start with refused by Id and one in an event refused;
+    putting a brought-in one back reads what the day starts with, so its bound is 30, Add <name> at 0 times a
     week, no access), `shoreshSpecialSchedule.test.js` and `fromFile.test.js` (the screen, typing
     saved as Manual Build's, the frame, Clear, Import and Download, a file read into a plan, an
     import's frame changes named, its question and Yes and Cancel),

@@ -140,7 +140,8 @@ private class SpecialScheduleTest {
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
-      Assert.isTrue(used <= 25, 'Queries to put one back: ' + used);
+      // Reads what the day starts with (SpecialDaySeed.broughtInIds) to check it may go back.
+      Assert.isTrue(used <= 30, 'Queries to put one back: ' + used);
       Assert.areEqual(0, undone.conflicts.size());
       Assert.areEqual(
         new List<String>{
@@ -169,8 +170,8 @@ private class SpecialScheduleTest {
   }
 
   // ADR 0014 choice 15: fixed and recurring activities can't be typed in by name, so the only
-  // ones a cell edit may put by Id are those the special day starts with (Undo); any other, and
-  // any in an event, is refused with nothing saved.
+  // ones a cell edit may put by Id are those the special day starts with (Undo); any other is
+  // refused with nothing saved.
   @IsTest
   static void onlyWhatTheDayStartedWithIsPutBack() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -182,8 +183,6 @@ private class SpecialScheduleTest {
           SetTimeTestData.recurring(ids, 'Assembly', 'Period 1')
         }
       )[0];
-      Id lunch = (Id) SpecialSchedule.open(dayId).schedule.days[0].items[0].id;
-      Id eventId = SpecialScheduleTestData.colorWar(ids);
 
       Test.startTest();
       Integer before = Limits.getQueries();
@@ -203,18 +202,38 @@ private class SpecialScheduleTest {
         'Assembly can\'t be put in Field Day. Only the fixed activities and recurring activities it started with can be put back.',
         refused
       );
-      Assert.areEqual(
-        'Lunch break can\'t be put in Color War: fixed activities and recurring activities have their own times and aren\'t placed in it.',
-        refusal(
-          eventId,
-          SpecialScheduleTestData.run(
-            SpecialSchedule.open(eventId).schedule.days[0].groups[0].id,
-            new List<String>{ 'b1' },
-            new List<String>{ 'F:' + lunch }
-          )
+      Assert.areEqual(1, SpecialPlans.read(dayId).revision, 'Nothing saved');
+    }
+  }
+
+  // An event starts with no fixed or recurring activity, so it takes none by Id.
+  @IsTest
+  static void anEventTakesNoFixedActivity() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id lunch = SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Lunch break', 'Lunch') }
+      )[0];
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      String refused = refusal(
+        eventId,
+        SpecialScheduleTestData.run(
+          's1',
+          new List<String>{ 'b1' },
+          new List<String>{ 'F:' + lunch }
         )
       );
-      Assert.areEqual(1, SpecialPlans.read(dayId).revision, 'Nothing saved');
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(used <= 25, 'Queries to refuse one: ' + used);
+      Assert.areEqual(
+        'Lunch break can\'t be put in Color War: fixed activities and recurring activities have their own times and aren\'t placed in it.',
+        refused
+      );
       Assert.areEqual(4, SpecialPlans.read(eventId).revision, 'Nothing saved');
     }
   }

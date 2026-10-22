@@ -65,6 +65,12 @@ suppressions:
     - rule_selector: "pmd:AvoidBooleanMethodParameters"
       max_suppressed_violations: 1
       reason: "The setter of a Boolean property the screen sends (Ask.versionKept)."
+  # The same for SpecialScheduleImport.Imported.replaceEdited: the director's yes to replacing time
+  # blocks or stations they changed (ADR 0014 choice 17).
+  "main/default/classes/SpecialScheduleImport.cls":
+    - rule_selector: "pmd:AvoidBooleanMethodParameters"
+      max_suppressed_violations: 1
+      reason: "The setter of a Boolean property the screen sends (Imported.replaceEdited)."
   # The living dot field animates with requestAnimationFrame, the browser's clock for drawing, which
   # pauses itself in a hidden tab (ADR 0015 choice 13); not a timer. Inline disables are refused,
   # so eslint.config.js turns the rule off for this one file too.

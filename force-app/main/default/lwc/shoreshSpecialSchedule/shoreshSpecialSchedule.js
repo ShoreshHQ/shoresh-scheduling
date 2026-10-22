@@ -463,8 +463,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     const outcome = await importPlan({
       itemId: this._itemId,
       revision: pending.revision,
-      imported: pending.imported,
-      replaceEdited
+      imported: { ...pending.imported, replaceEdited }
     });
     if (outcome.asks) {
       this.ask = {

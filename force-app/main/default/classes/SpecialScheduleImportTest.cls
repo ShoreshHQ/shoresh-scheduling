@@ -36,8 +36,7 @@ private class SpecialScheduleImportTest {
       SpecialScheduleImport.Outcome outcome = SpecialScheduleController.importPlan(
         eventId,
         null,
-        imported,
-        null
+        imported
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
@@ -74,7 +73,7 @@ private class SpecialScheduleImportTest {
 
       // It has entries now: a second import is refused, nothing changed.
       try {
-        SpecialScheduleController.importPlan(eventId, 1, imported, null);
+        SpecialScheduleController.importPlan(eventId, 1, imported);
         Assert.fail('Only an empty schedule is filled');
       } catch (AuraHandledException e) {
         Assert.areEqual(
@@ -106,8 +105,7 @@ private class SpecialScheduleImportTest {
               new List<String>{ 'Meeting', '' }
             )
           }
-        ),
-        null
+        )
       );
       Assert.areEqual(new List<String>{ 'Staff' }, outcome.notGroups);
       Assert.areEqual(new List<String>(), outcome.added);
@@ -140,8 +138,7 @@ private class SpecialScheduleImportTest {
       SpecialScheduleImport.Outcome outcome = SpecialScheduleController.importPlan(
         dayId,
         1,
-        imported,
-        null
+        imported
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
@@ -166,7 +163,7 @@ private class SpecialScheduleImportTest {
       Assert.isTrue(outcome.plan.hasEntries);
 
       try {
-        SpecialScheduleController.importPlan(dayId, 2, imported, null);
+        SpecialScheduleController.importPlan(dayId, 2, imported);
         Assert.fail('A typed cell is never written over');
       } catch (AuraHandledException e) {
         Assert.areEqual(
@@ -207,8 +204,7 @@ private class SpecialScheduleImportTest {
       SpecialScheduleImport.Outcome asked = SpecialScheduleController.importPlan(
         dayId,
         2,
-        imported,
-        null
+        imported
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
@@ -226,11 +222,11 @@ private class SpecialScheduleImportTest {
       );
       Assert.areEqual(2, SpecialPlans.read(dayId).revision, 'Nothing saved');
 
+      imported.replaceEdited = true;
       SpecialScheduleImport.Outcome done = SpecialScheduleController.importPlan(
         dayId,
         2,
-        imported,
-        true
+        imported
       );
       Assert.isFalse(done.asks);
       Assert.areEqual(
@@ -257,8 +253,7 @@ private class SpecialScheduleImportTest {
             ),
             SpecialScheduleTestData.column('Green', new List<String>{ '', '' })
           }
-        ),
-        false
+        )
       );
       Assert.isTrue(asked.asks);
       Assert.areEqual(new List<String>{ 'Gold' }, asked.frame.stationsRemoved);

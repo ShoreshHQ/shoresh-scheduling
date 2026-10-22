@@ -4,8 +4,9 @@
  * quietly. A time block with the same name and times is kept; one at the same times under
  * another name is renamed; the rest are removed or added. An event's stations are matched by
  * name. Whether the director changed the frame (an event's is always the director's; a special
- * day's once it differs from the time blocks it would start with) decides whether the screen
- * asks before an import renames or removes any of it. Pure: no queries.
+ * day's once it differs from the time blocks it would start with) decides whether the import
+ * asks before it renames or removes any of it. Only that question reads anything (one query,
+ * SpecialDaySeed.startingBlocks).
  */
 public with sharing class SpecialImportFrame {
   /** A time block the file calls something else. */
@@ -42,18 +43,19 @@ public with sharing class SpecialImportFrame {
     }
   }
 
-  /** From the plan's frame (null: nothing saved) to the one the import saves. */
+  /** From the item's frame (before; null: nothing saved) to the one the import saves. */
   public static FrameChanges between(
+    SpecialSchedule.Owner owner,
     ScheduleGrid before,
-    ScheduleGrid after,
-    Boolean isEvent
+    ScheduleGrid after
   ) {
     FrameChanges changes = new FrameChanges();
-    List<ScheduleGrid.Block> was = before == null
-      ? new List<ScheduleGrid.Block>()
-      : before.blocks;
-    compareBlocks(was, after.blocks, changes);
-    if (isEvent) {
+    compareBlocks(
+      before == null ? new List<ScheduleGrid.Block>() : before.blocks,
+      after.blocks,
+      changes
+    );
+    if (owner.isEvent()) {
       List<String> wasNames = namesOf(
         before == null ? new List<ScheduleGrid.GroupRef>() : before.groups
       );
@@ -65,29 +67,23 @@ public with sharing class SpecialImportFrame {
   }
 
   /**
-   * Whether the director changed the frame: an event's is all theirs; a special day's once its
-   * time blocks are not the ones it starts with (seeded), name and times, in order.
+   * Whether the import asks first: it renames or removes part of a frame the director changed.
+   * An event's frame is all theirs; a special day's is changed once its time blocks are not the
+   * ones it starts with, name and times, in order.
    */
-  public static Boolean edited(
+  public static Boolean asksFirst(
+    SpecialSchedule.Owner owner,
     ScheduleGrid before,
-    List<ScheduleGrid.Block> seeded,
-    Boolean isEvent
+    FrameChanges changes
   ) {
-    if (before == null) {
+    if (before == null || !changes.losesAny()) {
       return false;
     }
-    if (isEvent) {
-      return !before.blocks.isEmpty() || !before.groups.isEmpty();
-    }
-    if (before.blocks.size() != seeded.size()) {
+    if (owner.isEvent()) {
       return true;
     }
-    for (Integer b = 0; b < seeded.size(); b++) {
-      if (!keyOf(before.blocks[b]).equals(keyOf(seeded[b]))) {
-        return true;
-      }
-    }
-    return false;
+    return !keysOf(before.blocks)
+      .equals(keysOf(SpecialDaySeed.startingBlocks(owner.seasonId)));
   }
 
   private static void compareBlocks(
@@ -95,63 +91,71 @@ public with sharing class SpecialImportFrame {
     List<ScheduleGrid.Block> now,
     FrameChanges changes
   ) {
-    Set<Integer> keptWas = new Set<Integer>();
-    Set<Integer> keptNow = new Set<Integer>();
-    // The same name and times: kept.
-    pair(was, now, true, keptWas, keptNow);
-    // The same times under another name: renamed.
-    Map<Integer, Integer> renamedTo = pair(was, now, false, keptWas, keptNow);
+    BlockMatch match = new BlockMatch();
+    // The same name and times: kept. Then the same times under another name: renamed.
+    match.pair(keysOf(was), keysOf(now));
+    Map<Integer, Integer> renamedTo = match.pair(timesOf(was), timesOf(now));
     for (Integer w = 0; w < was.size(); w++) {
       if (renamedTo.containsKey(w)) {
         changes.renamed.add(
           new BlockRename(was[w].name, now[renamedTo.get(w)].name)
         );
-      } else if (!keptWas.contains(w)) {
+      } else if (!match.pairedWas.contains(w)) {
         changes.removed.add(was[w].name);
       }
     }
     for (Integer n = 0; n < now.size(); n++) {
-      if (!keptNow.contains(n)) {
+      if (!match.pairedNow.contains(n)) {
         changes.added.add(now[n].name);
       }
     }
   }
 
-  /** Pairs each unpaired block of was with the first unpaired one of now that matches. */
-  private static Map<Integer, Integer> pair(
-    List<ScheduleGrid.Block> was,
-    List<ScheduleGrid.Block> now,
-    Boolean byName,
-    Set<Integer> keptWas,
-    Set<Integer> keptNow
-  ) {
-    Map<Integer, Integer> result = new Map<Integer, Integer>();
-    for (Integer w = 0; w < was.size(); w++) {
-      if (keptWas.contains(w)) {
-        continue;
-      }
-      String key = byName ? keyOf(was[w]) : timesOf(was[w]);
-      for (Integer n = 0; n < now.size(); n++) {
-        if (
-          !keptNow.contains(n) &&
-          key.equals(byName ? keyOf(now[n]) : timesOf(now[n]))
-        ) {
-          keptWas.add(w);
-          keptNow.add(n);
+  /** Pairs blocks before and after by key, each at most once, first come first paired. */
+  private class BlockMatch {
+    final Set<Integer> pairedWas = new Set<Integer>();
+    final Set<Integer> pairedNow = new Set<Integer>();
+
+    /** Each unpaired one before with the first unpaired one after of the same key. */
+    Map<Integer, Integer> pair(List<String> wasKeys, List<String> nowKeys) {
+      Map<Integer, Integer> result = new Map<Integer, Integer>();
+      for (Integer w = 0; w < wasKeys.size(); w++) {
+        Integer n = pairedWas.contains(w) ? null : freeAt(wasKeys[w], nowKeys);
+        if (n != null) {
+          pairedWas.add(w);
+          pairedNow.add(n);
           result.put(w, n);
-          break;
         }
       }
+      return result;
+    }
+
+    private Integer freeAt(String key, List<String> nowKeys) {
+      for (Integer n = 0; n < nowKeys.size(); n++) {
+        if (!pairedNow.contains(n) && key.equals(nowKeys[n])) {
+          return n;
+        }
+      }
+      return null;
+    }
+  }
+
+  /** "09:00|09:45" for each block. */
+  private static List<String> timesOf(List<ScheduleGrid.Block> blocks) {
+    List<String> result = new List<String>();
+    for (ScheduleGrid.Block block : blocks) {
+      result.add(block.startTime + '|' + block.endTime);
     }
     return result;
   }
 
-  private static String timesOf(ScheduleGrid.Block block) {
-    return block.startTime + '|' + block.endTime;
-  }
-
-  private static String keyOf(ScheduleGrid.Block block) {
-    return block.name + '|' + timesOf(block);
+  /** "Lunch|12:00|12:45" for each block. */
+  private static List<String> keysOf(List<ScheduleGrid.Block> blocks) {
+    List<String> result = timesOf(blocks);
+    for (Integer b = 0; b < blocks.size(); b++) {
+      result[b] = blocks[b].name + '|' + result[b];
+    }
+    return result;
   }
 
   private static List<String> namesOf(List<ScheduleGrid.GroupRef> refs) {

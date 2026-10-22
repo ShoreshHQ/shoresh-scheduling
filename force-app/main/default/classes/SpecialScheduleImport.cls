@@ -22,6 +22,12 @@ public with sharing class SpecialScheduleImport {
     public List<ImportedBlock> blocks { get; set; }
     @AuraEnabled
     public List<ImportedColumn> columns { get; set; }
+    /**
+     * The director said yes to replacing time blocks or stations they changed (asked when an
+     * Outcome came back with asks).
+     */
+    @AuraEnabled
+    public Boolean replaceEdited { get; set; }
   }
 
   public class ImportedBlock {
@@ -69,16 +75,7 @@ public with sharing class SpecialScheduleImport {
     public Boolean asks = false;
   }
 
-  /**
-   * Fills an empty schedule from the file. replaceEdited: the director said yes to replacing
-   * time blocks or stations they changed (asked when an Outcome came back with asks).
-   */
-  public static Outcome apply(
-    Id itemId,
-    Integer revision,
-    Imported imported,
-    Boolean replaceEdited
-  ) {
+  public static Outcome apply(Id itemId, Integer revision, Imported imported) {
     SpecialImportCheck.check(imported);
     SpecialSchedule.Owner owner = SpecialSchedule.lockedOwnerOf(itemId);
     SpecialPlans.Plan plan = SpecialPlans.read(itemId);
@@ -90,12 +87,11 @@ public with sharing class SpecialScheduleImport {
       : SpecialImportShape.forGroups(groupsOf(owner, plan), imported);
     grid.groups = columns.rows;
     Outcome outcome = new Outcome();
-    outcome.frame = SpecialImportFrame.between(
-      plan.grid,
-      grid,
-      owner.isEvent()
-    );
-    if (replaceEdited != true && asksFirst(owner, plan, outcome.frame)) {
+    outcome.frame = SpecialImportFrame.between(owner, plan.grid, grid);
+    if (
+      imported.replaceEdited != true &&
+      SpecialImportFrame.asksFirst(owner, plan.grid, outcome.frame)
+    ) {
       outcome.asks = true;
       return outcome;
     }
@@ -111,24 +107,6 @@ public with sharing class SpecialScheduleImport {
     SpecialPlans.write(itemId, grid, plan.revision);
     outcome.plan = SpecialSchedule.reread(owner);
     return outcome;
-  }
-
-  /** Whether the import renames or removes time blocks or stations the director changed. */
-  private static Boolean asksFirst(
-    SpecialSchedule.Owner owner,
-    SpecialPlans.Plan plan,
-    SpecialImportFrame.FrameChanges frame
-  ) {
-    if (!frame.losesAny()) {
-      return false;
-    }
-    return SpecialImportFrame.edited(
-      plan.grid,
-      owner.isEvent()
-        ? new List<ScheduleGrid.Block>()
-        : SpecialDaySeed.startingBlocks(owner.seasonId),
-      owner.isEvent()
-    );
   }
 
   /** Refused when the plan was saved since the screen read it, or has entries. */
