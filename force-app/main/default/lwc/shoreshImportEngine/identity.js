@@ -192,6 +192,8 @@ export function identifyGroups(placements, noted, context) {
       name: scheduled(g.identity, g.page),
       division,
       hint,
+      // Taken from a file's name, not stated on a page: a guess, marked after the import.
+      fromFileName: !!hinted && division === hinted,
       weakDivision: false
     };
   });

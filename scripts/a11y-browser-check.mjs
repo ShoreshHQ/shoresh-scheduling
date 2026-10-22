@@ -40,6 +40,10 @@
  *   that a row's day ticks show while it is edited, Tab reaching them; and that New season and
  *   Copy this season open from the camp row's small menu (Season actions) and Cancel puts focus
  *   back on it;
+ * - rules Shoresh guessed (ADR 0006 §21): an activity's how often, marked as an import would
+ *   mark it, carries the needs-a-look corner; Tab reaches it, Enter opens its words with the
+ *   cursor on Looks right, Escape puts the cursor back on the mark, and Looks right clears it,
+ *   said, with the cursor on that row's "at least" box;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -248,6 +252,23 @@ System.debug('A11Y_WEEK[' + week.Name + ']');
   return week[1];
 }
 
+/**
+ * An activity of the check's camp marked as an import marks what it guessed (SetupGuessRecords): its
+ * how often, with the value it holds now, so the Activities screen shows the needs-a-look corner
+ * on it. Looks right clears it in the check, so every run marks it again. Returns its name.
+ */
+function seedGuess() {
+  const logs = apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Activity__c activity = [SELECT Id, Name FROM Activity__c WHERE Season__r.Camp__c = :camp.Id ORDER BY Season__r.CreatedDate, SortOrder__c NULLS LAST, Name LIMIT 1];
+SetupGuessRecords.remember(camp.Id, new Map<Id, Set<String>>{ activity.Id => new Set<String>{ SetupGuessValues.OFTEN } });
+System.debug('A11Y_GUESS[' + activity.Name + ']');
+`);
+  const name = /A11Y_GUESS\[([^\]']+)\]/.exec(logs);
+  if (!name) throw new Error("The guessed activity was not reported back.");
+  return name[1];
+}
+
 /** The sign-in link, kept in memory only. Any failure is reported without it. */
 function signInUrl() {
   try {
@@ -276,6 +297,7 @@ function signInUrl() {
 const results = new Results();
 let page;
 let week; // the check's week, made fresh for this run, e.g. "Week 2"
+let guessed; // the activity marked as guessed for this run (seedGuess)
 let shotCount = 0;
 const pause = (ms) => page.waitForTimeout(ms);
 
@@ -1490,6 +1512,11 @@ async function campSetup() {
     "Activities: a priority changed in the details moves the row to its section",
     activityChangesPriority
   );
+  await step(
+    S,
+    "Activities: a guessed how often is marked, and Looks right clears it",
+    guessedMark
+  );
   await step(S, "Fixed activities", async () => {
     await openFromMenu("Fixed activities", /^Fixed activities/);
     await axe("Fixed activities");
@@ -1563,6 +1590,51 @@ async function activityPanel() {
     tag: "button",
     name: new RegExp(`^${chevron.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
   });
+}
+
+/**
+ * Rules Shoresh guessed are marked for a look (decision 45; ADR 0006 §21): the activity seeded
+ * as guessed (seedGuess) carries the corner on its how often. By keyboard: Tab reaches the mark,
+ * Enter opens its words with the cursor on Looks right, Escape closes them with the cursor back
+ * on the mark; Enter again and Looks right clears the mark, said, with the cursor on the row's
+ * "at least" box. axe looks at the page with the words open.
+ */
+async function guessedMark() {
+  const A = "Activities";
+  await openFromMenu(A, /^Activities\b/);
+  const escaped = guessed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const markName = new RegExp(
+    `^How often for ${escaped}: guessed from your file$`
+  );
+  const mark = await tabTo(named(markName, { tag: "button" }), { max: 200 });
+  if (!mark) throw new Error(`${guessed}'s guessed mark was not reached.`);
+  results.pass(A, "A guessed how often: Tab reaches its mark", mark.name);
+  await press("Enter", 400);
+  await expectFocus(A, "Opening the mark: the cursor on Looks right", {
+    tag: "button",
+    name: /^Looks right$/
+  });
+  await axe("Activities, a guessed mark open");
+  await press("Escape", 300);
+  await expectFocus(A, "Escape: the cursor back on the mark", {
+    tag: "button",
+    name: markName
+  });
+  await press("Enter", 400);
+  await expectLive(
+    A,
+    "Looks right: said",
+    new RegExp(`^${escaped}: looks right$`),
+    () => press("Enter", 200)
+  );
+  await expectFocus(A, "Looks right: the cursor on the row's at least box", {
+    tag: "input",
+    name: /: at least$/
+  });
+  const left = await shown('c-shoresh-guess-mark[data-id="guess"]').count();
+  if (left === 0)
+    results.pass(A, "Looks right: the mark is gone", "None left.");
+  else results.fail(A, "Looks right: the mark is gone", `${left} still shown.`);
 }
 
 /**
@@ -2742,6 +2814,7 @@ async function main() {
   refuseInCi();
   refuseWhileCiRuns();
   week = seedCamp();
+  guessed = seedGuess();
   const url = signInUrl();
   const browser = await chromium.launch({
     channel: "chrome",

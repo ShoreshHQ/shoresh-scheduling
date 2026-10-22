@@ -99,6 +99,8 @@ public with sharing class SeasonSetupReader {
       ? null
       : imports[0];
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
+    // What an import guessed and no one has looked at or changed since (ADR 0006 §21).
+    result.guesses = SetupGuesses.forSetup(result);
     return result;
   }
 
@@ -150,7 +152,7 @@ public with sharing class SeasonSetupReader {
       programs.get(division.Program__c).divisions.add(setup);
     }
     for (Group__c grp : [
-      SELECT Id, Name, Division__c, Availability__c, SortOrder__c
+      SELECT Id, Name, Division__c, Availability__c, SortOrder__c, CreatedDate
       FROM Group__c
       WHERE Division__c IN :divisions.keySet()
       WITH USER_MODE
@@ -208,7 +210,14 @@ public with sharing class SeasonSetupReader {
   /** The season's locations, as every screen gets them (Manual Build's checks read them too). */
   public static List<Location__c> locationsOf(Id seasonId) {
     return [
-      SELECT Id, Name, GroupsThatFit__c, LocationType__c, Notes__c, SortOrder__c
+      SELECT
+        Id,
+        Name,
+        GroupsThatFit__c,
+        LocationType__c,
+        Notes__c,
+        SortOrder__c,
+        CreatedDate
       FROM Location__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
@@ -246,6 +255,7 @@ public with sharing class SeasonSetupReader {
         EarlyWeekByDay__c,
         Notes__c,
         SortOrder__c,
+        CreatedDate,
         (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
       FROM Activity__c
       WHERE Season__c = :seasonId
@@ -275,6 +285,8 @@ public with sharing class SeasonSetupReader {
     public List<CampLabels.TermLabel> labels;
     @AuraEnabled
     public Import__c lastImport;
+    @AuraEnabled
+    public List<SetupGuesses.Guess> guesses;
   }
 
   public class ProgramSetup {

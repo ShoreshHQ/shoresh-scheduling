@@ -736,6 +736,19 @@ private class ImportSetupSavesTest {
           }
         )
       );
+      // Every activity's times a week and who were worked out from the file: remembered as
+      // guessed with the values saved (SetupGuesses, ADR 0006 §21), inside the same bounds.
+      List<Object> guessed = new List<Object>();
+      for (Integer a = 0; a < 60; a++) {
+        guessed.add(
+          new Map<String, Object>{
+            'kind' => 'Activity',
+            'key' => 'A|' + a,
+            'fields' => new List<Object>{ 'often', 'who' }
+          }
+        );
+      }
+      plan.put('guessed', guessed);
       Test.startTest();
       ImportSetupSaves.Result result = ImportController.saveSetup(
         JSON.serialize(plan)
@@ -749,6 +762,11 @@ private class ImportSetupSavesTest {
       Assert.areEqual(60, result.added.get('Activity'));
       Assert.areEqual(8, result.added.get('RecurringActivity'));
       Assert.isTrue(queries < 45, 'queries: ' + queries);
+      Assert.areEqual(
+        120,
+        [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :camp.Id],
+        'every guess remembered'
+      );
       Assert.isTrue(dml < 60, 'DML statements: ' + dml);
       Assert.isTrue(cpu < 8000, 'CPU ms: ' + cpu);
       Integer logged = [

@@ -196,6 +196,29 @@ export function answersToKeep(proposal, answers) {
 }
 
 /**
+ * What this import guessed rather than read outright, marked for a look on the setup screens
+ * until the director says it looks right or changes it (Greg, decision 45; ADR 0006 §21). As on
+ * the desktop (ruleProvenance.js, LocationsScreen.jsx, GroupsScreen.jsx): a new activity's times
+ * a week and who can do it, a new place's groups that fit, and a new group's division when only
+ * its file's name gave it. The server stores each with the value it saved (SetupGuesses).
+ */
+function guessedRecords(proposal) {
+  return [
+    ...proposal.activities.map((a) => ({
+      kind: "Activity",
+      key: `A|${a.name}`,
+      fields: ["often", "who"]
+    })),
+    ...proposal.locations
+      .filter((l) => l.isNew)
+      .map((l) => ({ kind: "Location", key: l.key, fields: ["fits"] })),
+    ...proposal.groups
+      .filter((g) => !g.leftOut && g.isNew && g.divisionGuessed)
+      .map((g) => ({ kind: "Group", key: g.key, fields: ["division"] }))
+  ];
+}
+
+/**
  * The save, for ImportController.saveSetup: every record to add or change, in the order they
  * depend on each other. New records point at each other by key; existing ones by Id.
  */
@@ -238,7 +261,8 @@ export function planFor(proposal, existing, seasonId, extra = {}) {
       proposal.recurring,
       proposal.updates.recurring,
       true
-    )
+    ),
+    guessed: guessedRecords(proposal)
   };
 }
 

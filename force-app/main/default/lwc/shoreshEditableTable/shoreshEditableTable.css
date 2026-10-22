@@ -114,6 +114,12 @@
   border-radius: 0 var(--shoresh-radius) var(--shoresh-radius) 0;
 }
 
+/* A cell whose value an import guessed: the needs-a-look corner in its top right corner
+   (c/shoreshGuessMark, ADR 0006 §21). */
+.row > td.has-guess {
+  position: relative;
+}
+
 /* Under the pointer or being edited: the same half step darker as a grid cell. */
 .row:hover > td,
 .row:focus-within > td {

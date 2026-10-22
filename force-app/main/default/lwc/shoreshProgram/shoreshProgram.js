@@ -58,6 +58,8 @@ export default class ShoreshProgram extends LightningElement {
    * group's section with its program's too).
    */
   @api sectioned = false;
+  /** What an import guessed, by record (passed to the groups' tables; see the table). */
+  @api guesses = {};
 
   name;
   days = {};
@@ -849,5 +851,13 @@ export default class ShoreshProgram extends LightningElement {
   handleChildDelete(event) {
     event.stopPropagation();
     this.dispatchEvent(new CustomEvent("delete", { detail: event.detail }));
+  }
+
+  /** Looks right on a guess (a bunk's unit): up to the setup screen. */
+  handleChildConfirmGuess(event) {
+    event.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent("confirmguess", { detail: event.detail })
+    );
   }
 }

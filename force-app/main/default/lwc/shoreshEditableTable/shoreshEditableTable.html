@@ -301,7 +301,7 @@
                           class="shoresh-item who-change"
                           aria-label={cell.whoName}
                           data-row-key={row.key}
-                          data-field="who"
+                          data-field={cell.fieldName}
                           data-id="who-toggle"
                           disabled={row.locked}
                           onclick={handleWhoToggle}
@@ -337,6 +337,18 @@
                         title={cell.fixedText}
                         >{cell.fixedText}</span
                       >
+                    </template>
+                    <template lwc:if={cell.guess}>
+                      <c-shoresh-guess-mark
+                        label={cell.guess}
+                        name={cell.guessName}
+                        busy={busy}
+                        data-id="guess"
+                        data-guess-row={row.key}
+                        data-guess-field={cell.guessField}
+                        data-guess-column={cell.fieldName}
+                        onconfirm={handleConfirmGuess}
+                      ></c-shoresh-guess-mark>
                     </template>
                   </td>
                 </template>

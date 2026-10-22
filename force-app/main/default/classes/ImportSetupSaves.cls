@@ -66,6 +66,8 @@ public with sharing class ImportSetupSaves {
       new ImportVersionWrites(plan, writer).run();
       SetTimeGuard.checkPending();
       ImportAnswers.save(seasons[0].Camp__c, plan);
+      // What it guessed rather than read, with the values saved: marked for a look on setup.
+      SetupGuesses.rememberFromPlan(seasons[0].Camp__c, plan, keys);
       writer.result.importId = record(plan, writer);
     } catch (Exception e) {
       Database.rollback(beforeSave);

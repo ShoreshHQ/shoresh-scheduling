@@ -236,7 +236,8 @@ function unitChoice(group, here, fileDivisions, ctx) {
     options,
     preselected
   });
-  const answer = ctx.answers[id] || preselected;
+  const chosen = ctx.answers[id];
+  const answer = chosen || preselected;
   if (answer === LEAVE_OUT) {
     return {
       name: group.name,
@@ -248,7 +249,12 @@ function unitChoice(group, here, fileDivisions, ctx) {
   if (!answer || !options.includes(answer)) {
     return { ...newGroup(group, { key: null, name: null }), unanswered: true };
   }
-  return newGroup(group, here.get(answer));
+  return {
+    ...newGroup(group, here.get(answer)),
+    // Left as the file's name suggested, not chosen: marked for a look after the import.
+    divisionGuessed:
+      !chosen && !!group.divisionGuessed && answer === group.division
+  };
 }
 
 function groupRecord(group, here, fileDivisions, ctx) {

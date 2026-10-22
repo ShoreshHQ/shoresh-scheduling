@@ -135,6 +135,13 @@ const SHORT_DAYS = {
  *          cursor to the next row (else the one above, else the blank row)
  *   merge  { recordIds } - with mergeLabel: the saved row asked about first, then the saved rows
  *          whose names match it (capitals and spacing aside)
+ *   confirmguess { recordId, field, onDone } - Looks right on a guess's mark (guesses); the
+ *          screen forgets the guess, reads the season again and calls onDone(): the cursor goes
+ *          to the cell's field (else the row's first) and it is said
+ *
+ * guesses: what an import guessed and no one has looked at since (ADR 0006 §21), record Id ->
+ *   { [column fieldName]: { field, words, name } }: that cell carries the needs-a-look corner
+ *   (c/shoreshGuessMark), which opens its words and Looks right.
  */
 export default class ShoreshEditableTable extends LightningElement {
   @api title;
@@ -194,6 +201,8 @@ export default class ShoreshEditableTable extends LightningElement {
    * columns. Narrower where a panel shares the screen (Activities' details).
    */
   @api weeksMax = 20;
+  /** What an import guessed, marked in its cell (see above). */
+  @api guesses = {};
 
   drafts = [];
   addRow = this.blankRow();
@@ -1207,7 +1216,9 @@ export default class ShoreshEditableTable extends LightningElement {
       // The blank row is locked while it is being added, so nothing typed is lost or added twice.
       locked: draft.isNew && !!draft.adding,
       deleteLabel: `Delete ${name}`.trim(),
-      cells: this.mainColumns.map(cell),
+      cells: this.mainColumns.map((col) =>
+        this.withGuess(cell(col), col, draft)
+      ),
       weekCells,
       weeksText: weeks.text,
       weeksTextClass: weeks.exception ? "weeks-text exception" : "weeks-text",
@@ -1217,6 +1228,50 @@ export default class ShoreshEditableTable extends LightningElement {
 
   isTextColumn(col) {
     return col.type === "text" || !col.type;
+  }
+
+  /** A saved row's cell whose value an import guessed: it carries the corner mark. */
+  withGuess(built, col, draft) {
+    const guess =
+      !draft.isNew &&
+      ((this.guesses || {})[draft.original.Id] || {})[col.fieldName];
+    if (!guess) {
+      return built;
+    }
+    return {
+      ...built,
+      className: `${built.className} has-guess`,
+      guess: guess.words,
+      guessName: guess.name,
+      guessField: guess.field
+    };
+  }
+
+  /** Looks right on a guess: the screen forgets it; then the cursor stays in that cell. */
+  handleConfirmGuess(event) {
+    const { guessRow, guessField, guessColumn } = event.currentTarget.dataset;
+    const draft = this.rowFor(guessRow);
+    if (!draft || draft.isNew) {
+      return;
+    }
+    const name = draft.values.Name || "";
+    // The cursor goes to the cell's field now, while the row still holds it (a field shown only
+    // while the row is edited, such as how often's numbers, can't take it once the mark is gone).
+    this.focusTaken = { key: guessRow, field: guessColumn };
+    this.applyTakenFocus();
+    this.dispatchEvent(
+      new CustomEvent("confirmguess", {
+        detail: {
+          recordId: draft.original.Id,
+          field: guessField,
+          onDone: () => {
+            this.announce(`${name}: looks right`.trim());
+            this.focusTaken = { key: guessRow, field: guessColumn };
+            this.applyTakenFocus();
+          }
+        }
+      })
+    );
   }
 
   weekCells(draft, offWeeks) {
