@@ -95,8 +95,16 @@ row, "no exceptions". The desktop has no undo for row edits either: only Trash f
    at save time instead, which keeps the same rule: nothing is overwritten unseen.
    _Since 2026-10-21 (step 3b, ADR 0015 choice 12) an activity's length, groups at once, No
    limit, priority, outdoors, rain plan and no weekly maximum are in its details beside the
-   table, saved as a form's fields are (the last save wins, ADR 0013 Known limits); its name,
-   location, how often (at least, at most) and weeks stay in the row and keep this check._
+   table; its name, location, how often (at least, at most) and weeks stay in the row. The
+   moved fields keep this check: each is sent on its own through the same
+   `SetupTablesController.saveRow`, with what it held when the director saw it (read when its
+   save's turn comes, so a second save of the same field compares with what the first saved).
+   Changed by someone else, nothing is saved and the details ask the same question, **Changed
+   by someone else**, "Swim · Length", **Theirs** and **Yours**, **Keep theirs** (Escape) or
+   **Use yours**, with the cursor back in the field afterwards. They never save last-write-wins
+   as a form's fields do (ADR 0013 Known limits). Checked by `shoreshActivityDetails.test.js`
+   ("someone else changed the field since it was shown") and `shoreshCampSetup.test.js`; the
+   server path is `RowSaves`, unchanged and covered by `RowSavesTest`._
 6. **Messages.** A row save shows no "Saved." toast (the desktop's row saves are silent); screen
    readers hear "Swim saved" or "Swim added", again each time even when the words are the
    same. A refusal is the screen's usual message, naming the row, and the typing stays to fix.

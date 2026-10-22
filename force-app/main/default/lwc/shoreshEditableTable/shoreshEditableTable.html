@@ -413,16 +413,26 @@
                       >
                     </template>
                     <span class="tools">
-                      <lightning-button-icon
-                        icon-name="utility:delete"
-                        alternative-text={row.deleteLabel}
+                      <button
+                        type="button"
+                        class="shoresh-item shoresh-item_icon shoresh-item_tool more"
+                        aria-label={row.deleteLabel}
                         title={row.deleteLabel}
-                        variant="bare"
                         data-id="delete"
                         data-row-key={row.key}
                         onclick={handleDelete}
                         disabled={busy}
-                      ></lightning-button-icon>
+                      >
+                        <svg
+                          class="shoresh-glyph"
+                          viewBox="0 0 16 16"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M3 4.5h10 M6.5 4.5V3h3v1.5 M4.5 4.5l.5 8.5h6l.5-8.5 M7 7v4 M9 7v4"
+                          ></path>
+                        </svg>
+                      </button>
                       <template lwc:if={row.hasMore}>
                         <button
                           type="button"

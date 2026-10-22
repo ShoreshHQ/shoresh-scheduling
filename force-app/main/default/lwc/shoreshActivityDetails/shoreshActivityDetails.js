@@ -17,7 +17,8 @@ const RULE_FIELDS = {
   notes: ACTIVITY.Notes
 };
 // The activity's own fields that were the table's columns before step 3b (ADR 0015 choice 12):
-// they live here now, saved as the program's own fields are (only the field that changed).
+// they live here now, saved as the table saved them (only the field that changed, compared
+// with what it held when the director saw it: SetupTablesController.saveRow, ADR 0011 choice 5).
 const ROW_FIELDS = {
   length: ACTIVITY.Length,
   groupsAtOnce: ACTIVITY.GroupsAtOnce,
@@ -29,6 +30,12 @@ const ROW_FIELDS = {
 };
 const INPUT_FIELDS = { ...RULE_FIELDS, ...ROW_FIELDS };
 const ROW_SET = new Set(Object.values(ROW_FIELDS));
+// The ticks among them, read "Yes" or "No" in "Changed by someone else".
+const TICK_FIELDS = new Set([
+  ACTIVITY.NoGroupLimit,
+  ACTIVITY.NoWeeklyMax,
+  ACTIVITY.Outdoor
+]);
 // Fields typed in (saved on leaving them); the rest are chosen once and saved at once.
 const NUMBER_FIELDS = new Set([
   ACTIVITY.EarlyWeekCount,
@@ -57,9 +64,12 @@ const SAME = "same";
  * quietly; a refusal shows next to the field, with what was typed kept. If something else on the
  * screen is saved meanwhile, what was typed here stays.
  *
- * The activity's own fields go as the program's own do: save { records: [{ Id, field }], onSaved,
- * onFailure(message), shown() }, only the field that changed (last save wins, as every setup
- * form; ADR 0013 Known limits).
+ * The activity's own fields go as the table's rows did (ADR 0011 choice 5): save { record: { Id,
+ * field }, seen(), onSaved(result), onFailure(message), shown() }, only the field that changed;
+ * seen() is what that field held when the director saw it, read when the save's turn comes (so
+ * a save waiting behind another of the same field compares with what that one saved). If
+ * someone else changed it since, result.changed names it and nothing is saved: the panel asks
+ * Manual Build's question, "Changed by someone else", Keep theirs or Use yours.
  *
  * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }
  * (shown: whether the form still shows that activity; a refusal it can't show is said at the top);
@@ -79,6 +89,13 @@ export default class ShoreshActivityDetails extends LightningElement {
   _setup;
   // Put the cursor on the heading once the details are drawn.
   focusHeadingNext = false;
+  // What each of the activity's own fields held when the director saw it (field -> value).
+  seen = {};
+  // Someone else changed a field since: { field, theirs, yours }, asked until answered.
+  conflict = null;
+  conflictFocused = false;
+  // The field to put the cursor back in once the question is answered.
+  focusFieldNext = null;
 
   /** The season setup from SeasonSetupController (activities, programs). */
   @api
@@ -99,11 +116,20 @@ export default class ShoreshActivityDetails extends LightningElement {
   /** What is saved, except the fields the director changed and are not saved yet. */
   showSaved() {
     const saved = this.draftFor(this.activity);
+    const keep = (field) =>
+      !!this.draft && (this.dirty.has(field) || this.sending.has(field));
+    if (saved) {
+      // Fields not being changed are seen as they are now.
+      ROW_SET.forEach((field) => {
+        if (!keep(field)) {
+          this.seen[field] = saved.rules[field];
+        }
+      });
+    }
     if (!saved || !this.draft) {
       this.draft = saved;
       return;
     }
-    const keep = (field) => this.dirty.has(field) || this.sending.has(field);
     const rules = { ...saved.rules };
     Object.keys(rules).forEach((field) => {
       if (keep(field)) {
@@ -122,6 +148,8 @@ export default class ShoreshActivityDetails extends LightningElement {
     this.sending = new Map();
     this.errors = {};
     this.draft = null;
+    this.seen = {};
+    this.conflict = null;
   }
 
   get activities() {
@@ -335,7 +363,7 @@ export default class ShoreshActivityDetails extends LightningElement {
     if (activityId !== this.activityId) {
       this.activityId = activityId;
       this.forget();
-      this.draft = this.draftFor(this.activity);
+      this.showSaved();
       this.clearMark();
     }
     this.focusHeadingNext = true;
@@ -345,6 +373,22 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   renderedCallback() {
     this.focusHeading();
+    if (this.conflict && !this.conflictFocused) {
+      this.conflictFocused = true;
+      const use = this.template.querySelector('[data-id="use-yours"]');
+      if (use) {
+        use.focus();
+      }
+    }
+    if (this.focusFieldNext && !this.conflict) {
+      const input = this.template.querySelector(
+        `[data-field="${this.focusFieldNext}"]`
+      );
+      this.focusFieldNext = null;
+      if (input) {
+        input.focus();
+      }
+    }
   }
 
   focusHeading() {
@@ -527,18 +571,144 @@ export default class ShoreshActivityDetails extends LightningElement {
       this.errors = shown;
     };
     const shown = () => activityId === this.activityId;
+    if (own) {
+      this.sendOwn(field, rules, { done, onSaved, onFailure, shown });
+      return;
+    }
     this.dispatchEvent(
       new CustomEvent("save", {
-        detail: own
-          ? { records: [rules], onSaved, onFailure, shown }
-          : {
-              rules,
-              whoCanDoIt: [...this.draft.whoCanDoIt],
-              onSaved,
-              onFailure,
-              shown
-            }
+        detail: {
+          rules,
+          whoCanDoIt: [...this.draft.whoCanDoIt],
+          onSaved,
+          onFailure,
+          shown
+        }
       })
+    );
+  }
+
+  /**
+   * One of the activity's own fields, compared and set as the table's rows are (ADR 0011
+   * choice 5): saved only if no one else changed it since the director saw it; otherwise the
+   * question, and nothing is saved until it is answered.
+   */
+  sendOwn(field, record, { done, onSaved, onFailure, shown }) {
+    const activityId = this.activityId;
+    const name = this.activity ? this.activity.Name : null;
+    // Read when the save's turn comes: an earlier save of this field may have moved it on.
+    const seen = () => ({
+      sobjectType: OBJECT.Activity,
+      Id: activityId,
+      Name: name,
+      [field]: activityId === this.activityId ? this.seen[field] : undefined
+    });
+    const answered = (result) => {
+      const changed = (result && result.changed) || [];
+      if (!changed.length) {
+        if (activityId === this.activityId) {
+          // Saved: typing since is compared with what was sent.
+          this.seen[field] = record[field];
+        }
+        onSaved();
+        return;
+      }
+      if (activityId !== this.activityId) {
+        return;
+      }
+      done();
+      if (this.sending.has(field)) {
+        // A newer save of the same field is on its way, and gets its own answer.
+        return;
+      }
+      // Someone else changed it: nothing saved; the typing stays until the director chooses.
+      this.dirty.add(field);
+      const theirs = result.theirs ? result.theirs[field] : null;
+      this.conflictFocused = false;
+      this.conflict = {
+        field,
+        theirs: theirs === undefined ? null : theirs,
+        yours: record[field]
+      };
+    };
+    this.dispatchEvent(
+      new CustomEvent("save", {
+        detail: { record, seen, onSaved: answered, onFailure, shown }
+      })
+    );
+  }
+
+  // ---------- someone else changed the field (the setup tables' question) ----------
+
+  /** The question's one row: "Archery · Length", theirs and yours as the director reads them. */
+  get conflictRows() {
+    if (!this.conflict) {
+      return [];
+    }
+    const { field, theirs, yours } = this.conflict;
+    const key = Object.keys(ROW_FIELDS).find((k) => ROW_FIELDS[k] === field);
+    const name = this.activity ? this.activity.Name : "";
+    return [
+      {
+        key,
+        where: `${name} · ${this.labels[key]}`,
+        theirs: this.shown(field, theirs),
+        yours: this.shown(field, yours)
+      }
+    ];
+  }
+
+  /** A value as the director reads it: Yes or No, an activity by its name, None when blank. */
+  shown(field, value) {
+    if (TICK_FIELDS.has(field)) {
+      return value ? "Yes" : "No";
+    }
+    if (value === null || value === undefined || value === "") {
+      return "None";
+    }
+    if (field === ACTIVITY.RainPlan) {
+      const plan = this.activities.find((a) => a.Id === value);
+      return plan ? plan.Name : "None";
+    }
+    return String(value);
+  }
+
+  /** Theirs stays: the field shows what someone else saved, and nothing is sent. */
+  handleKeepTheirs() {
+    const { field, theirs } = this.conflict;
+    this.dirty.delete(field);
+    this.seen[field] = theirs;
+    this.draft = {
+      ...this.draft,
+      rules: { ...this.draft.rules, [field]: theirs }
+    };
+    this.closeConflict(field);
+  }
+
+  /** The same change again, naming what is there now. */
+  handleUseYours() {
+    const { field, theirs } = this.conflict;
+    this.seen[field] = theirs;
+    this.closeConflict(field);
+    this.save(field);
+  }
+
+  /** As the setup tables' question: Escape keeps theirs, and Tab stays on its two buttons. */
+  handleConflictKeyDown(event) {
+    if (event.key === "Escape") {
+      this.handleKeepTheirs();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      const keep = this.template.querySelector('[data-id="keep-theirs"]');
+      const use = this.template.querySelector('[data-id="use-yours"]');
+      (this.template.activeElement === keep ? use : keep).focus();
+    }
+  }
+
+  closeConflict(field) {
+    this.conflict = null;
+    this.focusFieldNext = Object.keys(ROW_FIELDS).find(
+      (k) => ROW_FIELDS[k] === field
     );
   }
 }

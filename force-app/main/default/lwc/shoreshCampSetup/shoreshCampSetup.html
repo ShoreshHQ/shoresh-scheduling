@@ -100,16 +100,25 @@
                     ></lightning-combobox>
                   </div>
                   <template lwc:if={setup}>
-                    <lightning-button-icon
-                      class="season-edit"
+                    <button
+                      type="button"
+                      class="shoresh-item shoresh-item_icon shoresh-item_tool season-edit"
                       data-id="edit-season"
-                      icon-name="utility:edit"
-                      variant="bare"
-                      alternative-text={labels.editSeason}
+                      aria-label={labels.editSeason}
                       title={labels.editSeason}
                       aria-expanded={seasonOpenText}
                       onclick={handleToggleSeason}
-                    ></lightning-button-icon>
+                    >
+                      <svg
+                        class="shoresh-glyph"
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M10.5 3.5l2 2L6 12l-2.5.5L4 10z M9 5l2 2"
+                        ></path>
+                      </svg>
+                    </button>
                   </template>
                 </template>
                 <template lwc:else>

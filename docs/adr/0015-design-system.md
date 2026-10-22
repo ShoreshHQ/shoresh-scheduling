@@ -199,10 +199,12 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       division only" tick it was), early in the week, who can do it, length and priority,
       groups at once and No limit, outdoors and no weekly maximum, then notes. They save as
       the details always have (ADR 0013 choice 1): a choice at once, a number on leaving it or
-      Enter. The fields that were columns are sent as the program's own fields are, only the
-      field that changed, so for them the last save wins, as for every setup form (ADR 0013
-      Known limits), where the table compared and set them (ADR 0011 choice 5). The rules and
-      who can do it still go through `ActivityDetails`.
+      Enter. The fields that were columns keep the table's compare and set (ADR 0011 choice
+      5): each is sent alone through `SetupTablesController.saveRow` with what it held when
+      the director saw it, and if someone else changed it since, nothing is saved and the
+      panel asks the tables' question (**Changed by someone else**, Theirs and Yours, **Keep
+      theirs** or **Use yours**). They never fall back to a form's last save wins (ADR 0013
+      Known limits). The rules and who can do it still go through `ActivityDetails`.
     - **Fixed activities and Recurring activities stay separate screens** (decision 42), each
       with the rail and in the shared table language. Fixed activities are one section headed
       **Whole camp** (with several programs, the program's name), columns Name, the time block
@@ -229,6 +231,15 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       redraw while the question was open (the page is busy while it looks for placements)
       dropped the row's mark that keeps its strip shown. The table now keeps that mark across
       redraws and puts focus back on the tick when the question is answered.
+    - **Bare icon buttons are the design system's tools**: the season's pencil, the details'
+      × and a row's trash can were Salesforce's bare icon buttons, drawn in its blue. They are
+      now the rail's square item (`shoresh-item shoresh-item_icon`) with a 16 px stroked
+      glyph: the secondary words' colour at rest, the highlight under the pointer and with
+      keyboard focus (`shoresh-item_tool`), and the focus ring. No new hue. The details
+      panel writes the item out (`.panel-close`) rather than importing `c/shoreshTokens`
+      again. Jest's jsdom keeps 1000 compiled selectors and the setup page now holds about
+      that many, so `jest/selector-cache.js` gives it room for 10000 (matching unchanged);
+      without it an axe check over a setup screen took over 5 s.
     - **The camp and season are the menu's camp row.** The old season row above the rail is
       gone; the frame is the screen alone. The camp row holds the camp's name (a picker that
       reads as the name while the director has several camps); under it the season picker,
@@ -243,7 +254,7 @@ Fixed and Recurring activities, and the camp and season in the menu's camp row._
       numbers saved with the row and named in the question, days in words and ticks, worked-out
       words quiet unless an exception, sections by rowFilter, whoRule and newRowWho, another
       section's who taken on reload), `shoreshActivityDetails.test.js` ("the panel beside the
-      table"), `shoreshProgram.test.js` (Whole camp, the division sections, the cursor following
+      table"; "someone else changed the field since it was shown"), `shoreshProgram.test.js` (Whole camp, the division sections, the cursor following
       a moved item), `shoreshCampSetup.test.js` ("setup screens, step 3b": the rails, how often's
       scale, the panel's saves, the camp row) and in the test org by
       `scripts/a11y-browser-check.mjs` (how often's numbers and a recurring row's day ticks

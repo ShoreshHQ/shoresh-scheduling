@@ -686,7 +686,9 @@ describe("c-shoresh-editable-table", () => {
       await flush();
       const deletes = element.shadowRoot.querySelectorAll('[data-id="delete"]');
       expect(deletes.length).toBe(2);
-      expect(deletes[0].alternativeText).toBe("Delete Period 1");
+      expect(deletes[0].getAttribute("aria-label")).toBe("Delete Period 1");
+      // A bare tool of the design system, not Salesforce's blue icon button.
+      expect(deletes[0].className).toContain("shoresh-item_tool");
       deletes[0].click();
       const { onDeleted, ...detail } = handler.mock.calls[0][0].detail;
       expect(bareRecord(detail)).toEqual({

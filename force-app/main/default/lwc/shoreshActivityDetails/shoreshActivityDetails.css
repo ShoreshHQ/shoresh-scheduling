@@ -1,6 +1,7 @@
 /*
  * The values are the design system's (c/shoreshTokens), inherited from the camp setup page that
- * holds this panel: importing the module again here would only repeat them.
+ * holds this panel: importing the module again here would only repeat them. Its classes don't
+ * reach in here, so the × is the rail's square item written out (.shoresh-item_icon).
  *
  * The details zone of docs/design/setup/activities.html: beside the list, one hairline from it,
  * 384 wide at 1440 (here 72 units, 288, so the five columns keep their room), its fields one under
@@ -69,10 +70,33 @@
 }
 
 .panel-close {
+  box-sizing: border-box;
+  display: inline-flex;
   flex: none;
-  --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
-  --slds-c-icon-color-foreground: var(--shoresh-text-2);
-  --slds-c-button-text-color: var(--shoresh-text-2);
+  align-items: center;
+  justify-content: center;
+  width: var(--shoresh-control-h);
+  height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: transparent;
+  color: var(--shoresh-text-2);
+  cursor: pointer;
+}
+
+/* A bare tool (ADR 0015 choice 12): the secondary words at rest, the highlight under the
+   pointer and with keyboard focus. No other hue. */
+.panel-close:hover {
+  background: var(--shoresh-surface-hover);
+  color: var(--shoresh-color-highlight);
+}
+
+.panel-close:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+  color: var(--shoresh-color-highlight);
 }
 
 .field {
@@ -111,4 +135,31 @@
 
 .field_grow {
   flex: 1;
+}
+
+/* Someone else changed the field: the setup tables' question, laid out as theirs (ADR 0011
+   choice 5; shoreshEditableTable.css). */
+.conflict-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conflict-where {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.conflict-choices {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+}
+
+.conflict-choices dt {
+  color: var(--shoresh-text-2);
+}
+
+.conflict-choices dd {
+  font-weight: 600;
 }

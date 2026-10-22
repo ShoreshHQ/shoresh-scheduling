@@ -821,8 +821,9 @@ describe("c-shoresh-camp-setup", () => {
       expect(table.columns[0].label).toBe("Activity");
     });
 
-    it("an activity's details open beside the table, and its own fields save as records", async () => {
-      saveRecords.mockResolvedValue(nsRecord(["a1"]));
+    it("an activity's details open beside the table, and its own fields are compared and set as a row's", async () => {
+      const answer = nsRecord({ id: "a1", changed: [] });
+      saveRow.mockResolvedValue(answer);
       const element = await renderWith();
       await openScreen(element, "activities");
       const details = q(element, "c-shoresh-activity-details");
@@ -832,13 +833,18 @@ describe("c-shoresh-camp-setup", () => {
       details.dispatchEvent(
         new CustomEvent("save", {
           detail: {
-            records: [
+            record: nsRecord({
+              sobjectType: "Activity__c",
+              Id: "a1",
+              Priority__c: "High"
+            }),
+            seen: () =>
               nsRecord({
                 sobjectType: "Activity__c",
                 Id: "a1",
-                Priority__c: "High"
-              })
-            ],
+                Name: "Archery",
+                Priority__c: "Low"
+              }),
             onSaved,
             onFailure: jest.fn(),
             shown: () => true
@@ -847,11 +853,52 @@ describe("c-shoresh-camp-setup", () => {
       );
       await flush();
       await flush();
-      expect(sentTo(saveRecords)).toContainEqual({
-        records: [{ sobjectType: "Activity__c", Id: "a1", Priority__c: "High" }]
+      // Never last-write-wins (ADR 0011 choice 5): saveRow, with what the field held when seen.
+      expect(sentTo(saveRow)).toContainEqual({
+        record: { sobjectType: "Activity__c", Id: "a1", Priority__c: "High" },
+        seen: {
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Name: "Archery",
+          Priority__c: "Low"
+        },
+        extras: null
       });
+      expect(saveRecords).not.toHaveBeenCalled();
       expect(saveActivityDetails).not.toHaveBeenCalled();
-      expect(onSaved).toHaveBeenCalled();
+      // The panel hears the answer: here saved; else what someone else changed.
+      expect(onSaved).toHaveBeenCalledWith(answer);
+    });
+
+    it("an activity's field someone else changed since is asked about in its details, never overwritten", async () => {
+      const element = await renderWith();
+      await openScreen(element, "activities");
+      const details = q(element, "c-shoresh-activity-details");
+      await details.open(details.setup.activities[0].Id);
+      await flush();
+      saveRow.mockResolvedValue(
+        nsRecord({
+          id: null,
+          changed: [nsName("Priority__c")],
+          theirs: { Id: details.setup.activities[0].Id, Priority__c: "High" }
+        })
+      );
+      const priority = details.shadowRoot.querySelector(
+        '[data-field="priority"]'
+      );
+      priority.value = "Low";
+      priority.dispatchEvent(
+        new CustomEvent("change", { detail: { value: "Low" } })
+      );
+      await flush();
+      await flush();
+      expect(saveRow).toHaveBeenCalledTimes(1);
+      expect(saveRecords).not.toHaveBeenCalled();
+      const conflict = details.shadowRoot.querySelector('[data-id="conflict"]');
+      expect(conflict).not.toBeNull();
+      expect(
+        [...conflict.querySelectorAll("dd")].map((d) => d.textContent.trim())
+      ).toEqual(["High", "Low"]);
     });
 
     describe("the camp and season in the menu's camp row", () => {
@@ -1527,8 +1574,10 @@ describe("c-shoresh-camp-setup", () => {
       getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();
       const pencil = q(element, '[data-id="edit-season"]');
-      expect(pencil.alternativeText).toBe("Edit Summer 2026");
-      expect(pencil.ariaExpanded).toBe("false");
+      expect(pencil.getAttribute("aria-label")).toBe("Edit Summer 2026");
+      // A bare tool of the design system, not Salesforce's blue icon button.
+      expect(pencil.className).toContain("shoresh-item_tool");
+      expect(pencil.getAttribute("aria-expanded")).toBe("false");
       expect(q(element, '[data-id="season-form"]')).toBeNull();
       await openScreen(element, "weeks");
       expect(
@@ -1538,7 +1587,7 @@ describe("c-shoresh-camp-setup", () => {
 
       pencil.click();
       await flush();
-      expect(pencil.ariaExpanded).toBe("true");
+      expect(pencil.getAttribute("aria-expanded")).toBe("true");
       expect(
         [
           ...element.shadowRoot.querySelectorAll(

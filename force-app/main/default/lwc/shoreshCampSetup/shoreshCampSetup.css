@@ -100,11 +100,11 @@
   flex: none;
 }
 
-/* The pencil's glyph in the secondary words, as the rail's glyphs. */
-.season-edit {
-  --slds-c-icon-color-foreground-default: var(--shoresh-text-2);
-  --slds-c-icon-color-foreground: var(--shoresh-text-2);
-  --slds-c-button-text-color: var(--shoresh-text-2);
+/* A bare tool (ADR 0015 choice 12): the rail's item, in the secondary words at rest, the
+   highlight under the pointer and with keyboard focus. No other hue. */
+.shoresh-item_tool:hover:not(:disabled),
+.shoresh-item_tool:focus-visible {
+  color: var(--shoresh-color-highlight);
 }
 
 /* The season's details: under the camp row, one field under another. */

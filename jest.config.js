@@ -6,7 +6,9 @@ module.exports = {
   // Accessibility checks in tests: toBeAccessible() (jest/sa11y-setup.js).
   setupFilesAfterEnv: [
     ...(jestConfig.setupFilesAfterEnv || []),
-    "<rootDir>/jest/sa11y-setup.js"
+    "<rootDir>/jest/sa11y-setup.js",
+    // Room for every component's selectors in jsdom's selector cache (see the file).
+    "<rootDir>/jest/selector-cache.js"
   ],
   // CSS-only modules (shared colours) have no JavaScript for Jest to find.
   moduleNameMapper: {

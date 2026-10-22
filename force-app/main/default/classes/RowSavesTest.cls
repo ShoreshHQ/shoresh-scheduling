@@ -49,6 +49,52 @@ private class RowSavesTest {
     return SetupTablesController.saveRow(record, seen, null);
   }
 
+  private static Activity__c swim() {
+    return [
+      SELECT Name, Length__c, Priority__c
+      FROM Activity__c
+      WHERE Id = :ids.get('Swim')
+      WITH SYSTEM_MODE
+    ];
+  }
+
+  /**
+   * An activity's details beside the Activities table (ADR 0015 choice 12) send one field at a
+   * time, with its name in `seen` (for "was deleted by someone else"): someone else's change to
+   * that field is not overwritten, and a rename they made is no question, since the name is not
+   * being saved.
+   */
+  @IsTest
+  static void anActivityDetailsFieldIsComparedAndSet() {
+    camp();
+    System.runAs(scheduler(ids)) {
+      Id swimId = ids.get('Swim');
+      theyChange(
+        new Activity__c(Id = swimId, Length__c = 2, Name = 'Swimming')
+      );
+      RowSaves.Result result = save(
+        new Activity__c(Id = swimId, Length__c = 3),
+        new Activity__c(Name = 'Swim', Length__c = 1)
+      );
+      Assert.isNull(result.id);
+      Assert.areEqual(
+        new List<String>{ ShoreshTestData.packagedName(Activity__c.Length__c) },
+        result.changed
+      );
+      Assert.areEqual(2, result.theirs.get(Activity__c.Length__c));
+      Assert.areEqual(2, swim().Length__c);
+
+      // Another field, seen as it is now: saved, and their rename stays.
+      result = save(
+        new Activity__c(Id = swimId, Priority__c = 'High'),
+        new Activity__c(Name = 'Swim', Priority__c = 'Low')
+      );
+      Assert.areEqual(swimId, result.id);
+      Assert.areEqual('High', swim().Priority__c);
+      Assert.areEqual('Swimming', swim().Name);
+    }
+  }
+
   @IsTest
   static void aNewRowIsSavedWithNothingToCompare() {
     camp();

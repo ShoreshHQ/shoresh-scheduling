@@ -2,7 +2,7 @@ import { createElement } from "lwc";
 import ShoreshActivityDetails from "c/shoreshActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
 import LightningConfirm from "lightning/confirm";
-import { bareRecord, nsRecord } from "shoresh-jest/namespace";
+import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 jest.mock(
   "lightning/confirm",
@@ -154,10 +154,16 @@ describe("c-shoresh-activity-details", () => {
       0
     );
     expect(
-      [...element.shadowRoot.querySelectorAll("lightning-button-icon")].map(
-        (b) => [b.dataset.id, b.alternativeText]
-      )
+      [...element.shadowRoot.querySelectorAll("button")].map((b) => [
+        b.dataset.id,
+        b.getAttribute("aria-label")
+      ])
     ).toEqual([["close", "Close Archery details"]]);
+    // A bare tool of the design system (text colour at rest, the highlight on hover and focus),
+    // not Salesforce's blue icon button.
+    expect(q(element, '[data-id="close"]').className).toContain(
+      "shoresh-item_tool"
+    );
   });
 
   it("nobody chosen means every group", async () => {
@@ -576,7 +582,7 @@ describe("c-shoresh-activity-details", () => {
       await expect(element).toBeAccessible();
     });
 
-    it("a dropdown or tick of the activity's own saves at once, as a record of that field only", async () => {
+    it("a dropdown or tick of the activity's own saves at once, that field only, with what it held when seen", async () => {
       const element = await render(PANEL);
       const handler = jest.fn();
       element.addEventListener("save", handler);
@@ -587,12 +593,42 @@ describe("c-shoresh-activity-details", () => {
       change(q(element, '[data-field="noWeeklyMax"]'), false);
       await flush();
       const saves = sent(handler);
-      expect(saves.map((save) => save.records)).toEqual([
-        [{ sobjectType: "Activity__c", Id: "a1", Priority__c: "Low" }],
-        [{ sobjectType: "Activity__c", Id: "a1", Outdoor__c: false }],
-        [{ sobjectType: "Activity__c", Id: "a1", RainPlan__c: null }],
-        [{ sobjectType: "Activity__c", Id: "a1", NoWeeklyMax__c: false }]
+      expect(saves.map((save) => save.record)).toEqual([
+        { sobjectType: "Activity__c", Id: "a1", Priority__c: "Low" },
+        { sobjectType: "Activity__c", Id: "a1", Outdoor__c: false },
+        { sobjectType: "Activity__c", Id: "a1", RainPlan__c: null },
+        { sobjectType: "Activity__c", Id: "a1", NoWeeklyMax__c: false }
       ]);
+      // Compared and set, as the table's rows (ADR 0011 choice 5): what each held when seen.
+      expect(
+        handler.mock.calls.map((call) => bareRecord(call[0].detail.seen()))
+      ).toEqual([
+        {
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Name: "Archery",
+          Priority__c: "High"
+        },
+        {
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Name: "Archery",
+          Outdoor__c: true
+        },
+        {
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Name: "Archery",
+          RainPlan__c: "a3"
+        },
+        {
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Name: "Archery",
+          NoWeeklyMax__c: true
+        }
+      ]);
+      expect(saves[0].records).toBeUndefined();
       // Not a rule: who can do it is not sent with it.
       expect(saves[0].whoCanDoIt).toBeUndefined();
       expect(typeof saves[0].shown).toBe("function");
@@ -612,9 +648,9 @@ describe("c-shoresh-activity-details", () => {
       change(groups, "");
       leave(groups);
       await flush();
-      expect(sent(handler).map((save) => save.records)).toEqual([
-        [{ sobjectType: "Activity__c", Id: "a1", Length__c: 3 }],
-        [{ sobjectType: "Activity__c", Id: "a1", GroupsAtOnce__c: null }]
+      expect(sent(handler).map((save) => save.record)).toEqual([
+        { sobjectType: "Activity__c", Id: "a1", Length__c: 3 },
+        { sobjectType: "Activity__c", Id: "a1", GroupsAtOnce__c: null }
       ]);
       // A blank length: the field says it needs one, nothing is sent.
       change(length, "");
@@ -639,6 +675,171 @@ describe("c-shoresh-activity-details", () => {
       element.setup = nsRecord({ ...PANEL });
       await flush();
       expect(q(element, '[data-field="priority"]').value).toBe("Low");
+    });
+
+    describe("someone else changed the field since it was shown (ADR 0011 choice 5)", () => {
+      const theirLength = (length) =>
+        nsRecord({
+          id: null,
+          changed: [nsName("Length__c")],
+          theirs: { Id: "a1", Name: "Archery", Length__c: length }
+        });
+      const dialog = (element) => q(element, '[data-id="conflict"]');
+
+      /** Types 3 into Length (it was 2) and saves it; returns the save the page heard. */
+      async function typeLength(element, handler) {
+        allValid(element);
+        const length = q(element, '[data-field="length"]');
+        change(length, "3");
+        length.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+        await flush();
+        return handler.mock.calls[handler.mock.calls.length - 1][0].detail;
+      }
+
+      it("nothing is overwritten unseen: the setup tables' question, Theirs and Yours", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        element.addEventListener("save", handler);
+        const save = await typeLength(element, handler);
+        expect(bareRecord(save.seen())).toEqual({
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Name: "Archery",
+          Length__c: 2
+        });
+        save.onSaved(theirLength(4));
+        await flush();
+        expect(dialog(element)).not.toBeNull();
+        expect(q(element, ".slds-modal__title").textContent.trim()).toBe(
+          "Changed by someone else"
+        );
+        expect(q(element, ".conflict-where").textContent.trim()).toBe(
+          "Archery · Length"
+        );
+        expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe("4");
+        expect(q(element, '[data-id="yours"]').textContent.trim()).toBe("3");
+        // Not saved: no quiet "Saved", and the typing stays.
+        expect(savedMark(element).textContent).toBe("");
+        expect(q(element, '[data-field="length"]').value).toBe(3);
+        // The cursor is on Use yours; Tab stays on the two buttons.
+        expect(element.shadowRoot.activeElement.dataset.id).toBe("use-yours");
+        dialog(element).dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Tab", bubbles: true })
+        );
+        expect(element.shadowRoot.activeElement.dataset.id).toBe("keep-theirs");
+        await expect(element).toBeAccessible();
+      });
+
+      it("Use yours sends the same change again, naming what is there now", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        element.addEventListener("save", handler);
+        const first = await typeLength(element, handler);
+        first.onSaved(theirLength(4));
+        await flush();
+        const length = q(element, '[data-field="length"]');
+        length.focus = jest.fn();
+        q(element, '[data-id="use-yours"]').click();
+        await flush();
+        expect(dialog(element)).toBeNull();
+        expect(handler).toHaveBeenCalledTimes(2);
+        const again = handler.mock.calls[1][0].detail;
+        expect(bareRecord(again.record)).toEqual({
+          sobjectType: "Activity__c",
+          Id: "a1",
+          Length__c: 3
+        });
+        expect(bareRecord(again.seen()).Length__c).toBe(4);
+        again.onSaved(nsRecord({ id: "a1", changed: [] }));
+        await flush();
+        expect(savedMark(element).textContent).toContain("Saved");
+        // The cursor is back in the field.
+        expect(length.focus).toHaveBeenCalled();
+      });
+
+      it("Keep theirs (or Escape) shows what someone else saved, and sends nothing", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        element.addEventListener("save", handler);
+        const save = await typeLength(element, handler);
+        save.onSaved(theirLength(4));
+        await flush();
+        const length = q(element, '[data-field="length"]');
+        length.focus = jest.fn();
+        dialog(element).dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+        );
+        await flush();
+        expect(dialog(element)).toBeNull();
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(length.value).toBe(4);
+        expect(length.focus).toHaveBeenCalled();
+        // The reload brings theirs; nothing is left unsaved, so switching does not ask.
+        element.setup = nsRecord({
+          ...PANEL,
+          activities: [
+            { ...PANEL.activities[0], Length__c: 4 },
+            ...PANEL.activities.slice(1)
+          ]
+        });
+        await flush();
+        await element.open("a2");
+        expect(LightningConfirm.open).not.toHaveBeenCalled();
+      });
+
+      it("a tick or a rain plan is named as the director reads it", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        element.addEventListener("save", handler);
+        change(q(element, '[data-field="rainPlan"]'), "a4");
+        await flush();
+        handler.mock.calls[0][0].detail.onSaved(
+          nsRecord({
+            changed: [nsName("RainPlan__c")],
+            theirs: { Id: "a1", RainPlan__c: null }
+          })
+        );
+        await flush();
+        expect(q(element, ".conflict-where").textContent.trim()).toBe(
+          "Archery · Rain plan"
+        );
+        expect(
+          [...element.shadowRoot.querySelectorAll("dd")].map((d) =>
+            d.textContent.trim()
+          )
+        ).toEqual(["None", "Drama"]);
+        q(element, '[data-id="keep-theirs"]').click();
+        change(q(element, '[data-field="outdoor"]'), false);
+        await flush();
+        handler.mock.calls[1][0].detail.onSaved(
+          nsRecord({
+            changed: [nsName("Outdoor__c")],
+            theirs: { Id: "a1", Outdoor__c: true }
+          })
+        );
+        await flush();
+        expect(
+          [...element.shadowRoot.querySelectorAll("dd")].map((d) =>
+            d.textContent.trim()
+          )
+        ).toEqual(["Yes", "No"]);
+      });
+
+      it("a save waiting behind another of the same field compares with what that one saved", async () => {
+        const element = await render(PANEL);
+        const handler = jest.fn();
+        element.addEventListener("save", handler);
+        const first = await typeLength(element, handler);
+        const length = q(element, '[data-field="length"]');
+        change(length, "5");
+        length.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+        await flush();
+        const second = handler.mock.calls[1][0].detail;
+        first.onSaved(nsRecord({ id: "a1", changed: [] }));
+        await flush();
+        // Its turn comes after the first is saved: it was seen as 3, the director's own.
+        expect(bareRecord(second.seen()).Length__c).toBe(3);
+      });
     });
   });
 });
