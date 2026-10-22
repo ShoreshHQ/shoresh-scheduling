@@ -91,7 +91,8 @@ private class SetupDeletionsTest {
   static void aRefusedDeleteRemembersNothing() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow (made up)');
-      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      // placesAndActivities needs the full season's groups (Swim is open to Group A).
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
       Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
       Test.startTest();
       try {

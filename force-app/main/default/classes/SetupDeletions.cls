@@ -88,67 +88,94 @@ public with sharing class SetupDeletions {
 
   /** A program's own item: its division, group, time block, fixed or recurring activity. */
   private static Item programItemOf(Id recordId, Schema.SObjectType type) {
-    Item found;
-    Program__c program;
     if (type == Division__c.SObjectType) {
-      for (Division__c row : [
-        SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
-        FROM Division__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        found = new Item('Division', row.Name, null);
-        program = row.Program__r;
-      }
-    } else if (type == Group__c.SObjectType) {
-      for (Group__c row : [
-        SELECT
-          Name,
-          Division__r.Program__r.Name,
-          Division__r.Program__r.Season__r.Camp__c
-        FROM Group__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        found = new Item('Group', row.Name, null);
-        program = row.Division__r.Program__r;
-      }
-    } else if (type == TimeBlock__c.SObjectType) {
-      for (TimeBlock__c row : [
-        SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
-        FROM TimeBlock__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        found = new Item('TimeBlock', row.Name, null);
-        program = row.Program__r;
-      }
-    } else if (type == FixedActivity__c.SObjectType) {
-      for (FixedActivity__c row : [
-        SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
-        FROM FixedActivity__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        found = new Item('FixedActivity', row.Name, null);
-        program = row.Program__r;
-      }
-    } else if (type == RecurringActivity__c.SObjectType) {
-      for (RecurringActivity__c row : [
-        SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
-        FROM RecurringActivity__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        found = new Item('RecurringActivity', row.Name, null);
-        program = row.Program__r;
-      }
+      return divisionOf(recordId);
     }
-    if (found == null || program == null) {
+    if (type == Group__c.SObjectType) {
+      return groupOf(recordId);
+    }
+    if (type == TimeBlock__c.SObjectType) {
+      return timeBlockOf(recordId);
+    }
+    if (type == FixedActivity__c.SObjectType) {
+      return fixedOf(recordId);
+    }
+    if (type == RecurringActivity__c.SObjectType) {
+      return recurringOf(recordId);
+    }
+    return null;
+  }
+
+  /** An item named with its program, in the program's camp. */
+  private static Item inProgram(String kind, String name, Program__c program) {
+    if (program == null) {
       return null;
     }
+    Item found = new Item(kind, name, program.Season__r.Camp__c);
     found.scope = program.Name == null ? '' : program.Name;
-    found.campId = program.Season__r.Camp__c;
     return found;
+  }
+
+  private static Item divisionOf(Id recordId) {
+    for (Division__c row : [
+      SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
+      FROM Division__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return inProgram('Division', row.Name, row.Program__r);
+    }
+    return null;
+  }
+
+  private static Item groupOf(Id recordId) {
+    for (Group__c row : [
+      SELECT
+        Name,
+        Division__r.Program__r.Name,
+        Division__r.Program__r.Season__r.Camp__c
+      FROM Group__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return inProgram('Group', row.Name, row.Division__r.Program__r);
+    }
+    return null;
+  }
+
+  private static Item timeBlockOf(Id recordId) {
+    for (TimeBlock__c row : [
+      SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
+      FROM TimeBlock__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return inProgram('TimeBlock', row.Name, row.Program__r);
+    }
+    return null;
+  }
+
+  private static Item fixedOf(Id recordId) {
+    for (FixedActivity__c row : [
+      SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
+      FROM FixedActivity__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return inProgram('FixedActivity', row.Name, row.Program__r);
+    }
+    return null;
+  }
+
+  private static Item recurringOf(Id recordId) {
+    for (RecurringActivity__c row : [
+      SELECT Name, Program__r.Name, Program__r.Season__r.Camp__c
+      FROM RecurringActivity__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      return inProgram('RecurringActivity', row.Name, row.Program__r);
+    }
+    return null;
   }
 }

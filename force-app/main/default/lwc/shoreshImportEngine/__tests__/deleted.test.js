@@ -51,7 +51,7 @@ function propose(answers, existing = season()) {
 
 /** Every question answered as the director would, so the import can be saved. */
 function answered(answers) {
-  let all = { ...answers };
+  const all = { ...answers };
   for (let i = 0; i < 4; i++) {
     const p = propose(all);
     for (const card of questionCards(p, terms, all)) {
