@@ -1107,18 +1107,38 @@ say).
    blocks_ and _Not placed_.
 3. Point at the row and click the chevron at its end. Beside the list its details open: Where
    (Whole camp), Placed on, and its time blocks one under another, each with what is in it
-   (_12:00–12:45 Lunch: Lunch_). **Open schedule** is there, greyed and marked _Coming_ (the
-   schedule inside comes next). Click **×**: the details close.
+   (_12:00–12:45 Lunch: Lunch_), and **Open schedule**. Click **×**: the details close.
 4. In **Events**' blank row type _Carnival_, press Tab to **Where** and pick a place, then press
    Enter. Its row reads _None_ under Schedule and _Not placed_. Type notes in its **Notes** and
    leave the row: ✓ Saved shows on the rail.
-5. Delete _Field Day_ with its row's trash can: it asks first, then it is gone.
+5. Open _Field Day_'s details again and click **Open schedule**. The list makes way for the
+   special day's own schedule: on the rail, **‹ Special events** and _Field Day_, then **✓
+   Saved**, **Import** and **Download** at the right. Bunks run across, its own time blocks
+   down, and Lunch shows its padlock in every bunk.
+6. Double-click an empty cell (or press Enter on it), type _swim_ and press Enter: _Swim_ is in
+   that cell and ✓ Saved shows. Type a name the camp doesn't have, such as _Opening ceremony_:
+   the list offers **Add "Opening ceremony" to activities**; choose it and it is placed. (It is
+   added at 0 times a week, so Generated Schedule never puts it in a regular week.) **Edit** ›
+   **Undo** takes it back.
+7. Under the grid click **+ Time block** (your camp's word), give it a name, a start and an end
+   (say 3:40 to 4:45 PM) and click **Add**: a new row appears at the bottom, empty in every bunk.
+   Click **Time blocks** to see them listed, each with **Change**, up, down and **Remove**.
+8. Click **Download**: an Excel file named _Field Day.xlsx_ saves, time blocks down and bunks
+   across. Click **Import**: it says _Field Day already has entries. Clear it first…_ (an import
+   only fills an empty schedule). **Edit** › **Clear schedule** asks first, then empties every
+   cell; now **Import** that file and the cells come back, with a line saying how many (Lunch
+   comes back as an activity of that name, without its padlock).
+9. Click **‹ Special events**: the list is back as it was, the details still open, the cursor on
+   **Open schedule**.
+10. For _Carnival_ (an event), **Open schedule** says to add a time block and a station. Click
+    **+ Station** and name it _Blue_, then **+ Time block**: the grid appears with Blue across.
+11. Delete _Field Day_ with its row's trash can: it asks first, then it is gone.
 
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
-- Special events: the schedule inside a special day or event, putting one on a day, and Import
-  a list / Download this list on that screen come in later slices.
+- Special events: putting a special day or event on a day, and Import a list / Download this
+  list on the Special events list, come in later slices.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

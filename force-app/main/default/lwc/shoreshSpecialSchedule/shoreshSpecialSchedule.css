@@ -1,0 +1,181 @@
+@import "c/shoreshTokens";
+
+/*
+ * The schedule inside a special day or event (design-research special-r1 special-day.html): the
+ * week editor's rail and grid, with the way back and the name at the rail's left, Saved, Import
+ * and Download at its right, the time blocks (and stations) under the grid, then the notes.
+ * Everything in the design system's words (ADR 0015).
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.where,
+.end {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-width: 0;
+}
+
+.back {
+  gap: var(--shoresh-s1);
+}
+
+.back-chevron,
+.rail-icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rail-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.plan-name {
+  margin: 0 var(--shoresh-s2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+}
+
+.plan-name:focus {
+  outline: none;
+}
+
+.plan-name:focus-visible {
+  box-shadow: var(--shoresh-focus-ring);
+  border-radius: var(--shoresh-radius);
+}
+
+.file {
+  display: none;
+}
+
+.message {
+  margin-bottom: var(--shoresh-s3);
+}
+
+.import-lines {
+  margin: 0 0 var(--shoresh-s3);
+  padding: 0;
+  list-style: none;
+  color: var(--shoresh-text-2);
+}
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s3);
+  padding: var(--shoresh-s3) var(--shoresh-space-page-margin);
+}
+
+.frame-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+}
+
+.add {
+  background: var(--shoresh-surface-shelf);
+}
+
+.frame-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--shoresh-s3);
+  max-width: 40rem;
+}
+
+.form-title {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+.form-buttons {
+  display: flex;
+  gap: var(--shoresh-s2);
+}
+
+.frame-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  max-width: 40rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.frame-row {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s3);
+  min-height: var(--shoresh-control-h);
+}
+
+.frame-when {
+  flex: none;
+  width: calc(var(--shoresh-u) * 22);
+  color: var(--shoresh-text-2);
+}
+
+.frame-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frame-buttons {
+  display: flex;
+  flex: none;
+  gap: var(--shoresh-s1);
+}
+
+.frame-buttons svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notes {
+  display: flex;
+  gap: var(--shoresh-s6);
+  padding: var(--shoresh-s4) var(--shoresh-space-page-margin);
+}
+
+.notes-label {
+  flex: none;
+  color: var(--shoresh-text-2);
+}
+
+.notes-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 600px) {
+  .frame-row {
+    flex-wrap: wrap;
+  }
+}

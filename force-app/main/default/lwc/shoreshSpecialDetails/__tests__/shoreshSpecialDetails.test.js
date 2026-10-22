@@ -205,10 +205,17 @@ describe("c-shoresh-special-details", () => {
     expect(element.shadowRoot.querySelector(".periods-title").textContent).toBe(
       "Periods"
     );
-    // The door to the schedule inside is there, held until it is built.
+    // The door to the schedule inside opens it.
     const door = element.shadowRoot.querySelector('[data-id="open-schedule"]');
-    expect(door.getAttribute("aria-disabled")).toBe("true");
-    expect(door.textContent).toBe("Open scheduleComing");
+    expect(door.getAttribute("aria-disabled")).toBeNull();
+    expect(door.textContent.trim()).toBe("Open schedule");
+    const opened = jest.fn();
+    element.addEventListener("openschedule", opened);
+    door.click();
+    expect(opened.mock.calls[0][0].detail).toEqual({ itemId: "sd1" });
+    // Back from it, the cursor is on the door again.
+    element.focusOpenSchedule();
+    expect(element.shadowRoot.activeElement).toBe(door);
     await expect(element).toBeAccessible();
   });
 

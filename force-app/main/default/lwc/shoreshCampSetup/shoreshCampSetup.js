@@ -211,6 +211,10 @@ export default class ShoreshCampSetup extends LightningElement {
   activityDetailsFor = null;
   // The special day or event whose details are open, or null.
   specialDetailsFor = null;
+  // The special day or event whose schedule is open in the list's place, or null; and whether
+  // anything inside it was saved since it opened.
+  specialScheduleFor = null;
+  specialScheduleChanged = false;
   // What the special day just added started from, said under the list (role=status).
   seededNote = "";
   // Why the last Merge was refused, shown in the question only (one alert, not two).
@@ -1128,6 +1132,38 @@ export default class ShoreshCampSetup extends LightningElement {
     if (table) {
       table.focusDetailsOf(itemId);
     }
+  }
+
+  /** "Open schedule" in an item's details: its schedule opens in the list's place. */
+  handleOpenSpecialSchedule(event) {
+    this.specialScheduleFor = event.detail.itemId;
+  }
+
+  /**
+   * Back from a schedule: the list as it was (read again if anything inside was saved, for its
+   * counts and briefs), the cursor on that item's Open schedule.
+   */
+  handleCloseSpecialSchedule() {
+    this.specialScheduleFor = null;
+    if (this.specialScheduleChanged) {
+      this.specialScheduleChanged = false;
+      this.loadSeason().catch(() => {});
+    }
+    Promise.resolve().then(() => {
+      const details = this.template.querySelector("c-shoresh-special-details");
+      if (details) {
+        details.focusOpenSchedule();
+      }
+    });
+  }
+
+  handleSpecialScheduleChanged() {
+    this.specialScheduleChanged = true;
+  }
+
+  /** The list stays drawn under an open schedule, hidden, so going back finds it as it was. */
+  get specialListClass() {
+    return this.specialScheduleFor ? "slds-hide" : "";
   }
 
   /** Each counted screen's rail: how many, in the camp's word ("10 groups", "1 week"). */

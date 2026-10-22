@@ -24,6 +24,20 @@ export function isSetTime(slot) {
   return item.startsWith("F:") || item.startsWith("R:");
 }
 
+/**
+ * Whether a placement can be moved, stretched, or taken out: an activity; on a special day's own
+ * schedule (ownPlan) also a fixed or recurring activity brought in when it started, an ordinary
+ * cell of that day as on the desktop (ADR 0014 choice 15).
+ */
+export function isMovable(slot, ownPlan = false) {
+  return slot.startsWith("A:") || (ownPlan && isSetTime(slot));
+}
+
+/** Whether a slot holds what stays where setup put it: a fixed or recurring activity, but not on a special day's own schedule. */
+export function staysPut(slot, ownPlan = false) {
+  return !ownPlan && isSetTime(slot);
+}
+
 /** What each of a group's slots holds on a day. */
 export function slots(day, g) {
   let carrying = OPEN;
@@ -64,13 +78,22 @@ export function placementIn(row, b) {
  * The run an edit changes: the whole placement the slot is part of, given to `next` (an item's
  * identity, or OPEN). An item runs for its length (Greg, 2026-10-17: multi-block fills its full
  * length) over Open slots, stopping at a filled slot, a slot where the group is away, a slot
- * `isStop` names (a locked cell), or the end of the day. Null when the slot can't be changed here: a fixed or recurring activity, or a
- * group away.
+ * `isStop` names (a locked cell), or the end of the day. Null when the slot can't be changed here: a fixed or recurring activity
+ * (except on a special day's own schedule, ownPlan), or a group away.
  */
-export function editRun(day, g, b, next, length, isAway, isStop = () => false) {
+export function editRun(
+  day,
+  g,
+  b,
+  next,
+  length,
+  isAway,
+  isStop = () => false,
+  ownPlan = false
+) {
   const row = slots(day, g);
   const at = placement(day, g, b);
-  if (isSetTime(at.slot) || (next !== OPEN && isAway(at.first))) {
+  if (staysPut(at.slot, ownPlan) || (next !== OPEN && isAway(at.first))) {
     return null;
   }
   let take = 0;

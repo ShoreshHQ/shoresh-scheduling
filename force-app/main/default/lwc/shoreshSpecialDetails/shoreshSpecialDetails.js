@@ -121,10 +121,10 @@ function clock(value) {
  * an item opens its details in the row panel first, with "Open schedule" there). Opened from the
  * item's row (open(id)); it shows where it is, the days it is on, its notes, and, for a special
  * day, its own time blocks with what is in each. Its fields are edited in the row; nothing here
- * saves. "Open schedule" is held until the schedule inside a special day or event is built (the
- * next slice).
+ * saves. "Open schedule" opens the schedule inside it (c/shoreshSpecialSchedule).
  *
- * Fires: close { itemId } (Close pressed: the page puts the cursor back on the row's chevron).
+ * Fires: close { itemId } (Close pressed: the page puts the cursor back on the row's chevron),
+ * openschedule { itemId } (Open schedule pressed).
  */
 export default class ShoreshSpecialDetails extends LightningElement {
   @api terms;
@@ -179,6 +179,21 @@ export default class ShoreshSpecialDetails extends LightningElement {
     if (heading) {
       this.focusHeadingNext = false;
       heading.focus();
+    }
+  }
+
+  handleOpenSchedule() {
+    this.dispatchEvent(
+      new CustomEvent("openschedule", { detail: { itemId: this.itemId } })
+    );
+  }
+
+  /** Back from the schedule: the cursor on Open schedule again. */
+  @api
+  focusOpenSchedule() {
+    const door = this.template.querySelector('[data-id="open-schedule"]');
+    if (door) {
+      door.focus();
     }
   }
 

@@ -7,7 +7,14 @@
  * desktop. A position is { day, group, block }: indexes into the schedule's days, that day's
  * groups, and its time blocks.
  */
-import { OPEN, diffRuns, isSetTime, placementIn, slots } from "./slotEdits";
+import {
+  OPEN,
+  diffRuns,
+  isMovable,
+  placementIn,
+  slots,
+  staysPut
+} from "./slotEdits";
 
 const CARRIES_ON = "^";
 
@@ -71,11 +78,11 @@ export class Rows {
  * where it doesn't fit), onto a filled slot the two swap. isAway(position) says a group isn't at camp in a block.
  * Returns { runs } or { refused } (one of REFUSED), or null when there is nothing to do.
  */
-export function moveEdit(days, from, to, isAway) {
+export function moveEdit(days, from, to, isAway, ownPlan = false) {
   const rows = new Rows(days);
   const source = rows.get(from.day, from.group);
   const p = placementIn(source, from.block);
-  if (!p.slot.startsWith("A:")) {
+  if (!isMovable(p.slot, ownPlan)) {
     return null;
   }
   const target = rows.get(to.day, to.group);
@@ -84,7 +91,7 @@ export function moveEdit(days, from, to, isAway) {
     return null;
   }
   const q = placementIn(target, to.block);
-  if (isSetTime(q.slot)) {
+  if (staysPut(q.slot, ownPlan)) {
     return { refused: REFUSED.SET_TIME };
   }
   if (q.slot === OPEN) {
@@ -110,7 +117,7 @@ export function moveEdit(days, from, to, isAway) {
   if (isAway({ ...from, block: p.first })) {
     return { refused: REFUSED.AWAY, at: from };
   }
-  if (!q.slot.startsWith("A:")) {
+  if (!isMovable(q.slot, ownPlan)) {
     // Something noted from a file but not set up yet: it stays where it is.
     return { refused: REFUSED.FIXED_HERE };
   }
@@ -123,11 +130,11 @@ export function moveEdit(days, from, to, isAway) {
 }
 
 /** Takes the placement at `from` out of the week (dragged back to the list). */
-export function removeEdit(days, from) {
+export function removeEdit(days, from, ownPlan = false) {
   const rows = new Rows(days);
   const row = rows.get(from.day, from.group);
   const p = placementIn(row, from.block);
-  if (!p.slot.startsWith("A:")) {
+  if (!isMovable(p.slot, ownPlan)) {
     return null;
   }
   for (let b = p.first; b < p.first + p.length; b++) {
@@ -140,11 +147,11 @@ export function removeEdit(days, from) {
  * Makes the placement at `at` end at `lastBlock` (shorter, or longer over Open, at-camp slots).
  * Returns { runs }, { refused: NO_ROOM } when it can't reach, or null when nothing changes.
  */
-export function resizeEdit(days, at, lastBlock, isAway) {
+export function resizeEdit(days, at, lastBlock, isAway, ownPlan = false) {
   const rows = new Rows(days);
   const row = rows.get(at.day, at.group);
   const p = placementIn(row, at.block);
-  if (!p.slot.startsWith("A:") || lastBlock < p.first) {
+  if (!isMovable(p.slot, ownPlan) || lastBlock < p.first) {
     return null;
   }
   const length = lastBlock - p.first + 1;
