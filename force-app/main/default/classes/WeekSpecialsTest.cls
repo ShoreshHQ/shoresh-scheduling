@@ -227,11 +227,24 @@ private class WeekSpecialsTest {
         'Carnival'
       );
       draftWithCarnival(ids, carnival);
+      // 'Who can do it' is cleared first: Camp Setup refuses the delete while it names the program.
+      Database.delete(
+        [
+          SELECT Id
+          FROM ActivityEligibility__c
+          WHERE
+            Division__r.Program__c = :ids.get('Main')
+            OR Group__r.Division__r.Program__c = :ids.get('Main')
+          WITH USER_MODE
+        ],
+        true,
+        AccessLevel.USER_MODE
+      );
 
       Test.startTest();
       Integer before = Limits.getQueries();
-      // The draft and its days go with the program, with no trigger of their own.
-      Database.delete(ids.get('Main'), true, AccessLevel.USER_MODE);
+      // From Camp Setup: the draft and its days go with the program, with no trigger of their own.
+      SeasonSetupController.deleteRecord(ids.get('Main'));
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
