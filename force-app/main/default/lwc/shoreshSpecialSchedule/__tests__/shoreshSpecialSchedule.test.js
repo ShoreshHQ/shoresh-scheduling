@@ -375,6 +375,82 @@ describe("c-shoresh-special-schedule", () => {
     ]);
   });
 
+  it("a file with its times across the top is imported; one with times on both sides is refused", async () => {
+    const { element } = await render(emptyEvent());
+    const done = dayPlan([",", ","]);
+    importPlan.mockResolvedValue({
+      plan: done,
+      added: [],
+      notGroups: [],
+      placed: 3
+    });
+    openPlan.mockResolvedValue(emptyEvent());
+    const input = q(element, '[data-id="import-file"]');
+    const choose = async (name, text) => {
+      Object.defineProperty(input, "files", {
+        value: [{ name, text: () => Promise.resolve(text) }],
+        configurable: true
+      });
+      input.dispatchEvent(new CustomEvent("change"));
+      await flush();
+    };
+    await choose(
+      "Color War.csv",
+      "Team,9:00-9:45,9:50-10:30\nBlue,Opening,Relay\nGold,Opening,Swim"
+    );
+    const sent = importPlan.mock.calls[0][0];
+    expect(sent.imported.blocks).toEqual([
+      { name: "", startTime: "09:00", endTime: "09:45" },
+      { name: "", startTime: "09:50", endTime: "10:30" }
+    ]);
+    expect(sent.imported.columns).toEqual([
+      { name: "Blue", cells: ["Opening", "Relay"] },
+      { name: "Gold", cells: ["Opening", "Swim"] }
+    ]);
+    await choose(
+      "Both.csv",
+      "Time,9:00-9:45,9:50-10:30\n9:00-9:45,Opening,Relay\n9:50-10:30,Swim,Art"
+    );
+    expect(importPlan).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+      "Couldn't tell which side of Both.csv is the schedule's times. Check that the file has a clear time column or time row, and try again."
+    );
+  });
+
+  it("removing an event's only station leaves focus on + Station", async () => {
+    const plan = dayPlan([","], {
+      kind: "SpecialEvent",
+      itemId: "ev1",
+      name: "Sports Day",
+      notes: null
+    });
+    plan.schedule.days[0].groups = [ref("g1", "Cedar")];
+    plan.schedule.days[0].rows = ["", ""];
+    const { element } = await render(plan);
+    q(element, '[data-id="edit-stations"]').click();
+    await flush();
+    const gone = dayPlan([], {
+      kind: "SpecialEvent",
+      itemId: "ev1",
+      name: "Sports Day",
+      notes: null,
+      revision: 2
+    });
+    gone.schedule.days[0].groups = [];
+    gone.schedule.days[0].rows = ["", ""];
+    changeFrame.mockResolvedValue(gone);
+    q(element, '[data-action="removeStation"][data-target="g1"]').click();
+    await flush();
+    expect(changeFrame.mock.calls[0][0].change).toEqual({
+      action: "removeStation",
+      targetId: "g1"
+    });
+    expect(q(element, '[data-id="edit-stations"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      q(element, '[data-id="add-station"]')
+    );
+  });
+
   it("an event's stations are added, renamed and moved under the grid", async () => {
     const plan = dayPlan([",", ","], {
       kind: "SpecialEvent",

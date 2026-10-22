@@ -85,5 +85,6 @@ export {
   timeRange,
   clock,
   shortClock,
-  cellName
+  cellName,
+  hasClockTime
 } from "./text";

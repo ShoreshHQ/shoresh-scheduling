@@ -190,12 +190,18 @@ desktop `specialDay/SpecialDayGridEditor.jsx`, `event/EventGridEditor.jsx`, ADRs
     Download saves the grid as an Excel file of one sheet named for the item, time blocks down and
     columns across, as Schedules' daily sheet (`c/shoreshScheduleExport`). Import reads an Excel
     or .csv file with the import's own reader (`c/shoreshImportEngine`: `filesToPages`,
-    `blockFromLabel`, `cellName`, now exported), the first schedule in it: its rows' times are
-    the time blocks (a row with only a start ends where the next starts), its columns an event's
-    stations or, for a special day, the camp's groups matched by name, and each cell's name the
-    season's activity of that name or a new one (choice 15). A cell merged down the rows carries
-    on. **Only an empty schedule is imported into**, as on the desktop: one with entries is
-    refused ("Color War already has entries. Clear it first if you want to replace it with an
+    `blockFromLabel`, `cellName`, `hasClockTime`, now exported), the first schedule in it. Its
+    times may be down the side or across the top, as on the desktop (`parseGridSchedule.js`
+    `detectGrid`): the file is read as it is and turned on its side, and the reading whose rows
+    are mostly clock times (60%, the desktop's majority) is kept; when both are, the file is
+    refused with the desktop's words ("Couldn't tell which side of <file> is the schedule's
+    times. Check that the file has a clear time column or time row, and try again."), and when
+    neither is (times like "9-10"), it is read as it is. The times are the time blocks (one with
+    only a start ends where the next starts), the other side an event's stations or, for a
+    special day, the camp's groups matched by name, and each cell's name the season's activity
+    of that name or a new one (choice 15). A merged cell carries on along the times.
+    **Only an empty schedule is imported into**, as on the desktop: one with entries is refused
+    ("Color War already has entries. Clear it first if you want to replace it with an
     import, or add to it by hand."). Nothing is left out quietly: the screen says how many cells
     were filled, the activities added, columns that name no group, rows with no times, places
     written in cells (not kept), and when only the first of several schedules was read.

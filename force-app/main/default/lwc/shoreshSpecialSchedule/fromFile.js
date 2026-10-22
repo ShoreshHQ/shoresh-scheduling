@@ -5,6 +5,10 @@
  * its time blocks down (each with a start and an end), its columns across, and in each cell a
  * name, '' (nothing) or '^' (the cell above carries on, from a merged cell). Pure.
  *
+ * The times may be down the side or across the top, as on the desktop (parseGridSchedule.js
+ * detectGrid): whichever side most of whose labels hold a clock time is the times. A file
+ * where both sides do is not guessed at.
+ *
  * Nothing is left out quietly: rows with no time, and places written in cells ("Swim (Pool)",
  * which a special schedule doesn't keep), are counted for the screen to say.
  */
@@ -12,14 +16,64 @@ import {
   blockFromLabel,
   cellName,
   clock,
-  filesToPages
+  filesToPages,
+  hasClockTime
 } from "c/shoreshImportEngine";
 
 export const CARRIES_ON = "^";
 
-/** A file read by the import's reader ({ name, sheets }) as its schedule pages. */
+// Desktop parseGridSchedule.js timeMajority: a side is the times when at least this share of
+// its labels (those with text) hold a clock time.
+const TIME_MAJORITY = 0.6;
+
+function timesAlong(labels) {
+  const said = labels.map((l) => String(l || "").trim()).filter(Boolean);
+  return (
+    said.length > 0 &&
+    said.filter(hasClockTime).length / said.length >= TIME_MAJORITY
+  );
+}
+
+/** A sheet turned on its side: rows become columns, and merged cells turn with them. */
+function turned(sheet) {
+  const rows = sheet.rows || [];
+  const width = rows.reduce(
+    (most, row) => Math.max(most, Array.isArray(row) ? row.length : 0),
+    0
+  );
+  return {
+    ...sheet,
+    rows: Array.from({ length: width }, (_, c) =>
+      rows.map((row) => (Array.isArray(row) && row[c] != null ? row[c] : ""))
+    ),
+    merges: (sheet.merges || []).map((m) => ({
+      s: { r: m.s.c, c: m.s.r },
+      e: { r: m.e.c, c: m.e.r }
+    }))
+  };
+}
+
+/**
+ * A file read by the import's reader ({ name, sheets }) as its schedule pages, with its times
+ * down the side: { pages, unclear }. The file is read as it is and turned on its side, and the
+ * reading whose first schedule has times down its side is kept. When both do, which side holds
+ * the times can't be told: `unclear`, and no pages. When neither does (times like "9-10"), it
+ * is read as it is.
+ */
 export function pagesOf(file) {
-  return filesToPages([file]).pages;
+  const down = filesToPages([file]).pages;
+  const across = filesToPages([
+    { ...file, sheets: (file.sheets || []).map(turned) }
+  ]).pages;
+  const timed = (pages) =>
+    pages.length > 0 && timesAlong(pages[0].rows.map((row) => row.label));
+  if (timed(down) && timed(across)) {
+    return { pages: [], unclear: true };
+  }
+  if (timed(across) || (!down.length && across.length)) {
+    return { pages: across, unclear: false };
+  }
+  return { pages: down, unclear: false };
 }
 
 /**

@@ -395,14 +395,20 @@ export default class ShoreshSpecialSchedule extends LightningElement {
     }
     this.busy = true;
     try {
-      const pages = pagesOf(await this.readFile(file));
+      const { pages, unclear } = pagesOf(await this.readFile(file));
+      // Desktop eventGridPopulate.js: a file whose times side can't be told is not guessed at.
+      const noSide = `Couldn't tell which side of ${file.name} is the schedule's times. Check that the file has a clear time column or time row, and try again.`;
+      if (unclear) {
+        this.error = noSide;
+        return;
+      }
       if (!pages.length) {
-        this.error = `No schedule could be read out of ${file.name}. Check it has times down the side and names across the top.`;
+        this.error = `No schedule could be read out of ${file.name}. Check it has times down the side or across the top.`;
         return;
       }
       const { imported, noTimes, places } = planFromPage(pages[0]);
       if (!imported.blocks.length) {
-        this.error = `No time could be read beside the rows of ${file.name}, so nothing was imported.`;
+        this.error = noSide;
         return;
       }
       const outcome = await importPlan({
@@ -678,9 +684,10 @@ export default class ShoreshSpecialSchedule extends LightningElement {
       day,
       isBlock ? { blockIndex: index } : { groupIndex: index }
     );
+    // Back to the list's toggle; once the last one is gone so is the toggle, so its Add button.
     const back = isBlock
-      ? '[data-id="edit-blocks"]'
-      : '[data-id="edit-stations"]';
+      ? ['[data-id="edit-blocks"]', '[data-id="add-block"]']
+      : ['[data-id="edit-stations"]', '[data-id="add-station"]'];
     if (filled > 0) {
       // Desktop: "Remove block and its 3 cells?" before anything filled goes.
       this.ask = {
