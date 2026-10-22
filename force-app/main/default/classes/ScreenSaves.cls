@@ -93,6 +93,18 @@ public with sharing class ScreenSaves {
       RecurringActivity__c.Wednesday__c,
       RecurringActivity__c.Thursday__c,
       RecurringActivity__c.Friday__c
+    },
+    // The Special events screen (ADR 0014 choice 11); their plans are saved by SpecialPlans.
+    SpecialDay__c.SObjectType => new Set<Schema.SObjectField>{
+      SpecialDay__c.Name,
+      SpecialDay__c.SortOrder__c,
+      SpecialDay__c.Notes__c
+    },
+    SpecialEvent__c.SObjectType => new Set<Schema.SObjectField>{
+      SpecialEvent__c.Name,
+      SpecialEvent__c.SortOrder__c,
+      SpecialEvent__c.Location__c,
+      SpecialEvent__c.Notes__c
     }
   };
   // The parent each kind is created under: set when a row is added, never changed after (except
@@ -108,7 +120,9 @@ public with sharing class ScreenSaves {
     Location__c.SObjectType => Location__c.Season__c,
     Activity__c.SObjectType => Activity__c.Season__c,
     FixedActivity__c.SObjectType => FixedActivity__c.Program__c,
-    RecurringActivity__c.SObjectType => RecurringActivity__c.Program__c
+    RecurringActivity__c.SObjectType => RecurringActivity__c.Program__c,
+    SpecialDay__c.SObjectType => SpecialDay__c.Season__c,
+    SpecialEvent__c.SObjectType => SpecialEvent__c.Season__c
   };
 
   /** What a table sends with its rows: week ticks, and who each recurring activity covers. */

@@ -1076,6 +1076,85 @@
                 </div>
               </div>
 
+              <!-- Special events (design-research special-r1 special-events.html, decision 47; desktop
+                   SpecialEventsScreen.jsx): special days and events in one list, two sections,
+                   and one item's details beside it, opened from its row's chevron. -->
+              <div class={shown.specialEvents} data-screen="specialEvents">
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+                    {labels.screens.specialEvents}
+                  </h2>
+                  <span class="rail-count" data-id="count"
+                    ><b class="shoresh-num">{specialCounts.days}</b
+                    >{specialCounts.daysNoun}</span
+                  >
+                  <span class="rail-count" data-id="count-events"
+                    ><b class="shoresh-num">{specialCounts.events}</b
+                    >{specialCounts.eventsNoun}</span
+                  >
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                </div>
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-split">
+                  <div class="setup-list setup-main">
+                    <c-shoresh-editable-table
+                      data-id="special-days"
+                      heading={labels.specialDays}
+                      show-columns
+                      title={labels.specialDays}
+                      object-api-name={objects.SpecialDay}
+                      flag-same-names
+                      columns={specialDayColumns}
+                      rows={special.specialDays}
+                      add-label={labels.addSpecialDay}
+                      empty-message={labels.noSpecialDays}
+                      new-row-defaults={specialDayDefaults}
+                      busy={busy}
+                      details-label="Details"
+                      details-open-for={specialDetailsFor}
+                      onsave={handleSaveRecords}
+                      ondelete={handleDeleteRecord}
+                      ondetails={handleOpenSpecialDetails}
+                    ></c-shoresh-editable-table>
+                    <!-- What a special day just added started from (desktop's note after its
+                         time blocks are copied); always on the page, so it is read out. -->
+                    <p class="seeded-note" role="status" data-id="seeded-note">
+                      {seededNote}
+                    </p>
+                    <c-shoresh-editable-table
+                      data-id="special-events"
+                      heading={labels.specialEvents}
+                      title={labels.specialEvents}
+                      object-api-name={objects.SpecialEvent}
+                      flag-same-names
+                      columns={specialEventColumns}
+                      rows={special.specialEvents}
+                      add-label={labels.addSpecialEvent}
+                      empty-message={labels.noSpecialEvents}
+                      new-row-defaults={specialEventDefaults}
+                      busy={busy}
+                      details-label="Details"
+                      details-open-for={specialDetailsFor}
+                      onsave={handleSaveRecords}
+                      ondelete={handleDeleteRecord}
+                      ondetails={handleOpenSpecialDetails}
+                    ></c-shoresh-editable-table>
+                  </div>
+                  <c-shoresh-special-details
+                    class="setup-side"
+                    setup={setup}
+                    terms={terms}
+                    week-words={weekWords}
+                    onclose={handleCloseSpecialDetails}
+                  ></c-shoresh-special-details>
+                </div>
+              </div>
+
               <!-- Generated Schedule: a program's week built by Shoresh -->
               <div
                 class={shown.generatedSchedule}

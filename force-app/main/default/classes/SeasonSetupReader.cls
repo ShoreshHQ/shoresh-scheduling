@@ -2,8 +2,8 @@
  * Reads everything set up in one season, shaped the way the setup screen shows it:
  * the season, its weeks, each program with its time blocks, divisions, groups, and fixed and
  * recurring activities (with who each recurring one covers), and the
- * season's location types, locations, and activities (with who can do each), and which weeks
- * and programs have saved schedules.
+ * season's location types, locations, and activities (with who can do each), which weeks
+ * and programs have saved schedules, and its special days and events (SpecialItems).
  * Runs in user mode, so the scheduler sees only what they are allowed to see.
  */
 public with sharing class SeasonSetupReader {
@@ -98,6 +98,8 @@ public with sharing class SeasonSetupReader {
     result.lastImport = imports.isEmpty() || imports[0].UndoneAt__c != null
       ? null
       : imports[0];
+    // The Special events screen's items, plans in brief and days (ADR 0014 choice 11).
+    result.special = SpecialItems.forSeason(seasonId);
     result.labels = CampLabels.forCamp(result.season.Camp__c).all();
     // What an import guessed and no one has looked at or changed since (ADR 0006 §21).
     result.guesses = SetupGuesses.forSetup(result);
@@ -287,6 +289,8 @@ public with sharing class SeasonSetupReader {
     public Import__c lastImport;
     @AuraEnabled
     public List<SetupGuesses.Guess> guesses;
+    @AuraEnabled
+    public SpecialItems.Setup special;
   }
 
   public class ProgramSetup {

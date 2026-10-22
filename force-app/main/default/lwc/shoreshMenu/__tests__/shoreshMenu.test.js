@@ -84,7 +84,7 @@ describe("c-shoresh-menu", () => {
       "Periods",
       "Anchors",
       "Recurring activities",
-      "Special events (Coming)",
+      "Special events",
       "Generated Schedule",
       "Manual Build",
       "Schedules"
@@ -187,7 +187,8 @@ describe("c-shoresh-menu", () => {
     const element = await render(false, null);
     const links = [...element.shadowRoot.querySelectorAll("a[data-screen]")];
     expect(links.map((a) => a.dataset.screen)).toEqual(["campWords"]);
-    expect(canOpen("specialEvents", true)).toBe(false);
+    expect(canOpen("specialEvents", true)).toBe(true);
+    expect(canOpen("specialEvents", false)).toBe(false);
     expect(canOpen("schedules", true)).toBe(true);
     expect(canOpen("generatedSchedule", true)).toBe(true);
     expect(canOpen("generatedSchedule", false)).toBe(false);
@@ -200,6 +201,15 @@ describe("c-shoresh-menu", () => {
 
   it("an entry that can't open stays in the tab order, unavailable, and says why", async () => {
     const element = await render(false, null);
+    // No screen is coming just now: one is marked so, as menuSections marks a screen not built.
+    element.sections = element.sections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => {
+        if (item.key !== "specialEvents") return item;
+        return { ...item, coming: true, disabled: true, reason: "Coming" };
+      })
+    }));
+    await flush();
     const weeks = element.shadowRoot.querySelector('[data-item="weeks"]');
     expect(weeks.tagName).toBe("A");
     expect(weeks.getAttribute("href")).toBe("#");
@@ -262,8 +272,12 @@ describe("c-shoresh-menu", () => {
       label: "Periods →"
     });
     expect(nextScreen("activities", terms, true).label).toBe("Anchors →");
-    // Special events is coming: the last built setup screen has no next.
-    expect(nextScreen("recurringActivities", terms, true)).toBeNull();
+    expect(nextScreen("recurringActivities", terms, true)).toEqual({
+      key: "specialEvents",
+      label: "Special events →"
+    });
+    // The last setup screen has no next.
+    expect(nextScreen("specialEvents", terms, true)).toBeNull();
     // Not setup screens.
     expect(nextScreen("roots", terms, true)).toBeNull();
     expect(nextScreen("generatedSchedule", terms, true)).toBeNull();

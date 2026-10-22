@@ -1095,10 +1095,30 @@ say).
    **Update all**: it says _Someone else changed this week since, so nothing was updated._ and
    shows the week as it is now, with the activity you just placed.
 
+## 29. Special events: special days and events
+
+1. In the menu, under **Activities & Events**, click **Special events** (no longer marked
+   Coming). The screen shows two sections, **Special days** and **Events**, each with a dashed
+   blank row, and the rail counts both ("0 special days", "0 events").
+2. In **Special days**' blank row type _Field Day_ and press Enter. Under the section a quiet
+   line says what it started from, for example: _"Field Day" starts from Main's 7 time blocks,
+   with Lunch and Rest brought in._ Anything not brought in is named with why, such as _Not
+   brought in, since they don't run every day: Swim._ Its row reads _Whole camp_, _7 time
+   blocks_ and _Not placed_.
+3. Point at the row and click the chevron at its end. Beside the list its details open: Where
+   (Whole camp), Placed on, and its time blocks one under another, each with what is in it
+   (_12:00–12:45 Lunch: Lunch_). **Open schedule** is there, greyed and marked _Coming_ (the
+   schedule inside comes next). Click **×**: the details close.
+4. In **Events**' blank row type _Carnival_, press Tab to **Where** and pick a place, then press
+   Enter. Its row reads _None_ under Schedule and _Not placed_. Type notes in its **Notes** and
+   leave the row: ✓ Saved shows on the rail.
+5. Delete _Field Day_ with its row's trash can: it asks first, then it is gone.
+
 ## What is not here yet
 
 - Moving a bunk to another unit on the Bunks screen comes later.
-- Special events are in the menu, marked Coming.
+- Special events: the schedule inside a special day or event, putting one on a day, and Import
+  a list / Download this list on that screen come in later slices.
 - The camp map is a later piece.
 - Salesforce's own pages (reports, list views, record pages) show the standard words, not your
   camp words (accepted 2026-10-15).

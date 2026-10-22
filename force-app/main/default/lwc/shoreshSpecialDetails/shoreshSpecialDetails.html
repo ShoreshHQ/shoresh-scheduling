@@ -1,0 +1,106 @@
+<template>
+  <template lwc:if={item}>
+    <!-- The details zone beside the Special events list, as the Activities panel (ADR 0015
+         choice 12): one hairline from the list, the item's name, then what it is. -->
+    <section
+      class="panel"
+      data-id="details"
+      aria-labelledby="special-details-title"
+    >
+      <div class="panel-head">
+        <h2
+          id="special-details-title"
+          class="panel-title"
+          tabindex="-1"
+          data-heading
+        >
+          {name}<span class="slds-assistive-text"> details</span>
+        </h2>
+        <button
+          type="button"
+          class="panel-close"
+          data-id="close"
+          aria-label={closeLabel}
+          title={closeLabel}
+          onclick={handleClose}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M4.5 4.5l7 7 M11.5 4.5l-7 7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <dl class="facts">
+        <div class="fact">
+          <dt>Where</dt>
+          <dd class={whereClass} data-id="where">{where}</dd>
+        </div>
+        <div class="fact">
+          <dt>Placed on</dt>
+          <dd class={placedOnClass} data-id="placed-on">{placedOn}</dd>
+        </div>
+        <template lwc:if={isEvent}>
+          <div class="fact">
+            <dt>Schedule</dt>
+            <dd class="value quiet" data-id="event-schedule">
+              {eventSchedule}
+            </dd>
+          </div>
+        </template>
+        <template lwc:if={hasNotes}>
+          <div class="fact">
+            <dt>Notes</dt>
+            <dd class="value notes" data-id="notes">{notes}</dd>
+          </div>
+        </template>
+      </dl>
+
+      <template lwc:if={isSpecialDay}>
+        <div class="periods" data-id="periods">
+          <h3 class="periods-title">{labels.timeBlocks}</h3>
+          <template lwc:if={problem}>
+            <p class="quiet" role="alert" data-id="problem">{problem}</p>
+          </template>
+          <template lwc:elseif={hasPeriods}>
+            <ol class="period-list">
+              <template for:each={periods} for:item="period">
+                <li key={period.key} class="period" data-id="period">
+                  <span class="period-when shoresh-num">{period.when}</span>
+                  <span class="period-name">{period.name}</span>
+                  <template lwc:if={period.hasItems}>
+                    <span class="period-items">{period.items}</span>
+                  </template>
+                </li>
+              </template>
+            </ol>
+          </template>
+          <template lwc:else>
+            <p class="quiet" data-id="no-periods">{labels.noTimeBlocks}</p>
+          </template>
+        </div>
+      </template>
+
+      <!-- The schedule inside comes with the next slice: its door is here, held, and says so,
+           as the menu's entries not built yet do. -->
+      <div class="door">
+        <button
+          type="button"
+          class="open-schedule"
+          data-id="open-schedule"
+          aria-disabled="true"
+        >
+          Open schedule<span class="coming">Coming</span>
+        </button>
+      </div>
+    </section>
+  </template>
+</template>

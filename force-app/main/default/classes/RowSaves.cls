@@ -22,6 +22,9 @@ public with sharing class RowSaves {
     /** Who the row covers now, when someone else changed it. */
     @AuraEnabled
     public List<Id> theirWho;
+    /** A special day just added: what it started from (SpecialDaySeed). */
+    @AuraEnabled
+    public SpecialDaySeed.Seed seeded;
 
     public Boolean saved() {
       return changed.isEmpty() && theirWho == null;
@@ -45,6 +48,10 @@ public with sharing class RowSaves {
     ScreenSaves.refuseWhatCannotBeSaved(new List<SObject>{ record });
     // Week ticks and who it covers are for this row only.
     RowExtras.refuseOtherRows(record, extras);
+    // A special day added here starts from the camp's regular day, in the same save.
+    Boolean newSpecialDay =
+      record.Id == null &&
+      record.getSObjectType() == SpecialDay__c.SObjectType;
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Result result = record.Id == null
@@ -52,6 +59,9 @@ public with sharing class RowSaves {
         : compare(record, seen, extras);
       if (result.saved()) {
         result.id = ScreenSaves.save(new List<SObject>{ record }, extras)[0];
+        if (newSpecialDay) {
+          result.seeded = SpecialDaySeed.seed(result.id);
+        }
       }
       return result;
     } catch (Exception e) {

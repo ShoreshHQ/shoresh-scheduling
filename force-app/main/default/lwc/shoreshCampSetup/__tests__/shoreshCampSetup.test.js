@@ -3445,7 +3445,8 @@ describe("c-shoresh-camp-setup", () => {
         "campWords",
         "activities",
         "fixedActivities",
-        "recurringActivities"
+        "recurringActivities",
+        "specialEvents"
       ].map((screen) => {
         const next = nextOn(element, screen);
         return [screen, next ? next.label : null];
@@ -3460,9 +3461,10 @@ describe("c-shoresh-camp-setup", () => {
         ["campWords", "Activities →"],
         ["activities", "Fixed activities →"],
         ["fixedActivities", "Recurring activities →"],
-        // Special events is not built yet; Generated Schedule and Manual Build are equal,
-        // so neither is picked.
-        ["recurringActivities", null]
+        ["recurringActivities", "Special events →"],
+        // The last setup screen: Generated Schedule and Manual Build are equal, so neither is
+        // picked.
+        ["specialEvents", null]
       ]);
       expect(nextOn(element, "roots")).toBeNull();
       expect(nextOn(element, "schedules")).toBeNull();
@@ -3535,7 +3537,7 @@ describe("c-shoresh-camp-setup", () => {
       );
     });
 
-    it("uses the camp's words and lists what is coming", async () => {
+    it("uses the camp's words, with nothing coming just now", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));
       getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
@@ -3546,7 +3548,7 @@ describe("c-shoresh-camp-setup", () => {
       expect(items).toContainEqual(["Bunks", false]);
       expect(items).toContainEqual(["Fixed activities", false]);
       expect(items).toContainEqual(["Recurring activities", false]);
-      expect(items).toContainEqual(["Special events", true]);
+      expect(items).toContainEqual(["Special events", false]);
       expect(items).toContainEqual(["Schedules", false]);
     });
 
@@ -3557,12 +3559,6 @@ describe("c-shoresh-camp-setup", () => {
       const element = await render();
       q(element, "c-shoresh-roots").dispatchEvent(
         new CustomEvent("navigate", { detail: { screen: "groups" } })
-      );
-      await flush();
-      expect(shownScreens(element)).toEqual(["groups"]);
-      // A screen not built yet does not open.
-      q(element, "c-shoresh-roots").dispatchEvent(
-        new CustomEvent("navigate", { detail: { screen: "specialEvents" } })
       );
       await flush();
       expect(shownScreens(element)).toEqual(["groups"]);
@@ -3743,6 +3739,303 @@ describe("c-shoresh-camp-setup", () => {
       expect(element.shadowRoot.textContent).toContain(
         "Not marked as looked at. Nothing was changed."
       );
+    });
+  });
+  // ADR 0014 choice 11 (design-research special-r1 special-events.html, decision 47).
+  describe("Special events", () => {
+    const SPECIAL = {
+      specialDays: [
+        { Id: "sd1", Name: "Color War", Notes__c: "Teams at breakfast" },
+        { Id: "sd2", Name: "Rainy Day" }
+      ],
+      specialEvents: [
+        { Id: "se1", Name: "Carnival", Location__c: "l1" },
+        { Id: "se2", Name: "Fire Truck Visit" }
+      ],
+      briefs: [
+        {
+          itemId: "sd1",
+          planned: true,
+          rows: 2,
+          periods: [
+            {
+              name: "Period 1",
+              startTime: "09:00",
+              endTime: "09:45",
+              items: []
+            },
+            {
+              name: "Lunch",
+              startTime: "12:00",
+              endTime: "12:45",
+              items: ["Lunch break"]
+            }
+          ],
+          days: [{ weekId: "w2", day: "Thursday" }]
+        },
+        { itemId: "sd2", planned: false, rows: 0, periods: [], days: [] },
+        {
+          itemId: "se1",
+          planned: false,
+          rows: 0,
+          periods: [],
+          days: [
+            { weekId: "w1", day: "Tuesday" },
+            { weekId: "w2", day: "Tuesday" }
+          ]
+        },
+        { itemId: "se2", planned: false, rows: 0, periods: [], days: [] }
+      ]
+    };
+    const WEEKS = [
+      { Id: "w1", Name: "Week 1", StartDate__c: "2026-06-29" },
+      { Id: "w2", Name: "Week 2", StartDate__c: "2026-07-06" }
+    ];
+    async function renderSpecial(special = SPECIAL) {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({
+            weeks: WEEKS,
+            locations: [{ Id: "l1", Name: "Main field" }],
+            special
+          })
+        )
+      );
+      const element = await render();
+      await openScreen(element, "specialEvents");
+      return element;
+    }
+    const list = (element, kind) =>
+      q(element, `c-shoresh-editable-table[data-id="special-${kind}"]`);
+    const readonly = (table, column) =>
+      [
+        ...table.shadowRoot.querySelectorAll(
+          `[data-id="readonly"][data-column="${column}"]`
+        )
+      ].map((cell) => cell.textContent);
+
+    it("opens from the menu: one list of special days and events, counted on the rail", async () => {
+      const element = await renderSpecial();
+      expect(shownScreens(element)).toEqual(["specialEvents"]);
+      const counted = (id) =>
+        q(element, `[data-screen="specialEvents"] [data-id="${id}"]`)
+          .textContent.replace(/\s+/g, " ")
+          .trim();
+      expect(counted("count")).toBe("2 special days");
+      expect(counted("count-events")).toBe("2 events");
+      const days = list(element, "days");
+      const events = list(element, "events");
+      expect(days.heading).toBe("Special days");
+      expect(days.showColumns).toBe(true);
+      expect(events.heading).toBe("Events");
+      expect(events.showColumns).toBe(false);
+      expect(days.objectApiName).toBe(nsName("SpecialDay__c"));
+      expect(events.objectApiName).toBe(nsName("SpecialEvent__c"));
+      expect(days.addLabel).toBe("Add Special day");
+      expect(events.addLabel).toBe("Add Event");
+      expect(days.columns.map((c) => c.label)).toEqual([
+        "Name",
+        "Where",
+        "Schedule",
+        "Placed on",
+        "Notes"
+      ]);
+      expect(events.columns.map((c) => c.label)).toEqual(
+        days.columns.map((c) => c.label)
+      );
+      // The two lists line up: the same widths, column by column.
+      expect(events.columns.map((c) => c.width)).toEqual(
+        days.columns.map((c) => c.width)
+      );
+      // Worked out: where (the whole camp), its time blocks, the days it is on; quiet when none.
+      // The blank row has nothing worked out yet.
+      expect(readonly(days, "where")).toEqual([
+        "Whole camp",
+        "Whole camp",
+        "Whole camp"
+      ]);
+      expect(readonly(days, "schedule")).toEqual(["2 time blocks", "None", ""]);
+      expect(readonly(days, "placedOn")).toEqual([
+        "Wk 2 Thu",
+        "Not placed",
+        ""
+      ]);
+      expect(readonly(events, "schedule")).toEqual(["None", "None", ""]);
+      expect(readonly(events, "placedOn")).toEqual([
+        "Wk 1 Tue, Wk 2 Tue",
+        "Not placed",
+        ""
+      ]);
+      const event = events.columns.find((c) => c.label === "Where");
+      expect(event.type).toBe("picklist");
+      expect(event.options).toEqual([
+        { label: "None", value: "" },
+        { label: "Main field", value: "l1" }
+      ]);
+      await expect(element).toBeAccessible();
+    });
+
+    it("a camp's own word for events is used; the default is shortened to Event", async () => {
+      getLabels.mockResolvedValue(
+        nsRecord([
+          ...LABELS,
+          {
+            term: "SpecialEvent",
+            singular: "Happening",
+            plural: "Happenings",
+            isCustom: true
+          }
+        ])
+      );
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+      getSeasonSetup.mockResolvedValue(
+        nsRecord(
+          setupWith({
+            weeks: WEEKS,
+            special: SPECIAL,
+            labels: [
+              ...LABELS,
+              {
+                term: "SpecialEvent",
+                singular: "Happening",
+                plural: "Happenings",
+                isCustom: true
+              }
+            ]
+          })
+        )
+      );
+      const element = await render();
+      await openScreen(element, "specialEvents");
+      expect(list(element, "events").heading).toBe("Happenings");
+      expect(list(element, "events").addLabel).toBe("Add Happening");
+    });
+
+    it("a new row starts in the season; a special day added says what it started from", async () => {
+      const element = await renderSpecial();
+      const days = list(element, "days");
+      expect(bareRecord(days.newRowDefaults)).toEqual({ Season__c: "s1" });
+      expect(bareRecord(list(element, "events").newRowDefaults)).toEqual({
+        Season__c: "s1"
+      });
+      saveRow.mockResolvedValue(
+        nsRecord({
+          id: "sd3",
+          changed: [],
+          seeded: {
+            program: "Main",
+            timeBlocks: 7,
+            broughtIn: ["Lunch", "Rest hour"],
+            notEveryDay: ["Swim"],
+            notEveryWeek: [],
+            otherTimes: [],
+            slotTaken: ["Flag · Bunk 3"]
+          }
+        })
+      );
+      const onSaved = jest.fn();
+      days.dispatchEvent(
+        new CustomEvent("save", {
+          detail: {
+            record: nsRecord({
+              sobjectType: "SpecialDay__c",
+              Name: "Visiting Day",
+              Season__c: "s1",
+              SortOrder__c: 3
+            }),
+            seen: null,
+            seenWho: null,
+            extras: { weeksOff: [], weeksBackOn: [] },
+            onSaved,
+            onFailure: jest.fn(),
+            onDone: jest.fn()
+          }
+        })
+      );
+      await flush();
+      await flush();
+      expect(sentTo(saveRow)[0].record).toEqual({
+        sobjectType: "SpecialDay__c",
+        Name: "Visiting Day",
+        Season__c: "s1",
+        SortOrder__c: 3
+      });
+      expect(onSaved).toHaveBeenCalled();
+      const note = q(element, '[data-id="seeded-note"]');
+      expect(note.getAttribute("role")).toBe("status");
+      expect(note.textContent).toBe(
+        '"Visiting Day" starts from Main\'s 7 time blocks, with Lunch and Rest hour brought in. ' +
+          "Not brought in, since they don't run every day: Swim. " +
+          "Not brought in, since the time was already taken: Flag · Bunk 3."
+      );
+    });
+
+    it("an item's details open beside the list from its chevron, and Close goes back to it", async () => {
+      const element = await renderSpecial();
+      const events = list(element, "events");
+      const details = q(element, "c-shoresh-special-details");
+      expect(details.openItemId).toBeNull();
+      const carnival = events.shadowRoot.querySelector(
+        '[data-id="details"][data-row-key="row-se1"]'
+      );
+      expect(carnival.getAttribute("aria-label")).toBe("Carnival details");
+      carnival.click();
+      await flush();
+      expect(details.openItemId).toBe("se1");
+      expect(carnival.getAttribute("aria-expanded")).toBe("true");
+      expect(
+        details.shadowRoot.querySelector('[data-id="where"]').textContent
+      ).toBe("Main field");
+      await expect(element).toBeAccessible();
+      details.shadowRoot.querySelector('[data-id="close"]').click();
+      await flush();
+      expect(details.openItemId).toBeNull();
+      expect(carnival.getAttribute("aria-expanded")).toBe("false");
+      expect(events.shadowRoot.activeElement).toBe(carnival);
+    });
+
+    it("a row's delete asks, then deletes it and reads the season again", async () => {
+      const element = await renderSpecial();
+      LightningConfirm.open.mockResolvedValue(true);
+      scheduleUses.mockResolvedValue({ schedules: 0, complete: true });
+      deleteRecord.mockResolvedValue();
+      const onDeleted = jest.fn();
+      list(element, "days").dispatchEvent(
+        new CustomEvent("delete", {
+          detail: { recordId: "sd2", name: "Rainy Day", onDeleted }
+        })
+      );
+      await flush();
+      await flush();
+      expect(deleteRecord).toHaveBeenCalledWith({ recordId: "sd2" });
+      expect(onDeleted).toHaveBeenCalled();
+    });
+
+    it("deleting a season counts its special days and events", () => {
+      const t = buildTerms(LABELS);
+      expect(
+        seasonContents(
+          {
+            weeks: [],
+            programs: [],
+            special: {
+              specialDays: [{ Id: "sd1" }],
+              specialEvents: [{ Id: "se1" }, { Id: "se2" }]
+            }
+          },
+          t
+        )
+      ).toEqual(["1 Special day", "2 Special events"]);
+    });
+
+    it("an empty season shows each section's blank row", async () => {
+      const element = await renderSpecial(null);
+      expect(list(element, "days").rows).toEqual([]);
+      expect(list(element, "events").rows).toEqual([]);
+      expect(q(element, '[data-id="count"]')).not.toBeNull();
     });
   });
 });
