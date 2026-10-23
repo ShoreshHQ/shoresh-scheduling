@@ -379,8 +379,9 @@
   cursor: pointer;
 }
 
+/* Room round the small tick so it is a fair target beside the number (WCAG 2.5.8, 24px). */
 .no-limit-box {
-  margin: 0;
+  margin: 0 2px 0 6px;
   accent-color: var(--shoresh-color-highlight);
 }
 

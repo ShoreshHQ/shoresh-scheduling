@@ -63,7 +63,7 @@
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
- *   still lists it as coming (?c__preview=electives): focus on its heading, axe; an offering's
+ *   still lists it as coming (?c__preview=electives), then from the menu: focus on its heading, axe; an offering's
  *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
  *   putting focus back on the chevron; a proposed offering's Confirm is not shown at rest and is
  *   shown once Tab reaches it, then saved and said, the
@@ -3784,18 +3784,23 @@ for (TimeBlock__c block : blocks) {
   times.add(new LinkedChoiceTime__c(LinkedChoice__c = linked.Id, Weekday__c = 'Tuesday', TimeBlock__c = block.Id));
 }
 insert times;
-System.debug('A11Y_OFFERINGS[' + activities[0].Name + '|' + activities[1].Name + '|' + activities[2].Name + ']');
+for (Integer i = 0; i < 3; i++) {
+  System.debug('A11Y_OFFERING' + i + '[' + activities[i].Name + ']');
+}
 `);
-  const found = /A11Y_OFFERINGS\[([^\]|']+)\|([^\]|']+)\|([^\]|']+)\]/.exec(
-    logs
-  );
-  if (!found) throw new Error("The check's offerings were not reported back.");
-  return { linked: found[1], proposed: found[2], blank: found[3] };
+  // One line each: the debug log writes a "|" inside a message as "&#124;".
+  const names = [0, 1, 2].map((i) => {
+    const found = new RegExp(`A11Y_OFFERING${i}\\[([^\\]']+)\\]`).exec(logs);
+    return found && found[1];
+  });
+  if (names.some((n) => !n))
+    throw new Error("The check's offerings were not reported back.");
+  return { linked: names[0], proposed: names[1], blank: names[2] };
 }
 
 /**
- * The Electives screen (repo ADR 0018, slice E4), opened from the page's address: focus on its
- * heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
+ * The Electives screen (repo ADR 0018, slice E4), opened from the page's address and then from
+ * the menu (which lists it on that page): focus on its heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
  * heading (axe), Close back on the chevron; Confirm on a proposed offering, not shown at rest and
  * shown once Tab reaches it, is saved and said, the
  * cursor kept in its row on its offering; the seats corner opens its words with the cursor kept on it, Escape closing it. Then the check's
@@ -3820,10 +3825,15 @@ async function electives() {
           .first()
           .waitFor({ timeout: 60000 });
         await pause(3000);
-        await expectFocus(E, "Opened from the address: focus on the heading", {
-          tag: /^h[1-3]$/,
-          name: /^Electives$/
-        });
+        results.pass(
+          E,
+          "Opened from the page's address",
+          "The Electives table is on screen."
+        );
+        // A fresh page load leaves focus on the page (Salesforce takes it back after the load,
+        // on every screen), so the heading is checked the way a director arrives: the menu,
+        // which lists Electives as built on this page.
+        await openFromMenu(E, /^Electives\b/);
         await axe(E);
         const chevron = named(new RegExp(`^${names.linked} details$`), {
           tag: "button"
@@ -3857,7 +3867,7 @@ async function electives() {
             named(new RegExp(`^Close ${names.linked} details$`), {
               tag: "button"
             }),
-            { max: 6, back: true }
+            { max: 6 }
           ))
         )
           throw new Error("The details' Close was not reached with Tab.");
