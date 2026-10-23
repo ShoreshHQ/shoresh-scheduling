@@ -118,8 +118,11 @@ The engine is unchanged; Elective seats (repo ADR 0018 choices 28 to 37) is its 
   still counts; a choice for a day and period is matched to that time, others count for the week;
   **choices in no order go in as a tie, rank 1 each**, with the unordered kind, so the engine
   never prefers one of them and never marks one as "not their top choice"; attendance is each
-  camper's bunk's times (one time per day and block for a camper with no bunk); locks are the
-  locked seats that still fit. No linked choices yet (slice E8): `linkedChoices` and
+  camper's bunk's times (one time per day and block for a camper with no bunk), less any day and
+  block where the camper holds a locked seat that no longer fits (its offering set back to
+  proposed, or no longer open to that division): that lock still holds the camper there, so the
+  engine never places them over it and Assign seats is never refused for it (the desktop skips
+  locked seats the same way); locks are the locked seats that still fit. No linked choices yet (slice E8): `linkedChoices` and
   `linkedChoiceTimes` are passed empty, in their shape.
 - **Its output, saved and checked** by the server (`ElectiveSeatSaves`; plan §5): the seats that
   are not locks, mapped back from activity to offering; and what did not run (`BELOW_MINIMUM`),

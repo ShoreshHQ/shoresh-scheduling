@@ -237,7 +237,8 @@ function ordinal(n) {
  * The seat engine's input for this run (ADR 0016 choice 3): campers by Id, the times, each time's
  * offerings (keyed by their activity, as choices name them), choices, who takes which time, and
  * the locked seats that still fit. Linked choices come with slice E8: none yet, in the shape the
- * engine takes them. Also the locks that no longer fit (shown, never sent).
+ * engine takes them. Also the locks that no longer fit (shown, never sent); the camper is not
+ * placed at their day and block, which they still hold.
  */
 export function engineInput(run, terms) {
   const { choices, unmatched } = choicesOf(run);
@@ -257,11 +258,22 @@ export function engineInput(run, terms) {
       });
     });
   });
+  const { locks, stray } = locksOf(run);
+  // A lock that no longer fits still holds its camper's day and block: the engine gets no time
+  // there, so nothing it places can trip over or replace the locked seat (ADR 0016).
+  const held = new Set();
+  stray.forEach((seat) => {
+    const camper = run.camperById.get(seat.camperId);
+    const time = camper ? run.timeOf(camper, seat.day, seat.blockId) : null;
+    if (time) held.add(`${seat.camperId}|${time.key}`);
+  });
   const attendance = {};
   run.campers.forEach((camper) => {
-    attendance[camper.id] = run.timesOf(camper).map((t) => t.key);
+    attendance[camper.id] = run
+      .timesOf(camper)
+      .map((t) => t.key)
+      .filter((key) => !held.has(`${camper.id}|${key}`));
   });
-  const { locks, stray } = locksOf(run);
   return {
     input: {
       campers: run.campers.map((c) => ({ id: c.id })),

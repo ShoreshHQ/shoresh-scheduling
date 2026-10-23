@@ -11,7 +11,7 @@ import finalizeRun from "@salesforce/apex/ElectiveSeatsController.finalizeRun";
 import startNewVersion from "@salesforce/apex/ElectiveSeatsController.startNewVersion";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
-import { MONDAY, assignedView, runView } from "./data/run";
+import { MONDAY, TUESDAY, assignedView, runView, seat } from "./data/run";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
@@ -309,6 +309,32 @@ describe("By offering", () => {
       "That seat wasn't changed. Someone else changed these seats since you opened them. Reload the page to see them."
     );
   });
+  it("Unlock on a lock that no longer applies keeps the cursor: the next notice, then the main button", async () => {
+    const base = assignedView().seats.filter((s) => s.day === MONDAY);
+    // Ceramics is not confirmed: both locks no longer apply.
+    const c3 = seat("x9", "c3", TUESDAY, "o4", { locked: true });
+    const c4 = seat("x10", "c4", TUESDAY, "o4", { locked: true });
+    const element = await render({
+      view: assignedView({ seats: [...base, c3, c4] })
+    });
+    expect($$(element, '[data-id="stray"]')).toHaveLength(2);
+    changeSeat.mockResolvedValue(
+      assignedView({ revision: 3, seats: [...base, c4] })
+    );
+    $(element, '[data-id="stray"] button').click();
+    await flush();
+    expect($$(element, '[data-id="stray"]')).toHaveLength(1);
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, '[data-id="stray"] button')
+    );
+    changeSeat.mockResolvedValue(assignedView({ revision: 4, seats: base }));
+    $(element, '[data-id="stray"] button').click();
+    await flush();
+    expect($(element, '[data-id="stray"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, '[data-id="primary"]')
+    );
+  });
 });
 
 describe("By camper", () => {
@@ -486,6 +512,11 @@ describe("Finalize, Final, and a new version", () => {
     $(element, '[data-id="error-action"]').click();
     await flush();
     expect(assignSeats).toHaveBeenCalled();
+    // The button went with the message: the cursor is on the main button, not lost.
+    expect($(element, '[data-id="error-action"]')).toBeNull();
+    expect(element.shadowRoot.activeElement).toBe(
+      $(element, '[data-id="primary"]')
+    );
   });
 
   it("a final run whose schedule changed reads Out of date, and offers Start a new version", async () => {

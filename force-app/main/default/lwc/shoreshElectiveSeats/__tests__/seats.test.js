@@ -177,6 +177,28 @@ describe("the engine's input, and what Assign seats sends", () => {
     expect(stray.map((s) => s.id)).toEqual(["x9", "x8"]);
   });
 
+  it("never places a camper over a lock that no longer fits, so Assign is not refused", () => {
+    const run = readRun(
+      assignedView({
+        // Ceramics is not confirmed, but c3 still takes Tuesday: the lock still holds it.
+        seats: [seat("x9", "c3", TUESDAY, "o4", { locked: true })]
+      })
+    );
+    const { input, stray } = engineInput(run, t);
+    expect(stray.map((s) => s.id)).toEqual(["x9"]);
+    expect(input.attendance.c3).toEqual([`${MONDAY}|b1|d1`]);
+    const result = assignSeats(input);
+    expect(result.ok).toBe(true);
+    const request = assignRequest(run, result);
+    // Nothing sent at the locked seat's camper, day and block (the server refuses a changed lock).
+    expect(
+      request.seats.filter((s) => s.camperId === "c3" && s.day === TUESDAY)
+    ).toEqual([]);
+    expect(
+      request.seats.filter((s) => s.camperId === "c3" && s.day === MONDAY)
+    ).toHaveLength(1);
+  });
+
   it("sends the engine's seats except the locks, and what did not run", () => {
     const run = readRun(runView());
     const { input } = engineInput(run, t);

@@ -23,6 +23,8 @@ const SCHEDULE = FIELD.Schedule;
 const MEMO = new WeakMap();
 const COMMITTED = "Committed";
 const FINAL = "Final";
+const ROSTER_HEADING = '[data-id="roster-heading"]';
+const PRIMARY = '[data-id="primary"]';
 
 /**
  * Elective seats (electives slice E7; repo ADR 0018 choices 28 to 37): who sits in which offering
@@ -79,11 +81,18 @@ export default class ShoreshElectiveSeats extends LightningElement {
     if (heading) heading.focus();
   }
 
+  /**
+   * After a change, the cursor goes where focusAfter says (WCAG 2.4.3): one selector, or several
+   * in order of preference, the first that is on the screen and can take it.
+   */
   renderedCallback() {
     if (!this.focusAfter) return;
-    const target = this.template.querySelector(this.focusAfter);
+    const selectors = [].concat(this.focusAfter);
     this.focusAfter = null;
-    if (target && typeof target.focus === "function") target.focus();
+    const target = selectors
+      .map((selector) => this.template.querySelector(selector))
+      .find((el) => el && !el.disabled && typeof el.focus === "function");
+    if (target) target.focus();
   }
 
   get t() {
@@ -444,7 +453,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
   async handleErrorAction() {
     if (this.errorAction === "assign") {
-      await this.assign();
+      // The button goes with the message: the cursor goes to the main button.
+      await this.assign(PRIMARY);
     }
   }
 
@@ -452,7 +462,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
    * Assign seats: the engine places everyone it can around the locks, in the browser, and the
    * server checks and saves the seats. The blank-seats refusal stops it before anything is sent.
    */
-  async assign() {
+  async assign(focusAfter) {
     if (this.busy || !this.view) return;
     this.busy = true;
     this.error = null;
@@ -478,6 +488,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       this.error = failed("Seats weren't assigned.", e);
       this.status = "";
     } finally {
+      if (focusAfter) this.focusAfter = focusAfter;
       this.busy = false;
     }
   }
@@ -698,8 +709,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
     return fromTime === toTime && !!target && target.offered;
   }
 
-  /** One seat by hand; the run comes back as it now is, and what changed is said. */
-  async change(fields, said) {
+  /**
+   * One seat by hand; the run comes back as it now is, and what changed is said. The cursor then
+   * goes to the roster, or to focusAfter when the change came from elsewhere.
+   */
+  async change(fields, said, focusAfter = ROSTER_HEADING) {
     if (!this.canChange) return;
     this.busy = true;
     this.error = null;
@@ -712,7 +726,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
         })
       });
       this.status = said;
-      this.focusAfter = '[data-id="roster-heading"]';
+      this.focusAfter = focusAfter;
     } catch (e) {
       this.error = failed("That seat wasn't changed.", e);
     } finally {
@@ -752,7 +766,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
         blockId: seat.blockId,
         locked: false
       },
-      `Unlocked ${camper ? camper.name : ""}.`
+      `Unlocked ${camper ? camper.name : ""}.`,
+      // The notice goes once unlocked: the next one's Unlock, or the main button.
+      ['[data-id="stray"] button', PRIMARY]
     );
   }
   get strayRows() {
