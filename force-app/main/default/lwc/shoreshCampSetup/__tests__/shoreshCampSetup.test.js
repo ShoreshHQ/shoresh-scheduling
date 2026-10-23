@@ -1335,44 +1335,191 @@ describe("c-shoresh-camp-setup", () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRecords.mockRejectedValueOnce({
+    saveRow.mockRejectedValueOnce({
       body: { message: '"Week 1" already starts on 6/29/2026.' }
     });
     const element = await render();
     const weeks = q(element, 'c-shoresh-editable-table[data-id="weeks"]');
-    weeks.dispatchEvent(
-      new CustomEvent("save", {
-        detail: nsRecord({
-          records: [{ sobjectType: "Week__c", Name: "Extra" }]
-        })
-      })
-    );
+    const { detail, calls } = rowSave({
+      record: { sobjectType: "Week__c", Name: "Extra" }
+    });
+    weeks.dispatchEvent(new CustomEvent("save", { detail: nsRecord(detail) }));
     await flush();
-    expect(sentTo(saveRecords)).toContainEqual({
-      records: [{ sobjectType: "Week__c", Name: "Extra" }]
+    expect(bareRecord(saveRow.mock.calls[0][0].record)).toEqual({
+      sobjectType: "Week__c",
+      Name: "Extra"
     });
     expect(q(element, '[data-id="error"]').textContent).toContain(
       "already starts on"
     );
+    expect(calls).toEqual(["failure", "done"]);
+    saveRow.mockReset();
   });
 
-  it("adds a program", async () => {
-    getCamps.mockResolvedValue(nsRecord([CAMP]));
-    getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    getSeasonSetup.mockResolvedValue(nsRecord(setupWith({ programs: [] })));
-    saveRecords.mockResolvedValue(nsRecord(["p1"]));
-    const element = await render();
-    q(element, '[data-id="add-program"]').click();
-    await flush();
-    expect(sentTo(saveRecords)).toContainEqual({
-      records: [
-        {
+  describe("Programs on the shared setup table (wiki decision 56)", () => {
+    const entry = (id, name, blocks, divisions) => ({
+      program: {
+        Id: id,
+        Name: name,
+        Monday__c: true,
+        Tuesday__c: true,
+        Wednesday__c: true,
+        Thursday__c: true,
+        Friday__c: false
+      },
+      timeBlocks: blocks,
+      divisions
+    });
+    const twoPrograms = () =>
+      setupWith({
+        programs: [
+          entry(
+            "p1",
+            "Main",
+            [{ Id: "t1", Name: "Period 1" }],
+            [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [
+                  { Id: "g1", Name: "Cedar" },
+                  { Id: "g2", Name: "Birch" }
+                ]
+              },
+              { division: { Id: "d2", Name: "Seniors" }, groups: [] }
+            ]
+          ),
+          entry("p2", "Teen Travel", [], [])
+        ]
+      });
+    const table = (element) =>
+      q(element, 'c-shoresh-editable-table[data-id="programs"]');
+
+    beforeEach(() => {
+      getCamps.mockResolvedValue(nsRecord([CAMP]));
+      getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    });
+
+    it("lists each program with the days it runs as a strip, then its counts", async () => {
+      getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
+      const element = await render();
+      await openScreen(element, "programs");
+      const programs = table(element);
+      expect(bareName(programs.objectApiName)).toBe("Program__c");
+      expect(programs.addLabel).toBe("Add Program");
+      expect(programs.showColumns).toBe(true);
+      expect(bareRecord(programs.rows).map((r) => r.Name)).toEqual([
+        "Main",
+        "Teen Travel"
+      ]);
+      const [name, days, divisions, groups, blocks] = programs.columns;
+      expect(name.fieldName).toBe("Name");
+      expect(days).toMatchObject({
+        type: "days",
+        strip: true,
+        label: "Runs on"
+      });
+      expect(days.days.map((d) => [bareName(d.fieldName), d.label])).toEqual([
+        ["Monday__c", "Monday"],
+        ["Tuesday__c", "Tuesday"],
+        ["Wednesday__c", "Wednesday"],
+        ["Thursday__c", "Thursday"],
+        ["Friday__c", "Friday"]
+      ]);
+      expect([divisions.label, groups.label, blocks.label]).toEqual([
+        "Divisions",
+        "Bunks",
+        "Time blocks"
+      ]);
+      const [main, teens] = programs.rows;
+      const counts = (row) =>
+        [divisions, groups, blocks].map((col) => col.textFor(row));
+      expect(counts(main)).toEqual(["2", "2", "1"]);
+      expect(counts(teens)).toEqual(["0", "0", "0"]);
+      // No time blocks: the zero is a value and the cell carries the needs-a-look corner.
+      expect(blocks.exceptionFor(teens)).toBe(true);
+      expect(blocks.problemFor(teens)).toBe("No time blocks yet");
+      expect(blocks.exceptionFor(main)).toBe(false);
+      expect(blocks.problemFor(main)).toBeNull();
+      // The rail counts them, as every setup screen does.
+      expect(
+        q(element, '[data-screen="programs"] [data-id="count"]').textContent
+      ).toBe("2 programs");
+      // Nothing is saved but through the table: no card, no Add program button.
+      expect(
+        q(element, '[data-screen="programs"] c-shoresh-program')
+      ).toBeNull();
+      expect(q(element, '[data-id="add-program"]')).toBeNull();
+    });
+
+    it("adds a program from the blank row, in this season, last, every day", async () => {
+      getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
+      const element = await render();
+      await openScreen(element, "programs");
+      expect(bareRecord(table(element).newRowDefaults)).toEqual({
+        Season__c: "s1",
+        SortOrder__c: 3,
+        Monday__c: true,
+        Tuesday__c: true,
+        Wednesday__c: true,
+        Thursday__c: true,
+        Friday__c: true
+      });
+      saveRow.mockResolvedValue(nsRecord({ id: "p3", changed: [] }));
+      const { detail, calls } = rowSave({
+        record: {
           sobjectType: "Program__c",
           Season__c: "s1",
-          Name: "Main",
-          SortOrder__c: 1
+          Name: "Sports",
+          Monday__c: true
         }
-      ]
+      });
+      table(element).dispatchEvent(
+        new CustomEvent("save", { detail: nsRecord(detail) })
+      );
+      await flush();
+      expect(bareRecord(saveRow.mock.calls[0][0].record)).toMatchObject({
+        sobjectType: "Program__c",
+        Name: "Sports"
+      });
+      expect(calls).toEqual(["saved", "done"]);
+      saveRow.mockReset();
+    });
+
+    it("a program's delete asks first, then tells the table", async () => {
+      getSeasonSetup.mockResolvedValue(nsRecord(twoPrograms()));
+      const element = await render();
+      await openScreen(element, "programs");
+      LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
+      deleteRecord.mockResolvedValueOnce();
+      const onDeleted = jest.fn();
+      table(element).dispatchEvent(
+        new CustomEvent("delete", {
+          detail: { recordId: "p2", name: "Teen Travel", onDeleted }
+        })
+      );
+      await flush();
+      expect(LightningConfirm.open.mock.calls[0][0].message).toContain(
+        'Delete "Teen Travel"? Anything inside it is deleted too.'
+      );
+      expect(deleteRecord).toHaveBeenCalledWith({ recordId: "p2" });
+      expect(onDeleted).toHaveBeenCalled();
+    });
+
+    it("stays in the menu with one program (decision 56)", async () => {
+      getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+      const element = await render();
+      const menu = q(element, "c-shoresh-menu");
+      const camp = menu.sections.find((section) => section.key === "camp");
+      expect(camp.items.map((item) => item.key)).toEqual([
+        "weeks",
+        "programs",
+        "divisions",
+        "groups",
+        "timeBlocks",
+        "locations",
+        "campWords"
+      ]);
+      expect(camp.items[1].disabled).toBe(false);
     });
   });
 
@@ -1464,130 +1611,6 @@ describe("c-shoresh-camp-setup", () => {
       await flush();
       expect(onDeleted).toHaveBeenCalledTimes(1);
     }, Promise.resolve());
-  });
-
-  describe("deleting a whole program card", () => {
-    const card = (id, name) => ({
-      program: { Id: id, Name: name, Monday__c: true },
-      timeBlocks: [],
-      divisions: []
-    });
-    const programs = (...cards) =>
-      nsRecord(setupWith({ programs: cards.map(([id, n]) => card(id, n)) }));
-    const live = (element) =>
-      q(element, '[data-id="programs-announce"]').textContent.trim();
-
-    /**
-     * Deletes `id` from the Programs screen: the season read again comes back with `left`.
-     * Returns what took the focus: a card's name box ("name:Main") or a page button.
-     */
-    async function deleteCard(element, id, name, left) {
-      const focus = jest.spyOn(HTMLElement.prototype, "focus");
-      getSeasonSetup.mockResolvedValue(programs(...left));
-      LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
-      deleteRecord.mockResolvedValueOnce();
-      const source = [
-        ...element.shadowRoot.querySelectorAll(
-          '[data-screen="programs"] c-shoresh-program'
-        )
-      ].find((c) => c.entry.program.Id === id);
-      source.dispatchEvent(
-        new CustomEvent("delete", { detail: { recordId: id, name } })
-      );
-      await flush();
-      await flush();
-      const focused = focus.mock.contexts.map((el) => {
-        if (el.dataset.id === "name") {
-          return `name:${el.getRootNode().host.entry.program.Name}`;
-        }
-        return el.dataset.id || el.tagName.toLowerCase();
-      });
-      focus.mockRestore();
-      return focused;
-    }
-
-    beforeEach(() => {
-      getCamps.mockResolvedValue(nsRecord([CAMP]));
-      getSeasons.mockResolvedValue(nsRecord([SEASON]));
-    });
-
-    it("says so and puts the cursor on the next card's name", async () => {
-      getSeasonSetup.mockResolvedValue(
-        programs(["p1", "Main"], ["p2", "Teens"], ["p3", "Sports"])
-      );
-      const element = await render();
-      await openScreen(element, "programs");
-      const focused = await deleteCard(element, "p2", "Teens", [
-        ["p1", "Main"],
-        ["p3", "Sports"]
-      ]);
-      expect(live(element)).toBe("Deleted Teens");
-      expect(focused).toEqual(["name:Sports"]);
-    });
-
-    it("goes to the card above when the last one is deleted", async () => {
-      getSeasonSetup.mockResolvedValue(
-        programs(["p1", "Main"], ["p2", "Teens"])
-      );
-      const element = await render();
-      await openScreen(element, "programs");
-      const focused = await deleteCard(element, "p2", "Teens", [
-        ["p1", "Main"]
-      ]);
-      expect(live(element)).toBe("Deleted Teens");
-      expect(focused).toEqual(["name:Main"]);
-    });
-
-    it("goes to Add program when no card is left", async () => {
-      getSeasonSetup.mockResolvedValue(programs(["p1", "Main"]));
-      const element = await render();
-      await openScreen(element, "programs");
-      const focused = await deleteCard(element, "p1", "Main", []);
-      expect(live(element)).toBe("Deleted Main");
-      expect(focused).toEqual(["add-program"]);
-    });
-
-    it("says it again when the next delete has the same name", async () => {
-      getSeasonSetup.mockResolvedValue(
-        programs(["p1", "Main"], ["p2", "Main"], ["p3", "Sports"])
-      );
-      const element = await render();
-      await openScreen(element, "programs");
-      await deleteCard(element, "p1", "Main", [
-        ["p2", "Main"],
-        ["p3", "Sports"]
-      ]);
-      const first = q(element, '[data-id="programs-announce"]').textContent;
-      await deleteCard(element, "p2", "Main", [["p3", "Sports"]]);
-      const second = q(element, '[data-id="programs-announce"]').textContent;
-      expect(live(element)).toBe("Deleted Main");
-      expect(second).not.toBe(first);
-    });
-
-    it("says nothing and keeps the cursor when cancelled or refused", async () => {
-      getSeasonSetup.mockResolvedValue(
-        programs(["p1", "Main"], ["p2", "Teens"])
-      );
-      const element = await render();
-      await openScreen(element, "programs");
-      const source = q(element, '[data-screen="programs"] c-shoresh-program');
-      const focus = jest.spyOn(HTMLElement.prototype, "focus");
-      LightningConfirm.open.mockResolvedValueOnce(nsRecord(false));
-      source.dispatchEvent(
-        new CustomEvent("delete", { detail: { recordId: "p1", name: "Main" } })
-      );
-      await flush();
-      LightningConfirm.open.mockResolvedValueOnce(nsRecord(true));
-      deleteRecord.mockRejectedValueOnce({ body: { message: "Locked." } });
-      source.dispatchEvent(
-        new CustomEvent("delete", { detail: { recordId: "p1", name: "Main" } })
-      );
-      await flush();
-      const focused = focus.mock.contexts.length;
-      focus.mockRestore();
-      expect(live(element)).toBe("");
-      expect(focused).toBe(0);
-    });
   });
 
   it("deleting a bunk or activity some schedules use says how many first", async () => {
@@ -2383,16 +2406,17 @@ describe("c-shoresh-camp-setup", () => {
     getCamps.mockResolvedValue(nsRecord([CAMP]));
     getSeasons.mockResolvedValue(nsRecord([SEASON]));
     getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
-    saveRecords.mockRejectedValueOnce({ body: { message: "No." } });
+    saveRow.mockRejectedValueOnce({ body: { message: "No." } });
     const element = await render();
-    const onFailure = jest.fn();
+    const { detail, calls } = rowSave({
+      record: { sobjectType: "Week__c", Id: "w1", Name: "x" }
+    });
     q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
-      new CustomEvent("save", {
-        detail: nsRecord({ records: [{ Name: "x" }], onFailure })
-      })
+      new CustomEvent("save", { detail: nsRecord(detail) })
     );
     await flush();
-    expect(onFailure).toHaveBeenCalled();
+    expect(calls).toContain("failure");
+    saveRow.mockReset();
   });
 
   it("flags same names on the season's location types, locations, and activities only", async () => {
@@ -3239,102 +3263,45 @@ describe("c-shoresh-camp-setup", () => {
       getSeasonSetup.mockResolvedValue(nsRecord(setup));
       return render();
     }
-    const programCard = (element) =>
-      q(element, '[data-screen="programs"] c-shoresh-program');
-
-    it("a program field: saved, the form told before the reload, no toast", async () => {
-      saveRecords.mockResolvedValue(nsRecord(["p1"]));
-      const element = await renderWith();
-      const toasts = [];
-      element.addEventListener("lightning__showtoast", (e) => toasts.push(e));
-      const order = [];
-      getSeasonSetup.mockImplementation(() => {
-        order.push("reload");
-        return Promise.resolve(nsRecord(setupWith()));
-      });
-      programCard(element).dispatchEvent(
-        new CustomEvent("save", {
-          detail: {
-            records: nsRecord([
-              { sobjectType: "Program__c", Id: "p1", Friday__c: true }
-            ]),
-            onSaved: () => order.push("form told"),
-            onFailure: jest.fn()
-          }
-        })
-      );
-      await flush();
-      expect(sentTo(saveRecords)).toEqual([
-        { records: [{ sobjectType: "Program__c", Id: "p1", Friday__c: true }] }
-      ]);
-      expect(order).toEqual(["form told", "reload"]);
-      expect(toasts).toEqual([]);
-      expect(q(element, "lightning-spinner")).toBeNull();
-    });
-
-    it("a refused program field goes back to the form in camp words, not to the top of the page", async () => {
-      saveRecords.mockRejectedValueOnce({
-        body: { message: "That name is already used. Pick another." }
-      });
-      const element = await renderWith();
-      const onFailure = jest.fn();
-      const onSaved = jest.fn();
-      programCard(element).dispatchEvent(
-        new CustomEvent("save", {
-          detail: {
-            records: nsRecord([
-              { sobjectType: "Program__c", Id: "p1", Name: "Main" }
-            ]),
-            onSaved,
-            onFailure
-          }
-        })
-      );
-      await flush();
-      expect(onSaved).not.toHaveBeenCalled();
-      expect(onFailure).toHaveBeenCalledWith(
-        "Programs not saved. Your changes are still here. That name is already used. Pick another."
-      );
-      expect(q(element, '[data-id="error"]')).toBeNull();
-    });
-
-    it("a form field waits for a table row being saved, and goes after it", async () => {
+    it("a program row waits for a row of another table being saved, and goes after it", async () => {
       let finishRow;
-      saveRow.mockImplementation(
+      saveRow.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
             finishRow = resolve;
           })
       );
-      saveRecords.mockResolvedValue(nsRecord(["p1"]));
+      saveRow.mockResolvedValue(nsRecord({ id: "p1", changed: [] }));
       const element = await renderWith();
       q(element, 'c-shoresh-editable-table[data-id="weeks"]').dispatchEvent(
         new CustomEvent("save", {
-          detail: nsRecord({
-            record: { sobjectType: "Week__c", Id: "w1", Name: "A" },
-            seen: {},
-            extras: {},
-            onSaved: jest.fn(),
-            onFailure: jest.fn(),
-            onDone: jest.fn()
-          })
+          detail: nsRecord(
+            rowSave({ record: { sobjectType: "Week__c", Id: "w1", Name: "A" } })
+              .detail
+          )
         })
       );
-      programCard(element).dispatchEvent(
+      q(element, 'c-shoresh-editable-table[data-id="programs"]').dispatchEvent(
         new CustomEvent("save", {
-          detail: {
-            records: nsRecord([{ sobjectType: "Program__c", Id: "p1" }]),
-            onSaved: jest.fn(),
-            onFailure: jest.fn()
-          }
+          detail: nsRecord(
+            rowSave({
+              record: { sobjectType: "Program__c", Id: "p1", Friday__c: true }
+            }).detail
+          )
         })
       );
       await flush();
-      expect(saveRecords).not.toHaveBeenCalled();
-      finishRow(nsRecord({ saved: true }));
+      expect(saveRow).toHaveBeenCalledTimes(1);
+      finishRow(nsRecord({ id: "w1", changed: [] }));
       await flush();
       await flush();
-      expect(saveRecords).toHaveBeenCalledTimes(1);
+      expect(saveRow).toHaveBeenCalledTimes(2);
+      expect(bareRecord(saveRow.mock.calls[1][0].record)).toEqual({
+        sobjectType: "Program__c",
+        Id: "p1",
+        Friday__c: true
+      });
+      saveRow.mockReset();
     });
 
     it("an activity's details open from its row's Details, and Close goes back to that button", async () => {

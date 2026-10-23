@@ -49,6 +49,8 @@ import { CHILDREN, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
+// The days a program can run on (its fields, Monday to Friday).
+const PROGRAM_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const WEEK = FIELD.Week;
 const LOCATION = FIELD.Location;
 const ACTIVITY = FIELD.Activity;
@@ -68,6 +70,8 @@ const FLUSH_SCREENS = new Set([
   "manualBuild",
   "generatedSchedule",
   "weeks",
+  "programs",
+  "campWords",
   "divisions",
   "groups",
   "timeBlocks",
@@ -83,6 +87,7 @@ const FLUSH_SCREENS = new Set([
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
   weeks: "Week",
+  programs: "Program",
   divisions: "Division",
   groups: "Group",
   timeBlocks: "TimeBlock",
@@ -251,12 +256,6 @@ export default class ShoreshCampSetup extends LightningElement {
   merging = false;
   // A delete's question is open, or the delete is under way.
   deleting = false;
-  // A program card just deleted: its place in the list, so the cursor goes to its neighbour once
-  // the card is gone and the page is no longer busy (null when none).
-  focusAfterProgramDelete = null;
-  // The Programs screen's live region: "Deleted Main" after a card's delete.
-  programsAnnouncement = "";
-  programsAnnounced = false;
   // Whether each schedule screen's week can be updated to match setup: screen -> { changed, busy }.
   setupStates = {};
   // Table rows are saved one at a time across the whole page, in the order they were left.
@@ -389,7 +388,6 @@ export default class ShoreshCampSetup extends LightningElement {
 
   renderedCallback() {
     this.showNewError();
-    this.focusProgramNeighbour();
     if (this.focusAfter) {
       const target = this.template.querySelector(this.focusAfter);
       this.focusAfter = null;
@@ -474,7 +472,8 @@ export default class ShoreshCampSetup extends LightningElement {
    * them running edge to edge (docs/design/manual-build.html).
    */
   get bodyClass() {
-    return FLUSH_SCREENS.has(this.currentScreen)
+    // Copy season draws its own rail and inset, as a setup screen does.
+    return FLUSH_SCREENS.has(this.currentScreen) || this.isCopy
       ? "zone body body_flush"
       : "zone body";
   }
@@ -754,6 +753,103 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   get hasNoPrograms() {
     return this.programs.length === 0;
+  }
+
+  /**
+   * The programs as the shared table's rows: one list per season read, so a redraw while a row
+   * is saving doesn't look like fresh rows to the table (and wipe what was typed there).
+   */
+  get programRecords() {
+    const setup = this.setup;
+    if (this._programRecordsFor !== setup) {
+      this._programRecordsFor = setup;
+      this._programRecords = ((setup && setup.programs) || []).map(
+        (entry) => entry.program
+      );
+    }
+    return this._programRecords;
+  }
+
+  /**
+   * A program's row (programs.png, wiki decision 56): its name, the days it runs as a strip of
+   * ticks, then how many divisions, groups and time blocks it has, worked out and never edited
+   * here. A program with no time blocks can't be scheduled: the zero is a value and the cell
+   * carries the needs-a-look corner.
+   */
+  get programColumns() {
+    const t = this.terms;
+    const entries = new Map(
+      ((this.setup && this.setup.programs) || []).map((entry) => [
+        entry.program.Id,
+        entry
+      ])
+    );
+    const count = (pick) => (saved) => {
+      const entry = entries.get(saved.Id);
+      return entry ? String(pick(entry)) : "";
+    };
+    const divisions = (entry) => (entry.divisions || []).length;
+    const groups = (entry) =>
+      (entry.divisions || []).reduce(
+        (sum, d) => sum + (d.groups || []).length,
+        0
+      );
+    const blocks = (entry) => (entry.timeBlocks || []).length;
+    const noBlocks = (saved) => {
+      const entry = entries.get(saved.Id);
+      return !!entry && blocks(entry) === 0;
+    };
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "days",
+        label: "Runs on",
+        type: "days",
+        strip: true,
+        width: 13,
+        days: PROGRAM_DAYS.map((day) => ({
+          fieldName: FIELD.Program[day],
+          label: day
+        }))
+      },
+      {
+        fieldName: "divisionCount",
+        label: t.p("Division"),
+        type: "readonly",
+        width: 8,
+        textFor: count(divisions)
+      },
+      {
+        fieldName: "groupCount",
+        label: t.p("Group"),
+        type: "readonly",
+        width: 8,
+        textFor: count(groups)
+      },
+      {
+        fieldName: "timeBlockCount",
+        label: t.p("TimeBlock"),
+        type: "readonly",
+        width: 8,
+        textFor: count(blocks),
+        exceptionFor: noBlocks,
+        problemFor: (saved) => {
+          return noBlocks(saved) ? `No ${t.pIn("TimeBlock")} yet` : null;
+        }
+      }
+    ];
+  }
+
+  /** A new program: in this season, last in order, running every day (the fields' default). */
+  get programDefaults() {
+    const defaults = {
+      [FIELD.Program.Season]: this.seasonId,
+      [FIELD.Program.SortOrder]: this.programs.length + 1
+    };
+    PROGRAM_DAYS.forEach((day) => {
+      defaults[FIELD.Program[day]] = true;
+    });
+    return defaults;
   }
 
   get locationTypeColumns() {
@@ -1527,6 +1623,7 @@ export default class ShoreshCampSetup extends LightningElement {
       programs.reduce((sum, entry) => sum + pick(entry), 0);
     const n = {
       weeks: (setup.weeks || []).length,
+      programs: programs.length,
       divisions: inPrograms((e) => (e.divisions || []).length),
       groups: inPrograms((e) =>
         (e.divisions || []).reduce((sum, d) => sum + (d.groups || []).length, 0)
@@ -1960,23 +2057,6 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
 
-  async handleAddProgram() {
-    const count = this.programs.length;
-    const records = [
-      {
-        sobjectType: OBJECT.Program,
-        [FIELD.Program.Season]: this.seasonId,
-        Name: count ? `${this.terms.s("Program")} ${count + 1}` : "Main",
-        [FIELD.Program.SortOrder]: count + 1
-      }
-    ];
-    await this.saveAndReload(
-      () => saveRecords({ records }),
-      null,
-      `${this.terms.s("Program")} not added. Nothing was saved.`
-    );
-  }
-
   /** An activity row's Details: its details open below the table (desktop's row Edit). */
   async handleOpenActivityDetails(event) {
     const { recordId } = event.detail;
@@ -2021,22 +2101,9 @@ export default class ShoreshCampSetup extends LightningElement {
     });
   }
 
-  /**
-   * A save from a table (one row, as the director leaves it: SetupTablesController.saveRow,
-   * ADR 0011) or from a program's own form (a field, as the director leaves it).
-   */
+  /** A save from a table: one row, as the director leaves it (SetupTablesController.saveRow, ADR 0011). */
   async handleSaveRecords(event) {
-    const detail = event.detail;
-    if (detail.record) {
-      await this.saveTableRow(detail);
-      return;
-    }
-    await this.saveForm({
-      records: detail.records,
-      what: this.notSaved(detail.records),
-      onSaved: detail.onSaved,
-      onFailure: detail.onFailure
-    });
+    await this.saveTableRow(event.detail);
   }
 
   /**
@@ -2320,8 +2387,6 @@ export default class ShoreshCampSetup extends LightningElement {
     if (!ok) {
       return;
     }
-    // A whole program card (not a table row): where it was in the list, before it goes.
-    const programIndex = this.programs.findIndex((p) => p.key === recordId);
     await this.run(async () => {
       await deleteRecord({ recordId });
       this.changedOnServer = true;
@@ -2330,46 +2395,8 @@ export default class ShoreshCampSetup extends LightningElement {
       // The table says so in its live region and moves the cursor off the gone row.
       if (onDeleted) {
         onDeleted();
-      } else if (programIndex >= 0) {
-        this.programDeleted(programIndex, name);
       }
     }, `"${name}" not deleted. Nothing was removed.`);
-  }
-
-  /**
-   * A program card was deleted and the season read again: it is said, and the cursor goes to
-   * the name of the card that took its place, else the card above, else Add program, as a
-   * table's row delete does (ADR 0013 choice 25).
-   */
-  programDeleted(index, name) {
-    this.programsAnnounced = !this.programsAnnounced;
-    const text = `Deleted ${name || ""}`.trim();
-    // Every other time with a trailing non-breaking space, so the same words are read again.
-    this.programsAnnouncement = this.programsAnnounced ? text : `${text}\u00a0`;
-    this.focusAfterProgramDelete = index;
-  }
-
-  focusProgramNeighbour() {
-    // Add program is disabled while the page is busy, and a disabled button can't take focus.
-    if (this.focusAfterProgramDelete === null || this.busy) {
-      return;
-    }
-    const index = this.focusAfterProgramDelete;
-    this.focusAfterProgramDelete = null;
-    const cards = [
-      ...this.template.querySelectorAll(
-        '[data-screen="programs"] c-shoresh-program'
-      )
-    ];
-    const card = cards[index] || cards[index - 1];
-    if (card) {
-      card.focusName();
-      return;
-    }
-    const add = this.template.querySelector('[data-id="add-program"]');
-    if (add) {
-      add.focus();
-    }
   }
 
   /**

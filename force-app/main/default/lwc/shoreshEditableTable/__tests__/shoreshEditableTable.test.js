@@ -3431,6 +3431,59 @@ describe("c-shoresh-editable-table", () => {
       ]);
     });
 
+    it("days as a strip: the ticks in every row, no words (Programs)", async () => {
+      const element = renderDays();
+      element.columns = [
+        { fieldName: "Name", label: "Name", type: "text", required: true },
+        { ...DAYS, strip: true }
+      ];
+      await flush();
+      const cells = [...element.shadowRoot.querySelectorAll("td.cell_days")];
+      expect(cells.length).toBe(5);
+      expect(cells.every((c) => c.classList.contains("days_strip"))).toBe(true);
+      // Without strip the words stay (Recurring activities).
+      element.columns = [
+        { fieldName: "Name", label: "Name", type: "text", required: true },
+        DAYS
+      ];
+      await flush();
+      expect(element.shadowRoot.querySelector("td.days_strip")).toBeNull();
+    });
+
+    it("a worked-out column's problem carries the needs-a-look corner, with its words", async () => {
+      const element = render({
+        objectApiName: "Program__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          {
+            fieldName: "timeBlockCount",
+            label: "Time blocks",
+            type: "readonly",
+            textFor: (saved) => (saved.Id === "p2" ? "0" : "8"),
+            exceptionFor: (saved) => saved.Id === "p2",
+            problemFor: (saved) => {
+              return saved.Id === "p2" ? "No time blocks yet" : null;
+            }
+          }
+        ],
+        rows: [
+          { Id: "p1", Name: "Main" },
+          { Id: "p2", Name: "Teen Travel" }
+        ]
+      });
+      await flush();
+      const marks = [
+        ...element.shadowRoot.querySelectorAll('[data-id="problem"]')
+      ];
+      // Only the saved row with the problem: never the blank row.
+      expect(marks.length).toBe(1);
+      expect(marks[0].shape).toBe("corner");
+      expect(marks[0].label).toBe("No time blocks yet");
+      expect(marks[0].focusable).toBe(true);
+      expect(marks[0].closest("td").classList.contains("has-guess")).toBe(true);
+      expect(marks[0].closest("tr").dataset.row).toBe("row-p2");
+    });
+
     describe("sections a field can't name (rowFilter, whoRule, newRowWho)", () => {
       const WHO = {
         fieldName: "Coverages__r",
