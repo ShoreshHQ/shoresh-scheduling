@@ -33,7 +33,7 @@
  *   that unit's section with the cursor in its name, the move said; that Import a list on Groups
  *   lays a file into the table in the screen's place (a new bunk dashed under its unit, a change
  *   crossed out), Leave out keeps the cursor, and Cancel brings the table back with nothing
- *   saved (ADR 0007 choice 33); with --shots it also saves each restyled setup screen at rest and a
+ *   saved (ADR 0007 choice 33), and on Programs a new program the same way; with --shots it also saves each restyled setup screen at rest and a
  *   group row under the pointer, for docs/design/screens/;
  * - step 3b (ADR 0015 choice 12): on Activities, that a row's "how often" numbers show while it
  *   is edited, Tab reaching them, and that its chevron opens its details beside the table with
@@ -77,13 +77,24 @@
  *   seats changed read back as that one change, saved and said, and in the org; a choices
  *   file said, nothing saved, Bring in choices taking focus and opening that screen, axe).
  *   The check's own elective set is made by Apex first and deleted after.
- *   `--only electives` runs just this step (with the camp's seed), for a change to that screen;
- *   `--only lists` runs just the two Import a list steps (Groups and Electives);
+ *   `--only electives` runs just this step and the next (with the camp's seed), for a change to
+ *   those screens; `--only lists` runs just the Import a list steps (Groups, Programs and
+ *   Electives);
+ * - an elective set on Manual Build's grid (repo ADR 0018 slice E5), keyboard only: the drawer's
+ *   first tile is the check's set; Enter picks it up, focus to the grid; Space on an Open cell
+ *   puts it down, focus kept on that cell, which reads "<set> (2)" with the set's mark; axe;
+ *   Ctrl/Cmd+Z takes it
+ *   back. The set is made by Apex first and deleted after;
  * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
  *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
  *   count said, then Cancel: nothing brought in, said, focus on Choose a file; axe on each card.
  *   It makes the check's elective set once ("Check chugim") and brings in no campers;
+ * - Copy season, Camp words and Programs (wiki decision 56, ADR 0015 choice 14): a program added
+ *   from the Programs table's blank row by keyboard is said, its no-time-blocks corner shows, and
+ *   its trash can deletes it after the question, said; on Camp words the Group row's word typed
+ *   shows its plural guessed, is saved and said when left, then put back; Copy this season
+ *   draws the weeks twice, as many above as below;
  * - axe-core (WCAG 2.0/2.1/2.2 A and AA) on each screen.
  * It writes a plain report (default docs/a11y-browser-check-<today>.md). It fixes nothing.
  *
@@ -1404,6 +1415,102 @@ System.debug('A11Y_BUNKS[' + g.Availability__c + ':' + added + ']');
 }
 
 /**
+ * Import a list on Programs, which has the shared setup rail (ADR 0015 choice 14), by keyboard:
+ * opened from its rail, a file's new program lays into the table in the screen's place (the
+ * screen's own table put away, not drawn underneath); Cancel brings the table back, nothing saved.
+ */
+async function programsListIntoTable() {
+  const P = "Programs";
+  const NEW = "Check import program";
+  await openFromMenu(P, /^Programs\b/);
+  if (
+    !(await tabTo(named(/^Import a list$/, { tag: "button" }), {
+      max: 40,
+      anywhere: true
+    }))
+  )
+    throw new Error("Import a list was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(P, "Import a list: focus on its heading", {
+    tag: /^h3$/,
+    name: /^Import a list$/
+  });
+  const screen = '[data-screen="programs"]';
+  const screenEl = () =>
+    page.locator(APP).locator(`${screen} > [data-id="setup-rail"]`);
+  await page
+    .locator(APP)
+    .locator(`${screen} c-shoresh-list-import input[data-id="file"]`)
+    .setInputFiles({
+      name: "check-programs.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        ["Program,Runs on", `${NEW},Mon-Fri`].join("\n"),
+        "utf8"
+      )
+    });
+  await pause(1500);
+  const seen = await screenEl().evaluate((rail, name) => {
+    const el = rail.parentElement;
+    const root = el.querySelector("c-shoresh-list-import").shadowRoot;
+    const tr = [...root.querySelectorAll("tr[data-row]")].find(
+      (row) => row.dataset.row === name
+    );
+    return {
+      review: el.classList.contains("screen_import-review"),
+      tableAway: el.querySelector(".setup-list").getClientRects().length === 0,
+      fresh: tr ? tr.dataset.kind : null
+    };
+  }, NEW);
+  if (seen.review && seen.tableAway && seen.fresh === "new")
+    results.pass(
+      P,
+      "Import a list: the file laid into the table in its place",
+      `${NEW} new; the screen's own table put away.`
+    );
+  else
+    results.fail(
+      P,
+      "Import a list: the file laid into the table in its place",
+      JSON.stringify(seen)
+    );
+  await axe("Programs, Import a list with a file laid into the table");
+  if (
+    !(await tabTo(named(/^Cancel$/, { tag: "button" }), {
+      max: 40,
+      back: true
+    }))
+  )
+    throw new Error("Cancel was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(P, "Cancel: focus back on Import a list", {
+    tag: "button",
+    name: /^Import a list$/
+  });
+  const back = await screenEl().evaluate(
+    (rail) =>
+      rail.parentElement.querySelector(".setup-list").getClientRects().length >
+      0
+  );
+  const logs = apex(`
+System.debug('A11Y_PROGRAMS[' + [SELECT COUNT() FROM Program__c WHERE Name = '${NEW}'] + ']');
+`);
+  const org = /A11Y_PROGRAMS\[(\d+)\]/.exec(logs);
+  if (back && org && org[1] === "0")
+    results.pass(
+      P,
+      "Cancel: the screen's table back, nothing saved",
+      "No new program."
+    );
+  else
+    results.fail(
+      P,
+      "Cancel: the screen's table back, nothing saved",
+      `Table shown: ${back}; org: ${org ? org[1] : "not read"}.`
+    );
+}
+
+/**
  * With --shots: each restyled setup screen at rest, and a group row under the pointer (the
  * mock-up's hover), saved by name for docs/design/screens/. Screenshots only; nothing is checked.
  */
@@ -1583,95 +1690,18 @@ async function campSetup() {
   await step(S, "Groups: a row's week ticks and details by keyboard", setupRow);
   await step(S, "Groups: a bunk moved to another unit", bunkMoves);
   await step(S, "Groups: Import a list laid into the table", listIntoTable);
+  await step(
+    S,
+    "Programs: Import a list laid into the table",
+    programsListIntoTable
+  );
   await step(S, "Setup screens: screenshots", setupShots);
-  await step(S, "Programs: add a card, then delete it", async () => {
-    await openFromMenu("Programs", /^Programs\b/);
-    const cards = () =>
-      shown(
-        '[data-screen="programs"] c-shoresh-program lightning-input[data-id="name"] input'
-      );
-    const before = await cards().count();
-    if (!(await tabTo(named(/^Add program$/i, { tag: "button" }), { max: 10 })))
-      throw new Error("Add program not reached with Tab.");
-    await press("Enter", 3000);
-    // Only the card this step added is deleted: never the camp's own programs.
-    const names = await cards().evaluateAll((inputs) =>
-      inputs.map((i) => i.value)
-    );
-    const added = names[names.length - 1];
-    if (names.length !== before + 1 || !/^Program \d+$/.test(added || "")) {
-      throw new Error(
-        `No new program card to delete (cards: ${names.join(", ")}).`
-      );
-    }
-    for (let i = 0; i < names.length; i++) {
-      if (!(await tabTo(named(/^Delete this program$/i), { max: 40 })))
-        throw new Error("The new card's Delete was not reached with Tab.");
-    }
-    await press("Enter", 1200);
-    const go = await tabTo(
-      (g) =>
-        g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
-      { max: 6, anywhere: true }
-    );
-    if (!go) throw new Error("The delete question's button not reached.");
-    await expectLive(
-      "Programs",
-      `Deleting the card ${added}: it is said`,
-      new RegExp(`^Deleted ${added}`),
-      () => press("Enter")
-    );
-    await expectFocus(
-      "Programs",
-      "After deleting the last card: focus on the card above's name",
-      { tag: "input", name: /program name/i }
-    );
-  });
-  await step(S, "Camp words: a word is saved and said", async () => {
-    await openFromMenu("Camp words", /^Camp words/, /^Words .* uses$/);
-    await axe("Camp words");
-    // The first row's two boxes (singular and plural): both are needed, or both cleared.
-    const box = await tabTo(
-      (f) => f.tag === "input" && f.components.includes("c-shoresh-camp-labels")
-    );
-    if (!box) throw new Error("No camp word box reached with Tab.");
-    const value = () =>
-      page.evaluate(() => {
-        let el = document.activeElement;
-        while (el && el.shadowRoot && el.shadowRoot.activeElement) {
-          el = el.shadowRoot.activeElement;
-        }
-        return el.value;
-      });
-    const replace = async (text) => {
-      await press("ControlOrMeta+a", 50);
-      if (text) await type(text);
-      else await press("Backspace");
-    };
-    const singular = await value();
-    await press("Tab", 200);
-    const plural = await value();
-    const [one, many] =
-      singular === "Cabin" ? ["Hut", "Huts"] : ["Cabin", "Cabins"];
-    await replace(many);
-    await press("Shift+Tab", 200);
-    await replace(one);
-    await expectLive(
-      "Camp words",
-      "Leaving a changed pair of words: Saved is said",
-      SAVED,
-      () => press("Tab", 200)
-    );
-    await replace(plural);
-    await press("Shift+Tab", 200);
-    await replace(singular);
-    await expectLive(
-      "Camp words",
-      "Putting the words back: Saved is said again",
-      SAVED,
-      () => press("Tab", 200)
-    );
-  });
+  await step(S, "Programs: a row added and deleted by keyboard", programRow);
+  await step(
+    S,
+    "Camp words: a word typed, its plural guessed, saved and said",
+    campWord
+  );
   await step(
     S,
     "Locations: Same location? merges a place typed twice",
@@ -1794,6 +1824,23 @@ async function campSetup() {
         }
       );
       await axe("Copy this season");
+      // Last season's weeks over the new ones (copy-season-a): as many above as below.
+      const cells = (row) =>
+        shown(`c-shoresh-copy-season [data-id="${row}-weeks"] td`).count();
+      const [old, now] = [await cells("old"), await cells("new")];
+      if (old > 0 && old === now) {
+        results.pass(
+          "Copy this season",
+          "The weeks drawn twice",
+          `${old} weeks, last season's above the new ones.`
+        );
+      } else {
+        results.fail(
+          "Copy this season",
+          "The weeks drawn twice",
+          `${old} weeks above, ${now} below.`
+        );
+      }
       if (!(await tabTo(named(/^Cancel$/), { max: 15 })))
         throw new Error("Cancel not reached.");
       await press("Enter", 800);
@@ -2068,6 +2115,115 @@ async function takeOffADay(E, DAY) {
 }
 
 /** The first saved row's name box in the screen's tables, reached with Tab. */
+/**
+ * Programs on the shared setup table (wiki decision 56, programs.png): a program typed into the
+ * blank row and Enter adds it, said; it has no time blocks, so its count carries the
+ * needs-a-look corner; then its trash can deletes it after the question, said. Only the row this
+ * step added is deleted, never the camp's own programs.
+ */
+async function programRow() {
+  const P = "Programs";
+  const NAME = "Check program";
+  await openFromMenu(P, /^Programs\b/);
+  await axe(P);
+  const table = 'c-shoresh-editable-table[data-id="programs"]';
+  const inputs = () =>
+    shown(`${table} lightning-input[data-field="Name"] input`);
+  const names = () =>
+    inputs().evaluateAll((els) => els.map((e) => e.value).filter(Boolean));
+  if ((await names()).includes(NAME)) {
+    throw new Error(
+      `"${NAME}" is already a program: a run before this one stopped part way.`
+    );
+  }
+  await shown(`${table} [data-row-key="add"][data-field="Name"] input`).focus();
+  await type(NAME);
+  await expectLive(
+    P,
+    "A program added from the blank row: it is said",
+    new RegExp(`^${NAME} added`),
+    () => press("Enter", 4000)
+  );
+  if (!(await names()).includes(NAME))
+    throw new Error(`"${NAME}" was not added.`);
+  const marks = await shown(`${table} [data-id="problem"]`).count();
+  if (marks > 0) {
+    results.pass(
+      P,
+      "No time blocks: the needs-a-look corner",
+      `${marks} shown.`
+    );
+  } else {
+    results.fail(P, "No time blocks: the needs-a-look corner", "None shown.");
+  }
+  await axe("Programs, a program without time blocks");
+  const at = (
+    await inputs().evaluateAll((els) => els.map((e) => e.value))
+  ).indexOf(NAME);
+  await inputs().nth(at).focus();
+  if (!(await tabTo(named(new RegExp(`^Delete ${NAME}$`)), { max: 20 })))
+    throw new Error(`"${NAME}"'s delete not reached with Tab.`);
+  await press("Enter", 1200);
+  const go = await tabTo(
+    (g) => g.inDialog && (g.dataId === "yes" || /^(OK|Delete)\b/.test(g.name)),
+    { max: 6, anywhere: true }
+  );
+  if (!go) throw new Error("The delete question's button not reached.");
+  await expectLive(
+    P,
+    `Deleting ${NAME}: it is said`,
+    new RegExp(`^Deleted ${NAME}`),
+    () => press("Enter", 3000)
+  );
+  await expectFocusKept(P, "After the delete: focus stays in the table");
+  if ((await names()).includes(NAME))
+    throw new Error(`"${NAME}" was not deleted: delete it by hand.`);
+}
+
+/**
+ * Camp words, one box per word (wiki decision 56, camp-words-b): the Group row's word typed,
+ * its plural guessed beside it, saved and said when the box is left; then put back as it was.
+ */
+async function campWord() {
+  const W = "Camp words";
+  await openFromMenu(W, /^Camp words/, /^Camp words$/);
+  await axe(W);
+  const box = (field) =>
+    shown(
+      `c-shoresh-camp-labels input[data-term="Group"][data-field="${field}"]`
+    );
+  const before = await box("singular").inputValue();
+  const word = before === "Cabin" ? "Hut" : "Cabin";
+  await box("singular").focus();
+  await press("ControlOrMeta+a", 50);
+  await type(word);
+  const guess = await box("plural").getAttribute("placeholder");
+  if (guess === `${word}s`) {
+    results.pass(
+      W,
+      "The plural is guessed as the word is typed",
+      `"${guess}".`
+    );
+  } else {
+    results.fail(
+      W,
+      "The plural is guessed as the word is typed",
+      `"${guess}", expected "${word}s".`
+    );
+  }
+  await axe("Camp words, a word of the camp's own");
+  await expectLive(W, "Leaving a changed word: Saved is said", SAVED, () =>
+    press("Tab", 200)
+  );
+  await box("singular").focus();
+  await press("ControlOrMeta+a", 50);
+  if (before) await type(before);
+  else await press("Backspace");
+  await expectLive(W, "Putting the word back: Saved is said again", SAVED, () =>
+    press("Tab", 200)
+  );
+}
+
 const rowNameBox = (max = 30) =>
   tabTo(
     (f) =>
@@ -2914,11 +3070,14 @@ async function undoSteps(n, { re = /^Undone: /, done } = {}) {
  * mock-up's hold-archery.png when --shots is given.
  */
 async function holdTile(S) {
+  // An activity's tile: the elective sets come first in the drawer (ADR 0018 slice E5), and
+  // theirs say how many offerings they have.
   const isTile = (f) =>
     f.tag === "button" &&
     f.components.includes("c-shoresh-build-palette") &&
     f.dataId !== "palette-filter" &&
-    f.type === "button";
+    f.type === "button" &&
+    !/\d+ offerings?$/.test(f.name);
   const tile = await tabTo(isTile, { max: 200 });
   if (!tile) throw new Error("No drawer tile reached with Tab.");
   const name = tile.name.split(",")[0].trim();
@@ -4238,6 +4397,120 @@ async function electives() {
   );
 }
 
+/**
+ * An elective set on the week grid (repo ADR 0018 slice E5; decision 53.2), on Manual Build,
+ * keyboard only: with the check's set seeded fresh (the page read again so it is in the season),
+ * the drawer's first tile is the set; Enter picks it up with focus going to the grid; Space on an
+ * Open cell puts it down, focus staying on that cell, which now reads "<set> (2)" (its
+ * confirmed, open offerings: one with seats, one with seats not filled in; the proposed one is
+ * not counted) with the set's mark (putting down is not said on its own, for a set as for any
+ * activity: the focused cell's new name is what a screen reader reads); axe; Ctrl/Cmd+Z takes it
+ * back, said. The set is deleted after.
+ */
+async function electivesOnGrid(openManual) {
+  const S = "Manual Build";
+  await step(S, "An elective set on the grid by keyboard", async () => {
+    seedElectivesSetup();
+    try {
+      const origin = new URL(page.url()).origin;
+      await page.goto(`${origin}${TAB_PATH}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000
+      });
+      await page
+        .locator(APP)
+        .locator("c-shoresh-menu")
+        .waitFor({ timeout: 60000 });
+      await pause(3000);
+      await openManual();
+      if (await exists('[data-id="start-week"]')) {
+        if (!(await tabTo(named(/^Start a blank/))))
+          throw new Error("Start not reached with Tab.");
+        await expectLive(S, "Start a blank week: it is said", /Started/i, () =>
+          press("Enter")
+        );
+      }
+      const first = (await drawerNames())[0];
+      if (first === CHECK_SET) {
+        results.pass(S, "The drawer: elective sets first", `${first}.`);
+      } else {
+        results.fail(
+          S,
+          "The drawer: elective sets first",
+          `The first tile is "${first}".`
+        );
+      }
+      const tile = named(new RegExp(`^${CHECK_SET}, .* offerings?$`), {
+        tag: "button"
+      });
+      if (!(await tabTo(tile, { max: 200 })))
+        throw new Error("The set's tile was not reached with Tab.");
+      await press("Enter", 800);
+      await expectFocus(S, "Picking up a set: focus goes to the grid", {
+        inGrid: true
+      });
+      const open = (await gridCells()).find(isFreeOpen);
+      if (!open) throw new Error("No Open cell to put the set in.");
+      await focusCell(open.key);
+      await press(" ");
+      const label = `${CHECK_SET} (2)`;
+      const end = Date.now() + 15000;
+      let cell = null;
+      while (!cell && Date.now() < end) {
+        cell = (await gridCells()).find((c) => c.name === label);
+        if (!cell) await pause(200);
+      }
+      // Putting down is not said (as for any activity): focus stays on the cell, which reads it.
+      const focused = await focusedCellKey();
+      if (cell && focused === cell.key) {
+        results.pass(
+          S,
+          "Space puts the set down: focus stays on its cell",
+          `Focus on ${cell.key}.`
+        );
+      } else {
+        await shot(S, "Space puts the set down");
+        results.fail(
+          S,
+          "Space puts the set down: focus stays on its cell",
+          cell
+            ? `Focus on ${focused || "no cell"}; the set is in ${cell.key}.`
+            : `No cell reads "${label}".`
+        );
+      }
+      const marked =
+        cell &&
+        (await shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
+          .first()
+          .locator(`[data-cell="${cell.key}"] .flag`)
+          .count()) > 0;
+      if (cell && marked) {
+        results.pass(
+          S,
+          "The cell reads the set and its count, with its mark",
+          `"${label}" in ${cell.key}.`
+        );
+      } else {
+        await shot(S, "An elective set on the grid");
+        results.fail(
+          S,
+          "The cell reads the set and its count, with its mark",
+          cell ? "No mark before the name." : `No cell reads "${label}".`
+        );
+      }
+      await axe(`${S}: an elective set on the grid`);
+      await expectLive(
+        S,
+        "Ctrl+Z takes the set back: it is said",
+        /^Undone: /,
+        () => press("ControlOrMeta+z")
+      );
+    } finally {
+      clearElectives();
+    }
+  });
+}
+
 /** The offerings' list in the file "Download this list" saves: [[heading, ...], [cell, ...]]. */
 function downloadedRows(path) {
   const XLSX = require("xlsx");
@@ -4601,6 +4874,11 @@ async function main() {
         listIntoTable
       );
       await step(
+        "Camp setup",
+        "Programs: Import a list laid into the table",
+        programsListIntoTable
+      );
+      await step(
         "Electives",
         "Import a list and Download this list by keyboard",
         async () => {
@@ -4626,7 +4904,10 @@ async function main() {
       await publish("Generated Schedule", openGenerated);
       await schedulesPage();
     }
-    if (only !== "lists") await electives();
+    if (only !== "lists") {
+      await electives();
+      await electivesOnGrid(openManual);
+    }
     if (!only) await bringInChoices();
   } finally {
     const version = browser.version();

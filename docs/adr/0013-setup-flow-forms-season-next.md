@@ -21,6 +21,9 @@ season form on Weeks; Camp words' Cancel).
    chosen, as the tables' ticks are. The "who can do it" list is saved when the director leaves
    it, not on every move. Leaving a field with nothing changed sends nothing. _Changed
    2026-10-20 (choice 18): "who can do it" is ticks now, each saved the moment it is ticked._
+   _Changed 2026-10-23 (ADR 0015 choice 14): the program card is gone; each program is a row of
+   the shared table, its name and days saved with the row when the director leaves it, its
+   five days still sent together (choice 2)._
 2. **Only the field that changed is sent** (the season, the program, an activity's rules), so a
    change someone else made to another field stays, **except fields the server checks against
    each other, which always go together, as the screen shows them**: the season's first and last
@@ -63,7 +66,8 @@ season form on Weeks; Camp words' Cancel).
    is never written only where nobody can see it. The page doesn't wait for the save before
    moving on, as a table row doesn't.
 6. **Deletes keep their questions.** Delete this program and Delete season stay as buttons, with
-   the questions they had. Switching activities in Activity details asks before dropping a change
+   the questions they had. _Since 2026-10-23 (ADR 0015 choice 14) a program is deleted from its
+   row's trash can, with the same question._ Switching activities in Activity details asks before dropping a change
    only when one is still unsaved, which now means it was refused. _Since choice 19, switching
    is opening another row's details; Close asks the same way._
 7. **The season's Status is gone from the screen (decision 26 (5)).** Planning / Active /
@@ -215,7 +219,8 @@ there.
     cursor goes to the name box of the card that took its place, else the card above, else
     **Add program**, once the season has been read again and the page is no longer busy (Add
     program is disabled while it is). A cancelled or refused delete leaves the cursor on the
-    card's delete button, as for rows.
+    card's delete button, as for rows. _Superseded 2026-10-23 (ADR 0015 choice 14): a program is
+    a table row, so choice 23 covers it; the Programs screen's own live region is gone._
 
 ## Differences from the desktop
 

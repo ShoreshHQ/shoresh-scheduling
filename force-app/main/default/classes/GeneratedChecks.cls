@@ -154,13 +154,27 @@ public with sharing class GeneratedChecks {
     closures.check(at[0], rules.seasonActivity(slot));
   }
 
-  /** An elective, trip, special day or event from an import stays where it is (ADR 0010 §3). */
-  private static void checkNotSetUpKept(String was) {
-    String kind = SlotIds.owner(was).substringBefore(':');
-    if (ScheduleGridRules.NOT_SET_UP_KINDS.contains(kind)) {
-      throw new ShoreshException(
-        SlotIds.owner(was).substringAfter(':') + ' stays where it is.'
-      );
+  /**
+   * An elective, trip, special day or event from an import stays where it is (ADR 0010 §3), and
+   * so does a special event or elective set placed by hand (ADR 0014 slice 4, ADR 0018 slice E5):
+   * named as the day saved it, never by its record Id.
+   */
+  private void checkNotSetUpKept(String was) {
+    String owner = SlotIds.owner(was);
+    if (
+      ScheduleGridRules.NOT_SET_UP_KINDS.contains(owner.substringBefore(':'))
+    ) {
+      throw new ShoreshException(savedName(owner) + ' stays where it is.');
     }
+  }
+
+  /** What the day as saved calls an item, by its identity. */
+  private String savedName(String owner) {
+    for (ScheduleGrid.Item item : day.grid.items) {
+      if (SlotIds.of(item) == owner) {
+        return item.name;
+      }
+    }
+    return owner.substringAfter(':');
   }
 }

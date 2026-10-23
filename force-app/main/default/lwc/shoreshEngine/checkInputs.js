@@ -45,3 +45,44 @@ export function readProgram(entry) {
   );
   return { divisions, setTimeLocations };
 }
+
+const OFFERING = FIELD.Offering;
+
+/** Closed: 0 seats and a limit (repo ADR 0018: 0 is closed, never unlimited). */
+function isClosedOffering(offering) {
+  const seats = offering[OFFERING.Seats];
+  return (
+    !offering[OFFERING.NoSeatLimit] &&
+    seats !== null &&
+    seats !== undefined &&
+    seats !== "" &&
+    Number(seats) === 0
+  );
+}
+
+/**
+ * Where each elective set takes place (ADR 0018 slice E5; desktop engine/electiveOccupancy.js):
+ * the places of its confirmed, open offerings' activities (a proposed or closed offering has no
+ * campers there), each place once, since two offerings at one place are one group's presence
+ * there. offerings: the season's Offering__c records (setup.electives.offerings); activities: the
+ * season's Activity__c records. Returns set Id -> [place Ids], in the offerings' order.
+ */
+export function readElectivePlaces(offerings, activities) {
+  const placeOf = new Map(
+    (activities || []).map((r) => [r.Id, r[FIELD.Activity.Location] || null])
+  );
+  const places = new Map();
+  (offerings || []).forEach((offering) => {
+    const placeId = placeOf.get(offering[OFFERING.Activity]);
+    if (!placeId || offering[OFFERING.Proposed] || isClosedOffering(offering)) {
+      return;
+    }
+    const setId = offering[OFFERING.ElectiveSet];
+    const list = places.get(setId) || [];
+    if (!list.includes(placeId)) {
+      list.push(placeId);
+    }
+    places.set(setId, list);
+  });
+  return places;
+}

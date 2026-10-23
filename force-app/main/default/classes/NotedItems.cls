@@ -1,13 +1,14 @@
 /**
  * What an import noted in a day's grid but didn't set up (ADR 0005 §2, ADR 0006): an item of a
  * kind and name with no record ("not set up yet"). Used by "Set it up" (SpecialSetUp, ADR 0014
- * slice 4) to find a special event's or special day's cells and point them at its record.
+ * slice 4, ADR 0018 slice E5) to find a special event's, special day's or elective set's cells and
+ * point them at its record.
  */
 public with sharing class NotedItems {
   private String kind;
   private String name;
 
-  /** The noted items of a kind ('S', 'D') with this name, spaces and capitals aside. */
+  /** The noted items of a kind ('S', 'D', 'E') with this name, spaces and capitals aside. */
   public NotedItems(String kind, String name) {
     this.kind = kind;
     this.name = loose(name);

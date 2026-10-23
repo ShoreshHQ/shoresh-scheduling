@@ -134,4 +134,28 @@ describe("moves", () => {
       moveEdit(week(), at(0, 0, 1), at(1, 1, 1), (p) => p.group === 0)
     ).toEqual({ refused: REFUSED.AWAY, at: at(0, 0, 1) });
   });
+
+  it("never swaps with an elective set or a special event placed on the grid (ADR 0018 E5)", () => {
+    const placed = [
+      ...ITEMS,
+      { kind: "E", id: "a0X000000000001AAA", name: "Chugim", gone: false },
+      { kind: "S", id: "a0E000000000001AAA", name: "Carnival", gone: false }
+    ];
+    const days = [day("2026-06-29", placed, ["1,2,", "1,5,6"])];
+    expect(moveEdit(days, at(0, 0, 1), at(0, 1, 1), nowhereAway)).toEqual({
+      refused: REFUSED.NO_SWAP
+    });
+    expect(moveEdit(days, at(0, 0, 1), at(0, 1, 2), nowhereAway)).toEqual({
+      refused: REFUSED.NO_SWAP
+    });
+    // A set noted from a file by name stays where it is, as before.
+    const noted = [
+      ...ITEMS,
+      { kind: "E", id: "", name: "Chugim", gone: false }
+    ];
+    const fromFile = [day("2026-06-29", noted, ["1,2,", "1,5,"])];
+    expect(moveEdit(fromFile, at(0, 0, 1), at(0, 1, 1), nowhereAway)).toEqual({
+      refused: REFUSED.FIXED_HERE
+    });
+  });
 });

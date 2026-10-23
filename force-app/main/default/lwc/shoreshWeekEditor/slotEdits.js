@@ -9,11 +9,11 @@
 export const OPEN = "";
 const CARRIES_ON = "^";
 const SET_UP = new Set(["A", "F", "R"]);
-const SET_UP_LATER = new Set(["S", "D"]);
+const SET_UP_LATER = new Set(["S", "D", "E"]);
 
 export function identity(item) {
-  // A special event or day with its record (ADR 0014 slice 4) is that record; one noted from a
-  // file is its name.
+  // A special event or day (ADR 0014 slice 4) or an elective set (ADR 0018 slice E5) with its
+  // record is that record; one noted from a file is its name.
   const byRecord =
     SET_UP.has(item.kind) || (SET_UP_LATER.has(item.kind) && Boolean(item.id));
   return `${item.kind}:${byRecord ? item.id : item.name}`;
@@ -36,6 +36,14 @@ export function isSetTime(slot) {
  */
 export function isMovable(slot, ownPlan = false) {
   return slot.startsWith("A:") || (ownPlan && isSetTime(slot));
+}
+
+/**
+ * Whether a slot holds a special event or an elective set placed on the grid (by its record):
+ * they never swap (desktop useSlotMutations.js), and are not moved or stretched.
+ */
+export function isPlacedOverlay(slot) {
+  return /^[SE]:[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(owner(slot));
 }
 
 /** Whether a slot holds what stays where setup put it: a fixed or recurring activity, but not on a special day's own schedule. */

@@ -11,6 +11,7 @@ import {
   OPEN,
   diffRuns,
   isMovable,
+  isPlacedOverlay,
   placementIn,
   slots,
   staysPut
@@ -24,6 +25,7 @@ export const REFUSED = Object.freeze({
   AWAY: "away",
   SWAP_LONG: "swapLong",
   FIXED_HERE: "fixedHere",
+  NO_SWAP: "noSwap",
   NO_ROOM: "noRoom"
 });
 
@@ -116,6 +118,11 @@ export function moveEdit(days, from, to, isAway, ownPlan = false) {
   }
   if (isAway({ ...from, block: p.first })) {
     return { refused: REFUSED.AWAY, at: from };
+  }
+  if (isPlacedOverlay(q.slot)) {
+    // An elective set or a special event never swaps (desktop useSlotMutations.js; ADR 0018
+    // slice E5): the activity goes to an empty cell instead.
+    return { refused: REFUSED.NO_SWAP };
   }
   if (!isMovable(q.slot, ownPlan)) {
     // Something noted from a file but not set up yet: it stays where it is.

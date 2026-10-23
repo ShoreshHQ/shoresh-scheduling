@@ -73,4 +73,23 @@ describe("c-shoresh-schedule-grid: merged cells", () => {
     expect(drawn.querySelector(".cell-lock")).not.toBeNull();
     expect(drawn.querySelector(".cell-dot")).not.toBeNull();
   });
+
+  it("draws an elective set across bunks as one cell with its mark, no place under it", async () => {
+    const set = (column) =>
+      cell(column, {
+        text: "Chugim (4)",
+        title: "Chugim (4): Elective set",
+        event: false,
+        elective: true,
+        where: null,
+        mergeKey: "E:s1|0|1"
+      });
+    const element = await render([set(0), set(1), set(2)]);
+    const drawn = element.shadowRoot.querySelectorAll("[data-cell]");
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].getAttribute("aria-colspan")).toBe("3");
+    expect(drawn[0].querySelector(".flag")).not.toBeNull();
+    expect(drawn[0].querySelector(".cell-name").textContent).toBe("Chugim (4)");
+    expect(drawn[0].querySelector(".event-where")).toBeNull();
+  });
 });

@@ -420,3 +420,35 @@ describe("worked out again after someone else's change (replan)", () => {
     });
   });
 });
+
+describe("Elective sets placed on the grid (ADR 0018 slice E5)", () => {
+  const SET = {
+    kind: "E",
+    id: "a0X000000000001AAA",
+    name: "Chugim",
+    gone: false
+  };
+  const PLACED = [FLAGPOLE, SWIM, BOATING, SOCCER, SET];
+  const placedWeek = (monday, tuesday) => [
+    day("2026-06-29", PLACED, monday),
+    day("2026-06-30", PLACED, tuesday)
+  ];
+
+  it("are cleared with the activities", () => {
+    const days = placedWeek(["1,5,", "1,,"], ["1,,", "1,,"]);
+    const { runs, stayed } = clearEdit(days, [0]);
+    expect(after(days, runs)[0][0]).toEqual(["F:f1", "", ""]);
+    expect(stayed).toEqual([]);
+  });
+
+  it("are copied to another day, each block on its own", () => {
+    const days = placedWeek(["1,5,5", "1,,"], ["1,,", "1,,"]);
+    const { runs, leftOut } = copyDayEdit(days, 0, [1]);
+    expect(after(days, runs)[1][0]).toEqual([
+      "F:f1",
+      "E:a0X000000000001AAA",
+      "E:a0X000000000001AAA"
+    ]);
+    expect(leftOut).toEqual([]);
+  });
+});

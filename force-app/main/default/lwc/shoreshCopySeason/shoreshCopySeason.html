@@ -1,139 +1,169 @@
 <template>
-  <article class="slds-card slds-card_boundary">
-    <div class="slds-card__header">
-      <h2 class="slds-text-heading_medium" tabindex="-1" data-id="copy-title">
-        {labels.title}
-      </h2>
-    </div>
-    <div class="slds-card__body slds-card__body_inner">
-      <p class="slds-m-bottom_small">{labels.intro}</p>
-      <div class="slds-grid slds-wrap slds-gutters_small">
-        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-          <lightning-input
-            label={labels.name}
-            value={newName}
-            required
-            onchange={handleName}
-          ></lightning-input>
-        </div>
-        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-          <lightning-input
-            class="shoresh-date"
-            type="date"
-            label={labels.start}
-            value={newStart}
-            required
-            onchange={handleStart}
-          ></lightning-input>
-        </div>
+  <!-- The rail: what this page does and to which season, then Cancel and the one main button,
+       which names the result. -->
+  <div class="rail" data-id="rail">
+    <h2
+      class="title"
+      tabindex="-1"
+      aria-label={labels.titleName}
+      data-id="copy-title"
+    >
+      {labels.title}
+      <span class="title-season shoresh-num">{season.Name}</span>
+    </h2>
+    <span class="rail-spacer"></span>
+    <button
+      type="button"
+      class="shoresh-item"
+      data-id="cancel"
+      onclick={handleCancel}
+    >
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="shoresh-item shoresh-item_primary"
+      data-id="copy"
+      onclick={handleCopy}
+      disabled={copyDisabled}
+    >
+      {labels.copy}
+    </button>
+  </div>
+  <div class="shoresh-hairline" role="presentation"></div>
+  <div class="page">
+    <div class="fields">
+      <div class="field">
+        <lightning-input
+          label={labels.name}
+          value={newName}
+          required
+          onchange={handleName}
+        ></lightning-input>
       </div>
-      <template lwc:if={error}>
-        <div
-          class="slds-notify slds-notify_alert slds-alert_error slds-m-top_small"
-          role="alert"
-        >
-          {error}
-        </div>
-      </template>
-      <template lwc:if={weekdayWarning}>
-        <div
-          class="slds-notify slds-notify_alert slds-alert_warning slds-m-top_small"
-          role="status"
-          data-id="weekday-warning"
-        >
-          {weekdayWarning}
-        </div>
-      </template>
-      <template lwc:if={preview}>
-        <h3
-          class="slds-text-heading_small slds-m-top_medium slds-m-bottom_x-small"
-        >
-          {labels.weeks}
-        </h3>
-        <p class="slds-m-bottom_x-small" data-id="new-dates">
-          <lightning-formatted-date-time
-            value={preview.startDate}
-            weekday="long"
-            year="numeric"
-            month="long"
-            day="numeric"
-            time-zone="UTC"
-          ></lightning-formatted-date-time>
-          to
-          <lightning-formatted-date-time
-            value={preview.endDate}
-            weekday="long"
-            year="numeric"
-            month="long"
-            day="numeric"
-            time-zone="UTC"
-          ></lightning-formatted-date-time>
-        </p>
-        <template lwc:if={hasPreviewWeeks}>
-          <table
-            class="slds-table slds-table_cell-buffer slds-table_bordered"
-            aria-label={labels.weeks}
-          >
-            <thead>
-              <tr>
-                <th scope="col">{labels.week}</th>
-                <th scope="col">Was</th>
-                <th scope="col">Will be</th>
-              </tr>
-            </thead>
-            <tbody>
+      <div class="field" data-id="start">
+        <lightning-input
+          class="shoresh-date"
+          type="date"
+          label={labels.start}
+          value={newStart}
+          required
+          onchange={handleStart}
+        ></lightning-input>
+        <template lwc:if={weekdayNote}>
+          <!-- Shown, not refused: the needs-a-look mark and one line. -->
+          <p class="field-note" role="status">
+            <span
+              class="shoresh-look-mark"
+              aria-hidden="true"
+              data-id="weekday-mark"
+            ></span>
+            <span data-id="weekday-warning">{weekdayNote}</span>
+          </p>
+        </template>
+      </div>
+    </div>
+    <template lwc:if={error}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error"
+        role="alert"
+        data-id="error"
+      >
+        {error}
+      </div>
+    </template>
+    <template lwc:if={hasPreviewWeeks}>
+      <!-- Last season's weeks, faint, over the new ones: each column is one week. -->
+      <!-- A long season scrolls sideways: the keyboard can reach and scroll it too. -->
+      <div
+        class="weeks-scroll"
+        tabindex="0"
+        role="region"
+        aria-label={labels.weeks}
+        data-id="weeks-scroll"
+      >
+        <table class="weeks" aria-label={labels.weeks} style={weeksStyle}>
+          <tbody>
+            <tr class="weeks-old" data-id="old-weeks">
+              <th scope="row" class="weeks-season shoresh-num">
+                {season.Name}
+              </th>
               <template for:each={previewWeeks} for:item="week">
-                <tr key={week.key}>
-                  <td>{week.name}</td>
-                  <td>
+                <td key={week.key}>
+                  <span class="week week_old">
+                    <span class="week-name">{week.name}</span>
                     <lightning-formatted-date-time
+                      class="week-date"
                       value={week.oldStartDate}
+                      weekday="short"
+                      month="short"
+                      day="numeric"
                       time-zone="UTC"
                     ></lightning-formatted-date-time>
-                    –
+                  </span>
+                </td>
+              </template>
+            </tr>
+            <tr class="weeks-new" data-id="new-weeks">
+              <th scope="row" class="weeks-season shoresh-num">
+                {newSeasonLabel}
+              </th>
+              <template for:each={previewWeeks} for:item="week">
+                <td key={week.key}>
+                  <span class="week shoresh-raised">
+                    <span class="week-name">{week.name}</span>
                     <lightning-formatted-date-time
-                      value={week.oldEndDate}
-                      time-zone="UTC"
-                    ></lightning-formatted-date-time>
-                  </td>
-                  <td>
-                    <lightning-formatted-date-time
+                      class="week-date"
                       value={week.startDate}
                       weekday="short"
-                      year="numeric"
                       month="short"
                       day="numeric"
                       time-zone="UTC"
                     ></lightning-formatted-date-time>
-                    –
-                    <lightning-formatted-date-time
-                      value={week.endDate}
-                      weekday="short"
-                      year="numeric"
-                      month="short"
-                      day="numeric"
-                      time-zone="UTC"
-                    ></lightning-formatted-date-time>
-                  </td>
-                </tr>
+                  </span>
+                </td>
               </template>
-            </tbody>
-          </table>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+    <template lwc:if={showDates}>
+      <p class="dates" data-id="new-dates">
+        <lightning-formatted-date-time
+          value={preview.startDate}
+          weekday="long"
+          year="numeric"
+          month="long"
+          day="numeric"
+          time-zone="UTC"
+        ></lightning-formatted-date-time>
+        to
+        <lightning-formatted-date-time
+          value={preview.endDate}
+          weekday="long"
+          year="numeric"
+          month="long"
+          day="numeric"
+          time-zone="UTC"
+        ></lightning-formatted-date-time>
+      </p>
+    </template>
+    <section class="what" data-id="comes-along">
+      <h3 class="what-head">{labels.comesAlong}</h3>
+      <ul class="chips">
+        <template for:each={comesAlong} for:item="item">
+          <li key={item.key} class="chip">{item.label}</li>
         </template>
-      </template>
-    </div>
-    <footer class="slds-card__footer">
-      <lightning-button
-        label="Cancel"
-        onclick={handleCancel}
-      ></lightning-button>
-      <lightning-button
-        class="slds-m-left_x-small"
-        variant="brand"
-        label={labels.copy}
-        onclick={handleCopy}
-        disabled={copyDisabled}
-      ></lightning-button>
-    </footer>
-  </article>
+      </ul>
+    </section>
+    <section class="what" data-id="stays-behind">
+      <h3 class="what-head">{labels.staysBehind}</h3>
+      <ul class="chips">
+        <template for:each={staysBehind} for:item="item">
+          <li key={item.key} class="chip chip_stays">{item.label}</li>
+        </template>
+      </ul>
+    </section>
+  </div>
 </template>

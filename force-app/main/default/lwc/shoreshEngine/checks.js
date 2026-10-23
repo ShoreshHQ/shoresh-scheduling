@@ -11,7 +11,7 @@
  *   busy in two time blocks that overlap. Over its weekly limit dots only the sessions past the
  *   limit, the latest in the week (Greg, 2026-10-17); any other rule broken by several placements
  *   dots all of them (twice in a day dots both). Fixed and recurring activities count toward a
- *   place but never get a dot.
+ *   place but never get a dot; so does an elective set, at each place of its offerings.
  * - Still needed: each activity and group short of its weekly minimum ("Swim · Bunk 3: 2 still
  *   needed"). Spread across the week: short of its early-week goal ("… still needed by
  *   Wednesday"). Overlapping: each group's cell (day, time block) where one of its placements
@@ -102,6 +102,9 @@ export function placementsOf(days) {
 
 const isActivity = (p) => p.kind === "A";
 const isSetTime = (p) => p.kind === "F" || p.kind === "R";
+// An elective set placed on the grid (its record's Id), not one noted from a file by name.
+const PLACED_ELECTIVE = /^E:[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
+const isElective = (p) => PLACED_ELECTIVE.test(`${p.kind}:${p.id}`);
 
 /** Placements by a key, in the order met. */
 function groupBy(list, keyOf) {
@@ -331,10 +334,29 @@ function sameDivision(ctx) {
   return flags;
 }
 
+/**
+ * The placements at each place in one time block: each at its own place, and an elective set at
+ * every place its offerings use (ADR 0018 slice E5; desktop computeOverlaps.js), once per group.
+ */
+function byPlace(ctx, here) {
+  const places = groupBy(here, (p) => placeOf(ctx, p));
+  here.filter(isElective).forEach((p) =>
+    (ctx.electivePlaces.get(p.id) || [])
+      .filter((locationId) => ctx.locations.has(locationId))
+      .forEach((locationId) => {
+        if (!places.has(locationId)) {
+          places.set(locationId, []);
+        }
+        places.get(locationId).push(p);
+      })
+  );
+  return places;
+}
+
 function placeCapacity(ctx) {
   const flags = [];
   ctx.occupancy.forEach((here, at) => {
-    groupBy(here, (p) => placeOf(ctx, p)).forEach((list, locationId) => {
+    byPlace(ctx, here).forEach((list, locationId) => {
       const place = ctx.locations.get(locationId);
       const movable = list.filter(isActivity);
       const others = ctx.others("place", locationId, at);
@@ -488,7 +510,9 @@ function stillToPlace(ctx) {
 
 /**
  * Cells filled, of the cells to fill: at camp, not a fixed or recurring activity, not a special
- * event or day (counters and Still to place leave them out, ADR 0014 slice 4), and not a cell
+ * event or day (counters and Still to place leave them out, ADR 0014 slice 4), not an elective
+ * set placed on the grid (ADR 0018 slice E5; desktop: elective cells don't count toward placed;
+ * one noted from a file by name counts as before), and not a cell
  * the director locked empty (Generated Schedule: a Lock on an Open cell keeps it empty).
  */
 function filledCount(ctx) {
@@ -507,6 +531,7 @@ function filledCount(ctx) {
           item.startsWith("R:") ||
           item.startsWith("S:") ||
           item.startsWith("D:") ||
+          PLACED_ELECTIVE.test(item) ||
           (item === OPEN &&
             ctx.isLockedOpen(grp.id, day.dateValue, day.blocks[b].id))
         ) {
@@ -522,7 +547,7 @@ function filledCount(ctx) {
 
 /**
  * The week checked. model: { activities (readActivities), locations (readLocations), divisions
- * and setTimeLocations (readProgram), notFor: activity Id -> group Ids it isn't set up for,
+ * and setTimeLocations (readProgram), electivePlaces (readElectivePlaces), notFor: activity Id -> group Ids it isn't set up for,
  * isAway(groupId, blockId), locked (placement keys the director locked), isLockedOpen(groupId,
  * dateValue, blockId) (a cell locked empty, not counted as to fill), othersAt(kind, id, dayIndex,
  * blockId), otherNamesAt(locationId, dayIndex, blockId) }. words: { t (camp terms),
@@ -553,6 +578,7 @@ export function checkWeek(days, model, words) {
     locations: model.locations || new Map(),
     divisions: model.divisions || new Map(),
     setTimeLocations: model.setTimeLocations || new Map(),
+    electivePlaces: model.electivePlaces || new Map(),
     notFor: (id) => notForSets.get(id) || new Set(),
     isAway: model.isAway || (() => false),
     isLockedOpen: model.isLockedOpen || (() => false),

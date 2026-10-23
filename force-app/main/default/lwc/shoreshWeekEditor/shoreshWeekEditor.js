@@ -2,6 +2,7 @@ import { LightningElement, api } from "lwc";
 import addToManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
 import { failed, refusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
+import { electivesOf, openCount } from "c/shoreshElectiveDetails";
 import {
   activityCards,
   activityGrid,
@@ -57,6 +58,7 @@ import {
   otherProgramsAt,
   reasonFor,
   readActivities,
+  readElectivePlaces,
   readLocations,
   readOtherPrograms,
   readProgram
@@ -109,6 +111,10 @@ function takesTyping(node) {
     node.isContentEditable === true
   );
 }
+
+// What "Set it up" makes from a cell a file noted: a special event or day (ADR 0014 slice 4), or
+// an elective set, which binds the cells by name (ADR 0018 slice E5).
+const SET_UP_HERE = new Set(["S", "D", "E"]);
 
 /** One slot, the same in Daily and Group View. */
 function slotKey(slot) {
@@ -287,6 +293,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   replacedMemo = { of: null, days: new Map() };
   // The season's special events, worked out once per setup.
   eventsMemo = { of: null, list: [] };
+  // The season's elective sets, with their counts and places, worked out once per setup.
+  electivesMemo = { of: null, list: [], places: new Map() };
   // The drawer tile under the pointer or with keyboard focus (its activity is outlined).
   hoverActivityId = null;
   // Picked up from the keyboard, or being dragged: { kind: "activity", id } or
@@ -591,7 +599,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.t,
       this.checkWith,
       this.lockBase,
-      this._queue
+      this._queue,
+      this.electivePlaces
     ];
     const memo = this.checkMemo;
     if (memo.inputs && memo.inputs.every((input, i) => input === inputs[i])) {
@@ -631,6 +640,8 @@ export default class ShoreshWeekEditor extends LightningElement {
         activities: readActivities(draft.activityRecords),
         locations: readLocations(draft.locationRecords),
         ...readProgram(entry),
+        // An elective set takes up its offerings' places (ADR 0018 slice E5).
+        electivePlaces: this.electivePlaces,
         notFor: new Map(
           ((this.draft && this.draft.activities) || []).map((a) => [
             a.id,
@@ -1113,6 +1124,132 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.dragging = { kind: "event", id, name: found ? found.name : "" };
   }
 
+  // ---------- elective sets on the week (ADR 0018 slice E5) ----------
+
+  /**
+   * The season's elective sets, to place ({ id, name, count }), from the season setup
+   * (SeasonSetupController: electives, ElectiveMenus): count is its confirmed, open offerings
+   * (decision 53), what its cell shows ("Chugim (4)").
+   */
+  get electives() {
+    const setup = this.setup || {};
+    const memo = this.electivesMemo;
+    if (memo.of !== setup) {
+      const { sets, offerings } = electivesOf(setup);
+      memo.of = setup;
+      memo.list = sets.map((set) => ({
+        id: set.Id,
+        name: set.Name,
+        count: openCount(
+          offerings.filter((o) => o[FIELD.Offering.ElectiveSet] === set.Id)
+        )
+      }));
+      // Where each set takes place (its offerings' places), for "more groups than fit".
+      memo.places = readElectivePlaces(offerings, setup.activities);
+    }
+    return memo.list;
+  }
+
+  /** Each elective set's places (readElectivePlaces), for the checks. */
+  get electivePlaces() {
+    return this.electives && this.electivesMemo.places;
+  }
+
+  electiveFor(item) {
+    return this.electives.find((e) => `E:${e.id}` === item) || null;
+  }
+
+  /** "Chugim (4)": the set and how many of its offerings are confirmed and open. */
+  electiveLabel(set) {
+    return `${set.name} (${set.count})`;
+  }
+
+  /**
+   * The drawer's elective sets, first, before the activities (mock-up electives-r1 grid-a), and
+   * only when the camp has any: filtered as the activities are.
+   */
+  get electiveTiles() {
+    const typed = loose(this.filter);
+    const word = this.t.s("ElectiveSet");
+    return this.electives
+      .filter((e) => !typed || loose(e.name).includes(typed))
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        words: `${e.count} ${e.count === 1 ? "offering" : "offerings"}`,
+        said: `${e.name}, ${word}, ${e.count} ${e.count === 1 ? "offering" : "offerings"}`
+      }));
+  }
+
+  /** The elective set held: picked up from its tile, or being dragged. */
+  get heldElectiveId() {
+    if (this.picked && this.picked.kind === "elective") {
+      return this.picked.id;
+    }
+    return this.dragging && this.dragging.kind === "elective"
+      ? this.dragging.id
+      : null;
+  }
+
+  handlePickElective(event) {
+    const { id } = event.detail;
+    if (this.heldElectiveId === id) {
+      this.letGo();
+      return;
+    }
+    const found = this.electives.find((e) => e.id === id);
+    // Cells already chosen together: the set goes over them at once, as an event does.
+    const chosen =
+      this.chosen && this.editGrid
+        ? this.editGrid.cells.find((c) => c.slot && this.chosen.keys.has(c.key))
+        : null;
+    if (chosen) {
+      this.placeElective(id, chosen);
+      return;
+    }
+    this.picked = { kind: "elective", id };
+    this.announce(`${found ? found.name : ""} picked up.`);
+    const grid = this.template.querySelector('[data-id="edit-grid"]');
+    if (grid) {
+      grid.focusCell();
+    }
+  }
+
+  handleElectiveDragStart(event) {
+    const { id } = event.detail;
+    const found = this.electives.find((e) => e.id === id);
+    this.dragging = { kind: "elective", id, name: found ? found.name : "" };
+  }
+
+  /**
+   * Puts an elective set over a cell, or the cells it covers (rangeFor), as one Undo step. Each
+   * time block is its own elective time (desktop: a placed elective never spans; plan §2: one per
+   * day, time block and division), so each block holds the set on its own, and bunks side by
+   * side are one cell per block (decision 53.2). Refused as an event is: a fixed or recurring
+   * activity, a bunk not at camp or a locked cell.
+   */
+  placeElective(setId, cell) {
+    const found = this.electives.find((e) => e.id === setId);
+    if (!found || !cell || !cell.slot) {
+      return;
+    }
+    const weekDays = this.schedule.days;
+    const rows = rowsCovered(weekDays, this.rangeFor(cell)).sort(
+      (a, b) => a.day - b.day || a.group - b.group
+    );
+    const result = eventRuns(
+      weekDays,
+      rows,
+      `E:${setId}`,
+      {
+        isAway: (slot) => this.isAwaySlot(slot),
+        isLocked: (slot) => this.isLockedSlot(slot)
+      },
+      true
+    );
+    this.commitPlaced(result, rows, found.name, cell);
+  }
+
   /**
    * The cells an event put down on a cell (or typed into it) covers: the cells chosen together
    * when the cell is one of them, else the cells drawn as one with it (an event side by side),
@@ -1163,6 +1300,15 @@ export default class ShoreshWeekEditor extends LightningElement {
       isAway: (slot) => this.isAwaySlot(slot),
       isLocked: (slot) => this.isLockedSlot(slot)
     });
+    this.commitPlaced(result, rows, found.name, cell);
+  }
+
+  /**
+   * An event's or elective set's runs (eventRuns) made as one Undo step, or why not, said. The
+   * cell keeps focus, or the cell it is now drawn as one with.
+   */
+  commitPlaced(result, rows, name, cell) {
+    const weekDays = this.schedule.days;
     if (result.refused) {
       const at = result.at;
       if (result.refused === "locked") {
@@ -1183,7 +1329,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (
       this.commit(
         result.runs,
-        `Placed ${found.name} · ${this.rangeName(rows)}`,
+        `Placed ${name} · ${this.rangeName(rows)}`,
         cell.key
       )
     ) {
@@ -1258,15 +1404,24 @@ export default class ShoreshWeekEditor extends LightningElement {
       placement(day, cell.slot.group, cell.slot.block).slot,
       day
     );
-    if (!item || (item.kind !== "S" && item.kind !== "D")) {
+    if (!item || !SET_UP_HERE.has(item.kind)) {
       return null;
     }
     return {
       kind: item.kind,
       name: item.name,
       text: `${item.name} isn't set up yet`,
-      label: `Set up ${item.name} as ${item.kind === "S" ? "an event" : `a ${this.t.sIn("SpecialDay")}`}`
+      label: `Set up ${item.name} as ${this.setUpAs(item.kind)}`
     };
+  }
+
+  /** "an event", "a special day", "an elective set": what Set it up makes, in the camp's words. */
+  setUpAs(kind) {
+    if (kind === "S") {
+      return "an event";
+    }
+    const word = this.t.sIn(kind === "E" ? "ElectiveSet" : "SpecialDay");
+    return `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
   }
 
   /** A press on "Set it up" keeps focus on the cell, so the offer stays while it works. */
@@ -1335,6 +1490,15 @@ export default class ShoreshWeekEditor extends LightningElement {
           this.rainDotFor(cell.slot)
         )
       };
+      if (cell.elective) {
+        // "Chugim (4)": the set as setup has it now, and its confirmed, open offerings
+        // (decision 53; mock-up electives-r1 grid-a).
+        const set = this.electiveFor(cell.electiveKey);
+        if (set) {
+          result.text = this.electiveLabel(set);
+          result.title = `${result.text}: ${this.t.s("ElectiveSet")}`;
+        }
+      }
       if (cell.event) {
         // An event's place, under its name (mockup placed.html: "Carnival / Main field").
         const event = this.eventFor(cell.eventKey);
@@ -1573,6 +1737,13 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (event) {
       return event.name;
     }
+    const set = this.electiveFor(owner(slot));
+    if (set) {
+      return set.name;
+    }
+    if (owner(slot).startsWith("E:")) {
+      return `${this.t.s("ElectiveSet")} (removed)`;
+    }
     return owner(slot).startsWith("S:")
       ? `${this.t.s("SpecialEvent")} (removed)`
       : `${this.t.s("Activity")} (removed)`;
@@ -1735,6 +1906,20 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (awayHere) {
       return this.marked(options);
     }
+    // The season's elective sets first, as in the drawer (mock-up electives-r1 grid-a; desktop
+    // CellInlineEditor offers them), each with its mark; a week's, not a special day's or
+    // event's own schedule.
+    (this.ownPlan ? [] : this.electives)
+      .filter((e) => !typed || loose(e.name).includes(typed))
+      .forEach((e) =>
+        options.push({
+          key: `elective-${e.id}`,
+          kind: "elective",
+          label: this.electiveLabel(e),
+          elective: e,
+          setMark: true
+        })
+      );
     forGroup.forEach((a) =>
       options.push({ key: a.id, kind: "activity", label: a.name, activity: a })
     );
@@ -1763,6 +1948,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (
       name &&
       !this.events.some((e) => loose(e.name) === typed) &&
+      (this.ownPlan || !this.electives.some((e) => loose(e.name) === typed)) &&
       !((this.draft && this.draft.activities) || []).some(
         (a) => loose(a.name) === typed
       )
@@ -1884,6 +2070,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     if (option.kind === "event") {
       this.placeEvent(option.event.id, cell);
+      return;
+    }
+    if (option.kind === "elective") {
+      this.placeElective(option.elective.id, cell);
       return;
     }
     let activity = option.activity;
@@ -2240,6 +2430,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     if (item.startsWith("S:")) {
       const event = this.eventFor(item);
       return { kind: "S", id: item.slice(2), name: event ? event.name : "" };
+    }
+    if (item.startsWith("E:")) {
+      const set = this.electiveFor(item);
+      return { kind: "E", id: item.slice(2), name: set ? set.name : "" };
     }
     const activity = this.activityFor(item);
     return {
@@ -3904,6 +4098,10 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.placeEvent(what.id, cell);
       return;
     }
+    if (what.kind === "elective") {
+      this.placeElective(what.id, cell);
+      return;
+    }
     if (what.kind === "activity") {
       const reason = this.lockedReason(cell.slot);
       if (reason) {
@@ -4041,6 +4239,9 @@ export default class ShoreshWeekEditor extends LightningElement {
         return `Longer ${this.t.pIn("Activity")} don't swap.`;
       case REFUSED.FIXED_HERE:
         return `${this.nameOf(placement(day, slot.group, slot.block).slot, day)} stays where it is.`;
+      case REFUSED.NO_SWAP:
+        // The desktop's words (useSlotMutations.js): elective and event cells never swap.
+        return "Can’t swap with an elective or an event. Move it to an empty cell instead.";
       default:
         return `${name} doesn't fit there.`;
     }

@@ -369,16 +369,16 @@
                 ></c-shoresh-camp-labels>
               </template>
               <template lwc:if={next.campWords}>
-                <div
-                  class="slds-border_top slds-m-top_large slds-p-top_medium slds-text-align_right"
-                >
-                  <lightning-button
-                    variant="brand"
-                    label={next.campWords.label}
-                    data-id="next"
-                    data-next={next.campWords.key}
-                    onclick={handleNext}
-                  ></lightning-button>
+                <div class="setup-list">
+                  <div class="next">
+                    <lightning-button
+                      variant="brand"
+                      label={next.campWords.label}
+                      data-id="next"
+                      data-next={next.campWords.key}
+                      onclick={handleNext}
+                    ></lightning-button>
+                  </div>
                 </div>
               </template>
             </div>
@@ -456,75 +456,63 @@
                 </div>
               </div>
 
-              <!-- Programs -->
+              <!-- Programs: the shared setup table (programs.png, wiki decision 56) -->
               <div class={shown.programs} data-screen="programs">
-                <div
-                  class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small"
-                >
-                  <h2
-                    class="slds-text-heading_medium slds-col"
-                    tabindex="-1"
-                    data-heading
-                  >
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                     {labels.screens.programs}
                   </h2>
-                  <div class="slds-col slds-grow-none">
-                    <lightning-button
-                      data-id="add-program"
-                      label={labels.addProgram}
-                      icon-name="utility:add"
-                      onclick={handleAddProgram}
-                      disabled={busy}
-                    ></lightning-button>
-                  </div>
-                </div>
-                <div class="slds-m-bottom_small">
+                  <span class="rail-count" data-id="count"
+                    ><b class="shoresh-num">{counts.programs.count}</b
+                    >{counts.programs.noun}</span
+                  >
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
                   <c-shoresh-list-import
+                    class="rail-import"
                     data-id="programs-list-import"
+                    variant="rail"
                     screen-key="programs"
                     setup={setup}
                     terms={terms}
                     onimported={handleImported}
+                    onlistopen={handleListOpen}
                   ></c-shoresh-list-import>
                 </div>
-                <template for:each={programs} for:item="item">
-                  <c-shoresh-program
-                    key={item.key}
-                    before-week-off={beforeWeekOff}
-                    show="program"
-                    entry={item.entry}
-                    terms={terms}
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-list list_narrow">
+                  <c-shoresh-editable-table
+                    data-id="programs"
+                    title={labels.screens.programs}
+                    show-columns
+                    object-api-name={objects.Program}
+                    flag-same-names
+                    columns={programColumns}
+                    rows={programRecords}
+                    add-label={labels.addProgram}
+                    empty-message={labels.noPrograms}
+                    new-row-defaults={programDefaults}
                     busy={busy}
                     onsave={handleSaveRecords}
                     ondelete={handleDeleteRecord}
-                    onnavigate={handleNavigate}
-                  ></c-shoresh-program>
-                </template>
-                <div
-                  class="slds-assistive-text"
-                  aria-live="polite"
-                  data-id="programs-announce"
-                >
-                  {programsAnnouncement}
+                  ></c-shoresh-editable-table>
+                  <template lwc:if={next.programs}>
+                    <div class="next">
+                      <lightning-button
+                        variant="brand"
+                        label={next.programs.label}
+                        data-id="next"
+                        data-next={next.programs.key}
+                        onclick={handleNext}
+                      ></lightning-button>
+                    </div>
+                  </template>
                 </div>
-                <template lwc:if={hasNoPrograms}>
-                  <c-shoresh-empty-state
-                    title={labels.noPrograms}
-                  ></c-shoresh-empty-state>
-                </template>
-                <template lwc:if={next.programs}>
-                  <div
-                    class="slds-border_top slds-m-top_large slds-p-top_medium slds-text-align_right"
-                  >
-                    <lightning-button
-                      variant="brand"
-                      label={next.programs.label}
-                      data-id="next"
-                      data-next={next.programs.key}
-                      onclick={handleNext}
-                    ></lightning-button>
-                  </div>
-                </template>
               </div>
 
               <!-- Divisions -->

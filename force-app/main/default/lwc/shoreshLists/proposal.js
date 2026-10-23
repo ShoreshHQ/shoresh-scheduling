@@ -946,15 +946,21 @@ function finishRepeats(read) {
 }
 
 /**
- * A new row the director left out (Leave out), settled before rain plans are resolved: a row
- * whose rain plan names it then adds that activity as by hand (or waits on a question), never
- * links to a row that won't be saved (PR 127 review).
+ * A new row the director left out (Leave out), or one the camp deleted before and has not
+ * brought back, settled before rain plans are resolved: a row whose rain plan names it then
+ * adds that activity as by hand (or waits on a question), or, for one deleted, is saved
+ * without it; never links to a row that won't be saved (PR 127 review).
  */
 function leaveOutSkipped(leads, screen, answers, deletions) {
   leads
     .filter((r) => usable(r) && !r.open && !r.existing)
-    .filter((r) => !deletedRow(r, screen, deletions).gone)
     .forEach((r) => {
+      if (deletedRow(r, screen, deletions).gone) {
+        // Deleted before and not brought back: never saved, so never linked to either.
+        r.leftOut = true;
+        r.deletedBefore = true;
+        return;
+      }
       const skip = skipKey(screen.key, {
         name: r.name,
         programName: r.program ? r.program.name : null,
@@ -973,7 +979,7 @@ function leaveOutSkipped(leads, screen, answers, deletions) {
  * makes the rows naming it wait too). A plan naming nothing is added as by hand; untick it
  * (answer "skip") and the rows naming it are saved without it (Greg, 2026-10-17).
  */
-function resolveRainPlans(read, leads, column, setup, answers) {
+function resolveRainPlans(read, leads, column, setup, answers, gone) {
   // Questions from every pass: an answer that leaves its row out still shows (and can change).
   const pairs = new Map();
   for (let pass = 0; pass <= leads.length; pass++) {
@@ -1001,6 +1007,25 @@ function resolveRainPlans(read, leads, column, setup, answers) {
     }
   }
   refuseOutdoorRainPlans(leads, column, setup);
+  // An activity the camp deleted before is not added again (decision 45): the row is saved
+  // without it, as a deleted place is (leaveOutDeletedPlaces), and it is listed to bring back.
+  const deleted = new Map();
+  leads.filter(usable).forEach((r) => {
+    const target = (r.targets || {})[column.key];
+    const key =
+      target && target.add && deletedAs(gone, "Activity", "", target.add);
+    if (key) {
+      delete r.values[column.key];
+      delete r.targets[column.key];
+      r.droppedPlan = target.add;
+      deleted.set(key, {
+        key,
+        kind: "Activity",
+        name: target.add,
+        program: ""
+      });
+    }
+  });
   const added = new Set();
   leads.filter(usable).forEach((r) => {
     const target = (r.targets || {})[column.key];
@@ -1019,7 +1044,8 @@ function resolveRainPlans(read, leads, column, setup, answers) {
   });
   return {
     pairs: [...pairs.values()].sort((x, y) => x.id.localeCompare(y.id)),
-    adds: adds.adds
+    adds: adds.adds,
+    deleted: [...deleted.values()]
   };
 }
 
@@ -1238,8 +1264,8 @@ export function listProposal(input) {
   leaveOutSkipped(leads, screen, answers, deletions);
   const rain = used.find(({ column }) => column.ref === "activity");
   const rainPlans = rain
-    ? resolveRainPlans(read, leads, rain.column, setup, answers)
-    : { pairs: [], adds: [] };
+    ? resolveRainPlans(read, leads, rain.column, setup, answers, deletions.gone)
+    : { pairs: [], adds: [], deleted: [] };
   // With no rain plan column, a row still saves its activity with the rain plan it has.
   const rainColumn = (screen.columns || []).find((c) => c.ref === "activity");
   if (!rain && rainColumn) {
@@ -1268,7 +1294,8 @@ export function listProposal(input) {
     ...sets.deleted,
     ...offered.deleted,
     ...divisions.deleted,
-    ...programRefs.deleted
+    ...programRefs.deleted,
+    ...rainPlans.deleted
   ]);
   result.broughtBack = broughtBackAdds(result, deletions);
   return result;
@@ -1394,7 +1421,9 @@ function deletedOfList(result, deletedRefs) {
       name: row.name,
       program: result.screen.scope ? row.programName || "" : ""
     }));
-  deleted.push(...deletedRefs);
+  deletedRefs
+    .filter((d) => !deleted.some((x) => x.key === d.key))
+    .forEach((d) => deleted.push(d));
   return deleted;
 }
 
@@ -1519,7 +1548,7 @@ function describeRow(r, used, screen, setup, answers, deletions) {
   if (r.problems.length) {
     return { ...row, status: "unreadable" };
   }
-  if (r.leftOut && !r.skipped) {
+  if (r.leftOut && !r.skipped && !r.deletedBefore) {
     return {
       ...row,
       status: "leftOut",

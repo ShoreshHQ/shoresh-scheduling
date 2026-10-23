@@ -18,10 +18,12 @@ public with sharing class ScheduleGridRules {
   };
   // Kinds that point at a record once one is set up in Shoresh, and are noted by name until then
   // (an import's "not set up yet"): a special event placed on the grid, or set up from a file
-  // (ADR 0014 slice 4); a special day set up from a file.
+  // (ADR 0014 slice 4); a special day set up from a file; an elective set placed on the grid, or
+  // bound to an imported cell by name (ADR 0018 slice E5).
   public static final Set<String> SET_UP_LATER_KINDS = new Set<String>{
     'S',
-    'D'
+    'D',
+    'E'
   };
 
   private static final Pattern ITEM_NUMBER = Pattern.compile('[0-9]{1,6}');

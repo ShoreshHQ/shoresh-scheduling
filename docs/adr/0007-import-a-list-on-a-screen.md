@@ -323,7 +323,10 @@ Every question, answer and refusal above stays; what moves is said here.
       location); pressed again, it is back. A row whose rain plan names it, new or a Change,
       treats it as any row not saved (§5): the activity is added as by hand (in Also adding,
       which can be unticked), so Save never refers to a row that isn't saved; its repeats are left out
-      with it. It keeps the cursor. It is an answer for this import
+      with it. A row the camp deleted before and has not brought back is settled
+      the same way first, but its activity is not added again (decision 45): a row whose rain
+      plan names it, in the list or not, is saved without that rain plan ("no Rain plan" in the
+      summary), and the activity is listed to bring back. It keeps the cursor. It is an answer for this import
       only (`skip|…` in `shoreshLists` `skipKey`), never remembered: it is neither a question
       nor a similar name, so `listPlan` neither remembers nor forgets it. A camp workbook
       (Roots) has no Leave out: its sheets are read in order, each against what the ones before
@@ -340,12 +343,13 @@ Every question, answer and refusal above stays; what moves is said here.
     **Saved** and what was added and changed, with **Undo this import** and **Close**, and the
     screen's own table comes back with the rows in it, where they live. The Electives list's
     camper-choices file still says so and offers **Bring in choices** (plan §6.2).
-    No colour of the earlier palette (bronze) is left in the panel; on Programs and Roots, where
-    there is no rail, the same panel is its own piece. Checked by `shoreshListImport.test.js`
+    No colour of the earlier palette (bronze) is left in the panel; on Roots, where there is no
+    rail, the same panel is its own piece (Programs has had the rail since ADR 0015 choice 14). Checked by `shoreshListImport.test.js`
     ("laid into the screen's own table": sections, counts, kinds, crossed-out values and what is
     read, the corner, Leave out and its cursor, what the page is told, the Columns button, axe),
     `lists.test.js` (Leave out: not saved, nothing only it adds, not remembered; a rain plan
     naming it, new or changed, links to the activity added instead),
+    `deleted.test.js` (a rain plan naming a deleted activity: saved without it, nothing broken),
     `shoreshCampSetup.test.js` (the rail and table put away while open and reviewing, and back,
     also when another season or camp is picked while a file is reviewed),
     and in the test org by `scripts/a11y-browser-check.mjs` (Import a list on Groups by keyboard:

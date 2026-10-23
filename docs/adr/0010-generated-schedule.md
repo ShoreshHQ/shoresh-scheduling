@@ -1344,6 +1344,26 @@ ADR 0014 choices 19 to 25 (Special Events slice 4; desktop ADRs
 Checked by `c/shoreshEngine` `specials.test.js` and `WeekSpecialsTest`
 (`generatedScheduleIsSentThemToo`).
 
+## Choices (elective sets, 2026-10-23)
+
+ADR 0018 choices 20 to 27 (Electives slice E5; desktop `buildSchedule.js`, which keeps an
+elective cell and registers its offerings' places, `engine/electiveOccupancy.js`):
+
+1. **A placed elective set is kept like a lock**, as a placed event is (above): a full build, Try
+   another and Start over keep it where it is, never fill over it, and never count it as a cell to
+   fill. The server refuses a build that changes it, by its name ("Chugim stays where it is.";
+   `GeneratedChecks` now names a kept event the same way, not by its record Id). Hand edits place,
+   clear and lock it as on Manual Build (ADR 0008 part 11).
+2. **It takes up its offerings' places**: the screen passes the season's offerings
+   (`electiveOfferings`, from the season setup); the engine reads each set's places
+   (`readElectivePlaces`: its confirmed, open offerings' activities' places, each once) and, for
+   every bunk holding the set, counts it at those places (`week.js keepRun`), so nothing else is
+   sent there that wouldn't fit without bending "the place" (the last rule to give way), and the
+   check dots what doesn't (`checks.js placeCapacity`). The set itself never carries a dot.
+
+Checked by `c/shoreshEngine` `electives.test.js` and `ElectivesOnGridTest`
+(`aGeneratedBuildKeepsTheSetAndNeverPlacesOne`).
+
 ## Choices that are hard to undo after release
 
 None in G1 or G3: no objects, fields, picklist values or Apex. Locks are stored in G4 (grid v2).

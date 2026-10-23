@@ -1,96 +1,108 @@
 <template>
-  <article class="slds-card slds-card_boundary">
-    <div class="slds-card__header slds-grid slds-grid_vertical-align-center">
-      <h2 class="slds-text-heading_medium" tabindex="-1" data-heading>
-        {title}
-      </h2>
-      <c-shoresh-saved-mark class="slds-m-left_small"></c-shoresh-saved-mark>
-    </div>
-    <div class="slds-card__body slds-card__body_inner">
-      <template lwc:if={readOnly}>
-        <div
-          class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small"
-          role="status"
-          data-id="read-only"
-        >
-          {blockedReason}
-        </div>
-      </template>
-      <template lwc:if={error}>
-        <div
-          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
-          role="alert"
-        >
-          {error}
-        </div>
-      </template>
-      <table
-        class="slds-table slds-table_cell-buffer slds-table_bordered"
-        aria-label={title}
+  <!-- The rail (the setup screens' grammar): how many words are the camp's own, then Saved.
+       The screen's name is read out; the menu shows it. -->
+  <div class="rail" data-id="rail">
+    <h2 class="slds-assistive-text" tabindex="-1" data-heading>Camp words</h2>
+    <span class="rail-count" data-id="count"
+      ><b class="shoresh-num">{changedCount}</b> changed</span
+    >
+    <span class="rail-spacer"></span>
+    <c-shoresh-saved-mark class="rail-saved"></c-shoresh-saved-mark>
+  </div>
+  <div class="shoresh-hairline" role="presentation"></div>
+  <div class="list">
+    <template lwc:if={readOnly}>
+      <p class="note" role="status" data-id="read-only">{blockedReason}</p>
+    </template>
+    <template lwc:if={error}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+        role="alert"
       >
-        <thead>
-          <tr>
-            <th scope="col">Standard word</th>
-            <th scope="col">Your word (one)</th>
-            <th scope="col">Your word (more than one)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template for:each={view} for:item="row">
-            <tr key={row.term}>
-              <td>{row.modelSingular} / {row.modelPlural}</td>
-              <td>
-                <lightning-input
-                  label={row.modelSingular}
-                  variant="label-hidden"
-                  value={row.singular}
-                  max-length="80"
-                  data-term={row.term}
-                  data-field="singular"
-                  onchange={handleChange}
-                  onfocusout={handleLeave}
-                  onkeydown={handleKey}
-                  disabled={readOnly}
-                ></lightning-input>
-                <template lwc:if={row.singularError}>
-                  <div
-                    class="slds-form-element__help slds-text-color_error"
-                    role="alert"
-                    data-error={row.term}
-                    data-field-error="singular"
-                  >
-                    {row.singularError}
-                  </div>
-                </template>
-              </td>
-              <td>
-                <lightning-input
-                  label={row.modelPlural}
-                  variant="label-hidden"
-                  value={row.plural}
-                  max-length="80"
-                  data-term={row.term}
-                  data-field="plural"
-                  onchange={handleChange}
-                  onfocusout={handleLeave}
-                  onkeydown={handleKey}
-                  disabled={readOnly}
-                ></lightning-input>
-                <template lwc:if={row.pluralError}>
-                  <div
-                    class="slds-form-element__help slds-text-color_error"
-                    role="alert"
-                    data-error={row.term}
-                    data-field-error="plural"
-                  >
-                    {row.pluralError}
-                  </div>
-                </template>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
-  </article>
+        {error}
+      </div>
+    </template>
+    <template lwc:if={loaded}>
+      <!-- The column names, for the eye: every box is named on its own. -->
+      <div class="words-head" aria-hidden="true">
+        <span>Standard</span><span>Your word</span><span></span>
+      </div>
+      <template for:each={sections} for:item="section">
+        <section
+          key={section.key}
+          class="words-section"
+          data-section={section.key}
+        >
+          <h3 class="section-head">{section.title}</h3>
+          <ul class="rows">
+            <template for:each={section.rows} for:item="row">
+              <li
+                key={row.term}
+                class="row shoresh-raised"
+                data-term={row.term}
+              >
+                <span class="standard" data-id="standard"
+                  >{row.modelSingular}</span
+                >
+                <span class="field">
+                  <input
+                    type="text"
+                    class={row.singularClass}
+                    aria-label={row.modelSingular}
+                    placeholder={row.modelSingular}
+                    value={row.singular}
+                    maxlength="80"
+                    data-term={row.term}
+                    data-field="singular"
+                    oninput={handleChange}
+                    onfocusout={handleLeave}
+                    onkeydown={handleKey}
+                    disabled={readOnly}
+                  />
+                  <template lwc:if={row.singularError}>
+                    <span
+                      class="field-error"
+                      role="alert"
+                      data-error={row.term}
+                      data-field-error="singular"
+                      >{row.singularError}</span
+                    >
+                  </template>
+                </span>
+                <span class="field">
+                  <template lwc:if={row.own}>
+                    <!-- The plural, guessed: words at rest, a box under the pointer or the
+                         cursor, typed over where the guess is wrong. -->
+                    <input
+                      type="text"
+                      class={row.pluralClass}
+                      aria-label={row.pluralLabel}
+                      placeholder={row.guess}
+                      value={row.plural}
+                      maxlength="80"
+                      data-term={row.term}
+                      data-field="plural"
+                      oninput={handleChange}
+                      onfocusout={handleLeave}
+                      onkeydown={handleKey}
+                      disabled={readOnly}
+                    />
+                    <template lwc:if={row.pluralError}>
+                      <span
+                        class="field-error"
+                        role="alert"
+                        data-error={row.term}
+                        data-field-error="plural"
+                        >{row.pluralError}</span
+                      >
+                    </template>
+                  </template>
+                </span>
+              </li>
+            </template>
+          </ul>
+        </section>
+      </template>
+    </template>
+  </div>
 </template>

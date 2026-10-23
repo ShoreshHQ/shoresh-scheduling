@@ -400,6 +400,10 @@
             events={eventTiles}
             events-heading={eventsHeading}
             picked-event-id={heldEventId}
+            electives={electiveTiles}
+            picked-elective-id={heldElectiveId}
+            onpickelective={handlePickElective}
+            onelectivedragstart={handleElectiveDragStart}
             onfilter={handleFilter}
             onpickactivity={handlePickActivity}
             onactivitydragstart={handleActivityDragStart}
@@ -498,6 +502,13 @@
                   ><svg class="flag" viewBox="0 0 12 12" aria-hidden="true">
                     <path d="M3 10.5V1.75"></path>
                     <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg></template
+                ><template lwc:elseif={option.setMark}
+                  ><svg class="flag" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M6 11V6.5"></path>
+                    <path d="M6 6.5 2.5 2.5"></path>
+                    <path d="M6 6.5l3.5-4"></path>
+                    <path d="M2.5 5V2.5H5"></path>
+                    <path d="M7 2.5h2.5V5"></path></svg></template
                 >{option.label}</span
               >
               <template lwc:if={option.tag}>
