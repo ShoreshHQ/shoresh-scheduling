@@ -138,6 +138,9 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     disagreement questions first with an amber edge, as the desktop's hold lane; answered cards
     fold to "✓ answer" with **Change**); **Use this setup**; then the summary (added, changed as
     chosen, left out for now, not set up yet, good to know) and **Continue** to Roots.
+    _Redrawn in the design system (2026-10-23, wiki decision 56, ADR 0015 choice 15): the
+    preview and the review are now one page, and the summary is the same page after Add. Every
+    question, answer, refusal and save above is unchanged; see choice 22._
 
 14. **Fixes after PR #15's review, and Greg's answers (2026-10-16), in a follow-up PR:**
     - **A group is its division and its name.** "Bunk 1" in Juniors and "Bunk 1" in Seniors are
@@ -316,7 +319,9 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       until the director undid their own delete). The rest of the list saves; the summary
       says "<row> · no location" (or "unchanged location").
     - **Shown, never silent**: both screens list them under "Deleted before; not brought back",
-      each with **Bring back** (one click). Bring back answers the key `back`: the item is then
+      each with **Bring back** (one click). _(Import last year since choice 22: on its one page
+      they sit with what is not set up yet, "Deleted before: Riflery" and Bring back; the page
+      after Add still lists them under "Deleted before; not brought back".)_ Bring back answers the key `back`: the item is then
       added like any other, and the save forgets the deletion (`forget`). The summary of Import
       last year lists what stayed out.
     - Names compare as similar names do (`foldName`: case, spaces and punctuation ignored).
@@ -337,7 +342,8 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     - **Bring back keeps the cursor on the way** (WCAG 2.4.3): the button goes with the item,
       so the cursor moves to the question it opened on that screen (its division, a new
       program's days, a time block's times), else the next Bring back still listed (else the
-      one before it), else the step's main button (Review on Import last year, Save on a list).
+      one before it), else the step's main button (Add on Import last year since choice 22, while
+      it can be pressed, else the screen's heading; Save on a list).
     - **A deleted division's groups go with it**: each is remembered as a deleted group of its
       program (`deleted|Group|<program>|<group>`), so Import last year and Import a list leave
       it out and list it, as a group deleted by itself.
@@ -397,6 +403,66 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
       `ImportSetupSavesTest` (60 activities' guesses inside the same bounds), and in the test org
       by `scripts/a11y-browser-check.mjs` (the mark reached by Tab, opened, Escape, Looks right
       said and the cursor kept).
+
+22. **One page, in the design system** (Greg, wiki decision 56, 2026-10-23: the approved
+    mock-ups `design-research/screens-r1` import-pick, import-review-a, chosen over one question
+    at a time, and import-done; ADR 0015 choice 15 has the look). Every behaviour above stays:
+    the questions and their answers (including Leave it out for now), remembered answers,
+    guessed marks (choice 21), things deleted stay deleted with Bring back (choice 20), the
+    version, the all-or-none save and Undo. What moves:
+    - **Three states, one screen.** The drop well ("Drop last year's files", **Choose files**,
+      ".xlsx · .xls · .csv", several files at once as before); then **one page** where the
+      preview and the review were two steps; then the same page after the save. The rail
+      holds **‹ Roots** (named "Back to Roots"), the screen's name (its heading), the first
+      file's name and "+ N" for the rest, and on the right **Start again** and the main
+      button, or after the save **Undo this import** and **Done** (back to Roots).
+    - **Check these first** comes first: every question, the preview's and the review's, one
+      raised row each in the engine's order (similar names first, then the held questions,
+      then the rest), with the needs-a-look corner until it is answered. The answers sit in
+      the row as a set: the one chosen is pressed and raised (`aria-pressed`), and choosing
+      another changes it, so the old "✓ answer" fold and **Change** are gone. An answer's
+      reason (the old line under each button) is its tooltip and is read with its name. A
+      row answered from memory says **Remembered** (the separate "N answers remembered" line
+      is gone). The program and division a file needs are dropdowns in their rows; one
+      Shoresh could choose itself (preselected) is not a question and is listed lower, under
+      the old headings ("Programs for these bunks", "Unit for each new bunk"), still
+      changeable.
+    - **Comes in**: quiet counts, one tile per kind the save will add (bunks, units, time
+      blocks, activities, places, fixed and recurring activities, programs, weeks filled in
+      from the season's dates), counted from the plan the save would send (records with no
+      Id). Each tile opens into its names under the tiles (`aria-expanded`), and closes again
+      (Greg took the recommendation: counts, each opening into its names). The read-only
+      chips of everything found, "already set up" included, are gone from the page: only what
+      is added is counted, and what changes is a question in Check these first.
+    - **The main button says what happens**: "Add 26" (the tiles' total) once every question
+      is answered; "N questions left", not pressable, until then; "Use this setup" when
+      nothing new is added (a version only, or answers only).
+    - **Last year's schedule**: each version as a row with a small picture of its first day
+      (a column per group, a row per time block, at most eight each; set-time cells in the
+      primary, activities as wells, special days, events, electives and trips dashed;
+      decoration only, hidden from screen readers) beside its week (and program) and "Kept as
+      a version, Imported from <file>". The week itself is still chosen by its question.
+    - **Not set up yet**: the noted items as dashed chips, and things deleted before as
+      "Deleted before: <name> · <kind>" with **Bring back**. **Files**: each file's pages and
+      its layout dropdown; a file read without confidence carries the corner until the
+      director picks its layout. **Good to know** last.
+    - **After Add**: **Added N** as tiles from the save's own counts (the version is not a
+      tile), **Changed, as you chose** as tiles, **Last year's schedule** with "Open it on
+      Schedules" as words (the mock-up's "Open in Manual Build" link is not built: the import
+      screen cannot open another screen, and a version is looked at on Schedules, ADR 0005),
+      the placements not in the version, left out for now, deleted before, not set up yet,
+      and good to know. Undo is on the rail, confirmed as before; once undone, its message
+      shows at the top and the cursor goes to **Done**.
+    - **The cursor** (WCAG 2.4.3): opening the screen puts it on the heading (unchanged);
+      files read, on the first open question's first answer, else Add; an answer keeps it
+      on the answer pressed (or, if the answer took its row away, the next open question);
+      Bring back as choice 20 says; Add, on the "Added" heading; Start again, the heading.
+    - Checked by `shoreshImport.test.js` (the drop well and its rail; one page with the
+      questions first and their corners; an answer pressed and changed; Comes in counts and
+      their names; Add's words; the preselected dropdowns listed lower; the cursor; axe on
+      each state) and, in the test org, by `scripts/a11y-browser-check.mjs` (Import last
+      year from Roots by keyboard: heading, files chosen, the first question, a choice kept
+      pressed, a count opened, Start again and back to Roots, axe; nothing imported).
 
 ## Differences from the desktop (settled with Greg, 2026-10-16)
 
