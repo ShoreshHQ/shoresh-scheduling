@@ -97,6 +97,13 @@ function buttonNamed(element, label, within = element.shadowRoot) {
   );
 }
 
+/** The rail's main button: it says what saving does ("Add 2"). */
+const saveOf = (element) => $(element, 'button[data-id="save"]');
+const textOf = (node) => node.textContent.replace(/\s+/g, " ").trim();
+/** The table's rows of one kind (new, skipped, same, changed, unreadable, asked, leftOut). */
+const rowsOf = (element, kind) =>
+  $$(element, `tr[data-kind="${kind}"]`).map((tr) => tr.dataset.row);
+
 /** A Keep or Change button (a plain button that says whether it is chosen). */
 function choice(label, within) {
   return [...within.querySelectorAll("button")].find(
@@ -129,8 +136,9 @@ describe("c-shoresh-list-import", () => {
       ["Activity,Length", "Canoeing,1", "Hiking,1"].join("\n")
     );
     const deleted = $(element, '[data-id="deleted"]');
+    expect(deleted.textContent).toContain("Deleted before, not brought back");
     expect(deleted.textContent).toContain("Canoeing");
-    expect($(element, '[data-id="new"]').textContent).not.toContain("Canoeing");
+    expect(rowsOf(element, "new")).toEqual(["Hiking"]);
     const button = deleted.querySelector(
       'button[data-key="deleted|Activity||Canoeing"]'
     );
@@ -140,8 +148,8 @@ describe("c-shoresh-list-import", () => {
     button.click();
     await flush();
     expect($(element, '[data-id="deleted"]')).toBeNull();
-    expect($(element, '[data-id="new"]').textContent).toContain("Canoeing");
-    $(element, 'lightning-button[data-id="save"]').click();
+    expect(rowsOf(element, "new")).toEqual(["Canoeing", "Hiking"]);
+    saveOf(element).click();
     await flush();
     const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
     expect(plan.records.map((r) => r.fields.Name)).toEqual([
@@ -162,7 +170,7 @@ describe("c-shoresh-list-import", () => {
     expect(deleted.textContent).toContain("Lake");
     expect($(element, '[data-id="also-add"]')).toBeNull();
     expect($(element, '[data-id="waiting"]')).toBeNull();
-    const save = $(element, 'lightning-button[data-id="save"]');
+    const save = saveOf(element);
     expect(save.disabled).toBe(false);
     save.click();
     await flush();
@@ -254,6 +262,9 @@ describe("c-shoresh-list-import", () => {
     );
     // The camp's earlier answers are asked for by the season's camp.
     expect(getAnswers).toHaveBeenCalledWith({ campId: "c1" });
+    // A heading not used needs a look: the file's columns are open by themselves.
+    const columns = $(element, 'button[data-id="columns"]');
+    expect(columns.getAttribute("aria-expanded")).toBe("true");
     const headings = $$(element, ".list-heading");
     expect(headings.map((h) => h.textContent)).toEqual([
       "“Activity”",
@@ -271,14 +282,19 @@ describe("c-shoresh-list-import", () => {
       ["Field · location", true, true],
       ["Lake · location", true, true]
     ]);
-    expect($(element, '[data-id="new"]').textContent).toContain("Canoeing");
+    // The file laid into the table: new rows dashed, the change crossed out beside the new.
+    expect(rowsOf(element, "new")).toEqual(["Canoeing", "Hiking"]);
     const archery = $(element, '[data-row="Archery"]');
-    expect(archery.textContent).toContain("Notes: Bring arm guards → none");
+    expect(archery.dataset.kind).toBe("changed");
+    expect(textOf(archery.querySelector(".old"))).toBe("was Bring arm guards");
     expect(archery.textContent).toContain("clears");
-    expect(buttonNamed(element, "Change all from this file").label).toBe(
+    expect(choice("Change", archery).getAttribute("aria-label")).toBe(
+      "Change, Archery: Notes: Bring arm guards → none"
+    );
+    expect(textOf($(element, 'button[data-id="change-all"]'))).toBe(
       "Change all from this file: 1 change, 1 of them clears a value"
     );
-    expect($(element, 'lightning-button[data-id="save"]').disabled).toBe(true);
+    expect(saveOf(element).disabled).toBe(true);
     expect($(element, '[data-id="waiting"]').textContent).toContain(
       "1 difference to Keep or Change"
     );
@@ -290,9 +306,9 @@ describe("c-shoresh-list-import", () => {
     );
     choice("Keep", $(element, '[data-row="Archery"]')).click();
     await flush();
-    const save = $(element, 'lightning-button[data-id="save"]');
+    const save = saveOf(element);
     expect(save.disabled).toBe(false);
-    expect(save.label).toBe("Add 2");
+    expect(textOf(save)).toBe("Add 2");
     save.click();
     await flush();
     const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
@@ -312,7 +328,7 @@ describe("c-shoresh-list-import", () => {
       keptInUse: [],
       gone: []
     });
-    $(element, 'lightning-button[data-id="undo"]').click();
+    $(element, 'button[data-id="undo"]').click();
     await flush();
     expect(LightningConfirm.open).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -329,7 +345,7 @@ describe("c-shoresh-list-import", () => {
       body: { message: "Canoeing: Must be 1 or more." }
     });
     const element = await openWith(["Activity", "Canoeing"].join("\n"));
-    $(element, 'lightning-button[data-id="save"]').click();
+    saveOf(element).click();
     await flush();
     expect($(element, '[data-id="error"]').textContent).toBe(
       "Nothing was saved. Canoeing: Must be 1 or more."
@@ -350,7 +366,7 @@ describe("c-shoresh-list-import", () => {
       new CustomEvent("change", { detail: { checked: false } })
     );
     await flush();
-    $(element, 'lightning-button[data-id="save"]').click();
+    saveOf(element).click();
     await flush();
     const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
     expect(plan.records.map((r) => [r.key, r.refs.RainPlan__c])).toEqual([
@@ -368,11 +384,11 @@ describe("c-shoresh-list-import", () => {
     const archery = $(element, '[data-row="Archery"]');
     choice("Keep", archery).click();
     await flush();
-    const all = $(element, 'lightning-button[data-id="change-all"]');
-    expect(all.label).toBe("Change the other 1");
+    const all = $(element, 'button[data-id="change-all"]');
+    expect(textOf(all)).toBe("Change the other 1");
     all.click();
     await flush();
-    $(element, 'lightning-button[data-id="save"]').click();
+    saveOf(element).click();
     await flush();
     const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
     expect(plan.records).toEqual([
@@ -444,7 +460,7 @@ describe("c-shoresh-list-import", () => {
       "Teens · program · Monday, Friday",
       "Break · time block · 10:00 AM–10:30 AM"
     ]);
-    expect($(element, 'lightning-button[data-id="save"]').label).toBe("Add 3");
+    expect(textOf(saveOf(element))).toBe("Add 3");
   });
 
   it("keeps the cursor on the way: heading, next question, Save, Saved, then back to the button", async () => {
@@ -508,12 +524,12 @@ describe("c-shoresh-list-import", () => {
       buttonNamed(element, "Use these times").click();
       await flush();
       expect(focused.pop().dataset.id).toBe("save");
-      $(element, 'lightning-button[data-id="save"]').click();
+      saveOf(element).click();
       await flush();
       expect(focused.pop().dataset.id).toBe("saved");
       expect(status().textContent.trim()).toBe("Saved");
-      const close = $(element, 'lightning-button[data-id="done"]');
-      expect(close.label).toBe("Close");
+      const close = $(element, 'button[data-id="done"]');
+      expect(textOf(close)).toBe("Close");
       close.click();
       await flush();
       expect(focused.pop().dataset.id).toBe("open");
@@ -524,9 +540,222 @@ describe("c-shoresh-list-import", () => {
 
   it("a new row's blank required cell shows its starting value", async () => {
     const element = await openWith(["Activity,Length", "Canoeing,"].join("\n"));
-    expect($(element, '[data-id="new"]').textContent).toContain(
-      "starting value: Length"
+    const length = $(element, '[data-row="Canoeing"] td.cell_quiet');
+    expect(textOf(length)).toBe("1, starting value");
+  });
+});
+
+describe("laid into the screen's own table (decision 56)", () => {
+  // A made-up camp: one program, Juniors (Cedar, Birch) and Inters (Aspen).
+  const GROUPS = {
+    ...SETUP,
+    programs: [
+      {
+        program: { Id: "p1", Name: "Main", Monday__c: true },
+        timeBlocks: [],
+        divisions: [
+          {
+            division: { Id: "d1", Name: "Juniors" },
+            groups: [
+              { Id: "g1", Name: "Cedar", Availability__c: "AllDay" },
+              { Id: "g2", Name: "Birch", Availability__c: "AllDay" }
+            ]
+          },
+          {
+            division: { Id: "d2", Name: "Inters" },
+            groups: [{ Id: "g3", Name: "Aspen", Availability__c: "AllDay" }]
+          }
+        ],
+        fixedActivities: [],
+        recurringActivities: []
+      }
+    ]
+  };
+  const FILE = [
+    "Division,Bunk,Availability",
+    "Juniors,Cedar,All day",
+    "Juniors,Fern,All day",
+    "Inters,Aspen,Morning only",
+    ",Bunk 12,All day"
+  ].join("\n");
+
+  beforeEach(() => {
+    getAnswers.mockResolvedValue([]);
+    saveList.mockResolvedValue({ added: { Group: 1 }, importId: "imp1" });
+  });
+
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+  });
+
+  /** Each section of the table: its name, its count, and its rows as [name, kind]. */
+  function table(element) {
+    return $$(element, ".part").map((part) => ({
+      label: part.dataset.partLabel,
+      count: part.querySelector(".part-count")
+        ? part.querySelector(".part-count").textContent
+        : null,
+      rows: [...part.querySelectorAll("tr[data-kind]")].map((tr) => [
+        tr.dataset.row,
+        tr.dataset.kind
+      ])
+    }));
+  }
+
+  it("the bunks set up and the file's rows, in their units: new dashed, a change crossed out, a row it can't use marked", async () => {
+    const element = await openWith(FILE, {
+      screenKey: "groups",
+      setup: GROUPS
+    });
+    expect(table(element)).toEqual([
+      {
+        label: "Juniors",
+        count: "3",
+        rows: [
+          ["Cedar", "same"],
+          ["Birch", "same"],
+          ["Fern", "new"]
+        ]
+      },
+      { label: "Inters", count: "1", rows: [["Aspen", "changed"]] },
+      { label: "Review here", count: "0", rows: [["Bunk 12", "unreadable"]] }
+    ]);
+    // The section's count is read with its name.
+    expect(
+      $(element, '.part[data-part-label="Juniors"] [role="heading"]')
+        .textContent
+    ).toContain("Juniors, 3");
+    // The column names: the screen's own words, once, above the first section.
+    expect(
+      $$(element, ".part")[0]
+        .querySelector("thead")
+        .className.includes("head_hidden")
+    ).toBe(false);
+    expect(
+      $$(element, ".part")[1]
+        .querySelector("thead")
+        .className.includes("head_hidden")
+    ).toBe(true);
+    const aspen = $(element, '[data-row="Aspen"]');
+    expect(textOf(aspen.querySelector(".old"))).toBe("was All day");
+    expect(textOf(aspen.querySelector("td.cell"))).toBe(
+      "was All day, now Morning only"
     );
+    expect(textOf(aspen.querySelector("th"))).toBe("Changes: Aspen");
+    expect(textOf($(element, '[data-row="Fern"] th'))).toBe("New: Fern");
+    // The row it can't use: why, and the corner mark.
+    const bad = $(element, '[data-row="Bunk 12"]');
+    expect(bad.querySelector(".end-note").textContent).toMatch(/^Row 5 · /);
+    expect(bad.querySelector(".row-mark")).not.toBeNull();
+    // The rail it took the place of: the file, and what saving waits for.
+    expect(textOf($(element, '[data-id="file-name"]'))).toBe("activities.csv");
+    expect(textOf($(element, '[data-id="waiting"]'))).toContain(
+      "1 difference to Keep or Change"
+    );
+    expect(textOf($(element, 'button[data-id="close"]'))).toBe("Cancel");
+  });
+
+  it("Leave out keeps a new row out of the save, and back in when pressed again", async () => {
+    const focused = [];
+    const spy = jest
+      .spyOn(HTMLElement.prototype, "focus")
+      .mockImplementation(function record() {
+        focused.push(this);
+      });
+    try {
+      const element = await openWith(FILE, {
+        screenKey: "groups",
+        setup: GROUPS
+      });
+      choice("Change", $(element, '[data-row="Aspen"]')).click();
+      await flush();
+      expect(textOf(saveOf(element))).toBe("Add 1, change 1");
+      const leave = () => $(element, '[data-row="Fern"] button[data-leave]');
+      expect(leave().getAttribute("aria-label")).toBe("Leave out Fern");
+      expect(leave().getAttribute("aria-pressed")).toBe("false");
+      leave().click();
+      await flush();
+      // Still where it would go, faded, the same button pressed and keeping the cursor.
+      expect(rowsOf(element, "skipped")).toEqual(["Fern"]);
+      expect(leave().getAttribute("aria-pressed")).toBe("true");
+      expect(focused.pop()).toBe(leave());
+      expect(textOf(saveOf(element))).toBe("Change 1");
+      leave().click();
+      await flush();
+      expect(rowsOf(element, "new")).toEqual(["Fern"]);
+      leave().click();
+      await flush();
+      saveOf(element).click();
+      await flush();
+      const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
+      expect(plan.records).toEqual([
+        {
+          kind: "Group",
+          id: "g3",
+          fields: { Availability__c: "MorningOnly" },
+          refs: {}
+        }
+      ]);
+      // Leaving a row out is not remembered for the next import.
+      expect(plan.remember.map((r) => r.key)).not.toContain(
+        expect.stringMatching(/^skip\|/)
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("tells the page when it opens, while a file is reviewed, and when it closes", async () => {
+    const told = [];
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.screenKey = "groups";
+    element.variant = "rail";
+    element.setup = nsRecord(GROUPS);
+    element.terms = buildTerms([]);
+    element.addEventListener("listopen", (e) => told.push(e.detail));
+    document.body.appendChild(element);
+    $(element, 'button[data-id="open"]').click();
+    await flush();
+    expect(told).toEqual([{ open: true, review: false }]);
+    const input = $(element, 'input[data-id="file"]');
+    Object.defineProperty(input, "files", {
+      value: [file("bunks.csv", FILE)]
+    });
+    input.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect(told.pop()).toEqual({ open: true, review: true });
+    $(element, 'button[data-id="close"]').click();
+    await flush();
+    expect(told.pop()).toEqual({ open: false, review: false });
+  });
+
+  it("the file's columns are put away when every heading is known, and open on their button", async () => {
+    const element = await openWith(FILE, {
+      screenKey: "groups",
+      setup: GROUPS
+    });
+    const columns = $(element, 'button[data-id="columns"]');
+    expect(columns.getAttribute("aria-expanded")).toBe("false");
+    expect($(element, '[data-id="headings"]')).toBeNull();
+    columns.click();
+    await flush();
+    expect(columns.getAttribute("aria-expanded")).toBe("true");
+    expect($$(element, ".list-heading-text").map((h) => h.textContent)).toEqual(
+      ["“Division”", "“Bunk”", "“Availability”"]
+    );
+  });
+
+  it("is accessible with a file laid into the table", async () => {
+    const element = await openWith(FILE, {
+      screenKey: "groups",
+      setup: GROUPS
+    });
+    await expect(element).toBeAccessible();
   });
 });
 
@@ -697,21 +926,31 @@ describe("Import worksheet (Roots)", () => {
     );
     const weeks = $(element, '[data-section="section-weeks"]');
     expect(weeks.textContent).toContain("Name: Week 1 → Opening week");
+    // A plain rename is not a problem: no "Review here" part for it.
+    expect(
+      [...weeks.querySelectorAll(".part")].map((part) => [
+        part.dataset.partLabel,
+        [...part.querySelectorAll("tr[data-kind]")].map(
+          (tr) => `${tr.dataset.row}:${tr.dataset.kind}`
+        )
+      ])
+    ).toEqual([["", ["Opening week:changed"]]]);
+    // The rest of the camp, as it is, is counted rather than drawn.
+    expect(
+      $(element, '[data-section="section-groups"] [data-id="unchanged"]')
+        .textContent
+    ).toMatch(/^\s*\d+ the same as here\s*$/);
     expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("false");
     expect(choice("Change", weeks).getAttribute("aria-label")).toBe(
       "Change, Opening week: Name: Week 1 → Opening week"
     );
-    // Under the sheet's title (h4), its own headings are one level down.
     expect(weeks.querySelector("h4").textContent).toBe("Weeks");
-    expect(
-      weeks.querySelector('[role="heading"]').getAttribute("aria-level")
-    ).toBe("5");
     choice("Change", weeks).click();
     await flush();
     expect(choice("Change", weeks).getAttribute("aria-pressed")).toBe("true");
     expect(choice("Keep", weeks).getAttribute("aria-pressed")).toBe("false");
-    const save = $(element, 'lightning-button[data-id="save"]');
-    expect(save.label).toBe("Change 1");
+    const save = saveOf(element);
+    expect(textOf(save)).toBe("Change 1");
     saveWorkbook.mockResolvedValue({
       importId: "i1",
       added: { CampLabel: 1, WeekException: 2 },
@@ -728,6 +967,50 @@ describe("Import worksheet (Roots)", () => {
       { kind: "Week", id: "w1", fields: { Name: "Opening week" } }
     ]);
     expect($(element, '[data-id="saved"]')).not.toBeNull();
+  });
+
+  it("has no Leave out: a new place another sheet names is added once, with nothing to contradict", async () => {
+    const setup = camp();
+    const element = await openWorkbook(
+      setup,
+      workbookBytes(setup, (name, rows) => {
+        if (name === "Locations") {
+          rows.push(["Probe Lake", "", 1, ""]);
+        }
+        if (name === "Activities") {
+          rows.push([
+            "Probe Canoe",
+            "Probe Lake",
+            1,
+            0,
+            "No maximum",
+            "Low",
+            "No",
+            "",
+            "No limit",
+            "No",
+            "",
+            "Everyone",
+            ""
+          ]);
+        }
+      })
+    );
+    const locations = $(element, '[data-section="section-locations"]');
+    expect(
+      locations.querySelector('[data-row="Probe Lake"]').dataset.kind
+    ).toBe("new");
+    // Under the sheet's title (h4), its own headings are one level down.
+    expect(locations.querySelector("h4").textContent).toBe("Locations");
+    const part = locations.querySelector('[role="heading"]');
+    expect(part.getAttribute("aria-level")).toBe("5");
+    expect(part.querySelector(".slds-assistive-text").textContent).toBe(
+      "No location type, 1"
+    );
+    // Leaving the place out here would not hold: the Activities sheet would add it back.
+    expect($$(element, "button[data-leave]")).toEqual([]);
+    expect($(element, '[data-id="also-add"]')).toBeNull();
+    expect(textOf(saveOf(element))).toBe("Add 2");
   });
 
   describe("the Electives list (plan §6.2)", () => {
@@ -762,10 +1045,8 @@ describe("Import worksheet (Roots)", () => {
           box.disabled
         ])
       ).toEqual([["Woodworking · activity", true, true]]);
-      expect($(element, '[data-id="new"]').textContent).toContain(
-        "Woodworking"
-      );
-      $(element, 'lightning-button[data-id="save"]').click();
+      expect(rowsOf(element, "new")).toEqual(["Woodworking"]);
+      saveOf(element).click();
       await flush();
       const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
       expect(plan.screen).toBe("electives");
@@ -794,7 +1075,7 @@ describe("Import worksheet (Roots)", () => {
       expect(note.textContent).toContain(
         "activities.csv: that file is camper choices, not offerings. Nothing was saved."
       );
-      expect($(element, '[data-id="new"]')).toBeNull();
+      expect($(element, 'tr[data-kind="new"]')).toBeNull();
       const button = $(element, 'lightning-button[data-id="bring-in-choices"]');
       expect(button.label).toBe("Bring in choices");
       const heard = jest.fn();
@@ -815,7 +1096,7 @@ describe("Import worksheet (Roots)", () => {
         { screenKey: "electives", setup: ELECTIVES }
       );
       expect($(element, '[data-id="choices-file"]')).toBeNull();
-      expect($(element, 'lightning-button[data-id="save"]')).not.toBeNull();
+      expect(saveOf(element)).not.toBeNull();
     });
 
     it("downloads as Electives - <season>", async () => {

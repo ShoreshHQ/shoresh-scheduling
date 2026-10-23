@@ -1,169 +1,572 @@
 @import "c/shoreshTokens";
 
-/* Import a list (slice 4c), in the look of Import last year (c/shoreshImport). */
+/*
+ * Import a list in the design system (ADR 0015; Greg's decision 56, mock-up
+ * design-research/screens-r1 list-import A): it takes the rail's place, then the table's, and
+ * lays the file's rows into the screen's own table language (c/shoreshEditableTable): raised
+ * rows, a section's name and count, the column names once. New rows are dashed, a change shows
+ * the old value crossed out, a row that needs a look carries the corner mark. No new colours.
+ */
+:host {
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+/* Its own piece where it is not on a rail (Programs, Roots). */
 .list-import {
-  max-width: 1000px;
-  padding: 1rem;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 0.5rem;
-  background: var(--slds-g-color-neutral-base-100, #fff);
+  padding: var(--shoresh-space-pad);
+  border-radius: var(--shoresh-radius-piece);
+  box-shadow: var(--shoresh-piece-edge);
+  background: var(--shoresh-color-primary-50);
 }
 
-.list-header,
-.list-changes-header {
+/* On a setup screen's rail: it is the rail, so no edge of its own. */
+.list-import_rail {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* ---------- the rail it takes the place of ---------- */
+
+.import-rail {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--shoresh-space-in-group);
+  min-height: var(--shoresh-control-h);
 }
 
-.list-section {
-  margin: 1rem 0 0.5rem;
+.import-title {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-1);
+  font-size: var(--shoresh-font-size);
+  font-weight: 500;
+}
+
+.import-title:focus-visible {
+  outline: none;
+  border-radius: var(--shoresh-radius);
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.import-file {
+  display: inline-flex;
+  align-items: center;
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+}
+
+.import-glyph {
+  width: 14px;
+  height: 14px;
+}
+
+.import-quiet {
+  color: var(--shoresh-text-2);
+}
+
+.import-spacer {
+  flex: 1;
+}
+
+.import-sheet-choice {
+  min-width: calc(var(--shoresh-u) * 40);
+}
+
+/* What still waits before saving: the corner mark beside each, words in the text colour. */
+.import-waiting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s3);
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  list-style: none;
+}
+
+.import-waiting li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-word);
+}
+
+.import-waiting li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--shoresh-color-text);
+  border-top-right-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+/* The one line between the rail and the table. On a rail it reaches the rail's edges. */
+.import-hair {
+  height: 1px;
+  margin: var(--shoresh-space-pad) 0 0;
+  background: var(--shoresh-rule);
+}
+
+.list-import_rail .import-hair {
+  margin-left: calc(-1 * var(--shoresh-space-pad));
+  margin-right: calc(-1 * var(--shoresh-space-pad));
+}
+
+/* The table's place: centred at 880 at 1440, as the screen's own list. */
+.import-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s3);
+  width: min(100%, calc(var(--shoresh-u) * 220));
+  margin: 0 auto;
+  padding-top: var(--shoresh-space-pad);
+}
+
+.import-error {
+  margin-top: var(--shoresh-space-in-group);
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  box-shadow: inset 0 0 0 1px
+    var(--slds-g-color-error-base-40, var(--shoresh-color-text));
+  background: var(--shoresh-color-primary-50);
+  color: var(--slds-g-color-error-base-40, var(--shoresh-color-text));
+}
+
+.import-choices {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s2);
+  margin-top: var(--shoresh-space-in-group);
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+}
+
+/* A part's own heading ("Questions for you", "Also adding"): the title style. */
+.import-head {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size-title);
   font-weight: 600;
 }
 
-.list-weak {
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-size: 0.8125rem;
+.import-lines {
+  margin: var(--shoresh-s1) 0 0;
+  padding: 0 var(--shoresh-space-control-x);
+  list-style: none;
 }
 
-.list-error {
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--slds-g-color-error-base-50, #ea001e);
-  border-radius: 0.25rem;
-  background: var(--slds-g-color-error-base-90, #fef1ee);
-  color: var(--slds-g-color-error-base-40, #ba0517);
+.import-lines li {
+  padding: var(--shoresh-s1) 0;
+}
+
+/* ---------- questions: a raised row each, the corner until answered ---------- */
+
+.import-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  margin-top: var(--shoresh-s1);
+}
+
+.list-card {
+  position: relative;
+  padding: var(--shoresh-s2) var(--shoresh-space-control-x);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+}
+
+.list-card_done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-word) var(--shoresh-s2);
+  padding-top: 0;
+  padding-bottom: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.card-mark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.card-done {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.card-title {
+  font-weight: 500;
+}
+
+.card-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--shoresh-space-in-group);
+  margin-top: var(--shoresh-s2);
+}
+
+.import-change-all {
+  align-self: flex-start;
+}
+
+/* ---------- the file's columns, put away unless one needs a look ---------- */
+
+.import-columns-toggle {
+  align-self: flex-start;
+}
+
+.import-columns-toggle[aria-expanded="true"] .shoresh-chevron {
+  transform: rotate(180deg);
+}
+
+.list-headings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  padding: 0 var(--shoresh-space-control-x);
 }
 
 .list-heading {
   display: grid;
-  grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 1fr) 2fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.25rem 0;
+  gap: var(--shoresh-s2);
 }
 
-/* Needs a look: a bronze border, the heading in ordinary text. */
 .list-heading_attention .list-heading-text {
-  border-bottom: 2px solid var(--shoresh-caution);
   font-weight: 600;
 }
 
-.list-card,
-.list-changed {
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-left: 4px solid var(--shoresh-caution);
-  border-radius: 0.25rem;
-}
-
-.list-card_done {
-  border-left-color: var(--slds-g-color-success-base-50, #2e844a);
-}
-
-.list-card-title {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.list-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.list-diff {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-}
-
-/* A change that empties a field stands out, so it never hides in "Change all". */
-.list-clears {
-  padding: 0 0.375rem;
-  border: 1px solid var(--shoresh-caution);
-  border-radius: 0.25rem;
-  background: var(--shoresh-caution-tint);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.list-names {
-  margin-left: 1.25rem;
-  list-style: disc;
-}
-
-.list-deleted {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.list-deleted > li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.list-footer {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.list-waiting {
-  flex: 1;
-  margin-left: 1.25rem;
-  list-style: disc;
-}
-
-/* What is still waiting: bronze dots, ordinary text. */
-.list-waiting li::marker {
-  color: var(--shoresh-caution);
-}
-
-/* Small state tags: "Not used", "Remembered", "clears". */
+/* Small state words: "Not used", "Remembered", "clears". Quiet, never a colour. */
 .list-tag {
-  padding: 0 0.375rem;
-  border-radius: 0.25rem;
-  background: var(--slds-g-color-neutral-base-95, #f3f3f3);
-  color: var(--slds-g-color-neutral-base-30, #444);
-  font-size: 0.75rem;
+  display: inline-block;
+  padding: 0 var(--shoresh-s1);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+  color: var(--shoresh-text-2);
+  font-size: var(--shoresh-font-size-label);
+  white-space: nowrap;
 }
 
 .list-tag_attention {
-  border: 1px solid var(--shoresh-caution);
-  background: var(--shoresh-caution-tint);
+  box-shadow: inset 0 0 0 1px var(--shoresh-color-text);
+  color: var(--shoresh-text-1);
   font-weight: 600;
 }
 
-/* A workbook's sheets, one section each (slice 4c part D). */
+/* A workbook's sheets, one after another (slice 4c part D). */
+.list-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+}
+
 .list-sheet + .list-sheet {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  margin-top: var(--shoresh-s3);
 }
 
 .list-sheet-title {
-  font-size: 0.9375rem;
-  font-weight: 700;
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
 }
 
-.list-change-all {
-  display: block;
-  margin-top: 0.75rem;
+/* ---------- the table: the screen's own (c/shoreshEditableTable) ---------- */
+
+.part + .part {
+  margin-top: var(--shoresh-s5);
 }
 
-/* On a setup screen's rail: two items, one in-group gap apart. */
+.part-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  margin: 0 0 var(--shoresh-s1);
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.part-count {
+  color: var(--shoresh-text-2);
+  font-size: var(--shoresh-font-size);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* A file with many columns scrolls inside itself, never the page. */
+.scroll {
+  overflow-x: auto;
+}
+
+/* Fixed widths, so every section's columns line up under the names above the first: the
+   name a third, the row's end room for Keep and Change, the file's columns share the rest. */
+.rows {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0 var(--shoresh-s1);
+}
+
+.th_name {
+  width: 32%;
+}
+
+.th_end {
+  width: calc(var(--shoresh-u) * 48);
+}
+
+.th {
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* The row's end has no name for the eye; screen readers hear it with each cell. */
+.th_end .head-text,
+.head_hidden .head-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The column names show once, above the first section. */
+.head_hidden .th {
+  height: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+/* A row: the one raised treatment across its cells. */
+.row > .cell {
+  height: calc(var(--shoresh-u) * 9);
+  padding: 0 var(--shoresh-space-control-x);
+  vertical-align: middle;
+  text-align: left;
+  font-weight: 400;
+  background: var(--shoresh-color-primary-50);
+  border-top: 1px solid rgba(128, 141, 116, 0.22);
+  border-bottom: 1px solid rgba(128, 141, 116, 0.22);
+  box-shadow: 0 1px 2px -1px rgba(128, 141, 116, 0.35);
+}
+
+.row > .cell:first-child {
+  border-left: 1px solid rgba(128, 141, 116, 0.22);
+  border-radius: var(--shoresh-radius) 0 0 var(--shoresh-radius);
+}
+
+.row > .cell:last-child {
+  border-right: 1px solid rgba(128, 141, 116, 0.22);
+  border-radius: 0 var(--shoresh-radius) var(--shoresh-radius) 0;
+}
+
+.row:hover > .cell,
+.row:focus-within > .cell {
+  background: var(--shoresh-surface-hover);
+}
+
+/* New: no fill, no raise, a dashed edge (the missing shows by its outline). */
+.row_new > .cell,
+.row_new:hover > .cell,
+.row_new:focus-within > .cell {
+  background: transparent;
+  box-shadow: none;
+  border-color: rgba(38, 35, 27, 0.45);
+  border-top-style: dashed;
+  border-bottom-style: dashed;
+}
+
+.row_new > .cell:first-child {
+  border-left-style: dashed;
+}
+
+.row_new > .cell:last-child {
+  border-right-style: dashed;
+}
+
+/* Left out: faded words, no raise; its end says why. */
+.row_out > .cell,
+.row_out:hover > .cell,
+.row_out:focus-within > .cell {
+  background: transparent;
+  box-shadow: none;
+  color: var(--shoresh-text-2);
+}
+
+.row_out > .cell_name,
+.row_out > .cell:not(.cell_end) .value {
+  text-decoration: line-through;
+}
+
+/* Needs a look: the corner mark in the row's top-right corner. */
+.cell_end {
+  position: relative;
+}
+
+.cell {
+  overflow-wrap: anywhere;
+}
+
+.row-mark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.cell_name {
+  color: var(--shoresh-text-1);
+}
+
+/* A value a new row starts with, not one the file gave: quiet, as a rule is. */
+.cell_quiet {
+  color: var(--shoresh-text-2);
+}
+
+/* The value the file changes: crossed out, quiet, before the new one. */
+.old {
+  margin-right: var(--shoresh-s2);
+  color: var(--shoresh-text-2);
+  text-decoration: line-through;
+}
+
+.end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s2);
+  padding: var(--shoresh-s1) 0;
+}
+
+.end-note {
+  color: var(--shoresh-text-2);
+  white-space: normal;
+}
+
+.choice-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+}
+
+.choice-text {
+  color: var(--shoresh-text-2);
+}
+
+/* Keep, Change and Leave out: rail items a little shorter; the one chosen is raised. */
+.choice {
+  height: calc(var(--shoresh-u) * 6.5);
+}
+
+/* ---------- under the table ---------- */
+
+.import-same {
+  margin: 0;
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.import-also {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s1) var(--shoresh-s4);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+/* Deleted before, not brought back: one line, each name and its Bring back. */
+.import-deleted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s4);
+  min-height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.deleted-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deleted-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+}
+
+.deleted-name {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+/* Bring back: an action in words, in the highlight. */
+.import-go {
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+}
+
+/* ---------- saved ---------- */
+
+.import-saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s4);
+  padding: var(--shoresh-s1) var(--shoresh-space-control-x) 0;
+}
+
+.import-saved-head {
+  margin: 0;
+  font-weight: 500;
+}
+
+.import-saved-head:focus-visible {
+  outline: none;
+  border-radius: var(--shoresh-radius);
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-space-in-group) var(--shoresh-s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--shoresh-text-2);
+}
+
+/* ---------- closed, on a setup screen's rail: two items, one in-group gap apart ---------- */
+
 .rail-actions {
   display: inline-flex;
   align-items: center;
@@ -175,15 +578,9 @@
   height: 14px;
 }
 
-/* The Electives list: a file of camper choices, sent on to Bring in choices (plan §6.2). */
-.list-choices {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--shoresh-space-in-group);
-  margin-top: var(--shoresh-space-in-group);
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--shoresh-caution);
-  border-radius: 0.25rem;
-  background: var(--shoresh-caution-tint);
+@media (forced-colors: active) {
+  .import-waiting li::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
 }
