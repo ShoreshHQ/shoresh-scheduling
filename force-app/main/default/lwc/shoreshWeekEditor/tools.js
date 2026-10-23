@@ -14,6 +14,7 @@
  */
 import { OPEN, owner, placementIn, slots } from "./slotEdits";
 import { Rows } from "./moves";
+import { markOf, planRain } from "./rain";
 
 const CARRIES_ON = "^";
 
@@ -428,10 +429,39 @@ export function resultOf(week, runs) {
 }
 
 /**
+ * A rainy day's runs on a week (rain.js planRain): each cell that switches gets its rain plan,
+ * and `marks` are the day's "Rain plan full" cells ("group Id|time block Id|activity Id"). tool:
+ * { kind: "rain", dates: [date], model, locks } (locks: the cells locked when it was chosen).
+ */
+function rainEdit(week, tool, isAway, skip) {
+  const d = week.findIndex((day) => day.dateValue === tool.dates[0]);
+  const day = week[d];
+  const none = { switches: [], full: [], noPlan: [], spans: [], locked: [] };
+  if (!day || day.problem) {
+    return { runs: [], rain: none, marks: [], week };
+  }
+  const locks = tool.locks || new Set();
+  const plan = planRain(day, tool.model, {
+    skip: (g, b) => skip(d, g, b),
+    isAway: (g, b) => isAway(d, g, b),
+    isLocked: (g, b) => locks.has(cellKey(day, g, b))
+  });
+  const rows = new Rows(week);
+  plan.switches.forEach((s) => {
+    rows.get(d, s.g)[s.b] = `A:${s.to}`;
+  });
+  const marks = plan.full.map((f) =>
+    markOf(day.groups[f.g].id, day.blocks[f.b].id, f.activityId)
+  );
+  return { runs: rows.runs(), rain: plan, marks, week };
+}
+
+/**
  * A tool's runs on a week. tool: { kind: "clear", dates, groupId }, { kind: "copy", from,
- * dates } (days by date) or { kind: "paste", dates, items, opens, outside } (pasteEdit). Options: isAway(week, day, group, block); skip(key) for a cell to leave
+ * dates } (days by date), { kind: "paste", dates, items, opens, outside } (pasteEdit) or
+ * { kind: "rain", dates: [date], model, locks } (rainEdit). Options: isAway(week, day, group, block); skip(key) for a cell to leave
  * as it is; source, the day to copy from (by default the week's own). Returns the tool's result
- * (runs, stayed or leftOut, skipped) and `week`, the week its indexes are on.
+ * (runs, stayed or leftOut, skipped; a rainy day's plan and marks) and `week`, the week its indexes are on.
  */
 export function toolRuns(tool, week, options = {}) {
   const { isAway, skip = never, source } = options;
@@ -451,6 +481,9 @@ export function toolRuns(tool, week, options = {}) {
   }
   if (tool.kind === "paste") {
     return { ...pasteEdit(week, tool, { isAway: away, skip: skipAt }), week };
+  }
+  if (tool.kind === "rain") {
+    return rainEdit(week, tool, away, skipAt);
   }
   const from = indexOf(tool.from);
   if (from < 0) {

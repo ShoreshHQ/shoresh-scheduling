@@ -83,13 +83,15 @@ public with sharing class ManualVersions {
       List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
       Set<Date> restoredDays = new Set<Date>();
       for (ScheduleDays.DayGrid day : restored) {
-        saves.add(
-          new ScheduleDaySaves.DaySave(
-            day.day,
-            day.grid,
-            revisions.get(day.day)
-          )
+        ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
+          day.day,
+          day.grid,
+          revisions.get(day.day)
         );
+        // The version's cells come back without the week's "Rain plan full" marks: restoring
+        // "Before rainy Monday" is the way back from a rainy day (repo docs/adr/0019).
+        save.rain = new List<String>();
+        saves.add(save);
         restoredDays.add(day.day);
       }
       ScheduleDaySaves.write(draftId, saves);

@@ -9,6 +9,8 @@ public with sharing class ScheduleDays {
     public Integer revision;
     public ScheduleGrid grid;
     public String problem;
+    // The day's "Rain plan full" marks as stored (RainMarks), when it was read with them.
+    public List<String> rain = new List<String>();
   }
 
   /**
@@ -27,7 +29,13 @@ public with sharing class ScheduleDays {
   public static List<DayGrid> read(Id scheduleId) {
     Map<Date, List<ScheduleDay__c>> partsByDay = new Map<Date, List<ScheduleDay__c>>();
     for (ScheduleDay__c part : [
-      SELECT Date__c, Part__c, Grid__c, GridFormatVersion__c, Revision__c
+      SELECT
+        Date__c,
+        Part__c,
+        Grid__c,
+        GridFormatVersion__c,
+        Revision__c,
+        RainyDay__c
       FROM ScheduleDay__c
       WHERE Schedule__c = :scheduleId
       WITH USER_MODE
@@ -42,7 +50,11 @@ public with sharing class ScheduleDays {
     dates.sort();
     List<DayGrid> days = new List<DayGrid>();
     for (Date day : dates) {
-      days.add(readDay(day, partsByDay.get(day)));
+      DayGrid read = readDay(day, partsByDay.get(day));
+      if (read.grid != null) {
+        read.rain = RainMarks.read(partsByDay.get(day)[0].RainyDay__c);
+      }
+      days.add(read);
     }
     return days;
   }

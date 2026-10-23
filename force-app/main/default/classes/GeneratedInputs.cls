@@ -155,6 +155,7 @@ public with sharing class GeneratedInputs {
   }
 
   private static void readSeason(Inputs inputs, Id seasonId) {
+    // Outdoor and Rain plan: the week editor's Rainy day switches from them (ADR 0019).
     inputs.activities = [
       SELECT
         Id,
@@ -170,7 +171,9 @@ public with sharing class GeneratedInputs {
         Priority__c,
         EarlyWeekCount__c,
         EarlyWeekByDay__c,
-        SortOrder__c
+        SortOrder__c,
+        Outdoor__c,
+        RainPlan__c
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE

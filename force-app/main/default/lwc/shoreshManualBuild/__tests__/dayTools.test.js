@@ -189,7 +189,8 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       expect.stringMatching(/^Paste ?(Ctrl\+|⌘)V$/),
       "Clear day",
       "Copy day to…",
-      "Clear week"
+      "Clear week",
+      "Rainy day…"
     ]);
     q(element, '[data-view="activity"]').click();
     await flush();

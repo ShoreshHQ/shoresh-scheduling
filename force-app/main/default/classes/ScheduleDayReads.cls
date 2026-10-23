@@ -24,7 +24,7 @@ public with sharing class ScheduleDayReads {
   ) {
     Map<Id, Map<Date, List<ScheduleDay__c>>> result = new Map<Id, Map<Date, List<ScheduleDay__c>>>();
     for (ScheduleDay__c part : [
-      SELECT Id, Schedule__c, Date__c, Part__c, Revision__c
+      SELECT Id, Schedule__c, Date__c, Part__c, Revision__c, RainyDay__c
       FROM ScheduleDay__c
       WHERE Schedule__c IN :scheduleIds AND Date__c IN :days
       WITH USER_MODE
