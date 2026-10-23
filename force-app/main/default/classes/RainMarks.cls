@@ -41,27 +41,35 @@ public with sharing class RainMarks {
   public static List<String> normal(List<String> marks) {
     Set<String> found = new Set<String>();
     for (String mark : marks == null ? new List<String>() : marks) {
-      List<String> ids = String.valueOf(mark).split('\\|', -1);
-      Boolean isSwitched = ids.size() == 4 && ids[3] == SWITCHED;
-      if (ids.size() != 3 && !isSwitched) {
-        throw unreadable();
-      }
-      List<String> written = new List<String>();
-      for (String part : new List<String>{ ids[0], ids[1], ids[2] }) {
-        try {
-          written.add(String.valueOf(Id.valueOf(part)));
-        } catch (Exception e) {
-          throw unreadable();
-        }
-      }
-      if (isSwitched) {
-        written.add(SWITCHED);
-      }
-      found.add(String.join(written, SEPARATOR));
+      found.add(written(String.valueOf(mark)));
     }
     List<String> sorted = new List<String>(found);
     sorted.sort();
     return sorted;
+  }
+
+  /** One mark with its record Ids written the one way, or refused when it can't be read. */
+  private static String written(String mark) {
+    String ids = mark.removeEnd(SEPARATOR + SWITCHED);
+    // "|switched" for a switched cell's mark, else nothing.
+    String kind = mark.removeStart(ids);
+    List<String> parts = ids.split('\\|', -1);
+    if (parts.size() != 3) {
+      throw unreadable();
+    }
+    List<String> cleaned = new List<String>();
+    for (String part : parts) {
+      cleaned.add(idOf(part));
+    }
+    return String.join(cleaned, SEPARATOR) + kind;
+  }
+
+  private static String idOf(String part) {
+    try {
+      return String.valueOf(Id.valueOf(part));
+    } catch (Exception e) {
+      throw unreadable();
+    }
   }
 
   /** The marks as stored: one per line, or null when there are none. */
