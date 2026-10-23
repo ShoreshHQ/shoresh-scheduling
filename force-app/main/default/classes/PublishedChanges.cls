@@ -97,32 +97,8 @@ public with sharing class PublishedChanges {
           nowDays.get(day)
         )
         .addTo(result);
-      addRain(result, day, wasDays.get(day), nowDays.get(day));
+      PublishedRain.addTo(result, wasDays.get(day), nowDays.get(day));
     }
-  }
-
-  /**
-   * A day whose kept rainy-day marks (RainMarks.keptOn) differ, one line ("Monday: rain marks
-   * changed"): its cells can match while a raindrop has gone or come back (an edit put the cell
-   * back, or a version restored).
-   */
-  private static void addRain(
-    Changes result,
-    Date day,
-    ScheduleDays.DayGrid was,
-    ScheduleDays.DayGrid now
-  ) {
-    if (keptMarks(was) == keptMarks(now)) {
-      return;
-    }
-    result.rainDays++;
-    result.add(WeekCalendar.weekdayName(day) + ': rain marks changed', 1);
-  }
-
-  private static Set<String> keptMarks(ScheduleDays.DayGrid day) {
-    return day == null
-      ? new Set<String>()
-      : new Set<String>(RainMarks.keptOn(day.grid, day.rain));
   }
 
   private static Map<Date, ScheduleDays.DayGrid> byDay(
