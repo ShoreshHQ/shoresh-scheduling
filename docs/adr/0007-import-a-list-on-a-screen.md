@@ -323,6 +323,7 @@ Every question, answer and refusal above stays; what moves is said here.
       nor a similar name, so `listPlan` neither remembers nor forgets it;
     - under the table, **Also adding** (choice 5, ticks as before), and **Deleted before, not
       brought back** with each name and its **Bring back** (decision 45, #101) on one line.
+
     The questions ("Questions for you", choice 3's similar names and which-row questions, a new
     program's days, a block's times) stay above the table, each a raised row with the corner
     until answered, then one quiet line with ✓ and Change. The file's columns (choice 2) are
@@ -337,7 +338,7 @@ Every question, answer and refusal above stays; what moves is said here.
     read, the corner, Leave out and its cursor, what the page is told, the Columns button, axe),
     `lists.test.js` (Leave out: not saved, nothing only it adds, not remembered),
     `shoreshCampSetup.test.js` (the rail and table put away while open and reviewing, and back),
-    and in the test org by `scripts/a11y-browser-check.mjs` (Import a list on Bunks by keyboard:
+    and in the test org by `scripts/a11y-browser-check.mjs` (Import a list on Groups by keyboard:
     the table in the rail's and table's place, Leave out, Cancel bringing the screen back;
     Electives' change saved and said, as before).
 
