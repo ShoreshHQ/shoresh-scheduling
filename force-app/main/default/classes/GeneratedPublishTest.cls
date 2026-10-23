@@ -116,7 +116,8 @@ private class GeneratedPublishTest {
       );
       Integer publishQueries = Limits.getQueries() - before;
       Test.stopTest();
-      Assert.isTrue(previewQueries <= 6, 'Preview used ' + previewQueries);
+      // 6, and since ADR 0014 slice 5 the week's special days (one more).
+      Assert.isTrue(previewQueries <= 7, 'Preview used ' + previewQueries);
       Assert.isTrue(publishQueries <= 15, 'Publish used ' + publishQueries);
       // The preview's revisions are what the screen read the week at.
       Assert.areEqual(seen, preview.revisions);
@@ -159,6 +160,12 @@ private class GeneratedPublishTest {
       GeneratedInputs.Inputs locked = GeneratedTestData.inputs();
       swimAtLunch(ids, draftId);
       GeneratedInputs.Inputs edited = GeneratedTestData.inputs();
+      // Read before stopTest: publishing above (with the week's special days, ADR 0014 slice 5)
+      // leaves the setup's own limits too little room.
+      String lunch = GeneratedTestData.slots(
+        publishedId,
+        GeneratedTestData.at(0, 0)
+      )[2];
       Test.stopTest();
       Assert.areEqual(publishedId, justPublished.published.id);
       Assert.isFalse(justPublished.published.changedSince);
@@ -169,10 +176,7 @@ private class GeneratedPublishTest {
       Assert.isFalse(locked.published.changedSince);
       Assert.isTrue(edited.published.changedSince);
       // Later edits don't touch the published copy.
-      Assert.areEqual(
-        '',
-        GeneratedTestData.slots(publishedId, GeneratedTestData.at(0, 0))[2]
-      );
+      Assert.areEqual('', lunch);
     }
   }
 

@@ -130,35 +130,116 @@
       <template lwc:else>
         <!-- Daily View: all groups for one day -->
         <template lwc:if={isDaily}>
-          <div class="pills" data-id="day-pills">
-            <template for:each={dayPills} for:item="day">
+          <!-- A special event's own schedule, opened from its day (ADR 0014 slice 5). -->
+          <template lwc:if={openedEvent}>
+            <div class="drill-head">
               <button
-                key={day.key}
                 type="button"
-                class={day.className}
-                aria-pressed={day.pressed}
-                data-index={day.index}
-                onclick={handleDay}
+                class="back"
+                onclick={handleEventBack}
+                data-id="event-back"
               >
-                {day.label} <span class="pill-sub">{day.sub}</span>
+                {eventBackLabel}
               </button>
-            </template>
-          </div>
-          <template lwc:if={dayProblem}>
-            <div
-              class="slds-notify slds-notify_alert slds-alert_warning"
-              role="alert"
-            >
-              {dayProblem}
+              <span class="drill-name">{openedEvent.name}</span>
+              <span class="drill-place">{eventWord}</span>
             </div>
+            <c-shoresh-schedule-grid
+              data-id="event-grid"
+              grid={eventGrid}
+              corner={corner}
+              label={openedEvent.name}
+            ></c-shoresh-schedule-grid>
           </template>
           <template lwc:else>
-            <c-shoresh-schedule-grid
-              data-id="daily-grid"
-              grid={dailyGrid}
-              corner={corner}
-              label={dailyGridLabel}
-            ></c-shoresh-schedule-grid>
+            <div class="pills" data-id="day-pills">
+              <template for:each={dayPills} for:item="day">
+                <button
+                  key={day.key}
+                  type="button"
+                  class={day.className}
+                  aria-pressed={day.pressed}
+                  data-index={day.index}
+                  onclick={handleDay}
+                >
+                  {day.label} <span class="pill-sub">{day.sub}</span>
+                </button>
+              </template>
+            </div>
+            <template lwc:if={dayProblem}>
+              <div
+                class="slds-notify slds-notify_alert slds-alert_warning"
+                role="alert"
+              >
+                {dayProblem}
+              </div>
+            </template>
+            <template lwc:elseif={noSpecialSchedule}>
+              <c-shoresh-empty-state
+                title={noSpecialSchedule}
+                data-id="no-special-schedule"
+              ></c-shoresh-empty-state>
+            </template>
+            <template lwc:else>
+              <c-shoresh-schedule-grid
+                data-id="daily-grid"
+                grid={dailyGrid}
+                corner={corner}
+                label={dailyGridLabel}
+              ></c-shoresh-schedule-grid>
+            </template>
+            <!-- A day a special day replaces: its name, the camp's word for it, its notes. -->
+            <template lwc:if={specialLine}>
+              <div class="special-line" data-id="special-line">
+                <div class="special-name">
+                  <span class="special-title">{specialLine.name}</span>
+                  <span class="special-kind">{specialLine.kind}</span>
+                </div>
+                <p class="special-notes" data-id="special-notes">
+                  {specialLine.notes}
+                </p>
+              </div>
+            </template>
+            <!-- The special events on this day, each opening its own schedule. -->
+            <template lwc:if={hasDayEvents}>
+              <ul class="day-events" data-id="day-events">
+                <template for:each={dayEvents} for:item="event">
+                  <li key={event.id} class="special-line">
+                    <div class="special-name">
+                      <span class="special-title"
+                        ><svg
+                          class="flag"
+                          viewBox="0 0 12 12"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path d="M3 10.5V1.75"></path>
+                          <path d="M3 2h6l-1.5 2.25L9 6.5H3"></path></svg
+                        >{event.name}</span
+                      >
+                      <span class="special-kind">{eventWord}</span>
+                    </div>
+                    <div class="special-actions">
+                      <button
+                        type="button"
+                        class="shoresh-item special-open"
+                        data-event={event.id}
+                        onclick={handleOpenEvent}
+                      >
+                        {event.open}
+                        <svg
+                          viewBox="0 0 16 16"
+                          class="special-arrow"
+                          aria-hidden="true"
+                        >
+                          <path d="M3 8h10M9 4l4 4-4 4"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+            </template>
           </template>
         </template>
 

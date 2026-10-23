@@ -150,7 +150,7 @@ public with sharing class GeneratedSaves {
       day.grid = grids[i];
       written.add(day);
     }
-    return SchedulePublish.stateOf(program.Id, request.weekId, written);
+    return SchedulePublish.stateOf(program.Id, setup.week, written);
   }
 
   /** The draft as it is now, kept as a version (Auto-saved) before it is replaced. */

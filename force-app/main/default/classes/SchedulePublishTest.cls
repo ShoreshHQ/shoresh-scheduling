@@ -122,7 +122,8 @@ private class SchedulePublishTest {
       );
       Integer publishQueries = Limits.getQueries() - queriesBefore;
       Test.stopTest();
-      Assert.isTrue(previewQueries <= 6, 'Preview used ' + previewQueries);
+      // 6, and since ADR 0014 slice 5 the week's special days (one more).
+      Assert.isTrue(previewQueries <= 7, 'Preview used ' + previewQueries);
       Assert.isTrue(publishQueries <= 15, 'Publish used ' + publishQueries);
       // The week's first publish: nothing to replace, so no changes to show.
       Assert.isNull(preview.published);

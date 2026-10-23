@@ -193,6 +193,47 @@ describe("c/shoreshPublish", () => {
     );
   });
 
+  it("says special days and events whose own schedules change apart from cells (ADR 0014 slice 5)", () => {
+    const said = (preview) =>
+      publishQuestion({
+        preview: { ...AGAIN, ...preview },
+        checked: CLEAN,
+        weekName: "Week 1",
+        t
+      }).lines;
+    expect(
+      said({
+        changes: ["Friday: the regular day → Visiting Day"],
+        changeCount: 1,
+        specialDayCount: 1
+      })
+    ).toEqual([
+      "This replaces the published schedule. 1 special day changes:",
+      "Friday: the regular day → Visiting Day"
+    ]);
+    // A cell inside a special day's schedule is a cell; an event's stations are the event's.
+    expect(said({ changeCount: 4, specialDayCount: 1, eventCount: 2 })[0]).toBe(
+      "This replaces the published schedule. 1 cell, 1 special day and 2 special events change:"
+    );
+    // In the camp's words, as the camp writes them.
+    const campT = buildTerms([
+      {
+        term: "SpecialDay",
+        singular: "Theme day",
+        plural: "Theme days",
+        isCustom: true
+      }
+    ]);
+    expect(
+      publishQuestion({
+        preview: { ...AGAIN, changeCount: 2, specialDayCount: 2 },
+        checked: CLEAN,
+        weekName: "Week 1",
+        t: campT
+      }).lines[0]
+    ).toBe("This replaces the published schedule. 2 Theme days change:");
+  });
+
   it("says one more line when just one isn't listed", () => {
     const question = publishQuestion({
       preview: { ...AGAIN, changeCount: 2, moreLines: 1 },

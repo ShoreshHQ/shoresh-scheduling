@@ -1,6 +1,7 @@
 /**
  * Server side of the schedule page: a program's versions for a week, opening one to view in the
- * daily, group, and activity views, and renaming it. Cells cannot be changed here (slice 4a).
+ * daily, group, and activity views (with the special days and events it shows: ADR 0014 slice 5),
+ * and renaming it. Cells cannot be changed here (slice 4a).
  * Every query runs in user mode and every write uses user-mode DML.
  */
 public with sharing class SchedulesController {
@@ -22,7 +23,7 @@ public with sharing class SchedulesController {
   public static ScheduleViews.ScheduleView openSchedule(Id scheduleId) {
     ScheduleViews.ScheduleView view;
     try {
-      view = ScheduleViews.open(scheduleId);
+      view = ScheduleViews.openWithSpecials(scheduleId);
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }

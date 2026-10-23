@@ -83,6 +83,11 @@ public with sharing class WeekSpecials {
     }
     Map<Id, SpecialPlans.Plan> plans = SpecialPlans.readAll(dayIds);
     List<ScheduleDays.DayGrid> grids = new List<ScheduleDays.DayGrid>();
+    List<Boolean> notEvents = new List<Boolean>();
+    Set<Id> groupIds = new Set<Id>();
+    for (Group__c grp : groups) {
+      groupIds.add(grp.Id);
+    }
     for (SpecialDate__c row : placed) {
       Date onDate = SpecialDates.dateOf(
         week.StartDate__c,
@@ -103,11 +108,13 @@ public with sharing class WeekSpecials {
       SpecialPlans.Plan plan = plans.get(row.SpecialDay__c);
       ScheduleDays.DayGrid grid = new ScheduleDays.DayGrid();
       grid.day = onDate;
-      grid.grid = plan.grid == null ? null : onlyGroups(plan.grid, groups);
+      grid.grid = plan.grid == null ? null : onlyGroups(plan.grid, groupIds);
       grid.problem = plan.problem;
       grids.add(grid);
+      notEvents.add(false);
     }
-    List<ScheduleViews.DayView> views = ScheduleViews.dayViews(grids);
+    // Its time blocks are its own (never "removed"), its groups and items looked up.
+    List<ScheduleViews.DayView> views = SpecialPlanDay.ofAll(grids, notEvents);
     for (Integer i = 0; i < views.size(); i++) {
       result.days[i].plan = views[i];
     }
@@ -145,14 +152,7 @@ public with sharing class WeekSpecials {
    * The special day's grid with only the program's groups, in the special day's order; the whole
    * grid when it has none of them (a group added since is not a column of it yet: ADR 0014).
    */
-  private static ScheduleGrid onlyGroups(
-    ScheduleGrid grid,
-    List<Group__c> groups
-  ) {
-    Set<Id> wanted = new Set<Id>();
-    for (Group__c grp : groups) {
-      wanted.add(grp.Id);
-    }
+  public static ScheduleGrid onlyGroups(ScheduleGrid grid, Set<Id> wanted) {
     ScheduleGrid shown = new ScheduleGrid();
     shown.blocks = grid.blocks;
     shown.items = grid.items;

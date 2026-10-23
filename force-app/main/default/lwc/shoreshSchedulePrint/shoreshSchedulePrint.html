@@ -50,8 +50,14 @@
             </tbody>
           </table>
         </template>
+        <template lwc:elseif={page.empty}>
+          <p class="problem">{page.empty}</p>
+        </template>
         <template lwc:else>
           <p class="problem">{cantBeShown}</p>
+        </template>
+        <template lwc:if={page.notes}>
+          <p class="notes" data-id="print-notes">{page.notes}</p>
         </template>
       </section>
     </template>
