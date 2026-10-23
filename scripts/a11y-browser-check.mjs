@@ -65,7 +65,8 @@
  * - Electives setup (repo ADR 0018, slice E4), opened from the page's address while the menu
  *   still lists it as coming (?c__preview=electives): focus on its heading, axe; an offering's
  *   chevron opens its linked choices beside the list with focus on their heading (axe), Close
- *   putting focus back on the chevron; a proposed offering's Confirm is saved and said; the
+ *   putting focus back on the chevron; a proposed offering's Confirm is saved and said, the
+ *   cursor then on the row's offering (Confirm is gone); the
  *   needs-a-look corner on seats not filled in opens its words with the cursor kept on it, and
  *   Escape closes it. The check's own elective set is made by Apex first and deleted after.
  *   `--only electives` runs just this step (with the camp's seed), for a change to that screen;
@@ -3794,8 +3795,8 @@ System.debug('A11Y_OFFERINGS[' + activities[0].Name + '|' + activities[1].Name +
 /**
  * The Electives screen (repo ADR 0018, slice E4), opened from the page's address: focus on its
  * heading and axe; an offering's chevron opens its linked choices beside the list, focus on their
- * heading (axe), Close back on the chevron; Confirm on a proposed offering is saved and said; the
- * seats corner opens its words with the cursor kept on it, Escape closing it. Then the check's
+ * heading (axe), Close back on the chevron; Confirm on a proposed offering is saved and said, the
+ * cursor kept in its row on its offering; the seats corner opens its words with the cursor kept on it, Escape closing it. Then the check's
  * set is deleted.
  */
 async function electives() {
@@ -3880,6 +3881,12 @@ async function electives() {
           "Confirm on a proposed offering: its save is said",
           new RegExp(`^${names.proposed} saved`),
           () => press("Enter", 3000)
+        );
+        // Confirm is gone once saved: the cursor stays in the row, on its offering (WCAG 2.4.3).
+        await expectFocus(
+          E,
+          "Confirm on a proposed offering: the cursor on the offering's first field",
+          { tag: "button", name: /^Offering\b/ }
         );
         const mark = named(
           new RegExp(`^Seats for ${names.blank}: seats not filled in yet$`),

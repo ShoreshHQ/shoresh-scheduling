@@ -289,6 +289,77 @@ describe("c-shoresh-editable-table: an elective set's offerings", () => {
     await expect(element).toBeAccessible();
   });
 
+  describe("the cursor after Confirm (WCAG 2.4.3)", () => {
+    const CONFIRM = nsRecord({
+      o4: [
+        { key: "confirm", label: "Confirm", changes: { Proposed__c: false } }
+      ]
+    });
+
+    /** Confirm pressed from the keyboard; returns its button. */
+    async function confirm(element) {
+      allValid(element);
+      const button = element.shadowRoot.querySelector('[data-id="end-action"]');
+      button.focus();
+      button.click();
+      await flush();
+      return button;
+    }
+
+    /** The screen reloads the set: the offering confirmed, Confirm gone. Lists what took focus. */
+    async function reloadConfirmed(element) {
+      const focus = jest.spyOn(HTMLElement.prototype, "focus");
+      element.busy = false;
+      element.rowClasses = {};
+      element.endActions = {};
+      element.rows = nsRecord(
+        OFFERINGS.map((o) => (o.Id === "o4" ? { ...o, Proposed__c: false } : o))
+      );
+      await flush();
+      await flush();
+      const focused = focus.mock.contexts.map(
+        (el) => `${el.dataset.rowKey}:${el.dataset.field || el.dataset.id}`
+      );
+      focus.mockRestore();
+      return focused;
+    }
+
+    it("Confirm gone once saved: the cursor goes to the offering's first field, not the page", async () => {
+      const element = render({
+        rowClasses: { o4: "row_proposed" },
+        endActions: CONFIRM
+      });
+      await flush();
+      const button = await confirm(element);
+      expect(element.shadowRoot.activeElement).toBe(button);
+      // The screen is busy while it saves: the button is disabled, and the browser drops it.
+      element.busy = true;
+      await flush();
+      document.body.focus();
+      button.blur();
+      const focused = await reloadConfirmed(element);
+      expect(focused).toEqual([`row-o4:${nsName("Activity__c")}`]);
+      expect(
+        element.shadowRoot.querySelector('[data-id="end-action"]')
+      ).toBeNull();
+    });
+
+    it("the director has moved on meanwhile: the cursor is left where it is", async () => {
+      const element = render({
+        rowClasses: { o4: "row_proposed" },
+        endActions: CONFIRM
+      });
+      await flush();
+      await confirm(element);
+      const elsewhere = document.createElement("button");
+      document.body.appendChild(elsewhere);
+      elsewhere.focus();
+      const focused = await reloadConfirmed(element);
+      expect(focused).toEqual([]);
+      expect(document.activeElement).toBe(elsewhere);
+    });
+  });
+
   it("the heading's count can be the set's open offerings, not its rows (decision 53)", async () => {
     const element = render({ headingCount: 2 });
     await flush();

@@ -151,7 +151,8 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
     more, or blank for no minimum.").
 15. **A proposed offering is marked by its outline**: its row has a dashed edge and **Confirm** at
     its end, which saves `Proposed__c` false at once, as the row's change (compared and set like
-    any field). A limited offering with blank seats carries the needs-a-look corner on its seats,
+    any field). Confirm is gone once saved, so the cursor stays in the row, on its offering
+    (WCAG 2.4.3; the same for a note's fix button). A limited offering with blank seats carries the needs-a-look corner on its seats,
     its words only ("Seats not filled in yet"): the fix is typing in the cell, so there is no
     Looks right (`c/shoreshGuessMark` `wordsOnly`).
 16. **Linked choices show beside the table, read only** (setup-a; decision 53.1). An offering's

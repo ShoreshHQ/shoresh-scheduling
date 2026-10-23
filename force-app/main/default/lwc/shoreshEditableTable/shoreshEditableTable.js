@@ -243,6 +243,9 @@ export default class ShoreshEditableTable extends LightningElement {
   focusAddRow = false;
   // Where the cursor goes once it is on the page (takeFocus): { key, field }.
   focusTaken = null;
+  // The row whose action button (a note's fix, Confirm at its end) was pressed: its button may
+  // be gone once the save reloads the screen, and the cursor then stays in the row.
+  focusAfterAction = null;
   _rows = [];
   _columns = [];
   _weeks = [];
@@ -801,6 +804,7 @@ export default class ShoreshEditableTable extends LightningElement {
         keep.focus();
       }
     }
+    this.keepFocusAfterAction();
     this.applyTakenFocus();
     this.reportMoves();
     this.announceDraftNotes();
@@ -827,6 +831,45 @@ export default class ShoreshEditableTable extends LightningElement {
     if (fresh) {
       this.announce(fresh[1]);
     }
+  }
+
+  /**
+   * After a row's action button is pressed, when the cursor has fallen to the page: once the
+   * button is gone (Confirm, once confirmed) it goes to the row's first field, or the blank row's
+   * if the row is gone (WCAG 2.4.3); while the button is still drawn, back on it. Waits while the
+   * cursor is still on the button; lets go once the director has moved it elsewhere.
+   */
+  keepFocusAfterAction() {
+    const pending = this.focusAfterAction;
+    if (!pending) {
+      return;
+    }
+    const active = this.template.activeElement;
+    if (active) {
+      if (!(active.dataset && active.dataset.id === pending.id)) {
+        this.focusAfterAction = null;
+      }
+      return;
+    }
+    const page = document.activeElement;
+    if (page && page !== document.body && page !== document.documentElement) {
+      // Somewhere else on the page: not lost, so left there.
+      this.focusAfterAction = null;
+      return;
+    }
+    const button = this.template.querySelector(
+      `[data-id="${pending.id}"][data-row-key="${pending.key}"]`
+    );
+    if (button) {
+      // Still drawn: back on it once it can be pressed again (a browser drops the cursor from a
+      // button disabled while the save is sent), still watching in case the reload removes it.
+      if (!button.disabled) {
+        button.focus();
+      }
+      return;
+    }
+    this.focusAfterAction = null;
+    this.focusRow(this.rowFor(pending.key) ? pending.key : ADD);
   }
 
   focusRow(key) {
@@ -1607,6 +1650,10 @@ export default class ShoreshEditableTable extends LightningElement {
     Object.keys(chosen.changes).forEach((field) => {
       this.setValue(draft, field, chosen.changes[field]);
     });
+    this.focusAfterAction = {
+      key: draft.key,
+      id: event.currentTarget.dataset.id
+    };
     this.touch(draft);
     this.commit(draft.key, false);
   }
