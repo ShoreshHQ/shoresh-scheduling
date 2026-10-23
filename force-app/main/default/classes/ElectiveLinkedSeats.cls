@@ -7,12 +7,12 @@
  * nothing: the run's linked choices come with ElectiveRunState. No message names a camper.
  */
 public with sharing class ElectiveLinkedSeats {
-  private ElectiveRunState state;
+  private Map<Id, LinkedChoice__c> byId;
   // camper|linked choice -> the periods ("Tuesday|<block>") sent.
   private Map<String, Set<String>> sent = new Map<String, Set<String>>();
 
   public ElectiveLinkedSeats(ElectiveRunState runState) {
-    state = runState;
+    byId = new Map<Id, LinkedChoice__c>(runState.linkedChoices);
   }
 
   /** Checks one seat sent; a seat that is not part of a linked choice has nothing to check. */
@@ -20,7 +20,7 @@ public with sharing class ElectiveLinkedSeats {
     if (seat.linkedChoiceId == null) {
       return;
     }
-    LinkedChoice__c choice = state.linkedChoicesById.get(seat.linkedChoiceId);
+    LinkedChoice__c choice = byId.get(seat.linkedChoiceId);
     if (choice == null || choice.Offering__c != seat.offeringId) {
       throw refused();
     }
@@ -39,9 +39,7 @@ public with sharing class ElectiveLinkedSeats {
   public void refuseIncomplete() {
     for (String key : sent.keySet()) {
       Id choiceId = Id.valueOf(key.substringAfter('|'));
-      if (
-        !sent.get(key).equals(periodsOf(state.linkedChoicesById.get(choiceId)))
-      ) {
+      if (!sent.get(key).equals(periodsOf(byId.get(choiceId)))) {
         throw refused();
       }
     }

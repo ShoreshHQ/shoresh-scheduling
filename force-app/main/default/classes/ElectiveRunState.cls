@@ -20,9 +20,8 @@ public with sharing class ElectiveRunState {
   public List<Offering__c> offerings = new List<Offering__c>();
   public Map<Id, Offering__c> offeringsById = new Map<Id, Offering__c>();
   public ElectiveOpenness openness;
-  // The set's linked choices (slice E8), with their periods and divisions; and by Id.
+  // The set's linked choices (slice E8), with their periods and divisions.
   public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
-  public Map<Id, LinkedChoice__c> linkedChoicesById = new Map<Id, LinkedChoice__c>();
   // Where the set sits on the run's schedule now, and (for a final run) as it was finalized.
   public List<ScheduleDays.DayGrid> liveDays;
   public ElectiveTimes live;
@@ -190,7 +189,6 @@ public with sharing class ElectiveRunState {
       WITH USER_MODE
       ORDER BY SortOrder__c NULLS LAST, Name, Id
     ];
-    linkedChoicesById = new Map<Id, LinkedChoice__c>(linkedChoices);
   }
 
   private void readChoices() {

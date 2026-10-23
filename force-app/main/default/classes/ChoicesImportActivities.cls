@@ -46,7 +46,7 @@ public with sharing class ChoicesImportActivities {
       added.put(ChoicesImport.fold(activity.Name), activity.Id);
       seasonIds.put(ChoicesImport.fold(activity.Name), activity.Id);
     }
-    pointAtLinkedChoices();
+    new ChoicesImportLinked(request, place).pointAt();
     pointAtActivities(added, new Set<Id>(seasonIds.values()));
     offerProposed(new Set<Id>(added.values()));
     return made.size();
@@ -63,47 +63,6 @@ public with sharing class ChoicesImportActivities {
       result.put(ChoicesImport.fold(activity.Name), activity.Id);
     }
     return result;
-  }
-
-  /**
-   * A choice naming a linked choice (slice E8: a sheet names it by its name) must name one of the
-   * set's, and its activity is that linked choice's offering's, whatever the screen sent. One
-   * query, only when a choice names one.
-   */
-  private void pointAtLinkedChoices() {
-    Boolean named = false;
-    for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
-      for (ChoicesImport.SheetChoice choice : sheetCamper.choices) {
-        named = named || choice.l != null;
-      }
-    }
-    if (!named) {
-      return;
-    }
-    Map<Id, LinkedChoice__c> ofSet = new Map<Id, LinkedChoice__c>(
-      [
-        SELECT Id, Offering__r.Activity__c
-        FROM LinkedChoice__c
-        WHERE ElectiveSet__c = :place.electiveSet.Id
-        WITH USER_MODE
-      ]
-    );
-    for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
-      for (ChoicesImport.SheetChoice choice : sheetCamper.choices) {
-        if (choice.l == null) {
-          continue;
-        }
-        LinkedChoice__c linked = ofSet.get(choice.l);
-        if (linked == null) {
-          throw new ShoreshException(
-            ChoicesImport.rowWords(sheetCamper) +
-            'a choice names a linked choice that is no longer in this set. Reload the page.'
-          );
-        }
-        choice.a = linked.Offering__r.Activity__c;
-        choice.add = null;
-      }
-    }
   }
 
   /** A choice being added takes its new activity; every choice's activity is the season's. */

@@ -96,7 +96,7 @@ public with sharing class LinkedChoicePlaces {
     return DAY_NAMES[Math.mod(A_SUNDAY.daysBetween(day), 7)];
   }
 
-  private class Reader {
+  private with sharing class Reader {
     String setKey;
     Map<Id, Id> divisionOf;
     Map<String, Cell> byKey = new Map<String, Cell>();

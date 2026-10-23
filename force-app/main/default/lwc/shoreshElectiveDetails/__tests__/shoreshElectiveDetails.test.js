@@ -20,12 +20,12 @@ jest.mock(
   { virtual: true }
 );
 
-const flush = async () => {
-  for (let i = 0; i < 4; i++) {
-    // eslint-disable-next-line no-await-in-loop
-    await Promise.resolve();
-  }
-};
+// A few turns, so a save's answer and the next render have both happened.
+const flush = () =>
+  [...Array(4)].reduce(
+    (chain) => chain.then(() => undefined),
+    Promise.resolve()
+  );
 const terms = buildTerms([
   {
     term: "LinkedChoice",
