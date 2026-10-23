@@ -1,195 +1,172 @@
 @import "c/shoreshTokens";
 
-/* Shoresh desktop's schedule screen (ScheduleScreen.jsx and its views), in Salesforce's tokens. */
+/* The Schedules page in Manual Build's layout (design-research/screens-r1 schedules.html; ADR
+   0005 §14, ADR 0015): the rail, one hairline, the grid's zone. Values from c/shoreshTokens. */
+:host {
+  display: block;
+}
+
 .schedules {
   position: relative;
 }
 
-.toolbar {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.picker {
-  min-width: 12rem;
-}
-
-.spacer {
-  flex: 1;
-}
-
-/* Versions sits apart, after a divider, as on the desktop. */
-.toolbar-end {
+/*
+ * The rail, as Manual Build's (spacing-spec.md part 2, layout B): one item tall plus the zone's
+ * inset, three parts. Left and right share the free width, the left with a head start of the
+ * grid's time column and its gap, so the days in the middle sit over the grid's cells. Inside
+ * each part, items 4 apart, a thin line with 8 each side between groups.
+ */
+.rail {
+  --offset: calc(var(--shoresh-head-w) + var(--shoresh-space-cell-gap));
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  padding-left: 12px;
-  border-left: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+  min-height: calc(var(--shoresh-control-h) + 2 * var(--shoresh-space-pad));
+  padding: var(--shoresh-space-pad);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  line-height: 1.25;
+  color: var(--shoresh-text-1);
 }
 
-/* The view toggle: one raised button in a grey track. */
-.view-toggle {
+.side {
   display: flex;
-  gap: 2px;
-  background: var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
-  padding: 3px;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-width: max-content;
 }
 
-.view-button {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  background: none;
-  color: var(--slds-g-color-neutral-base-10, #181818);
+.side_left {
+  flex-basis: var(--offset);
 }
 
-.view-button_on {
-  font-weight: 700;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  border-bottom-color: var(--slds-g-color-brand-base-50, #0176d3);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+.side_right {
+  justify-content: flex-end;
 }
 
-.viewing {
+.mid {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 12px;
-  margin-bottom: 16px;
-  border-radius: 8px;
-  background: var(--slds-g-color-brand-base-95, #eef4ff);
-  font-size: 13px;
+  flex: none;
+  align-items: center;
+  min-width: 0;
 }
 
-.viewing-name {
-  font-weight: 700;
-}
-
-.viewing-meta {
-  font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-/* Day and group pills, centred above the grid. */
-.pills {
+/* The views sit against the days, with the one group line either side. */
+.views {
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  align-items: center;
+  margin-left: auto;
 }
 
-.pill {
-  padding: 5px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid var(--slds-g-color-brand-base-50, #0176d3);
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  cursor: pointer;
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
 }
 
-.pill_on {
-  background: var(--slds-g-color-brand-base-50, #0176d3);
-  color: var(--slds-g-color-neutral-base-100, #fff);
-  /* Chosen shows by more than colour (WCAG 1.4.1). */
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+/* Too narrow for one line: the rail's parts wrap, in order. */
+@media (max-width: 75em) {
+  .rail {
+    flex-wrap: wrap;
+    row-gap: var(--shoresh-s2);
+  }
+
+  .side,
+  .side_left,
+  .mid {
+    flex: 1 1 auto;
+  }
+
+  .views {
+    margin-left: 0;
+  }
 }
 
-.pill-sub {
-  font-weight: 400;
-  opacity: 0.8;
+/* Print, the main button: Publish's filled item (ADR 0015's .shoresh-item_primary). */
+.print {
+  margin-left: var(--shoresh-space-in-group);
 }
 
-/* Activity View's cards. */
+/* Excel or Print under way: held, but still focusable (see exportBusy). */
+.shoresh-item[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The grid's zone, inset on every side; with many bunks it scrolls sideways, never the page. */
+.below {
+  overflow-x: auto;
+}
+
+.work {
+  box-sizing: border-box;
+  position: relative;
+  padding: var(--shoresh-space-pad);
+}
+
+/* Activity View's cards: the one raised look, on the grid's surface, as on Manual Build. */
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  gap: var(--shoresh-space-cell-gap);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
 }
 
 .card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: var(--shoresh-s1);
+  padding: var(--shoresh-s3) var(--shoresh-s4);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+  color: var(--shoresh-text-1);
+  font: inherit;
   text-align: center;
   cursor: pointer;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-top: 4px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
 }
 
 .card:hover {
-  border-color: var(--slds-g-color-brand-base-50, #0176d3);
+  background: var(--shoresh-surface-hover);
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-raise), var(--shoresh-focus-ring);
 }
 
 .card-name {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 500;
 }
 
-.card-place {
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
+.note,
+.card-place,
 .card-summary {
-  font-size: 11px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-  font-family: var(--slds-g-font-family-monospace, monospace);
+  color: var(--shoresh-text-2);
+  font-variant-numeric: tabular-nums;
 }
 
+/* An event's own schedule: the way back, its name and the camp's word for it. */
 .drill-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.back {
-  padding: 4px 10px;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 6px;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  cursor: pointer;
-  font-size: 12px;
+  gap: var(--shoresh-s2);
+  margin-bottom: var(--shoresh-s3);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
 }
 
 .drill-name {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: 500;
+  color: var(--shoresh-text-1);
 }
 
 .drill-place {
-  font-size: 12px;
-  color: var(--slds-g-color-neutral-base-50, #747474);
-}
-
-.note {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--shoresh-text-secondary);
-}
-
-/* Export or Print under way: held, but still focusable (see exportBusy). */
-.shoresh-item[aria-disabled="true"] {
-  cursor: default;
-  opacity: 0.55;
+  color: var(--shoresh-text-2);
 }
 
 /* A special day's line and the day's special events under the grid (ADR 0014 slice 5), in the
@@ -268,8 +245,15 @@
   margin-left: var(--shoresh-s1);
 }
 
+/* The special event's flag before its name, and a special day's on its day ("Fri ⚑"); a rainy
+   day's raindrop on its day ("Thu" and the drop, issue #129): the mark before a name, in the
+   words' own colour. */
 .flag {
   width: 12px;
   height: 12px;
   stroke: var(--shoresh-text-2);
+}
+
+.pill .flag {
+  stroke: currentColor;
 }

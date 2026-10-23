@@ -65,6 +65,17 @@
  *   the special day and its line shows under the grid; an event's "Open <name>" reached by Tab
  *   shows its own schedule with focus on the way back ("← Monday"), and back puts focus on that
  *   Open again; axe on both. The special day, the event and the version are deleted after;
+ * - the Schedules page's rail (ADR 0005 §14): Versions naming the version on screen, Excel and
+ *   Print reached by Tab in that order, Print the filled button; Group View's bunk chosen on the
+ *   rail with its grid shown; an activity's card in Activity View opening its grid with focus on
+ *   the rail's choice that now names it; axe on each view (with --shots, each view and Versions
+ *   open, for docs/design/screens/);
+ * - the Schedules page's raindrop (issue #129; ADR 0005 §14, ADR 0019 choice 9): on a version made
+ *   for the check (by Apex, through the server's own day save) with the first bunk's Monday first
+ *   time block switched to Gym games, the rain plan, the Monday pill is named "…, rainy day" and
+ *   carries the drop; Daily View draws one raindrop, before Gym games, said "Gym games, rain plan";
+ *   so does Group View for that bunk and Activity View for Gym games (before the bunk's name);
+ *   axe on each. The version is deleted after;
  * - Import last year (ADR 0006, redesigned in ADR 0015 choice 15): opened from Roots with focus on
  *   its heading; two made-up files chosen, the cursor on the one page's first question; a choice
  *   pressed keeps the cursor; a Comes in count opens into its names; Start again puts the cursor
@@ -4071,7 +4082,8 @@ async function schedulesPage() {
     try {
       await openFromMenu(S, /^Schedules$/);
       await pickWeek();
-      const tuesday = named(new RegExp(`^Tuesday\\b.*· ${CHECK_DAY}$`), {
+      // "Tue" and the special day's flag on the rail, named "Tuesday, Jun 30, <special day>".
+      const tuesday = named(new RegExp(`^Tuesday\\b.*, ${CHECK_DAY}$`), {
         tag: "button"
       });
       if (!(await tabTo(tuesday, { max: 40 })))
@@ -4126,6 +4138,282 @@ async function schedulesPage() {
       clearSpecials();
     }
   });
+  await step(S, "The rail: Versions, Excel, Print, and each view", async () => {
+    await openFromMenu(S, /^Schedules$/);
+    await pickWeek();
+    await schedulesShot("schedules-daily");
+    // Right of the rail, in order: Versions (naming the version on screen), Excel, then Print.
+    const versionsButton = await tabTo((f) => f.dataId === "versions-button", {
+      max: 40
+    });
+    if (!versionsButton) throw new Error("Versions was not reached with Tab.");
+    const order = [versionsButton.name];
+    for (let i = 0; i < 2; i++) {
+      await press("Tab", 200);
+      const f = await focus();
+      order.push(f ? f.name : "nowhere");
+    }
+    const named3 =
+      / Versions$/.test(order[0]) &&
+      order[0] !== "Versions" &&
+      order[1] === "Export to Excel" &&
+      /^Print$/.test(order[2]);
+    const filled = await page.evaluate(() => {
+      const find = (root) => {
+        const hit = root.querySelector('[data-id="print"]');
+        if (hit) return hit;
+        for (const el of root.querySelectorAll("*")) {
+          if (el.shadowRoot) {
+            const inner = find(el.shadowRoot);
+            if (inner) return inner;
+          }
+        }
+        return null;
+      };
+      const print = find(document);
+      return !!print && print.classList.contains("shoresh-item_primary");
+    });
+    if (named3 && filled) {
+      results.pass(
+        S,
+        "The rail's end: Versions names the version, then Excel, then Print (filled)",
+        order.join(" → ")
+      );
+    } else {
+      await shot(S, "The rail's end");
+      results.fail(
+        S,
+        "The rail's end: Versions names the version, then Excel, then Print (filled)",
+        `Tab reached ${order.join(" → ")}; Print ${filled ? "is" : "is not"} the filled button.`
+      );
+    }
+    if (args.includes("--shots")) {
+      if (await tabTo((f) => f.dataId === "versions-button", { back: true })) {
+        await press("Enter", 800);
+        await schedulesShot("schedules-versions");
+        await press("Escape", 400);
+      }
+    }
+    // Group View: the bunk on the rail, its week in the grid.
+    if (!(await tabTo(named(/^Group$/, { tag: "button" }), { back: true })))
+      throw new Error("The Group view was not reached with Tab.");
+    await press("Enter", 800);
+    if (
+      (await exists('[data-id="group-picker"]')) &&
+      (await exists('[data-id="group-grid"]'))
+    ) {
+      results.pass(
+        S,
+        "Group View: the bunk chosen on the rail, its week shown",
+        "The rail's bunk choice and the bunk's week are there."
+      );
+    } else {
+      await shot(S, "Group View");
+      results.fail(
+        S,
+        "Group View: the bunk chosen on the rail, its week shown",
+        "No bunk choice on the rail, or no grid."
+      );
+    }
+    await axe("Schedules, Group View");
+    await schedulesShot("schedules-group");
+    // Activity View: a card opens its grid, focus on the rail's choice naming it.
+    if (!(await tabTo(named(/^Activity$/, { tag: "button" }), { max: 10 })))
+      throw new Error("The Activity view was not reached with Tab.");
+    await press("Enter", 800);
+    await axe("Schedules, Activity View's cards");
+    const card = await tabTo(named(/\btimes? this /, { tag: "button" }), {
+      max: 20
+    });
+    if (!card) throw new Error("No activity card was reached with Tab.");
+    await press("Enter", 800);
+    const f = await waitFocus({ tag: "button" });
+    if (
+      f &&
+      f.components.includes("c-shoresh-rail-picker") &&
+      (await exists('[data-id="activity-grid"]'))
+    ) {
+      results.pass(
+        S,
+        "Activity View: a card opens its grid, focus on the rail's choice",
+        `Focus on ${formatFocus(f)}.`
+      );
+    } else {
+      await shot(S, "Activity View");
+      results.fail(
+        S,
+        "Activity View: a card opens its grid, focus on the rail's choice",
+        `Focus on ${formatFocus(f)}.`
+      );
+    }
+    await axe("Schedules, an activity's week");
+    await schedulesShot("schedules-activity");
+  });
+}
+
+const CHECK_RAIN_VERSION = "Check rainy Monday (made up)";
+
+/** Deletes the check's rainy version, if a run left it. */
+function clearRain() {
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+delete [SELECT Id FROM Schedule__c WHERE Name = '${CHECK_RAIN_VERSION}' AND Status__c = 'Version' AND PublishedAt__c = NULL AND Program__r.Season__r.Camp__c = :camp.Id];
+`);
+}
+
+/**
+ * A version of the week's Manual Build draft whose first bunk's Monday first time block holds Gym
+ * games, switched there by a rainy day (its "|switched" mark, saved by ScheduleDaySaves, which
+ * keeps it only while the cell holds Gym games): the newest version, so the Schedules page opens
+ * it by itself.
+ */
+function seedRain() {
+  clearRain();
+  apex(`
+Camp__c camp = [SELECT Id FROM Camp__c WHERE Name = '${CAMP}' LIMIT 1];
+Week__c week = [SELECT Id FROM Week__c WHERE Season__r.Camp__c = :camp.Id AND Name = '${week}' ORDER BY StartDate__c DESC LIMIT 1];
+Schedule__c draft = [SELECT Id, Program__c FROM Schedule__c WHERE Week__c = :week.Id AND Status__c = 'Draft' AND Origin__c = 'Manual' LIMIT 1];
+Activity__c gym = [SELECT Id FROM Activity__c WHERE Name = 'Gym games' AND Season__r.Camp__c = :camp.Id ORDER BY CreatedDate DESC LIMIT 1];
+List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
+for (Integer i = 0; i < days.size(); i++) {
+  ScheduleGrid grid = days[i].grid;
+  ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(days[i].day, grid, null);
+  if (i == 0) {
+    grid.items.add(new ScheduleGrid.Item('A', gym.Id, 'Gym games'));
+    grid.rows[0][0] = String.valueOf(grid.items.size());
+    save.rain = new List<String>{ grid.groups[0].id + '|' + grid.blocks[0].id + '|' + gym.Id + '|switched' };
+  }
+  saves.add(save);
+}
+Schedule__c version = new Schedule__c(Program__c = draft.Program__c, Week__c = week.Id, Name = '${CHECK_RAIN_VERSION}', Status__c = 'Version', Origin__c = 'Manual', VersionReason__c = 'SavedByHand');
+insert version;
+ScheduleDaySaves.write(version.Id, saves);
+`);
+}
+
+/** Every raindrop drawn on the grid shown: what its cell says (its text, read as a reader would). */
+async function raindrops() {
+  return page.evaluate(() => {
+    const found = [];
+    const walk = (root) => {
+      root.querySelectorAll('[data-id="rain-drop"]').forEach((drop) => {
+        const cell = drop.closest("[data-cell]");
+        if (cell) found.push(cell.textContent.replace(/\s+/g, " ").trim());
+      });
+      root.querySelectorAll("*").forEach((el) => {
+        if (el.shadowRoot) walk(el.shadowRoot);
+      });
+    };
+    walk(document);
+    return found;
+  });
+}
+
+/** One check of the raindrops on the grid shown: exactly one, and it says `said`. */
+async function expectRaindrop(S, name, said) {
+  const drops = await raindrops();
+  if (drops.length === 1 && said.test(drops[0])) {
+    results.pass(S, name, `One raindrop, its cell read "${drops[0]}".`);
+  } else {
+    await shot(S, name);
+    results.fail(
+      S,
+      name,
+      `Raindrops on the grid: ${drops.length ? drops.map((d) => `"${d}"`).join(", ") : "none"}.`
+    );
+  }
+}
+
+/**
+ * The Schedules page's raindrop (issue #129), on the version seedRain makes: the Monday pill names
+ * the rainy day, and Daily, Group and Activity View each draw the one switched cell's raindrop
+ * before its name, said after it; axe on each.
+ */
+async function schedulesRain() {
+  const S = "Schedules";
+  await step(S, "A rainy day's raindrop", async () => {
+    seedRain();
+    try {
+      // The page keeps the week's versions as it read them: load it again, so the version just
+      // made is in Versions and opens as the newest.
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+      await page
+        .locator(APP)
+        .locator("c-shoresh-menu")
+        .waitFor({ timeout: 60000 });
+      await pause(3000);
+      if (await exists('lightning-combobox[data-id="camp"]')) {
+        if (!(await tabTo(named(/^Camp\b/, { tag: "button" }), { max: 40 })))
+          throw new Error("The Camp picker was not reached with Tab.");
+        await chooseOption(new RegExp(`^${CAMP.replace(/[()]/g, "\\$&")}$`));
+        await pause(4000);
+      }
+      await openFromMenu(S, /^Schedules$/);
+      await pickWeek();
+      const monday = await tabTo(
+        named(/^Monday\b.*, rainy day$/, { tag: "button" }),
+        { max: 40 }
+      );
+      if (monday) {
+        results.pass(
+          S,
+          "A rainy day: its pill is named for it",
+          `Focus on ${formatFocus(monday)}.`
+        );
+      } else {
+        await shot(S, "A rainy day's pill");
+        results.fail(
+          S,
+          "A rainy day: its pill is named for it",
+          'No Monday pill named "…, rainy day" was reached with Tab.'
+        );
+      }
+      await expectRaindrop(
+        S,
+        "Daily View: the switched cell's raindrop, said after its name",
+        /^Gym games, rain plan$/
+      );
+      await axe("Schedules, a rainy day in Daily View");
+      await schedulesShot("schedules-rain");
+      if (!(await tabTo(named(/^Group$/, { tag: "button" }), { back: true })))
+        throw new Error("The Group view was not reached with Tab.");
+      await press("Enter", 800);
+      await expectRaindrop(
+        S,
+        "Group View: the first bunk's week shows the raindrop",
+        /^Gym games, rain plan$/
+      );
+      await axe("Schedules, a rainy day in Group View");
+      if (!(await tabTo(named(/^Activity$/, { tag: "button" }), { max: 10 })))
+        throw new Error("The Activity view was not reached with Tab.");
+      await press("Enter", 800);
+      if (
+        !(await tabTo(named(/^Gym games\b.*times? this /, { tag: "button" }), {
+          max: 30
+        }))
+      )
+        throw new Error("Gym games' card was not reached with Tab.");
+      await press("Enter", 800);
+      await expectRaindrop(
+        S,
+        "Activity View: the raindrop before the bunk the switch put there",
+        /, rain plan$/
+      );
+      await axe("Schedules, a rainy day in Activity View");
+    } finally {
+      clearRain();
+    }
+  });
+}
+
+/** With --shots: the Schedules page as it is now, by name, for docs/design/screens/. */
+async function schedulesShot(name) {
+  if (!args.includes("--shots")) return;
+  mkdirSync(shotsDir, { recursive: true });
+  await page.mouse.move(2, 2);
+  await pause(400);
+  await page.screenshot({ path: join(shotsDir, `${name}.png`) });
 }
 
 /** Deletes the made-up fixed activity by keyboard; false when it isn't there. */
@@ -5264,6 +5552,7 @@ async function main() {
       await publish("Manual Build", openManual);
       await publish("Generated Schedule", openGenerated);
       await schedulesPage();
+      await schedulesRain();
     }
     if (only !== "lists") {
       await electives();

@@ -91,7 +91,25 @@
                 <div class="cell-inner">
                   <template lwc:if={cell.names}>
                     <template for:each={cell.names} for:item="name">
-                      <span key={name.key} class="cell-group">{name.name}</span>
+                      <span key={name.key} class="cell-group"
+                        ><template lwc:if={name.rain}
+                          ><span class="event-name"
+                            ><svg
+                              class="flag"
+                              viewBox="0 0 12 12"
+                              aria-hidden="true"
+                              focusable="false"
+                              data-id="rain-drop"
+                            >
+                              <path
+                                d="M6 1.5c-1.6 2.3-2.75 3.6-2.75 5.1a2.75 2.75 0 0 0 5.5 0C8.75 5.1 7.6 3.8 6 1.5Z"
+                              ></path></svg
+                            >{name.name}</span
+                          ><span class="slds-assistive-text"
+                            >{name.said}</span
+                          ></template
+                        ><template lwc:else>{name.name}</template></span
+                      >
                     </template>
                   </template>
                   <template lwc:else>
@@ -143,6 +161,23 @@
                       <template lwc:if={cell.where}>
                         <span class="event-where">{cell.where}</span>
                       </template>
+                    </template>
+                    <template lwc:elseif={cell.rain}>
+                      <!-- A cell a rainy-day switch moved to its rain plan (Schedules page, issue
+                           #129): a quiet raindrop before its name, said after it. -->
+                      <span class="event-name"
+                        ><svg
+                          class="flag"
+                          viewBox="0 0 12 12"
+                          aria-hidden="true"
+                          focusable="false"
+                          data-id="rain-drop"
+                        >
+                          <path
+                            d="M6 1.5c-1.6 2.3-2.75 3.6-2.75 5.1a2.75 2.75 0 0 0 5.5 0C8.75 5.1 7.6 3.8 6 1.5Z"
+                          ></path></svg
+                        ><span class={cell.nameClass}>{cell.text}</span></span
+                      ><span class="slds-assistive-text">{rainSaid}</span>
                     </template>
                     <template lwc:elseif={cell.setMark}>
                       <!-- An elective set (decision 53.2; mock-up electives-r1 grid-a): its mark

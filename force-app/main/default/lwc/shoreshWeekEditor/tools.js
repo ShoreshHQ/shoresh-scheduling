@@ -14,7 +14,7 @@
  */
 import { OPEN, owner, placementIn, slots } from "./slotEdits";
 import { Rows } from "./moves";
-import { markOf, planRain } from "./rain";
+import { markOf, planRain, switchedOf } from "./rain";
 
 const CARRIES_ON = "^";
 
@@ -431,7 +431,8 @@ export function resultOf(week, runs) {
 
 /**
  * A rainy day's runs on a week (rain.js planRain): each cell that switches gets its rain plan,
- * and `marks` are the day's "Rain plan full" cells ("group Id|time block Id|activity Id"). tool:
+ * and `marks` are the day's "Rain plan full" cells ("group Id|time block Id|activity Id") and
+ * its switched cells (the same with "|switched" after, issue #129). tool:
  * { kind: "rain", dates: [date], model, locks } (locks: the cells locked when it was chosen).
  */
 function rainEdit(week, tool, isAway, skip) {
@@ -451,9 +452,14 @@ function rainEdit(week, tool, isAway, skip) {
   plan.switches.forEach((s) => {
     rows.get(d, s.g)[s.b] = `A:${s.to}`;
   });
-  const marks = plan.full.map((f) =>
-    markOf(day.groups[f.g].id, day.blocks[f.b].id, f.activityId)
-  );
+  const marks = [
+    ...plan.full.map((f) =>
+      markOf(day.groups[f.g].id, day.blocks[f.b].id, f.activityId)
+    ),
+    ...plan.switches.map((s) =>
+      switchedOf(day.groups[s.g].id, day.blocks[s.b].id, s.to)
+    )
+  ];
   return { runs: rows.runs(), rain: plan, marks, week };
 }
 

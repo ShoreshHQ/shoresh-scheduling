@@ -122,11 +122,51 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="program"]')).toBeNull(); // one program: no picker
     expect(openSchedule).toHaveBeenCalledTimes(1);
     expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s3" });
-    expect(q(element, '[data-id="viewing"]').textContent).toContain(
-      "Before my changes"
-    );
+    // Versions names the version on screen (the mock-up's "Published ▾").
+    expect(q(element, "c-shoresh-versions").label).toBe("Before my changes");
     expect(q(element, "c-shoresh-versions").openId).toBe("s3");
     expect(q(element, '[data-id="nothing-open"]')).toBeNull();
+    await expect(element).toBeAccessible();
+  });
+
+  it("is laid out as Manual Build: the rail, one hairline, the grid's zone", async () => {
+    getVersions.mockResolvedValue(VERSIONS);
+    openSchedule.mockImplementation(answerFor);
+    const element = await render();
+    const top = [...q(element, '[data-id="schedules"]').children];
+    expect(top[0].dataset.id).toBe("rail");
+    expect(top[1].classList.contains("shoresh-hairline")).toBe(true);
+    expect(top[2].querySelector('[data-id="daily-grid"]')).not.toBeNull();
+    const rail = top[0];
+    // Left: the week with its arrows, then the views. Centre: the days. Right: Versions, Excel,
+    // then Print, the one filled button.
+    const week = rail.querySelector('.side_left [data-id="week"]');
+    expect(week.arrows).toBe(true);
+    expect(week.value).toBe("w1");
+    expect(
+      [...rail.querySelectorAll(".side_left .view-button")].map((b) =>
+        b.textContent.trim()
+      )
+    ).toEqual(["Daily", "Group", "Activity"]);
+    expect(rail.querySelector('.mid [data-id="day-pills"]')).not.toBeNull();
+    const right = rail.querySelector(".side_right");
+    expect(
+      [...right.querySelectorAll("c-shoresh-versions, button")].map(
+        (el) => el.dataset.id || el.tagName.toLowerCase()
+      )
+    ).toEqual(["c-shoresh-versions", "export", "print"]);
+    expect(
+      right
+        .querySelector('[data-id="print"]')
+        .classList.contains("shoresh-item_primary")
+    ).toBe(true);
+    expect(
+      right
+        .querySelector('[data-id="export"]')
+        .classList.contains("shoresh-item_primary")
+    ).toBe(false);
+    // No strip above the grid: the version's name is on Versions.
+    expect(q(element, '[data-id="viewing"]')).toBeNull();
     await expect(element).toBeAccessible();
   });
 
@@ -140,10 +180,10 @@ describe("c-shoresh-schedules", () => {
     list.answer(VERSIONS);
     await flush();
     expect(q(element, '[data-id="nothing-open"]')).toBeNull();
-    expect(q(element, '[data-id="viewing"]')).toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBeNull();
     version.answer(await answerFor({ scheduleId: "s3" }));
     await flush();
-    expect(q(element, '[data-id="viewing"]')).not.toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBe("Before my changes");
     expect(q(element, '[data-id="nothing-open"]')).toBeNull();
   });
 
@@ -218,19 +258,22 @@ describe("c-shoresh-schedules", () => {
     );
     await flush();
     expect(openSchedule).toHaveBeenLastCalledWith({ scheduleId: "s2" });
-    expect(q(element, '[data-id="viewing"]').textContent).toContain(
-      "Imported again"
-    );
-    // Camp words, not "Looking at a Version … read-only".
-    const viewing = q(element, '[data-id="viewing"]').textContent;
-    expect(viewing).toContain("saved");
-    expect(viewing).toContain("view only");
-    expect(viewing).not.toContain("read-only");
-    expect(viewing).not.toContain("Looking at");
+    expect(q(element, "c-shoresh-versions").label).toBe("Imported again");
     expect(q(element, "c-shoresh-versions").openId).toBe("s2");
     expect(
       qa(element, ".view-button").map((b) => b.textContent.trim())
-    ).toEqual(["Daily View", "Group View", "Activity View"]);
+    ).toEqual(["Daily", "Group", "Activity"]);
+    // The chosen view is raised and said.
+    expect(
+      qa(element, ".view-button").map((b) => [
+        b.getAttribute("aria-pressed"),
+        b.classList.contains("shoresh-raised")
+      ])
+    ).toEqual([
+      ["true", true],
+      ["false", false],
+      ["false", false]
+    ]);
     // Daily View: Monday first, a column per bunk.
     const daily = q(element, '[data-id="daily-grid"]');
     expect(daily.grid.columns.map((c) => c.label)).toEqual([
@@ -239,7 +282,17 @@ describe("c-shoresh-schedules", () => {
     ]);
     expect(daily.corner).toBe("Time block");
     await expect(element).toBeAccessible();
-    // The chosen day is said (aria-pressed), not shown by colour alone.
+    // The days as the rail shows them ("Mon"), named in full; the chosen one said and raised.
+    expect(
+      qa(element, '[data-id="day-pills"] button').map((b) => [
+        b.textContent.trim(),
+        b.getAttribute("aria-label")
+      ])
+    ).toEqual([
+      ["Mon", "Monday, Jun 29"],
+      ["Tue", "Tuesday, Jun 30"],
+      ["Wed", "Wednesday, Jul 1"]
+    ]);
     expect(
       qa(element, '[data-id="day-pills"] button').map((b) =>
         b.getAttribute("aria-pressed")
@@ -258,25 +311,33 @@ describe("c-shoresh-schedules", () => {
       "This day could not be read"
     );
 
+    // Group View: the bunk is chosen on the rail, with its arrows, as the week is.
     q(element, '[data-view="group"]').click();
     await flush();
-    expect(
-      qa(element, '[data-id="group-pills"] button').map((b) =>
-        b.textContent.trim()
-      )
-    ).toEqual(["Bunk 1", "Bunk 2"]);
-    qa(element, '[data-id="group-pills"] button')[1].click();
+    expect(q(element, '[data-id="day-pills"]')).toBeNull();
+    const picker = q(element, '.mid [data-id="group-picker"]');
+    expect(picker.arrows).toBe(true);
+    expect(picker.label).toBe("Bunk");
+    expect(picker.options.map((o) => o.label)).toEqual(["Bunk 1", "Bunk 2"]);
+    expect(picker.value).toBe(picker.options[0].value);
+    picker.dispatchEvent(
+      new CustomEvent("change", { detail: { value: picker.options[1].value } })
+    );
     await flush();
-    expect(
-      qa(element, '[data-id="group-pills"] button').map((b) =>
-        b.getAttribute("aria-pressed")
-      )
-    ).toEqual(["false", "true"]);
+    expect(q(element, '[data-id="group-picker"]').value).toBe(
+      picker.options[1].value
+    );
     const group = q(element, '[data-id="group-grid"]');
+    expect(group.label).toBe("Bunk 2");
     expect(group.grid.cells.find((c) => c.key === "0-0").text).toBe("Chugim");
 
+    // Activity View: every activity's card first, and the rail's choice says so.
     q(element, '[data-view="activity"]').click();
     await flush();
+    const activities = q(element, '.mid [data-id="activity-picker"]');
+    expect(activities.value).toBe("all");
+    expect(activities.options[0].label).toBe("All Activities");
+    expect(activities.options.map((o) => o.label)).toContain("Swim");
     const cards = qa(element, '[data-id="activity-cards"] button');
     expect(cards[0].textContent).toContain("Swim");
     expect(cards[0].textContent).toContain("Pool");
@@ -285,20 +346,24 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, '[data-id="activity-grid"]').grid.columns).toHaveLength(
       3
     );
-    // The cursor follows: onto the way back, then back onto the card it came from.
+    expect(q(element, '[data-id="activity-grid"]').label).toBe("Swim");
+    // The cursor follows onto the rail's choice, which now names the activity.
+    expect(q(element, '[data-id="activity-picker"]').value).toBe("a1");
     expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-id="all-activities"]')
+      q(element, '[data-id="activity-picker"]')
     );
-    q(element, '[data-id="all-activities"]').click();
+    await expect(element).toBeAccessible();
+    // All Activities on the rail goes back to the cards.
+    q(element, '[data-id="activity-picker"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "all" } })
+    );
     await flush();
     expect(q(element, '[data-id="activity-cards"]')).not.toBeNull();
-    expect(element.shadowRoot.activeElement).toBe(
-      qa(element, '[data-id="activity-cards"] button')[0]
-    );
+    expect(q(element, '[data-id="activity-grid"]')).toBeNull();
     await expect(element).toBeAccessible();
   });
 
-  it("a deleted bunk's Group View pill says (removed), as on Generated Schedule", async () => {
+  it("a deleted bunk says (removed) in Group View's choice, as on Generated Schedule", async () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockImplementation((args) =>
       answerFor(args).then((view) => ({
@@ -316,9 +381,7 @@ describe("c-shoresh-schedules", () => {
     q(element, '[data-view="group"]').click();
     await flush();
     expect(
-      qa(element, '[data-id="group-pills"] button').map((b) =>
-        b.textContent.replace(/\s+/g, " ").trim()
-      )
+      q(element, '[data-id="group-picker"]').options.map((o) => o.label)
     ).toEqual(["Bunk 1", "Bunk 2 (removed)"]);
     await expect(element).toBeAccessible();
   });
@@ -336,7 +399,8 @@ describe("c-shoresh-schedules", () => {
       programId: "p1",
       weekId: "w2"
     });
-    expect(q(element, '[data-id="viewing"]')).toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBeNull();
+    expect(q(element, '[data-id="day-pills"]')).toBeNull();
     expect(q(element, '[data-id="nothing-open"]').title).toContain(
       "Nothing saved for Week 2 yet"
     );
@@ -346,7 +410,7 @@ describe("c-shoresh-schedules", () => {
     );
     await flush();
     expect(openSchedule).toHaveBeenCalledTimes(2);
-    expect(q(element, '[data-id="viewing"]')).not.toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBe("Before my changes");
   });
 
   it("does not reload when the page hands the same setup again", async () => {
@@ -356,7 +420,7 @@ describe("c-shoresh-schedules", () => {
     element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(getVersions).toHaveBeenCalledTimes(1);
-    expect(q(element, '[data-id="viewing"]')).not.toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBe("Before my changes");
   });
 
   it("a failed load shows no stale list, and choosing the week again retries", async () => {
@@ -371,7 +435,7 @@ describe("c-shoresh-schedules", () => {
       "Lost access."
     );
     expect(q(element, "c-shoresh-versions").versions).toEqual([]);
-    expect(q(element, '[data-id="viewing"]')).toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBeNull();
     getVersions.mockResolvedValueOnce([]);
     q(element, '[data-id="week"]').dispatchEvent(
       new CustomEvent("change", { detail: { value: "w2" } })
@@ -397,7 +461,8 @@ describe("c-shoresh-schedules", () => {
     await flush();
     answer(opened());
     await flush();
-    expect(q(element, '[data-id="viewing"]')).toBeNull();
+    expect(q(element, "c-shoresh-versions").label).toBeNull();
+    expect(q(element, '[data-id="daily-grid"]')).toBeNull();
   });
 
   it("renames a version, on screen and in the list", async () => {
@@ -420,9 +485,7 @@ describe("c-shoresh-schedules", () => {
     expect(q(element, "c-shoresh-versions").versions[0].name).toBe(
       "Last summer"
     );
-    expect(q(element, '[data-id="viewing"]').textContent).toContain(
-      "Last summer"
-    );
+    expect(q(element, "c-shoresh-versions").label).toBe("Last summer");
   });
 
   it("shows a refused rename and keeps the old name", async () => {
@@ -444,7 +507,7 @@ describe("c-shoresh-schedules", () => {
       "Before my changes"
     );
   });
-  describe("Export to Excel and Print", () => {
+  describe("Excel and Print", () => {
     beforeEach(() => {
       window.print = jest.fn();
     });
@@ -458,9 +521,10 @@ describe("c-shoresh-schedules", () => {
       const element = await render();
       const group = q(element, '[aria-label="Versions and export"]');
       expect(group.getAttribute("role")).toBe("group");
-      expect(group.querySelector('[data-id="export"]').textContent.trim()).toBe(
-        "Export to Excel"
-      );
+      // "Excel" on the rail, the desktop's "Export to Excel" as its name (it holds the words shown).
+      const excel = group.querySelector('[data-id="export"]');
+      expect(excel.textContent.trim()).toBe("Excel");
+      expect(excel.getAttribute("aria-label")).toBe("Export to Excel");
       expect(group.querySelector('[data-id="print"]').textContent.trim()).toBe(
         "Print"
       );

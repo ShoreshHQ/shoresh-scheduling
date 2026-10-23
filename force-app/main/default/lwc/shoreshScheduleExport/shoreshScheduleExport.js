@@ -231,6 +231,25 @@ export function scheduleSheets(view, catalogue, t) {
 
 // ---------- printing ----------
 
+/**
+ * What a grid cell prints, in parts ({ key, text, rain }): its name, or in Activity View each
+ * group's; a part a rainy-day switch put there carries its raindrop (issue #129), as on screen.
+ * Nothing for Open.
+ */
+function printParts(cell) {
+  if (cell.names) {
+    return cell.names.map((n, i) => ({
+      key: String(i),
+      text: i ? `, ${n.name}` : n.name,
+      rain: !!n.rain
+    }));
+  }
+  if (cell.open || !cell.text) {
+    return [];
+  }
+  return [{ key: "0", text: cell.text, rain: !!cell.rain }];
+}
+
 /** What a grid cell prints: its words, nothing for Open. */
 function printText(cell) {
   if (cell.names) {
@@ -271,6 +290,7 @@ export function printTable(grid) {
       cells.push({
         key: at,
         text,
+        parts: cell ? printParts(cell) : [],
         note: cell && cell.note && text ? cell.note : null,
         rowspan: cell ? cell.length : 1,
         className: text ? "cell" : "cell cell_empty"

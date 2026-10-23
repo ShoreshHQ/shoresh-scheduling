@@ -1314,13 +1314,11 @@
                 </template>
               </div>
 
-              <!-- The schedule page: versions of a program's week, in three views -->
+              <!-- The schedule page: versions of a program's week, in three views. Its rail and
+                   grid are the frame's zones, as Manual Build's; its name is read out, not
+                   shown (decision 36). -->
               <div class={shown.schedules} data-screen="schedules">
-                <h2
-                  class="slds-text-heading_medium slds-m-bottom_small"
-                  tabindex="-1"
-                  data-heading
-                >
+                <h2 class="slds-assistive-text" tabindex="-1" data-heading>
                   {labels.screens.schedules}
                 </h2>
                 <c-shoresh-schedules

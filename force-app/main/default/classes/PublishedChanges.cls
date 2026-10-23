@@ -25,6 +25,9 @@ public with sharing class PublishedChanges {
     // from the week's cells (ScheduleSpecials, ADR 0014 slice 5).
     public Integer specialDays = 0;
     public Integer events = 0;
+    // Of count: the days whose rainy-day marks change with their cells the same or not (a
+    // raindrop gone or come back, ADR 0019 choice 9), one each.
+    public Integer rainDays = 0;
     // The lines past mostLines, not listed ("…and N more.").
     public Integer moreLines = 0;
     // The days a special day replaces (on either side), whose own cells are out of sight and not
@@ -94,6 +97,7 @@ public with sharing class PublishedChanges {
           nowDays.get(day)
         )
         .addTo(result);
+      PublishedRain.addTo(result, wasDays.get(day), nowDays.get(day));
     }
   }
 

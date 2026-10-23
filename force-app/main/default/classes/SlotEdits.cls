@@ -7,13 +7,13 @@ public with sharing class SlotEdits {
   public class Edit {
     @AuraEnabled
     public List<Run> runs { get; set; }
-    // A rainy day only (repo docs/adr/0019): the "Rain plan full" marks each day it names keeps
+    // A rainy day only (repo docs/adr/0019): the marks (full and switched) each day it names keeps
     // once the edit is made (none takes them away, as Undo does). Left out, a day keeps its own.
     @AuraEnabled
     public List<RainDay> rain { get; set; }
   }
 
-  /** The "Rain plan full" marks a day keeps (RainMarks: "group Id|time block Id|activity Id"). */
+  /** The rainy-day marks a day keeps (RainMarks: "group Id|time block Id|activity Id[|switched]"). */
   public class RainDay {
     @AuraEnabled
     public Date day { get; set; }

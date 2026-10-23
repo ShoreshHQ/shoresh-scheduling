@@ -34,12 +34,15 @@ function keepOwnUndo(event) {
  * says so and has no delete (it is kept as history).
  * announceWith: the page's way to read words out (its one live region); without it, the list
  * reads them out from its own.
+ * label: the words on the button instead of "Versions" (the Schedules page names the version
+ * on screen there, "Published Oct 18, 2:40 PM"); the button is still named "…, Versions".
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
  * delete { id }, save { name, onDone(saved) }
  */
 export default class ShoreshVersions extends LightningElement {
   _versions = [];
   @api openId;
+  @api label;
   @api terms;
   @api busy = false;
   @api restore = false;
@@ -127,6 +130,14 @@ export default class ShoreshVersions extends LightningElement {
 
   get title() {
     return this.terms ? this.terms.p("Version") : "Versions";
+  }
+
+  get buttonText() {
+    return this.label || this.title;
+  }
+  /** With a label of its own, still said to be Versions: "Published Oct 18, Versions". */
+  get buttonName() {
+    return this.label ? `${this.label}, ${this.title}` : null;
   }
 
   get expanded() {

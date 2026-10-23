@@ -5,10 +5,12 @@
       type="button"
       class={buttonClass}
       aria-expanded={expanded}
+      aria-label={buttonName}
+      title={buttonName}
       onclick={handleToggle}
       data-id="versions-button"
     >
-      <span>{title}</span>
+      <span class="button-text">{buttonText}</span>
       <svg class="shoresh-chevron" viewBox="0 0 12 12" aria-hidden="true">
         <path d="M3 4.5 6 7.5l3-3"></path>
       </svg>

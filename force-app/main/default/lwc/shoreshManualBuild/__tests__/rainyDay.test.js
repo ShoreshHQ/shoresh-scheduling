@@ -78,7 +78,7 @@ function week(mondayRows, mondayMarks = []) {
   const start = draft([FLAGPOLE, SOCCER, GYM], mondayRows);
   start.schedule.days[0] = {
     ...start.schedule.days[0],
-    rainFull: mondayMarks
+    rain: mondayMarks
   };
   return {
     ...start,
@@ -200,7 +200,9 @@ describe("c-shoresh-manual-build: rainy day", () => {
         after: ["A:a4"]
       })
     ]);
-    expect(sent(0).rain).toEqual([{ day: MONDAY, cells: ["g2|t2|a3"] }]);
+    expect(sent(0).rain).toEqual([
+      { day: MONDAY, cells: ["g2|t2|a3", "g1|t2|a4|switched"] }
+    ]);
     expect(toolNotice(element)).toBe(
       "Rainy Monday: 1 switched to rain plans, 1 full · Undo"
     );

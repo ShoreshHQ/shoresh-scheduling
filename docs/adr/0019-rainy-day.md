@@ -79,15 +79,38 @@ step, sees what changed and what couldn't, and can undo it.
    away, and putting the same activity back by hand later does not bring it back.
 9. **Where the marks are kept: `ScheduleDay__c.RainyDay__c`** (long text), the field ADR 0005
    reserved, on the day's first part: one line per full cell, "group Id|time block Id|activity
-   Id", sorted (`RainMarks`). A mark is kept only while its cell holds that activity, starting
+   Id", and, since issue #129 (Greg, 2026-10-23: built into the Schedules page redesign, #124),
+   one per cell the switch moved to its rain plan, "group Id|time block Id|rain plan Id|switched",
+   sorted (`RainMarks`). The switched lines are what the Schedules page draws its raindrop from
+   (ADR 0005 §14); Manual Build and Generated Schedule still show a switch only as it happens (the
+   pulse), and a switched line is never a corner. A mark is kept only while its cell holds that activity, starting
    there; every save of a day drops the ones that no longer do (`ScheduleDaySaves`), so a mark can
    never say something the grid doesn't show. The marks travel with the edit
    (`SlotEdits.Edit.rain`: the marks the day keeps once the edit is made), so the switch and its
    marks are one save, and Undo and Redo put back exactly the marks from before or after. Every
    other change to a day keeps the marks whose cells still hold them (a Lock, Update to match
-   setup, a Rebuild where the cell stays). **Restore** clears them: restoring "Before rainy
-   Monday" is the way back from a rainy day. A version, a published schedule and a copied week
-   start without marks.
+   setup, a Rebuild where the cell stays). A second rainy day on the same day keeps the marks the
+   day had and adds its own (a mark whose cell it changes is dropped by the same rule).
+
+   **The marks travel with a week's own copies (issue #129), as the desktop's do.** The desktop
+   keeps each cell's flags on the cell (`template_slots.flags`), so a version keeps them and
+   Restore writes them back (`src/utils/snapshotSlot.js` `toSnapshotSlot`, `useSnapshots.js`). The
+   desktop has no Publish; Salesforce's published schedule is a copy of the draft, so it carries
+   them the same way. So **Publish** (`SchedulePublish`), **Save version** and every automatic
+   version (`ManualVersions.writeDays`) and **Restore** (the version's marks come back with its
+   cells, where before it cleared them) carry them, each kept only where its cell still holds that
+   activity. Restoring "Before rainy Monday" is still the way back from a rainy Monday: that
+   version was kept before the switch, so it has none of Monday's marks. **Start from another week
+   starts dry**, with neither switched nor full marks (Greg, 2026-10-23), unlike the desktop's
+   Duplicate week, which copies the flags: rain belongs to that day, its activities and their
+   places; the rain plan stays with the activities, and the director makes a day rainy when it
+   rains. Publish's "already published as it is" compares each day's kept marks as well as its
+   cells (`PublishedRain`): an edit that puts a switched cell back, or a restored version,
+   can leave the cells as published and the marks not, and Publish then lists "Monday: rain
+   marks changed" ("1 rainy day changes") and publishes, so the Schedules page never keeps a
+   stale raindrop or misses one (`RainyDayTest` "aRaindropGoneSincePublishIsPublished",
+   "aRaindropRestoredSincePublishIsPublished").
+
 10. **Not counted.** The counter and Publish's question don't count the marks: a full cell isn't
     a broken rule but a choice still to make by hand, and the corner on the cell is where it is
     seen. The desktop lists it among its findings; the counter's "to look at" lists only cells
@@ -108,12 +131,19 @@ step, sees what changed and what couldn't, and can undo it.
   cells) and `dayTools.test.js` (Edit's rows); `shoreshGeneratedSchedule` `rainyDay.test.js`
   (Generated's controller and saver).
 - Apex: `RainyDayTest`, as a scheduler with the records made inside `runAs`, each request under
-  40 queries: the version (Auto-saved, Manual and Generated); the switch and its marks saved as
-  one edit and read back; a mark staying when another cell changes and going when its own does,
-  and not coming back with the same activity; Undo taking them away; a mark on a cell that doesn't
-  hold its activity dropped; a garbled mark refused with nothing saved; Restore of "Before rainy
-  Monday" without marks; a Lock on Generated keeping them; Generated's week read carrying each
+  40 queries: the version (Auto-saved, Manual and Generated); the switch and its marks (full and
+  switched) saved as one edit and read back; a mark staying when another cell changes and going
+  when its own does (a switched one too), and not coming back with the same activity; Undo taking
+  them away; a mark on a cell that doesn't hold its activity dropped; a garbled mark (or a fourth
+  part other than "switched") refused with nothing saved; Restore of "Before rainy Monday" without
+  marks; a Lock on Generated keeping them; Publish carrying them to the published schedule as the
+  Schedules page opens it; Save version keeping them and Restore bringing them back; Start from
+  another week copying the cells but no marks; Generated's week read carrying each
   activity's Outdoor and Rain plan (the switch works them out from that read).
+- Jest for the marks themselves: `rain.test.js` also checks the switched cells marked with the
+  full ones, a switched mark told apart from a full one, and a second rainy day keeping the day's
+  marks; the Schedules page's raindrop is checked in `shoreshSchedules` `rain.test.js` (ADR 0005
+  §14).
 - In the test org: `scripts/a11y-browser-check.mjs` opens Edit on Generated Schedule with the
   keyboard, reaches **Rainy day…**, opens its days, chooses them in turn until one switches
   something (the camp's Soccer is outdoors), checks the receipt is said and focus is on its Undo,
@@ -122,7 +152,8 @@ step, sees what changed and what couldn't, and can undo it.
 ## Choices that are hard to undo after release
 
 `ScheduleDay__c.RainyDay__c` (long text, 131,072) and what it holds: one line per cell, "group
-Id|time block Id|activity Id". A later format would need reading both.
+Id|time block Id|activity Id", with "|switched" after for a switched cell. A later format would
+need reading both.
 
 ## Not done here
 

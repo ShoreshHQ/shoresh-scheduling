@@ -234,6 +234,29 @@ describe("c/shoreshPublish", () => {
     ).toBe("This replaces the published schedule. 2 Theme days change:");
   });
 
+  it("says a day whose rain marks change apart from cells (ADR 0019 choice 9)", () => {
+    const said = (preview) =>
+      publishQuestion({
+        preview: { ...AGAIN, ...preview },
+        checked: CLEAN,
+        weekName: "Week 1",
+        t
+      }).lines;
+    expect(
+      said({
+        changes: ["Monday: rain marks changed"],
+        changeCount: 1,
+        rainDayCount: 1
+      })
+    ).toEqual([
+      "This replaces the published schedule. 1 rainy day changes:",
+      "Monday: rain marks changed"
+    ]);
+    expect(said({ changeCount: 3, rainDayCount: 1 })[0]).toBe(
+      "This replaces the published schedule. 2 cells and 1 rainy day change:"
+    );
+  });
+
   it("says one more line when just one isn't listed", () => {
     const question = publishQuestion({
       preview: { ...AGAIN, changeCount: 2, moreLines: 1 },

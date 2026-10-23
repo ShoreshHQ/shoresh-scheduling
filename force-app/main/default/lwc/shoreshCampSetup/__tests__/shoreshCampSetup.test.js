@@ -2274,9 +2274,12 @@ describe("c-shoresh-camp-setup", () => {
       q(element, '[data-screen="locations"] [data-heading]')
     );
     await openScreen(element, "schedules");
-    expect(element.shadowRoot.activeElement).toBe(
-      q(element, '[data-screen="schedules"] [data-heading]')
-    );
+    const heading = q(element, '[data-screen="schedules"] [data-heading]');
+    expect(element.shadowRoot.activeElement).toBe(heading);
+    // The Schedules page is laid out as Manual Build: its name read out, not shown (the menu
+    // shows it), and its rail and grid the frame's own zones.
+    expect(heading.classList.contains("slds-assistive-text")).toBe(true);
+    expect(q(element, ".body_flush")).not.toBeNull();
   });
 
   it("picking the screen already open puts the cursor on its heading now, not at a later redraw", async () => {

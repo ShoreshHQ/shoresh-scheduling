@@ -82,7 +82,8 @@ const FLUSH_SCREENS = new Set([
   "specialEvents",
   "electives",
   "bringInChoices",
-  "electiveSeats"
+  "electiveSeats",
+  "schedules"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
