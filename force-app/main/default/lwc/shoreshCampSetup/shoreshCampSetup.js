@@ -1,4 +1,5 @@
-import { LightningElement } from "lwc";
+import { LightningElement, wire } from "lwc";
+import { CurrentPageReference } from "lightning/navigation";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import LightningConfirm from "lightning/confirm";
 import { loadStyle } from "lightning/platformResourceLoader";
@@ -66,7 +67,8 @@ const FLUSH_SCREENS = new Set([
   "activities",
   "fixedActivities",
   "recurringActivities",
-  "specialEvents"
+  "specialEvents",
+  "bringInChoices"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -96,8 +98,14 @@ const SCREENS = [
   "generatedSchedule",
   "manualBuild",
   "schedules",
-  "import"
+  "import",
+  "bringInChoices"
 ];
+// Screens kept out of the menu while their piece of work is unfinished, opened only from the
+// page's address (?c__screen=bringInChoices), so they can be tried in the test org and checked in
+// a real browser. Electives stay "Coming" in the menu until slice E11 (decision 44); repo ADR 0017
+// says how Bring in choices is reached until then.
+const ADDRESS_ONLY = new Set(["bringInChoices"]);
 
 /**
  * What deleting a season takes with it, one line per kind that has any ("4 Weeks"), in the
@@ -253,6 +261,26 @@ export default class ShoreshCampSetup extends LightningElement {
       "Not turned off. The week is ticked again."
     );
 
+  // A screen asked for in the page's address (ADDRESS_ONLY), opened once the season is read.
+  requestedScreen = null;
+
+  @wire(CurrentPageReference)
+  pageReference(reference) {
+    const asked = reference && reference.state && reference.state.c__screen;
+    this.requestedScreen = ADDRESS_ONLY.has(asked) ? asked : null;
+    this.openRequested();
+  }
+
+  /** The screen the address asks for, once there is a season to show it with. */
+  openRequested() {
+    if (!this.requestedScreen || this.mode !== "screens" || !this.setup) {
+      return;
+    }
+    const screen = this.requestedScreen;
+    this.requestedScreen = null;
+    this.openScreen(screen);
+  }
+
   connectedCallback() {
     // Date boxes' calendar buttons at least 24 by 24 (WCAG 2.5.8); without it they work, smaller.
     loadStyle(this, DATE_BOX).catch(() => {});
@@ -337,6 +365,7 @@ export default class ShoreshCampSetup extends LightningElement {
     this.setup = setup;
     this.termLabels = setup.labels;
     this.seasonForm = form;
+    this.openRequested();
   }
 
   renderedCallback() {
@@ -424,6 +453,11 @@ export default class ShoreshCampSetup extends LightningElement {
     return FLUSH_SCREENS.has(this.currentScreen)
       ? "zone body body_flush"
       : "zone body";
+  }
+
+  /** Drawn only while it is shown: its start reads the season's elective sets. */
+  get showsBringInChoices() {
+    return this.currentScreen === "bringInChoices";
   }
 
   get shown() {

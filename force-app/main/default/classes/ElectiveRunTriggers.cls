@@ -62,10 +62,10 @@ public with sharing class ElectiveRunTriggers {
   /**
    * Season and camper number; with no number, season and a SHA-256 of the name (spacing and
    * capitals aside), so the name is not stored twice. Two campers with one name and no number
-   * share a key, which is the one refusal the desktop makes.
+   * share a key, which is the one refusal the desktop makes. Bringing in choices (ChoicesImport)
+   * finds a sheet's campers already in the season by this key, so the name is never queried.
    */
-  @TestVisible
-  private static String camperKey(Camper__c camper) {
+  public static String camperKey(Camper__c camper) {
     if (String.isNotBlank(camper.CamperNumber__c)) {
       return camper.Season__c +
         '|#|' +

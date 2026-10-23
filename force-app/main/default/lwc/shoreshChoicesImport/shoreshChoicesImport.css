@@ -1,0 +1,398 @@
+@import "c/shoreshTokens";
+
+/*
+ * Bring in choices, as Greg's approved mock-up draws it (design-research/electives-r1/import.html,
+ * cards 1 and 2; decision 53): the rail, a hairline, then the card. Only the design system's
+ * tokens and classes (ADR 0015): three colours, the one raised treatment, the needs-a-look corner.
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ---------- the rail ---------- */
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-width: 0;
+}
+
+.side_left {
+  flex: 1 1 0;
+}
+
+.side_middle {
+  flex: none;
+}
+
+.side_right {
+  flex: 1 1 0;
+  justify-content: flex-end;
+}
+
+.file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+/* ---------- the card ---------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s5);
+  padding: var(--shoresh-s5) var(--shoresh-s6);
+  min-width: 0;
+}
+
+.message {
+  color: var(--shoresh-text-1);
+  font-weight: 500;
+}
+
+.quiet {
+  color: var(--shoresh-text-2);
+}
+
+/* The start: a well to drop the file on. */
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--shoresh-s3);
+  min-height: calc(var(--shoresh-u) * 60);
+  border-radius: var(--shoresh-radius-piece);
+  background: var(--shoresh-surface-drawer);
+  box-shadow: var(--shoresh-well-in);
+  position: relative;
+}
+
+.drop_over {
+  box-shadow:
+    var(--shoresh-well-in),
+    inset 0 0 0 2px var(--shoresh-color-highlight);
+}
+
+.drop-title {
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+}
+
+.drop-hint {
+  color: var(--shoresh-text-2);
+}
+
+/* ---------- 1 of 3: the sheet as read ---------- */
+
+.shape {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s4);
+}
+
+.shape-label {
+  color: var(--shoresh-text-2);
+}
+
+.shape-value {
+  font-weight: 500;
+}
+
+.sheet {
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.sheet table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.sheet td,
+.sheet th {
+  height: 28px;
+  padding: 0 var(--shoresh-s2);
+  border-right: 1px solid var(--shoresh-edge);
+  border-bottom: 1px solid var(--shoresh-edge);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-weight: 400;
+}
+
+.sheet .headings td {
+  color: var(--shoresh-text-2);
+  background: var(--shoresh-surface-grid);
+}
+
+.sheet .tags th,
+.sheet .tags td {
+  height: 30px;
+  border-bottom: 0;
+  border-right: 0;
+  background: var(--shoresh-surface-page);
+  padding: 0 2px;
+}
+
+.sheet .tags span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 var(--shoresh-s1);
+  border-radius: 6px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Read: the highlight. A comment: a tint of it (kept, not a choice). Not read: an outline only. */
+.sheet .tags .read {
+  color: var(--shoresh-color-primary-50);
+  background: var(--shoresh-color-highlight);
+}
+
+.sheet .tags .comment {
+  color: var(--shoresh-text-1);
+  background: var(--shoresh-surface-drawer);
+  box-shadow: inset 0 0 0 1px var(--shoresh-color-highlight);
+}
+
+.sheet .tags .not {
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+}
+
+.sheet tr[data-mine="true"] td {
+  background: var(--shoresh-surface-hover);
+  font-weight: 500;
+}
+
+.sheet td[data-not-read="true"] {
+  color: var(--shoresh-text-2);
+}
+
+.sheet .rn {
+  width: 36px;
+  color: var(--shoresh-text-2);
+  text-align: right;
+  background: var(--shoresh-surface-grid);
+}
+
+.sheet .tags .rn {
+  background: var(--shoresh-surface-page);
+}
+
+.readbacks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s3);
+}
+
+.readback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s3);
+  font-size: 15px;
+}
+
+.readback b {
+  font-weight: 600;
+}
+
+.place {
+  color: var(--shoresh-text-2);
+}
+
+.readback-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2);
+}
+
+.readback-choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A rank: the number in a filled circle. No order: an empty well, never a number. */
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--shoresh-color-highlight);
+  color: var(--shoresh-color-primary-50);
+}
+
+.mark_none {
+  background: var(--shoresh-surface-drawer);
+  box-shadow: var(--shoresh-well-in);
+}
+
+.when {
+  color: var(--shoresh-text-2);
+  font-size: var(--shoresh-font-size);
+}
+
+/* ---------- 2 of 3: rows in the shared table pattern ---------- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-space-control-x);
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+}
+
+.section-head span {
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.2fr) minmax(0, 0.6fr) minmax(0, 2.1fr)
+    var(--shoresh-s5);
+  align-items: center;
+  min-height: var(--shoresh-control-h);
+}
+
+.row > span {
+  padding: 0 var(--shoresh-space-control-x);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row_tall {
+  padding: var(--shoresh-s1) 0;
+}
+
+.n {
+  font-weight: 500;
+}
+
+.d {
+  color: var(--shoresh-text-2);
+}
+
+.text_wrap {
+  white-space: normal !important;
+}
+
+.options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2);
+  overflow: visible !important;
+}
+
+.choice {
+  height: 26px;
+}
+
+.same-as {
+  min-width: calc(var(--shoresh-u) * 40);
+}
+
+.tag {
+  color: var(--shoresh-text-2);
+}
+
+/* The needs-a-look corner: top right, as on a grid cell. */
+.corner {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  padding: 0 !important;
+}
+
+.row_look {
+  box-shadow:
+    inset 0 0 0 1px rgba(38, 35, 27, 0.3),
+    var(--shoresh-raise);
+}
+
+/* ---------- 3 of 3 and done ---------- */
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+}
+
+.line {
+  position: relative;
+  padding-right: var(--shoresh-s5);
+}
+
+.line_look {
+  font-weight: 500;
+}
+
+.refusal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s2);
+}
+
+.refusal-title,
+.done {
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+}
+
+.done:focus-visible,
+[data-card]:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
