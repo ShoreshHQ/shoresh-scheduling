@@ -121,9 +121,26 @@ public with sharing class LinkedChoiceSaves {
     return choice;
   }
 
-  /** The linked choice, its periods and divisions, held for this save. */
+  /**
+   * The linked choice, its periods and divisions, held for this save: two saves of one linked
+   * choice take turns, so a period ticked by both is added once.
+   */
   private static LinkedChoice__c held(Id choiceId) {
-    List<LinkedChoice__c> found = [
+    if (
+      [
+          SELECT Id
+          FROM LinkedChoice__c
+          WHERE Id = :choiceId
+          WITH USER_MODE
+          FOR UPDATE
+        ]
+        .isEmpty()
+    ) {
+      throw new ShoreshException(
+        'That linked choice is no longer there. Reload the page.'
+      );
+    }
+    return [
       SELECT
         Id,
         ElectiveSet__r.Season__c,
@@ -133,14 +150,7 @@ public with sharing class LinkedChoiceSaves {
       FROM LinkedChoice__c
       WHERE Id = :choiceId
       WITH USER_MODE
-      FOR UPDATE
     ];
-    if (found.isEmpty()) {
-      throw new ShoreshException(
-        'That linked choice is no longer there. Reload the page.'
-      );
-    }
-    return found[0];
   }
 
   /** A linked choice's name is what a sheet says, so it can't be blank. */
