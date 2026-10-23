@@ -1,13 +1,14 @@
 /**
- * What a Manual Build edit may do (SlotSaves): place the season's activities and special events
- * (ADR 0014 slice 4), never move or cover a
+ * What a Manual Build edit may do (SlotSaves): place the season's activities, special events
+ * (ADR 0014 slice 4) and elective sets (ADR 0018 slice E5), never move or cover a
  * fixed or recurring activity (they stay where setup puts them), and never place anything where a
  * group is not at camp. Reads what the edits need once, in user mode.
  */
 public with sharing class SlotRules {
   private CampLabels labels;
   private Map<Id, Activity__c> activities = new Map<Id, Activity__c>();
-  // The special events the edits place (SlotEvents); none unless withEvents read them.
+  // The special events and elective sets the edits place (SlotEvents); none unless withEvents
+  // read them.
   private SlotEvents events = SlotEvents.none();
   private Id seasonId;
   private Map<Id, Group__c> groups = new Map<Id, Group__c>();
@@ -41,7 +42,7 @@ public with sharing class SlotRules {
     }
   }
 
-  /** The season's special events the edits place, read once (SlotEvents). */
+  /** The season's special events and elective sets the edits place, read once (SlotEvents). */
   public SlotRules withEvents(List<SlotEdits.Edit> edits) {
     events = SlotEvents.read(seasonId, labels, edits);
     return this;
@@ -107,7 +108,7 @@ public with sharing class SlotRules {
         return String.valueOf(i + 1);
       }
     }
-    if (SlotIds.eventIn(slot) != null) {
+    if (SlotEvents.isPlaced(slot)) {
       return events.startToken(grid, slot);
     }
     Activity__c activity = seasonActivity(slot);

@@ -8,7 +8,8 @@
  *   "i": what is placed: [kind, id, name]. Kinds: A activity, F fixed activity, R recurring
  *        activity; and, for things not set up in Shoresh yet (no id): E elective, D special
  *        day, S special event, T trip. A special event placed on the grid, or a special event or
- *        day set up from an imported cell, has its record's id (ADR 0014 slice 4).
+ *        day set up from an imported cell, has its record's id (ADR 0014 slice 4); so does an
+ *        elective set placed on the grid or bound to an imported cell (ADR 0018 slice E5).
  *   "r": one row per group (same order as "g"), its cells separated by commas, one per time
  *        block (same order as "b"). A cell is empty (nothing placed), a number (an item in
  *        "i", counting from 1), or ^ (the item in the cell above carries on into this block).

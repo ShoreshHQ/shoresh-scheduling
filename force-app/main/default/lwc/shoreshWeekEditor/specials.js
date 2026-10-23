@@ -7,6 +7,7 @@
  *   schedule, read-only, and nothing on the week's grid for it is drawn, checked or counted.
  * - A special event covers the bunks and time blocks chosen: each bunk's cells hold it, and in
  *   Daily View bunks side by side holding it over the same blocks are drawn as one named cell.
+ *   An elective set is placed the same way (ADR 0018 slice E5), each time block on its own.
  */
 import { dailyGrid } from "c/shoreshScheduleViews";
 import { OPEN, placementIn, rebaseRun, slots, staysPut } from "./slotEdits";
@@ -90,9 +91,11 @@ export function rowsCovered(days, cells) {
  * holding it for every block, whatever was there going in full (nothing is left cut short).
  * Returns { runs } or, when a block can't take it, { refused, at }: "setTime" (a fixed or
  * recurring activity, which stays where setup puts it), "away" (the bunk isn't at camp), or
- * "locked". checks: isAway(slot) and isLocked(slot), on { day, group, block }.
+ * "locked". checks: isAway(slot) and isLocked(slot), on { day, group, block }. eachBlock: each
+ * block holds it on its own (an elective set, ADR 0018 slice E5: each time block is its own
+ * elective time) rather than one run carrying on.
  */
-export function eventRuns(days, rows, event, checks) {
+export function eventRuns(days, rows, event, checks, eachBlock = false) {
   const runs = [];
   for (const target of rows) {
     const row = slots(days[target.day], target.group);
@@ -110,7 +113,7 @@ export function eventRuns(days, rows, event, checks) {
     }
     const after = [];
     for (let b = target.first; b <= target.last; b++) {
-      after.push(b === target.first ? event : `^${event}`);
+      after.push(b === target.first || eachBlock ? event : `^${event}`);
     }
     const run = rebaseRun(row, target.first, after);
     if (run) {

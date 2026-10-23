@@ -74,7 +74,13 @@
  *   seats changed read back as that one change, saved and said, and in the org; a choices
  *   file said, nothing saved, Bring in choices taking focus and opening that screen, axe).
  *   The check's own elective set is made by Apex first and deleted after.
- *   `--only electives` runs just this step (with the camp's seed), for a change to that screen;
+ *   `--only electives` runs just this step and the next (with the camp's seed), for a change to
+ *   those screens;
+ * - an elective set on Manual Build's grid (repo ADR 0018 slice E5), keyboard only: the drawer's
+ *   first tile is the check's set; Enter picks it up, focus to the grid; Space on an Open cell
+ *   puts it down, focus kept on that cell, which reads "<set> (2)" with the set's mark; axe;
+ *   Ctrl/Cmd+Z takes it
+ *   back. The set is made by Apex first and deleted after;
  * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
  *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
  *   card's heading as That's right and Next move on, an unknown name left out by keyboard, the
@@ -2782,11 +2788,14 @@ async function undoSteps(n, { re = /^Undone: /, done } = {}) {
  * mock-up's hold-archery.png when --shots is given.
  */
 async function holdTile(S) {
+  // An activity's tile: the elective sets come first in the drawer (ADR 0018 slice E5), and
+  // theirs say how many offerings they have.
   const isTile = (f) =>
     f.tag === "button" &&
     f.components.includes("c-shoresh-build-palette") &&
     f.dataId !== "palette-filter" &&
-    f.type === "button";
+    f.type === "button" &&
+    !/\d+ offerings?$/.test(f.name);
   const tile = await tabTo(isTile, { max: 200 });
   if (!tile) throw new Error("No drawer tile reached with Tab.");
   const name = tile.name.split(",")[0].trim();
@@ -4106,6 +4115,120 @@ async function electives() {
   );
 }
 
+/**
+ * An elective set on the week grid (repo ADR 0018 slice E5; decision 53.2), on Manual Build,
+ * keyboard only: with the check's set seeded fresh (the page read again so it is in the season),
+ * the drawer's first tile is the set; Enter picks it up with focus going to the grid; Space on an
+ * Open cell puts it down, focus staying on that cell, which now reads "<set> (2)" (its
+ * confirmed, open offerings: one with seats, one with seats not filled in; the proposed one is
+ * not counted) with the set's mark (putting down is not said on its own, for a set as for any
+ * activity: the focused cell's new name is what a screen reader reads); axe; Ctrl/Cmd+Z takes it
+ * back, said. The set is deleted after.
+ */
+async function electivesOnGrid(openManual) {
+  const S = "Manual Build";
+  await step(S, "An elective set on the grid by keyboard", async () => {
+    seedElectivesSetup();
+    try {
+      const origin = new URL(page.url()).origin;
+      await page.goto(`${origin}${TAB_PATH}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000
+      });
+      await page
+        .locator(APP)
+        .locator("c-shoresh-menu")
+        .waitFor({ timeout: 60000 });
+      await pause(3000);
+      await openManual();
+      if (await exists('[data-id="start-week"]')) {
+        if (!(await tabTo(named(/^Start a blank/))))
+          throw new Error("Start not reached with Tab.");
+        await expectLive(S, "Start a blank week: it is said", /Started/i, () =>
+          press("Enter")
+        );
+      }
+      const first = (await drawerNames())[0];
+      if (first === CHECK_SET) {
+        results.pass(S, "The drawer: elective sets first", `${first}.`);
+      } else {
+        results.fail(
+          S,
+          "The drawer: elective sets first",
+          `The first tile is "${first}".`
+        );
+      }
+      const tile = named(new RegExp(`^${CHECK_SET}, .* offerings?$`), {
+        tag: "button"
+      });
+      if (!(await tabTo(tile, { max: 200 })))
+        throw new Error("The set's tile was not reached with Tab.");
+      await press("Enter", 800);
+      await expectFocus(S, "Picking up a set: focus goes to the grid", {
+        inGrid: true
+      });
+      const open = (await gridCells()).find(isFreeOpen);
+      if (!open) throw new Error("No Open cell to put the set in.");
+      await focusCell(open.key);
+      await press(" ");
+      const label = `${CHECK_SET} (2)`;
+      const end = Date.now() + 15000;
+      let cell = null;
+      while (!cell && Date.now() < end) {
+        cell = (await gridCells()).find((c) => c.name === label);
+        if (!cell) await pause(200);
+      }
+      // Putting down is not said (as for any activity): focus stays on the cell, which reads it.
+      const focused = await focusedCellKey();
+      if (cell && focused === cell.key) {
+        results.pass(
+          S,
+          "Space puts the set down: focus stays on its cell",
+          `Focus on ${cell.key}.`
+        );
+      } else {
+        await shot(S, "Space puts the set down");
+        results.fail(
+          S,
+          "Space puts the set down: focus stays on its cell",
+          cell
+            ? `Focus on ${focused || "no cell"}; the set is in ${cell.key}.`
+            : `No cell reads "${label}".`
+        );
+      }
+      const marked =
+        cell &&
+        (await shown('c-shoresh-schedule-grid[data-id="edit-grid"]')
+          .first()
+          .locator(`[data-cell="${cell.key}"] .flag`)
+          .count()) > 0;
+      if (cell && marked) {
+        results.pass(
+          S,
+          "The cell reads the set and its count, with its mark",
+          `"${label}" in ${cell.key}.`
+        );
+      } else {
+        await shot(S, "An elective set on the grid");
+        results.fail(
+          S,
+          "The cell reads the set and its count, with its mark",
+          cell ? "No mark before the name." : `No cell reads "${label}".`
+        );
+      }
+      await axe(`${S}: an elective set on the grid`);
+      await expectLive(
+        S,
+        "Ctrl+Z takes the set back: it is said",
+        /^Undone: /,
+        () => press("ControlOrMeta+z")
+      );
+    } finally {
+      clearElectives();
+    }
+  });
+}
+
 /** The offerings' list in the file "Download this list" saves: [[heading, ...], [cell, ...]]. */
 function downloadedRows(path) {
   const XLSX = require("xlsx");
@@ -4471,6 +4594,7 @@ async function main() {
       await schedulesPage();
     }
     await electives();
+    await electivesOnGrid(openManual);
     if (only !== "electives") await bringInChoices();
   } finally {
     const version = browser.version();

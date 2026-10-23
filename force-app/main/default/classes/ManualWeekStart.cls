@@ -6,7 +6,8 @@
  * from this week's own setup); then each activity of the source day goes into the same time
  * blocks for the same group (ManualWeekCopy), through the same slot saves as any edit
  * (SlotSaves), only where the cells are Open and the group is at camp, and only if the activity
- * is still in setup and running that week. Anything that can't go is left Open and listed, never
+ * is still in setup and running that week. An elective set goes the same way while the season
+ * still has it (ADR 0018 slice E5); a special event does not (it is placed day by day). Anything that can't go is left Open and listed, never
  * guessed. Runs in user mode.
  */
 public with sharing class ManualWeekStart {
@@ -15,6 +16,8 @@ public with sharing class ManualWeekStart {
   private Map<Id, Group__c> groups;
   private Map<Id, TimeBlock__c> blocks;
   private GeneratedSetup setup;
+  // The season's elective sets, read when the other week first has one (ADR 0018 slice E5).
+  private Set<Id> electiveSets;
 
   /** The new draft, and what was left out. */
   public class Started {
@@ -57,7 +60,7 @@ public with sharing class ManualWeekStart {
       SlotEdits.Result saved = SlotSaves.makeWith(
         blank.draftId,
         copy.edits,
-        setup.rules(SlotRules.activityIdsIn(copy.edits))
+        setup.rules(SlotRules.activityIdsIn(copy.edits)).withEvents(copy.edits)
       );
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
@@ -133,6 +136,11 @@ public with sharing class ManualWeekStart {
         setup.labels().singularInSentence('SpecialEvent') +
         ' is put on each day by hand';
     }
+    Id setId = SlotIds.electiveIn(slot);
+    if (setId != null) {
+      // An elective set goes where it was, as the week's pattern (ADR 0018 slice E5).
+      return seasonSets().contains(setId) ? null : 'deleted from setup';
+    }
     if (activityId == null) {
       return 'not set up yet';
     }
@@ -142,6 +150,22 @@ public with sharing class ManualWeekStart {
     return closedActivities.contains(activityId)
       ? 'not running this ' + weekWord()
       : null;
+  }
+
+  /** The season's elective sets, read once. */
+  private Set<Id> seasonSets() {
+    if (electiveSets == null) {
+      electiveSets = new Map<Id, ElectiveSet__c>(
+          [
+            SELECT Id
+            FROM ElectiveSet__c
+            WHERE Season__c = :setup.program.Season__c
+            WITH USER_MODE
+          ]
+        )
+        .keySet();
+    }
+    return electiveSets;
   }
 
   /** The camp's word for a week, in a sentence ("week", "session"), read only when needed. */

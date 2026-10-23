@@ -14,6 +14,7 @@ import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule"
 import { failed } from "c/shoreshErrors";
 import { publishQuestion, publishedWord } from "c/shoreshPublish";
 import { MODE, checkGeneratedWeek } from "c/shoreshEngine";
+import { electivesOf } from "c/shoreshElectiveDetails";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 import {
   ACTION,
@@ -650,6 +651,9 @@ export default class ShoreshGeneratedSchedule extends LightningElement {
       terms: this.t,
       // Days a special day replaces: nothing is built, checked or counted there (ADR 0014).
       replacedDates: this.replacedDates,
+      // The season's offerings: an elective set on the grid takes up their places (ADR 0018
+      // slice E5).
+      electiveOfferings: electivesOf(this._setup).offerings,
       ...extra
     };
   }

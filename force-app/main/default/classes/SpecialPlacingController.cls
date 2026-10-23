@@ -37,8 +37,8 @@ public with sharing class SpecialPlacingController {
   }
 
   /**
-   * "Set it up": the special event ('S') or special day ('D') a cell of the week's draft names,
-   * made from what the file had.
+   * "Set it up": the special event ('S'), special day ('D') or elective set ('E', ADR 0018 slice
+   * E5) a cell of the week's draft names, made from what the file had.
    */
   @AuraEnabled
   public static SpecialSetUp.Done setUpItem(

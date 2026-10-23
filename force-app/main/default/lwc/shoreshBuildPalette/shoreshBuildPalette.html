@@ -26,6 +26,34 @@
         <p class="no-matches">No matches</p>
       </template>
       <ul class="tiles" style={tilesStyle} data-id="drawer-tiles">
+        <!-- The season's elective sets first, each with its mark and its count of offerings
+             (mock-up electives-r1 grid-a), only when the camp has any. -->
+        <template for:each={shownElectives} for:item="tile">
+          <li key={tile.key}>
+            <button
+              type="button"
+              class={tile.className}
+              draggable="true"
+              aria-pressed={tile.pressed}
+              aria-label={tile.said}
+              data-id={tile.id}
+              data-kind="elective"
+              onclick={handlePickElective}
+              ondragstart={handleElectiveDragStart}
+            >
+              <span class="tile-name">
+                <svg class="flag" viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M6 11V6.5"></path>
+                  <path d="M6 6.5 2.5 2.5"></path>
+                  <path d="M6 6.5l3.5-4"></path>
+                  <path d="M2.5 5V2.5H5"></path>
+                  <path d="M7 2.5h2.5V5"></path></svg
+                >{tile.name}</span
+              >
+              <span class="tile-words" aria-hidden="true">{tile.words}</span>
+            </button>
+          </li>
+        </template>
         <template for:each={shownTiles} for:item="tile">
           <li key={tile.id}>
             <button
