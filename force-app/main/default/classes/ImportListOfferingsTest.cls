@@ -48,12 +48,11 @@ private class ImportListOfferingsTest {
     };
   }
 
-  /** A new offering as the screen sends it: its set and activity by Id or by key. */
+  /** A new offering as the screen sends it: its set and activity by Id or key; no seats is No limit. */
   private static Map<String, Object> newOffering(
     String setRef,
     String activityRef,
-    Object seats,
-    Boolean noLimit
+    Object seats
   ) {
     return new Map<String, Object>{
       'kind' => 'Offering',
@@ -63,7 +62,7 @@ private class ImportListOfferingsTest {
       activityRef,
       'fields' => new Map<String, Object>{
         'Seats__c' => seats,
-        'NoSeatLimit__c' => noLimit,
+        'NoSeatLimit__c' => seats == null,
         'MinimumToRun__c' => null,
         'Proposed__c' => true
       },
@@ -103,11 +102,11 @@ private class ImportListOfferingsTest {
           )
         );
         records.add(
-          newOffering('ElectiveSet:Bechirot', 'Activity:' + name, 10, false)
+          newOffering('ElectiveSet:Bechirot', 'Activity:' + name, 10)
         );
       }
       // An activity the season has, offered in a set the season has, with no seat limit.
-      records.add(newOffering(c.chugim.Id, c.drama.Id, null, true));
+      records.add(newOffering(c.chugim.Id, c.drama.Id, null));
       Test.startTest();
       Integer before = Limits.getQueries();
       ImportSetupSaves.Result result = save(plan(c.season.Id, records));
@@ -265,8 +264,8 @@ private class ImportListOfferingsTest {
               new Map<String, Object>(),
               new List<Object>()
             ),
-            newOffering('ElectiveSet:Bechirot', 'Activity:Kayaking', 8, false),
-            newOffering('ElectiveSet:Tzrif', c.drama.Id, 8, false),
+            newOffering('ElectiveSet:Bechirot', 'Activity:Kayaking', 8),
+            newOffering('ElectiveSet:Tzrif', c.drama.Id, 8),
             new Map<String, Object>{
               'kind' => 'Offering',
               'id' => c.archeryOffered.Id,
@@ -327,7 +326,7 @@ private class ImportListOfferingsTest {
       ImportSetupSaves.Result result = save(
         plan(
           c.season.Id,
-          new List<Object>{ newOffering(c.chugim.Id, c.drama.Id, 8, false) }
+          new List<Object>{ newOffering(c.chugim.Id, c.drama.Id, 8) }
         )
       );
       Offering__c drama = [

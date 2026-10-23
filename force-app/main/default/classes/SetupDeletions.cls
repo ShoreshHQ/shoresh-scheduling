@@ -128,46 +128,19 @@ public with sharing class SetupDeletions {
         program.program = row.Name;
         return program;
       }
-    } else if (type == ElectiveSet__c.SObjectType) {
-      for (ElectiveSet__c row : [
-        SELECT Name, Season__r.Camp__c
-        FROM ElectiveSet__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        return new Item('ElectiveSet', row.Name, row.Season__r.Camp__c);
-      }
-    } else if (type == Offering__c.SObjectType) {
-      return offeringOf(recordId);
     } else {
       return programItemOf(recordId, type);
     }
     return null;
   }
 
-  /**
-   * An offering, named by its activity within its set (the Electives list's rows, plan §6.2):
-   * "deleted|Offering|<set>|<activity>".
-   */
-  private static Item offeringOf(Id recordId) {
-    for (Offering__c row : [
-      SELECT
-        Activity__r.Name,
-        ElectiveSet__r.Name,
-        ElectiveSet__r.Season__r.Camp__c
-      FROM Offering__c
-      WHERE Id = :recordId
-      WITH USER_MODE
-    ]) {
-      Item found = new Item(
-        'Offering',
-        row.Activity__r.Name,
-        row.ElectiveSet__r.Season__r.Camp__c
-      );
-      found.scope = row.ElectiveSet__r.Name;
-      return found;
-    }
-    return null;
+  /** An elective set or an offering (SetupDeletionElectives), as an item (with no camp for anything else). */
+  private static Item electiveItemOf(Id recordId) {
+    // Nothing found has no camp: remember() leaves it.
+    SetupDeletionElectives.Found found = SetupDeletionElectives.of(recordId);
+    Item item = new Item(found.kind, found.name, found.campId);
+    item.scope = found.scope;
+    return item;
   }
 
   /** A program's own item: its division, group, time block, fixed or recurring activity. */
@@ -187,7 +160,8 @@ public with sharing class SetupDeletions {
     if (type == RecurringActivity__c.SObjectType) {
       return recurringOf(recordId);
     }
-    return null;
+    // Else an elective set or an offering, or nothing remembered.
+    return electiveItemOf(recordId);
   }
 
   /** An item named with its program, in the program's camp. */
