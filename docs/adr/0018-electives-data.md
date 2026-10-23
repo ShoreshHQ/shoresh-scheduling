@@ -514,7 +514,18 @@ division's time, and the server allows its other bunks' campers in it.
     keeps it); Assign again changes it in place. The counter lists what keeps a linked choice from
     being placed as a set ("1 linked choice filled one period at a time": a period this schedule
     doesn't have for a division it applies to, an activity not offered at a period, two sharing a
-    time), worked out from the run each time, as the other problems are (choice 31).
+    time; the count is of linked choices, not of the rows under it), worked out from the run each
+    time, as the other problems are (choice 31). It also names each camper the engine fills one
+    period at a time although the set is placed (the engine's `UNSUPPORTED_LINKED_CHOICE` for
+    campers, by its own rule: "2 given their linked choice one period at a time", 'Asked for
+    "Pottery double" but doesn't attend every period it covers' or '... but has a locked seat in
+    one of its periods'), and each camper who asked for a linked choice that doesn't cover them
+    (their division left out by Only these or All except, or holding none of its periods): their
+    choice is never dropped but counts as its activity, as it was saved, and is said ("1 asked for
+    a linked choice not for their division", '"Pottery" doesn't cover Seniors, so it counts as
+    Pottery'; desktop D6 amendment 2026-09-30, `BUNDLE_TIER_NOT_COVERED`: "treated as
+    ordinary"). This matters most for an offering's first linked choice, which is named as its
+    activity (choice 41), so a sheet's plain "Pottery" is its choice.
 
 Checked by `LinkedChoicesTest` (as a scheduler, records made inside the same `System.runAs`: the
 week read from working schedules only, bounded, and incomplete past its budget; a linked choice
@@ -524,7 +535,8 @@ read with the run within 9 queries, its seats saved as a set, Assign again, ever
 move, the refused delete), `ChoicesImportTest` (a sheet's choice of a linked choice), Jest
 (`shoreshElectiveDetails`: the editor's every gesture, the draft, the marks, the notes, axe;
 `shoreshCampSetup` `electives.test.js`: a save in turn and the delete question;
-`shoreshElectiveSeats` `linked.test.js`; `shoreshChoicesImport` `review.test.js`; also
+`shoreshElectiveSeats` `linked.test.js`, including the campers named against the engine's own
+findings, an uncovered camper's choice kept, and the count of linked choices; `shoreshChoicesImport` `review.test.js`; also
 namespaced), and in the test org by `scripts/a11y-browser-check.mjs` (the name and a period by
 keyboard, each saved, axe).
 

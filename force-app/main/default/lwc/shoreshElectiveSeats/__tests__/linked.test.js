@@ -13,7 +13,7 @@ import {
   readRun
 } from "../seats";
 import { linkedIdOf, linkedOf, weekdayOf } from "../linked";
-import { MONDAY, TUESDAY, runView } from "./data/run";
+import { MONDAY, TUESDAY, runView, seat } from "./data/run";
 
 const t = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -269,6 +269,7 @@ describe("what keeps a linked choice from being placed as a set", () => {
     expect(board.problems.linked).toEqual([
       {
         key: "missing|lc1|d1|Wednesday|b1",
+        ids: ["lc1"],
         name: "Drama both days",
         text: "Not on this schedule at Wednesday 12:30 for Juniors"
       }
@@ -310,5 +311,230 @@ describe("what keeps a linked choice from being placed as a set", () => {
     // The engine refuses both, as the desktop does: filled one period at a time.
     const result = assignSeats(engineInput(run, t).input);
     expect(result.seats.filter((s) => s.linkedChoiceId).length).toBe(0);
+  });
+});
+
+// Seniors (Oak, Noa Pinecrest) beside Juniors: their own times at the day and block given.
+const SENIORS = {
+  id: "g3",
+  name: "Oak",
+  divisionId: "d2",
+  divisionName: "Seniors"
+};
+const seniorTime = (day, blockId) => ({
+  key: `${day}|${blockId}|d2`,
+  day,
+  blockId,
+  blockName: blockId === "b1" ? "Period 1" : "Period 2",
+  startTime: blockId === "b1" ? "12:30" : "14:00",
+  blockOrder: blockId === "b1" ? 0 : 1,
+  divisionId: "d2",
+  divisionOrder: 2,
+  groupIds: ["g3"],
+  offeringIds: ["o1", "o2", "o3"]
+});
+const NOA = (list) => ({
+  id: "c5",
+  name: "Noa Pinecrest",
+  groupId: "g3",
+  choices: choices(list)
+});
+
+describe("a camper a linked choice doesn't cover", () => {
+  // "Drama" (the activity's own name, desktop D7's first default) on Monday and Tuesday Period 1:
+  // the set sits there for Juniors, and on Monday Period 2 for Seniors.
+  const DRAMA = { ...BOTH_DAYS, name: "Drama" };
+  const seniorsView = (linkedChoices, noaChoices) => {
+    const base = linkedView(linkedChoices);
+    return {
+      ...base,
+      times: [...base.times, seniorTime(MONDAY, "b2")],
+      groups: [...base.groups, SENIORS],
+      campers: [...base.campers, NOA(noaChoices)]
+    };
+  };
+
+  it("whose division holds none of its periods keeps the choice as its activity, and it is said", () => {
+    const run = readRun(
+      seniorsView(
+        [DRAMA],
+        [{ n: "Drama", a: "a2", l: "lc1", r: 1, k: "ranked" }]
+      )
+    );
+    const { input } = engineInput(run, t);
+    expect(input.linkedChoices.map((c) => c.id)).toEqual(["lc1|d1"]);
+    expect(input.choices.filter((c) => c.camperId === "c5")).toEqual([
+      {
+        camperId: "c5",
+        key: "a2",
+        timeId: null,
+        rank: 1,
+        rankKind: "ordered-fallback"
+      }
+    ]);
+    // The engine places Noa in Drama at the Seniors' time, ranked first.
+    const noa = assignSeats(input).seats.filter((s) => s.camperId === "c5");
+    expect(noa.map((s) => [s.timeId, s.activityId, s.rank])).toEqual([
+      [`${MONDAY}|b2|d2`, "a2", 1]
+    ]);
+    const board = buildBoard(run, t);
+    expect(needsLook(board)).toBe(true);
+    const section = problemSections(board, t).find(
+      (s) => s.key === "uncovered"
+    );
+    expect(section.head).toBe(
+      "1 asked for a linked choice not for their division"
+    );
+    expect(section.rows.map((r) => [r.text, r.aside, r.target])).toEqual([
+      [
+        "Noa Pinecrest",
+        '"Drama" doesn\'t cover Seniors, so it counts as Drama',
+        { view: "camper", camperId: "c5" }
+      ]
+    ]);
+  });
+
+  it("whose division Only these leaves out keeps the choice too, said once however often chosen", () => {
+    const base = linkedView([
+      { ...DRAMA, appliesTo: "OnlyThese", divisionIds: ["d1"] }
+    ]);
+    const run = readRun({
+      ...base,
+      times: [
+        ...base.times,
+        seniorTime(MONDAY, "b1"),
+        seniorTime(TUESDAY, "b1")
+      ],
+      groups: [...base.groups, SENIORS],
+      campers: [
+        ...base.campers,
+        NOA([
+          {
+            n: "Drama",
+            a: "a2",
+            l: "lc1",
+            d: "Monday",
+            p: "1",
+            r: 1,
+            k: "ranked"
+          },
+          {
+            n: "Drama",
+            a: "a2",
+            l: "lc1",
+            d: "Tuesday",
+            p: "1",
+            r: 2,
+            k: "ranked"
+          }
+        ])
+      ]
+    });
+    const { input } = engineInput(run, t);
+    expect(input.linkedChoices.map((c) => c.id)).toEqual(["lc1|d1"]);
+    expect(
+      input.choices
+        .filter((c) => c.camperId === "c5")
+        .map((c) => [c.key, c.timeId, c.rank])
+    ).toEqual([
+      ["a2", `${MONDAY}|b1|d2`, 1],
+      ["a2", `${TUESDAY}|b1|d2`, 2]
+    ]);
+    const board = buildBoard(run, t);
+    expect(board.problems.uncovered.map((u) => u.camper.id)).toEqual(["c5"]);
+    // Maya, a Junior it covers, is not among them.
+    expect(choicesOf(run).uncovered).toEqual([
+      { camperId: "c5", linkedChoiceId: "lc1" }
+    ]);
+  });
+});
+
+describe("a camper who asked for a linked choice but can't have it as a set", () => {
+  it("is said, as the engine says it: missing one of its periods, or locked into one", () => {
+    const base = linkedView();
+    const view = {
+      ...base,
+      // Willow (Eli) doesn't take Tuesday's Period 1.
+      times: [base.times[0], { ...base.times[1], groupIds: ["g1"] }],
+      campers: [
+        base.campers[0],
+        base.campers[1],
+        {
+          ...base.campers[2],
+          choices: choices([
+            { n: "Drama both days", a: "a2", l: "lc1", r: 1, k: "ranked" }
+          ])
+        },
+        base.campers[3]
+      ],
+      // Maya is locked into Archery on Tuesday.
+      seats: [seat("x1", "c1", TUESDAY, "o1", { locked: true, byHand: true })]
+    };
+    const run = readRun(view);
+    const result = assignSeats(engineInput(run, t).input);
+    const engineSaid = result.findings
+      .filter((f) => f.kind === "UNSUPPORTED_LINKED_CHOICE" && f.camperIds)
+      .map((f) => f.camperIds);
+    // The same campers the engine names (in the campers' order here).
+    expect(engineSaid).toEqual([["c3"], ["c1"]]);
+    const board = buildBoard(run, t);
+    expect(
+      board.problems.split.map((s) => [s.camperId, s.linkedChoiceId, s.reason])
+    ).toEqual([
+      ["c1", "lc1", "locked"],
+      ["c3", "lc1", "absent"]
+    ]);
+    expect(needsLook(board)).toBe(true);
+    const section = problemSections(board, t).find((s) => s.key === "split");
+    expect(section.head).toBe(
+      "2 given their linked choice one period at a time"
+    );
+    expect(section.rows.map((r) => [r.text, r.aside])).toEqual([
+      [
+        "Maya Fernwood",
+        'Asked for "Drama both days" but has a locked seat in one of its periods'
+      ],
+      [
+        "Eli Marblecrest",
+        'Asked for "Drama both days" but doesn\'t attend every period it covers'
+      ]
+    ]);
+  });
+
+  it("nothing is said when the set is given", () => {
+    const board = buildBoard(readRun(linkedView()), t);
+    expect(board.problems.split).toEqual([]);
+    expect(board.problems.uncovered).toEqual([]);
+    expect(
+      problemSections(board, t).filter((s) =>
+        ["split", "uncovered", "linked"].includes(s.key)
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("the counter counts linked choices, not their problems", () => {
+  it("one linked choice missing Thursday for two divisions is one", () => {
+    const thursday = {
+      ...BOTH_DAYS,
+      periods: [
+        { weekday: "Monday", blockId: "b1" },
+        { weekday: "Thursday", blockId: "b1" }
+      ]
+    };
+    const base = linkedView([thursday]);
+    const run = readRun({
+      ...base,
+      times: [...base.times, seniorTime(MONDAY, "b1")],
+      groups: [...base.groups, SENIORS]
+    });
+    const board = buildBoard(run, t);
+    expect(board.problems.linked.map((p) => p.text)).toEqual([
+      "Not on this schedule at Thursday 12:30 for Juniors",
+      "Not on this schedule at Thursday 12:30 for Seniors"
+    ]);
+    const section = problemSections(board, t).find((s) => s.key === "linked");
+    expect(section.head).toBe("1 linked choice filled one period at a time");
+    expect(section.rows).toHaveLength(2);
   });
 });

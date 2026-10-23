@@ -160,7 +160,15 @@ choices 38 to 44), built in the browser (`c/shoreshElectiveSeats` `linked.js`) a
   period, or holds a lock at one), the camper still has that activity ranked at those periods.
   When the set is given, those periods are already taken, so the rows change nothing. A choice of
   a linked choice that can't be used (deleted, its offering not confirmed) counts as the activity
-  it was saved with.
+  it was saved with. So does a choice of one that **doesn't cover the camper** (no copy of it
+  holds any time they take: their division is left out, or holds none of its periods), and the
+  counter names them (desktop D6 amendment 2026-09-30, `BUNDLE_TIER_NOT_COVERED`): the engine
+  alone would skip them without a word ("attends none of its times"), dropping a written answer.
+- **A camper the engine fills one period at a time** although the set is placed (they take some
+  of its times but not all, or hold a lock at one: `UNSUPPORTED_LINKED_CHOICE` with `camperIds`)
+  is worked out on the screen by the same rule (`linked.js` `splitOf`, checked against the
+  engine's findings) and named in the counter, so it shows whenever the run is read, not only
+  just after Assign seats.
 - **What comes back**: a seat placed as part of a linked choice carries `linkedChoiceId`
   (`<Id>|<division>`); Assign seats sends the linked choice's Id with it, and the server checks
   and saves it (`ElectiveLinkedSeats`, `Assignment__c.LinkedChoice__c`).
@@ -170,4 +178,5 @@ choices 38 to 44), built in the browser (`c/shoreshElectiveSeats` `linked.js`) a
 Tests: `shoreshElectiveSeats` `linked.test.js` (the input per division, Only these and All
 except, an unconfirmed offering, a sheet's choice of one, the seats placed as a set and what
 Assign sends, a missing period and two sharing a time with the engine's refusal, the same seats
-in any order).
+in any order, an uncovered camper's choice kept as its activity, the campers split from a set
+matching the engine's findings).
