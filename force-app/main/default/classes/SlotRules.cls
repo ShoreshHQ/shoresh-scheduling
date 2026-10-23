@@ -47,11 +47,15 @@ public with sharing class SlotRules {
     return this;
   }
 
-  /** The activities a Manual Build save's edits place; refuses an edit that can't be read. */
+  /**
+   * The activities a Manual Build save's edits place; refuses an edit that can't be read. An edit
+   * changes at least one cell, or (a rainy day whose cells are all full) only names the "Rain
+   * plan full" marks its day keeps (repo docs/adr/0019).
+   */
   public static Set<Id> activityIdsIn(List<SlotEdits.Edit> edits) {
     Set<Id> result = new Set<Id>();
     for (SlotEdits.Edit edit : edits) {
-      if (edit == null || edit.runs == null || edit.runs.isEmpty()) {
+      if (edit?.runs == null || (edit.runs.isEmpty() && edit.rain == null)) {
         throw new ShoreshException('That change could not be read.');
       }
       for (SlotEdits.Run run : edit.runs) {

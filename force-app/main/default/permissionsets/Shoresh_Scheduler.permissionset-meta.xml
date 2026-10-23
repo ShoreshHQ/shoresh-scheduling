@@ -48,6 +48,10 @@
         <apexClass>SpecialPlacingController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>RainyDayController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <applicationVisibilities>
         <application>Shoresh</application>
         <visible>true</visible>
@@ -142,6 +146,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>ScheduleDay__c.Part__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>ScheduleDay__c.RainyDay__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

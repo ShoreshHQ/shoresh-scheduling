@@ -1086,7 +1086,8 @@ the grid and the activity list on its left keep their look.
 5. **Edit** (decision 36) holds **Undo** and **Redo** with their keys (⌘Z and ⇧⌘Z on a Mac,
    Ctrl+Z and Ctrl+Shift+Z elsewhere; `aria-keyshortcuts`), a line, then Manual Build's tools:
    **Clear day**, **Copy day to…**, **Clear week** (Group View: **Clear day** with the bunk's
-   days under it; none in Activity View). **Copy day to…** opens its days under it, one step in,
+   days under it; none in Activity View). _Since 2026-10-22 (ADR 0019): then, after a line,
+   **Rainy day…** with the week's days under it, on Generated Schedule too._ **Copy day to…** opens its days under it, one step in,
    and keeps the menu open. Everything they did is unchanged (part 4a): no confirm, one Undo step,
    the line with its Undo, focus on that Undo after. After the line's own Undo, focus goes to
    Edit (the line is gone, and Undo is in Edit). Keys, as a menu button: Enter, Space or Down open

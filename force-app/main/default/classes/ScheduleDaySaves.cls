@@ -12,6 +12,9 @@ public with sharing class ScheduleDaySaves {
     public Date day;
     public ScheduleGrid grid;
     public Integer expectedRevision;
+    // The day's "Rain plan full" marks (RainMarks) to leave; none clears them. Null keeps the
+    // ones it has. Either way only the marks whose cell still holds that activity are kept.
+    public List<String> rain;
 
     public DaySave(Date day, ScheduleGrid grid, Integer expectedRevision) {
       this.day = day;
@@ -115,6 +118,7 @@ public with sharing class ScheduleDaySaves {
         : new List<ScheduleDay__c>();
       Integer revision = nextRevision(before, save.expectedRevision);
       List<String> texts = ScheduleGridParts.split(save.grid);
+      Integer first = toSave.size();
       for (Integer i = 0; i < texts.size(); i++) {
         ScheduleDay__c part = i < before.size()
           ? new ScheduleDay__c(Id = before[i].Id)
@@ -125,6 +129,12 @@ public with sharing class ScheduleDaySaves {
         part.Revision__c = revision;
         toSave.add(part);
       }
+      // The marks are kept on the first part, and only where their cell still holds them.
+      toSave[first].RainyDay__c = RainMarks.forSave(
+        save.grid,
+        save.rain,
+        before
+      );
       for (Integer i = texts.size(); i < before.size(); i++) {
         toDelete.add(before[i]);
       }

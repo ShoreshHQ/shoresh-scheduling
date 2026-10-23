@@ -256,6 +256,14 @@ if (weeks.size() > 1) {
   week = new Week__c(Season__c = season.Id, Name = 'Week ' + n, StartDate__c = monday, EndDate__c = monday.addDays(4), SortOrder__c = n);
   insert week;
 }
+// Rainy day (ADR 0019): Soccer is outdoors with Gym games as its rain plan.
+Map<String, Activity__c> byName = new Map<String, Activity__c>();
+for (Activity__c a : [SELECT Id, Name FROM Activity__c WHERE Season__c = :season.Id AND Name IN ('Soccer', 'Gym games')]) {
+  byName.put(a.Name, a);
+}
+if (byName.size() == 2) {
+  update new Activity__c(Id = byName.get('Soccer').Id, Outdoor__c = true, RainPlan__c = byName.get('Gym games').Id);
+}
 System.debug('A11Y_WEEK[' + week.Name + ']');
 `);
   // The log also echoes the code above, quote marks and all: only the debug line matches.
@@ -3035,6 +3043,71 @@ async function generated(openGenerated) {
       await pause(3000);
     }
   });
+  await step(S, "Rainy day…, then its Undo", () => rainyDay(S));
+}
+
+/**
+ * Rainy day (ADR 0019): Edit > Rainy day… opens the week's days one step in; a day keeps the week
+ * as "Before rainy <day>" and switches its outdoor activities (the check's camp has Soccer
+ * outdoors with Gym games as its rain plan, seedCamp), the receipt is said, focus goes to its
+ * Undo, and Undo is said. A day with nothing outdoors switches nothing, so the next day is tried;
+ * when no day of the week switches anything (Soccer never read as outdoors), the check fails.
+ */
+async function rainyDay(S) {
+  const DAY = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/;
+  const tried = [];
+  for (let i = 0; i < 7; i++) {
+    if (!(await openRailMenu(/^Edit$/))) throw new Error("Edit not reached.");
+    if (!(await arrowTo(/^Rainy day/))) {
+      throw new Error("Rainy day… not reached with the arrows in Edit.");
+    }
+    await press("Enter", 400);
+    await press("ArrowDown", 200);
+    for (let n = 0; n < i; n++) await press("ArrowDown", 200);
+    const day =
+      i === 0
+        ? await expectFocus(S, "Rainy day… opens: Down reaches its first day", {
+            role: "menuitem",
+            name: DAY
+          })
+        : await focus();
+    // Past the last day (the menu ends or wraps): every day has been tried.
+    if (!day || !DAY.test(day.name || "") || tried.includes(day.name)) {
+      await press("Escape", 300);
+      await press("Escape", 300);
+      break;
+    }
+    tried.push(day.name);
+    const said = await expectLive(
+      S,
+      `Choosing ${day.name}: the receipt is said`,
+      /^Rainy /,
+      () => press("Enter"),
+      20000
+    );
+    if (!said) return;
+    if (/nothing outdoors to switch/.test(said)) continue;
+    const f = await expectFocus(
+      S,
+      "After the switch: focus on the line's Undo",
+      {
+        dataId: "tool-undo"
+      }
+    );
+    if (f && f.dataId === "tool-undo") {
+      await expectLive(S, "Its Undo: it is said", /^Undone/, () =>
+        press("Enter")
+      );
+      await expectFocusKept(S, "Its Undo: focus not lost");
+    }
+    return;
+  }
+  await shot(S, "Rainy day: a day switched");
+  results.fail(
+    S,
+    "Rainy day: a day switched",
+    `No day had anything outdoors to switch (tried ${tried.join(", ") || "none"}); the camp's Soccer is outdoors.`
+  );
 }
 
 /**
