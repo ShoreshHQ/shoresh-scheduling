@@ -26,6 +26,11 @@
                 <default>false</default>
                 <label>Auto-saved</label>
             </value>
+            <value>
+                <fullName>ElectivesFinalized</fullName>
+                <default>false</default>
+                <label>Electives finalized</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

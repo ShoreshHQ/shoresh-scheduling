@@ -81,7 +81,8 @@ const FLUSH_SCREENS = new Set([
   "recurringActivities",
   "specialEvents",
   "electives",
-  "bringInChoices"
+  "bringInChoices",
+  "electiveSeats"
 ]);
 // The setup screens with a rail: what each counts, and in which of the camp's words.
 const COUNTED = {
@@ -114,7 +115,8 @@ const SCREENS = [
   "manualBuild",
   "schedules",
   "import",
-  "bringInChoices"
+  "bringInChoices",
+  "electiveSeats"
 ];
 
 /**
@@ -480,6 +482,11 @@ export default class ShoreshCampSetup extends LightningElement {
   /** Drawn only while it is shown: its start reads the season's elective sets. */
   get showsBringInChoices() {
     return this.currentScreen === "bringInChoices";
+  }
+
+  /** Drawn only while it is shown: its start reads the season's elective runs (ADR 0018). */
+  get showsElectiveSeats() {
+    return this.currentScreen === "electiveSeats";
   }
 
   get shown() {

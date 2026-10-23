@@ -1,0 +1,400 @@
+@import "c/shoreshTokens";
+
+/*
+ * Elective seats, as Greg's approved mock-ups draw it (design-research/electives-r1: seats-offering-a,
+ * seats-camper, seats-problems, seats-final, seats-out-of-date): the rail, a hairline, then the
+ * board, with the roster beside. Only the design system's tokens and classes (ADR 0015): three
+ * colours, the one raised treatment, the needs-a-look corner top-right, the padlock bottom-right.
+ */
+:host {
+  display: block;
+  color: var(--shoresh-text-1);
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+}
+
+.seats {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ---------- the rail ---------- */
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-height: var(--shoresh-control-h);
+  padding: var(--shoresh-space-pad);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  min-width: 0;
+}
+
+.side_left {
+  flex: 1 1 0;
+}
+
+.side_middle {
+  flex: none;
+}
+
+.side_right {
+  flex: 1 1 0;
+  justify-content: flex-end;
+}
+
+.problems {
+  max-height: calc(var(--shoresh-u) * 110);
+  overflow-y: auto;
+  min-width: calc(var(--shoresh-u) * 56);
+}
+
+.problem-section + .problem-section {
+  border-top: 1px solid var(--shoresh-rule);
+  margin-top: var(--shoresh-s1);
+  padding-top: var(--shoresh-s1);
+}
+
+.problem-row,
+.run-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--shoresh-s4);
+}
+
+.aside {
+  color: var(--shoresh-text-2);
+}
+
+/* ---------- the board, with the roster beside ---------- */
+
+.below {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.work {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--shoresh-space-pad);
+  overflow: auto;
+}
+
+.message {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s3);
+  margin-bottom: var(--shoresh-s3);
+  font-weight: 500;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  margin: 0 0 var(--shoresh-s2);
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: var(--shoresh-space-cell-gap);
+  width: 100%;
+  table-layout: fixed;
+}
+
+.corner,
+.offer-head,
+.camper-head {
+  width: var(--shoresh-head-w);
+}
+
+.time-head {
+  font-weight: 400;
+  color: var(--shoresh-text-2);
+  text-align: center;
+  padding-bottom: var(--shoresh-s1);
+}
+
+.camper-table .time-head,
+.camper-head {
+  text-align: left;
+  font-weight: 400;
+  color: var(--shoresh-text-2);
+}
+
+/* By offering: each offering's name and seats, then a cell per time. */
+.offer-head {
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 400;
+}
+
+.offer-name {
+  display: block;
+  font-weight: 500;
+}
+
+.offer-sub {
+  display: block;
+  color: var(--shoresh-text-2);
+}
+
+.offer-table td {
+  padding: 0;
+  height: calc(var(--shoresh-u) * 28);
+}
+
+.seat-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shoresh-s2);
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: var(--shoresh-s2);
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-piece-edge);
+  color: var(--shoresh-text-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.seat-cell:hover:not(:disabled) {
+  background: var(--shoresh-surface-hover);
+}
+
+.seat-cell:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.seat-cell_open {
+  box-shadow:
+    var(--shoresh-raise),
+    inset 0 0 0 2px var(--shoresh-color-highlight);
+}
+
+.seat-cell_off {
+  background: transparent;
+  box-shadow: none;
+  color: var(--shoresh-text-2);
+  cursor: default;
+}
+
+.seat-cell_dropped {
+  background: var(--shoresh-surface-drawer);
+}
+
+.of {
+  color: var(--shoresh-text-2);
+}
+
+.corner-mark {
+  position: absolute;
+  top: var(--shoresh-s1);
+  right: var(--shoresh-s1);
+}
+
+.dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--shoresh-color-primary-400);
+}
+
+.dot_on {
+  background: var(--shoresh-color-highlight);
+}
+
+/* By camper: each bunk's campers in rows (the shared row pattern), a cell per time. */
+.section-head {
+  text-align: left;
+  padding-top: var(--shoresh-s3);
+  font-weight: 600;
+}
+
+.section-head .section-count {
+  margin-left: var(--shoresh-s2);
+  font-weight: 400;
+  color: var(--shoresh-text-2);
+}
+
+.section-head .shoresh-look-mark {
+  margin-left: var(--shoresh-s1);
+  vertical-align: top;
+}
+
+.camper-row th,
+.camper-row td {
+  position: relative;
+  height: var(--shoresh-short-h);
+  padding: 0 var(--shoresh-s2);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-piece-edge);
+  text-align: left;
+  font-weight: 400;
+}
+
+.camper-name {
+  border-radius: var(--shoresh-radius) 0 0 var(--shoresh-radius);
+}
+
+.rank {
+  color: var(--shoresh-text-2);
+}
+
+.empty-slot {
+  display: block;
+  height: calc(var(--shoresh-u) * 4);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-drawer);
+  box-shadow: var(--shoresh-well-in);
+}
+
+.cell-lock {
+  position: absolute;
+  right: var(--shoresh-s1);
+  bottom: 2px;
+  color: var(--shoresh-text-2);
+}
+
+.comment {
+  position: relative;
+  display: inline-flex;
+  margin-left: var(--shoresh-s1);
+}
+
+.comment-button {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--shoresh-text-2);
+  cursor: pointer;
+  border-radius: var(--shoresh-radius);
+}
+
+.comment-button:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.comment-pop {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shoresh-s1);
+  width: calc(var(--shoresh-u) * 60);
+  padding: var(--shoresh-s3);
+  white-space: normal;
+}
+
+.comment-head {
+  color: var(--shoresh-text-2);
+  font-size: var(--shoresh-font-size-label);
+}
+
+/* ---------- the roster beside ---------- */
+
+.roster {
+  flex: none;
+  width: calc(var(--shoresh-u) * 64);
+  padding: var(--shoresh-space-pad);
+  border-left: 1px solid var(--shoresh-rule);
+  overflow-y: auto;
+}
+
+.roster-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shoresh-s2);
+}
+
+.roster-heading {
+  font-size: var(--shoresh-font-size-title);
+  font-weight: 600;
+}
+
+.roster-heading:focus {
+  outline: none;
+}
+
+.people {
+  margin: var(--shoresh-s3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  min-height: var(--shoresh-control-h);
+  padding: 0 var(--shoresh-s2);
+  border-radius: var(--shoresh-radius);
+}
+
+.person:hover {
+  background: var(--shoresh-surface-hover);
+}
+
+.person[draggable="true"] {
+  cursor: grab;
+}
+
+.person-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.person-group {
+  color: var(--shoresh-text-2);
+}
+
+.lock-button {
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--shoresh-radius);
+  background: none;
+  color: var(--shoresh-text-2);
+  cursor: pointer;
+}
+
+.lock-button[aria-pressed="true"] {
+  color: var(--shoresh-text-1);
+  background: var(--shoresh-color-primary-50);
+  box-shadow: var(--shoresh-raise);
+}
+
+.lock-button:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.roster-foot {
+  margin-top: var(--shoresh-s3);
+  color: var(--shoresh-text-2);
+}

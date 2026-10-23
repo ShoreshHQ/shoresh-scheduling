@@ -19,6 +19,7 @@ import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActiv
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
+import seatsSetup from "@salesforce/apex/ElectiveSeatsController.seatsSetup";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
@@ -34,6 +35,12 @@ jest.mock(
   () => apex(),
   { virtual: true }
 );
+jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/ElectiveSeatsController.openRun", () => apex(), {
+  virtual: true
+});
 jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
   virtual: true
 });
@@ -2287,6 +2294,34 @@ describe("c-shoresh-camp-setup", () => {
     await flush();
     answer(nsRecord(setupWith()));
     await flush();
+    await flush();
+    expect(shownScreens(element)).toEqual(["bringInChoices"]);
+  });
+
+  it("opens Elective seats only from the page's address; the menu lists it as coming (decision 44)", async () => {
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
+    seatsSetup.mockResolvedValue({ runs: [] });
+    const element = await render();
+    const item = q(element, "c-shoresh-menu")
+      .sections.flatMap((section) => section.items)
+      .find((entry) => entry.key === "electiveSeats");
+    expect(item).toMatchObject({
+      label: "Elective seats",
+      coming: true,
+      disabled: true
+    });
+    expect(q(element, "c-shoresh-elective-seats")).toBeNull();
+    pageAddress({ c__preview: "electiveSeats" });
+    await flush();
+    expect(shownScreens(element)).toEqual(["electiveSeats"]);
+    expect(q(element, "c-shoresh-elective-seats")).not.toBeNull();
+    expect(seatsSetup).toHaveBeenCalledWith({ seasonId: "s1" });
+    // Its Bring in choices opens that screen.
+    q(element, "c-shoresh-elective-seats").dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: "bringInChoices" } })
+    );
     await flush();
     expect(shownScreens(element)).toEqual(["bringInChoices"]);
   });

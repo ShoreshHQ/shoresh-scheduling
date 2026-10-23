@@ -1293,6 +1293,18 @@
                 ></c-shoresh-manual-build>
               </div>
 
+              <!-- Elective seats (electives slice E7): coming in the menu until electives are
+                   finished (decision 44); opened from the page's address (repo ADR 0018). -->
+              <div class={shown.electiveSeats} data-screen="electiveSeats">
+                <template lwc:if={showsElectiveSeats}>
+                  <c-shoresh-elective-seats
+                    setup={setup}
+                    terms={terms}
+                    onnavigate={handleNavigate}
+                  ></c-shoresh-elective-seats>
+                </template>
+              </div>
+
               <!-- The schedule page: versions of a program's week, in three views -->
               <div class={shown.schedules} data-screen="schedules">
                 <h2
