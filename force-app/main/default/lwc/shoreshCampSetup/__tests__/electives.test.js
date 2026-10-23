@@ -510,4 +510,24 @@ describe("c-shoresh-camp-setup: Electives", () => {
         .trim()
     ).toBe("0 elective sets");
   });
+
+  it("the rail has Import a list and Download this list for the offerings (plan §6.2)", async () => {
+    const element = await render();
+    const list = q(
+      element,
+      '[data-screen="electives"] [data-id="setup-rail"] c-shoresh-list-import'
+    );
+    expect(list.screenKey).toBe("electives");
+    expect(list.variant).toBe("rail");
+  });
+
+  it("a file of camper choices given to the list goes on to Bring in choices", async () => {
+    const element = await render();
+    q(element, '[data-screen="electives"] c-shoresh-list-import').dispatchEvent(
+      new CustomEvent("bringinchoices")
+    );
+    await flush();
+    expect(shownScreens(element)).toEqual(["bringInChoices"]);
+    expect(q(element, "c-shoresh-choices-import")).not.toBeNull();
+  });
 });

@@ -22,6 +22,9 @@ public with sharing class ImportListSaves {
     'Activity',
     'FixedActivity',
     'RecurringActivity',
+    // The Electives screen's list: sets, then their offerings (of activities added above).
+    'ElectiveSet',
+    'Offering',
     'WeekException'
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).

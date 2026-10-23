@@ -8,7 +8,8 @@
  * import and a season's delete take records away without remembering them.
  *
  * The question key is built from names, never record Ids, so it still holds in a copied season:
- * "deleted|<kind>|<program, for a program's own items>|<name>". The kinds are the import's own
+ * "deleted|<kind>|<program, for a program's own items; an offering's set>|<name>" (an offering
+ * is named by its activity). The kinds are the import's own
  * words for what it makes (c/shoreshLists screen kinds), not object names.
  */
 public with sharing class SetupDeletions {
@@ -127,8 +128,44 @@ public with sharing class SetupDeletions {
         program.program = row.Name;
         return program;
       }
+    } else if (type == ElectiveSet__c.SObjectType) {
+      for (ElectiveSet__c row : [
+        SELECT Name, Season__r.Camp__c
+        FROM ElectiveSet__c
+        WHERE Id = :recordId
+        WITH USER_MODE
+      ]) {
+        return new Item('ElectiveSet', row.Name, row.Season__r.Camp__c);
+      }
+    } else if (type == Offering__c.SObjectType) {
+      return offeringOf(recordId);
     } else {
       return programItemOf(recordId, type);
+    }
+    return null;
+  }
+
+  /**
+   * An offering, named by its activity within its set (the Electives list's rows, plan §6.2):
+   * "deleted|Offering|<set>|<activity>".
+   */
+  private static Item offeringOf(Id recordId) {
+    for (Offering__c row : [
+      SELECT
+        Activity__r.Name,
+        ElectiveSet__r.Name,
+        ElectiveSet__r.Season__r.Camp__c
+      FROM Offering__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      Item found = new Item(
+        'Offering',
+        row.Activity__r.Name,
+        row.ElectiveSet__r.Season__r.Camp__c
+      );
+      found.scope = row.ElectiveSet__r.Name;
+      return found;
     }
     return null;
   }

@@ -10,6 +10,9 @@ public with sharing class ImportUndoDeletes {
     'WeekException',
     'Schedule',
     'Coverage',
+    // The Electives list's offerings, then their sets, before the activities they name.
+    'Offering',
+    'ElectiveSet',
     'RecurringActivity',
     'FixedActivity',
     'Activity',
@@ -54,7 +57,8 @@ public with sharing class ImportUndoDeletes {
     },
     'Activity' => new List<Schema.SObjectField>{
       ActivityEligibility__c.Activity__c,
-      Activity__c.RainPlan__c
+      Activity__c.RainPlan__c,
+      Offering__c.Activity__c
     },
     // Who it covers or weeks it is off that the import didn't make: kept, with what it made.
     'RecurringActivity' => new List<Schema.SObjectField>{
@@ -64,6 +68,19 @@ public with sharing class ImportUndoDeletes {
     // A type's locations would quietly lose it: one the import didn't add keeps it.
     'LocationType' => new List<Schema.SObjectField>{
       Location__c.LocationType__c
+    },
+    // A set's offerings and linked choices go with it (master-detail): one the import didn't
+    // make keeps it, as does a run that uses it.
+    'ElectiveSet' => new List<Schema.SObjectField>{
+      Offering__c.ElectiveSet__c,
+      LinkedChoice__c.ElectiveSet__c,
+      ElectiveRun__c.ElectiveSet__c
+    },
+    // An offering's linked choices go with it (ElectiveSetupTriggers): one keeps it, as do
+    // seats given in it.
+    'Offering' => new List<Schema.SObjectField>{
+      LinkedChoice__c.Offering__c,
+      Assignment__c.Offering__c
     }
   };
 

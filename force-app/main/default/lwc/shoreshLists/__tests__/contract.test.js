@@ -88,7 +88,11 @@ function fullList(screen) {
     start: "9:00 AM",
     end: "9:45 AM",
     partOfDay: "Morning",
-    timeBlock: "Period 1"
+    timeBlock: "Period 1",
+    set: "Chugim",
+    seats: "12",
+    minimum: "2",
+    proposed: "No"
   };
   const columns = screen.columns;
   const row = columns.map((c) => values[c.key]);
@@ -114,7 +118,7 @@ describe("the save request and ImportListSaves agree", () => {
   const links = apexMap("LINK_FIELDS");
 
   it("reads the server's lists (not an empty match)", () => {
-    expect(Object.keys(plain)).toHaveLength(11);
+    expect(Object.keys(plain)).toHaveLength(13);
     expect(plain.Activity).toEqual(
       expect.arrayContaining(["Name", "Length__c", "Notes__c"])
     );
@@ -122,7 +126,8 @@ describe("the save request and ImportListSaves agree", () => {
     expect(links.Activity).toEqual(["Location__c", "RainPlan__c"]);
   });
 
-  LIST_SCREENS.forEach((key) => {
+  // The camp workbook's lists, and the Electives screen's (plan §6.2).
+  [...LIST_SCREENS, "electives"].forEach((key) => {
     it(`${key}: every field sent is one the server writes`, () => {
       const p = listProposal({
         screenKey: key,

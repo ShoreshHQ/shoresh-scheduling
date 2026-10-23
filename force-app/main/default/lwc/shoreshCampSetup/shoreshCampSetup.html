@@ -1196,6 +1196,17 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="electives-list-import"
+                    variant="rail"
+                    screen-key="electives"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onbringinchoices={handleBringInChoices}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-split">

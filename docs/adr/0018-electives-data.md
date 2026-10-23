@@ -12,7 +12,8 @@ desktop's ADRs `2026-09-17-individual-elective-scheduling`,
 `DeleteWeekDialog.jsx` (a week with elective runs is refused). Names follow ADR 0009. The Electives menu
 entries stay "Coming" until slice E11 passes.
 
-_Amended 2026-10-22, slice E4 (the Electives setup screen): choices 8 and 11, and choices 12 to 18. Design source: Greg's approved mock-up (design-research `electives-r1`, `setup-a`: linked
+_Amended 2026-10-22, slice E4 (the Electives setup screen): choices 8 and 11, and choices 12 to 18;
+2026-10-23, choice 19 (Import a list and Download this list, Greg: built in this slice). Design source: Greg's approved mock-up (design-research `electives-r1`, `setup-a`: linked
 choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`); the plan's §1,
 §2 and §4.1; the desktop's `ElectivesScreen.jsx`, `elective/ElectiveSetDetail.jsx` and
 `elective/BundleEditor.jsx`._
@@ -186,16 +187,42 @@ choices beside the table) and decision 53 (wiki `projects/shoresh-scheduling-sf`
     read, the row saves (and someone else's change asked about) and the deletes, as a scheduler
     with its records made inside the same `System.runAs`, with query bounds.
 
-**Not in this slice, waiting on Greg's decision:** Import a list and Download this list for
-offerings. The plan's slice table puts Import a list in E4 and the approved mock-up shows both on
-the Electives rail, so leaving them out is a scope change that needs Greg's sign-off before this
-slice merges; until then it is proposed, not decided. The reason is size: the list import (ADR 0007) names each item by its own name and is scoped to the season or a program, while an offering
-is named by its activity, belongs to one set, starts as proposed, and a file that turns out to be
-camper choices must say so (plan §6.2), so offerings need their own layout, set scope and save.
-Proposed follow-up: **slice E4b, Offerings: Import a list and Download this list**, before E6.
-Until it lands nothing a camp can do creates a proposed offering, so the dashed outline and
-Confirm are reached only through records made by Apex (the tests and the browser check). If Greg
-approves, the plan's slice table and the build log record E4b; if not, this slice builds it.
+19. **Import a list and Download this list for the offerings** (plan §6.2; on the Electives rail
+    as setup-a draws them; Greg, 2026-10-23: built in this slice, not a separate E4b). They are the
+    generic list import and download (ADR 0007, `c/shoreshLists`, `ImportListSaves`,
+    `c/shoreshDownload`) with the screen's own layout, which is not a sheet of the camp workbook
+    (the workbook doesn't carry sets): **Elective set, Activity, Seats, Minimum, Proposed**.
+    - **Scoped by set**, as a program's lists are by program: a camp with one set can leave the
+      column out. A set the season doesn't have is added with the list (shown, ticked, before
+      Save); a name like one it has is asked, never guessed.
+    - **Named by the activity**: each row's activity is settled first, as Import last year asks
+      (a similar name is the same question, answered once for both), then matched to the
+      offering of that activity in its set. An activity the season doesn't have is added as one
+      added by hand starts. A set never changes name and an offering never moves to another set
+      or activity on a list (`ImportListRows`: new-only links).
+    - **Proposed**: an offering a list adds is proposed unless the file says No (the desktop's
+      import only ever proposes, `electiveSetPopulate.js`); a file with only names offers each
+      with no seat limit, as the desktop's import does. Seats are a number (0 is closed), "No
+      limit", or blank (not filled in yet, on a new offering too). On an offering set up, every
+      difference, Proposed included, is a Keep or Change: a file never confirms or un-confirms
+      one silently.
+    - **A choices file says so** (the desktop's "That file is camper preferences, not
+      offerings."): a file in which the choices reader finds campers with choices is not read
+      as offerings, nothing is saved, and the panel says "<file>: that file is camper choices,
+      not offerings. Nothing was saved." with **Bring in choices**, which opens that screen (it
+      asks for the set, week and schedule before the file, so the file is chosen there again).
+    - **Things you delete stay deleted** (#101, decision 45): deleting an offering on the screen
+      is remembered as `deleted|Offering|<set>|<activity>`, a set as `deleted|ElectiveSet||<name>`;
+      the list leaves those rows out (a deleted set's rows, and an activity deleted on
+      Activities) and lists them with Bring back.
+    - **Undo last import** removes the sets, activities and offerings the list added and puts
+      changed offerings back; a set someone has since offered something else in, an offering with
+      linked choices or seats, and an activity offered by hand are kept and named (an offering by
+      its activity).
+    - **Download this list** writes every offering in the same layout, so it reads back with no
+      changes, and into an empty season as the same sets and offerings. A set with no offerings
+      has no row, so it is not in the file.
+
 Also not in this slice: adding a new activity from the offering choice (the
 desktop's picker can; here an activity is added on Activities first), the linked choices editor
 (E8), electives on the grid and the "not set up yet" Roots item (E5, E9).

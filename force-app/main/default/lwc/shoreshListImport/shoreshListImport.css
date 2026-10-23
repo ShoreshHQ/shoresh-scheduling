@@ -174,3 +174,16 @@
   width: 14px;
   height: 14px;
 }
+
+/* The Electives list: a file of camper choices, sent on to Bring in choices (plan §6.2). */
+.list-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-space-in-group);
+  margin-top: var(--shoresh-space-in-group);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--shoresh-caution);
+  border-radius: 0.25rem;
+  background: var(--shoresh-caution-tint);
+}

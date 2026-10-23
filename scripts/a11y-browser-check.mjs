@@ -69,7 +69,11 @@
  *   shown once Tab reaches it, then saved and said, the
  *   cursor then on the row's offering (Confirm is gone); the
  *   needs-a-look corner on seats not filled in opens its words with the cursor kept on it, and
- *   Escape closes it. The check's own elective set is made by Apex first and deleted after.
+ *   Escape closes it. Then the rail's Download this list (the offerings in the list's
+ *   layout) and Import a list (focus on its heading, axe; the download with one offering's
+ *   seats changed read back as that one change, saved and said, and in the org; a choices
+ *   file said, nothing saved, Bring in choices taking focus and opening that screen, axe).
+ *   The check's own elective set is made by Apex first and deleted after.
  *   `--only electives` runs just this step (with the camp's seed), for a change to that screen;
  * - Bring in choices (electives slice E6; ADR 0017 choices 10 to 21), opened from the page's
  *   address since electives are not in the menu yet: a made-up choices sheet chosen, focus on each
@@ -4039,6 +4043,185 @@ async function electives() {
       }
     }
   );
+  await step(
+    E,
+    "Import a list and Download this list by keyboard",
+    async () => {
+      const names = seedElectivesSetup();
+      try {
+        await electivesImport(E, names);
+      } finally {
+        clearElectives();
+      }
+    }
+  );
+}
+
+/** The offerings' list in the file "Download this list" saves: [[heading, ...], [cell, ...]]. */
+function downloadedRows(path) {
+  const XLSX = require("xlsx");
+  const book = XLSX.readFile(path);
+  return XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], {
+    header: 1,
+    defval: ""
+  });
+}
+
+/**
+ * The Electives rail's Import a list and Download this list (plan §6.2, ADR 0018 choice 19), by
+ * keyboard: the download is the offerings in the list's layout; Import a list opens with focus
+ * on its heading (axe); the download, edited (one offering's seats), is read back as that one
+ * difference, Changed and Saved (said), and saved in the org; then a file of camper choices is
+ * not read as offerings: it says so, nothing is saved, focus on Bring in choices (axe), which
+ * opens that screen with focus on its heading.
+ */
+async function electivesImport(E, names) {
+  const origin = new URL(page.url()).origin;
+  await page.goto(`${origin}${TAB_PATH}?c__preview=electives`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60000
+  });
+  await page
+    .locator(APP)
+    .locator('[data-screen="electives"] c-shoresh-editable-table')
+    .first()
+    .waitFor({ timeout: 60000 });
+  await pause(3000);
+  await openFromMenu(E, /^Electives\b/);
+  if (
+    !(await tabTo(named(/^Download this list$/, { tag: "button" }), {
+      max: 40
+    }))
+  )
+    throw new Error("Download this list was not reached with Tab.");
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 30000 }),
+    press("Enter", 500)
+  ]);
+  const rows = downloadedRows(await download.path());
+  const heading = rows[0].slice(1).join(", ");
+  const linked = rows.find((r) => r[0] === CHECK_SET && r[1] === names.linked);
+  if (
+    heading === "Activity, Seats, Minimum, Proposed" &&
+    linked &&
+    Number(linked[2]) === 12
+  )
+    results.pass(
+      E,
+      "Download this list: the offerings in the list's layout",
+      `${download.suggestedFilename()}: ${rows.length - 1} offerings; ${names.linked} with 12 seats.`
+    );
+  else
+    results.fail(
+      E,
+      "Download this list: the offerings in the list's layout",
+      `Headings "${rows[0].join(", ")}"; ${names.linked}'s row ${JSON.stringify(linked || null)}.`
+    );
+  if (
+    !(await tabTo(named(/^Import a list$/, { tag: "button" }), {
+      max: 10,
+      back: true
+    }))
+  )
+    throw new Error("Import a list was not reached with Tab.");
+  await press("Enter", 800);
+  await expectFocus(E, "Import a list: focus on its heading", {
+    tag: /^h3$/,
+    name: /^Import Electives$/
+  });
+  await axe("Electives, Import a list open");
+  const input = page
+    .locator(APP)
+    .locator(
+      '[data-screen="electives"] c-shoresh-list-import input[data-id="file"]'
+    );
+  // The download, with one offering's seats changed.
+  const edited = rows
+    .map((r) => (r === linked ? [r[0], r[1], 14, r[3], r[4]] : r))
+    .map((r) =>
+      r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+  await input.setInputFiles({
+    name: "check-offerings.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(edited, "utf8")
+  });
+  await pause(1500);
+  if (
+    !(await tabTo(
+      named(/^Change all from this file: 1 change$/, { tag: "button" }),
+      { max: 60, anywhere: true }
+    ))
+  )
+    throw new Error("Change all from this file: 1 change was not reached.");
+  await press("Enter", 600);
+  if (!(await tabTo(named(/^Change 1$/, { tag: "button" }), { max: 40 })))
+    throw new Error("Save (Change 1) was not reached with Tab.");
+  await expectLive(E, "Import a list: Change 1 saved and said", /^Saved/, () =>
+    press("Enter", 3000)
+  );
+  const logs = apex(`
+Offering__c o = [SELECT Seats__c FROM Offering__c WHERE ElectiveSet__r.Name = '${CHECK_SET}' AND Activity__r.Name = '${names.linked}' LIMIT 1];
+System.debug('A11Y_SEATS[' + o.Seats__c.intValue() + ']');
+`);
+  const seats = /A11Y_SEATS\[(\d+)\]/.exec(logs);
+  if (seats && seats[1] === "14")
+    results.pass(
+      E,
+      "Import a list: the change is in the org",
+      `${names.linked}: 14 seats.`
+    );
+  else
+    results.fail(
+      E,
+      "Import a list: the change is in the org",
+      `${names.linked}: ${seats ? seats[1] : "not read"} seats; expected 14.`
+    );
+  // A file of camper choices: said, nothing saved, and Bring in choices offered.
+  if (
+    !(await tabTo(named(/^Close$/, { tag: "button" }), { max: 40, back: true }))
+  )
+    throw new Error("Close was not reached with Tab.");
+  await press("Enter", 600);
+  await expectFocus(E, "Close: focus back on Import a list", {
+    tag: "button",
+    name: /^Import a list$/
+  });
+  await press("Enter", 800);
+  await input.setInputFiles({
+    name: "check-choices.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(choicesSheet([names.linked, names.proposed]), "utf8")
+  });
+  await expectFocus(E, "A choices file: focus on Bring in choices", {
+    tag: "button",
+    name: /^Bring in choices$/
+  });
+  const said = await page
+    .locator(APP)
+    .locator('[data-screen="electives"] [data-id="choices-file"]')
+    .textContent();
+  if (
+    /that file is camper choices, not offerings\. Nothing was saved\./.test(
+      said
+    )
+  )
+    results.pass(
+      E,
+      "A choices file: said, nothing saved",
+      said.replace(/\s+/g, " ").trim()
+    );
+  else
+    results.fail(E, "A choices file: said, nothing saved", `Said: "${said}".`);
+  await axe("Electives, a choices file given to Import a list");
+  await press("Enter", 1500);
+  await expectFocus(E, "Bring in choices: that screen, focus on its heading", {
+    tag: /^h2$/,
+    name: /^Bring in choices$/
+  });
+}
+
 // ---------- Bring in choices (electives slice E6; ADR 0017 choices 10 to 21) ----------
 
 // The check's elective set (CHECK_SET, above): the Electives step deletes its own copy when done,

@@ -521,6 +521,16 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
+   * The Electives list was given a file of camper choices, and the director chose to bring them
+   * in (plan §6.2): Bring in choices, with the cursor on its heading.
+   */
+  handleBringInChoices() {
+    if (canOpen("bringInChoices", !!this.setup, this.preview)) {
+      this.openScreen("bringInChoices");
+    }
+  }
+
+  /**
    * Something on another screen changed the season's special days or events (Set it up on a
    * schedule, Put on a day): the season is read again, so every screen shows it.
    */

@@ -41,7 +41,7 @@ import {
   unknownRainPlans,
   unknownWho
 } from "./adds";
-import { resolveProgramDays, resolvePrograms } from "./scope";
+import { resolveProgramDays, resolvePrograms, resolveSets } from "./scope";
 import { resolveColumn } from "./refs";
 import { FIELD } from "c/shoreshSchema";
 
@@ -159,9 +159,12 @@ function usable(row) {
   return !row.problems.length && !row.leftOut;
 }
 
-/** Similar names among the rows and against the camp's, scope by scope (season or program). */
+/**
+ * Similar names among the rows and against the camp's, scope by scope (season, program, or an
+ * offering's elective set).
+ */
 function matchNames(leads, screen, setup, answers) {
-  const scoped = screen.scope === "program";
+  const scoped = !!screen.scope;
   const rows = leads.filter((r) => usable(r) && (!scoped || r.program));
   const records = screen.records(setup);
   // A group is matched within its program and (resolved) division; other items in their scope.
@@ -274,11 +277,16 @@ function matchScope(leads, records, kind, answers) {
   const readable = leads.filter(usable);
   settleSpelling(readable, records);
   const campNames = [...new Set(records.map((r) => tidy(r.Name)))];
-  const pairs = similarPairs(
-    PAIR_KIND[kind],
-    readable.map((r) => ({ name: r.name, count: 1 })),
-    campNames
-  );
+  // An offering's name is its activity's, already settled (resolveOfferedActivities): two
+  // activities of the season are never asked about as one offering.
+  const pairs =
+    kind === "Offering"
+      ? []
+      : similarPairs(
+          PAIR_KIND[kind],
+          readable.map((r) => ({ name: r.name, count: 1 })),
+          campNames
+        );
   const byName = new Map();
   // Spaces aside, as the file's names are read ("Board  games" is "Board games").
   records.forEach((r) =>
@@ -423,13 +431,18 @@ function checkNewLimits(read, screen) {
     });
 }
 
-/** What a row's name is matched within: its program for a program's list, else the season. */
+/**
+ * What a row's name is matched within: its program for a program's list, its elective set for
+ * the offerings, else the season.
+ */
 function scopeOf(row) {
   if (row.program) {
     return row.program.id;
   }
-  // A row whose program is still asked about is matched with nothing until it is answered.
-  return row.values.program ? `waiting|${row.rowNumber}` : "season";
+  // A row whose program (or set) is still asked about is matched with nothing until answered.
+  return row.values.program || row.values.set
+    ? `waiting|${row.rowNumber}`
+    : "season";
 }
 
 /**
@@ -1015,6 +1028,55 @@ function refuseOutdoorRainPlans(leads, column, setup) {
 }
 
 /**
+ * The activity each offering names (the Electives list, plan §6.2), settled before rows are
+ * matched to the offerings of their set: a name of the season's activities is that activity;
+ * one like it is asked about (the same question as Import last year's); any other is added
+ * with the list as an activity added by hand starts, unless the camp deleted an activity of
+ * that name (decision 45): then the row is left out until it is brought back. The row's name
+ * becomes the activity's as the season spells it. Returns { pairs, deleted }.
+ */
+function resolveOfferedActivities(read, screen, setup, context) {
+  const result = { pairs: [], deleted: [] };
+  const column = screen.columns.find((c) => c.ref === "offeredActivity");
+  if (!column) {
+    return result;
+  }
+  const { answers, t, deletions } = context;
+  const rows = read.filter((r) => usable(r) && r.program);
+  result.pairs = resolveColumn(
+    rows,
+    column,
+    setup.activities || [],
+    null,
+    answers,
+    "activity"
+  );
+  rows.filter(usable).forEach((r) => {
+    const target = (r.targets || {}).name;
+    if (!target) {
+      return;
+    }
+    r.name = r.values.name;
+    const gone = target.add
+      ? deletedAs(deletions, "Activity", "", target.add)
+      : null;
+    if (gone) {
+      r.leftOut = true;
+      r.reason = `its ${t.sIn("Activity")} was deleted before; not brought back`;
+      if (!result.deleted.some((d) => d.key === gone)) {
+        result.deleted.push({
+          key: gone,
+          kind: "Activity",
+          name: target.add,
+          program: ""
+        });
+      }
+    }
+  });
+  return result;
+}
+
+/**
  * Reads one list for one screen. input: { screenKey, file, sheet (chosen, optional), setup,
  * terms, answers }. Returns the sheet used, the headings and their columns, every row with what
  * happens to it, the questions, and what will also be added. Rows are settled first (cells,
@@ -1064,6 +1126,14 @@ export function listProposal(input) {
   );
   result.pairs.push(...programs.pairs);
   result.cards.push(...programs.cards);
+  const sets = resolveSets(read, screen, setup, answers, t, deletions.gone);
+  result.pairs.push(...sets.pairs);
+  const offered = resolveOfferedActivities(read, screen, setup, {
+    answers,
+    t,
+    deletions: deletions.gone
+  });
+  result.pairs.push(...offered.pairs);
   // Asked per block once its program is settled (the key is the program as resolved).
   result.cards.push(...resolveAmpm(read, answers));
   result.cards.push(...resolveDayAsks(read, answers));
@@ -1156,11 +1226,14 @@ export function listProposal(input) {
     who: whoAdds.adds,
     programs: programs.adds,
     blocks: programRefs.blocks,
-    days: days.added
+    days: days.added,
+    sets: sets.adds
   });
   result.deleted = deletedOfList(result, [
     ...deletedPlaces,
     ...programs.deleted,
+    ...sets.deleted,
+    ...offered.deleted,
     ...divisions.deleted,
     ...programRefs.deleted
   ]);
@@ -1225,6 +1298,18 @@ function alsoAdded(rows, used, asked) {
           ["new", "changed", "unchanged"].includes(row.status))
     )
   );
+  // The Electives list: sets and activities its new offerings are in and name.
+  alsoAdd.electiveSet = asked.sets.filter((set) =>
+    saving.some((r) => r.programId === `ElectiveSet:${set.name}`)
+  );
+  alsoAdd.offeredActivity = [
+    ...new Set(
+      rows
+        .filter((row) => row.status === "new")
+        .map((row) => ((row.targets || {}).name || {}).add)
+        .filter((name) => name)
+    )
+  ].sort((x, y) => x.localeCompare(y));
   alsoAdd.who = asked.who.filter((add) =>
     uses("who").some(
       (row) => Array.isArray(row.values.who) && row.values.who.includes(add.key)
@@ -1274,7 +1359,7 @@ function deletedOfList(result, deletedRefs) {
       key: row.deletedKey,
       kind: result.screen.kind,
       name: row.name,
-      program: result.screen.scope === "program" ? row.programName || "" : ""
+      program: result.screen.scope ? row.programName || "" : ""
     }));
   deleted.push(...deletedRefs);
   return deleted;
@@ -1317,6 +1402,8 @@ function broughtBackAdds(result, deletions) {
   (add.timeBlock || []).forEach((b) =>
     back("TimeBlock", programNameOf(result.setup, b.programId), b.name)
   );
+  (add.electiveSet || []).forEach((set) => back("ElectiveSet", "", set.name));
+  (add.offeredActivity || []).forEach((name) => back("Activity", "", name));
   Object.keys(ADD_KIND).forEach((ref) => {
     (result.alsoAdd[ref] || []).forEach((name) => {
       const key = deletedAs(deletions.back, ADD_KIND[ref], "", name);
@@ -1374,7 +1461,7 @@ function differs(column, r, from, to) {
  * when this new row would add it again, and the key when it was brought back in this import.
  */
 function deletedRow(r, screen, deletions) {
-  const scope = screen.scope === "program" && r.program ? r.program.name : "";
+  const scope = screen.scope && r.program ? r.program.name : "";
   return {
     gone: deletedAs(deletions.gone, screen.kind, scope, r.name),
     back: deletedAs(deletions.back, screen.kind, scope, r.name)
@@ -1417,7 +1504,11 @@ function describeRow(r, used, screen, setup, answers, deletions) {
     }
     const values = {};
     screen.columns.forEach((column) => {
-      values[column.key] = newValueOf(column, r);
+      // A blank cell that means blank on a new item too (an offering's seats not filled in).
+      values[column.key] =
+        column.blankNew !== undefined && r.blanks.has(column.key)
+          ? column.blankNew
+          : newValueOf(column, r);
     });
     return {
       ...row,

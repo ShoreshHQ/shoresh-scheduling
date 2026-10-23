@@ -23,6 +23,7 @@ import {
   recurringScreen,
   timeBlocksScreen
 } from "./programScreens";
+import { electivesScreen } from "./electivesScreen";
 
 // Each screen's fields, as the package names them (c/shoreshSchema).
 const LOCATION = FIELD.Location;
@@ -321,9 +322,15 @@ function locationTypesScreen(t) {
 
 const WORKBOOK_ONLY = { locationTypes: locationTypesScreen };
 
+/**
+ * Lists a screen imports and downloads that are not in the camp workbook: the offerings of the
+ * Electives screen (plan §6.2), whose sets the workbook doesn't carry.
+ */
+const SCREEN_ONLY = { electives: electivesScreen };
+
 /** One screen's list layout, in the camp's words. */
 export function listScreen(key, t) {
-  const screen = (BUILDERS[key] || WORKBOOK_ONLY[key])(t);
+  const screen = (BUILDERS[key] || WORKBOOK_ONLY[key] || SCREEN_ONLY[key])(t);
   // The heading itself always counts, in the camp's words and Shoresh's.
   screen.columns.forEach((column) => {
     column.words = [column.heading, ...column.words];
