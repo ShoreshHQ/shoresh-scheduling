@@ -20,106 +20,138 @@ public with sharing class ElectivesInUse {
 
   public static String reason(Id recordId) {
     Schema.SObjectType kind = recordId.getSObjectType();
-    List<String> parts = new List<String>();
-    List<String> fixes = new List<String>();
-    Id campId;
+    Reasons found = new Reasons();
     if (kind == Activity__c.SObjectType) {
-      List<String> sets = new List<String>();
-      for (Offering__c offering : [
-        SELECT ElectiveSet__r.Name, ElectiveSet__r.Season__r.Camp__c
-        FROM Offering__c
-        WHERE Activity__c = :recordId
-        WITH USER_MODE
-        ORDER BY ElectiveSet__r.Name, Id
-        LIMIT :MAX_ROWS
-      ]) {
-        sets.add(offering.ElectiveSet__r.Name);
-        campId = offering.ElectiveSet__r.Season__r.Camp__c;
-      }
-      if (!sets.isEmpty()) {
-        CampLabels labels = CampLabels.forCamp(campId);
-        parts.add('it is offered in ' + InUse.quoted(sets));
-        fixes.add(
-          'take it off ' +
-          (sets.size() == 1
-            ? 'that ' + labels.singularInSentence('ElectiveSet')
-            : 'those ' + labels.pluralInSentence('ElectiveSet'))
-        );
-      }
+      addOfferings(recordId, found);
     }
     if (kind == Division__c.SObjectType || kind == Program__c.SObjectType) {
-      List<String> choices = new List<String>();
-      for (Coverage__c row : [
-        SELECT LinkedChoice__r.Name, Season__r.Camp__c
-        FROM Coverage__c
-        WHERE
-          LinkedChoice__c != NULL
-          AND (Division__c = :recordId
-          OR Division__r.Program__c = :recordId)
-        WITH USER_MODE
-        ORDER BY LinkedChoice__r.Name, Id
-        LIMIT :MAX_ROWS
-      ]) {
-        choices.add(row.LinkedChoice__r.Name);
-        campId = row.Season__r.Camp__c;
-      }
-      if (!choices.isEmpty()) {
-        CampLabels labels = CampLabels.forCamp(campId);
-        parts.add(
-          (kind == Program__c.SObjectType
-              ? 'some of its ' + labels.pluralInSentence('Division') + ' are'
-              : 'it is') +
-            ' named by ' +
-            InUse.quoted(choices)
-        );
-        fixes.add(
-          'change who ' +
-            (choices.size() == 1
-              ? 'that ' + labels.singularInSentence('LinkedChoice') + ' is'
-              : 'those ' + labels.pluralInSentence('LinkedChoice') + ' are') +
-            ' for'
-        );
-      }
+      addLinkedChoiceDivisions(recordId, kind, found);
     }
     if (kind == TimeBlock__c.SObjectType) {
-      List<String> choices = new List<String>();
-      for (LinkedChoiceTime__c row : [
-        SELECT
-          LinkedChoice__r.Name,
-          LinkedChoice__r.ElectiveSet__r.Season__r.Camp__c
-        FROM LinkedChoiceTime__c
-        WHERE TimeBlock__c = :recordId
-        WITH USER_MODE
-        ORDER BY LinkedChoice__r.Name, Id
-        LIMIT :MAX_ROWS
-      ]) {
-        choices.add(row.LinkedChoice__r.Name);
-        campId = row.LinkedChoice__r.ElectiveSet__r.Season__r.Camp__c;
-      }
-      if (!choices.isEmpty()) {
-        CampLabels labels = CampLabels.forCamp(campId);
-        parts.add('it is a period of ' + InUse.quoted(choices));
-        fixes.add(
-          'take it out of ' +
-          (choices.size() == 1
-            ? 'that ' + labels.singularInSentence('LinkedChoice')
-            : 'those ' + labels.pluralInSentence('LinkedChoice'))
-        );
-      }
+      addLinkedChoicePeriods(recordId, found);
     }
     List<String> runs = runsUsing(recordId, kind);
     if (!runs.isEmpty()) {
-      parts.add('it has elective runs: ' + InUse.quoted(runs));
-      fixes.add('delete ' + (runs.size() == 1 ? 'that run' : 'those runs'));
+      found.parts.add('it has elective runs: ' + InUse.quoted(runs));
+      found.fixes.add(
+        'delete ' + (runs.size() == 1 ? 'that run' : 'those runs')
+      );
     }
-    if (parts.isEmpty()) {
+    if (found.parts.isEmpty()) {
       return null;
     }
     return 'This can\'t be deleted yet: ' +
-      String.join(parts, ', and ') +
+      String.join(found.parts, ', and ') +
       '. First ' +
-      String.join(fixes, ' and ') +
+      String.join(found.fixes, ' and ') +
       ', then delete it.';
+  }
+
+  /** What is in the way, and the fix for each, in the same order. */
+  private class Reasons {
+    List<String> parts = new List<String>();
+    List<String> fixes = new List<String>();
+  }
+
+  /** "that elective set" or "those elective sets", in the camp's words. */
+  private static String thatOrThose(
+    CampLabels labels,
+    String term,
+    Integer count
+  ) {
+    return count == 1
+      ? 'that ' + labels.singularInSentence(term)
+      : 'those ' + labels.pluralInSentence(term);
+  }
+
+  private static void addOfferings(Id activityId, Reasons found) {
+    List<String> sets = new List<String>();
+    Id campId;
+    for (Offering__c offering : [
+      SELECT ElectiveSet__r.Name, ElectiveSet__r.Season__r.Camp__c
+      FROM Offering__c
+      WHERE Activity__c = :activityId
+      WITH USER_MODE
+      ORDER BY ElectiveSet__r.Name, Id
+      LIMIT :MAX_ROWS
+    ]) {
+      sets.add(offering.ElectiveSet__r.Name);
+      campId = offering.ElectiveSet__r.Season__r.Camp__c;
+    }
+    if (sets.isEmpty()) {
+      return;
+    }
+    CampLabels labels = CampLabels.forCamp(campId);
+    found.parts.add('it is offered in ' + InUse.quoted(sets));
+    found.fixes.add(
+      'take it off ' + thatOrThose(labels, 'ElectiveSet', sets.size())
+    );
+  }
+
+  private static void addLinkedChoiceDivisions(
+    Id recordId,
+    Schema.SObjectType kind,
+    Reasons found
+  ) {
+    List<String> choices = new List<String>();
+    Id campId;
+    for (Coverage__c row : [
+      SELECT LinkedChoice__r.Name, Season__r.Camp__c
+      FROM Coverage__c
+      WHERE
+        LinkedChoice__c != NULL
+        AND (Division__c = :recordId
+        OR Division__r.Program__c = :recordId)
+      WITH USER_MODE
+      ORDER BY LinkedChoice__r.Name, Id
+      LIMIT :MAX_ROWS
+    ]) {
+      choices.add(row.LinkedChoice__r.Name);
+      campId = row.Season__r.Camp__c;
+    }
+    if (choices.isEmpty()) {
+      return;
+    }
+    CampLabels labels = CampLabels.forCamp(campId);
+    found.parts.add(
+      (kind == Program__c.SObjectType
+          ? 'some of its ' + labels.pluralInSentence('Division') + ' are'
+          : 'it is') +
+        ' named by ' +
+        InUse.quoted(choices)
+    );
+    found.fixes.add(
+      'change who ' +
+        thatOrThose(labels, 'LinkedChoice', choices.size()) +
+        (choices.size() == 1 ? ' is' : ' are') +
+        ' for'
+    );
+  }
+
+  private static void addLinkedChoicePeriods(Id blockId, Reasons found) {
+    List<String> choices = new List<String>();
+    Id campId;
+    for (LinkedChoiceTime__c row : [
+      SELECT
+        LinkedChoice__r.Name,
+        LinkedChoice__r.ElectiveSet__r.Season__r.Camp__c
+      FROM LinkedChoiceTime__c
+      WHERE TimeBlock__c = :blockId
+      WITH USER_MODE
+      ORDER BY LinkedChoice__r.Name, Id
+      LIMIT :MAX_ROWS
+    ]) {
+      choices.add(row.LinkedChoice__r.Name);
+      campId = row.LinkedChoice__r.ElectiveSet__r.Season__r.Camp__c;
+    }
+    if (choices.isEmpty()) {
+      return;
+    }
+    CampLabels labels = CampLabels.forCamp(campId);
+    found.parts.add('it is a period of ' + InUse.quoted(choices));
+    found.fixes.add(
+      'take it out of ' + thatOrThose(labels, 'LinkedChoice', choices.size())
+    );
   }
 
   /** The names of the elective runs that use the record, or would lose something with it. */

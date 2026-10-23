@@ -3,9 +3,9 @@ trigger ElectiveSetTrigger on ElectiveSet__c(
   before update,
   before delete
 ) {
-  if (Trigger.isDelete) {
-    ElectiveSetupTriggers.setsDeleting(Trigger.oldMap);
-  } else {
-    ElectiveSetupTriggers.setsSaving(Trigger.new);
-  }
+  ElectiveSetupTriggers.handleSets(
+    Trigger.operationType,
+    Trigger.new,
+    Trigger.oldMap
+  );
 }

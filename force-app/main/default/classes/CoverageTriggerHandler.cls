@@ -2,7 +2,7 @@
  * Who a recurring activity covers: the row belongs to the recurring activity's season, and the
  * division or group named must be in the recurring activity's own program. After a save or
  * delete, the clash check runs (removing a row can widen it to everyone). Rows owned by a linked
- * choice are checked by ElectiveSetupTriggers and take no part in the clash check.
+ * choice are checked by LinkedChoiceTriggers and take no part in the clash check.
  */
 public with sharing class CoverageTriggerHandler {
   // The program of each division and group named.
@@ -50,7 +50,7 @@ public with sharing class CoverageTriggerHandler {
       }
     }
     if (!linkedChoiceRows.isEmpty()) {
-      ElectiveSetupTriggers.linkedChoiceCoverageSaving(linkedChoiceRows);
+      LinkedChoiceTriggers.linkedChoiceCoverageSaving(linkedChoiceRows);
     }
     if (rows.isEmpty()) {
       return;

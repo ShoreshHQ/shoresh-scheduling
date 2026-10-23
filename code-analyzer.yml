@@ -52,6 +52,26 @@ suppressions:
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1
       reason: "Season and name, used to stop duplicate special events, not a secret."
+  "main/default/objects/ElectiveSet__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Season and name, used to stop duplicate elective sets, not a secret."
+  "main/default/objects/Offering__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Elective set and activity, so an activity is offered once in a set; not a secret."
+  "main/default/objects/Camper__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Season and camper number (else a hash of the name), to stop duplicate campers; not a secret."
+  "main/default/objects/Preference__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Run and camper, so a camper has one set of choices per run; not a secret."
+  "main/default/objects/Assignment__c/fields/Key__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Run, camper, date and time block, so a camper has one seat at a time; not a secret."
   # Design rule, not security: the engine's inputs go to the screen as one answer (one request when
   # a week opens); splitting them would add a round trip for nothing.
   "main/default/classes/GeneratedInputs.cls":

@@ -95,7 +95,8 @@ public with sharing class ElectiveRunTriggers {
       seasonIds.add(run.Season__c);
     }
     ids.remove(null);
-    Map<Id, Id> seasonOf = new Map<Id, Id>();
+    RunLookups found = new RunLookups();
+    Map<Id, Id> seasonOf = found.seasonOf;
     for (ElectiveSet__c item : [
       SELECT Id, Season__c
       FROM ElectiveSet__c
@@ -112,7 +113,7 @@ public with sharing class ElectiveRunTriggers {
     ]) {
       seasonOf.put(week.Id, week.Season__c);
     }
-    Map<Id, Id> weekOfSchedule = new Map<Id, Id>();
+    Map<Id, Id> weekOfSchedule = found.weekOfSchedule;
     for (Schedule__c schedule : [
       SELECT Id, Week__c, Program__r.Season__c
       FROM Schedule__c
@@ -126,25 +127,40 @@ public with sharing class ElectiveRunTriggers {
       seasonIds
     );
     for (ElectiveRun__c run : runs) {
-      if (otherSeason(seasonOf, run.ElectiveSet__c, run.Season__c)) {
-        run.ElectiveSet__c.addError(
-          inOtherSeason(labelsBySeason.get(run.Season__c), 'ElectiveSet')
-        );
-      } else if (otherSeason(seasonOf, run.Week__c, run.Season__c)) {
-        run.Week__c.addError(
-          inOtherSeason(labelsBySeason.get(run.Season__c), 'Week')
-        );
-      } else if (
-        notOfWeek(weekOfSchedule, run.Schedule__c, run.Week__c) ||
-        notOfWeek(weekOfSchedule, run.FinalSchedule__c, run.Week__c)
-      ) {
-        CampLabels labels = labelsBySeason.get(run.Season__c);
-        run.addError(
-          'This schedule is not for the run\'s ' +
-            labels.singularInSentence('Week') +
-            '.'
-        );
-      }
+      refuseRun(run, found, labelsBySeason);
+    }
+  }
+
+  /** The season of each set, week and schedule a run names, and the week of each schedule. */
+  private class RunLookups {
+    Map<Id, Id> seasonOf = new Map<Id, Id>();
+    Map<Id, Id> weekOfSchedule = new Map<Id, Id>();
+  }
+
+  private static void refuseRun(
+    ElectiveRun__c run,
+    RunLookups found,
+    SetupSeasons.LazyLabels labelsBySeason
+  ) {
+    Map<Id, Id> seasonOf = found.seasonOf;
+    Map<Id, Id> weekOfSchedule = found.weekOfSchedule;
+    if (otherSeason(seasonOf, run.ElectiveSet__c, run.Season__c)) {
+      run.ElectiveSet__c.addError(
+        inOtherSeason(labelsBySeason.get(run.Season__c), 'ElectiveSet')
+      );
+    } else if (otherSeason(seasonOf, run.Week__c, run.Season__c)) {
+      run.Week__c.addError(
+        inOtherSeason(labelsBySeason.get(run.Season__c), 'Week')
+      );
+    } else if (
+      notOfWeek(weekOfSchedule, run.Schedule__c, run.Week__c) ||
+      notOfWeek(weekOfSchedule, run.FinalSchedule__c, run.Week__c)
+    ) {
+      run.addError(
+        'This schedule is not for the run\'s ' +
+          labelsBySeason.get(run.Season__c).singularInSentence('Week') +
+          '.'
+      );
     }
   }
 
